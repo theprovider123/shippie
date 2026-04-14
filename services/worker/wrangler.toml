@@ -1,0 +1,32 @@
+name = "shippie-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Production binding: wildcard route for every *.shippie.app subdomain.
+# Also cdn.shippie.app for the hosted SDK.
+routes = [
+  { pattern = "*.shippie.app/*", zone_name = "shippie.app" },
+  { pattern = "cdn.shippie.app/*", zone_name = "shippie.app" }
+]
+
+# KV namespaces (populated at deploy time)
+# [[kv_namespaces]]
+# binding = "APP_CONFIG"
+# id = "<to be filled in after wrangler kv:namespace create>"
+
+# [[r2_buckets]]
+# binding = "SHIPPIE_APPS"
+# bucket_name = "shippie-apps"
+
+# [[r2_buckets]]
+# binding = "SHIPPIE_PUBLIC"
+# bucket_name = "shippie-public"
+
+[vars]
+SHIPPIE_ENV = "production"
+PLATFORM_API_URL = "https://shippie.app"
+
+# Secrets (set via `wrangler secret put`):
+#   WORKER_PLATFORM_SECRET  — HMAC secret for signing Worker → Platform requests
+#   APP_SESSION_COOKIE_KEY  — cookie crypto key (if we ever sign cookies client-side)
