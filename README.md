@@ -24,9 +24,28 @@ docs/
 ## Development
 
 ```bash
+# One-time: install Postgres and set up the dev DB
+brew install postgresql@16
+brew services start postgresql@16
+/opt/homebrew/opt/postgresql@16/bin/createdb shippie_dev
+
+cat > apps/web/.env.local <<EOF
+DATABASE_URL="postgres://$(whoami)@localhost:5432/shippie_dev"
+AUTH_SECRET="$(openssl rand -hex 32)"
+AUTH_TRUST_HOST="true"
+NEXTAUTH_URL="http://localhost:4100"
+EOF
+
+# Install deps + apply migrations + start dev server
 bun install
-bun run dev
+cd packages/db && bun run db:push && cd ../..
+cd apps/web && bun run dev
 ```
+
+Visit http://localhost:4100. Sign in at `/auth/signin` — the magic link
+prints to the `bun run dev` terminal (no SMTP needed for dev).
+
+See [`docs/local-dev-setup.md`](docs/local-dev-setup.md) for full details.
 
 ## The Three Ships
 
