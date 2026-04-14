@@ -49,6 +49,14 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/sdk": {
+      "name": "@shippie/sdk",
+      "version": "0.0.1",
+      "devDependencies": {
+        "tsup": "^8.5.1",
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/session-crypto": {
       "name": "@shippie/session-crypto",
       "version": "0.0.0",
@@ -282,6 +290,8 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.1", "", { "os": "win32", "cpu": "x64" }, "sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ=="],
 
     "@shippie/db": ["@shippie/db@workspace:packages/db"],
+
+    "@shippie/sdk": ["@shippie/sdk@workspace:packages/sdk"],
 
     "@shippie/session-crypto": ["@shippie/session-crypto@workspace:packages/session-crypto"],
 
