@@ -67,3 +67,7 @@ wrangler.toml.local
 # Misc
 *.tsbuildinfo
 next-env.d.ts
+
+# Session 2 additions
+.pglite-dev/
+.pglite/

@@ -9,6 +9,14 @@
     "allowJs": true,
     "noEmit": true,
     "incremental": true,
+
+    // apps/web is an application, not a publishable library.
+    // Override the base `declaration: true` so TypeScript doesn't
+    // pre-emptively check whether inferred types from node_modules
+    // could be written into .d.ts files (TS2742).
+    "declaration": false,
+    "declarationMap": false,
+
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"]

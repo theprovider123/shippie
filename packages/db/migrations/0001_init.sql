@@ -13,6 +13,13 @@ create extension if not exists "pgcrypto";
 
 -- ---------------------------------------------------------------------
 -- Users  (spec §18.1)
+--
+-- `name` and `image` mirror Auth.js v5 + OAuth conventions
+-- (vs spec's display_name / avatar_url) so the Drizzle adapter can use
+-- this table directly without a separate identity store.
+--
+-- `username` is nullable — Auth.js creates user rows at first sign-in
+-- before our onboarding flow claims a username.
 -- ---------------------------------------------------------------------
 create table users (
   id uuid primary key default gen_random_uuid(),
@@ -21,9 +28,9 @@ create table users (
   github_id text unique,
   google_id text unique,
   apple_id text unique,
-  username text unique not null,
-  display_name text,
-  avatar_url text,
+  username text unique,
+  name text,
+  image text,
   bio text,
   verified_maker boolean default false not null,
   verification_source text,
@@ -35,7 +42,7 @@ create table users (
 );
 
 create index users_email_idx on users (email);
-create index users_username_idx on users (username);
+create unique index users_username_unique_idx on users (username) where username is not null;
 
 -- ---------------------------------------------------------------------
 -- Organizations  (spec §15.1, §18.8)

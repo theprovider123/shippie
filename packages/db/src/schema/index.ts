@@ -14,6 +14,7 @@
  * For Week 1 we have only the 0001 init tables defined in code.
  */
 export * from './users.ts';
+export * from './auth.ts';
 export * from './organizations.ts';
 export * from './audit-log.ts';
 export * from './apps.ts';

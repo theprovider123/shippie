@@ -3,7 +3,13 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": ".",
-    "noEmit": true
+    "noEmit": true,
+
+    // tsup invokes tsc for .d.ts generation. incremental is set in
+    // tsconfig.base.json for faster typechecks, but conflicts with
+    // tsup's single-pass dts builder unless we also specify
+    // tsBuildInfoFile. Disable it here for the dts pass.
+    "incremental": false
   },
   "include": ["src/**/*", "drizzle.config.ts"]
 }
