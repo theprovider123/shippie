@@ -18,6 +18,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { detectFramework } from '@/lib/detect/framework';
 import { PROJECT_TYPES } from '@shippie/shared';
+import { UploadForm } from './upload-form';
 
 interface SearchParams {
   source?: string;
@@ -84,16 +85,29 @@ export default async function NewProjectPage({
               <p className="text-sm text-neutral-500 mt-1">
                 Connect the Shippie GitHub App to any repo you own. Auto-redeploys on push.
               </p>
-              <p className="text-xs text-neutral-500 mt-3 font-mono">dev stub</p>
+              <p className="text-xs text-neutral-500 mt-3 font-mono">week 6</p>
             </Link>
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 opacity-60">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
               <p className="font-semibold">Upload zip</p>
               <p className="text-sm text-neutral-500 mt-1">
-                Drag a dist/ folder. Shippie hosts it, generates a PWA manifest + service worker.
+                Drop a zip of your built output. Shippie runs preflight, injects PWA
+                assets, and serves it at <code>{'<slug>'}.shippie.app</code>.
               </p>
-              <p className="text-xs text-neutral-500 mt-3 font-mono">week 3</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-3 font-mono">
+                live · use the form below
+              </p>
             </div>
           </div>
+        </section>
+
+        <section className="rounded-xl border border-neutral-300 dark:border-neutral-700 p-6 space-y-4">
+          <h2 className="font-semibold text-lg">2 · Upload your zip</h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Works with any static site: a built SPA, a static HTML folder,
+            a Vite/Astro/Next-static <code>dist/</code>. Must contain{' '}
+            <code>index.html</code> at the root (except type=website).
+          </p>
+          <UploadForm />
         </section>
 
         {detected && (

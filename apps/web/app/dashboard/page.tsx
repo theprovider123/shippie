@@ -1,12 +1,16 @@
 /**
- * /dashboard — protected maker dashboard placeholder.
+ * /dashboard — maker home.
  *
- * Week 4 will replace this with the real dashboard (My Apps, Feedback,
- * Deploys, Settings). For now it's a sign-in sanity check: if you land
- * here with a valid session, auth works end to end.
+ * Lists quick actions (Ship new app, View your apps) and links to the
+ * real feature surfaces. Week 4+ fills this out with feedback inbox,
+ * deploys log, analytics tiles.
  */
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth, signOut } from '@/lib/auth';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -21,12 +25,12 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen px-6 py-16">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-10">
         <header className="space-y-2">
           <p className="text-xs uppercase tracking-widest text-brand-500 font-mono">
             Dashboard
           </p>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-4xl font-bold">
             Welcome{session.user.name ? `, ${session.user.name}` : ''}.
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400">
@@ -34,24 +38,32 @@ export default async function DashboardPage() {
           </p>
         </header>
 
-        <section className="rounded-xl border border-neutral-300 dark:border-neutral-700 p-6 space-y-3">
-          <h2 className="font-semibold">Auth sanity check</h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            You reached this page with a valid database session. The
-            Drizzle adapter, PGlite backend, and Nodemailer dev provider
-            all work end-to-end.
-          </p>
-          <pre className="text-xs font-mono bg-neutral-100 dark:bg-neutral-900 p-3 rounded overflow-auto">
-{JSON.stringify(
-  {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-  },
-  null,
-  2,
-)}
-          </pre>
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link
+            href="/new"
+            className="rounded-xl border border-brand-500/40 bg-brand-50/40 dark:bg-brand-900/10 p-6 hover:border-brand-500 transition-colors"
+          >
+            <p className="text-xs uppercase tracking-widest text-brand-500 font-mono">
+              Action
+            </p>
+            <h2 className="text-xl font-semibold mt-1">Ship a new app</h2>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
+              Upload a zip or connect a GitHub repo. Live in under a minute.
+            </p>
+          </Link>
+
+          <Link
+            href="/dashboard/apps"
+            className="rounded-xl border border-neutral-300 dark:border-neutral-700 p-6 hover:border-neutral-400 transition-colors"
+          >
+            <p className="text-xs uppercase tracking-widest text-neutral-500 font-mono">
+              Your stuff
+            </p>
+            <h2 className="text-xl font-semibold mt-1">Your apps</h2>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
+              All apps you've shipped, with status, versions, and live URLs.
+            </p>
+          </Link>
         </section>
 
         <form action={handleSignOut}>

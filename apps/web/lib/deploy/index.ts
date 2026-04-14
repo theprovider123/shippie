@@ -15,6 +15,7 @@
  * Spec v6 §10.6.
  */
 import AdmZip from 'adm-zip';
+import { and, eq } from 'drizzle-orm';
 import {
   DevKv,
   DevR2,
@@ -24,7 +25,9 @@ import {
   type R2Store,
 } from '@shippie/dev-storage';
 import { createInjector } from '@shippie/pwa-injector';
+import { schema } from '@shippie/db';
 import type { ShippieJson } from '@shippie/shared';
+import { getDb } from '@/lib/db';
 import { runPreflight, defaultRules, type PreflightReport } from '@/lib/preflight';
 
 export interface DeployStaticInput {
@@ -44,11 +47,14 @@ export interface DeployStaticResult {
   preflight: PreflightReport;
   liveUrl: string;
   reason?: string;
+  appId?: string;
+  deployId?: string;
 }
 
 export async function deployStatic(
   input: DeployStaticInput,
 ): Promise<DeployStaticResult> {
+  const startedAt = Date.now();
   // ------------------------------------------------------------------
   // 1. Extract zip
   // ------------------------------------------------------------------
@@ -102,9 +108,71 @@ export async function deployStatic(
   }
 
   // ------------------------------------------------------------------
-  // 4. PWA injection
+  // 4. Upsert the apps row (before injection so we know the version)
   // ------------------------------------------------------------------
-  const version = 1; // TODO: bump from existing deploys row
+  const db = await getDb();
+
+  let appRow = await db.query.apps.findFirst({
+    where: eq(schema.apps.slug, input.slug),
+  });
+
+  if (!appRow) {
+    const [inserted] = await db
+      .insert(schema.apps)
+      .values({
+        slug: input.slug,
+        name: draftedManifest.name,
+        tagline: draftedManifest.tagline,
+        description: draftedManifest.description,
+        type: draftedManifest.type,
+        category: draftedManifest.category,
+        themeColor: draftedManifest.theme_color ?? '#000000',
+        backgroundColor: draftedManifest.background_color ?? '#ffffff',
+        sourceType: 'zip',
+        makerId: input.makerId,
+      })
+      .returning();
+    if (!inserted) {
+      return failReport({ slug: input.slug, reason: 'Failed to create app row' });
+    }
+    appRow = inserted;
+  } else if (appRow.makerId !== input.makerId) {
+    return failReport({
+      slug: input.slug,
+      reason: `Slug '${input.slug}' is already claimed by another maker.`,
+    });
+  }
+
+  // Determine next version = max(existing versions) + 1
+  const latest = await db
+    .select({ version: schema.deploys.version })
+    .from(schema.deploys)
+    .where(eq(schema.deploys.appId, appRow.id))
+    .orderBy(schema.deploys.version);
+  const version = (latest.length > 0 ? latest[latest.length - 1]!.version : 0) + 1;
+
+  // ------------------------------------------------------------------
+  // 5. Create the deploys row in 'building' state so the trigger fires
+  //    and apps.latest_deploy_* get populated.
+  // ------------------------------------------------------------------
+  const [deployRow] = await db
+    .insert(schema.deploys)
+    .values({
+      appId: appRow.id,
+      version,
+      sourceType: 'zip',
+      status: 'building',
+      shippieJson: draftedManifest as unknown as Record<string, unknown>,
+      createdBy: input.makerId,
+    })
+    .returning();
+  if (!deployRow) {
+    return failReport({ slug: input.slug, reason: 'Failed to create deploy row' });
+  }
+
+  // ------------------------------------------------------------------
+  // 6. PWA injection
+  // ------------------------------------------------------------------
   const injector = createInjector(draftedManifest, version);
 
   for (const [path, buffer] of files) {
@@ -118,18 +186,68 @@ export async function deployStatic(
   }
 
   // ------------------------------------------------------------------
-  // 5. Upload to R2 (dev: filesystem)
+  // 7. Upload to R2 (dev: filesystem, prod: Cloudflare)
   // ------------------------------------------------------------------
   const storage = getStorage();
   const r2Prefix = `apps/${input.slug}/v${version}`;
+  const manifest: Array<{ path: string; size: number }> = [];
 
   for (const [path, buffer] of files) {
     const cleanPath = path.startsWith('/') ? path : '/' + path;
     await storage.r2.put(`${r2Prefix}${cleanPath}`, new Uint8Array(buffer));
+    manifest.push({ path: cleanPath, size: buffer.byteLength });
   }
 
+  const totalBytes = [...files.values()].reduce((acc, b) => acc + b.byteLength, 0);
+
   // ------------------------------------------------------------------
-  // 6-8. KV app config + active pointer
+  // 8. Create deploy_artifacts + mark deploy success + flip active pointer
+  // ------------------------------------------------------------------
+  await db.insert(schema.deployArtifacts).values({
+    deployId: deployRow.id,
+    r2Prefix,
+    fileCount: files.size,
+    totalBytes: BigInt(totalBytes),
+    manifest: { files: manifest } as unknown as Record<string, unknown>,
+  });
+
+  await db
+    .update(schema.deploys)
+    .set({
+      status: 'success',
+      completedAt: new Date(),
+      durationMs: Date.now() - startedAt,
+      preflightStatus: 'passed',
+      preflightReport: preflight as unknown as Record<string, unknown>,
+    })
+    .where(eq(schema.deploys.id, deployRow.id));
+
+  await db
+    .update(schema.apps)
+    .set({
+      activeDeployId: deployRow.id,
+      lastDeployedAt: new Date(),
+      firstPublishedAt: appRow.firstPublishedAt ?? new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.apps.id, appRow.id));
+
+  // Ensure an app_permissions row exists (idempotent upsert)
+  await db
+    .insert(schema.appPermissions)
+    .values({
+      appId: appRow.id,
+      auth: draftedManifest.permissions?.auth ?? false,
+      storage: draftedManifest.permissions?.storage ?? 'none',
+      files: draftedManifest.permissions?.files ?? false,
+      notifications: draftedManifest.permissions?.notifications ?? false,
+      analytics: draftedManifest.permissions?.analytics ?? true,
+      externalNetwork: draftedManifest.permissions?.external_network ?? false,
+    })
+    .onConflictDoNothing();
+
+  // ------------------------------------------------------------------
+  // 9. Write KV app config + active pointer (read-through cache for worker)
   // ------------------------------------------------------------------
   await storage.kv.putJson(`apps:${input.slug}:meta`, {
     slug: input.slug,
@@ -149,14 +267,6 @@ export async function deployStatic(
 
   await storage.kv.put(`apps:${input.slug}:active`, String(version));
 
-  // ------------------------------------------------------------------
-  // 9. TODO: write deploys row, update apps.active_deploy_id
-  //    (comes in the next commit — for now the KV pointer is the source
-  //    of truth that the Worker reads from)
-  // ------------------------------------------------------------------
-
-  const totalBytes = [...files.values()].reduce((acc, b) => acc + b.byteLength, 0);
-
   return {
     success: true,
     version,
@@ -164,6 +274,8 @@ export async function deployStatic(
     totalBytes,
     preflight,
     liveUrl: devUrl(input.slug),
+    appId: appRow.id,
+    deployId: deployRow.id,
   };
 }
 
