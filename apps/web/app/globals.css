@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* ===================================================================
+ * Shippie design tokens — placeholder. Will be replaced by full design
+ * system in Week 2 alongside the onboarding flow at /new.
+ * =================================================================== */
+@theme {
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-brand-900: #7c2d12;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html, body {
+  background: white;
+  color: #0a0a0a;
+}
+
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background: #0a0a0a;
+    color: #fafafa;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

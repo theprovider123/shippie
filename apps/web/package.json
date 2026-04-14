@@ -1,0 +1,31 @@
+{
+  "name": "@shippie/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --turbo --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'tests TBD' && exit 0",
+    "clean": "rm -rf .next .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "next": "^16.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "@shippie/shared": "workspace:*",
+    "@shippie/session-crypto": "workspace:*",
+    "@shippie/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@tailwindcss/postcss": "^4.2.2",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.7.0"
+  }
+}

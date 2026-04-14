@@ -1,0 +1,30 @@
+{
+  "name": "shippie",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Shippie — apps on your phone, without the App Store.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules .turbo"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.6",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "bun@1.3.12"
+}
