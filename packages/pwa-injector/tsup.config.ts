@@ -1,0 +1,13 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: { index: 'src/index.ts' },
+  format: ['esm'],
+  target: 'node20',
+  platform: 'node',
+  dts: true,
+  sourcemap: true,
+  clean: true,
+  external: ['htmlparser2', 'domutils', 'domhandler', 'dom-serializer', '@shippie/shared'],
+  outDir: 'dist',
+});

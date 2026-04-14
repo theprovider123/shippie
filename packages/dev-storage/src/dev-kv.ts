@@ -1,18 +1,19 @@
 /**
  * Filesystem-backed KV for local dev.
  *
- * Each key becomes a file under <dataDir>/<sanitized-key>.
- * Values are plain strings. JSON helpers serialize through the caller.
- * Expiration is tracked via a sidecar .meta.json that records a TTL timestamp.
+ * Each key becomes a file under <dataDir>/<sanitized-key>. Values are
+ * plain strings; JSON helpers serialize through the caller. TTL is
+ * tracked via a sidecar .meta.json.
  *
- * Not for production — real Cloudflare KV is bound at the Worker level.
+ * Usable from any Node/Bun process. Both the worker dev server and the
+ * platform's Next.js deploy handler instantiate one pointing at the
+ * same `.shippie-dev-state/kv/app-config/` directory.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { KvStore } from './types.ts';
 
 function sanitize(key: string): string {
-  // Map colons and slashes to safe path characters
   return key.replace(/:/g, '__').replace(/\//g, '--');
 }
 
@@ -40,7 +41,6 @@ export class DevKv implements KvStore {
     const metaFilePath = this.metaPath(key);
     if (!existsSync(filePath)) return null;
 
-    // Check TTL
     if (existsSync(metaFilePath)) {
       try {
         const meta = JSON.parse(readFileSync(metaFilePath, 'utf8')) as { expiresAt?: number };
@@ -50,7 +50,7 @@ export class DevKv implements KvStore {
           return null;
         }
       } catch {
-        // Corrupt meta file — treat as expired.
+        // Ignore corrupt meta
       }
     }
 
@@ -75,7 +75,6 @@ export class DevKv implements KvStore {
     const filePath = this.path(key);
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, value, 'utf8');
-
     if (opts?.expirationTtl) {
       const meta = { expiresAt: Date.now() + opts.expirationTtl * 1000 };
       writeFileSync(this.metaPath(key), JSON.stringify(meta), 'utf8');
@@ -100,10 +99,9 @@ export class DevKv implements KvStore {
   async list(prefix: string): Promise<string[]> {
     if (!existsSync(this.dataDir)) return [];
     const sanitizedPrefix = sanitize(prefix);
-    const entries = readdirSync(this.dataDir)
+    return readdirSync(this.dataDir)
       .filter((name) => !name.endsWith('.meta.json'))
       .filter((name) => name.startsWith(sanitizedPrefix))
       .map(unsanitize);
-    return entries;
   }
 }

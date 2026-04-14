@@ -9,8 +9,13 @@
  */
 import { createApp } from './app.ts';
 import type { WorkerEnv } from './env.ts';
-import type { KvStore } from './kv/types.ts';
-import type { R2HttpMetadata, R2Object, R2ObjectHead, R2Store } from './r2/types.ts';
+import type {
+  KvStore,
+  R2HttpMetadata,
+  R2Object,
+  R2ObjectHead,
+  R2Store,
+} from '@shippie/dev-storage';
 
 /**
  * Cloudflare-native env shape as it arrives into the Worker.

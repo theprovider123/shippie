@@ -1,11 +1,11 @@
 /**
  * Filesystem-backed R2 for local dev.
  *
- * Each key becomes a file under <dataDir>/<key>. Parent directories are
- * created automatically. Content-type is inferred from file extension
- * when a head/get returns metadata.
+ * Directory layout mirrors the R2 bucket exactly:
+ *   <dataDir>/apps/recipes/v1/index.html
+ *   <dataDir>/icons/recipes/192.png
  *
- * Not for production — real Cloudflare R2 is bound at the Worker level.
+ * Content-Type is inferred from file extension on read.
  */
 import {
   existsSync,
@@ -98,13 +98,15 @@ export class DevR2 implements R2Store {
   ): Promise<void> {
     const p = this.path(key);
     mkdirSync(dirname(p), { recursive: true });
-    let buffer: Uint8Array | Buffer | string = value as Uint8Array;
+    let toWrite: Uint8Array | Buffer | string;
     if (typeof value === 'string') {
-      buffer = value;
+      toWrite = value;
     } else if (value instanceof ArrayBuffer) {
-      buffer = new Uint8Array(value);
+      toWrite = new Uint8Array(value);
+    } else {
+      toWrite = value;
     }
-    writeFileSync(p, buffer as Buffer);
+    writeFileSync(p, toWrite as Buffer);
   }
 
   async delete(key: string): Promise<void> {
@@ -118,13 +120,10 @@ export class DevR2 implements R2Store {
       if (!existsSync(dir)) return;
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const full = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          walk(full);
-        } else if (entry.isFile()) {
+        if (entry.isDirectory()) walk(full);
+        else if (entry.isFile()) {
           const rel = relative(this.dataDir, full);
-          if (rel.startsWith(prefix)) {
-            results.push(rel);
-          }
+          if (rel.startsWith(prefix)) results.push(rel);
         }
       }
     };

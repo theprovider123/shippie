@@ -39,7 +39,14 @@ const config: NextConfig = {
     '@electric-sql/pglite',
     'postgres',
     '@shippie/db',
+    '@shippie/dev-storage',
+    '@shippie/pwa-injector',
     '@auth/drizzle-adapter',
+    'adm-zip',
+    'htmlparser2',
+    'domhandler',
+    'domutils',
+    'dom-serializer',
   ],
 
   // Standard Next 16 defaults; we'll add headers/redirects/rewrites

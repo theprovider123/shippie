@@ -7,8 +7,7 @@
  *
  * Spec v6 §2.1, §6.3.
  */
-import type { KvStore } from './kv/types.ts';
-import type { R2Store } from './r2/types.ts';
+import type { KvStore, R2Store } from '@shippie/dev-storage';
 
 export interface WorkerEnv {
   /** "production" | "development" */

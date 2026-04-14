@@ -15,8 +15,12 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
     "@shippie/db": "workspace:*",
+    "@shippie/dev-storage": "workspace:*",
+    "@shippie/pwa-injector": "workspace:*",
+    "@shippie/sdk": "workspace:*",
     "@shippie/session-crypto": "workspace:*",
     "@shippie/shared": "workspace:*",
+    "adm-zip": "^0.5.17",
     "next": "^16.2.3",
     "next-auth": "^5.0.0-beta.30",
     "nodemailer": "^7",
@@ -24,10 +28,11 @@
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@tailwindcss/postcss": "^4.2.2",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.7.0"
   }

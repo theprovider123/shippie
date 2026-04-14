@@ -12,23 +12,27 @@
  *
  * Spec v6 §2.1.
  */
-import { join } from 'node:path';
 import { createApp } from './app.ts';
 import type { WorkerEnv } from './env.ts';
-import { DevKv } from './kv/dev-kv.ts';
-import { DevR2 } from './r2/dev-r2.ts';
+import {
+  DevKv,
+  DevR2,
+  getDevKvDir,
+  getDevR2AppsDir,
+  getDevR2PublicDir,
+  getDevStateDir,
+} from '@shippie/dev-storage';
 
 const DEFAULT_PORT = Number(process.env.SHIPPIE_WORKER_PORT ?? 4200);
-const STATE_DIR = process.env.SHIPPIE_DEV_STATE_DIR ?? join(process.cwd(), '.shippie-dev-state');
 
 const env: WorkerEnv = {
   SHIPPIE_ENV: 'development',
   PLATFORM_API_URL: process.env.PLATFORM_API_URL ?? 'http://localhost:4100',
   WORKER_PLATFORM_SECRET:
     process.env.WORKER_PLATFORM_SECRET ?? 'dev-worker-platform-secret-change-me',
-  APP_CONFIG: new DevKv(join(STATE_DIR, 'kv', 'app-config')),
-  SHIPPIE_APPS: new DevR2(join(STATE_DIR, 'r2', 'shippie-apps')),
-  SHIPPIE_PUBLIC: new DevR2(join(STATE_DIR, 'r2', 'shippie-public')),
+  APP_CONFIG: new DevKv(getDevKvDir()),
+  SHIPPIE_APPS: new DevR2(getDevR2AppsDir()),
+  SHIPPIE_PUBLIC: new DevR2(getDevR2PublicDir()),
 };
 
 const app = createApp();
@@ -50,7 +54,7 @@ const server = Bun.serve({
 console.log(`[shippie:worker] dev server listening on`);
 console.log(`  http://localhost:${server.port}`);
 console.log(`  http://<anything>.localhost:${server.port}`);
-console.log(`  state: ${STATE_DIR}`);
+console.log(`  state: ${getDevStateDir()}`);
 console.log();
 console.log(`try:`);
 console.log(`  curl http://recipes.localhost:${server.port}/__shippie/health`);

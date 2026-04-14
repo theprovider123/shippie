@@ -71,3 +71,4 @@ next-env.d.ts
 # Session 2 additions
 .pglite-dev/
 .pglite/
+.shippie-dev-state/
