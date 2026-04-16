@@ -2,7 +2,7 @@
   "name": "@shippie/web",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "next dev --turbo --port 4100",
     "build": "next build",
