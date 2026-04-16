@@ -14,7 +14,7 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { after } from 'next/server';
-import { auth } from '@/lib/auth';
+import { resolveUserId } from '@/lib/cli-auth';
 import { deployStaticHot, deployCold } from '@/lib/deploy';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs.ts';
 
@@ -22,8 +22,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const who = await resolveUserId(req);
+  if (!who) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   try {
     const result = await deployStaticHot({
       slug,
-      makerId: session.user.id,
+      makerId: who.userId,
       zipBuffer,
       reservedSlugs,
     });

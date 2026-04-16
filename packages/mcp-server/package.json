@@ -1,16 +1,43 @@
 {
   "name": "@shippie/mcp",
-  "version": "0.0.1",
-  "description": "MCP server for deploying apps to Shippie from AI tools.",
+  "version": "0.0.2",
+  "description": "Model Context Protocol server for deploying apps to Shippie from AI tools like Claude Code and Cursor.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
     "shippie-mcp": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "shippie",
+    "mcp",
+    "model-context-protocol",
+    "claude-code",
+    "cursor",
+    "deploy",
+    "pwa"
+  ],
+  "homepage": "https://shippie.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shippie/shippie.git",
+    "directory": "packages/mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/shippie/shippie/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --outDir dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -21,5 +48,8 @@
     "@types/node": "^22.10.0",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

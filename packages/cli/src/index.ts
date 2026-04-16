@@ -3,26 +3,59 @@
  * @shippie/cli — deploy apps to Shippie from the terminal.
  *
  * Commands:
+ *   login                Authenticate via browser device-code flow
+ *   logout               Remove the local token
+ *   whoami               Show the current authenticated user
  *   deploy [dir]         Deploy a directory (auto-detects build output)
  *     --trial            Post to /api/deploy/trial — no signup, 24h TTL
  *     --watch            Poll status until cold path completes
  *   init                 Scaffold a shippie.json
  *   status <deploy-id>   Check deploy status (use --watch to follow)
- *   whoami               Show current auth state
  *
  * MIT license.
  */
 import { Command } from 'commander';
+import { existsSync, unlinkSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { deployCommand } from './commands/deploy.js';
 import { initCommand } from './commands/init.js';
+import { loginCommand } from './commands/login.js';
 import { statusCommand } from './commands/status.js';
+import { whoamiCommand } from './commands/whoami.js';
 
 const program = new Command();
 
 program
   .name('shippie')
   .description('Ship apps to shippie.app from your terminal.')
-  .version('0.0.1');
+  .version('0.0.2');
+
+program
+  .command('login')
+  .description('Authenticate via browser (device-code flow)')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--no-open', "Don't try to open a browser automatically")
+  .action(loginCommand);
+
+program
+  .command('logout')
+  .description('Remove the local Shippie token')
+  .action(() => {
+    const tokenPath = resolve(homedir(), '.shippie', 'token');
+    if (existsSync(tokenPath)) {
+      unlinkSync(tokenPath);
+      console.log(`Removed ${tokenPath}`);
+    } else {
+      console.log('No token found — already logged out.');
+    }
+  });
+
+program
+  .command('whoami')
+  .description('Show the current authenticated user')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(whoamiCommand);
 
 program
   .command('deploy [dir]')
@@ -46,12 +79,5 @@ program
   .option('-i, --interval <ms>', 'Polling interval in milliseconds', '2000')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(statusCommand);
-
-program
-  .command('whoami')
-  .description('Show current auth state')
-  .action(() => {
-    console.log('Auth not configured yet. Run: shippie login');
-  });
 
 program.parse();

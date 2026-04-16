@@ -17,7 +17,7 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { after } from 'next/server';
-import { auth } from '@/lib/auth';
+import { resolveUserId } from '@/lib/cli-auth';
 import { buildFromDirectory } from '@/lib/build';
 import { deployStaticHot, deployCold } from '@/lib/deploy';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs.ts';
@@ -28,14 +28,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const POST = withLogger('deploy.path', async (req: NextRequest) => {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const who = await resolveUserId(req);
+  if (!who) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
   // Rate limit: 30 deploys / minute / maker
   const rl = checkRateLimit({
-    key: `deploy:${session.user.id}`,
+    key: `deploy:${who.userId}`,
     limit: 30,
     windowMs: 60_000,
   });
@@ -80,7 +80,7 @@ export const POST = withLogger('deploy.path', async (req: NextRequest) => {
   const reservedSlugs = await loadReservedSlugs();
   const deploy = await deployStaticHot({
     slug,
-    makerId: session.user.id,
+    makerId: who.userId,
     zipBuffer: build.zipBuffer,
     reservedSlugs,
   });

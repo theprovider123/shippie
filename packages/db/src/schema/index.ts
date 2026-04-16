@@ -33,3 +33,5 @@ export * from './functions.ts';
 export * from './feedback.ts';
 export * from './analytics.ts';
 export * from './custom-domains.ts';
+export * from './cli-auth.ts';
+export * from './github-installations.ts';

@@ -19,12 +19,15 @@ import { auth } from '@/lib/auth';
 import { detectFramework } from '@/lib/detect/framework';
 import { PROJECT_TYPES } from '@shippie/shared';
 import { UploadForm } from './upload-form';
+import { RepoPicker } from './repo-picker';
 
 interface SearchParams {
   source?: string;
   name?: string;
   framework?: string;
   type?: string;
+  installation_id?: string;
+  setup_action?: string;
 }
 
 export default async function NewProjectPage({
@@ -106,16 +109,18 @@ export default async function NewProjectPage({
         <section className="rounded-xl border border-neutral-300 dark:border-neutral-700 p-6 space-y-4">
           <h2 className="font-semibold text-lg">1 · Pick a source</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Link
-              href="/new?source=github&name=recipes"
+            <a
+              href="/api/github/install"
               className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 hover:border-brand-500 transition-colors"
             >
               <p className="font-semibold">GitHub repo</p>
               <p className="text-sm text-neutral-500 mt-1">
-                Connect the Shippie GitHub App to any repo you own. Auto-redeploys on push.
+                Install the Shippie GitHub App, pick a repo, auto-redeploy on push.
               </p>
-              <p className="text-xs text-neutral-500 mt-3 font-mono">week 6</p>
-            </Link>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-3 font-mono">
+                {params.installation_id ? 'installed · pick a repo below' : 'click to install'}
+              </p>
+            </a>
             <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
               <p className="font-semibold">Upload zip</p>
               <p className="text-sm text-neutral-500 mt-1">
@@ -128,6 +133,16 @@ export default async function NewProjectPage({
             </div>
           </div>
         </section>
+
+        {params.installation_id && (
+          <section className="rounded-xl border border-brand-500/30 bg-brand-50/40 dark:bg-brand-900/10 p-6 space-y-4">
+            <h2 className="font-semibold text-lg">2 · Pick a repo</h2>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Shippie has access to the repos you selected on GitHub. Pick one to ship.
+            </p>
+            <RepoPicker installationId={params.installation_id} />
+          </section>
+        )}
 
         <section className="rounded-xl border border-neutral-300 dark:border-neutral-700 p-6 space-y-4">
           <h2 className="font-semibold text-lg">2 · Upload your zip</h2>

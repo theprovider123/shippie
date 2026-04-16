@@ -7,6 +7,11 @@
  *   status   — poll a deploy by deploy_id through hot → cold phases
  *   apps     — placeholder; wire up when the maker apps list endpoint lands
  *
+ * Note on uploads: `AdmZip` builds the archive in memory (no temp file on
+ * disk) and FormData wraps the Buffer into a Blob that Node's undici fetch
+ * streams to the platform. No intermediate disk I/O — the C4 concern is
+ * latent, not actual, for typical build outputs.
+ *
  * MIT license.
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

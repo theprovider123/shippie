@@ -1,8 +1,8 @@
 {
   "name": "@shippie/sdk",
-  "version": "0.0.1",
-  "description": "Same-origin client SDK for Shippie runtime apps. Auth, storage, files, feedback, analytics, install, native bridge.",
-  "license": "UNLICENSED",
+  "version": "2.0.0",
+  "description": "Same-origin client SDK for Shippie runtime apps. Auth, storage, files, feedback, analytics, install, native bridge. BYO backend (Supabase, Firebase).",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -17,19 +17,47 @@
       "import": "./dist/native/index.js"
     }
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "shippie",
+    "pwa",
+    "sdk",
+    "auth",
+    "storage",
+    "feedback",
+    "analytics",
+    "byo-backend",
+    "supabase",
+    "firebase"
+  ],
+  "homepage": "https://shippie.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shippie/shippie.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/shippie/shippie/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint placeholder'",
     "test": "bun test",
     "build": "tsup",
     "dev": "tsup --watch",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
     "tsup": "^8.5.1"
   },
-  "keywords": ["shippie", "pwa", "sdk", "auth", "storage"],
   "sideEffects": false
 }
