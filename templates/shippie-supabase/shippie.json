@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "slug": "my-supabase-app",
+  "type": "app",
+  "name": "My Supabase App",
+  "category": "tools",
+  "theme_color": "#3ECF8E",
+  "backend": {
+    "provider": "supabase",
+    "url": "https://YOUR_PROJECT.supabase.co"
+  }
+}

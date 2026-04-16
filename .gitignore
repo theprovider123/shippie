@@ -68,7 +68,18 @@ wrangler.toml.local
 *.tsbuildinfo
 next-env.d.ts
 
-# Session 2 additions
+# Dev state
 .pglite-dev/
 .pglite/
 .shippie-dev-state/
+
+# Claude Code
+.claude/
+
+# Loose brand source files (copies live in apps/web/public/brand/)
+rocket*.png
+rocket*.svg
+shippie_icon*.svg
+app\ icon.png
+*.sketch
+*.fig

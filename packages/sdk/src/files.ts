@@ -1,57 +1,25 @@
 /**
  * shippie.files.*
  *
- * Upload / fetch / delete user files. Uploads use a presigned R2 URL
- * obtained from /__shippie/files so the browser writes directly to R2
- * without proxying through the worker.
+ * BYO backend file storage — delegates to the configured BackendAdapter.
  *
- * Spec v6 §7.1.
+ * Spec v5 §2.
  */
-import { del, get, post } from './http.ts';
-import type { FileUploadResult } from './types.ts';
-
-interface PresignedUpload {
-  key: string;
-  upload_url: string;
-  public_url: string;
-}
+import { getAdapter } from './configure.ts';
 
 export async function upload(
   blob: Blob,
   filename: string,
-): Promise<FileUploadResult> {
-  const presigned = await post<PresignedUpload>(`/files`, {
-    filename,
-    size_bytes: blob.size,
-    mime_type: blob.type || 'application/octet-stream',
-  });
-
-  const res = await fetch(presigned.upload_url, {
-    method: 'PUT',
-    body: blob,
-    headers: {
-      'Content-Type': blob.type || 'application/octet-stream',
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`shippie: file upload failed with ${res.status}`);
-  }
-
-  return { url: presigned.public_url, key: presigned.key };
+): Promise<{ key: string; url: string }> {
+  return getAdapter().files.upload(blob, filename);
 }
 
-export async function getFile(key: string): Promise<Blob> {
-  const res = await fetch(`/__shippie/files/${encodeURIComponent(key)}`, {
-    credentials: 'same-origin',
-  });
-  if (!res.ok) {
-    throw new Error(`shippie: file fetch ${key} → ${res.status}`);
-  }
-  return res.blob();
+export async function getFile(key: string): Promise<string | null> {
+  return getAdapter().files.get(key);
 }
 
 export async function remove(key: string): Promise<void> {
-  await del(`/files/${encodeURIComponent(key)}`);
+  return getAdapter().files.delete(key);
 }
 
-export { getFile as get, remove as delete };
+export { remove as delete };

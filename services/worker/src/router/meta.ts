@@ -17,6 +17,9 @@ interface AppMetaPayload {
   background_color?: string;
   icon?: string;
   version?: number;
+  /** BYO backend — null means Tier 1 (static, no backend). */
+  backend_type?: string | null; // 'supabase' | 'firebase' | null
+  backend_url?: string | null;
   permissions?: {
     auth: boolean;
     storage: 'none' | 'r' | 'rw';
@@ -44,6 +47,8 @@ metaRouter.get('/', async (c) => {
         theme_color: '#f97316',
         background_color: '#ffffff',
         version: 0,
+        backend_type: null,
+        backend_url: null,
         permissions: {
           auth: false,
           storage: 'none' as const,

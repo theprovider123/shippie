@@ -1,61 +1,55 @@
 # Shippie
 
-> Apps on your phone, without the App Store.
+> Built it with AI. Installed on a phone. 60 seconds.
 
-Shippie is the shipping system that turns code into launched, installed, used, iterated-on software — and gets it store-ready along the way.
+No app store. No review. No 30% cut. Your data stays on your backend. Open source.
 
-## Repo layout
+---
 
-```
-apps/
-  web/                  # Next.js 16 control plane → Vercel
-packages/
-  sdk/                  # @shippie/sdk — same-origin client SDK
-  db/                   # Drizzle schema + migrations
-  session-crypto/       # SHA-256 / HMAC primitives shared by web + worker
-  shared/               # Types, constants, shippie.json schema
-services/
-  worker/               # Cloudflare Worker — runtime plane (*.shippie.app)
-infra/                  # Hetzner, Cloudflare, GitHub App, Stripe configs
-docs/
-  specs/                # v3 → v6 specification + patch chain (read-only history)
-```
+Shippie is the open alternative to the App Store for web apps. Ship a PWA to a real URL, installable on any phone, in under a minute — whether you're building an app, a web app, or a website.
 
-## Development
+| Type | For | Why Shippie |
+|---|---|---|
+| **App** | Phone-first micro-tools built with AI | Installable, works offline, no review queue |
+| **Web app** | Internal tools, dashboards, productivity | Tabs, URLs, desktop-friendly, ship in seconds |
+| **Website** | Portfolios, docs, landing pages | Static hosting + marketplace + feedback built in |
+
+## Deploy one
 
 ```bash
-# One-time: install Postgres and set up the dev DB
-brew install postgresql@16
-brew services start postgresql@16
-/opt/homebrew/opt/postgresql@16/bin/createdb shippie_dev
-
-cat > apps/web/.env.local <<EOF
-DATABASE_URL="postgres://$(whoami)@localhost:5432/shippie_dev"
-AUTH_SECRET="$(openssl rand -hex 32)"
-AUTH_TRUST_HOST="true"
-NEXTAUTH_URL="http://localhost:4100"
-EOF
-
-# Install deps + apply migrations + start dev server
-bun install
-cd packages/db && bun run db:push && cd ../..
-cd apps/web && bun run dev
+# From the terminal
+npx @shippie/cli deploy ./dist
 ```
 
-Visit http://localhost:4100. Sign in at `/auth/signin` — the magic link
-prints to the `bun run dev` terminal (no SMTP needed for dev).
+Live at `https://your-app.shippie.app` in 30 seconds. Or drop a zip at [shippie.app](https://shippie.app). Or `"deploy this to Shippie"` from Claude Code.
 
-See [`docs/local-dev-setup.md`](docs/local-dev-setup.md) for full details.
+## How Shippie compares
 
-## The Three Ships
+| | Shippie | App Store | Vercel | Glide |
+|---|---|---|---|---|
+| **Time to live** | 60s | 14 days | 60s | minutes |
+| **Revenue share** | 0% | 30% | 0% | — |
+| **Review queue** | none | yes | none | none |
+| **Installable on phones** | yes (PWA) | yes (native) | DIY | partial |
+| **Your data stays yours** | yes | no | yes | no |
+| **Open source** | yes (AGPL) | no | no | no |
 
-Every `app` project serves three distribution channels from one codebase:
+## Why we built it this way
 
-1. **Ship to Web** — `{slug}.shippie.app` (always on)
-2. **Ship to Phone** — PWA install on Android + iOS
-3. **Ship to Stores** — Play Store + App Store (gated by Native Readiness Score ≥85)
+- **Open source (AGPL).** The platform, the SDK, the MCP server, the CLI. Fork it. Self-host it. Network-accessible modifications must be shared back.
+- **BYO backend.** Shippie hosts your frontend. Auth/storage/db come from your own Supabase or Firebase. We never touch end-user data.
+- **PWA-first, honestly.** No native wrappers. The web, installed. Things you can't ship through an app store, you can ship here in a minute.
 
-## Specification
+## Links
 
-The full v6 master specification is in `docs/specs/shippie-implementation-plan-v6.md`.
-The patch chain (v5.1 → v5.1.6) is preserved alongside it for audit traceability.
+- [Try it — live trial](https://shippie.app) — drop a zip, get a URL, no signup
+- [Examples gallery](https://shippie.app/examples) — production apps to clone
+- [Getting started](docs/getting-started.md)
+- [SDK reference](docs/sdk-reference.md)
+- [Self-hosting](docs/self-hosting.md)
+- [Architecture](docs/architecture.md)
+- [Contributing](CONTRIBUTING.md)
+
+## License
+
+Platform: [AGPL-3.0](LICENSE). SDK / CLI / MCP / templates: [MIT](LICENSE-MIT).

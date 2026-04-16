@@ -1,19 +1,25 @@
 /**
- * @shippie/sdk — same-origin client SDK for Shippie runtime apps.
+ * @shippie/sdk — client SDK for Shippie apps.
+ *
+ * BYO backend model: auth/db/files delegate to the maker's own backend
+ * (Supabase, Firebase) via a configured adapter. feedback/analytics/
+ * install/meta still route through the same-origin /__shippie/* paths
+ * on the Shippie Worker.
  *
  * Three consumption modes:
  *   1. npm import:
  *        import { shippie } from '@shippie/sdk'
- *        await shippie.auth.signIn()
+ *        shippie.configure({ backend: 'supabase', client: mySupabase })
  *
- *   2. Same-origin script tag (injected by the platform into every deploy):
+ *   2. Same-origin script tag (injected by the platform):
  *        <script src="/__shippie/sdk.js" async></script>
- *        // then: window.shippie.auth.signIn()
+ *        // worker injects window.__shippie_meta with backend info
+ *        // maker must still include their backend SDK + call configure()
  *
- *   3. CDN script tag (for makers who want explicit pinning):
- *        <script src="https://cdn.shippie.app/sdk/v1.latest.js" async></script>
+ *   3. CDN script tag:
+ *        <script src="https://cdn.shippie.app/sdk/v2.latest.js" async></script>
  *
- * Spec v6 §7.
+ * Spec v5 §2 (BYO backend).
  */
 import * as authApi from './auth.ts';
 import * as dbApi from './db.ts';
@@ -23,15 +29,26 @@ import * as installApi from './install.ts';
 import * as nativeApi from './native/index.ts';
 import { meta } from './meta.ts';
 import { track, flush } from './analytics.ts';
+import { configure, isConfigured, getBackendMeta } from './configure.ts';
 
 export const shippie = {
-  version: '0.0.1' as const,
+  version: '2.0.0' as const,
+
+  /** Configure the SDK with a BYO backend (Supabase, Firebase). */
+  configure,
+
+  /** Check whether a backend has been configured. */
+  isConfigured,
+
+  /** Read backend metadata injected by the worker (script-tag path). */
+  getBackendMeta,
 
   auth: {
     getUser: authApi.getUser,
     signIn: authApi.signIn,
     signOut: authApi.signOut,
     onChange: authApi.onChange,
+    getToken: authApi.getToken,
   },
 
   db: {
@@ -55,6 +72,7 @@ export const shippie = {
   install: {
     status: installApi.status,
     prompt: installApi.prompt,
+    instructions: installApi.instructions,
   },
 
   native: {
@@ -81,4 +99,9 @@ if (typeof window !== 'undefined') {
   (window as unknown as { shippie?: typeof shippie }).shippie = shippie;
 }
 
+export type { ConfigureOptions } from './configure.ts';
+export type { BackendAdapter, BackendUser } from './backends/types.ts';
 export type * from './types.ts';
+
+export { shippieFooter } from './footer.ts';
+export type { ShippieFooterOptions } from './footer.ts';

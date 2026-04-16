@@ -30,16 +30,11 @@ export function generateManifest(manifest: ShippieJson): GeneratedManifest {
     scope: pwa.scope ?? '/',
     display: pwa.display ?? 'standalone',
     orientation: pwa.orientation ?? 'portrait',
-    theme_color: manifest.theme_color ?? '#f97316',
-    background_color: manifest.background_color ?? '#ffffff',
+    theme_color: manifest.theme_color ?? '#E8603C',
+    background_color: manifest.background_color ?? '#14120F',
     icons: [
-      { src: '/__shippie/icons/192.png', sizes: '192x192', type: 'image/png' },
-      {
-        src: '/__shippie/icons/512.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any maskable',
-      },
+      { src: '/__shippie/icons/192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/__shippie/icons/512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
     ],
     categories: manifest.category ? [manifest.category] : undefined,
   };

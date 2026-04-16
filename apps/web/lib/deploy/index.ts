@@ -1,18 +1,31 @@
 /**
  * Deploy pipeline — static upload flow.
  *
- * The end-to-end Quick Ship path for zip uploads:
- *   1. Extract zip into memory
- *   2. Run preflight against the file list + auto-drafted shippie.json
- *   3. Reject on blockers, warn on warnings
- *   4. Run PWA injection on every .html file
- *   5. Generate __shippie/manifest and __shippie/sw.js
- *   6. Write files to R2 at `apps/{slug}/v{version}/*`
- *   7. Write app config to KV at `apps:{slug}:meta`
- *   8. Flip `apps:{slug}:active` pointer to the new version
- *   9. Insert `deploys` row, link via `apps.active_deploy_id`
+ * Split into a HOT path (blocks the response) and a COLD path (runs async
+ * after the URL is returned). Time-to-URL is the metric that matters for
+ * makers; everything non-essential to URL readiness belongs in the cold path.
  *
- * Spec v6 §10.6.
+ *   HOT:
+ *     1. Extract zip into memory
+ *     2. Preflight against file list + auto-drafted shippie.json
+ *     3. Upsert app + deploys row
+ *     4. Trust checks (malware + domain + CSP + listing gate)  — blocks publish
+ *     5. PWA injection
+ *     6. Write files to R2 at apps/{slug}/v{version}/*
+ *     7. Mark deploy success, flip apps.active_deploy_id
+ *     8. Write KV meta + active pointer
+ *     ↳ return URL. Downstream sees the app as live.
+ *
+ *   COLD (runs via deployCold()):
+ *     9. Ranking score recompute
+ *    10. Auto-packaging (compat report, changelog, QR, OG card)
+ *
+ * Status is surfaced via deploys.autopackaging_status:
+ *   'pending'  — hot finished, cold queued
+ *   'partial'  — cold ran with some failures
+ *   'complete' — cold ran successfully
+ *
+ * Spec v6 §10.6. Differentiation plan Pillar C1.
  */
 import AdmZip from 'adm-zip';
 import { and, eq } from 'drizzle-orm';
@@ -49,9 +62,18 @@ export interface DeployStaticResult {
   reason?: string;
   appId?: string;
   deployId?: string;
+  /** Hot path only — files map for cold path autopack (ephemeral). */
+  filesForCold?: Map<string, Buffer>;
+  /** Hot path only — the drafted manifest for cold path autopack. */
+  manifestForCold?: ShippieJson;
 }
 
-export async function deployStatic(
+/**
+ * Hot path: everything that needs to finish before the URL works.
+ * Returns as soon as the KV pointer is flipped. Callers should kick off
+ * `deployCold()` after the response is sent (via `after()` or equivalent).
+ */
+export async function deployStaticHot(
   input: DeployStaticInput,
 ): Promise<DeployStaticResult> {
   const startedAt = Date.now();
@@ -126,7 +148,7 @@ export async function deployStatic(
         description: draftedManifest.description,
         type: draftedManifest.type,
         category: draftedManifest.category,
-        themeColor: draftedManifest.theme_color ?? '#000000',
+        themeColor: draftedManifest.theme_color ?? '#14120F',
         backgroundColor: draftedManifest.background_color ?? '#ffffff',
         sourceType: 'zip',
         makerId: input.makerId,
@@ -171,17 +193,40 @@ export async function deployStatic(
   }
 
   // ------------------------------------------------------------------
-  // 6. PWA injection
+  // 5.5. Trust enforcement — malware + domain scan + listing gate + CSP
+  // ------------------------------------------------------------------
+  const { runTrustChecks } = await import('@/lib/trust');
+  const trust = await runTrustChecks({
+    db,
+    appId: appRow.id,
+    deployId: deployRow.id,
+    files,
+    manifest: draftedManifest,
+    visibility: 'unlisted', // MVP default; public gate opts in at publish time
+  });
+  if (!trust.passed) {
+    await db
+      .update(schema.deploys)
+      .set({ status: 'failed', completedAt: new Date() })
+      .where(eq(schema.deploys.id, deployRow.id));
+    return failReport({
+      slug: input.slug,
+      reason: `trust: ${trust.blockers.join(' · ')}`,
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // 6. PWA injection (+ CSP meta tag)
   // ------------------------------------------------------------------
   const injector = createInjector(draftedManifest, version);
+  const cspMeta = trust.csp.metaTag + '\n';
 
   for (const [path, buffer] of files) {
     if (path.endsWith('.html') || path.endsWith('.htm')) {
       const original = buffer.toString('utf8');
       const { html, modified } = injector.injectHtml(original);
-      if (modified) {
-        files.set(path, Buffer.from(html, 'utf8'));
-      }
+      const withCsp = (modified ? html : original).replace(/<head([^>]*)>/i, `<head$1>${cspMeta}`);
+      files.set(path, Buffer.from(withCsp, 'utf8'));
     }
   }
 
@@ -232,19 +277,23 @@ export async function deployStatic(
     })
     .where(eq(schema.apps.id, appRow.id));
 
-  // Ensure an app_permissions row exists (idempotent upsert)
+  // Upsert app_permissions — always reflect the latest manifest on every deploy
+  const permValues = {
+    auth: draftedManifest.permissions?.auth ?? false,
+    storage: draftedManifest.permissions?.storage ?? 'none',
+    files: draftedManifest.permissions?.files ?? false,
+    notifications: draftedManifest.permissions?.notifications ?? false,
+    analytics: draftedManifest.permissions?.analytics ?? true,
+    externalNetwork: draftedManifest.permissions?.external_network ?? false,
+    updatedAt: new Date(),
+  };
   await db
     .insert(schema.appPermissions)
-    .values({
-      appId: appRow.id,
-      auth: draftedManifest.permissions?.auth ?? false,
-      storage: draftedManifest.permissions?.storage ?? 'none',
-      files: draftedManifest.permissions?.files ?? false,
-      notifications: draftedManifest.permissions?.notifications ?? false,
-      analytics: draftedManifest.permissions?.analytics ?? true,
-      externalNetwork: draftedManifest.permissions?.external_network ?? false,
-    })
-    .onConflictDoNothing();
+    .values({ appId: appRow.id, ...permValues })
+    .onConflictDoUpdate({
+      target: [schema.appPermissions.appId],
+      set: permValues,
+    });
 
   // ------------------------------------------------------------------
   // 9. Write KV app config + active pointer (read-through cache for worker)
@@ -253,9 +302,11 @@ export async function deployStatic(
     slug: input.slug,
     name: draftedManifest.name,
     type: draftedManifest.type,
-    theme_color: draftedManifest.theme_color ?? '#f97316',
+    theme_color: draftedManifest.theme_color ?? '#E8603C',
     background_color: draftedManifest.background_color ?? '#ffffff',
     version,
+    backend_type: (draftedManifest as { backend?: { provider?: string } }).backend?.provider ?? null,
+    backend_url: (draftedManifest as { backend?: { url?: string } }).backend?.url ?? null,
     permissions: draftedManifest.permissions ?? {
       auth: false,
       storage: 'none',
@@ -267,6 +318,17 @@ export async function deployStatic(
 
   await storage.kv.put(`apps:${input.slug}:active`, String(version));
 
+  // Write per-app CSP header to KV so the worker serves it instead of the
+  // hardcoded fallback. This CSP includes allowed_connect_domains from the
+  // trust pipeline, enabling BYO backend requests.
+  await storage.kv.put(`apps:${input.slug}:csp`, trust.csp.header);
+
+  // Flag cold work as queued.
+  await db
+    .update(schema.deploys)
+    .set({ autopackagingStatus: 'pending' })
+    .where(eq(schema.deploys.id, deployRow.id));
+
   return {
     success: true,
     version,
@@ -276,7 +338,87 @@ export async function deployStatic(
     liveUrl: devUrl(input.slug),
     appId: appRow.id,
     deployId: deployRow.id,
+    filesForCold: files,
+    manifestForCold: draftedManifest,
   };
+}
+
+/**
+ * Cold path: ranking recompute + auto-packaging. Run after the hot path
+ * has returned the URL to the caller. Safe to call-and-ignore — errors
+ * are swallowed and logged, and autopackaging_status is updated in place
+ * so `/api/deploy/[id]/status` can report progress.
+ */
+export interface DeployColdInput {
+  appId: string;
+  deployId: string;
+  slug: string;
+  version: number;
+  files: Map<string, Buffer>;
+  manifest: ShippieJson;
+}
+
+export async function deployCold(input: DeployColdInput): Promise<void> {
+  const db = await getDb();
+  const storage = getStorage();
+
+  try {
+    const { computeRankingForApp } = await import('@/lib/ranking');
+    await computeRankingForApp(db, input.appId);
+  } catch (err) {
+    console.warn('[shippie:ranking] failed:', err);
+  }
+
+  try {
+    const { runAutoPack } = await import('@/lib/autopack');
+    const pack = await runAutoPack({
+      db,
+      r2: storage.r2,
+      appId: input.appId,
+      deployId: input.deployId,
+      slug: input.slug,
+      version: input.version,
+      files: input.files,
+      manifest: input.manifest,
+    });
+    if (pack.errors.length > 0) {
+      console.warn('[shippie:autopack] partial:', pack.errors.join('; '));
+    }
+    // `runAutoPack` updates autopackagingStatus itself; nothing to do.
+  } catch (err) {
+    console.error('[shippie:autopack] failed:', err);
+    try {
+      await db
+        .update(schema.deploys)
+        .set({ autopackagingStatus: 'partial' })
+        .where(eq(schema.deploys.id, input.deployId));
+    } catch {
+      // best-effort — cold path errors shouldn't cascade
+    }
+  }
+}
+
+/**
+ * Convenience: the pre-C1 synchronous flow. Useful for tests and any
+ * caller that doesn't have a post-response hook. New callers should
+ * prefer `deployStaticHot` + `deployCold` on a platform-appropriate
+ * background hook (Next.js `after()` in App Router handlers).
+ */
+export async function deployStatic(
+  input: DeployStaticInput,
+): Promise<DeployStaticResult> {
+  const hot = await deployStaticHot(input);
+  if (hot.success && hot.appId && hot.deployId && hot.filesForCold && hot.manifestForCold) {
+    await deployCold({
+      appId: hot.appId,
+      deployId: hot.deployId,
+      slug: input.slug,
+      version: hot.version,
+      files: hot.filesForCold,
+      manifest: hot.manifestForCold,
+    });
+  }
+  return hot;
 }
 
 function failReport(opts: { slug: string; reason: string }): DeployStaticResult {
@@ -318,7 +460,7 @@ function deriveManifest(
     type: 'app',
     name: titleCase(input.slug),
     category: 'tools',
-    theme_color: '#f97316',
+    theme_color: '#E8603C',
     background_color: '#ffffff',
   };
 }

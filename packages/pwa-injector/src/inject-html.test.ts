@@ -9,7 +9,7 @@ const baseManifest: ShippieJson = {
   slug: 'recipes',
   type: 'app',
   category: 'food_and_drink',
-  theme_color: '#f97316',
+  theme_color: '#E8603C',
 };
 
 const SIMPLE_HTML = `<!doctype html>
@@ -30,7 +30,7 @@ test('injects manifest, meta, SDK script, SW registration on a bare HTML doc', (
 
   assert.equal(modified, true);
   assert.match(html, /<link[^>]+rel="manifest"[^>]+href="\/__shippie\/manifest"/);
-  assert.match(html, /<meta[^>]+name="theme-color"[^>]+content="#f97316"/);
+  assert.match(html, /<meta[^>]+name="theme-color"[^>]+content="#E8603C"/);
   assert.match(html, /<meta[^>]+name="apple-mobile-web-app-capable"/);
   assert.match(html, /<link[^>]+rel="apple-touch-icon"[^>]+href="\/__shippie\/icons\/180\.png"/);
   assert.match(html, /<script[^>]+src="\/__shippie\/sdk\.js"/);

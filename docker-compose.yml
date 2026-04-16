@@ -1,0 +1,90 @@
+# Shippie — one-command self-hosting
+#
+# Usage:
+#   docker compose up
+#
+# This starts:
+#   - Postgres 16 (port 5432)
+#   - Shippie web platform (port 3000)
+#   - Shippie worker (port 4200)
+#   - Internal cron runner (hits /api/internal/* endpoints on schedule)
+#
+# First run:
+#   docker compose run web bun run db:push
+#
+# See docs/self-hosting.md for production configuration.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: shippie
+      POSTGRES_USER: shippie
+      POSTGRES_PASSWORD: shippie
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://shippie:shippie@postgres:5432/shippie
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: change-me-in-production
+      WORKER_PLATFORM_SECRET: change-me-in-production-shared-with-worker
+      FUNCTIONS_MASTER_KEY: change-me-base64-32-bytes
+      # No-signup trial (Pillar B2): IP salt for hash-based rate limiting,
+      # and bearer token for /api/internal/reap-trials.
+      TRIAL_IP_SALT: change-me-per-instance-random-string
+      SHIPPIE_INTERNAL_CRON_TOKEN: change-me-internal-cron-bearer-token
+    depends_on:
+      - postgres
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    ports:
+      - "4200:4200"
+    environment:
+      PLATFORM_API_URL: http://web:3000
+      WORKER_PLATFORM_SECRET: change-me-in-production-shared-with-worker
+
+  # Internal cron runner. Alpine + sh + curl — light enough to run on any host.
+  # Ticks every minute and dispatches work by-the-clock to the web service.
+  # Scheduled jobs:
+  #   * reap-trials        hourly          — archive expired trial apps
+  cron:
+    image: alpine:3.19
+    depends_on:
+      - web
+    environment:
+      PLATFORM_API_URL: http://web:3000
+      SHIPPIE_INTERNAL_CRON_TOKEN: change-me-internal-cron-bearer-token
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        apk add --no-cache curl >/dev/null
+        echo "shippie-cron: ready; ticking every 60s"
+        LAST_HOUR=""
+        while true; do
+          NOW_HOUR=$$(date -u +%Y%m%d%H)
+          if [ "$$NOW_HOUR" != "$$LAST_HOUR" ]; then
+            LAST_HOUR="$$NOW_HOUR"
+            echo "shippie-cron: [$$NOW_HOUR] reap-trials"
+            curl -sS -X POST "$$PLATFORM_API_URL/api/internal/reap-trials" \
+              -H "Authorization: Bearer $$SHIPPIE_INTERNAL_CRON_TOKEN" \
+              -m 60 \
+              || echo "shippie-cron: reap-trials failed (will retry next hour)"
+          fi
+          sleep 60
+        done
+
+volumes:
+  pgdata:

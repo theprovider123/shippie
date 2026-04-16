@@ -29,3 +29,7 @@ export * from './compliance.ts';
 export * from './native-bundles.ts';
 export * from './push-subscriptions.ts';
 export * from './app-external-domains.ts';
+export * from './functions.ts';
+export * from './feedback.ts';
+export * from './analytics.ts';
+export * from './custom-domains.ts';

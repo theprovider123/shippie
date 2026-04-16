@@ -20,6 +20,10 @@ export interface DetectedFramework {
   /** Confidence 0-1; the UI can show lower-confidence matches as "we think...". */
   confidence: number;
   notes?: string[];
+  /** Monorepo tool detected at the repo root, if any. */
+  monorepo?: 'pnpm-workspace' | 'turbo' | 'nx' | 'lerna' | 'npm-workspaces';
+  /** AI-tool templates that shipped this project. */
+  aiTool?: 'bolt' | 'lovable' | 'v0' | 'cursor' | 'shadcn';
 }
 
 export interface DetectInput {
@@ -50,6 +54,25 @@ export function detectFramework(input: DetectInput): DetectedFramework {
   const deps = { ...packageJson?.dependencies, ...packageJson?.devDependencies };
 
   const packageManager = detectPackageManager(fileSet);
+  const monorepo = detectMonorepo(fileSet, packageJson);
+  const aiTool = detectAiTool(fileSet);
+
+  const result = detectFrameworkInner(input, packageManager);
+  if (monorepo) result.monorepo = monorepo;
+  if (aiTool) result.aiTool = aiTool;
+  if (monorepo || aiTool) {
+    const notes = result.notes ?? [];
+    if (monorepo) notes.push(`Monorepo detected: ${monorepo}. Set shippie.json.build.root_directory if the app lives in a subdir.`);
+    if (aiTool) notes.push(`AI-tool template detected: ${aiTool}.`);
+    result.notes = notes;
+  }
+  return result;
+}
+
+function detectFrameworkInner(input: DetectInput, packageManager: ReturnType<typeof detectPackageManager>): DetectedFramework {
+  const { files, packageJson } = input;
+  const fileSet = new Set(files);
+  const deps = { ...packageJson?.dependencies, ...packageJson?.devDependencies };
 
   // Pure HTML at root — no build step
   if (fileSet.has('index.html') && !packageJson) {
@@ -186,6 +209,32 @@ export function detectFramework(input: DetectInput): DetectedFramework {
     confidence: 0.3,
     notes: ['No framework detected. Serving files as-is.'],
   };
+}
+
+function detectMonorepo(
+  files: Set<string>,
+  pkg?: DetectInput['packageJson'],
+): DetectedFramework['monorepo'] | undefined {
+  if (files.has('pnpm-workspace.yaml')) return 'pnpm-workspace';
+  if (files.has('turbo.json')) return 'turbo';
+  if (files.has('nx.json')) return 'nx';
+  if (files.has('lerna.json')) return 'lerna';
+  // `workspaces` field in root package.json — npm/yarn/bun workspaces
+  const wsField = (pkg as { workspaces?: unknown } | undefined)?.workspaces;
+  if (wsField && (Array.isArray(wsField) || typeof wsField === 'object')) {
+    return 'npm-workspaces';
+  }
+  return undefined;
+}
+
+function detectAiTool(files: Set<string>): DetectedFramework['aiTool'] | undefined {
+  // Directory markers appear as their index files in the walked root
+  if (files.has('.bolt') || [...files].some((f) => f.startsWith('.bolt/'))) return 'bolt';
+  if (files.has('.lovable') || [...files].some((f) => f.startsWith('.lovable/'))) return 'lovable';
+  if (files.has('v0') || [...files].some((f) => f.startsWith('v0/') || f.startsWith('.v0/'))) return 'v0';
+  if (files.has('components.json')) return 'shadcn';
+  if (files.has('.cursorrules') || files.has('.cursor')) return 'cursor';
+  return undefined;
 }
 
 function detectPackageManager(files: Set<string>): 'npm' | 'pnpm' | 'yarn' | 'bun' | undefined {

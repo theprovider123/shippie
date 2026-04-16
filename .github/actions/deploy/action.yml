@@ -1,0 +1,38 @@
+name: 'Deploy to Shippie'
+description: 'Build and deploy your app to shippie.app'
+branding:
+  icon: 'upload-cloud'
+  color: 'orange'
+
+inputs:
+  slug:
+    description: 'App slug (e.g., my-tool)'
+    required: true
+  api-url:
+    description: 'Shippie API URL'
+    default: 'https://shippie.app'
+  token:
+    description: 'Shippie deploy token'
+    required: true
+  directory:
+    description: 'Build output directory (auto-detected if omitted)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Shippie CLI
+      shell: bash
+      run: npm install -g @shippie/cli
+
+    - name: Deploy
+      shell: bash
+      env:
+        SHIPPIE_TOKEN: ${{ inputs.token }}
+      run: |
+        mkdir -p ~/.shippie
+        echo "$SHIPPIE_TOKEN" > ~/.shippie/token
+        shippie deploy ${{ inputs.directory || '.' }} \
+          --slug ${{ inputs.slug }} \
+          --api ${{ inputs.api-url }} \
+          --skip-build

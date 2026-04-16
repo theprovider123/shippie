@@ -1,0 +1,26 @@
+{
+  "name": "@shippie/cli",
+  "version": "0.0.1",
+  "description": "Deploy apps to Shippie from your terminal.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "shippie": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --outDir dist",
+    "dev": "tsup src/index.ts --format esm --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^13.0.0",
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.10.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0"
+  }
+}

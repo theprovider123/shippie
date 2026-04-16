@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types src/*.test.ts",
+    "test": "bun test",
     "lint": "echo 'lint placeholder'",
     "build": "echo 'no build — types-only'",
     "clean": "rm -rf .turbo *.tsbuildinfo"

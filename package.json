@@ -2,7 +2,7 @@
   "name": "shippie",
   "private": true,
   "version": "0.0.0",
-  "description": "Shippie — apps on your phone, without the App Store.",
+  "description": "Shippie — no app store, just the web installed. Deploy PWAs in 60 seconds.",
   "license": "UNLICENSED",
   "type": "module",
   "workspaces": [

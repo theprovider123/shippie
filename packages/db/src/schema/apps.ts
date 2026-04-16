@@ -44,6 +44,10 @@ export const apps = pgTable(
     githubVerified: boolean('github_verified').default(false).notNull(),
     sourceType: text('source_type').notNull(), // 'github' | 'zip'
 
+    /** BYO backend — null means Tier 1 (static, no backend). */
+    backendType: text('backend_type'), // 'supabase' | 'firebase' | null
+    backendUrl: text('backend_url'),
+
     conflictPolicy: text('conflict_policy').default('shippie').notNull(),
 
     makerId: uuid('maker_id')
@@ -92,6 +96,14 @@ export const apps = pgTable(
     lastDeployedAt: timestamp('last_deployed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+
+    /** No-signup trial bookkeeping (migration 0011). */
+    isTrial: boolean('is_trial').default(false).notNull(),
+    trialUntil: timestamp('trial_until', { withTimezone: true }),
+    trialClaimedBy: uuid('trial_claimed_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    trialIpHash: text('trial_ip_hash'),
   },
   (t) => [
     index('apps_slug_active_idx').on(t.slug),

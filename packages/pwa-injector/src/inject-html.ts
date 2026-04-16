@@ -75,7 +75,7 @@ interface TagSpec {
 function injectIntoHead(head: Element, opts: InjectionOptions): boolean {
   const { manifest } = opts;
 
-  const themeColor = manifest.theme_color ?? '#f97316';
+  const themeColor = manifest.theme_color ?? '#E8603C';
   const tagsToEnsure: TagSpec[] = [
     { name: 'link', attribs: { rel: 'manifest', href: '/__shippie/manifest' } },
     { name: 'meta', attribs: { name: 'theme-color', content: themeColor } },

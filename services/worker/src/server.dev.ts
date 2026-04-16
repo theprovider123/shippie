@@ -12,6 +12,8 @@
  *
  * Spec v6 §2.1.
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createApp } from './app.ts';
 import type { WorkerEnv } from './env.ts';
 import {
@@ -25,11 +27,32 @@ import {
 
 const DEFAULT_PORT = Number(process.env.SHIPPIE_WORKER_PORT ?? 4200);
 
+/**
+ * Pull WORKER_PLATFORM_SECRET from apps/web/.env.local so the worker
+ * and the platform agree on the HMAC key without manual environment
+ * wiring. Falls back to an explicit env var if set, then to a
+ * deterministic dev default so tests still run.
+ */
+function loadSharedSecret(): string {
+  if (process.env.WORKER_PLATFORM_SECRET) return process.env.WORKER_PLATFORM_SECRET;
+
+  // getDevStateDir() resolves to <repo>/.shippie-dev-state, so going up
+  // one level gets us the repo root.
+  const repoRoot = join(getDevStateDir(), '..');
+  const envPath = join(repoRoot, 'apps', 'web', '.env.local');
+  if (existsSync(envPath)) {
+    const content = readFileSync(envPath, 'utf8');
+    const match = content.match(/^WORKER_PLATFORM_SECRET\s*=\s*"?([^"\r\n]+)"?/m);
+    if (match && match[1]) return match[1];
+  }
+
+  return 'dev-worker-platform-secret-change-me';
+}
+
 const env: WorkerEnv = {
   SHIPPIE_ENV: 'development',
   PLATFORM_API_URL: process.env.PLATFORM_API_URL ?? 'http://localhost:4100',
-  WORKER_PLATFORM_SECRET:
-    process.env.WORKER_PLATFORM_SECRET ?? 'dev-worker-platform-secret-change-me',
+  WORKER_PLATFORM_SECRET: loadSharedSecret(),
   APP_CONFIG: new DevKv(getDevKvDir()),
   SHIPPIE_APPS: new DevR2(getDevR2AppsDir()),
   SHIPPIE_PUBLIC: new DevR2(getDevR2PublicDir()),
@@ -55,6 +78,7 @@ console.log(`[shippie:worker] dev server listening on`);
 console.log(`  http://localhost:${server.port}`);
 console.log(`  http://<anything>.localhost:${server.port}`);
 console.log(`  state: ${getDevStateDir()}`);
+console.log(`  hmac:  ${env.WORKER_PLATFORM_SECRET.slice(0, 16)}... (${env.WORKER_PLATFORM_SECRET.length} chars)`);
 console.log();
 console.log(`try:`);
 console.log(`  curl http://recipes.localhost:${server.port}/__shippie/health`);

@@ -5,6 +5,18 @@
  *
  * Spec v6 §5 (reserved route contract).
  */
+/**
+ * __shippie/* system router.
+ *
+ * Post-v5 pivot: auth, session, storage, and fn routes are removed.
+ * Shippie no longer holds end-user data. Auth/storage/files are handled
+ * by the maker's BYO backend (Supabase, Firebase).
+ *
+ * Remaining routes: health, meta, sdk.js, manifest, sw.js, icons,
+ * install, feedback, analytics.
+ *
+ * Spec v5 §5 (reserved route contract, post-pivot).
+ */
 import { Hono } from 'hono';
 import type { AppBindings } from '../app.ts';
 import { healthRouter } from './health.ts';
@@ -13,8 +25,9 @@ import { sdkRouter } from './sdk.ts';
 import { manifestRouter } from './manifest.ts';
 import { swRouter } from './sw.ts';
 import { iconsRouter } from './icons.ts';
-import { sessionRouter } from './session.ts';
 import { installRouter } from './install.ts';
+import { feedbackRouter } from './feedback.ts';
+import { analyticsRouter } from './analytics.ts';
 
 export const systemRouter = new Hono<AppBindings>();
 
@@ -24,8 +37,9 @@ systemRouter.route('/sdk.js', sdkRouter);
 systemRouter.route('/manifest', manifestRouter);
 systemRouter.route('/sw.js', swRouter);
 systemRouter.route('/icons', iconsRouter);
-systemRouter.route('/session', sessionRouter);
 systemRouter.route('/install', installRouter);
+systemRouter.route('/feedback', feedbackRouter);
+systemRouter.route('/analytics', analyticsRouter);
 
 // Auth + storage + files + feedback + analytics + functions land here in
 // later weeks. Each is its own file for testability.

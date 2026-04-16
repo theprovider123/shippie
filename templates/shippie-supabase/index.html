@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supabase App</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 640px; margin: 0 auto; }
+    h1 { margin-bottom: 1rem; }
+    #output { border: 1px solid #ddd; padding: 1rem; font-family: monospace; white-space: pre; min-height: 100px; }
+    button { padding: 0.5rem 1rem; margin: 0.5rem 0.5rem 0.5rem 0; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Supabase + Shippie</h1>
+  <div>
+    <button onclick="doSignIn()">Sign In</button>
+    <button onclick="doSave()">Save Note</button>
+    <button onclick="doLoad()">Load Notes</button>
+  </div>
+  <pre id="output">Ready.</pre>
+
+  <script>
+    // Replace with your Supabase project URL and anon key
+    const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // If using the Shippie SDK (injected via /__shippie/sdk.js):
+    // shippie.configure({ backend: 'supabase', client: sb });
+
+    const out = document.getElementById('output');
+
+    async function doSignIn() {
+      const { error } = await sb.auth.signInWithOAuth({ provider: 'google' });
+      out.textContent = error ? 'Error: ' + error.message : 'Redirecting...';
+    }
+
+    async function doSave() {
+      const { error } = await sb.from('notes').upsert({ id: 'demo', data: { text: 'Hello ' + Date.now() } });
+      out.textContent = error ? 'Error: ' + error.message : 'Saved!';
+    }
+
+    async function doLoad() {
+      const { data, error } = await sb.from('notes').select('*');
+      out.textContent = error ? 'Error: ' + error.message : JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>

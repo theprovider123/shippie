@@ -74,6 +74,35 @@ export default async function NewProjectPage({
           </p>
         </header>
 
+        <section className="rounded-xl border border-neutral-300 dark:border-neutral-700 p-6 space-y-3">
+          <p className="text-xs uppercase tracking-widest text-neutral-500 font-mono">
+            What are you shipping?
+          </p>
+          <dl className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <dt className="font-semibold">app</dt>
+              <dd className="text-neutral-600 dark:text-neutral-400 mt-1">
+                Phone-first. Installable. Works offline. No review queue.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold">web_app</dt>
+              <dd className="text-neutral-600 dark:text-neutral-400 mt-1">
+                Real tools on the web. Tabs, URLs, desktop-friendly.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold">website</dt>
+              <dd className="text-neutral-600 dark:text-neutral-400 mt-1">
+                Static sites with marketplace, feedback, and analytics built in.
+              </dd>
+            </div>
+          </dl>
+          <p className="text-xs text-neutral-500 font-mono">
+            We auto-detect from your source, but you can override below.
+          </p>
+        </section>
+
         <section className="rounded-xl border border-neutral-300 dark:border-neutral-700 p-6 space-y-4">
           <h2 className="font-semibold text-lg">1 · Pick a source</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

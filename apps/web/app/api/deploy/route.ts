@@ -13,8 +13,9 @@
  * Spec v6 §10.
  */
 import { NextResponse, type NextRequest } from 'next/server';
+import { after } from 'next/server';
 import { auth } from '@/lib/auth';
-import { deployStatic } from '@/lib/deploy';
+import { deployStaticHot, deployCold } from '@/lib/deploy';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs.ts';
 
 export const runtime = 'nodejs';
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   const reservedSlugs = await loadReservedSlugs();
 
   try {
-    const result = await deployStatic({
+    const result = await deployStaticHot({
       slug,
       makerId: session.user.id,
       zipBuffer,
@@ -61,10 +62,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (result.appId && result.deployId && result.filesForCold && result.manifestForCold) {
+      const { appId, deployId, filesForCold, manifestForCold } = result;
+      after(() =>
+        deployCold({
+          appId,
+          deployId,
+          slug,
+          version: result.version,
+          files: filesForCold,
+          manifest: manifestForCold,
+        }),
+      );
+    }
+
     return NextResponse.json({
       success: true,
       slug,
       version: result.version,
+      deploy_id: result.deployId,
       files: result.files,
       total_bytes: result.totalBytes,
       live_url: result.liveUrl,

@@ -1,0 +1,145 @@
+/**
+ * /apps/[slug] — App detail / listing page.
+ *
+ * Flat hero (no gradients). Square icon. Sunset only on primary CTA.
+ */
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { eq, desc } from 'drizzle-orm';
+import { schema } from '@shippie/db';
+import { getDb } from '@/lib/db';
+import { InstallButton } from './install-button';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+function devInstallUrl(slug: string): string {
+  return `http://${slug}.localhost:4200/`;
+}
+
+export default async function AppDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const db = await getDb();
+
+  const app = await db.query.apps.findFirst({ where: eq(schema.apps.slug, slug) });
+  if (!app) notFound();
+
+  const [latestDeploy] = await db.select().from(schema.deploys)
+    .where(eq(schema.deploys.appId, app.id)).orderBy(desc(schema.deploys.version)).limit(1);
+
+  const permissions = await db.query.appPermissions.findFirst({
+    where: eq(schema.appPermissions.appId, app.id),
+  });
+
+  const autopack = (latestDeploy?.autopackagingReport ?? null) as {
+    compat?: { score: number; findings: Array<{ severity: string; message: string }> };
+    changelog?: { source: string; entries: string[]; summary: string };
+  } | null;
+
+  const externalDomains = latestDeploy
+    ? await db.query.appExternalDomains.findMany({ where: eq(schema.appExternalDomains.deployId, latestDeploy.id) })
+    : [];
+
+  const compatScore = autopack?.compat?.score ?? app.compatibilityScore ?? 0;
+
+  return (
+    <main className="min-h-screen" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <header className="px-6 py-20" style={{ background: app.themeColor, color: '#EDE4D3' }}>
+        <div className="max-w-4xl mx-auto">
+          <Link href="/apps" className="text-xs font-mono opacity-80 hover:opacity-100 uppercase" style={{ letterSpacing: '0.2em' }}>
+            ← All apps
+          </Link>
+          <div className="mt-6 flex items-start gap-6">
+            <div className="w-24 h-24 shippie-icon flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} aria-hidden />
+            <div>
+              <h1 className="text-display text-4xl md:text-5xl">{app.name}</h1>
+              <p className="mt-2 text-lg opacity-90">{app.tagline ?? app.description ?? ''}</p>
+              <p className="mt-3 text-xs font-mono opacity-75 uppercase" style={{ letterSpacing: '0.1em' }}>
+                {app.type} · {app.category} · v{latestDeploy?.version ?? '?'}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a href={devInstallUrl(app.slug)} target="_blank" rel="noopener"
+                  className="inline-block h-12 px-6 font-medium leading-[48px] transition-colors"
+                  style={{ background: 'var(--action-primary)', color: '#14120F' }}>
+                  Open app
+                </a>
+                <InstallButton url={devInstallUrl(app.slug)} name={app.name} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto px-6 py-12 space-y-12">
+        <section className="space-y-3">
+          <h2 className="text-2xl font-semibold">Compatibility</h2>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl" style={{ color: 'var(--green-leaf)' }}>{'★'.repeat(compatScore)}{'☆'.repeat(5 - compatScore)}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{compatScore}/5</span>
+          </div>
+          {autopack?.compat?.findings && autopack.compat.findings.length > 0 && (
+            <ul className="mt-4 space-y-2 text-sm">
+              {autopack.compat.findings.map((f, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span style={{ color: f.severity === 'match' ? 'var(--semantic-success)' : f.severity === 'violation' ? 'var(--semantic-error)' : 'var(--semantic-warning)' }}>
+                    {f.severity === 'match' ? '✓' : f.severity === 'violation' ? '✗' : '⚠'}
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{f.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-2xl font-semibold">Permissions</h2>
+          <ul className="grid grid-cols-2 gap-2 text-sm">
+            <PermRow label="Sign in" on={permissions?.auth ?? false} />
+            <PermRow label="User storage" on={(permissions?.storage ?? 'none') !== 'none'} />
+            <PermRow label="File uploads" on={permissions?.files ?? false} />
+            <PermRow label="Notifications" on={permissions?.notifications ?? false} />
+            <PermRow label="Analytics" on={permissions?.analytics ?? true} />
+            <PermRow label="External network" on={permissions?.externalNetwork ?? false} />
+          </ul>
+        </section>
+
+        {externalDomains.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-2xl font-semibold">External domains</h2>
+            <ul className="text-sm font-mono space-y-1">
+              {externalDomains.map((d: { domain: string; source: string; allowed: boolean }) => (
+                <li key={d.domain} className="flex items-center gap-2">
+                  <span style={{ color: d.allowed ? 'var(--semantic-success)' : 'var(--semantic-warning)' }}>{d.allowed ? '✓' : '⚠'}</span>
+                  <span>{d.domain}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>({d.source})</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {autopack?.changelog && (
+          <section className="space-y-3">
+            <h2 className="text-2xl font-semibold">Latest changes</h2>
+            <p className="font-medium">{autopack.changelog.summary}</p>
+            {autopack.changelog.entries.length > 0 && (
+              <ul className="text-sm space-y-1 ml-4" style={{ color: 'var(--text-secondary)' }}>
+                {autopack.changelog.entries.map((e, i) => <li key={i}>· {e}</li>)}
+              </ul>
+            )}
+            <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>source: {autopack.changelog.source}</p>
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function PermRow({ label, on }: { label: string; on: boolean }) {
+  return (
+    <li className="flex items-center gap-2">
+      <span style={{ color: on ? 'var(--semantic-success)' : 'var(--text-muted)' }}>{on ? '✓' : '—'}</span>
+      <span style={{ color: on ? 'var(--text-primary)' : 'var(--text-muted)' }}>{label}</span>
+    </li>
+  );
+}

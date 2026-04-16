@@ -64,3 +64,82 @@ export async function prompt(): Promise<{ outcome: 'accepted' | 'dismissed' }> {
 
   return choice;
 }
+
+/**
+ * Returns per-platform instructions the maker can surface in their own
+ * UI. Useful for iOS (where there's no programmatic prompt) and for
+ * desktop browsers that don't support beforeinstallprompt.
+ */
+export interface InstallInstructions {
+  platform: 'android' | 'ios' | 'desktop-chrome' | 'desktop-safari' | 'desktop-firefox' | 'unknown';
+  programmatic: boolean;
+  steps: string[];
+}
+
+export function instructions(): InstallInstructions {
+  if (typeof navigator === 'undefined') {
+    return { platform: 'unknown', programmatic: false, steps: [] };
+  }
+
+  const ua = navigator.userAgent;
+  const isiOS = /iPad|iPhone|iPod/.test(ua) && !('MSStream' in window);
+  const isAndroid = /Android/.test(ua);
+  const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|Chromium/.test(ua);
+  const isFirefox = /Firefox|FxiOS/.test(ua);
+
+  if (isiOS) {
+    return {
+      platform: 'ios',
+      programmatic: false,
+      steps: [
+        'Tap the Share button in Safari',
+        'Scroll down and tap "Add to Home Screen"',
+        'Tap "Add" in the top right',
+      ],
+    };
+  }
+
+  if (isAndroid) {
+    return {
+      platform: 'android',
+      programmatic: deferredPrompt != null,
+      steps: deferredPrompt
+        ? ['Tap "Install" to add this app to your home screen']
+        : [
+            'Open the browser menu (⋮)',
+            'Tap "Install app" or "Add to Home screen"',
+            'Confirm the install',
+          ],
+    };
+  }
+
+  if (isSafari) {
+    return {
+      platform: 'desktop-safari',
+      programmatic: false,
+      steps: [
+        'Open File menu',
+        'Choose "Add to Dock"',
+      ],
+    };
+  }
+
+  if (isFirefox) {
+    return {
+      platform: 'desktop-firefox',
+      programmatic: false,
+      steps: ['Firefox desktop does not support installing PWAs — use Chrome or Edge.'],
+    };
+  }
+
+  return {
+    platform: 'desktop-chrome',
+    programmatic: deferredPrompt != null,
+    steps: deferredPrompt
+      ? ['Click "Install" in the address bar']
+      : [
+          'Click the install icon (⊕) in the address bar',
+          'Or open the browser menu → "Install {app name}"',
+        ],
+  };
+}
