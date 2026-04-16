@@ -9,10 +9,11 @@
  * Spec v5 §4.
  */
 import { NextResponse, type NextRequest } from 'next/server';
+import { after } from 'next/server';
 import { auth } from '@/lib/auth';
 import { cloneRepo } from '@/lib/github/clone';
 import { buildFromDirectory } from '@/lib/build';
-import { deployStatic } from '@/lib/deploy';
+import { deployStaticHot, deployCold } from '@/lib/deploy';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs';
 import { withLogger } from '@/lib/observability/logger';
 
@@ -58,7 +59,7 @@ export const POST = withLogger('deploy.github', async (req: NextRequest) => {
   }
 
   const reservedSlugs = await loadReservedSlugs();
-  const deploy = await deployStatic({
+  const deploy = await deployStaticHot({
     slug,
     makerId: session.user.id,
     zipBuffer: build.zipBuffer,
@@ -67,6 +68,20 @@ export const POST = withLogger('deploy.github', async (req: NextRequest) => {
 
   if (!deploy.success) {
     return NextResponse.json({ error: 'deploy_failed', reason: deploy.reason }, { status: 400 });
+  }
+
+  if (deploy.appId && deploy.deployId && deploy.filesForCold && deploy.manifestForCold) {
+    const { appId, deployId, filesForCold, manifestForCold } = deploy;
+    after(() =>
+      deployCold({
+        appId,
+        deployId,
+        slug,
+        version: deploy.version,
+        files: filesForCold,
+        manifest: manifestForCold,
+      }),
+    );
   }
 
   // If form submission, redirect to the app detail page
@@ -78,6 +93,7 @@ export const POST = withLogger('deploy.github', async (req: NextRequest) => {
     success: true,
     slug,
     version: deploy.version,
+    deploy_id: deploy.deployId,
     live_url: deploy.liveUrl,
   });
 });
