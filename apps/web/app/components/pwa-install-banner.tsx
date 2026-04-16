@@ -18,8 +18,6 @@ function detectMethod(): InstallMethod {
   if (isIOS) {
     return /CriOS/.test(ua) ? 'ios-chrome' : 'ios-safari';
   }
-  // Android + desktop Chrome/Edge will get beforeinstallprompt → 'one-tap'
-  // but we start as 'manual' and upgrade when the event fires
   return 'manual';
 }
 
@@ -39,7 +37,6 @@ export function PwaInstallBanner() {
     const detected = detectMethod();
     setMethod(detected);
 
-    // Android/desktop: capture beforeinstallprompt → upgrade to one-tap
     const handler = (e: Event) => {
       e.preventDefault();
       promptRef.current = e as DeferredPrompt;
@@ -47,21 +44,16 @@ export function PwaInstallBanner() {
     };
     window.addEventListener('beforeinstallprompt', handler);
 
-    // Show immediately on mobile, short delay on desktop
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (isMobile) {
-      setShow(true);
-      track('banner_shown', { method: detected });
-    } else {
-      const t = setTimeout(() => { setShow(true); track('banner_shown', { method: detected }); }, 15_000);
-      return () => { clearTimeout(t); window.removeEventListener('beforeinstallprompt', handler); };
-    }
+    // Show immediately
+    setShow(true);
+    track('banner_shown', { method: detected });
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, [isStandalone]);
 
   function dismiss() {
     setShow(false);
+    setShowGuide(false);
     localStorage.setItem('shippie-install-dismissed', String(Date.now()));
     track('install_prompt_dismissed', { method });
   }
@@ -69,6 +61,7 @@ export function PwaInstallBanner() {
   async function onInstallTap() {
     track('install_clicked', { method });
 
+    // One-tap path (Android + Desktop Chrome/Edge)
     if (method === 'one-tap' && promptRef.current) {
       await promptRef.current.prompt();
       const { outcome } = await promptRef.current.userChoice;
@@ -77,98 +70,117 @@ export function PwaInstallBanner() {
       return;
     }
 
-    // iOS Safari or iOS Chrome — show the guide
+    // iOS or manual — show the guide
     setShowGuide(true);
   }
 
   if (!show) return null;
 
+  // Determine if we have a guide to show
+  const hasGuide = method === 'ios-safari' || method === 'ios-chrome';
+
   return (
     <>
-      {/* ── Banner ─────────────────────────────────────────────── */}
+      {/* ── Top banner — ABOVE the nav ─────────────────────────── */}
       <div style={{
         position: 'fixed',
-        top: 'calc(var(--nav-height) + var(--safe-top))',
-        left: 0, right: 0, zIndex: 99,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px clamp(1rem, 3vw, 2rem)',
-        background: 'var(--surface-elevated)',
-        borderBottom: '1px solid var(--border-light)',
+        top: 0,
+        left: 0, right: 0, zIndex: 200,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '8px 16px',
+        background: 'var(--sunset)',
+        color: '#14120F',
+        gap: 12,
       }}>
-        <p style={{ fontSize: 14, margin: 0, fontWeight: 500 }}>
-          Get the app
+        <p style={{ fontSize: 13, margin: 0, fontWeight: 600 }}>
+          Install Shippie on your phone
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={onInstallTap} style={{
-            background: 'var(--sunset)', color: '#14120F', border: 'none',
-            padding: '6px 16px', fontSize: 13, fontWeight: 600, borderRadius: 4, cursor: 'pointer',
-          }}>
-            Install
-          </button>
-          <button onClick={dismiss} style={{
-            background: 'none', border: 'none', color: 'var(--text-light)',
-            fontSize: 18, cursor: 'pointer', padding: '4px 4px', lineHeight: 1,
-          }}>
-            ✕
-          </button>
-        </div>
+        <button onClick={onInstallTap} style={{
+          background: '#14120F', color: 'var(--sunset)', border: 'none',
+          padding: '4px 14px', fontSize: 12, fontWeight: 700, borderRadius: 4, cursor: 'pointer',
+        }}>
+          Install
+        </button>
+        <button onClick={dismiss} style={{
+          background: 'none', border: 'none', color: '#14120F',
+          fontSize: 16, cursor: 'pointer', padding: '2px 6px', lineHeight: 1, opacity: 0.6,
+        }}>
+          ✕
+        </button>
       </div>
 
-      {/* ── Install guide (iOS) ────────────────────────────────── */}
+      {/* ── Install guide sheet ────────────────────────────────── */}
       {showGuide && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
           onClick={() => setShowGuide(false)}
         >
           <div
             style={{
-              width: '100%', maxWidth: 400, margin: 16,
-              padding: '28px 24px', background: 'var(--surface-elevated)',
+              width: '100%', maxWidth: 400, margin: '0 12px 12px',
+              padding: '28px 24px 24px', background: 'var(--surface-elevated)',
               border: '1px solid var(--border)', borderRadius: 16,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p style={{ fontSize: 20, fontWeight: 600, margin: '0 0 20px', textAlign: 'center' }}>
+            <p style={{ fontSize: 20, fontWeight: 600, margin: '0 0 24px', textAlign: 'center' }}>
               Install Shippie
             </p>
 
             {method === 'ios-safari' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <Step n="1" text="Tap the Share button at the bottom of Safari">
-                  <ShareIcon />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <Step n="1" icon={<ShareIcon />}>
+                  Tap the <strong>Share</strong> button at the bottom of your screen
                 </Step>
-                <Step n="2" text='Scroll down and tap "Add to Home Screen"'>
-                  <PlusSquareIcon />
+                <Step n="2" icon={<PlusSquareIcon />}>
+                  Tap <strong>&ldquo;Add to Home Screen&rdquo;</strong>
                 </Step>
-                <Step n="3" text='Tap "Add" in the top right' />
+                <Step n="3">
+                  Tap <strong>&ldquo;Add&rdquo;</strong> — that&apos;s it!
+                </Step>
               </div>
             )}
 
             {method === 'ios-chrome' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <Step n="1" text="Tap the menu button (⋯) at the bottom right">
-                  <MenuDotsIcon />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <Step n="1" icon={<MenuDotsIcon />}>
+                  Tap the <strong>⋯ menu</strong> at the bottom right of Chrome
                 </Step>
-                <Step n="2" text='Tap "Add to Home Screen"'>
-                  <PlusSquareIcon />
+                <Step n="2" icon={<PlusSquareIcon />}>
+                  Tap <strong>&ldquo;Add to Home Screen&rdquo;</strong>
                 </Step>
-                <Step n="3" text='Tap "Add" to confirm' />
+                <Step n="3">
+                  Tap <strong>&ldquo;Add&rdquo;</strong> — that&apos;s it!
+                </Step>
               </div>
             )}
 
-            {method === 'manual' && (
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', margin: 0 }}>
-                Open your browser menu and look for &ldquo;Add to Home Screen&rdquo; or &ldquo;Install app&rdquo;.
+            {!hasGuide && (
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', margin: '0 0 8px', lineHeight: 1.6 }}>
+                Open your browser menu and look for<br /><strong>&ldquo;Install app&rdquo;</strong> or <strong>&ldquo;Add to Home Screen&rdquo;</strong>
               </p>
             )}
 
-            <button onClick={() => setShowGuide(false)} style={{
-              marginTop: 24, width: '100%', height: 48, fontSize: 15, fontWeight: 600,
-              background: 'var(--sunset)', color: '#14120F', border: 'none',
-              borderRadius: 8, cursor: 'pointer',
-            }}>
-              Done
-            </button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 28 }}>
+              <button onClick={() => setShowGuide(false)} style={{
+                flex: 1, height: 48, fontSize: 15, fontWeight: 600,
+                background: 'var(--border)', color: 'var(--text)', border: 'none',
+                borderRadius: 8, cursor: 'pointer',
+              }}>
+                Cancel
+              </button>
+              <button onClick={() => { setShowGuide(false); dismiss(); }} style={{
+                flex: 1, height: 48, fontSize: 15, fontWeight: 600,
+                background: 'var(--sunset)', color: '#14120F', border: 'none',
+                borderRadius: 8, cursor: 'pointer',
+              }}>
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -176,24 +188,22 @@ export function PwaInstallBanner() {
   );
 }
 
-/* ── Subcomponents ──────────────────────────────────────────── */
-
-function Step({ n, text, children }: { n: string; text: string; children?: React.ReactNode }) {
+function Step({ n, icon, children }: { n: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
       <div style={{
-        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+        width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
         background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 14, fontWeight: 700, color: 'var(--sunset)',
       }}>
         {n}
       </div>
-      <div style={{ flex: 1 }}>
-        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{text}</p>
+      <div style={{ flex: 1, paddingTop: 6 }}>
+        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>{children}</p>
       </div>
-      {children && (
-        <div style={{ flexShrink: 0, width: 28, height: 28, color: 'var(--text-secondary)' }}>
-          {children}
+      {icon && (
+        <div style={{ flexShrink: 0, width: 32, height: 32, color: 'var(--text-secondary)', paddingTop: 2 }}>
+          {icon}
         </div>
       )}
     </div>

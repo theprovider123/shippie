@@ -16,7 +16,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "db:push": "cd packages/db && bun run db:push",
+    "db:push": "bash scripts/db-push.sh",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
   "devDependencies": {

@@ -9,6 +9,7 @@
   --nav-height: 80px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --install-banner-height: 36px;  /* sunset install bar at very top; 0 when dismissed/installed */
   --bottom-bar-height: 0px;  /* set to 56px in standalone mode */
 
   /* ── Brand ─────────────────────────────────────────────────── */
