@@ -40,14 +40,21 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: 'cover',
 };
+
+import { StandaloneProvider } from './components/standalone-provider';
+import { BottomTabs } from './components/bottom-tabs';
+import { PageTransition } from './components/page-transition';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body>
-        {children}
-        {/* Dark-first: apply stored theme before paint */}
+        <StandaloneProvider>
+          <PageTransition>{children}</PageTransition>
+          <BottomTabs />
+        </StandaloneProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var t=localStorage.getItem('shippie-theme')||'dark';document.documentElement.setAttribute('data-theme',t)})();if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){})}`,
