@@ -9,8 +9,10 @@
 #   - Shippie worker (port 4200)
 #   - Internal cron runner (hits /api/internal/* endpoints on schedule)
 #
-# First run:
-#   docker compose run web bun run db:push
+# First run (run from repo root):
+#   bun run db:push
+# or, inside the web container:
+#   docker compose run --entrypoint "" web sh -c "cd /app/packages/db && bun run db:push"
 #
 # See docs/self-hosting.md for production configuration.
 
