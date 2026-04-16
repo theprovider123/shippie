@@ -41,7 +41,7 @@ export const POST = withLogger('github.webhook', async (req: NextRequest) => {
   const rawBody = await req.text();
 
   // Verify webhook signature
-  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  const secret = process.env.GITHUB_APP_WEBHOOK_SECRET;
   if (secret) {
     const sig = req.headers.get('x-hub-signature-256');
     const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');

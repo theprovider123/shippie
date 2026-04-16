@@ -44,6 +44,12 @@ services:
       # and bearer token for /api/internal/reap-trials.
       TRIAL_IP_SALT: change-me-per-instance-random-string
       SHIPPIE_INTERNAL_CRON_TOKEN: change-me-internal-cron-bearer-token
+      # GitHub App — create at github.com/settings/apps/new and fill these in.
+      # Leave blank to disable the GitHub deploy path.
+      GITHUB_APP_ID: ""
+      GITHUB_APP_SLUG: ""
+      GITHUB_APP_PRIVATE_KEY: ""
+      GITHUB_APP_WEBHOOK_SECRET: ""
     depends_on:
       - postgres
 
