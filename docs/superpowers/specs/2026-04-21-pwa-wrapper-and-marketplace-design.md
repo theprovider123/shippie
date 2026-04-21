@@ -73,12 +73,21 @@ Maker's HTML is untouched. Their app renders as-is; wrapper composes around it. 
 - Version history, rollback button
 - Install funnel breakdown (prompt shown → accepted / dismissed / IAB-detected)
 
-### 4.4 Deliver (already in motion)
+### 4.4 Deliver (delivery pipeline — current state + target state)
 
-- GitHub App → Vercel Sandbox build → R2 upload → atomic pointer swap (KV `apps:{slug}:active`)
+**Target state** (design intent, not all shipped yet):
+- GitHub App → Vercel Sandbox build → R2 upload → single-write atomic pointer swap (KV `apps:{slug}:active`)
 - Custom subdomain `slug.shippie.app` with wildcard SSL (Cloudflare Advanced Cert Manager)
 - Preview deploys per PR
 - Last 10 versions or 30 days retained for rollback
+
+**Current state at spec time** (what the wrapper plan has to be compatible with, not dependent on):
+- GitHub App deploys work; Vercel Sandbox-isolated builds are **gated behind `SHIPPIE_ALLOW_UNSANDBOXED_BUILDS=true`** — prod still runs some builds unsandboxed. Closing that gap is a separate track of work and is **not blocking** the wrapper ship.
+- Version finalization currently issues more than one KV write on the hot path — the "atomic pointer swap" is a planned refactor, not a property the current code guarantees. The wrapper plan assumes only that `apps:{slug}:active`, `apps:{slug}:meta`, and `apps:{slug}:pwa` are eventually consistent at the end of a deploy; it does not require them to flip in a single transaction.
+- Preview deploys per PR: not yet wired to the subdomain router.
+- Rollback works via pointer updates but is not exposed in the dashboard yet.
+
+The wrapper runtime in this spec is deliberately independent of the deploy-pipeline internals — it reads from KV like every other `__shippie/*` route. When the sandbox gate is removed and the pointer swap is made atomic, nothing in the wrapper has to change.
 
 ---
 

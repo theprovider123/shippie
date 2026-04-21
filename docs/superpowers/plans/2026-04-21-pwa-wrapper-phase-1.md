@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a shared wrapper runtime (in `@shippie/sdk`) that provides in-app-browser (IAB) detection, smart install prompt, and desktop→mobile handoff, plus an enriched `__shippie/manifest` route for every deployed app. The marketplace (`apps/web`) self-hosts this runtime, proving the end-to-end install funnel works on both Shippie itself and every maker app.
+**Goal:** Ship a shared wrapper runtime (in `@shippie/sdk`) that provides in-app-browser (IAB) detection + bounce sheet and a smart install prompt, plus an enriched `__shippie/manifest` route for every deployed app. The marketplace (`apps/web`) self-hosts this runtime, proving the install funnel works end-to-end on both Shippie itself and every maker app. Desktop→mobile handoff ships as pure helper functions in this phase (no UI, no backend); the QR/email/push sheet itself lands in Phase 2 along with the other native-feel motion work.
 
 **Architecture:** Wrapper code lives in `packages/sdk/src/wrapper/` alongside existing SDK modules, exposed both via npm (`@shippie/sdk/wrapper`) and same-origin via the existing `__shippie/sdk.js` route. The Worker's `__shippie/manifest` route is extended to merge a maker's `shippie.json` declarations with modern PWA fields (`launch_handler`, `display_override`, `id`, `share_target`, maskable icons, screenshots). The marketplace's existing `PwaInstallBanner` component is replaced with a thin React wrapper over the shared runtime so Shippie dogfoods its own install funnel.
 
@@ -13,13 +13,16 @@
 ## Scope
 
 Phase 1 delivers, end-to-end:
-1. A shared `wrapper` submodule in `@shippie/sdk` (IAB detection, smart install prompt, desktop handoff).
+1. A shared `wrapper` submodule in `@shippie/sdk` that ships:
+   - **IAB detection + bounce sheet UI** — fully functional in the marketplace and any maker app that loads `__shippie/sdk.js`.
+   - **Smart install prompt** (engagement-gated banner) — fully functional.
+   - **Desktop handoff helpers only** — `buildHandoffUrl`, `validateEmail`, `buildHandoffEmailPayload`. Pure functions, no UI, no `/__shippie/handoff` backend endpoint. Phase 2 builds the QR/email/push sheet on top of these.
 2. An enriched `__shippie/manifest` route that merges `shippie.json` fields and adds `launch_handler`, `display_override`, `id`, `share_target`, maskable icons, `screenshots`.
 3. `shippie.json` schema extension for Phase 1 fields (`pwa.launch_handler`, `pwa.display_override`, `pwa.id`, `pwa.share_target`, `pwa.maskable_icon`).
-4. Marketplace (`apps/web`) replaces `PwaInstallBanner` with the shared runtime — Shippie itself proves the funnel works.
+4. Marketplace (`apps/web`) replaces the `PwaInstallBanner` currently rendered in `apps/web/app/page.tsx` with the shared runtime — Shippie itself proves the funnel works.
 5. Tests for all new logic.
 
-**Out of scope (Phases 2–5):** back-swipe, pull-to-refresh, View Transitions beyond the existing fade, splash image generation at deploy time, event spine + dashboard, marketplace attribution, paid tier, custom domain UX.
+**Out of scope (Phases 2–5):** desktop→mobile handoff UI sheet (QR / email form / push-to-phone), the `/__shippie/handoff` backend endpoint to send handoff emails/push, back-swipe, pull-to-refresh, View Transitions beyond the existing fade, splash image generation at deploy time, event spine + dashboard, marketplace attribution, paid tier, custom domain UX.
 
 ---
 
@@ -47,7 +50,7 @@ Phase 1 delivers, end-to-end:
 - `packages/sdk/tsup.config.ts` — add wrapper entry to build
 - `services/worker/src/router/manifest.ts` — read expanded metadata, merge all Phase 1 fields
 - `services/worker/src/router/manifest.test.ts` — new test file for merge behavior (verify no existing test file first)
-- `apps/web/app/layout.tsx` — drop `PwaInstallBanner` usage, mount `InstallRuntime`
+- `apps/web/app/page.tsx` — drop the `PwaInstallBanner` import (line 9) and JSX (line 382), mount `InstallRuntime` in its place
 - `apps/web/app/components/pwa-install-banner.tsx` — **delete** (replaced by wrapper)
 
 ---
@@ -2101,38 +2104,50 @@ git commit -m "feat(web): InstallRuntime wraps shared wrapper runtime for market
 ## Task 17 — Replace old PwaInstallBanner with InstallRuntime
 
 **Files:**
-- Modify: `apps/web/app/layout.tsx`
+- Modify: `apps/web/app/page.tsx` (primary consumer — import at line 9, JSX at line 382)
 - Delete: `apps/web/app/components/pwa-install-banner.tsx`
 
-- [ ] **Step 1: Read the current layout file to find the import**
+- [ ] **Step 1: Confirm the current consumer location**
 
 Run:
 ```bash
-grep -n "pwa-install-banner\|PwaInstallBanner" apps/web/app/layout.tsx apps/web/app/**/*.tsx 2>/dev/null
+grep -rn "pwa-install-banner\|PwaInstallBanner" apps/web --include="*.tsx" --include="*.ts"
 ```
-Expected output: a small number of matches (layout.tsx is the primary consumer).
+Expected: matches in exactly two places — the component file itself, and `apps/web/app/page.tsx` (import + JSX usage near the end of the home page). If `grep` shows additional consumers, note them and swap each in Step 2.
 
-- [ ] **Step 2: Open `apps/web/app/layout.tsx` and swap the import + usage**
+- [ ] **Step 2: Swap the import in `apps/web/app/page.tsx`**
 
-Find the import of `PwaInstallBanner`. If the current file doesn't import it (earlier exploration showed it's imported elsewhere or via bottom-tabs), `grep` will tell you where. In the primary mount site (likely `layout.tsx` body), replace:
+Open `apps/web/app/page.tsx`. The import is at line 9. Replace:
 
 ```tsx
 import { PwaInstallBanner } from './components/pwa-install-banner';
-// ...
-<PwaInstallBanner />
 ```
 
 with:
 
 ```tsx
 import { InstallRuntime } from './components/install-runtime';
-// ...
-<InstallRuntime />
 ```
 
-If `PwaInstallBanner` is not imported anywhere in `apps/web/app/`, still proceed: the component is dead code after this task and will be deleted in Step 4.
+- [ ] **Step 3: Swap the JSX mount in `apps/web/app/page.tsx`**
 
-- [ ] **Step 3: Delete the old install banner component**
+The JSX mount is near the end of the home page component (currently line 382, just above the closing `</div>`). Replace:
+
+```tsx
+      <PwaInstallBanner />
+```
+
+with:
+
+```tsx
+      <InstallRuntime />
+```
+
+- [ ] **Step 4: Swap any additional consumers identified in Step 1**
+
+If `grep` in Step 1 turned up any consumer besides `apps/web/app/page.tsx` and the component file itself, apply the same two-line swap to each. If there were no others, skip this step.
+
+- [ ] **Step 5: Delete the old install banner component**
 
 Run:
 ```bash
@@ -2140,32 +2155,32 @@ git rm apps/web/app/components/pwa-install-banner.tsx
 ```
 Expected: file removed, staged for commit.
 
-- [ ] **Step 4: Typecheck the web app**
+- [ ] **Step 6: Typecheck the web app**
 
 Run:
 ```bash
 cd apps/web && bunx tsc --noEmit
 ```
-Expected: exits 0. Any "Cannot find name 'PwaInstallBanner'" errors mean Step 2 missed a consumer — fix each one the same way (swap import + usage).
+Expected: exits 0. Any "Cannot find name 'PwaInstallBanner'" error means Step 2/3/4 missed a consumer — fix it with the same swap.
 
-- [ ] **Step 5: Smoke-run the dev server and open the marketplace**
+- [ ] **Step 7: Smoke-run the dev server and open the marketplace**
 
 Run (background):
 ```bash
 cd apps/web && bun run dev
 ```
 Then in a browser: visit `http://localhost:3000/`. Confirm:
-- A 40px top banner does NOT appear on the first visit (tier=none).
-- Open the page in an IAB (simulate with `curl -H "User-Agent: Mozilla/5.0 ... Instagram 333.0.0.33.111"` won't actually trigger the DOM — instead, edit `navigator.userAgent` in DevTools → "Network conditions → User agent" → custom → paste the Instagram UA → reload → bounce sheet appears).
-- No console errors.
+- A 40px top banner does NOT appear on the first visit (tier=none) — this is a behavior change from the old always-on banner; it's correct.
+- In DevTools → "Network conditions → User agent → Custom" → paste an Instagram UA (see `detect.test.ts` for an example) → reload → a full-bleed bounce sheet with "Open in browser" CTA appears instead of the banner.
+- Console is clean — no errors about missing modules or failed fetches.
 
 Kill the dev server when done.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add apps/web/app/layout.tsx
-git commit -m "feat(web): swap legacy install banner for shared InstallRuntime"
+git add apps/web/app/page.tsx
+git commit -m "feat(web): swap legacy install banner for shared InstallRuntime on home page"
 ```
 
 ---
@@ -2222,18 +2237,22 @@ Expected: `nothing to commit, working tree clean`. If anything is outstanding (e
 
 ## Self-Review (already completed — documented here for traceability)
 
-**1. Spec coverage:**
-- §5.1 IAB detection + bounce → Tasks 2, 3, 6, 7, 10, 11, 16 ✓
-- §5.2 Desktop → mobile handoff → Tasks 8, 9 (helpers only; UI deferred to Phase 2 full-sheet work) ✓ *partial*
-- §5.3 Smart install prompt → Tasks 4, 5, 16 ✓
-- §5.4 Native-feel runtime → Phase 1 covers manifest enrichments (Task 13, 14) and the framework for per-route theme-color (data shape). View Transitions / back-swipe / pull-to-refresh stay in Phase 2 per scope note above ✓ *partial by design*
+**1. Spec coverage (scoped to Phase 1's explicit promises):**
+- §5.1 IAB detection + bounce sheet → Tasks 2, 3, 6, 7, 10, 11, 16 ✓ (fully shipped)
+- §5.2 Desktop → mobile handoff → Tasks 8, 9 ship **helpers only** per the scope section above. UI sheet + `/__shippie/handoff` backend endpoint are explicitly deferred to Phase 2. ✓
+- §5.3 Smart install prompt → Tasks 4, 5, 16 ✓ (fully shipped)
+- §5.4 Native-feel runtime — manifest enrichments only (Tasks 13, 14). View Transitions / back-swipe / pull-to-refresh / haptics / keyboard-aware layout / per-route theme-color are explicitly deferred to Phase 2. ✓
 - §8 shippie.json schema → Task 1 ✓
-- §10.2 Wrapper injection — Phase 1 reuses the existing `packages/pwa-injector/` build-time injection; runtime HTMLRewriter variant stays in Phase 2 ✓ *partial by design*
+- §10.2 Wrapper injection — Phase 1 reuses the existing `packages/pwa-injector/` build-time injection. Runtime HTMLRewriter variant is not a Phase 1 promise. ✓
 
 **2. Placeholder scan:** No "TBD", "TODO", "similar to above", or empty steps. Every code block is a complete snippet. ✓
 
 **3. Type consistency:** `PromptState`, `PromptTier`, `InstallContext`, `BounceTarget`, `BannerProps`, `BounceSheetProps`, `HandoffEmailPayload`, `IabBrand`, `Platform`, `InstallMethod` — all defined once, imported consistently. ✓
 
-**4. Gaps filed under spec §11 Phase 2:** desktop handoff UI sheet, per-route theme-color component, View Transitions wrapping, back-swipe, pull-to-refresh, splash image generation at deploy time, branded offline page, update toast. These remain in the spec; plans for Phases 2–5 follow after Phase 1 ships.
+**4. Integration point correctness:** `PwaInstallBanner` is currently mounted in `apps/web/app/page.tsx` (import line 9, JSX line 382), not in `apps/web/app/layout.tsx`. Task 17 points at the correct file. ✓
+
+**5. Deploy-pipeline independence:** This plan does not depend on Vercel Sandbox gating being closed or on the pointer-swap refactor. It reads only from existing KV keys (`apps:{slug}:active`, `apps:{slug}:meta`, `apps:{slug}:pwa`) and tolerates non-atomic writes. ✓
+
+**6. Gaps deferred to later phase plans:** desktop handoff UI sheet + backend endpoint, per-route theme-color component, View Transitions wrapping, back-swipe, pull-to-refresh, splash image generation at deploy time, branded offline page, update toast, event spine + dashboard. These remain in the spec; plans for Phases 2–5 follow after Phase 1 ships.
 
 ---
