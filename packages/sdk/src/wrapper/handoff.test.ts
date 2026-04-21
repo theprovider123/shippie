@@ -16,8 +16,8 @@ describe('buildHandoffUrl', () => {
   });
 
   test('does not duplicate ref param if already present', () => {
-    expect(buildHandoffUrl('https://shippie.app?ref=abc')).toBe(
-      'https://shippie.app?ref=abc',
+    expect(buildHandoffUrl('https://shippie.app/?ref=abc')).toBe(
+      'https://shippie.app/?ref=abc',
     );
   });
 
