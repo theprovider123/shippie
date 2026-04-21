@@ -24,6 +24,33 @@ export interface ShippieJsonBuild {
   install_command?: string;
 }
 
+export interface ShippieJsonPwaLaunchHandler {
+  client_mode?:
+    | 'auto'
+    | 'focus-existing'
+    | 'navigate-existing'
+    | 'navigate-new'
+    | readonly (
+        | 'auto'
+        | 'focus-existing'
+        | 'navigate-existing'
+        | 'navigate-new'
+      )[];
+}
+
+export interface ShippieJsonPwaShareTargetParams {
+  title?: string;
+  text?: string;
+  url?: string;
+}
+
+export interface ShippieJsonPwaShareTarget {
+  action: string;
+  method?: 'GET' | 'POST';
+  enctype?: 'application/x-www-form-urlencoded' | 'multipart/form-data';
+  params?: ShippieJsonPwaShareTargetParams;
+}
+
 export interface ShippieJsonPwa {
   display?: 'standalone' | 'fullscreen' | 'minimal-ui' | 'browser';
   orientation?: 'any' | 'portrait' | 'landscape';
@@ -31,6 +58,15 @@ export interface ShippieJsonPwa {
   scope?: string;
   conflict_policy?: ConflictPolicy;
   screenshots?: readonly string[];
+
+  // Phase 1 additions
+  id?: string;
+  display_override?: readonly ('standalone' | 'fullscreen' | 'minimal-ui' | 'browser')[];
+  launch_handler?: ShippieJsonPwaLaunchHandler;
+  share_target?: ShippieJsonPwaShareTarget;
+  /** Icon declared for purpose="maskable". Path relative to repo root, same rules as `icon`. */
+  maskable_icon?: string;
+  categories?: readonly string[];
 }
 
 export interface ShippieJsonSdk {
