@@ -56,3 +56,8 @@ export {
   type BannerProps,
   type BounceSheetProps,
 } from './ui.ts';
+
+export {
+  startInstallRuntime,
+  type StartInstallRuntimeConfig,
+} from './install-runtime.ts';
