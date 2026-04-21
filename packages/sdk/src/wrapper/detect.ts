@@ -44,11 +44,30 @@ export function detectPlatform(ua: string): Platform {
   return 'desktop';
 }
 
+/**
+ * Classify how the user would install a PWA from this browser.
+ *
+ * This detector is intentionally independent of `detectIab` — if the
+ * user is in Instagram's WebView on iPhone, this still returns
+ * `'ios-safari'` because that describes the host browser family.
+ * Callers in the smart-prompt state machine are responsible for
+ * checking `detectIab` first and suppressing the install prompt
+ * when the user is trapped in an IAB. Keeping these signals
+ * independent makes each testable on its own.
+ *
+ * iOS sub-classification requires a **positive Safari signal** to
+ * return `ios-safari` — genuine iOS Safari UAs always include
+ * `Version/N … Safari/N`. Unknown iOS browsers (Google Search App,
+ * DuckDuckGo, Brave, Arc, Orion…) fall back to `ios-other` so users
+ * see generic browser-menu guidance rather than Share→Add-to-Home
+ * instructions that only work in Safari.
+ */
 export function detectInstallMethod(ua: string): InstallMethod {
   if (/iPhone|iPad|iPod/.test(ua)) {
     if (/CriOS/.test(ua)) return 'ios-chrome';
     if (/FxiOS|OPiOS|EdgiOS/.test(ua)) return 'ios-other';
-    return 'ios-safari';
+    if (/Version\/\d+[^ ]* Mobile\/[^ ]+ Safari\//.test(ua)) return 'ios-safari';
+    return 'ios-other';
   }
   // Android + desktop start as 'manual' and are promoted to 'one-tap'
   // when the wrapper runtime sees the `beforeinstallprompt` event.
@@ -80,9 +99,10 @@ export function detectIab(ua: string): IabBrand | null {
   return null;
 }
 
-export function detectStandalone(nav: {
-  standalone?: boolean;
-} & Navigator, match: (query: string) => { matches: boolean }): boolean {
+export function detectStandalone(
+  nav: { standalone?: boolean },
+  match: (query: string) => { matches: boolean },
+): boolean {
   // iOS Safari exposes `navigator.standalone` as a boolean
   if (nav.standalone === true) return true;
   // Everyone else uses the display-mode media query
@@ -95,13 +115,13 @@ export function detectStandalone(nav: {
  */
 export function readInstallContext(
   ua: string,
-  nav: { standalone?: boolean } & Partial<Navigator>,
+  nav: { standalone?: boolean },
   mm: (q: string) => { matches: boolean },
 ): InstallContext {
   return {
     platform: detectPlatform(ua),
     method: detectInstallMethod(ua),
     iab: detectIab(ua),
-    standalone: detectStandalone(nav as Navigator & { standalone?: boolean }, mm),
+    standalone: detectStandalone(nav, mm),
   };
 }

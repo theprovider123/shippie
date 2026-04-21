@@ -14,6 +14,10 @@ const UA = {
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/125.0 Mobile/15E148 Safari/604.1',
   iosFirefox:
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/125.0 Mobile/15E148 Safari/604.1',
+  iosGsa:
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 GSA/309.0.12345 Safari/604.1',
+  iosDuckDuckGo:
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 DuckDuckGo/7',
   androidChrome:
     'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36',
   desktopChrome:
@@ -53,6 +57,12 @@ describe('detectInstallMethod', () => {
   });
   test('ios-firefox → ios-other', () => {
     expect(detectInstallMethod(UA.iosFirefox)).toBe('ios-other');
+  });
+  test('ios Google Search App → ios-other (not ios-safari)', () => {
+    expect(detectInstallMethod(UA.iosGsa)).toBe('ios-other');
+  });
+  test('ios DuckDuckGo → ios-other (not ios-safari)', () => {
+    expect(detectInstallMethod(UA.iosDuckDuckGo)).toBe('ios-other');
   });
   test('android → manual (until beforeinstallprompt upgrades it)', () => {
     expect(detectInstallMethod(UA.androidChrome)).toBe('manual');
