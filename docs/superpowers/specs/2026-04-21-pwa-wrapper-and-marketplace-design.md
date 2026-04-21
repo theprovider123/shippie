@@ -87,7 +87,7 @@ Maker's HTML is untouched. Their app renders as-is; wrapper composes around it. 
 - Preview deploys per PR: not yet wired to the subdomain router.
 - Rollback works via pointer updates but is not exposed in the dashboard yet.
 
-The wrapper runtime in this spec is deliberately independent of the deploy-pipeline internals — it reads from KV like every other `__shippie/*` route. When the sandbox gate is removed and the pointer swap is made atomic, nothing in the wrapper has to change.
+The wrapper runtime in this spec is deliberately independent of the deploy-pipeline internals — it reads from KV like every other `__shippie/*` route. It builds on the existing `apps:{slug}:active` and `apps:{slug}:meta` keys; a new `apps:{slug}:pwa` key is **introduced by this plan** to carry the enriched manifest overrides and is not part of the current platform. The wrapper assumes only that whatever keys it reads are eventually consistent at the end of a deploy — it does not depend on them flipping in a single transaction. When the sandbox gate is removed and the pointer swap is made atomic, nothing in the wrapper has to change.
 
 ---
 

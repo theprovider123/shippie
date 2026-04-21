@@ -38,8 +38,8 @@ Phase 1 delivers, end-to-end:
 - `packages/sdk/src/wrapper/iab-bounce.test.ts` — bounce logic tests
 - `packages/sdk/src/wrapper/handoff.ts` — desktop handoff helpers (QR URL, email-to-self, phone-push)
 - `packages/sdk/src/wrapper/handoff.test.ts` — handoff helper tests
-- `packages/sdk/src/wrapper/ui.ts` — vanilla DOM rendering of banner, bounce sheet, handoff sheet (framework-agnostic so maker apps without React work)
-- `packages/sdk/src/wrapper/ui.test.ts` — DOM-render smoke tests (happy-dom)
+- `packages/sdk/src/wrapper/ui.ts` — vanilla DOM rendering of **install banner + IAB bounce sheet only** (framework-agnostic so maker apps without React work). The desktop→mobile handoff sheet is explicitly out of Phase 1 scope — handoff in Phase 1 is helpers-only (see the Scope section above) and the sheet UI lands in Phase 2.
+- `packages/sdk/src/wrapper/ui.test.ts` — DOM-render smoke tests for banner + bounce sheet (happy-dom)
 - `apps/web/app/components/install-runtime.tsx` — React wrapper around the vanilla runtime
 - `apps/web/app/components/install-runtime.test.tsx` — React-side smoke test
 
