@@ -76,6 +76,9 @@ next-env.d.ts
 # Claude Code
 .claude/
 
+# Local git worktrees (isolated workspaces for agent tasks)
+.worktrees/
+
 # Loose brand source files (copies live in apps/web/public/brand/)
 rocket*.png
 rocket*.svg
