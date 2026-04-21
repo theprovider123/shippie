@@ -70,7 +70,7 @@ describe('detectIab', () => {
     ['twitter', UA.twitter, 'twitter'],
     ['linkedin', UA.linkedin, 'linkedin'],
     ['whatsapp', UA.whatsapp, 'whatsapp'],
-  ])('%s detected as %s', (_, ua, expected) => {
+  ] as const)('%s detected as %s', (_, ua, expected) => {
     expect(detectIab(ua)).toBe(expected);
   });
 
