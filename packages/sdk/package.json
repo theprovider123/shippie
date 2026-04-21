@@ -15,6 +15,10 @@
     "./native": {
       "types": "./dist/native/index.d.ts",
       "import": "./dist/native/index.js"
+    },
+    "./wrapper": {
+      "types": "./dist/wrapper/index.d.ts",
+      "import": "./dist/wrapper/index.js"
     }
   },
   "files": [

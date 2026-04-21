@@ -14,7 +14,11 @@ import { defineConfig } from 'tsup';
  */
 export default defineConfig([
   {
-    entry: { index: 'src/index.ts', 'native/index': 'src/native/index.ts' },
+    entry: {
+      index: 'src/index.ts',
+      'native/index': 'src/native/index.ts',
+      'wrapper/index': 'src/wrapper/index.ts',
+    },
     format: ['esm'],
     target: 'es2022',
     platform: 'browser',
