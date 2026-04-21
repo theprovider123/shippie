@@ -19,7 +19,9 @@ describe('buildBounceTarget', () => {
       platform: 'ios',
       currentUrl: 'http://shippie.app/apps/zen',
     };
-    expect(buildBounceTarget(input).scheme).toBe('x-safari-https');
+    const iosResult = buildBounceTarget(input);
+    expect(iosResult).not.toBeNull();
+    expect(iosResult!.scheme).toBe('x-safari-https');
   });
 
   test('android uses intent://', () => {
@@ -28,8 +30,9 @@ describe('buildBounceTarget', () => {
       currentUrl: 'https://shippie.app/apps/zen?utm=x',
     };
     const result = buildBounceTarget(input);
-    expect(result.scheme).toBe('intent');
-    expect(result.url).toBe(
+    expect(result).not.toBeNull();
+    expect(result!.scheme).toBe('intent');
+    expect(result!.url).toBe(
       'intent://shippie.app/apps/zen?utm=x#Intent;scheme=https;package=com.android.chrome;end',
     );
   });
@@ -39,7 +42,9 @@ describe('buildBounceTarget', () => {
       platform: 'android',
       currentUrl: 'https://a.shippie.app/page?q=1#section',
     };
-    expect(buildBounceTarget(input).url).toBe(
+    const result = buildBounceTarget(input);
+    expect(result).not.toBeNull();
+    expect(result!.url).toBe(
       'intent://a.shippie.app/page?q=1#Intent;scheme=https;package=com.android.chrome;end',
     );
   });
