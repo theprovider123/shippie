@@ -89,4 +89,20 @@ describe('mountHandoffSheet', () => {
     unmountHandoffSheet();
     expect(win.document.querySelector('[data-shippie-handoff]')).toBeNull();
   });
+
+  test('renders an SVG QR code inside the sheet', () => {
+    mountHandoffSheet({
+      handoffUrl: 'https://shippie.app/apps/zen?ref=handoff',
+      onSendEmail: async () => {},
+      onSendPush: async () => {},
+      canPush: false,
+    });
+    const sheet = win.document.querySelector('[data-shippie-handoff]');
+    expect(sheet).not.toBeNull();
+    // The real QR renderer outputs an <svg> element.
+    const svg = sheet?.querySelector('svg');
+    expect(svg).not.toBeNull();
+    // The URL-as-text element remains for screen readers + fallback.
+    expect(sheet?.querySelector('[data-shippie-handoff-qr-url]')).not.toBeNull();
+  });
 });
