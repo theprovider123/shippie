@@ -56,7 +56,7 @@ afterAll(async () => {
 }, 30_000);
 
 beforeEach(async () => {
-  await handle.db.execute(sql`TRUNCATE TABLE app_events, usage_daily`);
+  await handle.db.execute(sql`TRUNCATE TABLE app_events, usage_daily, user_touch_graph`);
 });
 
 describe('POST /api/internal/rollups', () => {
@@ -116,5 +116,66 @@ describe('POST /api/internal/rollups', () => {
     const req = mockNextRequest('/api/internal/rollups', {});
     const res = await (POST as (req: NextRequest, ctx: unknown) => Promise<Response>)(req, {});
     expect(res.status).toBe(401);
+  });
+
+  test('populates user_touch_graph with canonical co-install pairs', async () => {
+    const db = handle.db;
+    // Two users, each touching apps A and B within the window. The
+    // rollup should produce a single canonical pair (A, B) with users=2.
+    await db.insert(schema.appEvents).values([
+      {
+        appId: 'app-b',
+        sessionId: 's1',
+        userId: 'user-1',
+        eventType: 'session_start',
+        metadata: {},
+        ts: new Date(Date.UTC(2026, 3, 20, 1, 0, 0)),
+      },
+      {
+        appId: 'app-a',
+        sessionId: 's2',
+        userId: 'user-1',
+        eventType: 'session_start',
+        metadata: {},
+        ts: new Date(Date.UTC(2026, 3, 20, 2, 0, 0)),
+      },
+      {
+        appId: 'app-a',
+        sessionId: 's3',
+        userId: 'user-2',
+        eventType: 'session_start',
+        metadata: {},
+        ts: new Date(Date.UTC(2026, 3, 20, 3, 0, 0)),
+      },
+      {
+        appId: 'app-b',
+        sessionId: 's4',
+        userId: 'user-2',
+        eventType: 'session_start',
+        metadata: {},
+        ts: new Date(Date.UTC(2026, 3, 20, 4, 0, 0)),
+      },
+      // An anonymous event (no user_id) must NOT contribute to pairs.
+      {
+        appId: 'app-a',
+        sessionId: 's5',
+        eventType: 'session_start',
+        metadata: {},
+        ts: new Date(Date.UTC(2026, 3, 20, 5, 0, 0)),
+      },
+    ]);
+
+    const { POST } = await import('./route.ts');
+    const req = mockNextRequest('/api/internal/rollups?day=2026-04-20', {
+      authorization: `Bearer ${CRON_TOKEN}`,
+    });
+    const res = await (POST as (req: NextRequest, ctx: unknown) => Promise<Response>)(req, {});
+    expect(res.status).toBe(200);
+
+    const pairs = await db.select().from(schema.userTouchGraph);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0]!.appA).toBe('app-a');
+    expect(pairs[0]!.appB).toBe('app-b');
+    expect(Number(pairs[0]!.users)).toBe(2);
   });
 });
