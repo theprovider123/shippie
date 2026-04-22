@@ -79,7 +79,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
                   style={{ background: 'var(--action-primary)', color: '#14120F' }}>
                   Open app
                 </a>
-                <InstallButton url={devInstallUrl(app.slug)} name={app.name} />
+                <InstallButton url={devInstallUrl(app.slug)} name={app.name} slug={app.slug} />
               </div>
             </div>
           </div>
