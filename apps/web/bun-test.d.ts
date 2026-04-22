@@ -27,6 +27,10 @@ declare module 'bun:test' {
     toBeFalsy: () => R;
     toContain: (expected: unknown) => R;
     toHaveLength: (n: number) => R;
+    toBeGreaterThan: (n: number) => R;
+    toBeGreaterThanOrEqual: (n: number) => R;
+    toBeLessThan: (n: number) => R;
+    toBeLessThanOrEqual: (n: number) => R;
     toHaveProperty: (key: string, value?: unknown) => R;
     toThrow: (message?: string | RegExp) => R;
     resolves: Matchers<Promise<R>>;
