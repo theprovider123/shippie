@@ -17,7 +17,13 @@ import {
   queryInstallFunnel,
   queryUsageDaily,
 } from '@/lib/shippie/analytics-queries';
+import { queryWebVitals } from '@/lib/shippie/vitals-queries';
 import { FunnelBars, LineChart } from './charts';
+
+function formatVital(name: 'LCP' | 'CLS' | 'INP', v: number): string {
+  if (name === 'CLS') return v.toFixed(3);
+  return `${Math.round(v)}ms`;
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,7 +47,7 @@ export default async function AnalyticsPage({ params }: PageProps) {
 
   // The event spine stores `app_id` as the slug (see ingest-events +
   // rollups routes); keep the dashboard query identifier consistent.
-  const [installsDaily, funnel, iab] = await Promise.all([
+  const [installsDaily, funnel, iab, vitals] = await Promise.all([
     queryUsageDaily(db, {
       appId: app.slug,
       eventType: 'install_prompt_accepted',
@@ -49,6 +55,7 @@ export default async function AnalyticsPage({ params }: PageProps) {
     }),
     queryInstallFunnel(db, { appId: app.slug, days: 30 }),
     queryIabBounce(db, { appId: app.slug, days: 30 }),
+    queryWebVitals(db, { appId: app.slug, days: 30 }),
   ]);
 
   const points = installsDaily.map((r) => ({
@@ -119,6 +126,36 @@ export default async function AnalyticsPage({ params }: PageProps) {
           <p className="text-sm text-neutral-500 mt-3">
             Bounce rate: {(iab.rate * 100).toFixed(1)}%
           </p>
+        </section>
+
+        <section>
+          <h2 className="text-sm font-mono uppercase tracking-widest text-neutral-500 mb-3">
+            Web vitals (p75)
+          </h2>
+          {vitals.length === 0 ? (
+            <p className="text-sm text-neutral-500">No samples yet.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              {vitals.map((v) => (
+                <div
+                  key={v.name}
+                  className="rounded-lg bg-neutral-900/50 p-4 border border-neutral-800"
+                >
+                  <div className="text-xs font-mono uppercase tracking-widest text-neutral-500">
+                    {v.name}
+                  </div>
+                  <div className="text-2xl font-semibold mt-1">
+                    {formatVital(v.name, v.p75)}
+                  </div>
+                  <div className="text-xs text-neutral-500 mt-1">
+                    p50 {formatVital(v.name, v.p50)} · p95{' '}
+                    {formatVital(v.name, v.p95)} · {v.samples.toLocaleString()}{' '}
+                    samples
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>
