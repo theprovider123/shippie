@@ -33,6 +33,8 @@ import { mountHandoffSheet, unmountHandoffSheet } from './handoff-sheet.ts';
 import { haptic } from './haptics.ts';
 import { setThemeColor } from './theme-color.ts';
 import { mountInstallBanner, mountBounceSheet, unmountAll } from './ui.ts';
+import { observeWebVitals } from './web-vitals.ts';
+import { pushSupported } from './push.ts';
 
 export interface StartInstallRuntimeConfig {
   /** Endpoint to POST beacon events to. Default: `/__shippie/install` (maker-subdomain route). */
@@ -43,6 +45,11 @@ export interface StartInstallRuntimeConfig {
   storageKey?: string;
   /** How often to check dwell time + re-render (ms). Default: 5000. */
   tickMs?: number;
+  /**
+   * Test-only: web-vitals flush hook. Lets tests trigger a deterministic
+   * flush of LCP/CLS/INP samples without waiting for visibilitychange.
+   */
+  vitalsFlushHandle?: { flush?: () => void };
 }
 
 type BeforeInstallPromptEvent = Event & {
@@ -80,13 +87,26 @@ export function startInstallRuntime(
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY;
   const tickMs = config.tickMs ?? DEFAULT_TICK_MS;
 
-  const beacon = (event: string, extra?: Record<string, unknown>) => {
+  const beacon = async (event: string, extra?: Record<string, unknown>) => {
     try {
       const body = JSON.stringify({ event, ...(extra ?? {}) });
-      navigator.sendBeacon?.(trackEndpoint, body);
+      // Attempt 1: sendBeacon — the preferred path. Survives page unload
+      // and works while the browser is offline (queued by the UA).
+      if (navigator.sendBeacon?.(trackEndpoint, body)) return;
+      // Attempt 2: keepalive fetch — survives tab close; landing here means
+      // sendBeacon was missing or rejected (e.g., quota, CSP).
+      const res = await fetch(trackEndpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+        keepalive: true,
+      }).catch(() => null);
+      if (!res || !res.ok) {
+        // Last-ditch: fire-and-forget. Phase 5 may add a real IDB queue here
+        // so samples survive hard network outages on SW-less maker apps.
+      }
     } catch {
-      // sendBeacon can throw in edge cases (e.g., storage quota, CSP).
-      // Swallow — this is best-effort analytics.
+      // swallow — analytics must never break the app
     }
   };
 
@@ -145,20 +165,59 @@ export function startInstallRuntime(
       }
     };
 
-    mountHandoffSheet({
-      handoffUrl,
-      canPush: false,
-      onSendEmail: (email) =>
-        postHandoff({ mode: 'email', email, handoff_url: handoffUrl }),
-      onSendPush: () =>
-        postHandoff({ mode: 'push', handoff_url: handoffUrl }),
-    });
-    haptic('tap');
-    beacon('handoff_shown');
-    return () => unmountHandoffSheet();
+    // Detect an existing push subscription asynchronously so we can offer
+    // the "send to my installed Shippie" CTA only when it'll actually work.
+    // We can't block startInstallRuntime on this check (it must stay sync
+    // so the IIFE bundle can return cleanup), so kick off the detection in
+    // an IIFE and mount the sheet when it resolves. Cleanup is idempotent.
+    let cancelled = false;
+    void (async () => {
+      let canPush = false;
+      if (pushSupported()) {
+        try {
+          const sw = (navigator as Navigator & {
+            serviceWorker: { ready: Promise<ServiceWorkerRegistration> };
+          }).serviceWorker;
+          const reg = await sw.ready;
+          const sub = await reg.pushManager.getSubscription();
+          canPush = !!sub;
+        } catch {
+          canPush = false;
+        }
+      }
+      if (cancelled) return;
+      mountHandoffSheet({
+        handoffUrl,
+        canPush,
+        onSendEmail: (email) =>
+          postHandoff({ mode: 'email', email, handoff_url: handoffUrl }),
+        onSendPush: () =>
+          postHandoff({ mode: 'push', handoff_url: handoffUrl }),
+      });
+      haptic('tap');
+      void beacon('handoff_shown');
+    })();
+    return () => {
+      cancelled = true;
+      unmountHandoffSheet();
+    };
   }
 
-  // Normal path: engagement-gated banner.
+  // Normal path: engagement-gated banner. Also attach the web-vitals
+  // observer here — this is the only branch where the user stays on the
+  // page long enough for LCP/CLS/INP to be meaningful.
+  const detachVitals = observeWebVitals({
+    report: (sample) => {
+      void beacon('web_vital', {
+        name: sample.name,
+        value: sample.value,
+        id: sample.id,
+        navigation: sample.navigationType,
+      });
+    },
+    flushHandle: config.vitalsFlushHandle,
+  });
+
   const prior = deserialize(localStorage.getItem(storageKey));
   const now = Date.now();
   const refs = {
@@ -230,6 +289,7 @@ export function startInstallRuntime(
   return () => {
     window.removeEventListener('beforeinstallprompt', onBip);
     window.clearInterval(interval);
+    detachVitals();
     setThemeColor(THEME_DEFAULT);
     unmountAll();
   };
