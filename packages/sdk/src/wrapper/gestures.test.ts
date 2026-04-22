@@ -19,7 +19,11 @@ afterAll(() => {
   (globalThis as { document?: unknown }).document = originalDocument;
 });
 
-function firePointer(target: EventTarget, type: string, props: Record<string, number>) {
+function firePointer(
+  target: { dispatchEvent(event: object): boolean },
+  type: string,
+  props: Record<string, number>,
+) {
   const event = new win.Event(type, { bubbles: true, cancelable: true });
   Object.assign(event, props);
   target.dispatchEvent(event);
