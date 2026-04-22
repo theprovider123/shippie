@@ -114,6 +114,12 @@ export default async function DashboardAppsPage() {
                         : 'never'}
                     </Td>
                     <Td className="text-right">
+                      <Link
+                        href={`/dashboard/apps/${app.slug}/analytics`}
+                        className="text-brand-500 hover:underline font-medium mr-4"
+                      >
+                        Analytics
+                      </Link>
                       <a
                         href={devUrl(app.slug)}
                         target="_blank"

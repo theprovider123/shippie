@@ -116,7 +116,7 @@ describe('queryInstallFunnel', () => {
     expect(r.shown).toBe(100);
     expect(r.accepted).toBe(12);
     expect(r.dismissed).toBe(30);
-    expect(r.conversion).toBeCloseTo(0.12, 2);
+    expect(r.conversion).toBe(12 / 100);
   });
 
   test('conversion is 0 when shown=0', async () => {
@@ -149,7 +149,7 @@ describe('queryIabBounce', () => {
     });
     expect(r.detected).toBe(40);
     expect(r.bounced).toBe(10);
-    expect(r.rate).toBeCloseTo(0.25, 2);
+    expect(r.rate).toBe(10 / 40);
   });
 
   test('rate is 0 when detected=0', async () => {
