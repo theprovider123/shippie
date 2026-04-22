@@ -42,7 +42,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await handle.db.execute(
-    sql`TRUNCATE TABLE app_events, usage_daily, app_ratings, apps RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE app_events, usage_daily, app_ratings, deploys, apps, users RESTART IDENTITY CASCADE`,
   );
 });
 
@@ -82,11 +82,21 @@ async function seedApp(input: SeedAppInput): Promise<string> {
     isArchived: input.isArchived ?? false,
     createdAt: input.createdAt ?? new Date(),
     updatedAt: input.createdAt ?? new Date(),
-    // Simulate an active deploy by setting a non-null UUID — the column
-    // is typed `uuid` with no FK constraint enforced at this shape level
-    // in our tests; we just need it to satisfy `active_deploy_id IS NOT NULL`.
-    activeDeployId: input.hasActiveDeploy === false ? null : crypto.randomUUID(),
+    // active_deploy_id is FK to deploys.id; set it after the deploy row.
   });
+  if (input.hasActiveDeploy !== false) {
+    const deployId = crypto.randomUUID();
+    await handle.db.insert(schema.deploys).values({
+      id: deployId,
+      appId,
+      version: 1,
+      sourceType: 'zip',
+      status: 'success',
+    });
+    await handle.db.execute(
+      sql`update apps set active_deploy_id = ${deployId} where id = ${appId}`,
+    );
+  }
   return appId;
 }
 
@@ -134,7 +144,7 @@ describe('queryTrending', () => {
 
     await seedApp({ slug: 'visible', name: 'Visible' });
     await seedApp({ slug: 'archived', name: 'Archived', isArchived: true });
-    await seedApp({ slug: 'private', name: 'Private', visibilityScope: 'private' });
+    await seedApp({ slug: 'private', name: 'Private', visibilityScope: 'unlisted' });
 
     await handle.db.insert(schema.usageDaily).values([
       { appId: 'visible', day: d, eventType: 'install_prompt_accepted', count: 1 },
@@ -170,7 +180,7 @@ describe('queryNew', () => {
 
     await seedApp({ slug: 'visible', name: 'V', createdAt: recent });
     await seedApp({ slug: 'archived', name: 'A', createdAt: recent, isArchived: true });
-    await seedApp({ slug: 'private', name: 'P', createdAt: recent, visibilityScope: 'private' });
+    await seedApp({ slug: 'private', name: 'P', createdAt: recent, visibilityScope: 'unlisted' });
 
     const results = await queryNew(handle.db, {});
     expect(results.map((r) => r.slug)).toEqual(['visible']);
@@ -215,7 +225,7 @@ describe('queryTopRated', () => {
   test('skips archived and non-public apps', async () => {
     await seedApp({ slug: 'visible', name: 'V' });
     await seedApp({ slug: 'archived', name: 'A', isArchived: true });
-    await seedApp({ slug: 'private', name: 'P', visibilityScope: 'private' });
+    await seedApp({ slug: 'private', name: 'P', visibilityScope: 'unlisted' });
 
     const ratings = (slug: string) => [
       { appId: slug, userId: 'u1', rating: 5 },
