@@ -34,6 +34,7 @@ import {
   DevR2,
   getDevKvDir,
   getDevR2AppsDir,
+  getDevR2PublicDir,
   type KvStore,
   type R2Store,
 } from '@shippie/dev-storage';
@@ -42,6 +43,7 @@ import { schema } from '@shippie/db';
 import type { ShippieJson } from '@shippie/shared';
 import { getDb } from '@/lib/db';
 import { runPreflight, defaultRules, type PreflightReport } from '@/lib/preflight';
+import { generateAssets } from '@/lib/shippie/generate-assets';
 
 export interface DeployStaticInput {
   slug: string;
@@ -244,6 +246,36 @@ export async function deployStaticHot(
   }
 
   const totalBytes = [...files.values()].reduce((acc, b) => acc + b.byteLength, 0);
+
+  // ------------------------------------------------------------------
+  // 7.5. Generate + upload PWA icons + iOS splash images (best-effort).
+  //
+  // Reads the icon declared at `shippie.json.icon` (resolved against the
+  // build output, with a fallback to common default paths). Writes
+  // derived icon + splash PNGs to the public R2 bucket. Failures are
+  // logged, not fatal — the worker's icon route falls back to the
+  // platform default placeholder.
+  // ------------------------------------------------------------------
+  const iconBuffer = resolveIconBuffer(draftedManifest, files);
+  if (iconBuffer) {
+    try {
+      const result = await generateAssets({
+        slug: input.slug,
+        iconBuffer,
+        backgroundColor: draftedManifest.background_color ?? '#14120F',
+        r2Public: storage.r2Public,
+      });
+      if (result.errors.length > 0) {
+        console.warn('[shippie:assets] partial:', result.errors.join('; '));
+      }
+    } catch (err) {
+      console.warn('[shippie:assets] failed:', err);
+    }
+  } else {
+    console.warn(
+      `[shippie:assets] no icon found for slug=${input.slug}; skipping icon + splash generation`,
+    );
+  }
 
   // ------------------------------------------------------------------
   // 8. Create deploy_artifacts + mark deploy success + flip active pointer
@@ -483,9 +515,31 @@ function titleCase(slug: string): string {
     .join(' ');
 }
 
+/**
+ * Resolve the source icon buffer from the build output. Honors
+ * `shippie.json.icon` if it points to an existing file, otherwise
+ * falls back to common default names at the root of the zip.
+ */
+function resolveIconBuffer(
+  manifest: ShippieJson,
+  files: Map<string, Buffer>,
+): Buffer | null {
+  const candidates: string[] = [];
+  if (manifest.icon) candidates.push(manifest.icon.replace(/^\/+/, ''));
+  candidates.push('icon.png', 'icon.svg', 'favicon.png', 'favicon.svg', 'public/icon.png');
+
+  for (const candidate of candidates) {
+    const buf = files.get(candidate);
+    if (buf) return buf;
+  }
+  return null;
+}
+
 interface Storage {
   kv: KvStore;
   r2: R2Store;
+  /** Public assets bucket — icons, splashes, OG, QR. */
+  r2Public: R2Store;
 }
 
 let cachedStorage: Storage | null = null;
@@ -495,6 +549,7 @@ function getStorage(): Storage {
   cachedStorage = {
     kv: new DevKv(getDevKvDir()),
     r2: new DevR2(getDevR2AppsDir()),
+    r2Public: new DevR2(getDevR2PublicDir()),
   };
   return cachedStorage;
 }
