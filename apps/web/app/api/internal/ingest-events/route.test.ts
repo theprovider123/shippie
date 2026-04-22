@@ -1,12 +1,17 @@
 /**
  * Tests for /api/internal/ingest-events — the platform-side ingestion
  * endpoint the worker posts to after signing.
+ *
+ * Uses a single PGlite handle per test file (via beforeAll) with table
+ * truncation between tests. Creating a fresh PGlite per test in each
+ * file accumulates WASM instances and eventually exhausts resources
+ * when the full `bun test` suite runs.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { NextRequest } from 'next/server';
 import { signWorkerRequest } from '@shippie/session-crypto';
-import { createDb, runMigrations, schema } from '@shippie/db';
-import { eq } from 'drizzle-orm';
+import { createDb, runMigrations, schema, type ShippieDbHandle } from '@shippie/db';
+import { eq, sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,21 +61,26 @@ async function signedRequest(path: string, body: string): Promise<NextRequest> {
   });
 }
 
-async function setupDb(): Promise<void> {
+let handle: ShippieDbHandle;
+
+beforeAll(async () => {
+  process.env.WORKER_PLATFORM_SECRET = SECRET;
   process.env.DATABASE_URL = 'pglite://memory';
-  const handle = await createDb({ url: 'pglite://memory' });
+  handle = await createDb({ url: 'pglite://memory' });
   await runMigrations(handle, MIGRATIONS_DIR);
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
     Promise.resolve(handle);
-}
+}, 30_000);
+
+afterAll(async () => {
+  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
+  if (handle) await handle.close();
+}, 30_000);
 
 beforeEach(async () => {
-  process.env.WORKER_PLATFORM_SECRET = SECRET;
-  await setupDb();
-});
-
-afterEach(() => {
-  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
+  // Reset the only table we touch in this file. Partition children of
+  // app_events get truncated through the parent.
+  await handle.db.execute(sql`TRUNCATE TABLE app_events`);
 });
 
 describe('POST /api/internal/ingest-events', () => {
@@ -99,11 +109,7 @@ describe('POST /api/internal/ingest-events', () => {
     const res = await (POST as (req: NextRequest, ctx: unknown) => Promise<Response>)(req, {});
     expect(res.status).toBe(204);
 
-    const handle = await (globalThis as unknown as {
-      __shippieDbHandle: Promise<{ db: import('@shippie/db').ShippieDbHandle['db'] }>;
-    }).__shippieDbHandle;
-    const db = handle.db;
-    const rows = await db
+    const rows = await handle.db
       .select()
       .from(schema.appEvents)
       .where(eq(schema.appEvents.appId, 'zen-notes'));

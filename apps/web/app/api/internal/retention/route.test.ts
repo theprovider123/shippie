@@ -6,10 +6,12 @@
  * may not implement Postgres declarative partitioning, so we create it
  * directly). The retention route issues DROP TABLE IF EXISTS with the
  * same name, which works identically on a plain table or a partition.
+ *
+ * One PGlite per file (beforeAll) keeps the full suite stable.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { NextRequest } from 'next/server';
-import { createDb, runMigrations } from '@shippie/db';
+import { createDb, runMigrations, type ShippieDbHandle } from '@shippie/db';
 import { sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,16 +40,8 @@ function mockNextRequest(path: string, headers: Record<string, string>): NextReq
   } as unknown as NextRequest;
 }
 
-async function setupDb(): Promise<void> {
-  process.env.DATABASE_URL = 'pglite://memory';
-  const handle = await createDb({ url: 'pglite://memory' });
-  await runMigrations(handle, MIGRATIONS_DIR);
-  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
-    Promise.resolve(handle);
-}
-
 async function tableExists(
-  db: import('@shippie/db').ShippieDbHandle['db'],
+  db: ShippieDbHandle['db'],
   name: string,
 ): Promise<boolean> {
   const res = (await db.execute(sql`
@@ -57,26 +51,32 @@ async function tableExists(
   return rows.length > 0;
 }
 
-beforeEach(async () => {
-  process.env.SHIPPIE_INTERNAL_CRON_TOKEN = CRON_TOKEN;
-  await setupDb();
-});
+let handle: ShippieDbHandle;
 
-afterEach(() => {
+beforeAll(async () => {
+  process.env.SHIPPIE_INTERNAL_CRON_TOKEN = CRON_TOKEN;
+  process.env.DATABASE_URL = 'pglite://memory';
+  handle = await createDb({ url: 'pglite://memory' });
+  await runMigrations(handle, MIGRATIONS_DIR);
+  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
+    Promise.resolve(handle);
+}, 30_000);
+
+afterAll(async () => {
   delete process.env.SHIPPIE_INTERNAL_CRON_TOKEN;
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
+  if (handle) await handle.close();
+}, 30_000);
+
+beforeEach(async () => {
+  // Reset: each test recreates the fake partition it needs. Drop it
+  // here defensively in case a previous test already dropped and we
+  // want a clean slate.
+  await handle.db.execute(sql`DROP TABLE IF EXISTS app_events_2026_02`);
 });
 
 describe('POST /api/internal/retention', () => {
   test('drops the partition for two-months-ago and returns its name', async () => {
-    // Today is 2026-04-21 (per the project memory). Two calendar
-    // months before is 2026-02. Seed an `app_events_2026_02` table
-    // directly so we can verify it gets dropped. Use a unique app_id
-    // column so the plain-table definition works even if PGlite does
-    // not support PARTITION OF.
-    const handle = (await (globalThis as unknown as {
-      __shippieDbHandle: Promise<{ db: import('@shippie/db').ShippieDbHandle['db'] }>;
-    }).__shippieDbHandle);
     const db = handle.db;
     await db.execute(sql`CREATE TABLE app_events_2026_02 (payload text)`);
     expect(await tableExists(db, 'app_events_2026_02')).toBe(true);

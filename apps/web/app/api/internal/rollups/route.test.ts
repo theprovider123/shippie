@@ -3,11 +3,14 @@
  * yesterday's `app_events` slice and upserts it into `usage_daily`.
  *
  * Auth follows `authorizeCron` (CRON_SECRET / SHIPPIE_INTERNAL_CRON_TOKEN).
+ *
+ * One PGlite per file (beforeAll) + TRUNCATE between tests keeps the
+ * full `bun test` suite from accumulating WASM instances.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { NextRequest } from 'next/server';
-import { createDb, runMigrations, schema } from '@shippie/db';
-import { and, eq } from 'drizzle-orm';
+import { createDb, runMigrations, schema, type ShippieDbHandle } from '@shippie/db';
+import { and, eq, sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,31 +38,29 @@ function mockNextRequest(path: string, headers: Record<string, string>): NextReq
   } as unknown as NextRequest;
 }
 
-async function setupDb(): Promise<void> {
+let handle: ShippieDbHandle;
+
+beforeAll(async () => {
+  process.env.SHIPPIE_INTERNAL_CRON_TOKEN = CRON_TOKEN;
   process.env.DATABASE_URL = 'pglite://memory';
-  const handle = await createDb({ url: 'pglite://memory' });
+  handle = await createDb({ url: 'pglite://memory' });
   await runMigrations(handle, MIGRATIONS_DIR);
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
     Promise.resolve(handle);
-}
+}, 30_000);
 
-beforeEach(async () => {
-  process.env.SHIPPIE_INTERNAL_CRON_TOKEN = CRON_TOKEN;
-  await setupDb();
-});
-
-afterEach(() => {
+afterAll(async () => {
   delete process.env.SHIPPIE_INTERNAL_CRON_TOKEN;
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
+  if (handle) await handle.close();
+}, 30_000);
+
+beforeEach(async () => {
+  await handle.db.execute(sql`TRUNCATE TABLE app_events, usage_daily`);
 });
 
 describe('POST /api/internal/rollups', () => {
   test('rolls up 3 events in the seeded partition into a single usage_daily row', async () => {
-    // Seed three events on 2026-04-20 (all within app_events_2026_04).
-    // The rollup call uses ?day=2026-04-20 to target that bucket.
-    const handle = (await (globalThis as unknown as {
-      __shippieDbHandle: Promise<{ db: import('@shippie/db').ShippieDbHandle['db'] }>;
-    }).__shippieDbHandle);
     const db = handle.db;
     const day = new Date(Date.UTC(2026, 3, 20, 0, 0, 0));
     await db.insert(schema.appEvents).values([

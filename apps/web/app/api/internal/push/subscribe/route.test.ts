@@ -1,12 +1,15 @@
 /**
  * Tests for /api/internal/push/subscribe — upserts a wrapper push
  * subscription keyed by endpoint. Invoked by the worker after signing.
+ *
+ * One PGlite per file (beforeAll) + TRUNCATE between tests to avoid
+ * accumulating WASM instances in the full `bun test` suite.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { NextRequest } from 'next/server';
 import { signWorkerRequest } from '@shippie/session-crypto';
-import { createDb, runMigrations, schema } from '@shippie/db';
-import { eq } from 'drizzle-orm';
+import { createDb, runMigrations, schema, type ShippieDbHandle } from '@shippie/db';
+import { eq, sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,21 +52,24 @@ async function signedRequest(path: string, body: string): Promise<NextRequest> {
   });
 }
 
-async function setupDb(): Promise<void> {
+let handle: ShippieDbHandle;
+
+beforeAll(async () => {
+  process.env.WORKER_PLATFORM_SECRET = SECRET;
   process.env.DATABASE_URL = 'pglite://memory';
-  const handle = await createDb({ url: 'pglite://memory' });
+  handle = await createDb({ url: 'pglite://memory' });
   await runMigrations(handle, MIGRATIONS_DIR);
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
     Promise.resolve(handle);
-}
+}, 30_000);
+
+afterAll(async () => {
+  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
+  if (handle) await handle.close();
+}, 30_000);
 
 beforeEach(async () => {
-  process.env.WORKER_PLATFORM_SECRET = SECRET;
-  await setupDb();
-});
-
-afterEach(() => {
-  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
+  await handle.db.execute(sql`TRUNCATE TABLE wrapper_push_subscriptions`);
 });
 
 describe('POST /api/internal/push/subscribe', () => {
@@ -82,9 +88,6 @@ describe('POST /api/internal/push/subscribe', () => {
     const res1 = await (POST as (req: NextRequest, ctx: unknown) => Promise<Response>)(req1, {});
     expect(res1.status).toBe(204);
 
-    const handle = await (globalThis as unknown as {
-      __shippieDbHandle: Promise<{ db: import('@shippie/db').ShippieDbHandle['db'] }>;
-    }).__shippieDbHandle;
     const db = handle.db;
     let rows = await db
       .select()
