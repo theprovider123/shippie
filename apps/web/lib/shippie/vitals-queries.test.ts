@@ -104,12 +104,14 @@ describe('queryWebVitals', () => {
   });
 
   test('respects the days window', async () => {
-    // One event inside window, one way outside.
+    // One event inside the 5-day window ending 2026-04-22, one outside.
+    // Both live in the 2026-04 partition so the insert itself succeeds;
+    // the 04-10 row is just older than the window start.
     await seedVital('zen', 'CLS', 0.1, '2026-04-20T00:00:00Z');
-    await seedVital('zen', 'CLS', 0.9, '2025-01-01T00:00:00Z');
+    await seedVital('zen', 'CLS', 0.9, '2026-04-10T00:00:00Z');
     const r = await queryWebVitals(handle.db, {
       appId: 'zen',
-      days: 30,
+      days: 5,
       endDate: new Date('2026-04-22T00:00:00Z'),
     });
     const cls = r.find((s) => s.name === 'CLS')!;
