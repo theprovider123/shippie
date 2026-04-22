@@ -1,0 +1,54 @@
+import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
+import { Window } from 'happy-dom';
+import { wrapNavigation, supportsViewTransitions } from './view-transitions.ts';
+
+let win: Window;
+const originalDocument = (globalThis as { document?: unknown }).document;
+
+beforeEach(() => {
+  win = new Window({ url: 'https://shippie.app/' });
+  // @ts-expect-error test env
+  globalThis.document = win.document;
+});
+
+afterAll(() => {
+  (globalThis as { document?: unknown }).document = originalDocument;
+});
+
+describe('supportsViewTransitions', () => {
+  test('returns false when document.startViewTransition is missing', () => {
+    expect(supportsViewTransitions()).toBe(false);
+  });
+
+  test('returns true when document.startViewTransition exists', () => {
+    // @ts-expect-error injecting for test
+    win.document.startViewTransition = () => ({ finished: Promise.resolve() });
+    expect(supportsViewTransitions()).toBe(true);
+  });
+});
+
+describe('wrapNavigation', () => {
+  test('calls the callback directly when View Transitions unsupported', async () => {
+    let called = 0;
+    await wrapNavigation(() => {
+      called += 1;
+    });
+    expect(called).toBe(1);
+  });
+
+  test('uses startViewTransition when available', async () => {
+    let started = 0;
+    let cbCalled = 0;
+    // @ts-expect-error injecting for test
+    win.document.startViewTransition = (cb: () => void) => {
+      started += 1;
+      cb();
+      return { finished: Promise.resolve(), ready: Promise.resolve(), updateCallbackDone: Promise.resolve() };
+    };
+    await wrapNavigation(() => {
+      cbCalled += 1;
+    });
+    expect(started).toBe(1);
+    expect(cbCalled).toBe(1);
+  });
+});

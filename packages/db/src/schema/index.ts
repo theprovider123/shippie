@@ -35,3 +35,5 @@ export * from './analytics.ts';
 export * from './custom-domains.ts';
 export * from './cli-auth.ts';
 export * from './github-installations.ts';
+export * from './app-events.ts';
+export * from './wrapper-push-subscriptions.ts';

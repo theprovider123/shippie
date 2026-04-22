@@ -18,6 +18,7 @@ import { Element, Text } from 'domhandler';
 import type { ChildNode, Document, ParentNode } from 'domhandler';
 import type { ShippieJson } from '@shippie/shared';
 import type { InjectionOptions } from './types.ts';
+import { IOS_SPLASH_SIZES, splashMediaQuery } from './splash-sizes.ts';
 
 export function injectPwaTags(html: string, opts: InjectionOptions): { html: string; modified: boolean } {
   const doc = parseDocument(html, {
@@ -98,6 +99,20 @@ function injectIntoHead(head: Element, opts: InjectionOptions): boolean {
       attribs: { src: '/__shippie/sdk.js', async: '' },
     },
   ];
+
+  // iOS apple-touch-startup-image per device size. The worker serves
+  // the generated PNG at /__shippie/splash/<device>.png — see Task 9
+  // splash router and `apps/web/lib/shippie/splash-gen.ts`.
+  for (const size of IOS_SPLASH_SIZES) {
+    tagsToEnsure.push({
+      name: 'link',
+      attribs: {
+        rel: 'apple-touch-startup-image',
+        media: splashMediaQuery(size),
+        href: `/__shippie/splash/${size.device}.png`,
+      },
+    });
+  }
 
   if (opts.injectInlineCsp) {
     tagsToEnsure.push({

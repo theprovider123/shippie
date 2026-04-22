@@ -61,3 +61,32 @@ export {
   startInstallRuntime,
   type StartInstallRuntimeConfig,
 } from './install-runtime.ts';
+
+export { wrapNavigation, supportsViewTransitions } from './view-transitions.ts';
+
+export {
+  attachBackSwipe,
+  attachPullToRefresh,
+  type BackSwipeOptions,
+  type PullToRefreshOptions,
+} from './gestures.ts';
+
+export { haptic, type HapticKind } from './haptics.ts';
+
+export { setThemeColor } from './theme-color.ts';
+
+export { mountUpdateToast, unmountUpdateToast, type UpdateToastProps } from './update-toast.ts';
+
+export {
+  mountHandoffSheet,
+  unmountHandoffSheet,
+  type HandoffSheetProps,
+} from './handoff-sheet.ts';
+
+export {
+  subscribePush,
+  unsubscribePush,
+  pushSupported,
+  type PushEndpoints,
+  type SubscribeResult,
+} from './push.ts';

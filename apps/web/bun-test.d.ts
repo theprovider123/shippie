@@ -6,10 +6,10 @@
 // tests. Extend as needed.
 declare module 'bun:test' {
   type Fn = () => unknown | Promise<unknown>;
-  export const beforeEach: (fn: Fn) => void;
-  export const afterEach: (fn: Fn) => void;
-  export const beforeAll: (fn: Fn) => void;
-  export const afterAll: (fn: Fn) => void;
+  export const beforeEach: (fn: Fn, timeoutMs?: number) => void;
+  export const afterEach: (fn: Fn, timeoutMs?: number) => void;
+  export const beforeAll: (fn: Fn, timeoutMs?: number) => void;
+  export const afterAll: (fn: Fn, timeoutMs?: number) => void;
   export const describe: (name: string, fn: () => void) => void;
   export const test: ((name: string, fn: Fn) => void) & {
     each: <T extends readonly unknown[]>(cases: readonly T[]) => (name: string, fn: (...args: T) => unknown | Promise<unknown>) => void;
@@ -27,6 +27,10 @@ declare module 'bun:test' {
     toBeFalsy: () => R;
     toContain: (expected: unknown) => R;
     toHaveLength: (n: number) => R;
+    toBeGreaterThan: (n: number) => R;
+    toBeGreaterThanOrEqual: (n: number) => R;
+    toBeLessThan: (n: number) => R;
+    toBeLessThanOrEqual: (n: number) => R;
     toHaveProperty: (key: string, value?: unknown) => R;
     toThrow: (message?: string | RegExp) => R;
     resolves: Matchers<Promise<R>>;

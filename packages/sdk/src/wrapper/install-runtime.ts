@@ -28,11 +28,17 @@ import {
   type PromptTier,
 } from './install-prompt.ts';
 import { buildBounceTarget } from './iab-bounce.ts';
+import { buildHandoffUrl } from './handoff.ts';
+import { mountHandoffSheet, unmountHandoffSheet } from './handoff-sheet.ts';
+import { haptic } from './haptics.ts';
+import { setThemeColor } from './theme-color.ts';
 import { mountInstallBanner, mountBounceSheet, unmountAll } from './ui.ts';
 
 export interface StartInstallRuntimeConfig {
   /** Endpoint to POST beacon events to. Default: `/__shippie/install` (maker-subdomain route). */
   trackEndpoint?: string;
+  /** Endpoint to POST desktop-handoff requests to. Default: `/__shippie/handoff`. */
+  handoffEndpoint?: string;
   /** localStorage key for persisted prompt state. Default: `shippie-install-state`. */
   storageKey?: string;
   /** How often to check dwell time + re-render (ms). Default: 5000. */
@@ -45,8 +51,14 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const DEFAULT_TRACK_ENDPOINT = '/__shippie/install';
+const DEFAULT_HANDOFF_ENDPOINT = '/__shippie/handoff';
 const DEFAULT_STORAGE_KEY = 'shippie-install-state';
 const DEFAULT_TICK_MS = 5000;
+
+// Brand palette — matches the install banner's coral and the default
+// Shippie dark-background theme-color declared in apps/web.
+const THEME_BANNER = '#E8603C';
+const THEME_DEFAULT = '#14120F';
 
 /**
  * Boot the install runtime. Detects the user's context, mounts banner or
@@ -64,6 +76,7 @@ export function startInstallRuntime(
   }
 
   const trackEndpoint = config.trackEndpoint ?? DEFAULT_TRACK_ENDPOINT;
+  const handoffEndpoint = config.handoffEndpoint ?? DEFAULT_HANDOFF_ENDPOINT;
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY;
   const tickMs = config.tickMs ?? DEFAULT_TICK_MS;
 
@@ -106,42 +119,83 @@ export function startInstallRuntime(
           }
         },
       });
+      haptic('warn');
       beacon('iab_detected', { brand: ctx.iab });
     }
     return () => unmountAll();
   }
 
+  // Desktop handoff: no PWA install path on desktop — help the user
+  // continue on mobile via QR, email-to-self, or push (Phase 3).
+  if (ctx.platform === 'desktop' && ctx.iab === null) {
+    const handoffUrl = buildHandoffUrl(window.location.href);
+
+    const postHandoff = async (body: Record<string, unknown>): Promise<void> => {
+      try {
+        await fetch(handoffEndpoint, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        haptic('success');
+      } catch (err) {
+        // Best-effort — log once, buzz error, don't throw.
+        console.warn('[shippie] handoff POST failed', err);
+        haptic('error');
+      }
+    };
+
+    mountHandoffSheet({
+      handoffUrl,
+      canPush: false,
+      onSendEmail: (email) =>
+        postHandoff({ mode: 'email', email, handoff_url: handoffUrl }),
+      onSendPush: () =>
+        postHandoff({ mode: 'push', handoff_url: handoffUrl }),
+    });
+    haptic('tap');
+    beacon('handoff_shown');
+    return () => unmountHandoffSheet();
+  }
+
   // Normal path: engagement-gated banner.
   const prior = deserialize(localStorage.getItem(storageKey));
   const now = Date.now();
-  let state: PromptState = recordVisit(prior, now);
-  localStorage.setItem(storageKey, serialize(state));
+  const refs = {
+    state: recordVisit(prior, now),
+    deferredPrompt: null as BeforeInstallPromptEvent | null,
+    lastTick: Date.now(),
+    lastRenderedTier: null as PromptTier | null,
+  };
+  localStorage.setItem(storageKey, serialize(refs.state));
 
-  let deferredPrompt: BeforeInstallPromptEvent | null = null;
   const onBip = (event: Event) => {
     event.preventDefault();
-    deferredPrompt = event as BeforeInstallPromptEvent;
+    refs.deferredPrompt = event as BeforeInstallPromptEvent;
     render();
   };
   window.addEventListener('beforeinstallprompt', onBip);
 
-  let lastTick = Date.now();
-  let lastRenderedTier: PromptTier | null = null;
-
   const render = (): void => {
-    const tier = computePromptTier(state, Date.now());
-    if (tier === lastRenderedTier) return;
-    lastRenderedTier = tier;
+    const tier = computePromptTier(refs.state, Date.now());
+    if (tier === refs.lastRenderedTier) return;
+    refs.lastRenderedTier = tier;
+    if (tier !== 'none') {
+      // Tint status bar to match the banner while it's visible.
+      setThemeColor(THEME_BANNER);
+    }
     mountInstallBanner({
       tier,
       onInstall: async () => {
-        if (deferredPrompt) {
-          await deferredPrompt.prompt();
-          const outcome = (await deferredPrompt.userChoice).outcome;
+        haptic('tap');
+        if (refs.deferredPrompt) {
+          await refs.deferredPrompt.prompt();
+          const outcome = (await refs.deferredPrompt.userChoice).outcome;
           beacon(`prompt_${outcome}`);
           if (outcome === 'accepted') {
-            state = recordDismissal(state, Date.now());
-            localStorage.setItem(storageKey, serialize(state));
+            refs.state = recordDismissal(refs.state, Date.now());
+            localStorage.setItem(storageKey, serialize(refs.state));
+            setThemeColor(THEME_DEFAULT);
             unmountAll();
           }
           return;
@@ -150,9 +204,10 @@ export function startInstallRuntime(
         beacon('prompt_shown', { outcome: 'manual-guide-opened' });
       },
       onDismiss: () => {
-        state = recordDismissal(state, Date.now());
-        localStorage.setItem(storageKey, serialize(state));
+        refs.state = recordDismissal(refs.state, Date.now());
+        localStorage.setItem(storageKey, serialize(refs.state));
         beacon('prompt_dismissed');
+        setThemeColor(THEME_DEFAULT);
         unmountAll();
       },
     });
@@ -160,13 +215,13 @@ export function startInstallRuntime(
 
   const interval = window.setInterval(() => {
     if (document.visibilityState !== 'visible') {
-      lastTick = Date.now();
+      refs.lastTick = Date.now();
       return;
     }
     const t = Date.now();
-    state = addDwell(state, t - lastTick);
-    lastTick = t;
-    localStorage.setItem(storageKey, serialize(state));
+    refs.state = addDwell(refs.state, t - refs.lastTick);
+    refs.lastTick = t;
+    localStorage.setItem(storageKey, serialize(refs.state));
     render();
   }, tickMs);
 
@@ -175,6 +230,7 @@ export function startInstallRuntime(
   return () => {
     window.removeEventListener('beforeinstallprompt', onBip);
     window.clearInterval(interval);
+    setThemeColor(THEME_DEFAULT);
     unmountAll();
   };
 }

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ShippieJson } from '@shippie/shared';
 import { injectPwaTags } from './inject-html.ts';
+import { IOS_SPLASH_SIZES } from './splash-sizes.ts';
 
 const baseManifest: ShippieJson = {
   version: 1,
@@ -68,6 +69,39 @@ test('preserves existing elements in head and body', () => {
 test('skips inline CSP by default (runtime CSP is primary)', () => {
   const { html } = injectPwaTags(SIMPLE_HTML, { manifest: baseManifest, version: 1 });
   assert.doesNotMatch(html, /Content-Security-Policy/i);
+});
+
+test('emits one apple-touch-startup-image link per iOS splash size', () => {
+  const { html } = injectPwaTags(SIMPLE_HTML, { manifest: baseManifest, version: 1 });
+  const matches = html.match(/rel="apple-touch-startup-image"/g) ?? [];
+  assert.equal(matches.length, IOS_SPLASH_SIZES.length);
+  // Spot-check one: iphone-14-pro must be present with matching href.
+  assert.match(
+    html,
+    /<link[^>]+rel="apple-touch-startup-image"[^>]+href="\/__shippie\/splash\/iphone-14-pro\.png"/,
+  );
+});
+
+test('splash link tags carry a media query with device-width/height', () => {
+  const { html } = injectPwaTags(SIMPLE_HTML, { manifest: baseManifest, version: 1 });
+  // Every splash link must have a non-empty `media` attribute.
+  const links = html.match(/<link[^>]+rel="apple-touch-startup-image"[^>]*>/g) ?? [];
+  assert.equal(links.length, IOS_SPLASH_SIZES.length);
+  for (const link of links) {
+    assert.match(link, /media="[^"]*device-width[^"]*"/);
+    assert.match(link, /media="[^"]*device-height[^"]*"/);
+    assert.match(link, /media="[^"]*orientation: portrait[^"]*"/);
+  }
+});
+
+test('splash tags are idempotent across two injects', () => {
+  const once = injectPwaTags(SIMPLE_HTML, { manifest: baseManifest, version: 1 });
+  const twice = injectPwaTags(once.html, { manifest: baseManifest, version: 1 });
+  assert.equal(twice.modified, false);
+  const matchesOnce = (once.html.match(/rel="apple-touch-startup-image"/g) ?? []).length;
+  const matchesTwice = (twice.html.match(/rel="apple-touch-startup-image"/g) ?? []).length;
+  assert.equal(matchesOnce, matchesTwice);
+  assert.equal(matchesOnce, IOS_SPLASH_SIZES.length);
 });
 
 test('adds inline CSP when requested, with allowed_connect_domains', () => {

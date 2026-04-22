@@ -46,6 +46,7 @@ export const viewport: Viewport = {
 import { StandaloneProvider } from './components/standalone-provider';
 import { BottomTabs } from './components/bottom-tabs';
 import { PageTransition } from './components/page-transition';
+import { ThemeColor } from './components/theme-color';
 
 // Register the platform PWA service worker in prod only. In dev, the SW
 // aggressively caches the offline fallback and hijacks every request when
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body>
+        <ThemeColor color="#14120F" />
         <StandaloneProvider>
           <PageTransition>{children}</PageTransition>
           <BottomTabs />

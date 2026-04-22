@@ -12,6 +12,14 @@
     {
       "path": "/api/internal/reap-trials",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/internal/rollups",
+      "schedule": "0 */1 * * *"
+    },
+    {
+      "path": "/api/internal/retention",
+      "schedule": "0 4 * * *"
     }
   ]
 }
