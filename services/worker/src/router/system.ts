@@ -31,6 +31,7 @@ import { analyticsRouter } from './analytics.ts';
 import { handoffRouter } from './handoff.ts';
 import { beaconRouter } from './beacon.ts';
 import { pushRouter } from './push.ts';
+import { splashRouter } from './splash.ts';
 
 export const systemRouter = new Hono<AppBindings>();
 
@@ -46,6 +47,7 @@ systemRouter.route('/analytics', analyticsRouter);
 systemRouter.route('/handoff', handoffRouter);
 systemRouter.route('/beacon', beaconRouter);
 systemRouter.route('/push', pushRouter);
+systemRouter.route('/splash', splashRouter);
 
 // Auth + storage + files + feedback + analytics + functions land here in
 // later weeks. Each is its own file for testability.
