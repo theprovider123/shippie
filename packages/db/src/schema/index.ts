@@ -37,3 +37,5 @@ export * from './cli-auth.ts';
 export * from './github-installations.ts';
 export * from './app-events.ts';
 export * from './wrapper-push-subscriptions.ts';
+export * from './app-ratings.ts';
+export * from './user-touch-graph.ts';

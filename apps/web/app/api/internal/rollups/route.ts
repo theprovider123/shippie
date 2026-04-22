@@ -16,7 +16,7 @@
  * the cron omits it and we default to "yesterday".
  */
 import { NextResponse, type NextRequest } from 'next/server';
-import { and, gte, lt, sql } from 'drizzle-orm';
+import { and, gte, isNotNull, lt, sql } from 'drizzle-orm';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { authorizeCron } from '@/lib/internal/cron-auth';
@@ -84,11 +84,72 @@ async function run(req: NextRequest): Promise<Response> {
       });
   }
 
-  const apps = new Set(rollups.map((r) => r.appId)).size;
+  // Co-install graph: build (app_a, app_b) pair counts from the same
+  // window of app_events. Only events with a user_id contribute.
+  //
+  // TODO(phase-6): this increments counters per window, so a user who
+  // touches the same (A, B) pair on multiple days will be counted
+  // multiple times. A dedup table tracking which (user, a, b) triples
+  // have already been scored is the proper fix.
+  const touches = await db
+    .selectDistinct({
+      appId: schema.appEvents.appId,
+      userId: schema.appEvents.userId,
+    })
+    .from(schema.appEvents)
+    .where(
+      and(
+        gte(schema.appEvents.ts, day),
+        lt(schema.appEvents.ts, dayEnd),
+        isNotNull(schema.appEvents.userId),
+      ),
+    );
+
+  const userApps = new Map<string, Set<string>>();
+  for (const t of touches) {
+    if (!t.userId) continue;
+    let set = userApps.get(t.userId);
+    if (!set) {
+      set = new Set();
+      userApps.set(t.userId, set);
+    }
+    set.add(t.appId);
+  }
+
+  const pairCounts = new Map<string, number>();
+  for (const apps of userApps.values()) {
+    if (apps.size < 2) continue;
+    const sorted = Array.from(apps).sort();
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const key = `${sorted[i]}\x00${sorted[j]}`;
+        pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
+      }
+    }
+  }
+
+  const pairsNow = new Date();
+  for (const [key, delta] of pairCounts) {
+    const [a, b] = key.split('\x00');
+    if (!a || !b) continue;
+    await db
+      .insert(schema.userTouchGraph)
+      .values({ appA: a, appB: b, users: delta, updatedAt: pairsNow })
+      .onConflictDoUpdate({
+        target: [schema.userTouchGraph.appA, schema.userTouchGraph.appB],
+        set: {
+          users: sql`${schema.userTouchGraph.users} + ${delta}`,
+          updatedAt: pairsNow,
+        },
+      });
+  }
+
+  const appsCount = new Set(rollups.map((r) => r.appId)).size;
   return NextResponse.json({
     ok: true,
     rolled_up: rollups.length,
-    apps,
+    apps: appsCount,
+    pairs: pairCounts.size,
     day: day.toISOString(),
   });
 }

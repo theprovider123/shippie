@@ -17,6 +17,7 @@
  * Calling it twice is safe; the second call's cleanup supersedes the first.
  */
 import { readInstallContext } from './detect.ts';
+import { captureReferral, clearReferral } from './referral.ts';
 import {
   computePromptTier,
   recordVisit,
@@ -87,9 +88,29 @@ export function startInstallRuntime(
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY;
   const tickMs = config.tickMs ?? DEFAULT_TICK_MS;
 
+  // Capture `?ref=…` on first page load; persists across SPA nav via the
+  // localStorage fallback inside captureReferral. Null when not present.
+  const ref = captureReferral(window.location.href);
+
+  // Events that should carry the referral attribution into the event spine.
+  // Vitals/handoff samples intentionally skip — they're noise for install
+  // attribution and would inflate the payload on every flush.
+  const REF_ATTRIBUTED_EVENTS = new Set<string>([
+    'prompt_shown',
+    'prompt_accepted',
+    'prompt_dismissed',
+    'iab_detected',
+    'iab_bounced',
+    'install_click',
+  ]);
+
   const beacon = async (event: string, extra?: Record<string, unknown>) => {
     try {
-      const body = JSON.stringify({ event, ...(extra ?? {}) });
+      const payload: Record<string, unknown> = { event, ...(extra ?? {}) };
+      if (REF_ATTRIBUTED_EVENTS.has(event)) {
+        payload.ref = ref?.source ?? null;
+      }
+      const body = JSON.stringify(payload);
       // Attempt 1: sendBeacon — the preferred path. Survives page unload
       // and works while the browser is offline (queued by the UA).
       if (navigator.sendBeacon?.(trackEndpoint, body)) return;
@@ -256,6 +277,9 @@ export function startInstallRuntime(
             localStorage.setItem(storageKey, serialize(refs.state));
             setThemeColor(THEME_DEFAULT);
             unmountAll();
+            // Clear the stashed referral so the next page load doesn't
+            // re-attribute subsequent installs to this source.
+            clearReferral();
           }
           return;
         }

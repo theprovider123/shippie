@@ -18,6 +18,8 @@ import {
   queryUsageDaily,
 } from '@/lib/shippie/analytics-queries';
 import { queryWebVitals } from '@/lib/shippie/vitals-queries';
+import { queryRatingSummary, queryLatestReviews } from '@/lib/shippie/ratings';
+import { RatingsSummary } from '@/app/components/ratings-summary';
 import { FunnelBars, LineChart } from './charts';
 
 function formatVital(name: 'LCP' | 'CLS' | 'INP', v: number): string {
@@ -47,7 +49,7 @@ export default async function AnalyticsPage({ params }: PageProps) {
 
   // The event spine stores `app_id` as the slug (see ingest-events +
   // rollups routes); keep the dashboard query identifier consistent.
-  const [installsDaily, funnel, iab, vitals] = await Promise.all([
+  const [installsDaily, funnel, iab, vitals, ratingSummary, latestReviews] = await Promise.all([
     queryUsageDaily(db, {
       appId: app.slug,
       eventType: 'install_prompt_accepted',
@@ -56,6 +58,8 @@ export default async function AnalyticsPage({ params }: PageProps) {
     queryInstallFunnel(db, { appId: app.slug, days: 30 }),
     queryIabBounce(db, { appId: app.slug, days: 30 }),
     queryWebVitals(db, { appId: app.slug, days: 30 }),
+    queryRatingSummary(db, app.slug),
+    queryLatestReviews(db, app.slug, 5),
   ]);
 
   const points = installsDaily.map((r) => ({
@@ -156,6 +160,13 @@ export default async function AnalyticsPage({ params }: PageProps) {
               ))}
             </div>
           )}
+        </section>
+
+        <section style={{ marginBottom: 'var(--space-2xl, 4rem)' }}>
+          <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', margin: '0 0 0.75rem' }}>
+            Ratings
+          </h2>
+          <RatingsSummary summary={ratingSummary} latest={latestReviews} />
         </section>
       </div>
     </main>

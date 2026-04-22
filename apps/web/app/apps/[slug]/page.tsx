@@ -8,7 +8,18 @@ import Link from 'next/link';
 import { eq, desc } from 'drizzle-orm';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
+import { auth } from '@/lib/auth';
+import {
+  queryRatingSummary,
+  queryLatestReviews,
+  queryUserRating,
+} from '@/lib/shippie/ratings';
+import { queryCoInstalls } from '@/lib/shippie/co-installs';
+import { RatingsSummary } from '@/app/components/ratings-summary';
+import { CoInstallWidget } from '@/app/components/co-install-widget';
 import { InstallButton } from './install-button';
+import { RateWidget } from './rate-widget';
+import { inArray } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,6 +53,47 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
   const compatScore = autopack?.compat?.score ?? app.compatibilityScore ?? 0;
 
+  const [ratingSummary, latestReviews, session, coInstallPairs] = await Promise.all([
+    queryRatingSummary(db, slug),
+    queryLatestReviews(db, slug, 5),
+    auth(),
+    queryCoInstalls(db, slug, 6),
+  ]);
+  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+  const userRating = userId ? await queryUserRating(db, slug, userId) : null;
+
+  // Hydrate co-install slugs into full app cards, filtered to public + live.
+  const coInstallSlugs = coInstallPairs.map((c) => c.appId);
+  const coInstallApps = coInstallSlugs.length
+    ? await db
+        .select({
+          slug: schema.apps.slug,
+          name: schema.apps.name,
+          tagline: schema.apps.tagline,
+          description: schema.apps.description,
+          iconUrl: schema.apps.iconUrl,
+          isArchived: schema.apps.isArchived,
+          visibilityScope: schema.apps.visibilityScope,
+          activeDeployId: schema.apps.activeDeployId,
+        })
+        .from(schema.apps)
+        .where(inArray(schema.apps.slug, coInstallSlugs))
+    : [];
+  const coInstallCards = coInstallPairs
+    .map((p) => {
+      const a = coInstallApps.find((x) => x.slug === p.appId);
+      if (!a) return null;
+      if (a.isArchived || a.visibilityScope !== 'public' || !a.activeDeployId) return null;
+      return {
+        slug: a.slug,
+        name: a.name,
+        taglineOrDesc: a.tagline ?? a.description ?? null,
+        icon: a.iconUrl ?? null,
+        score: p.score,
+      };
+    })
+    .filter(<T,>(x: T | null): x is T => x !== null);
+
   return (
     <main className="min-h-screen" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <header className="px-6 py-20" style={{ background: app.themeColor, color: '#EDE4D3' }}>
@@ -63,7 +115,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
                   style={{ background: 'var(--action-primary)', color: '#14120F' }}>
                   Open app
                 </a>
-                <InstallButton url={devInstallUrl(app.slug)} name={app.name} />
+                <InstallButton url={devInstallUrl(app.slug)} name={app.name} slug={app.slug} />
               </div>
             </div>
           </div>
@@ -128,6 +180,26 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
               </ul>
             )}
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>source: {autopack.changelog.source}</p>
+          </section>
+        )}
+
+        <section style={{ marginTop: 'var(--space-2xl, 4rem)' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: 16 }}>
+            Ratings &amp; reviews
+          </h2>
+          <RatingsSummary summary={ratingSummary} latest={latestReviews} />
+          {userId && <RateWidget slug={slug} initial={userRating} />}
+        </section>
+
+        {coInstallCards.length > 0 && (
+          <section style={{ marginTop: 'var(--space-2xl, 4rem)' }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: 4 }}>
+              Users also installed
+            </h2>
+            <p style={{ color: 'var(--text-light, #7A6B58)', fontSize: 13, margin: '0 0 16px' }}>
+              Based on overlap with other Shippie apps.
+            </p>
+            <CoInstallWidget entries={coInstallCards} />
           </section>
         )}
       </div>

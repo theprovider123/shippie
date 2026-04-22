@@ -208,6 +208,72 @@ describe('web-vitals wiring', () => {
   });
 });
 
+describe('referral attribution', () => {
+  test('ref from URL rides along on install beacons', () => {
+    // Rebuild window with ?ref=test-source in the URL so the runtime can
+    // capture it. happy-dom's Window accepts a url option in its config.
+    win = new Window({ url: 'https://shippie.app/apps/zen?ref=test-source' });
+    // @ts-expect-error re-injecting happy-dom globals
+    globalThis.document = win.document;
+    // @ts-expect-error re-injecting happy-dom globals
+    globalThis.window = win;
+    // @ts-expect-error happy-dom Navigator is a subset
+    globalThis.navigator = win.navigator;
+    globalThis.localStorage = win.localStorage;
+
+    setUa(ANDROID_UA);
+    // Prior state forces tier=soft so a banner is mounted → prompt_dismissed
+    // fires on dismiss, which is the cleanest install-funnel beacon to
+    // inspect. Other events (prompt_shown via onInstall) require a
+    // deferredPrompt which is not trivial to stub here.
+    const prior = {
+      visit_count: 2,
+      first_visit_at: Date.now() - 60 * 60 * 1000,
+      last_visit_at: Date.now() - 60 * 60 * 1000,
+      dwell_ms: 0,
+      meaningful_actions: 0,
+      last_dismissed_at: null,
+    };
+    win.localStorage.setItem('shippie-install-state', JSON.stringify(prior));
+
+    const beacons: { url: string; body: string }[] = [];
+    (win.navigator as unknown as { sendBeacon: (u: string, b: string) => boolean }).sendBeacon = (
+      url: string,
+      body: string,
+    ) => {
+      beacons.push({ url: String(url), body: String(body) });
+      return true;
+    };
+
+    const cleanup = startInstallRuntime({
+      trackEndpoint: '/__shippie/install',
+      tickMs: 9_999_999,
+    });
+
+    // Trigger a dismiss — fires prompt_dismissed, which should carry ref.
+    const dismissBtn = win.document.querySelector(
+      '[data-shippie-dismiss]',
+    ) as unknown as HTMLButtonElement | null;
+    expect(dismissBtn).not.toBeNull();
+    dismissBtn!.click();
+
+    const dismissBeacon = beacons.find((b) => {
+      try {
+        return JSON.parse(b.body).event === 'prompt_dismissed';
+      } catch {
+        return false;
+      }
+    });
+    expect(dismissBeacon).toBeTruthy();
+    const payload = JSON.parse(dismissBeacon!.body);
+    expect(payload.ref).toBe('test-source');
+
+    cleanup();
+    // Clean up the referral key since tests share happy-dom state.
+    win.localStorage.removeItem('shippie-referral-source');
+  });
+});
+
 describe('desktop handoff push-aware CTA', () => {
   function stubPushManager(hasSubscription: boolean): void {
     // Install window.PushManager — pushSupported() requires both
