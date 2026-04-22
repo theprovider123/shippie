@@ -90,3 +90,12 @@ export {
   type PushEndpoints,
   type SubscribeResult,
 } from './push.ts';
+
+export { renderQrSvg, type QrOptions } from './qr.ts';
+
+export {
+  observeWebVitals,
+  type VitalName,
+  type VitalSample,
+  type WebVitalsOptions,
+} from './web-vitals.ts';
