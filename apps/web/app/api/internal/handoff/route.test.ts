@@ -8,9 +8,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { NextRequest } from 'next/server';
 import { signWorkerRequest } from '@shippie/session-crypto';
-import { createDb, runMigrations } from '@shippie/db';
+import { createDb, runMigrations, schema } from '@shippie/db';
+import { eq } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { p256 } from '@noble/curves/nist.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(
@@ -63,7 +65,10 @@ type FetchCall = { url: string; init: RequestInit };
 let originalFetch: typeof globalThis.fetch;
 let fetchCalls: FetchCall[] = [];
 
-async function setupDb(): Promise<void> {
+type TestDbHandle = Awaited<ReturnType<typeof createDb>>;
+let dbHandle: TestDbHandle | null = null;
+
+async function setupDb(): Promise<TestDbHandle> {
   // Force a fresh in-memory PGlite handle for each test so we can
   // assert "no subscriptions" cleanly without cross-test pollution.
   process.env.DATABASE_URL = 'pglite://memory';
@@ -71,6 +76,8 @@ async function setupDb(): Promise<void> {
   await runMigrations(handle, MIGRATIONS_DIR);
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
     Promise.resolve(handle);
+  dbHandle = handle;
+  return handle;
 }
 
 beforeEach(async () => {
@@ -92,6 +99,10 @@ beforeEach(async () => {
 afterEach(() => {
   globalThis.fetch = originalFetch;
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
+  dbHandle = null;
+  delete process.env.VAPID_PRIVATE_KEY;
+  delete process.env.VAPID_PUBLIC_KEY;
+  delete process.env.VAPID_SUBJECT;
 });
 
 describe('POST /api/internal/handoff', () => {
@@ -165,5 +176,95 @@ describe('POST /api/internal/handoff', () => {
     expect(json.ok).toBe(true);
     expect(json.sent).toBe(0);
     expect(fetchCalls).toHaveLength(0);
+  });
+
+  test('push mode with one subscription dispatches VAPID POST and returns sent:1', async () => {
+    // Seed VAPID keys + one subscription for the app.
+    const { publicKey, secretKey } = p256.keygen();
+    process.env.VAPID_PRIVATE_KEY = Buffer.from(secretKey).toString('base64url');
+    process.env.VAPID_PUBLIC_KEY = Buffer.from(publicKey).toString('base64url');
+    process.env.VAPID_SUBJECT = 'mailto:ops@shippie.app';
+
+    const { publicKey: uaPub } = p256.keygen();
+    const authSecret = new Uint8Array(16);
+    crypto.getRandomValues(authSecret);
+
+    const handle = dbHandle!;
+    await handle.db.insert(schema.wrapperPushSubscriptions).values({
+      endpoint: 'https://push.example/abc',
+      appId: 'zen-notes',
+      userId: null,
+      keys: {
+        p256dh: Buffer.from(uaPub).toString('base64url'),
+        auth: Buffer.from(authSecret).toString('base64url'),
+      },
+    });
+
+    // Stub fetch to return 201 for the push POST.
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      fetchCalls.push({ url, init: init ?? {} });
+      return new Response(null, { status: 201 });
+    }) as typeof globalThis.fetch;
+
+    const { POST } = await import('./route.ts');
+    const body = JSON.stringify({
+      slug: 'zen-notes',
+      mode: 'push',
+      handoff_url: 'https://shippie.app/apps/zen-notes?ref=handoff',
+    });
+    const req = await signedRequest(path, body);
+    const res = await (POST as (req: NextRequest, ctx: unknown) => Promise<Response>)(req, {});
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { ok: boolean; sent: number };
+    expect(json.ok).toBe(true);
+    expect(json.sent).toBe(1);
+    expect(fetchCalls).toHaveLength(1);
+    expect(fetchCalls[0]!.url).toBe('https://push.example/abc');
+  });
+
+  test('push mode deletes gone subscription on 410 and returns sent:0', async () => {
+    const { publicKey, secretKey } = p256.keygen();
+    process.env.VAPID_PRIVATE_KEY = Buffer.from(secretKey).toString('base64url');
+    process.env.VAPID_PUBLIC_KEY = Buffer.from(publicKey).toString('base64url');
+    process.env.VAPID_SUBJECT = 'mailto:ops@shippie.app';
+
+    const { publicKey: uaPub } = p256.keygen();
+    const handle = dbHandle!;
+    await handle.db.insert(schema.wrapperPushSubscriptions).values({
+      endpoint: 'https://push.example/gone',
+      appId: 'zen-notes',
+      userId: null,
+      keys: {
+        p256dh: Buffer.from(uaPub).toString('base64url'),
+        auth: Buffer.from(new Uint8Array(16)).toString('base64url'),
+      },
+    });
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      fetchCalls.push({ url, init: init ?? {} });
+      return new Response(null, { status: 410 });
+    }) as typeof globalThis.fetch;
+
+    const { POST } = await import('./route.ts');
+    const body = JSON.stringify({
+      slug: 'zen-notes',
+      mode: 'push',
+      handoff_url: 'https://shippie.app/apps/zen-notes?ref=handoff',
+    });
+    const req = await signedRequest(path, body);
+    const res = await (POST as (req: NextRequest, ctx: unknown) => Promise<Response>)(req, {});
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { ok: boolean; sent: number };
+    expect(json.ok).toBe(true);
+    expect(json.sent).toBe(0);
+
+    // Subscription should now be removed from the DB.
+    const remaining = await handle.db
+      .select()
+      .from(schema.wrapperPushSubscriptions)
+      .where(eq(schema.wrapperPushSubscriptions.endpoint, 'https://push.example/gone'));
+    expect(remaining.length).toBe(0);
   });
 });

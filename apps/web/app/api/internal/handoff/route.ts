@@ -9,11 +9,12 @@
  *   2 we stub when no subscriptions exist and just return sent=0).
  */
 import { type NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { verifyInternalRequest } from '@/lib/internal/signed-request';
-import { renderHandoffEmail } from '@/lib/shippie/handoff';
+import { buildPushPayload, renderHandoffEmail } from '@/lib/shippie/handoff';
+import { dispatchPush } from '@/lib/shippie/push-dispatch';
 import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
@@ -137,9 +138,27 @@ export const POST = withLogger('shippie.internal.handoff', async (req: NextReque
       headers: { 'content-type': 'application/json' },
     });
   }
-  // Phase 3 wires push-dispatch. For now, stub.
-  return new Response(
-    JSON.stringify({ ok: true, sent: 0, note: 'push_dispatch_not_implemented' }),
-    { status: 200, headers: { 'content-type': 'application/json' } },
+  const payload = buildPushPayload({ appName: slug, handoffUrl });
+  const results = await Promise.all(
+    subs.map((sub) =>
+      dispatchPush(
+        { endpoint: sub.endpoint, keys: sub.keys as { p256dh: string; auth: string } },
+        payload,
+      ),
+    ),
   );
+  const sent = results.filter((r) => r.ok).length;
+  // Clean up subscriptions the push service has reported as gone (410/404).
+  const gone = subs
+    .filter((_, i) => results[i]?.reason === 'gone')
+    .map((s) => s.endpoint);
+  if (gone.length > 0) {
+    await db
+      .delete(schema.wrapperPushSubscriptions)
+      .where(inArray(schema.wrapperPushSubscriptions.endpoint, gone));
+  }
+  return new Response(JSON.stringify({ ok: true, sent }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
 });
