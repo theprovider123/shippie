@@ -111,10 +111,14 @@ describe('startInstallRuntime', () => {
 });
 
 describe('desktop handoff branch', () => {
-  test('mounts the handoff sheet on desktop (non-IAB, non-standalone)', () => {
+  test('mounts the handoff sheet on desktop (non-IAB, non-standalone)', async () => {
     // Set desktop UA — no iPhone, no Android, no IAB signals.
     setUa(DESKTOP_UA);
     const cleanup = startInstallRuntime({ tickMs: 9_999_999 });
+    // Desktop branch is async — wait for the handoff sheet to mount.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(win.document.querySelector('[data-shippie-handoff]')).not.toBeNull();
     expect(win.document.querySelector('[data-shippie-banner]')).toBeNull();
     cleanup();
@@ -129,6 +133,10 @@ describe('desktop handoff branch', () => {
       return new Response('', { status: 200 });
     };
     const cleanup = startInstallRuntime({ handoffEndpoint: '/__shippie/handoff', tickMs: 9_999_999 });
+    // Desktop branch is async — wait for the handoff sheet to mount.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     const input = win.document.querySelector('input[data-shippie-handoff-email]') as unknown as HTMLInputElement;
     input.value = 'me@example.com';
     const cta = win.document.querySelector('button[data-shippie-handoff-email-cta]') as unknown as HTMLButtonElement;
@@ -140,6 +148,129 @@ describe('desktop handoff branch', () => {
     expect(posted.length).toBe(1);
     expect(posted[0]?.url).toBe('/__shippie/handoff');
     expect(JSON.parse(posted[0]!.body).mode).toBe('email');
+    cleanup();
+  });
+});
+
+describe('web-vitals wiring', () => {
+  test('vitals samples flush through the beacon endpoint', async () => {
+    setUa(ANDROID_UA);
+    // Prior state so tier is not "none" — ensures we're in the default
+    // (mobile banner) branch where vitals are attached.
+    const prior = {
+      visit_count: 2,
+      first_visit_at: Date.now() - 60 * 60 * 1000,
+      last_visit_at: Date.now() - 60 * 60 * 1000,
+      dwell_ms: 0,
+      meaningful_actions: 0,
+      last_dismissed_at: null,
+    };
+    win.localStorage.setItem('shippie-install-state', JSON.stringify(prior));
+
+    // Capture beacon posts — sendBeacon is the preferred channel.
+    const beacons: { url: string; body: string }[] = [];
+    (win.navigator as unknown as { sendBeacon: (u: string, b: string) => boolean }).sendBeacon = (
+      url: string,
+      body: string,
+    ) => {
+      beacons.push({ url: String(url), body: String(body) });
+      return true;
+    };
+
+    const flushHandle: { flush?: () => void } = {};
+    const cleanup = startInstallRuntime({
+      trackEndpoint: '/__shippie/install',
+      tickMs: 9_999_999,
+      vitalsFlushHandle: flushHandle,
+    });
+
+    // Observer attaches asynchronously? No — observeWebVitals is sync, but
+    // flushHandle.flush is only assigned once inside it. Should already be set.
+    expect(typeof flushHandle.flush).toBe('function');
+    flushHandle.flush?.();
+
+    // Find at least one web_vital beacon (CLS always emits since it's a sum).
+    const vital = beacons.find((b) => {
+      try {
+        return JSON.parse(b.body).event === 'web_vital';
+      } catch {
+        return false;
+      }
+    });
+    expect(vital).toBeTruthy();
+    expect(vital?.url).toBe('/__shippie/install');
+    const payload = JSON.parse(vital!.body);
+    expect(payload.event).toBe('web_vital');
+    expect(typeof payload.name).toBe('string');
+    expect(typeof payload.value).toBe('number');
+
+    cleanup();
+  });
+});
+
+describe('desktop handoff push-aware CTA', () => {
+  function stubPushManager(hasSubscription: boolean): void {
+    // Install window.PushManager — pushSupported() requires both
+    // serviceWorker on navigator AND PushManager on window.
+    (win as unknown as { PushManager: unknown }).PushManager = function PushManager() {};
+
+    const fakeSubscription = hasSubscription ? { endpoint: 'https://fcm.example/abc' } : null;
+    const fakeRegistration = {
+      pushManager: {
+        getSubscription: async () => fakeSubscription,
+      },
+    };
+    // serviceWorker is a getter on happy-dom's Navigator — replace with a stub.
+    Object.defineProperty(win.navigator, 'serviceWorker', {
+      configurable: true,
+      value: { ready: Promise.resolve(fakeRegistration) },
+    });
+    // Mirror onto globalThis since the runtime reads the bare `navigator`.
+    Object.defineProperty(globalThis.navigator, 'serviceWorker', {
+      configurable: true,
+      value: { ready: Promise.resolve(fakeRegistration) },
+    });
+    (globalThis as unknown as { PushManager: unknown }).PushManager =
+      (win as unknown as { PushManager: unknown }).PushManager;
+  }
+
+  afterEach(() => {
+    // Scrub the global PushManager we planted so later tests start clean.
+    try {
+      delete (globalThis as { PushManager?: unknown }).PushManager;
+    } catch {
+      /* ignore */
+    }
+  });
+
+  test('mounts push CTA when an existing subscription exists', async () => {
+    setUa(DESKTOP_UA);
+    stubPushManager(true);
+
+    const cleanup = startInstallRuntime({ tickMs: 9_999_999 });
+    // Desktop branch is async — wait multiple microtasks for ready + getSubscription.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(win.document.querySelector('[data-shippie-handoff]')).not.toBeNull();
+    expect(win.document.querySelector('[data-shippie-handoff-push-cta]')).not.toBeNull();
+    cleanup();
+  });
+
+  test('no push CTA when no subscription exists', async () => {
+    setUa(DESKTOP_UA);
+    stubPushManager(false);
+
+    const cleanup = startInstallRuntime({ tickMs: 9_999_999 });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(win.document.querySelector('[data-shippie-handoff]')).not.toBeNull();
+    expect(win.document.querySelector('[data-shippie-handoff-push-cta]')).toBeNull();
     cleanup();
   });
 });
