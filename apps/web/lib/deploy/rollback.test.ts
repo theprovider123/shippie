@@ -5,13 +5,13 @@
  * the explicit-version path, the "previous" path, and every refusal
  * reason that rollbackApp can return.
  */
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createDb, runMigrations, schema, type ShippieDbHandle } from '@shippie/db';
 import { DevKv } from '@shippie/dev-storage';
 import { rollbackApp } from './rollback.ts';
@@ -19,10 +19,22 @@ import { rollbackApp } from './rollback.ts';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, '..', '..', '..', '..', 'packages', 'db', 'migrations');
 
-async function freshDb(): Promise<ShippieDbHandle> {
-  const handle = await createDb({ url: 'pglite://memory' });
-  await runMigrations(handle, MIGRATIONS_DIR);
-  return handle;
+// Shared PGlite instance across all tests in this file. Running a
+// fresh migration pass per test was fine in isolation but starved under
+// parallel load when multiple PGlite-backed files run concurrently.
+let sharedHandle: ShippieDbHandle | null = null;
+
+async function getSharedHandle(): Promise<ShippieDbHandle> {
+  if (sharedHandle) return sharedHandle;
+  sharedHandle = await createDb({ url: 'pglite://memory' });
+  await runMigrations(sharedHandle, MIGRATIONS_DIR);
+  return sharedHandle;
+}
+
+async function truncateAll(handle: ShippieDbHandle): Promise<void> {
+  // Truncate the tables this test touches. Cascade handles FKs to
+  // deploys/apps/users/audit_log.
+  await handle.db.execute(sql`TRUNCATE TABLE audit_log, deploys, apps, users RESTART IDENTITY CASCADE`);
 }
 
 interface Fixture {
@@ -42,7 +54,8 @@ interface Fixture {
 let fx: Fixture;
 
 async function seed(): Promise<Fixture> {
-  const handle = await freshDb();
+  const handle = await getSharedHandle();
+  await truncateAll(handle);
   const db = handle.db;
 
   const [user] = await db
@@ -120,9 +133,16 @@ beforeEach(async () => {
   fx = await seed();
 });
 
-afterEach(async () => {
-  await fx.handle.close();
+afterEach(() => {
+  // Only clean up the tempdir. The shared DB handle is closed in `after`.
   rmSync(fx.kvDir, { recursive: true, force: true });
+});
+
+after(async () => {
+  if (sharedHandle) {
+    await sharedHandle.close().catch(() => {});
+    sharedHandle = null;
+  }
 });
 
 test('rolls back to an explicit prior version and rewrites stored CSP', async () => {
