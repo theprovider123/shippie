@@ -1,9 +1,17 @@
 // packages/sdk/src/wrapper/install-runtime.test.ts
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { startInstallRuntime } from './install-runtime.ts';
 
 let win: Window;
+
+// Snapshot originals so teardown can restore them — bun test runs files
+// in the same process, so leaving happy-dom's globals on globalThis leaks
+// into downstream test files that reference the real browser APIs.
+const originalWindow = (globalThis as { window?: unknown }).window;
+const originalDocument = (globalThis as { document?: unknown }).document;
+const originalNavigator = (globalThis as { navigator?: unknown }).navigator;
+const originalLocalStorage = (globalThis as { localStorage?: unknown }).localStorage;
 
 beforeEach(() => {
   win = new Window({ url: 'https://shippie.app/' });
@@ -19,6 +27,13 @@ beforeEach(() => {
 afterEach(() => {
   win.document.body.innerHTML = '';
   win.localStorage.clear();
+});
+
+afterAll(() => {
+  (globalThis as { window?: unknown }).window = originalWindow;
+  (globalThis as { document?: unknown }).document = originalDocument;
+  (globalThis as { navigator?: unknown }).navigator = originalNavigator;
+  (globalThis as { localStorage?: unknown }).localStorage = originalLocalStorage;
 });
 
 describe('startInstallRuntime', () => {

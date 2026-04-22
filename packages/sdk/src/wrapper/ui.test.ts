@@ -1,15 +1,27 @@
 // packages/sdk/src/wrapper/ui.test.ts
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { mountInstallBanner, mountBounceSheet, unmountAll } from './ui.ts';
 
 let win: Window;
+
+// Snapshot originals so teardown can restore them — bun test runs files
+// in the same process, so leaving happy-dom's Window on globalThis leaks
+// into downstream test files.
+const originalWindow = (globalThis as { window?: unknown }).window;
+const originalDocument = (globalThis as { document?: unknown }).document;
+
 beforeEach(() => {
   win = new Window({ url: 'https://shippie.app/' });
   // @ts-expect-error injecting happy-dom globals for the module under test
   globalThis.document = win.document;
   // @ts-expect-error injecting happy-dom globals for the module under test
   globalThis.window = win;
+});
+
+afterAll(() => {
+  (globalThis as { window?: unknown }).window = originalWindow;
+  (globalThis as { document?: unknown }).document = originalDocument;
 });
 
 describe('mountInstallBanner', () => {
