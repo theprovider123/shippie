@@ -35,6 +35,7 @@ describe('pushSupported', () => {
 describe('subscribePush', () => {
   test('happy path: fetches vapid key, subscribes, posts subscription', async () => {
     const posted: unknown[] = [];
+    (globalThis as { atob?: unknown }).atob = (_s: string) => '\x00';
     (globalThis as { fetch?: unknown }).fetch = async (url: string, init?: { body?: string }) => {
       if (url.endsWith('/__shippie/push/vapid-key')) {
         return new Response(JSON.stringify({ key: 'BASE64KEY' }), { status: 200 });
