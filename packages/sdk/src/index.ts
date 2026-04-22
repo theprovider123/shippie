@@ -30,6 +30,7 @@ import * as nativeApi from './native/index.ts';
 import { meta } from './meta.ts';
 import { track, flush } from './analytics.ts';
 import { configure, isConfigured, getBackendMeta } from './configure.ts';
+import { startInstallRuntime } from './wrapper/install-runtime.ts';
 
 export const shippie = {
   version: '2.0.0' as const,
@@ -90,13 +91,34 @@ export const shippie = {
   track,
   flush,
   meta,
+
+  /**
+   * Boot the PWA install funnel (IAB bounce, smart-prompt banner,
+   * dwell tracking). The IIFE bundle at `/__shippie/sdk.js` calls this
+   * automatically on maker subdomains. npm consumers (e.g. the Shippie
+   * marketplace) call it explicitly with a custom `trackEndpoint`.
+   */
+  startInstallRuntime,
 };
 
 export default shippie;
 
-// Side effect: expose on window when the bundle loads in a browser.
+// Side effect: expose on window when the bundle loads in a browser, and
+// auto-boot the install runtime so every maker app that loads
+// `/__shippie/sdk.js` gets the funnel without writing any code.
+// The auto-boot is idempotent (second call's cleanup supersedes first)
+// and no-ops if the user is already in standalone mode.
 if (typeof window !== 'undefined') {
   (window as unknown as { shippie?: typeof shippie }).shippie = shippie;
+  // Defer one tick so the maker's <head>/<body> has time to render
+  // before we query the DOM.
+  queueMicrotask(() => {
+    try {
+      startInstallRuntime();
+    } catch {
+      // Never let a wrapper error break the maker's app.
+    }
+  });
 }
 
 export type { ConfigureOptions } from './configure.ts';

@@ -6,7 +6,7 @@ import { RocketMark } from './components/rocket-mark';
 import { ThemeToggle } from './theme-toggle';
 import { ScrollReveal } from './components/scroll-reveal';
 import { HeroCanvas } from './components/hero-canvas';
-import { PwaInstallBanner } from './components/pwa-install-banner';
+import { InstallRuntime } from './components/install-runtime';
 import { HeroDropZone } from './components/drop-zone';
 import { AppTypeShelves, type ShelfApp } from './components/app-type-shelf';
 import { ComparisonMatrix } from './components/comparison-matrix';
@@ -379,7 +379,7 @@ export default async function HomePage() {
         </footer>
       </main>
 
-      <PwaInstallBanner />
+      <InstallRuntime />
     </div>
   );
 }
