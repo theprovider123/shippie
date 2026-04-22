@@ -8,7 +8,15 @@ import Link from 'next/link';
 import { eq, desc } from 'drizzle-orm';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
+import { auth } from '@/lib/auth';
+import {
+  queryRatingSummary,
+  queryLatestReviews,
+  queryUserRating,
+} from '@/lib/shippie/ratings';
+import { RatingsSummary } from '@/app/components/ratings-summary';
 import { InstallButton } from './install-button';
+import { RateWidget } from './rate-widget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +49,14 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
     : [];
 
   const compatScore = autopack?.compat?.score ?? app.compatibilityScore ?? 0;
+
+  const [ratingSummary, latestReviews, session] = await Promise.all([
+    queryRatingSummary(db, slug),
+    queryLatestReviews(db, slug, 5),
+    auth(),
+  ]);
+  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+  const userRating = userId ? await queryUserRating(db, slug, userId) : null;
 
   return (
     <main className="min-h-screen" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
@@ -130,6 +146,14 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>source: {autopack.changelog.source}</p>
           </section>
         )}
+
+        <section style={{ marginTop: 'var(--space-2xl, 4rem)' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: 16 }}>
+            Ratings &amp; reviews
+          </h2>
+          <RatingsSummary summary={ratingSummary} latest={latestReviews} />
+          {userId && <RateWidget slug={slug} initial={userRating} />}
+        </section>
       </div>
     </main>
   );
