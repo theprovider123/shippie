@@ -8,15 +8,13 @@ const originalWindow = (globalThis as { window?: unknown }).window;
 
 beforeEach(() => {
   calls = [];
-  // @ts-expect-error test
-  globalThis.navigator = {
+  (globalThis as { navigator?: unknown }).navigator = {
     vibrate: (pattern: number | number[]) => {
       calls.push(pattern);
       return true;
     },
   };
-  // @ts-expect-error test
-  globalThis.window = {
+  (globalThis as { window?: unknown }).window = {
     matchMedia: () => ({ matches: false }),
   };
 });
@@ -44,14 +42,14 @@ describe('haptic', () => {
     expect(calls).toEqual([[40, 30, 10]]);
   });
   test('no-ops when prefers-reduced-motion is set', () => {
-    // @ts-expect-error test
-    globalThis.window = { matchMedia: () => ({ matches: true }) };
+    (globalThis as { window?: unknown }).window = {
+      matchMedia: () => ({ matches: true }),
+    };
     haptic('tap');
     expect(calls).toEqual([]);
   });
   test('no-ops when navigator.vibrate is unavailable', () => {
-    // @ts-expect-error test
-    globalThis.navigator = {};
+    (globalThis as { navigator?: unknown }).navigator = {};
     haptic('tap');
     expect(calls).toEqual([]);
   });
