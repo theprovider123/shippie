@@ -18,11 +18,35 @@ export interface AppBindings {
   Bindings: WorkerEnv;
   Variables: {
     slug: string;
+    traceId: string;
   };
+}
+
+const TRACE_ID_HEADER = 'x-shippie-trace-id';
+
+function mintTraceId(): string {
+  // 16 hex chars — enough for correlation, cheap to generate.
+  return [...crypto.getRandomValues(new Uint8Array(8))]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export function createApp() {
   const app = new Hono<AppBindings>();
+
+  // ------------------------------------------------------------------
+  // Trace id — honor upstream, mint if absent, echo on response.
+  // ------------------------------------------------------------------
+  app.use('*', async (c, next) => {
+    const incoming = c.req.header(TRACE_ID_HEADER);
+    const traceId =
+      incoming && /^[a-zA-Z0-9-]{1,64}$/.test(incoming) ? incoming : mintTraceId();
+    c.set('traceId', traceId);
+    await next();
+    if (!c.res.headers.has(TRACE_ID_HEADER)) {
+      c.res.headers.set(TRACE_ID_HEADER, traceId);
+    }
+  });
 
   // ------------------------------------------------------------------
   // Slug resolution — every request gets `c.var.slug`

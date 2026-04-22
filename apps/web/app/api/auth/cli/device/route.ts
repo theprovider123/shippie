@@ -10,9 +10,16 @@
  * RFC 8628 step 1. See apps/web/lib/cli-auth.ts for state machine.
  */
 import { NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod';
 import { createDeviceCode } from '@/lib/cli-auth';
+import { parseBody } from '@/lib/internal/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
+
+const DeviceRequestSchema = z.object({
+  client_name: z.string().max(64).optional(),
+  scopes: z.array(z.string().max(64)).optional(),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,13 +44,10 @@ export const POST = withLogger('auth.cli.device', async (req: NextRequest) => {
     );
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    client_name?: string;
-    scopes?: string[];
-  };
-
-  const clientName = (body.client_name ?? 'shippie-cli').slice(0, 64);
-  const scopes = Array.isArray(body.scopes) ? body.scopes.map((s) => String(s).slice(0, 64)) : [];
+  const parsed = await parseBody(req, DeviceRequestSchema);
+  if (!parsed.ok) return parsed.response;
+  const clientName = parsed.data.client_name ?? 'shippie-cli';
+  const scopes = parsed.data.scopes ?? [];
 
   const result = await createDeviceCode({ clientName, scopes });
 

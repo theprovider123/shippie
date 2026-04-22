@@ -29,16 +29,26 @@ function getSecret(): string {
 export async function verifyInternalRequest(
   req: NextRequest,
   rawBody: string,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<void> {
   const signature = req.headers.get('x-shippie-signature');
   const timestamp = req.headers.get('x-shippie-timestamp');
 
   if (!signature || !timestamp) {
-    return { ok: false, reason: 'missing signature headers' };
+    throw new Error('missing signature headers');
   }
 
   const url = new URL(req.url);
   const path = url.pathname + url.search;
 
-  return verifyWorkerRequest(getSecret(), req.method, path, rawBody, signature, timestamp);
+  const verified = await verifyWorkerRequest(
+    getSecret(),
+    req.method,
+    path,
+    rawBody,
+    signature,
+    timestamp,
+  );
+  if (!verified.ok) {
+    throw new Error(verified.reason);
+  }
 }

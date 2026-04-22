@@ -11,38 +11,43 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { encryptSecret } from '@/lib/functions/secrets-vault';
+import { parseBody } from '@/lib/internal/validation';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
+import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+const FunctionSecretSchema = z.object({
+  slug: z.string().min(1),
+  key: z
+    .string()
+    .min(1)
+    .regex(/^[A-Z][A-Z0-9_]*$/, 'Use SCREAMING_SNAKE_CASE'),
+  value: z.string().min(1).max(32_768),
+});
+
+export const POST = withLogger('deploy.functions.secrets', async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    slug?: string;
-    key?: string;
-    value?: string;
-  };
-  const slug = (body.slug ?? '').trim();
-  const key = (body.key ?? '').trim();
-  const value = body.value ?? '';
+  const rl = checkRateLimit({
+    key: `deploy-functions-secrets:${session.user.id}`,
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimited(rl);
 
-  if (!slug || !key || !value) {
-    return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  }
-  if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-    return NextResponse.json(
-      { error: 'invalid_key', message: 'Use SCREAMING_SNAKE_CASE' },
-      { status: 400 },
-    );
-  }
+  const parsed = await parseBody(req, FunctionSecretSchema);
+  if (!parsed.ok) return parsed.response;
+  const { slug, key, value } = parsed.data;
 
   const db = await getDb();
   const app = await db.query.apps.findFirst({ where: eq(schema.apps.slug, slug) });
@@ -72,4 +77,4 @@ export async function POST(req: NextRequest) {
     key,
     masked: `${value.slice(0, 4)}…${value.slice(-2)}`,
   });
-}
+});

@@ -42,16 +42,22 @@ installRouter.post('/', async (c) => {
     return c.json({ error: 'rate_limited' }, 429);
   }
 
-  const res = await platformJson(c.env, 'POST', '/api/internal/sdk/analytics', {
-    slug: c.var.slug,
-    events: [
-      {
-        event_name: eventName,
-        properties: body.outcome ? { outcome: body.outcome } : undefined,
-        url: c.req.header('referer') ?? undefined,
-      },
-    ],
-  });
+  const res = await platformJson(
+    c.env,
+    'POST',
+    '/api/internal/sdk/analytics',
+    {
+      slug: c.var.slug,
+      events: [
+        {
+          event_name: eventName,
+          properties: body.outcome ? { outcome: body.outcome } : undefined,
+          url: c.req.header('referer') ?? undefined,
+        },
+      ],
+    },
+    { traceId: c.var.traceId },
+  );
 
   if (!res.ok) {
     return c.json({ error: 'tracking_failed' }, 502);

@@ -1,5 +1,5 @@
 /**
- * /auth/signin — dev sign-in page.
+ * /auth/signin — magic-link sign-in page.
  *
  * Enters an email, Auth.js emails (or console-logs in dev) a magic link,
  * clicking the link creates a database session and redirects home.
@@ -89,7 +89,7 @@ export default async function SignInPage({
         )}
 
         <p className="text-xs text-center text-neutral-500 font-mono">
-          dev mode · link prints to your terminal
+          {isDev ? 'dev mode · link prints to your terminal' : 'magic link sent by email'}
         </p>
       </div>
     </main>

@@ -44,12 +44,18 @@ feedbackRouter.post('/:id/vote', async (c) => {
     return c.json({ error: 'value must be 1 or -1' }, 400);
   }
 
-  const res = await platformJson<{ delta: number }>(c.env, 'POST', '/api/internal/sdk/feedback/vote', {
-    slug: c.var.slug,
-    bearer_token: token,
-    feedback_id: c.req.param('id'),
-    value: body.value,
-  });
+  const res = await platformJson<{ delta: number }>(
+    c.env,
+    'POST',
+    '/api/internal/sdk/feedback/vote',
+    {
+      slug: c.var.slug,
+      bearer_token: token,
+      feedback_id: c.req.param('id'),
+      value: body.value,
+    },
+    { traceId: c.var.traceId, retries: 2 },
+  );
   if (!res.ok) return c.json({ error: 'vote_failed', details: res.data }, 502);
   return c.json(res.data as object, 200);
 });
@@ -84,14 +90,20 @@ feedbackRouter.post('/', async (c) => {
 
   if (!body.type) return c.json({ error: 'missing_type' }, 400);
 
-  const res = await platformJson<{ id: string }>(c.env, 'POST', '/api/internal/sdk/feedback', {
-    slug: c.var.slug,
-    bearer_token: token,
-    type: body.type,
-    title: body.title,
-    body: body.body,
-    rating: body.rating,
-  });
+  const res = await platformJson<{ id: string }>(
+    c.env,
+    'POST',
+    '/api/internal/sdk/feedback',
+    {
+      slug: c.var.slug,
+      bearer_token: token,
+      type: body.type,
+      title: body.title,
+      body: body.body,
+      rating: body.rating,
+    },
+    { traceId: c.var.traceId },
+  );
 
   if (!res.ok) {
     return c.json({ error: 'submit_failed', details: res.data }, 502);

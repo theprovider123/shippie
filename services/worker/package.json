@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run src/server.dev.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'lint placeholder'",
+    "lint": "tsc --noEmit",
     "test": "bun test",
     "build": "echo 'built by wrangler or bundle on deploy'",
     "clean": "rm -rf .turbo *.tsbuildinfo .wrangler .shippie-dev-state"

@@ -10,14 +10,24 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { and, eq, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { verifyInternalRequest } from '@/lib/internal/signed-request';
+import { parseRawBody } from '@/lib/internal/validation';
 import { verifyJwt } from '@/lib/identity/verify-jwt';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const FeedbackVoteSchema = z.object({
+  slug: z.string().min(1),
+  bearer_token: z.string().optional(),
+  feedback_id: z.string().min(1),
+  value: z.union([z.literal(1), z.literal(-1)]),
+});
 
 export const POST = withLogger('sdk.feedback.vote', async (req: NextRequest) => {
   const rawBody = await req.text();
@@ -30,16 +40,17 @@ export const POST = withLogger('sdk.feedback.vote', async (req: NextRequest) => 
     );
   }
 
-  const body = JSON.parse(rawBody) as {
-    slug: string;
-    bearer_token?: string;
-    feedback_id: string;
-    value: number;
-  };
+  const parsed = parseRawBody(rawBody, FeedbackVoteSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
-  if (!body.feedback_id || (body.value !== 1 && body.value !== -1)) {
-    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
-  }
+  const rl = checkRateLimit({
+    key: `feedback-vote:${body.slug}`,
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimited(rl);
+
   if (!body.bearer_token) {
     return NextResponse.json({ error: 'unauthenticated', message: 'Voting requires a signed-in user.' }, { status: 401 });
   }

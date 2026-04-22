@@ -9,9 +9,24 @@
  *   GITHUB_APP_ID
  *   GITHUB_APP_PRIVATE_KEY (PEM, base64-encoded)
  *
+ * Installation tokens are cached per-installation for ~50 minutes. Tokens
+ * live ~1h upstream; caching until 10 minutes before expiry means concurrent
+ * deploys on the same installation share a token instead of burning a
+ * GitHub API call each. The cache is per-instance only — on Fluid Compute
+ * that's still a large hit-rate win because instances are reused across
+ * requests; a shared store (Upstash etc.) is a later optimization.
+ *
  * Spec v5 §4 (GitHub as primary integration).
  */
 import { createSign } from 'node:crypto';
+
+interface CachedToken {
+  token: string;
+  expiresAt: number;
+}
+
+const tokenCache = new Map<number, CachedToken>();
+const TOKEN_TTL_MS = 50 * 60 * 1000; // 50 minutes (tokens live 60, leave 10 of headroom)
 
 function loadAppCredentials() {
   const appId = process.env.GITHUB_APP_ID;
@@ -42,9 +57,16 @@ export function generateAppJwt(): string {
 
 /**
  * Get an installation token for a specific GitHub App installation.
- * The token grants repo access for ~1 hour.
+ * Returns a cached token when one is still fresh; otherwise mints a new
+ * one via the GitHub API. Tokens grant repo access for ~1 hour.
  */
 export async function getInstallationToken(installationId: number): Promise<string> {
+  const now = Date.now();
+  const cached = tokenCache.get(installationId);
+  if (cached && cached.expiresAt > now) {
+    return cached.token;
+  }
+
   const jwt = generateAppJwt();
   const res = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
@@ -61,7 +83,14 @@ export async function getInstallationToken(installationId: number): Promise<stri
     throw new Error(`GitHub installation token failed: ${res.status} ${await res.text()}`);
   }
   const data = (await res.json()) as { token: string };
+
+  tokenCache.set(installationId, { token: data.token, expiresAt: now + TOKEN_TTL_MS });
   return data.token;
+}
+
+/** Test helper — not part of the public API. */
+export function __clearInstallationTokenCache(): void {
+  tokenCache.clear();
 }
 
 function base64url(input: string | Buffer): string {

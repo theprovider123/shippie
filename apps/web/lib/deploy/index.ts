@@ -264,6 +264,9 @@ export async function deployStaticHot(
       durationMs: Date.now() - startedAt,
       preflightStatus: 'passed',
       preflightReport: preflight as unknown as Record<string, unknown>,
+      // Persist the CSP so rollback can restore it into KV without
+      // replaying the trust pipeline. See lib/deploy/rollback.ts.
+      cspHeader: trust.csp.header,
     })
     .where(eq(schema.deploys.id, deployRow.id));
 
@@ -297,6 +300,14 @@ export async function deployStaticHot(
 
   // ------------------------------------------------------------------
   // 9. Write KV app config + active pointer (read-through cache for worker)
+  //
+  // Order matters: meta + csp first, then `active` last. The worker reads
+  // `active` per-request as the version the app should serve, but reads
+  // `meta` and `csp` independently on the same request. Writing `active`
+  // last means a crash mid-sequence leaves the previous version coherently
+  // exposed under its own meta/csp; only after `active` flips does the new
+  // version become visible to the worker. The reaper in
+  // lib/deploy/reconcile-kv.ts backstops the remaining non-atomic window.
   // ------------------------------------------------------------------
   await storage.kv.putJson(`apps:${input.slug}:meta`, {
     slug: input.slug,
@@ -316,12 +327,12 @@ export async function deployStaticHot(
     },
   });
 
-  await storage.kv.put(`apps:${input.slug}:active`, String(version));
-
-  // Write per-app CSP header to KV so the worker serves it instead of the
-  // hardcoded fallback. This CSP includes allowed_connect_domains from the
-  // trust pipeline, enabling BYO backend requests.
+  // Per-app CSP header. Includes allowed_connect_domains from the trust
+  // pipeline, enabling BYO backend requests.
   await storage.kv.put(`apps:${input.slug}:csp`, trust.csp.header);
+
+  // Flip-last: atomic swap from the worker's read perspective.
+  await storage.kv.put(`apps:${input.slug}:active`, String(version));
 
   // Flag cold work as queued.
   await db

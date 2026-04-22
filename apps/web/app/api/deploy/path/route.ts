@@ -17,17 +17,36 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { after } from 'next/server';
+import { z } from 'zod';
 import { resolveUserId } from '@/lib/cli-auth';
 import { buildFromDirectory } from '@/lib/build';
+import { hostBuildsEnabled, hostBuildsDisabledReason } from '@/lib/build/policy';
 import { deployStaticHot, deployCold } from '@/lib/deploy';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs.ts';
+import { parseBody } from '@/lib/internal/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
+
+const DeployPathSchema = z.object({
+  slug: z.string().min(1),
+  source_dir: z.string().min(1).startsWith('/', 'source_dir must be absolute'),
+  skip_build: z.boolean().optional(),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const POST = withLogger('deploy.path', async (req: NextRequest) => {
+  if (!hostBuildsEnabled()) {
+    return NextResponse.json(
+      {
+        error: 'host_builds_disabled',
+        reason: hostBuildsDisabledReason(),
+      },
+      { status: 503 },
+    );
+  }
+
   const who = await resolveUserId(req);
   if (!who) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
@@ -46,23 +65,13 @@ export const POST = withLogger('deploy.path', async (req: NextRequest) => {
     );
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    slug?: string;
-    source_dir?: string;
-    skip_build?: boolean;
-  };
-  const slug = (body.slug ?? '').trim();
-  const sourceDir = (body.source_dir ?? '').trim();
-
-  if (!slug) return NextResponse.json({ error: 'missing slug' }, { status: 400 });
-  if (!sourceDir) return NextResponse.json({ error: 'missing source_dir' }, { status: 400 });
-  if (!sourceDir.startsWith('/')) {
-    return NextResponse.json({ error: 'source_dir must be absolute' }, { status: 400 });
-  }
+  const parsed = await parseBody(req, DeployPathSchema);
+  if (!parsed.ok) return parsed.response;
+  const { slug, source_dir: sourceDir } = parsed.data;
 
   const build = await buildFromDirectory({
     sourceDir,
-    skipBuild: body.skip_build ?? false,
+    skipBuild: parsed.data.skip_build ?? false,
   });
 
   if (!build.success || !build.zipBuffer) {

@@ -18,15 +18,31 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { after } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { DevKv, getDevKvDir } from '@shippie/dev-storage';
 import { getDb } from '@/lib/db';
 import { getInstallationToken } from '@/lib/github/app';
 import { cloneRepo } from '@/lib/github/clone';
 import { buildFromDirectory } from '@/lib/build';
+import { hostBuildsEnabled, hostBuildsDisabledReason } from '@/lib/build/policy';
 import { deployStaticHot, deployCold } from '@/lib/deploy';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs';
+import { parseRawBody } from '@/lib/internal/validation';
 import { withLogger } from '@/lib/observability/logger';
+
+// Narrow to the fields we actually consume — GitHub's push payload is
+// much larger, but unknown fields pass through z.object by default.
+const PushPayloadSchema = z.object({
+  ref: z.string(),
+  after: z.string().optional(),
+  head_commit: z.object({ id: z.string() }).optional().nullable(),
+  repository: z.object({
+    full_name: z.string(),
+    clone_url: z.string(),
+  }),
+  installation: z.object({ id: z.number() }).optional(),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,12 +58,27 @@ export const POST = withLogger('github.webhook', async (req: NextRequest) => {
 
   // Verify webhook signature
   const secret = process.env.GITHUB_APP_WEBHOOK_SECRET;
-  if (secret) {
-    const sig = req.headers.get('x-hub-signature-256');
-    const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');
-    if (sig !== expected) {
-      return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json(
+      { error: 'misconfigured', reason: 'GITHUB_APP_WEBHOOK_SECRET is not set' },
+      { status: 500 },
+    );
+  }
+
+  const sig = req.headers.get('x-hub-signature-256');
+  const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');
+  if (sig !== expected) {
+    return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
+  }
+
+  if (!hostBuildsEnabled()) {
+    return NextResponse.json(
+      {
+        error: 'host_builds_disabled',
+        reason: hostBuildsDisabledReason(),
+      },
+      { status: 503 },
+    );
   }
 
   const event = req.headers.get('x-github-event');
@@ -55,13 +86,9 @@ export const POST = withLogger('github.webhook', async (req: NextRequest) => {
     return NextResponse.json({ ignored: true, event });
   }
 
-  const payload = JSON.parse(rawBody) as {
-    ref: string;
-    after?: string;
-    head_commit?: { id: string };
-    repository: { full_name: string; clone_url: string };
-    installation?: { id: number };
-  };
+  const parsed = parseRawBody(rawBody, PushPayloadSchema);
+  if (!parsed.ok) return parsed.response;
+  const payload = parsed.data;
 
   const branch = payload.ref.replace('refs/heads/', '');
   const repoFullName = payload.repository.full_name;

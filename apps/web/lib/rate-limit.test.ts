@@ -1,6 +1,6 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkRateLimit, resetRateLimits } from './rate-limit';
+import { checkRateLimit, rateLimited, resetRateLimits, withRateLimit } from './rate-limit';
 
 beforeEach(() => resetRateLimits());
 
@@ -54,4 +54,79 @@ test('resetRateLimits clears all', () => {
   assert.equal(checkRateLimit({ key: 'e', limit: 1, windowMs: 60_000 }).ok, false);
   resetRateLimits();
   assert.equal(checkRateLimit({ key: 'e', limit: 1, windowMs: 60_000 }).ok, true);
+});
+
+test('rateLimited returns 429 with retry-after header', async () => {
+  const res = rateLimited({ ok: false, remaining: 0, retryAfterMs: 2_500 });
+  assert.equal(res.status, 429);
+  assert.equal(res.headers.get('retry-after'), '3'); // ceil(2.5s)
+  const body = (await res.json()) as { error: string; retry_after_ms: number };
+  assert.equal(body.error, 'rate_limited');
+  assert.equal(body.retry_after_ms, 2_500);
+});
+
+test('rateLimited retry-after is at least 1 second', () => {
+  const res = rateLimited({ ok: false, remaining: 0, retryAfterMs: 50 });
+  assert.equal(res.headers.get('retry-after'), '1'); // ceil(0.05s)
+});
+
+test('withRateLimit passes through when under the limit', async () => {
+  const handler = withRateLimit(
+    () => 'wrap-ok',
+    { limit: 5, windowMs: 60_000 },
+    async () => new Response('ok', { status: 200 }),
+  );
+  const res = await handler({} as never, {} as never);
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), 'ok');
+});
+
+test('withRateLimit returns 429 after the bucket drains', async () => {
+  const handler = withRateLimit(
+    () => 'wrap-drain',
+    { limit: 2, windowMs: 60_000 },
+    async () => new Response('ok', { status: 200 }),
+  );
+  assert.equal((await handler({} as never, {} as never)).status, 200);
+  assert.equal((await handler({} as never, {} as never)).status, 200);
+  const third = await handler({} as never, {} as never);
+  assert.equal(third.status, 429);
+  assert.ok(third.headers.get('retry-after'));
+});
+
+test('withRateLimit supports async key functions', async () => {
+  let seenKey = '';
+  const handler = withRateLimit(
+    async () => {
+      await Promise.resolve();
+      return 'wrap-async';
+    },
+    { limit: 1, windowMs: 60_000 },
+    async () => {
+      seenKey = 'called';
+      return new Response('ok');
+    },
+  );
+  await handler({} as never, {} as never);
+  assert.equal(seenKey, 'called');
+});
+
+test('withRateLimit passes req + ctx through to both key fn and handler', async () => {
+  const seen: unknown[] = [];
+  const handler = withRateLimit(
+    (req: { id: string }, ctx: { scope: string }) => {
+      seen.push(['key', req, ctx]);
+      return `wrap-pass:${req.id}:${ctx.scope}`;
+    },
+    { limit: 1, windowMs: 60_000 },
+    async (req, ctx) => {
+      seen.push(['handler', req, ctx]);
+      return new Response('ok');
+    },
+  );
+  await handler({ id: 'req-7' }, { scope: 'admin' });
+  assert.deepEqual(seen, [
+    ['key', { id: 'req-7' }, { scope: 'admin' }],
+    ['handler', { id: 'req-7' }, { scope: 'admin' }],
+  ]);
 });

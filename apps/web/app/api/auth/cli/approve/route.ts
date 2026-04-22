@@ -8,9 +8,15 @@
  * RFC 8628 step 3.
  */
 import { NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { approveDeviceCode } from '@/lib/cli-auth';
+import { parseBody } from '@/lib/internal/validation';
 import { withLogger } from '@/lib/observability/logger';
+
+const ApproveSchema = z.object({
+  user_code: z.string().trim().min(1).max(64),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,13 +27,10 @@ export const POST = withLogger('auth.cli.approve', async (req: NextRequest) => {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { user_code?: string };
-  const userCode = (body.user_code ?? '').trim();
-  if (!userCode) {
-    return NextResponse.json({ error: 'missing_user_code' }, { status: 400 });
-  }
+  const parsed = await parseBody(req, ApproveSchema);
+  if (!parsed.ok) return parsed.response;
 
-  const result = await approveDeviceCode({ userCode, userId: session.user.id });
+  const result = await approveDeviceCode({ userCode: parsed.data.user_code, userId: session.user.id });
   if (!result.ok) {
     return NextResponse.json({ error: result.reason }, { status: 400 });
   }

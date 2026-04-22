@@ -16,22 +16,32 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { verifyInternalRequest } from '@/lib/internal/signed-request';
+import { parseRawBody } from '@/lib/internal/validation';
 import { withLogger } from '@/lib/observability/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface EventPayload {
-  event_name: string;
-  session_id?: string;
-  properties?: Record<string, unknown>;
-  url?: string;
-  referrer?: string;
-}
+const AnalyticsEventSchema = z.object({
+  event_name: z.string().min(1).max(120),
+  session_id: z.string().max(120).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
+  url: z.string().max(2048).optional(),
+  referrer: z.string().max(2048).optional(),
+});
+
+const AnalyticsBodySchema = z.object({
+  user_id: z.string().nullish(),
+  app_id: z.string().nullish(),
+  slug: z.string().optional(),
+  scope: z.array(z.string()).optional(),
+  events: z.array(AnalyticsEventSchema).max(50),
+});
 
 export const POST = withLogger('sdk.analytics', async (req: NextRequest) => {
   const rawBody = await req.text();
@@ -44,22 +54,12 @@ export const POST = withLogger('sdk.analytics', async (req: NextRequest) => {
     );
   }
 
-  const body = JSON.parse(rawBody) as {
-    user_id?: string | null;
-    app_id?: string | null;
-    slug?: string;
-    scope?: string[];
-    events: EventPayload[];
-  };
+  const parsed = parseRawBody(rawBody, AnalyticsBodySchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
-  if (!Array.isArray(body.events)) {
-    return NextResponse.json({ error: 'missing_events' }, { status: 400 });
-  }
   if (body.events.length === 0) {
     return NextResponse.json({ success: true, ingested: 0 });
-  }
-  if (body.events.length > 50) {
-    return NextResponse.json({ error: 'batch_too_large', max: 50 }, { status: 400 });
   }
 
   // Rate limit: 600 analytics events / minute / app (10/sec).

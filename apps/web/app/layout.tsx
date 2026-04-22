@@ -47,6 +47,17 @@ import { StandaloneProvider } from './components/standalone-provider';
 import { BottomTabs } from './components/bottom-tabs';
 import { PageTransition } from './components/page-transition';
 
+// Register the platform PWA service worker in prod only. In dev, the SW
+// aggressively caches the offline fallback and hijacks every request when
+// the dev server restarts — which makes iteration painful. When the dev
+// server is gone the user just sees an "offline" page instead of the
+// browser's real "connection refused". We also actively unregister any
+// previously-installed SW so returning dev users recover automatically.
+const IS_DEV = process.env.NODE_ENV !== 'production';
+const SW_BOOT_SCRIPT = IS_DEV
+  ? `(function(){var t=localStorage.getItem('shippie-theme')||'dark';document.documentElement.setAttribute('data-theme',t)})();if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})}).catch(function(){});if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})}).catch(function(){})}}`
+  : `(function(){var t=localStorage.getItem('shippie-theme')||'dark';document.documentElement.setAttribute('data-theme',t)})();if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){})}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
@@ -57,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </StandaloneProvider>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('shippie-theme')||'dark';document.documentElement.setAttribute('data-theme',t)})();if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){})}`,
+            __html: SW_BOOT_SCRIPT,
           }}
         />
       </body>

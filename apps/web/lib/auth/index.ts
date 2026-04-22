@@ -27,7 +27,7 @@ import NextAuth from 'next-auth';
 import type { NextAuthConfig } from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { schema } from '@shippie/db';
-import { devEmailProvider } from './dev-email-provider.ts';
+import { emailProvider } from './dev-email-provider.ts';
 import { getDb } from '../db.ts';
 
 declare global {
@@ -65,7 +65,7 @@ export const authConfig = {
     error: '/auth/error',
   },
   providers: [
-    devEmailProvider(),
+    emailProvider(),
     // Week 6+: add GitHub/Google/Apple providers here, gated by env.
   ],
   callbacks: {

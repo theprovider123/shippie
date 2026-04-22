@@ -6,30 +6,45 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { eq, inArray } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { writeAuditLog } from '@/lib/audit';
+import { parseBody } from '@/lib/internal/validation';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
+import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
 
-export async function POST(req: NextRequest) {
+const CreateOrgSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(SLUG_REGEX, 'invalid_slug'),
+  name: z.string().trim().min(1).max(120),
+});
+
+export const POST = withLogger('orgs.create', async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { slug?: string; name?: string };
-  const slug = (body.slug ?? '').trim().toLowerCase();
-  const name = (body.name ?? '').trim();
+  const rl = checkRateLimit({
+    key: `orgs-create:${session.user.id}`,
+    limit: 5,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimited(rl);
 
-  if (!slug || !name) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  if (!SLUG_REGEX.test(slug)) {
-    return NextResponse.json({ error: 'invalid_slug' }, { status: 400 });
-  }
+  const parsed = await parseBody(req, CreateOrgSchema);
+  if (!parsed.ok) return parsed.response;
+  const { slug, name } = parsed.data;
 
   const db = await getDb();
 
@@ -62,9 +77,9 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ success: true, org });
-}
+});
 
-export async function GET() {
+export const GET = withLogger('orgs.list', async () => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
@@ -91,4 +106,4 @@ export async function GET() {
       role: memberships.find((m: { orgId: string; role: string }) => m.orgId === o.id)?.role,
     })),
   });
-}
+});

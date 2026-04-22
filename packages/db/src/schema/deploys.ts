@@ -50,6 +50,11 @@ export const deploys = pgTable(
     errorMessage: text('error_message'),
     durationMs: integer('duration_ms'),
 
+    /** Per-app CSP header built by the trust pipeline at deploy time.
+     *  Persisted so rollback can restore the KV `apps:{slug}:csp` entry.
+     *  Null for pre-0014 rows. See migrations/0014_deploy_csp_header.sql. */
+    cspHeader: text('csp_header'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     createdBy: uuid('created_by').references(() => users.id),

@@ -103,5 +103,8 @@ export type { ConfigureOptions } from './configure.ts';
 export type { BackendAdapter, BackendUser } from './backends/types.ts';
 export type * from './types.ts';
 
+export { ShippieSDKError, isShippieSDKError } from './errors.ts';
+export type { ShippieSDKErrorCode } from './errors.ts';
+
 export { shippieFooter } from './footer.ts';
 export type { ShippieFooterOptions } from './footer.ts';

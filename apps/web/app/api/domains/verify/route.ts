@@ -8,11 +8,18 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { resolve as dnsResolve } from 'node:dns/promises';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { writeAuditLog } from '@/lib/audit';
+import { parseBody } from '@/lib/internal/validation';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
+
+const VerifyDomainSchema = z.object({
+  domain_id: z.string().trim().min(1),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,12 +28,20 @@ export const POST = withLogger('domains.verify', async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { domain_id?: string };
-  if (!body.domain_id) return NextResponse.json({ error: 'missing_domain_id' }, { status: 400 });
+  const rl = checkRateLimit({
+    key: `domains-verify:${session.user.id}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimited(rl);
+
+  const parsed = await parseBody(req, VerifyDomainSchema);
+  if (!parsed.ok) return parsed.response;
+  const { domain_id: domainId } = parsed.data;
 
   const db = await getDb();
   const domainRow = await db.query.customDomains.findFirst({
-    where: eq(schema.customDomains.id, body.domain_id),
+    where: eq(schema.customDomains.id, domainId),
   });
   if (!domainRow) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 

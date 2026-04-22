@@ -10,15 +10,25 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { verifyInternalRequest } from '@/lib/internal/signed-request';
+import { parseRawBody } from '@/lib/internal/validation';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_TYPES = new Set(['comment', 'bug', 'request', 'rating', 'praise']);
+const FeedbackBodySchema = z.object({
+  slug: z.string().min(1),
+  bearer_token: z.string().nullish(),
+  type: z.enum(['comment', 'bug', 'request', 'rating', 'praise']),
+  title: z.string().max(200).optional(),
+  body: z.string().max(10_000).optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+});
 
 export const POST = withLogger('sdk.feedback', async (req: NextRequest) => {
   const rawBody = await req.text();
@@ -31,24 +41,16 @@ export const POST = withLogger('sdk.feedback', async (req: NextRequest) => {
     );
   }
 
-  const body = JSON.parse(rawBody) as {
-    slug: string;
-    bearer_token?: string | null;
-    type: string;
-    title?: string;
-    body?: string;
-    rating?: number;
-  };
+  const parsed = parseRawBody(rawBody, FeedbackBodySchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
-  if (!body.slug) {
-    return NextResponse.json({ error: 'missing_slug' }, { status: 400 });
-  }
-  if (!ALLOWED_TYPES.has(body.type)) {
-    return NextResponse.json({ error: 'invalid_type' }, { status: 400 });
-  }
-  if (body.rating != null && (body.rating < 1 || body.rating > 5)) {
-    return NextResponse.json({ error: 'invalid_rating' }, { status: 400 });
-  }
+  const rl = checkRateLimit({
+    key: `feedback:${body.slug}`,
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimited(rl);
 
   const db = await getDb();
   const app = await db.query.apps.findFirst({ where: eq(schema.apps.slug, body.slug) });

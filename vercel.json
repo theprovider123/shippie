@@ -1,9 +1,17 @@
 {
-  "experimentalServices": {
-    "web": {
-      "entrypoint": "apps/web",
-      "routePrefix": "/",
-      "framework": "nextjs"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "turbo run build --filter=@shippie/web",
+  "installCommand": "bun install --frozen-lockfile",
+  "outputDirectory": "apps/web/.next",
+  "crons": [
+    {
+      "path": "/api/internal/reconcile-kv",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/internal/reap-trials",
+      "schedule": "0 * * * *"
     }
-  }
+  ]
 }

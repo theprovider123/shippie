@@ -11,18 +11,26 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { writeAuditLog } from '@/lib/audit';
+import { parseBody } from '@/lib/internal/validation';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ADMIN_ROLES = new Set(['owner', 'admin']);
-const VALID_ROLES = new Set(['owner', 'admin', 'developer', 'viewer']);
+const ROLE_ENUM = z.enum(['owner', 'admin', 'developer', 'viewer']);
 const INVITE_TTL_DAYS = 7;
+
+const CreateInviteSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  role: ROLE_ENUM.default('developer'),
+});
 
 export const POST = withLogger(
   'orgs.invite.create',
@@ -32,13 +40,17 @@ export const POST = withLogger(
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const { slug } = await params;
-    const body = (await req.json().catch(() => ({}))) as { email?: string; role?: string };
-    const email = (body.email ?? '').trim().toLowerCase();
-    const role = body.role ?? 'developer';
+    const rl = checkRateLimit({
+      key: `orgs-invites:${session.user.id}`,
+      limit: 30,
+      windowMs: 60_000,
+    });
+    if (!rl.ok) return rateLimited(rl);
 
-    if (!email) return NextResponse.json({ error: 'missing_email' }, { status: 400 });
-    if (!VALID_ROLES.has(role)) return NextResponse.json({ error: 'invalid_role' }, { status: 400 });
+    const { slug } = await params;
+    const parsed = await parseBody(req, CreateInviteSchema);
+    if (!parsed.ok) return parsed.response;
+    const { email, role } = parsed.data;
 
     const db = await getDb();
 

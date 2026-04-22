@@ -78,10 +78,13 @@ analyticsRouter.post('/', async (c) => {
     );
   }
 
-  const res = await platformJson<{ ingested: number }>(c.env, 'POST', '/api/internal/sdk/analytics', {
-    slug: c.var.slug,
-    events,
-  });
+  const res = await platformJson<{ ingested: number }>(
+    c.env,
+    'POST',
+    '/api/internal/sdk/analytics',
+    { slug: c.var.slug, events },
+    { traceId: c.var.traceId },
+  );
 
   if (!res.ok) {
     return c.json({ error: 'ingest_failed', details: res.data }, 502);

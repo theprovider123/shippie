@@ -11,15 +11,26 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { after } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { cloneRepo } from '@/lib/github/clone';
 import { getInstallationToken } from '@/lib/github/app';
 import { buildFromDirectory } from '@/lib/build';
+import { hostBuildsEnabled, hostBuildsDisabledReason } from '@/lib/build/policy';
 import { deployStaticHot, deployCold } from '@/lib/deploy';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs';
+import { parseValue } from '@/lib/internal/validation';
 import { withLogger } from '@/lib/observability/logger';
+
+const DeployGithubSchema = z.object({
+  repo_url: z.string().min(1),
+  slug: z.string().min(1),
+  branch: z.string().optional(),
+  installation_id: z.coerce.number().int().positive().optional(),
+  repo_full_name: z.string().optional(),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,40 +40,46 @@ export const POST = withLogger('deploy.github', async (req: NextRequest) => {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
-
-  let repoUrl: string;
-  let slug: string;
-  let branch: string | undefined;
-  let installationId: number | null = null;
-  let repoFullName: string | null = null;
+  if (!hostBuildsEnabled()) {
+    return NextResponse.json(
+      {
+        error: 'host_builds_disabled',
+        reason: hostBuildsDisabledReason(),
+      },
+      { status: 503 },
+    );
+  }
 
   const contentType = req.headers.get('content-type') ?? '';
+  let raw: unknown;
   if (contentType.includes('form')) {
     const form = await req.formData();
-    repoUrl = String(form.get('repo_url') ?? '').trim();
-    slug = String(form.get('slug') ?? '').trim();
-    branch = String(form.get('branch') ?? '') || undefined;
-    const instId = String(form.get('installation_id') ?? '');
-    if (instId) installationId = Number(instId);
-    repoFullName = String(form.get('repo_full_name') ?? '').trim() || null;
-  } else {
-    const body = (await req.json().catch(() => ({}))) as {
-      repo_url?: string;
-      slug?: string;
-      branch?: string;
-      installation_id?: number | string;
-      repo_full_name?: string;
+    const installId = String(form.get('installation_id') ?? '').trim();
+    raw = {
+      repo_url: String(form.get('repo_url') ?? '').trim(),
+      slug: String(form.get('slug') ?? '').trim(),
+      branch: String(form.get('branch') ?? '').trim() || undefined,
+      installation_id: installId ? installId : undefined,
+      repo_full_name: String(form.get('repo_full_name') ?? '').trim() || undefined,
     };
-    repoUrl = (body.repo_url ?? '').trim();
-    slug = (body.slug ?? '').trim();
-    branch = body.branch;
-    installationId = body.installation_id != null ? Number(body.installation_id) : null;
-    repoFullName = body.repo_full_name?.trim() ?? null;
+  } else {
+    try {
+      raw = await req.json();
+    } catch (err) {
+      return NextResponse.json(
+        { error: 'invalid_json', message: (err as Error).message },
+        { status: 400 },
+      );
+    }
   }
 
-  if (!repoUrl || !slug) {
-    return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  }
+  const parsed = parseValue(raw, DeployGithubSchema);
+  if (!parsed.ok) return parsed.response;
+  const repoUrl = parsed.data.repo_url;
+  const slug = parsed.data.slug;
+  const branch = parsed.data.branch;
+  const installationId = parsed.data.installation_id ?? null;
+  const repoFullName = parsed.data.repo_full_name ?? null;
 
   // If an installation_id was provided, verify the caller owns it and mint
   // a token so we can clone private repos.
@@ -89,8 +106,12 @@ export const POST = withLogger('deploy.github', async (req: NextRequest) => {
 
   const build = await buildFromDirectory({ sourceDir: cloneDir });
   if (!build.success || !build.zipBuffer) {
+    console.warn(
+      '[shippie:deploy-github] build_failed',
+      JSON.stringify({ slug, repo: repoFullName, reason: build.reason, last_logs: build.logs.slice(-10) }, null, 2),
+    );
     return NextResponse.json(
-      { error: 'build_failed', reason: build.reason },
+      { error: 'build_failed', reason: build.reason, logs: build.logs.slice(-20) },
       { status: 400 },
     );
   }
@@ -104,7 +125,14 @@ export const POST = withLogger('deploy.github', async (req: NextRequest) => {
   });
 
   if (!deploy.success) {
-    return NextResponse.json({ error: 'deploy_failed', reason: deploy.reason }, { status: 400 });
+    console.warn(
+      '[shippie:deploy-github] deploy_failed',
+      JSON.stringify({ slug, reason: deploy.reason, preflight: deploy.preflight }, null, 2),
+    );
+    return NextResponse.json(
+      { error: 'deploy_failed', reason: deploy.reason, preflight: deploy.preflight },
+      { status: 400 },
+    );
   }
 
   // Link the newly-created (or re-used) app row to the GitHub repo so

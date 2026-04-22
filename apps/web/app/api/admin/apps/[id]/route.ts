@@ -5,15 +5,23 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { schema } from '@shippie/db';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { isAdmin } from '@/lib/admin';
 import { writeAuditLog } from '@/lib/audit';
+import { parseBody } from '@/lib/internal/validation';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const PatchAppSchema = z.object({
+  is_archived: z.boolean(),
+  takedown_reason: z.string().max(500).optional(),
+});
 
 export const PATCH = withLogger(
   'admin.apps.patch',
@@ -23,15 +31,17 @@ export const PATCH = withLogger(
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
-    const { id } = await params;
-    const body = (await req.json().catch(() => ({}))) as {
-      is_archived?: boolean;
-      takedown_reason?: string;
-    };
+    const rl = checkRateLimit({
+      key: `admin:${session.user.id}`,
+      limit: 20,
+      windowMs: 60_000,
+    });
+    if (!rl.ok) return rateLimited(rl);
 
-    if (typeof body.is_archived !== 'boolean') {
-      return NextResponse.json({ error: 'is_archived must be a boolean' }, { status: 400 });
-    }
+    const { id } = await params;
+    const parsed = await parseBody(req, PatchAppSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const db = await getDb();
     const [updated] = await db

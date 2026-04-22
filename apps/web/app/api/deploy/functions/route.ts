@@ -13,42 +13,50 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import * as esbuild from 'esbuild';
 import { schema } from '@shippie/db';
 import { DevR2, getDevR2AppsDir } from '@shippie/dev-storage';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
+import { parseBody } from '@/lib/internal/validation';
+import { checkRateLimit, rateLimited } from '@/lib/rate-limit';
+import { withLogger } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface DeployFunctionBody {
-  slug?: string;
-  name?: string;
-  source?: string;
-  allowed_domains?: string[];
-  env_schema?: Record<string, { required?: boolean; secret?: boolean }>;
-}
+const DeployFunctionSchema = z.object({
+  slug: z.string().min(1),
+  name: z.string().min(1).regex(/^[a-z0-9][a-z0-9-/]*$/, 'invalid_name'),
+  source: z.string().min(1).max(500_000),
+  allowed_domains: z.array(z.string()).optional(),
+  env_schema: z
+    .record(
+      z.string(),
+      z.object({ required: z.boolean().optional(), secret: z.boolean().optional() }),
+    )
+    .optional(),
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withLogger('deploy.functions', async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as DeployFunctionBody;
-  const slug = (body.slug ?? '').trim();
-  const name = (body.name ?? '').trim();
-  const source = body.source ?? '';
-  const allowedDomains = body.allowed_domains ?? [];
-  const envSchema = body.env_schema ?? {};
+  const rl = checkRateLimit({
+    key: `deploy-functions:${session.user.id}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimited(rl);
 
-  if (!slug || !name || !source) {
-    return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  }
-  if (!/^[a-z0-9][a-z0-9-/]*$/.test(name)) {
-    return NextResponse.json({ error: 'invalid_name' }, { status: 400 });
-  }
+  const parsed = await parseBody(req, DeployFunctionSchema);
+  if (!parsed.ok) return parsed.response;
+  const { slug, name, source } = parsed.data;
+  const allowedDomains = parsed.data.allowed_domains ?? [];
+  const envSchema = parsed.data.env_schema ?? {};
 
   const db = await getDb();
   const app = await db.query.apps.findFirst({ where: eq(schema.apps.slug, slug) });
@@ -158,4 +166,4 @@ export async function POST(req: NextRequest) {
     bundle_hash: bundleHash,
     bundle_size: bundledCode.length,
   });
-}
+});

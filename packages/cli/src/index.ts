@@ -21,6 +21,7 @@ import { homedir } from 'node:os';
 import { deployCommand } from './commands/deploy.js';
 import { initCommand } from './commands/init.js';
 import { loginCommand } from './commands/login.js';
+import { rollbackCommand } from './commands/rollback.js';
 import { statusCommand } from './commands/status.js';
 import { whoamiCommand } from './commands/whoami.js';
 
@@ -79,5 +80,12 @@ program
   .option('-i, --interval <ms>', 'Polling interval in milliseconds', '2000')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(statusCommand);
+
+program
+  .command('rollback <slug>')
+  .description('Point an app at a prior successful deploy')
+  .option('--to <version>', 'Roll back to this specific version (default: previous)')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(rollbackCommand);
 
 program.parse();

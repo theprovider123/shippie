@@ -80,3 +80,51 @@ export function checkRateLimit(input: CheckRateLimitInput): CheckRateLimitResult
 export function resetRateLimits(): void {
   buckets.clear();
 }
+
+/**
+ * Build a standardized 429 response from a failed rate-limit check.
+ * Use:
+ *   const rl = checkRateLimit({...});
+ *   if (!rl.ok) return rateLimited(rl);
+ */
+export function rateLimited(result: CheckRateLimitResult): Response {
+  const retryAfterSec = Math.ceil(result.retryAfterMs / 1000);
+  return new Response(
+    JSON.stringify({ error: 'rate_limited', retry_after_ms: result.retryAfterMs }),
+    {
+      status: 429,
+      headers: {
+        'content-type': 'application/json',
+        'retry-after': String(retryAfterSec),
+      },
+    },
+  );
+}
+
+/**
+ * Route handler wrapper: runs the rate-limit check first, short-circuits
+ * with a 429 on miss, otherwise hands off to `handler`.
+ *
+ *   export const POST = withRateLimit(
+ *     (req) => `my-route:${resolveUserFromReq(req)}`,
+ *     { limit: 10, windowMs: 60_000 },
+ *     async (req) => { ... },
+ *   );
+ *
+ * Factors out the three-line inline pattern repeated across the API
+ * surface. Existing inline call sites still work — migrating them is
+ * optional. The key function receives the raw request so callers can
+ * derive the key from session/body/headers/IP as they see fit.
+ */
+export function withRateLimit<Req, Ctx>(
+  keyFn: (req: Req, ctx: Ctx) => string | Promise<string>,
+  opts: { limit: number; windowMs: number },
+  handler: (req: Req, ctx: Ctx) => Promise<Response> | Response,
+): (req: Req, ctx: Ctx) => Promise<Response> {
+  return async (req, ctx) => {
+    const key = await keyFn(req, ctx);
+    const rl = checkRateLimit({ key, limit: opts.limit, windowMs: opts.windowMs });
+    if (!rl.ok) return rateLimited(rl);
+    return handler(req, ctx);
+  };
+}

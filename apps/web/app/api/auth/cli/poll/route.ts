@@ -8,9 +8,15 @@
  * RFC 8628 step 4.
  */
 import { NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod';
 import { exchangeDeviceCode } from '@/lib/cli-auth';
+import { parseBody } from '@/lib/internal/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
+
+const PollSchema = z.object({
+  device_code: z.string().trim().min(1).max(256),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,13 +40,10 @@ export const POST = withLogger('auth.cli.poll', async (req: NextRequest) => {
     );
   }
 
-  const body = (await req.json().catch(() => ({}))) as { device_code?: string };
-  const deviceCode = (body.device_code ?? '').trim();
-  if (!deviceCode) {
-    return NextResponse.json({ error: 'missing_device_code' }, { status: 400 });
-  }
+  const parsed = await parseBody(req, PollSchema);
+  if (!parsed.ok) return parsed.response;
 
-  const result = await exchangeDeviceCode(deviceCode);
+  const result = await exchangeDeviceCode(parsed.data.device_code);
 
   switch (result.status) {
     case 'pending':

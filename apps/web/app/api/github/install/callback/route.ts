@@ -51,7 +51,7 @@ export const GET = withLogger('github.install.callback', async (req: NextRequest
   }
 
   const csrfCookie = req.cookies.get('shippie_gh_install_csrf')?.value;
-  if (csrfCookie && stateParam && csrfCookie !== stateParam) {
+  if (!csrfCookie || !stateParam || csrfCookie !== stateParam) {
     return NextResponse.json({ error: 'csrf_mismatch' }, { status: 400 });
   }
 
