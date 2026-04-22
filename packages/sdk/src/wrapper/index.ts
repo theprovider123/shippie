@@ -99,3 +99,13 @@ export {
   type VitalSample,
   type WebVitalsOptions,
 } from './web-vitals.ts';
+
+export {
+  captureReferral,
+  readStoredReferral,
+  clearReferral,
+  buildInviteLink,
+  type CaptureOptions,
+  type CapturedRef,
+  type InviteLinkOptions,
+} from './referral.ts';
