@@ -112,3 +112,73 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 });
+
+// ---------------------------------------------------------------
+// Beacon replay — Phase 4 offline reliability.
+// ---------------------------------------------------------------
+
+const BEACON_DB_NAME = 'shippie-beacon-queue';
+const BEACON_STORE = 'queue';
+const BEACON_DB_VERSION = 1;
+
+function openBeaconDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(BEACON_DB_NAME, BEACON_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(BEACON_STORE)) {
+        db.createObjectStore(BEACON_STORE, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function drainBeaconQueue() {
+  const db = await openBeaconDb();
+  try {
+    const rows = await new Promise((resolve, reject) => {
+      const tx = db.transaction(BEACON_STORE, 'readonly');
+      const req = tx.objectStore(BEACON_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    const toDelete = [];
+    await Promise.all(
+      rows.map(async (row) => {
+        if (row.id === undefined) return;
+        try {
+          const res = await fetch(row.endpoint, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: row.body,
+            keepalive: true,
+          });
+          if (res.status < 500 && res.status !== 429) {
+            toDelete.push(row.id);
+          }
+        } catch {
+          // network error — retry next sync
+        }
+      }),
+    );
+    if (toDelete.length) {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(BEACON_STORE, 'readwrite');
+        const store = tx.objectStore(BEACON_STORE);
+        for (const id of toDelete) store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+  } finally {
+    db.close();
+  }
+}
+
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'shippie-beacon-flush') {
+    event.waitUntil(drainBeaconQueue());
+  }
+});
