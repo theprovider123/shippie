@@ -5,11 +5,11 @@
  * We import the POST handler directly, build a NextRequest-like mock,
  * and stub globalThis.fetch to capture Resend calls.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import type { NextRequest } from 'next/server';
 import { signWorkerRequest } from '@shippie/session-crypto';
 import { createDb, runMigrations, schema } from '@shippie/db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { p256 } from '@noble/curves/nist.js';
@@ -68,17 +68,17 @@ let fetchCalls: FetchCall[] = [];
 type TestDbHandle = Awaited<ReturnType<typeof createDb>>;
 let dbHandle: TestDbHandle | null = null;
 
-async function setupDb(): Promise<TestDbHandle> {
-  // Force a fresh in-memory PGlite handle for each test so we can
-  // assert "no subscriptions" cleanly without cross-test pollution.
+beforeAll(async () => {
+  // Share one PGlite handle across tests in this file — running
+  // migrations per-test exceeds the 5s bun hook timeout under load.
+  // Per-test isolation is achieved by TRUNCATE in beforeEach below.
   process.env.DATABASE_URL = 'pglite://memory';
   const handle = await createDb({ url: 'pglite://memory' });
   await runMigrations(handle, MIGRATIONS_DIR);
+  dbHandle = handle;
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
     Promise.resolve(handle);
-  dbHandle = handle;
-  return handle;
-}
+}, 30_000);
 
 beforeEach(async () => {
   process.env.WORKER_PLATFORM_SECRET = SECRET;
@@ -93,13 +93,17 @@ beforeEach(async () => {
       headers: { 'content-type': 'application/json' },
     });
   }) as typeof globalThis.fetch;
-  await setupDb();
+  // Reset the global each test so route.ts sees the shared handle fresh.
+  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
+    Promise.resolve(dbHandle);
+  // Truncate the tables this test suite writes to so assertions are isolated.
+  if (dbHandle) {
+    await dbHandle.db.execute(sql`TRUNCATE TABLE wrapper_push_subscriptions`);
+  }
 });
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle = undefined;
-  dbHandle = null;
   delete process.env.VAPID_PRIVATE_KEY;
   delete process.env.VAPID_PUBLIC_KEY;
   delete process.env.VAPID_SUBJECT;

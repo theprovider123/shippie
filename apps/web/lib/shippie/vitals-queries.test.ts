@@ -5,7 +5,7 @@
  * migrations so the `app_events` shape matches prod. Events land with
  * `event_type = 'web_vital'` and `metadata = { name, value }`.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { createDb, runMigrations, schema, type ShippieDbHandle } from '@shippie/db';
 import { sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
@@ -32,9 +32,10 @@ beforeAll(async () => {
   await runMigrations(handle, MIGRATIONS_DIR);
 }, 30_000);
 
-afterAll(async () => {
-  if (handle) await handle.close();
-}, 30_000);
+// No afterAll close — other test files share the in-memory PGlite URL
+// convention; closing the handle here races with their own beforeAll
+// and yields `PGlite is closed` downstream. The OS reclaims memory
+// when the test process exits.
 
 beforeEach(async () => {
   await handle.db.execute(sql`TRUNCATE TABLE app_events`);
