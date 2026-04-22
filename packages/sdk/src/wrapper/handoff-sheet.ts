@@ -3,13 +3,14 @@
  * Desktop → mobile handoff modal.
  *
  * Three paths for the user to pick from:
- *   1. QR code (placeholder until Phase 4 ships a real renderer).
+ *   1. QR code (rendered as SVG).
  *   2. Email-to-self form.
  *   3. "Send to my installed Shippie" push (only when `canPush=true`).
  *
  * Vanilla DOM — safe to render in any host page.
  */
 import { validateEmail } from './handoff.ts';
+import { renderQrSvg } from './qr.ts';
 
 export interface HandoffSheetProps {
   handoffUrl: string;
@@ -61,20 +62,33 @@ export function mountHandoffSheet(props: HandoffSheetProps): void {
   qrBox.setAttribute('style', [
     'margin:0 auto 16px',
     'width:160px',
-    'height:160px',
+    'min-height:160px',
     'background:#14120F',
     'border:1px dashed #3D3530',
     'border-radius:12px',
     'display:flex',
+    'flex-direction:column',
     'align-items:center',
     'justify-content:center',
-    'font:11px/1.4 ui-monospace,monospace',
-    'color:#7A6B58',
-    'padding:10px',
-    'word-break:break-all',
+    'gap:6px',
+    'padding:8px',
   ].join(';'));
+
+  const qrSvgString = renderQrSvg(props.handoffUrl, {
+    size: 160,
+    margin: 2,
+    fg: '#EDE4D3',
+    bg: '#14120F',
+  });
+  const qrSvgWrap = document.createElement('div');
+  qrSvgWrap.setAttribute('data-shippie-handoff-qr-svg', '');
+  qrSvgWrap.setAttribute('style', 'width:100%;height:100%;display:flex;align-items:center;justify-content:center');
+  qrSvgWrap.innerHTML = qrSvgString;
+  qrBox.appendChild(qrSvgWrap);
+
   const qrText = document.createElement('span');
   qrText.setAttribute('data-shippie-handoff-qr-url', '');
+  qrText.setAttribute('style', 'font:10px/1.3 ui-monospace,monospace;color:#7A6B58;text-align:center;word-break:break-all;padding:0 4px');
   qrText.textContent = props.handoffUrl.replace(/^https?:\/\//, '');
   qrBox.appendChild(qrText);
 
