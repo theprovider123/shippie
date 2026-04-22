@@ -29,6 +29,7 @@ async function run(req: NextRequest): Promise<Response> {
     ok: true,
     checked: result.checked,
     updated: result.updated,
+    csp_updated: result.csp_updated,
     missing_version: result.missing_version,
     errors: result.errors,
     at: new Date().toISOString(),
