@@ -23,7 +23,7 @@ describe('createWrappedApp', () => {
       category: 'tools',
       reservedSlugs: new Set(),
     });
-    expect(r.success).toBe(false);
+    if (r.success) throw new Error('expected failure');
     expect(r.reason).toBe('upstream_not_https');
   });
 
@@ -37,7 +37,7 @@ describe('createWrappedApp', () => {
       category: 'tools',
       reservedSlugs: new Set(['admin']),
     });
-    expect(r.success).toBe(false);
+    if (r.success) throw new Error('expected failure');
     expect(r.reason).toBe('slug_reserved');
   });
 
@@ -51,10 +51,10 @@ describe('createWrappedApp', () => {
       category: 'tools',
       reservedSlugs: new Set(),
     });
-    expect(r.success).toBe(true);
+    if (!r.success) throw new Error(`expected success, got ${r.reason}`);
     expect(r.slug).toBe(testSlug);
     expect(r.liveUrl).toBe('https://wrap-test-mevrouw.shippie.app/');
-    expect(r.runtimeConfig?.requiredRedirectUris).toEqual([
+    expect(r.runtimeConfig.requiredRedirectUris).toEqual([
       'https://wrap-test-mevrouw.shippie.app/api/auth/callback',
     ]);
 
