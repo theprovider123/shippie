@@ -20,6 +20,7 @@ import { detectFramework } from '@/lib/detect/framework';
 import { PROJECT_TYPES } from '@shippie/shared';
 import { UploadForm } from './upload-form';
 import { RepoPicker } from './repo-picker';
+import { WrapForm } from './wrap-form';
 
 interface SearchParams {
   source?: string;
@@ -279,6 +280,47 @@ export default async function NewProjectPage({
             </form>
           </section>
         )}
+
+        <section
+          style={{
+            marginTop: 'var(--space-2xl)',
+            paddingTop: 'var(--space-xl)',
+            borderTop: '1px solid var(--border-light)',
+          }}
+        >
+          <h2
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 'var(--h2-size)',
+              marginBottom: 'var(--space-sm)',
+            }}
+          >
+            Or wrap an already-hosted app
+          </h2>
+          <p
+            style={{
+              color: 'var(--text-secondary)',
+              marginBottom: 'var(--space-lg)',
+              maxWidth: 560,
+            }}
+          >
+            Already on Vercel, Netlify, or your own server? Keep it there. Shippie adds the
+            marketplace, PWA install prompt, and ratings on top — served via edge
+            reverse-proxy at{' '}
+            <code
+              style={{
+                fontFamily: 'var(--font-mono)',
+                background: 'var(--surface)',
+                padding: '1px 6px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              {'{slug}'}.shippie.app
+            </code>
+            .
+          </p>
+          <WrapForm />
+        </section>
 
         <section className="text-sm text-neutral-500 space-y-2 pt-4">
           <p>Signed in as {session.user.email}</p>
