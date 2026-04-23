@@ -1,4 +1,5 @@
 // apps/web/app/api/apps/[slug]/invites/route.test.ts
+// @ts-expect-error — local bun-test.d.ts shim omits `mock`; runtime has it.
 import { describe, expect, test, mock } from 'bun:test';
 
 mock.module('@/lib/auth', () => ({
