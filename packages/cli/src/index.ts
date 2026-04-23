@@ -24,6 +24,16 @@ import { loginCommand } from './commands/login.js';
 import { rollbackCommand } from './commands/rollback.js';
 import { statusCommand } from './commands/status.js';
 import { whoamiCommand } from './commands/whoami.js';
+import { wrapCommand } from './commands/wrap.js';
+
+function deriveSlug(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    return host.split('.')[0] ?? 'app';
+  } catch {
+    return 'app';
+  }
+}
 
 const program = new Command();
 
@@ -87,5 +97,45 @@ program
   .option('--to <version>', 'Roll back to this specific version (default: previous)')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(rollbackCommand);
+
+program
+  .command('wrap <upstream-url>')
+  .description('Wrap an already-hosted URL as a Shippie marketplace app')
+  .option('-s, --slug <slug>', 'App slug (defaults to upstream hostname)')
+  .option('-n, --name <name>', 'Human-readable name (defaults to slug)')
+  .option('-t, --tagline <tagline>', 'Short tagline')
+  .option('--type <type>', 'app | web_app | website', 'app')
+  .option('-c, --category <category>', 'Marketplace category', 'tools')
+  .option('--strict-csp', 'Pass upstream CSP through instead of the default Shippie CSP')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(
+    async (
+      upstreamUrl: string,
+      opts: {
+        slug?: string;
+        name?: string;
+        tagline?: string;
+        type?: string;
+        category?: string;
+        strictCsp?: boolean;
+        api?: string;
+      },
+    ) => {
+      const type =
+        opts.type === 'web_app' || opts.type === 'website' || opts.type === 'app'
+          ? opts.type
+          : 'app';
+      await wrapCommand({
+        upstreamUrl,
+        slug: opts.slug ?? deriveSlug(upstreamUrl),
+        apiUrl: opts.api ?? 'https://shippie.app',
+        name: opts.name,
+        tagline: opts.tagline,
+        type,
+        category: opts.category,
+        cspMode: opts.strictCsp ? 'strict' : undefined,
+      });
+    },
+  );
 
 program.parse();
