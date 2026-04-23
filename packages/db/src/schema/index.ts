@@ -39,3 +39,5 @@ export * from './app-events.ts';
 export * from './wrapper-push-subscriptions.ts';
 export * from './app-ratings.ts';
 export * from './user-touch-graph.ts';
+export * from './app-access.ts';
+export * from './app-invites.ts';
