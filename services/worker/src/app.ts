@@ -14,7 +14,8 @@ import { resolveAppSlug, resolveHostFull } from './routing.ts';
 import { systemRouter } from './router/system.ts';
 import { filesRouter } from './router/files.ts';
 import { proxyRouter } from './router/proxy.ts';
-import { loadWrapMeta } from './platform-client.ts';
+import { accessGate } from './router/access-gate.ts';
+import { loadWrapMeta, loadAppMeta } from './platform-client.ts';
 
 export interface AppBindings {
   Bindings: WorkerEnv;
@@ -103,6 +104,18 @@ export function createApp() {
   // System routes (__shippie/*) — owned by the platform, never by the maker
   // ------------------------------------------------------------------
   app.route('/__shippie', systemRouter);
+
+  // ------------------------------------------------------------------
+  // Access gate — for visibility_scope='private' apps, require an invite
+  // cookie before anything else serves. Runs BEFORE wrap/static dispatch
+  // so private wrapped apps are also gated.
+  // ------------------------------------------------------------------
+  app.use(
+    '*',
+    accessGate({
+      loadMeta: (slug, env) => loadAppMeta(env.APP_CONFIG, slug),
+    }),
+  );
 
   // ------------------------------------------------------------------
   // Route by source_kind — wrap mode proxies to upstream; static falls

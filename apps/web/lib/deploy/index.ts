@@ -350,6 +350,7 @@ export async function deployStaticHot(
     version,
     backend_type: (draftedManifest as { backend?: { provider?: string } }).backend?.provider ?? null,
     backend_url: (draftedManifest as { backend?: { url?: string } }).backend?.url ?? null,
+    visibility_scope: appRow.visibilityScope,
     permissions: draftedManifest.permissions ?? {
       auth: false,
       storage: 'none',

@@ -36,3 +36,21 @@ export async function writeWrapMeta(slug: string, meta: WrapMetaWrite): Promise<
   const kv = getDeployKv();
   await kv.putJson(`apps:${slug}:wrap`, meta);
 }
+
+export interface AppRuntimeMeta {
+  visibility_scope: 'public' | 'unlisted' | 'private';
+}
+
+/**
+ * Merge patch into the app runtime metadata KV row (currently just
+ * visibility_scope). The Worker's `loadAppMeta` accessor reads
+ * `apps:{slug}:meta` to power the private-app access gate.
+ *
+ * Preserves any existing fields (name, type, version, etc. — written by
+ * the static deploy hot path) by read-then-merge-then-write.
+ */
+export async function writeAppMeta(slug: string, patch: AppRuntimeMeta): Promise<void> {
+  const kv = getDeployKv();
+  const existing = (await kv.getJson(`apps:${slug}:meta`)) as Record<string, unknown> | null;
+  await kv.putJson(`apps:${slug}:meta`, { ...(existing ?? {}), ...patch });
+}

@@ -202,3 +202,46 @@ export async function loadWrapMeta(
 export function bustWrapCache(slug: string): void {
   wrapCache.delete(slug);
 }
+
+// ────────────────────────────────────────────────────────────────────
+// App meta (visibility_scope) — powers the access gate.
+// Written by the control plane deploy pipeline on every create/deploy/
+// visibility change. Same 30s LRU strategy as wrap meta.
+// ────────────────────────────────────────────────────────────────────
+
+interface AppMetaRuntime {
+  slug: string;
+  visibility_scope: 'public' | 'unlisted' | 'private';
+}
+
+interface CachedAppMeta {
+  value: AppMetaRuntime | null;
+  expires: number;
+}
+
+const appMetaCache = new Map<string, CachedAppMeta>();
+
+export async function loadAppMeta(kv: WrapKvLike, slug: string): Promise<AppMetaRuntime | null> {
+  const hit = appMetaCache.get(slug);
+  const now = Date.now();
+  if (hit && hit.expires > now) return hit.value;
+
+  const raw = await kvReadJson(kv, `apps:${slug}:meta`);
+  let value: AppMetaRuntime | null = null;
+  if (raw && typeof raw === 'object') {
+    const r = raw as { visibility_scope?: string };
+    const scope =
+      r.visibility_scope === 'private'
+        ? 'private'
+        : r.visibility_scope === 'unlisted'
+          ? 'unlisted'
+          : 'public';
+    value = { slug, visibility_scope: scope };
+  }
+  appMetaCache.set(slug, { value, expires: now + WRAP_TTL_MS });
+  return value;
+}
+
+export function bustAppMetaCache(slug: string): void {
+  appMetaCache.delete(slug);
+}

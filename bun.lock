@@ -169,6 +169,7 @@
       "name": "@shippie/worker",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/access": "workspace:*",
         "@shippie/dev-storage": "workspace:*",
         "@shippie/session-crypto": "workspace:*",
         "@shippie/shared": "workspace:*",

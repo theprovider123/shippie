@@ -5,10 +5,14 @@
  */
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { eq, desc } from 'drizzle-orm';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { checkAccess } from '@/lib/access/check';
+import { verifyInviteGrant, inviteCookieName } from '@shippie/access/invite-cookie';
+import { getInviteSecret } from '@/lib/env';
 import {
   queryRatingSummary,
   queryLatestReviews,
@@ -34,6 +38,39 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
   const app = await db.query.apps.findFirst({ where: eq(schema.apps.slug, slug) });
   if (!app) notFound();
+
+  // Private-app gate. For 'private' visibility, only viewers with an access
+  // grant (owner, app_access row, or valid invite cookie) see the page;
+  // others get 404 — no "this app exists" leak.
+  if (app.visibilityScope === 'private') {
+    const session = await auth();
+    const cookieStore = await cookies();
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookieName = inviteCookieName(slug, { secure: isProd });
+    const raw = cookieStore.get(cookieName)?.value;
+    let inviteCookie;
+    if (raw) {
+      const verified = await verifyInviteGrant(raw, getInviteSecret());
+      if (verified) {
+        inviteCookie = {
+          sub: verified.sub,
+          app: verified.app,
+          tok: verified.tok,
+          src: verified.src,
+        };
+      }
+    }
+    const access = await checkAccess({
+      appId: app.id,
+      slug,
+      viewer: {
+        userId: session?.user?.id,
+        email: session?.user?.email ?? undefined,
+        inviteCookie,
+      },
+    });
+    if (access === 'denied') notFound();
+  }
 
   const [latestDeploy] = await db.select().from(schema.deploys)
     .where(eq(schema.deploys.appId, app.id)).orderBy(desc(schema.deploys.version)).limit(1);
