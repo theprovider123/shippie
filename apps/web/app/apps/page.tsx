@@ -6,8 +6,7 @@
 import Link from 'next/link';
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { RocketMark } from '../components/rocket-mark';
-import { ThemeToggle } from '../theme-toggle';
+import { SiteNav } from '../components/site-nav';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +27,7 @@ async function loadApps(query?: string): Promise<AppRow[]> {
              compatibility_score as "compatibilityScore", install_count as "installCount",
              greatest(ranking_score_app, ranking_score_web_app, ranking_score_website) as "rankScore"
       from apps where active_deploy_id is not null and is_archived = false
+        and visibility_scope = 'public'
       order by "rankScore" desc nulls last, last_deployed_at desc nulls last limit 60
     `)) as unknown as AppRow[];
   }
@@ -36,6 +36,7 @@ async function loadApps(query?: string): Promise<AppRow[]> {
            compatibility_score as "compatibilityScore", install_count as "installCount",
            (ts_rank(search_tsv, plainto_tsquery('simple', ${q})) * 2 + similarity(name, ${q}) + similarity(slug, ${q})) as "rankScore"
     from apps where active_deploy_id is not null and is_archived = false
+      and visibility_scope = 'public'
       and (search_tsv @@ plainto_tsquery('simple', ${q}) or name % ${q} or slug % ${q})
     order by "rankScore" desc limit 60
   `)) as unknown as AppRow[];
@@ -47,15 +48,12 @@ export default async function AppsPage({ searchParams }: { searchParams: Promise
 
   return (
     <main className="min-h-screen" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <nav className="px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <Link href="/" className="flex items-center gap-2">
-          <RocketMark size="sm" />
-          <span className="font-semibold tracking-tight">Shippie</span>
-        </Link>
-        <ThemeToggle />
-      </nav>
+      <SiteNav />
 
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div
+        className="max-w-6xl mx-auto px-6 pb-12"
+        style={{ paddingTop: 'calc(var(--nav-height) + var(--safe-top) + var(--space-xl))' }}
+      >
         <header className="space-y-3 mb-12">
           <h1 className="text-display text-4xl md:text-5xl">Apps on Shippie</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
@@ -85,10 +83,25 @@ export default async function AppsPage({ searchParams }: { searchParams: Promise
                 >
                   <div className="flex items-start gap-4">
                     <div
-                      className="w-16 h-16 shippie-icon flex-shrink-0"
-                      style={{ background: app.themeColor }}
+                      className="shippie-icon flex-shrink-0"
+                      style={{
+                        width: 64,
+                        height: 64,
+                        background: app.themeColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#EDE4D3',
+                        fontFamily: 'var(--font-heading)',
+                        fontSize: 28,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '-0.02em',
+                      }}
                       aria-hidden
-                    />
+                    >
+                      {app.name?.trim()?.[0] ?? app.slug?.[0] ?? '?'}
+                    </div>
                     <div className="min-w-0">
                       <h2 className="font-semibold text-lg truncate">{app.name}</h2>
                       <p className="text-xs font-mono uppercase" style={{ letterSpacing: '0.1em', color: 'var(--text-muted)' }}>

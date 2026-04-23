@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { PROJECT_TYPES, isProjectType, type ProjectType } from '@shippie/shared';
 import { RocketMark } from './components/rocket-mark';
-import { ThemeToggle } from './theme-toggle';
+import { SiteNav } from './components/site-nav';
 import { ScrollReveal } from './components/scroll-reveal';
 import { HeroCanvas } from './components/hero-canvas';
 import { InstallRuntime } from './components/install-runtime';
@@ -49,7 +49,7 @@ async function loadAppsByType(): Promise<Record<ProjectType, ShelfApp[]>> {
            theme_color as "themeColor",
            install_count as "installCount"
     from apps
-    where active_deploy_id is not null and is_archived = false
+    where active_deploy_id is not null and is_archived = false and visibility_scope = 'public'
     order by greatest(ranking_score_app, ranking_score_web_app, ranking_score_website) desc nulls last
     limit 30
   `)) as unknown as DbAppRow[];
@@ -80,46 +80,49 @@ export default async function HomePage() {
   return (
     <div className="grain">
       {/* ━━━ NAV ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <nav className="navbar">
-        <div className="nav-bar-inner">
-          <div className="nav-group-left">
-            <Link href="/" className="nav-logo">
-              <span className="nav-wordmark">shippie</span>
-            </Link>
-          </div>
-          <div className="nav-group-center">
-            <Link href="/apps" className="nav-link nav-desktop">Explore</Link>
-            <Link href="/why" className="nav-link nav-desktop">Why</Link>
-            <Link href="/docs" className="nav-link nav-desktop">Docs</Link>
-            <a href="https://github.com/shippie/shippie" className="nav-link nav-wide">Open Source</a>
-          </div>
-          <div className="nav-group-right">
-            <ThemeToggle />
-            <Link href="/auth/signin" className="nav-signin nav-tablet">Sign in</Link>
-            <Link href="/new" className="btn-primary nav-cta">Deploy an app</Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       <main>
         {/* ━━━ HERO — Hook · Identity · Proof ━━━━━━━━━━━━━━━━━━ */}
-        <section className="hero" style={{ position: 'relative', overflow: 'hidden' }}>
+        <section
+          className="hero"
+          style={{
+            position: 'relative',
+            overflow: 'hidden',
+            // Ensure hero content clears the fixed translucent nav on every viewport.
+            paddingTop: 'calc(var(--space-2xl) + var(--safe-top))',
+          }}
+        >
           <HeroCanvas />
           <div className="wrap" style={{ position: 'relative', zIndex: 1 }}>
             <div
               className="badge"
-              style={{ borderColor: 'var(--marigold)', color: 'var(--marigold)', marginBottom: 'var(--space-xl)' }}
+              style={{
+                borderColor: 'var(--marigold)',
+                color: 'var(--marigold)',
+                marginBottom: 'var(--space-xl)',
+              }}
             >
               Open source · Launched 2026
             </div>
 
             <div className="grid-7-5">
               <div>
-                {/* Move 1 — Hook */}
-                <h1 className="hero-heading" style={{ maxWidth: 620, lineHeight: 1.05 }}>
-                  <span style={{ display: 'block' }}>Built it with AI.</span>
-                  <span style={{ display: 'block' }}>Installed on a phone.</span>
-                  <span style={{ display: 'block', color: 'var(--sunset)' }}>60 seconds.</span>
+                {/* Move 1 — Hook. One sentence per line; each sentence is
+                    short enough to fit on a single line at our hero font size
+                    (~5.6rem cap). `text-wrap: balance` smooths any rare overflow. */}
+                <h1
+                  className="hero-heading"
+                  style={{
+                    lineHeight: 1.05,
+                    fontSize: 'clamp(2.4rem, 5vw + 0.4rem, 4.5rem)',
+                  }}
+                >
+                  <span style={{ display: 'block' }}>Build it with AI.</span>
+                  <span style={{ display: 'block' }}>On your phone.</span>
+                  <span style={{ display: 'block', color: 'var(--sunset)' }}>
+                    In 60 seconds.
+                  </span>
                 </h1>
 
                 {/* Move 2 — Identity */}
@@ -157,18 +160,20 @@ export default async function HomePage() {
                   justifyContent: 'center',
                   alignItems: 'center',
                   position: 'relative',
-                  marginTop: '-2rem',
+                  maxHeight: 420,
                 }}
               >
                 <div
                   style={{
                     position: 'absolute',
-                    inset: '-20%',
+                    inset: '-10%',
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, var(--sunset-intense) 0%, var(--sunset-glow) 30%, transparent 65%)',
+                    background:
+                      'radial-gradient(circle, var(--sunset-intense) 0%, var(--sunset-glow) 30%, transparent 65%)',
+                    pointerEvents: 'none',
                   }}
                 />
-                <RocketMark size={480} className="animate-launch" />
+                <RocketMark size={320} className="animate-launch" />
               </div>
             </div>
           </div>
