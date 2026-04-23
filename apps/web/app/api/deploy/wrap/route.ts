@@ -36,6 +36,7 @@ const BodySchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
+  visibility_scope: z.enum(['public', 'unlisted', 'private']).default('public'),
 });
 
 export const runtime = 'nodejs';
@@ -76,6 +77,7 @@ export const POST = withLogger('deploy.wrap', async (req: NextRequest) => {
     category: parsed.data.category,
     cspMode: parsed.data.csp_mode,
     themeColor: parsed.data.theme_color,
+    visibilityScope: parsed.data.visibility_scope,
     reservedSlugs,
   });
 

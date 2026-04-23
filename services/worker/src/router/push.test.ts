@@ -33,6 +33,7 @@ describe('__shippie/push', () => {
       SHIPPIE_ENV: 'test',
       PLATFORM_API_URL: 'https://platform.test',
       WORKER_PLATFORM_SECRET: 'test-secret',
+      INVITE_SECRET: 'test-invite-secret',
       APP_CONFIG: fakeKv(kvData),
       SHIPPIE_APPS: emptyR2(),
       SHIPPIE_PUBLIC: emptyR2(),

@@ -25,6 +25,7 @@ interface CloudflareEnv {
   SHIPPIE_ENV: string;
   PLATFORM_API_URL: string;
   WORKER_PLATFORM_SECRET: string;
+  INVITE_SECRET: string;
   APP_CONFIG: CloudflareKv;
   SHIPPIE_APPS: CloudflareR2;
   SHIPPIE_PUBLIC: CloudflareR2;
@@ -122,6 +123,7 @@ export default {
       SHIPPIE_ENV: env.SHIPPIE_ENV,
       PLATFORM_API_URL: env.PLATFORM_API_URL,
       WORKER_PLATFORM_SECRET: env.WORKER_PLATFORM_SECRET,
+      INVITE_SECRET: env.INVITE_SECRET,
       APP_CONFIG: wrapKv(env.APP_CONFIG),
       SHIPPIE_APPS: wrapR2(env.SHIPPIE_APPS),
       SHIPPIE_PUBLIC: wrapR2(env.SHIPPIE_PUBLIC),

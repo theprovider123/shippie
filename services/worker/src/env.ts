@@ -44,4 +44,12 @@ export interface WorkerEnv {
    * R2 bucket for public assets (icons, screenshots, SDK, OG cards).
    */
   SHIPPIE_PUBLIC: R2Store;
+
+  /**
+   * HMAC secret for signing invite-grant cookies (private apps).
+   * Shared with the control plane; set via `wrangler secret put INVITE_SECRET`.
+   *
+   * Spec: docs/superpowers/plans/2026-04-23-private-apps-and-invites.md §Task 0
+   */
+  INVITE_SECRET: string;
 }

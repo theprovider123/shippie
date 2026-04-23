@@ -89,3 +89,21 @@ export function assertGithubAppConfigured(): void {
     );
   }
 }
+
+/**
+ * HMAC secret for invite-grant cookies (private apps). Required in
+ * production; dev falls back to a fixed string so local testing works.
+ * Shared with the Worker runtime as the `INVITE_SECRET` binding.
+ *
+ * Spec: docs/superpowers/plans/2026-04-23-private-apps-and-invites.md §Task 0
+ */
+export function getInviteSecret(): string {
+  const v = process.env.SHIPPIE_INVITE_SECRET;
+  if (!v) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SHIPPIE_INVITE_SECRET required in production');
+    }
+    return 'dev-insecure-invite-secret-32bytes-xxxxxxxx';
+  }
+  return v;
+}

@@ -58,6 +58,7 @@ describe('GET /__shippie/splash/:device', () => {
       SHIPPIE_ENV: 'test',
       PLATFORM_API_URL: 'https://platform.test',
       WORKER_PLATFORM_SECRET: 'test-secret',
+      INVITE_SECRET: 'test-invite-secret',
       APP_CONFIG: fakeKv({}),
       SHIPPIE_APPS: emptyR2(),
       SHIPPIE_PUBLIC: publicR2,

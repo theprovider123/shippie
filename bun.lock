@@ -55,6 +55,16 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/access": {
+      "name": "@shippie/access",
+      "version": "0.0.0",
+      "dependencies": {
+        "jose": "*",
+      },
+      "devDependencies": {
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/cli": {
       "name": "@shippie/cli",
       "version": "0.0.2",
@@ -407,6 +417,8 @@
     "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.60.1", "", { "os": "win32", "cpu": "x64" }, "sha512-k+600V9Zl1CM7eZxJgMyTUzmrmhB/0XZnF4pRypKAlAgxmedUA+1v9R+XOFv56W4SlHEzfeMtzujLJD22Uz5zg=="],
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.1", "", { "os": "win32", "cpu": "x64" }, "sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ=="],
+
+    "@shippie/access": ["@shippie/access@workspace:packages/access"],
 
     "@shippie/cli": ["@shippie/cli@workspace:packages/cli"],
 

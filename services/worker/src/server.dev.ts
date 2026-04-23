@@ -49,10 +49,30 @@ function loadSharedSecret(): string {
   return 'dev-worker-platform-secret-change-me';
 }
 
+/**
+ * Mirror of loadSharedSecret for the invite-grant HMAC. Shared with the
+ * control plane via SHIPPIE_INVITE_SECRET in apps/web/.env.local so both
+ * sides verify cookies against the same key.
+ */
+function loadInviteSecret(): string {
+  if (process.env.SHIPPIE_INVITE_SECRET) return process.env.SHIPPIE_INVITE_SECRET;
+
+  const repoRoot = join(getDevStateDir(), '..');
+  const envPath = join(repoRoot, 'apps', 'web', '.env.local');
+  if (existsSync(envPath)) {
+    const content = readFileSync(envPath, 'utf8');
+    const match = content.match(/^SHIPPIE_INVITE_SECRET\s*=\s*"?([^"\r\n]+)"?/m);
+    if (match && match[1]) return match[1];
+  }
+
+  return 'dev-insecure-invite-secret-32bytes-xxxxxxxx';
+}
+
 const env: WorkerEnv = {
   SHIPPIE_ENV: 'development',
   PLATFORM_API_URL: process.env.PLATFORM_API_URL ?? 'http://localhost:4100',
   WORKER_PLATFORM_SECRET: loadSharedSecret(),
+  INVITE_SECRET: loadInviteSecret(),
   APP_CONFIG: new DevKv(getDevKvDir()),
   SHIPPIE_APPS: new DevR2(getDevR2AppsDir()),
   SHIPPIE_PUBLIC: new DevR2(getDevR2PublicDir()),

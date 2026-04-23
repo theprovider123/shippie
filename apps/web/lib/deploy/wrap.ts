@@ -13,6 +13,7 @@ export interface CreateWrappedAppInput {
   category: string;
   cspMode?: 'lenient' | 'strict';
   themeColor?: string;
+  visibilityScope?: 'public' | 'unlisted' | 'private';
   reservedSlugs: ReadonlySet<string>;
 }
 
@@ -71,6 +72,7 @@ export async function createWrappedApp(
         cspMode: input.cspMode ?? 'lenient',
       },
       themeColor: input.themeColor ?? '#E8603C',
+      visibilityScope: input.visibilityScope ?? 'public',
     })
     .onConflictDoUpdate({
       target: schema.apps.slug,
