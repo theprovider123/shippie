@@ -47,6 +47,120 @@
 
 ---
 
+## Task 0: Prerequisites — shared access package, endpoint extension, env bindings
+
+Three blocking setups that Phase A didn't need but Phase B depends on.
+
+- [ ] **Step 1: Create `packages/access` — shared invite-cookie helpers**
+
+```bash
+mkdir -p packages/access/src
+cat > packages/access/package.json <<'EOF'
+{
+  "name": "@shippie/access",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./invite-cookie": {
+      "types": "./src/invite-cookie.ts",
+      "import": "./src/invite-cookie.ts"
+    }
+  },
+  "dependencies": { "jose": "*" }
+}
+EOF
+cat > packages/access/tsconfig.json <<'EOF'
+{ "extends": "../../tsconfig.base.json", "include": ["src/**/*"] }
+EOF
+```
+
+Move `apps/web/lib/access/invite-cookie.ts` to `packages/access/src/invite-cookie.ts` (Task 2 creates it there directly — don't duplicate). Control plane + worker both import from `@shippie/access/invite-cookie`.
+
+Add the workspace entry in the root `package.json` workspaces list if not glob-covered, and run `bun install` to link.
+
+- [ ] **Step 2: Extend the Phase A wrap endpoint's zod schema with `visibility_scope`**
+
+In `apps/web/app/api/deploy/wrap/route.ts`, add to `BodySchema`:
+
+```ts
+  visibility_scope: z.enum(['public', 'unlisted', 'private']).default('public'),
+```
+
+And pass it through to `createWrappedApp`:
+
+```ts
+  const result = await createWrappedApp({
+    // ...existing fields,
+    visibilityScope: parsed.value.visibility_scope,
+  });
+```
+
+Extend `createWrappedApp`'s input + insert:
+
+```ts
+export interface CreateWrappedAppInput {
+  // ...existing,
+  visibilityScope?: 'public' | 'unlisted' | 'private';
+}
+
+// in the .insert call:
+  visibilityScope: input.visibilityScope ?? 'public',
+```
+
+- [ ] **Step 3: Declare `INVITE_SECRET` Worker binding**
+
+In `services/worker/src/env.ts`, extend `WorkerEnv`:
+
+```ts
+export interface WorkerEnv {
+  // ...existing,
+  INVITE_SECRET: string;
+}
+```
+
+In `services/worker/wrangler.toml` (or whatever the env binding config is), add the secret reference:
+```toml
+# Secrets set via `wrangler secret put INVITE_SECRET`
+```
+
+In `apps/web/.env.example`, add:
+```
+SHIPPIE_INVITE_SECRET=<32-byte random hex for dev>
+SHIPPIE_PUBLIC_HOST=shippie.app
+```
+
+In `apps/web/lib/env.ts`, add a getter that throws in `NODE_ENV=production` if missing:
+```ts
+export function getInviteSecret(): string {
+  const v = process.env.SHIPPIE_INVITE_SECRET;
+  if (!v) {
+    if (process.env.NODE_ENV === 'production') throw new Error('SHIPPIE_INVITE_SECRET required in production');
+    return 'dev-insecure-invite-secret-32bytes-xxxxxxxx';
+  }
+  return v;
+}
+```
+
+- [ ] **Step 4: Run install + smoke-compile**
+
+```bash
+bun install
+bunx tsc --noEmit -p apps/web/tsconfig.json
+bunx tsc --noEmit -p services/worker/tsconfig.json
+```
+
+Expected: no type errors. (`@shippie/access` exports aren't used yet — the package is empty aside from package.json. It will be populated in Task 2.)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/access apps/web services/worker
+git commit -m "chore: @shippie/access package + wrap endpoint visibility_scope + INVITE_SECRET env"
+```
+
+---
+
 ## Task 1: Schema + types
 
 **Files:**
@@ -186,8 +300,8 @@ git commit -m "db: app_access + app_invites + visibility_scope=private"
 ## Task 2: Invite cookie helpers (HMAC sign + verify)
 
 **Files:**
-- Create: `apps/web/lib/access/invite-cookie.ts`
-- Create: `apps/web/lib/access/invite-cookie.test.ts`
+- Create: `packages/access/src/invite-cookie.ts` (shared across control plane + worker; scaffolded in Task 0)
+- Create: `packages/access/src/invite-cookie.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -228,8 +342,12 @@ describe('invite cookie', () => {
     expect(verified).toBeNull();
   });
 
-  test('cookie name is slug-scoped', () => {
-    expect(inviteCookieName('mevrouw')).toBe('__Secure-shippie_invite_mevrouw');
+  test('cookie name in prod uses __Secure- prefix', () => {
+    expect(inviteCookieName('mevrouw', { secure: true })).toBe('__Secure-shippie_invite_mevrouw');
+  });
+
+  test('cookie name in dev omits __Secure- prefix (http localhost rejects it)', () => {
+    expect(inviteCookieName('mevrouw', { secure: false })).toBe('shippie_invite_mevrouw');
   });
 });
 ```
@@ -245,16 +363,16 @@ Expected: FAIL.
 - [ ] **Step 3: Implement**
 
 ```ts
-// apps/web/lib/access/invite-cookie.ts
+// packages/access/src/invite-cookie.ts
 /**
- * HMAC-signed invite grant cookie. Used on both the apex marketplace
- * domain (during claim) and on {slug}.shippie.app (runtime access gate).
+ * HMAC-signed invite grant cookie. Used by both the control plane
+ * (marketplace page gate + claim endpoint) and the worker (runtime access
+ * gate). Single source of truth — both import from this package.
  *
- * Cookie prefix `__Secure-` means Secure + path-root-only. Domain is
- * set to `.shippie.app` so the cookie propagates to subdomains.
- *
- * In dev (*.localhost) the `__Secure-` prefix is a no-op — browsers
- * ignore the prefix requirement when Secure cannot be applied to http.
+ * Prod cookie name: `__Secure-shippie_invite_{slug}` (requires Secure; the
+ * prefix makes that un-forgeable). Dev runs over http://*.localhost where
+ * browsers SILENTLY DISCARD __Secure- cookies, so we fall back to a plain
+ * name. Callers pass `{secure: isProduction}` to pick the right name.
  */
 import { SignJWT, jwtVerify } from 'jose';
 
@@ -263,24 +381,27 @@ export interface InviteGrant {
   app: string; // app slug
   tok: string; // invite id (for revocation audit)
   src: 'invite_link' | 'invite_email';
-  exp: number; // unix seconds
 }
 
 function secretKey(secret: string): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export async function signInviteGrant(grant: InviteGrant, secret: string): Promise<string> {
-  return await new SignJWT({ ...grant })
+export async function signInviteGrant(
+  grant: InviteGrant & { exp: number },
+  secret: string,
+): Promise<string> {
+  const { exp, ...body } = grant;
+  return await new SignJWT({ ...body })
     .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime(grant.exp)
+    .setExpirationTime(exp)
     .sign(secretKey(secret));
 }
 
 export async function verifyInviteGrant(
   token: string,
   secret: string,
-): Promise<InviteGrant | null> {
+): Promise<(InviteGrant & { exp: number }) | null> {
   try {
     const { payload } = await jwtVerify(token, secretKey(secret));
     if (typeof payload.app !== 'string' || typeof payload.sub !== 'string') return null;
@@ -296,10 +417,22 @@ export async function verifyInviteGrant(
   }
 }
 
-export function inviteCookieName(slug: string): string {
-  return `__Secure-shippie_invite_${slug}`;
+export interface CookieNameOpts {
+  secure: boolean; // true in production (https), false in dev (http://*.localhost)
+}
+
+export function inviteCookieName(slug: string, opts: CookieNameOpts): string {
+  return opts.secure ? `__Secure-shippie_invite_${slug}` : `shippie_invite_${slug}`;
 }
 ```
+
+**Note:** earlier task mock-imports that used `inviteCookieName(slug)` with a single arg need updating — the function now requires the `{secure}` option. Search all call sites when integrating:
+
+```bash
+grep -rn "inviteCookieName(" apps/web services/worker packages
+```
+
+and pass `{ secure: process.env.NODE_ENV === 'production' }` (control plane) or `{ secure: true }` (always in the worker — it only serves HTTPS in prod; in dev dispatch it reads the same cookie name via `req.url.startsWith('https:')`).
 
 - [ ] **Step 4: Run to verify pass**
 
@@ -652,7 +785,7 @@ export async function claimInvite(input: {
   token: string;
   userId?: string;
 }): Promise<
-  | { success: true; appId: string; inviteId: string; anonymous: boolean }
+  | { success: true; appId: string; inviteId: string; anonymous: boolean; alreadyClaimed?: boolean }
   | { success: false; reason: 'not_found' | 'revoked_or_expired' | 'uses_exhausted' }
 > {
   const db = await getDb();
@@ -665,6 +798,26 @@ export async function claimInvite(input: {
   if (inv.revokedAt) return { success: false, reason: 'revoked_or_expired' };
   if (inv.expiresAt && inv.expiresAt.getTime() < Date.now())
     return { success: false, reason: 'revoked_or_expired' };
+
+  // Idempotency: if this signed-in user already has active access, short-circuit
+  // without burning a use or creating a duplicate access row.
+  if (input.userId) {
+    const [existing] = await db
+      .select({ id: schema.appAccess.id })
+      .from(schema.appAccess)
+      .where(
+        and(
+          eq(schema.appAccess.appId, inv.appId),
+          eq(schema.appAccess.userId, input.userId),
+          isNull(schema.appAccess.revokedAt),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      return { success: true, appId: inv.appId, inviteId: inv.id, anonymous: false, alreadyClaimed: true };
+    }
+  }
+
   if (inv.maxUses != null && inv.usedCount >= inv.maxUses)
     return { success: false, reason: 'uses_exhausted' };
 
@@ -983,7 +1136,8 @@ import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { claimInvite } from '@/lib/access/invites';
-import { signInviteGrant, inviteCookieName } from '@/lib/access/invite-cookie';
+import { signInviteGrant, inviteCookieName } from '@shippie/access/invite-cookie';
+import { getInviteSecret } from '@/lib/env';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -1008,8 +1162,8 @@ export async function POST(
     .limit(1);
   if (!app) return NextResponse.json({ error: 'app_missing' }, { status: 500 });
 
-  const secret = process.env.SHIPPIE_INVITE_SECRET;
-  if (!secret) return NextResponse.json({ error: 'misconfigured' }, { status: 500 });
+  const secret = getInviteSecret();
+  const isProd = process.env.NODE_ENV === 'production';
 
   const expSec = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30 days
   const jwt = await signInviteGrant(
@@ -1023,17 +1177,24 @@ export async function POST(
     secret,
   );
 
-  const cookieName = inviteCookieName(app.slug);
-  const host = process.env.SHIPPIE_PUBLIC_HOST ?? 'shippie.app';
+  const cookieName = inviteCookieName(app.slug, { secure: isProd });
+  const host = process.env.SHIPPIE_PUBLIC_HOST ?? (isProd ? 'shippie.app' : 'localhost');
+  const scheme = isProd ? 'https://' : 'http://';
+  // Runtime subdomain: prod = {slug}.shippie.app; dev = {slug}.localhost:4200
+  const runtimePort = isProd ? '' : `:${process.env.SHIPPIE_WORKER_PORT ?? '4200'}`;
+  const runtimeUrl = `${scheme}${app.slug}.${host}${runtimePort}/`;
 
-  const res = NextResponse.json({
-    success: true,
-    redirect_to: `https://${app.slug}.${host}/`,
-  });
-  res.headers.set(
-    'set-cookie',
-    `${cookieName}=${jwt}; Path=/; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}; Domain=.${host}`,
-  );
+  const cookieParts = [
+    `${cookieName}=${jwt}`,
+    `Path=/`,
+    `SameSite=Lax`,
+    `Max-Age=${60 * 60 * 24 * 30}`,
+    `Domain=.${host}`,
+  ];
+  if (isProd) cookieParts.push('Secure');
+
+  const res = NextResponse.json({ success: true, redirect_to: runtimeUrl });
+  res.headers.set('set-cookie', cookieParts.join('; '));
   return res;
 }
 ```
@@ -1279,6 +1440,10 @@ interface AccessMeta {
   slug: string;
 }
 
+function cookieIsSecure(c: { req: { url: string } }): boolean {
+  return c.req.url.startsWith('https:');
+}
+
 export function accessGate(deps: {
   loadMeta: (slug: string, env: AppBindings['Bindings']) => Promise<AccessMeta | null>;
 }): MiddlewareHandler<AppBindings> {
@@ -1288,11 +1453,14 @@ export function accessGate(deps: {
     if (!meta) return next();
     if (meta.visibility_scope !== 'private') return next();
 
-    const secret = c.env.INVITE_SECRET ?? process.env.SHIPPIE_INVITE_SECRET;
+    // INVITE_SECRET must be set via Worker binding (prod) or env (dev).
+    // Declared in services/worker/src/env.ts as part of Task 0.
+    const secret = c.env.INVITE_SECRET;
     if (!secret) return c.text('server misconfigured', 500);
 
+    const cookieName = inviteCookieName(meta.slug, { secure: cookieIsSecure(c) });
     const cookieHeader = c.req.header('cookie') ?? '';
-    const match = cookieHeader.match(new RegExp(`${inviteCookieName(meta.slug)}=([^;]+)`));
+    const match = cookieHeader.match(new RegExp(`${cookieName}=([^;]+)`));
     if (match) {
       const grant = await verifyInviteGrant(match[1]!, secret);
       if (grant && grant.app === meta.slug) return next();
@@ -1328,7 +1496,29 @@ app.use('*', accessGate({
 }));
 ```
 
-And in the deploy helpers (`apps/web/lib/deploy/kv.ts`), write `apps:{slug}:meta` alongside the existing CSP/wrap entries, with `visibility_scope` reflected from the DB.
+**And** extend the deploy-side KV helper to write `apps:{slug}:meta` on every deploy and on every visibility change.
+
+In `apps/web/lib/deploy/kv.ts` (add or extend):
+
+```ts
+import { DevKv } from '@shippie/dev-storage';
+
+export interface AppRuntimeMeta {
+  visibility_scope: 'public' | 'unlisted' | 'private';
+}
+
+export async function writeAppMeta(slug: string, meta: AppRuntimeMeta): Promise<void> {
+  const kv = new DevKv();
+  await kv.put(`apps:${slug}:meta`, JSON.stringify(meta));
+}
+```
+
+Call `writeAppMeta(slug, { visibility_scope })`:
+- At the end of `createWrappedApp` in `apps/web/lib/deploy/wrap.ts` (after the row is inserted)
+- At the end of `deployStaticHot` in `apps/web/lib/deploy/index.ts` (after `activeDeployId` is set)
+- From the new `PATCH /api/apps/:slug/visibility` endpoint added in Task 9
+
+In production the signed-request KV-write spine that the static pipeline already uses will carry the `apps:{slug}:meta` key exactly like it carries `apps:{slug}:csp` today; read that helper's code before wiring prod.
 
 - [ ] **Step 5: Run tests + verify**
 
@@ -1408,10 +1598,12 @@ git commit -m "test(access): verify leaderboards exclude private apps"
 
 ---
 
-## Task 9: Dashboard access-management page
+## Task 9: Dashboard access-management page + visibility picker
 
 **Files:**
 - Create: `apps/web/app/dashboard/apps/[slug]/access/page.tsx`
+- Create: `apps/web/app/dashboard/apps/[slug]/access/visibility-picker.tsx`
+- Create: `apps/web/app/api/apps/[slug]/visibility/route.ts`
 
 - [ ] **Step 1: Page with invite list + create form**
 
@@ -1425,6 +1617,7 @@ import { getDb } from '@/lib/db';
 import { SiteNav } from '@/app/components/site-nav';
 import { CreateInviteForm } from './create-invite-form';
 import { InviteRow } from './invite-row';
+import { VisibilityPicker } from './visibility-picker';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -1469,13 +1662,14 @@ export default async function AccessPage({ params }: { params: Promise<{ slug: s
           <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2rem', letterSpacing: '-0.02em' }}>
             Who can see this app
           </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Visibility: <strong>{app.visibilityScope}</strong>.{' '}
-            {app.visibilityScope === 'private'
-              ? 'Only people on the access list or holding a valid invite can see this app.'
-              : 'This app is visible to everyone.'}
-          </p>
         </header>
+
+        <section style={{ marginBottom: 'var(--space-2xl)' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>
+            Visibility
+          </h2>
+          <VisibilityPicker slug={slug} initial={app.visibilityScope as 'public' | 'unlisted' | 'private'} />
+        </section>
 
         <section style={{ marginBottom: 'var(--space-2xl)' }}>
           <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>
@@ -1598,19 +1792,135 @@ export function InviteRow({ invite, slug }: { invite: { id: string; token: strin
 }
 ```
 
-- [ ] **Step 2: Smoke test**
+- [ ] **Step 2: Visibility picker component**
+
+```tsx
+// apps/web/app/dashboard/apps/[slug]/access/visibility-picker.tsx
+'use client';
+import { useState } from 'react';
+
+type Scope = 'public' | 'unlisted' | 'private';
+
+const OPTIONS: Array<{ value: Scope; label: string; blurb: string }> = [
+  { value: 'public', label: 'Public', blurb: 'Everyone can find it on /apps and /leaderboards.' },
+  { value: 'unlisted', label: 'Unlisted', blurb: 'Anyone with the URL can see it. Not listed publicly.' },
+  { value: 'private', label: 'Private', blurb: 'Invitees only. Hidden from /apps, /leaderboards, search.' },
+];
+
+export function VisibilityPicker({ slug, initial }: { slug: string; initial: Scope }) {
+  const [scope, setScope] = useState<Scope>(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function onChange(next: Scope) {
+    setScope(next);
+    setError('');
+    setSaving(true);
+    const res = await fetch(`/api/apps/${slug}/visibility`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ visibility_scope: next }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setError((j as { error?: string }).error ?? 'Save failed');
+      setScope(initial);
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+      {OPTIONS.map((opt) => (
+        <label
+          key={opt.value}
+          style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start', padding: 'var(--space-sm)', border: '1px solid var(--border-light)' }}
+        >
+          <input
+            type="radio"
+            name="visibility"
+            value={opt.value}
+            checked={scope === opt.value}
+            disabled={saving}
+            onChange={() => onChange(opt.value)}
+            style={{ marginTop: 4 }}
+          />
+          <div>
+            <strong>{opt.label}</strong>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{opt.blurb}</p>
+          </div>
+        </label>
+      ))}
+      {error && <p style={{ color: '#c84a2a', fontSize: 13 }}>{error}</p>}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 3: PATCH visibility endpoint**
+
+```ts
+// apps/web/app/api/apps/[slug]/visibility/route.ts
+import { NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod';
+import { eq } from 'drizzle-orm';
+import { schema } from '@shippie/db';
+import { auth } from '@/lib/auth';
+import { getDb } from '@/lib/db';
+import { writeAppMeta } from '@/lib/deploy/kv';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const PatchSchema = z.object({
+  visibility_scope: z.enum(['public', 'unlisted', 'private']),
+});
+
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+  const { slug } = await ctx.params;
+
+  const body = await req.json().catch(() => ({}));
+  const parsed = PatchSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+
+  const db = await getDb();
+  const [app] = await db
+    .select({ id: schema.apps.id, makerId: schema.apps.makerId })
+    .from(schema.apps)
+    .where(eq(schema.apps.slug, slug))
+    .limit(1);
+  if (!app) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  if (app.makerId !== session.user.id) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
+  await db
+    .update(schema.apps)
+    .set({ visibilityScope: parsed.data.visibility_scope, updatedAt: new Date() })
+    .where(eq(schema.apps.id, app.id));
+
+  // Propagate to the runtime KV so the Worker access-gate sees the change
+  // within its cache TTL. Bust the wrap-cache too in case wrapped config
+  // needs a re-read.
+  await writeAppMeta(slug, { visibility_scope: parsed.data.visibility_scope });
+
+  return NextResponse.json({ success: true });
+}
+```
+
+- [ ] **Step 4: Smoke test**
 
 ```bash
 open http://localhost:4100/dashboard/apps/wrap-demo/access
 ```
 
-Sign in, create an invite, copy the URL, open in an incognito window, claim.
+Sign in, toggle visibility between Public / Unlisted / Private, create an invite, copy the URL, open in an incognito window, claim.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add apps/web/app/dashboard/apps
-git commit -m "feat(access): /dashboard/apps/:slug/access invite management UI"
+git add apps/web/app/dashboard/apps apps/web/app/api/apps/[slug]/visibility
+git commit -m "feat(access): invite management UI + visibility picker + PATCH endpoint"
 ```
 
 ---
@@ -1791,12 +2101,22 @@ test('private app invite flow', async ({ page, request, context }) => {
   const claimRes = await ctxAnon.post(`http://localhost:4100/api/invite/${inv.invite.token}/claim`);
   expect(claimRes.ok()).toBe(true);
 
-  const claimCookies = (await claimRes.headersArray()).find((h) => h.name.toLowerCase() === 'set-cookie')?.value ?? '';
-  const cookieMatch = claimCookies.match(/__Secure-shippie_invite_[^=]+=[^;]+/);
-  expect(cookieMatch).not.toBeNull();
+  // Dev runs over http://*.localhost so the cookie name has no `__Secure-` prefix.
+  // Derive the expected name from the shared helper — don't hardcode.
+  const { inviteCookieName } = await import('@shippie/access/invite-cookie');
+  const expectedName = inviteCookieName(slug, { secure: false });
+
+  const claimCookies = (await claimRes.headersArray())
+    .filter((h) => h.name.toLowerCase() === 'set-cookie')
+    .map((h) => h.value);
+  const ourCookie = claimCookies.find((v) => v.startsWith(`${expectedName}=`));
+  expect(ourCookie).toBeDefined();
+
+  // Take just the `name=value` portion for the outbound request.
+  const cookiePair = ourCookie!.split(';')[0]!;
 
   const runtimeWithCookie = await request.get('http://localhost:4200/', {
-    headers: { host: `${slug}.localhost`, cookie: cookieMatch![0] },
+    headers: { host: `${slug}.localhost`, cookie: cookiePair },
   });
   expect(runtimeWithCookie.status()).toBe(200);
   expect(await runtimeWithCookie.text()).toContain('__shippie/sdk.js');
@@ -1868,8 +2188,17 @@ gh pr create --title "feat: private apps + link invites" --body ...
 ## Self-review notes
 
 - All steps have complete code, no placeholders
-- `packages/db/src/schema/index.ts` export path verified; if it's a barrel of `export * from './apps.ts'`-style lines, the new lines slot in cleanly
-- The invite-cookie helper is duplicated between control plane (`apps/web/lib/access/invite-cookie.ts`) and the worker; Task 7 flags this and recommends a shared `@shippie/access` package. If that package doesn't already exist, add it as a prerequisite before Task 7 (~15 min of work: copy the file, register in workspace, add export).
-- `process.env.SHIPPIE_INVITE_SECRET` must be set in both control plane + worker env. Add it to `apps/web/.env.example` and the worker env schema.
-- `deploys.sourceKind` / `sourceRef` used in Phase A plan; verify in Phase B too since private static apps reuse the same path.
+- Task 0 formalizes the three prerequisites that were previously self-review footnotes: shared `@shippie/access` package, wrap-endpoint `visibility_scope` field, Worker `INVITE_SECRET` binding + `.env.example` entry
+- `inviteCookieName` now takes `{ secure }` to handle the dev-vs-prod prefix distinction. All call sites pass the flag derived from `NODE_ENV` (control plane) or request scheme (worker)
+- `claimInvite` is idempotent for signed-in users — re-clicking an invite link doesn't burn a use or duplicate access rows
+- `writeAppMeta` is the one helper all deploy paths (static + wrap + visibility PATCH) call to refresh KV
+- `packages/db/src/schema/index.ts` is a barrel of `export * from './*.ts'` lines — new tables slot in cleanly
 - Phase C (email invites) explicitly not shipped here. All `kind: 'email'` paths return 501.
+
+## Known follow-ups (deferred to Phase C / ops)
+
+- **KV propagation latency.** Target ≤ 5s for visibility / revocation changes. Backed by signed-request cache-bust; prove with a load test.
+- **Audit log.** `app_access` grants + revokes should log actor + timestamp for maker visibility. Phase C.
+- **Team-owned apps.** `apps.maker_id` is single-user. Multi-maker support is a separate initiative.
+- **Rate-limit invite creation.** Phase C.
+- **Bulk CSV invite import.** Phase C.

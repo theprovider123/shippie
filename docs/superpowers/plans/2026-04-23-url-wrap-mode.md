@@ -39,6 +39,67 @@
 
 ---
 
+## Task 0: Prerequisites — verify `deploys` schema + CLI api helpers
+
+Two small checks to do before the main work so later tasks don't surprise us.
+
+- [ ] **Step 1: Verify `deploys.sourceKind` + `deploys.sourceRef` exist**
+
+```bash
+grep -n "sourceKind\|sourceRef\|source_kind\|source_ref" packages/db/src/schema/deploys.ts
+```
+
+Expected: both columns present. If either is missing, append a block to Task 1's migration (`0018_wrap_mode.sql`) adding them:
+
+```sql
+-- Add only if deploys doesn't already have these.
+alter table deploys add column if not exists source_kind text;
+alter table deploys add column if not exists source_ref text;
+```
+
+And extend the Drizzle schema in `packages/db/src/schema/deploys.ts`:
+
+```ts
+    sourceKind: text('source_kind'),
+    sourceRef: text('source_ref'),
+```
+
+- [ ] **Step 2: Verify CLI api helpers exist**
+
+```bash
+grep -nE "export (async )?function (postJson|getJson|delJson)" packages/cli/src/api.ts packages/cli/src/api.js 2>/dev/null
+```
+
+Expected: all three exported. If only `postJson` exists, add the missing helpers alongside it:
+
+```ts
+// packages/cli/src/api.ts (or wherever postJson lives)
+export async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(apiBase() + path, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
+  return (await res.json()) as T;
+}
+
+export async function delJson<T>(path: string): Promise<T> {
+  const res = await fetch(apiBase() + path, { method: 'DELETE', headers: authHeaders() });
+  if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
+  return (await res.json()) as T;
+}
+```
+
+Copy `apiBase()` / `authHeaders()` from the existing `postJson` implementation so token loading + base URL logic stays consistent.
+
+- [ ] **Step 3: Commit only if changes were needed**
+
+```bash
+git status --short packages/db packages/cli
+# If anything changed, add + commit
+git add packages/db packages/cli
+git commit -m "chore: scaffold deploys.source_* + CLI GET/DELETE helpers"
+```
+
+---
+
 ## Task 1: Schema migration + Drizzle types
 
 **Files:**
@@ -425,6 +486,7 @@ import { resolveUserId } from '@/lib/cli-auth';
 import { createWrappedApp } from '@/lib/deploy/wrap';
 import { loadReservedSlugs } from '@/lib/deploy/reserved-slugs.ts';
 import { parseBody } from '@/lib/internal/validation';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { withLogger } from '@/lib/observability/logger';
 
 const BodySchema = z.object({
@@ -444,6 +506,16 @@ export const dynamic = 'force-dynamic';
 export const POST = withLogger('deploy.wrap', async (req: NextRequest) => {
   const who = await resolveUserId(req);
   if (!who) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
+  // 20 wraps per user per hour. Enough for humans, bounded enough to catch
+  // runaway scripts that might try to squat slugs.
+  const rl = checkRateLimit({ key: `wrap:${who.userId}`, limit: 20, windowMs: 60 * 60 * 1000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited', retry_after_ms: rl.retryAfterMs },
+      { status: 429, headers: { 'retry-after': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    );
+  }
 
   const parsed = await parseBody(req, BodySchema);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
@@ -537,6 +609,16 @@ describe('injectPwaTags', () => {
     const out = await new Response(injectPwaTags(stream, { slug: 'x', contentType: 'image/png' })).bytes();
     expect(out).toEqual(bytes);
   });
+
+  test('falls back to injecting before <body> when HTML has no <head>', async () => {
+    const noHead = '<!doctype html><html><body>hi</body></html>';
+    const stream = new Response(noHead).body!;
+    const out = await new Response(
+      injectPwaTags(stream, { slug: 'x', contentType: 'text/html' }),
+    ).text();
+    expect(out).toContain('/__shippie/sdk.js');
+    expect(out).toContain('/__shippie/manifest');
+  });
 });
 ```
 
@@ -585,6 +667,7 @@ export function injectPwaTags(body: ReadableStream<Uint8Array>, opts: InjectOpts
 
   let sdkSeen = false;
   let manifestSeen = false;
+  let headSeen = false;
 
   const res = new Response(body, { headers: { 'content-type': 'text/html' } });
   const rewriter = new HTMLRewriter()
@@ -600,8 +683,18 @@ export function injectPwaTags(body: ReadableStream<Uint8Array>, opts: InjectOpts
     })
     .on('head', {
       element(el: { append(html: string, opts: { html: boolean }): void }) {
+        headSeen = true;
         if (!manifestSeen) el.append(MANIFEST_TAG, { html: true });
         if (!sdkSeen) el.append(SDK_TAG, { html: true });
+      },
+    })
+    .on('body', {
+      // Fallback: if we never saw a <head>, inject at the start of <body>
+      // so the manifest + SDK still load. Covers malformed HTML from upstreams.
+      element(el: { prepend(html: string, opts: { html: boolean }): void }) {
+        if (headSeen) return;
+        if (!manifestSeen) el.prepend(MANIFEST_TAG, { html: true });
+        if (!sdkSeen) el.prepend(SDK_TAG, { html: true });
       },
     });
 
@@ -705,6 +798,68 @@ describe('proxyRouter', () => {
     expect(sc.toLowerCase()).not.toContain('domain=');
   });
 
+  test('preserves Expires attribute (comma inside value)', async () => {
+    // Upstream that emits a cookie containing a literal comma inside Expires.
+    upstream.stop(true);
+    upstream = Bun.serve({
+      port: 0,
+      fetch: () =>
+        new Response('<html><head></head><body>x</body></html>', {
+          headers: {
+            'content-type': 'text/html',
+            'set-cookie': 'sid=abc; Domain=upstream.example; Expires=Wed, 09 Jun 2021 10:18:14 GMT',
+          },
+        }),
+    });
+    upstreamUrl = `http://localhost:${upstream.port}`;
+    const app = appWithMeta('mevrouw');
+    const res = await app.request('/');
+    const sc = res.headers.get('set-cookie') ?? '';
+    expect(sc).toContain('sid=abc');
+    expect(sc).toContain('Expires=Wed, 09 Jun 2021');
+    expect(sc.toLowerCase()).not.toContain('domain=');
+  });
+
+  test('rewrites same-host Location redirect to path-relative', async () => {
+    upstream.stop(true);
+    upstream = Bun.serve({
+      port: 0,
+      fetch: (req) => {
+        const u = new URL(req.url);
+        return new Response('', {
+          status: 302,
+          headers: { location: `${u.origin}/after` },
+        });
+      },
+    });
+    upstreamUrl = `http://localhost:${upstream.port}`;
+    const app = appWithMeta('mevrouw');
+    const res = await app.request('/before');
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/after');
+  });
+
+  test('rewrites upstream-absolute URLs in HTML to path-relative', async () => {
+    upstream.stop(true);
+    upstream = Bun.serve({
+      port: 0,
+      fetch: (req) => {
+        const base = new URL(req.url).origin;
+        return new Response(
+          `<!doctype html><html><head></head><body><img src="${base}/img.png"><a href="${base}/next">x</a></body></html>`,
+          { headers: { 'content-type': 'text/html' } },
+        );
+      },
+    });
+    upstreamUrl = `http://localhost:${upstream.port}`;
+    const app = appWithMeta('mevrouw');
+    const res = await app.request('/');
+    const html = await res.text();
+    expect(html).toContain('src="/img.png"');
+    expect(html).toContain('href="/next"');
+    expect(html).not.toContain(`localhost:${upstream.port}`);
+  });
+
   test('replaces upstream CSP with Shippie CSP in lenient mode', async () => {
     const app = appWithMeta('mevrouw');
     const res = await app.request('/');
@@ -753,22 +908,63 @@ const SHIPPIE_CSP =
   "connect-src 'self' https:; " +
   "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 
-function stripCookieDomain(setCookie: string): string {
-  return setCookie
-    .split(',')
-    .map((c) =>
-      c
-        .split(';')
-        .filter((p) => !/^\s*Domain=/i.test(p))
-        .join(';'),
-    )
-    .join(',');
+/**
+ * Strip the Domain attribute from a SINGLE Set-Cookie header value.
+ * Do not split on comma at the top level — cookie Expires dates contain commas.
+ */
+function stripCookieDomain(singleSetCookie: string): string {
+  return singleSetCookie
+    .split(';')
+    .filter((p) => !/^\s*Domain=/i.test(p))
+    .join(';');
 }
 
 function buildUpstreamUrl(upstreamBase: string, reqUrl: string): string {
   const base = new URL(upstreamBase);
   const req = new URL(reqUrl);
   return new URL(req.pathname + req.search, base).toString();
+}
+
+/**
+ * If `Location` points at the upstream origin, rewrite to path+search so the
+ * browser stays on the proxy origin.
+ */
+function rewriteLocation(loc: string, upstreamBase: string): string {
+  try {
+    const abs = new URL(loc, upstreamBase);
+    const base = new URL(upstreamBase);
+    if (abs.host === base.host) return abs.pathname + abs.search + abs.hash;
+    return loc;
+  } catch {
+    return loc;
+  }
+}
+
+/**
+ * Hook set added to the HTMLRewriter chain: rewrite any src/href that points
+ * at the upstream origin to a path-relative URL so browsers stay on the proxy.
+ * Runs in addition to the manifest/SDK injection in ./rewriter.ts.
+ */
+declare const HTMLRewriter: { new (): any };
+
+function absoluteUrlRewriter(upstreamBase: string) {
+  const base = new URL(upstreamBase);
+  const rewriteAttr = (el: { getAttribute(n: string): string | null; setAttribute(n: string, v: string): void }, attr: string) => {
+    const val = el.getAttribute(attr);
+    if (!val) return;
+    try {
+      const abs = new URL(val, upstreamBase);
+      if (abs.host === base.host) el.setAttribute(attr, abs.pathname + abs.search + abs.hash);
+    } catch {
+      /* ignore */
+    }
+  };
+  return new HTMLRewriter()
+    .on('a[href], area[href], link[href]', { element: (el: never) => rewriteAttr(el as never, 'href') })
+    .on('img[src], script[src], source[src], iframe[src], video[src], audio[src]', {
+      element: (el: never) => rewriteAttr(el as never, 'src'),
+    })
+    .on('form[action]', { element: (el: never) => rewriteAttr(el as never, 'action') });
 }
 
 export function proxyRouter(loadMeta: (slug: string) => WrapMeta | Promise<WrapMeta>) {
@@ -797,12 +993,23 @@ export function proxyRouter(loadMeta: (slug: string) => WrapMeta | Promise<WrapM
 
     const outHeaders = new Headers(upstream.headers);
 
-    // Cookie domain stripping
-    const setCookie = outHeaders.get('set-cookie');
-    if (setCookie) {
+    // Cookie domain stripping — iterate every Set-Cookie, not just the first.
+    // Headers.getSetCookie() exists in Bun + Workers; fall back to the single
+    // getter if we're on a runtime that doesn't have it yet.
+    const rawCookies =
+      typeof (upstream.headers as { getSetCookie?: () => string[] }).getSetCookie === 'function'
+        ? (upstream.headers as { getSetCookie(): string[] }).getSetCookie()
+        : upstream.headers.get('set-cookie')
+          ? [upstream.headers.get('set-cookie')!]
+          : [];
+    if (rawCookies.length) {
       outHeaders.delete('set-cookie');
-      outHeaders.append('set-cookie', stripCookieDomain(setCookie));
+      for (const raw of rawCookies) outHeaders.append('set-cookie', stripCookieDomain(raw));
     }
+
+    // Location rewriting — keep the browser on the proxy origin.
+    const loc = outHeaders.get('location');
+    if (loc) outHeaders.set('location', rewriteLocation(loc, meta.upstreamUrl));
 
     // CSP replacement
     outHeaders.delete('content-security-policy');
@@ -812,11 +1019,19 @@ export function proxyRouter(loadMeta: (slug: string) => WrapMeta | Promise<WrapM
       outHeaders.set('content-security-policy', upstream.headers.get('content-security-policy')!);
     }
 
-    // HTML injection
+    // HTML transform: inject PWA tags AND rewrite upstream-absolute URLs so
+    // browser-initiated sub-requests (img, script, fetch-as-navigation) stay
+    // on the proxy origin.
     const contentType = upstream.headers.get('content-type') ?? '';
-    const body = upstream.body
-      ? injectPwaTags(upstream.body, { slug: c.var.slug, contentType })
-      : null;
+    let body: ReadableStream<Uint8Array> | null = upstream.body;
+    if (body && contentType.toLowerCase().includes('text/html')) {
+      // First pass: rewrite absolute URLs via a dedicated rewriter.
+      const rewritten = absoluteUrlRewriter(meta.upstreamUrl).transform(
+        new Response(body, { headers: { 'content-type': 'text/html' } }),
+      );
+      // Second pass: PWA injection.
+      body = injectPwaTags(rewritten.body!, { slug: c.var.slug, contentType });
+    }
 
     return new Response(body, {
       status: upstream.status,
@@ -854,21 +1069,47 @@ git commit -m "feat(worker): proxyRouter — fetch + stream + PWA injection + co
 
 - [ ] **Step 1: Add KV accessor**
 
-In `services/worker/src/platform-client.ts`, add:
+In `services/worker/src/platform-client.ts`, add a KV accessor + a small in-memory
+TTL cache so we don't do a KV GET on every single request.
 
 ```ts
+interface CachedWrap {
+  value: { upstreamUrl: string; cspMode: 'lenient' | 'strict' } | null;
+  expires: number;
+}
+
+// Module-scoped cache lives for the Worker isolate's lifetime (~30s to many
+// minutes on CF). Invalidation: 30s TTL + explicit bust on config change via
+// the signed-request spine (Phase B adds the bust callback).
+const wrapCache = new Map<string, CachedWrap>();
+const WRAP_TTL_MS = 30_000;
+
 export async function loadWrapMeta(
   kv: { get(key: string, opts?: { type?: 'json' }): Promise<unknown> },
   slug: string,
 ): Promise<{ upstreamUrl: string; cspMode: 'lenient' | 'strict' } | null> {
+  const hit = wrapCache.get(slug);
+  const now = Date.now();
+  if (hit && hit.expires > now) return hit.value;
+
   const raw = await kv.get(`apps:${slug}:wrap`, { type: 'json' });
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as { upstream_url?: string; csp_mode?: string };
-  if (!r.upstream_url) return null;
-  return {
-    upstreamUrl: r.upstream_url,
-    cspMode: r.csp_mode === 'strict' ? 'strict' : 'lenient',
-  };
+  let value: CachedWrap['value'] = null;
+  if (raw && typeof raw === 'object') {
+    const r = raw as { upstream_url?: string; csp_mode?: string };
+    if (r.upstream_url) {
+      value = {
+        upstreamUrl: r.upstream_url,
+        cspMode: r.csp_mode === 'strict' ? 'strict' : 'lenient',
+      };
+    }
+  }
+  wrapCache.set(slug, { value, expires: now + WRAP_TTL_MS });
+  return value;
+}
+
+// Exported for the KV-invalidation endpoint added by Phase B.
+export function bustWrapCache(slug: string): void {
+  wrapCache.delete(slug);
 }
 ```
 
@@ -1461,7 +1702,16 @@ git log --oneline --since="1 day" | head
 ## Self-review notes
 
 - All steps have complete code, not placeholders
-- `schema.deploys.sourceKind / sourceRef` used in Task 2 — verify these exist in `packages/db/src/schema/deploys.ts` before running; if not, add them in Task 1's migration (low risk; they're informational).
-- The dev env uses `DevKv` locally; prod Cloudflare KV write path should match the static deploy pipeline's existing KV write helper — read `apps/web/lib/deploy/index.ts` for the exact pattern when implementing Task 6 step 3.
-- HTMLRewriter is a Bun + Workers global; test runs under Bun so the global is present. If a future CI runs under Node-only, swap to `@cloudflare/html-rewriter-wasm`.
-- Phase B (private apps) plan is produced as a sibling file — this plan explicitly does NOT add any private/invite logic.
+- Task 0 formalizes the previously-footnoted prerequisites (`deploys` columns, CLI api helpers)
+- The dev env uses `DevKv` locally; prod Cloudflare KV write path should match the static deploy pipeline's existing KV write helper — read `apps/web/lib/deploy/index.ts` for the exact pattern when implementing Task 6 step 3
+- HTMLRewriter is a Bun + Workers global; test runs under Bun so the global is present. If a future CI runs under Node-only, swap to `@cloudflare/html-rewriter-wasm`
+- Cookie parsing uses `Headers.getSetCookie()` (Bun + Workers have it). Falls back to single-header mode on older runtimes
+- Absolute-URL rewriting only covers common attributes (`href`, `src`, `action`). JS-generated URLs (fetch, XHR) won't be rewritten; that's expected — makers handle it via relative URLs in their app code, or accept that cross-origin JS fetches bypass the proxy
+- Phase B (private apps) plan is produced as a sibling file — this plan explicitly does NOT add any private/invite logic
+
+## Known follow-ups (deferred to Phase D / ops)
+
+- **Cost modeling.** Per-request `fetch` to upstream + HTMLRewriter CPU. Monitor once real wraps are live.
+- **Custom CSP header overrides per maker.** Today the choice is lenient (Shippie CSP) or strict (upstream CSP). A maker-supplied CSP string is a future nice-to-have.
+- **Caching of upstream responses.** We re-fetch every time. Cache-API layer can be added behind a wrap config flag.
+- **JS-generated cross-origin URLs.** Anything the upstream's JS dynamically builds (`fetch('https://mevrouw.vercel.app/api/...')`) still escapes the proxy. Document in the wrap guide.
