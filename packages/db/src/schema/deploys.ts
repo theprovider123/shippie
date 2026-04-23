@@ -50,6 +50,11 @@ export const deploys = pgTable(
     errorMessage: text('error_message'),
     durationMs: integer('duration_ms'),
 
+    /** URL-wrap deploys (migration 0018). Nullable so existing rows are valid.
+     *  For 'wrapped_url' deploys, sourceRef holds the upstream URL. */
+    sourceKind: text('source_kind'),
+    sourceRef: text('source_ref'),
+
     /** Per-app CSP header built by the trust pipeline at deploy time.
      *  Persisted so rollback can restore the KV `apps:{slug}:csp` entry.
      *  Null for pre-0014 rows. See migrations/0014_deploy_csp_header.sql. */

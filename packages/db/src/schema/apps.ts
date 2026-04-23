@@ -44,6 +44,12 @@ export const apps = pgTable(
     githubVerified: boolean('github_verified').default(false).notNull(),
     sourceType: text('source_type').notNull(), // 'github' | 'zip'
 
+    /** URL-wrap mode (migration 0018). 'static' reuses existing R2 pipeline;
+     *  'wrapped_url' routes the worker to a reverse-proxy handler. */
+    sourceKind: text('source_kind').default('static').notNull(),
+    upstreamUrl: text('upstream_url'),
+    upstreamConfig: jsonb('upstream_config').default(sql`'{}'::jsonb`).notNull(),
+
     /** BYO backend — null means Tier 1 (static, no backend). */
     backendType: text('backend_type'), // 'supabase' | 'firebase' | null
     backendUrl: text('backend_url'),
