@@ -1,6 +1,7 @@
 import { schema, type ShippieDb } from '@shippie/db';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { writeWrapMeta } from '@/lib/deploy/kv';
 
 export interface CreateWrappedAppInput {
   slug: string;
@@ -102,6 +103,14 @@ export async function createWrappedApp(
     .update(schema.apps)
     .set({ activeDeployId: deployRow.id, lastDeployedAt: new Date() })
     .where(eq(schema.apps.id, appRow.id));
+
+  // Write the KV row the Worker dispatches on. Must land before we return
+  // the live URL so the first request to {slug}.shippie.app sees the wrap
+  // config rather than falling through to the static (404) path.
+  await writeWrapMeta(input.slug, {
+    upstream_url: input.upstreamUrl,
+    csp_mode: input.cspMode ?? 'lenient',
+  });
 
   return {
     success: true,

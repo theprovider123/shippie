@@ -13,6 +13,8 @@ import type { WorkerEnv } from './env.ts';
 import { resolveAppSlug, resolveHostFull } from './routing.ts';
 import { systemRouter } from './router/system.ts';
 import { filesRouter } from './router/files.ts';
+import { proxyRouter } from './router/proxy.ts';
+import { loadWrapMeta } from './platform-client.ts';
 
 export interface AppBindings {
   Bindings: WorkerEnv;
@@ -101,6 +103,21 @@ export function createApp() {
   // System routes (__shippie/*) — owned by the platform, never by the maker
   // ------------------------------------------------------------------
   app.route('/__shippie', systemRouter);
+
+  // ------------------------------------------------------------------
+  // Route by source_kind — wrap mode proxies to upstream; static falls
+  // through to the files router. __shippie/* is always platform-owned,
+  // so we never intercept it even for wrapped apps.
+  // ------------------------------------------------------------------
+  app.use('*', async (c, next) => {
+    if (c.req.path.startsWith('/__shippie/')) return next();
+    const wrap = await loadWrapMeta(c.env.APP_CONFIG, c.var.slug);
+    if (wrap) {
+      const proxy = proxyRouter(() => wrap);
+      return proxy.fetch(c.req.raw, c.env);
+    }
+    return next();
+  });
 
   // ------------------------------------------------------------------
   // Maker files — catches everything else and serves from R2
