@@ -18,6 +18,11 @@ mock.module('../api.js', () => ({
       ],
     },
   }),
+  // Included so the mock surface matches the real module — other test files
+  // that share this mock registry (e.g. invite.test.ts) won't break if run
+  // together.
+  getJson: async () => ({ invites: [] }),
+  delJson: async () => ({ success: true }),
 }));
 
 const { wrapCommand } = await import('./wrap');

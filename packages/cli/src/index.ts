@@ -25,6 +25,7 @@ import { rollbackCommand } from './commands/rollback.js';
 import { statusCommand } from './commands/status.js';
 import { whoamiCommand } from './commands/whoami.js';
 import { wrapCommand } from './commands/wrap.js';
+import { inviteCreate, inviteList, inviteRevoke } from './commands/invite.js';
 
 function deriveSlug(url: string): string {
   try {
@@ -137,5 +138,41 @@ program
       });
     },
   );
+
+program
+  .command('invite <slug>')
+  .description('Create a link invite for a private app')
+  .option('--max-uses <n>', 'Hard cap on claims', (v) => Number(v))
+  .option('--expires <days>', 'Expire after this many days', (v) => Number(v))
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(
+    async (
+      slug: string,
+      opts: { maxUses?: number; expires?: number; api?: string },
+    ) => {
+      await inviteCreate({
+        slug,
+        apiUrl: opts.api ?? 'https://shippie.app',
+        maxUses: opts.maxUses,
+        expiresDays: opts.expires,
+      });
+    },
+  );
+
+program
+  .command('invites <slug>')
+  .description('List active invites for an app')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(async (slug: string, opts: { api?: string }) => {
+    await inviteList({ slug, apiUrl: opts.api ?? 'https://shippie.app' });
+  });
+
+program
+  .command('invite:revoke <slug> <id>')
+  .description('Revoke an invite by id')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(async (slug: string, id: string, opts: { api?: string }) => {
+    await inviteRevoke({ slug, id, apiUrl: opts.api ?? 'https://shippie.app' });
+  });
 
 program.parse();
