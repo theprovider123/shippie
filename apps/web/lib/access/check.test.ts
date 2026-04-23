@@ -74,7 +74,7 @@ describe('checkAccess', () => {
     const r = await checkAccess({
       appId,
       slug: 'check-priv-cookie',
-      viewer: { inviteCookie: { app: 'check-priv-cookie', sub: 'anon-1', tok: 't', src: 'invite_link', exp: Math.floor(Date.now() / 1000) + 60 } },
+      viewer: { inviteCookie: { app: 'check-priv-cookie', sub: 'anon-1', tok: 't', src: 'invite_link' } },
     });
     expect(r).toBe('granted');
   });
@@ -84,7 +84,7 @@ describe('checkAccess', () => {
     const r = await checkAccess({
       appId,
       slug: 'check-priv-mismatch',
-      viewer: { inviteCookie: { app: 'some-other-app', sub: 'x', tok: 't', src: 'invite_link', exp: 99999999999 } },
+      viewer: { inviteCookie: { app: 'some-other-app', sub: 'x', tok: 't', src: 'invite_link' } },
     });
     expect(r).toBe('denied');
   });

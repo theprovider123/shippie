@@ -2,7 +2,7 @@
 import { and, eq, isNull, or } from 'drizzle-orm';
 import { schema } from '@shippie/db';
 import { getDb } from '@/lib/db';
-import type { InviteGrant } from '../../../../packages/access/src/invite-cookie';
+import type { InviteGrant } from '@shippie/access/invite-cookie';
 
 export interface CheckAccessInput {
   appId: string;

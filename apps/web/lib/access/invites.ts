@@ -100,13 +100,14 @@ export async function revokeInvite(input: {
   by: string;
 }): Promise<boolean> {
   const db = await getDb();
-  const result = await db
+  const rows = await db
     .update(schema.appInvites)
     .set({ revokedAt: new Date() })
     .where(
       and(eq(schema.appInvites.id, input.id), eq(schema.appInvites.appId, input.appId)),
-    );
-  return (result.rowCount ?? 0) > 0;
+    )
+    .returning({ id: schema.appInvites.id });
+  return rows.length > 0;
 }
 
 export async function listInvites(input: { appId: string }) {

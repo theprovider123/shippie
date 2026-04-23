@@ -33,6 +33,7 @@ declare module 'bun:test' {
     toBeLessThanOrEqual: (n: number) => R;
     toHaveProperty: (key: string, value?: unknown) => R;
     toThrow: (message?: string | RegExp) => R;
+    toMatch: (pattern: RegExp | string) => R;
     resolves: Matchers<Promise<R>>;
     rejects: Matchers<Promise<R>>;
     not: Matchers<R>;

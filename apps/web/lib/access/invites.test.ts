@@ -53,7 +53,7 @@ describe('invites', () => {
     const appId = await freshApp('inv-anon');
     const inv = await createLinkInvite({ appId, createdBy: MAKER });
     const result = await claimInvite({ token: inv.token });
-    expect(result.success).toBe(true);
+    if (!result.success) throw new Error(`expected success, got ${result.reason}`);
     expect(result.anonymous).toBe(true);
   });
 
@@ -62,7 +62,7 @@ describe('invites', () => {
     const inv = await createLinkInvite({ appId, createdBy: MAKER });
     await revokeInvite({ id: inv.id, appId, by: MAKER });
     const result = await claimInvite({ token: inv.token });
-    expect(result.success).toBe(false);
+    if (result.success) throw new Error('expected failure');
     expect(result.reason).toBe('revoked_or_expired');
   });
 
@@ -71,7 +71,7 @@ describe('invites', () => {
     const inv = await createLinkInvite({ appId, createdBy: MAKER, maxUses: 1 });
     await claimInvite({ token: inv.token });
     const second = await claimInvite({ token: inv.token });
-    expect(second.success).toBe(false);
+    if (second.success) throw new Error('expected failure');
     expect(second.reason).toBe('uses_exhausted');
   });
 
