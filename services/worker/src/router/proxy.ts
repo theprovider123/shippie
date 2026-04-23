@@ -143,10 +143,12 @@ export function proxyRouter(loadMeta: (slug: string) => WrapMeta | Promise<WrapM
 
     // HTML transform: inject PWA tags AND rewrite upstream-absolute URLs so
     // browser-initiated sub-requests (img, script, fetch-as-navigation) stay
-    // on the proxy origin.
+    // on the proxy origin. Skip for HEAD (no body to rewrite) and for
+    // responses with no body at all.
     const contentType = upstream.headers.get('content-type') ?? '';
+    const isBodyless = c.req.method === 'HEAD' || upstream.status === 204 || upstream.status === 304;
     let body: ReadableStream<Uint8Array> | null = upstream.body;
-    if (body && contentType.toLowerCase().includes('text/html')) {
+    if (!isBodyless && body && contentType.toLowerCase().includes('text/html')) {
       // First pass: rewrite absolute URLs via a dedicated rewriter.
       const rewritten = absoluteUrlRewriter(meta.upstreamUrl).transform(
         new Response(body, { headers: { 'content-type': 'text/html' } }),
@@ -154,6 +156,7 @@ export function proxyRouter(loadMeta: (slug: string) => WrapMeta | Promise<WrapM
       // Second pass: PWA injection.
       body = injectPwaTags(rewritten.body!, { slug: c.var.slug, contentType });
     }
+    if (isBodyless) body = null;
 
     return new Response(body, {
       status: upstream.status,
