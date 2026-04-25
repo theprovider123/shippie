@@ -179,11 +179,11 @@ The user reviewed v1 of this roadmap and locked these adjustments:
 
 | Plan | Status | Path |
 |---|---|---|
-| A — WebNN | full plan written | `docs/superpowers/plans/2026-04-26-webnn-hardware-acceleration.md` |
-| C — Textures + Patina | full plan written | `docs/superpowers/plans/2026-04-26-sensory-textures-and-patina.md` |
-| Live Room showcase (acceptance for C) | full plan written; build deferred until A + C ship | `docs/superpowers/plans/2026-04-26-live-room-showcase.md` |
-| B — Zero-Config Pipeline + WASM | not yet written | — (paired with G) |
-| G — Maker Dashboard + Compliance | not yet written | — (paired with B) |
+| A — WebNN | **shipped — main branch** (commits bb76eb1 + 8d6b155) | `docs/superpowers/plans/2026-04-26-webnn-hardware-acceleration.md` |
+| C — Textures + Patina | **shipped — main branch** | `docs/superpowers/plans/2026-04-26-sensory-textures-and-patina.md` |
+| Live Room showcase (acceptance for C) | full plan written; build deferred until C is exercised on real device | `docs/superpowers/plans/2026-04-26-live-room-showcase.md` |
+| B — Zero-Config Pipeline + WASM | full plan written; ships paired with G | `docs/superpowers/plans/2026-04-26-zero-config-pipeline-and-wasm.md` |
+| G — Maker Dashboard + Compliance | full plan written; ships paired with B | `docs/superpowers/plans/2026-04-26-maker-dashboard-and-compliance.md` |
 | D1 — Adaptive Intelligence (core) | not yet written | — |
 | E — Ambient Intelligence | not yet written | — |
 | D2 — Adaptive Intelligence (experimental) | not yet written; deferrable | — |
