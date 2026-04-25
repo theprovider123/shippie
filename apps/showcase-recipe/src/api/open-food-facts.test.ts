@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'bun:test';
-import { firstBrand, lookupBarcode, parseProduct, parseQuantity } from './open-food-facts.ts';
+import {
+  firstBrand,
+  lookupBarcode,
+  parseProduct,
+  parseQuantity,
+  type FetchLike,
+} from './open-food-facts.ts';
 
 describe('parseQuantity', () => {
   it('splits amount and unit', () => {
@@ -61,21 +67,21 @@ describe('parseProduct', () => {
 
 describe('lookupBarcode', () => {
   it('rejects non-numeric or too-short barcodes', async () => {
-    const fetchSpy = (() => {
+    const fetchSpy: FetchLike = async () => {
       throw new Error('should not be called');
-    }) as unknown as typeof fetch;
+    };
     expect(await lookupBarcode('abc', fetchSpy)).toBeNull();
     expect(await lookupBarcode('123', fetchSpy)).toBeNull();
   });
 
   it('returns null when OFF status is 0', async () => {
-    const fetchFn: typeof fetch = async () =>
+    const fetchFn: FetchLike = async () =>
       new Response(JSON.stringify({ status: 0 }), { status: 200 });
     expect(await lookupBarcode('123456789012', fetchFn)).toBeNull();
   });
 
   it('returns parsed product on hit', async () => {
-    const fetchFn: typeof fetch = async () =>
+    const fetchFn: FetchLike = async () =>
       new Response(
         JSON.stringify({
           status: 1,
@@ -94,7 +100,7 @@ describe('lookupBarcode', () => {
   });
 
   it('returns null on network failure', async () => {
-    const fetchFn: typeof fetch = async () => {
+    const fetchFn: FetchLike = async () => {
       throw new Error('offline');
     };
     expect(await lookupBarcode('123456789012', fetchFn)).toBeNull();

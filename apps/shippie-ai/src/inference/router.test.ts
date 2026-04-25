@@ -122,10 +122,10 @@ describe('createRouter', () => {
     await Promise.resolve();
 
     expect(dispatched).toHaveLength(1);
-    expect(dispatched[0].task).toBe('classify');
+    expect(dispatched[0]!.task).toBe('classify');
     expect(source.calls).toHaveLength(1);
-    expect(source.calls[0].targetOrigin).toBe('https://recipe.shippie.app');
-    expect(source.calls[0].data).toEqual({
+    expect(source.calls[0]!.targetOrigin).toBe('https://recipe.shippie.app');
+    expect(source.calls[0]!.data).toEqual({
       requestId: 'req-1',
       result: { label: 'food', confidence: 0.92 },
     });
@@ -198,8 +198,8 @@ describe('createRouter', () => {
     await Promise.resolve();
 
     expect(source.calls).toHaveLength(1);
-    expect(source.calls[0].data).toEqual({ requestId: 'req-2', error: 'model failed' });
-    expect(source.calls[0].targetOrigin).toBe('https://recipe.shippie.app');
+    expect(source.calls[0]!.data).toEqual({ requestId: 'req-2', error: 'model failed' });
+    expect(source.calls[0]!.targetOrigin).toBe('https://recipe.shippie.app');
   });
 
   test('rejects malformed messages', async () => {

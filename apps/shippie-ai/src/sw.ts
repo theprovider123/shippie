@@ -22,7 +22,7 @@ precacheAndRoute(self.__WB_MANIFEST);
 // Model files (transformers.js fetches *.onnx, *.json, tokenizer files)
 // from the configured remoteHost. Cache them aggressively.
 registerRoute(
-  ({ url, request }) =>
+  ({ url, request }: { url: URL; request: Request }) =>
     request.destination === '' &&
     (url.pathname.endsWith('.onnx') ||
       url.pathname.endsWith('.bin') ||

@@ -1,4 +1,4 @@
-import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
+import type { LocalDbRecord, ShippieLocalDb } from '@shippie/local-runtime-contract';
 import {
   ENTRIES_TABLE,
   entriesSchema,
@@ -7,15 +7,23 @@ import {
   type Topic,
 } from './schema.ts';
 
-let initPromise: Promise<void> | null = null;
+// Local-DB rows use an `unknown` index signature; our typed entries satisfy
+// the underlying SQL shape but TypeScript doesn't see them as assignable.
+// Cast at the boundary so the rest of the app stays well-typed.
+type RowOf<T> = T & LocalDbRecord;
+const asRow = <T>(value: T): RowOf<T> => value as RowOf<T>;
+
+const initCache = new WeakMap<ShippieLocalDb, Promise<void>>();
 
 export async function ensureSchema(db: ShippieLocalDb): Promise<void> {
-  if (!initPromise) {
-    initPromise = (async () => {
+  let pending = initCache.get(db);
+  if (!pending) {
+    pending = (async () => {
       await db.create(ENTRIES_TABLE, entriesSchema);
     })();
+    initCache.set(db, pending);
   }
-  await initPromise;
+  await pending;
 }
 
 export function newId(): string {
@@ -27,17 +35,17 @@ export function newId(): string {
 
 export async function listEntries(db: ShippieLocalDb): Promise<JournalEntry[]> {
   await ensureSchema(db);
-  return db.query<JournalEntry>(ENTRIES_TABLE, { orderBy: { created_at: 'desc' } });
+  return db.query<RowOf<JournalEntry>>(ENTRIES_TABLE, { orderBy: { created_at: 'desc' } });
 }
 
 export async function listEntriesByTopic(db: ShippieLocalDb, topic: Topic): Promise<JournalEntry[]> {
   await ensureSchema(db);
-  return db.query<JournalEntry>(ENTRIES_TABLE, { where: { topic }, orderBy: { created_at: 'desc' } });
+  return db.query<RowOf<JournalEntry>>(ENTRIES_TABLE, { where: { topic }, orderBy: { created_at: 'desc' } });
 }
 
 export async function getEntry(db: ShippieLocalDb, id: string): Promise<JournalEntry | null> {
   await ensureSchema(db);
-  const rows = await db.query<JournalEntry>(ENTRIES_TABLE, { where: { id }, limit: 1 });
+  const rows = await db.query<RowOf<JournalEntry>>(ENTRIES_TABLE, { where: { id }, limit: 1 });
   return rows[0] ?? null;
 }
 
@@ -65,7 +73,7 @@ export async function createEntry(db: ShippieLocalDb, input: CreateEntryInput): 
     created_at: now,
     updated_at: now,
   };
-  await db.insert(ENTRIES_TABLE, row);
+  await db.insert(ENTRIES_TABLE, asRow(row));
   return row;
 }
 
@@ -75,7 +83,7 @@ export async function updateEntry(
   patch: Partial<Omit<JournalEntry, 'id' | 'created_at'>>,
 ): Promise<void> {
   await ensureSchema(db);
-  await db.update<JournalEntry>(ENTRIES_TABLE, id, { ...patch, updated_at: new Date().toISOString() });
+  await db.update<RowOf<JournalEntry>>(ENTRIES_TABLE, id, asRow({ ...patch, updated_at: new Date().toISOString() }));
 }
 
 export async function deleteEntry(db: ShippieLocalDb, id: string): Promise<void> {
@@ -89,5 +97,5 @@ export async function searchByVector(
   limit = 10,
 ): Promise<Array<JournalEntry & { score: number }>> {
   await ensureSchema(db);
-  return db.vectorSearch<JournalEntry>(ENTRIES_TABLE, vector, { limit });
+  return db.vectorSearch<RowOf<JournalEntry>>(ENTRIES_TABLE, vector, { limit });
 }

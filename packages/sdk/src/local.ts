@@ -47,13 +47,31 @@ export class ShippieAINotInstalledError extends Error {
   }
 }
 
+/**
+ * Structural subset of `Window` that LocalAI actually uses. Tests inject a
+ * happy-dom Window which doesn't satisfy the full DOM `Window` type but
+ * does provide these handful of methods.
+ */
+export interface LocalAIWindowLike {
+  addEventListener(type: 'message' | 'pageshow', listener: EventListener): void;
+  removeEventListener(type: 'message' | 'pageshow', listener: EventListener): void;
+}
+
+/**
+ * Structural subset of `Document` that LocalAI uses.
+ */
+export interface LocalAIDocumentLike {
+  createElement(tag: 'iframe'): HTMLIFrameElement;
+  body: { appendChild(node: Node): Node };
+}
+
 export interface LocalAIDeps {
   /** Override the iframe URL (tests, dev). Default `https://ai.shippie.app/inference.html`. */
   iframeSrc?: string;
   /** Override the document used to create the iframe. Default `globalThis.document`. */
-  doc?: Document;
+  doc?: LocalAIDocumentLike;
   /** Override the window used to listen for postMessage. Default `globalThis.window`. */
-  win?: Window;
+  win?: LocalAIWindowLike;
   /** crypto.randomUUID alternative (tests). */
   randomId?: () => string;
 }
@@ -68,16 +86,17 @@ export class LocalAI {
   private ready: Promise<HTMLIFrameElement> | null = null;
   private pending = new Map<string, PendingRequest>();
   private messageHandler: ((e: MessageEvent) => void) | null = null;
-  private pageshowHandler: ((e: PageTransitionEvent) => void) | null = null;
+  private pageshowHandler: (() => void) | null = null;
   private readonly src: string;
-  private readonly doc: Document | null;
-  private readonly win: Window | null;
+  private readonly doc: LocalAIDocumentLike | null;
+  private readonly win: LocalAIWindowLike | null;
   private readonly randomId: () => string;
 
   constructor(deps: LocalAIDeps = {}) {
     this.src = deps.iframeSrc ?? `${SHIPPIE_AI_ORIGIN}${SHIPPIE_AI_INFERENCE_PATH}`;
-    this.doc = deps.doc ?? (typeof document !== 'undefined' ? document : null);
-    this.win = deps.win ?? (typeof window !== 'undefined' ? window : null);
+    this.doc =
+      deps.doc ?? (typeof document !== 'undefined' ? (document as unknown as LocalAIDocumentLike) : null);
+    this.win = deps.win ?? (typeof window !== 'undefined' ? (window as unknown as LocalAIWindowLike) : null);
     this.randomId =
       deps.randomId ??
       (() =>
@@ -234,6 +253,30 @@ export function _setDefaultLocalAIForTest(instance: LocalAI | null): void {
 // Public local surface
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Local groups (Proximity Protocol). Lazy-loaded so apps that don't need
+// mesh don't pay the bundle cost.
+// ---------------------------------------------------------------------------
+
+type ProximityModule = typeof import('@shippie/proximity');
+let groupModulePromise: Promise<ProximityModule> | null = null;
+
+async function loadProximityModule(): Promise<ProximityModule> {
+  if (!groupModulePromise) groupModulePromise = import('@shippie/proximity');
+  return groupModulePromise;
+}
+
+const groupApi = {
+  async create(...args: Parameters<ProximityModule['createGroup']>) {
+    const mod = await loadProximityModule();
+    return mod.createGroup(...args);
+  },
+  async join(...args: Parameters<ProximityModule['joinGroup']>) {
+    const mod = await loadProximityModule();
+    return mod.joinGroup(...args);
+  },
+};
+
 export const local = {
   load,
   capabilities,
@@ -253,6 +296,13 @@ export const local = {
     if (fromRuntime) return fromRuntime;
     return getDefaultLocalAI();
   },
+  /**
+   * Local-network groups via the Shippie Proximity Protocol.
+   *
+   *   const owner = await shippie.local.group.create({ appSlug: 'whiteboard' });
+   *   const guest = await shippie.local.group.join({ appSlug: 'whiteboard', joinCode });
+   */
+  group: groupApi,
 };
 
 export async function load(opts: LoadLocalRuntimeOptions = {}): Promise<ShippieLocalRuntimeGlobal> {

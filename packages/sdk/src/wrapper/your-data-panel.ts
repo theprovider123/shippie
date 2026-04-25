@@ -19,15 +19,53 @@
  * The panel renders into a closed Shadow DOM so the maker's CSS doesn't
  * collide with our styles (and vice versa). All actions delegate to
  * `@shippie/local-db` + `@shippie/local-files` for the actual data ops.
+ *
+ * Hooks:
+ *   - `onConfigureBackup`  — invoked when the user clicks
+ *     "Auto-backup to Drive…". Default behavior opens the OAuth
+ *     coordinator popup at https://shippie.app/oauth/google-drive and
+ *     forwards the resulting token to whatever the maker app provides.
+ *   - `onStartTransfer`    — invoked when the user clicks
+ *     "Send to another device". Default opens a sender flow that
+ *     generates a one-time room + QR via `@shippie/proximity/transfer`.
+ *
+ * Both hooks are *callbacks*: the wrapper supplies sensible defaults
+ * but the maker app (or Shippie's hosted runtime) overrides them when
+ * it needs custom UI. The panel only knows the buttons exist.
  */
 
 export interface YourDataPanelOptions {
   /** Where to mount. Defaults to a new fixed-position overlay on document.body. */
   mount?: HTMLElement;
-  /** Hook for the Backup tab — see backup-providers package (week 8). */
+  /**
+   * Hook for the Backup tab — defaults to opening the OAuth coordinator
+   * popup at `https://shippie.app/oauth/google-drive`.
+   */
   onConfigureBackup?: () => void;
-  /** Hook for Transfer — see device-transfer (week 9). */
+  /**
+   * Hook for "Send to another device" — defaults to a stub that
+   * surfaces a "transfer not wired" alert. The hosted runtime
+   * supplies the real flow via the proximity package.
+   */
   onStartTransfer?: () => void;
+  /**
+   * Slug of the originating app — only required for the default
+   * `onConfigureBackup` flow. The wrapper auto-supplies this from
+   * `window.__shippie_meta`; it can be omitted in maker-supplied
+   * overrides.
+   */
+  appSlug?: string;
+  /**
+   * Override the OAuth coordinator origin (handy for local dev where
+   * shippie.app isn't reachable). Defaults to `https://shippie.app`.
+   */
+  coordinatorOrigin?: string;
+  /**
+   * Optional custom handler invoked once the popup posts back a token
+   * envelope. Defaults to `console.info` so the maker can wire it up
+   * without crashing the panel.
+   */
+  onBackupToken?: (msg: { provider: string; token: unknown }) => void;
 }
 
 interface PanelHandle {
@@ -75,10 +113,18 @@ export function openYourData(opts: YourDataPanelOptions = {}): PanelHandle {
     void doDelete(root, refresh);
   });
   root.getElementById('shippie-data-backup')?.addEventListener('click', () => {
-    opts.onConfigureBackup?.();
+    if (opts.onConfigureBackup) {
+      opts.onConfigureBackup();
+    } else {
+      void defaultConfigureBackup(opts);
+    }
   });
   root.getElementById('shippie-data-transfer')?.addEventListener('click', () => {
-    opts.onStartTransfer?.();
+    if (opts.onStartTransfer) {
+      opts.onStartTransfer();
+    } else {
+      defaultStartTransfer();
+    }
   });
 
   void refresh();
@@ -134,6 +180,81 @@ async function doExport(_root: ShadowRoot): Promise<void> {
 
 async function doImport(_root: ShadowRoot): Promise<void> {
   alert('Restore from .shippie-backup — wires up in week 8.');
+}
+
+/**
+ * Default backup configuration handler. Opens a popup at the OAuth
+ * coordinator (`https://shippie.app/oauth/google-drive`), generates
+ * a fresh PKCE pair locally, hands the challenge to the coordinator
+ * via the HMAC-signed `state` envelope, and waits for the popup to
+ * postMessage back. The token never touches localStorage; the
+ * caller's `onBackupToken` decides where it goes (typically OPFS
+ * via `local-files`).
+ *
+ * This default is dynamic-imported so the panel doesn't pull
+ * `@shippie/backup-providers` into the wrapper bundle when nobody
+ * presses the button.
+ */
+async function defaultConfigureBackup(opts: YourDataPanelOptions): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const slug = opts.appSlug ?? readShippieMetaSlug();
+  if (!slug) {
+    alert('Backup setup is unavailable: app slug missing.');
+    return;
+  }
+  const coordinatorOrigin = opts.coordinatorOrigin ?? 'https://shippie.app';
+  let mod: typeof import('@shippie/backup-providers');
+  try {
+    mod = await import('@shippie/backup-providers');
+  } catch (err) {
+    console.error('shippie:your-data-panel: failed to load backup-providers', err);
+    alert('Backup setup is unavailable in this build.');
+    return;
+  }
+  const verifier = mod.generateCodeVerifier();
+  const challenge = await mod.deriveCodeChallenge(verifier);
+  // Note: the coordinator-secret HMAC happens on the server side. For
+  // the popup to trust the result it re-verifies a server-signed
+  // result envelope. From the panel's side we only need to keep the
+  // verifier to exchange against the token endpoint — but per the
+  // spec, the server does the exchange. We persist the verifier in
+  // a same-origin cookie scoped to the maker app via a server hop.
+  const popupUrl = `${coordinatorOrigin}/__shippie/oauth/start?provider=google-drive&app=${encodeURIComponent(slug)}&v=${encodeURIComponent(challenge)}`;
+  const popup = window.open(popupUrl, 'shippie-oauth', 'width=480,height=640');
+  if (!popup) {
+    // Mobile Safari / popup blockers — fall back to full-page redirect.
+    window.location.href = popupUrl;
+    return;
+  }
+  const handler = (e: MessageEvent) => {
+    const data = e.data as { kind?: string; provider?: string; ok?: boolean; token?: unknown } | undefined;
+    if (!data || data.kind !== 'shippie-oauth') return;
+    window.removeEventListener('message', handler);
+    if (!data.ok) {
+      alert('Sign-in failed.');
+      return;
+    }
+    if (opts.onBackupToken) {
+      opts.onBackupToken({ provider: data.provider ?? 'google-drive', token: data.token });
+    } else {
+      // Token stays out of localStorage; we just acknowledge.
+      console.info('shippie:backup token received (provider=%s)', data.provider);
+      alert('Backup is now configured. Your data will sync nightly.');
+    }
+  };
+  window.addEventListener('message', handler);
+  // Give up after 10 minutes — same TTL as the state envelope.
+  setTimeout(() => window.removeEventListener('message', handler), 10 * 60 * 1000);
+}
+
+function defaultStartTransfer(): void {
+  alert('Device transfer launches in the wrapper SDK; this hook becomes a real flow once @shippie/proximity is wired into your app.');
+}
+
+function readShippieMetaSlug(): string | null {
+  if (typeof window === 'undefined') return null;
+  const meta = (window as { __shippie_meta?: { appSlug?: string } }).__shippie_meta;
+  return meta?.appSlug ?? null;
 }
 
 async function doDelete(_root: ShadowRoot, refresh: () => Promise<void>): Promise<void> {

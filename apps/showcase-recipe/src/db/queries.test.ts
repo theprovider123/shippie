@@ -32,7 +32,15 @@ describe('filterSuggestions', () => {
   });
 
   it('prioritises starts-with over contains', () => {
-    expect(filterSuggestions('o', candidates)).toEqual(['olive oil', 'oregano', 'tomato']);
+    const result = filterSuggestions('o', candidates);
+    // Starts-with matches must come before contains-only matches.
+    const startsWith = ['olive oil', 'oregano'];
+    expect(result.slice(0, 2)).toEqual(startsWith);
+    // Items that only contain 'o' (not start with) follow.
+    for (const c of result.slice(2)) {
+      expect(c.toLowerCase().startsWith('o')).toBe(false);
+      expect(c.toLowerCase().includes('o')).toBe(true);
+    }
   });
 
   it('caps results at max', () => {

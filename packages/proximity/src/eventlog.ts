@@ -116,20 +116,24 @@ export function compareEntries(a: LogEntry, b: LogEntry): number {
 /**
  * Returns -1 if `a < b` (a happens-before b), 1 if `a > b`, 0 if equal
  * or concurrent (caller breaks the tie with ts).
+ *
+ * happens-before: every component of `a` ≤ corresponding `b`, with at
+ * least one strictly less. Equal: all components equal. Concurrent:
+ * neither vector dominates.
  */
 export function compareClocks(a: VectorClock, b: VectorClock): number {
-  let aLeq = true;
-  let bLeq = true;
+  let aHasLarger = false;
+  let bHasLarger = false;
   const peers = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const p of peers) {
     const av = a[p] ?? 0;
     const bv = b[p] ?? 0;
-    if (av > bv) bLeq = false;
-    else if (bv > av) aLeq = false;
+    if (av > bv) aHasLarger = true;
+    else if (bv > av) bHasLarger = true;
   }
-  if (aLeq && bLeq) return 0; // equal
-  if (aLeq) return -1;
-  if (bLeq) return 1;
+  if (!aHasLarger && !bHasLarger) return 0; // equal
+  if (!aHasLarger) return -1; // a happens-before b
+  if (!bHasLarger) return 1;
   return 0; // concurrent
 }
 

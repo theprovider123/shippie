@@ -107,18 +107,21 @@ export function createRouter(deps: RouterDeps): { stop(): void } {
     }
   };
 
-  listenOn.addEventListener('message', handler as EventListener);
+  // Wrap handler to satisfy EventListener's `Event` parameter — at runtime
+  // the message events match the MessageEvent shape.
+  const wrapped: EventListener = (e) => {
+    void handler(e as MessageEvent);
+  };
+  listenOn.addEventListener('message', wrapped);
 
   // Tell the embedder we're ready so it can flush queued requests.
   if (deps.postReady) deps.postReady();
 
   return {
     stop() {
-      // happy-dom and DOM both expose removeEventListener on globalThis.
-      (listenOn as unknown as Window).removeEventListener?.(
-        'message',
-        handler as EventListener,
-      );
+      const remove = (listenOn as { removeEventListener?: typeof globalThis.removeEventListener })
+        .removeEventListener;
+      remove?.('message', wrapped);
     },
   };
 }

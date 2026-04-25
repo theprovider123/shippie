@@ -3,7 +3,7 @@
  * underlying engine is wa-sqlite + OPFS (off-main-thread). Helpers keep the
  * components free of SQL-shaped knowledge.
  */
-import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
+import type { LocalDbRecord, ShippieLocalDb } from '@shippie/local-runtime-contract';
 import {
   INGREDIENTS_TABLE,
   RECIPES_TABLE,
@@ -14,20 +14,28 @@ import {
   type RecipeWithIngredients,
 } from './schema.ts';
 
+// LocalDbRecord uses an `unknown` index signature; our typed Recipe/Ingredient
+// rows satisfy the underlying SQL shape but TypeScript doesn't see them as
+// assignable. Cast at the boundary so the rest of the app stays well-typed.
+type RowOf<T> = T & LocalDbRecord;
+const asRow = <T>(value: T): RowOf<T> => value as RowOf<T>;
+
 export interface DbHandle {
   db: ShippieLocalDb;
 }
 
-let initPromise: Promise<void> | null = null;
+const initCache = new WeakMap<ShippieLocalDb, Promise<void>>();
 
 export async function ensureSchema(db: ShippieLocalDb): Promise<void> {
-  if (!initPromise) {
-    initPromise = (async () => {
+  let pending = initCache.get(db);
+  if (!pending) {
+    pending = (async () => {
       await db.create(RECIPES_TABLE, recipesSchema);
       await db.create(INGREDIENTS_TABLE, ingredientsSchema);
     })();
+    initCache.set(db, pending);
   }
-  await initPromise;
+  await pending;
 }
 
 export function newId(): string {
@@ -39,15 +47,15 @@ export function newId(): string {
 
 export async function listRecipes(db: ShippieLocalDb): Promise<Recipe[]> {
   await ensureSchema(db);
-  return db.query<Recipe>(RECIPES_TABLE, { orderBy: { updated_at: 'desc' } });
+  return db.query<RowOf<Recipe>>(RECIPES_TABLE, { orderBy: { updated_at: 'desc' } });
 }
 
 export async function getRecipe(db: ShippieLocalDb, id: string): Promise<RecipeWithIngredients | null> {
   await ensureSchema(db);
-  const recipes = await db.query<Recipe>(RECIPES_TABLE, { where: { id }, limit: 1 });
+  const recipes = await db.query<RowOf<Recipe>>(RECIPES_TABLE, { where: { id }, limit: 1 });
   const recipe = recipes[0];
   if (!recipe) return null;
-  const ingredients = await db.query<Ingredient>(INGREDIENTS_TABLE, {
+  const ingredients = await db.query<RowOf<Ingredient>>(INGREDIENTS_TABLE, {
     where: { recipe_id: id },
   });
   return { ...recipe, ingredients };
@@ -68,7 +76,7 @@ export async function createRecipe(
     created_at: now,
     updated_at: now,
   };
-  await db.insert(RECIPES_TABLE, recipe);
+  await db.insert(RECIPES_TABLE, asRow(recipe));
   return recipe;
 }
 
@@ -78,12 +86,12 @@ export async function updateRecipe(
   patch: Partial<Omit<Recipe, 'id' | 'created_at'>>,
 ): Promise<void> {
   await ensureSchema(db);
-  await db.update<Recipe>(RECIPES_TABLE, id, { ...patch, updated_at: new Date().toISOString() });
+  await db.update<RowOf<Recipe>>(RECIPES_TABLE, id, asRow({ ...patch, updated_at: new Date().toISOString() }));
 }
 
 export async function deleteRecipe(db: ShippieLocalDb, id: string): Promise<void> {
   await ensureSchema(db);
-  const ingredients = await db.query<Ingredient>(INGREDIENTS_TABLE, { where: { recipe_id: id } });
+  const ingredients = await db.query<RowOf<Ingredient>>(INGREDIENTS_TABLE, { where: { recipe_id: id } });
   for (const ing of ingredients) await db.delete(INGREDIENTS_TABLE, ing.id);
   await db.delete(RECIPES_TABLE, id);
 }
@@ -102,7 +110,7 @@ export async function addIngredient(
     barcode: input.barcode ?? null,
     brand: input.brand ?? null,
   };
-  await db.insert(INGREDIENTS_TABLE, ing);
+  await db.insert(INGREDIENTS_TABLE, asRow(ing));
   return ing;
 }
 
@@ -115,7 +123,7 @@ export async function searchRecipes(db: ShippieLocalDb, q: string): Promise<Reci
   await ensureSchema(db);
   const trimmed = q.trim();
   if (!trimmed) return listRecipes(db);
-  return db.search<Recipe>(RECIPES_TABLE, trimmed, { limit: 50 });
+  return db.search<RowOf<Recipe>>(RECIPES_TABLE, trimmed, { limit: 50 });
 }
 
 /**
@@ -124,7 +132,7 @@ export async function searchRecipes(db: ShippieLocalDb, q: string): Promise<Reci
  */
 export async function distinctIngredientNames(db: ShippieLocalDb): Promise<string[]> {
   await ensureSchema(db);
-  const rows = await db.query<Ingredient>(INGREDIENTS_TABLE, { limit: 1000 });
+  const rows = await db.query<RowOf<Ingredient>>(INGREDIENTS_TABLE, { limit: 1000 });
   return rankFrequencies(rows.map((r) => r.name).filter(Boolean));
 }
 

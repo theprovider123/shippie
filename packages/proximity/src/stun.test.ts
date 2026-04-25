@@ -25,7 +25,7 @@ describe('parseSrflxIp', () => {
 });
 
 describe('isPrivateAddress', () => {
-  test.each([
+  const cases: ReadonlyArray<readonly [string, boolean]> = [
     ['10.0.0.1', true],
     ['192.168.1.1', true],
     ['172.16.0.1', true],
@@ -37,9 +37,12 @@ describe('isPrivateAddress', () => {
     ['fe80::1', true],
     ['fd12:3456:789a::1', true],
     ['2001:db8::1', false],
-  ] as const)('%s → %s', (ip, expected) => {
-    expect(isPrivateAddress(ip)).toBe(expected);
-  });
+  ];
+  for (const [ip, expected] of cases) {
+    test(`${ip} → ${expected}`, () => {
+      expect(isPrivateAddress(ip)).toBe(expected);
+    });
+  }
 });
 
 describe('discoverPublicIp', () => {

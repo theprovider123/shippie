@@ -9,7 +9,7 @@ test('default CSP has connect-src self only', () => {
   // (frame-src). connect-src must remain self-only.
   const connectMatch = /connect-src ([^;]+)/.exec(r.header);
   assert.ok(connectMatch, 'connect-src directive missing');
-  assert.ok(!connectMatch[1].includes('https://'), 'connect-src must be self-only by default');
+  assert.ok(!connectMatch![1]!.includes('https://'), 'connect-src must be self-only by default');
 });
 
 test('external_network adds allowed domains to connect-src', () => {

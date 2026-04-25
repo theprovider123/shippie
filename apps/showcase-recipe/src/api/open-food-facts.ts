@@ -13,7 +13,12 @@ export interface ProductLookup {
 
 const ENDPOINT = 'https://world.openfoodfacts.org/api/v0/product';
 
-export async function lookupBarcode(barcode: string, fetchFn: typeof fetch = fetch): Promise<ProductLookup | null> {
+export type FetchLike = (input: string) => Promise<Response>;
+
+export async function lookupBarcode(
+  barcode: string,
+  fetchFn: FetchLike = (url) => fetch(url),
+): Promise<ProductLookup | null> {
   if (!/^[0-9]{6,14}$/.test(barcode)) return null;
   const url = `${ENDPOINT}/${encodeURIComponent(barcode)}.json`;
   let res: Response;

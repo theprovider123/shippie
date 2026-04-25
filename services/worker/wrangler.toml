@@ -24,6 +24,17 @@ bucket_name = "shippie-apps"
 binding = "SHIPPIE_PUBLIC"
 bucket_name = "shippie-public"
 
+# Durable Objects — Proximity Protocol signalling.
+# One SignalRoom instance per roomId (sha256(public_ip + app_slug + group_code)).
+# DO holds nothing persistently; hibernates when the room empties.
+[[durable_objects.bindings]]
+name = "SIGNAL_ROOM"
+class_name = "SignalRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SignalRoom"]
+
 [vars]
 SHIPPIE_ENV = "production"
 PLATFORM_API_URL = "https://shippie.app"

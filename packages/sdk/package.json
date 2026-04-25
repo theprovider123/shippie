@@ -59,6 +59,10 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo",
     "prepublishOnly": "bun run build"
   },
+  "dependencies": {
+    "@shippie/backup-providers": "workspace:*",
+    "@shippie/proximity": "workspace:*"
+  },
   "devDependencies": {
     "@types/bun": "^1.3.12",
     "happy-dom": "15",

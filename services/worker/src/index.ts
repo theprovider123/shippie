@@ -117,6 +117,10 @@ function wrapR2Object(obj: CloudflareR2Object): R2Object {
 
 const app = createApp();
 
+// Cloudflare looks up DO classes from the worker's module exports.
+// One instance per roomId; see services/worker/src/signal-room.ts.
+export { SignalRoom } from './signal-room.ts';
+
 export default {
   fetch: async (request: Request, env: CloudflareEnv, ctx: ExecutionContext): Promise<Response> => {
     const workerEnv: WorkerEnv = {

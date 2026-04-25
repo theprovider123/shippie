@@ -45,7 +45,7 @@ function makeFetch(
     const respHeaders = new Headers(r.headers ?? {});
     if (!respHeaders.has('content-type') && !r.bytes) respHeaders.set('content-type', 'application/json');
     const payload: BodyInit | null = r.bytes
-      ? new Blob([r.bytes.buffer.slice(r.bytes.byteOffset, r.bytes.byteOffset + r.bytes.byteLength)])
+      ? new Blob([r.bytes.slice().buffer as ArrayBuffer])
       : (r.body ?? '');
     return new Response(payload, { status: r.status ?? 200, headers: respHeaders });
   }) as unknown as typeof fetch;
@@ -270,6 +270,6 @@ describe('GoogleDriveProvider token guards', () => {
         appSlug: 'recipes',
         token: { ...validToken, accessToken: '' },
       }),
-    ).rejects.toThrow(BackupTokenExpiredError);
+    ).rejects.toThrow(/no access token/);
   });
 });

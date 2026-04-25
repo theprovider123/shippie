@@ -42,7 +42,7 @@ export async function importPeerSigningKey(peerId: PeerId): Promise<CryptoKey> {
   const raw = base64UrlToBytes(peerId);
   return crypto.subtle.importKey(
     'raw',
-    raw,
+    asArrayBuffer(raw),
     { name: 'Ed25519' } as unknown as Algorithm,
     true,
     ['verify'],
@@ -60,7 +60,11 @@ export async function encryptEnvelope(opts: EncryptOpts): Promise<EncryptedEnvel
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plaintext = new TextEncoder().encode(JSON.stringify(opts.payload));
   const ct = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, opts.aesKey, plaintext),
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: asArrayBuffer(iv) },
+      opts.aesKey,
+      asArrayBuffer(plaintext),
+    ),
   );
   // Sign iv || ct
   const toSign = concat(iv, ct);
@@ -68,7 +72,7 @@ export async function encryptEnvelope(opts: EncryptOpts): Promise<EncryptedEnvel
     await crypto.subtle.sign(
       { name: 'Ed25519' } as unknown as Algorithm,
       opts.signing.privateKey,
-      toSign,
+      asArrayBuffer(toSign),
     ),
   );
   return {
@@ -100,15 +104,29 @@ export async function decryptEnvelope<T = unknown>(opts: DecryptOpts): Promise<T
   const ok = await crypto.subtle.verify(
     { name: 'Ed25519' } as unknown as Algorithm,
     verifier,
-    sig,
-    toVerify,
+    asArrayBuffer(sig),
+    asArrayBuffer(toVerify),
   );
   if (!ok) throw new Error('encryption: signature verification failed');
 
   const pt = new Uint8Array(
-    await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, opts.aesKey, ct),
+    await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: asArrayBuffer(iv) },
+      opts.aesKey,
+      asArrayBuffer(ct),
+    ),
   );
   return JSON.parse(new TextDecoder().decode(pt)) as T;
+}
+
+/**
+ * Detach a Uint8Array view into a fresh ArrayBuffer so Web Crypto's
+ * BufferSource typing (which requires `ArrayBuffer`, not the looser
+ * `ArrayBufferLike`) is satisfied. Always copies a small amount of data
+ * so nothing here is hot-path.
+ */
+function asArrayBuffer(b: Uint8Array): ArrayBuffer {
+  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 }
 
 // --------------------------------------------------------------------

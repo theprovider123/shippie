@@ -41,39 +41,42 @@ function tokenFn(token: OAuthToken | null = { accessToken: 't', expiresAt: Date.
   };
 }
 
-function provider(overrides: Partial<BackupProviderApi> = {}): BackupProviderApi & {
+interface Counters {
   uploads: number;
   prunes: number;
-} {
-  let uploads = 0;
-  let prunes = 0;
-  const api = {
-    id: 'google-drive' as const,
-    upload: async () => {
-      uploads += 1;
-      return {
-        ok: true,
-        fileId: 'f1',
-        fileName: 'name',
-        bytes: 100,
-        attemptedAt: Date.now(),
-      } satisfies BackupAttemptResult;
+}
+
+function provider(
+  overrides: Partial<BackupProviderApi> = {},
+): { api: BackupProviderApi; counters: Counters } {
+  const counters: Counters = { uploads: 0, prunes: 0 };
+  const baseUpload = overrides.upload
+    ? overrides.upload
+    : async () =>
+        ({
+          ok: true,
+          fileId: 'f1',
+          fileName: 'name',
+          bytes: 100,
+          attemptedAt: Date.now(),
+        }) satisfies BackupAttemptResult;
+  const basePrune = overrides.prune
+    ? overrides.prune
+    : async () => ({ deleted: 0 });
+  const api: BackupProviderApi = {
+    id: 'google-drive',
+    upload: async (input) => {
+      counters.uploads += 1;
+      return baseUpload(input);
     },
-    list: async () => [],
-    download: async () => new Uint8Array(),
-    prune: async () => {
-      prunes += 1;
-      return { deleted: 0 };
+    list: overrides.list ?? (async () => []),
+    download: overrides.download ?? (async () => new Uint8Array()),
+    prune: async (input) => {
+      counters.prunes += 1;
+      return basePrune(input);
     },
-    ...overrides,
   };
-  return new Proxy(api, {
-    get(t, p) {
-      if (p === 'uploads') return uploads;
-      if (p === 'prunes') return prunes;
-      return (t as Record<string, unknown>)[p as string];
-    },
-  }) as BackupProviderApi & { uploads: number; prunes: number };
+  return { api, counters };
 }
 
 describe('isDue', () => {
@@ -116,7 +119,7 @@ describe('nextScheduledAt', () => {
 
 describe('runOnce', () => {
   test('persists success state and triggers prune', async () => {
-    const p = provider();
+    const { api, counters } = provider();
     let saved: SchedulerState | null = null;
     const state: SchedulerState = { config: baseConfig };
     const result = await runOnce(
@@ -128,7 +131,7 @@ describe('runOnce', () => {
         produceSnapshot: async () => new Uint8Array([1, 2, 3]),
       },
       {
-        provider: p,
+        provider: api,
         getToken: tokenFn(),
         saveState: async (s) => {
           saved = s;
@@ -137,15 +140,15 @@ describe('runOnce', () => {
     );
     expect(result.ran).toBe(true);
     expect(result.attempt?.ok).toBe(true);
-    expect(p.uploads).toBe(1);
-    expect(p.prunes).toBe(1);
+    expect(counters.uploads).toBe(1);
+    expect(counters.prunes).toBe(1);
     expect(saved).not.toBeNull();
     expect(saved!.lastSuccessAt).toBeDefined();
     expect(saved!.lastError).toBeUndefined();
   });
 
   test('persists failure state and skips prune on upload failure', async () => {
-    const p = provider({
+    const { api, counters } = provider({
       upload: async () => ({ ok: false, error: 'drive 500', attemptedAt: Date.now() }),
     });
     let saved: SchedulerState | null = null;
@@ -159,7 +162,7 @@ describe('runOnce', () => {
         produceSnapshot: async () => new Uint8Array([1]),
       },
       {
-        provider: p,
+        provider: api,
         getToken: tokenFn(),
         saveState: async (s) => {
           saved = s;
@@ -167,14 +170,14 @@ describe('runOnce', () => {
       },
     );
     expect(result.attempt?.ok).toBe(false);
-    expect(p.uploads).toBe(1);
-    expect(p.prunes).toBe(0);
+    expect(counters.uploads).toBe(1);
+    expect(counters.prunes).toBe(0);
     expect(saved!.lastError).toBe('drive 500');
     expect(saved!.lastFailureAt).toBeDefined();
   });
 
   test('token error does not crash; recorded as failure', async () => {
-    const p = provider();
+    const { api, counters } = provider();
     let saved: SchedulerState | null = null;
     const state: SchedulerState = { config: baseConfig };
     const result = await runOnce(
@@ -186,7 +189,7 @@ describe('runOnce', () => {
         produceSnapshot: async () => new Uint8Array([1]),
       },
       {
-        provider: p,
+        provider: api,
         getToken: tokenFn(null),
         saveState: async (s) => {
           saved = s;
@@ -195,7 +198,7 @@ describe('runOnce', () => {
     );
     expect(result.ran).toBe(false);
     expect(result.reason).toBe('token_error');
-    expect(p.uploads).toBe(0);
+    expect(counters.uploads).toBe(0);
     expect(saved!.lastError).toMatch(/token/);
   });
 });
@@ -211,7 +214,7 @@ describe('tick', () => {
         produceSnapshot: async () => new Uint8Array(),
       },
       {
-        provider: provider(),
+        provider: provider().api,
         getToken: tokenFn(),
         saveState: async () => {},
       },
@@ -231,7 +234,7 @@ describe('tick', () => {
         produceSnapshot: async () => new Uint8Array(),
       },
       {
-        provider: provider(),
+        provider: provider().api,
         getToken: tokenFn(),
         saveState: async () => {},
       },

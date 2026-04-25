@@ -34,12 +34,43 @@ export interface HandshakeResult {
 
 const HKDF_INFO = new TextEncoder().encode('shippie-proximity/aes-gcm/v1');
 
+// Cache the algorithm probe — both keygen + deriveBits must succeed.
+let preferredAlgo: Promise<'X25519' | 'P-256'> | null = null;
+
+async function probeAlgo(): Promise<'X25519' | 'P-256'> {
+  // Try a full X25519 keygen+derive round to make sure the runtime
+  // supports the entire flow. Some runtimes (Bun ≤ 1.3.x) ship X25519
+  // keygen but not deriveBits — fall back to P-256 in that case.
+  try {
+    const a = (await crypto.subtle.generateKey(
+      { name: 'X25519' } as unknown as EcKeyGenParams,
+      true,
+      ['deriveBits'],
+    )) as CryptoKeyPair;
+    const b = (await crypto.subtle.generateKey(
+      { name: 'X25519' } as unknown as EcKeyGenParams,
+      true,
+      ['deriveBits'],
+    )) as CryptoKeyPair;
+    await crypto.subtle.deriveBits(
+      { name: 'X25519', public: b.publicKey } as unknown as EcdhKeyDeriveParams,
+      a.privateKey,
+      256,
+    );
+    return 'X25519';
+  } catch {
+    return 'P-256';
+  }
+}
+
 /**
  * Generate an ephemeral X25519 keypair (or P-256 fallback).
  */
 export async function generateEphemeralKeyPair(): Promise<HandshakeKeyPair> {
-  // Try X25519 first — preferred algorithm.
-  try {
+  if (!preferredAlgo) preferredAlgo = probeAlgo();
+  const algo = await preferredAlgo;
+
+  if (algo === 'X25519') {
     const kp = (await crypto.subtle.generateKey(
       { name: 'X25519' } as unknown as EcKeyGenParams,
       true,
@@ -52,8 +83,6 @@ export async function generateEphemeralKeyPair(): Promise<HandshakeKeyPair> {
       privateKey: kp.privateKey,
       publicKeyBytes: raw,
     };
-  } catch {
-    // Fallthrough to P-256.
   }
 
   const kp = (await crypto.subtle.generateKey(
@@ -77,10 +106,14 @@ export async function importPeerPublicKey(
   algorithm: 'X25519' | 'P-256',
   bytes: Uint8Array,
 ): Promise<CryptoKey> {
+  // Web Crypto's typedef for BufferSource is overly strict about
+  // ArrayBuffer vs ArrayBufferLike — round-trip through a fresh
+  // ArrayBuffer to satisfy it.
+  const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   if (algorithm === 'X25519') {
     return crypto.subtle.importKey(
       'raw',
-      bytes,
+      data,
       { name: 'X25519' } as unknown as KeyAlgorithm,
       true,
       [],
@@ -88,7 +121,7 @@ export async function importPeerPublicKey(
   }
   return crypto.subtle.importKey(
     'spki',
-    bytes,
+    data,
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
     [],
@@ -110,7 +143,10 @@ export async function deriveSharedAesKey(
 ): Promise<HandshakeResult> {
   const algoName = ours.algorithm === 'X25519' ? 'X25519' : 'ECDH';
   const sharedBits = await crypto.subtle.deriveBits(
-    { name: algoName, public: peerPublicKey } as unknown as EcdhKeyDeriveParams,
+    {
+      name: algoName,
+      public: peerPublicKey,
+    } as unknown as EcdhKeyDeriveParams,
     ours.privateKey,
     256,
   );

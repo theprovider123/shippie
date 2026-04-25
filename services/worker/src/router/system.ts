@@ -35,6 +35,7 @@ import { pushRouter } from './push.ts';
 import { splashRouter } from './splash.ts';
 import { yourDataRouter } from './your-data.ts';
 import { groupModerateRouter } from './group-moderate.ts';
+import { signalRouter } from './signal.ts';
 
 export const systemRouter = new Hono<AppBindings>();
 
@@ -55,6 +56,7 @@ systemRouter.route('/push', pushRouter);
 systemRouter.route('/splash', splashRouter);
 systemRouter.route('/data', yourDataRouter);
 systemRouter.route('/group', groupModerateRouter);
+systemRouter.route('/signal', signalRouter);
 
 // Auth + storage + files + feedback + analytics + functions land here in
 // later weeks. Each is its own file for testability.

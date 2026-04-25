@@ -1,0 +1,14 @@
+{
+  "name": "Shippie Whiteboard",
+  "short_name": "Whiteboard",
+  "description": "Local-network collaborative whiteboard. Pair via QR. Drawing latency under 30ms on local WiFi.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape-primary",
+  "background_color": "#14120F",
+  "theme_color": "#14120F",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

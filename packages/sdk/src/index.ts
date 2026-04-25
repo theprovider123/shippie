@@ -31,6 +31,7 @@ import { local as localRuntime } from './local.ts';
 import { meta } from './meta.ts';
 import { track, flush } from './analytics.ts';
 import { configure, isConfigured, getBackendMeta } from './configure.ts';
+import { backup as backupApi } from './backup.ts';
 import { startInstallRuntime } from './wrapper/install-runtime.ts';
 
 export const shippie = {
@@ -90,6 +91,13 @@ export const shippie = {
   },
 
   local: localRuntime,
+
+  /**
+   * shippie.backup — encrypted, opt-in cloud backup. Drive is the
+   * only provider in v1. See `@shippie/backup-providers` for details
+   * on the encryption envelope (Argon2id-derived key + AES-256-GCM).
+   */
+  backup: backupApi,
 
   track,
   flush,

@@ -96,9 +96,9 @@ export class GoogleDriveProvider implements BackupProviderApi {
     passphrase: string;
     token: OAuthToken;
   }): Promise<BackupAttemptResult> {
-    this.assertTokenFresh(input.token);
     const startedAt = Date.now();
     try {
+      this.assertTokenFresh(input.token);
       const blob = await encryptBackup({
         appSlug: input.appSlug,
         schemaVersion: input.schemaVersion,

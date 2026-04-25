@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { LocalDbRecord } from '@shippie/local-runtime-contract';
 import type { Ingredient, Recipe } from '../db/schema.ts';
 import { deleteRecipe, listRecipes, searchRecipes } from '../db/queries.ts';
 import { resolveLocalDb } from '../db/runtime.ts';
@@ -25,7 +26,7 @@ export function RecipeList({ onOpen, onNew, onCookingMode, refreshKey, onChanged
     (async () => {
       setLoading(true);
       const rows = query.trim() ? await searchRecipes(db, query) : await listRecipes(db);
-      const ings = await db.query<Ingredient>(INGREDIENTS_TABLE);
+      const ings = (await db.query<LocalDbRecord>(INGREDIENTS_TABLE)) as unknown as Ingredient[];
       const map: Record<string, number> = {};
       for (const ing of ings) {
         map[ing.recipe_id] = (map[ing.recipe_id] ?? 0) + 1;

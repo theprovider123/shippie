@@ -157,16 +157,16 @@ describe('LocalAI iframe bridge', () => {
     });
 
     const ai = new LocalAI({
-      doc: win.document as unknown as Document,
-      win: win as unknown as Window,
+      doc: win.document as any,
+      win: win as any,
       randomId: () => 'fixed-id-1',
     });
 
     const result = await ai.classify('pasta', ['food', 'travel']);
     expect(result).toEqual({ label: 'food', confidence: 0.91 });
     expect(sent).toHaveLength(1);
-    expect(sent[0].targetOrigin).toBe(SHIPPIE_AI_ORIGIN);
-    expect(sent[0].data).toEqual({
+    expect(sent[0]!.targetOrigin).toBe(SHIPPIE_AI_ORIGIN);
+    expect(sent[0]!.data).toEqual({
       requestId: 'fixed-id-1',
       task: 'classify',
       payload: { text: 'pasta', labels: ['food', 'travel'] },
@@ -184,8 +184,8 @@ describe('LocalAI iframe bridge', () => {
     });
 
     const ai = new LocalAI({
-      doc: win.document as unknown as Document,
-      win: win as unknown as Window,
+      doc: win.document as any,
+      win: win as any,
       randomId: () => 'r',
     });
     const pending = ai.classify('x', ['a']);
@@ -208,8 +208,8 @@ describe('LocalAI iframe bridge', () => {
     });
 
     const ai = new LocalAI({
-      doc: win.document as unknown as Document,
-      win: win as unknown as Window,
+      doc: win.document as any,
+      win: win as any,
       randomId: () => 'r',
     });
 
@@ -227,8 +227,8 @@ describe('LocalAI iframe bridge', () => {
     });
 
     const ai = new LocalAI({
-      doc: win.document as unknown as Document,
-      win: win as unknown as Window,
+      doc: win.document as any,
+      win: win as any,
       randomId: () => 'r',
     });
     const pending = ai.embed('x');
