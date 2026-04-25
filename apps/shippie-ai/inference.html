@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shippie AI · inference</title>
+    <meta name="robots" content="noindex" />
+    <!--
+      This page is the cross-origin iframe target loaded by other *.shippie.app
+      apps. It MUST stay tiny: it boots a single router that validates the
+      message origin, dispatches inference to a dedicated Worker, and posts
+      back the result. No UI, no analytics, no third-party requests.
+    -->
+  </head>
+  <body>
+    <script type="module" src="/src/inference/router.ts"></script>
+  </body>
+</html>

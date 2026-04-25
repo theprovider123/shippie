@@ -1,0 +1,32 @@
+{
+  "name": "@shippie/shippie-ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shippie AI — installable PWA at ai.shippie.app holding shared on-device micro-models. Serves inference to other Shippie apps via cross-origin iframe + postMessage.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@shippie/local-ai": "workspace:*",
+    "@shippie/local-runtime-contract": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.12",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "happy-dom": "15",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "typescript": "^5.7.0",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.0"
+  }
+}

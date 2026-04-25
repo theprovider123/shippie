@@ -1,0 +1,46 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Recipe Saver",
+  "slug": "recipe",
+  "description": "A local-first recipe saver. Your recipes never leave your device.",
+  "icon": "/icon.png",
+  "theme_color": "#E8603C",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "ai": [],
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "video[data-shippie-canvas], canvas[data-shippie-canvas]"
+      },
+      "list-swipe": {
+        "selector": "ul[data-shippie-list]",
+        "haptic": "tap"
+      },
+      "text-autocomplete": {
+        "selector": "input[autocomplete=\"shippie\"]",
+        "source": "local-db"
+      }
+    }
+  },
+  "permissions": ["camera", "wake-lock"],
+  "data_schemas": {
+    "recipes": {
+      "id": "text primary key",
+      "title": "text not null",
+      "notes": "text",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    },
+    "ingredients": {
+      "id": "text primary key",
+      "recipe_id": "text not null",
+      "name": "text not null",
+      "amount": "text",
+      "unit": "text",
+      "barcode": "text",
+      "brand": "text"
+    }
+  }
+}

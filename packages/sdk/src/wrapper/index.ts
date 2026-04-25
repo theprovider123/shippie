@@ -128,3 +128,21 @@ export {
   type CapturedRef,
   type InviteLinkOptions,
 } from './referral.ts';
+
+export {
+  startObserve,
+  registerRule,
+  listRules,
+  disableRule,
+  hasCapability,
+  compileEnhanceConfig,
+  isEnhanceable,
+  onShareReceive,
+  type EnhanceRule,
+  type EnhanceConfig,
+  type Capability,
+  type RuleBudget,
+} from './observe/index.ts';
+
+export { bootstrapObserve } from './observe-init.ts';
+export { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
