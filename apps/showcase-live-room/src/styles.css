@@ -1,0 +1,229 @@
+:root {
+  --bg: #FAF7EF;
+  --fg: #14120F;
+  --muted: #5C5751;
+  --line: rgba(20, 18, 15, 0.08);
+  --accent: #E8603C;
+  --positive: #2c9b56;
+  --safe-top: env(safe-area-inset-top, 0);
+  --safe-bottom: env(safe-area-inset-bottom, 0);
+  --shippie-patina-warmth: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: color-mix(
+    in oklab,
+    var(--bg) calc(100% - var(--shippie-patina-warmth) * 12%),
+    #F4B860 calc(var(--shippie-patina-warmth) * 12%)
+  );
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 1.45;
+  transition: background 1.2s ease-out;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.home {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.home h1 {
+  font-size: 36px;
+  margin: 0;
+}
+
+.home p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.home button {
+  width: 220px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.home button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.host-room,
+.guest-room,
+.results {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.share-code {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-code .code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 48px;
+  letter-spacing: 0.1em;
+  margin: 0;
+  color: var(--accent);
+}
+
+form.join-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+form.join-form input {
+  height: 60px;
+  font-size: 28px;
+  text-align: center;
+  letter-spacing: 0.15em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 12px;
+  padding: 0 12px;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+form.join-form button {
+  height: 48px;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+form.join-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buzzer-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.buzzer {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FF7259, #C8401D);
+  color: white;
+  font-size: 32px;
+  font-weight: 800;
+  border: none;
+  box-shadow: 0 12px 40px rgba(232, 96, 60, 0.45),
+    inset 0 -8px 20px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
+
+.buzzer:active {
+  transform: scale(0.97);
+}
+
+.buzzer-locked {
+  background: radial-gradient(circle at 30% 30%, #999, #666);
+  cursor: not-allowed;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.buzzer-mine {
+  background: radial-gradient(circle at 30% 30%, #5fdc8b, #2c9b56);
+  box-shadow: 0 12px 40px rgba(95, 220, 139, 0.45);
+}
+
+.scoreboard {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 50px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.score-row-winner {
+  font-weight: 700;
+  color: var(--positive);
+}
+
+.score-bar-track {
+  height: 16px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.score-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #F4B860);
+  width: 0%;
+  border-radius: 8px;
+}
+
+.score-row-winner .score-bar {
+  background: linear-gradient(90deg, #5fdc8b, #2c9b56);
+}
+
+.score-peer {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.score-points {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

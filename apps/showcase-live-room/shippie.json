@@ -1,0 +1,7 @@
+{
+  "name": "Live Room",
+  "category": "social",
+  "themeColor": "#E8603C",
+  "backgroundColor": "#FAF7EF",
+  "groups": { "enabled": true }
+}
