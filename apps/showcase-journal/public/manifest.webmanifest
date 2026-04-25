@@ -1,0 +1,20 @@
+{
+  "name": "Journal",
+  "short_name": "Journal",
+  "description": "A private journal with on-device AI. Nothing leaves the device.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0E11",
+  "theme_color": "#3F6EE0",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "lifestyle", "utilities"]
+}

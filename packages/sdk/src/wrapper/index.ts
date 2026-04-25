@@ -146,3 +146,11 @@ export {
 
 export { bootstrapObserve } from './observe-init.ts';
 export { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
+export {
+  openGroupModerationPanel,
+  type OpenGroupModerationPanelOptions,
+  type GroupModerationPanelHandle,
+  type ModerationPanelHook,
+  type ModerationPanelMode,
+  type PanelPendingMessage,
+} from './group-moderation-panel.ts';

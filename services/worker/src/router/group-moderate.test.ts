@@ -74,9 +74,7 @@ describe('GET /__shippie/group/<id>/moderate', () => {
       envFor(),
     );
     expect(res.status).toBe(200);
-    const html = await res.get?.bind(res)
-      ? await res.text()
-      : await res.text();
+    const html = await res.text();
     expect(html).toContain('Pick a group');
   });
 

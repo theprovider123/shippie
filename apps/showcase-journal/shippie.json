@@ -1,0 +1,30 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Journal",
+  "slug": "journal",
+  "description": "A private journal with on-device AI. Nothing leaves the device.",
+  "icon": "/icon.png",
+  "theme_color": "#3F6EE0",
+  "background_color": "#0E0E11",
+  "display": "standalone",
+  "orientation": "portrait",
+  "ai": ["sentiment", "embed", "classify"],
+  "privacy": {
+    "local_only": true,
+    "encrypted_at_rest": true
+  },
+  "data_schemas": {
+    "entries": {
+      "id": "text primary key",
+      "title": "text",
+      "body": "text not null",
+      "sentiment": "real",
+      "sentiment_label": "text",
+      "topic": "text",
+      "embedding": "blob",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    }
+  },
+  "topics": ["work", "relationships", "health", "hobbies"]
+}
