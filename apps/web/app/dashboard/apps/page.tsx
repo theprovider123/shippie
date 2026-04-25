@@ -36,8 +36,10 @@ export default async function DashboardAppsPage() {
       activeDeployId: schema.apps.activeDeployId,
       lastDeployedAt: schema.apps.lastDeployedAt,
       createdAt: schema.apps.createdAt,
+      autopackagingReport: schema.deploys.autopackagingReport,
     })
     .from(schema.apps)
+    .leftJoin(schema.deploys, eq(schema.apps.latestDeployId, schema.deploys.id))
     .where(eq(schema.apps.makerId, session.user.id))
     .orderBy(desc(schema.apps.updatedAt));
 
@@ -77,6 +79,7 @@ export default async function DashboardAppsPage() {
                   <Th>App</Th>
                   <Th>Type</Th>
                   <Th>Status</Th>
+                  <Th>Wrapper</Th>
                   <Th>Last deploy</Th>
                   <Th className="text-right">Actions</Th>
                 </tr>
@@ -107,6 +110,9 @@ export default async function DashboardAppsPage() {
                     </Td>
                     <Td>
                       <StatusBadge status={app.latestDeployStatus} />
+                    </Td>
+                    <Td>
+                      <WrapperCompatBadge status={getWrapperCompatStatus(app.autopackagingReport)} />
                     </Td>
                     <Td className="text-neutral-500 font-mono text-xs">
                       {app.lastDeployedAt
@@ -190,6 +196,29 @@ function StatusBadge({ status }: { status: string | null }) {
       {status ?? 'draft'}
     </span>
   );
+}
+
+function WrapperCompatBadge({ status }: { status: 'pass' | 'warn' | 'block' | 'pending' }) {
+  const palette = {
+    pass: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-200',
+    warn: 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-200',
+    block: 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-200',
+    pending: 'bg-neutral-100 dark:bg-neutral-900 text-neutral-500',
+  } satisfies Record<typeof status, string>;
+  const label = status === 'pass' ? 'Green' : status === 'warn' ? 'Review' : status === 'block' ? 'Blocked' : 'Pending';
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono ${palette[status]}`}>
+      {label}
+    </span>
+  );
+}
+
+function getWrapperCompatStatus(report: unknown): 'pass' | 'warn' | 'block' | 'pending' {
+  if (!report || typeof report !== 'object') return 'pending';
+  const wrapper = (report as { wrapper_compat?: unknown }).wrapper_compat;
+  if (!wrapper || typeof wrapper !== 'object') return 'pending';
+  const status = (wrapper as { summary?: { status?: unknown } }).summary?.status;
+  return status === 'pass' || status === 'warn' || status === 'block' ? status : 'pending';
 }
 
 function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {

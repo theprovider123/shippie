@@ -10,18 +10,19 @@ routes = [
   { pattern = "cdn.shippie.app/*", zone_name = "shippie.app" }
 ]
 
-# KV namespaces (populated at deploy time)
-# [[kv_namespaces]]
-# binding = "APP_CONFIG"
-# id = "<to be filled in after wrangler kv:namespace create>"
+# KV namespaces + R2 buckets.
+# Setup (wrangler commands + env vars for the control plane): packages/cf-storage/README.md
+[[kv_namespaces]]
+binding = "APP_CONFIG"
+id = "caa6a30a2af640a68305fefd4348a6e1"
 
-# [[r2_buckets]]
-# binding = "SHIPPIE_APPS"
-# bucket_name = "shippie-apps"
+[[r2_buckets]]
+binding = "SHIPPIE_APPS"
+bucket_name = "shippie-apps"
 
-# [[r2_buckets]]
-# binding = "SHIPPIE_PUBLIC"
-# bucket_name = "shippie-public"
+[[r2_buckets]]
+binding = "SHIPPIE_PUBLIC"
+bucket_name = "shippie-public"
 
 [vars]
 SHIPPIE_ENV = "production"

@@ -58,6 +58,14 @@ export interface PreflightInput {
    */
   outputFiles: readonly string[];
 
+  /**
+   * Optional map of source file path -> raw bytes. When provided, rules
+   * can peek into content-sensitive files (package.json, next.config.*,
+   * etc.). Omitted by pipelines that only care about paths, so rules
+   * must gracefully degrade to path-only checks when absent.
+   */
+  fileContents?: ReadonlyMap<string, Buffer>;
+
   /** Package manager detected from lockfile, if any. */
   packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun';
 

@@ -62,7 +62,13 @@ export {
   type StartInstallRuntimeConfig,
 } from './install-runtime.ts';
 
-export { wrapNavigation, supportsViewTransitions } from './view-transitions.ts';
+export {
+  wrapNavigation,
+  supportsViewTransitions,
+  installViewTransitionStyles,
+  type ViewTransitionKind,
+  type ViewTransitionOptions,
+} from './view-transitions.ts';
 
 export {
   attachBackSwipe,
@@ -71,7 +77,20 @@ export {
   type PullToRefreshOptions,
 } from './gestures.ts';
 
-export { haptic, type HapticKind } from './haptics.ts';
+export {
+  attachSemanticHaptics,
+  haptic,
+  type HapticKind,
+  type SemanticHapticsOptions,
+} from './haptics.ts';
+
+export {
+  animateSpring,
+  springFrames,
+  type SpringFrame,
+  type SpringOptions,
+  type SpringUpdate,
+} from './spring.ts';
 
 export { setThemeColor } from './theme-color.ts';
 

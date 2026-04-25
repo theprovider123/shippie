@@ -5,7 +5,7 @@
  * pattern). `auth()` is stubbed via `mock.module` so we can drive the
  * authed and unauthed branches without standing up a real session.
  */
-import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 // `mock` isn't in this app's local bun:test shim; import dynamically
 // with a minimal local type so the test typechecks without touching the
 // shared shim.
@@ -56,6 +56,11 @@ beforeEach(async () => {
   await dbHandle.db.execute(sql`TRUNCATE TABLE app_ratings`);
   (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle =
     Promise.resolve(dbHandle);
+});
+
+afterAll(async () => {
+  delete (globalThis as unknown as { __shippieDbHandle?: Promise<unknown> }).__shippieDbHandle;
+  if (dbHandle) await dbHandle.close();
 });
 
 function mockRequest(body: unknown): NextRequest {

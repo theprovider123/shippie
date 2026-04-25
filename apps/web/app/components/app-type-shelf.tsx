@@ -117,9 +117,25 @@ function Shelf({ config, apps }: { config: ShelfConfig; apps: ShelfApp[] }) {
             >
               <div
                 className="shippie-icon"
-                style={{ width: 56, height: 56, background: app.themeColor, marginBottom: 'var(--space-md)' }}
+                style={{
+                  width: 56,
+                  height: 56,
+                  background: app.themeColor,
+                  marginBottom: 'var(--space-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#EDE4D3',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 24,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '-0.02em',
+                }}
                 aria-hidden
-              />
+              >
+                {app.name?.trim()?.[0] ?? app.slug?.[0] ?? '?'}
+              </div>
               <h4 style={{ fontWeight: 600, fontSize: 'var(--body-size)', marginBottom: 'var(--space-xs)' }}>
                 {app.name}
               </h4>

@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import { wrapNavigation, supportsViewTransitions } from './view-transitions.ts';
+import { installViewTransitionStyles, wrapNavigation, supportsViewTransitions } from './view-transitions.ts';
 
 let win: Window;
 const originalDocument = (globalThis as { document?: unknown }).document;
@@ -47,8 +47,18 @@ describe('wrapNavigation', () => {
     };
     await wrapNavigation(() => {
       cbCalled += 1;
-    });
+    }, { kind: 'rise' });
     expect(started).toBe(1);
     expect(cbCalled).toBe(1);
+    expect(win.document.documentElement.dataset.shippieTransition).toBeUndefined();
+    expect(win.document.querySelector('style[data-shippie-view-transitions]')?.textContent).toContain('shippie-rise-in');
+  });
+
+  test('installs transition styles once', () => {
+    const a = installViewTransitionStyles({ durationMs: 180 });
+    const b = installViewTransitionStyles({ durationMs: 200 });
+    expect(a).toBe(b);
+    expect(win.document.querySelectorAll('style[data-shippie-view-transitions]')).toHaveLength(1);
+    expect(a?.textContent).toContain('180ms');
   });
 });

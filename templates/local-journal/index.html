@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#8FAE8B" />
+    <title>Local Journal</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #14110f;
+        --panel: #1d2520;
+        --line: #2c3a32;
+        --text: #f3ede0;
+        --muted: #b9c6b9;
+        --accent: #8fae8b;
+        --warn: #d4a85b;
+        --pos: #a8c79c;
+        --neg: #d96a4f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      main { width: min(960px, 100%); margin: 0 auto; padding: 28px; }
+      header { padding: 18px 0 24px; border-bottom: 1px solid var(--line); }
+      h1 { margin: 0; font-size: clamp(2rem, 7vw, 3.5rem); line-height: 0.96; }
+      p { color: var(--muted); line-height: 1.5; }
+      .grid { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 22px; padding-top: 20px; }
+      form, .toolbar, .entry, .empty, .health {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 16px;
+      }
+      label { display: grid; gap: 6px; margin-bottom: 12px; color: var(--muted); font-size: 13px; }
+      textarea, input {
+        width: 100%;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--line);
+        padding: 10px;
+        font: inherit;
+      }
+      textarea { resize: vertical; min-height: 160px; }
+      button {
+        min-height: 40px;
+        background: #2b3a30;
+        color: var(--text);
+        border: 1px solid var(--line);
+        padding: 0 14px;
+        cursor: pointer;
+        font: inherit;
+      }
+      button.primary { background: var(--accent); color: #14110f; border-color: var(--accent); font-weight: 700; }
+      button:disabled { opacity: 0.5; cursor: wait; }
+      .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+      .toolbar input { flex: 1 1 auto; min-width: 0; }
+      .entries { display: grid; gap: 12px; }
+      .entry { display: grid; gap: 10px; }
+      .entry h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+      .meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+      .pill { border: 1px solid var(--line); padding: 2px 8px; }
+      .pos { color: var(--pos); border-color: var(--pos); }
+      .neg { color: var(--neg); border-color: var(--neg); }
+      .neutral { color: var(--muted); }
+      .score { font-variant-numeric: tabular-nums; }
+      .health { margin-top: 18px; display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
+      .status { color: var(--muted); min-height: 22px; margin-top: 12px; }
+      .empty { text-align: center; border-style: dashed; }
+      @media (max-width: 760px) { main { padding: 18px; } .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Local Journal</h1>
+        <p>Every entry is embedded, sentiment-tagged, and stored on this device. Search by feeling, not just keywords.</p>
+      </header>
+
+      <section class="grid">
+        <form id="entry-form">
+          <label>
+            What happened?
+            <textarea name="text" required placeholder="Today was a long one but I felt good about how the deploy went..."></textarea>
+          </label>
+          <button class="primary" type="submit" id="submit">Save entry</button>
+          <p id="status" class="status"></p>
+          <aside class="health">
+            <div><span>AI status:</span> <strong id="ai-status">checking…</strong></div>
+            <div><span>Stored entries:</span> <strong id="count">0</strong></div>
+            <div><span>Database:</span> <strong id="db-state">starting</strong></div>
+          </aside>
+        </form>
+
+        <section>
+          <div class="toolbar">
+            <input id="search" placeholder="Search by meaning (e.g. 'something hopeful and small')" />
+            <button id="clear" type="button">Clear</button>
+          </div>
+          <div id="entries" class="entries"></div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const state = { db: null, ai: null };
+      const els = {
+        form: document.getElementById('entry-form'),
+        status: document.getElementById('status'),
+        list: document.getElementById('entries'),
+        search: document.getElementById('search'),
+        aiStatus: document.getElementById('ai-status'),
+        count: document.getElementById('count'),
+        dbState: document.getElementById('db-state'),
+        submit: document.getElementById('submit'),
+      };
+
+      boot();
+
+      async function boot() {
+        try {
+          let runtime = window.shippie?.local;
+          if (runtime?.load) runtime = await runtime.load();
+          if (!runtime?.db) runtime = await loadLocalRuntime();
+          state.db = runtime.db;
+          state.ai = runtime.ai;
+          await state.db.create('entries', {
+            id: 'text primary key',
+            text: 'text',
+            embedding: 'blob',
+            sentiment: 'text',
+            sentiment_score: 'real',
+            created: 'datetime',
+          });
+          els.dbState.textContent = 'ready';
+          await refreshHealth();
+          await refresh();
+        } catch (error) {
+          els.status.textContent = error?.message ?? 'Local runtime unavailable.';
+          els.dbState.textContent = 'unavailable';
+        }
+      }
+
+      async function loadLocalRuntime() {
+        if (!window.shippie?.local) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = '/__shippie/local.js';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Could not load Shippie local runtime.'));
+            document.head.append(script);
+          });
+        }
+        return window.shippie.local;
+      }
+
+      els.form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!state.db) return;
+        const data = new FormData(els.form);
+        const text = String(data.get('text') ?? '').trim();
+        if (!text) return;
+        els.submit.disabled = true;
+        els.status.textContent = 'Embedding…';
+        let embedding = new Float32Array();
+        let sentiment = { sentiment: 'neutral', score: 0 };
+        try {
+          if (state.ai) {
+            const cap = await state.ai.available?.();
+            if (cap?.embeddings) embedding = await state.ai.embed(text);
+            if (cap?.sentiment) sentiment = await state.ai.sentiment(text);
+          }
+        } catch (error) {
+          els.status.textContent = `AI step failed: ${error.message}. Saving without embedding.`;
+        }
+        await state.db.insert('entries', {
+          id: crypto.randomUUID(),
+          text,
+          embedding,
+          sentiment: sentiment.sentiment,
+          sentiment_score: sentiment.score,
+          created: new Date().toISOString(),
+        });
+        els.form.reset();
+        els.status.textContent = 'Entry saved. Embedded and tagged on-device.';
+        els.submit.disabled = false;
+        await refresh();
+        await refreshHealth();
+      });
+
+      els.search.addEventListener('input', () => debouncedRefresh());
+      els.clear.addEventListener('click', () => { els.search.value = ''; refresh(); });
+
+      let debounceHandle;
+      function debouncedRefresh() {
+        clearTimeout(debounceHandle);
+        debounceHandle = setTimeout(refresh, 200);
+      }
+
+      async function refresh() {
+        if (!state.db) return;
+        const term = els.search.value.trim();
+        let rows;
+        if (term && state.ai) {
+          let queryVector;
+          try { queryVector = await state.ai.embed(term); } catch { queryVector = null; }
+          if (queryVector && queryVector.length > 0) {
+            rows = await state.db.vectorSearch('entries', queryVector, { limit: 30, column: 'embedding' });
+          } else {
+            rows = await state.db.search('entries', term, { limit: 30 });
+          }
+        } else {
+          rows = await state.db.query('entries', { orderBy: { created: 'desc' }, limit: 30 });
+        }
+        render(rows ?? []);
+      }
+
+      function render(rows) {
+        if (rows.length === 0) {
+          els.list.innerHTML = '<div class="empty">No entries yet. Write the first one.</div>';
+          return;
+        }
+        els.list.innerHTML = rows.map((row) => {
+          const cls = row.sentiment === 'positive' ? 'pos' : row.sentiment === 'negative' ? 'neg' : 'neutral';
+          const score = typeof row.score === 'number' ? `match ${row.score.toFixed(2)}` : '';
+          return `
+            <article class="entry">
+              <div class="meta">
+                <span class="pill ${cls}">${escapeHtml(row.sentiment ?? 'neutral')}</span>
+                <span class="score">${(Number(row.sentiment_score ?? 0)).toFixed(2)}</span>
+                <span>${new Date(row.created).toLocaleString()}</span>
+                ${score ? `<span class="score">${score}</span>` : ''}
+              </div>
+              <p>${escapeHtml(row.text)}</p>
+              <div><button data-delete="${row.id}">Delete</button></div>
+            </article>
+          `;
+        }).join('');
+        els.list.querySelectorAll('[data-delete]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            await state.db.delete('entries', button.dataset.delete);
+            await refresh();
+            await refreshHealth();
+          });
+        });
+      }
+
+      async function refreshHealth() {
+        if (!state.db) return;
+        try {
+          const total = await state.db.count('entries');
+          els.count.textContent = total;
+        } catch {
+          els.count.textContent = '—';
+        }
+        if (!state.ai) {
+          els.aiStatus.textContent = 'unavailable';
+          return;
+        }
+        try {
+          const cap = await state.ai.available?.();
+          if (!cap) { els.aiStatus.textContent = 'unknown'; return; }
+          if (cap.embeddings && cap.sentiment) els.aiStatus.textContent = cap.gpu ? 'GPU ready' : 'CPU ready';
+          else els.aiStatus.textContent = 'partial';
+        } catch (error) {
+          els.aiStatus.textContent = 'unavailable';
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        })[char]);
+      }
+    </script>
+  </body>
+</html>

@@ -29,6 +29,14 @@ import { runMigrations } from './migrate.ts';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');
 
+/**
+ * Per-test timeout covering PGlite init + full migration replay.
+ * Each test spins up a fresh WASM Postgres and replays all 19
+ * migrations end-to-end, which costs ~1–3s under load. Bun's 5s
+ * default races that cost; this explicit budget removes the flake.
+ */
+const TEST_TIMEOUT_MS = 30_000;
+
 async function freshDb(): Promise<ShippieDbHandle> {
   const handle = await createDb({ url: 'pglite://memory' });
   await runMigrations(handle, MIGRATIONS_DIR);
@@ -58,7 +66,7 @@ async function query<T = unknown>(
   throw new Error('postgres-js raw query not wired in tests');
 }
 
-test('migration 0001 applies cleanly', async () => {
+test('migration 0001 applies cleanly', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const rows = await query<{ count: string }>(
@@ -71,7 +79,7 @@ test('migration 0001 applies cleanly', async () => {
   }
 });
 
-test('migration runner is idempotent on re-run', async () => {
+test('migration runner is idempotent on re-run', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await createDb({ url: 'pglite://memory' });
   try {
     const first = await runMigrations(handle, MIGRATIONS_DIR);
@@ -91,7 +99,7 @@ test('migration runner is idempotent on re-run', async () => {
   }
 });
 
-test('migration 0002 adds Auth.js adapter tables', async () => {
+test('migration 0002 adds Auth.js adapter tables', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     // accounts, sessions, verification_tokens all exist and accept inserts
@@ -125,7 +133,7 @@ test('migration 0002 adds Auth.js adapter tables', async () => {
   }
 });
 
-test('users table accepts Auth.js style inserts without username', async () => {
+test('users table accepts Auth.js style inserts without username', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     // Auth.js's createUser hook only sets id/name/email/emailVerified/image.
@@ -147,7 +155,7 @@ test('users table accepts Auth.js style inserts without username', async () => {
   }
 });
 
-test('reserved slugs are seeded', async () => {
+test('reserved slugs are seeded', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const rows = await query<{ slug: string; reason: string }>(
@@ -170,7 +178,7 @@ test('reserved slugs are seeded', async () => {
   }
 });
 
-test('sync_app_latest_deploy trigger: first insert populates latest_*', async () => {
+test('sync_app_latest_deploy trigger: first insert populates latest_*', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await query(
@@ -201,7 +209,7 @@ test('sync_app_latest_deploy trigger: first insert populates latest_*', async ()
   }
 });
 
-test('sync_app_latest_deploy trigger: same-row retry updates status (needs_secrets → building → success)', async () => {
+test('sync_app_latest_deploy trigger: same-row retry updates status (needs_secrets → building → success)', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await query(
@@ -264,7 +272,7 @@ test('sync_app_latest_deploy trigger: same-row retry updates status (needs_secre
   }
 });
 
-test('sync_app_latest_deploy trigger: newer version supersedes older', async () => {
+test('sync_app_latest_deploy trigger: newer version supersedes older', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await query(
@@ -302,7 +310,7 @@ test('sync_app_latest_deploy trigger: newer version supersedes older', async () 
   }
 });
 
-test('sync_app_latest_deploy trigger: failed status reflected in latest_*', async () => {
+test('sync_app_latest_deploy trigger: failed status reflected in latest_*', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await query(
@@ -334,7 +342,7 @@ test('sync_app_latest_deploy trigger: failed status reflected in latest_*', asyn
   }
 });
 
-test('apps deploy_status check constraint rejects invalid statuses', async () => {
+test('apps deploy_status check constraint rejects invalid statuses', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await query(
@@ -362,7 +370,7 @@ test('apps deploy_status check constraint rejects invalid statuses', async () =>
   }
 });
 
-test('reserved_slugs primary key prevents duplicate slug claim', async () => {
+test('reserved_slugs primary key prevents duplicate slug claim', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await assert.rejects(
@@ -374,7 +382,7 @@ test('reserved_slugs primary key prevents duplicate slug claim', async () => {
   }
 });
 
-test('apps slug uniqueness enforced', async () => {
+test('apps slug uniqueness enforced', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await query(
@@ -400,7 +408,7 @@ test('apps slug uniqueness enforced', async () => {
   }
 });
 
-test('apps FTS tsvector populates from name/tagline/description', async () => {
+test('apps FTS tsvector populates from name/tagline/description', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     await query(

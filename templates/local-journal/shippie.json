@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "type": "app",
+  "name": "Local Journal",
+  "tagline": "Write privately. Find anything. Watch your moods.",
+  "description": "An offline journal that runs a real database, embeddings, and sentiment analysis on your device — no servers, no sign-up, no data leaving.",
+  "category": "personal",
+  "categories": ["personal", "productivity"],
+  "theme_color": "#8FAE8B",
+  "background_color": "#14110F",
+  "display": "standalone",
+  "badge": true,
+  "transitions": "rise",
+  "haptics": true,
+  "sound": false,
+  "ambient": false,
+  "local": {
+    "database": true,
+    "files": false,
+    "ai": ["embeddings", "sentiment"],
+    "sync": false
+  }
+}

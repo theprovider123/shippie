@@ -6,6 +6,7 @@ import { schema } from '@shippie/db';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { createLinkInvite, listInvites } from '@/lib/access/invites';
+import { createShortLink } from '@/lib/access/short-links';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,16 +66,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     );
   }
 
+  const expiresAt = parsed.data.expires_at ? new Date(parsed.data.expires_at) : undefined;
   const invite = await createLinkInvite({
     appId: gate.appId,
     createdBy: session.user.id,
     maxUses: parsed.data.max_uses,
-    expiresAt: parsed.data.expires_at ? new Date(parsed.data.expires_at) : undefined,
+    expiresAt,
   });
+
+  // Mint a short redirect code so sharers can paste a compact URL.
+  // Failures are non-fatal — the long URL is the source of truth.
+  let shortCode: string | null = null;
+  try {
+    const short = await createShortLink({ token: invite.token, expiresAt });
+    shortCode = short.code;
+  } catch {
+    // best-effort
+  }
 
   const host = process.env.SHIPPIE_PUBLIC_HOST ?? 'shippie.app';
   return NextResponse.json({
     invite,
     url: `https://${host}/invite/${invite.token}`,
+    short_url: shortCode ? `https://${host}/i/${shortCode}` : null,
   });
 }

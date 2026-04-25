@@ -54,6 +54,16 @@ function windowStart(days: number): Date {
 }
 
 /**
+ * postgres-js serializes a raw JS Date via `toString()` — which produces
+ * the system-local string and breaks Postgres timestamp parsing. Pass
+ * ISO 8601 strings into drizzle `sql` templates instead. PGlite accepts
+ * either form.
+ */
+function windowStartIso(days: number): string {
+  return windowStart(days).toISOString();
+}
+
+/**
  * postgres-js returns an array directly from `.execute(sql...)`; PGlite
  * wraps it in `{ rows: [...] }`. Both paths are valid in this codebase.
  */
@@ -70,7 +80,7 @@ export async function queryTrending(
 ): Promise<LeaderboardEntry[]> {
   const days = opts.days ?? 7;
   const limit = opts.limit ?? 12;
-  const start = windowStart(days);
+  const start = windowStartIso(days);
 
   // Sum accepted-install counts per app in window, join apps by slug,
   // filter to visible apps, order by total desc.
@@ -117,7 +127,7 @@ export async function queryNew(
 ): Promise<LeaderboardEntry[]> {
   const days = opts.days ?? 14;
   const limit = opts.limit ?? 12;
-  const start = windowStart(days);
+  const start = windowStartIso(days);
 
   const res = await db.execute(sql`
     select

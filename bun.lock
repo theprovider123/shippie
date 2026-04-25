@@ -20,6 +20,7 @@
         "@noble/hashes": "^2.2.0",
         "@resvg/resvg-js": "^2.6.2",
         "@shippie/access": "workspace:*",
+        "@shippie/cf-storage": "workspace:*",
         "@shippie/db": "workspace:*",
         "@shippie/dev-storage": "workspace:*",
         "@shippie/pwa-injector": "workspace:*",
@@ -66,6 +67,18 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/cf-storage": {
+      "name": "@shippie/cf-storage",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/dev-storage": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "tsup": "^8.5.1",
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/cli": {
       "name": "@shippie/cli",
       "version": "0.0.2",
@@ -101,6 +114,68 @@
     },
     "packages/dev-storage": {
       "name": "@shippie/dev-storage",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "tsup": "^8.5.1",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/local-ai": {
+      "name": "@shippie/local-ai",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/local-runtime-contract": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "tsup": "^8.5.1",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/local-db": {
+      "name": "@shippie/local-db",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/local-runtime-contract": "workspace:*",
+        "wa-sqlite": "^1.0.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "tsup": "^8.5.1",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/local-files": {
+      "name": "@shippie/local-files",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/local-runtime-contract": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "tsup": "^8.5.1",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/local-runtime": {
+      "name": "@shippie/local-runtime",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/local-db": "workspace:*",
+        "@shippie/local-files": "workspace:*",
+        "@shippie/local-runtime-contract": "workspace:*",
+        "wa-sqlite": "^1.0.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "playwright": "^1.59.1",
+        "tsup": "^8.5.1",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/local-runtime-contract": {
+      "name": "@shippie/local-runtime-contract",
       "version": "0.0.0",
       "devDependencies": {
         "@types/node": "^22.10.0",
@@ -422,11 +497,23 @@
 
     "@shippie/access": ["@shippie/access@workspace:packages/access"],
 
+    "@shippie/cf-storage": ["@shippie/cf-storage@workspace:packages/cf-storage"],
+
     "@shippie/cli": ["@shippie/cli@workspace:packages/cli"],
 
     "@shippie/db": ["@shippie/db@workspace:packages/db"],
 
     "@shippie/dev-storage": ["@shippie/dev-storage@workspace:packages/dev-storage"],
+
+    "@shippie/local-ai": ["@shippie/local-ai@workspace:packages/local-ai"],
+
+    "@shippie/local-db": ["@shippie/local-db@workspace:packages/local-db"],
+
+    "@shippie/local-files": ["@shippie/local-files@workspace:packages/local-files"],
+
+    "@shippie/local-runtime": ["@shippie/local-runtime@workspace:packages/local-runtime"],
+
+    "@shippie/local-runtime-contract": ["@shippie/local-runtime-contract@workspace:packages/local-runtime-contract"],
 
     "@shippie/mcp": ["@shippie/mcp@workspace:packages/mcp-server"],
 
@@ -955,6 +1042,8 @@
     "unpipe": ["unpipe@1.0.0", "", {}, "sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ=="],
 
     "vary": ["vary@1.1.2", "", {}, "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="],
+
+    "wa-sqlite": ["wa-sqlite@1.0.0", "", {}, "sha512-Kyybo5/BaJp76z7gDWGk2J6Hthl4NIPsE+swgraEjy3IY6r5zIR02wAs1OJH4XtJp1y3puj3Onp5eMGS0z7nUA=="],
 
     "webidl-conversions": ["webidl-conversions@7.0.0", "", {}, "sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g=="],
 

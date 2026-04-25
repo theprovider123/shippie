@@ -19,6 +19,8 @@ import {
   queryUserRating,
 } from '@/lib/shippie/ratings';
 import { queryCoInstalls } from '@/lib/shippie/co-installs';
+import { publicCapabilityBadges } from '@/lib/shippie/capability-badges';
+import { readProvenCapabilities } from '@/lib/shippie/capability-proofs';
 import { RatingsSummary } from '@/app/components/ratings-summary';
 import { CoInstallWidget } from '@/app/components/co-install-widget';
 import { InstallButton } from './install-button';
@@ -80,15 +82,17 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
   });
 
   const autopack = (latestDeploy?.autopackagingReport ?? null) as {
-    compat?: { score: number; findings: Array<{ severity: string; message: string }> };
     changelog?: { source: string; entries: string[]; summary: string };
   } | null;
+  const provenCapabilities = await readProvenCapabilities(db, app.id);
+  const capabilityBadges = publicCapabilityBadges(latestDeploy?.autopackagingReport, provenCapabilities);
 
-  const externalDomains = latestDeploy
-    ? await db.query.appExternalDomains.findMany({ where: eq(schema.appExternalDomains.deployId, latestDeploy.id) })
-    : [];
-
-  const compatScore = autopack?.compat?.score ?? app.compatibilityScore ?? 0;
+  const grantedPermissions: string[] = [];
+  if (permissions?.auth) grantedPermissions.push('Sign you in');
+  if ((permissions?.storage ?? 'none') !== 'none') grantedPermissions.push('Save your data');
+  if (permissions?.files) grantedPermissions.push('Accept file uploads');
+  if (permissions?.notifications) grantedPermissions.push('Send notifications');
+  if (permissions?.externalNetwork) grantedPermissions.push('Talk to external services');
 
   const [ratingSummary, latestReviews, session, coInstallPairs] = await Promise.all([
     queryRatingSummary(db, slug),
@@ -139,13 +143,53 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             ← All apps
           </Link>
           <div className="mt-6 flex items-start gap-6">
-            <div className="w-24 h-24 shippie-icon flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} aria-hidden />
+            {app.iconUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={app.iconUrl}
+                alt=""
+                className="w-24 h-24 shippie-icon flex-shrink-0 object-cover"
+                aria-hidden
+              />
+            ) : (
+              <div
+                className="w-24 h-24 shippie-icon flex-shrink-0 flex items-center justify-center"
+                style={{
+                  background: 'rgba(255,255,255,0.12)',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: '2.5rem',
+                  fontWeight: 600,
+                  color: '#EDE4D3',
+                }}
+                aria-hidden
+              >
+                {app.name.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h1 className="text-display text-4xl md:text-5xl">{app.name}</h1>
               <p className="mt-2 text-lg opacity-90">{app.tagline ?? app.description ?? ''}</p>
               <p className="mt-3 text-xs font-mono opacity-75 uppercase" style={{ letterSpacing: '0.1em' }}>
-                {app.type} · {app.category} · v{latestDeploy?.version ?? '?'}
+                {app.type} · {app.category}
               </p>
+              {capabilityBadges.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {capabilityBadges.map((badge) => (
+                    <span
+                      key={badge.label}
+                      className="text-xs font-mono uppercase px-3 py-2"
+                      style={{
+                        border: '1px solid rgba(237,228,211,0.38)',
+                        color: '#EDE4D3',
+                        background: badge.status === 'pass' ? 'rgba(20,18,15,0.22)' : 'rgba(20,18,15,0.12)',
+                        letterSpacing: '0.08em',
+                      }}
+                    >
+                      {badge.label}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="mt-6 flex flex-wrap gap-3">
                 <a href={devInstallUrl(app.slug)} target="_blank" rel="noopener"
                   className="inline-block h-12 px-6 font-medium leading-[48px] transition-colors"
@@ -160,73 +204,39 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
       </header>
 
       <div className="max-w-4xl mx-auto px-6 py-12 space-y-12">
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold">Compatibility</h2>
-          <div className="flex items-center gap-3">
-            <span className="text-3xl" style={{ color: 'var(--green-leaf)' }}>{'★'.repeat(compatScore)}{'☆'.repeat(5 - compatScore)}</span>
-            <span style={{ color: 'var(--text-muted)' }}>{compatScore}/5</span>
-          </div>
-          {autopack?.compat?.findings && autopack.compat.findings.length > 0 && (
-            <ul className="mt-4 space-y-2 text-sm">
-              {autopack.compat.findings.map((f, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span style={{ color: f.severity === 'match' ? 'var(--semantic-success)' : f.severity === 'violation' ? 'var(--semantic-error)' : 'var(--semantic-warning)' }}>
-                    {f.severity === 'match' ? '✓' : f.severity === 'violation' ? '✗' : '⚠'}
-                  </span>
-                  <span style={{ color: 'var(--text-secondary)' }}>{f.message}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold">Permissions</h2>
-          <ul className="grid grid-cols-2 gap-2 text-sm">
-            <PermRow label="Sign in" on={permissions?.auth ?? false} />
-            <PermRow label="User storage" on={(permissions?.storage ?? 'none') !== 'none'} />
-            <PermRow label="File uploads" on={permissions?.files ?? false} />
-            <PermRow label="Notifications" on={permissions?.notifications ?? false} />
-            <PermRow label="Analytics" on={permissions?.analytics ?? true} />
-            <PermRow label="External network" on={permissions?.externalNetwork ?? false} />
-          </ul>
-        </section>
-
-        {externalDomains.length > 0 && (
+        {grantedPermissions.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-2xl font-semibold">External domains</h2>
-            <ul className="text-sm font-mono space-y-1">
-              {externalDomains.map((d: { domain: string; source: string; allowed: boolean }) => (
-                <li key={d.domain} className="flex items-center gap-2">
-                  <span style={{ color: d.allowed ? 'var(--semantic-success)' : 'var(--semantic-warning)' }}>{d.allowed ? '✓' : '⚠'}</span>
-                  <span>{d.domain}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>({d.source})</span>
+            <h2 className="text-2xl font-semibold">What this app can do</h2>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-6 text-sm">
+              {grantedPermissions.map((p) => (
+                <li key={p} className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                  <span style={{ color: 'var(--semantic-success)' }}>✓</span>
+                  <span>{p}</span>
                 </li>
               ))}
             </ul>
           </section>
         )}
 
-        {autopack?.changelog && (
+        {autopack?.changelog && autopack.changelog.source !== 'default' && autopack.changelog.entries.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-2xl font-semibold">Latest changes</h2>
             <p className="font-medium">{autopack.changelog.summary}</p>
-            {autopack.changelog.entries.length > 0 && (
-              <ul className="text-sm space-y-1 ml-4" style={{ color: 'var(--text-secondary)' }}>
-                {autopack.changelog.entries.map((e, i) => <li key={i}>· {e}</li>)}
-              </ul>
-            )}
-            <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>source: {autopack.changelog.source}</p>
+            <ul className="text-sm space-y-1 ml-4" style={{ color: 'var(--text-secondary)' }}>
+              {autopack.changelog.entries.map((e, i) => <li key={i}>· {e}</li>)}
+            </ul>
           </section>
         )}
 
-        <section style={{ marginTop: 'var(--space-2xl, 4rem)' }}>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: 16 }}>
-            Ratings &amp; reviews
-          </h2>
-          <RatingsSummary summary={ratingSummary} latest={latestReviews} />
-          {userId && <RateWidget slug={slug} initial={userRating} />}
-        </section>
+        {(ratingSummary.count > 0 || userId) && (
+          <section style={{ marginTop: 'var(--space-2xl, 4rem)' }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: 16 }}>
+              Ratings &amp; reviews
+            </h2>
+            {ratingSummary.count > 0 && <RatingsSummary summary={ratingSummary} latest={latestReviews} />}
+            {userId && <RateWidget slug={slug} initial={userRating} />}
+          </section>
+        )}
 
         {coInstallCards.length > 0 && (
           <section style={{ marginTop: 'var(--space-2xl, 4rem)' }}>
@@ -241,14 +251,5 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
         )}
       </div>
     </main>
-  );
-}
-
-function PermRow({ label, on }: { label: string; on: boolean }) {
-  return (
-    <li className="flex items-center gap-2">
-      <span style={{ color: on ? 'var(--semantic-success)' : 'var(--text-muted)' }}>{on ? '✓' : '—'}</span>
-      <span style={{ color: on ? 'var(--text-primary)' : 'var(--text-muted)' }}>{label}</span>
-    </li>
   );
 }

@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#E8603C" />
+    <title>Recipe Saver</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #14110f;
+        --panel: #211c19;
+        --line: #3a312b;
+        --text: #fff7ed;
+        --muted: #c9b8aa;
+        --accent: #e8603c;
+        --sage: #8fae8b;
+        --warn: #d4a85b;
+        --crit: #d96a4f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      main {
+        width: min(1040px, 100%);
+        margin: 0 auto;
+        padding: 28px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: end;
+        padding: 18px 0 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 7vw, 4.25rem);
+        line-height: 0.94;
+        letter-spacing: 0;
+      }
+      p { color: var(--muted); line-height: 1.5; }
+      button, input, textarea, select {
+        font: inherit;
+      }
+      button {
+        min-height: 40px;
+        border: 1px solid var(--line);
+        background: #2b2420;
+        color: var(--text);
+        padding: 0 14px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #160b08;
+        font-weight: 700;
+      }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(280px, 360px) 1fr;
+        gap: 20px;
+        padding-top: 22px;
+      }
+      form, .toolbar, .recipe, .health {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 16px;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      input, textarea, select {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #14110f;
+        color: var(--text);
+        padding: 10px;
+        min-height: 42px;
+      }
+      textarea { resize: vertical; min-height: 110px; }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      .toolbar input { min-width: 0; }
+      .recipes {
+        display: grid;
+        gap: 12px;
+      }
+      .recipe {
+        display: grid;
+        gap: 8px;
+      }
+      .recipe h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        letter-spacing: 0;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .pill {
+        border: 1px solid var(--line);
+        color: var(--sage);
+        padding: 3px 8px;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .status {
+        margin: 12px 0 0;
+        color: var(--muted);
+        min-height: 24px;
+      }
+      .empty {
+        border: 1px dashed var(--line);
+        padding: 22px;
+        color: var(--muted);
+      }
+      .health {
+        margin-top: 18px;
+        display: grid;
+        gap: 10px;
+      }
+      .health-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 13px;
+      }
+      .health-row strong { color: var(--text); font-weight: 600; }
+      .badge { font-size: 12px; padding: 2px 8px; border: 1px solid var(--line); }
+      .badge.ok { color: var(--sage); border-color: var(--sage); }
+      .badge.warn { color: var(--warn); border-color: var(--warn); }
+      .badge.crit { color: var(--crit); border-color: var(--crit); }
+      .row-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+      @media (max-width: 760px) {
+        main { padding: 18px; }
+        header { display: block; }
+        .grid { grid-template-columns: 1fr; }
+        .toolbar { flex-wrap: wrap; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Recipe Saver</h1>
+          <p>Private recipes, searchable offline, stored in Shippie's local database. Encrypt-and-export anytime.</p>
+        </div>
+        <div class="row-buttons">
+          <button id="export" type="button">Export backup</button>
+          <button id="restore" type="button">Restore</button>
+          <input id="restore-file" type="file" accept=".shippiebak" hidden />
+        </div>
+      </header>
+
+      <section class="grid">
+        <form id="recipe-form">
+          <label>
+            Title
+            <input name="title" required autocomplete="off" placeholder="Carbonara" />
+          </label>
+          <label>
+            Cuisine
+            <input name="cuisine" autocomplete="off" placeholder="Italian" />
+          </label>
+          <label>
+            Rating
+            <select name="rating">
+              <option value="5">5</option>
+              <option value="4">4</option>
+              <option value="3">3</option>
+              <option value="2">2</option>
+              <option value="1">1</option>
+            </select>
+          </label>
+          <label>
+            Ingredients
+            <textarea name="ingredients" placeholder="Pasta, eggs, pecorino"></textarea>
+          </label>
+          <label>
+            Notes
+            <textarea name="instructions" placeholder="What makes it work?"></textarea>
+          </label>
+          <button class="primary" type="submit">Save recipe</button>
+          <p id="status" class="status"></p>
+        </form>
+
+        <section>
+          <div class="toolbar">
+            <input id="search" placeholder="Search recipes (FTS5)" />
+            <button id="seed" type="button">Add sample</button>
+          </div>
+          <div id="recipes" class="recipes"></div>
+          <aside class="health" aria-live="polite">
+            <div class="health-row">
+              <span>Storage</span>
+              <strong id="health-storage">—</strong>
+            </div>
+            <div class="health-row">
+              <span>Persistence</span>
+              <span id="health-persist" class="badge">—</span>
+            </div>
+            <div class="health-row">
+              <span>Last backup</span>
+              <strong id="health-backup">never</strong>
+            </div>
+            <div class="row-buttons">
+              <button id="request-persist" type="button">Ask the browser to persist data</button>
+            </div>
+            <p style="margin: 0; font-size: 12px; color: var(--muted);">
+              Your data lives in this browser only. Reinstalling? Restore from a backup.
+            </p>
+          </aside>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const state = { db: null, recipes: [] };
+      const status = document.querySelector('#status');
+      const list = document.querySelector('#recipes');
+      const form = document.querySelector('#recipe-form');
+      const search = document.querySelector('#search');
+      const restoreInput = document.querySelector('#restore-file');
+      const healthStorage = document.querySelector('#health-storage');
+      const healthPersist = document.querySelector('#health-persist');
+      const healthBackup = document.querySelector('#health-backup');
+
+      boot();
+
+      async function boot() {
+        try {
+          let runtime = window.shippie?.local;
+          if (runtime?.load) runtime = await runtime.load();
+          if (!runtime?.db) runtime = await loadLocalRuntime();
+          state.db = runtime.db;
+          await state.db.create('recipes', {
+            id: 'text primary key',
+            title: 'text',
+            cuisine: 'text',
+            rating: 'integer',
+            ingredients: 'json',
+            instructions: 'text',
+            created: 'datetime'
+          });
+          setStatus('Local database ready.');
+          await refresh();
+          await refreshHealth();
+        } catch (error) {
+          setStatus(error.message || 'Local database unavailable.');
+          list.innerHTML = '<div class="empty">This browser cannot start the local database yet.</div>';
+        }
+      }
+
+      async function loadLocalRuntime() {
+        if (!window.shippie?.local) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = '/__shippie/local.js';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Could not load Shippie local runtime.'));
+            document.head.append(script);
+          });
+        }
+        return window.shippie.local;
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const data = new FormData(form);
+        const recipe = {
+          id: crypto.randomUUID(),
+          title: String(data.get('title') || '').trim(),
+          cuisine: String(data.get('cuisine') || 'Unsorted').trim(),
+          rating: Number(data.get('rating') || 5),
+          ingredients: String(data.get('ingredients') || '').split(',').map((item) => item.trim()).filter(Boolean),
+          instructions: String(data.get('instructions') || '').trim(),
+          created: new Date().toISOString()
+        };
+        await state.db.insert('recipes', recipe);
+        form.reset();
+        setStatus('Saved locally.');
+        await refresh();
+        await refreshHealth();
+      });
+
+      search.addEventListener('input', () => refresh());
+
+      document.querySelector('#seed').addEventListener('click', async () => {
+        await state.db.insert('recipes', {
+          id: crypto.randomUUID(),
+          title: 'Weeknight tomato beans',
+          cuisine: 'Pantry',
+          rating: 5,
+          ingredients: ['beans', 'tomatoes', 'garlic', 'olive oil'],
+          instructions: 'Warm garlic in oil, add tomatoes and beans, simmer until glossy.',
+          created: new Date().toISOString()
+        });
+        await refresh();
+        await refreshHealth();
+      });
+
+      document.querySelector('#export').addEventListener('click', async () => {
+        if (!state.db) return;
+        const passphrase = window.prompt('Choose a passphrase. You will need it to restore.', '');
+        if (!passphrase) return;
+        const blob = await state.db.export('recipes', { format: 'shippiebak', passphrase });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recipes-${new Date().toISOString().slice(0, 10)}.shippiebak`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setStatus('Encrypted backup exported.');
+        await refreshHealth();
+      });
+
+      document.querySelector('#restore').addEventListener('click', () => restoreInput.click());
+
+      restoreInput.addEventListener('change', async () => {
+        const file = restoreInput.files?.[0];
+        if (!file || !state.db) return;
+        const passphrase = window.prompt('Passphrase for this backup?', '');
+        if (!passphrase) return;
+        try {
+          const info = await state.db.restore(file, { passphrase });
+          setStatus(`Restored ${info.tables.join(', ')} from backup created ${new Date(info.createdAt).toLocaleString()}.`);
+          await refresh();
+          await refreshHealth();
+        } catch (error) {
+          setStatus(`Restore failed: ${error.message || 'wrong passphrase?'}`);
+        } finally {
+          restoreInput.value = '';
+        }
+      });
+
+      document.querySelector('#request-persist').addEventListener('click', async () => {
+        if (!state.db) return;
+        const granted = await state.db.requestPersistence();
+        setStatus(granted ? 'Browser will keep your data.' : 'Browser declined to persist data.');
+        await refreshHealth();
+      });
+
+      async function refresh() {
+        if (!state.db) return;
+        const term = search.value.trim();
+        state.recipes = term
+          ? await state.db.search('recipes', term, { limit: 50 })
+          : await state.db.query('recipes', { orderBy: { created: 'desc' }, limit: 50 });
+        render();
+      }
+
+      function render() {
+        if (state.recipes.length === 0) {
+          list.innerHTML = '<div class="empty">No recipes yet.</div>';
+          return;
+        }
+        list.innerHTML = state.recipes.map((recipe) => `
+          <article class="recipe">
+            <h2>${escapeHtml(recipe.title)}</h2>
+            <div class="meta">
+              <span class="pill">${escapeHtml(recipe.cuisine || 'Unsorted')}</span>
+              <span>Rating ${Number(recipe.rating || 0)}/5</span>
+              <span>${new Date(recipe.created).toLocaleDateString()}</span>
+            </div>
+            <p>${escapeHtml((recipe.ingredients || []).join(', '))}</p>
+            <p>${escapeHtml(recipe.instructions || '')}</p>
+            <div class="actions"><button data-delete="${recipe.id}">Delete</button></div>
+          </article>
+        `).join('');
+        list.querySelectorAll('[data-delete]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            await state.db.delete('recipes', button.dataset.delete);
+            await refresh();
+            await refreshHealth();
+          });
+        });
+      }
+
+      async function refreshHealth() {
+        if (!state.db) return;
+        try {
+          const usage = await state.db.usage();
+          const persisted = usage.persisted;
+          const used = formatBytes(usage.usedBytes);
+          const quota = usage.quotaBytes ? formatBytes(usage.quotaBytes) : '—';
+          healthStorage.textContent = `${used} / ${quota}`;
+          if (usage.warningLevel === 'critical') {
+            healthStorage.classList.add('crit');
+            setStatus('Storage near full. Export and free space.');
+          } else if (usage.warningLevel === 'high') {
+            healthStorage.classList.add('warn');
+            setStatus('Storage filling up. Consider exporting a backup.');
+          }
+          healthPersist.textContent = persisted ? 'persisted' : 'best-effort';
+          healthPersist.className = 'badge ' + (persisted ? 'ok' : 'warn');
+        } catch {
+          healthStorage.textContent = 'unknown';
+        }
+        try {
+          const last = await state.db.lastBackup();
+          if (last?.createdAt) {
+            const days = Math.floor((Date.now() - new Date(last.createdAt).getTime()) / 86_400_000);
+            healthBackup.textContent = days === 0 ? 'today' : `${days}d ago`;
+          } else {
+            healthBackup.textContent = 'never';
+          }
+        } catch {
+          healthBackup.textContent = 'never';
+        }
+      }
+
+      function setStatus(message) {
+        status.textContent = message;
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes && bytes !== 0) return '—';
+        if (bytes < 1024) return bytes + 'B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[char]);
+      }
+    </script>
+  </body>
+</html>

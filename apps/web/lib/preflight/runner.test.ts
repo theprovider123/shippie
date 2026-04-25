@@ -102,6 +102,19 @@ test('preflight blocks when output contains __shippie/ files', async () => {
   assert.ok(report.blockers.some((f) => f.rule === 'reserved-paths-collision'));
 });
 
+test('preflight blocks maker root service workers', async () => {
+  const report = await runPreflight(
+    baseInput({
+      outputFiles: ['index.html', 'sw.js', 'assets/app.js'],
+    }),
+    defaultRules,
+  );
+  assert.equal(report.passed, false);
+  const blocker = report.blockers.find((f) => f.rule === 'service-worker-ownership');
+  assert.ok(blocker);
+  assert.match(blocker!.title, /service worker/i);
+});
+
 test('preflight blocks empty output', async () => {
   const report = await runPreflight(
     baseInput({

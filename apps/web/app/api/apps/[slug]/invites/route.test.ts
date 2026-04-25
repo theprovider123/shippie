@@ -11,6 +11,9 @@ mock.module('@/lib/access/invites', () => ({
     { id: 'inv-1', token: 'abc123def456', kind: 'link', usedCount: 0 },
   ],
 }));
+mock.module('@/lib/access/short-links', () => ({
+  createShortLink: async () => ({ code: 'abcd2345' }),
+}));
 mock.module('@/lib/db', () => ({
   getDb: async () => ({
     select: () => ({
@@ -41,6 +44,7 @@ describe('/api/apps/[slug]/invites', () => {
     const body = await res.json();
     expect(body.invite.token).toBe('abc123def456');
     expect(body.url).toBe('https://shippie.app/invite/abc123def456');
+    expect(body.short_url).toBe('https://shippie.app/i/abcd2345');
   });
 
   test('GET lists invites', async () => {

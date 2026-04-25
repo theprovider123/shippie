@@ -27,30 +27,9 @@ export default async function DeployPage({
   }
 
   if (!repo) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-6">
-        <div className="max-w-md space-y-6 text-center">
-          <h1 className="text-3xl font-bold">Deploy to Shippie</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Paste a GitHub repo URL to deploy it.
-          </p>
-          <form action="/deploy" method="GET" className="space-y-3">
-            <input
-              name="repo"
-              placeholder="https://github.com/user/repo"
-              className="w-full h-12 px-4 border border-neutral-300 dark:border-neutral-700 bg-transparent font-mono text-sm"
-              required
-            />
-            <button
-              type="submit"
-              className="w-full h-12 bg-brand-500 text-white font-medium hover:bg-brand-600 transition-colors"
-            >
-              Deploy
-            </button>
-          </form>
-        </div>
-      </main>
-    );
+    // /deploy with no ?repo= param is only reached if someone lands here directly.
+    // The README "Deploy to Shippie" badge always sends ?repo=. Send bare hits to /new.
+    redirect('/new');
   }
 
   // Extract slug from repo URL

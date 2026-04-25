@@ -6,6 +6,8 @@
 import Link from 'next/link';
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { publicCapabilityBadges } from '@/lib/shippie/capability-badges';
+import { readProvenCapabilitiesBatch } from '@/lib/shippie/capability-proofs';
 import { SiteNav } from '../components/site-nav';
 
 export const runtime = 'nodejs';
@@ -16,6 +18,7 @@ interface AppRow {
   description: string | null; type: string; category: string;
   themeColor: string; compatibilityScore: number; installCount: number;
   rankScore: number;
+  autopackagingReport: unknown;
 }
 
 async function loadApps(query?: string): Promise<AppRow[]> {
@@ -23,19 +26,23 @@ async function loadApps(query?: string): Promise<AppRow[]> {
   const q = (query ?? '').trim();
   if (!q) {
     return (await db.execute(sql`
-      select id, slug, name, tagline, description, type, category, theme_color as "themeColor",
+      select apps.id, apps.slug, apps.name, apps.tagline, apps.description, apps.type, apps.category, apps.theme_color as "themeColor",
              compatibility_score as "compatibilityScore", install_count as "installCount",
-             greatest(ranking_score_app, ranking_score_web_app, ranking_score_website) as "rankScore"
-      from apps where active_deploy_id is not null and is_archived = false
+             greatest(ranking_score_app, ranking_score_web_app, ranking_score_website) as "rankScore",
+             deploys.autopackaging_report as "autopackagingReport"
+      from apps left join deploys on deploys.id = apps.active_deploy_id
+      where active_deploy_id is not null and is_archived = false
         and visibility_scope = 'public'
       order by "rankScore" desc nulls last, last_deployed_at desc nulls last limit 60
     `)) as unknown as AppRow[];
   }
   return (await db.execute(sql`
-    select id, slug, name, tagline, description, type, category, theme_color as "themeColor",
+    select apps.id, apps.slug, apps.name, apps.tagline, apps.description, apps.type, apps.category, apps.theme_color as "themeColor",
            compatibility_score as "compatibilityScore", install_count as "installCount",
-           (ts_rank(search_tsv, plainto_tsquery('simple', ${q})) * 2 + similarity(name, ${q}) + similarity(slug, ${q})) as "rankScore"
-    from apps where active_deploy_id is not null and is_archived = false
+           (ts_rank(search_tsv, plainto_tsquery('simple', ${q})) * 2 + similarity(name, ${q}) + similarity(slug, ${q})) as "rankScore",
+           deploys.autopackaging_report as "autopackagingReport"
+    from apps left join deploys on deploys.id = apps.active_deploy_id
+    where active_deploy_id is not null and is_archived = false
       and visibility_scope = 'public'
       and (search_tsv @@ plainto_tsquery('simple', ${q}) or name % ${q} or slug % ${q})
     order by "rankScore" desc limit 60
@@ -45,6 +52,8 @@ async function loadApps(query?: string): Promise<AppRow[]> {
 export default async function AppsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;
   const apps = await loadApps(q);
+  const db = await getDb();
+  const proofs = await readProvenCapabilitiesBatch(db, apps.map((a) => a.id));
 
   return (
     <main className="min-h-screen" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
@@ -110,6 +119,23 @@ export default async function AppsPage({ searchParams }: { searchParams: Promise
                       <p className="mt-2 text-sm line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
                         {app.tagline ?? app.description ?? `${app.name} on Shippie`}
                       </p>
+                      {publicCapabilityBadges(app.autopackagingReport, proofs.get(app.id)).length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {publicCapabilityBadges(app.autopackagingReport, proofs.get(app.id)).slice(0, 3).map((badge) => (
+                            <span
+                              key={badge.label}
+                              className="text-[10px] font-mono uppercase px-2 py-1"
+                              style={{
+                                border: '1px solid var(--border-default)',
+                                color: badge.status === 'pass' ? 'var(--semantic-success)' : 'var(--text-muted)',
+                                letterSpacing: '0.08em',
+                              }}
+                            >
+                              {badge.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-3 flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                         <span>{'★'.repeat(app.compatibilityScore)}{'☆'.repeat(5 - app.compatibilityScore)}</span>
                         <span>·</span>

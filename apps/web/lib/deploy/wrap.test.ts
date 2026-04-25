@@ -1,13 +1,29 @@
-import { describe, expect, test, beforeEach } from 'bun:test';
-import { schema } from '@shippie/db';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { schema, type ShippieDbHandle } from '@shippie/db';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { setupPgliteForTest, teardownPglite } from '@/lib/test-helpers/pglite-harness';
 import { createWrappedApp } from './wrap';
 
 async function cleanup(slug: string) {
   const db = await getDb();
   await db.delete(schema.apps).where(eq(schema.apps.slug, slug));
 }
+
+let handle: ShippieDbHandle | undefined;
+
+beforeAll(async () => {
+  handle = await setupPgliteForTest();
+  const db = await getDb();
+  await db
+    .insert(schema.users)
+    .values({ id: '00000000-0000-0000-0000-000000000001', email: 'maker@shippie.test' })
+    .onConflictDoNothing({ target: schema.users.id });
+}, 30_000);
+
+afterAll(async () => {
+  await teardownPglite(handle);
+});
 
 describe('createWrappedApp', () => {
   const testSlug = 'wrap-test-mevrouw';

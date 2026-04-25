@@ -33,6 +33,19 @@ export function resolveAppSlug(req: Request): string | null {
     return parts.slice(0, -1).join('.');
   }
 
+  // LAN dev: {slug}.<ip-dashed-or-dotted>.nip.io
+  // nip.io resolves `*.<ip>.nip.io` to the encoded IP, so phones on the
+  // same Wi-Fi can hit the worker by hostname without editing /etc/hosts.
+  // Must come before the `.shippie.app` branch; we only care about the
+  // first label — the IP segments in between are nip.io's business.
+  if (
+    parts.length >= 3 &&
+    parts[parts.length - 2] === 'nip' &&
+    parts[parts.length - 1] === 'io'
+  ) {
+    return parts[0] ?? null;
+  }
+
   // Production: *.shippie.app
   if (parts.length >= 3 && parts[parts.length - 2] === 'shippie' && parts[parts.length - 1] === 'app') {
     return parts.slice(0, -2).join('.');

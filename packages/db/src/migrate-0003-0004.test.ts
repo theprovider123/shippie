@@ -10,6 +10,12 @@
  *   - compliance_checks status enum (includes 'needs_action')
  *
  * Spec references inline.
+ *
+ * Each test spins up a fresh PGlite WASM instance and replays all 19
+ * migration files end-to-end (~1–3s setup cost). That exceeds bun's 5s
+ * default per-test timeout under load, so we set an explicit 30s
+ * timeout per test. This is acceptable in CI — the whole file finishes
+ * in ~20s wall-clock.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,6 +26,9 @@ import { runMigrations } from './migrate.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');
+
+/** Per-test timeout covering PGlite init + full migration replay. */
+const TEST_TIMEOUT_MS = 30_000;
 
 async function freshDb(): Promise<ShippieDbHandle> {
   const handle = await createDb({ url: 'pglite://memory' });
@@ -71,7 +80,7 @@ async function seed(handle: ShippieDbHandle, overrides?: { userId?: string; orgI
   return { userId, orgId, appId };
 }
 
-test('0003: oauth tables accept inserts and FK cascades', async () => {
+test('0003: oauth tables accept inserts and FK cascades', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { userId, appId } = await seed(handle);
@@ -99,7 +108,7 @@ test('0003: oauth tables accept inserts and FK cascades', async () => {
   }
 });
 
-test('0003: app_sessions accepts opaque handle with all device fields', async () => {
+test('0003: app_sessions accepts opaque handle with all device fields', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { userId, appId } = await seed(handle);
@@ -128,7 +137,7 @@ test('0003: app_sessions accepts opaque handle with all device fields', async ()
   }
 });
 
-test('0003: app_data select/write via RLS session vars', async () => {
+test('0003: app_data select/write via RLS session vars', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { userId, appId } = await seed(handle);
@@ -170,7 +179,7 @@ test('0003: app_data select/write via RLS session vars', async () => {
   }
 });
 
-test('0003: app_data partial unique indexes separate private and public namespaces', async () => {
+test('0003: app_data partial unique indexes separate private and public namespaces', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { userId, appId } = await seed(handle);
@@ -200,7 +209,7 @@ test('0003: app_data partial unique indexes separate private and public namespac
   }
 });
 
-test('0004: app_signing_configs partial unique index enforces exactly one active per (app,platform)', async () => {
+test('0004: app_signing_configs partial unique index enforces exactly one active per (app,platform)', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { appId } = await seed(handle);
@@ -247,7 +256,7 @@ test('0004: app_signing_configs partial unique index enforces exactly one active
   }
 });
 
-test('0004: rotation via atomic flip works (Fix v5.1.2 G pattern)', async () => {
+test('0004: rotation via atomic flip works (Fix v5.1.2 G pattern)', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { appId } = await seed(handle);
@@ -295,7 +304,7 @@ test('0004: rotation via atomic flip works (Fix v5.1.2 G pattern)', async () => 
   }
 });
 
-test('0004: invalidate_verifications_on_config_change trigger fires on identity edits', async () => {
+test('0004: invalidate_verifications_on_config_change trigger fires on identity edits', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { userId, appId } = await seed(handle);
@@ -344,7 +353,7 @@ test('0004: invalidate_verifications_on_config_change trigger fires on identity 
   }
 });
 
-test('0004: invalidate trigger does NOT fire on is_active-only flip', async () => {
+test('0004: invalidate trigger does NOT fire on is_active-only flip', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { appId } = await seed(handle);
@@ -384,7 +393,7 @@ test('0004: invalidate trigger does NOT fire on is_active-only flip', async () =
   }
 });
 
-test('0004: store_account_credentials allows both user and org subjects', async () => {
+test('0004: store_account_credentials allows both user and org subjects', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { userId, orgId } = await seed(handle);
@@ -415,7 +424,7 @@ test('0004: store_account_credentials allows both user and org subjects', async 
   }
 });
 
-test('0004: compliance_checks accepts needs_action status', async () => {
+test('0004: compliance_checks accepts needs_action status', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { appId } = await seed(handle);
@@ -450,7 +459,7 @@ test('0004: compliance_checks accepts needs_action status', async () => {
   }
 });
 
-test('0004: ios_verify_kits unique nonce + consumption outcome', async () => {
+test('0004: ios_verify_kits unique nonce + consumption outcome', { timeout: TEST_TIMEOUT_MS }, async () => {
   const handle = await freshDb();
   try {
     const { userId, appId } = await seed(handle);

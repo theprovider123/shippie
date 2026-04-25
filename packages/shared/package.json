@@ -16,6 +16,10 @@
       "types": "./src/shippie-json.ts",
       "import": "./src/shippie-json.ts"
     },
+    "./public-shippie-json": {
+      "types": "./src/public-shippie-json.ts",
+      "import": "./src/public-shippie-json.ts"
+    },
     "./reserved-paths": {
       "types": "./src/reserved-paths.ts",
       "import": "./src/reserved-paths.ts"

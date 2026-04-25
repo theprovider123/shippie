@@ -13,7 +13,6 @@ export async function initCommand() {
     return;
   }
 
-  const slug = basename(cwd).toLowerCase().replace(/[^a-z0-9-]/g, '-');
   const name = basename(cwd)
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -21,14 +20,25 @@ export async function initCommand() {
 
   const config = {
     version: 1,
-    slug,
-    type: 'app',
     name,
-    category: 'tools',
-    theme_color: '#0a0a0a',
-    background_color: '#ffffff',
+    icon: './icon.png',
+    theme_color: '#E8603C',
+    display: 'standalone',
+    categories: ['tools'],
+    description: `An installable Shippie app called ${name}.`,
+    badge: true,
+    transitions: 'slide',
+    haptics: true,
+    sound: false,
+    ambient: false,
+    local: {
+      database: false,
+      files: false,
+      ai: [],
+      sync: false,
+    },
   };
 
   writeFileSync(target, JSON.stringify(config, null, 2) + '\n');
-  console.log(`Created shippie.json for "${name}" (${slug})`);
+  console.log(`Created shippie.json for "${name}"`);
 }

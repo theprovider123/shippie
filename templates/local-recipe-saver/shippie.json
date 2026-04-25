@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "type": "app",
+  "name": "Recipe Saver",
+  "tagline": "A private recipe box that lives on your device.",
+  "description": "Save, rate, search, export, and restore recipes with Shippie's local database runtime.",
+  "category": "food",
+  "categories": ["food", "tools"],
+  "theme_color": "#E8603C",
+  "background_color": "#14110F",
+  "display": "standalone",
+  "badge": true,
+  "transitions": "rise",
+  "haptics": true,
+  "sound": false,
+  "ambient": false,
+  "local": {
+    "database": true,
+    "files": false,
+    "ai": [],
+    "sync": false
+  }
+}

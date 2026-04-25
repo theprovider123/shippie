@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { SuccessCard } from './success-card';
 
 type Phase =
   | { kind: 'idle' }
   | { kind: 'submitting' }
-  | { kind: 'done'; liveUrl: string; redirectUri: string }
+  | { kind: 'done'; slug: string; liveUrl: string; redirectUri: string }
   | { kind: 'error'; message: string };
 
 export function WrapForm() {
@@ -33,15 +34,17 @@ export function WrapForm() {
     });
     const j = (await res.json().catch(() => ({}))) as {
       success?: boolean;
+      slug?: string;
       live_url?: string;
       runtime_config?: { required_redirect_uris?: string[] };
       reason?: string;
       error?: string;
     };
 
-    if (res.ok && j.success && j.live_url) {
+    if (res.ok && j.success && j.live_url && j.slug) {
       setPhase({
         kind: 'done',
+        slug: j.slug,
         liveUrl: j.live_url,
         redirectUri: j.runtime_config?.required_redirect_uris?.[0] ?? '',
       });
@@ -52,49 +55,23 @@ export function WrapForm() {
 
   if (phase.kind === 'done') {
     return (
-      <div style={{ padding: 'var(--space-lg)', border: '1px solid var(--border-light)' }}>
-        <p
-          style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: 'var(--h3-size)',
-            color: 'var(--sage-leaf, var(--sunset))',
-            margin: 0,
-          }}
-        >
-          ✓ Wrapped
-        </p>
-        <p style={{ marginTop: 'var(--space-sm)' }}>
-          <a href={phase.liveUrl} style={{ color: 'var(--sunset)', fontFamily: 'var(--font-mono)' }}>
-            {phase.liveUrl}
-          </a>
-        </p>
-        {phase.redirectUri && (
-          <>
-            <p
-              style={{
-                marginTop: 'var(--space-md)',
-                color: 'var(--text-secondary)',
-                fontSize: 'var(--small-size)',
-              }}
-            >
-              Add this redirect URI to your auth provider (Supabase, Auth0, Clerk):
-            </p>
-            <pre
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border-light)',
-                padding: 'var(--space-sm)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 13,
-                marginTop: 'var(--space-xs)',
-                overflow: 'auto',
-              }}
-            >
-              {phase.redirectUri}
-            </pre>
-          </>
-        )}
-      </div>
+      <SuccessCard
+        meta={{
+          slug: phase.slug,
+          liveUrl: phase.liveUrl,
+          headline: 'Wrapped',
+          footer: phase.redirectUri ? (
+            <div className="mt-2">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                Add this redirect URI to your auth provider (Supabase, Auth0, Clerk):
+              </p>
+              <pre className="mt-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 p-2 font-mono text-xs overflow-auto">
+                {phase.redirectUri}
+              </pre>
+            </div>
+          ) : undefined,
+        }}
+      />
     );
   }
 

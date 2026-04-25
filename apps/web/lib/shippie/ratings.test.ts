@@ -6,7 +6,7 @@
  * shared across tests via `beforeAll`; per-test isolation is via
  * TRUNCATE in `beforeEach`.
  */
-import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { createDb, runMigrations, type ShippieDbHandle } from '@shippie/db';
 import { sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
@@ -33,7 +33,9 @@ beforeEach(async () => {
   await handle.db.execute(sql`TRUNCATE TABLE app_ratings`);
 });
 
-// No afterAll close — shared pglite lifecycle.
+afterAll(async () => {
+  if (handle) await handle.close();
+});
 
 describe('queryRatingSummary', () => {
   test('returns zeros when no ratings exist', async () => {

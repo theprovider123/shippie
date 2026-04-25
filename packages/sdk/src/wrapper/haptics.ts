@@ -28,3 +28,49 @@ export function haptic(kind: HapticKind): void {
     // swallow — haptics are non-essential
   }
 }
+
+export interface SemanticHapticsOptions {
+  buttons?: HapticKind | false;
+  toggles?: HapticKind | false;
+  forms?: HapticKind | false;
+  invalid?: HapticKind | false;
+}
+
+export function attachSemanticHaptics(
+  root: Document | Element = document,
+  opts: SemanticHapticsOptions = {},
+): () => void {
+  if (!root?.addEventListener) return () => {};
+  const buttonKind = opts.buttons ?? 'tap';
+  const toggleKind = opts.toggles ?? 'tap';
+  const formKind = opts.forms ?? 'success';
+  const invalidKind = opts.invalid ?? 'error';
+
+  const onClick = (event: Event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    if (toggleKind && target.closest('input[type="checkbox"], input[type="radio"], [role="switch"], [aria-pressed]')) {
+      haptic(toggleKind);
+      return;
+    }
+    if (buttonKind && target.closest('button, a[role="button"], [role="button"], input[type="button"], input[type="submit"]')) {
+      haptic(buttonKind);
+    }
+  };
+  const onSubmit = () => {
+    if (formKind) haptic(formKind);
+  };
+  const onInvalid = () => {
+    if (invalidKind) haptic(invalidKind);
+  };
+
+  root.addEventListener('click', onClick);
+  root.addEventListener('submit', onSubmit);
+  root.addEventListener('invalid', onInvalid, true);
+
+  return () => {
+    root.removeEventListener('click', onClick);
+    root.removeEventListener('submit', onSubmit);
+    root.removeEventListener('invalid', onInvalid, true);
+  };
+}

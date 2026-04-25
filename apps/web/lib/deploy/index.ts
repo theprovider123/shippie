@@ -27,6 +27,7 @@
  *
  * Spec v6 §10.6. Differentiation plan Pillar C1.
  */
+import { networkInterfaces } from 'node:os';
 import AdmZip from 'adm-zip';
 import { and, eq } from 'drizzle-orm';
 import {
@@ -38,12 +39,15 @@ import {
   type KvStore,
   type R2Store,
 } from '@shippie/dev-storage';
+import { CfKv, CfR2 } from '@shippie/cf-storage';
 import { createInjector } from '@shippie/pwa-injector';
 import { schema } from '@shippie/db';
-import type { ShippieJson } from '@shippie/shared';
+import { normalizeShippieJson, type ShippieJson } from '@shippie/shared';
 import { getDb } from '@/lib/db';
 import { runPreflight, defaultRules, type PreflightReport } from '@/lib/preflight';
 import { generateAssets } from '@/lib/shippie/generate-assets';
+import { scanForBaas } from '@/lib/trust/baas-scanner';
+import { buildWrapperCompatibilityReport } from './wrapper-compat-report';
 
 export interface DeployStaticInput {
   slug: string;
@@ -68,6 +72,14 @@ export interface DeployStaticResult {
   filesForCold?: Map<string, Buffer>;
   /** Hot path only — the drafted manifest for cold path autopack. */
   manifestForCold?: ShippieJson;
+  /**
+   * Info-level notes from the deploy pipeline, surfaced to the maker
+   * alongside the live URL. Use for auto-enabled permissions, discovered
+   * dependencies, and other "here's what Shippie did for you" signals.
+   * Not a replacement for preflight warnings — those are in
+   * `preflight.warnings`.
+   */
+  notes?: string[];
 }
 
 /**
@@ -86,8 +98,18 @@ export async function deployStaticHot(
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
   const files = new Map<string, Buffer>();
   for (const entry of entries) {
-    const path = entry.entryName.replace(/^\/+/, '');
-    files.set(path, entry.getData());
+    // Zip slip hardening: reject absolute paths, parent-directory traversal,
+    // Windows separators, and empty/pathological entry names before we touch
+    // the filesystem or forward the path to R2. The worker prefix this with
+    // `apps/{slug}/v{version}/` — a `../etc/passwd` there would climb out.
+    const safe = sanitizeZipEntryPath(entry.entryName);
+    if (!safe.ok) {
+      return failReport({
+        slug: input.slug,
+        reason: `Unsafe path in zip: ${entry.entryName}`,
+      });
+    }
+    files.set(safe.path, entry.getData());
   }
 
   if (files.size === 0) {
@@ -100,7 +122,14 @@ export async function deployStaticHot(
   // ------------------------------------------------------------------
   // 2. Manifest (auto-draft if missing)
   // ------------------------------------------------------------------
-  const draftedManifest = deriveManifest(input, files);
+  const manifestResult = deriveManifest(input, files);
+  const { manifest: draftedManifest, notes: draftNotes } = manifestResult;
+  if (manifestResult.error) {
+    return failReport({
+      slug: input.slug,
+      reason: `Invalid shippie.json: ${manifestResult.error}`,
+    });
+  }
 
   // ------------------------------------------------------------------
   // 3. Preflight
@@ -113,6 +142,7 @@ export async function deployStaticHot(
       manifestSource: input.shippieJson ? 'maker' : 'auto-drafted',
       sourceFiles: Array.from(files.keys()),
       outputFiles: Array.from(files.keys()),
+      fileContents: files,
       outputBytes,
       reservedSlugs: input.reservedSlugs,
     },
@@ -256,19 +286,26 @@ export async function deployStaticHot(
   // logged, not fatal — the worker's icon route falls back to the
   // platform default placeholder.
   // ------------------------------------------------------------------
-  const iconBuffer = resolveIconBuffer(draftedManifest, files);
-  if (iconBuffer) {
+  const iconAsset = resolveIconAsset(draftedManifest, files);
+  let generatedIconUrl: string | null = null;
+  let iconGenerationErrors: string[] = [];
+  if (iconAsset) {
     try {
       const result = await generateAssets({
         slug: input.slug,
-        iconBuffer,
+        iconBuffer: iconAsset.buffer,
         backgroundColor: draftedManifest.background_color ?? '#14120F',
         r2Public: storage.r2Public,
       });
+      iconGenerationErrors = result.errors;
+      if (result.iconKeys.length > 0) {
+        generatedIconUrl = new URL('/__shippie/icons/512.png', resolveLiveUrl(input.slug)).toString();
+      }
       if (result.errors.length > 0) {
         console.warn('[shippie:assets] partial:', result.errors.join('; '));
       }
     } catch (err) {
+      iconGenerationErrors = [(err as Error).message];
       console.warn('[shippie:assets] failed:', err);
     }
   } else {
@@ -276,6 +313,18 @@ export async function deployStaticHot(
       `[shippie:assets] no icon found for slug=${input.slug}; skipping icon + splash generation`,
     );
   }
+
+  const wrapperCompat = buildWrapperCompatibilityReport({
+    manifest: draftedManifest,
+    preflight,
+    trust,
+    files,
+    icon: {
+      sourcePath: iconAsset?.path,
+      generated: generatedIconUrl !== null,
+      errors: iconGenerationErrors,
+    },
+  });
 
   // ------------------------------------------------------------------
   // 8. Create deploy_artifacts + mark deploy success + flip active pointer
@@ -296,6 +345,9 @@ export async function deployStaticHot(
       durationMs: Date.now() - startedAt,
       preflightStatus: 'passed',
       preflightReport: preflight as unknown as Record<string, unknown>,
+      autopackagingReport: {
+        wrapper_compat: wrapperCompat,
+      } as unknown as Record<string, unknown>,
       // Persist the CSP so rollback can restore it into KV without
       // replaying the trust pipeline. See lib/deploy/rollback.ts.
       cspHeader: trust.csp.header,
@@ -306,6 +358,7 @@ export async function deployStaticHot(
     .update(schema.apps)
     .set({
       activeDeployId: deployRow.id,
+      ...(generatedIconUrl ? { iconUrl: generatedIconUrl } : {}),
       lastDeployedAt: new Date(),
       firstPublishedAt: appRow.firstPublishedAt ?? new Date(),
       updatedAt: new Date(),
@@ -379,11 +432,12 @@ export async function deployStaticHot(
     files: files.size,
     totalBytes,
     preflight,
-    liveUrl: devUrl(input.slug),
+    liveUrl: resolveLiveUrl(input.slug),
     appId: appRow.id,
     deployId: deployRow.id,
     filesForCold: files,
     manifestForCold: draftedManifest,
+    notes: draftNotes.length > 0 ? draftNotes : undefined,
   };
 }
 
@@ -490,15 +544,69 @@ function failReport(opts: { slug: string; reason: string }): DeployStaticResult 
   };
 }
 
-function deriveManifest(
+export interface DerivedManifest {
+  manifest: ShippieJson;
+  /** Info-level notes generated during draft (e.g. auto-enabled permissions). */
+  notes: string[];
+  /** Fatal maker manifest parse/lowering error. */
+  error?: string;
+}
+
+export function deriveManifest(
   input: DeployStaticInput,
-  _files: Map<string, Buffer>,
-): ShippieJson {
+  files: Map<string, Buffer>,
+): DerivedManifest {
+  // Maker-provided manifest always wins — we trust their declaration even
+  // if it means leaving out a domain they use. The maker is the source of
+  // truth; silently adding permissions to their manifest would be a
+  // surprise-on-deploy.
   if (input.shippieJson) {
-    return { ...input.shippieJson, slug: input.slug };
+    return { manifest: { ...input.shippieJson, slug: input.slug }, notes: [] };
   }
 
-  return {
+  const provided = readShippieJson(files);
+  if (provided.ok) {
+    try {
+      return {
+        manifest: normalizeShippieJson(provided.value, {
+          slug: input.slug,
+          defaults: { theme_color: '#E8603C', background_color: '#ffffff', category: 'tools' },
+        }),
+        notes: ['Compiled maker shippie.json into Shippie internal runtime config.'],
+      };
+    } catch (err) {
+      return {
+        manifest: {
+          version: 1,
+          slug: input.slug,
+          type: 'app',
+          name: titleCase(input.slug),
+          category: 'tools',
+          theme_color: '#E8603C',
+          background_color: '#ffffff',
+        },
+        notes: [],
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+  if (provided.error) {
+    return {
+      manifest: {
+        version: 1,
+        slug: input.slug,
+        type: 'app',
+        name: titleCase(input.slug),
+        category: 'tools',
+        theme_color: '#E8603C',
+        background_color: '#ffffff',
+      },
+      notes: [],
+      error: provided.error,
+    };
+  }
+
+  const base: ShippieJson = {
     version: 1,
     slug: input.slug,
     type: 'app',
@@ -507,6 +615,38 @@ function deriveManifest(
     theme_color: '#E8603C',
     background_color: '#ffffff',
   };
+
+  // Auto-detect BaaS hostnames so Supabase/Firebase/Clerk apps deployed
+  // without a shippie.json actually work out of the box. Without this,
+  // `connect-src 'self'` blocks their backend calls and the maker sees a
+  // silent CSP failure they can't debug.
+  const baas = scanForBaas(files);
+  const notes: string[] = [];
+
+  if (baas.found) {
+    const existing = new Set((base.allowed_connect_domains ?? []).map((d) => d.toLowerCase()));
+    for (const d of baas.domains) existing.add(d);
+    const merged = [...existing].sort();
+
+    base.permissions = { ...(base.permissions ?? {}), external_network: true };
+    base.allowed_connect_domains = merged;
+
+    notes.push(
+      `Auto-detected ${baas.providers.join(' + ')} — external network allowed for: ${baas.domains.join(', ')}`,
+    );
+  }
+
+  return { manifest: base, notes };
+}
+
+function readShippieJson(files: Map<string, Buffer>): { ok: true; value: unknown } | { ok: false; error?: string } {
+  const buf = files.get('shippie.json');
+  if (!buf) return { ok: false };
+  try {
+    return { ok: true, value: JSON.parse(buf.toString('utf8')) as unknown };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 function titleCase(slug: string): string {
@@ -521,19 +661,81 @@ function titleCase(slug: string): string {
  * `shippie.json.icon` if it points to an existing file, otherwise
  * falls back to common default names at the root of the zip.
  */
-function resolveIconBuffer(
+export interface ResolvedIconAsset {
+  path: string;
+  buffer: Buffer;
+  source: 'shippie_json' | 'web_manifest' | 'fallback';
+}
+
+export function resolveIconAsset(
   manifest: ShippieJson,
   files: Map<string, Buffer>,
-): Buffer | null {
-  const candidates: string[] = [];
-  if (manifest.icon) candidates.push(manifest.icon.replace(/^\/+/, ''));
-  candidates.push('icon.png', 'icon.svg', 'favicon.png', 'favicon.svg', 'public/icon.png');
+): ResolvedIconAsset | null {
+  const candidates: Array<{ path: string; source: ResolvedIconAsset['source'] }> = [];
+  if (manifest.icon) candidates.push({ path: manifest.icon.replace(/^\/+/, ''), source: 'shippie_json' });
+  candidates.push(...manifestIconCandidates(files));
+  for (const fallback of ['icon.png', 'icon.svg', 'favicon.png', 'favicon.svg', 'public/icon.png']) {
+    candidates.push({ path: fallback, source: 'fallback' });
+  }
 
   for (const candidate of candidates) {
-    const buf = files.get(candidate);
-    if (buf) return buf;
+    const normalized = normalizeAssetPath(candidate.path);
+    const buf = files.get(normalized);
+    if (buf) return { path: normalized, buffer: buf, source: candidate.source };
   }
   return null;
+}
+
+interface WebManifestIcon {
+  src?: unknown;
+  sizes?: unknown;
+  purpose?: unknown;
+}
+
+function manifestIconCandidates(files: Map<string, Buffer>): Array<{ path: string; source: 'web_manifest' }> {
+  const out: Array<{ path: string; source: 'web_manifest' }> = [];
+  for (const path of ['manifest.json', 'site.webmanifest', 'public/manifest.json']) {
+    const buf = files.get(path);
+    if (!buf) continue;
+    try {
+      const manifest = JSON.parse(buf.toString('utf8')) as { icons?: WebManifestIcon[] };
+      if (!Array.isArray(manifest.icons)) continue;
+      const baseDir = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '';
+      const icons = manifest.icons
+        .filter((icon) => typeof icon.src === 'string')
+        .sort((a, b) => iconRank(b) - iconRank(a));
+      for (const icon of icons) {
+        const src = icon.src as string;
+        out.push({ path: resolveManifestAssetPath(baseDir, src), source: 'web_manifest' });
+      }
+    } catch {
+      // Ignore malformed web manifests here. shippie.json validation is
+      // handled separately; browser manifest files are best-effort inputs.
+    }
+  }
+  return out;
+}
+
+function iconRank(icon: WebManifestIcon): number {
+  const sizes = typeof icon.sizes === 'string' ? icon.sizes : '';
+  const purpose = typeof icon.purpose === 'string' ? icon.purpose : '';
+  const maxSize = sizes
+    .split(/\s+/)
+    .map((part) => /^(\d+)x\1$/.exec(part)?.[1])
+    .filter((n): n is string => Boolean(n))
+    .map((n) => Number(n))
+    .sort((a, b) => b - a)[0] ?? 0;
+  return maxSize + (purpose.includes('any') ? 1 : 0);
+}
+
+function resolveManifestAssetPath(baseDir: string, src: string): string {
+  if (/^https?:\/\//i.test(src)) return src;
+  if (src.startsWith('/')) return src.replace(/^\/+/, '');
+  return `${baseDir}${src}`.replace(/\/\.\//g, '/');
+}
+
+function normalizeAssetPath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\.?\//, '').replace(/^\/+/, '');
 }
 
 interface Storage {
@@ -545,17 +747,192 @@ interface Storage {
 
 let cachedStorage: Storage | null = null;
 
+/**
+ * Return the storage bundle for the current environment. In prod
+ * (`SHIPPIE_ENV === 'production'` or `NODE_ENV === 'production'` with
+ * `CF_ACCOUNT_ID` set) this returns Cloudflare-backed adapters; in dev
+ * it falls back to filesystem-backed DevKv/DevR2 under
+ * `.shippie-dev-state/`. Missing prod env vars fail loudly with a
+ * single error listing all of them, not a confusing null-deref later.
+ */
 function getStorage(): Storage {
   if (cachedStorage) return cachedStorage;
-  cachedStorage = {
+  const built: Storage = isProdStorageSelected() ? buildCfStorage() : buildDevStorage();
+  cachedStorage = built;
+  return built;
+}
+
+function buildDevStorage(): Storage {
+  return {
     kv: new DevKv(getDevKvDir()),
     r2: new DevR2(getDevR2AppsDir()),
     r2Public: new DevR2(getDevR2PublicDir()),
   };
-  return cachedStorage;
 }
 
-function devUrl(slug: string): string {
+function buildCfStorage(): Storage {
+  const cfg = requireCfEnv();
+  const apps = new CfR2({
+    accountId: cfg.accountId,
+    accessKeyId: cfg.accessKeyId,
+    secretAccessKey: cfg.secretAccessKey,
+    bucket: cfg.bucketApps,
+  });
+  const pub = new CfR2({
+    accountId: cfg.accountId,
+    accessKeyId: cfg.accessKeyId,
+    secretAccessKey: cfg.secretAccessKey,
+    bucket: cfg.bucketPublic,
+  });
+  return {
+    kv: new CfKv({
+      accountId: cfg.accountId,
+      namespaceId: cfg.kvNamespaceId,
+      apiToken: cfg.apiToken,
+    }),
+    r2: apps,
+    r2Public: pub,
+  };
+}
+
+function isProdStorageSelected(): boolean {
+  if (process.env.SHIPPIE_ENV === 'production') return true;
+  if (process.env.NODE_ENV === 'production' && process.env.CF_ACCOUNT_ID) return true;
+  return false;
+}
+
+interface CfEnvConfig {
+  accountId: string;
+  apiToken: string;
+  kvNamespaceId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucketApps: string;
+  bucketPublic: string;
+}
+
+function requireCfEnv(): CfEnvConfig {
+  const required: Record<keyof CfEnvConfig, string | undefined> = {
+    accountId: process.env.CF_ACCOUNT_ID,
+    apiToken: process.env.CF_API_TOKEN,
+    kvNamespaceId: process.env.CF_KV_NAMESPACE_ID,
+    accessKeyId: process.env.CF_R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CF_R2_SECRET_ACCESS_KEY,
+    bucketApps: process.env.CF_R2_BUCKET_APPS,
+    bucketPublic: process.env.CF_R2_BUCKET_PUBLIC,
+  };
+  const envKey: Record<keyof CfEnvConfig, string> = {
+    accountId: 'CF_ACCOUNT_ID',
+    apiToken: 'CF_API_TOKEN',
+    kvNamespaceId: 'CF_KV_NAMESPACE_ID',
+    accessKeyId: 'CF_R2_ACCESS_KEY_ID',
+    secretAccessKey: 'CF_R2_SECRET_ACCESS_KEY',
+    bucketApps: 'CF_R2_BUCKET_APPS',
+    bucketPublic: 'CF_R2_BUCKET_PUBLIC',
+  };
+  const missing: string[] = [];
+  for (const k of Object.keys(required) as Array<keyof CfEnvConfig>) {
+    if (!required[k]) missing.push(envKey[k]);
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `[shippie:deploy] Production storage selected but missing env vars: ${missing.join(', ')}. ` +
+        `See packages/cf-storage/README.md for setup.`,
+    );
+  }
+  return required as CfEnvConfig;
+}
+
+/**
+ * Resolve the public live URL for a slug.
+ *   - If `SHIPPIE_PUBLIC_HOST` is set, use `https://{slug}.{host}/`.
+ *   - Otherwise, in dev, build a nip.io URL wrapping the detected LAN
+ *     IP so phones on the same Wi-Fi can hit the worker without editing
+ *     `/etc/hosts`. Falls back to `localhost` if no LAN IP is detected
+ *     or if `SHIPPIE_DEV_FORCE_LOCALHOST` is set.
+ */
+export function resolveLiveUrl(slug: string): string {
+  const publicHost = process.env.SHIPPIE_PUBLIC_HOST;
+  if (publicHost) return `https://${slug}.${publicHost}/`;
+
   const port = process.env.SHIPPIE_WORKER_PORT ?? '4200';
-  return `http://${slug}.localhost:${port}/`;
+  if (process.env.SHIPPIE_DEV_FORCE_LOCALHOST) {
+    return `http://${slug}.localhost:${port}/`;
+  }
+  const lanIp = detectLanIp();
+  if (!lanIp) return `http://${slug}.localhost:${port}/`;
+  const dashed = lanIp.replaceAll('.', '-');
+  return `http://${slug}.${dashed}.nip.io:${port}/`;
+}
+
+let cachedLanIp: string | null | undefined;
+
+function detectLanIp(): string | null {
+  if (cachedLanIp !== undefined) return cachedLanIp;
+  try {
+    const ifaces = networkInterfaces();
+    for (const name of Object.keys(ifaces)) {
+      const list = ifaces[name];
+      if (!list) continue;
+      for (const entry of list) {
+        if (entry.family === 'IPv4' && !entry.internal && entry.address) {
+          cachedLanIp = entry.address;
+          return cachedLanIp;
+        }
+      }
+    }
+  } catch {
+    // node:os not available or errored — fall through to null
+  }
+  cachedLanIp = null;
+  return cachedLanIp;
+}
+
+/**
+ * Validate a zip entry's path. Returns the normalized safe path, or
+ * `{ ok: false }` on traversal/absolute/pathological inputs.
+ *
+ * Normalization is done with POSIX semantics (no OS-specific resolution
+ * against a root) so cross-platform archives produce deterministic
+ * results.
+ */
+function sanitizeZipEntryPath(raw: string): { ok: true; path: string } | { ok: false } {
+  if (!raw) return { ok: false };
+  // Reject explicit Windows separators or escaped-up components before
+  // normalization — `path.posix.normalize` leaves `\\..\\` as-is and
+  // we don't want to ship a backslash-in-key to R2 either.
+  if (raw.includes('\\')) return { ok: false };
+  // Strip any leading slashes so the entry is always bucket-relative.
+  // An entry that was only slashes normalizes to '' below and is
+  // rejected.
+  const stripped = raw.replace(/^\/+/, '');
+  if (!stripped) return { ok: false };
+  const normalized = posixNormalize(stripped);
+  if (!normalized) return { ok: false };
+  if (normalized.startsWith('/')) return { ok: false };
+  if (normalized === '..' || normalized.startsWith('../')) return { ok: false };
+  if (normalized.includes('/../')) return { ok: false };
+  return { ok: true, path: normalized };
+}
+
+// Tiny POSIX-style normalizer that collapses `.` and `..` segments
+// without resolving against any filesystem root. `..` components that
+// would escape the top level are preserved as literal `..` so the
+// caller's traversal check above can reject them.
+function posixNormalize(p: string): string {
+  const parts = p.split('/');
+  const out: string[] = [];
+  for (const part of parts) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') {
+      if (out.length === 0 || out[out.length - 1] === '..') {
+        out.push('..');
+      } else {
+        out.pop();
+      }
+      continue;
+    }
+    out.push(part);
+  }
+  return out.join('/');
 }

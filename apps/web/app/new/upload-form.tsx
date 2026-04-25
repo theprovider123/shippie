@@ -6,6 +6,7 @@
 'use client';
 
 import { useState } from 'react';
+import { SuccessCard } from './success-card';
 
 interface DeployResponse {
   success: boolean;
@@ -104,28 +105,18 @@ export function UploadForm() {
 }
 
 function ResultCard({ result }: { result: DeployResponse }) {
-  if (result.success && result.live_url) {
+  if (result.success && result.live_url && result.slug) {
     return (
-      <div className="rounded-lg border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-2">
-        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-200">
-          ✅ Shipped — v{result.version}
-        </p>
-        <p className="text-sm">
-          Live at{' '}
-          <a
-            href={result.live_url}
-            target="_blank"
-            rel="noreferrer"
-            className="font-mono text-emerald-700 dark:text-emerald-300 underline"
-          >
-            {result.live_url}
-          </a>
-        </p>
-        <p className="text-xs text-neutral-500 font-mono">
-          {result.files} files · {formatBytes(result.total_bytes ?? 0)} · preflight{' '}
-          {result.preflight?.duration_ms ?? 0}ms
-        </p>
-      </div>
+      <SuccessCard
+        meta={{
+          slug: result.slug,
+          version: result.version,
+          liveUrl: result.live_url,
+          files: result.files,
+          totalBytes: result.total_bytes,
+          preflightMs: result.preflight?.duration_ms,
+        }}
+      />
     );
   }
 
@@ -148,10 +139,4 @@ function ResultCard({ result }: { result: DeployResponse }) {
       )}
     </div>
   );
-}
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n}B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)}MB`;
 }

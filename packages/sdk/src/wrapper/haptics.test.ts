@@ -1,13 +1,21 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
-import { haptic } from './haptics.ts';
+import { Window } from 'happy-dom';
+import { attachSemanticHaptics, haptic } from './haptics.ts';
 
 let calls: unknown[] = [];
 
 const originalNavigator = (globalThis as { navigator?: unknown }).navigator;
 const originalWindow = (globalThis as { window?: unknown }).window;
+const originalDocument = (globalThis as { document?: unknown }).document;
+const originalElement = (globalThis as { Element?: unknown }).Element;
+const originalEvent = (globalThis as { Event?: unknown }).Event;
 
 beforeEach(() => {
   calls = [];
+  const win = new Window({ url: 'https://shippie.app/' });
+  (globalThis as { document?: unknown }).document = win.document;
+  (globalThis as { Element?: unknown }).Element = win.Element;
+  (globalThis as { Event?: unknown }).Event = win.Event;
   (globalThis as { navigator?: unknown }).navigator = {
     vibrate: (pattern: number | number[]) => {
       calls.push(pattern);
@@ -22,6 +30,9 @@ beforeEach(() => {
 afterAll(() => {
   (globalThis as { navigator?: unknown }).navigator = originalNavigator;
   (globalThis as { window?: unknown }).window = originalWindow;
+  (globalThis as { document?: unknown }).document = originalDocument;
+  (globalThis as { Element?: unknown }).Element = originalElement;
+  (globalThis as { Event?: unknown }).Event = originalEvent;
 });
 
 describe('haptic', () => {
@@ -52,5 +63,22 @@ describe('haptic', () => {
     (globalThis as { navigator?: unknown }).navigator = {};
     haptic('tap');
     expect(calls).toEqual([]);
+  });
+
+  test('semantic haptics attach to buttons, toggles, forms, and invalid fields', () => {
+    document.body.innerHTML = `
+      <button id="button">Save</button>
+      <input id="toggle" type="checkbox" />
+      <form id="form"><input id="field" required /></form>
+    `;
+    const detach = attachSemanticHaptics(document);
+    document.querySelector('#button')?.dispatchEvent(new Event('click', { bubbles: true }));
+    document.querySelector('#toggle')?.dispatchEvent(new Event('click', { bubbles: true }));
+    document.querySelector('#form')?.dispatchEvent(new Event('submit', { bubbles: true }));
+    document.querySelector('#field')?.dispatchEvent(new Event('invalid', { bubbles: true }));
+    detach();
+    document.querySelector('#button')?.dispatchEvent(new Event('click', { bubbles: true }));
+
+    expect(calls).toEqual([10, 10, [10, 40, 10], [40, 30, 10]]);
   });
 });

@@ -114,7 +114,16 @@ export async function runAutoPack(input: AutoPackInput): Promise<AutoPackResult>
   }
 
   // 6. Persist report + asset pointers on apps + deploys
+  const existingDeploy = await input.db.query.deploys.findFirst({
+    where: eq(schema.deploys.id, input.deployId),
+  });
+  const existingReport =
+    existingDeploy?.autopackagingReport && typeof existingDeploy.autopackagingReport === 'object'
+      ? (existingDeploy.autopackagingReport as Record<string, unknown>)
+      : {};
+
   const report = {
+    ...existingReport,
     compat,
     changelog,
     qr_r2_key: qrR2Key,

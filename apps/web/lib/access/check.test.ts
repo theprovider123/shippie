@@ -1,12 +1,23 @@
 // apps/web/lib/access/check.test.ts
-import { describe, expect, test, beforeEach } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { schema } from '@shippie/db';
+import { schema, type ShippieDbHandle } from '@shippie/db';
 import { getDb } from '@/lib/db';
+import { setupPgliteForTest, teardownPglite } from '@/lib/test-helpers/pglite-harness';
 import { checkAccess } from './check';
 
 const MAKER = '00000000-0000-0000-0000-000000000001';
 const OTHER = '00000000-0000-0000-0000-000000000002';
+
+let handle: ShippieDbHandle | undefined;
+
+beforeAll(async () => {
+  handle = await setupPgliteForTest();
+}, 30_000);
+
+afterAll(async () => {
+  await teardownPglite(handle);
+});
 
 beforeEach(async () => {
   const db = await getDb();

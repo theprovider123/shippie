@@ -1,8 +1,20 @@
 {
   "version": 1,
-  "slug": "my-app",
-  "type": "app",
   "name": "My App",
-  "category": "tools",
-  "theme_color": "#0a0a0a"
+  "icon": "./icon.png",
+  "theme_color": "#E8603C",
+  "display": "standalone",
+  "categories": ["tools"],
+  "description": "A tiny installable Shippie app.",
+  "badge": true,
+  "transitions": "slide",
+  "haptics": true,
+  "sound": false,
+  "ambient": false,
+  "local": {
+    "database": false,
+    "files": false,
+    "ai": [],
+    "sync": false
+  }
 }

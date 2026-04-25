@@ -169,6 +169,28 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: -0.02em;
   color: var(--text);
 }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  margin: 0;
+}
+.docs-prose p { color: var(--text-secondary); line-height: 1.7; margin: 0; }
+.docs-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--surface);
+  padding: 1px 6px;
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+.docs-prose a { color: var(--sunset); text-decoration: underline; text-underline-offset: 2px; }
+.docs-prose a:hover { color: var(--sunset-hover); }
+@media (max-width: 640px) {
+  .docs-concept-row { grid-template-columns: 1fr !important; gap: var(--space-xs) !important; }
+}
 .section-subheading {
   font-size: var(--body-size);
   color: var(--text-secondary);
@@ -373,12 +395,110 @@ a { color: inherit; text-decoration: none; }
   padding: 0.5rem 1.25rem;
   font-size: var(--small-size);
 }
+/* Hide the primary nav CTA <768px — the hamburger surfaces Deploy there. */
+.nav-cta-desktop { display: none !important; }
+@media (min-width: 768px) { .nav-cta-desktop { display: inline-flex !important; } }
+
+/* Theme toggle lives on the nav at desktop; moves inside the hamburger
+   sheet at mobile, where it has its own row. */
+.theme-toggle-desktop { display: none; }
+@media (min-width: 768px) { .theme-toggle-desktop { display: inline-flex; } }
 .nav-desktop { display: none; }
 .nav-wide { display: none; }
 .nav-tablet { display: none; }
 @media (min-width: 640px) { .nav-tablet { display: inline; } }
 @media (min-width: 768px) { .nav-desktop { display: inline; } }
 @media (min-width: 1024px) { .nav-wide { display: inline; } }
+
+/* ── Mobile menu ────────────────────────────────────────────── */
+.mobile-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.mobile-menu-toggle:hover { border-color: var(--border); }
+.mobile-menu-toggle:focus-visible {
+  outline: 2px solid var(--sunset);
+  outline-offset: 2px;
+}
+@media (min-width: 768px) { .mobile-menu-toggle { display: none; } }
+
+.mobile-menu-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--bg);
+  padding-top: calc(var(--nav-height) + var(--safe-top) + 12px);
+  display: flex;
+  justify-content: center;
+}
+.mobile-menu-sheet nav {
+  width: 100%;
+  max-width: 480px;
+  padding: 0 clamp(1rem, 4vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mobile-menu-sheet nav a {
+  display: block;
+  padding: 16px 4px;
+  font-size: 18px;
+  font-family: var(--font-heading);
+  color: var(--text);
+  border-bottom: 1px solid var(--border-light);
+}
+.mobile-menu-sheet nav a:hover { color: var(--sunset); }
+.mobile-menu-sheet nav .mobile-menu-theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: 18px;
+}
+.mobile-menu-sheet nav .mobile-menu-secondary {
+  display: block;
+  margin-top: 20px;
+  padding: 12px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-menu-sheet nav .mobile-menu-secondary:hover {
+  border-color: var(--text-secondary);
+  color: var(--text);
+}
+.mobile-menu-sheet nav .mobile-menu-cta {
+  margin-top: 10px;
+  padding: 14px;
+  text-align: center;
+  background: var(--sunset);
+  color: var(--bg-pure);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  border-bottom: none;
+  border-radius: 8px;
+}
+.mobile-menu-sheet nav .mobile-menu-cta:hover {
+  color: var(--bg-pure);
+  background: var(--sunset-hover);
+}
 
 /* Theme toggle */
 .theme-toggle {

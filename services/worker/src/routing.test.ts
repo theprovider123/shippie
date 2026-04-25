@@ -39,3 +39,16 @@ test('resolveAppSlug: missing host header → null', () => {
   r.headers.delete('host');
   assert.equal(resolveAppSlug(r), null);
 });
+
+test('resolveAppSlug: *.nip.io (dashed IP) → first label', () => {
+  assert.equal(resolveAppSlug(req('recipes.192-168-1-42.nip.io')), 'recipes');
+  assert.equal(resolveAppSlug(req('recipes.192-168-1-42.nip.io:4200')), 'recipes');
+});
+
+test('resolveAppSlug: *.nip.io (dotted IP) → first label', () => {
+  assert.equal(resolveAppSlug(req('recipes.10.0.0.5.nip.io')), 'recipes');
+});
+
+test('resolveAppSlug: bare nip.io or too-short → null', () => {
+  assert.equal(resolveAppSlug(req('nip.io')), null);
+});

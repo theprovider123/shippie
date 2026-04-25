@@ -6,20 +6,44 @@
  * so a wrap row flips the runtime path immediately after the deploy
  * route returns.
  *
- * In prod, the Cloudflare KV binding is fronted via Wrangler / direct
- * binding. For now we reuse the DevKv adapter against the shared dir;
- * the signed-request spine (Phase B) will swap in a real CF KV client
- * via the worker-control plane. The accessor `getDeployKv()` is the
- * single hook to change when that swap lands.
+ * In prod we route through `@shippie/cf-storage`'s `CfKv` against the
+ * Cloudflare Workers KV REST API, using the APP_CONFIG namespace the
+ * Worker binds at runtime. Selection is env-driven — see `getDeployKv`
+ * below and the envs documented in `packages/cf-storage/README.md`.
  */
 import { DevKv, getDevKvDir, type KvStore } from '@shippie/dev-storage';
+import { CfKv } from '@shippie/cf-storage';
 
 let cachedKv: KvStore | null = null;
 
 function getDeployKv(): KvStore {
   if (cachedKv) return cachedKv;
-  cachedKv = new DevKv(getDevKvDir());
-  return cachedKv;
+  const built: KvStore = isProdKvSelected() ? buildCfKv() : new DevKv(getDevKvDir());
+  cachedKv = built;
+  return built;
+}
+
+function isProdKvSelected(): boolean {
+  if (process.env.SHIPPIE_ENV === 'production') return true;
+  if (process.env.NODE_ENV === 'production' && process.env.CF_ACCOUNT_ID) return true;
+  return false;
+}
+
+function buildCfKv(): CfKv {
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const apiToken = process.env.CF_API_TOKEN;
+  const namespaceId = process.env.CF_KV_NAMESPACE_ID;
+  const missing: string[] = [];
+  if (!accountId) missing.push('CF_ACCOUNT_ID');
+  if (!apiToken) missing.push('CF_API_TOKEN');
+  if (!namespaceId) missing.push('CF_KV_NAMESPACE_ID');
+  if (missing.length > 0) {
+    throw new Error(
+      `[shippie:deploy/kv] Production KV selected but missing env vars: ${missing.join(', ')}. ` +
+        `See packages/cf-storage/README.md for setup.`,
+    );
+  }
+  return new CfKv({ accountId: accountId!, apiToken: apiToken!, namespaceId: namespaceId! });
 }
 
 export interface WrapMetaWrite {

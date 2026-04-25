@@ -27,6 +27,7 @@ import * as filesApi from './files.ts';
 import * as feedbackApi from './feedback.ts';
 import * as installApi from './install.ts';
 import * as nativeApi from './native/index.ts';
+import { local as localRuntime } from './local.ts';
 import { meta } from './meta.ts';
 import { track, flush } from './analytics.ts';
 import { configure, isConfigured, getBackendMeta } from './configure.ts';
@@ -88,6 +89,8 @@ export const shippie = {
     isInCapacitor: nativeApi.isInCapacitor,
   },
 
+  local: localRuntime,
+
   track,
   flush,
   meta,
@@ -123,6 +126,7 @@ if (typeof window !== 'undefined') {
 
 export type { ConfigureOptions } from './configure.ts';
 export type { BackendAdapter, BackendUser } from './backends/types.ts';
+export type { LoadLocalRuntimeOptions, ShippieLocalRuntimeGlobal } from './local.ts';
 export type * from './types.ts';
 
 export { ShippieSDKError, isShippieSDKError } from './errors.ts';

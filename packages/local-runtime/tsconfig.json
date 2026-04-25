@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "lib": ["ES2022", "DOM"],
+    "baseUrl": ".",
+    "paths": {
+      "@shippie/local-db": ["../local-db/src/index.ts"],
+      "@shippie/local-files": ["../local-files/src/index.ts"],
+      "@shippie/local-runtime-contract": ["../local-runtime-contract/src/index.ts"]
+    },
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": ["src/**/*"]
+}
