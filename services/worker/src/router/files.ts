@@ -77,21 +77,33 @@ filesRouter.all('*', async (c) => {
   }
 
   const body = toResponseBody(await obj.body());
-  const contentType =
-    obj.httpMetadata?.contentType ?? 'application/octet-stream';
+  const isWasm = path.endsWith('.wasm');
+  const contentType = isWasm
+    ? 'application/wasm'
+    : obj.httpMetadata?.contentType ?? 'application/octet-stream';
 
   const isHtml = contentType.startsWith('text/html');
   const cacheControl = isHtml
     ? 'no-cache'
     : 'public, max-age=31536000, immutable';
 
+  const headers: Record<string, string> = {
+    'Content-Type': contentType,
+    'Cache-Control': cacheControl,
+    'X-Shippie-Version': String(active),
+  };
+
+  // SharedArrayBuffer + multi-threaded WASM require cross-origin isolation.
+  // Setting COEP/COOP on the .wasm response itself lets the maker app
+  // instantiate threaded modules without forcing isolation site-wide.
+  if (isWasm) {
+    headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
+    headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+  }
+
   return new Response(body, {
     status: 200,
-    headers: {
-      'Content-Type': contentType,
-      'Cache-Control': cacheControl,
-      'X-Shippie-Version': String(active),
-    },
+    headers,
   });
 });
 

@@ -78,3 +78,22 @@ export async function writeAppMeta(slug: string, patch: AppRuntimeMeta): Promise
   const existing = (await kv.getJson(`apps:${slug}:meta`)) as Record<string, unknown> | null;
   await kv.putJson(`apps:${slug}:meta`, { ...(existing ?? {}), ...patch });
 }
+
+/**
+ * Write the deploy-time AppProfile (from @shippie/analyse) to KV.
+ * Read by the maker dashboard's Enhancements tab to render
+ * auto-detected capabilities. Stored under `apps:{slug}:profile`.
+ *
+ * Typed as `unknown` here to avoid an apps/web → @shippie/analyse type
+ * dep at this layer; callers pass an `AppProfile` and the dashboard's
+ * loader casts on read.
+ */
+export async function writeAppProfile(slug: string, profile: unknown): Promise<void> {
+  const kv = getDeployKv();
+  await kv.putJson(`apps:${slug}:profile`, profile);
+}
+
+export async function readAppProfile(slug: string): Promise<unknown | null> {
+  const kv = getDeployKv();
+  return (await kv.getJson(`apps:${slug}:profile`)) ?? null;
+}

@@ -41,6 +41,7 @@ import {
 } from '@shippie/dev-storage';
 import { CfKv, CfR2 } from '@shippie/cf-storage';
 import { createInjector } from '@shippie/pwa-injector';
+import { analyseApp } from '@shippie/analyse';
 import { schema } from '@shippie/db';
 import { normalizeShippieJson, type ShippieJson } from '@shippie/shared';
 import { getDb } from '@/lib/db';
@@ -416,6 +417,17 @@ export async function deployStaticHot(
   // Per-app CSP header. Includes allowed_connect_domains from the trust
   // pipeline, enabling BYO backend requests.
   await storage.kv.put(`apps:${input.slug}:csp`, trust.csp.header);
+
+  // Deploy-time AppProfile from @shippie/analyse. Stored under
+  // `apps:{slug}:profile` for the maker dashboard's Enhancements tab.
+  // Failure here is non-blocking — the analyse step is purely informational
+  // and a corrupt profile shouldn't block a successful deploy.
+  try {
+    const profile = await analyseApp({ files });
+    await storage.kv.putJson(`apps:${input.slug}:profile`, profile);
+  } catch (err) {
+    console.error('[shippie:deploy] analyseApp failed', err);
+  }
 
   // Flip-last: atomic swap from the worker's read perspective.
   await storage.kv.put(`apps:${input.slug}:active`, String(version));
