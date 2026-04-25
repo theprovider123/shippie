@@ -181,10 +181,10 @@ The user reviewed v1 of this roadmap and locked these adjustments:
 |---|---|---|
 | A — WebNN | **shipped — main branch** (commits bb76eb1 + 8d6b155) | `docs/superpowers/plans/2026-04-26-webnn-hardware-acceleration.md` |
 | C — Textures + Patina | **shipped — main branch** | `docs/superpowers/plans/2026-04-26-sensory-textures-and-patina.md` |
-| Live Room showcase (acceptance for C) | full plan written; build deferred until C is exercised on real device | `docs/superpowers/plans/2026-04-26-live-room-showcase.md` |
-| B — Zero-Config Pipeline + WASM | **shipped — main branch** | `docs/superpowers/plans/2026-04-26-zero-config-pipeline-and-wasm.md` |
-| G — Maker Dashboard + Compliance | **shipped — main branch** (Tasks 1–5 code; Task 6 real-device smoke pending user) | `docs/superpowers/plans/2026-04-26-maker-dashboard-and-compliance.md` |
-| D1 — Adaptive Intelligence (core) | not yet written | — |
-| E — Ambient Intelligence | not yet written | — |
-| D2 — Adaptive Intelligence (experimental) | not yet written; deferrable | — |
-| F — Cross-App Intents | deferred (demand-pulled) | — |
+| Live Room showcase | **shipped — main** (12 tests pass; real-device smoke pending) | `docs/superpowers/plans/2026-04-26-live-room-showcase.md` |
+| B — Zero-Config Pipeline + WASM | **shipped — main** | `docs/superpowers/plans/2026-04-26-zero-config-pipeline-and-wasm.md` |
+| G — Maker Dashboard + Compliance | **shipped — main** (Tasks 1–5 code; Task 6 real-device smoke pending) | `docs/superpowers/plans/2026-04-26-maker-dashboard-and-compliance.md` |
+| D1 — Adaptive Intelligence (core) | full plan written; build pending | `docs/superpowers/plans/2026-04-26-adaptive-intelligence-d1-core.md` |
+| E — Ambient Intelligence | full plan written; build pending | `docs/superpowers/plans/2026-04-26-ambient-intelligence-e.md` |
+| D2 — Adaptive Intelligence (experimental) | full plan written; demand-pulled | `docs/superpowers/plans/2026-04-26-adaptive-intelligence-d2-experimental.md` |
+| F — Cross-App Intents + KG | full plan written; demand-pulled (don't build until 3+ apps installed) | `docs/superpowers/plans/2026-04-26-cross-app-intents-and-knowledge-graph-f.md` |
