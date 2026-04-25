@@ -7,9 +7,11 @@
  * etc.). Version detection requires a real parser; v1 leaves it null.
  *
  * Priority (highest first):
- *   react > vue > svelte > preact > vanilla > wasm > null
+ *   react > vue > svelte > preact > wasm > vanilla > null
  * Preact is intentionally lower than React/Vue because Preact bundles
  * sometimes ship a React compat layer and we want React to win there.
+ * WASM beats vanilla because a bundle with a .wasm file is meaningfully
+ * a "wasm app" — vanilla is just the "no JS framework detected" floor.
  */
 import type { FrameworkGuess } from './profile.ts';
 
@@ -51,10 +53,10 @@ export function scanJs(files: ReadonlyMap<string, Uint8Array>): FrameworkGuess {
     name = 'svelte';
   } else if (hasPreact) {
     name = 'preact';
-  } else if (!hasJs && hasHtml) {
-    name = 'vanilla';
   } else if (hasWasm) {
     name = 'wasm';
+  } else if (!hasJs && hasHtml) {
+    name = 'vanilla';
   }
 
   const hasRouter =

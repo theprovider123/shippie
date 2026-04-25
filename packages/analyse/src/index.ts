@@ -1,4 +1,16 @@
-// packages/analyse/src/index.ts
+/**
+ * Public entry point for @shippie/analyse.
+ *
+ * `analyseApp(files)` runs the full deploy-time inference pipeline:
+ *   1. HTML scan → element inventory + visible text + icon hrefs
+ *   2. CSS scan → primary colour + background + font + animation flag
+ *   3. JS scan → framework + router + service-worker presence
+ *   4. WASM detection → headers needed when serving .wasm files
+ *   5. Category classification from visible text
+ *   6. Capability recommendation from the structured signals above
+ *
+ * Pure function. No I/O. Deterministic. Fast (regex-only, no AST).
+ */
 export type * from './profile.ts';
 
 export interface AppFiles {
@@ -8,7 +20,34 @@ export interface AppFiles {
 }
 
 import type { AppProfile } from './profile.ts';
+import { scanHtml } from './html-scanner.ts';
+import { scanCss } from './css-scanner.ts';
+import { scanJs } from './js-scanner.ts';
+import { detectWasm } from './wasm-detector.ts';
+import { classifyByText } from './semantic-classifier.ts';
+import { recommend } from './capability-recommender.ts';
 
-export async function analyseApp(_input: AppFiles): Promise<AppProfile> {
-  throw new Error('analyseApp not yet implemented — see Tasks 2–8');
+export async function analyseApp(input: AppFiles): Promise<AppProfile> {
+  const html = scanHtml(input.files);
+  const css = scanCss(input.files);
+  const js = scanJs(input.files);
+  const wasm = detectWasm(input.files);
+  const category = classifyByText(html.visibleText);
+  const recommended = recommend(html.elements, category, js);
+
+  return {
+    inferredName: html.inferredName || 'Untitled',
+    elements: html.elements,
+    category,
+    design: {
+      primaryColor: css.primaryColor,
+      backgroundColor: css.backgroundColor,
+      fontFamily: css.fontFamily,
+      hasCustomAnimations: css.hasCustomAnimations,
+      iconHrefs: html.iconHrefs,
+    },
+    framework: js,
+    wasm,
+    recommended,
+  };
 }
