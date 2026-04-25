@@ -12,6 +12,7 @@ export { registerRule, listRules, disableRule } from './registry.ts';
 export type { EnhanceRule, EnhanceConfig, Capability, RuleBudget } from './types.ts';
 export { hasCapability } from './capability-gate.ts';
 export { compileEnhanceConfig, isEnhanceable } from './selector-engine.ts';
+export { compileEnhanceConfigFromProfile, type CompilableProfile } from './compiler.ts';
 export { onShareReceive } from './rules/index.ts';
 
 import { startDispatch, type DispatcherOptions } from './mutation-observer.ts';
