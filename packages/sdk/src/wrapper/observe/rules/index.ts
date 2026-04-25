@@ -7,6 +7,7 @@
 import { registerRule } from '../registry.ts';
 import { wakelockRule } from './wakelock.ts';
 import { shareTargetRule } from './share-target.ts';
+import { texturesRule } from './textures.ts';
 
 let registered = false;
 
@@ -15,7 +16,8 @@ export function registerBuiltins(): void {
   registered = true;
   registerRule(wakelockRule);
   registerRule(shareTargetRule);
+  registerRule(texturesRule);
 }
 
-export { wakelockRule, shareTargetRule };
+export { wakelockRule, shareTargetRule, texturesRule };
 export { onReceive as onShareReceive } from './share-target.ts';

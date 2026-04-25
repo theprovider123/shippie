@@ -145,6 +145,26 @@ export {
 } from './observe/index.ts';
 
 export { bootstrapObserve } from './observe-init.ts';
+export {
+  installPatina,
+  configurePatina,
+  getPatinaConfig,
+  type PatinaConfig,
+  type PatinaState,
+} from './patina/index.ts';
+export {
+  fireTexture,
+  configureTextureEngine,
+  getTextureEngineConfig,
+  registerTexture,
+  registerBuiltinTextures,
+  type SensoryTexture,
+  type TextureName,
+  type TextureEngineConfig,
+  type HapticRecipe,
+  type SoundRecipe,
+  type VisualRecipe,
+} from './textures/index.ts';
 export { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
 export {
   openGroupModerationPanel,

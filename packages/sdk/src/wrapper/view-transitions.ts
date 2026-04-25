@@ -50,6 +50,20 @@ export async function wrapNavigation(
   const root = document.documentElement;
   const previous = root.dataset.shippieTransition;
   root.dataset.shippieTransition = opts.kind ?? 'slide';
+  // Fire the navigate texture in the same frame as the transition starts.
+  // Lazy-import to avoid a hard dep cycle (textures import view-transitions
+  // indirectly through visual-fx).
+  void import('./textures/engine.ts')
+    .then(({ fireTexture }) => {
+      try {
+        fireTexture('navigate', document.body);
+      } catch {
+        /* swallow — navigate texture may not be registered in some test envs */
+      }
+    })
+    .catch(() => {
+      /* swallow */
+    });
   const vt = (document as DocumentWithViewTransition).startViewTransition!(update);
   try {
     await vt.finished;

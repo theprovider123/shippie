@@ -7,6 +7,9 @@
   --danger: #B23A2B;
   --safe-top: env(safe-area-inset-top, 0);
   --safe-bottom: env(safe-area-inset-bottom, 0);
+  /* Patina: 0 = brand-new, 1 = a year of daily use. The wrapper writes
+     this. The body background warms toward gold as it climbs. */
+  --shippie-patina-warmth: 0;
 }
 
 * {
@@ -21,12 +24,17 @@ body,
 }
 
 body {
-  background: var(--bg);
+  background: color-mix(
+    in oklab,
+    var(--bg) calc(100% - var(--shippie-patina-warmth) * 12%),
+    #F4B860 calc(var(--shippie-patina-warmth) * 12%)
+  );
   color: var(--fg);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.45;
+  transition: background 1.2s ease-out;
 }
 
 button,

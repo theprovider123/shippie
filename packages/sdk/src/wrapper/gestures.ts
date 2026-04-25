@@ -86,6 +86,17 @@ export function attachPullToRefresh(
     const dy = p.clientY - start.y;
     if (dy >= threshold) {
       start = null;
+      void import('./textures/engine.ts')
+        .then(({ fireTexture }) => {
+          try {
+            fireTexture('refresh');
+          } catch {
+            /* swallow */
+          }
+        })
+        .catch(() => {
+          /* swallow */
+        });
       opts.onRefresh();
     }
   };

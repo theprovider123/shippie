@@ -10,6 +10,7 @@
  * SSR-safe: no-ops if document/window aren't available.
  */
 import { startObserve } from './observe/index.ts';
+import { installPatina } from './patina/index.ts';
 import type { EnhanceConfig } from './observe/types.ts';
 
 interface ShippieMeta {
@@ -36,6 +37,9 @@ export function bootstrapObserve(metaOverride?: ShippieMeta): void {
     if (started) return;
     started = true;
     startObserve({ config });
+    // Patina is cosmetic + cosmetic-only; failures are swallowed inside
+    // installPatina, so fire-and-forget without awaiting.
+    void installPatina();
   };
 
   if (document.readyState === 'loading') {
@@ -54,5 +58,8 @@ function defaultConfig(): EnhanceConfig {
   return {
     'video[autoplay], canvas[data-shippie-canvas]': ['wakelock'],
     '[data-shippie-share-target]': ['share-target'],
+    // The textures rule is page-global — selector doesn't matter, the
+    // rule attaches delegated listeners at the document level on first apply.
+    body: ['textures'],
   };
 }
