@@ -26,6 +26,7 @@
 import { logUsage } from '../dashboard/usage-log.ts';
 import { SUPPORTED_TASKS } from './models/registry.ts';
 import type {
+  Backend,
   InferenceMessage,
   InferenceResponse,
   InferenceTask,
@@ -93,6 +94,7 @@ export function createRouter(deps: RouterDeps): { stop(): void } {
         task: data.task,
         ts: now(),
         durationMs,
+        source: extractSource(result),
       }).catch(() => {});
       source.postMessage(
         { requestId: data.requestId, result } satisfies InferenceResponse,
@@ -134,6 +136,14 @@ function isInferenceMessage(value: unknown): value is InferenceMessage {
   if (!SUPPORTED_TASKS.includes(v.task as InferenceTask)) return false;
   if (v.payload && typeof v.payload !== 'object') return false;
   return true;
+}
+
+/** Pull the `source` field off an inference result, if present. Defensive
+ *  about result shape — tests dispatch a variety of payloads. */
+function extractSource(result: unknown): Backend | undefined {
+  if (!result || typeof result !== 'object') return undefined;
+  const s = (result as { source?: unknown }).source;
+  return typeof s === 'string' ? (s as Backend) : undefined;
 }
 
 /**

@@ -27,8 +27,19 @@ export interface TransformersModule {
 export type TransformersPipelineFactory = (
   task: TransformersTask,
   model?: string,
-  options?: { quantized?: boolean; progress_callback?: (progress: TransformersProgress) => void },
+  options?: {
+    quantized?: boolean;
+    progress_callback?: (progress: TransformersProgress) => void;
+    device?: LocalAiDevice;
+  },
 ) => Promise<TransformersPipeline>;
+
+/**
+ * Hardware backend hint for transformers.js. Maps directly to its `device`
+ * pipeline option. `'webnn'` covers both NPU and GPU under the WebNN runtime
+ * (transformers.js picks internally); callers select between WebNN and WebGPU.
+ */
+export type LocalAiDevice = 'webnn' | 'webgpu' | 'cpu';
 
 export type TransformersTask =
   | 'feature-extraction'
@@ -67,6 +78,8 @@ export interface CreateTransformersLocalAiOptions {
   };
   /** Progress hook for download UX. */
   onProgress?: (feature: 'embeddings' | 'classification' | 'sentiment', progress: TransformersProgress) => void;
+  /** Hardware backend hint; passed through to transformers.js pipeline(). */
+  device?: LocalAiDevice;
 }
 
 const DEFAULT_REMOTE_HOST = 'https://models.shippie.app';
@@ -80,6 +93,7 @@ const DEFAULT_MODELS = {
 export function createTransformersLocalAi(opts: CreateTransformersLocalAiOptions): ShippieLocalAi {
   const remoteHost = opts.remoteHost ?? DEFAULT_REMOTE_HOST;
   const models = { ...DEFAULT_MODELS, ...(opts.models ?? {}) };
+  const device = opts.device;
 
   let modulePromise: Promise<TransformersModule> | null = null;
   const pipelines = new Map<string, Promise<TransformersPipeline>>();
@@ -110,6 +124,7 @@ export function createTransformersLocalAi(opts: CreateTransformersLocalAiOptions
         const mod = await loadModule();
         return mod.pipeline(task, model, {
           progress_callback: (progress) => opts.onProgress?.(feature, progress),
+          ...(device ? { device } : {}),
         });
       })();
       pipelines.set(key, promise);

@@ -38,6 +38,14 @@ let loadPromise: Promise<ShippieLocalRuntimeGlobal> | null = null;
 export const SHIPPIE_AI_ORIGIN = 'https://ai.shippie.app';
 export const SHIPPIE_AI_INFERENCE_PATH = '/inference.html';
 
+/**
+ * The hardware backend that ran an inference. Mirrors the Backend type
+ * exported by `apps/shippie-ai`. Mirrored, not imported, because the AI
+ * app is not a workspace dependency of @shippie/sdk — they communicate
+ * by postMessage, not by import.
+ */
+export type ShippieAIBackend = 'webnn-npu' | 'webnn-gpu' | 'webgpu' | 'wasm-cpu';
+
 export class ShippieAINotInstalledError extends Error {
   public readonly installUrl: string;
   constructor(message = 'Shippie AI is not installed', installUrl = `${SHIPPIE_AI_ORIGIN}/`) {
@@ -105,19 +113,37 @@ export class LocalAI {
           : `r-${Math.random().toString(36).slice(2)}-${Date.now()}`);
   }
 
-  classify(text: string, labels: string[]): Promise<{ label: string; confidence: number }> {
+  classify(
+    text: string,
+    labels: string[],
+  ): Promise<{ label: string; confidence: number; source?: ShippieAIBackend }> {
     return this.infer('classify', { text, labels });
   }
 
-  embed(text: string): Promise<number[]> {
+  embed(
+    text: string,
+  ): Promise<{ embedding: number[]; source?: ShippieAIBackend } | number[]> {
     return this.infer('embed', { text });
   }
 
-  sentiment(text: string): Promise<{ sentiment: 'positive' | 'neutral' | 'negative'; score: number }> {
+  sentiment(
+    text: string,
+  ): Promise<{
+    sentiment: 'positive' | 'neutral' | 'negative';
+    score: number;
+    source?: ShippieAIBackend;
+  }> {
     return this.infer('sentiment', { text });
   }
 
-  moderate(text: string): Promise<{ flagged: boolean; label: string; score: number }> {
+  moderate(
+    text: string,
+  ): Promise<{
+    flagged: boolean;
+    label: string;
+    score: number;
+    source?: ShippieAIBackend;
+  }> {
     return this.infer('moderate', { text });
   }
 

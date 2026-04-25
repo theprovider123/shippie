@@ -240,6 +240,91 @@ describe('createRouter', () => {
     expect(source.calls).toHaveLength(0);
   });
 
+  test('writes the result.source field into the usage log', async () => {
+    const usageCalls: Array<{ source?: string }> = [];
+    createRouter({
+      dispatch: async () => ({ label: 'food', confidence: 0.9, source: 'webnn-gpu' }),
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async (entry) => {
+        usageCalls.push(entry as { source?: string });
+      },
+    });
+
+    const source = newSource();
+    fakeWindow.emit({
+      origin: 'https://recipe.shippie.app',
+      source,
+      data: {
+        requestId: 'log-1',
+        task: 'classify',
+        payload: { text: 'pasta', labels: ['food'] },
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(usageCalls).toHaveLength(1);
+    expect(usageCalls[0]!.source).toBe('webnn-gpu');
+  });
+
+  test('omits source from the log when dispatch returns a result without one', async () => {
+    const usageCalls: Array<{ source?: string }> = [];
+    createRouter({
+      dispatch: async () => ({ label: 'food', confidence: 0.9 }),
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async (entry) => {
+        usageCalls.push(entry as { source?: string });
+      },
+    });
+
+    const source = newSource();
+    fakeWindow.emit({
+      origin: 'https://recipe.shippie.app',
+      source,
+      data: {
+        requestId: 'log-2',
+        task: 'classify',
+        payload: { text: 'x', labels: ['a'] },
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(usageCalls).toHaveLength(1);
+    expect(usageCalls[0]!.source).toBeUndefined();
+  });
+
+  test('passes the result.source field through unchanged', async () => {
+    createRouter({
+      dispatch: async () => ({ label: 'transport', confidence: 0.94, source: 'webnn-npu' }),
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async () => {},
+    });
+
+    const source = newSource();
+    fakeWindow.emit({
+      origin: 'https://recipe.shippie.app',
+      source,
+      data: {
+        requestId: 'src-1',
+        task: 'classify',
+        payload: { text: 'Uber to Heathrow', labels: ['transport', 'food'] },
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(source.calls).toHaveLength(1);
+    const reply = source.calls[0]!.data as { result?: { source?: string } };
+    expect(reply.result?.source).toBe('webnn-npu');
+  });
+
   test('never replies with targetOrigin "*" — always pins to the sender', async () => {
     createRouter({
       dispatch: async () => ({ ok: true }),

@@ -17,13 +17,28 @@ import {
   clearUsage,
   listUsage,
   rollupByOrigin,
+  rollupByBackend,
   type UsageRollup,
+  type BackendRollup,
 } from './usage-log.ts';
 import {
   getStorageBreakdown,
   type StorageBreakdown,
 } from './storage.ts';
-import type { UsageEntry } from '../types.ts';
+import { selectBackend } from '../inference/backend.ts';
+import type { Backend, UsageEntry } from '../types.ts';
+
+const BACKEND_LABEL: Record<Backend, string> = {
+  'webnn-npu': 'Neural Processing Unit (WebNN)',
+  'webnn-gpu': 'GPU via WebNN',
+  'webgpu': 'GPU (WebGPU)',
+  'wasm-cpu': 'CPU (WASM)',
+};
+
+function labelForBackend(backend: string): string {
+  return (BACKEND_LABEL as Record<string, string | undefined>)[backend]
+    ?? (backend === 'unknown' ? 'Pre-detection logs' : backend);
+}
 
 const FMT_MB = (bytes: number) =>
   bytes <= 0 ? '—' : `${(bytes / 1024 / 1024).toFixed(0)} MB`;
@@ -59,6 +74,18 @@ export function App() {
   }, [refresh]);
 
   const rollup = useMemo<UsageRollup[]>(() => rollupByOrigin(usage), [usage]);
+  const backendRollup = useMemo<BackendRollup[]>(() => rollupByBackend(usage), [usage]);
+
+  const [currentBackend, setCurrentBackend] = useState<Backend | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void selectBackend().then((b) => {
+      if (!cancelled) setCurrentBackend(b);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totalInstalledBytes = useMemo(() => {
     if (!storage) return 0;
@@ -74,6 +101,11 @@ export function App() {
         <p className="subtitle">
           Your on-device intelligence. All processing stays on this phone.
         </p>
+        {currentBackend ? (
+          <div className="backend-pill" data-testid="current-backend">
+            Running on {BACKEND_LABEL[currentBackend]}
+          </div>
+        ) : null}
       </header>
 
       {error ? <p className="error">Couldn’t load: {error}</p> : null}
@@ -124,6 +156,28 @@ export function App() {
                 <span className="count">{r.count} inferences</span>
               </li>
             ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="hardware-heading" data-testid="backend-breakdown">
+        <h2 id="hardware-heading">Hardware</h2>
+        {backendRollup.length === 0 ? (
+          <p>No inferences run yet — the breakdown appears here once apps start using AI.</p>
+        ) : (
+          <ul className="backend-list">
+            {backendRollup.map((b) => {
+              const total = usage.length || 1;
+              const pct = Math.round((b.count / total) * 100);
+              return (
+                <li key={b.backend}>
+                  <span className="label">{labelForBackend(b.backend)}</span>
+                  <span className="count">
+                    {b.count} ({pct}%)
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

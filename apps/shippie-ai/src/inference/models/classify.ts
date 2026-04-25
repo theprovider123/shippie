@@ -1,29 +1,36 @@
 /**
  * Zero-shot classification wrapper.
  *
- * Uses transformers.js zero-shot-classification pipeline (DeBERTa-v3-xsmall
- * NLI). Returns top label + confidence. The wrapper here is intentionally
- * thin — it exists so the router can dispatch by task name without knowing
- * the transformers.js call shape.
+ * Picks the best available hardware backend on first invocation, creates an
+ * adapter scoped to that backend, and threads the source tag back to the
+ * caller. The adapter is keyed by backend so a process that ends up on
+ * webnn never re-creates the wasm-cpu pipeline (and vice versa).
  */
 import { createTransformersLocalAi } from '@shippie/local-ai';
 import { loadTransformers } from './transformers-host.ts';
-import type { ClassifyRequest } from '../../types.ts';
+import { selectBackend } from '../backend.ts';
+import { backendToDevice } from './device-map.ts';
+import type { Backend, ClassifyRequest, ClassifyResult } from '../../types.ts';
 
-let adapter: ReturnType<typeof createTransformersLocalAi> | null = null;
+const adapters = new Map<Backend, ReturnType<typeof createTransformersLocalAi>>();
 
-function getAdapter() {
+function getAdapter(backend: Backend) {
+  let adapter = adapters.get(backend);
   if (!adapter) {
     adapter = createTransformersLocalAi({
       transformersLoader: loadTransformers,
+      device: backendToDevice(backend),
     });
+    adapters.set(backend, adapter);
   }
   return adapter;
 }
 
-export async function runClassify(req: Omit<ClassifyRequest, 'task'>) {
+export async function runClassify(req: Omit<ClassifyRequest, 'task'>): Promise<ClassifyResult> {
   if (!req.labels || req.labels.length === 0) {
     throw new Error('classify requires at least one label');
   }
-  return getAdapter().classify(req.text, { labels: req.labels });
+  const backend = await selectBackend();
+  const result = await getAdapter(backend).classify(req.text, { labels: req.labels });
+  return { label: result.label, confidence: result.confidence, source: backend };
 }

@@ -88,3 +88,44 @@ describe('createTransformersLocalAi', () => {
     expect(cap.vision).toBe(false);
   });
 });
+
+describe('createTransformersLocalAi device option', () => {
+  test('passes the device option to pipeline()', async () => {
+    let receivedDevice: string | undefined;
+    const fakeMod: TransformersModule = {
+      env: { allowRemoteModels: false, remoteHost: '' },
+      pipeline: (async (
+        _task: string,
+        _model: string | undefined,
+        opts: { device?: string } = {},
+      ) => {
+        receivedDevice = opts.device;
+        return (async () => ({ labels: ['a', 'b'], scores: [0.9, 0.1] })) as unknown as TransformersPipeline;
+      }) as unknown as TransformersModule['pipeline'],
+    };
+    const ai = createTransformersLocalAi({
+      transformersLoader: async () => fakeMod,
+      device: 'webnn',
+    });
+    await ai.classify('hello', { labels: ['a', 'b'] });
+    expect(receivedDevice).toBe('webnn');
+  });
+
+  test('omits device when option not set (transformers.js picks default)', async () => {
+    let receivedDevice: string | undefined = 'sentinel';
+    const fakeMod: TransformersModule = {
+      env: { allowRemoteModels: false, remoteHost: '' },
+      pipeline: (async (
+        _task: string,
+        _model: string | undefined,
+        opts: { device?: string } = {},
+      ) => {
+        receivedDevice = opts.device;
+        return (async () => ({ labels: ['a'], scores: [1] })) as unknown as TransformersPipeline;
+      }) as unknown as TransformersModule['pipeline'],
+    };
+    const ai = createTransformersLocalAi({ transformersLoader: async () => fakeMod });
+    await ai.classify('hello', { labels: ['a'] });
+    expect(receivedDevice).toBeUndefined();
+  });
+});

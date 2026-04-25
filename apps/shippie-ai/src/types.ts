@@ -72,6 +72,9 @@ export interface UsageEntry {
   ts: number;
   /** Inference duration in ms (model run only, not iframe round-trip). */
   durationMs: number;
+  /** Hardware backend that ran the inference. Optional for back-compat
+   *  with logs written before this field existed. */
+  source?: BackendForUsage;
 }
 
 export interface InstalledModelInfo {
@@ -81,3 +84,46 @@ export interface InstalledModelInfo {
   /** True if the model files are present in Cache Storage. */
   installed: boolean;
 }
+
+import type { Backend } from './inference/backend.ts';
+export type { Backend } from './inference/backend.ts';
+// Internal alias used by UsageEntry to avoid a forward reference inside the
+// same file (UsageEntry is declared above the Backend re-export).
+type BackendForUsage = Backend;
+
+export interface ClassifyResult {
+  label: string;
+  confidence: number;
+  source: Backend;
+}
+
+export interface EmbedResult {
+  embedding: number[];
+  source: Backend;
+}
+
+export interface SentimentResult {
+  sentiment: 'positive' | 'neutral' | 'negative';
+  score: number;
+  source: Backend;
+}
+
+export interface ModerateResult {
+  flagged: boolean;
+  label: string;
+  score: number;
+  source: Backend;
+}
+
+export interface VisionResult {
+  labels: Array<{ label: string; score: number }>;
+  source: Backend;
+}
+
+export type InferenceResultMap = {
+  classify: ClassifyResult;
+  embed: EmbedResult;
+  sentiment: SentimentResult;
+  moderate: ModerateResult;
+  vision: VisionResult;
+};

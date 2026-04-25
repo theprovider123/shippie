@@ -103,3 +103,20 @@ export function rollupByOrigin(entries: UsageEntry[]): UsageRollup[] {
     (a, b) => b.count - a.count,
   );
 }
+
+export interface BackendRollup {
+  /** A `Backend` value, or 'unknown' for entries without a recorded source. */
+  backend: string;
+  count: number;
+}
+
+export function rollupByBackend(entries: UsageEntry[]): BackendRollup[] {
+  const counts = new Map<string, number>();
+  for (const e of entries) {
+    const k = e.source ?? 'unknown';
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return Array.from(counts, ([backend, count]) => ({ backend, count })).sort(
+    (a, b) => b.count - a.count,
+  );
+}

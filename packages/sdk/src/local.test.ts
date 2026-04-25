@@ -144,6 +144,30 @@ function setupFakeIframe(opts: {
 }
 
 describe('LocalAI iframe bridge', () => {
+  test('classify result rides the source field back through the bridge', async () => {
+    setupFakeIframe({
+      onPostFromHost: () => {},
+      reply: (req) => ({
+        requestId: req.requestId,
+        result: { label: 'transport', confidence: 0.94, source: 'webnn-npu' },
+      }),
+    });
+
+    const ai = new LocalAI({
+      doc: win.document as any,
+      win: win as any,
+      randomId: () => 'src-1',
+    });
+
+    const result = (await ai.classify('Uber to Heathrow', ['transport', 'food'])) as {
+      label: string;
+      confidence: number;
+      source?: string;
+    };
+    expect(result.source).toBe('webnn-npu');
+    expect(result.label).toBe('transport');
+  });
+
   test('classify round-trips through postMessage with origin pinning', async () => {
     const sent: Array<{ data: any; targetOrigin: string }> = [];
     setupFakeIframe({
