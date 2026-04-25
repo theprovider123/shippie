@@ -1,0 +1,446 @@
+:root {
+  --bg: #FAF7EF;
+  --fg: #14120F;
+  --muted: #5C5751;
+  --line: rgba(20, 18, 15, 0.08);
+  --accent: #E8603C;
+  --danger: #B23A2B;
+  --safe-top: env(safe-area-inset-top, 0);
+  --safe-bottom: env(safe-area-inset-bottom, 0);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app {
+  min-height: 100%;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  padding: 16px 20px 80px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.page-header h1 {
+  font-size: 22px;
+  margin: 0;
+  font-weight: 600;
+}
+
+button {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+button.ghost {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+button.light {
+  color: var(--bg);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.muted.light {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.banner {
+  background: var(--accent);
+  color: var(--bg);
+  padding: 10px 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.search-input {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 0 14px;
+  font-size: 16px;
+  color: var(--fg);
+}
+
+.recipe-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recipe-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.recipe-card-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--bg);
+  list-style: none;
+}
+
+.recipe-card-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 120px;
+  border-radius: 0;
+  border: 0;
+  background: var(--danger);
+  color: white;
+}
+
+.recipe-card {
+  background: #fff;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  position: relative;
+  z-index: 1;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+  text-align: left;
+}
+
+.recipe-card h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.cook-button {
+  align-self: stretch;
+  border-radius: 14px;
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  padding: 0 18px;
+  white-space: nowrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.field > span,
+.field > legend {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.field input,
+.field textarea {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 16px;
+  color: var(--fg);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ingredient-edit-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 70px 70px auto auto;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.ingredient-edit-row .amount-input,
+.ingredient-edit-row .unit-input {
+  text-align: center;
+}
+
+.autocomplete {
+  position: relative;
+}
+
+.autocomplete input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 16px;
+}
+
+.autocomplete-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.autocomplete-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.autocomplete-list li.autocomplete-active,
+.autocomplete-list li:hover {
+  background: var(--line);
+}
+
+.ingredient-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ingredient-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ingredient-amount {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ingredient-name {
+  color: var(--fg);
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.your-data-button {
+  position: fixed;
+  bottom: calc(16px + var(--safe-bottom));
+  right: 16px;
+  z-index: 9;
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  font-size: 13px;
+}
+
+.cooking-mode {
+  position: fixed;
+  inset: 0;
+  background: #14120F;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.cooking-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cooking-video-stub {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cooking-header {
+  position: relative;
+  z-index: 2;
+  padding: calc(8px + var(--safe-top)) 16px 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cooking-body {
+  position: relative;
+  z-index: 2;
+  padding: 24px 24px calc(40px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.cooking-body h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cooking-body h3 {
+  margin: 12px 0 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cooking-timer {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(56px, 18vw, 96px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 12px 0;
+}
+
+.cooking-timer-over {
+  color: var(--accent);
+}
+
+.cooking-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cooking-ingredients .ingredient-row {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.cooking-ingredients .ingredient-name {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.cooking-ingredients .ingredient-amount {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14120F;
+    --fg: #FAF7EF;
+    --muted: #9A938A;
+    --line: rgba(255, 255, 255, 0.1);
+  }
+  .recipe-card,
+  .field input,
+  .field textarea,
+  .autocomplete input,
+  .autocomplete-list,
+  .search-input {
+    background: #1F1B16;
+  }
+}

@@ -1,0 +1,149 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0b0d10;
+  --fg: #f4f6f8;
+  --muted: #94a3b8;
+  --accent: #7dd3fc;
+  --line: rgba(148, 163, 184, 0.18);
+  --ok: #4ade80;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100dvh;
+}
+
+.dashboard {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: max(env(safe-area-inset-top), 24px) 20px 64px;
+}
+
+.dashboard header h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+.dashboard .subtitle {
+  color: var(--muted);
+  margin: 6px 0 24px;
+}
+
+.dashboard h2 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 28px 0 8px;
+}
+
+.model-list,
+.usage-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.model-list li,
+.usage-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.model-list .check {
+  width: 18px;
+  text-align: center;
+  color: var(--ok);
+}
+
+.model-list li[data-installed='false'] .check {
+  color: var(--muted);
+}
+
+.model-list .label {
+  flex: 1;
+}
+
+.model-list .size,
+.usage-list .count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.usage-list .origin {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px;
+}
+
+.total {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.total strong {
+  color: var(--fg);
+}
+
+.privacy-footer {
+  margin-top: 32px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(125, 211, 252, 0.06);
+}
+
+.privacy-footer h2 {
+  margin-top: 0;
+  color: var(--accent);
+}
+
+.privacy-footer p {
+  margin: 0;
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.actions button,
+.model-list button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.actions button:hover,
+.model-list button:hover {
+  border-color: var(--accent);
+}
+
+.error {
+  padding: 8px 12px;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 8px;
+}
