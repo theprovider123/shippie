@@ -1,4 +1,4 @@
-name = "shippie-worker"
+name = "shippie-platform"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
@@ -33,7 +33,11 @@ class_name = "SignalRoom"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["SignalRoom"]
+# SQLite-backed DO required for free-plan accounts. SignalRoom holds no
+# persistent storage (its `ctx.storage` is never touched — it only fans
+# out signalling messages between live WebSockets), so this is purely
+# the storage-backend choice for the binding type.
+new_sqlite_classes = ["SignalRoom"]
 
 [vars]
 SHIPPIE_ENV = "production"
