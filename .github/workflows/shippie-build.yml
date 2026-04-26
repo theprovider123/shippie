@@ -138,9 +138,20 @@ jobs:
           else
             npm install
           fi
-          # If a build script exists, run it. Many static sites have none.
+          # Detection order: explicit `build` script first, then framework
+          # heuristics for common static-output toolchains that don't ship
+          # a `build` script of their own.
           if jq -e '.scripts.build // empty' package.json >/dev/null 2>&1; then
             npm run build
+          elif jq -e '.dependencies.expo // .devDependencies.expo // empty' package.json >/dev/null 2>&1; then
+            # Expo / Expo Router — `expo export --platform web` writes to dist/
+            echo "Detected Expo app — running 'expo export --platform web'"
+            npx expo export --platform web
+          elif jq -e '.scripts.export // empty' package.json >/dev/null 2>&1; then
+            # Some Next.js apps still expose `export` for static-out
+            npm run export
+          else
+            echo "No build script and no recognised framework — assuming pre-built static output already in repo."
           fi
 
       - name: Detect output directory

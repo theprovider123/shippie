@@ -12,8 +12,10 @@
  * grows past a few hundred.
  */
 import type { PageServerLoad } from './$types';
-import { getDrizzleClient } from '$server/db/client';
+import { inArray } from 'drizzle-orm';
+import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories } from '$server/db/queries/apps';
+import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
 
 const PER_PAGE = 24;
 
@@ -40,9 +42,34 @@ export const load: PageServerLoad = async ({ platform, url }) => {
     listCategories(db),
   ]);
 
+  const visible = apps.slice(0, PER_PAGE);
+  const ids = visible.map((a) => a.id).filter((id): id is string => typeof id === 'string');
+  const awarded = ids.length
+    ? await db
+        .select({
+          appId: schema.capabilityBadges.appId,
+          badge: schema.capabilityBadges.badge,
+        })
+        .from(schema.capabilityBadges)
+        .where(inArray(schema.capabilityBadges.appId, ids))
+    : [];
+  const byApp = new Map<string, { badge: string }[]>();
+  for (const row of awarded) {
+    let bucket = byApp.get(row.appId);
+    if (!bucket) {
+      bucket = [];
+      byApp.set(row.appId, bucket);
+    }
+    bucket.push({ badge: row.badge });
+  }
+  const decorated = visible.map((a) => ({
+    ...a,
+    badges: provenBadgesFromAwards(byApp.get(a.id ?? '') ?? []),
+  }));
+
   const hasMore = apps.length > PER_PAGE;
   return {
-    apps: apps.slice(0, PER_PAGE),
+    apps: decorated,
     query,
     page,
     hasMore,

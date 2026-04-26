@@ -70,7 +70,7 @@ Tier ladder: **Foundation built → Demo-ready → Launch-ready → Partial → 
 | Boost | Wrap | Foundation built | DOM observer + capability gate + rules engine at `packages/sdk/src/wrapper/observe/`, `packages/analyse/`, `packages/sdk/src/wrapper/rules/`. AppProfile auto-detection (Plan B) not yet shipped. |
 | Sense | Wrap | Foundation built | Full feel layer at `packages/sdk/src/wrapper/{haptics,spring,gestures,view-transitions,theme-color,textures,patina,your-data-panel,group-moderation-panel,insight-card}`. Demo-ready depends on showcase apps proving textures and patina in real use. |
 | Core | Run | Foundation built | Local DB / files / runtime primitives at `packages/local-db/`, `packages/local-files/`, `packages/sdk/src/local.ts`, `packages/intelligence/`, `packages/local-runtime/`. Launch readiness depends on real-device proof, migration handling, quota behaviour, and recovery flows. |
-| AI | Run | Partial | `apps/shippie-ai/` runs 5 inference tasks via postMessage. WebNN three-tier (NPU → GPU → WASM) detection exists but `source` field missing from inference responses; no UI surfacing backend choice. |
+| AI | Run | Partial | `apps/shippie-ai/` runs 5 inference tasks via postMessage. WebNN three-tier (NPU → GPU → WASM) detection wired and `source` field threaded through inference responses + SDK `LocalAI` wrapper; AI dashboard UI surfacing backend choice still pending. |
 | Vault | Run | Partial | `packages/sdk/src/wrapper/your-data-panel.ts` + `packages/backup-providers/` exist. OAuth-to-user-cloud bridge route now wired at `apps/platform/src/routes/oauth/[provider]/+server.ts` (8/8 envelope round-trip + redirect tests). Device transfer flow primitives in `packages/proximity/src/transfer.ts`; UI integration with `your-data-panel` is the remaining gap. |
 | Pulse | Connect | Foundation built | Proximity primitives + signalling at `packages/proximity/`, `services/hub/src/signal.ts`, D1 `room_audit` table. Platform-side `SignalRoom` DO + `/__shippie/signal/[roomId]` route now wired (`apps/platform/src/lib/server/proximity/signal-room.ts`, wrangler.toml v3 migration, wrap-worker bundles + re-exports the class, 9/9 routing tests). Live Room still needs real-device demo. |
 | Spark | Connect | Not built | Roadmapped. No BLE beacon, no hotspot handoff, no chain propagation. |
@@ -107,7 +107,11 @@ turbo run test
 Tasks:    31 successful, 31 total
 ```
 
-`@shippie/platform`: **29 test files, 223 tests passing, 0 failing.** (+2 files, +17 tests added by Phase 1 + Phase 4 work — OAuth coordinator route and SignalRoom DO routing.)
+`@shippie/platform`: **33 test files, 254 tests passing, 0 failing.** (+6 files, +48 tests over the session — OAuth coordinator route, SignalRoom DO routing, OAuth start route, capability-badges derivation, proof ingestion validation, proven-badge merging.)
+
+`@shippie/sdk`: **+10 tests** (wrapper proof emitter — queue, batching, dedup, 4xx-drop, 5xx-retry, network-error retry, device hash stability).
+
+`@shippie/proximity`: **+8 tests** (transfer-group-adapter — selfId pass-through, broadcastBinary routing, onBinary type filtering + ArrayBuffer upgrade, awaitPeer present/polling/timeout, destroy).
 
 The earlier 13-suite failure (`Failed to load url bun:test`) is fixed by migrating those test files from Bun's `bun:test` runner to Vitest (the platform's actual test runner per its `package.json` script: `"test": "vitest run"`). The migration was:
 
@@ -130,6 +134,19 @@ $ bun run health
 Green = baseline acceptable.
 
 ---
+
+## What's been wired since session start (2026-04-26 day-2 build)
+
+Layered on top of Phase 0:
+
+- **Runtime proof spine end-to-end** — schema (`proof_events` + `capability_badges`), D1 migration `0004_proof_events.sql`, 15-event taxonomy, `POST /api/v1/proof` ingestion (taxonomy-gated, KV-rate-limited), daily `capability-badges` cron (deriveBadges, awards on ≥3 distinct devices, revokes on regression), maker dashboard `/dashboard/apps/[slug]/proof`. Wrapper proof emitter at `packages/sdk/src/wrapper/proof.ts` queues events in IndexedDB (in-memory fallback in tests), flushes every 30s + on `visibilitychange`, dedupes within session, retries on 5xx + network errors, drops on 4xx, auto-emits `installed` + `service_worker_active`. Public surface: `configureProof`, `emitProofEvent`, `flushProofQueue`.
+- **Capability Proof Badges on listings AND marketplace grid** — listing page reads `capability_badges`; homepage `+page.server.ts` and `/apps/+page.server.ts` join `capability_badges` for visible apps and pass proven badges through `AppGrid` → `AppCard` → `CapabilityBadges` (filled sage pill + ✓ for proven, outline for build-time-detected). `provenBadgesFromAwards` and `publicCapabilityBadgesWithProven` in `lib/server/marketplace/capability-badges.ts`.
+- **OAuth coordinator end-to-end** — `apps/platform/src/routes/oauth/[provider]/+server.ts` (envelope verify → 302 to provider authorize → callback verify → token exchange → postMessage `{ kind: 'shippie-oauth', ok, token }` to maker's signed origin), plus `__shippie/oauth/start/+server.ts` so maker apps don't need the coordinator secret.
+- **Concrete `createTransferRoom` / `joinTransferRoom`** — `packages/proximity/src/transfer-group-adapter.ts` adapts a regular Proximity `Group` into the binary-only `TransferGroupHandle` `transfer.ts` expects. Re-exported from `@shippie/proximity`. Your Data panel default falls through to the adapter so makers don't have to inject `transferApi`.
+- **SignalRoom Durable Object** — `apps/platform/src/lib/server/proximity/signal-room.ts` + `/__shippie/signal/[roomId]` route + wrangler.toml v3 migration with `new_sqlite_classes` + wrap-worker bundles + re-exports the class.
+- **Homepage hero + three-pillar copy** — `apps/platform/src/routes/+page.svelte` aligned with Wrap/Run/Connect framing.
+- **`/new` onboarding polish** — five deploy paths (zip / wrap / CLI / MCP / GitHub) with time-to-URL chips + "What happens after deploy" panel.
+- **Architecture docs** — `docs/architecture.svg` (inline diagram) referenced from `docs/architecture.md`. `docs/WHITEPAPER.md` draft v0. `docs/launch/real-phone-checklist.md` + `docs/launch/cf-google-deploy.md` for user-driven launch work.
 
 ## Known live bugs / brittleness fixed in Phase 0
 

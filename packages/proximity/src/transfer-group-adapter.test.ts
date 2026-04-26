@@ -74,11 +74,11 @@ function makeFakeGroup(initial: { selfId: string; members: PeerId[] } = { selfId
   } as unknown as Group;
   return {
     group: fakeGroup,
-    setMembers: (m) => {
+    setMembers: (m: PeerId[]) => {
       members = m;
     },
     broadcasts,
-    fire: (channel, data, peerId) => {
+    fire: (channel: string, data: unknown, peerId: PeerId) => {
       const bucket = handlers.get(channel);
       if (!bucket) return;
       for (const h of bucket) h(data, peerId);
@@ -189,7 +189,8 @@ describe('TransferGroupHandle adapter', () => {
     } catch (err) {
       caught = err;
     }
-    expect(caught).toBeInstanceOf(Error);
+    expect(caught instanceof Error).toBe(true);
+    expect((caught as Error).message).toBe('awaitPeer timed out');
   });
 
   test('destroy calls Group.leave once', async () => {

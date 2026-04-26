@@ -317,17 +317,27 @@ async function defaultStartTransfer(
     '[data-shippie-transfer-progress-bar]',
   ) as HTMLDivElement | null;
 
-  if (!opts.transferApi) {
-    status(
-      'Transfer needs the proximity TransferGroupApi wired by your app. See https://shippie.app/docs/transfer for setup.',
-    );
-    return;
+  let api = opts.transferApi;
+  if (!api) {
+    // Fall through to the adapter shipping with `@shippie/proximity`.
+    // Lazy-imported so apps that never invoke transfer don't pay the
+    // bundle cost.
+    try {
+      const proximity = await import('@shippie/proximity');
+      api = {
+        createTransferRoom: proximity.createTransferRoom as never,
+      };
+    } catch (err) {
+      console.error('shippie:transfer load proximity adapter failed', err);
+      status('Transfer infrastructure unavailable in this build.');
+      return;
+    }
   }
 
   status('Creating one-time transfer room…');
-  let room: Awaited<ReturnType<typeof opts.transferApi.createTransferRoom>>;
+  let room: Awaited<ReturnType<typeof api.createTransferRoom>>;
   try {
-    room = await opts.transferApi.createTransferRoom({ appSlug: slug });
+    room = await api.createTransferRoom({ appSlug: slug });
   } catch (err) {
     console.error('shippie:transfer create-room failed', err);
     status('Could not create the transfer room. Check your network.');
