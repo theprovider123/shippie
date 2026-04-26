@@ -8,7 +8,7 @@
 import type { WrapperContext } from '../env';
 import { toResponseBody } from '../bytes';
 
-const DEV_STUB = `// __shippie/sdk.js — dev stub
+const DEV_STUB = `// __shippie/sdk.js — dev stub (with PWA install wiring)
 (function () {
   if (typeof globalThis === 'undefined') return;
   const origin = (typeof location !== 'undefined' && location.origin) || '';
@@ -16,6 +16,33 @@ const DEV_STUB = `// __shippie/sdk.js — dev stub
     console.warn('[shippie] sdk.' + name + '() not wired yet — dev stub');
     return Promise.resolve(null);
   };
+
+  // Capture the beforeinstallprompt event so shippie.install.prompt()
+  // can fire the native install dialog. Chrome only emits this after a
+  // service worker is registered with a fetch handler.
+  let bipEvent = null;
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      bipEvent = e;
+    });
+  }
+
+  // Register the wrapper service worker. Required for Chrome to consider
+  // the page installable.
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/__shippie/sw.js', { scope: '/' })
+        .catch((err) => console.warn('[shippie] sw register failed', err));
+    });
+  }
+
+  const installStatus = () => {
+    if (typeof window === 'undefined') return 'unsupported';
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return 'installed';
+    return bipEvent ? 'installable' : 'not-yet-available';
+  };
+
   const shippie = {
     version: 'dev-stub',
     origin,
@@ -48,8 +75,17 @@ const DEV_STUB = `// __shippie/sdk.js — dev stub
       submit: warn('feedback.submit'),
     },
     install: {
-      prompt: () => console.warn('[shippie] install.prompt() not wired'),
-      status: () => 'unsupported',
+      prompt: async () => {
+        if (!bipEvent) {
+          console.warn('[shippie] install.prompt(): not installable yet');
+          return { outcome: 'unavailable' };
+        }
+        const evt = bipEvent;
+        bipEvent = null;
+        await evt.prompt();
+        return evt.userChoice;
+      },
+      status: installStatus,
     },
     meta: async () => {
       const r = await fetch('/__shippie/meta');
