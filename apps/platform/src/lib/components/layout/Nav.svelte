@@ -38,6 +38,9 @@
     </div>
 
     <div class="nav-right">
+      {#if user?.isAdmin}
+        <a href="/admin" class="nav-admin" title="Admin">Admin</a>
+      {/if}
       {#if user}
         <a href="/dashboard" class="nav-user">
           {#if user.avatarUrl}
@@ -71,7 +74,12 @@
       <a href="/leaderboards" onclick={() => (mobileOpen = false)}>Leaderboards</a>
       <a href="/why" onclick={() => (mobileOpen = false)}>Why</a>
       <a href="/docs" onclick={() => (mobileOpen = false)}>Docs</a>
-      {#if !user}
+      {#if user}
+        <a href="/dashboard" onclick={() => (mobileOpen = false)}>Dashboard</a>
+        {#if user.isAdmin}
+          <a href="/admin" onclick={() => (mobileOpen = false)}>Admin</a>
+        {/if}
+      {:else}
         <a href="/auth/login" onclick={() => (mobileOpen = false)}>Sign in</a>
       {/if}
       <a href="/new" class="mobile-cta" onclick={() => (mobileOpen = false)}>Deploy an app</a>
@@ -143,6 +151,16 @@
     color: var(--text-light);
   }
   .nav-signin:hover { color: var(--text-secondary); }
+  .nav-admin {
+    font-size: var(--small-size);
+    font-weight: 500;
+    color: var(--marigold, #E8A547);
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--marigold, #E8A547);
+    border-radius: 4px;
+    transition: opacity 0.2s;
+  }
+  .nav-admin:hover { opacity: 0.85; }
   .nav-cta {
     display: none;
     padding: 0.5rem 1.125rem;
