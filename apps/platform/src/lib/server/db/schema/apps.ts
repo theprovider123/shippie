@@ -108,6 +108,15 @@ export const apps = sqliteTable(
       onDelete: 'set null',
     }),
     trialIpHash: text('trial_ip_hash'),
+
+    /**
+     * App Kinds vocabulary (docs/app-kinds.md). Denormalized from the
+     * latest deploy's kind profile so marketplace queries can filter
+     * without a JSON join. The full profile lives in
+     * deploys.kind_profile_json + KV apps:{slug}:kind-profile.
+     */
+    currentDetectedKind: text('current_detected_kind'),
+    currentPublicKindStatus: text('current_public_kind_status'),
   },
   (t) => [
     index('apps_slug_active_idx').on(t.slug),

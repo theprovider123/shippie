@@ -19,7 +19,7 @@
  */
 import { eq, and, desc } from 'drizzle-orm';
 import type { D1Database, R2Bucket, KVNamespace } from '@cloudflare/workers-types';
-import { analyseApp } from '@shippie/analyse';
+import { analyseApp, classifyKind } from '@shippie/analyse';
 import { getDrizzleClient, schema } from '../db/client';
 import { extractZipSafe } from './zip-extract';
 import { deriveManifest, type ShippieJsonLite } from './manifest';
@@ -30,8 +30,10 @@ import {
   writeActivePointer,
   writeCspHeader,
   writeAppProfile,
+  writeAppKindProfile,
 } from './kv-write';
 import { buildCsp } from './csp';
+import { profileFromDetection, type AppKind } from '$lib/types/app-kind';
 
 export interface DeployStaticInput {
   slug: string;
@@ -254,6 +256,32 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     await writeAppProfile(input.kv, input.slug, profile);
   } catch (err) {
     console.error('[shippie:deploy] analyseApp failed', err);
+  }
+
+  // App Kinds classification (docs/app-kinds.md). Same non-blocking
+  // pattern as the AppProfile call above — a corrupt or empty profile
+  // shouldn't take down a deploy. Persists per-deploy in `deploys` and
+  // denormalizes onto `apps` for fast marketplace queries; KV mirror
+  // for the wrapper.
+  try {
+    const detection = classifyKind(files);
+    const declared = (input.shippieJson?.kind as AppKind | undefined) ?? undefined;
+    const kindProfile = profileFromDetection(detection, declared);
+
+    await writeAppKindProfile(input.kv, input.slug, kindProfile);
+    await db
+      .update(schema.deploys)
+      .set({ kindProfileJson: kindProfile as unknown as Record<string, unknown> })
+      .where(eq(schema.deploys.id, deployRow.id));
+    await db
+      .update(schema.apps)
+      .set({
+        currentDetectedKind: kindProfile.detectedKind,
+        currentPublicKindStatus: kindProfile.publicKindStatus,
+      })
+      .where(eq(schema.apps.id, appRow.id));
+  } catch (err) {
+    console.error('[shippie:deploy] classifyKind failed', err);
   }
 
   await writeActivePointer(input.kv, input.slug, version);

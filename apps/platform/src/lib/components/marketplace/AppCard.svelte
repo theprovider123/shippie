@@ -1,7 +1,9 @@
 <script lang="ts">
   import IconOrMonogram from './IconOrMonogram.svelte';
   import CapabilityBadges from './CapabilityBadges.svelte';
+  import KindBadge from './KindBadge.svelte';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
+  import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
   interface Props {
     slug: string;
@@ -15,6 +17,8 @@
     upvoteCount?: number;
     installCount?: number;
     badges?: PublicCapabilityBadge[];
+    kind?: AppKind | null;
+    kindStatus?: PublicKindStatus | null;
   }
 
   let {
@@ -29,6 +33,8 @@
     upvoteCount = 0,
     installCount = 0,
     badges = [],
+    kind = null,
+    kindStatus = null,
   }: Props = $props();
 
   const blurb = $derived(tagline ?? description ?? `${name} on Shippie`);
@@ -41,6 +47,11 @@
       <h2 class="name">{name}</h2>
       <p class="kind">{type} · {category}</p>
       <p class="blurb">{blurb}</p>
+      {#if kind}
+        <div class="kind-row">
+          <KindBadge {kind} status={kindStatus} compact />
+        </div>
+      {/if}
       {#if badges.length > 0}
         <div class="badges">
           <CapabilityBadges {badges} max={3} compact />
@@ -105,6 +116,7 @@
     overflow: hidden;
   }
   .badges { margin-top: 0.625rem; }
+  .kind-row { margin-top: 0.5rem; }
   .counts {
     margin-top: 0.625rem;
     display: flex;

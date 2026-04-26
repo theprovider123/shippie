@@ -34,6 +34,14 @@ export const PROOF_EVENT_TYPES = [
   'permissions_scanned',
   'external_domains_shown',
   'permission_diff_surfaced',
+  // App Kinds (docs/app-kinds.md). The wrapper emits these to upgrade or
+  // demote `publicKindStatus`. Personal-data leak demotes Local; the
+  // others contribute to confirmation.
+  'kind_local_launch_offline',
+  'kind_local_write_local',
+  'kind_local_workflow_offline',
+  'kind_connected_graceful_degrade',
+  'kind_leak_personal_data',
 ] as const;
 
 export type ProofEventType = (typeof PROOF_EVENT_TYPES)[number];
@@ -107,5 +115,46 @@ export const BADGE_RULES: Record<CapabilityBadge, BadgeRule> = {
     events: ['device_transferred'],
     threshold: 3,
     windowDays: 30,
+  },
+};
+
+/**
+ * Kind-confirmation rules. Distinct from BADGE_RULES because they
+ * upgrade `publicKindStatus` (estimated → verifying → confirmed) on the
+ * `apps` row rather than awarding a capability badge. Same threshold
+ * model — N distinct devices in the window.
+ *
+ * `demoteEvents` flip the kind down (Local → Connected, or Connected →
+ * Cloud) on the first sighting; we don't require a threshold for
+ * demotion because honesty wins over patience.
+ */
+export interface KindConfirmRule {
+  description: string;
+  events: ProofEventType[];
+  threshold: number;
+  windowDays: number;
+  demoteEvents: ProofEventType[];
+}
+
+export const KIND_CONFIRMATION_RULES: Record<'local' | 'connected', KindConfirmRule> = {
+  local: {
+    description:
+      'Confirmed Local: app launched offline, completed core workflow offline, and writes hit local storage across N distinct devices.',
+    events: [
+      'kind_local_launch_offline',
+      'kind_local_write_local',
+      'kind_local_workflow_offline',
+    ],
+    threshold: 3,
+    windowDays: 30,
+    demoteEvents: ['kind_leak_personal_data'],
+  },
+  connected: {
+    description:
+      'Confirmed Connected: core workflow completes offline AND graceful degrade observed when external data is unavailable.',
+    events: ['kind_local_workflow_offline', 'kind_connected_graceful_degrade'],
+    threshold: 3,
+    windowDays: 30,
+    demoteEvents: ['kind_leak_personal_data'],
   },
 };

@@ -12,11 +12,12 @@ import * as Y from 'yjs';
 import type { Buzz, Phase, Score } from './types.ts';
 
 export function createQuizState(): Y.Doc {
-  const doc = new Y.Doc();
-  const meta = doc.getMap('meta');
-  if (!meta.has('currentIndex')) meta.set('currentIndex', 0);
-  if (!meta.has('phase')) meta.set('phase', 'lobby' satisfies Phase);
-  return doc;
+  // Don't write default values here. Each peer would write its own
+  // independent 'lobby' / 0 entry, and the LWW merge can resurrect a
+  // peer's stale default after a real mutation has been synced. The
+  // getters below already return 'lobby' / 0 when the map entry is
+  // unset, so the defaults are observed without being persisted.
+  return new Y.Doc();
 }
 
 export function getMeta(doc: Y.Doc): Y.Map<unknown> {

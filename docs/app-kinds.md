@@ -236,6 +236,55 @@ diverges from detection (e.g. personal data observed leaving the device).
 Demotion is a one-way operation per session; reversal requires a new
 deploy with new analysis.
 
+## Copy bank
+
+Centralised strings so the UI stays consistent. Anything user-facing
+should pull from this list, not invent its own phrasing.
+
+### Marketplace badge labels
+
+| `publicKind` | `publicKindStatus` | Label |
+|---|---|---|
+| `local` | `estimated` / `verifying` | "Local — verifying" |
+| `local` | `confirmed` | "Local" |
+| `local` | `disputed` | "Local — under review" |
+| `connected` | `estimated` / `verifying` | "Connected — verifying" |
+| `connected` | `confirmed` | "Connected" |
+| `connected` | `disputed` | "Connected — under review" |
+| `cloud` | `estimated` / `verifying` | "Cloud" |
+| `cloud` | `confirmed` | "Cloud" |
+| `cloud` | `disputed` | "Cloud — under review" |
+
+(Cloud doesn't show "verifying" — there is nothing offline to verify.)
+
+### One-line listing blurbs
+
+- **Local** — "Works offline. Your data stays on this device."
+- **Connected** — "Your data stays on this device. Connects for live information."
+- **Cloud** — "Needs internet. Data is stored by the app maker or third-party services."
+
+### Detail-page disclosures
+
+Auto-generated from `reasons` + `externalDomains` + `backendProviders`:
+
+- Local with no signals: "We didn't find any external dependencies in this app."
+- Local with proof: "Verified offline launches and offline core workflow across {n} sessions."
+- Connected with one external domain: "Fetches data from {host} when online. Cached for offline use."
+- Connected with multiple: "Fetches data from {hosts}. Personal data stays on this device."
+- Cloud with provider: "Uses {provider} to store app data. Requires an account or internet connection."
+
+### Maker-facing notices
+
+- Conflict (declared Local, detected Connected): "You declared this as Local, but Shippie found {reason}. The marketplace will show this as Connected. Do you want to edit the app to remove that dependency, or accept the Connected label?"
+- Conflict (declared Local, detected Cloud): "You declared this as Local, but Shippie found {provider}. The marketplace will show this as Cloud. {If candidate: 'You can run the Localize tool to migrate this dependency.'}"
+- Localize offer: "Shippie can migrate {provider} to local storage. Review the proposed changes and approve, or skip and publish as Cloud."
+- Demotion notice: "Your app was detected as Local but Shippie observed {host} receiving personal data on a real session. The badge has been demoted to {newKind}. {If contestable: 'Dispute this detection.'}"
+
+### Dispute flow copy
+
+- Title: "Dispute detection"
+- Body: "If you believe Shippie's detection is wrong, tell us why. Reviewed within 48h."
+
 ## Why this vocabulary
 
 Three labels, each tied to a single concrete user-visible question:

@@ -42,6 +42,15 @@ export const deploys = sqliteTable(
 
     cspHeader: text('csp_header'),
 
+    /**
+     * App Kinds profile JSON for this deploy version (docs/app-kinds.md).
+     * Stored as JSON for evolution flexibility. The denormalized current
+     * kind on `apps` mirrors the latest successful deploy's value.
+     */
+    kindProfileJson: text('kind_profile_json', { mode: 'json' }).$type<
+      Record<string, unknown>
+    >(),
+
     createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
     completedAt: text('completed_at'),
     createdBy: text('created_by').references(() => users.id),

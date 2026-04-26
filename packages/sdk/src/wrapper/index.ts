@@ -187,3 +187,11 @@ export {
   flushNow as flushProofQueue,
   type ProofEventType,
 } from './proof.ts';
+
+export {
+  configureKindEmitter,
+  noteLocalWrite,
+  noteGracefulDegrade,
+  notePersonalDataLeak,
+  type KindEmitterConfig,
+} from './kind-emitter.ts';

@@ -30,6 +30,8 @@ export type FeaturedApp = Pick<
   | 'upvoteCount'
   | 'installCount'
   | 'compatibilityScore'
+  | 'currentDetectedKind'
+  | 'currentPublicKindStatus'
 >;
 
 const PUBLIC_FILTERS = and(
@@ -50,6 +52,8 @@ const FEATURED_COLUMNS = {
   upvoteCount: apps.upvoteCount,
   installCount: apps.installCount,
   compatibilityScore: apps.compatibilityScore,
+  currentDetectedKind: apps.currentDetectedKind,
+  currentPublicKindStatus: apps.currentPublicKindStatus,
 };
 
 export async function findFeatured(db: ShippieDb, limit = 6): Promise<FeaturedApp[]> {

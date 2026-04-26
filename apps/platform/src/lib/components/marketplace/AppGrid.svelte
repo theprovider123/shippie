@@ -1,6 +1,7 @@
 <script lang="ts">
   import AppCard from './AppCard.svelte';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
+  import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
   interface AppForGrid {
     id?: string;
@@ -15,6 +16,8 @@
     upvoteCount?: number;
     installCount?: number;
     badges?: PublicCapabilityBadge[];
+    kind?: AppKind | null;
+    kindStatus?: PublicKindStatus | null;
   }
 
   interface Props {

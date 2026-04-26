@@ -48,6 +48,8 @@ export const load: PageServerLoad = async ({ platform }) => {
     const decorated = featured.map((app) => ({
       ...app,
       badges: provenBadgesFromAwards(byApp.get(app.id ?? '') ?? []),
+      kind: app.currentDetectedKind,
+      kindStatus: app.currentPublicKindStatus,
     }));
 
     return { featured: decorated, status: 'ok' as const };

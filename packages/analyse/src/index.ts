@@ -12,6 +12,29 @@
  * Pure function. No I/O. Deterministic. Fast (regex-only, no AST).
  */
 export type * from './profile.ts';
+export { classifyKind } from './kind-classifier.ts';
+export type {
+  AppKind,
+  AppKindDetection,
+  AppKindLocalization,
+} from './kind-classifier.ts';
+export { localize } from './localize.ts';
+export type {
+  LocalizePatch,
+  LocalizeRequest,
+  LocalizeTransform,
+  FileChange,
+  NewFile,
+} from './localize.ts';
+export { extractRemixSpec } from './remix-spec.ts';
+export type {
+  RemixSpec,
+  RemixSpecRequest,
+  RoutePoint,
+  SchemaTable,
+  FormPoint,
+  ExternalApi,
+} from './remix-spec.ts';
 
 export interface AppFiles {
   /** Maps relative path → file bytes. Path always uses '/' separators

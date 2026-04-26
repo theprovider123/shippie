@@ -54,7 +54,16 @@ export type ProofEventType =
   | 'device_transferred'
   | 'permissions_scanned'
   | 'external_domains_shown'
-  | 'permission_diff_surfaced';
+  | 'permission_diff_surfaced'
+  // App Kinds (docs/app-kinds.md). Emitted by the wrapper to upgrade or
+  // demote `publicKindStatus`. Wrapper auto-emission lands in Phase 1b;
+  // for now, surfaces that observe these conditions can call
+  // `emitProofEvent('kind_local_launch_offline')` directly.
+  | 'kind_local_launch_offline'
+  | 'kind_local_write_local'
+  | 'kind_local_workflow_offline'
+  | 'kind_connected_graceful_degrade'
+  | 'kind_leak_personal_data';
 
 interface QueuedEvent {
   /** IndexedDB autoincrement key; assigned on put. */

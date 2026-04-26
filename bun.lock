@@ -305,6 +305,7 @@
       },
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.0.0",
+        "@shippie/analyse": "workspace:*",
         "adm-zip": "^0.5.16",
       },
       "devDependencies": {

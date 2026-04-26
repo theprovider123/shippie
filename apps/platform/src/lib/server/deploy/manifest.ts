@@ -30,6 +30,20 @@ export interface ShippieJsonLite {
     external_network?: boolean;
   };
   allowed_connect_domains?: string[];
+  /**
+   * Maker-declared App Kind (docs/app-kinds.md). Optional — if omitted,
+   * the platform uses static-analysis detection only. If declared and
+   * detection disagrees, the marketplace shows the detected kind and
+   * surfaces a conflict notice in the maker dashboard.
+   */
+  kind?: 'local' | 'connected' | 'cloud';
+  /**
+   * Maker-declared core-workflow probes (docs/app-kinds.md → "Defining
+   * core workflow completed"). v1: list of route paths or selectors the
+   * wrapper observes for offline completion. Used to upgrade
+   * publicKindStatus from `verifying` to `confirmed`.
+   */
+  workflow_probes?: string[];
 }
 
 export interface DeriveManifestInput {
@@ -71,6 +85,13 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
           : undefined,
         allowed_connect_domains: Array.isArray(m.allowed_connect_domains)
           ? (m.allowed_connect_domains.filter((x) => typeof x === 'string') as string[])
+          : undefined,
+        kind:
+          m.kind === 'local' || m.kind === 'connected' || m.kind === 'cloud'
+            ? m.kind
+            : undefined,
+        workflow_probes: Array.isArray(m.workflow_probes)
+          ? (m.workflow_probes.filter((x) => typeof x === 'string') as string[])
           : undefined,
       };
       return {

@@ -34,6 +34,11 @@ export const load: PageServerLoad = async ({ platform, url }) => {
   const query = (url.searchParams.get('q') ?? '').trim();
   const page = Math.max(1, Number.parseInt(url.searchParams.get('p') ?? '1', 10) || 1);
   const offset = (page - 1) * PER_PAGE;
+  const kindFilterRaw = url.searchParams.get('kind');
+  const kindFilter =
+    kindFilterRaw === 'local' || kindFilterRaw === 'connected' || kindFilterRaw === 'cloud'
+      ? kindFilterRaw
+      : null;
 
   const [apps, categories] = await Promise.all([
     query
@@ -42,7 +47,13 @@ export const load: PageServerLoad = async ({ platform, url }) => {
     listCategories(db),
   ]);
 
-  const visible = apps.slice(0, PER_PAGE);
+  // Kind filter is applied post-query for v1 (small catalogue, no FTS
+  // pressure). Move into the query when ranking factors in kind.
+  const filtered = kindFilter
+    ? apps.filter((a) => a.currentDetectedKind === kindFilter)
+    : apps;
+
+  const visible = filtered.slice(0, PER_PAGE);
   const ids = visible.map((a) => a.id).filter((id): id is string => typeof id === 'string');
   const awarded = ids.length
     ? await db
@@ -65,14 +76,17 @@ export const load: PageServerLoad = async ({ platform, url }) => {
   const decorated = visible.map((a) => ({
     ...a,
     badges: provenBadgesFromAwards(byApp.get(a.id ?? '') ?? []),
+    kind: a.currentDetectedKind,
+    kindStatus: a.currentPublicKindStatus,
   }));
 
-  const hasMore = apps.length > PER_PAGE;
+  const hasMore = filtered.length > PER_PAGE;
   return {
     apps: decorated,
     query,
     page,
     hasMore,
     categories,
+    kindFilter,
   };
 };

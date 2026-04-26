@@ -114,6 +114,36 @@ export async function readAppProfile(
 }
 
 /**
+ * App Kinds profile (docs/app-kinds.md). Stored under
+ * `apps:{slug}:kind-profile` alongside the existing AppProfile blob.
+ *
+ * Same TTL pattern as writeAppProfile — 30 days, refreshed on every
+ * successful deploy.
+ */
+export async function writeAppKindProfile(
+  kv: KVNamespace,
+  slug: string,
+  profile: unknown,
+): Promise<void> {
+  await kv.put(`apps:${slug}:kind-profile`, JSON.stringify(profile), {
+    expirationTtl: 60 * 60 * 24 * 30,
+  });
+}
+
+export async function readAppKindProfile(
+  kv: KVNamespace,
+  slug: string,
+): Promise<unknown | null> {
+  const raw = await kv.get(`apps:${slug}:kind-profile`);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * KV-backed read/write of the maker's overridden shippie.json edited via
  * the Enhancements tab. Separate from the deploy-time manifest — the next
  * deploy picks this up. Stored under `apps:{slug}:shippie-json`.
