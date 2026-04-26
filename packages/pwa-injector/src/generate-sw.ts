@@ -62,5 +62,37 @@ self.addEventListener('fetch', (event) => {
     return res;
   })());
 });
+
+// Ambient: react to scheduled periodic sync. Cannot run analysers here
+// (no module imports), so just drop a marker that the document side will
+// see on next app open.
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag !== 'shippie-ambient') return;
+  event.waitUntil((async () => {
+    try {
+      const req = indexedDB.open('shippie-ambient-scheduler', 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains('meta')) {
+          req.result.createObjectStore('meta');
+        }
+        if (!req.result.objectStoreNames.contains('sweep-markers')) {
+          req.result.createObjectStore('sweep-markers', { autoIncrement: true });
+        }
+      };
+      const db = await new Promise((resolve, reject) => {
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('sweep-markers', 'readwrite');
+        tx.objectStore('sweep-markers').add({ ts: Date.now(), tag: event.tag });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch {
+      /* SW must never throw — periodic sync would be cancelled */
+    }
+  })());
+});
 `;
 }
