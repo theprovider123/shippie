@@ -64,6 +64,7 @@
       "name": "@shippie/showcase-journal",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/ambient": "workspace:*",
         "@shippie/local-db": "workspace:*",
         "@shippie/local-runtime-contract": "workspace:*",
         "@shippie/sdk": "workspace:*",
@@ -285,6 +286,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "fake-indexeddb": "^6.2.5",
+        "happy-dom": "15",
         "typescript": "^5.7.0",
       },
     },
@@ -399,7 +401,9 @@
       "name": "@shippie/sdk",
       "version": "2.0.0",
       "dependencies": {
+        "@shippie/ambient": "workspace:*",
         "@shippie/backup-providers": "workspace:*",
+        "@shippie/intelligence": "workspace:*",
         "@shippie/proximity": "workspace:*",
       },
       "devDependencies": {

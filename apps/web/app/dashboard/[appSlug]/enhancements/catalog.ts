@@ -17,7 +17,7 @@ export interface CapabilityEntry {
   /** Snippet to merge into shippie.json. */
   snippet: Record<string, unknown>;
   docsHref: string;
-  category: 'sound' | 'ai' | 'mesh' | 'device' | 'backup' | 'data';
+  category: 'sound' | 'ai' | 'mesh' | 'device' | 'backup' | 'data' | 'intelligence';
 }
 
 export const CAPABILITY_CATALOG: readonly CapabilityEntry[] = [
@@ -87,6 +87,24 @@ export const CAPABILITY_CATALOG: readonly CapabilityEntry[] = [
     docsHref: '/docs/backup',
     category: 'backup',
   },
+  {
+    id: 'spatial',
+    label: 'Spatial awareness',
+    blurb:
+      'Notice when the user is in their typical kitchen / desk / commute (WiFi-derived hash, no raw IP) and adapt accordingly.',
+    snippet: { intelligence: { spatial: true } },
+    docsHref: '/docs/intelligence/spatial',
+    category: 'intelligence',
+  },
+  {
+    id: 'predictive-preload',
+    label: 'Predictive preload',
+    blurb:
+      'Pre-render the page the user usually visits next. Feels instant. Tune with predictivePreloadThreshold.',
+    snippet: { intelligence: { predictivePreload: true } },
+    docsHref: '/docs/intelligence/predictive-preload',
+    category: 'intelligence',
+  },
 ];
 
 /**
@@ -113,5 +131,8 @@ export function extractEnabledCapabilityIds(
   if (backup?.provider) ids.push('backup');
   const caps = json.capabilities;
   if (Array.isArray(caps) && caps.includes('barcode')) ids.push('barcode');
+  const intel = json.intelligence as { spatial?: boolean; predictivePreload?: boolean } | undefined;
+  if (intel?.spatial) ids.push('spatial');
+  if (intel?.predictivePreload) ids.push('predictive-preload');
   return ids;
 }

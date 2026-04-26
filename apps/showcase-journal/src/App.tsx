@@ -4,6 +4,7 @@ import { Browse } from './pages/Browse.tsx';
 import { Search } from './pages/Search.tsx';
 import { Trends } from './pages/Trends.tsx';
 import { YearInReview } from './pages/YearInReview.tsx';
+import { Recall } from './pages/Recall.tsx';
 import { isLocalAiAvailable } from './ai/runtime.ts';
 import { wrapNavigation } from '@shippie/sdk/wrapper';
 
@@ -11,12 +12,13 @@ interface ShippieRoot {
   openYourData?: () => void;
 }
 
-type Tab = 'write' | 'browse' | 'search' | 'trends' | 'year';
+type Tab = 'write' | 'browse' | 'search' | 'recall' | 'trends' | 'year';
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'write', label: 'Write' },
   { id: 'browse', label: 'Browse' },
   { id: 'search', label: 'Search' },
+  { id: 'recall', label: 'Recall' },
   { id: 'trends', label: 'Trends' },
   { id: 'year', label: 'Year' },
 ];
@@ -57,6 +59,7 @@ export function App() {
         {tab === 'write' ? <WriteEntry onSaved={() => setRefreshKey((n) => n + 1)} /> : null}
         {tab === 'browse' ? <Browse refreshKey={refreshKey} /> : null}
         {tab === 'search' ? <Search /> : null}
+        {tab === 'recall' ? <Recall /> : null}
         {tab === 'trends' ? <Trends refreshKey={refreshKey} /> : null}
         {tab === 'year' ? <YearInReview refreshKey={refreshKey} /> : null}
       </main>

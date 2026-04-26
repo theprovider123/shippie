@@ -60,4 +60,14 @@ describe('extractEnabledCapabilityIds', () => {
   test('detects barcode when capabilities includes it', () => {
     expect(extractEnabledCapabilityIds({ capabilities: ['barcode'] })).toContain('barcode');
   });
+
+  test('detects intelligence.spatial', () => {
+    expect(extractEnabledCapabilityIds({ intelligence: { spatial: true } })).toContain('spatial');
+  });
+
+  test('detects intelligence.predictivePreload', () => {
+    expect(
+      extractEnabledCapabilityIds({ intelligence: { predictivePreload: true } }),
+    ).toContain('predictive-preload');
+  });
 });

@@ -174,3 +174,9 @@ export {
   type ModerationPanelMode,
   type PanelPendingMessage,
 } from './group-moderation-panel.ts';
+export {
+  mountInsightCards,
+  unmountInsightCards,
+  type InsightCardData,
+  type MountInsightCardsOptions,
+} from './insight-card.ts';
