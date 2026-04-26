@@ -1,0 +1,70 @@
+name = "shippie-platform"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+main = ".svelte-kit/cloudflare/_worker.js"
+
+# Routes — apex + wildcard claim production hostnames.
+# Cutover happened earlier than the plan called for: Vercel CNAME removed,
+# new Worker now serves the marketplace. Maker subdomains return a Phase-5
+# placeholder until the R2-backed serving lands.
+routes = [
+  { pattern = "shippie.app/*", zone_name = "shippie.app" },
+  { pattern = "*.shippie.app/*", zone_name = "shippie.app" }
+]
+
+# D1 — fill in `database_id` after `wrangler d1 create shippie-platform-d1`.
+[[d1_databases]]
+binding = "DB"
+database_name = "shippie-platform-d1"
+database_id = "2d938bc0-4a74-457a-aaf3-4932e84e86dc"
+migrations_dir = "drizzle"
+
+# R2 buckets — provisioned per preflight checklist.
+[[r2_buckets]]
+binding = "APPS"
+bucket_name = "shippie-apps-prod"
+
+[[r2_buckets]]
+binding = "PLATFORM_ASSETS"
+bucket_name = "shippie-assets"
+
+# SvelteKit static-content (CSS, JS, images) — served by Workers Assets.
+# Binding name `ASSETS` is reserved by adapter-cloudflare; keep the R2
+# bucket bound as PLATFORM_ASSETS to avoid the collision.
+[assets]
+directory = ".svelte-kit/cloudflare"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# KV — fill in `id` after `wrangler kv namespace create shippie-platform-cache`.
+[[kv_namespaces]]
+binding = "CACHE"
+id = "48e2f658cb534627a873decda3bb2f20"
+
+# Phase 6: scheduled triggers — ports vercel.json crons 1:1.
+#   */5 * * * *   reconcile-kv
+#   0 * * * *     reap-trials + rollups (both fire on the hour)
+#   0 4 * * *     retention (daily 4am UTC)
+#
+# Handler: `scheduled` in the SvelteKit-generated _worker.js, which is
+# wrapped by scripts/wrap-worker-with-scheduled.mjs at build time to add
+# a scheduled() export that delegates to src/lib/server/cron/index.ts.
+[triggers]
+crons = ["*/5 * * * *", "0 * * * *", "0 4 * * *"]
+
+# Durable Objects — SignalRoom was registered in an earlier deploy
+# (Phase 1) but the class was never actually exported by the Worker.
+# We declare both the original v1 (so wrangler's migration journal
+# matches CF's account state) and v2 to delete the class. SignalRoom
+# state is ephemeral signalling traffic — safe to drop.
+[[migrations]]
+tag = "v1"
+new_classes = ["SignalRoom"]
+
+[[migrations]]
+tag = "v2"
+deleted_classes = ["SignalRoom"]
+
+[vars]
+SHIPPIE_ENV = "production"
+PUBLIC_ORIGIN = "https://shippie.app"

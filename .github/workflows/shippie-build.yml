@@ -1,0 +1,180 @@
+name: shippie-build
+
+# Triggered by /api/deploy/github when a maker connects a GitHub repo.
+# Clones the maker's repo, runs `npm install && npm run build`, uploads
+# the build output to R2, then POSTs the result back to the platform.
+#
+# Honest expected runtime: 2-5 minutes (cold runner + npm install).
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_url:
+        description: 'Clone URL of the maker repository (https URL).'
+        required: true
+        type: string
+      slug:
+        description: 'Shippie app slug (lowercase alphanumeric + hyphens).'
+        required: true
+        type: string
+      deploy_id:
+        description: 'Deploy row UUID in the platform DB.'
+        required: true
+        type: string
+      version:
+        description: 'Deploy version number (integer).'
+        required: true
+        type: string
+      callback_url:
+        description: 'Platform callback URL — receives the build result.'
+        required: true
+        type: string
+      branch:
+        description: 'Branch to clone. Defaults to main.'
+        required: false
+        type: string
+        default: 'main'
+      callback_secret_name:
+        description: 'Name of the secret in this repo holding the HMAC key. Default: WORKER_PLATFORM_SECRET.'
+        required: false
+        type: string
+        default: 'WORKER_PLATFORM_SECRET'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate slug
+        run: |
+          if ! [[ "${{ inputs.slug }}" =~ ^[a-z0-9-]{1,63}$ ]]; then
+            echo "Invalid slug: ${{ inputs.slug }}"
+            exit 1
+          fi
+
+      - name: Clone maker repo
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "${{ inputs.branch }}" "${{ inputs.repo_url }}" app
+          echo "commit_sha=$(cd app && git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install + build
+        working-directory: app
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci || npm install
+          else
+            npm install
+          fi
+          # If a build script exists, run it. Many static sites have none.
+          if jq -e '.scripts.build // empty' package.json >/dev/null 2>&1; then
+            npm run build
+          fi
+
+      - name: Detect output directory
+        id: detect
+        working-directory: app
+        run: |
+          set -euo pipefail
+          OUT=""
+          for dir in dist build out .output/public public _site; do
+            if [ -d "$dir" ]; then OUT="$dir"; break; fi
+          done
+          if [ -z "$OUT" ]; then
+            echo "Could not find a build output directory (tried dist, build, out, .output/public, public, _site)."
+            exit 1
+          fi
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
+          echo "Detected output dir: $OUT"
+
+      - name: Zip output
+        working-directory: app
+        run: |
+          set -euo pipefail
+          cd "${{ steps.detect.outputs.out }}"
+          zip -r ../../build.zip . -x "*.map"
+          cd -
+          ls -la ../build.zip
+
+      - name: Upload to R2
+        id: upload
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          BUCKET: shippie-apps-prod
+          SLUG: ${{ inputs.slug }}
+          VERSION: ${{ inputs.version }}
+        working-directory: app
+        run: |
+          set -euo pipefail
+          OUT="${{ steps.detect.outputs.out }}"
+          FILES_COUNT=0
+          TOTAL_BYTES=0
+          # Walk the output dir and PUT each file via Cloudflare's R2 API.
+          while IFS= read -r f; do
+            REL="${f#${OUT}/}"
+            KEY="apps/${SLUG}/v${VERSION}/${REL}"
+            SIZE=$(stat -c %s "$f")
+            CT=$(file --mime-type -b "$f")
+            curl -fsS -X PUT \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: ${CT}" \
+              --data-binary "@$f" \
+              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${BUCKET}/objects/${KEY}" >/dev/null
+            FILES_COUNT=$((FILES_COUNT + 1))
+            TOTAL_BYTES=$((TOTAL_BYTES + SIZE))
+          done < <(find "$OUT" -type f)
+          echo "files_count=$FILES_COUNT" >> "$GITHUB_OUTPUT"
+          echo "total_bytes=$TOTAL_BYTES" >> "$GITHUB_OUTPUT"
+
+      - name: POST callback (success)
+        if: success()
+        env:
+          CALLBACK_URL: ${{ inputs.callback_url }}
+          CALLBACK_SECRET: ${{ secrets[inputs.callback_secret_name] }}
+        run: |
+          set -euo pipefail
+          BODY=$(jq -nc \
+            --arg deploy_id "${{ inputs.deploy_id }}" \
+            --arg slug "${{ inputs.slug }}" \
+            --arg commit_sha "${commit_sha:-}" \
+            --arg version "${{ inputs.version }}" \
+            --argjson files_count "${{ steps.upload.outputs.files_count }}" \
+            --argjson total_bytes "${{ steps.upload.outputs.total_bytes }}" \
+            '{deploy_id: $deploy_id, slug: $slug, status: "success", commit_sha: $commit_sha, version: ($version|tonumber), files_count: $files_count, total_bytes: $total_bytes}')
+          SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$CALLBACK_SECRET" -hex | awk '{print $2}')
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Shippie-Signature: sha256=$SIG" \
+            -d "$BODY" \
+            "$CALLBACK_URL"
+
+      - name: POST callback (failure)
+        if: failure()
+        env:
+          CALLBACK_URL: ${{ inputs.callback_url }}
+          CALLBACK_SECRET: ${{ secrets[inputs.callback_secret_name] }}
+        run: |
+          set -euo pipefail
+          BODY=$(jq -nc \
+            --arg deploy_id "${{ inputs.deploy_id }}" \
+            --arg slug "${{ inputs.slug }}" \
+            --arg run_id "${{ github.run_id }}" \
+            '{deploy_id: $deploy_id, slug: $slug, status: "failed", error: ("see github actions run " + $run_id)}')
+          SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$CALLBACK_SECRET" -hex | awk '{print $2}')
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Shippie-Signature: sha256=$SIG" \
+            -d "$BODY" \
+            "$CALLBACK_URL" || true
