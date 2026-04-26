@@ -12,6 +12,12 @@
  * the app_events spine, which is Phase 4b/5 scope). The shape of the
  * output is forward-compatible: callers that pass a `proven` argument
  * later get the same return type with `proven: true` set on entries.
+ *
+ * `publicCapabilityBadgesFromProfile` augments the autopack-derived
+ * badges with deploy-time signals from `@shippie/analyse`'s AppProfile
+ * (read from `apps:{slug}:profile` in KV). This is the "real
+ * auto-detected capabilities vs the seed compatibility data" wiring
+ * called out in the intelligence-layer handoff.
  */
 
 export interface PublicCapabilityBadge {
@@ -48,4 +54,54 @@ function readBadges(report: unknown): RawBadge[] {
   if (!wrapper || typeof wrapper !== 'object') return [];
   const badges = (wrapper as { capability_badges?: unknown }).capability_badges;
   return Array.isArray(badges) ? badges : [];
+}
+
+/**
+ * Profile-shaped badges — derived from the @shippie/analyse AppProfile
+ * stored at `apps:{slug}:profile`. Structural typing keeps this module
+ * decoupled from the analyser package.
+ */
+interface AppProfileLite {
+  framework?: { hasServiceWorker?: boolean } | null;
+  recommended?: { ai?: readonly string[] | false; enhance?: Record<string, readonly string[]> } | null;
+  wasm?: { detected?: boolean } | null;
+}
+
+export function badgesFromProfile(profile: unknown): PublicCapabilityBadge[] {
+  if (!profile || typeof profile !== 'object') return [];
+  const p = profile as AppProfileLite;
+  const out: PublicCapabilityBadge[] = [];
+  if (p.framework?.hasServiceWorker) {
+    out.push({ label: 'Works Offline', status: 'pass' });
+  }
+  if (p.wasm?.detected) {
+    out.push({ label: 'WASM-accelerated', status: 'pass' });
+  }
+  const ai = p.recommended?.ai;
+  if (Array.isArray(ai) && ai.length > 0) {
+    out.push({ label: 'Local AI', status: 'pass' });
+  }
+  return out;
+}
+
+/**
+ * Combine autopack-derived badges with profile-derived badges. The
+ * profile is the deploy-time analyser; the autopack report is the
+ * legacy/seed source. Profile wins on label collisions (it's the truer
+ * signal). Capped at 5, same as `publicCapabilityBadges`.
+ */
+export function publicCapabilityBadgesFromProfile(
+  report: unknown,
+  profile: unknown,
+): PublicCapabilityBadge[] {
+  const fromProfile = badgesFromProfile(profile);
+  const fromReport = publicCapabilityBadges(report);
+  const seen = new Set(fromProfile.map((b) => b.label));
+  const merged = [...fromProfile];
+  for (const b of fromReport) {
+    if (seen.has(b.label)) continue;
+    seen.add(b.label);
+    merged.push(b);
+  }
+  return merged.slice(0, 5);
 }

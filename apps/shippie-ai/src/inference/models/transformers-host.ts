@@ -19,8 +19,13 @@ export async function loadTransformers(): Promise<TransformersModule> {
   // In production the model CDN serves transformers.js at /runtime/; the
   // build pipeline pins a specific version. In dev we let Vite resolve the
   // dependency from node_modules.
+  //
+  // The specifier is built indirectly so neither Vite nor Rollup attempt to
+  // bundle/resolve `@huggingface/transformers` at build time — it MUST stay
+  // external. Rollup's static analyzer only sees a runtime-computed string.
+  const specifier = ['@huggingface', 'transformers'].join('/');
   const mod = (await import(
-    /* @vite-ignore */ '@huggingface/transformers'
+    /* @vite-ignore */ specifier
   ).catch(() => null)) as TransformersModule | null;
   if (!mod) {
     throw new Error(

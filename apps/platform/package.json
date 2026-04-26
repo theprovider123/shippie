@@ -19,6 +19,7 @@
   "dependencies": {
     "@lucia-auth/adapter-sqlite": "^3.0.0",
     "@shippie/access": "workspace:*",
+    "@shippie/analyse": "workspace:*",
     "@shippie/sdk": "workspace:*",
     "@shippie/shared": "workspace:*",
     "arctic": "^2.0.0",

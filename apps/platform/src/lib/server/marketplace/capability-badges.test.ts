@@ -8,7 +8,11 @@
  * a yellow dot for an unverified capability is the dishonesty we cut.
  */
 import { describe, expect, it } from 'bun:test';
-import { publicCapabilityBadges } from './capability-badges';
+import {
+  publicCapabilityBadges,
+  publicCapabilityBadgesFromProfile,
+  badgesFromProfile,
+} from './capability-badges';
 
 describe('publicCapabilityBadges', () => {
   it('returns [] for null/undefined/non-object reports', () => {
@@ -88,5 +92,78 @@ describe('publicCapabilityBadges', () => {
     expect(publicCapabilityBadges(report)).toEqual([
       { label: 'Good', status: 'pass' },
     ]);
+  });
+});
+
+describe('badgesFromProfile', () => {
+  it('returns [] for null/undefined/non-object', () => {
+    expect(badgesFromProfile(null)).toEqual([]);
+    expect(badgesFromProfile(undefined)).toEqual([]);
+    expect(badgesFromProfile('hi')).toEqual([]);
+  });
+
+  it('emits Works Offline when framework.hasServiceWorker', () => {
+    const out = badgesFromProfile({ framework: { hasServiceWorker: true } });
+    expect(out).toContainEqual({ label: 'Works Offline', status: 'pass' });
+  });
+
+  it('emits WASM-accelerated when wasm.detected', () => {
+    const out = badgesFromProfile({ wasm: { detected: true } });
+    expect(out).toContainEqual({ label: 'WASM-accelerated', status: 'pass' });
+  });
+
+  it('emits Local AI when recommended.ai is a non-empty array', () => {
+    const out = badgesFromProfile({ recommended: { ai: ['classify'] } });
+    expect(out).toContainEqual({ label: 'Local AI', status: 'pass' });
+  });
+
+  it('does not emit Local AI when recommended.ai is false or empty', () => {
+    expect(badgesFromProfile({ recommended: { ai: false } })).toEqual([]);
+    expect(badgesFromProfile({ recommended: { ai: [] } })).toEqual([]);
+  });
+});
+
+describe('publicCapabilityBadgesFromProfile', () => {
+  it('returns profile badges when no report is present', () => {
+    const out = publicCapabilityBadgesFromProfile(null, {
+      framework: { hasServiceWorker: true },
+    });
+    expect(out).toEqual([{ label: 'Works Offline', status: 'pass' }]);
+  });
+
+  it('merges profile and report badges, profile first', () => {
+    const profile = { framework: { hasServiceWorker: true } };
+    const report = {
+      capability_badges: [{ label: 'Local Database', status: 'pass' }],
+    };
+    expect(publicCapabilityBadgesFromProfile(report, profile)).toEqual([
+      { label: 'Works Offline', status: 'pass' },
+      { label: 'Local Database', status: 'pass' },
+    ]);
+  });
+
+  it('profile wins on label collision', () => {
+    const profile = { framework: { hasServiceWorker: true } };
+    const report = {
+      // The autopack report claims 'not_tested' but the profile saw a SW.
+      capability_badges: [{ label: 'Works Offline', status: 'not_tested' }],
+    };
+    const out = publicCapabilityBadgesFromProfile(report, profile);
+    expect(out.find((b) => b.label === 'Works Offline')?.status).toBe('pass');
+  });
+
+  it('caps at 5 entries', () => {
+    const profile = {
+      framework: { hasServiceWorker: true },
+      wasm: { detected: true },
+      recommended: { ai: ['classify'] },
+    };
+    const report = {
+      capability_badges: Array.from({ length: 10 }, (_, i) => ({
+        label: `Badge ${i}`,
+        status: 'pass',
+      })),
+    };
+    expect(publicCapabilityBadgesFromProfile(report, profile)).toHaveLength(5);
   });
 });

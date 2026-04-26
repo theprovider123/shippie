@@ -18,9 +18,15 @@ declare module 'bun:test' {
     toBeTruthy(): void;
     toBeFalsy(): void;
     toContain(v: unknown): void;
+    toContainEqual(v: unknown): void;
     toMatch(v: RegExp | string): void;
     toHaveLength(n: number): void;
     toHaveBeenCalled(): void;
+    toBeGreaterThan(n: number): void;
+    toBeGreaterThanOrEqual(n: number): void;
+    toBeLessThan(n: number): void;
+    toBeLessThanOrEqual(n: number): void;
+    toHaveProperty(key: string, value?: unknown): void;
     toThrow(message?: string | RegExp | Error | (new (...args: unknown[]) => Error)): void;
     rejects: { toThrow(message?: string | RegExp | Error | (new (...args: unknown[]) => Error)): Promise<void> };
     resolves: Matchers<Awaited<T>>;

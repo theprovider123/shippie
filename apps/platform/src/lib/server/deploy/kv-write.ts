@@ -77,3 +77,71 @@ export async function writeWrapMeta(
 ): Promise<void> {
   await kv.put(`apps:${slug}:wrap`, JSON.stringify(meta));
 }
+
+/**
+ * Deploy-time AppProfile from @shippie/analyse. Stored under
+ * `apps:{slug}:profile` for the maker dashboard's Enhancements tab and
+ * the wrapper's PWA manifest synth (smart-defaults reads it).
+ *
+ * 30-day TTL — every successful deploy rewrites it; expiry guards against
+ * orphan profiles for slugs the maker no longer owns.
+ *
+ * Typed as `unknown` here to avoid pulling @shippie/analyse types into
+ * this Worker module; callers pass an `AppProfile` and the dashboard's
+ * loader casts on read.
+ */
+export async function writeAppProfile(
+  kv: KVNamespace,
+  slug: string,
+  profile: unknown,
+): Promise<void> {
+  await kv.put(`apps:${slug}:profile`, JSON.stringify(profile), {
+    expirationTtl: 60 * 60 * 24 * 30,
+  });
+}
+
+export async function readAppProfile(
+  kv: KVNamespace,
+  slug: string,
+): Promise<unknown | null> {
+  const raw = await kv.get(`apps:${slug}:profile`);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * KV-backed read/write of the maker's overridden shippie.json edited via
+ * the Enhancements tab. Separate from the deploy-time manifest — the next
+ * deploy picks this up. Stored under `apps:{slug}:shippie-json`.
+ */
+export async function readShippieJsonOverride(
+  kv: KVNamespace,
+  slug: string,
+): Promise<Record<string, unknown> | null> {
+  const raw = await kv.get(`apps:${slug}:shippie-json`);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeShippieJsonOverride(
+  kv: KVNamespace,
+  slug: string,
+  json: Record<string, unknown>,
+): Promise<void> {
+  await kv.put(`apps:${slug}:shippie-json`, JSON.stringify(json));
+}
+
+export async function clearShippieJsonOverride(
+  kv: KVNamespace,
+  slug: string,
+): Promise<void> {
+  await kv.delete(`apps:${slug}:shippie-json`);
+}

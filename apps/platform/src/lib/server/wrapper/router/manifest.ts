@@ -4,8 +4,9 @@
  *
  * Merges (lowest → highest precedence):
  *   - platform defaults
- *   - apps:{slug}:meta  (name, theme_color, background_color)
- *   - apps:{slug}:pwa   (maker-declared overrides validated at deploy time)
+ *   - apps:{slug}:profile (AppProfile from @shippie/analyse — smart defaults)
+ *   - apps:{slug}:meta    (name, theme_color, background_color)
+ *   - apps:{slug}:pwa     (maker-declared overrides validated at deploy time)
  */
 import type { WrapperContext } from '../env';
 
@@ -13,6 +14,20 @@ interface AppMeta {
   name?: string;
   theme_color?: string;
   background_color?: string;
+}
+
+/**
+ * Subset of @shippie/analyse's AppProfile shape we read here. Structural
+ * typing keeps this module decoupled from the analyser package while
+ * still benefiting from the deploy-time signals.
+ */
+interface AppProfileLite {
+  inferredName?: string;
+  design?: {
+    primaryColor?: string | null;
+    backgroundColor?: string | null;
+    iconHrefs?: readonly string[];
+  };
 }
 
 interface AppPwaOverrides {
@@ -56,13 +71,17 @@ async function readJson<T>(
 }
 
 export async function handleManifest(ctx: WrapperContext): Promise<Response> {
-  const [meta, pwa] = await Promise.all([
+  const [meta, pwa, profile] = await Promise.all([
     readJson<AppMeta>(ctx.env.CACHE, `apps:${ctx.slug}:meta`),
-    readJson<AppPwaOverrides>(ctx.env.CACHE, `apps:${ctx.slug}:pwa`)
+    readJson<AppPwaOverrides>(ctx.env.CACHE, `apps:${ctx.slug}:pwa`),
+    readJson<AppProfileLite>(ctx.env.CACHE, `apps:${ctx.slug}:profile`)
   ]);
 
-  const name = meta?.name ?? ctx.slug;
-  const shortName = pwa?.short_name ?? name;
+  // Smart defaults from the AppProfile fill gaps the maker hasn't
+  // declared. Maker-declared meta + pwa overrides always win.
+  const inferredName = profile?.inferredName?.trim();
+  const name = meta?.name ?? inferredName ?? ctx.slug;
+  const shortName = pwa?.short_name ?? deriveShortName(name);
 
   const manifest = {
     name,
@@ -74,8 +93,8 @@ export async function handleManifest(ctx: WrapperContext): Promise<Response> {
     display: pwa?.display ?? 'standalone',
     display_override: pwa?.display_override ?? ['standalone', 'minimal-ui'],
     orientation: pwa?.orientation ?? 'portrait',
-    theme_color: meta?.theme_color ?? '#f97316',
-    background_color: meta?.background_color ?? '#ffffff',
+    theme_color: meta?.theme_color ?? profile?.design?.primaryColor ?? '#f97316',
+    background_color: meta?.background_color ?? profile?.design?.backgroundColor ?? '#ffffff',
     launch_handler: pwa?.launch_handler ?? {
       client_mode: ['navigate-existing', 'auto']
     },
@@ -102,4 +121,10 @@ export async function handleManifest(ctx: WrapperContext): Promise<Response> {
       'Cache-Control': 'public, max-age=3600'
     }
   });
+}
+
+function deriveShortName(name: string): string {
+  if (name.length <= 12) return name;
+  const firstWord = name.split(/\s+/)[0] ?? name;
+  return firstWord.slice(0, 12);
 }

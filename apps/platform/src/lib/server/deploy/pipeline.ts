@@ -19,6 +19,7 @@
  */
 import { eq, and, desc } from 'drizzle-orm';
 import type { D1Database, R2Bucket, KVNamespace } from '@cloudflare/workers-types';
+import { analyseApp } from '@shippie/analyse';
 import { getDrizzleClient, schema } from '../db/client';
 import { extractZipSafe } from './zip-extract';
 import { deriveManifest, type ShippieJsonLite } from './manifest';
@@ -28,6 +29,7 @@ import {
   writeAppMeta,
   writeActivePointer,
   writeCspHeader,
+  writeAppProfile,
 } from './kv-write';
 import { buildCsp } from './csp';
 
@@ -241,6 +243,19 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     },
   });
   await writeCspHeader(input.kv, input.slug, csp.header);
+
+  // Deploy-time AppProfile from @shippie/analyse. Stored under
+  // `apps:{slug}:profile` for the maker dashboard's Enhancements tab + the
+  // PWA manifest's smart defaults. Failure here is non-blocking — the
+  // analyse step is purely informational and a corrupt profile shouldn't
+  // block a successful deploy.
+  try {
+    const profile = await analyseApp({ files });
+    await writeAppProfile(input.kv, input.slug, profile);
+  } catch (err) {
+    console.error('[shippie:deploy] analyseApp failed', err);
+  }
+
   await writeActivePointer(input.kv, input.slug, version);
 
   return {

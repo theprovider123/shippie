@@ -1,0 +1,31 @@
+name = "shippie-ai"
+compatibility_date = "2026-04-01"
+
+# Routes — `ai.shippie.app/*` is a more specific pattern than the
+# platform Worker's `*.shippie.app/*`, so Cloudflare's longest-match
+# routing sends ai.* traffic to this Worker. The wildcard subdomain on
+# the platform Worker continues to handle every OTHER subdomain.
+routes = [
+  { pattern = "ai.shippie.app/*", zone_name = "shippie.app" }
+]
+
+# Workers Static Assets — serve the Vite build output directly. This is a
+# static-asset Worker (no `main`), so requests are answered from `dist/`
+# without ever hitting JS code. The PWA service worker (sw.js) and both
+# entry HTML files (index.html, inference.html) are bundled.
+#
+# `not_found_handling = "404-page"` is intentional: this is NOT a
+# single-page-app. We have two distinct top-level entry HTML files
+# (index.html for the dashboard, inference.html for the cross-origin
+# iframe). If we used `single-page-application` mode, every unknown path
+# would fall through to index.html — which would silently break embedders
+# that expect inference.html and corrupt the security boundary.
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"
+# No `binding` — this is an assets-only Worker (no Worker script). The
+# binding only matters when a JS handler needs to fetch assets directly.
+# Wrangler rejects a binding here unless `main` is also set.
+
+[vars]
+SHIPPIE_ENV = "production"

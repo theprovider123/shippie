@@ -24,7 +24,8 @@ import {
 } from '$server/db/queries/apps';
 import { summaryForApp, recentReviews } from '$server/db/queries/ratings';
 import { describeGrantedPermissions } from '$server/marketplace/honesty';
-import { publicCapabilityBadges } from '$server/marketplace/capability-badges';
+import { publicCapabilityBadgesFromProfile } from '$server/marketplace/capability-badges';
+import { readAppProfile } from '$server/deploy/kv-write';
 
 export const load: PageServerLoad = async ({ platform, params, cookies, locals, url }) => {
   if (!platform?.env.DB) throw error(503, 'Database binding unavailable');
@@ -50,15 +51,22 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     if (!allowed) throw error(404, 'Not found');
   }
 
-  const [permissions, latestDeploy, ratingSummary, latestReviews] = await Promise.all([
-    findPermissionsForApp(db, app.id),
-    findLatestDeploy(db, app.id),
-    summaryForApp(db, app.id),
-    recentReviews(db, app.id, 5),
-  ]);
+  const [permissions, latestDeploy, ratingSummary, latestReviews, appProfile] =
+    await Promise.all([
+      findPermissionsForApp(db, app.id),
+      findLatestDeploy(db, app.id),
+      summaryForApp(db, app.id),
+      recentReviews(db, app.id, 5),
+      platform.env.CACHE
+        ? readAppProfile(platform.env.CACHE, params.slug)
+        : Promise.resolve(null),
+    ]);
 
   const grantedPermissions = describeGrantedPermissions(permissions);
-  const capabilityBadges = publicCapabilityBadges(latestDeploy?.autopackagingReport);
+  const capabilityBadges = publicCapabilityBadgesFromProfile(
+    latestDeploy?.autopackagingReport,
+    appProfile,
+  );
 
   // Changelog from the autopackaging report — only show if the app
   // actually wrote one (no 'default' filler).
