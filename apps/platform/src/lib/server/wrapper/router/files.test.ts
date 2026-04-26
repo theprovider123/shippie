@@ -1,9 +1,18 @@
 /**
  * R2 lookup, SPA fallback, content-type detection, WASM headers (COOP/COEP).
  * Ported from services/worker/src/router/files.test.ts.
+ *
+ * The SPA fallback path in `serveFromR2` rewrites HTML through `injectPwaTags`
+ * (which uses the Workers-runtime HTMLRewriter global). Vitest runs in Node
+ * where HTMLRewriter doesn't exist, so we install a minimal polyfill from
+ * the wrapper test helpers.
  */
 import { describe, expect, test } from 'vitest';
 import type { R2Bucket, KVNamespace } from '@cloudflare/workers-types';
+import { installHTMLRewriterPolyfill } from '../__test-helpers__/htmlrewriter-polyfill';
+
+installHTMLRewriterPolyfill();
+
 import { serveFromR2 } from './files';
 import type { WrapperEnv } from '../env';
 

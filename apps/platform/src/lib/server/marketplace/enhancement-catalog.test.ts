@@ -2,7 +2,7 @@
  * Tests for the enhancement catalog. Ported from
  * apps/web/app/dashboard/[appSlug]/enhancements/catalog.test.ts.
  */
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
   CAPABILITY_CATALOG,
   extractEnabledCapabilityIds,

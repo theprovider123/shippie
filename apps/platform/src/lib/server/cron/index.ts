@@ -22,22 +22,42 @@ export interface CronEnv {
   CACHE: import('@cloudflare/workers-types').KVNamespace;
 }
 
+/**
+ * Handler injection for tests. Production passes nothing and the real
+ * handlers fire. Tests pass spies so the dispatcher can be exercised
+ * without spinning up D1/KV. Each field is optional so tests can override
+ * a subset.
+ */
+export interface CronHandlers {
+  reconcileKv?: (env: CronEnv) => Promise<unknown>;
+  reapTrials?: (env: CronEnv) => Promise<unknown>;
+  rollups?: (env: CronEnv) => Promise<unknown>;
+  retention?: (env: CronEnv) => Promise<unknown>;
+}
+
 export async function handleScheduled(
   controller: ScheduledController,
   env: CronEnv,
+  handlers: CronHandlers = {},
 ): Promise<void> {
   const cron = controller.cron;
+  const h = {
+    reconcileKv: handlers.reconcileKv ?? reconcileKv,
+    reapTrials: handlers.reapTrials ?? reapTrials,
+    rollups: handlers.rollups ?? rollups,
+    retention: handlers.retention ?? retention,
+  };
   console.log(`[cron] firing cron='${cron}' scheduled_time=${controller.scheduledTime}`);
 
   try {
     switch (cron) {
       case '*/5 * * * *': {
-        await reconcileKv(env);
+        await h.reconcileKv(env);
         return;
       }
       case '0 * * * *': {
         // Both reap-trials and rollups fire on the hour.
-        const settled = await Promise.allSettled([reapTrials(env), rollups(env)]);
+        const settled = await Promise.allSettled([h.reapTrials(env), h.rollups(env)]);
         for (const r of settled) {
           if (r.status === 'rejected') {
             console.error('[cron] hourly handler rejected', r.reason);
@@ -46,7 +66,7 @@ export async function handleScheduled(
         return;
       }
       case '0 4 * * *': {
-        await retention(env);
+        await h.retention(env);
         return;
       }
       default: {

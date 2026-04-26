@@ -6,7 +6,7 @@
  * not the SQL — that's exercised by the dual-write integration tests
  * in Phase 2.
  */
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { summaryForApp } from './ratings';
 
 interface FakeRow { rating: number; }

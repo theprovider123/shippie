@@ -48,11 +48,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-declare global {
-  // Provided by workbox-precaching at build time.
-  interface ServiceWorkerGlobalScope {
-    __WB_MANIFEST: Array<{ revision: string | null; url: string }>;
-  }
-}
+// Note: `__WB_MANIFEST` is declared globally by `workbox-precaching` itself
+// (see PrecacheController.d.ts). It's filled in by the build step at
+// `precacheAndRoute(self.__WB_MANIFEST)` above. We don't redeclare it here
+// to avoid a TS2717 conflict with the workbox-provided ambient declaration.
 
 export {};

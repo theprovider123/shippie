@@ -10,7 +10,7 @@
  * with audited compatibility scores), update these tests with the
  * exception predicate so the regression net stays tight.
  */
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { honestyFor, describeGrantedPermissions } from './honesty';
 
 describe('honestyFor', () => {

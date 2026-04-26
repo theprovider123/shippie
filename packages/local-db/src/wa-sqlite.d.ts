@@ -1,11 +1,12 @@
+// `export default` of a separate `const` inside `declare module` triggers
+// rollup-plugin-dts' "namespace child (hoisting) not supported yet" error.
+// `export default function` is hoisting-safe and produces equivalent typing.
 declare module 'wa-sqlite/dist/wa-sqlite.mjs' {
-  const factory: (config?: object) => Promise<unknown>;
-  export default factory;
+  export default function factory(config?: object): Promise<unknown>;
 }
 
 declare module 'wa-sqlite/dist/wa-sqlite-async.mjs' {
-  const factory: (config?: object) => Promise<unknown>;
-  export default factory;
+  export default function factory(config?: object): Promise<unknown>;
 }
 
 declare module 'wa-sqlite/src/examples/OriginPrivateFileSystemVFS.js' {

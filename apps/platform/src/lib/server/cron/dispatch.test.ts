@@ -1,54 +1,83 @@
-import { describe, expect, test, vi } from 'vitest';
+/**
+ * Dispatcher routes cron strings to the right handler. Uses dependency
+ * injection (handleScheduled accepts an optional `handlers` arg) instead
+ * of module mocking so the test is runtime-agnostic — runs cleanly under
+ * both vitest and `bun test`.
+ */
+import { describe, expect, test } from 'vitest';
 import type { ScheduledController } from '@cloudflare/workers-types';
-import { handleScheduled } from './index';
+import { handleScheduled, type CronEnv, type CronHandlers } from './index';
 
-vi.mock('./reconcile-kv', () => ({
-  reconcileKv: vi.fn(async () => ({ checked: 0, updated: [], csp_updated: [], missing_version: [], errors: [] })),
-}));
-vi.mock('./reap-trials', () => ({
-  reapTrials: vi.fn(async () => ({ archived: 0, slugs: [], errors: [] })),
-}));
-vi.mock('./rollups', () => ({
-  rollups: vi.fn(async () => ({ day: '2026-04-23', rolled_up: 0, apps: 0, pairs: 0 })),
-}));
-vi.mock('./retention', () => ({
-  retention: vi.fn(async () => ({ cutoff: '2026-02-23T00:00:00.000Z', deleted: 0 })),
-}));
+interface CallCounts {
+  reconcileKv: number;
+  reapTrials: number;
+  rollups: number;
+  retention: number;
+}
 
-import { reconcileKv } from './reconcile-kv';
-import { reapTrials } from './reap-trials';
-import { rollups } from './rollups';
-import { retention } from './retention';
+function makeHandlers(counts: CallCounts): CronHandlers {
+  return {
+    reconcileKv: async () => {
+      counts.reconcileKv += 1;
+      return { checked: 0, updated: [], csp_updated: [], missing_version: [], errors: [] };
+    },
+    reapTrials: async () => {
+      counts.reapTrials += 1;
+      return { archived: 0, slugs: [], errors: [] };
+    },
+    rollups: async () => {
+      counts.rollups += 1;
+      return { day: '2026-04-23', rolled_up: 0, apps: 0, pairs: 0 };
+    },
+    retention: async () => {
+      counts.retention += 1;
+      return { cutoff: '2026-02-23T00:00:00.000Z', deleted: 0 };
+    },
+  };
+}
+
+function makeCounts(): CallCounts {
+  return { reconcileKv: 0, reapTrials: 0, rollups: 0, retention: 0 };
+}
 
 function controller(cron: string): ScheduledController {
   return { cron, scheduledTime: 0, noRetry: () => undefined } as unknown as ScheduledController;
 }
 
-const env = { DB: {} as never, CACHE: {} as never };
+const env: CronEnv = { DB: {} as never, CACHE: {} as never };
 
 describe('handleScheduled', () => {
   test('dispatches */5 cron to reconcileKv', async () => {
-    await handleScheduled(controller('*/5 * * * *'), env);
-    expect(reconcileKv).toHaveBeenCalledTimes(1);
+    const counts = makeCounts();
+    await handleScheduled(controller('*/5 * * * *'), env, makeHandlers(counts));
+    expect(counts.reconcileKv).toBe(1);
+    expect(counts.reapTrials).toBe(0);
+    expect(counts.rollups).toBe(0);
+    expect(counts.retention).toBe(0);
   });
 
   test('dispatches hourly cron to BOTH reapTrials and rollups', async () => {
-    vi.mocked(reapTrials).mockClear();
-    vi.mocked(rollups).mockClear();
-    await handleScheduled(controller('0 * * * *'), env);
-    expect(reapTrials).toHaveBeenCalledTimes(1);
-    expect(rollups).toHaveBeenCalledTimes(1);
+    const counts = makeCounts();
+    await handleScheduled(controller('0 * * * *'), env, makeHandlers(counts));
+    expect(counts.reapTrials).toBe(1);
+    expect(counts.rollups).toBe(1);
+    expect(counts.reconcileKv).toBe(0);
+    expect(counts.retention).toBe(0);
   });
 
   test('dispatches daily 4am cron to retention', async () => {
-    vi.mocked(retention).mockClear();
-    await handleScheduled(controller('0 4 * * *'), env);
-    expect(retention).toHaveBeenCalledTimes(1);
+    const counts = makeCounts();
+    await handleScheduled(controller('0 4 * * *'), env, makeHandlers(counts));
+    expect(counts.retention).toBe(1);
+    expect(counts.reconcileKv).toBe(0);
   });
 
   test('unknown cron string is logged and ignored', async () => {
-    vi.mocked(reconcileKv).mockClear();
-    await handleScheduled(controller('99 99 99 99 99'), env);
-    expect(reconcileKv).not.toHaveBeenCalled();
+    const counts = makeCounts();
+    await handleScheduled(controller('99 99 99 99 99'), env, makeHandlers(counts));
+    expect(counts.reconcileKv).toBe(0);
+    expect(counts.reapTrials).toBe(0);
+    expect(counts.rollups).toBe(0);
+    expect(counts.retention).toBe(0);
   });
 });

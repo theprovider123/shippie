@@ -7,7 +7,7 @@
  * means the autopackager couldn't verify offline behaviour and showing
  * a yellow dot for an unverified capability is the dishonesty we cut.
  */
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import {
   publicCapabilityBadges,
   publicCapabilityBadgesFromProfile,

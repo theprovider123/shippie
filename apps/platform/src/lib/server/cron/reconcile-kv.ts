@@ -26,10 +26,37 @@ export interface ReconcileKvResult {
   errors: Array<{ slug: string; reason: string }>;
 }
 
+export interface ReconcileRow {
+  slug: string;
+  version: number | null;
+  cspHeader: string | null;
+}
+
+/** Page fetcher. Default reads via drizzle; tests inject a stub. */
+export type FetchPage = (offset: number, limit: number) => Promise<ReconcileRow[]>;
+
 const PAGE_SIZE = 500;
 
-export async function reconcileKv(env: ReconcileKvEnv): Promise<ReconcileKvResult> {
+async function defaultFetchPage(env: ReconcileKvEnv, offset: number, limit: number): Promise<ReconcileRow[]> {
   const db = getDrizzleClient(env.DB);
+  return db
+    .select({
+      slug: schema.apps.slug,
+      version: schema.deploys.version,
+      cspHeader: schema.deploys.cspHeader,
+    })
+    .from(schema.apps)
+    .leftJoin(schema.deploys, eq(schema.deploys.id, schema.apps.activeDeployId))
+    .where(isNotNull(schema.apps.activeDeployId))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function reconcileKv(
+  env: ReconcileKvEnv,
+  fetchPage?: FetchPage,
+): Promise<ReconcileKvResult> {
+  const fetcher: FetchPage = fetchPage ?? ((off, lim) => defaultFetchPage(env, off, lim));
   const result: ReconcileKvResult = {
     checked: 0,
     updated: [],
@@ -42,17 +69,7 @@ export async function reconcileKv(env: ReconcileKvEnv): Promise<ReconcileKvResul
   let offset = 0;
   let pages = 0;
   while (pages < 200) {
-    const rows = await db
-      .select({
-        slug: schema.apps.slug,
-        version: schema.deploys.version,
-        cspHeader: schema.deploys.cspHeader,
-      })
-      .from(schema.apps)
-      .leftJoin(schema.deploys, eq(schema.deploys.id, schema.apps.activeDeployId))
-      .where(isNotNull(schema.apps.activeDeployId))
-      .limit(PAGE_SIZE)
-      .offset(offset);
+    const rows = await fetcher(offset, PAGE_SIZE);
 
     if (rows.length === 0) break;
 

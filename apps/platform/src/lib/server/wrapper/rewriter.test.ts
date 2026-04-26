@@ -2,19 +2,22 @@
  * Ported from services/worker/src/rewriter.test.ts. Vitest replaces bun:test.
  *
  * NOTE: HTMLRewriter is a Cloudflare Workers / Bun runtime global. Vitest
- * runs in Node, where HTMLRewriter doesn't exist by default. We skip
- * these tests when HTMLRewriter is undefined; the wrangler-runtime
- * smoke tests catch the real injection behavior.
+ * runs in Node where it doesn't exist, so we install a minimal polyfill
+ * (see __test-helpers__/htmlrewriter-polyfill.ts) that implements only the
+ * surface used by `injectPwaTags`. Production still runs on the workers
+ * runtime; the polyfill is unit-test scaffolding.
  */
 import { describe, expect, test } from 'vitest';
+import { installHTMLRewriterPolyfill } from './__test-helpers__/htmlrewriter-polyfill';
+
+installHTMLRewriterPolyfill();
+
 import { injectPwaTags } from './rewriter';
 
 const BASE_HTML =
   '<!doctype html><html><head><title>x</title></head><body>hi</body></html>';
 
-const hasRewriter = typeof (globalThis as { HTMLRewriter?: unknown }).HTMLRewriter !== 'undefined';
-
-(hasRewriter ? describe : describe.skip)('injectPwaTags (HTMLRewriter present)', () => {
+describe('injectPwaTags (HTMLRewriter present)', () => {
   test('inserts manifest link and SDK script before </head>', async () => {
     const stream = new Response(BASE_HTML).body!;
     const rewritten = await new Response(

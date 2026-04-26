@@ -10,7 +10,7 @@
  * (untokenizable input → fall through to browse) or a string of
  * quote-wrapped tokens with prefix-`*`. No raw user characters survive.
  */
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { buildFtsQuery } from './apps';
 
 describe('buildFtsQuery', () => {

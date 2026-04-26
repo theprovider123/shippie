@@ -2,7 +2,7 @@
   "name": "shippie",
   "private": true,
   "version": "0.0.0",
-  "description": "Shippie — no app store, just the web installed. Deploy PWAs in 60 seconds.",
+  "description": "Shippie — the post-cloud app platform. Wrap. Run. Connect. Deploy any web app, run it locally on every device, and connect nearby phones directly.",
   "license": "UNLICENSED",
   "type": "module",
   "workspaces": [
@@ -16,6 +16,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "health": "bun run typecheck && bun run test && bun run build",
     "db:push": "bash scripts/db-push.sh",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
