@@ -60,7 +60,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
+    "@shippie/ambient": "workspace:*",
     "@shippie/backup-providers": "workspace:*",
+    "@shippie/intelligence": "workspace:*",
     "@shippie/proximity": "workspace:*"
   },
   "devDependencies": {

@@ -303,6 +303,31 @@ const groupApi = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Local intelligence (adaptive on-device patterns / temporal context / recall).
+// Lazy-loaded so apps that don't use it don't pay the bundle cost.
+// ---------------------------------------------------------------------------
+
+type IntelligenceModule = typeof import('@shippie/intelligence');
+let intelModulePromise: Promise<IntelligenceModule> | null = null;
+
+async function loadIntel(): Promise<IntelligenceModule> {
+  if (!intelModulePromise) intelModulePromise = import('@shippie/intelligence');
+  return intelModulePromise;
+}
+
+const intelligenceApi = {
+  async patterns() {
+    return (await loadIntel()).patterns();
+  },
+  async temporalContext(...args: Parameters<IntelligenceModule['temporalContext']>) {
+    return (await loadIntel()).temporalContext(...args);
+  },
+  async recall(...args: Parameters<IntelligenceModule['recall']>) {
+    return (await loadIntel()).recall(...args);
+  },
+};
+
 export const local = {
   load,
   capabilities,
@@ -329,6 +354,15 @@ export const local = {
    *   const guest = await shippie.local.group.join({ appSlug: 'whiteboard', joinCode });
    */
   group: groupApi,
+  /**
+   * Adaptive on-device intelligence — usage patterns, temporal context, and
+   * recall. All computation runs locally; no event payloads leave the device.
+   *
+   *   const p = await shippie.local.intelligence.patterns();
+   *   const ctx = await shippie.local.intelligence.temporalContext();
+   *   const hits = await shippie.local.intelligence.recall({ query, embed });
+   */
+  intelligence: intelligenceApi,
 };
 
 export async function load(opts: LoadLocalRuntimeOptions = {}): Promise<ShippieLocalRuntimeGlobal> {
