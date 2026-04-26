@@ -100,6 +100,18 @@ Maker code is delivered as static files from R2; the Worker injects the wrapper 
 
 Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit) in D1 — never per-user app data.
 
+## App Kinds
+
+Every app the platform accepts is classified as **Local**, **Connected**, or
+**Cloud** based on where its data lives and whether it works offline. The
+classifier ships as part of `@shippie/analyse` and writes a kind profile
+alongside the existing `AppProfile`. The marketplace label is detection +
+proof, not maker declaration.
+
+See [`app-kinds.md`](./app-kinds.md) for the vocabulary, profile shape,
+proof rules, and conflict handling. Rollout plan:
+[`superpowers/plans/2026-04-26-app-kinds-rollout.md`](./superpowers/plans/2026-04-26-app-kinds-rollout.md).
+
 ## Deploy paths
 
 | Path | How | Time-to-URL |

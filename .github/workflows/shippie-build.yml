@@ -182,8 +182,8 @@ jobs:
       - name: Upload to R2
         id: upload
         env:
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           BUCKET: shippie-apps-prod
           SLUG: ${{ inputs.slug }}
           VERSION: ${{ inputs.version }}
@@ -193,17 +193,19 @@ jobs:
           OUT="${{ steps.detect.outputs.out }}"
           FILES_COUNT=0
           TOTAL_BYTES=0
-          # Walk the output dir and PUT each file via Cloudflare's R2 API.
+          # Use wrangler r2 object put — the management-API /objects PUT
+          # endpoint returned 503s under load. wrangler handles auth,
+          # content-type, and upstream retries cleanly.
           while IFS= read -r f; do
             REL="${f#${OUT}/}"
             KEY="apps/${SLUG}/v${VERSION}/${REL}"
             SIZE=$(stat -c %s "$f")
             CT=$(file --mime-type -b "$f")
-            curl -fsS -X PUT \
-              -H "Authorization: Bearer ${CF_API_TOKEN}" \
-              -H "Content-Type: ${CT}" \
-              --data-binary "@$f" \
-              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/${BUCKET}/objects/${KEY}" >/dev/null
+            npx --yes wrangler@4 r2 object put \
+              "${BUCKET}/${KEY}" \
+              --file "$f" \
+              --content-type "$CT" \
+              --remote >/dev/null
             FILES_COUNT=$((FILES_COUNT + 1))
             TOTAL_BYTES=$((TOTAL_BYTES + SIZE))
           done < <(find "$OUT" -type f)

@@ -170,6 +170,19 @@ These were reported in earlier code review but are wrong at HEAD:
 
 ---
 
+## App Kinds vocabulary (2026-04-26)
+
+Shippie classifies every app as **Local**, **Connected**, or **Cloud** —
+the user-facing answer to "does this work offline, and where does my data
+live?" Definitions, profile shape, and proof rules live in
+[`docs/app-kinds.md`](./app-kinds.md). Public truth is the platform's
+*detected* kind plus a confidence status (`estimated` / `verifying` /
+`confirmed` / `disputed`); maker declaration is input, never the public
+label. The rollout (Phases 0a, 0b, 1) is planned in
+[`docs/superpowers/plans/2026-04-26-app-kinds-rollout.md`](./superpowers/plans/2026-04-26-app-kinds-rollout.md).
+
+---
+
 ## Active roadmap
 
 The active build roadmap lives at `docs/superpowers/plans/2026-04-25-intelligence-layer-roadmap.md`. The decomposed plans are:
