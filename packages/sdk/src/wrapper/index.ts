@@ -180,3 +180,10 @@ export {
   type InsightCardData,
   type MountInsightCardsOptions,
 } from './insight-card.ts';
+
+export {
+  configureProof,
+  emitProofEvent,
+  flushNow as flushProofQueue,
+  type ProofEventType,
+} from './proof.ts';

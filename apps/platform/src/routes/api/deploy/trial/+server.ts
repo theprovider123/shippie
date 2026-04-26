@@ -12,8 +12,8 @@ import type { RequestHandler } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { deployStatic } from '$server/deploy/pipeline';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
+import { TRIAL_MAKER_ID, ensureTrialMakerSeeded } from '$server/deploy/trial-maker';
 
-const TRIAL_MAKER_ID = '00000000-0000-4000-8000-trialmakerid01';
 const TRIAL_MAX_ZIP_BYTES = 50 * 1024 * 1024; // 50MB
 const TRIAL_PER_IP_LIMIT = 3;
 const TRIAL_TTL_MS = 24 * 60 * 60 * 1000;
@@ -68,16 +68,41 @@ export const POST: RequestHandler = async (event) => {
   const slug = generateTrialSlug();
   const reservedSlugs = await loadReservedSlugs(env.DB);
 
-  const result = await deployStatic({
-    slug,
-    makerId: TRIAL_MAKER_ID,
-    zipBuffer,
-    reservedSlugs,
-    db: env.DB,
-    r2: env.APPS,
-    kv: env.CACHE,
-    publicOrigin: env.PUBLIC_ORIGIN ?? 'https://shippie.app',
-  });
+  // Self-heal the synthetic trial-maker user row so the apps.maker_id FK
+  // is satisfied even on D1 instances where 0005_trial_maker_seed hasn't
+  // yet been applied. Idempotent (INSERT OR IGNORE).
+  try {
+    await ensureTrialMakerSeeded(env.DB);
+  } catch (err) {
+    console.error('[shippie:deploy:trial] ensureTrialMakerSeeded failed', err);
+    return json(
+      { error: 'deploy_failed', message: 'trial_maker_seed_failed' },
+      { status: 500 },
+    );
+  }
+
+  let result: Awaited<ReturnType<typeof deployStatic>>;
+  try {
+    result = await deployStatic({
+      slug,
+      makerId: TRIAL_MAKER_ID,
+      zipBuffer,
+      reservedSlugs,
+      db: env.DB,
+      r2: env.APPS,
+      kv: env.CACHE,
+      publicOrigin: env.PUBLIC_ORIGIN ?? 'https://shippie.app',
+    });
+  } catch (err) {
+    console.error('[shippie:deploy:trial] error', err);
+    return json(
+      {
+        error: 'deploy_failed',
+        message: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 },
+    );
+  }
 
   if (!result.success) {
     return json(

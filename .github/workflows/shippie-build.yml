@@ -5,12 +5,19 @@ name: shippie-build
 # the build output to R2, then POSTs the result back to the platform.
 #
 # Honest expected runtime: 2-5 minutes (cold runner + npm install).
+#
+# Private-repo support: when `installation_id` is supplied, this workflow
+# uses the Shippie GitHub App credentials (stored as repo secrets
+# GH_APP_ID + GH_APP_PRIVATE_KEY) to mint a short-lived installation
+# token via actions/create-github-app-token, then clones with that token.
+# When `installation_id` is empty the workflow falls back to an anonymous
+# clone — only public repos work in that mode.
 
 on:
   workflow_dispatch:
     inputs:
       repo_url:
-        description: 'Clone URL of the maker repository (https URL).'
+        description: 'Clone URL of the maker repository (https URL, no embedded credentials).'
         required: true
         type: string
       slug:
@@ -34,6 +41,11 @@ on:
         required: false
         type: string
         default: 'main'
+      installation_id:
+        description: 'GitHub App installation ID for the maker''s repo. Required for private repos.'
+        required: false
+        type: string
+        default: ''
       callback_secret_name:
         description: 'Name of the secret in this repo holding the HMAC key. Default: WORKER_PLATFORM_SECRET.'
         required: false
@@ -55,10 +67,59 @@ jobs:
             exit 1
           fi
 
-      - name: Clone maker repo
+      - name: Parse repo URL
+        id: parse-repo
+        env:
+          REPO_URL: ${{ inputs.repo_url }}
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch "${{ inputs.branch }}" "${{ inputs.repo_url }}" app
+          # Accept https://github.com/<owner>/<repo>(.git)? — strip any
+          # embedded creds (defence in depth) and the trailing .git.
+          stripped="${REPO_URL#https://}"
+          stripped="${stripped#*@}"
+          path="${stripped#github.com/}"
+          path="${path%.git}"
+          owner="${path%%/*}"
+          repo="${path#*/}"
+          if [[ -z "$owner" || -z "$repo" || "$owner" == "$path" ]]; then
+            echo "Could not parse owner/repo from: $REPO_URL"
+            exit 1
+          fi
+          if ! [[ "$owner" =~ ^[A-Za-z0-9_.-]+$ ]] || ! [[ "$repo" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+            echo "Owner or repo contains invalid characters."
+            exit 1
+          fi
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          echo "Parsed owner=$owner repo=$repo"
+
+      - name: Mint GitHub App installation token
+        id: app-token
+        if: ${{ inputs.installation_id != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ steps.parse-repo.outputs.owner }}
+          repositories: ${{ steps.parse-repo.outputs.repo }}
+
+      - name: Clone maker repo
+        env:
+          OWNER: ${{ steps.parse-repo.outputs.owner }}
+          REPO: ${{ steps.parse-repo.outputs.repo }}
+          BRANCH: ${{ inputs.branch }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${APP_TOKEN:-}" ]]; then
+            # Authenticated clone. Use the x-access-token user with the
+            # short-lived installation token. Do not echo the URL.
+            CLONE_URL="https://x-access-token:${APP_TOKEN}@github.com/${OWNER}/${REPO}.git"
+            git clone --depth 1 --branch "${BRANCH}" "${CLONE_URL}" app
+          else
+            # No installation token — anonymous clone (public repos only).
+            git clone --depth 1 --branch "${BRANCH}" "https://github.com/${OWNER}/${REPO}.git" app
+          fi
           echo "commit_sha=$(cd app && git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Setup Node 20

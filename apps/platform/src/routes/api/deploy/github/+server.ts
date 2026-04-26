@@ -9,9 +9,16 @@
  *
  * Flow:
  *   1. Authenticate the caller via session OR CLI bearer token.
- *   2. Verify the caller owns the GitHub installation (if provided).
+ *   2. Resolve the maker's GitHub App installation:
+ *      - explicit installation_id (verify ownership), OR
+ *      - the user's single installation if exactly one exists, OR
+ *      - none (public-repo only).
+ *      Fail fast on suspended installs (409).
  *   3. Insert a deploys row with status='building', source_type='github'.
- *   4. POST workflow_dispatch to .github/workflows/shippie-build.yml.
+ *   4. POST workflow_dispatch to .github/workflows/shippie-build.yml,
+ *      passing installation_id as a workflow input. The workflow itself
+ *      mints the short-lived clone token via actions/create-github-app-token
+ *      using the GH_APP_ID + GH_APP_PRIVATE_KEY repo secrets.
  *   5. Return { deploy_id, status: 'building' }.
  *
  * The workflow POSTs back to /api/v1/deploy/callback when done.
@@ -22,6 +29,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { getInstallationToken, generateAppJwt } from '$server/github/app';
+import type { GithubInstallation } from '$server/db/schema/github-installations';
 
 const SHIPPIE_REPO_OWNER = 'shippie-app'; // adjust at deploy time via env if needed
 const SHIPPIE_REPO_NAME = 'platform';
@@ -89,7 +97,17 @@ export const POST: RequestHandler = async (event) => {
 
   const db = getDrizzleClient(env.DB);
 
-  // 1. If an installation_id was supplied, verify ownership.
+  // 1. Resolve the maker's GitHub App installation.
+  //
+  //    - If the caller supplied installation_id explicitly, verify they own
+  //      it.
+  //    - Otherwise, fall back to the single installation owned by this user
+  //      (typical case: maker installed the Shippie GH App once on their
+  //      personal account).
+  //    - In either case, fail fast if the installation has been suspended
+  //      or revoked — better an explicit error here than an opaque 401 in
+  //      the GH Actions runner mid-build.
+  let resolvedInstall: GithubInstallation | null = null;
   if (parsed.installation_id != null) {
     const install = await db.query.githubInstallations.findFirst({
       where: eq(schema.githubInstallations.githubInstallationId, parsed.installation_id),
@@ -97,7 +115,38 @@ export const POST: RequestHandler = async (event) => {
     if (!install || install.userId !== who.userId) {
       return json({ error: 'installation_forbidden' }, { status: 403 });
     }
+    resolvedInstall = install;
+  } else {
+    // No explicit ID — try to find one for this user. Multiple is
+    // ambiguous; the client must disambiguate via repo_full_name in a
+    // future iteration. For now we accept "user has exactly one".
+    const userInstalls = await db.query.githubInstallations.findMany({
+      where: eq(schema.githubInstallations.userId, who.userId),
+    });
+    if (userInstalls.length === 1) {
+      resolvedInstall = userInstalls[0] ?? null;
+    } else if (userInstalls.length > 1) {
+      // Caller must pass installation_id when there are multiple choices.
+      return json(
+        { error: 'installation_ambiguous', count: userInstalls.length },
+        { status: 400 },
+      );
+    }
+    // 0 installations is fine — public-repo deploy path.
   }
+
+  if (resolvedInstall && resolvedInstall.suspendedAt) {
+    return json(
+      {
+        error: 'installation_suspended',
+        installation_id: resolvedInstall.githubInstallationId,
+        suspended_at: resolvedInstall.suspendedAt,
+      },
+      { status: 409 },
+    );
+  }
+
+  const installationIdForBuild = resolvedInstall?.githubInstallationId ?? null;
 
   // 2. Resolve or create the apps row, then determine version.
   let app = await db.query.apps.findFirst({
@@ -118,7 +167,7 @@ export const POST: RequestHandler = async (event) => {
         makerId: who.userId,
         githubRepo: parsed.repo_full_name,
         githubBranch: parsed.branch,
-        githubInstallationId: parsed.installation_id ?? null,
+        githubInstallationId: installationIdForBuild,
       })
       .returning();
     if (!inserted) return json({ error: 'app_create_failed' }, { status: 500 });
@@ -130,7 +179,7 @@ export const POST: RequestHandler = async (event) => {
         sourceType: 'github',
         githubRepo: parsed.repo_full_name ?? app.githubRepo,
         githubBranch: parsed.branch,
-        githubInstallationId: parsed.installation_id ?? app.githubInstallationId,
+        githubInstallationId: installationIdForBuild ?? app.githubInstallationId,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(schema.apps.id, app.id));
@@ -161,10 +210,12 @@ export const POST: RequestHandler = async (event) => {
   // 3. Trigger the GH Actions workflow_dispatch.
   //
   //    Authenticated as the Shippie GitHub App on its own installation in
-  //    the platform repo. The maker's installation token is for cloning
-  //    only — that's passed into the workflow as part of repo_url already
-  //    (the workflow accepts an https URL with embedded user:token if
-  //    private repos need it).
+  //    the platform repo. The maker's installation token is NO LONGER
+  //    minted here — the workflow itself uses
+  //    actions/create-github-app-token@v2 with GH_APP_ID + GH_APP_PRIVATE_KEY
+  //    repo secrets and the `installation_id` workflow input. This avoids
+  //    embedding a short-lived token in a string parameter that's logged
+  //    on the GH Actions side.
   const ghAppId = (env as { GITHUB_APP_ID?: string }).GITHUB_APP_ID;
   const ghPrivateKey = (env as { GITHUB_APP_PRIVATE_KEY?: string }).GITHUB_APP_PRIVATE_KEY;
   const ownInstallationId = (env as { GITHUB_PLATFORM_INSTALLATION_ID?: string }).GITHUB_PLATFORM_INSTALLATION_ID;
@@ -179,26 +230,6 @@ export const POST: RequestHandler = async (event) => {
       },
       { status: 503 },
     );
-  }
-
-  // Mint a clone token for the maker's installation if available, embed
-  // into a clone URL the workflow will use directly.
-  let workflowRepoUrl = parsed.repo_url;
-  if (parsed.installation_id != null) {
-    try {
-      const cloneToken = await getInstallationToken({
-        appId: ghAppId,
-        privateKey: ghPrivateKey,
-        installationId: parsed.installation_id,
-      });
-      // Embed token: https://x-access-token:<token>@github.com/owner/repo.git
-      const u = new URL(parsed.repo_url);
-      u.username = 'x-access-token';
-      u.password = cloneToken;
-      workflowRepoUrl = u.toString();
-    } catch (err) {
-      console.warn('[deploy:github] clone-token mint failed; falling back to public clone', err);
-    }
   }
 
   let platformToken: string;
@@ -219,6 +250,8 @@ export const POST: RequestHandler = async (event) => {
   const callbackBase = env.PUBLIC_ORIGIN ?? 'https://shippie.app';
   const callbackUrl = `${callbackBase}/api/v1/deploy/callback`;
 
+  // Pass repo_url with no embedded credentials — the workflow re-parses it
+  // and clones with a freshly minted installation token.
   const dispatchUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/${WORKFLOW_FILE}/dispatches`;
   const dispatchRes = await fetch(dispatchUrl, {
     method: 'POST',
@@ -232,12 +265,15 @@ export const POST: RequestHandler = async (event) => {
     body: JSON.stringify({
       ref: 'main',
       inputs: {
-        repo_url: workflowRepoUrl,
+        repo_url: parsed.repo_url,
         slug: parsed.slug,
         deploy_id: deployRow.id,
         version: String(version),
         callback_url: callbackUrl,
         branch: parsed.branch,
+        // workflow_dispatch inputs must be strings; empty string means
+        // "no installation, public repo".
+        installation_id: installationIdForBuild != null ? String(installationIdForBuild) : '',
       },
     }),
   });

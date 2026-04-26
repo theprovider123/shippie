@@ -22,6 +22,31 @@
 export { createGroup, joinGroup } from './group.ts';
 export type { Group, GroupState } from './group.ts';
 
+export {
+  sendTransfer,
+  receiveTransfer,
+  encryptFrame,
+  decryptFrame,
+  TRANSFER_CHANNEL,
+} from './transfer.ts';
+export {
+  transferGroupAdapter,
+  createTransferRoom,
+  joinTransferRoom,
+} from './transfer-group-adapter.ts';
+export type {
+  SendTransferOptions,
+  SendTransferResult,
+  ReceiveTransferOptions,
+  ReceiveTransferResult,
+  TransferGroupApi,
+  TransferGroupHandle,
+  TransferEvent,
+  TransferListener,
+  TransferSnapshot,
+  TransferFrame,
+} from './transfer.ts';
+
 export { SharedState, rootArray, rootMap } from './crdt.ts';
 export { EventLog, compareClocks, compareEntries } from './eventlog.ts';
 

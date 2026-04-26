@@ -13,6 +13,7 @@ interface CallCounts {
   reapTrials: number;
   rollups: number;
   retention: number;
+  capabilityBadges: number;
 }
 
 function makeHandlers(counts: CallCounts): CronHandlers {
@@ -33,11 +34,15 @@ function makeHandlers(counts: CallCounts): CronHandlers {
       counts.retention += 1;
       return { cutoff: '2026-02-23T00:00:00.000Z', deleted: 0 };
     },
+    capabilityBadges: async () => {
+      counts.capabilityBadges += 1;
+      return { appsScanned: 0, badgesAwarded: 0, badgesRevoked: 0 };
+    },
   };
 }
 
 function makeCounts(): CallCounts {
-  return { reconcileKv: 0, reapTrials: 0, rollups: 0, retention: 0 };
+  return { reconcileKv: 0, reapTrials: 0, rollups: 0, retention: 0, capabilityBadges: 0 };
 }
 
 function controller(cron: string): ScheduledController {
@@ -65,11 +70,14 @@ describe('handleScheduled', () => {
     expect(counts.retention).toBe(0);
   });
 
-  test('dispatches daily 4am cron to retention', async () => {
+  test('dispatches daily 4am cron to BOTH retention and capabilityBadges', async () => {
     const counts = makeCounts();
     await handleScheduled(controller('0 4 * * *'), env, makeHandlers(counts));
     expect(counts.retention).toBe(1);
+    expect(counts.capabilityBadges).toBe(1);
     expect(counts.reconcileKv).toBe(0);
+    expect(counts.reapTrials).toBe(0);
+    expect(counts.rollups).toBe(0);
   });
 
   test('unknown cron string is logged and ignored', async () => {

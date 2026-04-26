@@ -88,35 +88,15 @@ This pattern keeps typecheck immune to build state. Vite (used by SvelteKit + th
 
 ## What runs where
 
-```
-                  ┌─────────────────────────────────────────────┐
-                  │                Cloudflare                    │
-                  │                                              │
-  Maker pushes    │    Pages (apps/platform)                     │
-  → GitHub Action │    │                                         │
-  → R2 upload     │    │── hooks.server.ts (subdomain router)    │
-                  │    │      ├─ shippie.app → SvelteKit app    │
-                  │    │      └─ *.shippie.app → wrap injector   │
-                  │    │                                         │
-                  │    ├── D1 (apps, deploys, room_audit, …)     │
-                  │    ├── R2 (shippie-apps, shippie-public)     │
-                  │    ├── KV (cached metadata)                  │
-                  │    └── Durable Object (SignalRoom)           │
-                  │                                              │
-                  │    Pages (apps/shippie-ai) → ai.shippie.app  │
-                  │    └── Workbox SW caches micro-models in     │
-                  │        Cache Storage on first fetch          │
-                  │                                              │
-                  │    Workers AI (edge inference fallback)      │
-                  └─────────────────────────────────────────────┘
-                                      ↑
-   User device (browser) ─────────────┤
-   - SDK runtime (auth, db, files, AI bridge, observe)
-   - Local DB (wa-sqlite + OPFS)
-   - Local AI (postMessage to ai.shippie.app iframe)
-   - WebRTC peer-to-peer to other nearby devices
-   - Optional: Hub on the LAN for venue mesh
-```
+![Shippie architecture diagram](./architecture.svg)
+
+Open [`architecture.svg`](./architecture.svg) for the full diagram. In short:
+
+- **Maker tools** on the left (Claude Code, CLI, GitHub, web upload) deploy via the Cloudflare platform.
+- **Platform** in the middle (Cloudflare Workers + Pages + D1 + R2 + KV + Durable Objects) handles deploy ingestion, wrapper injection on every `*.shippie.app` HTML response, the proof-event ingestion + cron rollup, and the `/__shippie/signal/[roomId]` WebSocket signalling DO.
+- **User device** on the right runs the actual app: PWA shell, local SQLite/OPFS, local AI via the `ai.shippie.app` iframe, WebRTC peer-to-peer to other nearby devices.
+
+Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit, proof events) in D1 — never per-user app data.
 
 Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit) in D1 — never per-user app data.
 

@@ -24,8 +24,10 @@ import {
 } from '$server/db/queries/apps';
 import { summaryForApp, recentReviews } from '$server/db/queries/ratings';
 import { describeGrantedPermissions } from '$server/marketplace/honesty';
-import { publicCapabilityBadgesFromProfile } from '$server/marketplace/capability-badges';
+import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability-badges';
 import { readAppProfile } from '$server/deploy/kv-write';
+import { eq } from 'drizzle-orm';
+import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
 
 export const load: PageServerLoad = async ({ platform, params, cookies, locals, url }) => {
   if (!platform?.env.DB) throw error(503, 'Database binding unavailable');
@@ -51,7 +53,7 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     if (!allowed) throw error(404, 'Not found');
   }
 
-  const [permissions, latestDeploy, ratingSummary, latestReviews, appProfile] =
+  const [permissions, latestDeploy, ratingSummary, latestReviews, appProfile, provenBadges] =
     await Promise.all([
       findPermissionsForApp(db, app.id),
       findLatestDeploy(db, app.id),
@@ -60,10 +62,15 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       platform.env.CACHE
         ? readAppProfile(platform.env.CACHE, params.slug)
         : Promise.resolve(null),
+      db
+        .select({ badge: capabilityBadgesTable.badge })
+        .from(capabilityBadgesTable)
+        .where(eq(capabilityBadgesTable.appId, app.id)),
     ]);
 
   const grantedPermissions = describeGrantedPermissions(permissions);
-  const capabilityBadges = publicCapabilityBadgesFromProfile(
+  const capabilityBadges = publicCapabilityBadgesWithProven(
+    provenBadges,
     latestDeploy?.autopackagingReport,
     appProfile,
   );

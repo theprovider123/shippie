@@ -71,8 +71,8 @@ Tier ladder: **Foundation built → Demo-ready → Launch-ready → Partial → 
 | Sense | Wrap | Foundation built | Full feel layer at `packages/sdk/src/wrapper/{haptics,spring,gestures,view-transitions,theme-color,textures,patina,your-data-panel,group-moderation-panel,insight-card}`. Demo-ready depends on showcase apps proving textures and patina in real use. |
 | Core | Run | Foundation built | Local DB / files / runtime primitives at `packages/local-db/`, `packages/local-files/`, `packages/sdk/src/local.ts`, `packages/intelligence/`, `packages/local-runtime/`. Launch readiness depends on real-device proof, migration handling, quota behaviour, and recovery flows. |
 | AI | Run | Partial | `apps/shippie-ai/` runs 5 inference tasks via postMessage. WebNN three-tier (NPU → GPU → WASM) detection exists but `source` field missing from inference responses; no UI surfacing backend choice. |
-| Vault | Run | Partial | `packages/sdk/src/wrapper/your-data-panel.ts` + `packages/backup-providers/` exist. Device transfer flow and OAuth-to-user-cloud bridge not wired end-to-end. |
-| Pulse | Connect | Foundation built | Proximity primitives + signalling at `packages/proximity/`, `services/hub/src/signal.ts`, D1 `room_audit` table. Live Room still needs real-device demo. |
+| Vault | Run | Partial | `packages/sdk/src/wrapper/your-data-panel.ts` + `packages/backup-providers/` exist. OAuth-to-user-cloud bridge route now wired at `apps/platform/src/routes/oauth/[provider]/+server.ts` (8/8 envelope round-trip + redirect tests). Device transfer flow primitives in `packages/proximity/src/transfer.ts`; UI integration with `your-data-panel` is the remaining gap. |
+| Pulse | Connect | Foundation built | Proximity primitives + signalling at `packages/proximity/`, `services/hub/src/signal.ts`, D1 `room_audit` table. Platform-side `SignalRoom` DO + `/__shippie/signal/[roomId]` route now wired (`apps/platform/src/lib/server/proximity/signal-room.ts`, wrangler.toml v3 migration, wrap-worker bundles + re-exports the class, 9/9 routing tests). Live Room still needs real-device demo. |
 | Spark | Connect | Not built | Roadmapped. No BLE beacon, no hotspot handoff, no chain propagation. |
 | Hub | Connect | Partial | `services/hub/` runs mDNS + WS signalling and caches apps / models. Cloud bridge for offline-collected data and multi-Hub mesh not built. |
 
@@ -100,13 +100,34 @@ Tasks:    24 successful, 24 total
 
 The earlier `packages/local-db/src/wa-sqlite.d.ts` rollup-plugin-dts error ("namespace child (hoisting) not supported yet") is fixed by switching from `export default factory` (referencing a `const`) to `export default function factory()` — hoisting-safe.
 
-### Test — _to be filled in by Phase 0 verification run_
+### Test — **PASS**
 
-(Run `bun run test` from repo root.)
+```
+turbo run test
+Tasks:    31 successful, 31 total
+```
 
-### Health (composite)
+`@shippie/platform`: **29 test files, 223 tests passing, 0 failing.** (+2 files, +17 tests added by Phase 1 + Phase 4 work — OAuth coordinator route and SignalRoom DO routing.)
 
-The root `bun run health` script runs typecheck + test + build in sequence. Green = baseline acceptable.
+The earlier 13-suite failure (`Failed to load url bun:test`) is fixed by migrating those test files from Bun's `bun:test` runner to Vitest (the platform's actual test runner per its `package.json` script: `"test": "vitest run"`). The migration was:
+
+- 12 files: changed `from 'bun:test'` to `from 'vitest'` — APIs (`describe`, `it`, `expect`, `beforeEach`, `afterEach`) are 1:1 compatible.
+- 2 files (`src/routes/admin/page.server.test.ts` + `src/routes/admin/audit/page.server.test.ts`): also replaced Bun's `mock.module(specifier, factory)` with Vitest's `vi.mock(specifier, factory)`. Vitest hoists `vi.mock` calls automatically, matching `mock.module` semantics.
+
+Note: Vitest emits `close timed out after 10000ms — Tests closed successfully but something prevents Vite server from exiting` after a green run. Tests pass; only the Vite dev-server cleanup hangs. Tracked separately, not a blocker.
+
+### Health (composite) — **PASS**
+
+The root `bun run health` script runs typecheck + test + build in sequence. After Phase 0:
+
+```
+$ bun run health
+# turbo run typecheck:  26/26 ✓
+# turbo run test:       31/31 ✓
+# turbo run build:      24/24 ✓
+```
+
+Green = baseline acceptable.
 
 ---
 
@@ -117,6 +138,7 @@ The root `bun run health` script runs typecheck + test + build in sequence. Gree
 | TS2717 — `__WB_MANIFEST` type conflict | `apps/shippie-ai/src/sw.ts` | Removed local `declare global` block; trust Workbox's own ambient declaration. |
 | rollup-plugin-dts namespace hoisting failure | `packages/local-db/src/wa-sqlite.d.ts` | Switched `export default factory;` (referencing a `const`) to `export default function factory()`. |
 | Race: `sdk` typecheck loses `proximity` types when build cleans dist concurrently | `packages/proximity/package.json` | Switched `exports` from `./dist/*` to `./src/index.ts` — workspace consumers now read source. Matches the pattern already used by `local-db`, `ambient`, `backup-providers`, `intelligence`. |
+| 14 platform test suites fail to load with `Failed to load url bun:test` | `apps/platform/src/{routes,lib/server,scripts}/**/*.test.ts` | Migrated all 14 from `bun:test` to `vitest` (the platform's actual runner). Two files using `mock.module` switched to `vi.mock`. |
 
 ---
 

@@ -52,11 +52,11 @@ id = "48e2f658cb534627a873decda3bb2f20"
 [triggers]
 crons = ["*/5 * * * *", "0 * * * *", "0 4 * * *"]
 
-# Durable Objects — SignalRoom was registered in an earlier deploy
-# (Phase 1) but the class was never actually exported by the Worker.
-# We declare both the original v1 (so wrangler's migration journal
-# matches CF's account state) and v2 to delete the class. SignalRoom
-# state is ephemeral signalling traffic — safe to drop.
+# Durable Objects — SignalRoom is the per-room signalling DO for the
+# Proximity Protocol. v1 created the class; v2 deleted it (the class
+# was never actually exported back then). v3 re-creates it now that
+# `apps/platform/src/lib/server/proximity/signal-room.ts` is wired into
+# the wrap-worker script.
 [[migrations]]
 tag = "v1"
 new_classes = ["SignalRoom"]
@@ -64,6 +64,14 @@ new_classes = ["SignalRoom"]
 [[migrations]]
 tag = "v2"
 deleted_classes = ["SignalRoom"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SignalRoom"]
+
+[[durable_objects.bindings]]
+name = "SIGNAL_ROOM"
+class_name = "SignalRoom"
 
 [vars]
 SHIPPIE_ENV = "production"

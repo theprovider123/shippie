@@ -33,3 +33,4 @@ export * from './app-ratings';
 export * from './user-touch-graph';
 export * from './app-access';
 export * from './app-invites';
+export * from './proof-events';

@@ -66,6 +66,35 @@ export interface YourDataPanelOptions {
    * without crashing the panel.
    */
   onBackupToken?: (msg: { provider: string; token: unknown }) => void;
+  /**
+   * Optional injection of the proximity TransferGroupApi for the
+   * "Send to another device" flow. When provided, the default transfer
+   * dialog drives a real WebRTC handoff via
+   * `@shippie/proximity/transfer.sendTransfer`. When omitted, the
+   * dialog explains what's needed without crashing.
+   *
+   * Typed structurally so the panel doesn't pull `@shippie/proximity`
+   * into its own bundle.
+   */
+  transferApi?: {
+    createTransferRoom: (input: { appSlug: string }) => Promise<{
+      roomId: string;
+      joinCode: string;
+      transferKey: Uint8Array;
+      group: unknown;
+    }>;
+  };
+  /**
+   * Optional source of the in-memory snapshot bytes the sender uploads
+   * to the receiver. Defaults to a stub that surfaces "snapshot not
+   * available" — the maker (or hosted runtime) supplies a real loader
+   * that calls `@shippie/local-db`'s backup primitives.
+   */
+  buildTransferSnapshot?: () => Promise<{
+    plaintext: Uint8Array;
+    schemaVersion: number;
+    tables: string[];
+  } | null>;
 }
 
 interface PanelHandle {
@@ -123,7 +152,7 @@ export function openYourData(opts: YourDataPanelOptions = {}): PanelHandle {
     if (opts.onStartTransfer) {
       opts.onStartTransfer();
     } else {
-      defaultStartTransfer();
+      void defaultStartTransfer(opts, root);
     }
   });
 
@@ -247,8 +276,164 @@ async function defaultConfigureBackup(opts: YourDataPanelOptions): Promise<void>
   setTimeout(() => window.removeEventListener('message', handler), 10 * 60 * 1000);
 }
 
-function defaultStartTransfer(): void {
-  alert('Device transfer launches in the wrapper SDK; this hook becomes a real flow once @shippie/proximity is wired into your app.');
+/**
+ * Default device-transfer flow. Renders a transfer dialog into the
+ * panel's Shadow DOM that:
+ *
+ *   1. Resolves the app slug from `opts.appSlug` or `__shippie_meta`.
+ *   2. If `opts.transferApi` is wired:
+ *        a. Calls `transferApi.createTransferRoom({ appSlug })` →
+ *           returns roomId + joinCode + transferKey + group handle.
+ *        b. Renders a QR encoding `shippie-transfer://?room=<id>&k=<base64url>`.
+ *        c. Loads the snapshot via `opts.buildTransferSnapshot()`.
+ *        d. Calls `sendTransfer` from `@shippie/proximity` with the
+ *           snapshot, transferKey, and group, surfacing progress events
+ *           in the dialog.
+ *      If `transferApi` is missing: renders a clean explanation that
+ *      transfer requires the proximity TransferGroupApi to be wired.
+ *
+ * Receiver leg (scan-to-receive) ships with the proximity package's
+ * concrete TransferGroupApi implementation — see Phase 4 outstanding
+ * actions in `docs/OUTSTANDING_ACTIONS.md`.
+ */
+async function defaultStartTransfer(
+  opts: YourDataPanelOptions,
+  root: ShadowRoot,
+): Promise<void> {
+  const slug = opts.appSlug ?? readShippieMetaSlug();
+  if (!slug) {
+    alert('Transfer is unavailable: app slug missing.');
+    return;
+  }
+  const dialogRoot = renderTransferDialog(root);
+  if (!dialogRoot) return;
+
+  const status = (msg: string) => {
+    const el = dialogRoot.querySelector('[data-shippie-transfer-status]');
+    if (el) el.textContent = msg;
+  };
+  const qrSlot = dialogRoot.querySelector('[data-shippie-transfer-qr]') as HTMLDivElement | null;
+  const progressBar = dialogRoot.querySelector(
+    '[data-shippie-transfer-progress-bar]',
+  ) as HTMLDivElement | null;
+
+  if (!opts.transferApi) {
+    status(
+      'Transfer needs the proximity TransferGroupApi wired by your app. See https://shippie.app/docs/transfer for setup.',
+    );
+    return;
+  }
+
+  status('Creating one-time transfer room…');
+  let room: Awaited<ReturnType<typeof opts.transferApi.createTransferRoom>>;
+  try {
+    room = await opts.transferApi.createTransferRoom({ appSlug: slug });
+  } catch (err) {
+    console.error('shippie:transfer create-room failed', err);
+    status('Could not create the transfer room. Check your network.');
+    return;
+  }
+
+  // Build the transfer URL the receiver scans.
+  const keyB64 = bytesToBase64Url(room.transferKey);
+  const joinUrl = `shippie-transfer://?room=${encodeURIComponent(room.joinCode)}&k=${encodeURIComponent(keyB64)}`;
+
+  if (qrSlot) {
+    try {
+      // Lazy-load the QR helper so apps without transfer don't pay
+      // the bundle cost.
+      const qrMod = (await import('./qr.ts')) as typeof import('./qr.ts');
+      qrSlot.innerHTML = qrMod.renderQrSvg(joinUrl, { size: 220 });
+    } catch (err) {
+      console.error('shippie:transfer qr failed', err);
+      qrSlot.textContent = joinUrl;
+    }
+  }
+  status('Scan this on the new device. Waiting for it to join…');
+
+  if (!opts.buildTransferSnapshot) {
+    status('Snapshot builder not provided by host runtime — wire opts.buildTransferSnapshot.');
+    return;
+  }
+  let snapshot;
+  try {
+    snapshot = await opts.buildTransferSnapshot();
+  } catch (err) {
+    console.error('shippie:transfer snapshot failed', err);
+    status('Could not build a snapshot of this device.');
+    return;
+  }
+  if (!snapshot) {
+    status('No data to transfer yet.');
+    return;
+  }
+
+  // Hand off to proximity.sendTransfer — dynamic-import keeps the panel
+  // bundle small for apps that never invoke transfer.
+  let proximity: typeof import('@shippie/proximity');
+  try {
+    proximity = await import('@shippie/proximity');
+  } catch (err) {
+    console.error('shippie:transfer load proximity failed', err);
+    status('Transfer infrastructure unavailable in this build.');
+    return;
+  }
+
+  status('Sending data… do not close this window.');
+  try {
+    await proximity.sendTransfer({
+      group: room.group as never, // typed structurally above
+      transferKey: room.transferKey,
+      snapshot: {
+        rows: [], // maker hooks into snapshot.rows builder in v1.5
+        files: [],
+        plaintext: snapshot.plaintext,
+        schemaVersion: snapshot.schemaVersion,
+        tables: snapshot.tables,
+      } as never,
+      onEvent: (event: { kind: string; sent?: number; total?: number }) => {
+        if (event.kind === 'progress' && progressBar && event.total) {
+          const pct = Math.min(1, (event.sent ?? 0) / event.total);
+          progressBar.style.width = `${Math.round(pct * 100)}%`;
+        }
+        if (event.kind === 'done') status('Transfer complete.');
+        if (event.kind === 'cancelled') status('Transfer cancelled.');
+        if (event.kind === 'error') status('Transfer failed.');
+      },
+    } as never);
+  } catch (err) {
+    console.error('shippie:transfer sendTransfer failed', err);
+    status('Transfer failed. The receiver may have disconnected.');
+  }
+}
+
+function renderTransferDialog(root: ShadowRoot): HTMLDivElement | null {
+  // Reuses the panel's existing Shadow DOM. We append a transfer-only
+  // section beneath the panel body if one isn't already there.
+  const body = root.querySelector('[data-shippie-data-body]') ?? root.querySelector('main');
+  if (!body) return null;
+  let dialog = root.querySelector('[data-shippie-transfer-dialog]') as HTMLDivElement | null;
+  if (dialog) return dialog;
+  dialog = document.createElement('div');
+  dialog.setAttribute('data-shippie-transfer-dialog', '');
+  dialog.style.cssText =
+    'margin-top:1rem;padding:1rem;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-family:system-ui,sans-serif';
+  dialog.innerHTML = `
+    <h3 style="margin:0 0 0.5rem;font-size:0.95rem;font-weight:600">Send to another device</h3>
+    <div data-shippie-transfer-qr style="display:flex;align-items:center;justify-content:center;min-height:240px;background:#fff;border-radius:6px;padding:0.5rem;margin:0.5rem 0;font-family:monospace;font-size:0.7rem;word-break:break-all"></div>
+    <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;margin:0.5rem 0">
+      <div data-shippie-transfer-progress-bar style="height:100%;width:0%;background:#E8603C;transition:width 0.3s ease"></div>
+    </div>
+    <p data-shippie-transfer-status style="margin:0.5rem 0 0;font-size:0.85rem;opacity:0.85"></p>
+  `;
+  body.appendChild(dialog);
+  return dialog;
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
 function readShippieMetaSlug(): string | null {

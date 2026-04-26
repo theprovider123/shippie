@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Post-build script: wrap the SvelteKit-generated `_worker.js` so it
- * exports a `scheduled()` handler in addition to `fetch`.
+ * exports a `scheduled()` handler AND the SignalRoom Durable Object
+ * class in addition to `fetch`.
  *
  * Strategy:
  *   1. SvelteKit's adapter-cloudflare emits `.svelte-kit/cloudflare/_worker.js`.
@@ -9,8 +10,11 @@
  *   3. We bundle src/lib/server/cron/index.ts (and its transitive imports —
  *      drizzle + our schema) into `_cron.js` using Bun.build (zero-deps,
  *      always available since this repo uses Bun).
- *   4. We emit a tiny `_worker.js` that re-exports `default` from the
- *      original sveltekit bundle and adds a `scheduled` from `_cron.js`.
+ *   4. We bundle src/lib/server/proximity/signal-room.ts into `_proximity.js`
+ *      so the SignalRoom DO class is reachable from the Worker module entry.
+ *   5. We emit a tiny `_worker.js` that re-exports `default` from the
+ *      original sveltekit bundle, adds a `scheduled` from `_cron.js`, and
+ *      re-exports `SignalRoom` from `_proximity.js`.
  *
  * wrangler's `main` (set in wrangler.toml) continues to point at
  * `.svelte-kit/cloudflare/_worker.js`, which is now our wrapped version.
@@ -28,6 +32,8 @@ const original = resolve(dest, '_worker.js');
 const renamed = resolve(dest, '_worker.sveltekit.js');
 const cronEntry = resolve(root, 'src/lib/server/cron/index.ts');
 const cronOut = resolve(dest, '_cron.js');
+const proximityEntry = resolve(root, 'src/lib/server/proximity/signal-room.ts');
+const proximityOut = resolve(dest, '_proximity.js');
 
 if (!existsSync(original)) {
   console.error(`[wrap-worker] expected ${original} — did vite build run?`);
@@ -59,50 +65,59 @@ if (existsSync(renamed)) {
 }
 renameSync(original, renamed);
 
-// Bundle the cron dispatcher. Bun.build is the zero-install path; if Bun
-// isn't on PATH (CI uses npm), fall back to spawning `bunx esbuild`.
+// Bundle the cron dispatcher AND the SignalRoom DO. Bun.build is the
+// zero-install path; if Bun isn't on PATH (CI uses npm), fall back to
+// spawning `bunx esbuild`.
 const hasBun = typeof Bun !== 'undefined';
-if (hasBun) {
-  // eslint-disable-next-line no-undef
-  const result = await Bun.build({
-    entrypoints: [cronEntry],
-    outdir: dest,
-    naming: '_cron.js',
-    format: 'esm',
-    target: 'browser',
-    external: ['cloudflare:*'],
-    minify: false,
-  });
-  if (!result.success) {
-    console.error('[wrap-worker] bun build failed', result.logs);
-    process.exit(1);
-  }
-} else {
-  // Fallback: try bunx esbuild
-  const { spawnSync } = await import('node:child_process');
-  const r = spawnSync(
-    'bunx',
-    [
-      'esbuild',
-      cronEntry,
-      `--outfile=${cronOut}`,
-      '--bundle',
-      '--format=esm',
-      '--platform=browser',
-      '--target=es2022',
-      '--conditions=workerd,worker,browser',
-      '--external:cloudflare:*',
-    ],
-    { stdio: 'inherit' },
-  );
-  if (r.status !== 0) {
-    console.error('[wrap-worker] bunx esbuild failed');
-    process.exit(1);
+async function bundleEntry(entry, outName) {
+  if (hasBun) {
+    // eslint-disable-next-line no-undef
+    const result = await Bun.build({
+      entrypoints: [entry],
+      outdir: dest,
+      naming: outName,
+      format: 'esm',
+      target: 'browser',
+      external: ['cloudflare:*'],
+      minify: false,
+    });
+    if (!result.success) {
+      console.error(`[wrap-worker] bun build failed for ${outName}`, result.logs);
+      process.exit(1);
+    }
+  } else {
+    const { spawnSync } = await import('node:child_process');
+    const r = spawnSync(
+      'bunx',
+      [
+        'esbuild',
+        entry,
+        `--outfile=${resolve(dest, outName)}`,
+        '--bundle',
+        '--format=esm',
+        '--platform=browser',
+        '--target=es2022',
+        '--conditions=workerd,worker,browser',
+        '--external:cloudflare:*',
+      ],
+      { stdio: 'inherit' },
+    );
+    if (r.status !== 0) {
+      console.error(`[wrap-worker] bunx esbuild failed for ${outName}`);
+      process.exit(1);
+    }
   }
 }
 
+await bundleEntry(cronEntry, '_cron.js');
+await bundleEntry(proximityEntry, '_proximity.js');
+
 if (!existsSync(cronOut) || statSync(cronOut).size === 0) {
   console.error(`[wrap-worker] cron bundle missing or empty at ${cronOut}`);
+  process.exit(1);
+}
+if (!existsSync(proximityOut) || statSync(proximityOut).size === 0) {
+  console.error(`[wrap-worker] proximity bundle missing or empty at ${proximityOut}`);
   process.exit(1);
 }
 
@@ -112,6 +127,7 @@ const wrapper = `// SHIPPIE_CRON_WRAPPER_V1
 // Re-run "bun run build" to regenerate.
 import sveltekit from './_worker.sveltekit.js';
 import { handleScheduled } from './_cron.js';
+export { SignalRoom } from './_proximity.js';
 
 export default {
   fetch: (req, env, ctx) => sveltekit.fetch(req, env, ctx),

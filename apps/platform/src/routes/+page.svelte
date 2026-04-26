@@ -16,7 +16,7 @@
     </h1>
     <p class="hero-sub">
       No app store. No review. No 30% cut.<br />
-      Your data stays on your backend. Open source.
+      Wrap your app. Runs locally. Connects nearby. Open source.
     </p>
     <div class="hero-ctas">
       <Button href="/new" variant="primary" size="lg">Deploy now →</Button>
@@ -32,24 +32,41 @@
 <section class="section">
   <div class="wrap">
     <header class="section-intro">
-      <p class="eyebrow">Three steps</p>
-      <h2 class="section-heading">Install, build, ship.</h2>
+      <p class="eyebrow">Three pillars</p>
+      <h2 class="section-heading">Wrap. Run. Connect.</h2>
+      <p class="section-sub">
+        Deploy any web app. Shippie wraps it into a phone-native experience,
+        runs it on the user's device with their data on their device, and
+        connects nearby phones directly when they're in the same room.
+      </p>
     </header>
     <ol class="steps">
       <li>
         <span class="step-num">01</span>
-        <h3>Install Shippie</h3>
-        <p>One CLI, one MCP server, one website. Pick whichever fits how you work.</p>
+        <h3>Wrap</h3>
+        <p>
+          Deploy your app — Shippie makes it installable, offline-capable,
+          tactile, and fast. Haptics, spring transitions, install prompt,
+          the Your Data panel — automatic, no SDK calls required.
+        </p>
       </li>
       <li>
         <span class="step-num">02</span>
-        <h3>Build with AI</h3>
-        <p>Claude Code, Cursor, the AI tool you already use. Your prompt → a real app.</p>
+        <h3>Run</h3>
+        <p>
+          Local SQLite, local files, local AI on the device's NPU when
+          available. Backups go to the user's own cloud. Shippie never
+          holds your end users' data.
+        </p>
       </li>
       <li>
         <span class="step-num">03</span>
-        <h3>Ship to your phone</h3>
-        <p>One deploy. A URL. Install it like a real app. Share it with whoever you want.</p>
+        <h3>Connect</h3>
+        <p>
+          Real-time rooms, peer-to-peer over WebRTC. Pub quizzes, classroom
+          tools, collaborative whiteboards. Sub-30 ms remote latency on
+          local Wi-Fi — nearby phones talk directly.
+        </p>
       </li>
     </ol>
   </div>

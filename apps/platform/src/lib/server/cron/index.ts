@@ -16,6 +16,7 @@ import { reconcileKv } from './reconcile-kv';
 import { reapTrials } from './reap-trials';
 import { rollups } from './rollups';
 import { retention } from './retention';
+import { capabilityBadges } from './capability-badges';
 
 export interface CronEnv {
   DB: import('@cloudflare/workers-types').D1Database;
@@ -33,6 +34,7 @@ export interface CronHandlers {
   reapTrials?: (env: CronEnv) => Promise<unknown>;
   rollups?: (env: CronEnv) => Promise<unknown>;
   retention?: (env: CronEnv) => Promise<unknown>;
+  capabilityBadges?: (env: CronEnv) => Promise<unknown>;
 }
 
 export async function handleScheduled(
@@ -46,6 +48,7 @@ export async function handleScheduled(
     reapTrials: handlers.reapTrials ?? reapTrials,
     rollups: handlers.rollups ?? rollups,
     retention: handlers.retention ?? retention,
+    capabilityBadges: handlers.capabilityBadges ?? capabilityBadges,
   };
   console.log(`[cron] firing cron='${cron}' scheduled_time=${controller.scheduledTime}`);
 
@@ -66,7 +69,13 @@ export async function handleScheduled(
         return;
       }
       case '0 4 * * *': {
-        await h.retention(env);
+        // Daily 4am: retention sweep + capability-badges rollup.
+        const settled = await Promise.allSettled([h.retention(env), h.capabilityBadges(env)]);
+        for (const r of settled) {
+          if (r.status === 'rejected') {
+            console.error('[cron] daily 4am handler rejected', r.reason);
+          }
+        }
         return;
       }
       default: {

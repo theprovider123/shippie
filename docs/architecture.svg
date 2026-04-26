@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" role="img" aria-label="Shippie architecture: Wrap, Run, Connect across maker tools, the platform, and the user's device">
+  <title>Shippie architecture — Wrap. Run. Connect.</title>
+
+  <defs>
+    <style>
+      .label-h { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 22px; }
+      .label-eyebrow { font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; fill: #8B847A; }
+      .pillar-wrap { fill: #FAF7EF; stroke: #C9B99A; stroke-width: 1; }
+      .pillar-run { fill: #F4EBD9; stroke: #C9B99A; stroke-width: 1; }
+      .pillar-connect { fill: #ECE3CD; stroke: #C9B99A; stroke-width: 1; }
+      .device { fill: #14120F; }
+      .device-text { fill: #EDE4D3; }
+      .platform { fill: #2A2520; stroke: #3D3530; }
+      .platform-text { fill: #EDE4D3; }
+      .accent { fill: #E8603C; }
+      .sage { fill: #5E7B5C; }
+      .marigold { fill: #E8C547; }
+      .arrow { fill: none; stroke: #2C1F14; stroke-width: 1.5; marker-end: url(#arrow); }
+      .arrow-light { fill: none; stroke: #C9B99A; stroke-width: 1.2; stroke-dasharray: 4 4; }
+      .body { fill: #2C1F14; font-size: 12px; }
+      .body-light { fill: #8B847A; font-size: 11px; }
+      .body-cream { fill: #EDE4D3; font-size: 12px; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2C1F14"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="60" y="40" class="label-h" fill="#2C1F14">Shippie — Wrap. Run. Connect.</text>
+  <text x="60" y="62" class="body-light">Cloudflare-only stack. Everything in colour runs on a maker, the platform, or the user's own device.</text>
+
+  <!-- Maker tools (left rail) -->
+  <text x="80" y="106" class="label-eyebrow">Build anywhere</text>
+  <g>
+    <rect x="60" y="120" width="200" height="34" rx="6" class="pillar-wrap"/>
+    <text x="74" y="142" class="body">Claude Code / Cursor</text>
+    <rect x="60" y="162" width="200" height="34" rx="6" class="pillar-wrap"/>
+    <text x="74" y="184" class="body">CLI: shippie deploy ./dist</text>
+    <rect x="60" y="204" width="200" height="34" rx="6" class="pillar-wrap"/>
+    <text x="74" y="226" class="body">GitHub push (Actions runner)</text>
+    <rect x="60" y="246" width="200" height="34" rx="6" class="pillar-wrap"/>
+    <text x="74" y="268" class="body">Web upload: drag a zip</text>
+  </g>
+
+  <!-- Arrow: makers → platform -->
+  <path class="arrow" d="M 270 200 L 360 200"/>
+  <text x="280" y="190" class="body-light">deploy</text>
+
+  <!-- Platform (center, dark) -->
+  <rect x="360" y="100" width="540" height="540" rx="14" class="platform"/>
+  <text x="380" y="130" class="label-eyebrow" fill="#A8C491">Cloudflare platform</text>
+  <text x="380" y="156" font-family="'Fraunces', Georgia, serif" font-weight="600" font-size="20" class="body-cream">apps/platform · SvelteKit on Workers + Pages</text>
+
+  <!-- Wrap section -->
+  <g>
+    <rect x="380" y="180" width="500" height="120" rx="10" fill="#3A2F26" stroke="#5E4C3C"/>
+    <text x="400" y="206" class="label-eyebrow" fill="#F4B860">Wrap</text>
+    <text x="400" y="228" class="body-cream">hooks.server.ts wraps every *.shippie.app HTML response</text>
+    <text x="400" y="252" class="body-cream">→ Manifest · Service Worker · Install prompt · Your Data panel</text>
+    <text x="400" y="270" class="body-cream">→ Boost (DOM observer + AppProfile) · Sense (haptics, springs, textures)</text>
+    <text x="400" y="290" class="body-light" fill="#C9B99A">Shell · Boost · Sense</text>
+  </g>
+
+  <!-- Run section -->
+  <g>
+    <rect x="380" y="316" width="500" height="120" rx="10" fill="#3A2F26" stroke="#5E4C3C"/>
+    <text x="400" y="342" class="label-eyebrow" fill="#A8C491">Run</text>
+    <text x="400" y="364" class="body-cream">D1 (apps, deploys, room_audit, proof_events, capability_badges)</text>
+    <text x="400" y="384" class="body-cream">R2 (shippie-apps, shippie-public)  ·  KV (cache + rate-limits)</text>
+    <text x="400" y="404" class="body-cream">apps/shippie-ai → ai.shippie.app (postMessage iframe → on-device AI)</text>
+    <text x="400" y="426" class="body-light" fill="#C9B99A">Core · AI · Vault</text>
+  </g>
+
+  <!-- Connect section -->
+  <g>
+    <rect x="380" y="452" width="500" height="120" rx="10" fill="#3A2F26" stroke="#5E4C3C"/>
+    <text x="400" y="478" class="label-eyebrow" fill="#F4B860">Connect</text>
+    <text x="400" y="500" class="body-cream">Durable Object: SignalRoom (per-room WebSocket fan-out)</text>
+    <text x="400" y="520" class="body-cream">/__shippie/signal/&lt;roomId&gt; · proximity client speaks SDP/ICE</text>
+    <text x="400" y="540" class="body-cream">services/hub (optional venue device — mDNS + WS, app/model cache)</text>
+    <text x="400" y="562" class="body-light" fill="#C9B99A">Pulse · Spark (roadmapped) · Hub</text>
+  </g>
+
+  <!-- Cron + OAuth -->
+  <g>
+    <rect x="380" y="588" width="245" height="40" rx="8" fill="#1F1A14" stroke="#3D3530"/>
+    <text x="394" y="614" class="body-cream">Cron: rollups · capability-badges · retention</text>
+    <rect x="635" y="588" width="245" height="40" rx="8" fill="#1F1A14" stroke="#3D3530"/>
+    <text x="649" y="614" class="body-cream">/oauth/[provider] (BYO-Cloud backup)</text>
+  </g>
+
+  <!-- Arrow: platform → user device -->
+  <path class="arrow" d="M 900 360 L 990 360"/>
+  <text x="910" y="350" class="body-light">wrap injected</text>
+
+  <!-- User device (right rail) -->
+  <text x="1020" y="106" class="label-eyebrow">Your device</text>
+  <g>
+    <rect x="990" y="120" width="180" height="540" rx="20" class="device"/>
+    <rect x="1010" y="150" width="140" height="20" rx="6" fill="#3D3530"/>
+    <text x="1030" y="165" font-size="10" class="body-cream">app.shippie.app</text>
+
+    <!-- Wrap on device -->
+    <rect x="1010" y="190" width="140" height="98" rx="8" fill="#3A2F26"/>
+    <text x="1024" y="210" class="label-eyebrow" fill="#F4B860">Wrap</text>
+    <text x="1024" y="228" class="body-cream">PWA shell</text>
+    <text x="1024" y="244" class="body-cream">Haptics + spring</text>
+    <text x="1024" y="260" class="body-cream">Textures + patina</text>
+    <text x="1024" y="276" class="body-cream">Your Data panel</text>
+
+    <!-- Run on device -->
+    <rect x="1010" y="298" width="140" height="98" rx="8" fill="#3A2F26"/>
+    <text x="1024" y="318" class="label-eyebrow" fill="#A8C491">Run</text>
+    <text x="1024" y="336" class="body-cream">wa-sqlite + OPFS</text>
+    <text x="1024" y="352" class="body-cream">Local files</text>
+    <text x="1024" y="368" class="body-cream">Local AI iframe</text>
+    <text x="1024" y="384" class="body-cream">Encrypted backup</text>
+
+    <!-- Connect on device -->
+    <rect x="1010" y="406" width="140" height="98" rx="8" fill="#3A2F26"/>
+    <text x="1024" y="426" class="label-eyebrow" fill="#F4B860">Connect</text>
+    <text x="1024" y="444" class="body-cream">WebRTC P2P</text>
+    <text x="1024" y="460" class="body-cream">Yjs CRDT sync</text>
+    <text x="1024" y="476" class="body-cream">Room audit</text>
+    <text x="1024" y="492" class="body-cream">Transfer flow</text>
+
+    <!-- Proof emit -->
+    <rect x="1010" y="518" width="140" height="50" rx="8" fill="#1F1A14"/>
+    <text x="1024" y="538" class="label-eyebrow" fill="#F4B860">Proof emit</text>
+    <text x="1024" y="554" class="body-cream">runtime evidence</text>
+
+    <!-- Home screen indicator -->
+    <rect x="1010" y="580" width="140" height="56" rx="8" fill="#1F1A14"/>
+    <text x="1024" y="600" class="body-light" fill="#C9B99A">Installed PWA · square</text>
+    <text x="1024" y="616" class="body-light" fill="#C9B99A">icon, no App Store</text>
+    <rect x="1116" y="608" width="20" height="20" rx="0" class="accent"/>
+  </g>
+
+  <!-- Arrow: device → platform (proof + sync + analytics) -->
+  <path class="arrow" d="M 990 500 L 900 500"/>
+  <text x="900" y="490" text-anchor="end" class="body-light">proof + sync</text>
+
+  <!-- Peer-to-peer arrow at bottom -->
+  <path class="arrow-light" d="M 1080 660 Q 1080 700 700 700"/>
+  <path class="arrow-light" d="M 1080 660 Q 1080 700 700 700"/>
+  <text x="700" y="722" text-anchor="middle" class="body-light">nearby phones talk directly via WebRTC, signal via Cloudflare DO or local Hub</text>
+
+  <!-- Bottom legend -->
+  <g>
+    <rect x="60" y="690" width="14" height="14" class="accent"/>
+    <text x="80" y="702" class="body-light">Action / wrap accent</text>
+    <rect x="220" y="690" width="14" height="14" class="sage"/>
+    <text x="240" y="702" class="body-light">Run / structure</text>
+    <rect x="350" y="690" width="14" height="14" class="marigold"/>
+    <text x="370" y="702" class="body-light">Connect / event</text>
+  </g>
+</svg>

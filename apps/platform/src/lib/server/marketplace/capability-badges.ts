@@ -105,3 +105,60 @@ export function publicCapabilityBadgesFromProfile(
   }
   return merged.slice(0, 5);
 }
+
+/**
+ * Display label for each runtime-proof Capability Badge slug. Kept in
+ * sync with `apps/platform/src/lib/server/proof/taxonomy.ts → CAPABILITY_BADGES`.
+ *
+ * Proven badges are STRONGER signals than autopack/profile heuristics —
+ * they reflect "the wrapper observed this happening on real devices",
+ * not just "the build saw an import." The merge function below puts
+ * proven entries first and dedupes by display label.
+ */
+export const PROVEN_BADGE_LABELS: Record<string, string> = {
+  'works-offline': 'Works Offline',
+  'runs-local-db': 'Local DB',
+  'uses-local-ai': 'Local AI',
+  'mesh-ready': 'Mesh Ready',
+  'data-export-verified': 'Data Export Verified',
+  'backup-restore-verified': 'Backup Verified',
+  'device-transfer-verified': 'Transfer Verified',
+};
+
+interface ProvenBadgeRow {
+  badge: string;
+}
+
+export function provenBadgesFromAwards(rows: readonly ProvenBadgeRow[]): PublicCapabilityBadge[] {
+  const out: PublicCapabilityBadge[] = [];
+  for (const row of rows) {
+    const label = PROVEN_BADGE_LABELS[row.badge];
+    if (!label) continue;
+    out.push({ label, status: 'pass', proven: true });
+  }
+  return out;
+}
+
+/**
+ * Final merge for the listing page. Order:
+ *   1. Proven (runtime-verified) — these are the gold standard.
+ *   2. Profile (deploy-time analyser).
+ *   3. Autopack report (legacy/seed).
+ *
+ * Dedup on display label across sources. Capped at 5.
+ */
+export function publicCapabilityBadgesWithProven(
+  proven: readonly ProvenBadgeRow[],
+  report: unknown,
+  profile: unknown,
+): PublicCapabilityBadge[] {
+  const provenList = provenBadgesFromAwards(proven);
+  const seen = new Set(provenList.map((b) => b.label));
+  const merged: PublicCapabilityBadge[] = [...provenList];
+  for (const b of [...badgesFromProfile(profile), ...publicCapabilityBadges(report)]) {
+    if (seen.has(b.label)) continue;
+    seen.add(b.label);
+    merged.push(b);
+  }
+  return merged.slice(0, 5);
+}
