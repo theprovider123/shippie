@@ -48,6 +48,10 @@ export type {
   DomainReference,
   PrivacyAuditReport,
 } from './privacy-audit.ts';
+export { computeSecurityScore } from './security-score.ts';
+export type { SecurityScore, SecurityDeduction } from './security-score.ts';
+export { computePrivacyGrade } from './privacy-grade.ts';
+export type { PrivacyGrade, PrivacyGradeResult } from './privacy-grade.ts';
 
 export interface AppFiles {
   /** Maps relative path → file bytes. Path always uses '/' separators

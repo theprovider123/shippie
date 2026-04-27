@@ -24,6 +24,8 @@ import {
   classifyKind,
   runSecurityScan,
   runPrivacyAudit,
+  computeSecurityScore,
+  computePrivacyGrade,
 } from '@shippie/analyse';
 import { getDrizzleClient, schema } from '../db/client';
 import { extractZipSafe } from './zip-extract';
@@ -611,6 +613,8 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
       warns: securityReport.warns,
       infos: securityReport.infos,
       scannedFiles: securityReport.scannedFiles,
+      // Phase 4 Stage A — computed but maker-facing only.
+      score: computeSecurityScore(securityReport),
     };
     steps.push({
       id: 'security_scan',
@@ -644,7 +648,11 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
     const privacyReport = runPrivacyAudit(input.files, {
       allowedFeatureDomains: input.manifest.allowed_connect_domains ?? [],
     });
-    report.privacy = privacyReport;
+    report.privacy = {
+      ...privacyReport,
+      // Phase 4 Stage A — computed but maker-facing only.
+      grade: computePrivacyGrade(privacyReport),
+    };
     input.emitter.emit({
       type: 'privacy_audit_finished',
       trackers: privacyReport.counts.tracker,

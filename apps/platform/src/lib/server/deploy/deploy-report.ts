@@ -17,6 +17,8 @@ import type {
   SecurityFinding,
   SecurityScanReport,
   PrivacyAuditReport,
+  SecurityScore,
+  PrivacyGradeResult,
 } from '@shippie/analyse';
 import type { AppKindProfile } from '$lib/types/app-kind';
 
@@ -47,17 +49,26 @@ export interface DeployReport {
     reasons: AppKindProfile['reasons'];
   };
 
-  /** Phase 4 Stage A — maker-facing security report (numeric score added later). */
+  /** Phase 4 Stage A — maker-facing security report. Numeric score is
+   *  computed internally to tune weights against real deploys; promotion
+   *  to public surface comes in Stage B once the scanner has proven
+   *  itself. */
   security: {
     findings: SecurityFinding[];
     blocks: number;
     warns: number;
     infos: number;
     scannedFiles: number;
+    /** Internal-only until Stage B. Surfaces in dashboard report page. */
+    score?: SecurityScore;
   };
 
-  /** Phase 4 Stage A — maker-facing privacy report. */
-  privacy: PrivacyAuditReport;
+  /** Phase 4 Stage A — maker-facing privacy report. Grade is private
+   *  until Stage B promotion. */
+  privacy: PrivacyAuditReport & {
+    /** Internal-only until Stage B. */
+    grade?: PrivacyGradeResult;
+  };
 
   /** Step-by-step record of what the pipeline did. Phase 3 turns this
    *  into the live event stream — until then it's a flat list. */
