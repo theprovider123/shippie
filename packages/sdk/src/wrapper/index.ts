@@ -195,3 +195,39 @@ export {
   notePersonalDataLeak,
   type KindEmitterConfig,
 } from './kind-emitter.ts';
+
+export {
+  buildBeacon,
+  ALLOWED_BEACON_FIELDS,
+  ALLOWED_METRIC_FIELDS,
+  ALLOWED_PERFORMANCE_FIELDS,
+  ALLOWED_COHORT_FIELDS,
+  type AnalyticsBeacon,
+  type BuildBeaconInput,
+  type DeviceClass,
+} from './analytics.ts';
+
+export { dailySessionHash } from './session-hash.ts';
+
+export {
+  buildFeedback,
+  FEEDBACK_KINDS,
+  ALLOWED_FEEDBACK_FIELDS,
+  ALLOWED_CONTEXT_FIELDS,
+  ALLOWED_RATING_FIELDS,
+  type FeedbackPayload,
+  type FeedbackKind,
+  type FeedbackContext,
+  type FeedbackRatings,
+  type BuildFeedbackInput,
+} from './feedback.ts';
+
+export {
+  buildWhisper,
+  expiresAfterMs,
+  shouldShowWhisper,
+  readWhisperFromManifest,
+  ALLOWED_WHISPER_FIELDS,
+  type Whisper,
+  type WhisperDismissalState,
+} from './whispers.ts';
