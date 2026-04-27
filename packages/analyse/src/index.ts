@@ -35,6 +35,19 @@ export type {
   FormPoint,
   ExternalApi,
 } from './remix-spec.ts';
+export { runSecurityScan } from './security-scan.ts';
+export type {
+  SecurityFinding,
+  SecurityFindingSeverity,
+  SecurityRuleId,
+  SecurityScanReport,
+} from './security-scan.ts';
+export { runPrivacyAudit, classifyDomain } from './privacy-audit.ts';
+export type {
+  DomainCategory,
+  DomainReference,
+  PrivacyAuditReport,
+} from './privacy-audit.ts';
 
 export interface AppFiles {
   /** Maps relative path → file bytes. Path always uses '/' separators
