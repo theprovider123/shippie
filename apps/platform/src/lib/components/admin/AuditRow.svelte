@@ -1,6 +1,6 @@
 <script lang="ts">
   import JsonDiff from './JsonDiff.svelte';
-  import type { AuditDisplayRow } from '../../../routes/admin/audit/$types';
+  import type { AuditDisplayRow } from '../../../routes/admin/audit/+page.server';
 
   let { row }: { row: AuditDisplayRow } = $props();
 

@@ -118,9 +118,12 @@ export function buildFtsQuery(raw: string): string | null {
   return tokens.map((t) => `"${t}"*`).join(' ');
 }
 
+export type KindFilter = 'local' | 'connected' | 'cloud';
+
 export interface SearchOptions {
   limit?: number;
   offset?: number;
+  kind?: KindFilter | null;
 }
 
 export async function searchPublic(
@@ -130,10 +133,14 @@ export async function searchPublic(
 ): Promise<FeaturedApp[]> {
   const limit = opts.limit ?? 60;
   const offset = opts.offset ?? 0;
+  const kind = opts.kind ?? null;
   const ftsQuery = buildFtsQuery(query);
   if (!ftsQuery) return browsePublic(db, opts);
 
   // Two-step: FTS5 returns rowid_id (= apps.id), then we fetch the cards.
+  // Note: limit/offset apply to the FTS step. If a kind filter is active
+  // we cannot cleanly paginate across the join — apply kind in the join
+  // and let the caller request a larger page if filtered counts are low.
   const matchRows = await db.all<{ rowid_id: string }>(sql`
     SELECT rowid_id FROM apps_fts WHERE apps_fts MATCH ${ftsQuery}
     ORDER BY rank LIMIT ${limit} OFFSET ${offset}
@@ -141,10 +148,11 @@ export async function searchPublic(
   const ids = matchRows.map((r) => r.rowid_id);
   if (ids.length === 0) return [];
 
-  const rows = await db
-    .select(FEATURED_COLUMNS)
-    .from(apps)
-    .where(and(inArray(apps.id, ids), PUBLIC_FILTERS));
+  const where = kind
+    ? and(inArray(apps.id, ids), PUBLIC_FILTERS, eq(apps.currentDetectedKind, kind))
+    : and(inArray(apps.id, ids), PUBLIC_FILTERS);
+
+  const rows = await db.select(FEATURED_COLUMNS).from(apps).where(where);
 
   // Preserve FTS rank ordering.
   const order = new Map(ids.map((id, i) => [id, i]));
@@ -157,10 +165,14 @@ export async function browsePublic(
 ): Promise<FeaturedApp[]> {
   const limit = opts.limit ?? 60;
   const offset = opts.offset ?? 0;
+  const kind = opts.kind ?? null;
+  const where = kind
+    ? and(PUBLIC_FILTERS, eq(apps.currentDetectedKind, kind))
+    : PUBLIC_FILTERS;
   return db
     .select(FEATURED_COLUMNS)
     .from(apps)
-    .where(PUBLIC_FILTERS)
+    .where(where)
     .orderBy(desc(apps.upvoteCount), desc(apps.installCount), desc(apps.lastDeployedAt))
     .limit(limit)
     .offset(offset);

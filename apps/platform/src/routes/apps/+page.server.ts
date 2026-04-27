@@ -14,8 +14,9 @@
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
 import { getDrizzleClient, schema } from '$server/db/client';
-import { browsePublic, searchPublic, listCategories } from '$server/db/queries/apps';
+import { browsePublic, searchPublic, listCategories, type KindFilter } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
+import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
 const PER_PAGE = 24;
 
@@ -35,25 +36,20 @@ export const load: PageServerLoad = async ({ platform, url }) => {
   const page = Math.max(1, Number.parseInt(url.searchParams.get('p') ?? '1', 10) || 1);
   const offset = (page - 1) * PER_PAGE;
   const kindFilterRaw = url.searchParams.get('kind');
-  const kindFilter =
+  const kindFilter: KindFilter | null =
     kindFilterRaw === 'local' || kindFilterRaw === 'connected' || kindFilterRaw === 'cloud'
       ? kindFilterRaw
       : null;
 
-  const [apps, categories] = await Promise.all([
+  // Filter pushed into the DB query so pagination is correct.
+  const [appRows, categories] = await Promise.all([
     query
-      ? searchPublic(db, query, { limit: PER_PAGE + 1, offset })
-      : browsePublic(db, { limit: PER_PAGE + 1, offset }),
+      ? searchPublic(db, query, { limit: PER_PAGE + 1, offset, kind: kindFilter })
+      : browsePublic(db, { limit: PER_PAGE + 1, offset, kind: kindFilter }),
     listCategories(db),
   ]);
 
-  // Kind filter is applied post-query for v1 (small catalogue, no FTS
-  // pressure). Move into the query when ranking factors in kind.
-  const filtered = kindFilter
-    ? apps.filter((a) => a.currentDetectedKind === kindFilter)
-    : apps;
-
-  const visible = filtered.slice(0, PER_PAGE);
+  const visible = appRows.slice(0, PER_PAGE);
   const ids = visible.map((a) => a.id).filter((id): id is string => typeof id === 'string');
   const awarded = ids.length
     ? await db
@@ -73,14 +69,18 @@ export const load: PageServerLoad = async ({ platform, url }) => {
     }
     bucket.push({ badge: row.badge });
   }
+  // Narrow the wide schema column types into the AppKind union the UI expects.
+  const isAppKind = (v: string | null): v is AppKind =>
+    v === 'local' || v === 'connected' || v === 'cloud';
+
   const decorated = visible.map((a) => ({
     ...a,
     badges: provenBadgesFromAwards(byApp.get(a.id ?? '') ?? []),
-    kind: a.currentDetectedKind,
-    kindStatus: a.currentPublicKindStatus,
+    kind: isAppKind(a.currentDetectedKind) ? a.currentDetectedKind : null,
+    kindStatus: (a.currentPublicKindStatus ?? null) as PublicKindStatus | null,
   }));
 
-  const hasMore = filtered.length > PER_PAGE;
+  const hasMore = appRows.length > PER_PAGE;
   return {
     apps: decorated,
     query,

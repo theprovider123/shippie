@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AdminAppRow } from '../../../routes/admin/$types';
+  import type { AdminAppRow } from '../../../routes/admin/+page.server';
 
   type SortDir = 'asc' | 'desc';
   type SortKey = 'created' | 'name' | 'upvotes' | 'status' | 'visibility';

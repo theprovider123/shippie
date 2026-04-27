@@ -182,4 +182,34 @@ describe('fetch leak detector', () => {
     await flushNow();
     expect(cap.events().some((e) => e.eventType === 'kind_leak_personal_data')).toBe(false);
   });
+
+  test('reconfigure updates allowedHosts (regression — closure bug)', async () => {
+    const cap = makeFetchCapture();
+    const wrappedFetch = mock(async () => new Response('{}', { status: 200 })) as unknown as typeof fetch;
+    const fetchHost = { fetch: wrappedFetch };
+
+    configureProof({ appSlug: 'test-app', fetchImpl: cap.fetchImpl });
+    // First call: api.example.com is NOT allowed.
+    configureKindEmitter({
+      navigatorOverride: { onLine: true },
+      allowedHosts: [],
+      fetchHost,
+    });
+    // Reconfigure: api.example.com is now declared safe.
+    configureKindEmitter({
+      navigatorOverride: { onLine: true },
+      allowedHosts: ['api.example.com'],
+    });
+
+    await fetchHost.fetch('https://api.example.com/save', {
+      method: 'POST',
+      body: '{"name":"alice"}',
+    });
+    await flushNow();
+    expect(
+      cap.events().some(
+        (e) => e.eventType === 'kind_leak_personal_data' && e.payload?.host === 'api.example.com',
+      ),
+    ).toBe(false);
+  });
 });

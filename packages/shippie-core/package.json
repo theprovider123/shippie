@@ -1,0 +1,25 @@
+{
+  "name": "@shippie/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Shared core for Shippie maker tools — deploy, apps, auth. Consumed by @shippie/mcp and @shippie/cli.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

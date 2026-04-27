@@ -20,18 +20,14 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import AdmZip from 'adm-zip';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, basename, join, relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { classifyKind, localize, type LocalizeTransform } from '@shippie/analyse';
+import { createClient } from '@shippie/core';
 
-const API_URL = process.env.SHIPPIE_API_URL ?? 'https://shippie.app';
-
-function getToken(): string | null {
-  const tokenPath = resolve(process.env.HOME ?? '~', '.shippie', 'token');
-  if (existsSync(tokenPath)) return readFileSync(tokenPath, 'utf8').trim();
-  return process.env.SHIPPIE_TOKEN ?? null;
-}
+// Single shared client — picks up SHIPPIE_API_URL + SHIPPIE_TOKEN/~/.shippie/token.
+// Same code path runs against shippie.app and hub.local.
+const client = createClient();
 
 const server = new Server(
   { name: 'shippie', version: '0.0.2' },
@@ -172,28 +168,33 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function handleDeploy(args: { directory: string; slug?: string; trial?: boolean }) {
-  const dir = args.directory;
+  // All deploy logic now in @shippie/core. MCP just adapts the result to
+  // the MCP tool-response shape. CLI will use the same core call.
+  const result = await client.deploy({
+    directory: args.directory,
+    slug: args.slug,
+    trial: args.trial,
+  });
 
-  if (!existsSync(dir)) {
-    return { content: [{ type: 'text', text: `Directory not found: ${dir}` }], isError: true };
-  }
-
-  const zip = new AdmZip();
-  zip.addLocalFolder(dir);
-  const buffer = zip.toBuffer();
-
-  const form = new FormData();
-  form.append('zip', new Blob([buffer]), 'deploy.zip');
-
-  const endpoint = args.trial ? '/api/deploy/trial' : '/api/deploy';
-  const headers: Record<string, string> = {};
-
-  if (!args.trial) {
-    const slug = args.slug ?? basename(dir).toLowerCase().replace(/[^a-z0-9-]/g, '-');
-    form.append('slug', slug);
-
-    const token = getToken();
-    if (!token) {
+  if (!result.ok) {
+    if (result.error === 'rate_limit') {
+      return {
+        content: [{ type: 'text', text: 'Rate limit hit. Try again in a moment.' }],
+        isError: true,
+      };
+    }
+    if (result.error === 'trial_rate_limit') {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Trial rate limit hit (3/hour/IP). Wait an hour or authenticate for unlimited deploys.',
+          },
+        ],
+        isError: true,
+      };
+    }
+    if (result.error?.startsWith('no_auth_token')) {
       return {
         content: [
           {
@@ -206,75 +207,47 @@ async function handleDeploy(args: { directory: string; slug?: string; trial?: bo
         isError: true,
       };
     }
-    headers['authorization'] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: form, headers });
-
-  if (res.status === 429) {
     return {
-      content: [
-        {
-          type: 'text',
-          text:
-            args.trial
-              ? 'Trial rate limit hit (3/hour/IP). Wait an hour or authenticate for unlimited deploys.'
-              : 'Rate limit hit. Try again in a moment.',
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  const json = (await res.json()) as Record<string, unknown>;
-
-  if (!res.ok) {
-    return {
-      content: [{ type: 'text', text: `Deploy failed: ${json.error ?? json.reason ?? res.statusText}` }],
+      content: [{ type: 'text', text: `Deploy failed: ${result.error ?? 'unknown error'}` }],
       isError: true,
     };
   }
 
   const lines = [
-    `${args.trial ? 'Trial deployed' : 'Deployed'}: ${json.slug}`,
-    `Live:      ${json.live_url}`,
+    `${args.trial ? 'Trial deployed' : 'Deployed'}: ${result.slug}`,
+    `Live:      ${result.liveUrl}`,
   ];
-  if (json.version != null) lines.push(`Version:   v${json.version}`);
-  if (json.deploy_id)       lines.push(`Deploy:    ${json.deploy_id}`);
-  if (json.files != null)   lines.push(`Files:     ${json.files}`);
-  if (json.expires_at)      lines.push(`Expires:   ${json.expires_at} (sign in to claim)`);
+  if (result.version != null) lines.push(`Version:   v${result.version}`);
+  if (result.deployId)        lines.push(`Deploy:    ${result.deployId}`);
+  if (result.files != null)   lines.push(`Files:     ${result.files}`);
+  if (result.expiresAt)       lines.push(`Expires:   ${result.expiresAt} (sign in to claim)`);
   lines.push('');
-  lines.push(`Poll with: status(deploy_id="${json.deploy_id}")`);
+  if (result.deployId) lines.push(`Poll with: status(deploy_id="${result.deployId}")`);
 
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
 async function handleStatus(args: { deploy_id: string }) {
-  const res = await fetch(`${API_URL}/api/deploy/${encodeURIComponent(args.deploy_id)}/status`);
-  if (res.status === 404) {
-    return { content: [{ type: 'text', text: `Deploy not found: ${args.deploy_id}` }], isError: true };
-  }
-  if (!res.ok) {
+  const result = await client.status(args.deploy_id);
+  if (!result.ok) {
+    if (result.error === 'deploy_not_found') {
+      return {
+        content: [{ type: 'text', text: `Deploy not found: ${args.deploy_id}` }],
+        isError: true,
+      };
+    }
     return {
-      content: [{ type: 'text', text: `Status request failed: ${res.status} ${res.statusText}` }],
+      content: [{ type: 'text', text: `Status request failed: ${result.error ?? 'unknown'}` }],
       isError: true,
     };
   }
 
-  const json = (await res.json()) as {
-    deploy_id: string;
-    slug: string;
-    version: number;
-    phase: string;
-    duration_ms: number | null;
-  };
-
-  const dur = json.duration_ms ? ` (${(json.duration_ms / 1000).toFixed(1)}s)` : '';
+  const dur = result.durationMs ? ` (${(result.durationMs / 1000).toFixed(1)}s)` : '';
   return {
     content: [
       {
         type: 'text',
-        text: `${json.slug} v${json.version} · phase=${json.phase}${dur}`,
+        text: `${result.slug} v${result.version} · phase=${result.phase}${dur}`,
       },
     ],
   };

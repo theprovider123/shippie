@@ -42,4 +42,18 @@ export default defineConfig([
       js: 'if (typeof window !== "undefined") { window.shippie = shippie; }',
     },
   },
+  // Runtime bundle — served at /__shippie/sdk.js on every maker subdomain.
+  // Self-bootstrapping IIFE that registers SW, captures BIP, configures
+  // proof + kind emitters from /__shippie/meta. Output uploaded to
+  // PLATFORM_ASSETS/sdk/v1.latest.js by the platform deploy pipeline.
+  {
+    entry: { 'wrapper-runtime.global': 'src/wrapper/runtime-bundle.ts' },
+    format: ['iife'],
+    target: 'es2020',
+    platform: 'browser',
+    dts: false,
+    sourcemap: true,
+    minify: true,
+    external: [],
+  },
 ]);

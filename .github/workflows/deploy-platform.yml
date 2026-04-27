@@ -57,9 +57,17 @@ jobs:
         working-directory: apps/platform
         run: npx wrangler d1 migrations apply shippie-platform-d1 --remote
 
+      - name: Build wrapper SDK bundle
+        working-directory: packages/sdk
+        run: bun run build
+
       - name: Build SvelteKit Worker
         working-directory: apps/platform
         run: bun run build
+
+      - name: Upload wrapper SDK to PLATFORM_ASSETS R2
+        working-directory: apps/platform
+        run: bun scripts/upload-sdk-bundle.mjs
 
       - name: Deploy to Cloudflare
         working-directory: apps/platform

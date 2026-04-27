@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import type { MyAppRow } from '../../../routes/dashboard/$types';
+  import type { MyAppRow } from '../../../routes/dashboard/+layout.server';
 
   let { user, myApps }: { user: { email: string; displayName: string | null }; myApps: MyAppRow[] } = $props();
 </script>

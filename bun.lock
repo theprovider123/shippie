@@ -306,6 +306,7 @@
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.0.0",
         "@shippie/analyse": "workspace:*",
+        "@shippie/core": "workspace:*",
         "adm-zip": "^0.5.16",
       },
       "devDependencies": {
@@ -372,6 +373,18 @@
       "name": "@shippie/shared",
       "version": "0.0.0",
       "devDependencies": {
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/shippie-core": {
+      "name": "@shippie/core",
+      "version": "0.0.1",
+      "dependencies": {
+        "adm-zip": "^0.5.16",
+      },
+      "devDependencies": {
+        "@types/adm-zip": "^0.5.7",
+        "@types/node": "^22.10.0",
         "typescript": "^5.7.0",
       },
     },
@@ -830,6 +843,8 @@
     "@shippie/backup-providers": ["@shippie/backup-providers@workspace:packages/backup-providers"],
 
     "@shippie/cli": ["@shippie/cli@workspace:packages/cli"],
+
+    "@shippie/core": ["@shippie/core@workspace:packages/shippie-core"],
 
     "@shippie/db": ["@shippie/db@workspace:packages/db"],
 

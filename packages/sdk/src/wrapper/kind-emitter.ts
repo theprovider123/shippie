@@ -116,6 +116,10 @@ function urlMatchesProbe(url: string, probe: string): boolean {
 }
 
 function bindLeakDetector(opts: KindEmitterConfig): void {
+  // Note: only `fetchHost` is read from the first-call opts (the wrapper's
+  // host is fixed once installed). All policy-shaped fields (allowedHosts,
+  // workflowProbes) must be read from the live `config` module variable so
+  // that subsequent configureKindEmitter() calls take effect.
   const host = opts.fetchHost ?? (typeof globalThis !== 'undefined' ? globalThis : null);
   if (!host || typeof host.fetch !== 'function') return;
   const original = host.fetch.bind(host);
@@ -123,10 +127,11 @@ function bindLeakDetector(opts: KindEmitterConfig): void {
     try {
       const url = inputToUrl(input);
       const method = (init?.method ?? 'GET').toUpperCase();
+      const allowedHosts = config?.allowedHosts ?? [];
       if (
         url &&
         isWriteMethod(method) &&
-        isExternalUndeclared(url, opts.allowedHosts ?? []) &&
+        isExternalUndeclared(url, allowedHosts) &&
         hasNonTrivialBody(init?.body)
       ) {
         emitProofEvent('kind_leak_personal_data', {

@@ -5,7 +5,7 @@
 
   let { data }: PageProps = $props();
 
-  function pageHref(q: string, page: number, kind: string | null): string {
+  function pageHref(q: string, page: number, kind: string | null | undefined): string {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (page > 1) params.set('p', String(page));
