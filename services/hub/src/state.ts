@@ -47,11 +47,66 @@ export class HubState {
             room_id TEXT PRIMARY KEY,
             last_active INTEGER NOT NULL
           );
+          CREATE TABLE IF NOT EXISTS analytics_beacons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            received_at INTEGER NOT NULL,
+            app_slug TEXT NOT NULL,
+            period TEXT NOT NULL,
+            session_hash TEXT NOT NULL,
+            payload TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_beacons_app_period
+            ON analytics_beacons (app_slug, period);
         `);
       } catch {
         // bun:sqlite missing or path unwritable — the Hub still runs.
         this.db = undefined;
       }
+    }
+  }
+
+  /**
+   * Phase 9.2 — record a privacy-first analytics beacon. The Hub stores
+   * the raw allowlisted JSON. Aggregation queries (by period, by slug,
+   * DAU via distinct sessionHash) live in the dashboard SQL.
+   *
+   * The Hub does not validate the schema — that's the wrapper SDK's
+   * responsibility upstream. A malformed beacon is simply stored and
+   * filtered out at query time.
+   */
+  recordBeacon(beacon: {
+    appSlug: string;
+    period: string;
+    sessionHash: string;
+    metrics: unknown;
+  }): void {
+    if (!this.db) return;
+    try {
+      this.db
+        .prepare(
+          `INSERT INTO analytics_beacons (received_at, app_slug, period, session_hash, payload)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+        .run(Date.now(), beacon.appSlug, beacon.period, beacon.sessionHash, JSON.stringify(beacon));
+    } catch {
+      // Storage hiccups must not break the beacon-receiving handler.
+    }
+  }
+
+  /** DAU for an app on a given UTC date, by counting distinct session
+   *  hashes. Used by the Hub dashboard. */
+  dailyActiveDevices(appSlug: string, period: string): number {
+    if (!this.db) return 0;
+    try {
+      const row = this.db
+        .prepare(
+          `SELECT COUNT(DISTINCT session_hash) AS dau FROM analytics_beacons
+           WHERE app_slug = ? AND period = ?`,
+        )
+        .get(appSlug, period) as { dau?: number } | null;
+      return row?.dau ?? 0;
+    } catch {
+      return 0;
     }
   }
 

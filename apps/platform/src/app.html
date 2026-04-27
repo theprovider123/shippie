@@ -5,7 +5,24 @@
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#14120F" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     %sveltekit.head%
+    <script>
+      // Phase 9.1 — register the marketplace service worker on the
+      // root platform host only. Maker subdomains have their own SW
+      // served by the wrapper at /__shippie/sw.js.
+      if ('serviceWorker' in navigator) {
+        var h = location.hostname;
+        var isPlatform = h === 'shippie.app' || h === 'www.shippie.app' ||
+                         h === 'next.shippie.app' || h === 'localhost';
+        if (isPlatform) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/__shippie-pwa/sw.js', { scope: '/' })
+              .catch(function (err) { console.warn('[shippie] marketplace sw failed', err); });
+          });
+        }
+      }
+    </script>
   </head>
   <body data-sveltekit-preload-data="hover">
     <div style="display: contents">%sveltekit.body%</div>

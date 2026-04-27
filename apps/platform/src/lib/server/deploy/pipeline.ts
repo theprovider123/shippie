@@ -26,6 +26,8 @@ import {
   runPrivacyAudit,
   computeSecurityScore,
   computePrivacyGrade,
+  localize,
+  type LocalizeTransform,
 } from '@shippie/analyse';
 import { getDrizzleClient, schema } from '../db/client';
 import { extractZipSafe } from './zip-extract';
@@ -722,6 +724,33 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
     finishedAtMs: input.durationMs,
     notes: [`${input.files.size} files · ${input.totalBytes} bytes`],
   });
+
+  // Phase 8 Localize V1 — detect transformable patterns and surface
+  // them as offers. We do NOT modify the maker's bundle. Patches are
+  // computed for inspection only; the maker reviews and accepts via
+  // the dashboard.
+  try {
+    const allTransforms: LocalizeTransform[] = [
+      'supabase-basic-queries',
+      'supabase-storage-to-local-files',
+      'authjs-to-local-identity',
+    ];
+    const patches = localize({ files: input.files, transforms: allTransforms });
+    const offers = patches
+      .filter((p) => p.fileChanges.length > 0 || p.newFiles.length > 0)
+      .map((p) => ({
+        transform: p.transform,
+        fileChangeCount: p.fileChanges.length,
+        newFileCount: p.newFiles.length,
+        warnings: p.warnings,
+        sampleFiles: p.fileChanges.slice(0, 3).map((c) => c.path),
+      }));
+    if (offers.length > 0) {
+      report.localizeOffers = offers;
+    }
+  } catch (err) {
+    console.error('[shippie:deploy] localize offers failed', err);
+  }
 
   // Health check — runs in critical path; lightweight (manifest/SW/asset
   // resolution + installability hints). Full Lighthouse is async per the

@@ -24,7 +24,7 @@ import type { ServerWebSocket } from 'bun';
 import { HubState } from './state.ts';
 import { wsHandlerFor, extractRoomId } from './signal.ts';
 import { ModelCache } from './model-cache.ts';
-import { serveAppFile, extractSlugFromHost } from './static.ts';
+import { serveAppFile, extractSlugFromHost, listCachedApps } from './static.ts';
 import { renderDashboard } from './dashboard.ts';
 
 interface WsData {
@@ -122,6 +122,50 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
       // 6) Dashboard JSON.
       if (url.pathname === '/api/rooms') {
         return Response.json(state.stats());
+      }
+
+      // 6a) Phase 9.2 — local marketplace listing.
+      if (url.pathname === '/api/hub/marketplace') {
+        const apps = await listCachedApps(config.cacheRoot);
+        return Response.json({ apps });
+      }
+
+      // 6b) Phase 9.2 — privacy-first analytics beacon ingestion. The
+      //     wrapper SDK already enforces the schema; we just persist.
+      //     Local-only network — no auth required for v1.
+      if (url.pathname === '/api/v1/analytics/beacon' && req.method === 'POST') {
+        let body: unknown;
+        try {
+          body = await req.json();
+        } catch {
+          return new Response(JSON.stringify({ error: 'invalid_json' }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        const beacon = body as {
+          appSlug?: unknown;
+          period?: unknown;
+          sessionHash?: unknown;
+          metrics?: unknown;
+        };
+        if (
+          typeof beacon.appSlug !== 'string' ||
+          typeof beacon.period !== 'string' ||
+          typeof beacon.sessionHash !== 'string'
+        ) {
+          return new Response(JSON.stringify({ error: 'invalid_beacon' }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        state.recordBeacon({
+          appSlug: beacon.appSlug,
+          period: beacon.period,
+          sessionHash: beacon.sessionHash,
+          metrics: beacon.metrics,
+        });
+        return Response.json({ ok: true });
       }
 
       // 7) Dashboard HTML.

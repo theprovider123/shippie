@@ -2,6 +2,7 @@ export const SHIPPIE_PACKAGE_SCHEMA = 'shippie.package.v1' as const;
 export const SHIPPIE_PERMISSIONS_SCHEMA = 'shippie.permissions.v1' as const;
 export const SHIPPIE_RECEIPT_SCHEMA = 'shippie.receipt.v1' as const;
 export const SHIPPIE_BACKUP_SCHEMA = 'shippie.user-backup.v1' as const;
+export const SHIPPIE_BRIDGE_PROTOCOL = 'shippie.bridge.v1' as const;
 
 export type AppKind = 'local' | 'connected' | 'cloud';
 
@@ -16,6 +17,20 @@ export type ContainerEligibility =
 
 export type InstallSource = 'marketplace' | 'url' | 'hub' | 'package' | 'nearby';
 
+export type BridgeCapability =
+  | 'app.info'
+  | 'storage.getUsage'
+  | 'db.query'
+  | 'db.insert'
+  | 'files.write'
+  | 'files.url'
+  | 'ai.run'
+  | 'feedback.open'
+  | 'analytics.track'
+  | 'network.fetch'
+  | 'intent.provide'
+  | 'intent.consume';
+
 export interface PackageMaker {
   id: string;
   name: string;
@@ -24,7 +39,7 @@ export interface PackageMaker {
 
 export interface PackageDomains {
   canonical: string;
-  custom?: string[];
+  custom?: readonly string[];
 }
 
 export interface PackageRuntimeTargets {
@@ -59,7 +74,7 @@ export interface AppVersionRecord {
   trust: {
     permissionsVersion: number;
     trustReportHash?: string;
-    externalDomains: string[];
+    externalDomains: readonly string[];
   };
   data: {
     schemaVersion: number;
@@ -78,17 +93,17 @@ export interface LocalFilesPermission {
 }
 
 export interface LocalAiPermission {
-  tasks: string[];
+  tasks: readonly string[];
 }
 
 export interface NetworkPermissions {
-  allowedDomains: string[];
+  allowedDomains: readonly string[];
   declaredPurpose: Record<string, string>;
 }
 
 export interface CrossAppIntentPermissions {
-  provides: string[];
-  consumes: string[];
+  provides: readonly string[];
+  consumes: readonly string[];
 }
 
 export interface AppPermissions {
@@ -169,6 +184,26 @@ export interface UserDataArchiveManifest {
     filesPath?: string;
     settingsPath?: string;
   }>;
+}
+
+export interface BridgeRequest {
+  protocol: typeof SHIPPIE_BRIDGE_PROTOCOL;
+  id: string;
+  appId: string;
+  capability: BridgeCapability;
+  method: string;
+  payload: unknown;
+}
+
+export interface BridgeResponse {
+  protocol: typeof SHIPPIE_BRIDGE_PROTOCOL;
+  id: string;
+  ok: boolean;
+  result?: unknown;
+  error?: {
+    code: string;
+    message: string;
+  };
 }
 
 export class AppPackageContractError extends Error {
@@ -262,6 +297,81 @@ export function assertValidReceipt(receipt: AppReceipt): void {
   if (receipt.domains.some((domain) => !isHttpUrl(domain))) {
     throw new AppPackageContractError('Receipt domains must be HTTPS or local URLs.', 'invalid_receipt_domain');
   }
+}
+
+export function assertCapabilityAllowed(
+  permissions: AppPermissions,
+  capability: BridgeCapability,
+  options: { domain?: string; intent?: string } = {},
+): void {
+  switch (capability) {
+    case 'app.info':
+    case 'storage.getUsage':
+      return;
+    case 'db.query':
+    case 'db.insert':
+      if (permissions.capabilities.localDb?.enabled) return;
+      break;
+    case 'files.write':
+    case 'files.url':
+      if (permissions.capabilities.localFiles?.enabled) return;
+      break;
+    case 'ai.run':
+      if (permissions.capabilities.localAi?.tasks.length) return;
+      break;
+    case 'feedback.open':
+      if (permissions.capabilities.feedback?.enabled) return;
+      break;
+    case 'analytics.track':
+      if (permissions.capabilities.analytics?.enabled) return;
+      break;
+    case 'network.fetch':
+      if (options.domain && isNetworkDomainAllowed(permissions, options.domain)) return;
+      break;
+    case 'intent.provide':
+      if (options.intent && permissions.capabilities.crossAppIntents?.provides.includes(options.intent)) return;
+      break;
+    case 'intent.consume':
+      if (options.intent && permissions.capabilities.crossAppIntents?.consumes.includes(options.intent)) return;
+      break;
+  }
+
+  throw new AppPackageContractError('Capability is not granted for this app.', 'capability_not_allowed', {
+    capability,
+    ...options,
+  });
+}
+
+export function isNetworkDomainAllowed(permissions: AppPermissions, domain: string): boolean {
+  const hostname = normalizeHostname(domain);
+  return Boolean(hostname && permissions.capabilities.network?.allowedDomains.includes(hostname));
+}
+
+export function normalizeHostname(value: string): string | null {
+  if (value.includes('://')) {
+    try {
+      return new URL(value).hostname;
+    } catch {
+      return null;
+    }
+  }
+
+  if (value.includes('/') || value.includes(':')) return null;
+  return value.toLowerCase();
+}
+
+export function createBridgeRequest(input: Omit<BridgeRequest, 'protocol'>): BridgeRequest {
+  return {
+    protocol: SHIPPIE_BRIDGE_PROTOCOL,
+    ...input,
+  };
+}
+
+export function createBridgeResponse(input: Omit<BridgeResponse, 'protocol'>): BridgeResponse {
+  return {
+    protocol: SHIPPIE_BRIDGE_PROTOCOL,
+    ...input,
+  };
 }
 
 export function canShowRemixAction(source: SourceMetadata): boolean {

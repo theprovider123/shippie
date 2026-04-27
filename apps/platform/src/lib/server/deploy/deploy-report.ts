@@ -19,6 +19,7 @@ import type {
   PrivacyAuditReport,
   SecurityScore,
   PrivacyGradeResult,
+  LocalizePatch,
 } from '@shippie/analyse';
 import type { AppKindProfile } from '$lib/types/app-kind';
 
@@ -73,6 +74,29 @@ export interface DeployReport {
   /** Step-by-step record of what the pipeline did. Phase 3 turns this
    *  into the live event stream — until then it's a flat list. */
   steps: DeployStep[];
+
+  /**
+   * Phase 8 Localize V1 — source-migration offers detected at deploy time.
+   * Empty array when no transforms apply (already local-first apps don't
+   * see this). Each entry summarizes the patch the maker can review.
+   *
+   * Per the master plan: source migration, not runtime shim. The maker
+   * MUST opt-in via the dashboard before any file change is applied.
+   * Today this is preview-only.
+   */
+  localizeOffers?: LocalizeOfferSummary[];
+}
+
+/** Compact representation of a LocalizePatch — full content lives in
+ *  a separate R2 artifact when the maker opens the localize dashboard,
+ *  so the deploy-report stays small. */
+export interface LocalizeOfferSummary {
+  transform: LocalizePatch['transform'];
+  fileChangeCount: number;
+  newFileCount: number;
+  warnings: string[];
+  /** First few file paths affected — for a quick "this would touch X" preview. */
+  sampleFiles: string[];
 }
 
 export interface DeployStep {

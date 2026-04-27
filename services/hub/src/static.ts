@@ -149,3 +149,55 @@ function escapeHtml(s: string): string {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
+export interface CachedApp {
+  slug: string;
+  versions: number[];
+  /** Path-relative absolute installable URL on the Hub. */
+  url: string;
+}
+
+/**
+ * Phase 9.2 — list every app the Hub has cached. Used by the local
+ * marketplace endpoint /api/hub/marketplace.
+ *
+ * Pure read of the apps/ directory tree; no DB required so the Hub
+ * can answer the marketplace query in environments where bun:sqlite
+ * isn't available.
+ */
+export async function listCachedApps(cacheRoot: string): Promise<CachedApp[]> {
+  const appsDir = join(cacheRoot, 'apps');
+  if (!existsSync(appsDir)) return [];
+  let slugs: string[];
+  try {
+    slugs = await readdir(appsDir);
+  } catch {
+    return [];
+  }
+  const out: CachedApp[] = [];
+  for (const slug of slugs) {
+    if (!isSafeSlug(slug)) continue;
+    const slugDir = join(appsDir, slug);
+    let versionEntries: string[];
+    try {
+      versionEntries = await readdir(slugDir);
+    } catch {
+      continue;
+    }
+    const versions: number[] = [];
+    for (const entry of versionEntries) {
+      const m = /^v(\d+)$/.exec(entry);
+      if (!m) continue;
+      const n = Number(m[1]);
+      if (Number.isFinite(n)) versions.push(n);
+    }
+    if (versions.length === 0) continue;
+    versions.sort((a, b) => b - a);
+    out.push({
+      slug,
+      versions,
+      url: `http://${slug}.hub.local/`,
+    });
+  }
+  return out;
+}

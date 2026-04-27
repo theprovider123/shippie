@@ -37,12 +37,16 @@ Instead, this plan consumes their outputs:
 
 ## Phase C0 - ADR + package contract
 
-**Status:** started by this plan.
+**Status:** initial slice shipped.
 
 Deliverables:
 
 - ADR 006: container commons runtime
 - `.shippie` package spec
+- `@shippie/app-package-contract` with TypeScript types and validation for manifests, permissions, trust reports, receipts, and remix/container gates
+- `@shippie/app-package-builder` skeleton that emits deterministic package artifacts from app files and package metadata
+- bridge request/response types plus permission enforcement helpers for the future iframe capability bridge
+- `@shippie/container-bridge` with host/client RPC, in-memory transport tests, and runtime capability enforcement
 - runtime modes: standalone, container, Hub
 - permission/capability model
 - version layers: code, trust, data
@@ -115,7 +119,7 @@ Definition of done:
 
 ## Phase C2 - `.shippie` package builder
 
-Add a package build step after Deploy Truth artifacts exist.
+Add the package build step after Deploy Truth artifacts exist. The initial pure builder already exists in `packages/app-package-builder`; the remaining work is to feed it real deploy artifacts and persist the outputs.
 
 Inputs:
 
@@ -364,12 +368,15 @@ Do not build yet:
 
 ## Suggested first tickets
 
-1. Add ADR 006 and the package/runtime spec.
-2. Add `packages/app-package-contract` with TypeScript types for manifests, permissions, receipts, and eligibility.
-3. Add package manifest validation tests.
-4. Add package builder skeleton that emits manifest-only packages for showcase apps.
-5. Add container-mode fixture app and bridge handshake test.
-6. Add Shippie container shell route behind a feature flag.
-7. Add iframe viewport for curated showcase apps.
+1. [x] Add ADR 006 and the package/runtime spec.
+2. [x] Add `packages/app-package-contract` with TypeScript types for manifests, permissions, receipts, and eligibility.
+3. [x] Add package manifest validation tests.
+4. [x] Add package builder skeleton that emits deterministic package artifacts from app files + metadata.
+5. [ ] Feed real Deploy Truth artifacts into `@shippie/app-package-builder` for one showcase app.
+6. [x] Add bridge request/response contract and capability permission checks.
+7. [x] Add container bridge host/client package with in-memory handshake test.
+8. [ ] Add container-mode fixture app using iframe/postMessage transport.
+9. [ ] Add Shippie container shell route behind a feature flag.
+10. [ ] Add iframe viewport for curated showcase apps.
 
 The first code ticket should be the contract package, not the UI. That keeps the idea portable before it becomes beautiful.

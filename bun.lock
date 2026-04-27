@@ -170,6 +170,25 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/app-package-builder": {
+      "name": "@shippie/app-package-builder",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/app-package-contract": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/app-package-contract": {
+      "name": "@shippie/app-package-contract",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/backup-providers": {
       "name": "@shippie/backup-providers",
       "version": "0.0.0",
@@ -200,6 +219,17 @@
         "@types/adm-zip": "^0.5.7",
         "@types/node": "^22.10.0",
         "tsup": "^8.0.0",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/container-bridge": {
+      "name": "@shippie/container-bridge",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/app-package-contract": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
         "typescript": "^5.7.0",
       },
     },
@@ -843,9 +873,15 @@
 
     "@shippie/analyse": ["@shippie/analyse@workspace:packages/analyse"],
 
+    "@shippie/app-package-builder": ["@shippie/app-package-builder@workspace:packages/app-package-builder"],
+
+    "@shippie/app-package-contract": ["@shippie/app-package-contract@workspace:packages/app-package-contract"],
+
     "@shippie/backup-providers": ["@shippie/backup-providers@workspace:packages/backup-providers"],
 
     "@shippie/cli": ["@shippie/cli@workspace:packages/cli"],
+
+    "@shippie/container-bridge": ["@shippie/container-bridge@workspace:packages/container-bridge"],
 
     "@shippie/core": ["@shippie/core@workspace:packages/shippie-core"],
 
