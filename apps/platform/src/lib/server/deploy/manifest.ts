@@ -44,6 +44,27 @@ export interface ShippieJsonLite {
    * publicKindStatus from `verifying` to `confirmed`.
    */
   workflow_probes?: string[];
+  /**
+   * Phase 5 update-safety: declared destructive schema migrations.
+   *
+   * Additive migrations (ADD COLUMN) run automatically; the wrapper
+   * REFUSES to run anything destructive unless declared here.
+   *
+   * `rename`     map of oldColumn → newColumn for table-level renames.
+   * `drop`       column names safe to remove. Wrapper still keeps a
+   *              30-day shadow under `_shippie_shadow_drops` so the user
+   *              can roll back via the Your Data panel.
+   * `transform`  oldColumn → { to: newColumn, copy?: bool } pairs.
+   *
+   * Each rule is per-table and scoped at the consumer's discretion;
+   * the wrapper applies migrations against the user's local SQLite db
+   * for tables the maker's code actually opens.
+   */
+  migrations?: {
+    rename?: Record<string, string>;
+    drop?: string[];
+    transform?: Record<string, { to: string; copy?: boolean }>;
+  };
 }
 
 export interface DeriveManifestInput {
@@ -93,6 +114,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         workflow_probes: Array.isArray(m.workflow_probes)
           ? (m.workflow_probes.filter((x) => typeof x === 'string') as string[])
           : undefined,
+        migrations: parseMigrations(m.migrations),
       };
       return {
         manifest,
@@ -141,6 +163,52 @@ function defaultManifest(slug: string): ShippieJsonLite {
     theme_color: '#E8603C',
     background_color: '#ffffff',
   };
+}
+
+/**
+ * Parse `migrations` from a maker's shippie.json. Lenient: unknown shapes
+ * are dropped silently (additive-only is the safe default). Validation
+ * errors here MUST NOT block a deploy — the wrapper enforces destructive
+ * blocks at runtime regardless.
+ */
+export function parseMigrations(raw: unknown): ShippieJsonLite['migrations'] {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const obj = raw as Record<string, unknown>;
+  const result: NonNullable<ShippieJsonLite['migrations']> = {};
+
+  if (obj.rename && typeof obj.rename === 'object') {
+    const rename: Record<string, string> = {};
+    for (const [k, v] of Object.entries(obj.rename as Record<string, unknown>)) {
+      if (typeof v === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v)) {
+        rename[k] = v;
+      }
+    }
+    if (Object.keys(rename).length > 0) result.rename = rename;
+  }
+
+  if (Array.isArray(obj.drop)) {
+    const drop = obj.drop.filter(
+      (x): x is string => typeof x === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(x),
+    );
+    if (drop.length > 0) result.drop = drop;
+  }
+
+  if (obj.transform && typeof obj.transform === 'object') {
+    const transform: Record<string, { to: string; copy?: boolean }> = {};
+    for (const [k, v] of Object.entries(obj.transform as Record<string, unknown>)) {
+      if (typeof v !== 'object' || v === null) continue;
+      const spec = v as Record<string, unknown>;
+      if (typeof spec.to !== 'string') continue;
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(spec.to)) continue;
+      transform[k] = {
+        to: spec.to,
+        copy: typeof spec.copy === 'boolean' ? spec.copy : undefined,
+      };
+    }
+    if (Object.keys(transform).length > 0) result.transform = transform;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function readShippieJson(

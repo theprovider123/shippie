@@ -7,7 +7,11 @@ declare module 'bun:test' {
     toEqual: (expected: unknown) => R;
     toBeInstanceOf: (expected: unknown) => R;
     toBeGreaterThan: (expected: number) => R;
+    toBeLessThan: (expected: number) => R;
+    toBeTruthy: () => R;
+    toBeFalsy: () => R;
     toContain: (expected: unknown) => R;
+    toMatchObject: (expected: unknown) => R;
     toThrow: (message?: string | RegExp) => R;
   }
   export function expect<T = unknown>(value: T): Matchers<void>;
