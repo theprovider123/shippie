@@ -46,6 +46,12 @@ import {
   type DeployStep,
 } from './deploy-report';
 import { runHealthCheck } from './health-check';
+import {
+  createEventEmitter,
+  serializeEventsNdjson,
+  deployEventsKey,
+  type DeployEventEmitter,
+} from './deploy-events';
 
 export interface DeployStaticInput {
   slug: string;
@@ -76,14 +82,23 @@ export interface DeployStaticResult {
 
 export async function deployStatic(input: DeployStaticInput): Promise<DeployStaticResult> {
   const startedAt = Date.now();
+  const emitter = createEventEmitter(startedAt);
 
   // 1. Extract
   const extracted = extractZipSafe(input.zipBuffer);
   if (!extracted.ok) {
+    emitter.emit({ type: 'deploy_failed', reason: extracted.reason, step: 'extract' });
     return failReport(input.slug, extracted.reason);
   }
   const files = extracted.files;
   const initialTotalBytes = extracted.totalBytes;
+  emitter.emit({
+    type: 'deploy_received',
+    slug: input.slug,
+    version: 0, // not yet known; updated below
+    files: files.size,
+    bytes: initialTotalBytes,
+  });
 
   // 2. Manifest
   const manifestResult = deriveManifest({
@@ -172,18 +187,30 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   // 6. CSP + PWA injection
   const csp = buildCsp(manifest);
   injectIntoHtmlFiles(files, csp.metaTag, manifest, version);
+  emitter.emit({
+    type: 'essentials_injected',
+    injected: ['csp', 'viewport', 'charset', 'lang', 'og_tags', 'theme_color'],
+  });
 
   // 7. Upload to R2
+  emitter.emit({ type: 'upload_started', files: files.size, bytes: initialTotalBytes });
   let upload: Awaited<ReturnType<typeof uploadFilesToR2>>;
   try {
     upload = await uploadFilesToR2(input.r2, input.slug, version, files);
   } catch (err) {
+    emitter.emit({
+      type: 'deploy_failed',
+      reason: `r2_upload_failed: ${(err as Error).message}`,
+      step: 'upload',
+    });
+    await flushEvents(input.r2, input.slug, version, emitter);
     await db
       .update(schema.deploys)
       .set({ status: 'failed', completedAt: new Date().toISOString(), errorMessage: (err as Error).message })
       .where(eq(schema.deploys.id, deployRow.id));
     return failReport(input.slug, `r2_upload_failed: ${(err as Error).message}`);
   }
+  emitter.emit({ type: 'upload_finished', files: files.size, bytes: upload.totalBytes });
 
   // 8. Insert deploy_artifacts + mark deploy success + flip active
   await db.insert(schema.deployArtifacts).values({
@@ -294,6 +321,15 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
         currentPublicKindStatus: kindProfile.publicKindStatus,
       })
       .where(eq(schema.apps.id, appRow.id));
+    emitter.emit({
+      type: 'kind_classified',
+      detected: kindProfile.detectedKind,
+      declared: kindProfile.declaredKind,
+      publicKind: kindProfile.publicKind,
+      publicStatus: kindProfile.publicKindStatus,
+      confidence: kindProfile.confidence,
+      reasons: kindProfile.reasons.slice(0, 5),
+    });
   } catch (err) {
     console.error('[shippie:deploy] classifyKind failed', err);
   }
@@ -312,6 +348,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       durationMs: Date.now() - startedAt,
       totalBytes: upload.totalBytes,
       preflight,
+      emitter,
     });
   } catch (err) {
     console.error('[shippie:deploy] writeDeployReport failed', err);
@@ -319,17 +356,44 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
 
   await writeActivePointer(input.kv, input.slug, version);
 
+  const liveUrl = resolveLiveUrl(input.publicOrigin, input.slug);
+  emitter.emit({
+    type: 'deploy_live',
+    liveUrl,
+    durationMs: Date.now() - startedAt,
+  });
+
+  // Flush events to R2 last so the artifact reflects the final state.
+  // Non-blocking: a failed flush should never break the deploy itself.
+  await flushEvents(input.r2, input.slug, version, emitter);
+
   return {
     success: true,
     version,
     files: files.size,
     totalBytes: upload.totalBytes,
     preflight,
-    liveUrl: resolveLiveUrl(input.publicOrigin, input.slug),
+    liveUrl,
     appId: appRow.id,
     deployId: deployRow.id,
     notes: manifestResult.notes.length > 0 ? manifestResult.notes : undefined,
   };
+}
+
+async function flushEvents(
+  r2: R2Bucket,
+  slug: string,
+  version: number,
+  emitter: DeployEventEmitter,
+): Promise<void> {
+  try {
+    const ndjson = serializeEventsNdjson(emitter.events());
+    await r2.put(deployEventsKey(slug, version), ndjson, {
+      httpMetadata: { contentType: 'application/x-ndjson; charset=utf-8' },
+    });
+  } catch (err) {
+    console.error('[shippie:deploy] flushEvents failed', err);
+  }
 }
 
 function failReport(slug: string, reason: string): DeployStaticResult {
@@ -490,6 +554,7 @@ interface WriteDeployReportInput {
   durationMs: number;
   totalBytes: number;
   preflight: PreflightReport;
+  emitter: DeployEventEmitter;
 }
 
 async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
@@ -516,7 +581,30 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   // Security scan.
   let securityReport;
   try {
+    input.emitter.emit({
+      type: 'security_scan_started',
+      filesToScan: input.files.size,
+    });
     securityReport = runSecurityScan(input.files, null);
+    // Emit one event per finding so dashboard / stream consumers can
+    // render incrementally. Capped to first 50 to keep the artifact
+    // sane on pathological bundles.
+    for (const finding of securityReport.findings.slice(0, 50)) {
+      input.emitter.emit({
+        type: 'secret_detected',
+        rule: finding.rule,
+        severity: finding.severity,
+        location: finding.location,
+        redacted: finding.snippet ?? '',
+        reason: finding.reason,
+      });
+    }
+    input.emitter.emit({
+      type: 'security_scan_finished',
+      blocks: securityReport.blocks,
+      warns: securityReport.warns,
+      infos: securityReport.infos,
+    });
     report.security = {
       findings: securityReport.findings,
       blocks: securityReport.blocks,
@@ -557,6 +645,13 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
       allowedFeatureDomains: input.manifest.allowed_connect_domains ?? [],
     });
     report.privacy = privacyReport;
+    input.emitter.emit({
+      type: 'privacy_audit_finished',
+      trackers: privacyReport.counts.tracker,
+      unknown: privacyReport.counts.unknown,
+      feature: privacyReport.counts.feature,
+      cdn: privacyReport.counts.cdn,
+    });
     steps.push({
       id: 'privacy_audit',
       title: 'Privacy audit',
@@ -627,6 +722,12 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
     const health = runHealthCheck(input.files);
     const failed = health.items.filter((i) => i.severity === 'fail').length;
     const warned = health.items.filter((i) => i.severity === 'warn').length;
+    input.emitter.emit({
+      type: 'health_check_finished',
+      passed: health.passed,
+      warnings: warned,
+      failures: failed,
+    });
     steps.push({
       id: 'health_check',
       title: 'Health check',

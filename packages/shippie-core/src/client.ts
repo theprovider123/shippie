@@ -2,6 +2,7 @@ import { readToken } from './auth.ts';
 import { deployDirectory, type DeployOptions, type DeployResult } from './deploy.ts';
 import { fetchStatus, type StatusResult } from './status.ts';
 import { fetchAppsList, type AppListItem } from './apps.ts';
+import { streamDeploy, type StreamEvent, type StreamOptions } from './stream.ts';
 
 /**
  * Per-instance client config. Construct via `createClient`.
@@ -22,6 +23,7 @@ export interface Client {
   };
   deploy(opts: DeployOptions): Promise<DeployResult>;
   status(deployId: string): Promise<StatusResult>;
+  stream(deployId: string, opts?: StreamOptions): AsyncGenerator<StreamEvent, void, void>;
   appsList(): Promise<AppListItem[]>;
 }
 
@@ -35,6 +37,7 @@ export function createClient(config: ClientConfig = {}): Client {
     auth: { getToken: () => token },
     deploy: (opts) => deployDirectory({ apiUrl, token }, opts),
     status: (deployId) => fetchStatus({ apiUrl }, deployId),
+    stream: (deployId, opts) => streamDeploy({ apiUrl }, deployId, opts),
     appsList: () => fetchAppsList({ apiUrl, token }),
   };
 }

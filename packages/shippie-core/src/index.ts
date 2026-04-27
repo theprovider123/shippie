@@ -21,3 +21,4 @@ export * from './deploy.ts';
 export * from './status.ts';
 export * from './apps.ts';
 export * from './auth.ts';
+export * from './stream.ts';
