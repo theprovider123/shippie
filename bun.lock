@@ -191,6 +191,8 @@
         "shippie": "./dist/index.js",
       },
       "dependencies": {
+        "@shippie/analyse": "workspace:*",
+        "@shippie/core": "workspace:*",
         "adm-zip": "^0.5.16",
         "commander": "^13.0.0",
       },
@@ -380,6 +382,7 @@
       "name": "@shippie/core",
       "version": "0.0.1",
       "dependencies": {
+        "@shippie/analyse": "workspace:*",
         "adm-zip": "^0.5.16",
       },
       "devDependencies": {

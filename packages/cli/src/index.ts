@@ -26,6 +26,9 @@ import { statusCommand } from './commands/status.js';
 import { whoamiCommand } from './commands/whoami.js';
 import { wrapCommand } from './commands/wrap.js';
 import { inviteCreate, inviteList, inviteRevoke } from './commands/invite.js';
+import { streamCommand } from './commands/stream.js';
+import { classifyCommand } from './commands/classify.js';
+import { localizePlanCommand } from './commands/localize-plan.js';
 
 function deriveSlug(url: string): string {
   try {
@@ -174,5 +177,25 @@ program
   .action(async (slug: string, id: string, opts: { api?: string }) => {
     await inviteRevoke({ slug, id, apiUrl: opts.api ?? 'https://shippie.app' });
   });
+
+program
+  .command('stream <deploy-id>')
+  .description('Replay the deploy event stream (security, privacy, kind, health)')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--delay <ms>', 'Replay delay between events (server-side, capped 200)', '30')
+  .action(streamCommand);
+
+program
+  .command('classify [dir]')
+  .description('Classify an app directory as local | connected | cloud (offline)')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(classifyCommand);
+
+program
+  .command('localize-plan [dir]')
+  .description('Preview the source migration that would localize a cloud app')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .option('--transforms <list>', 'Comma-separated list of transforms (supabase,firebase,auth)')
+  .action(localizePlanCommand);
 
 program.parse();

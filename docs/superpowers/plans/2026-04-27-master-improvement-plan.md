@@ -255,6 +255,20 @@ Self-hosted Shippie instances interoperate. Like email: one protocol, many serve
 4. **Same code, two targets.** The CLI and MCP must work identically against `shippie.app` and `hub.local`. This forces good abstraction.
 5. **No data exfiltration.** Every analytics/feedback path passes a CI test that greps for personal-content leakage patterns.
 
+## Strategic addendum — container commons
+
+The container commons track is an overlay on this master plan, not a replacement for it.
+
+- ADR: `docs/superpowers/adrs/006-container-commons-runtime.md`
+- Spec: `docs/superpowers/specs/2026-04-27-container-commons-package-runtime.md`
+- Plan: `docs/superpowers/plans/2026-04-27-container-commons-implementation.md`
+
+Governing principle:
+
+> **Container-first experience. URL-first ownership. Package-first portability.**
+
+The existing phases still own the foundation: real SDK runtime, Deploy Truth, proof, security/privacy reports, update safety, analytics/feedback, Localize, and Hub. The container commons track consumes those outputs to create the installed Shippie app, portable `.shippie` packages, app receipts, version lineage, custom-domain ownership, fork/remix provenance, and Hub-installable packages.
+
 ## What this plan does NOT do
 
 - Does not pre-build the gossip relay or mesh-as-internet vision (Year 5+ territory)

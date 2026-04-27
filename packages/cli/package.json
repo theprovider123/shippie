@@ -40,6 +40,8 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
+    "@shippie/analyse": "workspace:*",
+    "@shippie/core": "workspace:*",
     "commander": "^13.0.0",
     "adm-zip": "^0.5.16"
   },

@@ -15,6 +15,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@shippie/analyse": "workspace:*",
     "adm-zip": "^0.5.16"
   },
   "devDependencies": {
