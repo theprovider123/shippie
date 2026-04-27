@@ -18,13 +18,14 @@ Accept every app. Classify honestly. Improve safely. Prove claims at runtime. Of
 
 ## Day-0 punch list
 
-One sitting. Clear before starting Phase 1.
+One sitting. Quick bug fixes only — anything that depends on real metadata/proof boot belongs in Phase 1A, not here.
 
 - [ ] Fix `bun run lint` in `apps/platform/package.json`
-- [ ] Auto-configure proof + kind emitter from app metadata in `packages/sdk/src/index.ts`
-- [ ] Read allowed hosts from current config (not first-call) in `packages/sdk/src/wrapper/kind-emitter.ts`
+- [ ] Read allowed hosts from current config (not first-call closure) in `packages/sdk/src/wrapper/kind-emitter.ts`
 - [ ] Move `?kind=` filter into the DB query in `apps/platform/src/routes/apps/+page.server.ts`
 - [ ] Production smoke: verify SignalRoom Durable Object exports correctly after `wrangler deploy`
+
+> Auto-configuring proof + kind emitters from app metadata moved to Phase 1A — it requires the real SDK bundle and metadata boot path, which doesn't exist until then.
 
 ## Phase 1 — Two parallel tracks
 
@@ -72,7 +73,8 @@ Build deploy intelligence around the existing pipeline. All steps run in paralle
 - **Security scan:** hardcoded secrets (API keys, JWT patterns), external `<script src=>` from unknown domains, mixed content, inline `onclick=`
 - **Privacy audit:** outbound domain extraction from JS, classify as local/connected/cloud
 - **Kind classification:** already exists; promote to first-class report section
-- **Health check:** `index.html` 200, manifest valid, SW registers, all assets resolve, Lighthouse PWA score
+- **Health check (in critical path, lightweight):** `index.html` 200, manifest valid + parses, SW registers, all referenced assets resolve, basic installability (manifest + SW + theme color present). Must stay fast — synchronous deploy budget is 60s end-to-end.
+- **Full Lighthouse run (out of critical path):** runs async after deploy goes live, sampled or scheduled, results attached to the deploy report when ready. Or attached only to preview deploys, not production.
 
 **Output:** a `deploy-report.json` artifact stored in R2 alongside the build, plus a normalized record in D1.
 
@@ -159,9 +161,14 @@ Then:
 - Show-once with optional route action
 - Reply creates a feedback thread
 
-**Ethos check:** no event carries personal content; CI grep test fails build if patterns appear.
+**Privacy enforcement (mechanism):**
+- **Schema allowlist.** Every analytics beacon and feedback payload conforms to a strict schema. Fields not in the allowlist are dropped at serialization time, not at send time. The schema is the contract.
+- **Fixture tests.** A test corpus of representative beacons and feedback payloads is serialized through the real codec on every CI run; assertions verify forbidden fields (raw URL params, search queries, content text, persistent device IDs) cannot appear in the output regardless of input shape.
+- Grep is a useful smoke check on top of these but is not the enforcement mechanism — it misses structured leaks and creates noisy false positives.
 
-**Definition of done:** maker sees usable product intelligence dashboard; user identity is unrecoverable from any beacon.
+**Ethos check:** no event carries personal content. Enforced by schema + fixtures, not by linting.
+
+**Definition of done:** maker sees usable product intelligence dashboard; user identity is unrecoverable from any beacon; schema + fixture tests pass on every CI run.
 
 ## Phase 7 — MCP + CLI shared core expansion
 
@@ -212,19 +219,23 @@ The ethos move. Two halves.
 - Pull-to-refresh syncs new apps when online
 - Install action falls through: download from CDN | nearest Hub | nearby phone (Spark)
 
-### 9b. Hub as local Shippie node
+### 9b. Hub as local Shippie node — narrow MVP
 
-- Hub Docker image bundles platform Worker + D1 (SQLite directly) + R2-equivalent (local FS)
-- Local marketplace (subset or mirror)
+Per Decisions, the Hub MVP is deliberately narrow. Full self-hosted Shippie is a later milestone.
+
+- App cache (apps and assets served locally on the venue network)
 - Local deploy target (`shippie deploy --target hub.local`)
-- Local analytics aggregation
-- Local feedback inbox
-- Mesh coordinator
-- Optional internet uplink for federation
+- Local marketplace subset (mirror of approved app metadata; not the full directory)
+- Local analytics aggregation (beacons collected locally; maker views via Hub dashboard)
+- SignalRoom / mesh coordinator (already designed)
 
-**Ethos check:** a school/pub/venue can run a private node and never talk to `shippie.app`.
+**Ethos check:** a school/pub/venue can run their day-to-day deploy + serve loop without talking to `shippie.app`.
 
-**Definition of done:** `docker compose up` on a Raspberry Pi gives you a fully-functional private Shippie instance.
+**Definition of done (Phase 9b — Hub MVP):** `docker compose up` on a Raspberry Pi runs the five MVP capabilities above. A maker can deploy to that Hub from CLI and users on the local network can install and run the app without internet.
+
+### 9c. Full self-hosted Shippie — pre-federation milestone (deferred)
+
+Promotion to a fully-functional private Shippie instance (full marketplace, feedback inbox UI parity, identity primitives, complete dashboard) follows once Hub MVP proves itself in real venues. Tracked separately, not part of Phase 9 exit.
 
 ## Phase 10 (long arc) — Federation
 
