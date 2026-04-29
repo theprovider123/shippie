@@ -18,6 +18,7 @@
 <script lang="ts">
   import type { ContainerApp } from '$lib/container/state';
   import type { FrameStates } from '$lib/container/frame-runtime';
+  import RocketLoader from '$lib/components/ui/RocketLoader.svelte';
 
   interface Props {
     app: ContainerApp;
@@ -87,6 +88,12 @@
       ></iframe>
     {/if}
   {/key}
+  {#if frameStates[app.id]?.status === 'booting'}
+    <div class="frame-loader" role="status" aria-live="polite">
+      <RocketLoader size="lg" label={`Opening ${app.name}`} />
+      <p class="frame-loader-label">Opening {app.name}…</p>
+    </div>
+  {/if}
   {#if frameStates[app.id]?.status === 'error'}
     <div class="frame-recovery" role="alert">
       <strong>{app.name} needs a restart.</strong>
@@ -112,6 +119,26 @@
     min-height: 500px;
     border: 0;
     display: block;
+  }
+  .frame-loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    background: var(--bg);
+    color: var(--text-secondary);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .frame-loader-label {
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    color: var(--text-light);
+    margin: 0;
   }
   .frame-recovery {
     position: absolute;
