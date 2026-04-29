@@ -464,6 +464,35 @@ export const curatedApps: ContainerApp[] = [
     permissions: localPermissions('read-later', { consumes: ['mood-logged'] }),
     devUrl: 'http://localhost:5197/',
   },
+  {
+    id: 'app_daily_briefing',
+    slug: 'daily-briefing',
+    name: 'Daily Briefing',
+    shortName: 'Brief',
+    description: 'Morning rundown. Subscribes to 9 intents from other Shippie apps and renders one screen.',
+    appKind: 'local',
+    entry: 'app/index.html',
+    labelKind: 'Local',
+    icon: 'DB',
+    accent: '#74A57F',
+    version: '1',
+    packageHash: `sha256:${'b'.repeat(64)}`,
+    standaloneUrl: '/run/daily-briefing',
+    permissions: localPermissions('daily-briefing', {
+      consumes: [
+        'cooked-meal',
+        'workout-completed',
+        'sleep-logged',
+        'caffeine-logged',
+        'mood-logged',
+        'hydration-logged',
+        'body-metrics-logged',
+        'symptom-logged',
+        'focus-session',
+      ],
+    }),
+    devUrl: 'http://localhost:5198/',
+  },
 ];
 
 // ---------------------------------------------------------------------------

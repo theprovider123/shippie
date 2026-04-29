@@ -46,6 +46,7 @@ const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
   'steps-counter',
   'pomodoro',
   'read-later',
+  'daily-briefing',
 ]);
 
 export const handle: Handle = async ({ event, resolve }) => {

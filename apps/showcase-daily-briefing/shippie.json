@@ -1,0 +1,32 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Daily Briefing",
+  "slug": "daily-briefing",
+  "description": "Morning rundown. Subscribes to 9 intents from other Shippie apps and surfaces agent insights.",
+  "icon": "/icon.svg",
+  "theme_color": "#74A57F",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "consumes": [
+      "cooked-meal",
+      "workout-completed",
+      "sleep-logged",
+      "caffeine-logged",
+      "mood-logged",
+      "hydration-logged",
+      "body-metrics-logged",
+      "symptom-logged",
+      "focus-session"
+    ]
+  },
+  "data_schemas": {
+    "events": {
+      "id": "text primary key",
+      "intent": "text",
+      "label": "text",
+      "received_at": "datetime"
+    }
+  }
+}
