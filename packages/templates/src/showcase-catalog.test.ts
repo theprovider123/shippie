@@ -3,17 +3,22 @@ import {
   crossClusterAcceptancePair,
   foodCluster,
   healthCluster,
+  memoryCluster,
+  productivityCluster,
   showcaseCatalog,
 } from './index.ts';
 
-describe('showcase-catalog — C2 deliverable', () => {
-  test('lists exactly 8 showcase apps', () => {
-    expect(showcaseCatalog).toHaveLength(8);
+describe('showcase-catalog — full launch surface (P3 + P4 + P5)', () => {
+  test('lists ≥18 showcase apps after the P4 micro-loggers + productivity + memory tracks', () => {
+    expect(showcaseCatalog.length).toBeGreaterThanOrEqual(18);
   });
 
-  test('splits 4 apps per cluster', () => {
-    expect(foodCluster).toHaveLength(4);
-    expect(healthCluster).toHaveLength(4);
+  test('splits across the four clusters', () => {
+    expect(foodCluster.length).toBe(4);
+    // health absorbs the 5 P4A micro-loggers + the original 4
+    expect(healthCluster.length).toBeGreaterThanOrEqual(8);
+    expect(productivityCluster.length).toBeGreaterThanOrEqual(3);
+    expect(memoryCluster.length).toBeGreaterThanOrEqual(2);
   });
 
   test('every entry has an acceptance assertion', () => {
@@ -22,7 +27,7 @@ describe('showcase-catalog — C2 deliverable', () => {
     }
   });
 
-  test('every entry has a unique id and slug', () => {
+  test('every entry has a unique id', () => {
     const ids = new Set(showcaseCatalog.map((e) => e.id));
     expect(ids.size).toBe(showcaseCatalog.length);
   });
@@ -36,7 +41,7 @@ describe('showcase-catalog — C2 deliverable', () => {
     expect(consumer?.intents?.consumes).toContain(crossClusterAcceptancePair.intent);
   });
 
-  test('every consume intent has at least one matching provide somewhere in the catalog', () => {
+  test('every consume intent has a matching provide somewhere in the catalog', () => {
     const provided = new Set<string>();
     for (const entry of showcaseCatalog) {
       for (const p of entry.intents?.provides ?? []) provided.add(p);
@@ -45,9 +50,9 @@ describe('showcase-catalog — C2 deliverable', () => {
     for (const entry of showcaseCatalog) {
       for (const c of entry.intents?.consumes ?? []) externallyConsumed.add(c);
     }
-    // budget-limit is consumed by Meal Planner but no showcase provides it
-    // yet — surface that as an explicit known gap, not a silent failure.
-    const KNOWN_GAPS = new Set(['budget-limit', 'caffeine-logged']);
+    // budget-limit consumed by Meal Planner with no in-tree producer
+    // (planned for a future Budget Tracker showcase).
+    const KNOWN_GAPS = new Set(['budget-limit']);
     const missing = [...externallyConsumed].filter(
       (c) => !provided.has(c) && !KNOWN_GAPS.has(c),
     );

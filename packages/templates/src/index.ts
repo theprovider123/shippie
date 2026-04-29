@@ -7,6 +7,8 @@ export {
   showcaseCatalog,
   foodCluster,
   healthCluster,
+  productivityCluster,
+  memoryCluster,
   crossClusterAcceptancePair,
   type ShowcaseAppEntry,
 } from './showcase-catalog.ts';
