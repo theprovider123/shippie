@@ -96,7 +96,9 @@
       <article>
         <span>Standalone URL</span>
         <a href={data.ownership.standaloneUrl} target="_blank" rel="noopener">
-          {new URL(data.ownership.standaloneUrl).host}
+          {data.ownership.standaloneUrl.startsWith('/')
+            ? `shippie.app${data.ownership.standaloneUrl}`
+            : new URL(data.ownership.standaloneUrl).host}
         </a>
       </article>
       <article>
