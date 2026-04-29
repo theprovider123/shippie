@@ -321,7 +321,7 @@ Layered on top of Phase 0:
 - **SignalRoom Durable Object** — `apps/platform/src/lib/server/proximity/signal-room.ts` + `/__shippie/signal/[roomId]` route + wrangler.toml v3 migration with `new_sqlite_classes` + wrap-worker bundles + re-exports the class.
 - **Homepage hero + three-pillar copy** — `apps/platform/src/routes/+page.svelte` aligned with Wrap/Run/Connect framing.
 - **`/new` onboarding polish** — five deploy paths (zip / wrap / CLI / MCP / GitHub) with time-to-URL chips + "What happens after deploy" panel.
-- **Architecture docs** — `docs/architecture.svg` (inline diagram) referenced from `docs/architecture.md`. `docs/WHITEPAPER.md` draft v0. `docs/launch/real-phone-checklist.md` + `docs/launch/cf-google-deploy.md` for user-driven launch work.
+- **Architecture docs** — `docs/architecture.svg` (container-first / URL-first / package-first diagram) referenced from `docs/architecture.md`. `docs/WHITEPAPER.md` draft v1. `docs/launch/real-phone-checklist.md` + `docs/launch/cf-google-deploy.md` for user-driven launch work.
 
 ## Known live bugs / brittleness fixed in Phase 0
 

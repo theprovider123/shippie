@@ -60,8 +60,7 @@ This file lists what cannot be completed inside the agent loop — work that req
 
 ### Outstanding
 - [ ] **Maker UX walkthrough.** Deploy a plain SvelteKit/React app with no `shippie.json`. Open the Enhancements tab. Confirm the dashboard surfaces every auto-detected capability + the AI dashboard shows backend used per inference.
-- [ ] **Runtime proof ingestion** (the Phase 3 "Proof system"). The proof event schema, ingestion endpoint, listing rollup jobs, and maker proof dashboard are not yet wired. Recommended next slice — without this, Capability Proof Badges have no source data.
-  - Recommended location: `apps/platform/src/routes/api/v1/proof/+server.ts` (ingestion), a cron in `src/lib/server/cron/` for rollups (similar pattern to `rollups.test.ts`), and a Svelte tab under `dashboard/apps/[slug]/proof/`.
+- [ ] **Runtime proof end-to-end smoke.** The proof schema, ingestion endpoint, rollup jobs, listing badges, and maker proof dashboard are wired. Still run one real app session that emits proof events, trigger the rollups, and verify the listing + dashboard show the earned badge.
 
 ---
 
@@ -101,18 +100,18 @@ This file lists what cannot be completed inside the agent loop — work that req
 - ✅ `docs/CURRENT_STATE.md` is the living truth file.
 
 ### Outstanding (mostly your call, not autonomous-bot work)
-- [ ] **Whitepaper.** Working title from the plan: *Locally This, Locally That — How Shippie Puts Apps Back on Your Device.* Keep the saved Vivian Balakrishnan reference as inspiration; you flagged this for whitepaper time. Outline:
+- [x] **Whitepaper.** `docs/WHITEPAPER.md` is draft v1 of *Locally This, Locally That — How Shippie Puts Apps Back on Your Device*, updated for the container-first / URL-first / package-first architecture. Post-launch v2 still needs real-device footage and production latency measurements. Original outline:
   1. The problem: cloud-tethered apps, App Store gatekeeping, surveillance defaults.
   2. The thesis: Wrap. Run. Connect.
   3. The stack: 9 internal components (Shell, Boost, Sense, Core, AI, Vault, Pulse, Spark, Hub).
   4. Composition over invention — what's open-source underneath.
   5. Proof, not promises — the runtime evidence layer.
   6. What's hard about this and where help is wanted.
-- [ ] **Architecture diagram.** Cleaned up SVG of the data-flow + per-pillar boundary. The seed exists in `docs/architecture.md`'s ASCII map; promote to a real diagram for the homepage and whitepaper.
-- [ ] **Capability Proof Badge UI.** When the runtime proof ingestion lands (Phase 3 outstanding), each app listing should display its earned badges (Works offline / Runs local DB / Uses local AI / Mesh-ready / Data export verified). The badges are computed; the listing card just needs a slot.
-- [ ] **Maker onboarding flow.** A guided "deploy your first app in 60 seconds" walkthrough on `/new` for first-time makers. Today the page exists but the onboarding moment isn't designed.
-- [ ] **Seeded apps across all three pillars.** Per the plan, 10–20 apps deliberately spread across Wrap (utilities) / Run (data apps) / Connect (event tools). Avoid random isolated calculators — every seeded app should illustrate one pillar in its strongest form.
-- [ ] **Launch sequence**: Day 1 Show HN + open source repo, Day 2 Live Room buzzer-fairness Twitter video, Day 3 r/privacy + r/selfhosted, Day 4 Product Hunt, Day 5 Claude Code Discord / Cursor forums.
+- [x] **Architecture diagram.** `docs/architecture.svg` now shows the current container-first / URL-first ownership / package-first portability architecture, with Wrap / Run / Connect boundaries and Hub path.
+- [x] **Capability Proof Badge UI.** Runtime-earned badges are read from `capability_badges`, rendered in listings and app detail pages, and marked `proven`.
+- [x] **Maker onboarding flow.** `/new` is now a guided deploy console: first path decision, zip upload, hosted URL wrap, CLI/MCP/GitHub paths, and post-deploy expectations.
+- [x] **Seeded apps across all three pillars.** The repo now has 21 showcase apps under `apps/showcase-*`, with the C2 catalog grouping them into food / health / productivity / memory clusters and covering local data, AI, intents, and Connect/collaborative surfaces.
+- [x] **Launch sequence**: `docs/launch/launch-sequence.md` now expands the five-day launch into assets, channel goals, message discipline, and follow-up rules.
 
 ---
 
@@ -132,8 +131,8 @@ The post-codex track defined in `/Users/devante/.claude/plans/jaunty-coalescing-
 
 - [ ] **Slice + commit the diff.** Suggested phasing: 4 PRs (A-foundation / B-parallel / C-scaffolding / showcase-apps) or one mega-PR with `[A1]…[C2]` markers.
 - [ ] **Real-device demo recording.** The .webm in repo is a 37-second desktop-Chromium rough cut against the bridge. Shoot the actual 2-min cut on a real iPhone + Android per `docs/launch/c2-demo-storyboard.md`.
-- [ ] **AI worker model loader.** `apps/platform/src/lib/container/ai-worker.ts` dynamic-imports `@huggingface/transformers` — the package isn't installed, so the worker reports `unavailable` and the client falls back to edge. Decide whether to ship locally or deferred.
-- [ ] **Ship intent forwarding to remote app deploys.** The current broadcast logic is iframe-only via `frame.contentWindow.postMessage`. When a showcase deploys to a custom subdomain, the cross-frame postMessage path still works because the bridge already supports cross-origin transport — verify on a real CF Pages deploy.
+- [ ] **Publish Transformers runtime artifact.** `apps/platform/src/lib/container/ai-worker.ts` now loads `https://models.shippie.app/runtime/transformers.js` instead of a missing npm package. The remaining release task is to publish/cache that runtime artifact and verify a real device can run one local `ai.run` request.
+- [ ] **Real-deploy verify intent forwarding.** Container bridge messages now resolve precise origins for `/run/*`, dev URLs, and absolute standalone/custom-domain URLs. Still verify on a real CF Pages deploy that a remote iframe receives `intent.provide` broadcasts and transfer-drop messages end-to-end.
 
 ---
 

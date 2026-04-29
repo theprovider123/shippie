@@ -20,8 +20,8 @@ The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`). Pre
 | File storage | Cloudflare R2 (`shippie-apps`, `shippie-public`) |
 | Cache / KV | Cloudflare KV |
 | Real-time signalling | Cloudflare Durable Objects (`SignalRoom`) |
-| AI iframe | `apps/shippie-ai/` (Vite + vite-plugin-pwa) on Cloudflare Pages, served at `ai.shippie.app` |
-| Local-runtime engines | wa-sqlite (`packages/local-db/`), OPFS (`packages/local-files/`), Transformers.js / WebNN (`packages/local-ai/` + the iframe app) |
+| Local AI runtime | Container worker (`apps/platform/src/lib/container/ai-worker.ts`) loading the versioned Transformers runtime artifact; `apps/shippie-ai/` remains the older standalone AI surface while the container path matures |
+| Local-runtime engines | wa-sqlite (`packages/local-db/`), OPFS (`packages/local-files/`), Transformers.js / WebNN (`packages/local-ai/` + container worker) |
 | Mesh transport | WebRTC peer-to-peer over Durable Object signalling |
 | Hub (venue) | Bun + Docker (`services/hub/`) — mDNS + WebSocket signal, app/model cache |
 | Build runner | GitHub Actions for repo-based deploys |
@@ -93,12 +93,11 @@ This pattern keeps typecheck immune to build state. Vite (used by SvelteKit + th
 Open [`architecture.svg`](./architecture.svg) for the full diagram. In short:
 
 - **Maker tools** on the left (Claude Code, CLI, GitHub, web upload) deploy via the Cloudflare platform.
-- **Platform** in the middle (Cloudflare Workers + Pages + D1 + R2 + KV + Durable Objects) handles deploy ingestion, wrapper injection on every `*.shippie.app` HTML response, the proof-event ingestion + cron rollup, and the `/__shippie/signal/[roomId]` WebSocket signalling DO.
-- **User device** on the right runs the actual app: PWA shell, local SQLite/OPFS, local AI via the `ai.shippie.app` iframe, WebRTC peer-to-peer to other nearby devices.
+- **Deploy truth** in the middle (Cloudflare Workers + Pages + D1 + R2 + KV + Durable Objects) handles deploy ingestion, package artifacts, wrapper injection on every `*.shippie.app` HTML response, proof-event ingestion + cron rollup, and the `/__shippie/signal/[roomId]` WebSocket signalling DO.
+- **Portable packages** keep URL ownership, custom-domain metadata, version lineage, app permissions, and the static build together so the same artifact can run on `shippie.app` or a future `hub.local` node.
+- **User device** on the right runs the actual app: standalone URL if opened directly, or the Shippie container if installed. Local SQLite/OPFS, shared AI model cache, Your Data, and cross-app intents live in the container/device boundary; WebRTC connects nearby devices.
 
 Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit, proof events) in D1 — never per-user app data.
-
-Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit) in D1 — never per-user app data.
 
 ## App Kinds
 

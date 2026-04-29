@@ -20,9 +20,9 @@ Accept every app. Classify honestly. Improve safely. Prove claims at runtime. Of
 
 One sitting. Quick bug fixes only — anything that depends on real metadata/proof boot belongs in Phase 1A, not here.
 
-- [ ] Fix `bun run lint` in `apps/platform/package.json`
-- [ ] Read allowed hosts from current config (not first-call closure) in `packages/sdk/src/wrapper/kind-emitter.ts`
-- [ ] Move `?kind=` filter into the DB query in `apps/platform/src/routes/apps/+page.server.ts`
+- [x] Fix `bun run lint` in `apps/platform/package.json`
+- [x] Read allowed hosts from current config (not first-call closure) in `packages/sdk/src/wrapper/kind-emitter.ts`
+- [x] Move `?kind=` filter into the DB query in `apps/platform/src/routes/apps/+page.server.ts`
 - [ ] Production smoke: verify SignalRoom Durable Object exports correctly after `wrangler deploy`
 
 > Auto-configuring proof + kind emitters from app metadata moved to Phase 1A — it requires the real SDK bundle and metadata boot path, which doesn't exist until then.

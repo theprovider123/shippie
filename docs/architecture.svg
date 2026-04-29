@@ -1,159 +1,151 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" role="img" aria-label="Shippie architecture: Wrap, Run, Connect across maker tools, the platform, and the user's device">
-  <title>Shippie architecture — Wrap. Run. Connect.</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 820" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" role="img" aria-label="Shippie architecture showing maker tools, deploy truth, URL ownership, the Shippie container, local device runtime, peers, and Hub">
+  <title>Shippie architecture - container-first, URL-first ownership</title>
+  <desc>Apps enter through maker tools, pass through deploy truth on the hosted or local platform, become portable package artifacts, and run through standalone URLs or the Shippie container. User data and AI models live on device; peers connect directly; Hub can serve a local node.</desc>
 
   <defs>
     <style>
-      .label-h { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 22px; }
-      .label-eyebrow { font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; fill: #8B847A; }
-      .pillar-wrap { fill: #FAF7EF; stroke: #C9B99A; stroke-width: 1; }
-      .pillar-run { fill: #F4EBD9; stroke: #C9B99A; stroke-width: 1; }
-      .pillar-connect { fill: #ECE3CD; stroke: #C9B99A; stroke-width: 1; }
-      .device { fill: #14120F; }
-      .device-text { fill: #EDE4D3; }
-      .platform { fill: #2A2520; stroke: #3D3530; }
-      .platform-text { fill: #EDE4D3; }
+      .bg { fill: #FAF7EF; }
+      .ink { fill: #14120F; }
+      .muted { fill: #746B60; }
+      .line { stroke: #D9CEB8; stroke-width: 1.4; fill: none; }
+      .dash { stroke: #B8AA90; stroke-width: 1.5; stroke-dasharray: 5 6; fill: none; }
+      .arrow { stroke: #2C1F14; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .arrow-soft { stroke: #8FA28B; stroke-width: 1.6; fill: none; marker-end: url(#arrow-soft); }
+      .panel { fill: #FFFDF7; stroke: #D9CEB8; stroke-width: 1.2; }
+      .dark { fill: #17130F; stroke: #352D24; stroke-width: 1.2; }
+      .dark2 { fill: #2A241D; stroke: #4A3B30; stroke-width: 1.1; }
+      .cream { fill: #F5EBDD; }
       .accent { fill: #E8603C; }
       .sage { fill: #5E7B5C; }
-      .marigold { fill: #E8C547; }
-      .arrow { fill: none; stroke: #2C1F14; stroke-width: 1.5; marker-end: url(#arrow); }
-      .arrow-light { fill: none; stroke: #C9B99A; stroke-width: 1.2; stroke-dasharray: 4 4; }
-      .body { fill: #2C1F14; font-size: 12px; }
-      .body-light { fill: #8B847A; font-size: 11px; }
-      .body-cream { fill: #EDE4D3; font-size: 12px; }
+      .gold { fill: #DDAF38; }
+      .blue { fill: #527D91; }
+      .h { font-family: Georgia, serif; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+      .h2 { font-family: Georgia, serif; font-size: 20px; font-weight: 700; }
+      .eyebrow { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; fill: #8B847A; }
+      .small { font-size: 11px; fill: #746B60; }
+      .body { font-size: 12px; fill: #2C1F14; }
+      .body-cream { font-size: 12px; fill: #F5EBDD; }
+      .small-cream { font-size: 11px; fill: #CFC2AA; }
     </style>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#2C1F14"/>
+    </marker>
+    <marker id="arrow-soft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5E7B5C"/>
     </marker>
   </defs>
 
-  <!-- Title -->
-  <text x="60" y="40" class="label-h" fill="#2C1F14">Shippie — Wrap. Run. Connect.</text>
-  <text x="60" y="62" class="body-light">Cloudflare-only stack. Everything in colour runs on a maker, the platform, or the user's own device.</text>
+  <rect width="1280" height="820" class="bg"/>
 
-  <!-- Maker tools (left rail) -->
-  <text x="80" y="106" class="label-eyebrow">Build anywhere</text>
-  <g>
-    <rect x="60" y="120" width="200" height="34" rx="6" class="pillar-wrap"/>
-    <text x="74" y="142" class="body">Claude Code / Cursor</text>
-    <rect x="60" y="162" width="200" height="34" rx="6" class="pillar-wrap"/>
-    <text x="74" y="184" class="body">CLI: shippie deploy ./dist</text>
-    <rect x="60" y="204" width="200" height="34" rx="6" class="pillar-wrap"/>
-    <text x="74" y="226" class="body">GitHub push (Actions runner)</text>
-    <rect x="60" y="246" width="200" height="34" rx="6" class="pillar-wrap"/>
-    <text x="74" y="268" class="body">Web upload: drag a zip</text>
-  </g>
+  <text x="64" y="54" class="h ink">Shippie architecture</text>
+  <text x="64" y="78" class="small">Container-first experience. URL-first ownership. Package-first portability. Local by default, hosted when useful.</text>
 
-  <!-- Arrow: makers → platform -->
-  <path class="arrow" d="M 270 200 L 360 200"/>
-  <text x="280" y="190" class="body-light">deploy</text>
+  <text x="72" y="126" class="eyebrow">1. Makers</text>
+  <rect x="64" y="146" width="218" height="222" rx="12" class="panel"/>
+  <text x="84" y="178" class="h2 ink">Build anywhere</text>
+  <text x="84" y="208" class="body">Claude Code / Cursor</text>
+  <text x="84" y="234" class="body">CLI: shippie deploy ./dist</text>
+  <text x="84" y="260" class="body">GitHub Actions build</text>
+  <text x="84" y="286" class="body">Web zip upload</text>
+  <text x="84" y="326" class="small">Makers keep source, repo, URL,</text>
+  <text x="84" y="344" class="small">and custom-domain ownership.</text>
 
-  <!-- Platform (center, dark) -->
-  <rect x="360" y="100" width="540" height="540" rx="14" class="platform"/>
-  <text x="380" y="130" class="label-eyebrow" fill="#A8C491">Cloudflare platform</text>
-  <text x="380" y="156" font-family="'Fraunces', Georgia, serif" font-weight="600" font-size="20" class="body-cream">apps/platform · SvelteKit on Workers + Pages</text>
+  <path class="arrow" d="M 292 258 L 358 258"/>
+  <text x="306" y="244" class="small">deploy</text>
 
-  <!-- Wrap section -->
-  <g>
-    <rect x="380" y="180" width="500" height="120" rx="10" fill="#3A2F26" stroke="#5E4C3C"/>
-    <text x="400" y="206" class="label-eyebrow" fill="#F4B860">Wrap</text>
-    <text x="400" y="228" class="body-cream">hooks.server.ts wraps every *.shippie.app HTML response</text>
-    <text x="400" y="252" class="body-cream">→ Manifest · Service Worker · Install prompt · Your Data panel</text>
-    <text x="400" y="270" class="body-cream">→ Boost (DOM observer + AppProfile) · Sense (haptics, springs, textures)</text>
-    <text x="400" y="290" class="body-light" fill="#C9B99A">Shell · Boost · Sense</text>
-  </g>
+  <text x="374" y="126" class="eyebrow">2. Deploy truth</text>
+  <rect x="358" y="146" width="306" height="222" rx="14" class="dark"/>
+  <text x="382" y="178" class="h2 cream">Hosted or local platform</text>
+  <text x="382" y="208" class="body-cream">Framework/output detection</text>
+  <text x="382" y="232" class="body-cream">Security + privacy scan</text>
+  <text x="382" y="256" class="body-cream">App kind classification</text>
+  <text x="382" y="280" class="body-cream">Health check + deploy stream</text>
+  <text x="382" y="318" class="small-cream">Artifacts, not only DB rows:</text>
+  <text x="382" y="340" class="small-cream">deploy-report.json + events.ndjson</text>
 
-  <!-- Run section -->
-  <g>
-    <rect x="380" y="316" width="500" height="120" rx="10" fill="#3A2F26" stroke="#5E4C3C"/>
-    <text x="400" y="342" class="label-eyebrow" fill="#A8C491">Run</text>
-    <text x="400" y="364" class="body-cream">D1 (apps, deploys, room_audit, proof_events, capability_badges)</text>
-    <text x="400" y="384" class="body-cream">R2 (shippie-apps, shippie-public)  ·  KV (cache + rate-limits)</text>
-    <text x="400" y="404" class="body-cream">apps/shippie-ai → ai.shippie.app (postMessage iframe → on-device AI)</text>
-    <text x="400" y="426" class="body-light" fill="#C9B99A">Core · AI · Vault</text>
-  </g>
+  <path class="arrow" d="M 674 258 L 744 258"/>
+  <text x="690" y="244" class="small">package</text>
 
-  <!-- Connect section -->
-  <g>
-    <rect x="380" y="452" width="500" height="120" rx="10" fill="#3A2F26" stroke="#5E4C3C"/>
-    <text x="400" y="478" class="label-eyebrow" fill="#F4B860">Connect</text>
-    <text x="400" y="500" class="body-cream">Durable Object: SignalRoom (per-room WebSocket fan-out)</text>
-    <text x="400" y="520" class="body-cream">/__shippie/signal/&lt;roomId&gt; · proximity client speaks SDP/ICE</text>
-    <text x="400" y="540" class="body-cream">services/hub (optional venue device — mDNS + WS, app/model cache)</text>
-    <text x="400" y="562" class="body-light" fill="#C9B99A">Pulse · Spark (roadmapped) · Hub</text>
-  </g>
+  <text x="760" y="126" class="eyebrow">3. Portable output</text>
+  <rect x="744" y="146" width="230" height="222" rx="12" class="panel"/>
+  <text x="764" y="178" class="h2 ink">.shippie package</text>
+  <text x="764" y="208" class="body">Static app files</text>
+  <text x="764" y="232" class="body">Manifest + permissions</text>
+  <text x="764" y="256" class="body">Version lineage</text>
+  <text x="764" y="280" class="body">Custom domains</text>
+  <text x="764" y="318" class="small">Same artifact can be served by</text>
+  <text x="764" y="336" class="small">shippie.app or hub.local.</text>
 
-  <!-- Cron + OAuth -->
-  <g>
-    <rect x="380" y="588" width="245" height="40" rx="8" fill="#1F1A14" stroke="#3D3530"/>
-    <text x="394" y="614" class="body-cream">Cron: rollups · capability-badges · retention</text>
-    <rect x="635" y="588" width="245" height="40" rx="8" fill="#1F1A14" stroke="#3D3530"/>
-    <text x="649" y="614" class="body-cream">/oauth/[provider] (BYO-Cloud backup)</text>
-  </g>
+  <path class="arrow" d="M 984 220 L 1074 178"/>
+  <path class="arrow" d="M 984 290 L 1074 338"/>
+  <text x="1014" y="206" class="small">open URL</text>
+  <text x="1008" y="318" class="small">open in container</text>
 
-  <!-- Arrow: platform → user device -->
-  <path class="arrow" d="M 900 360 L 990 360"/>
-  <text x="910" y="350" class="body-light">wrap injected</text>
+  <text x="1092" y="126" class="eyebrow">4. User experience</text>
+  <rect x="1074" y="146" width="150" height="96" rx="12" class="panel"/>
+  <text x="1092" y="176" class="h2 ink">Standalone URL</text>
+  <text x="1092" y="204" class="body">slug.shippie.app</text>
+  <text x="1092" y="224" class="small">custom domains still work</text>
 
-  <!-- User device (right rail) -->
-  <text x="1020" y="106" class="label-eyebrow">Your device</text>
-  <g>
-    <rect x="990" y="120" width="180" height="540" rx="20" class="device"/>
-    <rect x="1010" y="150" width="140" height="20" rx="6" fill="#3D3530"/>
-    <text x="1030" y="165" font-size="10" class="body-cream">app.shippie.app</text>
+  <rect x="1054" y="278" width="190" height="212" rx="24" class="dark"/>
+  <text x="1082" y="314" class="h2 cream">Shippie app</text>
+  <text x="1082" y="338" class="small-cream">one installed PWA</text>
+  <rect x="1080" y="360" width="138" height="34" rx="7" class="dark2"/>
+  <text x="1094" y="382" class="body-cream">Your Apps</text>
+  <rect x="1080" y="402" width="138" height="34" rx="7" class="dark2"/>
+  <text x="1094" y="424" class="body-cream">Marketplace</text>
+  <rect x="1080" y="444" width="138" height="34" rx="7" class="dark2"/>
+  <text x="1094" y="466" class="body-cream">Your Data</text>
 
-    <!-- Wrap on device -->
-    <rect x="1010" y="190" width="140" height="98" rx="8" fill="#3A2F26"/>
-    <text x="1024" y="210" class="label-eyebrow" fill="#F4B860">Wrap</text>
-    <text x="1024" y="228" class="body-cream">PWA shell</text>
-    <text x="1024" y="244" class="body-cream">Haptics + spring</text>
-    <text x="1024" y="260" class="body-cream">Textures + patina</text>
-    <text x="1024" y="276" class="body-cream">Your Data panel</text>
+  <text x="72" y="432" class="eyebrow">Runtime boundary</text>
+  <rect x="64" y="452" width="1180" height="242" rx="18" class="panel"/>
 
-    <!-- Run on device -->
-    <rect x="1010" y="298" width="140" height="98" rx="8" fill="#3A2F26"/>
-    <text x="1024" y="318" class="label-eyebrow" fill="#A8C491">Run</text>
-    <text x="1024" y="336" class="body-cream">wa-sqlite + OPFS</text>
-    <text x="1024" y="352" class="body-cream">Local files</text>
-    <text x="1024" y="368" class="body-cream">Local AI iframe</text>
-    <text x="1024" y="384" class="body-cream">Encrypted backup</text>
+  <rect x="92" y="490" width="236" height="150" rx="12" fill="#FFF7EA" stroke="#D9CEB8"/>
+  <text x="112" y="522" class="h2 ink">Wrap</text>
+  <text x="112" y="550" class="body">Install shell, manifest, SW</text>
+  <text x="112" y="574" class="body">Haptics, springs, textures</text>
+  <text x="112" y="598" class="body">Trust card + proof badges</text>
+  <text x="112" y="624" class="small">Shell · Boost · Sense</text>
 
-    <!-- Connect on device -->
-    <rect x="1010" y="406" width="140" height="98" rx="8" fill="#3A2F26"/>
-    <text x="1024" y="426" class="label-eyebrow" fill="#F4B860">Connect</text>
-    <text x="1024" y="444" class="body-cream">WebRTC P2P</text>
-    <text x="1024" y="460" class="body-cream">Yjs CRDT sync</text>
-    <text x="1024" y="476" class="body-cream">Room audit</text>
-    <text x="1024" y="492" class="body-cream">Transfer flow</text>
+  <rect x="360" y="490" width="236" height="150" rx="12" fill="#F3F5EA" stroke="#D9CEB8"/>
+  <text x="380" y="522" class="h2 ink">Run</text>
+  <text x="380" y="550" class="body">SQLite WASM + OPFS files</text>
+  <text x="380" y="574" class="body">Shared AI model cache</text>
+  <text x="380" y="598" class="body">Backups encrypted by device</text>
+  <text x="380" y="624" class="small">Core · AI · Vault</text>
 
-    <!-- Proof emit -->
-    <rect x="1010" y="518" width="140" height="50" rx="8" fill="#1F1A14"/>
-    <text x="1024" y="538" class="label-eyebrow" fill="#F4B860">Proof emit</text>
-    <text x="1024" y="554" class="body-cream">runtime evidence</text>
+  <rect x="628" y="490" width="236" height="150" rx="12" fill="#EDF5F7" stroke="#D9CEB8"/>
+  <text x="648" y="522" class="h2 ink">Connect</text>
+  <text x="648" y="550" class="body">SignalRoom for handshake</text>
+  <text x="648" y="574" class="body">WebRTC peer-to-peer data</text>
+  <text x="648" y="598" class="body">Hub for venues/local nodes</text>
+  <text x="648" y="624" class="small">Pulse · Spark · Hub</text>
 
-    <!-- Home screen indicator -->
-    <rect x="1010" y="580" width="140" height="56" rx="8" fill="#1F1A14"/>
-    <text x="1024" y="600" class="body-light" fill="#C9B99A">Installed PWA · square</text>
-    <text x="1024" y="616" class="body-light" fill="#C9B99A">icon, no App Store</text>
-    <rect x="1116" y="608" width="20" height="20" rx="0" class="accent"/>
-  </g>
+  <rect x="896" y="490" width="300" height="150" rx="12" fill="#17130F" stroke="#352D24"/>
+  <text x="918" y="522" class="h2 cream">Device-owned data</text>
+  <text x="918" y="550" class="body-cream">App data never needs Shippie DB</text>
+  <text x="918" y="574" class="body-cream">Container isolates apps by permission</text>
+  <text x="918" y="598" class="body-cream">Proof/analytics are aggregate only</text>
+  <text x="918" y="624" class="small-cream">User can export, transfer, or wipe.</text>
 
-  <!-- Arrow: device → platform (proof + sync + analytics) -->
-  <path class="arrow" d="M 990 500 L 900 500"/>
-  <text x="900" y="490" text-anchor="end" class="body-light">proof + sync</text>
+  <path class="arrow-soft" d="M 748 642 C 780 742 1034 742 1082 648"/>
+  <text x="902" y="748" class="small">nearby phones exchange data directly after signalling</text>
 
-  <!-- Peer-to-peer arrow at bottom -->
-  <path class="arrow-light" d="M 1080 660 Q 1080 700 700 700"/>
-  <path class="arrow-light" d="M 1080 660 Q 1080 700 700 700"/>
-  <text x="700" y="722" text-anchor="middle" class="body-light">nearby phones talk directly via WebRTC, signal via Cloudflare DO or local Hub</text>
+  <path class="dash" d="M 508 368 C 508 420 508 438 508 452"/>
+  <text x="524" y="418" class="small">runtime config + SDK</text>
 
-  <!-- Bottom legend -->
-  <g>
-    <rect x="60" y="690" width="14" height="14" class="accent"/>
-    <text x="80" y="702" class="body-light">Action / wrap accent</text>
-    <rect x="220" y="690" width="14" height="14" class="sage"/>
-    <text x="240" y="702" class="body-light">Run / structure</text>
-    <rect x="350" y="690" width="14" height="14" class="marigold"/>
-    <text x="370" y="702" class="body-light">Connect / event</text>
-  </g>
+  <path class="dash" d="M 858 368 C 858 420 746 438 746 452"/>
+  <text x="770" y="420" class="small">portable package install</text>
+
+  <text x="72" y="742" class="eyebrow">Open-source local path</text>
+  <rect x="64" y="760" width="1180" height="34" rx="8" fill="#FFFDF7" stroke="#D9CEB8"/>
+  <rect x="84" y="770" width="14" height="14" class="accent"/>
+  <text x="108" y="782" class="small">shippie.app is the hosted node</text>
+  <rect x="326" y="770" width="14" height="14" class="sage"/>
+  <text x="350" y="782" class="small">hub.local is the venue/private node</text>
+  <rect x="610" y="770" width="14" height="14" class="blue"/>
+  <text x="634" y="782" class="small">same artifacts, same CLI/MCP core</text>
+  <rect x="920" y="770" width="14" height="14" class="gold"/>
+  <text x="944" y="782" class="small">federation stays a later protocol layer</text>
 </svg>

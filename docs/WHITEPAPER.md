@@ -2,7 +2,7 @@
 
 **How Shippie Puts Apps Back on Your Device**
 
-Draft v0 · 2026-04-26 · Devante Providence
+Draft v1 · 2026-04-29 · Devante Providence
 
 ---
 
@@ -20,9 +20,9 @@ Locally this. Locally that. The post-cloud platform.
 
 ## The thesis in one paragraph
 
-> Deploy any web app. Shippie wraps it into an installable, offline-capable, tactile, proof-emitting PWA. The app's database, files, and AI inference run on the user's device. Nearby users connect peer-to-peer. The platform never holds end-user data. Capability Proof Badges are awarded only when the wrapper observes the matching event from real devices. The whole stack is open source.
+> Deploy any web app. Shippie wraps it into an installable, offline-capable, tactile, proof-emitting experience. The app keeps its URL and custom-domain ownership, while the installed Shippie container becomes the richer home for apps, shared models, local data, cross-app intents, and the marketplace. Databases, files, and AI inference run on the user's device. Nearby users connect peer-to-peer. Capability Proof Badges are awarded only when the runtime observes the matching event from real devices. The whole stack is open source.
 
-Three concepts, externally: **Wrap. Run. Connect.** Nine engineering components, internally: Shell, Boost, Sense, Core, AI, Vault, Pulse, Spark, Hub. Three pillars, one cross-cutting principle (Proof), one platform.
+Three concepts, externally: **Wrap. Run. Connect.** Nine engineering components, internally: Shell, Boost, Sense, Core, AI, Vault, Pulse, Spark, Hub. One governing product principle: **container-first experience, URL-first ownership, package-first portability.**
 
 ---
 
@@ -39,17 +39,19 @@ A SvelteKit app on Cloudflare Workers serves `*.shippie.app` for every maker app
 
 Static analysis runs at deploy time. `@shippie/analyse` parses the maker's HTML/CSS/JS, builds an **AppProfile**, and the wrapper compiles a per-app set of enhancement rules. The maker writes a normal web app and inherits everything in the previous paragraph.
 
-The composition under Wrap: vite-plugin-pwa (manifest + Workbox SW), Web Animations API + a small spring-physics primitive, the Web Vibration API, the Pointer Events API, the Web Speech API (for sound textures), CSS custom properties for patina state, MutationObserver for the auto-enhance pass.
+The container adds a second layer: one installed Shippie PWA that can open many Shippie apps inside a controlled runtime. A standalone URL still works and remains the maker's shareable surface. The container is the place where storage, AI models, intents, Your Data, package receipts, app switching, and the marketplace become a coherent personal app universe.
+
+The composition under Wrap: vite-plugin-pwa (manifest + Workbox SW), Web Animations API + a small spring-physics primitive, the Web Vibration API, the Pointer Events API, Web Audio for sound textures, CSS custom properties for patina state, MutationObserver for the auto-enhance pass, and a container bridge that gives iframe apps a strict capability surface.
 
 ### Run (Core · AI · Vault)
 
 The user's device is the computer.
 
 - **Core**: `@shippie/local-db` is wa-sqlite compiled to WASM, persisted in OPFS. Drizzle-style API on top so makers write `db.recipes.where(...).all()`, not raw SQL. `@shippie/local-files` wraps OPFS with a path-based abstraction. The local runtime contract is in `@shippie/local-runtime-contract` — a tiny package that lets local-first apps share a vocabulary.
-- **AI**: `apps/shippie-ai` ships at `ai.shippie.app` as a cross-origin iframe. Models are downloaded once via Workbox precaching and shared across every Shippie app on the device — install three Shippie apps, the model is shared between them. Inference runs through a postMessage router with a strict origin allowlist. WebNN routes to the Neural Processing Unit when available, WebGPU when not, WASM as the floor. The maker calls `shippie.ai.classify(text, labels)` and never sees the iframe. Every response carries a `source` field so the maker dashboard can show which backend ran the inference. **No prompt content is ever logged. The privacy invariant is load-bearing.**
+- **AI**: the container owns the model cache and loads a versioned Transformers runtime artifact through `apps/platform/src/lib/container/ai-worker.ts`. Models are downloaded once per device and shared by every app opened inside Shippie. WebNN routes to the Neural Processing Unit when available, WebGPU when not, WASM as the floor. The maker calls `shippie.ai.classify(text, labels)` or the bridge equivalent and never sees the worker. Every response carries a `source` field so the dashboard can show which backend ran the inference. **No prompt content is ever logged. The privacy invariant is load-bearing.**
 - **Vault**: `@shippie/backup-providers` adapts to Google Drive (others to follow) using Bring-Your-Own-Cloud. Encryption is AES-256-GCM with Argon2id key derivation from a user passphrase. The OAuth coordinator at `https://shippie.app/oauth/[provider]` mints signed envelopes — the platform holds the OAuth client secret, the maker app holds nothing. Tokens are postMessaged back to the maker's signed origin (never URL-derived) and stored in OPFS, never localStorage, never on a Shippie server. Device transfer (`@shippie/proximity/transfer`) uses a one-time room with a transfer key encoded in a QR — older device → newer device, encrypted in transit, no cloud involved.
 
-The composition under Run: wa-sqlite + OPFS, Origin Private File System Access API, Transformers.js / ONNX Runtime Web / WebNN, Web Crypto API, Workbox precaching, the Cache Storage API.
+The composition under Run: wa-sqlite + OPFS, Origin Private File System Access API, Transformers.js / ONNX Runtime Web / WebNN, Web Crypto API, Workbox precaching, the Cache Storage API, and a per-app permission namespace inside one local container.
 
 ### Connect (Pulse · Spark · Hub)
 
@@ -81,7 +83,9 @@ The interesting work isn't inventing primitives — the platform invented them a
 | Capability | What Shippie composes |
 |---|---|
 | Database in the browser | wa-sqlite (LinkedIn's WASM port of SQLite) + OPFS + Drizzle-style typed API |
-| Local AI | Transformers.js (Xenova) + WebNN/WebGPU/WASM backend selection + cross-origin iframe + Workbox precache + Cache Storage |
+| Local AI | Transformers.js (Xenova) + WebNN/WebGPU/WASM backend selection + container worker + Cache Storage |
+| App ownership | standalone URLs + custom domains + signed `.shippie` package metadata + container receipts |
+| App isolation | sandboxed iframes + bridge capability grants + deploy-time trust scanning + package permissions |
 | Mesh networking | WebRTC + Yjs CRDTs + X25519 ephemeral keys + AES-256-GCM + Cloudflare Durable Objects for signalling |
 | BYO-Cloud backup | Google Drive REST API + AES-GCM + Argon2id + OAuth 2.0 PKCE + Cloudflare Workers as the coordinator |
 | Service worker injection | vite-plugin-pwa + Workbox + a thin static analyser that picks the right caching strategy |
@@ -101,8 +105,8 @@ The tour above describes what's built. The frontier is what isn't. If you're rea
 - **Spark**: BLE beacon discovery + hotspot share + chain propagation for the no-internet-at-all scenario. The wire protocol is sketched; the implementation is open. Festival use cases drive this.
 - **Receiver leg of the device transfer flow**: the sender side ships in the Your Data panel; the receiver UI (scan QR → re-import into local-db/local-files) is roadmapped to v1.5.
 - **Crowd consensus**: gossip aggregation for fan-reported scores at venues with no internet. Designed in conversation; no code yet.
-- **Cross-app intents and the local knowledge graph**: deferred until users have 3+ Shippie apps installed and demand pulls it in.
-- **MCP deploy from chat**: the MCP server is wired; the deploy-button-in-Claude-Code experience is partial.
+- **Cross-app knowledge graph**: the container has the bridge and intent direction; durable, user-controlled recall across many apps is the next careful step.
+- **MCP deploy from chat**: the MCP server and shared core are wired; the magical "build, deploy, read logs, iterate" loop keeps expanding.
 - **Native graduation**: app graduation reports for PWA / iOS / Android readiness, plus a native wrapper export. Roadmapped.
 
 If any of these are problems you're already solving — please publish what you're doing. Composition over invention works because someone else already did the hard part. The next wave of this depends on more people doing that.
@@ -133,4 +137,4 @@ The hippie ethos is operational, not aesthetic. *Your data, your device, your co
 
 ---
 
-*This is draft v0. The post-launch v1 will incorporate real-device demo footage, latency measurements from production traffic, and the first round of community contributions.*
+*This is draft v1. The post-launch v2 will incorporate real-device demo footage, latency measurements from production traffic, and the first round of community contributions.*
