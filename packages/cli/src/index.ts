@@ -8,7 +8,7 @@
  *   whoami               Show the current authenticated user
  *   deploy [dir]         Deploy a directory (auto-detects build output)
  *     --trial            Post to /api/deploy/trial — no signup, 24h TTL
- *     --watch            Poll status until cold path completes
+ *     --watch            Replay the deploy intelligence stream after upload
  *   init                 Scaffold a shippie.json
  *   status <deploy-id>   Check deploy status (use --watch to follow)
  *
@@ -125,7 +125,7 @@ program
   .option('-s, --slug <slug>', 'App slug (defaults to directory name)')
   .option('--skip-build', 'Skip install + build, deploy as-is')
   .option('--trial', 'Deploy as a 24-hour no-signup trial (no auth required)')
-  .option('-w, --watch', 'Poll status after the URL returns until cold work completes')
+  .option('-w, --watch', 'Replay the deploy intelligence stream after upload')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(deployCommand);
 

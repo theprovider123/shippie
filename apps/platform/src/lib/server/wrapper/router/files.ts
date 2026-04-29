@@ -2,7 +2,9 @@
  * Maker files router. Ported from services/worker/src/router/files.ts.
  *
  * Catch-all that serves the app's built files from R2 at
- * `apps/{slug}/v{active}/<path>`. SPA fallback to index.html.
+ * `apps/{slug}/v{active}/<path>`. SPA fallback is enabled only for
+ * deploys classified as SPA; MPA deploys resolve /route/index.html and then
+ * return 404 for unknown navigations.
  *
  * Building flag (apps:{slug}:building) → "shipping…" auto-refresh page.
  * Missing active pointer → "not yet published" 404.
@@ -14,6 +16,12 @@ interface BuildingFlag {
   commit_sha?: string | null;
   started_at?: number;
   source?: string;
+}
+
+interface RuntimeMeta {
+  routing?: {
+    mode?: 'spa' | 'mpa';
+  };
 }
 
 export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
@@ -50,17 +58,27 @@ export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
   let path = url.pathname;
   if (path === '/') path = '/index.html';
   if (!path.startsWith('/')) path = '/' + path;
+  const routeMode = await readRouteMode(ctx, slug);
 
   const r2Key = `apps/${slug}/v${active}${path}`;
   let obj = await ctx.env.APPS.get(r2Key);
 
   if (!obj) {
+    const directoryIndexPath = directoryIndexFor(path);
+    if (directoryIndexPath) {
+      obj = await ctx.env.APPS.get(`apps/${slug}/v${active}${directoryIndexPath}`);
+      if (obj) path = directoryIndexPath;
+    }
+  }
+
+  if (!obj && routeMode === 'spa') {
     const isNavigation =
       !path.includes('.') ||
       path.endsWith('.html') ||
       ctx.request.headers.get('sec-fetch-mode') === 'navigate';
     if (isNavigation) {
       obj = await ctx.env.APPS.get(`apps/${slug}/v${active}/index.html`);
+      if (obj) path = '/index.html';
     }
   }
 
@@ -98,6 +116,25 @@ export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
   }
 
   return new Response(body, { status: 200, headers });
+}
+
+async function readRouteMode(ctx: WrapperContext, slug: string): Promise<'spa' | 'mpa'> {
+  const raw = await ctx.env.CACHE.get(`apps:${slug}:meta`);
+  if (!raw) return 'spa';
+
+  try {
+    const meta = JSON.parse(raw) as RuntimeMeta;
+    return meta.routing?.mode === 'mpa' ? 'mpa' : 'spa';
+  } catch {
+    return 'spa';
+  }
+}
+
+function directoryIndexFor(path: string): string | null {
+  if (path.includes('.')) return null;
+  const clean = path.endsWith('/') ? path.slice(0, -1) : path;
+  if (!clean || clean === '/index.html') return null;
+  return `${clean}/index.html`;
 }
 
 function toStream(bytes: Uint8Array): ReadableStream<Uint8Array> {

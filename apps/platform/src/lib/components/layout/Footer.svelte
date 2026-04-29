@@ -7,9 +7,13 @@
     <div class="footer-grid">
       <div class="footer-brand">
         <div class="footer-mark">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 2 L20 12 L16 12 L16 22 L8 22 L8 12 L4 12 Z" fill="var(--sunset)" />
-          </svg>
+          <img
+            src="/__shippie-pwa/icon.svg"
+            alt=""
+            width="32"
+            height="32"
+            aria-hidden="true"
+          />
           <span>shippie</span>
         </div>
         <p class="footer-tagline">No app store. Just the web, installed.</p>
@@ -58,8 +62,11 @@
     gap: 0.5rem;
     margin-bottom: var(--space-sm);
     font-family: var(--font-heading);
-    font-size: 1.125rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
+  .footer-mark img { display: block; flex-shrink: 0; }
   .footer-tagline {
     font-family: var(--font-heading);
     font-style: italic;

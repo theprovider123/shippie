@@ -42,6 +42,8 @@ import { extractZipSafe } from './zip-extract';
 import { normalizeDeployOutput } from './output-normalize';
 import { deriveManifest, type ShippieJsonLite } from './manifest';
 import { runPreflight, type PreflightReport } from './preflight';
+import { detectRouteMode, type RouteModeDecision } from './route-mode';
+import { recoverAssetReferences } from './asset-recovery';
 import { uploadFilesToR2 } from './r2-upload';
 import {
   writeAppMeta,
@@ -128,6 +130,13 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       indexPath: normalized.indexPath,
     });
   }
+  const routing = detectRouteMode(files);
+  emitter.emit({
+    type: 'route_mode_detected',
+    mode: routing.mode,
+    confidence: routing.confidence,
+    reasons: routing.reasons.slice(0, 3),
+  });
 
   // 2. Manifest
   const manifestResult = deriveManifest({
@@ -139,6 +148,19 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     return failReport(input.slug, `Invalid shippie.json: ${manifestResult.error}`);
   }
   const manifest = manifestResult.manifest;
+
+  const assetRecovery = recoverAssetReferences(files);
+  files = assetRecovery.files;
+  totalBytes = assetRecovery.totalBytes;
+  for (const fix of assetRecovery.fixes.slice(0, 50)) {
+    emitter.emit({
+      type: 'asset_fixed',
+      kind: fix.kind,
+      before: fix.before,
+      after: fix.after,
+      file: fix.file,
+    });
+  }
 
   // 3. Preflight
   const preflight = runPreflight({
@@ -218,7 +240,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   injectIntoHtmlFiles(files, csp.metaTag, manifest, version);
   emitter.emit({
     type: 'essentials_injected',
-    injected: ['csp', 'viewport', 'charset', 'lang', 'og_tags', 'theme_color'],
+    injected: ['csp', 'viewport', 'charset', 'lang', 'og_tags', 'theme_color', 'favicon'],
   });
 
   // 7. Upload to R2
@@ -330,6 +352,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     },
     allowed_connect_domains: manifest.allowed_connect_domains ?? [],
     workflow_probes: manifest.workflow_probes ?? [],
+    routing: { mode: routing.mode },
   });
   await writeCspHeader(input.kv, input.slug, csp.header);
 
@@ -395,6 +418,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       makerId: input.makerId,
       version,
       files,
+      routing,
       kindProfile: kindProfileForReport,
       manifest,
       durationMs: Date.now() - startedAt,
@@ -559,6 +583,15 @@ export function injectEssentials(
     );
   }
 
+  // 7. favicon / touch icon — stable wrapper-generated icons. If the maker
+  //    provided either icon surface, leave their choice alone.
+  if (!/<link\s+[^>]*rel\s*=\s*["'][^"']*(?:icon|apple-touch-icon)[^"']*["']/i.test(out)) {
+    out = out.replace(
+      /<head([^>]*)>/i,
+      '<head$1>\n  <link rel="icon" href="/__shippie/icons/32.png" sizes="32x32">\n  <link rel="apple-touch-icon" href="/__shippie/icons/180.png">',
+    );
+  }
+
   return out;
 }
 
@@ -605,6 +638,7 @@ interface WriteDeployReportInput {
   makerId: string;
   version: number;
   files: Map<string, Uint8Array>;
+  routing: RouteModeDecision;
   kindProfile: ReturnType<typeof profileFromDetection> | null;
   manifest: ShippieJsonLite;
   durationMs: number;
@@ -618,6 +652,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   report.durationMs = input.durationMs;
   report.files = input.files.size;
   report.totalBytes = input.totalBytes;
+  report.routing = input.routing;
 
   const steps: DeployStep[] = [];
   steps.push({

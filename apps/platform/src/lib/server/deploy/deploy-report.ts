@@ -22,6 +22,7 @@ import type {
   LocalizePatch,
 } from '@shippie/analyse';
 import type { AppKindProfile } from '$lib/types/app-kind';
+import type { RouteModeDecision } from './route-mode';
 
 /** Schema version of the deploy report. Bump when fields move. */
 export const DEPLOY_REPORT_SCHEMA = 1;
@@ -38,6 +39,9 @@ export interface DeployReport {
   /** Files in the uploaded bundle (post-extract). */
   files: number;
   totalBytes: number;
+
+  /** Runtime routing behavior for unknown navigations. */
+  routing?: RouteModeDecision;
 
   /** App Kinds classification (already first-class — surfaces for the
    *  trust card and marketplace badge). */

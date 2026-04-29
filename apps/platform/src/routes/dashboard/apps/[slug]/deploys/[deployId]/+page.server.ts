@@ -18,7 +18,7 @@ import type { PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import type { DeployReport } from '$server/deploy/deploy-report';
 import { deployReportKey } from '$server/deploy/deploy-report';
-import { deployEventsKey } from '$server/deploy/deploy-events';
+import { deployEventsKey, type DeployEvent } from '$server/deploy/deploy-events';
 
 export const load: PageServerLoad = async ({ platform, params, parent }) => {
   if (!platform?.env.DB) throw error(500, 'database unavailable');
@@ -50,10 +50,20 @@ export const load: PageServerLoad = async ({ platform, params, parent }) => {
     }
   }
 
-  // Quick check: do we also have an events stream available?
-  const eventsObj = await platform.env.APPS.head(
-    deployEventsKey(app.slug, deployRow.version),
-  );
+  const eventsKey = deployEventsKey(app.slug, deployRow.version);
+  const eventsObj = await platform.env.APPS.get(eventsKey);
+  let events: DeployEvent[] = [];
+  if (eventsObj) {
+    try {
+      events = (await eventsObj.text())
+        .split('\n')
+        .filter((line) => line.length > 0)
+        .slice(0, 250)
+        .map((line) => JSON.parse(line) as DeployEvent);
+    } catch {
+      events = [];
+    }
+  }
 
   return {
     deploy: {
@@ -67,6 +77,7 @@ export const load: PageServerLoad = async ({ platform, params, parent }) => {
       commitSha: deployRow.commitSha,
     },
     report,
+    events,
     hasStream: eventsObj !== null,
   };
 };

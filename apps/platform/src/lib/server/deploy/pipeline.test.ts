@@ -82,6 +82,20 @@ describe('injectEssentials', () => {
     expect(out).toContain('#E8603C');
   });
 
+  test('adds favicon hints when missing', () => {
+    const out = injectEssentials('<html><head></head></html>', CSP_META, manifest);
+    expect(out).toContain('rel="icon"');
+    expect(out).toContain('/__shippie/icons/32.png');
+    expect(out).toContain('rel="apple-touch-icon"');
+  });
+
+  test('does not add favicon hints when maker provided one', () => {
+    const html = '<html><head><link rel="icon" href="/favicon.ico"></head></html>';
+    const out = injectEssentials(html, CSP_META, manifest);
+    expect(out).toContain('/favicon.ico');
+    expect(out).not.toContain('/__shippie/icons/32.png');
+  });
+
   test('escapes special chars in attribute values', () => {
     const dangerous = {
       ...manifest,

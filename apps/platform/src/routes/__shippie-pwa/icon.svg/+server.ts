@@ -1,11 +1,33 @@
 import type { RequestHandler } from './$types';
 
-const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#14120F"/>
-  <path d="M141 326c46-8 85-32 117-72 31-39 49-83 54-132 31 18 50 44 57 78 8 38-1 75-27 112-24 34-58 58-101 71-41 12-79 7-116-14 2-14 7-29 16-43Z" fill="#E8603C"/>
-  <path d="M176 338c53 12 107 2 164-30-25 39-58 65-101 77-40 12-79 7-116-14 11-14 28-25 53-33Z" fill="#F2C94C"/>
-  <circle cx="300" cy="172" r="18" fill="#F5EFE4"/>
-  <path d="M147 383c24-18 51-27 81-27-19 23-48 42-87 57-5 2-9-4-6-9l12-21Z" fill="#74A57F"/>
+/**
+ * The Shippie rocket — 10 sage-green blocks + 1 sunset flame at the base.
+ * Source of truth for favicon / manifest icon / OG image base.
+ * Mirror of /shippie_icon_transparent.svg at repo root.
+ */
+const ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <style>.sage1{fill:#3A4D35}.sage2{fill:#5E7B5C}.sage3{fill:#7A9A6E}.sage4{fill:#A8C491}</style>
+  </defs>
+  <g transform="translate(0,10)">
+    <path d="M512 180 L442 250 H582 Z" fill="#EDE4D3"/>
+    <path d="M512 180 L512 250 L582 250 Z" fill="#D8C9A5" opacity="0.55"/>
+    <rect x="440" y="260" width="64" height="64" class="sage1"/>
+    <rect x="520" y="260" width="64" height="64" fill="#E8603C"/>
+    <rect x="440" y="340" width="64" height="64" class="sage2"/>
+    <rect x="520" y="340" width="64" height="64" class="sage4"/>
+    <rect x="440" y="420" width="64" height="64" class="sage2"/>
+    <rect x="520" y="420" width="64" height="64" class="sage4"/>
+    <rect x="440" y="500" width="64" height="64" class="sage1"/>
+    <rect x="520" y="500" width="64" height="64" class="sage3"/>
+    <rect x="440" y="580" width="64" height="64" class="sage3"/>
+    <rect x="520" y="580" width="64" height="64" class="sage2"/>
+    <path d="M356 516 L430 590 L430 676 L356 603 Z" class="sage2"/>
+    <path d="M356 617 L430 676 L430 708 L356 651 Z" class="sage2"/>
+    <path d="M668 516 L594 590 L594 676 L668 603 Z" class="sage4"/>
+    <path d="M668 617 L594 676 L594 708 L668 651 Z" class="sage4"/>
+    <path d="M512 652 C530 690 550 717 552 757 C537 742 522 746 512 780 C502 746 487 742 472 757 C474 717 494 690 512 652 Z" fill="#E8603C"/>
+  </g>
 </svg>`;
 
 export const GET: RequestHandler = async () => {

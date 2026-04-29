@@ -25,6 +25,7 @@ export * from './logs.ts';
 export * from './config.ts';
 export * from './auth.ts';
 export * from './stream.ts';
+export * from './format-stream.ts';
 export * from './classify.ts';
 export * from './install.ts';
 export * from './templates.ts';

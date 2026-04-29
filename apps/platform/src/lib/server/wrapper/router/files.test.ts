@@ -139,7 +139,10 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
   });
 
   test('SPA fallback: missing path → index.html', async () => {
-    const kvData: Record<string, string> = { 'apps:spa:active': '1' };
+    const kvData: Record<string, string> = {
+      'apps:spa:active': '1',
+      'apps:spa:meta': JSON.stringify({ routing: { mode: 'spa' } })
+    };
     const r2: Record<string, Stored> = {
       'apps/spa/v1/index.html': {
         bytes: new TextEncoder().encode('<html>spa</html>'),
@@ -160,6 +163,62 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain('spa');
+  });
+
+  test('MPA routing: extensionless path resolves /path/index.html before 404', async () => {
+    const kvData: Record<string, string> = {
+      'apps:mpa:active': '1',
+      'apps:mpa:meta': JSON.stringify({ routing: { mode: 'mpa' } })
+    };
+    const r2: Record<string, Stored> = {
+      'apps/mpa/v1/index.html': {
+        bytes: new TextEncoder().encode('<html>home</html>'),
+        contentType: 'text/html'
+      },
+      'apps/mpa/v1/about/index.html': {
+        bytes: new TextEncoder().encode('<html>about</html>'),
+        contentType: 'text/html'
+      }
+    };
+    const env = envWith(fakeKv(kvData), fakeR2(r2));
+
+    const res = await serveFromR2({
+      request: new Request('https://mpa.shippie.app/about', {
+        headers: { host: 'mpa.shippie.app' }
+      }),
+      env,
+      slug: 'mpa',
+      traceId: 't'
+    });
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('about');
+  });
+
+  test('MPA routing: unknown navigation does not fall back to root index.html', async () => {
+    const kvData: Record<string, string> = {
+      'apps:mpa404:active': '1',
+      'apps:mpa404:meta': JSON.stringify({ routing: { mode: 'mpa' } })
+    };
+    const r2: Record<string, Stored> = {
+      'apps/mpa404/v1/index.html': {
+        bytes: new TextEncoder().encode('<html>home</html>'),
+        contentType: 'text/html'
+      }
+    };
+    const env = envWith(fakeKv(kvData), fakeR2(r2));
+
+    const res = await serveFromR2({
+      request: new Request('https://mpa404.shippie.app/missing', {
+        headers: { host: 'mpa404.shippie.app', 'sec-fetch-mode': 'navigate' }
+      }),
+      env,
+      slug: 'mpa404',
+      traceId: 't'
+    });
+
+    expect(res.status).toBe(404);
   });
 
   test('no active pointer → unpublished page', async () => {

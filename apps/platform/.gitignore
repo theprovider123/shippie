@@ -6,3 +6,9 @@
 node_modules
 build
 dist
+
+# Build output from `bun scripts/prepare-showcases.mjs` (regenerated
+# every `bun run build`; copying showcase dist files here is a build
+# step, not source).
+static/run/
+static/brand-preview/

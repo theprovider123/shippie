@@ -14,18 +14,14 @@
   <div class="nav-inner">
     <div class="nav-left">
       <a href="/" class="nav-logo">
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
+        <img
+          src="/__shippie-pwa/icon.svg"
+          alt=""
+          width="26"
+          height="26"
+          class="nav-mark"
           aria-hidden="true"
-        >
-          <path
-            d="M12 2 L20 12 L16 12 L16 22 L8 22 L8 12 L4 12 Z"
-            fill="var(--sunset)"
-          />
-        </svg>
+        />
         <span class="nav-wordmark">shippie</span>
       </a>
     </div>
@@ -133,6 +129,7 @@
     gap: 0.5rem;
     color: var(--text);
   }
+  .nav-mark { display: block; flex-shrink: 0; }
   .nav-wordmark {
     font-family: var(--font-heading);
     font-size: 1.375rem;

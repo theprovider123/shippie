@@ -15,7 +15,9 @@ export interface DeployResult {
   version?: number;
   deployId?: string;
   files?: number;
+  totalBytes?: number;
   expiresAt?: string;
+  claimUrl?: string;
   /** Raw error or message when ok=false. */
   error?: string;
   /** HTTP status from the platform. Useful for tooling to disambiguate
@@ -99,6 +101,8 @@ export async function deployDirectory(
     version: typeof json.version === 'number' ? json.version : undefined,
     deployId: typeof json.deploy_id === 'string' ? json.deploy_id : undefined,
     files: typeof json.files === 'number' ? json.files : undefined,
+    totalBytes: typeof json.total_bytes === 'number' ? json.total_bytes : undefined,
     expiresAt: typeof json.expires_at === 'string' ? json.expires_at : undefined,
+    claimUrl: typeof json.claim_url === 'string' ? json.claim_url : undefined,
   };
 }

@@ -112,26 +112,24 @@ export function runPreflight(input: PreflightInput): PreflightReport {
   }
 
   // -- entry-file-present
-  if (input.manifest.type === 'website' && input.files.size > 0) {
-    findings.push({ rule: 'entry-file-present', severity: 'pass', title: 'Website has output files' });
-  } else if (input.files.size === 0) {
+  if (input.files.size === 0) {
     findings.push({
       rule: 'entry-file-present',
       severity: 'block',
       title: 'Output directory is empty',
     });
   } else {
-    const hasIndex = [...input.files.keys()].some(
-      (f) => f === 'index.html' || f === '/index.html' || f.endsWith('/index.html'),
-    );
+    const hasIndex = input.files.has('index.html') || input.files.has('/index.html');
     if (!hasIndex) {
       findings.push({
         rule: 'entry-file-present',
         severity: 'block',
-        title: 'No index.html in output',
+        title: 'No root index.html in output',
+        detail:
+          'Shippie serves the deploy root from index.html. Upload a built output folder, or include index.html at the bundle root.',
       });
     } else {
-      findings.push({ rule: 'entry-file-present', severity: 'pass', title: 'index.html found' });
+      findings.push({ rule: 'entry-file-present', severity: 'pass', title: 'Root index.html found' });
     }
   }
 

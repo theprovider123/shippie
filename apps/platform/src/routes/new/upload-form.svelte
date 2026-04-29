@@ -14,6 +14,7 @@
         kind: 'success';
         slug: string;
         liveUrl: string;
+        deployId?: string;
         version?: number;
         files?: number;
         totalBytes?: number;
@@ -52,6 +53,7 @@
           kind: 'success',
           slug: String(j.slug),
           liveUrl: String(j.live_url),
+          deployId: typeof j.deploy_id === 'string' ? j.deploy_id : undefined,
           version: typeof j.version === 'number' ? j.version : undefined,
           files: typeof j.files === 'number' ? j.files : undefined,
           totalBytes: typeof j.total_bytes === 'number' ? j.total_bytes : undefined,
@@ -124,6 +126,12 @@
         Live at
         <a href={result.liveUrl} target="_blank" rel="noreferrer">{result.liveUrl}</a>
       </p>
+      {#if result.deployId}
+        <p>
+          Review the
+          <a href={`/dashboard/apps/${result.slug}/deploys/${result.deployId}`}>deploy intelligence report</a>
+        </p>
+      {/if}
 
       <div class="share-card">
         <div class="share-head">

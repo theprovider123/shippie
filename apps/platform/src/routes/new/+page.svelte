@@ -25,7 +25,7 @@
 
     <section class="card">
       <h2>Upload a zip <span class="time">60s</span></h2>
-      <p>Drop a zip of your built output — any static site, SPA, or framework <code>dist/</code>. Must have <code>index.html</code> at the root.</p>
+      <p>Drop a zip of your built output or project export. Shippie detects common roots like <code>dist/</code>, <code>build/</code>, and <code>out/</code>, repairs obvious asset paths, then publishes the static app root.</p>
       <UploadForm />
     </section>
 

@@ -14,6 +14,7 @@
  */
 import type { KVNamespace } from '@cloudflare/workers-types';
 import type { ShippieJsonLite } from './manifest';
+import type { RouteMode } from './route-mode';
 
 export interface AppMeta {
   slug: string;
@@ -28,6 +29,9 @@ export interface AppMeta {
   backend_url?: string | null;
   allowed_connect_domains?: string[];
   workflow_probes?: string[];
+  routing?: {
+    mode: RouteMode;
+  };
 }
 
 export async function writeAppMeta(

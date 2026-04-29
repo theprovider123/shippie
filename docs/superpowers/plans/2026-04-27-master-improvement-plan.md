@@ -253,7 +253,7 @@ Self-hosted Shippie instances interoperate. Like email: one protocol, many serve
 2. **Ethos audit per phase.** Each phase has an explicit "does this preserve the path to a Hub?" check.
 3. **Artifacts over DB rows.** Wherever feasible, generate portable static artifacts (JSON, NDJSON, manifests) that a Hub can serve without our platform.
 4. **Same code, two targets.** The CLI and MCP must work identically against `shippie.app` and `hub.local`. This forces good abstraction.
-5. **No data exfiltration.** Every analytics/feedback path passes a CI test that greps for personal-content leakage patterns.
+5. **No data exfiltration.** Every analytics/feedback path serializes through a schema allowlist, with fixture tests proving personal-content fields cannot appear in emitted payloads.
 
 ## Strategic addendum — container commons
 

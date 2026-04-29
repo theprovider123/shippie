@@ -23,6 +23,7 @@
  */
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { deployEventsKey } from '$server/deploy/deploy-events';
 
 const REPLAY_DELAY_DEFAULT_MS = 30;
 const REPLAY_DELAY_MAX_MS = 200;
@@ -53,7 +54,7 @@ export const GET: RequestHandler = async ({ params, platform, url }) => {
     ? Math.max(0, Math.min(REPLAY_DELAY_MAX_MS, replayDelayParam))
     : REPLAY_DELAY_DEFAULT_MS;
 
-  const key = `apps/${row.slug}/v${row.version}/_shippie/events.ndjson`;
+  const key = deployEventsKey(row.slug, row.version);
   const obj = await platform.env.APPS.get(key);
   if (!obj) {
     // No artifact yet (legacy deploy or in-flight). Emit a single

@@ -22,6 +22,7 @@
 export type DeployEvent =
   | DeployReceivedEvent
   | FrameworkDetectedEvent
+  | RouteModeDetectedEvent
   | SecurityScanStartedEvent
   | SecretDetectedEvent
   | SecurityScanFinishedEvent
@@ -57,6 +58,13 @@ export interface FrameworkDetectedEvent extends BaseEvent {
   framework: string;
   /** Where index.html was found. */
   indexPath: string;
+}
+
+export interface RouteModeDetectedEvent extends BaseEvent {
+  type: 'route_mode_detected';
+  mode: 'spa' | 'mpa';
+  confidence: number;
+  reasons: string[];
 }
 
 export interface SecurityScanStartedEvent extends BaseEvent {

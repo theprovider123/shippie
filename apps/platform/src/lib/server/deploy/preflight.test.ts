@@ -51,6 +51,17 @@ describe('runPreflight', () => {
     expect(r.blockers.some((b) => b.rule === 'entry-file-present')).toBe(true);
   });
 
+  it('requires index.html at the deploy root even for website manifests', () => {
+    const r = runPreflight(
+      baseInput({
+        manifest: { type: 'website', name: 'Site' },
+        files: new Map([['nested/index.html', enc('<html></html>')]]),
+      }),
+    );
+    expect(r.blockers.some((b) => b.rule === 'entry-file-present')).toBe(true);
+    expect(r.blockers.find((b) => b.rule === 'entry-file-present')?.title).toContain('root');
+  });
+
   it('detects server-side code', () => {
     const r = runPreflight(
       baseInput({

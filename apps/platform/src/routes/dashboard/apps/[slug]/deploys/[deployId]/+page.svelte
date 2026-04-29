@@ -2,8 +2,12 @@
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
-  const deploy = data.deploy;
-  const report = data.report;
+  const deploy = $derived(data.deploy);
+  const report = $derived(data.report);
+  const events = $derived(data.events ?? []);
+  const frameworkEvent = $derived(events.find((event) => event.type === 'framework_detected'));
+  const routeEvent = $derived(events.find((event) => event.type === 'route_mode_detected'));
+  const assetFixes = $derived(events.filter((event) => event.type === 'asset_fixed'));
 
   function gradeColor(grade: string | undefined): string {
     if (!grade) return 'var(--text-light)';
@@ -26,6 +30,87 @@
     if (kind === 'connected') return 'Connected';
     if (kind === 'cloud') return 'Cloud-dependent';
     return kind;
+  }
+
+  function eventTitle(event: (typeof events)[number]): string {
+    switch (event.type) {
+      case 'deploy_received':
+        return 'Bundle received';
+      case 'framework_detected':
+        return 'Framework detected';
+      case 'route_mode_detected':
+        return 'Routing classified';
+      case 'asset_fixed':
+        return 'Asset path recovered';
+      case 'essentials_injected':
+        return 'Essentials injected';
+      case 'security_scan_started':
+        return 'Security scan started';
+      case 'security_scan_finished':
+        return 'Security scan finished';
+      case 'privacy_audit_finished':
+        return 'Privacy audit finished';
+      case 'kind_classified':
+        return 'App kind classified';
+      case 'upload_started':
+        return 'Upload started';
+      case 'upload_finished':
+        return 'Upload finished';
+      case 'health_check_finished':
+        return 'Health check finished';
+      case 'deploy_live':
+        return 'Deploy live';
+      case 'deploy_failed':
+        return 'Deploy failed';
+      case 'secret_detected':
+        return 'Secret detected';
+      default:
+        return (event as { type: string }).type;
+    }
+  }
+
+  function eventDetail(event: (typeof events)[number]): string {
+    switch (event.type) {
+      case 'deploy_received':
+        return `${event.files} files · ${formatBytes(event.bytes)}`;
+      case 'framework_detected':
+        return `${event.framework} · ${event.indexPath}`;
+      case 'route_mode_detected':
+        return `${event.mode.toUpperCase()} · ${Math.round(event.confidence * 100)}%`;
+      case 'asset_fixed':
+        return `${event.before} → ${event.after}`;
+      case 'essentials_injected':
+        return event.injected.join(', ');
+      case 'security_scan_started':
+        return `${event.filesToScan} files`;
+      case 'security_scan_finished':
+        return `${event.blocks} block · ${event.warns} warn · ${event.infos} info`;
+      case 'privacy_audit_finished':
+        return `${event.trackers} tracker · ${event.feature} feature · ${event.cdn} cdn · ${event.unknown} unknown`;
+      case 'kind_classified':
+        return `${kindBadge(event.publicKind)} · ${Math.round(event.confidence * 100)}%`;
+      case 'upload_started':
+      case 'upload_finished':
+        return `${event.files} files · ${formatBytes(event.bytes)}`;
+      case 'health_check_finished':
+        return event.passed
+          ? `${event.warnings} warn · ${event.failures} fail`
+          : `blocked · ${event.failures} fail`;
+      case 'deploy_live':
+        return `${event.liveUrl} · ${(event.durationMs / 1000).toFixed(1)}s`;
+      case 'deploy_failed':
+        return `${event.step}: ${event.reason}`;
+      case 'secret_detected':
+        return `${event.severity}: ${event.rule} · ${event.location}`;
+      default:
+        return '';
+    }
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   }
 </script>
 
@@ -86,6 +171,62 @@
           </ul>
         {/if}
       </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h3>Deploy Intelligence</h3>
+        <span class="pill">critical path</span>
+      </div>
+      <div class="truth-grid">
+        <div>
+          <span class="label">Framework</span>
+          <strong>{frameworkEvent?.framework ?? 'Unknown'}</strong>
+          {#if frameworkEvent?.indexPath}
+            <p>{frameworkEvent.indexPath}</p>
+          {/if}
+        </div>
+        <div>
+          <span class="label">Routing</span>
+          <strong>{report.routing?.mode?.toUpperCase() ?? routeEvent?.mode?.toUpperCase() ?? 'Unknown'}</strong>
+          <p>
+            {#if report.routing?.confidence !== undefined}
+              {Math.round(report.routing.confidence * 100)}% confidence
+            {:else if routeEvent?.confidence !== undefined}
+              {Math.round(routeEvent.confidence * 100)}% confidence
+            {:else}
+              Awaiting route probe
+            {/if}
+          </p>
+        </div>
+        <div>
+          <span class="label">Recovered Assets</span>
+          <strong>{assetFixes.length}</strong>
+          <p>{assetFixes.length === 1 ? 'path fixed' : 'paths fixed'}</p>
+        </div>
+      </div>
+      {#if report.routing?.reasons?.length || routeEvent?.reasons?.length}
+        <ul class="reasons route-reasons">
+          {#each (report.routing?.reasons ?? routeEvent?.reasons ?? []).slice(0, 3) as reason}
+            <li>{reason}</li>
+          {/each}
+        </ul>
+      {/if}
+      {#if assetFixes.length}
+        <div class="fixes">
+          {#each assetFixes.slice(0, 8) as fix}
+            <div class="fix-row">
+              <code>{fix.file}</code>
+              <span>{fix.before}</span>
+              <span aria-hidden="true">→</span>
+              <strong>{fix.after}</strong>
+            </div>
+          {/each}
+          {#if assetFixes.length > 8}
+            <p class="caveat">Showing 8 of {assetFixes.length} recovered asset paths.</p>
+          {/if}
+        </div>
+      {/if}
     </section>
 
     {#if report.security.score?.deductions.length}
@@ -175,6 +316,26 @@
         {/if}
       </section>
     {/if}
+
+    {#if events.length}
+      <section class="card">
+        <div class="section-head">
+          <h3>Deploy stream</h3>
+          <span class="pill">{events.length} events</span>
+        </div>
+        <ol class="event-stream">
+          {#each events.slice(0, 40) as event}
+            <li class="event event-{event.type}">
+              <span class="event-time">{(event.elapsedMs / 1000).toFixed(2)}s</span>
+              <div>
+                <strong>{eventTitle(event)}</strong>
+                <p>{eventDetail(event)}</p>
+              </div>
+            </li>
+          {/each}
+        </ol>
+      </section>
+    {/if}
   {/if}
 </div>
 
@@ -227,6 +388,85 @@
     margin: 0 0 0.5rem 0;
     font-size: 0.95rem;
     color: var(--text-secondary);
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .section-head h3 {
+    margin: 0;
+  }
+  .pill {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-light);
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    padding: 0.2rem 0.5rem;
+  }
+  .truth-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  .truth-grid > div {
+    background: var(--surface-alt);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 0.85rem;
+  }
+  .truth-grid .label {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--text-light);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .truth-grid strong {
+    display: block;
+    font-size: 1rem;
+  }
+  .truth-grid p {
+    margin: 0.3rem 0 0;
+    color: var(--text-light);
+    font-size: 0.82rem;
+  }
+  .route-reasons {
+    margin-top: 1rem;
+  }
+  .fixes {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .fix-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.9fr) minmax(120px, 1fr) auto minmax(120px, 1fr);
+    gap: 0.55rem;
+    align-items: center;
+    padding: 0.45rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(61, 139, 92, 0.05);
+    font-size: 0.82rem;
+  }
+  .fix-row code,
+  .fix-row span,
+  .fix-row strong {
+    overflow-wrap: anywhere;
+  }
+  .fix-row code {
+    color: var(--text-light);
+    font-size: 0.78rem;
+  }
+  .fix-row strong {
+    color: #3D8B5C;
+    font-weight: 500;
   }
   .big-number {
     font-size: 3rem;
@@ -382,6 +622,48 @@
     margin-top: 1rem;
     font-size: 0.85rem;
     color: var(--text-light);
+  }
+  .event-stream {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .event {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 0.75rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    background: var(--surface-alt);
+  }
+  .event-time {
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+  .event strong {
+    display: block;
+    font-size: 0.9rem;
+  }
+  .event p {
+    margin: 0.2rem 0 0;
+    color: var(--text-light);
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+  }
+  .event-asset_fixed,
+  .event-deploy_live {
+    border-color: rgba(61, 139, 92, 0.25);
+    background: rgba(61, 139, 92, 0.05);
+  }
+  .event-secret_detected,
+  .event-deploy_failed {
+    border-color: rgba(200, 75, 75, 0.25);
+    background: rgba(200, 75, 75, 0.05);
   }
   .empty p {
     color: var(--text-light);
