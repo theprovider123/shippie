@@ -12,3 +12,8 @@ dist
 # step, not source).
 static/run/
 static/brand-preview/
+
+# Build output from `bun scripts/prepare-whitepaper.mjs` (regenerated
+# every `bun run build`; the .md at docs/WHITEPAPER.md is the source
+# of truth).
+src/lib/_generated/

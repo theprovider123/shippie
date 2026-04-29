@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev",
     "prepare:showcases": "bun scripts/prepare-showcases.mjs",
-    "build": "bun scripts/prepare-showcases.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
+    "prepare:whitepaper": "bun scripts/prepare-whitepaper.mjs",
+    "build": "bun scripts/prepare-showcases.mjs && bun scripts/prepare-whitepaper.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
     "preview": "wrangler dev",
     "deploy": "bun run build && bun scripts/upload-sdk-bundle.mjs && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -44,6 +45,7 @@
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@types/node": "^25.6.0",
     "drizzle-kit": "^0.28.0",
+    "marked": "^18.0.2",
     "postgres": "^3.4.9",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
