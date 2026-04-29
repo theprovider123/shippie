@@ -83,6 +83,7 @@
   import TransferPromptModal from '$lib/container/TransferPromptModal.svelte';
   import AppFrameHost from '$lib/container/AppFrameHost.svelte';
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
+  import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import { focusApp } from '$lib/container/iframe-lifecycle';
   import { appPackageSrcdoc } from '$lib/container/app-srcdoc';
@@ -123,6 +124,10 @@
   // Focused-mode app-switcher drawer open state. Only meaningful when
   // `data.focused === true`; ignored in dashboard mode.
   let focusedDrawerOpen = $state(false);
+  // Set when /run/<slug>/ resolved a slug we don't have. Used to render
+  // an EmptyState in focused mode instead of silently swapping the user
+  // onto a different app.
+  let notFoundSlug = $state<string | null>(null);
   let receiptsByApp = $state<Record<string, AppReceipt>>({});
   let receiptExport = $state('');
   let backupPassphrase = $state('');
@@ -1181,6 +1186,13 @@
       : null;
     if (requestedApp) {
       openApp(requestedApp.id);
+    } else if (data.requestedAppSlug && data.focused) {
+      // Slug was requested via /run/<slug>/ but it's not in our installed
+      // list (private, archived, container-eligibility-filtered). Surface
+      // an EmptyState in focused mode instead of silently swapping onto
+      // a different app — that path was the dominant "click landed me
+      // somewhere weird" report.
+      notFoundSlug = data.requestedAppSlug;
     } else if (!activeAppId || !appById.has(activeAppId)) {
       activeAppId = openAppIds[0] ?? null;
     }
@@ -1265,25 +1277,36 @@
   -->
   <section class="focused-shell">
     <div class="focused-frame">
-      {#each openAppIds as appId (appId)}
-        {@const app = appById.get(appId)}
-        {#if app}
-          <AppFrameHost
-            {app}
-            active={activeAppId === app.id}
-            reloadNonce={frameReloadNonce[app.id] ?? 0}
-            {frameStates}
-            runtimeSrc={runtimeSrcFor(app)}
-            packageFrameSrc={frameSrcFor(app)}
-            srcdoc={srcdocFor(app)}
-            onRegister={registerFrame}
-            onReady={markFrameReady}
-            onError={markFrameError}
-            onReload={reloadFrame}
-            onGoHome={goHome}
+      {#if notFoundSlug}
+        <div class="focused-not-found">
+          <EmptyState
+            title="We couldn't find that app."
+            body={`No app installed at /${notFoundSlug}. It may have been unpublished, made private, or the link is wrong.`}
+            actionLabel="Browse apps"
+            actionHref="/apps"
           />
-        {/if}
-      {/each}
+        </div>
+      {:else}
+        {#each openAppIds as appId (appId)}
+          {@const app = appById.get(appId)}
+          {#if app}
+            <AppFrameHost
+              {app}
+              active={activeAppId === app.id}
+              reloadNonce={frameReloadNonce[app.id] ?? 0}
+              {frameStates}
+              runtimeSrc={runtimeSrcFor(app)}
+              packageFrameSrc={frameSrcFor(app)}
+              srcdoc={srcdocFor(app)}
+              onRegister={registerFrame}
+              onReady={markFrameReady}
+              onError={markFrameError}
+              onReload={reloadFrame}
+              onGoHome={goHome}
+            />
+          {/if}
+        {/each}
+      {/if}
     </div>
     <AppSwitcherGesture
       open={focusedDrawerOpen}
@@ -2114,6 +2137,13 @@
     min-height: 100vh;
     border: 0;
     display: block;
+  }
+  .focused-not-found {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: clamp(1.5rem, 4vw, 3rem);
   }
 
   .focused-drawer {
