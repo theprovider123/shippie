@@ -45,6 +45,10 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/dashboard/')) return;
   if (url.pathname.startsWith('/admin/')) return;
+  // Skip /run/<slug>/ — these are 302 redirects into focused-mode and
+  // must always reflect current routing logic. A cached redirect can
+  // serve a stale shell with a different bridge protocol.
+  if (url.pathname.startsWith('/run/')) return;
 
   if (url.pathname.startsWith(APPS_PREFIX)) {
     // cache-first for the apps directory
