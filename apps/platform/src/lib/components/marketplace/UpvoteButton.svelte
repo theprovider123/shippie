@@ -71,7 +71,9 @@
   .upvote:hover {
     border-color: var(--sunset);
     color: var(--sunset);
-    background: rgba(232, 96, 60, 0.06);
+    /* Keep the bg pure on hover — the previous 6% sunset tint
+       disappeared into cream card backgrounds. Border + colour swap
+       is enough signal. */
   }
   .upvote.voted {
     border-color: var(--sunset);
