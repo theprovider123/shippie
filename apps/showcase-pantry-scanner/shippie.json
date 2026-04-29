@@ -1,0 +1,25 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Pantry Scanner",
+  "slug": "pantry-scanner",
+  "description": "Scan barcodes and identify pantry items with on-device vision.",
+  "icon": "/icon.png",
+  "theme_color": "#74A57F",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["pantry-inventory"]
+  },
+  "permissions": ["camera"],
+  "data_schemas": {
+    "items": {
+      "id": "text primary key",
+      "name": "text not null",
+      "barcode": "text",
+      "quantity": "integer",
+      "unit": "text",
+      "added_at": "datetime"
+    }
+  }
+}

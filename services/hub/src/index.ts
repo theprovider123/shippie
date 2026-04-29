@@ -26,6 +26,7 @@ import { wsHandlerFor, extractRoomId } from './signal.ts';
 import { ModelCache } from './model-cache.ts';
 import { serveAppFile, extractSlugFromHost, listCachedApps } from './static.ts';
 import { renderDashboard } from './dashboard.ts';
+import { ingestPackageArchive, serveLocalCollection, servePackageArchive, withCors } from './packages.ts';
 
 interface WsData {
   roomId: string;
@@ -80,6 +81,7 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
   });
 
   const ws = wsHandlerFor(state);
+  let actualPort = config.port;
 
   const server = Bun.serve<WsData, never>({
     port: config.port,
@@ -87,6 +89,10 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
     async fetch(req, srv) {
       const url = new URL(req.url);
       const host = req.headers.get('host') ?? '';
+
+      if (req.method === 'OPTIONS') {
+        return withCors(new Response(null, { status: 204 }));
+      }
 
       // 1) WebSocket upgrade for signalling.
       const roomId = extractRoomId(url.pathname);
@@ -124,13 +130,43 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
         return Response.json(state.stats());
       }
 
-      // 6a) Phase 9.2 — local marketplace listing.
+      // 6a) Portable package ingest + local mirror serving. This is the
+      //     narrow Hub MVP path: install a verified .shippie archive without
+      //     needing the public platform to be online.
+      if (url.pathname === '/api/packages' && req.method === 'POST') {
+        const bytes = new Uint8Array(await req.arrayBuffer());
+        try {
+          const result = await ingestPackageArchive({
+            cacheRoot: config.cacheRoot,
+            archiveBytes: bytes,
+            origin: hubOrigin(req, actualPort),
+            expectedPackageHash: req.headers.get('x-shippie-package-hash'),
+          });
+          return withCors(Response.json({ ok: true, ...result }));
+        } catch (err) {
+          return withCors(Response.json(
+            { error: 'invalid_package', message: (err as Error).message },
+            { status: 400 },
+          ));
+        }
+      }
+
+      const packageMatch = /^\/packages\/(sha256:[a-f0-9]{64}\.shippie)$/i.exec(url.pathname);
+      if (packageMatch) {
+        return servePackageArchive(config.cacheRoot, packageMatch[1]!);
+      }
+
+      if (url.pathname === '/collections/local-mirror.json') {
+        return serveLocalCollection(config.cacheRoot, hubOrigin(req, actualPort));
+      }
+
+      // 6b) Phase 9.2 — local marketplace listing.
       if (url.pathname === '/api/hub/marketplace') {
         const apps = await listCachedApps(config.cacheRoot);
         return Response.json({ apps });
       }
 
-      // 6b) Phase 9.2 — privacy-first analytics beacon ingestion. The
+      // 6c) Phase 9.2 — privacy-first analytics beacon ingestion. The
       //     wrapper SDK already enforces the schema; we just persist.
       //     Local-only network — no auth required for v1.
       if (url.pathname === '/api/v1/analytics/beacon' && req.method === 'POST') {
@@ -189,6 +225,8 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
       },
     },
   });
+  actualPort = server.port ?? config.port;
+  const handleConfig = { ...config, port: actualPort };
 
   // mDNS broadcast — bonjour-service advertises hub.local on the LAN.
   // Lazy-loaded so tests that disable mDNS don't pay the import cost.
@@ -205,7 +243,7 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
           bonjour.publish({
             name: config.mdnsName,
             type: 'http',
-            port: config.port,
+            port: actualPort,
             txt: { service: 'shippie-hub' },
           });
           mdnsStop = async () => {
@@ -220,12 +258,12 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
   }
 
   console.log(
-    `[hub] listening on ${config.host}:${config.port} — cache at ${config.cacheRoot}` +
+    `[hub] listening on ${config.host}:${actualPort} — cache at ${config.cacheRoot}` +
       (mdnsStop ? ' — advertising mDNS' : ''),
   );
 
   return {
-    config,
+    config: handleConfig,
     state,
     modelCache,
     async stop() {
@@ -233,6 +271,11 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
       server.stop(true);
     },
   };
+}
+
+function hubOrigin(req: Request, fallbackPort: number): string {
+  const host = req.headers.get('host') ?? `hub.local:${fallbackPort}`;
+  return `http://${host}`;
 }
 
 interface BonjourLike {

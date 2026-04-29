@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./filesystem": {
+      "types": "./src/filesystem.ts",
+      "import": "./src/filesystem.ts"
     }
   },
   "scripts": {

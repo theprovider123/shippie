@@ -14,6 +14,8 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 const PLATFORM_HOSTS = new Set([
+  '127.0.0.1',
+  '::1',
   'next.shippie.app',
   'shippie.app',
   'www.shippie.app',
@@ -29,8 +31,8 @@ export const GET: RequestHandler = async ({ url }) => {
     name: 'Shippie',
     short_name: 'Shippie',
     description: 'Open marketplace for installable web apps. No app store. Just the web, installed.',
-    id: '/?app=shippie',
-    start_url: '/',
+    id: '/container',
+    start_url: '/container',
     scope: '/',
     display: 'standalone',
     display_override: ['standalone', 'minimal-ui'],
@@ -40,14 +42,23 @@ export const GET: RequestHandler = async ({ url }) => {
     launch_handler: { client_mode: ['navigate-existing', 'auto'] },
     categories: ['productivity'],
     icons: [
-      { src: '/__shippie-pwa/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: '/__shippie-pwa/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: '/__shippie-pwa/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/__shippie-pwa/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
     ],
     shortcuts: [
+      { name: 'Open Shippie', url: '/container', short_name: 'Home' },
       { name: 'Explore apps', url: '/apps', short_name: 'Explore' },
       { name: 'Deploy an app', url: '/new', short_name: 'Deploy' },
     ],
+    file_handlers: [
+      {
+        action: '/container?import=package',
+        accept: {
+          'application/vnd.shippie.package': ['.shippie'],
+          'application/json': ['.json'],
+        },
+      },
+    ],
+    protocol_handlers: [{ protocol: 'web+shippie', url: '/container?open=%s' }],
   };
 
   return new Response(JSON.stringify(manifest), {

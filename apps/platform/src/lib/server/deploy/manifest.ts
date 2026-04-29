@@ -31,6 +31,24 @@ export interface ShippieJsonLite {
   };
   allowed_connect_domains?: string[];
   /**
+   * Phase A2 — declared cross-app intents this app participates in.
+   *
+   * `provides` lists intents the app can emit data for (e.g. a recipe
+   *   app providing 'shopping-list'). The container exposes the app's
+   *   local rows under this intent name to consumers that the user has
+   *   granted permission to.
+   * `consumes` lists intents the app reads from. The container routes
+   *   the call to a matching provider after a one-time user grant.
+   *
+   * Both arrays are simple kebab-case identifiers; the container uses
+   * exact-match in v1. A future iteration introduces semantic matching
+   * and provider/consumer schemas.
+   */
+  intents?: {
+    provides?: string[];
+    consumes?: string[];
+  };
+  /**
    * Maker-declared App Kind (docs/app-kinds.md). Optional — if omitted,
    * the platform uses static-analysis detection only. If declared and
    * detection disagrees, the marketplace shows the detected kind and
@@ -65,6 +83,17 @@ export interface ShippieJsonLite {
     drop?: string[];
     transform?: Record<string, { to: string; copy?: boolean }>;
   };
+  /**
+   * Container commons ownership metadata. These are optional so existing
+   * vibe-coded apps still deploy, but when present they travel into the
+   * package/source metadata and marketplace ownership surfaces.
+   */
+  source_repo?: string;
+  license?: string;
+  remix_allowed?: boolean;
+  template_id?: string;
+  parent_app_id?: string;
+  parent_version?: string;
 }
 
 export interface DeriveManifestInput {
@@ -115,6 +144,13 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
           ? (m.workflow_probes.filter((x) => typeof x === 'string') as string[])
           : undefined,
         migrations: parseMigrations(m.migrations),
+        intents: parseIntents(m.intents),
+        source_repo: typeof m.source_repo === 'string' ? m.source_repo : undefined,
+        license: typeof m.license === 'string' ? m.license : undefined,
+        remix_allowed: typeof m.remix_allowed === 'boolean' ? m.remix_allowed : undefined,
+        template_id: typeof m.template_id === 'string' ? m.template_id : undefined,
+        parent_app_id: typeof m.parent_app_id === 'string' ? m.parent_app_id : undefined,
+        parent_version: typeof m.parent_version === 'string' ? m.parent_version : undefined,
       };
       return {
         manifest,
@@ -206,6 +242,36 @@ export function parseMigrations(raw: unknown): ShippieJsonLite['migrations'] {
       };
     }
     if (Object.keys(transform).length > 0) result.transform = transform;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+const INTENT_ID_RE = /^[a-z][a-z0-9-]{0,40}$/;
+
+/**
+ * Parse `intents` from a maker's shippie.json. Lenient: invalid entries
+ * are dropped silently (matching parseMigrations). The container
+ * cross-references this against installed apps' permissions, so a
+ * malformed intent can't escalate to capability.
+ */
+export function parseIntents(raw: unknown): ShippieJsonLite['intents'] {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const obj = raw as Record<string, unknown>;
+  const result: NonNullable<ShippieJsonLite['intents']> = {};
+
+  if (Array.isArray(obj.provides)) {
+    const provides = obj.provides.filter(
+      (x): x is string => typeof x === 'string' && INTENT_ID_RE.test(x),
+    );
+    if (provides.length > 0) result.provides = provides;
+  }
+
+  if (Array.isArray(obj.consumes)) {
+    const consumes = obj.consumes.filter(
+      (x): x is string => typeof x === 'string' && INTENT_ID_RE.test(x),
+    );
+    if (consumes.length > 0) result.consumes = consumes;
   }
 
   return Object.keys(result).length > 0 ? result : undefined;

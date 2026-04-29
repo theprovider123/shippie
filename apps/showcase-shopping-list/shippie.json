@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Shopping List",
+  "slug": "shopping-list",
+  "description": "Live shopping list. Pulls from meal plan; shares over local mesh.",
+  "icon": "/icon.png",
+  "theme_color": "#4E7C9A",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "consumes": ["shopping-list"]
+  },
+  "data_schemas": {
+    "items": {
+      "id": "text primary key",
+      "name": "text not null",
+      "checked": "boolean",
+      "source": "text",
+      "added_at": "datetime"
+    }
+  }
+}

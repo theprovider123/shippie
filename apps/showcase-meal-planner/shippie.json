@@ -1,0 +1,24 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Meal Planner",
+  "slug": "meal-planner",
+  "description": "Plan a week of meals from saved recipes and pantry contents.",
+  "icon": "/icon.png",
+  "theme_color": "#E8603C",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["shopping-list"],
+    "consumes": ["shopping-list", "pantry-inventory", "budget-limit"]
+  },
+  "data_schemas": {
+    "plans": {
+      "id": "text primary key",
+      "day": "text not null",
+      "slot": "text not null",
+      "recipe_name": "text",
+      "created_at": "datetime"
+    }
+  }
+}

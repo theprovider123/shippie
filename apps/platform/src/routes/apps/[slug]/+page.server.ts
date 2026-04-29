@@ -16,7 +16,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { verifyInviteGrant, inviteCookieName } from '@shippie/access/invite-cookie';
-import { getDrizzleClient } from '$server/db/client';
+import { getDrizzleClient, schema } from '$server/db/client';
 import {
   findBySlug,
   findPermissionsForApp,
@@ -26,7 +26,7 @@ import { summaryForApp, recentReviews } from '$server/db/queries/ratings';
 import { describeGrantedPermissions } from '$server/marketplace/honesty';
 import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability-badges';
 import { readAppProfile } from '$server/deploy/kv-write';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
 
 export const load: PageServerLoad = async ({ platform, params, cookies, locals, url }) => {
@@ -53,7 +53,18 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     if (!allowed) throw error(404, 'Not found');
   }
 
-  const [permissions, latestDeploy, ratingSummary, latestReviews, appProfile, provenBadges] =
+  const [
+    permissions,
+    latestDeploy,
+    ratingSummary,
+    latestReviews,
+    appProfile,
+    provenBadges,
+    makerRows,
+    domainRows,
+    lineageRows,
+    packageRows,
+  ] =
     await Promise.all([
       findPermissionsForApp(db, app.id),
       findLatestDeploy(db, app.id),
@@ -66,6 +77,48 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
         .select({ badge: capabilityBadgesTable.badge })
         .from(capabilityBadgesTable)
         .where(eq(capabilityBadgesTable.appId, app.id)),
+      db
+        .select({
+          username: schema.users.username,
+          displayName: schema.users.displayName,
+          name: schema.users.name,
+          verifiedMaker: schema.users.verifiedMaker,
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, app.makerId))
+        .limit(1),
+      db
+        .select({
+          domain: schema.customDomains.domain,
+          isCanonical: schema.customDomains.isCanonical,
+          verifiedAt: schema.customDomains.verifiedAt,
+        })
+        .from(schema.customDomains)
+        .where(eq(schema.customDomains.appId, app.id)),
+      db
+        .select({
+          sourceRepo: schema.appLineage.sourceRepo,
+          license: schema.appLineage.license,
+          remixAllowed: schema.appLineage.remixAllowed,
+          templateId: schema.appLineage.templateId,
+          parentAppId: schema.appLineage.parentAppId,
+          parentVersion: schema.appLineage.parentVersion,
+        })
+        .from(schema.appLineage)
+        .where(eq(schema.appLineage.appId, app.id))
+        .limit(1),
+      db
+        .select({
+          version: schema.appPackages.version,
+          channel: schema.appPackages.channel,
+          packageHash: schema.appPackages.packageHash,
+          containerEligibility: schema.appPackages.containerEligibility,
+          createdAt: schema.appPackages.createdAt,
+        })
+        .from(schema.appPackages)
+        .where(eq(schema.appPackages.appId, app.id))
+        .orderBy(desc(schema.appPackages.createdAt))
+        .limit(5),
     ]);
 
   const grantedPermissions = describeGrantedPermissions(permissions);
@@ -84,6 +137,14 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     autopack?.changelog && autopack.changelog.source !== 'default'
       ? autopack.changelog
       : null;
+  const maker = makerRows[0] ?? null;
+  const lineage = lineageRows[0] ?? null;
+  const verifiedDomains = domainRows
+    .filter((domain) => domain.verifiedAt)
+    .map((domain) => ({
+      domain: domain.domain,
+      isCanonical: domain.isCanonical,
+    }));
 
   return {
     app: {
@@ -97,6 +158,32 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       themeColor: app.themeColor,
       upvoteCount: app.upvoteCount,
       installCount: app.installCount,
+    },
+    ownership: {
+      maker: {
+        name: maker?.displayName ?? maker?.name ?? maker?.username ?? 'Unknown maker',
+        username: maker?.username ?? null,
+        verified: maker?.verifiedMaker ?? false,
+      },
+      sourceRepo: lineage?.sourceRepo ?? app.githubRepo ?? null,
+      license: lineage?.license ?? null,
+      remixAllowed: lineage?.remixAllowed ?? false,
+      lineage: {
+        templateId: lineage?.templateId ?? null,
+        parentAppId: lineage?.parentAppId ?? null,
+        parentVersion: lineage?.parentVersion ?? null,
+      },
+      customDomains: verifiedDomains,
+      versions: packageRows.map((pkg) => ({
+        version: pkg.version,
+        channel: pkg.channel,
+        packageHash: pkg.packageHash,
+        containerEligibility: pkg.containerEligibility,
+        createdAt: pkg.createdAt,
+        packageUrl: `/api/apps/${encodeURIComponent(app.slug)}/packages/${encodeURIComponent(pkg.packageHash)}`,
+      })),
+      openInShippieUrl: `/container?app=${encodeURIComponent(app.slug)}`,
+      standaloneUrl: `https://${app.slug}.shippie.app/`,
     },
     grantedPermissions,
     capabilityBadges,

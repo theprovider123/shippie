@@ -45,8 +45,10 @@ Deliverables:
 - `.shippie` package spec
 - `@shippie/app-package-contract` with TypeScript types and validation for manifests, permissions, trust reports, receipts, and remix/container gates
 - `@shippie/app-package-builder` skeleton that emits deterministic package artifacts from app files and package metadata
+- filesystem packaging helper with a real showcase-project smoke test that excludes `dist`, `.turbo`, `node_modules`, and tsbuildinfo noise
 - bridge request/response types plus permission enforcement helpers for the future iframe capability bridge
 - `@shippie/container-bridge` with host/client RPC, in-memory transport tests, and runtime capability enforcement
+- window-style `postMessage` transport adapter for iframe/container mode
 - runtime modes: standalone, container, Hub
 - permission/capability model
 - version layers: code, trust, data
@@ -61,6 +63,10 @@ Definition of done:
 ## Phase C1 - Data model skeleton
 
 Add durable schema objects without building the full UI yet.
+
+Status: initial platform skeleton landed. `app_packages` records package artifacts per
+deploy/version, `app_lineage` holds source/remix ownership at app scope, and user
+install receipts remain local-only container data.
 
 New or extended concepts:
 
@@ -120,6 +126,12 @@ Definition of done:
 ## Phase C2 - `.shippie` package builder
 
 Add the package build step after Deploy Truth artifacts exist. The initial pure builder already exists in `packages/app-package-builder`; the remaining work is to feed it real deploy artifacts and persist the outputs.
+
+Status: portable archive envelope landed. `@shippie/app-package-builder` now
+creates and verifies a deterministic `shippie.archive.v1` JSON envelope with
+base64 file bytes and per-file hashes. Deploy writes the verified archive beside
+package metadata in R2, and the container can paste-import either a manifest or
+a full archive.
 
 Inputs:
 
@@ -182,6 +194,10 @@ Definition of done:
 
 Build the installed Shippie container as a calm PWA with four tabs.
 
+Status: initial shell landed at `/container` with Home, Discover, Create,
+and Your Data surfaces. V1 uses curated/showcase fixtures until the package
+resolver reads live `app_packages` rows.
+
 Screens:
 
 - Home: installed apps, recent apps, updates
@@ -204,6 +220,9 @@ Definition of done:
 ## Phase C5 - Sandboxed app viewport
 
 Implement the iframe runtime.
+
+Status: initial multi-app iframe runtime landed. Open app frames stay mounted
+while the user returns Home or opens another curated app.
 
 Components:
 
@@ -231,6 +250,10 @@ Definition of done:
 ## Phase C6 - Capability bridge v1
 
 Implement request/response RPC over `postMessage`.
+
+Status: bridge host/client landed with permission enforcement, window transport,
+payload limits, rate limits, sibling-app isolation, and visible denied-capability
+responses in the container shell.
 
 Initial capabilities:
 
@@ -261,6 +284,12 @@ Definition of done:
 
 Build ownership surfaces before broad container distribution.
 
+Status: first ownership surfaces landed. `shippie.json` accepts optional
+source/license/remix lineage metadata, deploys persist app-level lineage, the
+package source metadata reflects those fields, and app detail pages now show
+maker identity, verified custom domains, standalone URL, Open in Shippie,
+source, license/remix status, and recent package versions.
+
 Surfaces:
 
 - maker profile
@@ -281,6 +310,12 @@ Definition of done:
 
 Build the local ownership layer.
 
+Status: first local receipt skeleton landed in the container shell. Installed
+curated apps get stamped receipts, namespace row counts, clear-data actions,
+and a receipt export preview. Browser-local persistence plus a Web Crypto
+encrypted backup export/restore skeleton now exist; `.shippie` package import
+for unknown restored receipts remains next.
+
 Features:
 
 - local app receipts
@@ -298,6 +333,11 @@ Definition of done:
 ## Phase C9 - Update cards + version trust
 
 Consume update safety outputs.
+
+Status: first container update-card skeleton landed. Installed app receipts are
+compared against the currently available package metadata; package hash,
+permission, and kind changes have a visible Stay/Update surface. This is a
+consumer shell only and does not duplicate the update-safety engine.
 
 Features:
 
@@ -317,6 +357,10 @@ Definition of done:
 
 Only after package, source, license, and ownership are real.
 
+Status: first consumer-facing lineage actions landed. App pages now expose Use
+in Shippie, View Source, Remix this app when source/license gates allow it, or a
+clear unavailable state when the maker has not opened the source/remix terms.
+
 Features:
 
 - fork from app
@@ -332,6 +376,20 @@ Definition of done:
 
 ## Phase C11 - Collections and Hub install path
 
+Status: portable package import is now archive-aware. Users can paste a full
+verified `shippie.archive.v1` envelope into the container, cache its app files
+locally, open the real packaged entrypoint, and write through the sandboxed
+bridge. The shared contract now includes `shippie.collection.v1`, and the
+platform exposes `/api/collections/official` as a mirrorable collection manifest
+for Hubs and local marketplace subsets. `@shippie/core` now has shared package
+install/mirror helpers, and `shippie install <package> --target <dir|hub.local>`
+can verify a `.shippie` archive, produce a local receipt, and write a local Hub
+mirror with `packages/` plus `collections/local-mirror.json`.
+`services/hub` now exposes the matching narrow Hub side: `POST /api/packages`
+accepts the archive, verifies it, unpacks app files into the existing static
+cache, serves the archive from `/packages/<hash>.shippie`, and updates
+`/collections/local-mirror.json`.
+
 Features:
 
 - official collections
@@ -344,6 +402,8 @@ Features:
 Definition of done:
 
 - A Hub can ingest a `.shippie` package and expose it in a local marketplace subset.
+- A local mirror directory can be generated from the same CLI/core path without
+  calling shippie.app.
 
 ## Phase C12 - Later, not now
 
@@ -372,11 +432,15 @@ Do not build yet:
 2. [x] Add `packages/app-package-contract` with TypeScript types for manifests, permissions, receipts, and eligibility.
 3. [x] Add package manifest validation tests.
 4. [x] Add package builder skeleton that emits deterministic package artifacts from app files + metadata.
-5. [ ] Feed real Deploy Truth artifacts into `@shippie/app-package-builder` for one showcase app.
-6. [x] Add bridge request/response contract and capability permission checks.
-7. [x] Add container bridge host/client package with in-memory handshake test.
-8. [ ] Add container-mode fixture app using iframe/postMessage transport.
-9. [ ] Add Shippie container shell route behind a feature flag.
-10. [ ] Add iframe viewport for curated showcase apps.
+5. [x] Add filesystem package helper and showcase project smoke test.
+6. [x] Feed real Deploy Truth artifacts into `@shippie/app-package-builder` for one deployed app path.
+7. [x] Add bridge request/response contract and capability permission checks.
+8. [x] Add container bridge host/client package with in-memory handshake test.
+9. [x] Add `postMessage` transport adapter for iframe/container mode.
+10. [x] Add container-mode fixture app using a real iframe harness.
+11. [x] Add Shippie container shell lab route.
+12. [x] Add iframe viewport for curated showcase apps.
+13. [x] Add bridge payload limits, rate limits, and sibling-app isolation.
+14. [x] Add local receipt/export skeleton to Your Data.
 
 The first code ticket should be the contract package, not the UI. That keeps the idea portable before it becomes beautiful.

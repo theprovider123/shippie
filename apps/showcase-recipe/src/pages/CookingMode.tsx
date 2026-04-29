@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { getRecipe } from '../db/queries.ts';
 import { resolveLocalDb } from '../db/runtime.ts';
 import type { RecipeWithIngredients } from '../db/schema.ts';
 import { IngredientList } from '../components/IngredientList.tsx';
 import { haptic } from '@shippie/sdk/wrapper';
+
+const shippie = createShippieIframeSdk({ appId: 'app_recipe_saver' });
 
 interface CookingModeProps {
   recipeId: string;
@@ -146,6 +149,22 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
             }}
           >
             Reset
+          </button>
+          <button
+            type="button"
+            className="ghost light"
+            onClick={() => {
+              haptic('tap');
+              shippie.intent.broadcast('cooked-meal', [
+                {
+                  recipeId,
+                  title: recipe?.title ?? 'meal',
+                  cookedAt: new Date().toISOString(),
+                },
+              ]);
+            }}
+          >
+            Mark cooked
           </button>
         </div>
         {recipe ? (

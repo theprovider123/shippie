@@ -1,0 +1,28 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Habit Tracker",
+  "slug": "habit-tracker",
+  "description": "Daily habits that auto-check when you complete activities in other Shippie apps.",
+  "icon": "/icon.png",
+  "theme_color": "#5EA777",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "consumes": ["cooked-meal", "workout-completed"]
+  },
+  "data_schemas": {
+    "habits": {
+      "id": "text primary key",
+      "name": "text not null",
+      "intent": "text",
+      "created_at": "datetime"
+    },
+    "checks": {
+      "id": "text primary key",
+      "habit_id": "text not null",
+      "checked_at": "datetime",
+      "source": "text"
+    }
+  }
+}

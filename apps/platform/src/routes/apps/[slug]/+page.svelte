@@ -44,12 +44,13 @@
         <div class="cta-row">
           <a
             class="install-btn"
-            href={installUrl(data.app.slug)}
+            href={data.ownership.standaloneUrl}
             target="_blank"
             rel="noopener"
           >
             Open app →
           </a>
+          <a class="container-btn" href={data.ownership.openInShippieUrl}>Open in Shippie</a>
           <UpvoteButton slug={data.app.slug} initialCount={data.app.upvoteCount} />
         </div>
       </div>
@@ -83,6 +84,80 @@
       </ul>
     </section>
   {/if}
+
+  <section class="section ownership">
+    <div>
+      <h2>Maker &amp; Ownership</h2>
+      <p>
+        Made by {data.ownership.maker.name}
+        {#if data.ownership.maker.username}
+          <span class="muted">(@{data.ownership.maker.username})</span>
+        {/if}
+        {#if data.ownership.maker.verified}
+          <span class="pill">Verified maker</span>
+        {/if}
+      </p>
+    </div>
+    <div class="ownership-grid">
+      <article>
+        <span>Standalone URL</span>
+        <a href={data.ownership.standaloneUrl} target="_blank" rel="noopener">
+          {new URL(data.ownership.standaloneUrl).host}
+        </a>
+      </article>
+      <article>
+        <span>Custom domains</span>
+        {#if data.ownership.customDomains.length > 0}
+          <div class="domain-list">
+            {#each data.ownership.customDomains as domain (domain.domain)}
+              <a href={`https://${domain.domain}/`} target="_blank" rel="noopener">
+                {domain.domain}{domain.isCanonical ? ' · canonical' : ''}
+              </a>
+            {/each}
+          </div>
+        {:else}
+          <p class="muted">None verified yet</p>
+        {/if}
+      </article>
+      <article>
+        <span>Source</span>
+        {#if data.ownership.sourceRepo}
+          <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
+        {:else}
+          <p class="muted">Source not published</p>
+        {/if}
+      </article>
+      <article>
+        <span>License &amp; remix</span>
+        <p>
+          {data.ownership.license ?? 'Unlicensed'}
+          · {data.ownership.remixAllowed ? 'Remix allowed' : 'Remix closed'}
+        </p>
+      </article>
+    </div>
+    {#if data.ownership.versions.length > 0}
+      <div class="version-strip" aria-label="Recent versions">
+        {#each data.ownership.versions as version (version.packageHash)}
+          <a href={version.packageUrl}>
+            v{version.version}
+            · {version.channel}
+            · {version.containerEligibility.replace('_', ' ')}
+          </a>
+        {/each}
+      </div>
+    {/if}
+    <div class="ownership-actions">
+      <a href={data.ownership.openInShippieUrl}>Use in Shippie</a>
+      {#if data.ownership.sourceRepo}
+        <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
+      {/if}
+      {#if data.ownership.remixAllowed}
+        <a href={`/new?remix=${data.app.slug}`}>Remix this app</a>
+      {:else}
+        <span>Remix unavailable until the maker publishes source + license</span>
+      {/if}
+    </div>
+  </section>
 
   {#if data.ratingSummary.count > 0}
     <section class="section">
@@ -175,6 +250,16 @@
     transition: background 0.2s;
   }
   .install-btn:hover { background: #000; }
+  .container-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 1rem;
+    border: 1px solid rgba(237, 228, 211, 0.7);
+    color: #EDE4D3;
+    font-weight: 600;
+    font-size: var(--small-size);
+  }
 
   .body {
     padding: var(--space-2xl) 0 var(--space-3xl);
@@ -221,4 +306,86 @@
   .changelog-entries li::before { content: '· '; }
   .meta-row { color: var(--text-light); font-family: var(--font-mono); font-size: var(--small-size); }
   .meta-line { margin: 0; }
+  .ownership {
+    display: grid;
+    gap: var(--space-md);
+  }
+  .ownership p {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+  .muted {
+    color: var(--text-light);
+  }
+  .pill {
+    display: inline-flex;
+    margin-left: 0.5rem;
+    padding: 2px 8px;
+    border: 1px solid var(--sage-leaf);
+    border-radius: 999px;
+    color: var(--sage-leaf);
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+  }
+  .ownership-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-md);
+  }
+  .ownership-grid article {
+    min-width: 0;
+    padding: var(--space-md);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--surface);
+    display: grid;
+    gap: 6px;
+  }
+  .ownership-grid span,
+  .version-strip {
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    color: var(--text-light);
+  }
+  .ownership-grid a {
+    color: var(--sunset);
+    overflow-wrap: anywhere;
+  }
+  .domain-list {
+    display: grid;
+    gap: 4px;
+  }
+  .version-strip {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .version-strip a {
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    padding: 4px 8px;
+    color: var(--text-secondary);
+  }
+  .ownership-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ownership-actions a,
+  .ownership-actions span {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    background: var(--bg-pure);
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+  }
+  .ownership-actions a {
+    color: var(--sunset);
+  }
+  @media (max-width: 640px) {
+    .ownership-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

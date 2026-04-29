@@ -18,6 +18,24 @@ export interface BridgeTransport {
   subscribe(handler: (message: BridgeMessage) => void): () => void;
 }
 
+export interface WindowLike {
+  postMessage(message: unknown, targetOrigin: string): void;
+  addEventListener(type: 'message', handler: (event: MessageEventLike) => void): void;
+  removeEventListener(type: 'message', handler: (event: MessageEventLike) => void): void;
+}
+
+export interface MessageEventLike {
+  data: unknown;
+  origin: string;
+}
+
+export interface WindowBridgeTransportOptions {
+  currentWindow: Pick<WindowLike, 'addEventListener' | 'removeEventListener'>;
+  targetWindow: Pick<WindowLike, 'postMessage'>;
+  targetOrigin: string;
+  allowedOrigin?: string;
+}
+
 export interface BridgeClientOptions {
   appId: string;
   transport: BridgeTransport;
@@ -39,6 +57,11 @@ export interface BridgeHostOptions {
   permissions: AppPermissions;
   transport: BridgeTransport;
   handlers: Partial<Record<BridgeCapability, BridgeHandler>>;
+  maxPayloadBytes?: number;
+  rateLimit?: false | {
+    maxRequests: number;
+    windowMs: number;
+  };
 }
 
 interface PendingRequest {
@@ -115,6 +138,7 @@ export class ContainerBridgeClient {
 
 export class ContainerBridgeHost {
   private readonly unsubscribe: () => void;
+  private readonly requestTimestamps: number[] = [];
 
   constructor(private readonly options: BridgeHostOptions) {
     this.unsubscribe = options.transport.subscribe((message) => {
@@ -129,20 +153,15 @@ export class ContainerBridgeHost {
   private async onMessage(message: BridgeMessage): Promise<void> {
     if (!isBridgeRequest(message)) return;
     if (message.appId !== this.options.appId) {
-      this.options.transport.post(
-        createBridgeResponse({
-          id: message.id,
-          ok: false,
-          error: {
-            code: 'app_mismatch',
-            message: 'Bridge request was sent for a different app.',
-          },
-        }),
-      );
+      // Multiple app frames can share the same container window. Requests for
+      // another app are ignored so the intended host can answer without a
+      // racing app_mismatch response.
       return;
     }
 
     try {
+      this.assertWithinPayloadLimit(message);
+      this.assertWithinRateLimit();
       assertCapabilityAllowed(
         this.options.permissions,
         message.capability,
@@ -179,6 +198,37 @@ export class ContainerBridgeHost {
         }),
       );
     }
+  }
+
+  private assertWithinPayloadLimit(message: BridgeRequest): void {
+    const maxPayloadBytes = this.options.maxPayloadBytes ?? 64 * 1024;
+    const bytes = jsonByteLength(message.payload);
+    if (bytes > maxPayloadBytes) {
+      throw new BridgeRpcError('Bridge payload exceeds this app capability limit.', 'payload_too_large', {
+        bytes,
+        maxPayloadBytes,
+      });
+    }
+  }
+
+  private assertWithinRateLimit(): void {
+    const rateLimit = this.options.rateLimit === undefined
+      ? { maxRequests: 120, windowMs: 10_000 }
+      : this.options.rateLimit;
+    if (rateLimit === false) return;
+
+    const now = Date.now();
+    const cutoff = now - rateLimit.windowMs;
+    while (this.requestTimestamps.length > 0 && this.requestTimestamps[0]! < cutoff) {
+      this.requestTimestamps.shift();
+    }
+    if (this.requestTimestamps.length >= rateLimit.maxRequests) {
+      throw new BridgeRpcError('Bridge request rate limit exceeded.', 'rate_limited', {
+        maxRequests: rateLimit.maxRequests,
+        windowMs: rateLimit.windowMs,
+      });
+    }
+    this.requestTimestamps.push(now);
   }
 }
 
@@ -223,6 +273,24 @@ export function createMemoryBridgeTransports(): { client: BridgeTransport; host:
   };
 }
 
+export function createWindowBridgeTransport(options: WindowBridgeTransportOptions): BridgeTransport {
+  return {
+    post(message) {
+      options.targetWindow.postMessage(message, options.targetOrigin);
+    },
+    subscribe(handler) {
+      const listener = (event: MessageEventLike) => {
+        if (options.allowedOrigin && event.origin !== options.allowedOrigin) return;
+        if (!isBridgeRequest(event.data) && !isBridgeResponse(event.data)) return;
+        handler(event.data);
+      };
+
+      options.currentWindow.addEventListener('message', listener);
+      return () => options.currentWindow.removeEventListener('message', listener);
+    },
+  };
+}
+
 export function isBridgeRequest(message: unknown): message is BridgeRequest {
   return (
     Boolean(message) &&
@@ -260,6 +328,14 @@ function capabilityOptionsFromPayload(
   }
 
   return {};
+}
+
+function jsonByteLength(value: unknown): number {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength;
+  } catch {
+    throw new BridgeRpcError('Bridge payload must be JSON serializable.', 'payload_not_serializable');
+  }
 }
 
 function bridgeErrorPayload(error: unknown): NonNullable<BridgeResponse['error']> {

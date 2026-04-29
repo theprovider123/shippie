@@ -29,6 +29,13 @@ import {
   localize,
   type LocalizeTransform,
 } from '@shippie/analyse';
+import { buildShippiePackage, createShippiePackageArchive } from '@shippie/app-package-builder';
+import {
+  SHIPPIE_PERMISSIONS_SCHEMA,
+  type AppPermissions,
+  type SourceMetadata,
+  type TrustReport,
+} from '@shippie/app-package-contract';
 import { getDrizzleClient, schema } from '../db/client';
 import { extractZipSafe } from './zip-extract';
 import { deriveManifest, type ShippieJsonLite } from './manifest';
@@ -46,6 +53,8 @@ import { profileFromDetection, type AppKind } from '$lib/types/app-kind';
 import {
   emptyReport,
   deployReportKey,
+  packageArtifactKey,
+  packageArtifactPrefix,
   type DeployReport,
   type DeployStep,
 } from './deploy-report';
@@ -269,6 +278,23 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       set: permValues,
     });
 
+  const lineageValues = {
+    templateId: manifest.template_id ?? null,
+    parentAppId: manifest.parent_app_id ?? null,
+    parentVersion: manifest.parent_version ?? null,
+    sourceRepo: manifest.source_repo ?? appRow.githubRepo ?? null,
+    license: manifest.license ?? null,
+    remixAllowed: manifest.remix_allowed ?? false,
+    updatedAt: completedAt,
+  };
+  await db
+    .insert(schema.appLineage)
+    .values({ appId: appRow.id, ...lineageValues })
+    .onConflictDoUpdate({
+      target: [schema.appLineage.appId],
+      set: lineageValues,
+    });
+
   // 9. KV writes — meta + csp first, active LAST so the Worker's read of
   // `active` always finds coherent meta + csp for that version.
   await writeAppMeta(input.kv, input.slug, {
@@ -286,6 +312,8 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       notifications: false,
       analytics: true,
     },
+    allowed_connect_domains: manifest.allowed_connect_domains ?? [],
+    workflow_probes: manifest.workflow_probes ?? [],
   });
   await writeCspHeader(input.kv, input.slug, csp.header);
 
@@ -343,8 +371,12 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   // Today this is maker-facing only; users see the kind badge and that's it.
   try {
     await writeDeployReport({
+      db,
       r2: input.r2,
       slug: input.slug,
+      appId: appRow.id,
+      deployId: deployRow.id,
+      makerId: input.makerId,
       version,
       files,
       kindProfile: kindProfileForReport,
@@ -549,8 +581,12 @@ function escapeAttr(s: string): string {
  * from the final R2 write — easy to unit-test if we factor it later.
  */
 interface WriteDeployReportInput {
+  db: ReturnType<typeof getDrizzleClient>;
   r2: R2Bucket;
   slug: string;
+  appId: string;
+  deployId: string;
+  makerId: string;
   version: number;
   files: Map<string, Uint8Array>;
   kindProfile: ReturnType<typeof profileFromDetection> | null;
@@ -752,6 +788,123 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
     console.error('[shippie:deploy] localize offers failed', err);
   }
 
+  // Container commons package artifacts. This writes the metadata files plus
+  // a verified portable archive containing the deployed app files, so the same
+  // deploy can be installed from shippie.app, a Hub, or a local import.
+  try {
+    const packagePermissions = packagePermissionsFromManifest(input.manifest, input.slug);
+    const packageTrustReport = packageTrustReportFromDeployReport(report);
+    const builtPackage = await buildShippiePackage({
+      app: {
+        id: `app_${input.slug}`,
+        slug: input.slug,
+        name: input.manifest.name,
+        description: input.manifest.description ?? input.manifest.tagline,
+        kind: report.kind.public,
+        entry: 'app/index.html',
+        createdAt: report.generatedAt,
+        maker: {
+          id: input.makerId,
+          name: input.makerId,
+        },
+        domains: {
+          canonical: `https://${input.slug}.shippie.app`,
+        },
+        runtime: {
+          standalone: true,
+          container: packageTrustReport.containerEligibility !== 'standalone_only',
+          hub: true,
+          minimumSdk: '1.0.0',
+        },
+      },
+      appFiles: input.files,
+      version: {
+        code: {
+          version: String(input.version),
+          channel: 'stable',
+          packageHash: `sha256:${'0'.repeat(64)}`,
+        },
+        trust: {
+          permissionsVersion: 1,
+          externalDomains: packageTrustReport.privacy.externalDomains.map((d) => d.domain),
+        },
+        data: {
+          schemaVersion: input.manifest.version ?? 1,
+        },
+      },
+      permissions: packagePermissions,
+      source: sourceMetadataFromManifest(input.manifest),
+      trustReport: packageTrustReport,
+      deployReport: report,
+      migrations: input.manifest.migrations ?? { operations: [] },
+    });
+
+    const archiveKey = packageArtifactKey(input.slug, input.version, `${builtPackage.packageHash}.shippie`);
+    const archiveBytes = await createShippiePackageArchive(builtPackage);
+    const metadataFiles = [...builtPackage.files.entries()].filter(([path]) => !path.startsWith('app/'));
+    await Promise.all(
+      [
+        input.r2.put(archiveKey, archiveBytes, {
+          httpMetadata: { contentType: 'application/vnd.shippie.package+json' },
+        }),
+        ...metadataFiles.map(([path, bytes]) =>
+          input.r2.put(packageArtifactKey(input.slug, input.version, path), bytes, {
+            httpMetadata: {
+              contentType: path.endsWith('.json') ? 'application/json; charset=utf-8' : 'application/octet-stream',
+            },
+          }),
+        ),
+      ],
+    );
+
+    report.package = {
+      packageHash: builtPackage.packageHash,
+      artifactPrefix: packageArtifactPrefix(input.slug, input.version),
+      archiveKey,
+      manifestKey: packageArtifactKey(input.slug, input.version, 'manifest.json'),
+      metadataFiles: metadataFiles.length,
+      totalPackageFiles: builtPackage.files.size,
+    };
+
+    const packageRecordValues = {
+      appId: input.appId,
+      deployId: input.deployId,
+      version: String(input.version),
+      channel: 'stable',
+      packageHash: builtPackage.packageHash,
+      artifactPrefix: report.package.artifactPrefix,
+      manifestPath: report.package.manifestKey,
+      permissionsPath: packageArtifactKey(input.slug, input.version, 'permissions.json'),
+      trustReportPath: packageArtifactKey(input.slug, input.version, 'trust-report.json'),
+      sourcePath: packageArtifactKey(input.slug, input.version, 'source.json'),
+      deployReportPath: deployReportKey(input.slug, input.version),
+      containerEligibility: packageTrustReport.containerEligibility,
+    };
+    await input.db
+      .insert(schema.appPackages)
+      .values(packageRecordValues)
+      .onConflictDoUpdate({
+        target: [schema.appPackages.deployId],
+        set: packageRecordValues,
+      });
+
+    steps.push({
+      id: 'package_artifact',
+      title: 'Package artifact',
+      status: 'ok',
+      finishedAtMs: input.durationMs,
+      notes: [`${metadataFiles.length} metadata files + archive · ${builtPackage.packageHash}`],
+    });
+  } catch (err) {
+    steps.push({
+      id: 'package_artifact',
+      title: 'Package artifact',
+      status: 'warn',
+      finishedAtMs: input.durationMs,
+      notes: [(err as Error).message],
+    });
+  }
+
   // Health check — runs in critical path; lightweight (manifest/SW/asset
   // resolution + installability hints). Full Lighthouse is async per the
   // master plan and not done here.
@@ -801,4 +954,74 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   await input.r2.put(deployReportKey(input.slug, input.version), JSON.stringify(report), {
     httpMetadata: { contentType: 'application/json; charset=utf-8' },
   });
+}
+
+function packagePermissionsFromManifest(manifest: ShippieJsonLite, slug: string): AppPermissions {
+  const allowedDomains = (manifest.allowed_connect_domains ?? []).map((domain) => domain.toLowerCase());
+  const capabilities: AppPermissions['capabilities'] = {
+    localDb: { enabled: true, namespace: slug },
+    localFiles: { enabled: true, namespace: slug },
+    feedback: { enabled: true },
+    analytics: { enabled: true, mode: 'aggregate-only' },
+  };
+
+  if (allowedDomains.length > 0) {
+    capabilities.network = {
+      allowedDomains,
+      declaredPurpose: Object.fromEntries(
+        allowedDomains.map((domain) => [domain, 'Declared external feature connection']),
+      ),
+    };
+  }
+
+  return {
+    schema: SHIPPIE_PERMISSIONS_SCHEMA,
+    capabilities,
+  };
+}
+
+function packageTrustReportFromDeployReport(report: DeployReport): TrustReport {
+  return {
+    kind: {
+      detected: report.kind.detected,
+      status: report.kind.publicStatus,
+      reasons: report.kind.reasons,
+    },
+    security: {
+      stage: 'maker-facing',
+      score: report.security.score?.value ?? null,
+      findings: report.security.findings.map((finding) => `${finding.severity}: ${finding.title}`),
+    },
+    privacy: {
+      grade: report.privacy.grade?.grade ?? null,
+      externalDomains: report.privacy.domains.map((domain) => ({
+        domain: domain.host,
+        purpose: domain.category,
+        personalData: domain.category === 'tracker',
+      })),
+    },
+    containerEligibility: 'standalone_only',
+  };
+}
+
+function sourceMetadataFromManifest(manifest: ShippieJsonLite): SourceMetadata {
+  const license = manifest.license ?? 'UNLICENSED';
+  const sourceAvailable = Boolean(manifest.source_repo);
+  const remixAllowed = Boolean(manifest.remix_allowed && sourceAvailable && manifest.license);
+
+  return {
+    license,
+    repo: manifest.source_repo,
+    sourceAvailable,
+    remix: {
+      allowed: remixAllowed,
+      commercialUse: remixAllowed,
+      attributionRequired: true,
+    },
+    lineage: {
+      template: manifest.template_id,
+      parentAppId: manifest.parent_app_id,
+      forkedFromVersion: manifest.parent_version,
+    },
+  };
 }

@@ -26,6 +26,8 @@ export interface AppMeta {
   permissions?: ShippieJsonLite['permissions'];
   backend_type?: string | null;
   backend_url?: string | null;
+  allowed_connect_domains?: string[];
+  workflow_probes?: string[];
 }
 
 export async function writeAppMeta(

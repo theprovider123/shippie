@@ -1,0 +1,15 @@
+{
+  "name": "Meal Planner",
+  "short_name": "Meals",
+  "description": "A weekly meal planner that pulls recipes you've saved and pantry items you already have. Generates a shopping list of what's missing.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#E8603C",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["food", "lifestyle", "productivity"]
+}

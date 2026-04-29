@@ -33,6 +33,8 @@ import { track, flush } from './analytics.ts';
 import { configure, isConfigured, getBackendMeta } from './configure.ts';
 import { backup as backupApi } from './backup.ts';
 import { startInstallRuntime } from './wrapper/install-runtime.ts';
+import { configureProof } from './wrapper/proof.ts';
+import { configureKindEmitter } from './wrapper/kind-emitter.ts';
 
 export const shippie = {
   version: '2.0.0' as const,
@@ -126,10 +128,55 @@ if (typeof window !== 'undefined') {
   queueMicrotask(() => {
     try {
       startInstallRuntime();
+      void bootstrapWrapperProofRuntime();
     } catch {
       // Never let a wrapper error break the maker's app.
     }
   });
+}
+
+interface WrapperMeta {
+  slug?: string;
+  appSlug?: string;
+  workflow_probes?: string[];
+  allowed_connect_domains?: string[];
+}
+
+let wrapperProofBooted = false;
+
+async function bootstrapWrapperProofRuntime(): Promise<void> {
+  if (wrapperProofBooted || typeof window === 'undefined') return;
+  wrapperProofBooted = true;
+
+  try {
+    const meta = await resolveWrapperMeta();
+    const appSlug = meta?.slug ?? meta?.appSlug;
+    if (!appSlug) return;
+
+    configureProof({ appSlug });
+    configureKindEmitter({
+      workflowProbes: meta?.workflow_probes ?? [],
+      allowedHosts: meta?.allowed_connect_domains ?? [],
+    });
+  } catch {
+    // Runtime proof is best-effort. The installed app must keep running
+    // even if metadata is unavailable or a browser blocks the probe.
+  }
+}
+
+async function resolveWrapperMeta(): Promise<WrapperMeta | null> {
+  const injected = (window as unknown as { __shippie_meta?: WrapperMeta }).__shippie_meta;
+  if (injected?.slug || injected?.appSlug) return injected;
+
+  try {
+    const response = await fetch('/__shippie/meta', {
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return injected ?? null;
+    return (await response.json()) as WrapperMeta;
+  } catch {
+    return injected ?? null;
+  }
 }
 
 export type { ConfigureOptions } from './configure.ts';

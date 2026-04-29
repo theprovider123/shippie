@@ -21,8 +21,9 @@ docker run --rm -p 80:80 -v shippie-hub-data:/var/lib/shippie-hub \
    `http://hub.local/__shippie/health` first; if reachable, signalling
    goes through the Hub. Otherwise, it falls back to
    `proximity.shippie.app`.
-4. Cached apps appear under "Cached apps" after the first device
-   visits each `<slug>.hub.local` URL while the Hub has internet.
+4. Cached apps appear under "Cached apps" after either:
+   - a device visits each `<slug>.hub.local` URL while the Hub has internet, or
+   - a maker runs `shippie install app.shippie --target hub.local`.
 5. Models cache lazily: the first time a device asks the AI app for a
    model, the Hub pulls it from `ai.shippie.app` and serves it to
    every subsequent device on the LAN.
@@ -38,6 +39,8 @@ The Hub stores **nothing about user data**. Specifically:
   catalogue verbatim — same files the cloud serves.
 - App caches mirror the public `<slug>.shippie.app` builds — public
   HTML/JS/CSS only.
+- Portable packages are verified before ingest. The Hub stores the archive,
+  a local receipt, and unpacked `app/` files; user data remains on devices.
 
 No outbound connections **except** the model cache fetching from
 `ai.shippie.app` on a miss.
@@ -69,6 +72,9 @@ deployment is week 11+ once a partner is identified.
 GET  /__shippie/health                 → {ok:true, service:"shippie-hub"}
 GET  /                                 → dashboard HTML
 GET  /api/rooms                        → JSON room stats
+POST /api/packages                     → ingest verified .shippie archive
+GET  /packages/<hash>.shippie          → local package mirror
+GET  /collections/local-mirror.json    → local collection manifest
 WS   /__shippie/signal/<roomId>        → WebRTC signalling (client.ts)
 GET  /models/<rest>                    → read-through model cache
 GET  /apps/<slug>/<rest>               → static app cache

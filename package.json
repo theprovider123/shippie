@@ -8,10 +8,14 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "services/*"
+    "services/*",
+    "tools/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --concurrency=30",
+    "dev:apps": "turbo run dev --concurrency=20 --filter='./apps/*'",
+    "record:demo": "turbo run record:demo --filter='@shippie/recording'",
+    "smoke": "turbo run smoke --filter='@shippie/recording'",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

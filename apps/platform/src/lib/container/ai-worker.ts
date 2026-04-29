@@ -1,0 +1,179 @@
+/**
+ * Phase B1 — AI Web Worker entry.
+ *
+ * Runs at the container's origin so models cached in Cache Storage are
+ * shared across every iframe app inside Shippie. Backend selection
+ * runs once at startup; the chosen backend stays for the worker's
+ * lifetime so loaded models keep their warm in-memory state across
+ * `ai.run` calls from different iframe apps.
+ *
+ * The worker dynamic-imports `@shippie/local-ai` (Transformers.js
+ * adapter) on first local-task call. The actual `@huggingface/transformers`
+ * dependency is dynamic-imported as well — when it isn't installed the
+ * worker reports `unavailable` and the client falls back to the edge.
+ */
+
+import { selectAiBackend, isLocalTask, type AiBackend } from './ai-backend';
+import type { ShippieLocalAi } from '@shippie/local-runtime-contract';
+
+interface WireRequest {
+  kind: 'shippie.ai.request';
+  id: string;
+  request: { task: string; input: unknown; options?: Record<string, unknown> };
+}
+
+interface WireResponse {
+  kind: 'shippie.ai.response';
+  id: string;
+  ok: boolean;
+  result?: {
+    task: string;
+    output: unknown;
+    source: 'local' | 'edge' | 'unavailable';
+    backend?: AiBackend;
+  };
+  error?: { code: string; message: string };
+}
+
+interface WorkerScope {
+  addEventListener(type: 'message', handler: (event: MessageEvent) => void): void;
+  postMessage(message: unknown): void;
+}
+
+declare const self: WorkerScope;
+
+const detection = selectAiBackend();
+const backend: AiBackend = detection.backend;
+
+let localAiPromise: Promise<ShippieLocalAi | null> | null = null;
+
+function deviceForBackend(b: AiBackend): 'webnn' | 'webgpu' | 'cpu' | undefined {
+  if (b === 'webnn') return 'webnn';
+  if (b === 'webgpu') return 'webgpu';
+  if (b === 'wasm') return 'cpu';
+  return undefined;
+}
+
+async function getLocalAi(): Promise<ShippieLocalAi | null> {
+  if (!localAiPromise) {
+    localAiPromise = (async () => {
+      try {
+        const adapter = await import('@shippie/local-ai');
+        return adapter.createTransformersLocalAi({
+          transformersLoader: async () => {
+            // The Transformers.js dependency is optional. When it's
+            // missing the dynamic import throws and we surface the
+            // adapter as null, prompting the client's edge fallback.
+            const moduleName = '@huggingface/transformers';
+            const dynamicImport = (s: string) => import(/* @vite-ignore */ s);
+            const mod = (await dynamicImport(moduleName)) as unknown;
+            return mod as never;
+          },
+          device: deviceForBackend(backend),
+        });
+      } catch (err) {
+        console.warn('[ai-worker] local AI adapter unavailable', err);
+        return null;
+      }
+    })();
+  }
+  return localAiPromise;
+}
+
+self.addEventListener('message', (event: MessageEvent) => {
+  const data = event.data as WireRequest | undefined;
+  if (data?.kind !== 'shippie.ai.request') return;
+  void handle(data).then((response) => self.postMessage(response));
+});
+
+async function handle(message: WireRequest): Promise<WireResponse> {
+  const { id, request } = message;
+  if (!isLocalTask(request.task)) {
+    return reply(id, request.task, null, 'unavailable');
+  }
+  if (backend === 'unavailable') {
+    return reply(id, request.task, null, 'unavailable');
+  }
+  const ai = await getLocalAi();
+  if (!ai) return reply(id, request.task, null, 'unavailable');
+
+  try {
+    switch (request.task) {
+      case 'embed': {
+        const text = stringInput(request.input);
+        if (text === null) return errorReply(id, 'invalid_input', 'embed requires a string input');
+        const vec = await ai.embed(text);
+        return reply(id, 'embed', Array.from(vec), 'local');
+      }
+      case 'sentiment': {
+        const text = stringInput(request.input);
+        if (text === null) return errorReply(id, 'invalid_input', 'sentiment requires a string input');
+        const out = await ai.sentiment(text);
+        return reply(id, 'sentiment', out, 'local');
+      }
+      case 'classify': {
+        const text = stringInput(request.input);
+        const labels = readLabels(request.options);
+        if (text === null || !labels) {
+          return errorReply(id, 'invalid_input', 'classify requires a string input and an options.labels array');
+        }
+        const out = await ai.classify(text, { labels });
+        return reply(id, 'classify', out, 'local');
+      }
+      case 'moderate': {
+        // Reuse zero-shot classification with hostility labels. Keeps the
+        // moderation surface honest about how it works under the hood.
+        const text = stringInput(request.input);
+        if (text === null) return errorReply(id, 'invalid_input', 'moderate requires a string input');
+        const out = await ai.classify(text, { labels: ['safe', 'hostile', 'spam'] });
+        return reply(id, 'moderate', out, 'local');
+      }
+      case 'vision': {
+        if (!(request.input instanceof Blob)) {
+          return errorReply(id, 'invalid_input', 'vision requires a Blob input');
+        }
+        const labels = await ai.labelImage(request.input);
+        return reply(id, 'vision', labels, 'local');
+      }
+      default:
+        return reply(id, request.task, null, 'unavailable');
+    }
+  } catch (err) {
+    return errorReply(id, 'task_failed', err instanceof Error ? err.message : 'unknown error');
+  }
+}
+
+function stringInput(input: unknown): string | null {
+  return typeof input === 'string' ? input : null;
+}
+
+function readLabels(options: Record<string, unknown> | undefined): string[] | null {
+  if (!options) return null;
+  const labels = options.labels;
+  if (!Array.isArray(labels)) return null;
+  const filtered = labels.filter((x): x is string => typeof x === 'string' && x.length > 0);
+  return filtered.length > 0 ? filtered : null;
+}
+
+function reply(
+  id: string,
+  task: string,
+  output: unknown,
+  source: 'local' | 'edge' | 'unavailable',
+): WireResponse {
+  return {
+    kind: 'shippie.ai.response',
+    id,
+    ok: true,
+    result: { task, output, source, backend },
+  };
+}
+
+function errorReply(id: string, code: string, message: string): WireResponse {
+  return {
+    kind: 'shippie.ai.response',
+    id,
+    ok: false,
+    error: { code, message },
+  };
+}

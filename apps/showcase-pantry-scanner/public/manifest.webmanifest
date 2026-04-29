@@ -1,0 +1,15 @@
+{
+  "name": "Pantry Scanner",
+  "short_name": "Pantry",
+  "description": "Scan barcodes and identify pantry items with on-device vision. Tracks what you have so meal planner and recipe saver know what you can cook.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#74A57F",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["food", "lifestyle", "utilities"]
+}

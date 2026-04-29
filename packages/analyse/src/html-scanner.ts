@@ -21,9 +21,22 @@ const ATTR_RE = (name: string) => new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`,
 const TITLE_RE = /<title[^>]*>([^<]+)<\/title>/i;
 const H1_RE = /<h1[^>]*>([^<]+)<\/h1>/gi;
 const LINK_RE = /<link\b[^>]*>/gi;
+const META_RE = /<meta\b[^>]*>/gi;
 const LI_IN_LIST_RE = /<(ul|ol)\b[^>]*>([\s\S]*?)<\/\1>/gi;
 const LI_RE = /<li\b[^>]*>/gi;
 const TEXT_RE = />([^<]+)</g;
+
+// SPA dist files render content client-side; static text in <body> is empty.
+// We pull text-bearing meta tags so the semantic classifier has signal.
+const META_TEXT_KEYS = new Set([
+  'description',
+  'og:description',
+  'og:title',
+  'twitter:description',
+  'twitter:title',
+  'application-name',
+  'apple-mobile-web-app-title',
+]);
 
 const decoder = new TextDecoder();
 
@@ -102,6 +115,16 @@ export function scanHtml(files: ReadonlyMap<string, Uint8Array>): HtmlScanResult
     for (const m of html.matchAll(TEXT_RE)) {
       const text = m[1]?.trim();
       if (text && text.length > 1) visibleParts.push(text);
+    }
+
+    for (const m of html.matchAll(META_RE)) {
+      const tag = m[0];
+      const name = (
+        tag.match(ATTR_RE('name'))?.[1] ?? tag.match(ATTR_RE('property'))?.[1] ?? ''
+      ).toLowerCase();
+      if (!META_TEXT_KEYS.has(name)) continue;
+      const content = tag.match(ATTR_RE('content'))?.[1]?.trim();
+      if (content && content.length > 1) visibleParts.push(content);
     }
   }
 

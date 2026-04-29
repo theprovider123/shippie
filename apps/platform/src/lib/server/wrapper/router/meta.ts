@@ -14,6 +14,8 @@ interface AppMetaPayload {
   version?: number;
   backend_type?: string | null;
   backend_url?: string | null;
+  allowed_connect_domains?: string[];
+  workflow_probes?: string[];
   permissions?: {
     auth: boolean;
     storage: 'none' | 'r' | 'rw';
@@ -45,6 +47,8 @@ export async function handleMeta(ctx: WrapperContext): Promise<Response> {
       version: 0,
       backend_type: null,
       backend_url: null,
+      allowed_connect_domains: [],
+      workflow_probes: [],
       permissions: {
         auth: false,
         storage: 'none',

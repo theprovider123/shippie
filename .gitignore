@@ -50,6 +50,8 @@ pnpm-debug.log*
 # Testing
 coverage
 .nyc_output
+test-results
+playwright-report
 
 # OS
 Thumbs.db

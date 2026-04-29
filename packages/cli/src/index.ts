@@ -28,7 +28,9 @@ import { wrapCommand } from './commands/wrap.js';
 import { inviteCreate, inviteList, inviteRevoke } from './commands/invite.js';
 import { streamCommand } from './commands/stream.js';
 import { classifyCommand } from './commands/classify.js';
+import { installCommand } from './commands/install.js';
 import { localizePlanCommand } from './commands/localize-plan.js';
+import { appsCommand } from './commands/apps.js';
 
 function deriveSlug(url: string): string {
   try {
@@ -71,6 +73,13 @@ program
   .description('Show the current authenticated user')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(whoamiCommand);
+
+program
+  .command('apps')
+  .description('List your deployed Shippie apps')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(appsCommand);
 
 program
   .command('deploy [dir]')
@@ -190,6 +199,14 @@ program
   .description('Classify an app directory as local | connected | cloud (offline)')
   .option('--json', 'Emit JSON instead of human-readable output')
   .action(classifyCommand);
+
+program
+  .command('install <package>')
+  .description('Verify a .shippie package and install it to a Hub or local mirror')
+  .option('--target <target>', 'Hub URL/host or local mirror directory', './shippie-mirror')
+  .option('--origin <url>', 'Origin written into local mirror collections', 'http://hub.local')
+  .option('--dry-run', 'Verify only; do not write or post the package')
+  .action(installCommand);
 
 program
   .command('localize-plan [dir]')

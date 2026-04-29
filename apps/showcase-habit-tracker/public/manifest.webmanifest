@@ -1,0 +1,20 @@
+{
+  "name": "Habit Tracker",
+  "short_name": "Habits",
+  "description": "Daily habits that auto-check when you complete activities in other Shippie apps. Workout logged → exercise habit ticked. Recipe cooked → cooked-dinner habit ticked.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#5EA777",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "fitness", "lifestyle", "utilities"]
+}

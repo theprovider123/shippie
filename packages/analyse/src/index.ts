@@ -63,6 +63,7 @@ import type { AppProfile } from './profile.ts';
 import { scanHtml } from './html-scanner.ts';
 import { scanCss } from './css-scanner.ts';
 import { scanJs } from './js-scanner.ts';
+import { scanManifest } from './manifest-scanner.ts';
 import { detectWasm } from './wasm-detector.ts';
 import { classifyByText } from './semantic-classifier.ts';
 import { recommend } from './capability-recommender.ts';
@@ -71,8 +72,12 @@ export async function analyseApp(input: AppFiles): Promise<AppProfile> {
   const html = scanHtml(input.files);
   const css = scanCss(input.files);
   const js = scanJs(input.files);
+  const manifest = scanManifest(input.files);
   const wasm = detectWasm(input.files);
-  const category = classifyByText(html.visibleText);
+  const visibleText = manifest.text
+    ? `${html.visibleText} ${manifest.text}`
+    : html.visibleText;
+  const category = classifyByText(visibleText);
   const recommended = recommend(html.elements, category, js);
 
   return {

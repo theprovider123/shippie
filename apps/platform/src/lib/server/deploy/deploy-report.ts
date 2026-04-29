@@ -85,6 +85,13 @@ export interface DeployReport {
    * Today this is preview-only.
    */
   localizeOffers?: LocalizeOfferSummary[];
+
+  /**
+   * Container commons package metadata. The app assets already live under
+   * apps/{slug}/v{version}; v1 writes the portable package metadata beside
+   * the deploy report and records the deterministic package hash.
+   */
+  package?: PackageArtifactSummary;
 }
 
 /** Compact representation of a LocalizePatch — full content lives in
@@ -97,6 +104,15 @@ export interface LocalizeOfferSummary {
   warnings: string[];
   /** First few file paths affected — for a quick "this would touch X" preview. */
   sampleFiles: string[];
+}
+
+export interface PackageArtifactSummary {
+  packageHash: string;
+  artifactPrefix: string;
+  archiveKey: string;
+  manifestKey: string;
+  metadataFiles: number;
+  totalPackageFiles: number;
 }
 
 export interface DeployStep {
@@ -151,4 +167,12 @@ export function emptyReport(slug: string, version: number): DeployReport {
  */
 export function deployReportKey(slug: string, version: number): string {
   return `apps/${slug}/v${version}/_shippie/deploy-report.json`;
+}
+
+export function packageArtifactPrefix(slug: string, version: number): string {
+  return `apps/${slug}/v${version}/_shippie/package`;
+}
+
+export function packageArtifactKey(slug: string, version: number, path: string): string {
+  return `${packageArtifactPrefix(slug, version)}/${path}`;
 }

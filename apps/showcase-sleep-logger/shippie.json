@@ -1,0 +1,24 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Sleep Logger",
+  "slug": "sleep-logger",
+  "description": "Track bedtime + wake-time + quality. Correlate with workouts and caffeine.",
+  "icon": "/icon.png",
+  "theme_color": "#4E7C9A",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "consumes": ["workout-completed", "caffeine-logged"]
+  },
+  "data_schemas": {
+    "nights": {
+      "id": "text primary key",
+      "date": "text not null",
+      "bedtime": "text",
+      "wake_time": "text",
+      "quality": "integer",
+      "created_at": "datetime"
+    }
+  }
+}

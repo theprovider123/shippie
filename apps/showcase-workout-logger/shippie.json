@@ -1,0 +1,24 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Workout Logger",
+  "slug": "workout-logger",
+  "description": "Log strength sets and cardio sessions. Detect your weekly cadence.",
+  "icon": "/icon.png",
+  "theme_color": "#E8603C",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["workout-completed"]
+  },
+  "data_schemas": {
+    "sessions": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "duration_min": "integer not null",
+      "intensity": "text",
+      "notes": "text",
+      "created_at": "datetime"
+    }
+  }
+}

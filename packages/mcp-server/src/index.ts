@@ -5,7 +5,7 @@
  * Tools:
  *   deploy   — zip a directory and deploy (authed) or trial-deploy (no auth)
  *   status   — poll a deploy by deploy_id through hot → cold phases
- *   apps     — placeholder; wire up when the maker apps list endpoint lands
+ *   apps     — list maker-owned apps
  *
  * Note on uploads: `AdmZip` builds the archive in memory (no temp file on
  * disk) and FormData wraps the Buffer into a Blob that Node's undici fetch
@@ -80,6 +80,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ['deploy_id'],
+      },
+    },
+    {
+      name: 'apps',
+      description:
+        'List the authenticated maker’s Shippie apps with status, kind, visibility, and live URL. ' +
+        'Use this before modifying or deploying when the user asks what they already have running.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
       },
     },
     {
@@ -168,6 +178,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === 'status') {
     return await handleStatus(args as { deploy_id: string });
+  }
+
+  if (name === 'apps') {
+    return await handleApps();
   }
 
   if (name === 'classify_kind') {
@@ -327,6 +341,33 @@ async function handleStatus(args: { deploy_id: string }) {
       },
     ],
   };
+}
+
+async function handleApps() {
+  try {
+    const apps = await client.appsList();
+    if (apps.length === 0) {
+      return { content: [{ type: 'text', text: 'No apps found for this maker.' }] };
+    }
+    const lines = ['Your Shippie apps:', ''];
+    for (const app of apps) {
+      const meta = [
+        app.status,
+        app.kind ? `kind=${app.kind}` : null,
+        app.visibility ? `visibility=${app.visibility}` : null,
+      ].filter(Boolean);
+      lines.push(`- ${app.slug} — ${app.name} (${meta.join(', ')})`);
+      if (app.liveUrl) lines.push(`  ${app.liveUrl}`);
+    }
+    return { content: [{ type: 'text', text: lines.join('\n') }] };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown_error';
+    const hint =
+      message === 'no_auth_token' || message === 'unauthenticated'
+        ? 'No valid Shippie token found. Run `shippie login` or set SHIPPIE_TOKEN.'
+        : `Apps request failed: ${message}`;
+    return { content: [{ type: 'text', text: hint }], isError: true };
+  }
 }
 
 // ---------------------------------------------------------------------------

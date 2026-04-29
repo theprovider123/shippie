@@ -25,6 +25,14 @@
     },
     "clean": {
       "cache": false
+    },
+    "record:demo": {
+      "cache": false,
+      "outputs": ["test-results/**", "playwright-report/**"]
+    },
+    "smoke": {
+      "cache": false,
+      "outputs": ["test-results/**", "playwright-report/**"]
     }
   }
 }

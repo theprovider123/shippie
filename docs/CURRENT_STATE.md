@@ -2,8 +2,8 @@
 
 > Living truth file. If a doc, plan, or memory disagrees with this, **trust this file**. Re-verify against HEAD before encoding any new claims into a plan.
 >
-> **Last updated:** 2026-04-26
-> **HEAD commit:** `56179bf` and later (post-cutover)
+> **Last updated:** 2026-04-29
+> **HEAD commit:** `120cdcc` plus uncommitted Phase A+B+C work (see "Uncommitted state" below)
 
 This file replaces stale assumptions about Shippie's architecture. Read it before planning anything.
 
@@ -27,9 +27,9 @@ For the full vision, phased plan, and Non-Negotiables, see `/Users/devante/.clau
 
 The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`).
 
-- `apps/platform/` — SvelteKit + Cloudflare Workers + D1 / R2 / KV / Durable Objects. The blessed platform app.
+- `apps/platform/` — SvelteKit + Cloudflare Workers + D1 / R2 / KV / Durable Objects. The blessed platform app. Dev port **4101**.
 - `apps/shippie-ai/` — Cross-origin AI iframe (Vite + vite-plugin-pwa). Runs micro-models via Workbox-cached Service Worker.
-- `apps/showcase-{recipe,journal,whiteboard,live-room}/` — Demo apps used to prove the wrapper end-to-end.
+- `apps/showcase-{recipe,journal,whiteboard,live-room,habit-tracker,workout-logger,pantry-scanner,meal-planner,shopping-list,sleep-logger,body-metrics}/` — 10 demo apps proving the wrapper + cross-app intent flows end-to-end. Each runs on a pinned dev port (5180–5190).
 - `services/hub/` — Self-hosted venue device (Bun server, mDNS, WebSocket signal). Active.
 - `services/worker/` — **DELETED.** Functionality ported into `apps/platform/src/lib/server/wrapper/`.
 - `apps/web/` — **DELETED.** Was the legacy Next.js platform.
@@ -57,6 +57,15 @@ The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`).
 - `packages/mcp-server` — Claude Code MCP server.
 - `packages/db` — Drizzle schema + D1 migrations.
 - `packages/dev-storage` — Local dev IndexedDB / KV simulator.
+- `packages/agent` — Local cross-app agent (Phase C1). Three strategies (meal-planning, schedule-awareness, budget-awareness) + runner with urgency sort + cap + dismiss-aware dedupe + in-memory rate limiter. Pure functions; no I/O.
+- `packages/templates` — Showcase catalog (Phase C2). 8-entry registry mapping each showcase app to its proven capability and intent topology, plus the `crossClusterAcceptancePair` constant.
+- `packages/container-bridge` — postMessage host/client + capability enforcement (codex's surface — extended in this session for `system.*`, `data.openPanel`, `feel.texture`, `intent.*` broadcast).
+- `packages/app-package-contract` — Manifest types + validators (extended for system-tier perms + intent capabilities).
+- `packages/app-package-builder` — `.shippie` archive builder.
+
+`tools/` is now also a workspace folder:
+
+- `tools/recording` — Playwright walkthrough that records the cross-cluster demo to `docs/launch/recordings/c2-cross-cluster.webm`.
 
 ---
 
@@ -120,18 +129,69 @@ The earlier 13-suite failure (`Failed to load url bun:test`) is fixed by migrati
 
 Note: Vitest emits `close timed out after 10000ms — Tests closed successfully but something prevents Vite server from exiting` after a green run. Tests pass; only the Vite dev-server cleanup hangs. Tracked separately, not a blocker.
 
-### Health (composite) — **PASS**
+### Health (composite) — **PASS** (2026-04-29)
 
-The root `bun run health` script runs typecheck + test + build in sequence. After Phase 0:
+The root `bun run health` script runs typecheck + test + build in sequence. Latest:
 
 ```
 $ bun run health
-# turbo run typecheck:  26/26 ✓
-# turbo run test:       31/31 ✓
-# turbo run build:      24/24 ✓
+# turbo run typecheck:  40/40 ✓
+# turbo run test:       50/50 ✓
+# turbo run build:      36/36 ✓
 ```
 
+Counts grew: +14 typecheck / +19 test / +12 build vs the 2026-04-26 baseline because Phase A+B+C added `@shippie/agent`, `@shippie/templates`, `@shippie/recording`, plus 7 new `apps/showcase-*` workspaces.
+
 Green = baseline acceptable.
+
+---
+
+## Uncommitted state (2026-04-29 session)
+
+Phase A1–A5 + B1–B4 + C1 + C2 (incl. 7 new showcase apps + cross-cluster forwarding + Playwright recording rough cut) are all code-complete and green, but **not committed**. Per CLAUDE.md, commits to main need explicit authorization.
+
+Per-track summary:
+
+- **A1** Container shell split — `apps/platform/src/routes/container/+page.svelte` 1389→969 lines, extracted into 9 modules under `apps/platform/src/lib/container/`.
+- **A2** Cross-app intents — `intent.provide` / `intent.consume` capabilities + registry + manifest parser + permission UI.
+- **A3** System-tier perms — `system.crossDb.query` / `system.notify` / `system.openApp`; iframe apps cannot escalate; `assertValidPermissions` rejects published manifests with `system_permission_forbidden`.
+- **A4** AppProfile zero-config — meta-description + manifest scanner gap-fix in `packages/analyse/`.
+- **A5** Your Data bridge — `data.openPanel` universal capability + container host wiring + topbar banner.
+- **B1** AI worker + WebNN — `selectAiBackend()` (WebNN→WebGPU→WASM), `ai-worker-client.ts` real client + memory transport, `ai-worker.ts` entry that dynamic-imports `@shippie/local-ai` (Transformers.js adapter) on first call.
+- **B2** Mesh-status badge — pure store + topbar badge + Discover-page Nearby panel (create/join/leave room).
+- **B3** Stage B harness — D1 migration `0008_deploy_scan_outcomes.sql`, schema, `recordScanOutcome` upsert, `aggregateFalsePositiveRate` aggregator, `promotionReady` gate, hidden `/trust-preview` admin route.
+- **B4** Texture bridge — `feel.texture` capability + 9-preset router + dynamic-imported `@shippie/sdk/wrapper`.
+- **C1** Local agent v1 — `packages/agent` (3 strategies + runner + rate-limiter + 30 tests), `_shippie_agent_audit` migration, `InsightStrip.svelte` with high/medium/low urgency tiers + 7-day dismiss persistence.
+- **C2** Showcase library — `packages/templates` catalog, 7 new React showcase apps, cross-cluster acceptance test, `intent.provide` broadcast forwarding through the bridge so granted consumer iframes receive provider rows in real time, `docs/launch/c2-demo-storyboard.md` brief, `docs/launch/recordings/c2-cross-cluster.webm` rough cut.
+
+### Container app port map (dev only — `devUrl` field)
+
+| Slug | Port |
+|---|---|
+| platform shell | 4101 |
+| recipe-saver | 5180 |
+| journal | 5181 |
+| whiteboard | 5182 |
+| habit-tracker | 5184 |
+| workout-logger | 5185 |
+| pantry-scanner | 5186 |
+| meal-planner | 5187 |
+| shopping-list | 5188 |
+| sleep-logger | 5189 |
+| body-metrics | 5190 |
+
+`bun run dev:apps` brings up all 11 ports in parallel (uses `--concurrency=20 --filter='./apps/*'` to avoid turbo's default 10-task cap).
+
+### To re-record the demo
+
+```bash
+# terminal 1
+bun run dev:apps
+# terminal 2 (after ~15s)
+bun run record:demo
+```
+
+Output: `docs/launch/recordings/c2-cross-cluster.webm`.
 
 ---
 

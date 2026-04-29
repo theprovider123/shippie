@@ -1,0 +1,20 @@
+{
+  "name": "@shippie/recording",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Playwright-driven walkthrough recordings of the cross-cluster intent demo. Produces a rough-cut .webm under docs/launch/recordings/.",
+  "scripts": {
+    "record:demo": "playwright test --reporter=line",
+    "smoke": "SHIPPIE_PLAYWRIGHT_MODE=smoke playwright test --reporter=line",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "echo 'recording tests skipped — run smoke or record:demo against a live dev server'",
+    "clean": "rm -rf .turbo *.tsbuildinfo test-results playwright-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

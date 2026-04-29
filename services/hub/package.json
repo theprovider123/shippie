@@ -14,9 +14,12 @@
     "clean": "rm -rf .turbo *.tsbuildinfo .shippie-hub-state"
   },
   "dependencies": {
+    "@shippie/core": "workspace:*",
     "bonjour-service": "^1.2.1"
   },
   "devDependencies": {
+    "@shippie/app-package-builder": "workspace:*",
+    "@shippie/app-package-contract": "workspace:*",
     "@types/bun": "^1.3.12",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"

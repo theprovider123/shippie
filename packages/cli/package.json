@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@shippie/analyse": "workspace:*",
+    "@shippie/app-package-contract": "workspace:*",
     "@shippie/core": "workspace:*",
     "commander": "^13.0.0",
     "adm-zip": "^0.5.16"

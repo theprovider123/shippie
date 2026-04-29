@@ -1,0 +1,20 @@
+{
+  "name": "Workout Logger",
+  "short_name": "Workouts",
+  "description": "Log strength training sets and cardio sessions. Detect your weekly cadence after a few sessions. Fires workout-completed events for habit auto-checking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#E8603C",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "fitness", "lifestyle"]
+}

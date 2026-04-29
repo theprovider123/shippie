@@ -124,11 +124,27 @@ If after launch you start getting DMs like "we'd run this for our Friday quiz at
 
 ---
 
+## Phase A+B+C (post-codex container plan, 2026-04-29)
+
+The post-codex track defined in `/Users/devante/.claude/plans/jaunty-coalescing-pancake.md` is **code-complete and uncommitted**. All 10 plan tracks (A1–A5, B1–B4, C1, C2) shipped in worktree; `bun run health` is green at 40/50/36; cross-cluster intent flow records via Playwright at `docs/launch/recordings/c2-cross-cluster.webm`.
+
+### Outstanding (you)
+
+- [ ] **Slice + commit the diff.** Suggested phasing: 4 PRs (A-foundation / B-parallel / C-scaffolding / showcase-apps) or one mega-PR with `[A1]…[C2]` markers.
+- [ ] **Real-device demo recording.** The .webm in repo is a 37-second desktop-Chromium rough cut against the bridge. Shoot the actual 2-min cut on a real iPhone + Android per `docs/launch/c2-demo-storyboard.md`.
+- [ ] **AI worker model loader.** `apps/platform/src/lib/container/ai-worker.ts` dynamic-imports `@huggingface/transformers` — the package isn't installed, so the worker reports `unavailable` and the client falls back to edge. Decide whether to ship locally or deferred.
+- [ ] **Ship intent forwarding to remote app deploys.** The current broadcast logic is iframe-only via `frame.contentWindow.postMessage`. When a showcase deploys to a custom subdomain, the cross-frame postMessage path still works because the bridge already supports cross-origin transport — verify on a real CF Pages deploy.
+
+---
+
 ## Reference
 
-- Approved plan: `/Users/devante/.claude/plans/review-all-of-this-swift-token.md`
+- Approved plan (master): `/Users/devante/.claude/plans/review-all-of-this-swift-token.md`
+- Approved plan (post-codex Phase A+B+C): `/Users/devante/.claude/plans/jaunty-coalescing-pancake.md`
 - Living truth file: `docs/CURRENT_STATE.md`
 - Architecture: `docs/architecture.md`
 - Self-hosting: `docs/self-hosting.md`
 - Prod deploy: `docs/superpowers/plans/2026-04-26-prod-deploy-runbook.md`
 - Active engineering plans: `docs/superpowers/plans/2026-04-2*.md`
+- Demo storyboard: `docs/launch/c2-demo-storyboard.md`
+- Dev runbook: `docs/launch/seeing-the-apps.md`

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Body Metrics",
+  "slug": "body-metrics",
+  "description": "Weight + body photos. Photos never leave the device.",
+  "icon": "/icon.png",
+  "theme_color": "#74A57F",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "permissions": ["camera"],
+  "data_schemas": {
+    "measurements": {
+      "id": "text primary key",
+      "date": "text not null",
+      "weight_kg": "real",
+      "body_fat_pct": "real",
+      "photo_local_id": "text",
+      "created_at": "datetime"
+    }
+  }
+}

@@ -11,7 +11,7 @@
  *   - client.auth.getToken()
  *   - client.deploy({ directory, slug?, trial? })
  *   - client.status(deployId)
- *   - client.appsList()       // placeholder, returns empty until /api/apps?mine wires up
+ *   - client.appsList()
  *
  * Phase 7 (master plan) expands this to: logs, config, classify, localize,
  * workspaces, templates.
@@ -23,3 +23,4 @@ export * from './apps.ts';
 export * from './auth.ts';
 export * from './stream.ts';
 export * from './classify.ts';
+export * from './install.ts';

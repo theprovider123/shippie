@@ -1,0 +1,15 @@
+{
+  "name": "Sleep Logger",
+  "short_name": "Sleep",
+  "description": "Track bedtime, wake-time, and quality. After 14 days of overlap with workout-logger and caffeine intake, surface correlations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#4E7C9A",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["health", "fitness", "lifestyle"]
+}
