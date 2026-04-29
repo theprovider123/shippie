@@ -213,7 +213,10 @@ export const curatedApps: ContainerApp[] = [
     version: '1',
     packageHash: `sha256:${'5'.repeat(64)}`,
     standaloneUrl: '/run/workout-logger',
-    permissions: localPermissions('workout-logger', { provides: ['workout-completed'] }),
+    permissions: localPermissions('workout-logger', {
+      provides: ['workout-completed'],
+      consumes: ['sleep-logged'],
+    }),
     category: 'fitness',
     devUrl: 'http://localhost:5185/',
   },

@@ -35,13 +35,115 @@ header p {
   font-size: 14px;
 }
 
-.cadence {
+.cadence,
+.correlation {
   background: rgba(232, 96, 60, 0.08);
   border: 1px solid rgba(232, 96, 60, 0.4);
   padding: 12px 14px;
   border-radius: 12px;
-  margin: 0 0 20px;
+  margin: 0 0 12px;
   font-size: 13px;
+}
+.correlation {
+  background: rgba(94, 167, 119, 0.08);
+  border-color: rgba(94, 167, 119, 0.4);
+}
+
+.rest {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 0 0 20px;
+  text-align: center;
+}
+.rest-display {
+  font-size: 40px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.rest-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 12px 0 6px;
+}
+.rest-controls button {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rest-controls .ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.rest-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hrm {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 0 0 20px;
+}
+.hrm h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.hrm button {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hrm .ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.hrm-unsupported {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+.hrm-error {
+  margin: 8px 0 0;
+  color: #d65a3a;
+  font-size: 12px;
+}
+.hrm-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hrm-live strong {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.hrm-live small {
+  flex: 1;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 form {

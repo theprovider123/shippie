@@ -9,7 +9,8 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["workout-completed"]
+    "provides": ["workout-completed"],
+    "consumes": ["sleep-logged"]
   },
   "data_schemas": {
     "sessions": {
