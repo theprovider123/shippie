@@ -42,7 +42,10 @@ export const GET: RequestHandler = async ({ url }) => {
     launch_handler: { client_mode: ['navigate-existing', 'auto'] },
     categories: ['productivity'],
     icons: [
-      { src: '/__shippie-pwa/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+      { src: '/__shippie-pwa/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
       { name: 'Open Shippie', url: '/container', short_name: 'Home' },
