@@ -9,6 +9,39 @@ This file replaces stale assumptions about Shippie's architecture. Read it befor
 
 ---
 
+## 2026-04-29 night — Open / Open-with-Shippie unification shipped
+
+After the rev2 P1–P6 stack landed, the marketplace had two confusing buttons per app — "Open" → standalone wrapper (no cross-app features), "Open in Shippie" → container shell (all features). The unification plan (`/Users/devante/.claude/plans/jaunty-coalescing-pancake.md`) collapsed this into one experience: every app opens through a container shell that's invisible by default. Cross-app features always work; the user perceives "I'm in Recipe Saver", not "I'm in Shippie viewing Recipe Saver".
+
+**What landed:**
+
+- **A1.5 deep container split** — extracted `IntentPromptModal`, `TransferPromptModal`, `AppFrameHost`, `DashboardHome` from `/container/+page.svelte`. Reduced 2,188 → 1,983 lines. The TransferPromptModal also fixes a P1A.3 bug where transfer-drop prompts queued silently.
+- **AppSwitcherGesture component + `/dev/gesture-prototype` route** — edge-swipe + bottom-pill + Escape triggers, 200ms spring with 1.03 overshoot, app dim-and-scale during drawer-open, prefers-reduced-motion respected. Tuning constants exposed at the top of the component for real-phone polish on iOS Safari + Android Chrome.
+- **Marketplace one-button collapse** — `/apps/<slug>` now shows one `[Open <Name>]` CTA. New `lib/showcase-slugs.ts` module owns `FIRST_PARTY_SHOWCASE_SLUGS` + `canonicalAppUrl(slug)`.
+- **`/run/[slug]/` route + focused-mode rendering** — `/run/<slug>/` 302s to `/container?app=<slug>&focused=1`. The container's `+page.svelte` reads `focused=1` and strips sidebar / topbar / section tabs — full-bleed iframe via AppFrameHost + AppSwitcherGesture overlay for switching. Bridge handlers, intent / transfer registry, mesh client, texture engine, AI worker, agent insights all stay wired. Focused mode is a presentation branch, not a behaviour branch.
+
+**End-to-end flow:**
+
+```
+/apps/<slug>  →  [Open <Name>]  →  /run/<slug>/
+                                   ↓ 302
+                      /container?app=<slug>&focused=1
+                                   ↓
+            full-bleed app + invisible chrome + swipe-from-left
+              for instant in-window switching to other apps
+```
+
+Install model is **one Shippie PWA** — apex `/manifest.webmanifest` is the manifest, all apps live inside. No per-app PWAs. Cross-app intents flow via iframe fanout in the single window (no BroadcastChannel needed).
+
+**Outstanding from the unification plan (not blocking ship):**
+
+- PWA manifest tightening — per-app `/__shippie/manifest` for first-party showcases could 302 to apex.
+- Apex `/` becomes container home — polish; focused-mode works without it.
+- Iframe LRU eviction — performance cap on simultaneously-mounted apps.
+- Real-phone gesture tuning — `/dev/gesture-prototype` is the ground.
+
+---
+
 ## 2026-04-29 evening status — improvement-plan rev2 P1–P6 shipped
 
 The `docs/launch/2026-04-29-improvement-plan.md` rev2 is now code-complete for phases P1 through P6 (P7 is explicitly USER-SIDE: real-phone smoke + Cloudflare deploy). The plan landed in 26 commits on top of the rev2 doc.
