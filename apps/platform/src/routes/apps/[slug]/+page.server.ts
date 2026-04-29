@@ -26,6 +26,7 @@ import { summaryForApp, recentReviews } from '$server/db/queries/ratings';
 import { describeGrantedPermissions } from '$server/marketplace/honesty';
 import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability-badges';
 import { readAppProfile } from '$server/deploy/kv-write';
+import { canonicalAppUrl } from '$lib/showcase-slugs';
 import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
 
@@ -182,8 +183,13 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
         createdAt: pkg.createdAt,
         packageUrl: `/api/apps/${encodeURIComponent(app.slug)}/packages/${encodeURIComponent(pkg.packageHash)}`,
       })),
-      openInShippieUrl: `/container?app=${encodeURIComponent(app.slug)}`,
-      standaloneUrl: `https://${app.slug}.shippie.app/`,
+      // Single canonical URL — the unification plan collapsed the
+      // dual "Open" + "Open in Shippie" buttons into one. First-party
+      // showcases land at /run/<slug>/ (the static run/ tree, soon
+      // the focused-mode shell route). Maker apps still resolve via
+      // their own subdomain; once the /run/[slug]/ shell route is in
+      // and proxies maker R2 bundles, this branch collapses.
+      standaloneUrl: canonicalAppUrl(app.slug),
     },
     grantedPermissions,
     capabilityBadges,

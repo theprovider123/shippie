@@ -16,6 +16,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { createLucia } from '$server/auth/lucia';
 import { dispatchMakerSubdomain } from '$server/wrapper/dispatcher';
+import { FIRST_PARTY_SHOWCASE_SLUGS } from '$lib/showcase-slugs';
 
 const PLATFORM_HOSTS = new Set(['next.shippie.app', 'shippie.app', 'www.shippie.app', 'localhost']);
 
@@ -25,31 +26,8 @@ const PLATFORM_HOSTS = new Set(['next.shippie.app', 'shippie.app', 'www.shippie.
 // adapter serves their dist directly. Maker apps (everything else
 // under *.shippie.app) still flow through the wrapper dispatcher.
 //
-// Keep this set in sync with the slugs the prepare script produces
-// (apps/showcase-*/shippie.json:slug, falling back to dir name).
-const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
-  'recipe',
-  'journal',
-  'whiteboard',
-  'live-room',
-  'habit-tracker',
-  'workout-logger',
-  'pantry-scanner',
-  'meal-planner',
-  'shopping-list',
-  'sleep-logger',
-  'body-metrics',
-  'caffeine-log',
-  'hydration',
-  'mood-pulse',
-  'symptom-tracker',
-  'steps-counter',
-  'pomodoro',
-  'read-later',
-  'daily-briefing',
-  'restaurant-memory',
-  'show-and-tell',
-]);
+// First-party showcase slug list lives in `$lib/showcase-slugs` so
+// the marketplace server load can read the same source of truth.
 
 export const handle: Handle = async ({ event, resolve }) => {
   const hostname = event.url.hostname;

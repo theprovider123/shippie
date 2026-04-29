@@ -42,15 +42,9 @@
           </div>
         {/if}
         <div class="cta-row">
-          <a
-            class="install-btn"
-            href={data.ownership.standaloneUrl}
-            target="_blank"
-            rel="noopener"
-          >
-            Open app →
+          <a class="install-btn" href={data.ownership.standaloneUrl}>
+            Open {data.app.name}
           </a>
-          <a class="container-btn" href={data.ownership.openInShippieUrl}>Open in Shippie</a>
           <UpvoteButton slug={data.app.slug} initialCount={data.app.upvoteCount} />
         </div>
       </div>
@@ -147,7 +141,6 @@
       </div>
     {/if}
     <div class="ownership-actions">
-      <a href={data.ownership.openInShippieUrl}>Use in Shippie</a>
       {#if data.ownership.sourceRepo}
         <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
       {/if}
@@ -250,16 +243,6 @@
     transition: background 0.2s;
   }
   .install-btn:hover { background: #000; }
-  .container-btn {
-    display: inline-flex;
-    align-items: center;
-    height: 44px;
-    padding: 0 1rem;
-    border: 1px solid rgba(237, 228, 211, 0.7);
-    color: #EDE4D3;
-    font-weight: 600;
-    font-size: var(--small-size);
-  }
 
   .body {
     padding: var(--space-2xl) 0 var(--space-3xl);
