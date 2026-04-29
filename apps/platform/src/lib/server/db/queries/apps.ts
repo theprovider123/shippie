@@ -124,6 +124,7 @@ export interface SearchOptions {
   limit?: number;
   offset?: number;
   kind?: KindFilter | null;
+  category?: string | null;
 }
 
 export async function searchPublic(
@@ -148,9 +149,10 @@ export async function searchPublic(
   const ids = matchRows.map((r) => r.rowid_id);
   if (ids.length === 0) return [];
 
-  const where = kind
-    ? and(inArray(apps.id, ids), PUBLIC_FILTERS, eq(apps.currentDetectedKind, kind))
-    : and(inArray(apps.id, ids), PUBLIC_FILTERS);
+  const conds = [inArray(apps.id, ids), PUBLIC_FILTERS];
+  if (kind) conds.push(eq(apps.currentDetectedKind, kind));
+  if (opts.category) conds.push(eq(apps.category, opts.category));
+  const where = and(...conds);
 
   const rows = await db.select(FEATURED_COLUMNS).from(apps).where(where);
 
@@ -166,13 +168,13 @@ export async function browsePublic(
   const limit = opts.limit ?? 60;
   const offset = opts.offset ?? 0;
   const kind = opts.kind ?? null;
-  const where = kind
-    ? and(PUBLIC_FILTERS, eq(apps.currentDetectedKind, kind))
-    : PUBLIC_FILTERS;
+  const conds = [PUBLIC_FILTERS];
+  if (kind) conds.push(eq(apps.currentDetectedKind, kind));
+  if (opts.category) conds.push(eq(apps.category, opts.category));
   return db
     .select(FEATURED_COLUMNS)
     .from(apps)
-    .where(where)
+    .where(and(...conds))
     .orderBy(desc(apps.upvoteCount), desc(apps.installCount), desc(apps.lastDeployedAt))
     .limit(limit)
     .offset(offset);

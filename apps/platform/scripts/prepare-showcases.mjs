@@ -70,10 +70,13 @@ function slugFor(showcaseDir) {
   return showcaseDir.replace(/^showcase-/, '');
 }
 
-function buildOne(showcaseDir) {
+function buildOne(showcaseDir, slug) {
   const dir = join(APPS_DIR, showcaseDir);
-  console.log(`[prepare-showcases] building ${showcaseDir}…`);
-  execSync('bun run build', { cwd: dir, stdio: 'inherit' });
+  console.log(`[prepare-showcases] building ${showcaseDir} with base=/run/${slug}/…`);
+  // --base rewrites every root-relative asset path (script src, link href,
+  // img src…) so the built dist works when served from /run/<slug>/.
+  // Dev mode (vite dev) ignores this — devUrl on localhost stays at root.
+  execSync(`bunx vite build --base=/run/${slug}/`, { cwd: dir, stdio: 'inherit' });
   const distDir = join(dir, 'dist');
   if (!existsSync(distDir) || !statSync(distDir).isDirectory()) {
     throw new Error(`${showcaseDir}: build finished but dist/ not found`);
@@ -99,8 +102,9 @@ function main() {
   const failures = [];
   for (const showcase of showcases) {
     try {
-      const distDir = buildOne(showcase);
-      copyDist(distDir, slugFor(showcase));
+      const slug = slugFor(showcase);
+      const distDir = buildOne(showcase, slug);
+      copyDist(distDir, slug);
     } catch (err) {
       console.warn(`[prepare-showcases] ${showcase} failed: ${err.message}`);
       failures.push(showcase);

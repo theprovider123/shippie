@@ -985,7 +985,8 @@
         </button>
       {/if}
       {#if activeApp}
-        <a href={activeApp.devUrl ?? activeApp.standaloneUrl} target={activeApp.devUrl ? '_blank' : undefined} rel={activeApp.devUrl ? 'noopener' : undefined} class="open-link" data-sveltekit-preload-data="off">{activeApp.devUrl ? 'Open standalone' : 'Standalone URL'}</a>
+        {@const standaloneHref = runtimeSrcFor(activeApp) ?? activeApp.standaloneUrl}
+        <a href={standaloneHref} target="_blank" rel="noopener" class="open-link" data-sveltekit-preload-data="off">Open standalone</a>
       {/if}
     </div>
 

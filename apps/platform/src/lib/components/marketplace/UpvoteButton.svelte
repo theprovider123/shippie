@@ -58,17 +58,28 @@
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
+    background: var(--bg-pure, #fff);
+    border: 1px solid var(--text);
+    border-radius: 999px;
+    color: var(--text);
     font-family: var(--font-mono);
     font-size: var(--small-size);
+    font-weight: 600;
     cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
+    transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
   }
-  .upvote:hover { border-color: var(--sunset); color: var(--sunset); }
-  .upvote.voted { border-color: var(--sunset); color: var(--sunset); }
-  .upvote:disabled { opacity: 0.6; cursor: progress; }
-  .heart { font-size: 1rem; line-height: 1; }
+  .upvote:hover {
+    border-color: var(--sunset);
+    color: var(--sunset);
+    background: rgba(232, 96, 60, 0.06);
+  }
+  .upvote.voted {
+    border-color: var(--sunset);
+    color: var(--bg-pure);
+    background: var(--sunset);
+  }
+  .upvote.voted:hover { transform: translateY(-1px); }
+  .upvote:disabled { opacity: 0.55; cursor: progress; }
+  .heart { font-size: 1.05rem; line-height: 1; }
   .count { font-variant-numeric: tabular-nums; }
 </style>

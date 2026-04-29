@@ -5,11 +5,12 @@
 
   let { data }: PageProps = $props();
 
-  function pageHref(q: string, page: number, kind: string | null | undefined): string {
+  function pageHref(q: string, page: number, kind: string | null | undefined, category: string | null | undefined): string {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (page > 1) params.set('p', String(page));
     if (kind) params.set('kind', kind);
+    if (category) params.set('category', category);
     const qs = params.toString();
     return qs ? `/apps?${qs}` : '/apps';
   }
@@ -18,6 +19,19 @@
     const params = new URLSearchParams();
     if (data.query) params.set('q', data.query);
     if (kind) params.set('kind', kind);
+    if (data.categoryFilter) params.set('category', data.categoryFilter);
+    const qs = params.toString();
+    return qs ? `/apps?${qs}` : '/apps';
+  }
+
+  // Categories are a proper toggle: clicking the active chip removes
+  // the filter, clicking another swaps. The href is computed from
+  // *current* state so the URL params stay in sync.
+  function categoryHref(cat: string | null): string {
+    const params = new URLSearchParams();
+    if (data.query) params.set('q', data.query);
+    if (data.kindFilter) params.set('kind', data.kindFilter);
+    if (cat) params.set('category', cat);
     const qs = params.toString();
     return qs ? `/apps?${qs}` : '/apps';
   }
@@ -53,8 +67,21 @@
     </ul>
     {#if data.categories.length > 0}
       <ul class="cats" aria-label="Browse categories">
+        <li>
+          <a class="cat-chip" class:active={!data.categoryFilter} href={categoryHref(null)}>All</a>
+        </li>
         {#each data.categories as cat (cat)}
-          <li><a href={`/apps?q=${encodeURIComponent(cat)}`}>{cat}</a></li>
+          {@const isActive = data.categoryFilter === cat}
+          <li>
+            <a
+              class="cat-chip"
+              class:active={isActive}
+              href={categoryHref(isActive ? null : cat)}
+              aria-pressed={isActive}
+            >
+              {cat}{#if isActive} ✕{/if}
+            </a>
+          </li>
         {/each}
       </ul>
     {/if}
@@ -76,12 +103,12 @@
     {#if data.page > 1 || data.hasMore}
       <nav class="pager" aria-label="Pagination">
         {#if data.page > 1}
-          <a class="page-link" href={pageHref(data.query, data.page - 1, data.kindFilter)} rel="prev">← Previous</a>
+          <a class="page-link" href={pageHref(data.query, data.page - 1, data.kindFilter, data.categoryFilter)} rel="prev">← Previous</a>
         {:else}
           <span></span>
         {/if}
         {#if data.hasMore}
-          <a class="page-link" href={pageHref(data.query, data.page + 1, data.kindFilter)} rel="next">Next →</a>
+          <a class="page-link" href={pageHref(data.query, data.page + 1, data.kindFilter, data.categoryFilter)} rel="next">Next →</a>
         {/if}
       </nav>
     {/if}
@@ -142,16 +169,27 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-  .cats a {
+  .cats a,
+  .cats .cat-chip {
     display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 10px;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
     border: 1px solid var(--border-light);
-    transition: color 0.2s, border-color 0.2s;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
-  .cats a:hover { color: var(--sunset); border-color: var(--sunset); }
+  .cats a:hover,
+  .cats .cat-chip:hover { color: var(--sunset); border-color: var(--sunset); }
+  .cats .cat-chip.active {
+    color: var(--bg-pure);
+    background: var(--text);
+    border-color: var(--text);
+  }
   .results { padding-top: var(--space-md); }
   .result-count {
     color: var(--text-secondary);

@@ -44,3 +44,10 @@ FROM users WHERE email = 'devanteprov@gmail.com' LIMIT 1;
 INSERT OR IGNORE INTO apps (id, slug, name, tagline, description, type, category, theme_color, background_color, source_type, source_kind, maker_id, visibility_scope, is_archived)
 SELECT lower(hex(randomblob(16))), 'body-metrics', 'Body Metrics', 'Weight + body photos. Photos never leave the device.', 'Privacy-first body tracking. Photos in IndexedDB only; vision AI runs in worker.', 'app', 'health-fitness', '#74A57F', '#FAF7EF', 'zip', 'static', users.id, 'public', 0
 FROM users WHERE email = 'devanteprov@gmail.com' LIMIT 1;
+--> statement-breakpoint
+-- Mark every showcase as live so the maker dashboard doesn't show them
+-- as Draft. They're hosted statically (not via the deploy pipeline) so
+-- there's no real deploys.* row, but the dashboard only checks
+-- latest_deploy_status — set it to 'success' on every seeded slug.
+UPDATE apps SET latest_deploy_status = 'success'
+WHERE slug IN ('recipe','journal','whiteboard','live-room','habit-tracker','workout-logger','pantry-scanner','meal-planner','shopping-list','sleep-logger','body-metrics');

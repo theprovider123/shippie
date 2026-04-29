@@ -40,12 +40,13 @@ export const load: PageServerLoad = async ({ platform, url }) => {
     kindFilterRaw === 'local' || kindFilterRaw === 'connected' || kindFilterRaw === 'cloud'
       ? kindFilterRaw
       : null;
+  const categoryFilter = (url.searchParams.get('category') ?? '').trim() || null;
 
   // Filter pushed into the DB query so pagination is correct.
   const [appRows, categories] = await Promise.all([
     query
-      ? searchPublic(db, query, { limit: PER_PAGE + 1, offset, kind: kindFilter })
-      : browsePublic(db, { limit: PER_PAGE + 1, offset, kind: kindFilter }),
+      ? searchPublic(db, query, { limit: PER_PAGE + 1, offset, kind: kindFilter, category: categoryFilter })
+      : browsePublic(db, { limit: PER_PAGE + 1, offset, kind: kindFilter, category: categoryFilter }),
     listCategories(db),
   ]);
 
@@ -88,5 +89,6 @@ export const load: PageServerLoad = async ({ platform, url }) => {
     hasMore,
     categories,
     kindFilter,
+    categoryFilter,
   };
 };

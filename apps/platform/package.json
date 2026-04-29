@@ -8,7 +8,7 @@
     "prepare:showcases": "bun scripts/prepare-showcases.mjs",
     "build": "bun scripts/prepare-showcases.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
     "preview": "wrangler dev",
-    "deploy": "bun scripts/upload-sdk-bundle.mjs && wrangler deploy",
+    "deploy": "bun run build && bun scripts/upload-sdk-bundle.mjs && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "typecheck": "svelte-kit sync && tsc --noEmit",
     "lint": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
