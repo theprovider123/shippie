@@ -1,0 +1,28 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Restaurant Memory",
+  "slug": "restaurant-memory",
+  "description": "Photos + notes per restaurant, on-device only. Subscribes to cooked-meal for the home-vs-out ratio.",
+  "icon": "/icon.svg",
+  "theme_color": "#A86060",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "permissions": ["camera", "geolocation"],
+  "intents": {
+    "provides": ["dined-out"],
+    "consumes": ["cooked-meal"]
+  },
+  "data_schemas": {
+    "visits": {
+      "id": "text primary key",
+      "name": "text not null",
+      "notes": "text",
+      "rating": "integer",
+      "lat": "real",
+      "lon": "real",
+      "photo_local_id": "text",
+      "visited_at": "datetime"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Show and Tell",
+  "slug": "show-and-tell",
+  "description": "Mesh-only ephemeral scratchpad. Anyone in a Nearby room drops content. Auto-clears when the room empties.",
+  "icon": "/icon.svg",
+  "theme_color": "#E0B345",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "data_schemas": {}
+}
