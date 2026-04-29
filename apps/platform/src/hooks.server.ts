@@ -39,6 +39,11 @@ const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
   'shopping-list',
   'sleep-logger',
   'body-metrics',
+  'caffeine-log',
+  'hydration',
+  'mood-pulse',
+  'symptom-tracker',
+  'steps-counter',
 ]);
 
 export const handle: Handle = async ({ event, resolve }) => {

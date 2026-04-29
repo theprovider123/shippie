@@ -1,0 +1,22 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Symptom Tracker",
+  "slug": "symptom-tracker",
+  "description": "Symptom Tracker — generated showcase. Replace this once the app does something.",
+  "icon": "/icon.svg",
+  "theme_color": "#C97A4B",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "data_schemas": {
+    "items": {
+      "id": "text primary key",
+      "title": "text not null",
+      "created_at": "datetime"
+    }
+  }
+}

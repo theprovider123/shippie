@@ -1,0 +1,166 @@
+/**
+ * Shared CSS for the micro-logger template. Showcases import this
+ * alongside their own root styles.
+ */
+.ml-app {
+  --ml-bg: #faf7ef;
+  --ml-fg: #14120f;
+  --ml-muted: #5c5751;
+  --ml-line: rgba(20, 18, 15, 0.08);
+  --ml-accent: #5ea777;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  background: var(--ml-bg);
+  color: var(--ml-fg);
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+}
+.ml-app * {
+  box-sizing: border-box;
+}
+.ml-app header h1 {
+  margin: 0 0 4px;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--ml-accent);
+}
+.ml-app header p {
+  margin: 0 0 20px;
+  color: var(--ml-muted);
+  font-size: 14px;
+}
+
+.ml-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.ml-recent-chip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--ml-line);
+  color: var(--ml-muted);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.ml-chart-wrap {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--ml-line);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ml-chart {
+  display: block;
+  max-width: 100%;
+}
+.ml-count {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--ml-fg);
+}
+.ml-count-label {
+  font-size: 13px;
+  color: var(--ml-muted);
+}
+
+.ml-form {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--ml-line);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.ml-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ml-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ml-muted);
+}
+.ml-fields input {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--ml-line);
+  background: #fff;
+  padding: 0 10px;
+  font-size: 14px;
+  color: inherit;
+}
+.ml-button {
+  width: 100%;
+  height: 56px;
+  border-radius: 14px;
+  border: 0;
+  background: var(--ml-accent);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ml-button:active {
+  transform: scale(0.98);
+}
+
+.ml-list h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ml-muted);
+}
+.ml-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ml-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ml-line);
+  background: rgba(255, 255, 255, 0.55);
+}
+.ml-list li strong {
+  display: block;
+  font-size: 13px;
+}
+.ml-list li small {
+  display: block;
+  color: var(--ml-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.ml-list li button {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ml-muted);
+  border: 1px solid var(--ml-line);
+  font-size: 16px;
+  cursor: pointer;
+}
+.ml-empty {
+  color: var(--ml-muted);
+  font-size: 14px;
+  margin: 0;
+}

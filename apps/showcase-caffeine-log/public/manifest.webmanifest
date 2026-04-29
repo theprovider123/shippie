@@ -1,0 +1,20 @@
+{
+  "name": "Caffeine Log",
+  "short_name": "Caffeine",
+  "description": "Caffeine Log — generated showcase. Replace this once the app does something.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#8B5A3C",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities"]
+}

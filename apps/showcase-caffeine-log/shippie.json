@@ -1,0 +1,22 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Caffeine Log",
+  "slug": "caffeine-log",
+  "description": "Single tap to log a coffee, tea, or energy drink. Sleep Logger correlates the timing.",
+  "icon": "/icon.svg",
+  "theme_color": "#8B5A3C",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["caffeine-logged"]
+  },
+  "data_schemas": {
+    "rows": {
+      "id": "text primary key",
+      "drink": "text",
+      "mg": "integer",
+      "logged_at": "datetime"
+    }
+  }
+}
