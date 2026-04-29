@@ -93,6 +93,8 @@
     type PendingEvictions,
   } from '$lib/container/iframe-lifecycle';
   import { appPackageSrcdoc } from '$lib/container/app-srcdoc';
+  import { frameBridgeOrigins } from '$lib/container/frame-origin';
+  import { resolveRuntimeSrc } from '$lib/container/runtime-src';
   import {
     createOrReusePackageFrameSource,
     markFrameBootingState,
@@ -503,7 +505,7 @@
         transport: createWindowBridgeTransport({
           currentWindow: window,
           targetWindow: frame.contentWindow,
-          targetOrigin: '*',
+          ...frameBridgeOrigins(runtimeSrcFor(app), window.location.href),
         }),
         maxPayloadBytes: 32 * 1024,
         rateLimit: { maxRequests: 80, windowMs: 10_000 },
@@ -534,6 +536,18 @@
     );
 
     bridgeStatus = 'ready';
+  }
+
+  function postToAppFrame(appId: string, message: unknown): boolean {
+    const frame = frames.get(appId);
+    const target = frame?.contentWindow;
+    const app = appById.get(appId);
+    if (!target || !app) return false;
+    target.postMessage(
+      message,
+      frameBridgeOrigins(runtimeSrcFor(app), window.location.href).targetOrigin,
+    );
+    return true;
   }
 
   async function consumeIntent(
@@ -625,14 +639,16 @@
     for (const consumer of consumers) {
       if (consumer.appId === providerAppId) continue;
       if (!isIntentGranted(intentGrants, consumer.appId, intent)) continue;
-      const frame = frames.get(consumer.appId);
-      const target = frame?.contentWindow;
-      if (!target) continue;
-      target.postMessage(
-        { kind: 'shippie.intent.broadcast', intent, rows, providerAppId },
-        '*',
-      );
-      delivered += 1;
+      if (
+        postToAppFrame(consumer.appId, {
+          kind: 'shippie.intent.broadcast',
+          intent,
+          rows,
+          providerAppId,
+        })
+      ) {
+        delivered += 1;
+      }
     }
     return { delivered };
   }
@@ -751,17 +767,14 @@
       .acceptorsFor(kind)
       .filter((entry) => entry.appId !== sourceAppId);
     for (const acceptor of acceptors) {
-      const frame = frames.get(acceptor.appId);
-      const target = frame?.contentWindow;
-      if (!target) continue;
-      target.postMessage(
+      postToAppFrame(
+        acceptor.appId,
         {
           kind: 'shippie.transfer.starting',
           transferKind: kind,
           preview,
           sourceAppId,
         },
-        '*',
       );
     }
     return {
@@ -848,19 +861,12 @@
     if (!targetApp) {
       return { delivered: false, target: null, reason: 'no_target' };
     }
-    const frame = frames.get(targetAppId);
-    const target = frame?.contentWindow;
-    if (target) {
-      target.postMessage(
-        {
-          kind: 'shippie.transfer.commit',
-          transferKind: kind,
-          payload,
-          sourceAppId,
-        },
-        '*',
-      );
-    }
+    postToAppFrame(targetAppId, {
+      kind: 'shippie.transfer.commit',
+      transferKind: kind,
+      payload,
+      sourceAppId,
+    });
     return {
       delivered: true,
       target: { slug: targetApp.slug, name: targetApp.name },
@@ -1307,20 +1313,9 @@
     return createOrReusePackageFrameSource(app, packageFilesByApp[app.id], packageObjectUrls);
   }
 
-  /**
-   * Pick the iframe URL for an app based on environment:
-   *   - Localhost dev: prefer devUrl (Vite dev server with HMR)
-   *   - Production: standaloneUrl (/run/<slug>/) — same origin, no
-   *     redirect cost. Subdomain URLs work too (302 → /run/) but
-   *     iframes load /run/ directly to skip the redirect.
-   */
   function runtimeSrcFor(app: ContainerApp): string | null {
     if (typeof window === 'undefined') return null;
-    const host = window.location.hostname;
-    const onLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
-    if (onLocalhost && app.devUrl) return app.devUrl;
-    if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) return app.standaloneUrl;
-    return null;
+    return resolveRuntimeSrc(app, window.location.hostname);
   }
 
 </script>
@@ -1902,15 +1897,6 @@
     align-content: center;
     justify-items: start;
   }
-  .app-tile.installable {
-    border-style: dashed;
-    opacity: 0.78;
-  }
-  .app-tile.installable small {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-  }
   hr {
     border: 0;
     border-top: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
@@ -1929,13 +1915,11 @@
     font-weight: 800;
     font-size: 0.85rem;
   }
-  .updates,
   .collection-list,
   .data-list {
     display: grid;
     gap: 8px;
   }
-  .updates article,
   .collection-list article,
   .data-list article {
     padding: var(--space-md);
@@ -2123,39 +2107,6 @@
   .mesh-badge.active {
     background: rgba(94, 167, 119, 0.12);
     border-color: rgba(94, 167, 119, 0.4);
-  }
-  .nearby-panel {
-    margin: 16px 0 24px;
-    padding: 16px;
-    border-radius: 0;
-    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
-    background: rgba(0, 0, 0, 0.02);
-  }
-  .nearby-panel h3 {
-    margin: 0 0 6px;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .nearby-panel p {
-    margin: 4px 0 12px;
-    font-size: 14px;
-  }
-  .nearby-panel code {
-    background: rgba(0, 0, 0, 0.05);
-    padding: 1px 6px;
-    border-radius: 0;
-    font-size: 12px;
-  }
-  .mesh-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .mesh-actions span {
-    color: rgba(0, 0, 0, 0.5);
-    font-size: 12px;
   }
   .mesh-code-input {
     height: 36px;
