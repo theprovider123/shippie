@@ -52,6 +52,17 @@ export { computeSecurityScore } from './security-score.ts';
 export type { SecurityScore, SecurityDeduction } from './security-score.ts';
 export { computePrivacyGrade } from './privacy-grade.ts';
 export type { PrivacyGrade, PrivacyGradeResult } from './privacy-grade.ts';
+export {
+  computeGraduation,
+  describeGraduationTier,
+} from './graduation.ts';
+export type {
+  DeploySignals,
+  GraduationInput,
+  GraduationReport,
+  GraduationTier,
+  UsageSignals,
+} from './graduation.ts';
 
 export interface AppFiles {
   /** Maps relative path → file bytes. Path always uses '/' separators

@@ -22,7 +22,16 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { classifyKind, localize, type LocalizeTransform } from '@shippie/analyse';
+import {
+  classifyKind,
+  computeGraduation,
+  describeGraduationTier,
+  localize,
+  type DeploySignals,
+  type GraduationInput,
+  type LocalizeTransform,
+  type UsageSignals,
+} from '@shippie/analyse';
 import { createClient } from '@shippie/core';
 
 // Single shared client — picks up SHIPPIE_API_URL + SHIPPIE_TOKEN/~/.shippie/token.
@@ -166,6 +175,55 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['deploy_id'],
       },
     },
+    {
+      name: 'graduation',
+      description:
+        'Compute the graduation tier (experimental / maker-friendly / lived-in / graduate) for ' +
+        'an app from its deploy signals (security score, privacy grade, AppProfile category, ' +
+        'cross-app intents) plus optional usage signals (weekly active users, retention, ' +
+        'sustained-week count). Returns the earned criteria and the concrete next-tier ' +
+        'criteria the maker still has to clear. Use this when a maker asks "how close am I to ' +
+        'graduating?" or wants a checklist for the next tier. Signals are passed in directly — ' +
+        'this tool is pure analysis with no Shippie API call.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          security_score: {
+            type: ['number', 'null'] as const,
+            description: 'Phase 4 Stage A security score 0..100, or null if unscored.',
+          },
+          privacy_grade: {
+            type: ['string', 'null'] as const,
+            enum: ['A+', 'A', 'B', 'C', 'F', null],
+            description: 'Phase 4 Stage A privacy grade, or null if ungraded.',
+          },
+          category: {
+            type: 'string',
+            description: 'AppProfile category (e.g. "cooking" / "fitness" / "unknown").',
+          },
+          intents_provided: { type: 'number', description: 'Distinct cross-app intents declared.' },
+          intents_consumed: { type: 'number', description: 'Distinct cross-app intents consumed.' },
+          external_domain_count: {
+            type: 'number',
+            description: 'External network domains the app declares.',
+          },
+          weekly_active_users: { type: 'number', description: 'Optional. WAU last 7 days.' },
+          weeks_with_activity: {
+            type: 'number',
+            description: 'Optional. Weeks (of last 4) with non-zero WAU.',
+          },
+          median_session_seconds: {
+            type: 'number',
+            description: 'Optional. Median session duration (s).',
+          },
+          day1_retention_rate: {
+            type: 'number',
+            description: 'Optional. 0..1 fraction returning the next day.',
+          },
+        },
+        required: ['security_score', 'privacy_grade', 'category', 'intents_provided', 'intents_consumed', 'external_domain_count'],
+      },
+    },
   ],
 }));
 
@@ -200,8 +258,61 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return await handleStream(args as { deploy_id: string });
   }
 
+  if (name === 'graduation') {
+    return handleGraduation(args as Record<string, unknown>);
+  }
+
   return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };
 });
+
+function handleGraduation(args: Record<string, unknown>) {
+  const deploy: DeploySignals = {
+    securityScore: numericOrNull(args.security_score),
+    privacyGrade: privacyGradeOrNull(args.privacy_grade),
+    category: typeof args.category === 'string' ? args.category : 'unknown',
+    intentsProvided: numericOrZero(args.intents_provided),
+    intentsConsumed: numericOrZero(args.intents_consumed),
+    externalDomainCount: numericOrZero(args.external_domain_count),
+  };
+  const usage =
+    typeof args.weekly_active_users === 'number'
+      ? ({
+          weeklyActiveUsers: args.weekly_active_users,
+          weeksWithActivity: numericOrZero(args.weeks_with_activity),
+          medianSessionSeconds: numericOrZero(args.median_session_seconds),
+          day1RetentionRate: numericOrZero(args.day1_retention_rate),
+        } satisfies UsageSignals)
+      : undefined;
+  const input: GraduationInput = { deploy, usage };
+  const report = computeGraduation(input);
+  const lines = [
+    `Tier: ${report.tier} — ${describeGraduationTier(report.tier)}`,
+    '',
+    'Earned:',
+    ...(report.earnedCriteria.length > 0
+      ? report.earnedCriteria.map((c) => `  ✓ ${c}`)
+      : ['  (none yet)']),
+    '',
+    `Next tier: ${report.nextTier ?? 'none — already graduated'}`,
+  ];
+  if (report.nextTierCriteria.length > 0) {
+    lines.push('To-do:', ...report.nextTierCriteria.map((c) => `  • ${c}`));
+  }
+  return { content: [{ type: 'text', text: lines.join('\n') }] };
+}
+
+function numericOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function numericOrZero(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function privacyGradeOrNull(value: unknown): DeploySignals['privacyGrade'] {
+  if (value === 'A+' || value === 'A' || value === 'B' || value === 'C' || value === 'F') return value;
+  return null;
+}
 
 async function handleStream(args: { deploy_id: string }) {
   // Replay-mode stream — no delay because Claude Code reads the full

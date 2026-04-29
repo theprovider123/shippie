@@ -97,3 +97,17 @@ export type {
   SignalPeerLeft,
   VectorClock,
 } from './types.ts';
+
+// Phase 6 — BLE beacon discovery (Web Bluetooth; Chrome / Edge only).
+export {
+  detectBleAvailability,
+  scanForPeers,
+  BLE_SHIPPIE_CONSTANTS,
+} from './ble-beacon.ts';
+export type {
+  BleAvailability,
+  BleAvailabilityProbe,
+  DiscoveredPeer,
+  ScanHandle,
+  ScanOptions,
+} from './ble-beacon.ts';
