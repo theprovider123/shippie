@@ -82,6 +82,7 @@
   import IntentPromptModal from '$lib/container/IntentPromptModal.svelte';
   import TransferPromptModal from '$lib/container/TransferPromptModal.svelte';
   import AppFrameHost from '$lib/container/AppFrameHost.svelte';
+  import DashboardHome from '$lib/container/DashboardHome.svelte';
   import { appPackageSrcdoc } from '$lib/container/app-srcdoc';
   import {
     createOrReusePackageFrameSource,
@@ -1275,88 +1276,24 @@
     {#if !activeApp}
       <section class="panel">
         {#if section === 'home'}
-          <InsightStrip
+          <DashboardHome
             insights={agentInsights}
-            onOpen={openInsight}
-            onDismiss={dismissInsight}
+            {apps}
+            {openAppIds}
+            {updateCards}
+            {meshStatus}
+            {meshJoinCodeInput}
+            {meshError}
+            onOpenInsight={openInsight}
+            onDismissInsight={dismissInsight}
+            onOpenApp={openApp}
+            onStayOnCurrent={stayOnCurrent}
+            onAcceptUpdate={acceptUpdate}
+            onCreateMeshRoom={createMeshRoom}
+            onJoinMeshRoom={joinMeshRoom}
+            onLeaveMeshRoom={leaveMeshRoom}
+            onMeshJoinCodeChange={(value) => (meshJoinCodeInput = value)}
           />
-          <div class="section-head">
-            <h2>Your Apps</h2>
-            <p>Open apps stay warm in their sandbox. Switch away and return without a reload.</p>
-          </div>
-          <div class="updates">
-            <h3>Updates</h3>
-            {#if updateCards.length > 0}
-              {#each updateCards as card (card.app.id)}
-                <article>
-                  <div>
-                    <strong>{card.app.name} v{card.app.version}</strong>
-                    <p>
-                      Installed v{card.receipt.version}.
-                      {card.packageHashChanged ? ' Package changed.' : ' Package hash unchanged.'}
-                      {card.kindChanged ? ' App kind changed.' : ' Data posture unchanged.'}
-                      {#if card.addedNetworkDomains.length > 0}
-                        New domains: {card.addedNetworkDomains.join(', ')}.
-                      {/if}
-                      {#if card.addedPermissions.length > 0}
-                        New capabilities: {card.addedPermissions.join(', ')}.
-                      {/if}
-                      {#if card.latestSecurityScore !== null || card.latestPrivacyGrade}
-                        Trust now: {card.latestSecurityScore ?? 'unscored'} security · {card.latestPrivacyGrade ?? 'ungraded'} privacy.
-                      {/if}
-                    </p>
-                  </div>
-                  <div class="row-actions">
-                    <button onclick={() => stayOnCurrent(card.app.id)}>Stay</button>
-                    <button onclick={() => acceptUpdate(card.app.id)}>Update</button>
-                  </div>
-                </article>
-              {/each}
-            {:else}
-              <p>All installed apps match their latest package receipt.</p>
-            {/if}
-          </div>
-          <div class="app-grid">
-            {#each apps as app (app.id)}
-              {@const installed = openAppIds.includes(app.id)}
-              <button class="app-tile" class:installable={!installed} onclick={() => openApp(app.id)}>
-                <span class="app-icon" style={`--accent:${app.accent}`}>{app.icon}</span>
-                <strong>{app.name}</strong>
-                <small>{installed ? app.labelKind : 'Install'}</small>
-              </button>
-            {/each}
-          </div>
-          <div class="nearby-panel">
-            <h3>Nearby</h3>
-            {#if meshStatus.state === 'connected'}
-              <p>
-                In a local room. Join code <code>{meshStatus.joinCode}</code> · {meshStatus.peerCount} other device{meshStatus.peerCount === 1 ? '' : 's'} connected.
-              </p>
-              <button class="mesh-leave" onclick={leaveMeshRoom}>Leave room</button>
-            {:else if meshStatus.state === 'connecting'}
-              <p>Connecting locally…</p>
-            {:else}
-              <p>Connect locally with people in the same room — no servers, no accounts.</p>
-              <div class="mesh-actions">
-                <button class="mesh-create" onclick={createMeshRoom}>Start a room</button>
-                <span>or</span>
-                <input
-                  class="mesh-code-input"
-                  id="mesh-join-code"
-                  name="mesh-join-code"
-                  placeholder="Paste join code"
-                  bind:value={meshJoinCodeInput}
-                  spellcheck="false"
-                  autocapitalize="characters"
-                  maxlength="32"
-                />
-                <button class="mesh-join" onclick={joinMeshRoom}>Join</button>
-              </div>
-              {#if meshError}
-                <p class="error-text">{meshError}</p>
-              {/if}
-            {/if}
-          </div>
         {:else if section === 'create'}
           <div class="collection-panel">
             <div>
