@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { computeTrend, type Measurement } from './trend.ts';
 import { deletePhoto, loadPhoto, savePhoto } from './photo-store.ts';
+import { TimeLapse, type TimeLapseEntry } from './TimeLapse.tsx';
+
+const shippie = createShippieIframeSdk({ appId: 'app_body_metrics' });
 
 interface Entry extends Measurement {
   id: string;
@@ -27,6 +31,19 @@ export function App() {
   const [weight, setWeight] = useState<string>('');
   const [bodyFat, setBodyFat] = useState<string>('');
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [showTimeLapse, setShowTimeLapse] = useState(false);
+
+  const photoEntries = useMemo<TimeLapseEntry[]>(
+    () =>
+      entries
+        .filter((e): e is Entry & { photoLocalId: string } => Boolean(e.photoLocalId))
+        .map((e) => ({
+          date: e.date,
+          weightKg: e.weightKg,
+          photoLocalId: e.photoLocalId,
+        })),
+    [entries],
+  );
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
@@ -75,23 +92,68 @@ export function App() {
     setWeight('');
     setBodyFat('');
     if (fileInput) fileInput.value = '';
+    // P3 — broadcast `body-metrics-logged` so Journal's quick-entry
+    // prompts and Habit Tracker auto-checks can react. The payload
+    // carries date + weightKg only — body fat % stays local because
+    // it's a more sensitive number, and body photos NEVER leave.
+    shippie.intent.broadcast('body-metrics-logged', [
+      {
+        date,
+        weightKg,
+        loggedAt: new Date().toISOString(),
+        kind: 'weight',
+        title: `${weightKg.toFixed(1)} kg`,
+      },
+    ]);
+    shippie.feel.texture('confirm');
   }
 
   async function remove(entry: Entry) {
     if (entry.photoLocalId) await deletePhoto(entry.photoLocalId).catch(() => undefined);
     setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+    shippie.feel.texture('delete');
   }
 
   return (
     <main>
+      <div className="privacy-ribbon" role="region" aria-label="Privacy notice">
+        <span aria-hidden="true">🔒</span>
+        <span>
+          Photos stay on this device. No upload path exists.{' '}
+          <a
+            href="https://github.com/shippie-app/shippie/tree/main/apps/showcase-body-metrics"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read the source
+          </a>
+          .
+        </span>
+      </div>
+
       <header>
         <h1>Body</h1>
         <p>{entries.length} entr{entries.length === 1 ? 'y' : 'ies'} on this device</p>
+        {photoEntries.length >= 2 && (
+          <button
+            type="button"
+            className="time-lapse-button"
+            onClick={() => {
+              setShowTimeLapse(true);
+              shippie.feel.texture('navigate');
+            }}
+          >
+            Time lapse ({photoEntries.length})
+          </button>
+        )}
       </header>
 
-      <section className="privacy">
-        <strong>Photos stay on this device.</strong> They're stored in IndexedDB only — no upload path exists. Delete on this phone deletes them everywhere.
-      </section>
+      {showTimeLapse && (
+        <TimeLapse
+          entries={photoEntries}
+          onClose={() => setShowTimeLapse(false)}
+        />
+      )}
 
       {trend && (
         <section className="trend" data-trend={trend.trend}>

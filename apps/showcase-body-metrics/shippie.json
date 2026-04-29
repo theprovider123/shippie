@@ -9,6 +9,9 @@
   "display": "standalone",
   "orientation": "portrait",
   "permissions": ["camera"],
+  "intents": {
+    "provides": ["body-metrics-logged"]
+  },
   "data_schemas": {
     "measurements": {
       "id": "text primary key",

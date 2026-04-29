@@ -328,7 +328,9 @@ export const curatedApps: ContainerApp[] = [
     version: '1',
     packageHash: `sha256:${'a'.repeat(64)}`,
     standaloneUrl: '/run/body-metrics',
-    permissions: localPermissions('body-metrics'),
+    permissions: localPermissions('body-metrics', {
+      provides: ['body-metrics-logged'],
+    }),
     category: 'fitness',
     devUrl: 'http://localhost:5190/',
   },
