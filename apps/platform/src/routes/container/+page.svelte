@@ -84,6 +84,7 @@
   import AppFrameHost from '$lib/container/AppFrameHost.svelte';
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
+  import { focusApp } from '$lib/container/iframe-lifecycle';
   import { appPackageSrcdoc } from '$lib/container/app-srcdoc';
   import {
     createOrReusePackageFrameSource,
@@ -369,8 +370,17 @@
   );
 
   function openApp(appId: string) {
-    if (!openAppIds.includes(appId)) {
-      openAppIds = [...openAppIds, appId];
+    // LRU mount cap — keep at most 8 apps live. Re-focusing an
+    // already-open app moves it to the head; opening a new one past
+    // the cap evicts the oldest. Eviction frees the bridge host +
+    // package frame source so memory stays bounded on heavy users.
+    const decision = focusApp(openAppIds, appId);
+    openAppIds = [...decision.openAppIds];
+    if (decision.evicted) {
+      hosts.get(decision.evicted)?.dispose();
+      hosts.delete(decision.evicted);
+      frames.delete(decision.evicted);
+      revokePackageFrameSource(decision.evicted, packageObjectUrls);
     }
     const app = appById.get(appId);
     if (app && !receiptsByApp[appId]) {
