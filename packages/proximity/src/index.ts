@@ -111,3 +111,25 @@ export type {
   ScanHandle,
   ScanOptions,
 } from './ble-beacon.ts';
+
+// Phase 6 — multi-hop gossip / chain propagation.
+export { createGossipNode } from './gossip.ts';
+export type {
+  GossipEvent,
+  GossipMessage,
+  GossipNode,
+  GossipOptions,
+  GossipPeer,
+} from './gossip.ts';
+
+// Phase 6 — crowd polling / Q&A over the gossip mesh (stadium infra).
+export { createCrowdPoll, bindCrowdPollToGossip } from './crowd-poll.ts';
+export type {
+  CrowdPoll,
+  CrowdPollOptions,
+  PollDescriptor,
+  PollKind,
+  PollMessage,
+  PollTally,
+  Vote,
+} from './crowd-poll.ts';

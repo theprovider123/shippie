@@ -57,6 +57,13 @@
       "when": 1777859200000,
       "tag": "0009_shippie_agent_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1777945600000,
+      "tag": "0010_venues",
+      "breakpoints": true
     }
   ]
 }

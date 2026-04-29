@@ -19,6 +19,7 @@ import { existsSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { deployCommand } from './commands/deploy.js';
+import { graduateScaffold } from './commands/graduate.js';
 import { initCommand } from './commands/init.js';
 import { loginCommand } from './commands/login.js';
 import { rollbackCommand } from './commands/rollback.js';
@@ -95,6 +96,31 @@ program
   .command('init')
   .description('Scaffold a shippie.json in the current directory')
   .action(initCommand);
+
+program
+  .command('graduate <slug>')
+  .description(
+    'Scaffold a Capacitor wrap for a deployed Shippie app so you can ship native binaries (Phase 6 — wrapped-binary build path).',
+  )
+  .option('-o, --out-dir <dir>', 'Where to scaffold (default: ./<slug>-native)')
+  .option('--server-url <url>', 'Override the wrapped PWA URL (default: https://<slug>.shippie.app)')
+  .option('--force', 'Overwrite an existing scaffold')
+  .action((slug: string, opts: { outDir?: string; serverUrl?: string; force?: boolean }) => {
+    try {
+      const result = graduateScaffold({
+        slug,
+        outDir: opts.outDir,
+        serverUrl: opts.serverUrl,
+        force: opts.force,
+      });
+      console.log(`Scaffolded ${slug} native wrap at ${result.outDir}`);
+      console.log('Next steps:');
+      for (const step of result.nextSteps) console.log(`  ${step}`);
+    } catch (err) {
+      console.error(`graduate failed: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
+  });
 
 program
   .command('status <deploy-id>')

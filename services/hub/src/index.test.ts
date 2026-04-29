@@ -112,7 +112,7 @@ describe('startHub', () => {
       const post = await fetch(`http://127.0.0.1:${port}/api/packages`, {
         method: 'POST',
         headers: { 'content-type': 'application/vnd.shippie.package+json' },
-        body: archive,
+        body: archive as BodyInit,
       });
       expect(post.status).toBe(200);
       const installed = (await post.json()) as { packageHash: string; slug: string };

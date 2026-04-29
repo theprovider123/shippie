@@ -14,6 +14,7 @@ export * from './deploys';
 export * from './app-packages';
 export * from './deploy-scan-outcomes';
 export * from './agent-audit';
+export * from './venues';
 export * from './reserved-slugs';
 export * from './oauth';
 export * from './app-sessions';
