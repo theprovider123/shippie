@@ -14,7 +14,28 @@
  */
 
 import { selectAiBackend, isLocalTask, type AiBackend } from './ai-backend';
+import { createAiCacheBudget, type CacheBudget } from './ai-cache-budget';
 import type { ShippieLocalAi } from '@shippie/local-runtime-contract';
+
+/**
+ * Approximate q8 footprints for the 6 models the showcase library
+ * actually exercises. Values come from the plan's cache-budget table
+ * and are used only for the LRU planner — the real cache size is
+ * whatever Cache Storage reports. Anything not in this table falls back
+ * to a 50 MB estimate (matches mid-range q8 transformer models).
+ */
+const MODEL_BYTE_HINTS: Record<string, number> = {
+  'Xenova/all-MiniLM-L6-v2': 6 * 1024 * 1024,
+  'Xenova/distilbert-base-uncased-finetuned-sst-2-english': 67 * 1024 * 1024,
+  'Xenova/nli-deberta-v3-xsmall': 22 * 1024 * 1024,
+  'Xenova/vit-base-patch16-224': 25 * 1024 * 1024,
+  'Xenova/trocr-base-printed': 95 * 1024 * 1024,
+  'Xenova/whisper-tiny': 10 * 1024 * 1024,
+};
+const MODEL_FALLBACK_BYTES = 50 * 1024 * 1024;
+const SHIPPIE_MODEL_CACHE_NAME = 'shippie.models.v1';
+
+const cacheBudget: CacheBudget = createAiCacheBudget();
 
 interface WireRequest {
   kind: 'shippie.ai.request';
@@ -70,6 +91,23 @@ async function getLocalAi(): Promise<ShippieLocalAi | null> {
             return mod as never;
           },
           device: deviceForBackend(backend),
+          // q8 default — keeps the 6-model footprint at ~225 MB so we
+          // stay inside iOS Cache Storage's eviction envelope.
+          quantized: true,
+          onProgress: (_feature, progress) => {
+            // Hook the cache budget on completion so the LRU planner
+            // knows what's resident. The progress callback fires with
+            // status === 'done' on each downloaded artifact.
+            if (progress.status === 'done' && typeof progress.name === 'string') {
+              const bytes = MODEL_BYTE_HINTS[progress.name] ?? MODEL_FALLBACK_BYTES;
+              const evict = cacheBudget.planEviction(bytes);
+              for (const key of evict) {
+                cacheBudget.delete(key);
+                void evictFromCacheStorage(key);
+              }
+              cacheBudget.put(progress.name, bytes);
+            }
+          },
         });
       } catch (err) {
         console.warn('[ai-worker] local AI adapter unavailable', err);
@@ -78,6 +116,23 @@ async function getLocalAi(): Promise<ShippieLocalAi | null> {
     })();
   }
   return localAiPromise;
+}
+
+async function evictFromCacheStorage(modelKey: string): Promise<void> {
+  // The transformers.js runtime stores model artefacts in `caches.open`
+  // by URL keys. We delete every entry whose URL contains the model
+  // id; on browsers without Cache Storage this is a no-op.
+  const cachesApi = (globalThis as { caches?: CacheStorage }).caches;
+  if (!cachesApi) return;
+  try {
+    const cache = await cachesApi.open(SHIPPIE_MODEL_CACHE_NAME);
+    const keys = await cache.keys();
+    for (const req of keys) {
+      if (req.url.includes(modelKey)) await cache.delete(req);
+    }
+  } catch (err) {
+    console.warn('[ai-worker] cache eviction failed', err);
+  }
 }
 
 self.addEventListener('message', (event: MessageEvent) => {

@@ -129,3 +129,46 @@ describe('createTransformersLocalAi device option', () => {
     expect(receivedDevice).toBeUndefined();
   });
 });
+
+describe('createTransformersLocalAi quantized option', () => {
+  // P1B — q8 default keeps the 6-model footprint at ~225 MB (vs ~800 MB
+  // unquantized). Tests can disable for full-precision baselines.
+  test('passes quantized:true by default to pipeline()', async () => {
+    let receivedQuantized: boolean | undefined;
+    const fakeMod: TransformersModule = {
+      env: { allowRemoteModels: false, remoteHost: '' },
+      pipeline: (async (
+        _task: string,
+        _model: string | undefined,
+        opts: { quantized?: boolean } = {},
+      ) => {
+        receivedQuantized = opts.quantized;
+        return (async () => ({ labels: ['a'], scores: [1] })) as unknown as TransformersPipeline;
+      }) as unknown as TransformersModule['pipeline'],
+    };
+    const ai = createTransformersLocalAi({ transformersLoader: async () => fakeMod });
+    await ai.classify('hello', { labels: ['a'] });
+    expect(receivedQuantized).toBe(true);
+  });
+
+  test('honours quantized:false when callers explicitly opt out', async () => {
+    let receivedQuantized: boolean | undefined;
+    const fakeMod: TransformersModule = {
+      env: { allowRemoteModels: false, remoteHost: '' },
+      pipeline: (async (
+        _task: string,
+        _model: string | undefined,
+        opts: { quantized?: boolean } = {},
+      ) => {
+        receivedQuantized = opts.quantized;
+        return (async () => ({ labels: ['a'], scores: [1] })) as unknown as TransformersPipeline;
+      }) as unknown as TransformersModule['pipeline'],
+    };
+    const ai = createTransformersLocalAi({
+      transformersLoader: async () => fakeMod,
+      quantized: false,
+    });
+    await ai.classify('hello', { labels: ['a'] });
+    expect(receivedQuantized).toBe(false);
+  });
+});

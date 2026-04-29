@@ -80,6 +80,13 @@ export interface CreateTransformersLocalAiOptions {
   onProgress?: (feature: 'embeddings' | 'classification' | 'sentiment', progress: TransformersProgress) => void;
   /** Hardware backend hint; passed through to transformers.js pipeline(). */
   device?: LocalAiDevice;
+  /**
+   * Use 8-bit-quantized model variants. Default `true` so the cache
+   * footprint stays inside the iOS Cache Storage envelope (~225 MB
+   * total across the 6 showcase models, vs. ~800 MB unquantized).
+   * Tests can disable to run full-precision baselines.
+   */
+  quantized?: boolean;
 }
 
 const DEFAULT_REMOTE_HOST = 'https://models.shippie.app';
@@ -94,6 +101,7 @@ export function createTransformersLocalAi(opts: CreateTransformersLocalAiOptions
   const remoteHost = opts.remoteHost ?? DEFAULT_REMOTE_HOST;
   const models = { ...DEFAULT_MODELS, ...(opts.models ?? {}) };
   const device = opts.device;
+  const quantized = opts.quantized ?? true;
 
   let modulePromise: Promise<TransformersModule> | null = null;
   const pipelines = new Map<string, Promise<TransformersPipeline>>();
@@ -123,6 +131,7 @@ export function createTransformersLocalAi(opts: CreateTransformersLocalAiOptions
       promise = (async () => {
         const mod = await loadModule();
         return mod.pipeline(task, model, {
+          quantized,
           progress_callback: (progress) => opts.onProgress?.(feature, progress),
           ...(device ? { device } : {}),
         });
