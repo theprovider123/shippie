@@ -103,6 +103,8 @@ export {
   detectBleAvailability,
   scanForPeers,
   BLE_SHIPPIE_CONSTANTS,
+  parseHeartRateMeasurement,
+  pairHrm,
 } from './ble-beacon.ts';
 export type {
   BleAvailability,
@@ -110,6 +112,9 @@ export type {
   DiscoveredPeer,
   ScanHandle,
   ScanOptions,
+  HeartRateSample,
+  HrmPairingDeps,
+  HrmPairingHandle,
 } from './ble-beacon.ts';
 
 // Phase 6 — multi-hop gossip / chain propagation.

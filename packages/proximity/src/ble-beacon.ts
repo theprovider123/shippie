@@ -221,3 +221,259 @@ export const BLE_SHIPPIE_CONSTANTS = {
   SERVICE_UUID: SHIPPIE_SERVICE_UUID,
   JOIN_CODE_CHARACTERISTIC_UUID: SHIPPIE_JOIN_CODE_CHAR_UUID,
 } as const;
+
+// ---------------------------------------------------------------------------
+// P1D — Heart Rate GATT helper.
+//
+// The HRM showcase (Workout Logger) needs live heart-rate + RR-interval
+// data from a Bluetooth strap (Polar, Wahoo, Garmin). This is a Chrome
+// & Edge feature only — iOS Safari does not implement Web Bluetooth and
+// won't, per Apple's WebKit position. UI gates on `detectBleAvailability`.
+//
+// Service UUID `0x180D`, characteristic `0x2A37`. Format documented at
+// https://www.bluetooth.com/specifications/specs/heart-rate-service-1-0/
+// ---------------------------------------------------------------------------
+
+const HEART_RATE_SERVICE_UUID = 0x180d;
+const HEART_RATE_MEASUREMENT_CHAR_UUID = 0x2a37;
+
+export interface HeartRateSample {
+  /** Heart rate in beats per minute. 0 means "no contact". */
+  bpm: number;
+  /**
+   * Time intervals between successive heart beats, in milliseconds.
+   * Empty when the strap doesn't broadcast RR (most Polars do; some
+   * cheaper straps don't). HRV apps use these directly.
+   */
+  rrIntervalsMs: number[];
+  /**
+   * Sensor contact status when reported. `'unsupported'` means the
+   * strap doesn't broadcast contact info; `'no_contact'` means the
+   * strap reports the wearer isn't connected.
+   */
+  contact: 'in_contact' | 'no_contact' | 'unsupported';
+  /**
+   * Cumulative kJ of energy expended (when reported). Most straps
+   * don't broadcast this. Undefined when omitted.
+   */
+  energyKj?: number;
+}
+
+/**
+ * Parse a Heart Rate Measurement characteristic value into a structured
+ * sample. The parser is pure so the test suite can drive it with the
+ * spec's example bytes without needing a real strap.
+ *
+ * Wire format (Bluetooth SIG, GATT_Specification_Supplement v8):
+ *   Byte 0 — flags:
+ *     bit 0   HR Value Format (0 = uint8, 1 = uint16 little-endian)
+ *     bit 1   Sensor Contact Status (1 = supported, 0 = unsupported)
+ *     bit 2   Sensor Contact Detected (only meaningful if bit1 = 1)
+ *     bit 3   Energy Expended present (uint16 LE, kJ)
+ *     bit 4   RR-Interval present (uint16 LE array, 1/1024s units)
+ *   Bytes 1..n — fields in the order above.
+ */
+export function parseHeartRateMeasurement(buffer: ArrayBufferView | DataView): HeartRateSample {
+  const view =
+    buffer instanceof DataView
+      ? buffer
+      : new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  if (view.byteLength < 2) {
+    throw new Error(`Heart Rate Measurement value too short (${view.byteLength} bytes)`);
+  }
+
+  const flags = view.getUint8(0);
+  const is16Bit = (flags & 0b0000_0001) !== 0;
+  const contactSupported = (flags & 0b0000_0010) !== 0;
+  const contactDetected = (flags & 0b0000_0100) !== 0;
+  const hasEnergy = (flags & 0b0000_1000) !== 0;
+  const hasRr = (flags & 0b0001_0000) !== 0;
+
+  let offset = 1;
+  let bpm: number;
+  if (is16Bit) {
+    if (view.byteLength < offset + 2) throw new Error('truncated HRM (uint16 bpm)');
+    bpm = view.getUint16(offset, true);
+    offset += 2;
+  } else {
+    bpm = view.getUint8(offset);
+    offset += 1;
+  }
+
+  let energyKj: number | undefined;
+  if (hasEnergy) {
+    if (view.byteLength < offset + 2) throw new Error('truncated HRM (energy)');
+    energyKj = view.getUint16(offset, true);
+    offset += 2;
+  }
+
+  const rrIntervalsMs: number[] = [];
+  if (hasRr) {
+    while (offset + 2 <= view.byteLength) {
+      const ticks = view.getUint16(offset, true);
+      // Spec unit is 1/1024s. Convert to ms with three-decimal precision.
+      rrIntervalsMs.push(Math.round((ticks * 1000) / 1024));
+      offset += 2;
+    }
+  }
+
+  let contact: HeartRateSample['contact'] = 'unsupported';
+  if (contactSupported) contact = contactDetected ? 'in_contact' : 'no_contact';
+
+  return { bpm, rrIntervalsMs, contact, energyKj };
+}
+
+export interface HrmPairingHandle {
+  /**
+   * Live stream of HR samples. Emits whenever the strap broadcasts a
+   * notification (typically once per second, sometimes faster).
+   */
+  samples: ReadableStream<HeartRateSample>;
+  /** Disconnect the strap and close the stream. Idempotent. */
+  stop(): void;
+  /**
+   * Best-effort device name (e.g. "Polar H10 5C2D7B22"). May be
+   * `undefined` on platforms that hide it.
+   */
+  deviceName?: string;
+}
+
+/**
+ * Bluetooth surface dependencies. Real callers pass `navigator.bluetooth`
+ * — tests pass a fake that simulates the GATT connection sequence.
+ */
+export interface HrmPairingDeps {
+  bluetooth?: {
+    requestDevice: (options: {
+      filters: Array<{ services: number[] }>;
+      optionalServices?: number[];
+    }) => Promise<HrmDeviceLike>;
+  };
+}
+
+interface HrmDeviceLike {
+  name?: string;
+  gatt?: {
+    connect(): Promise<HrmGattServerLike>;
+    connected: boolean;
+    disconnect(): void;
+  };
+  addEventListener?(
+    type: 'gattserverdisconnected',
+    handler: () => void,
+  ): void;
+  removeEventListener?(
+    type: 'gattserverdisconnected',
+    handler: () => void,
+  ): void;
+}
+
+interface HrmGattServerLike {
+  getPrimaryService(uuid: number): Promise<HrmGattServiceLike>;
+}
+
+interface HrmGattServiceLike {
+  getCharacteristic(uuid: number): Promise<HrmGattCharLike>;
+}
+
+interface HrmGattCharLike {
+  startNotifications(): Promise<HrmGattCharLike>;
+  stopNotifications(): Promise<HrmGattCharLike>;
+  addEventListener(
+    type: 'characteristicvaluechanged',
+    handler: (event: { target: { value: DataView } }) => void,
+  ): void;
+  removeEventListener(
+    type: 'characteristicvaluechanged',
+    handler: (event: { target: { value: DataView } }) => void,
+  ): void;
+}
+
+/**
+ * Pair to a Heart Rate Monitor and return a stream of parsed samples.
+ *
+ * Throws if Web Bluetooth is unavailable in this runtime — the showcase
+ * gates on `detectBleAvailability` BEFORE calling this so iOS users see
+ * the explanatory message instead.
+ */
+export async function pairHrm(deps: HrmPairingDeps = readBluetoothDeps()): Promise<HrmPairingHandle> {
+  const bluetooth = deps.bluetooth;
+  if (!bluetooth || typeof bluetooth.requestDevice !== 'function') {
+    throw new Error(
+      'Heart-rate pairing requires Chrome on Android. Web Bluetooth is unavailable in this runtime.',
+    );
+  }
+
+  const device = await bluetooth.requestDevice({
+    filters: [{ services: [HEART_RATE_SERVICE_UUID] }],
+    optionalServices: [HEART_RATE_SERVICE_UUID],
+  });
+
+  if (!device.gatt) throw new Error('Selected device has no GATT server.');
+  const server = await device.gatt.connect();
+  const service = await server.getPrimaryService(HEART_RATE_SERVICE_UUID);
+  const char = await service.getCharacteristic(HEART_RATE_MEASUREMENT_CHAR_UUID);
+
+  let listener: ((event: { target: { value: DataView } }) => void) | null = null;
+  let onDisconnect: (() => void) | null = null;
+  let stopped = false;
+
+  const samples = new ReadableStream<HeartRateSample>({
+    async start(controller) {
+      listener = (event) => {
+        try {
+          const sample = parseHeartRateMeasurement(event.target.value);
+          controller.enqueue(sample);
+        } catch (err) {
+          controller.error(err instanceof Error ? err : new Error(String(err)));
+        }
+      };
+      onDisconnect = () => {
+        if (!stopped) controller.close();
+      };
+      char.addEventListener('characteristicvaluechanged', listener);
+      device.addEventListener?.('gattserverdisconnected', onDisconnect);
+      await char.startNotifications();
+    },
+    async cancel() {
+      stopHandle();
+    },
+  });
+
+  function stopHandle() {
+    if (stopped) return;
+    stopped = true;
+    try {
+      if (listener) char.removeEventListener('characteristicvaluechanged', listener);
+    } catch {
+      /* best-effort */
+    }
+    char.stopNotifications().catch(() => {});
+    if (onDisconnect) {
+      try {
+        device.removeEventListener?.('gattserverdisconnected', onDisconnect);
+      } catch {
+        /* best-effort */
+      }
+    }
+    if (device.gatt?.connected) {
+      try {
+        device.gatt.disconnect();
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
+  return {
+    samples,
+    stop: stopHandle,
+    deviceName: device.name,
+  };
+}
+
+function readBluetoothDeps(): HrmPairingDeps {
+  if (typeof navigator === 'undefined') return {};
+  const nav = navigator as unknown as { bluetooth?: HrmPairingDeps['bluetooth'] };
+  return { bluetooth: nav.bluetooth };
+}
