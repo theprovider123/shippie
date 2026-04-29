@@ -187,7 +187,7 @@
   .detected li {
     padding: 10px 14px;
     border: 1px solid var(--border-light);
-    border-radius: 10px;
+    border-radius: 0;
     background: var(--surface);
     font-size: var(--small-size);
     display: grid;
@@ -211,7 +211,7 @@
   .cap-card {
     padding: 14px 16px;
     border: 1px solid var(--border-light);
-    border-radius: 12px;
+    border-radius: 0;
     background: var(--surface);
   }
   .cap-card h3 {
@@ -238,7 +238,7 @@
     font-size: 13px;
     padding: 12px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--text);
     resize: vertical;
@@ -267,7 +267,7 @@
   }
   .btn {
     padding: 0.5rem 1rem;
-    border-radius: 999px;
+    border-radius: 0;
     font-size: var(--small-size);
     font-weight: 500;
     cursor: pointer;

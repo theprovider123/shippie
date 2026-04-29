@@ -81,7 +81,7 @@
 
   .badge-card {
     border: 1px solid var(--border-light);
-    border-radius: 12px;
+    border-radius: 0;
     padding: var(--space-lg);
     background: var(--bg-pure);
   }
@@ -108,7 +108,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     padding: 0.15rem 0.5rem;
-    border-radius: 100px;
+    border-radius: 0;
     border: 1px solid;
   }
   .pill.earned {
@@ -150,13 +150,13 @@
   .bar-track {
     height: 6px;
     background: color-mix(in srgb, var(--text) 8%, transparent);
-    border-radius: 3px;
+    border-radius: 0;
     overflow: hidden;
   }
   .bar {
     height: 100%;
     background: var(--sunset);
-    border-radius: 3px;
+    border-radius: 0;
     transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .badge-card.earned .bar {

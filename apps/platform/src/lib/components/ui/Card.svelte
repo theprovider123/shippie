@@ -26,7 +26,7 @@
     display: block;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 0;
     padding: var(--space-xl);
     color: var(--text);
     text-decoration: none;

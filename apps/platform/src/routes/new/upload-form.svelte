@@ -192,7 +192,7 @@
     font-family: ui-monospace, monospace;
     font-size: 14px;
     color: inherit;
-    border-radius: 8px 0 0 8px;
+    border-radius: 0;
     box-sizing: border-box;
   }
   .slug-input:focus { border-color: #E8603C; outline: none; }
@@ -215,7 +215,7 @@
     color: white;
     border: none;
     padding: 0 2rem;
-    border-radius: 999px;
+    border-radius: 0;
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
@@ -226,21 +226,21 @@
     padding: 1rem 1.25rem;
     border: 1px solid rgba(46,125,91,0.4);
     background: rgba(46,125,91,0.05);
-    border-radius: 12px;
+    border-radius: 0;
     color: #2E7D5B;
   }
   .success-head { font-weight: 700; margin: 0; }
   .success a { color: inherit; font-family: ui-monospace, monospace; }
   .meta { font-family: ui-monospace, monospace; font-size: 11px; color: #8B847A; margin: 0.5rem 0 0 0; }
-  .share-card { margin-top: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.5); border-radius: 8px; }
+  .share-card { margin-top: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.5); border-radius: 0; }
   .share-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
   .share-head p { font-size: 12px; color: #14120F; margin: 0; font-weight: 600; }
-  .vis-toggle { display: inline-flex; gap: 2px; padding: 2px; background: rgba(0,0,0,0.05); border-radius: 999px; }
+  .vis-toggle { display: inline-flex; gap: 2px; padding: 2px; background: rgba(0,0,0,0.05); border-radius: 0; }
   .vis-toggle button {
     background: transparent;
     border: none;
     padding: 4px 10px;
-    border-radius: 999px;
+    border-radius: 0;
     font-size: 11px;
     font-family: ui-monospace, monospace;
     cursor: pointer;
@@ -256,7 +256,7 @@
     font-size: 12px;
     background: white;
     border: 1px solid #C9C2B1;
-    border-radius: 6px;
+    border-radius: 0;
     box-sizing: border-box;
     color: inherit;
   }
@@ -265,7 +265,7 @@
     padding: 0 0.875rem;
     background: transparent;
     border: 1px solid #C9C2B1;
-    border-radius: 6px;
+    border-radius: 0;
     font-size: 12px;
     cursor: pointer;
     color: inherit;
@@ -274,7 +274,7 @@
     padding: 1rem 1.25rem;
     border: 1px solid rgba(180,63,42,0.4);
     background: rgba(180,63,42,0.05);
-    border-radius: 12px;
+    border-radius: 0;
     color: #B43F2A;
   }
   .error-head { font-weight: 700; margin: 0; }

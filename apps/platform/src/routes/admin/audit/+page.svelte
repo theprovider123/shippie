@@ -119,7 +119,7 @@
     margin-bottom: 1.5rem;
     padding: 1rem;
     border: 1px solid var(--border-light, #2A251E);
-    border-radius: 12px;
+    border-radius: 0;
     background: rgba(255,255,255,0.02);
   }
   .field { display: flex; flex-direction: column; gap: 0.25rem; min-width: 180px; }
@@ -134,7 +134,7 @@
     background: var(--surface, #1E1A15);
     color: var(--text, #EDE4D3);
     border: 1px solid var(--border-light, #2A251E);
-    border-radius: 6px;
+    border-radius: 0;
     padding: 6px 10px;
     font: inherit;
     font-size: 13px;
@@ -143,7 +143,7 @@
     background: var(--sunset, #E8603C);
     color: white;
     border: none;
-    border-radius: 999px;
+    border-radius: 0;
     padding: 8px 18px;
     font-weight: 600;
     cursor: pointer;
@@ -151,7 +151,7 @@
   }
   .reset { color: var(--text-secondary, #B8A88F); text-decoration: none; font-size: 12px; padding: 8px 4px; }
   .reset:hover { color: var(--sunset, #E8603C); }
-  .table-wrap { border: 1px solid var(--border-light, #2A251E); border-radius: 12px; overflow: hidden; }
+  .table-wrap { border: 1px solid var(--border-light, #2A251E); border-radius: 0; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; }
   th {
     text-align: left;

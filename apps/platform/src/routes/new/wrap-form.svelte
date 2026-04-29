@@ -107,7 +107,7 @@
   .row label { flex: 1; }
   label { display: flex; flex-direction: column; gap: 4px; }
   label span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: #8B847A; font-family: ui-monospace, monospace; }
-  input, select { height: 44px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: 14px; color: inherit; border-radius: 8px; box-sizing: border-box; }
+  input, select { height: 44px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: 14px; color: inherit; border-radius: 0; box-sizing: border-box; }
   input:focus, select:focus { border-color: #E8603C; outline: none; }
   .btn-primary {
     height: 48px;
@@ -115,17 +115,17 @@
     color: white;
     border: none;
     padding: 0 2rem;
-    border-radius: 999px;
+    border-radius: 0;
     font-weight: 700;
     cursor: pointer;
     align-self: flex-start;
   }
   .btn-primary:disabled { opacity: 0.5; }
-  .success { padding: 1rem 1.25rem; border: 1px solid rgba(46,125,91,0.4); background: rgba(46,125,91,0.05); border-radius: 12px; color: #2E7D5B; }
+  .success { padding: 1rem 1.25rem; border: 1px solid rgba(46,125,91,0.4); background: rgba(46,125,91,0.05); border-radius: 0; color: #2E7D5B; }
   .head { margin: 0; font-weight: 700; }
   .dim { color: #8B847A; font-size: 12px; }
   .success a { color: inherit; font-family: ui-monospace, monospace; }
-  pre { font-family: ui-monospace, monospace; font-size: 12px; padding: 0.5rem; background: rgba(0,0,0,0.05); border-radius: 6px; overflow: auto; }
+  pre { font-family: ui-monospace, monospace; font-size: 12px; padding: 0.5rem; background: rgba(0,0,0,0.05); border-radius: 0; overflow: auto; }
   .error { color: #B43F2A; margin: 0; font-size: 13px; }
   @media (prefers-color-scheme: dark) {
     input, select { border-color: #3A352D; }

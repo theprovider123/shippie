@@ -322,7 +322,7 @@
     margin-left: 0.5rem;
     padding: 2px 8px;
     border: 1px solid var(--sage-leaf);
-    border-radius: 999px;
+    border-radius: 0;
     color: var(--sage-leaf);
     font-family: var(--font-mono);
     font-size: var(--caption-size);
@@ -336,7 +336,7 @@
     min-width: 0;
     padding: var(--space-md);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--surface);
     display: grid;
     gap: 6px;
@@ -362,7 +362,7 @@
   }
   .version-strip a {
     border: 1px solid var(--border-light);
-    border-radius: 999px;
+    border-radius: 0;
     padding: 4px 8px;
     color: var(--text-secondary);
   }
@@ -375,7 +375,7 @@
   .ownership-actions span {
     padding: 0.55rem 0.75rem;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--bg-pure);
     color: var(--text-secondary);
     font-size: var(--small-size);

@@ -50,7 +50,7 @@
     font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 11px;
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: 0;
     background: rgba(232, 96, 60, 0.12);
     color: var(--sunset, #E8603C);
     white-space: nowrap;

@@ -363,7 +363,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0.2rem 0.5rem;
-    border-radius: 4px;
+    border-radius: 0;
     background: var(--surface-alt);
   }
   .status-success { background: rgba(61, 139, 92, 0.15); color: #3D8B5C; }
@@ -381,7 +381,7 @@
   .card {
     background: var(--surface);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 1.25rem;
   }
   .card h3 {
@@ -405,7 +405,7 @@
     letter-spacing: 0.08em;
     color: var(--text-light);
     border: 1px solid var(--border-light);
-    border-radius: 999px;
+    border-radius: 0;
     padding: 0.2rem 0.5rem;
   }
   .truth-grid {
@@ -416,7 +416,7 @@
   .truth-grid > div {
     background: var(--surface-alt);
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 0;
     padding: 0.85rem;
   }
   .truth-grid .label {
@@ -451,7 +451,7 @@
     gap: 0.55rem;
     align-items: center;
     padding: 0.45rem 0.55rem;
-    border-radius: 4px;
+    border-radius: 0;
     background: rgba(61, 139, 92, 0.05);
     font-size: 0.82rem;
   }
@@ -492,7 +492,7 @@
   .badge {
     display: inline-block;
     padding: 0.4rem 0.75rem;
-    border-radius: 4px;
+    border-radius: 0;
     background: var(--surface-alt);
     font-size: 0.95rem;
     font-weight: 500;
@@ -557,7 +557,7 @@
     display: inline-block;
     background: var(--surface-alt);
     padding: 0.15rem 0.4rem;
-    border-radius: 3px;
+    border-radius: 0;
     font-size: 0.8rem;
   }
   table {
@@ -594,7 +594,7 @@
     gap: 0.75rem;
     align-items: baseline;
     padding: 0.4rem 0.5rem;
-    border-radius: 4px;
+    border-radius: 0;
     font-size: 0.9rem;
   }
   .step-ok      { background: rgba(61, 139, 92, 0.05); }
@@ -637,7 +637,7 @@
     gap: 0.75rem;
     padding: 0.55rem 0.65rem;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--surface-alt);
   }
   .event-time {

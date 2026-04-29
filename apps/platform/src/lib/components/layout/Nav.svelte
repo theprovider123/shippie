@@ -154,7 +154,7 @@
     color: var(--marigold, #E8A547);
     padding: 0.25rem 0.625rem;
     border: 1px solid var(--marigold, #E8A547);
-    border-radius: 4px;
+    border-radius: 0;
     transition: opacity 0.2s;
   }
   .nav-admin:hover { opacity: 0.85; }
@@ -165,7 +165,7 @@
     color: var(--bg-pure);
     font-size: var(--small-size);
     font-weight: 600;
-    border-radius: 4px;
+    border-radius: 0;
     transition: background 0.2s;
   }
   .nav-cta:hover { background: var(--sunset-hover); }
@@ -194,7 +194,7 @@
     height: 36px;
     background: none;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: 0;
     cursor: pointer;
     padding: 0 8px;
   }
@@ -229,7 +229,7 @@
     padding: 14px !important;
     background: var(--sunset);
     color: var(--bg-pure) !important;
-    border-radius: 8px;
+    border-radius: 0;
     text-align: center;
     border-bottom: none !important;
     font-family: var(--font-body) !important;

@@ -1678,7 +1678,7 @@
   .inspector section {
     border: 1px solid var(--border-light);
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: 0;
   }
   .status-panel {
     padding: var(--space-md);
@@ -1689,7 +1689,7 @@
     margin-bottom: var(--space-sm);
     padding: 3px 8px;
     border: 1px solid var(--marigold);
-    border-radius: 999px;
+    border-radius: 0;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     text-transform: uppercase;
@@ -1707,7 +1707,7 @@
   button,
   .action-grid a {
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--bg-pure);
     color: var(--text);
     text-decoration: none;
@@ -1790,7 +1790,7 @@
     --accent: var(--sunset);
     width: 42px;
     aspect-ratio: 1;
-    border-radius: 8px;
+    border-radius: 0;
     display: grid;
     place-items: center;
     background: var(--accent);
@@ -1814,7 +1814,7 @@
     gap: var(--space-md);
     justify-content: space-between;
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--bg-pure);
   }
   .collection-list article > div,
@@ -1825,7 +1825,7 @@
   .collection-panel {
     padding: var(--space-md);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--bg-pure);
     display: grid;
     gap: var(--space-sm);
@@ -1839,7 +1839,7 @@
     min-height: 42px;
     padding: 0 0.75rem;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--text);
     font: inherit;
@@ -1870,7 +1870,7 @@
     margin: 0;
     padding: var(--space-md);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--bg-pure);
     color: var(--text);
     overflow: auto;
@@ -1880,7 +1880,7 @@
   .backup-box {
     padding: var(--space-md);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--bg-pure);
     display: grid;
     gap: var(--space-sm);
@@ -1888,7 +1888,7 @@
   .recovered-receipts {
     padding: var(--space-md);
     border: 1px dashed var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--surface);
     display: grid;
     gap: var(--space-sm);
@@ -1901,7 +1901,7 @@
     min-height: 42px;
     padding: 0 0.75rem;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--text);
     font: inherit;
@@ -1910,7 +1910,7 @@
     min-height: 120px;
     padding: 0.75rem;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--text);
     font: inherit;
@@ -1922,7 +1922,7 @@
   .viewport-area {
     min-height: 500px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     overflow: hidden;
     background: var(--bg-pure);
   }
@@ -1950,7 +1950,7 @@
     gap: 8px;
     padding: var(--space-lg);
     border: 1px solid rgba(182, 71, 45, 0.3);
-    border-radius: 8px;
+    border-radius: 0;
     background: rgba(255, 250, 242, 0.96);
     color: var(--text);
     text-align: center;
@@ -2035,7 +2035,7 @@
   .intent-prompt {
     background: var(--bg);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     padding: var(--space-lg);
     max-width: 440px;
     width: 100%;
@@ -2053,7 +2053,7 @@
   .intent-prompt code {
     background: var(--surface-alt);
     padding: 0.1rem 0.3rem;
-    border-radius: 3px;
+    border-radius: 0;
     font-size: 0.85rem;
   }
   .intent-prompt .hint {
@@ -2068,7 +2068,7 @@
   }
   .intent-prompt-actions button {
     padding: 0.5rem 1rem;
-    border-radius: 4px;
+    border-radius: 0;
     cursor: pointer;
     font-size: 0.95rem;
   }
@@ -2088,7 +2088,7 @@
   .mesh-badge {
     height: 30px;
     padding: 0 12px;
-    border-radius: 999px;
+    border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: transparent;
     font-size: 12px;
@@ -2103,7 +2103,7 @@
   .nearby-panel {
     margin: 16px 0 24px;
     padding: 16px;
-    border-radius: 12px;
+    border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: rgba(0, 0, 0, 0.02);
   }
@@ -2120,7 +2120,7 @@
   .nearby-panel code {
     background: rgba(0, 0, 0, 0.05);
     padding: 1px 6px;
-    border-radius: 4px;
+    border-radius: 0;
     font-size: 12px;
   }
   .mesh-actions {
@@ -2136,7 +2136,7 @@
   .mesh-code-input {
     height: 36px;
     padding: 0 10px;
-    border-radius: 8px;
+    border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.15));
     font-size: 13px;
     text-transform: uppercase;
@@ -2147,7 +2147,7 @@
   .mesh-leave {
     height: 36px;
     padding: 0 14px;
-    border-radius: 999px;
+    border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: transparent;
     color: var(--text);
@@ -2169,7 +2169,7 @@
     gap: 12px;
     margin: 12px 0 16px;
     padding: 10px 14px;
-    border-radius: 10px;
+    border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: rgba(232, 96, 60, 0.06);
     font-size: 13px;
@@ -2178,7 +2178,7 @@
   .data-trigger button {
     height: 28px;
     padding: 0 10px;
-    border-radius: 999px;
+    border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: transparent;
     color: var(--text);

@@ -82,6 +82,6 @@
   code {
     background: rgba(0, 0, 0, 0.05);
     padding: 1px 6px;
-    border-radius: 4px;
+    border-radius: 0;
   }
 </style>

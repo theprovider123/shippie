@@ -58,7 +58,7 @@
     gap: 0.5rem;
     font-family: var(--font-body);
     font-weight: 600;
-    border-radius: 4px;
+    border-radius: 0;
     cursor: pointer;
     transition: background var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out);
     text-decoration: none;

@@ -54,14 +54,14 @@
     align-items: center;
     padding: 0.625rem 0.75rem;
     border: 1px solid #E5DDC8;
-    border-radius: 8px;
+    border-radius: 0;
     font-size: 13px;
   }
-  .kind { font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 8px; background: rgba(0,0,0,0.05); border-radius: 999px; }
+  .kind { font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 8px; background: rgba(0,0,0,0.05); border-radius: 0; }
   .url { font-family: ui-monospace, monospace; color: #E8603C; text-decoration: none; }
   .url:hover { text-decoration: underline; }
   .meta { color: #8B847A; font-family: ui-monospace, monospace; font-size: 11px; }
-  button { background: transparent; border: 1px solid #C9C2B1; padding: 4px 12px; border-radius: 999px; cursor: pointer; font-size: 12px; }
+  button { background: transparent; border: 1px solid #C9C2B1; padding: 4px 12px; border-radius: 0; cursor: pointer; font-size: 12px; }
   .error { color: #B43F2A; font-size: 12px; }
   @media (prefers-color-scheme: dark) {
     .row { border-color: #2A251E; }

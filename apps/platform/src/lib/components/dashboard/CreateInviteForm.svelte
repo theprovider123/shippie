@@ -63,7 +63,7 @@
     color: white;
     border: none;
     padding: 0 1.5rem;
-    border-radius: 999px;
+    border-radius: 0;
     font-weight: 600;
     cursor: pointer;
   }

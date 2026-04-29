@@ -116,7 +116,7 @@
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
-    border-radius: 999px;
+    border-radius: 0;
     margin-top: 0.5rem;
   }
   .btn-primary:disabled { opacity: 0.6; cursor: progress; }

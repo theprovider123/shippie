@@ -25,7 +25,7 @@
   .eyebrow a { color: inherit; text-decoration: none; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0.25rem 0; letter-spacing: -0.02em; }
   .lede { color: #8B847A; margin: 0; }
-  .empty { padding: 4rem 2rem; text-align: center; border: 1px dashed #C9C2B1; border-radius: 12px; }
+  .empty { padding: 4rem 2rem; text-align: center; border: 1px dashed #C9C2B1; border-radius: 0; }
   .emoji { font-size: 48px; margin: 0; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0.5rem 0; }
   @media (prefers-color-scheme: dark) {

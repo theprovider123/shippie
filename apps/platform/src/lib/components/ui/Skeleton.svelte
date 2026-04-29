@@ -12,7 +12,7 @@
 <style>
   .skeleton {
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: 0;
     animation: shimmer 1.5s ease-in-out infinite;
   }
   @keyframes shimmer {

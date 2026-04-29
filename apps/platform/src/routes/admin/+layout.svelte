@@ -64,7 +64,7 @@
     color: var(--marigold, #E8C547);
     background: rgba(232, 197, 71, 0.12);
     border: 1px solid rgba(232, 197, 71, 0.3);
-    border-radius: 999px;
+    border-radius: 0;
     padding: 2px 8px;
     align-self: flex-start;
     margin: 0;
@@ -75,7 +75,7 @@
     text-decoration: none;
     color: inherit;
     padding: 0.5rem 0.75rem;
-    border-radius: 6px;
+    border-radius: 0;
     font-size: 14px;
   }
   nav a:hover { background: rgba(255,255,255,0.04); }

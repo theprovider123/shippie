@@ -63,7 +63,7 @@
   .insight-card {
     flex: 0 0 280px;
     min-width: 280px;
-    border-radius: 14px;
+    border-radius: 0;
     background: rgba(255, 255, 255, 0.6);
     border: 1px solid rgba(0, 0, 0, 0.08);
     padding: 14px 14px 12px;
@@ -106,7 +106,7 @@
     border: 0;
     width: 24px;
     height: 24px;
-    border-radius: 999px;
+    border-radius: 0;
     font-size: 16px;
     line-height: 1;
     color: rgba(0, 0, 0, 0.45);

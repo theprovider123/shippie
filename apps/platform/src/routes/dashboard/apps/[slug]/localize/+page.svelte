@@ -125,7 +125,7 @@
   .card {
     background: var(--surface);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 1.25rem 1.5rem;
   }
   .card h3 {
@@ -186,7 +186,7 @@
   }
   .btn-secondary, .btn-primary {
     padding: 0.5rem 1rem;
-    border-radius: 4px;
+    border-radius: 0;
     font-size: 0.9rem;
     cursor: not-allowed;
     opacity: 0.6;

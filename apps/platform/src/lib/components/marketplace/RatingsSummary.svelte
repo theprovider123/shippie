@@ -89,7 +89,7 @@
   .bar {
     height: 8px;
     background: var(--surface);
-    border-radius: 2px;
+    border-radius: 0;
     overflow: hidden;
   }
   .fill { height: 100%; background: var(--sunset); }
@@ -98,7 +98,7 @@
   .review {
     padding: 12px;
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: 0;
   }
   .review-head {
     display: flex;

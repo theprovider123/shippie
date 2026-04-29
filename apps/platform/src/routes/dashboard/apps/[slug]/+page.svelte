@@ -140,18 +140,18 @@
 
 <style>
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
-  .card { padding: 1.5rem; border: 1px solid #E5DDC8; border-radius: 12px; }
+  .card { padding: 1.5rem; border: 1px solid #E5DDC8; border-radius: 0; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 0 0 0.5rem 0; }
   ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
   li { display: grid; grid-template-columns: auto auto auto 1fr; gap: 0.5rem; align-items: center; font-size: 13px; }
   .ver { font-family: ui-monospace, monospace; font-weight: 700; }
-  .status { font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.05); }
+  .status { font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 8px; border-radius: 0; background: rgba(0,0,0,0.05); }
   .status-success { background: rgba(46,125,91,0.15); color: #2E7D5B; }
   .status-failed { background: rgba(180,63,42,0.15); color: #B43F2A; }
   .status-building { background: rgba(232,96,60,0.15); color: #B44820; }
   .src { font-family: ui-monospace, monospace; font-size: 11px; color: #8B847A; }
   .time { text-align: right; font-family: ui-monospace, monospace; font-size: 11px; color: #8B847A; }
-  .vis { font-family: ui-monospace, monospace; font-size: 12px; padding: 4px 12px; border-radius: 999px; background: rgba(0,0,0,0.05); }
+  .vis { font-family: ui-monospace, monospace; font-size: 12px; padding: 4px 12px; border-radius: 0; background: rgba(0,0,0,0.05); }
   .vis-public { background: rgba(46,125,91,0.15); color: #2E7D5B; }
   .vis-private { background: rgba(180,63,42,0.15); color: #B43F2A; }
   .muted { color: #8B847A; }
@@ -190,7 +190,7 @@
     font-family: ui-monospace, monospace;
     font-size: 12px;
     border: 1px solid #E5DDC8;
-    border-radius: 6px;
+    border-radius: 0;
     box-sizing: border-box;
   }
   .actions button {
@@ -198,7 +198,7 @@
     color: white;
     border: none;
     padding: 6px 14px;
-    border-radius: 6px;
+    border-radius: 0;
     font-size: 13px;
     cursor: pointer;
   }

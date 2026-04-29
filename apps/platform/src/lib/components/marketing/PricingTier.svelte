@@ -30,7 +30,7 @@
 <style>
   .tier {
     border: 1px solid var(--border-light);
-    border-radius: 14px;
+    border-radius: 0;
     padding: 24px 22px;
     background: var(--surface);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);

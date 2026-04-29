@@ -127,7 +127,7 @@
 </div>
 
 <style>
-  .table-wrap { border: 1px solid var(--border-light, #2A251E); border-radius: 12px; overflow: hidden; }
+  .table-wrap { border: 1px solid var(--border-light, #2A251E); border-radius: 0; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th {
     text-align: left;
@@ -157,7 +157,7 @@
     display: inline-block;
     width: 12px;
     height: 12px;
-    border-radius: 2px;
+    border-radius: 0;
     margin-right: 0.5rem;
     vertical-align: middle;
   }
@@ -172,7 +172,7 @@
     font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 10px;
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: 0;
     background: rgba(255,255,255,0.06);
     margin-right: 0.25rem;
     text-transform: uppercase;
@@ -188,7 +188,7 @@
     background: var(--surface, #1E1A15);
     color: var(--text, #EDE4D3);
     border: 1px solid var(--border-light, #2A251E);
-    border-radius: 6px;
+    border-radius: 0;
     padding: 4px 6px;
   }
   .actions {

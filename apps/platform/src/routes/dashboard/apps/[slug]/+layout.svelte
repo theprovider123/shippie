@@ -28,7 +28,7 @@
   .eyebrow a { color: inherit; text-decoration: none; }
   .eyebrow a:hover { text-decoration: underline; }
   .title { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
-  .swatch { width: 24px; height: 24px; border-radius: 6px; }
+  .swatch { width: 24px; height: 24px; border-radius: 0; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0; letter-spacing: -0.02em; }
   .lede { color: #8B847A; margin: 0.25rem 0 0 0; }
   .tabs { display: flex; gap: 1rem; border-bottom: 1px solid #E5DDC8; margin-top: 1.5rem; }

@@ -62,7 +62,7 @@
     align-items: flex-start;
     padding: 0.875rem 1rem;
     border: 1px solid #E5DDC8;
-    border-radius: 8px;
+    border-radius: 0;
     cursor: pointer;
   }
   label.active { border-color: #E8603C; background: rgba(232,96,60,0.04); }
