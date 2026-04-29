@@ -47,6 +47,8 @@ export const budgetAwarenessStrategy: AgentStrategy = {
         target: { app: finance.slug },
         generatedAt: ctx.now,
         expiresAt: ctx.now + ONE_DAY_MS,
+        // Single-app strategy: only the finance app's rows were read.
+        provenance: [finance.slug],
       },
     ];
   },

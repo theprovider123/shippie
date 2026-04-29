@@ -43,6 +43,10 @@ export const mealPlanningStrategy: AgentStrategy = {
         target: { app: planner.slug },
         generatedAt: ctx.now,
         expiresAt: ctx.now + ONE_DAY_MS,
+        // Cross-app insight: the recipe app's rows drove the detection,
+        // and the planner is the destination. Both slugs are part of
+        // the source-data set, so a caller from either may see it.
+        provenance: [recipeApp.slug, planner.slug],
       },
     ];
   },

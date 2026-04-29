@@ -23,6 +23,7 @@ const baseInsight = (over: Partial<Insight> = {}): Insight => ({
   body: 'b',
   target: { app: 'demo' },
   generatedAt: NOW,
+  provenance: ['demo'],
   ...over,
 });
 

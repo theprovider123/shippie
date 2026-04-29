@@ -34,6 +34,8 @@ export const scheduleAwarenessStrategy: AgentStrategy = {
         target: { app: journal.slug, route: '/new' },
         generatedAt: ctx.now,
         expiresAt: ctx.now + ONE_DAY_MS,
+        // Single-app strategy: only the journal's own rows were read.
+        provenance: [journal.slug],
       },
     ];
   },

@@ -593,22 +593,46 @@
   }
 
   /**
-   * P1A.2 — agent.insights scoping.
+   * P1A.2 — agent.insights source-data invariant.
    *
-   * Returns insights from the local agent whose source-data is
-   * accessible to the calling app. An insight is accessible if its
-   * `target.app` matches the caller's slug OR the caller has been
-   * granted the intent the insight was derived from.
+   * Returns insights whose `provenance` is fully readable by the
+   * calling app. An app may read its own namespace + any intent it has
+   * been granted; an insight is visible iff every slug in its
+   * `provenance` is the caller's own slug OR an app whose granted
+   * intent the caller consumes (i.e. data the caller could already
+   * see). System insights with empty provenance are visible to all.
    *
-   * The current `Insight` shape doesn't carry explicit provenance
-   * metadata, so we conservatively scope by `target.app` matching the
-   * caller. Cross-app insights (e.g. "your Recipe + Habit data say
-   * X") are dropped unless the caller is one of the apps in the chain.
+   * This is the load-bearing privacy guarantee for the agent: a
+   * cross-app correlation derived from data the caller never had
+   * access to does not leak through `agent.insights`, even if the
+   * insight is targeted at the caller.
    */
   function insightsForCaller(callerAppId: string): readonly Insight[] {
     const caller = appById.get(callerAppId);
     if (!caller) return [];
-    return agentInsights.filter((insight) => insight.target.app === caller.slug);
+    const callerConsumes = new Set<string>(
+      caller.permissions.capabilities.crossAppIntents?.consumes ?? [],
+    );
+    const readableSlugs = new Set<string>([caller.slug]);
+    if (callerConsumes.size > 0) {
+      for (const app of apps) {
+        if (app.id === caller.id) continue;
+        const provides = app.permissions.capabilities.crossAppIntents?.provides ?? [];
+        for (const intent of provides) {
+          if (!callerConsumes.has(intent)) continue;
+          if (!isIntentGranted(intentGrants, caller.id, intent)) continue;
+          readableSlugs.add(app.slug);
+          break;
+        }
+      }
+    }
+    return agentInsights.filter((insight) => {
+      if (insight.provenance.length === 0) return true;
+      for (const slug of insight.provenance) {
+        if (!readableSlugs.has(slug)) return false;
+      }
+      return true;
+    });
   }
 
   function insertRow(appId: string, payload: unknown): LocalRow {

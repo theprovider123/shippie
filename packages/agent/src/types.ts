@@ -38,6 +38,14 @@ export interface Insight {
   expiresAt?: number;
   /** Wall-clock ms when this insight was generated. */
   generatedAt: number;
+  /**
+   * App slugs whose data contributed to this insight. The container
+   * uses this for the source-data invariant: an iframe app only ever
+   * sees insights every entry in `provenance` is either its own slug
+   * or an intent it consumes. An empty array means "system insight,
+   * no app-namespace data" — visible to all callers.
+   */
+  provenance: readonly string[];
 }
 
 export interface AgentRow {
