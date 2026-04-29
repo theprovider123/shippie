@@ -39,6 +39,7 @@ import {
 } from '@shippie/app-package-contract';
 import { getDrizzleClient, schema } from '../db/client';
 import { extractZipSafe } from './zip-extract';
+import { normalizeDeployOutput } from './output-normalize';
 import { deriveManifest, type ShippieJsonLite } from './manifest';
 import { runPreflight, type PreflightReport } from './preflight';
 import { uploadFilesToR2 } from './r2-upload';
@@ -104,15 +105,29 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     emitter.emit({ type: 'deploy_failed', reason: extracted.reason, step: 'extract' });
     return failReport(input.slug, extracted.reason);
   }
-  const files = extracted.files;
-  const initialTotalBytes = extracted.totalBytes;
+  let files = extracted.files;
+  let totalBytes = extracted.totalBytes;
   emitter.emit({
     type: 'deploy_received',
     slug: input.slug,
     version: 0, // not yet known; updated below
     files: files.size,
-    bytes: initialTotalBytes,
+    bytes: totalBytes,
   });
+
+  // 1b. Normalize framework output folders (`dist`, `out`, `build`, ...)
+  // to the runtime root. Without this, a normal Vite/Next/Svelte export can
+  // pass preflight but fail live because `/` cannot find root index.html.
+  const normalized = normalizeDeployOutput(files);
+  files = normalized.files;
+  totalBytes = normalized.totalBytes;
+  if (normalized.indexPath) {
+    emitter.emit({
+      type: 'framework_detected',
+      framework: normalized.framework,
+      indexPath: normalized.indexPath,
+    });
+  }
 
   // 2. Manifest
   const manifestResult = deriveManifest({
@@ -130,7 +145,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     slug: input.slug,
     manifest: { type: manifest.type, name: manifest.name },
     files,
-    totalBytes: initialTotalBytes,
+    totalBytes,
     reservedSlugs: input.reservedSlugs,
   });
 
@@ -139,7 +154,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       success: false,
       version: 0,
       files: files.size,
-      totalBytes: initialTotalBytes,
+      totalBytes,
       preflight,
       liveUrl: '',
       reason: preflight.blockers.map((b) => b.title).join(' · '),
@@ -207,7 +222,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   });
 
   // 7. Upload to R2
-  emitter.emit({ type: 'upload_started', files: files.size, bytes: initialTotalBytes });
+  emitter.emit({ type: 'upload_started', files: files.size, bytes: totalBytes });
   let upload: Awaited<ReturnType<typeof uploadFilesToR2>>;
   try {
     upload = await uploadFilesToR2(input.r2, input.slug, version, files);

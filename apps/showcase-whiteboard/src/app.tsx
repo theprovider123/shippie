@@ -6,9 +6,12 @@ import {
   type Group,
 } from '@shippie/proximity';
 import { renderQrSvg } from '@shippie/sdk/wrapper';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import * as Y from 'yjs';
 import { appendPoint, bindBoard, strokeToYMap, yMapToStroke } from './board.ts';
 import type { BoardCommand, Stroke, StrokePoint } from './types.ts';
+
+const shippie = createShippieIframeSdk({ appId: 'app_whiteboard' });
 
 const APP_SLUG = 'whiteboard';
 const PALETTE = ['#FAF7EF', '#E8603C', '#3E78D6', '#2EAD64', '#E0B345', '#B23AB2'];
@@ -151,6 +154,12 @@ function Room(props: { group: Group; onLeave: () => void }) {
   const [width, setWidth] = useState(3);
   const [memberCount, setMemberCount] = useState(0);
   const [showShare, setShowShare] = useState(true);
+  // P3 — stroke-replay scrubber. When active, repaint only renders
+  // strokes 0..replayIndex; pointer input is disabled until the user
+  // exits replay. Pure-canvas implementation; no extra log needed
+  // because the Yjs strokesArray is already the chronological record.
+  const [replayActive, setReplayActive] = useState(false);
+  const [replayIndex, setReplayIndex] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -207,12 +216,15 @@ function Room(props: { group: Group; onLeave: () => void }) {
     // We paint everything in the doc each repaint. With more than a few
     // hundred strokes you'd want incremental painting + offscreen
     // canvases; the showcase keeps it simple.
-    for (let i = 0; i < board.strokesArray.length; i++) {
+    const upper = replayActive
+      ? Math.min(replayIndex, board.strokesArray.length)
+      : board.strokesArray.length;
+    for (let i = 0; i < upper; i++) {
       const m = board.strokesArray.get(i);
       if (!m) continue;
       drawStroke(ctx, yMapToStroke(m));
     }
-  }, [board]);
+  }, [board, replayActive, replayIndex]);
 
   // Re-render when the shared doc changes (remote update or local).
   useEffect(() => {
@@ -239,9 +251,13 @@ function Room(props: { group: Group; onLeave: () => void }) {
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (replayActive) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
       canvas.setPointerCapture(e.pointerId);
+      // 'toggle' is the closest preset for a quick stroke-start tick;
+      // iframe apps can only fire built-in textures (no custom names).
+      shippie.feel.texture('toggle');
       const rect = canvas.getBoundingClientRect();
       const point: StrokePoint = {
         x: e.clientX - rect.left,
@@ -301,6 +317,9 @@ function Room(props: { group: Group; onLeave: () => void }) {
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     canvas?.releasePointerCapture(e.pointerId);
+    if (inProgress.current) {
+      shippie.feel.texture('confirm');
+    }
     inProgress.current = null;
   }, []);
 
@@ -309,7 +328,23 @@ function Room(props: { group: Group; onLeave: () => void }) {
     sharedState.doc.transact(() => {
       while (board.strokesArray.length > 0) board.strokesArray.delete(0, 1);
     });
+    shippie.feel.texture('delete');
   }, [board, cmdLog, group, sharedState]);
+
+  const totalStrokes = board.strokesArray.length;
+
+  const handleReplayToggle = useCallback(() => {
+    setReplayActive((active) => {
+      const next = !active;
+      if (next) {
+        setReplayIndex(0);
+        shippie.feel.texture('navigate');
+      } else {
+        shippie.feel.texture('toggle');
+      }
+      return next;
+    });
+  }, []);
 
   const handleExport = useCallback(() => {
     const canvas = canvasRef.current;
@@ -376,12 +411,54 @@ function Room(props: { group: Group; onLeave: () => void }) {
         />
         <button onClick={handleClear} style={ghostBtnStyle}>Clear</button>
         <button onClick={handleExport} style={ghostBtnStyle}>Export</button>
+        <button
+          onClick={handleReplayToggle}
+          style={{
+            ...ghostBtnStyle,
+            ...(replayActive ? { borderColor: '#FAF7EF', color: '#FAF7EF' } : {}),
+          }}
+          disabled={totalStrokes === 0}
+        >
+          {replayActive ? 'Stop replay' : 'Replay'}
+        </button>
         <button onClick={props.onLeave} style={ghostBtnStyle}>Leave</button>
       </header>
+      {replayActive && (
+        <div
+          style={{
+            padding: '8px 14px',
+            background: '#1B1813',
+            borderBottom: '1px solid #2A2520',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <span style={{ color: '#9C9385', fontSize: 12 }}>
+            {replayIndex} / {totalStrokes}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={totalStrokes}
+            value={replayIndex}
+            onChange={(e) => setReplayIndex(Number(e.target.value))}
+            style={{ flex: 1 }}
+            aria-label="Stroke replay position"
+          />
+        </div>
+      )}
       <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#FAF7EF' }}>
         <canvas
           ref={canvasRef}
-          style={{ width: '100%', height: '100%', touchAction: 'none', display: 'block', cursor: 'crosshair' }}
+          style={{
+            width: '100%',
+            height: '100%',
+            touchAction: 'none',
+            display: 'block',
+            cursor: replayActive ? 'default' : 'crosshair',
+            pointerEvents: replayActive ? 'none' : 'auto',
+          }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
