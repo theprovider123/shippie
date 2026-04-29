@@ -50,6 +50,12 @@
     edgeSwipeMaxAngle?: number;
     /** Width in CSS px of the touch zone along the left edge. */
     edgeGrabberWidth?: number;
+    /**
+     * Pulse the bottom-pill once on mount to telegraph its existence to
+     * first-time users. Parent gates this with localStorage so it never
+     * repeats on the same device.
+     */
+    firstRun?: boolean;
   }
 
   let {
@@ -60,6 +66,7 @@
     edgeSwipeThreshold = 20,
     edgeSwipeMaxAngle = 30,
     edgeGrabberWidth = 24,
+    firstRun = false,
   }: Props = $props();
 
   // Gesture-tuning constants. Pulled out for ease of real-phone
@@ -165,7 +172,13 @@
     onpointercancel={handlePointerUp}
     role="presentation"
   ></div>
-  <button class="bottom-pill" type="button" onclick={handlePillTap} aria-label="Open app switcher">
+  <button
+    class="bottom-pill"
+    class:first-run={firstRun}
+    type="button"
+    onclick={handlePillTap}
+    aria-label="Open app switcher"
+  >
     <span class="pill-handle" aria-hidden="true"></span>
   </button>
 {/if}
@@ -237,6 +250,21 @@
   .bottom-pill:hover .pill-handle,
   .bottom-pill:focus-visible .pill-handle {
     background: rgba(20, 18, 15, 0.5);
+  }
+  /* First-run pulse: one-shot animation on the pill-handle the very
+     first time a device enters focused mode. Telegraphs that the pill
+     is interactive without a toast or modal. */
+  .bottom-pill.first-run .pill-handle {
+    animation: shippie-pill-pulse 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
+  }
+  @keyframes shippie-pill-pulse {
+    0%   { transform: scale(1);    background: rgba(20, 18, 15, 0.25); }
+    35%  { transform: scale(1.1);  background: rgba(20, 18, 15, 0.5); }
+    70%  { transform: scale(0.95); background: rgba(20, 18, 15, 0.5); }
+    100% { transform: scale(1);    background: rgba(20, 18, 15, 0.25); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bottom-pill.first-run .pill-handle { animation: none; }
   }
 
   /* Backdrop: dim + scale the underlying app while the drawer is

@@ -128,6 +128,10 @@
   // an EmptyState in focused mode instead of silently swapping the user
   // onto a different app.
   let notFoundSlug = $state<string | null>(null);
+  // True on a user's first-ever entry into focused mode. Drives a one-
+  // shot pulse on the bottom-pill so first-run users learn the gesture.
+  // Gated by localStorage so the hint never repeats on the same device.
+  let firstRunHint = $state(false);
   let receiptsByApp = $state<Record<string, AppReceipt>>({});
   let receiptExport = $state('');
   let backupPassphrase = $state('');
@@ -1208,6 +1212,21 @@
       }
     }
     storageReady = true;
+    // First-run pill hint: pulse the bottom-pill once when this device
+    // enters focused mode for the first time, so users discover the
+    // exit gesture. Gated by localStorage so it never repeats.
+    if (data.focused) {
+      try {
+        const seen = localStorage.getItem('shippie:exit-hint-seen');
+        if (!seen) {
+          firstRunHint = true;
+          localStorage.setItem('shippie:exit-hint-seen', '1');
+        }
+      } catch {
+        // localStorage may be blocked (private browsing, partitioned
+        // contexts) — fall through silently. The hint just won't fire.
+      }
+    }
     void loadCollection();
   });
 
@@ -1276,6 +1295,20 @@
     branch, not a behaviour branch.
   -->
   <section class="focused-shell">
+    <a
+      class="focused-exit-pill"
+      href="/container"
+      aria-label="Leave this app and return to Shippie"
+    >
+      <img
+        src="/__shippie-pwa/icon.svg"
+        alt=""
+        width="20"
+        height="20"
+        aria-hidden="true"
+      />
+      <span>Shippie</span>
+    </a>
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -1312,6 +1345,7 @@
       open={focusedDrawerOpen}
       onOpenChange={(value) => (focusedDrawerOpen = value)}
       edge="left"
+      firstRun={firstRunHint}
     >
       <div class="focused-drawer">
         <header class="focused-drawer-head">
@@ -2144,6 +2178,44 @@
     display: grid;
     place-items: center;
     padding: clamp(1.5rem, 4vw, 3rem);
+  }
+
+  /* Persistent exit affordance — fixed top-left, always visible in
+     focused mode. Distinct from the drawer-internal .focused-home
+     (which is gated behind opening the drawer). Sits above the iframe;
+     never obscures the corner of the underlying app's content beyond
+     a small badge. Respects iOS safe-area-inset-top. */
+  .focused-exit-pill {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + var(--space-md));
+    left: calc(env(safe-area-inset-left, 0px) + var(--space-md));
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.65rem 0.4rem 0.45rem;
+    background: rgba(20, 18, 15, 0.65);
+    border: 1px solid rgba(168, 196, 145, 0.35);
+    color: var(--text);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: -0.015em;
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0.7;
+    transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  }
+  .focused-exit-pill:hover,
+  .focused-exit-pill:focus-visible {
+    opacity: 1;
+    background: rgba(20, 18, 15, 0.85);
+    border-color: var(--sage-leaf);
+  }
+  .focused-exit-pill img {
+    display: block;
+    flex-shrink: 0;
   }
 
   .focused-drawer {
