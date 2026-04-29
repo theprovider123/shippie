@@ -17,7 +17,7 @@
  *      (`apps:{slug}:meta`, `apps:{slug}:csp`, then `apps:{slug}:active`
  *      flip-last for atomicity from the Worker's read perspective).
  */
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, isNotNull } from 'drizzle-orm';
 import type { D1Database, R2Bucket, KVNamespace } from '@cloudflare/workers-types';
 import {
   analyseApp,
@@ -27,6 +27,7 @@ import {
   computeSecurityScore,
   computePrivacyGrade,
   localize,
+  type SecurityScanReport,
   type LocalizeTransform,
 } from '@shippie/analyse';
 import { buildShippiePackage, createShippiePackageArchive } from '@shippie/app-package-builder';
@@ -34,6 +35,7 @@ import {
   SHIPPIE_PERMISSIONS_SCHEMA,
   type ContainerEligibility,
   type AppPermissions,
+  type PackageDomains,
   type SourceMetadata,
   type TrustReport,
 } from '@shippie/app-package-contract';
@@ -180,6 +182,21 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       preflight,
       liveUrl: '',
       reason: preflight.blockers.map((b) => b.title).join(' · '),
+    };
+  }
+
+  const securityReport = runSecurityScan(files, null);
+  emitSecurityScanEvents(emitter, securityReport, files.size);
+  if (securityReport.blocks > 0) {
+    const blockedPreflight = preflightWithSecurityBlocks(preflight, securityReport);
+    return {
+      success: false,
+      version: 0,
+      files: files.size,
+      totalBytes,
+      preflight: blockedPreflight,
+      liveUrl: '',
+      reason: blockedPreflight.blockers.map((b) => b.title).join(' · '),
     };
   }
 
@@ -405,9 +422,10 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     console.error('[shippie:deploy] classifyKind failed', err);
   }
 
-  // Phase 2 Deploy Truth — security scan + privacy audit + deploy report
-  // artifact. All non-blocking: the scoring + gating happens in Phase 4.
-  // Today this is maker-facing only; users see the kind badge and that's it.
+  // Phase 2 Deploy Truth — privacy audit + deploy report artifact, reusing
+  // the security scan that already passed the pre-upload blocker gate above.
+  // Scores are still maker-facing only; users see kind/proof surfaces until
+  // the public trust card matures.
   try {
     await writeDeployReport({
       db,
@@ -424,6 +442,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       durationMs: Date.now() - startedAt,
       totalBytes: upload.totalBytes,
       preflight,
+      securityReport,
       emitter,
     });
   } catch (err) {
@@ -487,6 +506,59 @@ function failReport(slug: string, reason: string): DeployStaticResult {
     },
     liveUrl: '',
     reason,
+  };
+}
+
+function emitSecurityScanEvents(
+  emitter: DeployEventEmitter,
+  securityReport: SecurityScanReport,
+  filesToScan: number,
+): void {
+  emitter.emit({
+    type: 'security_scan_started',
+    filesToScan,
+  });
+  // Emit one event per finding so dashboard / stream consumers can
+  // render incrementally. Capped to first 50 to keep the artifact
+  // sane on pathological bundles.
+  for (const finding of securityReport.findings.slice(0, 50)) {
+    emitter.emit({
+      type: 'secret_detected',
+      rule: finding.rule,
+      severity: finding.severity,
+      location: finding.location,
+      redacted: finding.snippet ?? '',
+      reason: finding.reason,
+    });
+  }
+  emitter.emit({
+    type: 'security_scan_finished',
+    blocks: securityReport.blocks,
+    warns: securityReport.warns,
+    infos: securityReport.infos,
+  });
+}
+
+export function preflightWithSecurityBlocks(
+  preflight: PreflightReport,
+  securityReport: SecurityScanReport,
+): PreflightReport {
+  if (securityReport.blocks === 0) return preflight;
+  const securityBlockers = securityReport.findings
+    .filter((finding) => finding.severity === 'block')
+    .map((finding) => ({
+      rule: `security:${finding.rule}`,
+      severity: 'block' as const,
+      title: finding.title,
+      detail: `${finding.location}: ${finding.reason}`,
+    }));
+  const findings = [...preflight.findings, ...securityBlockers];
+  const blockers = [...preflight.blockers, ...securityBlockers];
+  return {
+    ...preflight,
+    passed: false,
+    findings,
+    blockers,
   };
 }
 
@@ -644,6 +716,7 @@ interface WriteDeployReportInput {
   durationMs: number;
   totalBytes: number;
   preflight: PreflightReport;
+  securityReport?: SecurityScanReport;
   emitter: DeployEventEmitter;
 }
 
@@ -672,30 +745,10 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   // Security scan.
   let securityReport;
   try {
-    input.emitter.emit({
-      type: 'security_scan_started',
-      filesToScan: input.files.size,
-    });
-    securityReport = runSecurityScan(input.files, null);
-    // Emit one event per finding so dashboard / stream consumers can
-    // render incrementally. Capped to first 50 to keep the artifact
-    // sane on pathological bundles.
-    for (const finding of securityReport.findings.slice(0, 50)) {
-      input.emitter.emit({
-        type: 'secret_detected',
-        rule: finding.rule,
-        severity: finding.severity,
-        location: finding.location,
-        redacted: finding.snippet ?? '',
-        reason: finding.reason,
-      });
+    securityReport = input.securityReport ?? runSecurityScan(input.files, null);
+    if (!input.securityReport) {
+      emitSecurityScanEvents(input.emitter, securityReport, input.files.size);
     }
-    input.emitter.emit({
-      type: 'security_scan_finished',
-      blocks: securityReport.blocks,
-      warns: securityReport.warns,
-      infos: securityReport.infos,
-    });
     report.security = {
       findings: securityReport.findings,
       blocks: securityReport.blocks,
@@ -845,6 +898,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   try {
     const packagePermissions = packagePermissionsFromManifest(input.manifest, input.slug);
     const packageTrustReport = packageTrustReportFromDeployReport(report);
+    const packageDomains = await packageDomainsForApp(input.db, input.appId, input.slug);
     const builtPackage = await buildShippiePackage({
       app: {
         id: `app_${input.slug}`,
@@ -858,9 +912,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
           id: input.makerId,
           name: input.makerId,
         },
-        domains: {
-          canonical: `https://${input.slug}.shippie.app`,
-        },
+        domains: packageDomains,
         runtime: {
           standalone: true,
           container: packageTrustReport.containerEligibility !== 'standalone_only',
@@ -1029,6 +1081,44 @@ function packagePermissionsFromManifest(manifest: ShippieJsonLite, slug: string)
     schema: SHIPPIE_PERMISSIONS_SCHEMA,
     capabilities,
   };
+}
+
+interface VerifiedDomainRow {
+  domain: string;
+  isCanonical: boolean;
+}
+
+async function packageDomainsForApp(
+  db: ReturnType<typeof getDrizzleClient>,
+  appId: string,
+  slug: string,
+): Promise<PackageDomains> {
+  const rows = await db
+    .select({
+      domain: schema.customDomains.domain,
+      isCanonical: schema.customDomains.isCanonical,
+    })
+    .from(schema.customDomains)
+    .where(and(eq(schema.customDomains.appId, appId), isNotNull(schema.customDomains.verifiedAt)));
+  return packageDomainsFromVerifiedRows(slug, rows);
+}
+
+export function packageDomainsFromVerifiedRows(
+  slug: string,
+  rows: readonly VerifiedDomainRow[],
+): PackageDomains {
+  const fallback = `https://${slug}.shippie.app`;
+  const urls = rows
+    .map((row) => ({
+      ...row,
+      url: `https://${row.domain}`,
+    }))
+    .sort((a, b) => a.domain.localeCompare(b.domain));
+  const canonical = urls.find((row) => row.isCanonical)?.url ?? fallback;
+  const custom = urls
+    .map((row) => row.url)
+    .filter((url) => url !== canonical);
+  return custom.length > 0 ? { canonical, custom } : { canonical };
 }
 
 function packageTrustReportFromDeployReport(report: DeployReport): TrustReport {

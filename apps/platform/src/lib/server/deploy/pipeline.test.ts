@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import { containerEligibilityFromDeployReport, injectEssentials } from './pipeline';
+import {
+  containerEligibilityFromDeployReport,
+  injectEssentials,
+  packageDomainsFromVerifiedRows,
+  preflightWithSecurityBlocks,
+} from './pipeline';
 import type { ShippieJsonLite } from './manifest';
 import type { DeployReport } from './deploy-report';
+import type { PreflightReport } from './preflight';
+import type { SecurityScanReport } from '@shippie/analyse';
 
 const manifest = {
   name: 'Recipe Saver',
@@ -263,5 +270,97 @@ describe('containerEligibilityFromDeployReport', () => {
         }),
       ),
     ).toBe('blocked');
+  });
+});
+
+describe('preflightWithSecurityBlocks', () => {
+  const passedPreflight: PreflightReport = {
+    passed: true,
+    findings: [{ rule: 'entry-file-present', severity: 'pass', title: 'Root index.html found' }],
+    warnings: [],
+    blockers: [],
+    durationMs: 1,
+  };
+
+  test('keeps preflight passed when security has no block findings', () => {
+    const security: SecurityScanReport = {
+      findings: [
+        {
+          rule: 'secret_firebase_apikey',
+          severity: 'warn',
+          title: 'Firebase / Google Cloud API key in bundle',
+          reason: 'Scope it in GCP.',
+          location: 'assets/app.js',
+        },
+      ],
+      blocks: 0,
+      warns: 1,
+      infos: 0,
+      scannedFiles: 2,
+    };
+
+    expect(preflightWithSecurityBlocks(passedPreflight, security)).toBe(passedPreflight);
+  });
+
+  test('turns block-level secret findings into preflight blockers', () => {
+    const security: SecurityScanReport = {
+      findings: [
+        {
+          rule: 'secret_stripe_key',
+          severity: 'block',
+          title: 'Stripe secret key in client bundle',
+          reason: 'Stripe secret keys must never reach the browser.',
+          location: 'assets/app.js',
+          snippet: 'sk_live_...',
+        },
+      ],
+      blocks: 1,
+      warns: 0,
+      infos: 0,
+      scannedFiles: 2,
+    };
+
+    const result = preflightWithSecurityBlocks(passedPreflight, security);
+    expect(result.passed).toBe(false);
+    expect(result.blockers).toEqual([
+      {
+        rule: 'security:secret_stripe_key',
+        severity: 'block',
+        title: 'Stripe secret key in client bundle',
+        detail: 'assets/app.js: Stripe secret keys must never reach the browser.',
+      },
+    ]);
+    expect(result.findings.at(-1)?.rule).toBe('security:secret_stripe_key');
+  });
+});
+
+describe('packageDomainsFromVerifiedRows', () => {
+  test('uses the Shippie subdomain when no custom domains are verified', () => {
+    expect(packageDomainsFromVerifiedRows('recipe-saver', [])).toEqual({
+      canonical: 'https://recipe-saver.shippie.app',
+    });
+  });
+
+  test('promotes the verified canonical custom domain and preserves alternates', () => {
+    expect(
+      packageDomainsFromVerifiedRows('recipe-saver', [
+        { domain: 'recipes.example.com', isCanonical: false },
+        { domain: 'cook.example.com', isCanonical: true },
+      ]),
+    ).toEqual({
+      canonical: 'https://cook.example.com',
+      custom: ['https://recipes.example.com'],
+    });
+  });
+
+  test('keeps custom domains as alternates when none is canonical', () => {
+    expect(
+      packageDomainsFromVerifiedRows('recipe-saver', [
+        { domain: 'recipes.example.com', isCanonical: false },
+      ]),
+    ).toEqual({
+      canonical: 'https://recipe-saver.shippie.app',
+      custom: ['https://recipes.example.com'],
+    });
   });
 });
