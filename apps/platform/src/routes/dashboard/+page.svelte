@@ -10,7 +10,10 @@
 </svelte:head>
 
 <header class="header">
-  <p class="eyebrow">Dashboard</p>
+  <p class="eyebrow">
+    <img src="/__shippie-pwa/icon.svg" alt="" width="14" height="14" />
+    Dashboard
+  </p>
   <h1>Welcome{data.user.displayName ? `, ${data.user.displayName}` : ''}.</h1>
   <p class="lede">Signed in as <strong>{data.user.email}</strong></p>
 </header>
@@ -52,6 +55,9 @@
 <style>
   .header { margin-bottom: 2rem; }
   .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 11px;
     letter-spacing: 0.16em;
@@ -59,6 +65,7 @@
     color: #E8603C;
     margin: 0 0 0.25rem 0;
   }
+  .eyebrow img { display: block; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.5rem; margin: 0; letter-spacing: -0.02em; }
   .lede { color: #8B847A; }
   .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
@@ -68,7 +75,7 @@
     border: 1px solid #E5DDC8;
     text-decoration: none;
     color: inherit;
-    border-radius: 12px;
+    border-radius: 0;
     transition: border-color 0.12s;
   }
   .card:hover { border-color: #E8603C; }
@@ -92,8 +99,8 @@
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid rgba(0,0,0,0.06);
   }
-  .swatch { width: 12px; height: 12px; border-radius: 3px; }
-  .status { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.05); }
+  .swatch { width: 12px; height: 12px; border-radius: 0; }
+  .status { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; padding: 2px 8px; border-radius: 0; background: rgba(0,0,0,0.05); }
   .status-success { background: rgba(46,125,91,0.15); color: #2E7D5B; }
   .status-failed { background: rgba(180,63,42,0.15); color: #B43F2A; }
   .vis { font-size: 12px; color: #8B847A; }
@@ -101,7 +108,7 @@
   .logout { margin-top: 2rem; }
   .logout button {
     background: transparent; border: 1px solid #E5DDC8; padding: 0.5rem 1.5rem;
-    border-radius: 999px; font-size: 13px; cursor: pointer; color: inherit;
+    border-radius: 0; font-size: 13px; cursor: pointer; color: inherit;
   }
   @media (prefers-color-scheme: dark) {
     .card { border-color: #2A251E; }

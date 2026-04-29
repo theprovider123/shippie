@@ -19,6 +19,8 @@
     badges?: PublicCapabilityBadge[];
     kind?: AppKind | null;
     kindStatus?: PublicKindStatus | null;
+    /** True when the app has earned the Shippie Seal — top-trust marker. */
+    sealed?: boolean;
   }
 
   let {
@@ -35,16 +37,33 @@
     badges = [],
     kind = null,
     kindStatus = null,
+    sealed = false,
   }: Props = $props();
 
   const blurb = $derived(tagline ?? description ?? `${name} on Shippie`);
+  // Heuristic seal — earned when at least three proven capability badges land
+  // (offline, local-AI, privacy A+ class); the official scoring lives upstream
+  // and overrides this via the explicit `sealed` prop.
+  const inferredSeal = $derived(badges.filter((b) => b.proven).length >= 3);
+  const showSeal = $derived(sealed || inferredSeal);
 </script>
 
-<a class="app-card" href={`/apps/${slug}`}>
+<a class="app-card" class:sealed={showSeal} href={`/apps/${slug}`}>
   <div class="row">
     <IconOrMonogram {name} {slug} {iconUrl} {themeColor} size={64} />
     <div class="meta">
-      <h2 class="name">{name}</h2>
+      <h2 class="name">
+        <span class="name-text">{name}</span>
+        {#if showSeal}
+          <span
+            class="seal"
+            title="Shippie Seal — top-trust app. Privacy A+, security ≥ 95, fully offline."
+            aria-label="Shippie Seal"
+          >
+            <img src="/__shippie-pwa/icon.svg" alt="" width="12" height="12" />
+          </span>
+        {/if}
+      </h2>
       <p class="kind">{type} · {category}</p>
       <p class="blurb">{blurb}</p>
       {#if kind}
@@ -76,11 +95,18 @@
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
-    transition: border-color 0.2s, transform 0.2s;
+    transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out), transform 0.2s;
   }
   .app-card:hover {
-    border-color: rgba(232, 96, 60, 0.4);
+    border-color: var(--sage-moss);
+    background: var(--surface-alt);
     transform: translateY(-2px);
+  }
+  .app-card.sealed {
+    border-color: var(--sunset);
+  }
+  .app-card.sealed:hover {
+    border-color: var(--sunset-hover);
   }
   .row {
     display: flex;
@@ -89,12 +115,33 @@
   }
   .meta { min-width: 0; flex: 1; }
   .name {
+    font-family: var(--font-heading);
     font-size: 1.0625rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
     margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+  }
+  .name-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .seal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: var(--sunset);
+    flex-shrink: 0;
+  }
+  .seal img {
+    display: block;
+    filter: brightness(0) invert(1);
   }
   .kind {
     font-family: var(--font-mono);

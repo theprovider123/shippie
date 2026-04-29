@@ -46,7 +46,10 @@
 
 <main class="docs-page">
   <header class="head">
-    <p class="eyebrow">Documentation</p>
+    <p class="eyebrow">
+      <img src="/__shippie-pwa/icon.svg" alt="" width="14" height="14" />
+      Documentation
+    </p>
     <h1 class="title">Ship an app on Shippie.</h1>
     <p class="lede">
       Shippie turns a git repo (or a zip, or a URL) into an installable PWA on a marketplace in
@@ -180,6 +183,9 @@
   }
   .head { margin-bottom: var(--space-2xl); }
   .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     letter-spacing: 0.12em;
@@ -187,6 +193,7 @@
     color: var(--text-light);
     margin: 0;
   }
+  .eyebrow img { display: block; }
   .title {
     font-family: var(--font-heading);
     font-size: clamp(2.2rem, 5vw, 3.4rem);
@@ -212,7 +219,7 @@
     padding: var(--space-md);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     color: var(--text);
     transition: border-color 0.2s;
   }
@@ -268,7 +275,7 @@
   .code {
     background: var(--bg-pure);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 0;
     padding: var(--space-md);
     font-family: var(--font-mono);
     font-size: 0.9rem;

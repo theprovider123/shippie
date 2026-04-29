@@ -44,6 +44,10 @@
 
 <div class="page">
   <header class="head wrap">
+    <p class="eyebrow">
+      <img src="/__shippie-pwa/icon.svg" alt="" width="14" height="14" />
+      Local-first marketplace
+    </p>
     <h1 class="title">Apps on Shippie</h1>
     <p class="lede">
       No app store. Just the web, installed. Vibecoded apps, on your phone in 60 seconds.
@@ -121,6 +125,18 @@
     padding-bottom: var(--space-3xl);
   }
   .head { padding-bottom: var(--space-xl); }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin: 0 0 var(--space-sm);
+  }
+  .eyebrow img { display: block; }
   .title {
     font-family: var(--font-heading);
     font-size: clamp(2.2rem, 5vw, 3.4rem);
@@ -150,7 +166,7 @@
     letter-spacing: 0.08em;
     color: var(--text-light);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: 0;
     transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
   .chip:hover { color: var(--sunset); border-color: var(--sunset); }
@@ -179,7 +195,7 @@
     font-size: var(--caption-size);
     color: var(--text-light);
     border: 1px solid var(--border-light);
-    border-radius: 999px;
+    border-radius: 0;
     text-decoration: none;
     transition: color 0.15s, border-color 0.15s, background 0.15s;
   }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import AppCard from './AppCard.svelte';
+  import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
@@ -23,13 +24,27 @@
   interface Props {
     apps: AppForGrid[];
     emptyLabel?: string;
+    emptyBody?: string;
+    emptyActionLabel?: string;
+    emptyActionHref?: string;
   }
 
-  let { apps, emptyLabel = 'No apps yet.' }: Props = $props();
+  let {
+    apps,
+    emptyLabel = 'No apps yet.',
+    emptyBody = '',
+    emptyActionLabel = '',
+    emptyActionHref = '',
+  }: Props = $props();
 </script>
 
 {#if apps.length === 0}
-  <p class="empty">{emptyLabel}</p>
+  <EmptyState
+    title={emptyLabel}
+    body={emptyBody}
+    actionLabel={emptyActionLabel}
+    actionHref={emptyActionHref}
+  />
 {:else}
   <ul class="grid" role="list">
     {#each apps as app (app.slug)}
@@ -48,12 +63,5 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--space-md);
-  }
-  .empty {
-    color: var(--text-light);
-    font-family: var(--font-mono);
-    font-size: var(--small-size);
-    padding: var(--space-md);
-    border: 1px dashed var(--border-light);
   }
 </style>

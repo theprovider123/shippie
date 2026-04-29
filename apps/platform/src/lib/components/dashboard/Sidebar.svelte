@@ -6,7 +6,19 @@
 </script>
 
 <aside class="sidebar">
-  <a class="brand" href="/">shippie</a>
+  <a class="brand" href="/">
+    <img
+      src="/__shippie-pwa/icon.svg"
+      alt=""
+      width="28"
+      height="28"
+      aria-hidden="true"
+    />
+    <span>
+      <strong>shippie</strong>
+      <small>maker</small>
+    </span>
+  </a>
   <p class="user">{user.displayName ?? user.email}</p>
 
   <nav class="nav">
@@ -42,12 +54,35 @@
     box-sizing: border-box;
   }
   .brand {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: #E8603C;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     text-decoration: none;
-    font-size: 13px;
+    color: inherit;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-light, #E5DDC8);
+    margin-bottom: 0.25rem;
+  }
+  .brand img { display: block; flex-shrink: 0; }
+  .brand strong {
+    display: block;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #14120F;
+  }
+  .brand small {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #E8603C;
+    margin-top: 1px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .brand strong { color: #EDE4D3; }
   }
   .user { font-size: 12px; color: #8B847A; margin: 0; }
   .nav { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -55,7 +90,7 @@
     text-decoration: none;
     color: #14120F;
     padding: 0.5rem 0.75rem;
-    border-radius: 6px;
+    border-radius: 0;
     font-size: 14px;
   }
   .nav a:hover { background: rgba(0,0,0,0.04); }
@@ -68,7 +103,7 @@
     text-decoration: none;
     height: 40px;
     line-height: 40px;
-    border-radius: 999px;
+    border-radius: 0;
     font-weight: 600;
     font-size: 13px;
   }
@@ -86,13 +121,13 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0.75rem;
-    border-radius: 6px;
+    border-radius: 0;
     text-decoration: none;
     color: #14120F;
     font-size: 13px;
   }
   .row:hover { background: rgba(0,0,0,0.04); }
-  .dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 0; flex-shrink: 0; }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (prefers-color-scheme: dark) {
     .sidebar { border-color: #2A251E; }

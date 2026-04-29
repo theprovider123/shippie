@@ -11,6 +11,14 @@
 </svelte:head>
 
 <section class="hero wrap">
+  <img
+    src="/__shippie-pwa/icon.svg"
+    alt=""
+    width="80"
+    height="80"
+    class="hero-mark"
+    aria-hidden="true"
+  />
   <p class="eyebrow">The math</p>
   <h1 class="title">Why Shippie.</h1>
   <p class="lede">
@@ -75,6 +83,12 @@
     padding: var(--space-3xl) 0 var(--space-2xl);
     max-width: 760px;
   }
+  .hero-mark {
+    display: block;
+    width: 80px;
+    height: 80px;
+    margin-bottom: var(--space-md);
+  }
   .eyebrow {
     font-family: var(--font-mono);
     font-size: var(--small-size);
@@ -113,7 +127,7 @@
     padding: var(--space-xl);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 0;
   }
   .number-card .big {
     font-family: var(--font-heading);

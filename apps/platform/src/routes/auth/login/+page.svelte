@@ -13,6 +13,14 @@
 <main class="page">
   <div class="card">
     <a class="back" href="/">← shippie.app</a>
+    <img
+      src="/__shippie-pwa/icon.svg"
+      alt=""
+      width="64"
+      height="64"
+      class="login-mark"
+      aria-hidden="true"
+    />
     <h1>Sign in to Shippie</h1>
     <p class="lede">We'll send you a magic link. No password.</p>
 
@@ -94,6 +102,12 @@
     color: #E8603C;
     text-decoration: none;
   }
+  .login-mark {
+    display: block;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 0.25rem;
+  }
   h1 {
     font-family: 'Fraunces', Georgia, serif;
     font-size: clamp(1.75rem, 4vw, 2.25rem);
@@ -131,7 +145,7 @@
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
-    border-radius: 999px;
+    border-radius: 0;
     margin-top: 0.5rem;
   }
   .btn-primary:hover { filter: brightness(1.05); }
@@ -145,7 +159,7 @@
     font-weight: 600;
     font-size: 15px;
     cursor: pointer;
-    border-radius: 999px;
+    border-radius: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;

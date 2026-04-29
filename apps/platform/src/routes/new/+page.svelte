@@ -10,6 +10,14 @@
 <main class="page">
   <div class="container">
     <header>
+      <img
+        src="/__shippie-pwa/icon.svg"
+        alt=""
+        width="64"
+        height="64"
+        class="header-mark"
+        aria-hidden="true"
+      />
       <h1>Ship your app</h1>
       <p class="lede">
         Get live at <code>{'<slug>'}.shippie.app</code> with the wrapper, the
@@ -71,6 +79,7 @@ shippie deploy ./dist</code></pre>
 <style>
   .page { min-height: 100dvh; padding: 4rem 1.5rem; background: #FAF7EF; color: #14120F; }
   .container { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
+  .header-mark { display: block; width: 64px; height: 64px; margin-bottom: 1rem; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(2rem, 5vw, 3rem); margin: 0; letter-spacing: -0.02em; }
   .lede { color: #8B847A; font-size: 17px; line-height: 1.6; }
 
@@ -85,10 +94,10 @@ shippie deploy ./dist</code></pre>
     font-size: 12px;
     color: #8B847A;
   }
-  .path-times li { padding: 0.3rem 0.6rem; border: 1px solid #E5DDC8; border-radius: 100px; }
+  .path-times li { padding: 0.3rem 0.6rem; border: 1px solid #E5DDC8; border-radius: 0; }
   .path-times strong { color: #14120F; }
 
-  .card { padding: 1.5rem 1.75rem; border: 1px solid #E5DDC8; border-radius: 12px; }
+  .card { padding: 1.5rem 1.75rem; border: 1px solid #E5DDC8; border-radius: 0; }
   .card h2 {
     font-family: 'Fraunces', Georgia, serif;
     font-size: 1.5rem;
@@ -109,7 +118,7 @@ shippie deploy ./dist</code></pre>
     background: #14120F;
     color: #EDE4D3;
     padding: 0.75rem 1rem;
-    border-radius: 8px;
+    border-radius: 0;
     font-size: 13px;
     margin: 0 0 1rem 0;
     overflow-x: auto;
@@ -120,7 +129,7 @@ shippie deploy ./dist</code></pre>
     padding: 1.5rem 1.75rem;
     border: 1px solid #E5DDC8;
     background: rgba(232, 96, 60, 0.04);
-    border-radius: 12px;
+    border-radius: 0;
   }
   .next h3 {
     font-family: 'Fraunces', Georgia, serif;

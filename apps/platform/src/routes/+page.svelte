@@ -8,15 +8,27 @@
 
 <section class="hero">
   <div class="wrap">
-    <p class="badge">Open source · Launched 2026</p>
+    <img
+      src="/__shippie-pwa/icon.svg"
+      alt=""
+      width="96"
+      height="96"
+      class="hero-mark"
+      aria-hidden="true"
+    />
+    <p class="badge">
+      <img src="/__shippie-pwa/icon.svg" alt="" width="11" height="11" />
+      Open source · Free forever
+    </p>
     <h1 class="hero-heading">
-      <span class="line">Build it with AI.</span>
-      <span class="line">On your phone.</span>
-      <span class="line accent">In 60 seconds.</span>
+      <span class="line">Ship <span class="accent">local.</span></span>
+      <span class="line">Your app. Your device.</span>
+      <span class="line">Your data.</span>
     </h1>
     <p class="hero-sub">
-      No app store. No review. No 30% cut.<br />
-      Wrap your app. Runs locally. Connects nearby. Open source.
+      Deploy any web app. Shippie wraps it into a phone-native experience,
+      runs it on the user's device, and connects nearby phones directly
+      when they're in the same room.
     </p>
     <div class="hero-ctas">
       <Button href="/new" variant="primary" size="lg">Deploy now →</Button>
@@ -26,6 +38,23 @@
       <em>60 seconds</em> for zip uploads, MCP, and CLI deploys.
       <a href="/docs#auto-deploys">GitHub auto-deploys take 2–5 min.</a>
     </p>
+
+    <article class="terms-card" aria-labelledby="hero-terms-title">
+      <header class="terms-head">
+        <p class="terms-eyebrow">The terms</p>
+        <h2 id="hero-terms-title" class="terms-title">Read in 60 seconds.</h2>
+        <p class="terms-meta">200 words · Plain English · v1</p>
+      </header>
+      <div class="terms-body">
+        <p><strong>Free.</strong> Shippie is free for makers. No tiers, no caps, no "free until you succeed". Tips welcome at <span class="mono">tip.shippie.app</span>.</p>
+        <p><strong>You own your code.</strong> We host it; you keep it. Open source platform. Fork it, self-host it, take it with you any time.</p>
+        <p><strong>We can't see end-user data.</strong> Apps store everything in SQLite on the user's phone. Shippie's servers never touch it. There is no database to breach because there is no database.</p>
+        <p><strong>We don't sell anything to advertisers.</strong> No ads, no tracking, no analytics piped to a third party. The only telemetry is per-app capability proofs the maker chooses to publish.</p>
+        <p><strong>We can take down apps that break the platform.</strong> Malware, illegal content, or attempts to exfiltrate user data get removed. We post every removal publicly with the reason.</p>
+        <p><strong>If we shut down, your apps still work.</strong> They're PWAs. The data is on the device. Shippie is the wrapper, not the runtime — pull the wrapper, the apps still run.</p>
+        <p>That's the deal. The architecture <em>is</em> the policy.</p>
+      </div>
+    </article>
   </div>
 </section>
 
@@ -111,30 +140,50 @@
   .hero {
     padding: var(--space-3xl) 0 var(--space-2xl);
     border-bottom: 1px solid var(--border-light);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    top: -120px;
+    right: -120px;
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(circle, rgba(232, 96, 60, 0.08), transparent 70%);
+    pointer-events: none;
+  }
+  .hero > .wrap { position: relative; z-index: 1; }
+  .hero-mark {
+    display: block;
+    width: 96px;
+    height: 96px;
+    margin: 0 0 var(--space-lg);
   }
   .badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.75rem;
+    gap: 0.45rem;
+    padding: 0.3rem 0.75rem;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--marigold);
     border: 1px solid var(--marigold);
-    border-radius: 100px;
     margin: 0 0 var(--space-xl);
   }
+  .badge img { display: block; }
   .hero-heading {
     font-family: var(--font-heading);
     font-weight: 600;
-    line-height: 1.05;
+    line-height: 1;
     font-size: clamp(2.4rem, 5vw + 0.4rem, 4.5rem);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.035em;
     margin: 0;
   }
   .hero-heading .line { display: block; }
-  .hero-heading .accent { color: var(--sunset); }
+  .hero-heading .accent { color: var(--sunset); font-style: italic; }
   .hero-sub {
     margin-top: var(--space-xl);
     max-width: 560px;
@@ -156,6 +205,61 @@
   }
   .hero-foot em { font-style: normal; color: var(--text); }
   .hero-foot a { color: var(--sunset); text-decoration: underline; }
+
+  .terms-card {
+    margin-top: var(--space-2xl);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--sunset);
+    padding: var(--space-xl);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+  @media (min-width: 768px) {
+    .terms-card {
+      grid-template-columns: 220px 1fr;
+      gap: var(--space-xl);
+    }
+  }
+  .terms-eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sunset);
+    margin: 0;
+  }
+  .terms-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    letter-spacing: -0.015em;
+    margin: var(--space-xs) 0 var(--space-sm);
+  }
+  .terms-meta {
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    color: var(--text-light);
+    margin: 0;
+  }
+  .terms-body {
+    font-family: var(--font-heading);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--text);
+    column-count: 1;
+  }
+  @media (min-width: 1100px) {
+    .terms-body { column-count: 2; column-gap: var(--space-xl); }
+  }
+  .terms-body p {
+    margin: 0 0 var(--space-md);
+    break-inside: avoid;
+  }
+  .terms-body p:first-child { font-weight: 500; }
+  .terms-body strong { color: var(--sunset); font-weight: 600; }
+  .terms-body em { font-style: italic; color: var(--text); }
+  .terms-body .mono { font-family: var(--font-mono); font-size: 0.95em; }
 
   .section { padding: var(--section-pad) 0; }
   .section-intro { margin-bottom: var(--space-2xl); max-width: 640px; }
@@ -190,7 +294,7 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
+    border-radius: 0;
     background: var(--sunset);
     color: var(--bg-pure);
     font-family: var(--font-mono);
