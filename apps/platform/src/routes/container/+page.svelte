@@ -79,6 +79,9 @@
     type Insight,
   } from '@shippie/agent';
   import InsightStrip from '$lib/container/InsightStrip.svelte';
+  import IntentPromptModal from '$lib/container/IntentPromptModal.svelte';
+  import TransferPromptModal from '$lib/container/TransferPromptModal.svelte';
+  import AppFrameHost from '$lib/container/AppFrameHost.svelte';
   import { appPackageSrcdoc } from '$lib/container/app-srcdoc';
   import {
     createOrReusePackageFrameSource,
@@ -1211,25 +1214,16 @@
   />
 </svelte:head>
 
-{#if pendingIntentPrompt}
-  <div class="intent-prompt-backdrop" role="presentation">
-    <div class="intent-prompt" role="dialog" aria-labelledby="intent-prompt-title">
-      <h3 id="intent-prompt-title">Cross-app permission</h3>
-      <p>
-        <strong>{pendingIntentPrompt.consumerName}</strong> wants to receive
-        <code>{pendingIntentPrompt.intent}</code> events from any installed app.
-      </p>
-      <p class="hint">
-        Both apps stay sandboxed. Only the matching event rows are shared — never any other data.
-        New apps that fire this event later won't ask again. You can revoke later in Your Data.
-      </p>
-      <div class="intent-prompt-actions">
-        <button class="intent-deny" onclick={denyIntentPrompt}>Deny</button>
-        <button class="intent-allow" onclick={approveIntentPrompt}>Allow</button>
-      </div>
-    </div>
-  </div>
-{/if}
+<IntentPromptModal
+  prompt={pendingIntentPrompt}
+  onApprove={approveIntentPrompt}
+  onDeny={denyIntentPrompt}
+/>
+<TransferPromptModal
+  prompt={pendingTransferPrompt}
+  onApprove={approvePendingTransfer}
+  onDeny={declinePendingTransfer}
+/>
 
 <section class="shell">
   <aside class="sidebar">
@@ -1547,50 +1541,20 @@
       {#each openAppIds as appId (appId)}
         {@const app = appById.get(appId)}
         {#if app}
-          {@const packageFrameSrc = frameSrcFor(app)}
-          {@const runtimeSrc = runtimeSrcFor(app)}
-          <div class="frame-stage" class:active={activeAppId === app.id}>
-            {#key `${app.id}:${frameReloadNonce[app.id] ?? 0}`}
-              {#if runtimeSrc}
-                <iframe
-                  use:registerFrame={app.id}
-                  title={`${app.name} container app`}
-                  sandbox="allow-scripts allow-forms allow-same-origin"
-                  src={runtimeSrc}
-                  onload={() => markFrameReady(app.id)}
-                  onerror={() => markFrameError(app.id)}
-                ></iframe>
-              {:else if packageFrameSrc}
-                <iframe
-                  use:registerFrame={app.id}
-                  title={`${app.name} container app`}
-                  sandbox="allow-scripts allow-forms"
-                  src={packageFrameSrc}
-                  onload={() => markFrameReady(app.id)}
-                  onerror={() => markFrameError(app.id)}
-                ></iframe>
-              {:else}
-                <iframe
-                  use:registerFrame={app.id}
-                  title={`${app.name} container app`}
-                  sandbox="allow-scripts allow-forms"
-                  srcdoc={srcdocFor(app)}
-                  onload={() => markFrameReady(app.id)}
-                  onerror={() => markFrameError(app.id)}
-                ></iframe>
-              {/if}
-            {/key}
-            {#if frameStates[app.id]?.status === 'error'}
-              <div class="frame-recovery" role="alert">
-                <strong>{app.name} needs a restart.</strong>
-                <p>{frameStates[app.id]?.message}</p>
-                <div>
-                  <button onclick={() => reloadFrame(app.id)}>Reload app</button>
-                  <button class="secondary" onclick={goHome}>Back home</button>
-                </div>
-              </div>
-            {/if}
-          </div>
+          <AppFrameHost
+            {app}
+            active={activeAppId === app.id}
+            reloadNonce={frameReloadNonce[app.id] ?? 0}
+            {frameStates}
+            runtimeSrc={runtimeSrcFor(app)}
+            packageFrameSrc={frameSrcFor(app)}
+            srcdoc={srcdocFor(app)}
+            onRegister={registerFrame}
+            onReady={markFrameReady}
+            onError={markFrameError}
+            onReload={reloadFrame}
+            onGoHome={goHome}
+          />
         {/if}
       {/each}
     </section>
@@ -1929,49 +1893,6 @@
   .viewport-area.hidden {
     display: none;
   }
-  .frame-stage {
-    position: relative;
-    display: none;
-  }
-  .frame-stage.active {
-    display: block;
-  }
-  iframe {
-    width: 100%;
-    min-height: 500px;
-    border: 0;
-    display: block;
-  }
-  .frame-recovery {
-    position: absolute;
-    inset: var(--space-lg);
-    display: grid;
-    place-content: center;
-    gap: 8px;
-    padding: var(--space-lg);
-    border: 1px solid rgba(182, 71, 45, 0.3);
-    border-radius: 0;
-    background: rgba(255, 250, 242, 0.96);
-    color: var(--text);
-    text-align: center;
-    box-shadow: 0 18px 60px rgba(33, 29, 24, 0.16);
-  }
-  .frame-recovery p {
-    margin: 0;
-    color: var(--text-secondary);
-  }
-  .frame-recovery div {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-  }
-  .frame-recovery button {
-    padding: 0.55rem 0.75rem;
-  }
-  .frame-recovery .secondary {
-    background: transparent;
-    color: var(--text);
-  }
   .inspector {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2019,69 +1940,6 @@
       align-items: flex-start;
       flex-direction: column;
     }
-  }
-
-  /* Phase A2 — cross-app intent permission prompt */
-  .intent-prompt-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(20, 18, 15, 0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: var(--space-md);
-  }
-  .intent-prompt {
-    background: var(--bg);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    padding: var(--space-lg);
-    max-width: 440px;
-    width: 100%;
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
-  }
-  .intent-prompt h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
-  }
-  .intent-prompt p {
-    margin: 0 0 0.75rem 0;
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-  }
-  .intent-prompt code {
-    background: var(--surface-alt);
-    padding: 0.1rem 0.3rem;
-    border-radius: 0;
-    font-size: 0.85rem;
-  }
-  .intent-prompt .hint {
-    color: var(--text-light);
-    font-size: 0.85rem;
-  }
-  .intent-prompt-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    margin-top: var(--space-md);
-  }
-  .intent-prompt-actions button {
-    padding: 0.5rem 1rem;
-    border-radius: 0;
-    cursor: pointer;
-    font-size: 0.95rem;
-  }
-  .intent-deny {
-    background: var(--surface-alt);
-    border: 1px solid var(--border-light);
-    color: var(--text);
-  }
-  .intent-allow {
-    background: var(--sunset, #E8603C);
-    border: 1px solid var(--sunset, #E8603C);
-    color: var(--bg-pure, #fff);
-    font-weight: 600;
   }
 
   /* Phase B2 — mesh status badge in topbar */
