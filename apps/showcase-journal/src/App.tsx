@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { WriteEntry } from './pages/WriteEntry.tsx';
+import { QuickEntry } from './pages/QuickEntry.tsx';
 import { Browse } from './pages/Browse.tsx';
 import { Search } from './pages/Search.tsx';
 import { Trends } from './pages/Trends.tsx';
@@ -12,9 +13,10 @@ interface ShippieRoot {
   openYourData?: () => void;
 }
 
-type Tab = 'write' | 'browse' | 'search' | 'recall' | 'trends' | 'year';
+type Tab = 'quick' | 'write' | 'browse' | 'search' | 'recall' | 'trends' | 'year';
 
 const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'quick', label: 'Quick' },
   { id: 'write', label: 'Write' },
   { id: 'browse', label: 'Browse' },
   { id: 'search', label: 'Search' },
@@ -24,7 +26,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('write');
+  const [tab, setTab] = useState<Tab>('quick');
   const [refreshKey, setRefreshKey] = useState(0);
   const [encryptionNotice, setEncryptionNotice] = useState<string | null>(null);
 
@@ -56,6 +58,7 @@ export function App() {
       ) : null}
 
       <main className="app-main">
+        {tab === 'quick' ? <QuickEntry onSaved={() => setRefreshKey((n) => n + 1)} /> : null}
         {tab === 'write' ? <WriteEntry onSaved={() => setRefreshKey((n) => n + 1)} /> : null}
         {tab === 'browse' ? <Browse refreshKey={refreshKey} /> : null}
         {tab === 'search' ? <Search /> : null}

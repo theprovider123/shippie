@@ -168,7 +168,9 @@ export const curatedApps: ContainerApp[] = [
     version: '1',
     packageHash: `sha256:${'2'.repeat(64)}`,
     standaloneUrl: '/run/journal',
-    permissions: localPermissions('journal', { consumes: ['shopping-list'] }),
+    permissions: localPermissions('journal', {
+      consumes: ['shopping-list', 'cooked-meal', 'workout-completed', 'body-metrics-logged'],
+    }),
     category: 'journal',
     devUrl: 'http://localhost:5181/',
   },

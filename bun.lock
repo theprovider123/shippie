@@ -113,6 +113,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@shippie/ambient": "workspace:*",
+        "@shippie/iframe-sdk": "workspace:*",
         "@shippie/local-db": "workspace:*",
         "@shippie/local-runtime-contract": "workspace:*",
         "@shippie/sdk": "workspace:*",

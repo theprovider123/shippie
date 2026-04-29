@@ -9,6 +9,9 @@
   "display": "standalone",
   "orientation": "portrait",
   "ai": ["sentiment", "embed", "classify"],
+  "intents": {
+    "consumes": ["shopping-list", "cooked-meal", "workout-completed", "body-metrics-logged"]
+  },
   "privacy": {
     "local_only": true,
     "encrypted_at_rest": true
