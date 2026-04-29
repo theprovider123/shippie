@@ -242,7 +242,9 @@ export const curatedApps: ContainerApp[] = [
     version: '1',
     packageHash: `sha256:${'6'.repeat(64)}`,
     standaloneUrl: '/run/pantry-scanner',
-    permissions: localPermissions('pantry-scanner', { provides: ['pantry-inventory'] }),
+    permissions: localPermissions('pantry-scanner', {
+      provides: ['pantry-inventory', 'pantry-low'],
+    }),
     category: 'cooking',
     devUrl: 'http://localhost:5186/',
   },

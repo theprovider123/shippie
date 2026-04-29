@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { isValidBarcode, listKnownBarcodes, lookupByBarcode } from './barcode.ts';
+import {
+  detectCameraScanAvailability,
+  scanFromCamera,
+} from './camera-scan.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_pantry_scanner' });
 
@@ -10,10 +14,23 @@ interface Item {
   barcode?: string;
   quantity: number;
   unit: string;
+  /** ISO date (YYYY-MM-DD) — when the item is no longer good. Optional. */
+  expiresOn?: string;
   addedAt: string;
 }
 
+interface InventoryRow {
+  id: string;
+  name: string;
+  inStock: boolean;
+  quantity: number;
+  unit: string;
+  expiresOn?: string;
+}
+
 const STORAGE_KEY = 'shippie.pantry-scanner.v1';
+const EXPIRY_WARNING_DAYS = 2;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function load(): Item[] {
   try {
@@ -26,8 +43,34 @@ function load(): Item[] {
   }
 }
 
+/**
+ * P3 — broadcast pantry-inventory with `inStock` and expiry metadata.
+ * Recipe Saver renders rows green/red against `inStock`; Meal Planner
+ * uses the name list. Empty inventory still fires (delivers `[]`)
+ * so consumers know the user just emptied their pantry.
+ */
 function broadcastInventory(items: readonly Item[]): void {
-  shippie.intent.broadcast('pantry-inventory', items);
+  const rows: InventoryRow[] = items.map((it) => ({
+    id: it.id,
+    name: it.name,
+    inStock: it.quantity > 0,
+    quantity: it.quantity,
+    unit: it.unit,
+    expiresOn: it.expiresOn,
+  }));
+  shippie.intent.broadcast('pantry-inventory', rows);
+}
+
+function broadcastPantryLow(item: Item): void {
+  shippie.intent.broadcast('pantry-low', [
+    { name: item.name, barcode: item.barcode, lastSeenAt: item.addedAt },
+  ]);
+}
+
+function daysUntil(dateStr: string, now: number = Date.now()): number {
+  const target = Date.parse(dateStr);
+  if (!Number.isFinite(target)) return Number.POSITIVE_INFINITY;
+  return Math.floor((target - now) / ONE_DAY_MS);
 }
 
 export function App() {
@@ -36,16 +79,37 @@ export function App() {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState('');
+  const [expiresOn, setExpiresOn] = useState('');
   const [status, setStatus] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraAvail = useMemo(() => detectCameraScanAvailability(), []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
+
+  // P3 — broadcast initial inventory once the SDK is ready so consumers
+  // don't have to wait for the next add/remove. Empty arrays are fine.
+  useEffect(() => {
+    broadcastInventory(items);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const expiringSoon = useMemo(() => {
+    const now = Date.now();
+    return items.filter((it) => {
+      if (!it.expiresOn) return false;
+      const days = daysUntil(it.expiresOn, now);
+      return days >= 0 && days <= EXPIRY_WARNING_DAYS;
+    });
   }, [items]);
 
   function tryAddByBarcode(raw: string) {
     const trimmed = raw.trim();
     if (!isValidBarcode(trimmed)) {
       setStatus(`Invalid barcode (${trimmed.length} digits)`);
+      shippie.feel.texture('error');
       return;
     }
     const known = lookupByBarcode(trimmed);
@@ -68,7 +132,26 @@ export function App() {
       return next;
     });
     setStatus(`Added ${item.name}`);
+    shippie.feel.texture('confirm');
     setCode('');
+  }
+
+  async function startCameraScan() {
+    if (!cameraAvail.detector || !cameraAvail.camera) return;
+    setScanning(true);
+    setStatus('Point the camera at the barcode…');
+    try {
+      const video = videoRef.current;
+      if (!video) throw new Error('Video element missing');
+      const result = await scanFromCamera(video);
+      shippie.feel.texture('confirm');
+      tryAddByBarcode(result.rawValue);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Scan failed.');
+      shippie.feel.texture('error');
+    } finally {
+      setScanning(false);
+    }
   }
 
   function addManual(e: React.FormEvent) {
@@ -81,6 +164,7 @@ export function App() {
       barcode: code.trim() || undefined,
       quantity,
       unit: unit.trim() || 'ea',
+      expiresOn: expiresOn || undefined,
       addedAt: new Date().toISOString(),
     };
     setItems((prev) => {
@@ -92,13 +176,23 @@ export function App() {
     setCode('');
     setQuantity(1);
     setUnit('');
+    setExpiresOn('');
     setStatus(`Added ${item.name}`);
+    shippie.feel.texture('confirm');
   }
 
   function remove(id: string) {
     setItems((prev) => {
+      const removed = prev.find((i) => i.id === id);
       const next = prev.filter((i) => i.id !== id);
       broadcastInventory(next);
+      // P3 — `pantry-low` fires when the user removes the last unit
+      // of an item. Other apps (Shopping List) react by adding it
+      // automatically.
+      if (removed) {
+        broadcastPantryLow(removed);
+        shippie.feel.texture('delete');
+      }
       return next;
     });
   }
@@ -110,9 +204,37 @@ export function App() {
         <p>{items.length} item{items.length === 1 ? '' : 's'} on hand</p>
       </header>
 
+      {expiringSoon.length > 0 && (
+        <section className="expiry-warn" aria-label="Expiring soon">
+          <strong>Expiring soon:</strong>{' '}
+          {expiringSoon.map((it, i) => (
+            <span key={it.id}>
+              {i > 0 && ', '}
+              {it.name}
+              {it.expiresOn && ` (in ${daysUntil(it.expiresOn)}d)`}
+            </span>
+          ))}
+        </section>
+      )}
+
       <section className="scan">
         <h2>Scan</h2>
-        <p className="hint">Type or paste a 12/13-digit barcode. Real device scanning happens through `BarcodeDetector` on supported browsers.</p>
+        {cameraAvail.detector && cameraAvail.camera ? (
+          <div className="camera">
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className={`camera-feed ${scanning ? 'active' : ''}`}
+            />
+            <button onClick={startCameraScan} disabled={scanning}>
+              {scanning ? 'Scanning…' : 'Scan with camera'}
+            </button>
+          </div>
+        ) : (
+          <p className="hint">{cameraAvail.unsupportedReason}</p>
+        )}
+        <p className="hint">Or type a 12/13-digit barcode below.</p>
         <div className="row">
           <input
             type="text"
@@ -162,6 +284,12 @@ export function App() {
               placeholder="Unit (g, ml, ea)"
               aria-label="Unit"
             />
+            <input
+              type="date"
+              value={expiresOn}
+              onChange={(e) => setExpiresOn(e.target.value)}
+              aria-label="Expires on"
+            />
             <button type="submit">Add</button>
           </div>
         </form>
@@ -173,18 +301,29 @@ export function App() {
           <p className="empty">Nothing yet. Scan or add an item above.</p>
         ) : (
           <ul className="items">
-            {items.map((it) => (
-              <li key={it.id}>
-                <div>
-                  <strong>{it.name}</strong>
-                  <small>
-                    {it.quantity} {it.unit}
-                    {it.barcode && ` · ${it.barcode}`}
-                  </small>
-                </div>
-                <button onClick={() => remove(it.id)} aria-label={`Remove ${it.name}`}>×</button>
-              </li>
-            ))}
+            {items.map((it) => {
+              const days = it.expiresOn ? daysUntil(it.expiresOn) : null;
+              const expiringSoonRow = days !== null && days >= 0 && days <= EXPIRY_WARNING_DAYS;
+              const expired = days !== null && days < 0;
+              return (
+                <li
+                  key={it.id}
+                  className={
+                    expired ? 'expired' : expiringSoonRow ? 'expiring' : ''
+                  }
+                >
+                  <div>
+                    <strong>{it.name}</strong>
+                    <small>
+                      {it.quantity} {it.unit}
+                      {it.barcode && ` · ${it.barcode}`}
+                      {it.expiresOn && ` · expires ${it.expiresOn}`}
+                    </small>
+                  </div>
+                  <button onClick={() => remove(it.id)} aria-label={`Remove ${it.name}`}>×</button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

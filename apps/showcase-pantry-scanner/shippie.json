@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["pantry-inventory"]
+    "provides": ["pantry-inventory", "pantry-low"]
   },
   "permissions": ["camera"],
   "data_schemas": {
