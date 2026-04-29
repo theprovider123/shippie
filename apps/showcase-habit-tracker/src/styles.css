@@ -128,3 +128,66 @@ form button[type='submit'] {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* P3 — agent insight strip + cross-app habit suggestions. */
+.insights {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.insight {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.insight h2 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.insight p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.insight-high {
+  border-color: rgba(232, 96, 60, 0.5);
+  background: rgba(232, 96, 60, 0.05);
+}
+.insight-medium {
+  border-color: rgba(94, 167, 119, 0.4);
+  background: rgba(94, 167, 119, 0.06);
+}
+
+.suggestions {
+  margin: 0 0 20px;
+}
+.suggestions h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(94, 167, 119, 0.5);
+  background: rgba(94, 167, 119, 0.05);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip:hover {
+  background: rgba(94, 167, 119, 0.12);
+}

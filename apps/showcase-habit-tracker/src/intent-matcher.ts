@@ -6,7 +6,13 @@
 
 export interface HabitForMatch {
   id: string;
-  intent?: 'cooked-meal' | 'workout-completed';
+  /**
+   * The cross-app intent that auto-checks this habit. Free-form
+   * string so suggestions surfaced from `apps.list` (which can carry
+   * any provided intent) flow through the same pipeline as the
+   * built-in `cooked-meal` / `workout-completed` defaults.
+   */
+  intent?: string;
 }
 
 export interface CheckForMatch {

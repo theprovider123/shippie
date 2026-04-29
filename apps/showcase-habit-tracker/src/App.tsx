@@ -1,14 +1,42 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import {
+  createShippieIframeSdk,
+  type AgentInsight,
+  type AppsListEntry,
+} from '@shippie/iframe-sdk';
 import { habitsToAutoCheck } from './intent-matcher.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_habit_tracker' });
+
+/**
+ * P3 — Habit Tracker cross-cap surface.
+ *
+ * Every other intent the user already has installed gets a dim
+ * "suggested habit" tile that taps into the existing add-habit flow.
+ * Suggestions come from `apps.list` (P1A.1) — the container scopes
+ * the result to apps whose intents overlap with us, so we never
+ * fingerprint apps we have no business addressing.
+ *
+ * The agent insight strip uses `agent.insights` (P1A.2) and respects
+ * the source-data invariant the container enforces. We just render
+ * what the host gives us.
+ */
+
+const SUGGESTION_INTENT_LABELS: Record<string, string> = {
+  'cooked-meal': 'Cooked dinner',
+  'workout-completed': 'Exercised',
+  'sleep-logged': 'Slept ≥7 hours',
+  'caffeine-logged': 'Logged caffeine',
+  'shopping-list': 'Did groceries',
+  'body-metrics-logged': 'Logged weight',
+  'pantry-inventory': 'Restocked pantry',
+};
 
 interface Habit {
   id: string;
   name: string;
   /** When set, this habit auto-checks on a matching cross-app intent. */
-  intent?: 'cooked-meal' | 'workout-completed';
+  intent?: string;
   createdAt: string;
 }
 
@@ -67,10 +95,65 @@ export function App() {
   const [habits, setHabits] = useState<Habit[]>(() => load().habits);
   const [checks, setChecks] = useState<HabitCheck[]>(() => load().checks);
   const [draft, setDraft] = useState('');
+  const [overlappingApps, setOverlappingApps] = useState<AppsListEntry[]>([]);
+  const [insights, setInsights] = useState<AgentInsight[]>([]);
 
   useEffect(() => {
     save({ habits, checks });
   }, [habits, checks]);
+
+  // P1A.1 — pull the overlap-scoped app list once on mount. The
+  // container filters to apps that share at least one intent with
+  // this app, so the suggestion surface stays narrow.
+  useEffect(() => {
+    let cancelled = false;
+    shippie.apps
+      .list()
+      .then((apps) => {
+        if (!cancelled) setOverlappingApps(apps);
+      })
+      .catch(() => {
+        // Outside the container or RPC-disabled — empty list is fine.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // P1A.2 — pull insights derived from data we can already see. The
+  // host enforces the source-data invariant; we just render.
+  useEffect(() => {
+    let cancelled = false;
+    function refresh() {
+      shippie.agent
+        .insights()
+        .then((next) => {
+          if (!cancelled) setInsights(next);
+        })
+        .catch(() => {
+          /* offline / standalone / RPC-disabled */
+        });
+    }
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const suggestedHabits = useMemo(() => {
+    const existing = new Set(
+      habits.map((h) => h.intent).filter((i): i is string => Boolean(i)),
+    );
+    const fromApps = new Set<string>();
+    for (const app of overlappingApps) {
+      for (const intent of app.provides) fromApps.add(intent);
+    }
+    return [...fromApps]
+      .filter((intent) => !existing.has(intent) && SUGGESTION_INTENT_LABELS[intent])
+      .map((intent) => ({ intent, label: SUGGESTION_INTENT_LABELS[intent]! }));
+  }, [habits, overlappingApps]);
 
   // First-mount: ask the container to grant each declared consume
   // intent. The user approves once per intent and subsequent broadcasts
@@ -130,22 +213,41 @@ export function App() {
       { id: `h_${Date.now()}`, name, createdAt: new Date().toISOString() },
     ]);
     setDraft('');
+    shippie.feel.texture('confirm');
+  }
+
+  function addSuggestedHabit(intent: string, label: string) {
+    setHabits((prev) => [
+      ...prev,
+      { id: `h_${Date.now()}_${intent}`, name: label, intent, createdAt: new Date().toISOString() },
+    ]);
+    shippie.requestIntent(intent);
+    shippie.feel.texture('install');
   }
 
   function toggleHabit(habit: Habit) {
     const existing = checkedToday(habit.id, checks);
     if (existing) {
       setChecks((prev) => prev.filter((c) => c.id !== existing.id));
+      shippie.feel.texture('toggle');
     } else {
-      setChecks((prev) => [
-        ...prev,
+      const nextChecks = [
+        ...checks,
         {
           id: `${habit.id}_${Date.now()}`,
           habitId: habit.id,
           checkedAt: new Date().toISOString(),
-          source: 'manual',
+          source: 'manual' as const,
         },
-      ]);
+      ];
+      setChecks(nextChecks);
+      const completedNow = nextChecks.filter(
+        (c) => c.checkedAt.slice(0, 10) === todayKey(),
+      ).length;
+      // `complete` for the "all done" milestone; `confirm` for any
+      // other check. Keeps the haptic vocabulary distinct so users
+      // physically feel the difference between progress and completion.
+      shippie.feel.texture(completedNow === habits.length ? 'complete' : 'confirm');
     }
   }
 
@@ -155,6 +257,36 @@ export function App() {
         <h1>Habits</h1>
         <p>{completedToday} of {habits.length} done today</p>
       </header>
+
+      {insights.length > 0 && (
+        <section className="insights" aria-label="Insights from the local agent">
+          {insights.slice(0, 3).map((insight) => (
+            <article key={insight.id} className={`insight insight-${insight.urgency}`}>
+              <h2>{insight.title}</h2>
+              {insight.body && <p>{insight.body}</p>}
+            </article>
+          ))}
+        </section>
+      )}
+
+      {suggestedHabits.length > 0 && (
+        <section className="suggestions" aria-label="Suggested habits from your other apps">
+          <h2>Suggestions</h2>
+          <div className="chips">
+            {suggestedHabits.map(({ intent, label }) => (
+              <button
+                key={intent}
+                type="button"
+                className="chip"
+                onClick={() => addSuggestedHabit(intent, label)}
+                title={`Auto-checks when an app fires ${intent}`}
+              >
+                + {label}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <ul data-shippie-list>
         {habits.map((habit) => {
