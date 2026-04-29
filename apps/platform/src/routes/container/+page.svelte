@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { readShippiePackageArchive } from '@shippie/app-package-builder';
   import { ContainerBridgeHost, createWindowBridgeTransport } from '@shippie/container-bridge';
   import {
@@ -1226,15 +1227,39 @@
         // localStorage may be blocked (private browsing, partitioned
         // contexts) — fall through silently. The hint just won't fire.
       }
+      // Browser-back as an exit path. Push a sentinel history entry on
+      // entering focused mode; if the user hits back (browser button,
+      // iOS edge-swipe, Android system back), popstate fires and we
+      // navigate to the dashboard. Without this push, back goes to
+      // whatever was before /run/<slug>/ — usually the marketplace,
+      // sometimes a cold tab with no history at all.
+      try {
+        history.pushState({ shippieFocused: true }, '');
+        window.addEventListener('popstate', handleFocusedPopstate);
+      } catch {
+        // history API blocked — leave the user with the pill exits.
+      }
     }
     void loadCollection();
   });
+
+  function handleFocusedPopstate() {
+    // popstate fires after the browser already moved one entry back.
+    // We're now at the entry we want to leave from; goto() replaces
+    // it with /container so refreshes don't bounce back into focused
+    // mode.
+    if (!data.focused) return;
+    goto('/container', { replaceState: true });
+  }
 
   onDestroy(() => {
     for (const host of hosts.values()) host.dispose();
     hosts.clear();
     revokeAllPackageFrameSources(packageObjectUrls);
     aiClient.dispose();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('popstate', handleFocusedPopstate);
+    }
   });
 
   function srcdocFor(app: ContainerApp): string {
