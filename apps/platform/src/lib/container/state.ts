@@ -430,6 +430,23 @@ export const curatedApps: ContainerApp[] = [
     }),
     devUrl: 'http://localhost:5195/',
   },
+  {
+    id: 'app_pomodoro',
+    slug: 'pomodoro',
+    name: 'Pomodoro',
+    shortName: 'Focus',
+    description: 'Classic 25/5 cycle with a long break every 4 cycles. Broadcasts focus-session on completion.',
+    appKind: 'local',
+    entry: 'app/index.html',
+    labelKind: 'Local',
+    icon: 'PO',
+    accent: '#E8603C',
+    version: '1',
+    packageHash: `sha256:${'b'.repeat(64)}`,
+    standaloneUrl: '/run/pomodoro',
+    permissions: localPermissions('pomodoro', { provides: ['focus-session'] }),
+    devUrl: 'http://localhost:5196/',
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Pomodoro",
+  "slug": "pomodoro",
+  "description": "Classic 25/5 focus cycle with a long break every 4 cycles. Broadcasts focus-session.",
+  "icon": "/icon.svg",
+  "theme_color": "#E8603C",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["focus-session"]
+  },
+  "data_schemas": {
+    "sessions": {
+      "id": "text primary key",
+      "finished_at": "datetime",
+      "duration_min": "integer",
+      "phase": "text"
+    }
+  }
+}
