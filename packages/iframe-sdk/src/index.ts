@@ -25,6 +25,37 @@
 const PROTOCOL = 'shippie.bridge.v1' as const;
 const DEFAULT_RPC_TIMEOUT_MS = 5_000;
 
+export type AiTask =
+  | 'classify'
+  | 'embed'
+  | 'sentiment'
+  | 'moderate'
+  | 'vision'
+  | 'summarise'
+  | 'generate'
+  | 'translate';
+
+export interface AiRunRequest {
+  task: AiTask;
+  input: unknown;
+  options?: Record<string, unknown>;
+}
+
+export interface AiRunResult {
+  task: AiTask;
+  output: unknown;
+  /**
+   * Where the inference came from. `'unavailable'` means the local
+   * worker can't serve this task (no transformers runtime, model load
+   * failed, or device too constrained). Showcases MUST gate features
+   * on `source !== 'unavailable'` and hide the UI when it isn't —
+   * never render a broken AI feature.
+   */
+  source: 'local' | 'edge' | 'unavailable';
+  /** Backend the worker actually ran on, when `source === 'local'`. */
+  backend?: 'webnn' | 'webgpu' | 'wasm';
+}
+
 export interface AppsListEntry {
   slug: string;
   name: string;
@@ -137,6 +168,19 @@ export interface ShippieIframeSdk {
      * filtered out by the container.
      */
     insights(): Promise<AgentInsight[]>;
+  };
+  ai: {
+    /**
+     * Run a local AI task through the container's worker. The task
+     * routes via the AI Web Worker to whichever backend is fastest
+     * (WebNN → WebGPU → WASM); models are cached at the container
+     * origin so 5 apps share one download.
+     *
+     * The result carries `source: 'unavailable'` when the backend
+     * can't run the task. Showcases MUST gate features on this and
+     * hide the UI when unavailable — never render broken AI.
+     */
+    run(req: AiRunRequest): Promise<AiRunResult>;
   };
   transfer: {
     /**
@@ -362,6 +406,20 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
           { insights: [] },
         );
         return result.insights ?? [];
+      },
+    },
+    ai: {
+      async run(req) {
+        // Bigger timeout — model downloads can run 10s+ on a cold
+        // first invocation. After the first call the backend cache
+        // makes subsequent calls instant.
+        return call<AiRunResult>(
+          'ai.run',
+          'run',
+          { task: req.task, input: req.input, options: req.options },
+          { task: req.task, output: null, source: 'unavailable' },
+          60_000,
+        );
       },
     },
     transfer: {

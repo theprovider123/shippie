@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createGroup, joinGroup, type Group } from '@shippie/proximity';
 import { mergeIncoming, type ListItem } from './merge.ts';
+import {
+  AISLES,
+  aisleLabel,
+  useAisleClassifier,
+  type Aisle,
+} from './AisleClassifier.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_shopping_list' });
 
@@ -216,6 +222,29 @@ export function App() {
   }
 
   const remaining = items.filter((i) => !i.checked).length;
+  const [groupByAisle, setGroupByAisle] = useState(false);
+  const [aisleMap, setAisleMap] = useState<Record<string, Aisle>>({});
+  const itemNames = useMemo(() => items.map((i) => i.name), [items]);
+  const { available: aisleAvailable, pending: aislePending } = useAisleClassifier({
+    shippie,
+    itemNames,
+    onClassified: setAisleMap,
+  });
+
+  const grouped = useMemo(() => {
+    if (!groupByAisle) return null;
+    const buckets = new Map<Aisle, ListItem[]>();
+    for (const item of items) {
+      const aisle = aisleMap[item.name] ?? 'unsorted';
+      const list = buckets.get(aisle) ?? [];
+      list.push(item);
+      buckets.set(aisle, list);
+    }
+    const order: Aisle[] = [...AISLES, 'unsorted'];
+    return order
+      .map((aisle) => ({ aisle, list: buckets.get(aisle) ?? [] }))
+      .filter((g) => g.list.length > 0);
+  }, [groupByAisle, items, aisleMap]);
 
   return (
     <main>
@@ -269,8 +298,39 @@ export function App() {
         <button type="submit">Add</button>
       </form>
 
+      {items.length > 0 && aisleAvailable !== false && (
+        <div className="aisle-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={groupByAisle}
+              onChange={(e) => setGroupByAisle(e.target.checked)}
+            />
+            Group by aisle
+            {aislePending > 0 && <small> (classifying {aislePending}…)</small>}
+          </label>
+        </div>
+      )}
+
       {items.length === 0 ? (
         <p className="empty">When the meal planner shares its shopping list, items show up here automatically.</p>
+      ) : grouped ? (
+        grouped.map(({ aisle, list }) => (
+          <section key={aisle} className="aisle-group">
+            <h3>{aisleLabel(aisle)}</h3>
+            <ul>
+              {list.map((it) => (
+                <li key={it.id} className={it.checked ? 'done' : ''}>
+                  <button onClick={() => toggle(it.id)} aria-pressed={it.checked} aria-label={`Toggle ${it.name}`}>
+                    <span className="box">{it.checked ? '✓' : ''}</span>
+                    <span className="name">{it.name}</span>
+                    <span className="src" data-src={it.source}>{it.source}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
       ) : (
         <ul>
           {items.map((it) => (

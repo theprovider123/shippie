@@ -5,6 +5,7 @@ import {
   detectCameraScanAvailability,
   scanFromCamera,
 } from './camera-scan.ts';
+import { PhotoClassify } from './PhotoClassify.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_pantry_scanner' });
 
@@ -258,6 +259,15 @@ export function App() {
           </ul>
         </details>
       </section>
+
+      <PhotoClassify
+        shippie={shippie}
+        onPick={(label) => {
+          setName(label);
+          setStatus(`Suggested: ${label}`);
+          shippie.feel.texture('confirm');
+        }}
+      />
 
       <section>
         <h2>Add by hand</h2>

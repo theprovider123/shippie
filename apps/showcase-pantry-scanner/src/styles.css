@@ -117,6 +117,46 @@ ul.items li button {
 
 .empty { color: var(--muted); margin: 0; font-size: 14px; }
 
+.photo-classify {
+  background: rgba(116, 165, 127, 0.08);
+  border: 1px solid rgba(116, 165, 127, 0.4);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+.photo-classify h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.photo-classify .hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.photo-classify .suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.photo-classify .chip {
+  background: rgba(116, 165, 127, 0.15);
+  border: 1px dashed rgba(116, 165, 127, 0.55);
+  color: #2c5e3e;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.photo-classify .chip:hover {
+  background: rgba(116, 165, 127, 0.25);
+}
+
 .expiry-warn {
   background: rgba(232, 96, 60, 0.1);
   border: 1px solid rgba(232, 96, 60, 0.5);

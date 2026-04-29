@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { createEntry } from '../db/queries.ts';
 import { resolveLocalDb } from '../db/runtime.ts';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { SentimentSparkline } from '../components/SentimentSparkline.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_journal' });
 
@@ -157,6 +158,7 @@ export function QuickEntry({ onSaved }: QuickEntryProps) {
               ))}
             </div>
           )}
+          <SentimentSparkline text={body} shippie={shippie} />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}

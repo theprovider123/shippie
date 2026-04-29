@@ -153,6 +153,36 @@ li.done .name { transition: color 200ms ease, text-decoration-color 200ms ease; 
   margin-left: auto;
 }
 
+.aisle-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 8px;
+}
+.aisle-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.aisle-toggle small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.aisle-group {
+  margin-bottom: 14px;
+}
+.aisle-group h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .empty { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
 .mesh-hint {

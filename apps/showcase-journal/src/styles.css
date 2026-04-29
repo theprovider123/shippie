@@ -479,3 +479,38 @@ button:disabled {
   color: var(--fg);
   white-space: pre-wrap;
 }
+
+/* P5 — sentiment sparkline above the entry textarea. Hides when the
+   AI worker reports unavailable; the writing flow keeps working. */
+.sentiment-sparkline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  background: rgba(63, 110, 224, 0.08);
+  border: 1px solid rgba(63, 110, 224, 0.25);
+  border-radius: 12px;
+  color: rgba(63, 110, 224, 0.9);
+}
+.sentiment-sparkline svg {
+  width: 100%;
+  height: 56px;
+  flex: 1;
+}
+.sentiment-sparkline figcaption {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.sentiment-sparkline[data-polarity='positive'] {
+  border-color: rgba(94, 167, 119, 0.35);
+  background: rgba(94, 167, 119, 0.08);
+  color: rgba(94, 167, 119, 1);
+}
+.sentiment-sparkline[data-polarity='negative'] {
+  border-color: rgba(214, 90, 58, 0.35);
+  background: rgba(214, 90, 58, 0.08);
+  color: rgba(214, 90, 58, 1);
+}
