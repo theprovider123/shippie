@@ -11,7 +11,7 @@
  * (it needs the request cookies for invite-grant verification) — keep
  * this module pure read-only over the D1 binding.
  */
-import { and, desc, eq, sql, inArray } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { ShippieDb } from '../client';
 import { apps, appPermissions, deploys } from '../schema';
 import type { App } from '../schema/apps';
@@ -138,27 +138,36 @@ export async function searchPublic(
   const ftsQuery = buildFtsQuery(query);
   if (!ftsQuery) return browsePublic(db, opts);
 
-  // Two-step: FTS5 returns rowid_id (= apps.id), then we fetch the cards.
-  // Note: limit/offset apply to the FTS step. If a kind filter is active
-  // we cannot cleanly paginate across the join — apply kind in the join
-  // and let the caller request a larger page if filtered counts are low.
-  const matchRows = await db.all<{ rowid_id: string }>(sql`
-    SELECT rowid_id FROM apps_fts WHERE apps_fts MATCH ${ftsQuery}
-    ORDER BY rank LIMIT ${limit} OFFSET ${offset}
+  // Join FTS results to apps before LIMIT/OFFSET so kind/category filters
+  // paginate the filtered result set instead of "first page of any app,
+  // then filter in memory". This is load-bearing for /apps?kind=local&q=...
+  // where matching Local apps may rank behind Connected/Cloud results.
+  return db.all<FeaturedApp>(sql`
+    SELECT
+      a.id AS id,
+      a.slug AS slug,
+      a.name AS name,
+      a.tagline AS tagline,
+      a.description AS description,
+      a.type AS type,
+      a.category AS category,
+      a.icon_url AS iconUrl,
+      a.theme_color AS themeColor,
+      a.upvote_count AS upvoteCount,
+      a.install_count AS installCount,
+      a.compatibility_score AS compatibilityScore,
+      a.current_detected_kind AS currentDetectedKind,
+      a.current_public_kind_status AS currentPublicKindStatus
+    FROM apps_fts
+    JOIN apps a ON apps_fts.rowid_id = a.id
+    WHERE apps_fts MATCH ${ftsQuery}
+      AND a.visibility_scope = 'public'
+      AND a.is_archived = 0
+      ${kind ? sql`AND a.current_detected_kind = ${kind}` : sql``}
+      ${opts.category ? sql`AND a.category = ${opts.category}` : sql``}
+    ORDER BY rank
+    LIMIT ${limit} OFFSET ${offset}
   `);
-  const ids = matchRows.map((r) => r.rowid_id);
-  if (ids.length === 0) return [];
-
-  const conds = [inArray(apps.id, ids), PUBLIC_FILTERS];
-  if (kind) conds.push(eq(apps.currentDetectedKind, kind));
-  if (opts.category) conds.push(eq(apps.category, opts.category));
-  const where = and(...conds);
-
-  const rows = await db.select(FEATURED_COLUMNS).from(apps).where(where);
-
-  // Preserve FTS rank ordering.
-  const order = new Map(ids.map((id, i) => [id, i]));
-  return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
 export async function browsePublic(
