@@ -54,7 +54,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint placeholder'",
     "test": "bun test",
-    "build": "tsup",
+    "build": "tsup && node scripts/smoke-global-bundle.mjs",
     "dev": "tsup --watch",
     "clean": "rm -rf dist .turbo *.tsbuildinfo",
     "prepublishOnly": "bun run build"

@@ -32,6 +32,7 @@ import {
 import { buildShippiePackage, createShippiePackageArchive } from '@shippie/app-package-builder';
 import {
   SHIPPIE_PERMISSIONS_SCHEMA,
+  type ContainerEligibility,
   type AppPermissions,
   type SourceMetadata,
   type TrustReport,
@@ -1000,8 +1001,34 @@ function packageTrustReportFromDeployReport(report: DeployReport): TrustReport {
         personalData: domain.category === 'tracker',
       })),
     },
-    containerEligibility: 'standalone_only',
+    containerEligibility: containerEligibilityFromDeployReport(report),
   };
+}
+
+export function containerEligibilityFromDeployReport(
+  report: Pick<DeployReport, 'kind' | 'security' | 'privacy'>,
+): ContainerEligibility {
+  const score = report.security.score?.value ?? null;
+  const grade = report.privacy.grade?.grade ?? null;
+
+  if (report.security.blocks > 0 || grade === 'F' || (score !== null && score < 70)) {
+    return 'blocked';
+  }
+
+  if (
+    report.kind.detected === 'cloud' ||
+    grade === 'C' ||
+    score === null ||
+    score < 90
+  ) {
+    return 'standalone_only';
+  }
+
+  if (grade === 'A+' || grade === 'A' || grade === 'B') {
+    return 'compatible';
+  }
+
+  return 'standalone_only';
 }
 
 function sourceMetadataFromManifest(manifest: ShippieJsonLite): SourceMetadata {

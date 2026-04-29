@@ -50,20 +50,20 @@ export const handle: Handle = async ({ event, resolve }) => {
     !PLATFORM_HOSTS.has(hostname) &&
     hostname !== 'ai.shippie.app'
   ) {
-    // First-party showcase fast-path: <slug>.shippie.app/* fetches the
-    // bundled static dist at /run/<slug>/*. No D1 / R2 lookup, no
-    // wrapper injection — just a same-Worker subrequest.
+    // First-party showcase: <slug>.shippie.app/* redirects to the
+    // canonical /run/<slug>/* on the apex host. We tried serving via
+    // ASSETS.fetch from the subdomain context, but the binding refuses
+    // cross-host fetches and synthesises a 522. A 302 keeps URLs
+    // working — the address bar just changes from <slug>.shippie.app
+    // to shippie.app/run/<slug>/. Subdomain hygiene is acceptable;
+    // 522s aren't.
     const subdomain = hostname.slice(0, -'.shippie.app'.length);
     if (FIRST_PARTY_SHOWCASE_SLUGS.has(subdomain)) {
       const targetPath = event.url.pathname === '/' ? '/' : event.url.pathname;
-      const rewrittenUrl = `https://shippie.app/run/${subdomain}${targetPath}${event.url.search}`;
-      return event.fetch(rewrittenUrl, {
-        method: event.request.method,
-        headers: event.request.headers,
-        body:
-          event.request.method === 'GET' || event.request.method === 'HEAD'
-            ? undefined
-            : event.request.body,
+      const target = `https://shippie.app/run/${subdomain}${targetPath}${event.url.search}`;
+      return new Response(null, {
+        status: 302,
+        headers: { location: target, 'cache-control': 'public, max-age=300' },
       });
     }
 

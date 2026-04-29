@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { injectEssentials } from './pipeline';
+import { containerEligibilityFromDeployReport, injectEssentials } from './pipeline';
 import type { ShippieJsonLite } from './manifest';
+import type { DeployReport } from './deploy-report';
 
 const manifest = {
   name: 'Recipe Saver',
@@ -91,5 +92,162 @@ describe('injectEssentials', () => {
     expect(out).toContain('&quot;App&quot;');
     expect(out).toContain('&amp;');
     expect(out).toContain('&lt;Co&gt;');
+  });
+});
+
+function reportFor(
+  overrides: Partial<Pick<DeployReport, 'kind' | 'security' | 'privacy'>> = {},
+): Pick<DeployReport, 'kind' | 'security' | 'privacy'> {
+  return {
+    kind: {
+      detected: 'local',
+      declared: undefined,
+      public: 'local',
+      publicStatus: 'estimated',
+      confidence: 0.9,
+      reasons: [],
+    },
+    security: {
+      findings: [],
+      blocks: 0,
+      warns: 0,
+      infos: 0,
+      scannedFiles: 1,
+      score: { value: 100, deductions: [], blocks: 0 },
+    },
+    privacy: {
+      domains: [],
+      counts: {
+        tracker: 0,
+        feature: 0,
+        cdn: 0,
+        shippie: 0,
+        'same-origin': 0,
+        unknown: 0,
+      },
+      scannedFiles: 1,
+      grade: {
+        grade: 'A+',
+        reason: 'No external network use detected. Everything stays on the device.',
+        counts: {
+          tracker: 0,
+          feature: 0,
+          cdn: 0,
+          shippie: 0,
+          'same-origin': 0,
+          unknown: 0,
+        },
+      },
+    },
+    ...overrides,
+  };
+}
+
+describe('containerEligibilityFromDeployReport', () => {
+  test('marks clean Local/Connected apps as compatible', () => {
+    expect(containerEligibilityFromDeployReport(reportFor())).toBe('compatible');
+    expect(
+      containerEligibilityFromDeployReport(
+        reportFor({
+          kind: {
+            ...reportFor().kind,
+            detected: 'connected',
+            public: 'connected',
+            reasons: ['declared external feature host'],
+          },
+          privacy: {
+            ...reportFor().privacy,
+            grade: {
+              grade: 'B',
+              reason: 'Declared feature host.',
+              counts: reportFor().privacy.counts,
+            },
+          },
+        }),
+      ),
+    ).toBe('compatible');
+  });
+
+  test('keeps cloud and unknown-domain apps standalone-only', () => {
+    expect(
+      containerEligibilityFromDeployReport(
+        reportFor({
+          kind: {
+            ...reportFor().kind,
+            detected: 'cloud',
+            public: 'cloud',
+            reasons: ['server state required'],
+          },
+        }),
+      ),
+    ).toBe('standalone_only');
+
+    expect(
+      containerEligibilityFromDeployReport(
+        reportFor({
+          privacy: {
+            ...reportFor().privacy,
+            grade: {
+              grade: 'C',
+              reason: 'Undeclared external host.',
+              counts: reportFor().privacy.counts,
+            },
+          },
+        }),
+      ),
+    ).toBe('standalone_only');
+  });
+
+  test('blocks container loading for hard security or tracker failures', () => {
+    expect(
+      containerEligibilityFromDeployReport(
+        reportFor({
+          security: {
+            ...reportFor().security,
+            blocks: 1,
+            score: { value: 70, deductions: [], blocks: 1 },
+          },
+        }),
+      ),
+    ).toBe('blocked');
+
+    expect(
+      containerEligibilityFromDeployReport(
+        reportFor({
+          privacy: {
+            ...reportFor().privacy,
+            grade: {
+              grade: 'F',
+              reason: 'Tracker detected.',
+              counts: reportFor().privacy.counts,
+            },
+          },
+        }),
+      ),
+    ).toBe('blocked');
+  });
+
+  test('requires a strong enough security score before container loading', () => {
+    expect(
+      containerEligibilityFromDeployReport(
+        reportFor({
+          security: {
+            ...reportFor().security,
+            score: { value: 89, deductions: [], blocks: 0 },
+          },
+        }),
+      ),
+    ).toBe('standalone_only');
+
+    expect(
+      containerEligibilityFromDeployReport(
+        reportFor({
+          security: {
+            ...reportFor().security,
+            score: { value: 69, deductions: [], blocks: 0 },
+          },
+        }),
+      ),
+    ).toBe('blocked');
   });
 });

@@ -900,24 +900,16 @@
   /**
    * Pick the iframe URL for an app based on environment:
    *   - Localhost dev: prefer devUrl (Vite dev server with HMR)
-   *   - On *.shippie.app: prefer the showcase's clean subdomain URL
-   *     (e.g. https://recipe.shippie.app/), which the platform Worker
-   *     rewrites to /run/<slug>/ in apps/platform/src/hooks.server.ts
-   *   - Otherwise: standaloneUrl (e.g. /run/<slug>/) on the same origin
+   *   - Production: standaloneUrl (/run/<slug>/) — same origin, no
+   *     redirect cost. Subdomain URLs work too (302 → /run/) but
+   *     iframes load /run/ directly to skip the redirect.
    */
   function runtimeSrcFor(app: ContainerApp): string | null {
     if (typeof window === 'undefined') return null;
     const host = window.location.hostname;
     const onLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
     if (onLocalhost && app.devUrl) return app.devUrl;
-    // In prod, prefer the subdomain URL extracted from /run/<slug>/.
-    if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) {
-      const slug = app.standaloneUrl.slice('/run/'.length).replace(/\/+$/, '');
-      if (host.endsWith('.shippie.app') || host === 'shippie.app') {
-        return `https://${slug}.shippie.app/`;
-      }
-      return app.standaloneUrl; // fallback for hub.local etc
-    }
+    if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) return app.standaloneUrl;
     return null;
   }
 

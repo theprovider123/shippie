@@ -3,6 +3,8 @@
  * services/worker/src/router/sdk.ts.
  *
  * Production: served from R2 (`sdk/v1.latest.js` in the ASSETS bucket).
+ * That object is the real @shippie/sdk browser IIFE, built and uploaded
+ * by apps/platform/scripts/upload-sdk-bundle.mjs before wrangler deploy.
  * Dev / unprovisioned: returns a tiny stub so the SDK shape exists.
  */
 import type { WrapperContext } from '../env';

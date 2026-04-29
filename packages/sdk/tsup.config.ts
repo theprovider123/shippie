@@ -31,21 +31,20 @@ export default defineConfig([
   {
     entry: { 'index.global': 'src/index.ts' },
     format: ['iife'],
-    globalName: 'shippie',
+    // Do not use `shippie` as the IIFE export namespace: tsup writes the
+    // module export object to that global after the entry runs, which would
+    // overwrite the real SDK object that src/index.ts attaches to window.
+    globalName: '__shippieSdkExports',
     target: 'es2020',
     platform: 'browser',
     dts: false,
     sourcemap: true,
     minify: true,
     external: [],
-    footer: {
-      js: 'if (typeof window !== "undefined") { window.shippie = shippie; }',
-    },
   },
-  // Runtime bundle — served at /__shippie/sdk.js on every maker subdomain.
-  // Self-bootstrapping IIFE that registers SW, captures BIP, configures
-  // proof + kind emitters from /__shippie/meta. Output uploaded to
-  // PLATFORM_ASSETS/sdk/v1.latest.js by the platform deploy pipeline.
+  // Small runtime bundle kept for focused runtime experiments. Production
+  // /__shippie/sdk.js uploads the full index.global IIFE so makers get the
+  // real SDK surface plus the same self-booting install/proof/kind runtime.
   {
     entry: { 'wrapper-runtime.global': 'src/wrapper/runtime-bundle.ts' },
     format: ['iife'],
