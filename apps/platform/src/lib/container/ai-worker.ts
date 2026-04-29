@@ -8,9 +8,10 @@
  * `ai.run` calls from different iframe apps.
  *
  * The worker dynamic-imports `@shippie/local-ai` (Transformers.js
- * adapter) on first local-task call. The actual `@huggingface/transformers`
- * dependency is dynamic-imported as well — when it isn't installed the
- * worker reports `unavailable` and the client falls back to the edge.
+ * adapter) on first local-task call. The actual Transformers runtime
+ * is loaded from Shippie's model CDN so the platform does not need to
+ * bundle a heavyweight npm dependency into the container shell. If the
+ * runtime is unavailable, the worker reports `unavailable`.
  */
 
 import { selectAiBackend, isLocalTask, type AiBackend } from './ai-backend';
@@ -34,6 +35,7 @@ const MODEL_BYTE_HINTS: Record<string, number> = {
 };
 const MODEL_FALLBACK_BYTES = 50 * 1024 * 1024;
 const SHIPPIE_MODEL_CACHE_NAME = 'shippie.models.v1';
+const TRANSFORMERS_RUNTIME_URL = 'https://models.shippie.app/runtime/transformers.js';
 
 const cacheBudget: CacheBudget = createAiCacheBudget();
 
@@ -82,12 +84,12 @@ async function getLocalAi(): Promise<ShippieLocalAi | null> {
         const adapter = await import('@shippie/local-ai');
         return adapter.createTransformersLocalAi({
           transformersLoader: async () => {
-            // The Transformers.js dependency is optional. When it's
-            // missing the dynamic import throws and we surface the
-            // adapter as null, prompting the client's edge fallback.
-            const moduleName = '@huggingface/transformers';
+            // The runtime is intentionally remote and cacheable rather
+            // than bundled into the platform JS. This keeps the Shippie
+            // container light while still allowing the model runtime to
+            // become local after the first successful fetch.
             const dynamicImport = (s: string) => import(/* @vite-ignore */ s);
-            const mod = (await dynamicImport(moduleName)) as unknown;
+            const mod = (await dynamicImport(TRANSFORMERS_RUNTIME_URL)) as unknown;
             return mod as never;
           },
           device: deviceForBackend(backend),
