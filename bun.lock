@@ -135,6 +135,7 @@
       "name": "@shippie/showcase-live-room",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/iframe-sdk": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "react": "^19.2.5",

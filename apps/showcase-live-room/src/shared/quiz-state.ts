@@ -40,6 +40,22 @@ export function setPhase(doc: Y.Doc, phase: Phase): void {
   getMeta(doc).set('phase', phase);
 }
 
+/**
+ * P3 — wall-clock ms when the host moved to the current 'question'
+ * phase. Used by the latency overlay to compute "ms since the
+ * question started" for the first buzzer. Returns null when no
+ * question has been started yet (lobby) or when the host hasn't
+ * stamped the field for this question.
+ */
+export function getQuestionStartedAt(doc: Y.Doc): number | null {
+  const value = getMeta(doc).get('questionStartedAt');
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+export function setQuestionStartedAt(doc: Y.Doc, ms: number): void {
+  getMeta(doc).set('questionStartedAt', ms);
+}
+
 export function recordBuzz(doc: Y.Doc, buzz: Buzz): void {
   doc.getArray<Buzz>('buzzes').push([buzz]);
 }

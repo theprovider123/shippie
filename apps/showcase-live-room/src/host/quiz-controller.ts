@@ -5,12 +5,18 @@ import {
   getPhase,
   setCurrentIndex,
   setPhase,
+  setQuestionStartedAt,
 } from '../shared/quiz-state.ts';
 import { QUESTIONS } from '../shared/questions.ts';
 
-/** Host-only: orchestrate quiz progression. Guests are read-only on phase + index. */
+/**
+ * Host-only: orchestrate quiz progression. Guests are read-only on
+ * phase + index. We stamp `questionStartedAt` on every transition
+ * INTO 'question' so the latency overlay has a reference point.
+ */
 export function startQuiz(doc: Y.Doc): void {
   setCurrentIndex(doc, 0);
+  setQuestionStartedAt(doc, Date.now());
   setPhase(doc, 'question');
 }
 
@@ -27,5 +33,6 @@ export function next(doc: Y.Doc): void {
     return;
   }
   setCurrentIndex(doc, index + 1);
+  setQuestionStartedAt(doc, Date.now());
   setPhase(doc, 'question');
 }

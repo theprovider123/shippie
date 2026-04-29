@@ -227,3 +227,48 @@ form.join-form button:disabled {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* P3 — mesh-status badge + live-latency overlay. */
+.mesh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(94, 167, 119, 0.15);
+  border: 1px solid rgba(94, 167, 119, 0.5);
+  color: #2c5e3e;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  align-self: flex-start;
+}
+.mesh-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5ea777;
+  box-shadow: 0 0 0 0 rgba(94, 167, 119, 0.7);
+  animation: mesh-pulse 1.4s infinite;
+}
+@keyframes mesh-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(94, 167, 119, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(94, 167, 119, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(94, 167, 119, 0); }
+}
+
+.latency {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.latency.live {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.latency strong {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
