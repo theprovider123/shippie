@@ -1,0 +1,20 @@
+{
+  "name": "__NAME__",
+  "short_name": "__SHORT__",
+  "description": "__DESC__",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "__ACCENT__",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities"]
+}

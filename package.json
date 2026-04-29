@@ -21,6 +21,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "health": "bun run typecheck && bun run test && bun run build",
+    "new:showcase": "bun apps/platform/scripts/new-showcase.mjs",
     "db:push": "bash scripts/db-push.sh",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
