@@ -13,6 +13,9 @@ import { AutocompleteInput } from '../components/AutocompleteInput.tsx';
 import { isAvailable as isScanAvailable, scanBarcode } from '../api/scan-barcode.ts';
 import { lookupBarcode } from '../api/open-food-facts.ts';
 import { haptic } from '@shippie/sdk/wrapper';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+
+const shippie = createShippieIframeSdk({ appId: 'app_recipe_saver' });
 
 interface RecipeEditProps {
   recipeId: string | null;
@@ -167,6 +170,7 @@ export function RecipeEdit({ recipeId, onClose, onSaved }: RecipeEditProps) {
       for (const oldId of persistedIds) {
         if (!persistedToKeep.has(oldId)) await deleteIngredient(db, oldId);
       }
+      shippie.feel.texture('confirm');
       onSaved();
     } finally {
       setSaving(false);

@@ -25,6 +25,9 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
   const rafRef = useRef<number | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
+  // P3 — pantry-inventory subscription. Map of name → in-stock so the
+  // ingredient list can render green/red against what we have.
+  const [pantryStock, setPantryStock] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +39,37 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
       cancelled = true;
     };
   }, [recipeId]);
+
+  // Ask the container for permission once on mount, then listen for
+  // forwarded broadcasts. Pantry Scanner publishes the live inventory;
+  // we just colour the row green when present, red when absent.
+  useEffect(() => {
+    shippie.requestIntent('pantry-inventory');
+    const off = shippie.intent.subscribe('pantry-inventory', ({ rows }) => {
+      const next: Record<string, boolean> = {};
+      for (const row of rows as Array<{ name?: string; inStock?: boolean }>) {
+        if (typeof row?.name !== 'string') continue;
+        next[row.name.toLowerCase()] = row.inStock !== false;
+      }
+      setPantryStock(next);
+    });
+    return () => off();
+  }, []);
+
+  // P3 — broadcast `cooking-now` whenever the timer is running so the
+  // local agent + other apps can react (e.g. Habit Tracker shows
+  // "you're cooking right now"). Re-broadcasts on resume; nothing fires
+  // when the timer is paused.
+  useEffect(() => {
+    if (!running || !recipe) return;
+    shippie.intent.broadcast('cooking-now', [
+      {
+        recipeId,
+        title: recipe.title,
+        startedAt: new Date().toISOString(),
+      },
+    ]);
+  }, [running, recipe, recipeId]);
 
   // Animated background — keeps the canvas live so the wakelock rule
   // (which watches data-shippie-canvas) has a real reason to engage.
@@ -154,7 +188,7 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
             type="button"
             className="ghost light"
             onClick={() => {
-              haptic('tap');
+              shippie.feel.texture('milestone');
               shippie.intent.broadcast('cooked-meal', [
                 {
                   recipeId,
@@ -170,7 +204,10 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
         {recipe ? (
           <div className="cooking-ingredients">
             <h3>Ingredients</h3>
-            <IngredientList ingredients={recipe.ingredients} />
+            <IngredientList
+              ingredients={recipe.ingredients}
+              pantryStock={pantryStock}
+            />
           </div>
         ) : null}
       </div>

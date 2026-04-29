@@ -139,7 +139,10 @@ export const curatedApps: ContainerApp[] = [
     version: '1',
     packageHash: `sha256:${'1'.repeat(64)}`,
     standaloneUrl: '/run/recipe',
-    permissions: localPermissions('recipe-saver', { provides: ['shopping-list', 'cooked-meal'] }),
+    permissions: localPermissions('recipe-saver', {
+      provides: ['shopping-list', 'cooked-meal', 'cooking-now'],
+      consumes: ['pantry-inventory'],
+    }),
     category: 'cooking',
     devUrl: 'http://localhost:5180/',
   },

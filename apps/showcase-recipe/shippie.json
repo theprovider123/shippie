@@ -9,6 +9,10 @@
   "display": "standalone",
   "orientation": "portrait",
   "ai": [],
+  "intents": {
+    "provides": ["cooked-meal", "cooking-now", "shopping-list"],
+    "consumes": ["pantry-inventory"]
+  },
   "enhance": {
     "rules": {
       "wakelock": {

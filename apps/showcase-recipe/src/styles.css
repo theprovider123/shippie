@@ -328,6 +328,32 @@ button:disabled {
   color: var(--fg);
 }
 
+/* P3 — pantry-inventory subscription colours each row by stock state.
+   Subtle dot prefix so the cue is glanceable but doesn't dominate. */
+.ingredient-row.ingredient-in-stock .ingredient-name::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5ea777;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.ingredient-row.ingredient-out-of-stock .ingredient-name::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d65a3a;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.ingredient-row.ingredient-out-of-stock .ingredient-name {
+  color: #d65a3a;
+}
+
 .error {
   color: var(--danger);
   font-size: 13px;
