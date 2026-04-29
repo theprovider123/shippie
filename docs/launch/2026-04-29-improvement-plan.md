@@ -1,498 +1,694 @@
-# 2026-04-29 — Showcase improvement plan
+# 2026-04-29 — Showcase improvement plan (rev 2)
 
 > Make the showcase library a *visceral* demonstration of Shippie's
 > ideology: every app proves a specific local-first / cross-app /
-> sensory / mesh claim that no cloud-platform app could match. This
-> is the plan to land everything on `origin/main`.
+> sensory / mesh claim that no cloud-platform app could match.
 
 **Scope:** ~55 improvements to 11 existing apps + 10 new pre-seeded
-apps + 5 platform unblockers. Total raw: ~100–150 hours of focused
-work. ~3–4 weeks at full intensity, ~6–8 weeks realistically.
+apps + 5 platform unblockers + 1 launch-verification phase.
+
+**Realistic effort:** ~140–200 focused hours. **5–7 weeks elapsed**
+solo (rev 1 said 3–4; the prior estimate was 30–50% optimistic and
+didn't budget review/feedback/redeploys/device verification).
 
 **Ground rules:**
 1. No reductions — every improvement and every new app ships.
-2. Simplifications welcome — batch similar work, share scaffolds,
-   reuse patterns.
-3. Health stays green at every track boundary.
-4. Per-track ethos audit: origin / offline / locality / self-hostable
-   (the same 4-item check the prior plan used).
+2. Simplifications come from sequencing, scaffolds, and shared
+   templates — never from cutting features.
+3. Each P1 unblocker ships as **its own commit**. No squash. The
+   plan provides coherence; commits stay reviewable + revertable.
+4. Health stays green at every track boundary, with **explicit
+   target counts per phase** (below).
+5. Per-track ethos audit (origin / offline / locality / self-hostable).
 
 ---
 
 ## Sequencing logic
 
-Five tracks, ordered by what unblocks the most downstream work.
-
 ```
-P1 Platform unblockers     ← gates everything that needs models or new
-                             bridge capabilities
-   ├── 1A bridge capabilities (3 caps)
-   ├── 1B AI model loader (the big one)
-   ├── 1C CORS proxy
-   └── 1D HRM GATT helper
+P1 Platform unblockers (4 separate commits, ~3 days)
+   ├── 1A bridge capabilities ← needs design pass before code
+   ├── 1B AI model loader      ← biggest infra ROI; cache budget
+   ├── 1C CORS proxy           ← SSRF list + per-user quota
+   └── 1D HRM GATT helper      ← Chrome/Edge only, doc'd loudly
 
-P2 Tooling                 ← scaffolds and templates that make the
-                             rest of the plan ~30% cheaper
-   └── 2A `bun run new:showcase <slug>` scaffold
+P2 Tooling (after P1A; ~4h)
+   └── 2A `bun run new:showcase` scaffold
 
-P3 Existing-app pass A     ← cross-cutting, parallel-safe per app:
-   └── sensory + intent + UI polish (no AI, no new bridge caps)
+P3 Existing-app pass A (parallel-safe; ~28h)
+   └── sensory + intent + UI polish
 
-P4 New apps                ← parallel by cluster after P2:
-   ├── 4A Micro-loggers (5 apps share scaffold)
-   ├── 4B Productivity (3 apps; Read-It-Later depends on P1C)
+P4 New apps (after P2; ~50h)
+   ├── 4A Micro-logger template + 5 configs ← shared @shippie/micro-logger
+   ├── 4B Productivity (3 apps; Read-It-Later needs P1C)
    ├── 4C Memory + social (2 apps)
-   └── 4D Daily Briefing (depends on 4A apps existing for intents)
+   └── 4D Daily Briefing (depends on P3 AND P4A — both)
 
-P5 Existing-app pass B     ← AI features (depends on P1B)
-   └── Per-app vision/sentiment/classify integrations
+P5 Existing-app pass B (after P1B; ~30h)
+   └── Per-app vision/sentiment/classify/whisper integrations
 
-P6 Polish + acceptance     ← cross-cluster intent tests, demo cuts
-                             per pass, marketplace metadata
+P6 Acceptance + polish (~14h, throughout)
+   ├── Cross-cluster intent tests
+   ├── Per-pass demo recordings
+   └── Marketplace metadata refresh
+
+P7 Launch verification (~8h, user-side)
+   ├── Real iPhone Safari + Android Chrome walkthrough
+   ├── Cellular model-download check
+   ├── Mesh demo on two phones in same room
+   └── 2-min master cut re-recorded on real hardware
 ```
 
-P1 must happen first. P2–P3 can overlap. P4 starts after P2. P5
-starts after P1B. P6 trickles throughout.
+**P1 must happen first** (each commit independently). **P2–P3 overlap.**
+**P4 starts after P2.** **P5 starts after P1B.** **P6 trickles
+throughout.** **P7 is user-side and gates "shipped to launch."**
 
 ---
 
-## P1 — Platform unblockers (sequenced; ~2.5 days)
+## P1 — Platform unblockers (~3 days; 4 separate commits)
 
-### P1A — Three new bridge capabilities (~6 hours)
+### P1A — Three new bridge capabilities (~10h)
 
-The bridge contract already enforces capability gates and the
-intent-broadcast pattern. Adding more capabilities is a known recipe.
+> Increased from 6h after the security review. Each capability needs
+> a design pass first, then implementation, then tests.
 
-#### `apps.list` capability
-- **Why:** Habit Tracker auto-suggests habits keyed off intents the
-  user's other installed apps declare. Daily Briefing surfaces
-  "yesterday in your apps" — needs to know what apps exist.
-- **Universal capability** (no permission grant required — it returns
-  app names + slugs + declared intents only, never any data).
-- **Files:** `packages/app-package-contract/src/index.ts` (cap +
-  validator); `packages/iframe-sdk/src/index.ts` (helper); container
-  `bridge-handlers.ts` (handler); `+page.svelte` (wire).
-- **Definition of done:** an iframe app calls
-  `shippie.apps.list()` and gets back
-  `[{ slug, name, provides, consumes }, …]`. Tests in
-  `app-package-contract` + `container-bridge`.
+**Design before code.** Each cap gets a written spec (in this doc)
+covering threat model + data scope + grant model.
 
-#### `agent.insights` capability
-- **Why:** Per-app insight surfaces inside iframes (e.g. Habit Tracker
-  shows "your longest streak is 14 days" in its own UI, not just in
-  the container's `InsightStrip`).
-- **Permission:** universal (insights are computed from data the agent
-  already sees on behalf of the user).
-- **Files:** same set as `apps.list`. The `@shippie/agent` package
-  already runs at the container level; the new handler just exposes
-  `runAgent(...)` results filtered by callerAppId.
-- **Definition of done:** `shippie.agent.insights()` returns the list
-  of `Insight` objects relevant to that app's slug.
+#### `apps.list` — DESIGN
 
-#### `data.transferDrop` capability
-- **Why:** Meal Planner needs to accept a recipe drag-dropped from
-  Recipe Saver's iframe. HTML5 drag-and-drop doesn't cross frame
-  boundaries cleanly; this bridge call brokers the handoff.
-- **Pattern:** source iframe calls `shippie.data.transferDrop.start({
-  payload, kind })`; destination iframe subscribes via
-  `shippie.data.transferDrop.subscribe(handler)`. Container forwards
-  payloads between granted iframes.
-- **Files:** contract + sdk + handlers + svelte.
-- **Definition of done:** drop a `recipe` payload from one showcase
-  iframe to another and verify both sides see the right structured
-  data.
+The list of installed apps + their declared intents is **a fingerprint
+of the user's habits and identifies them across iframes.** "Never any
+data" was wrong framing in rev 1 — the list itself is data.
 
-### P1B — AI model loader (~1 day)
+**Two scoping options, pick one:**
 
-This is the single biggest infrastructure ROI. Unblocks the privacy
-story across 6 showcases.
+- **Option A (recommended for v1):** scope to apps that **declare a
+  matching intent** with the caller. Habit Tracker subscribes to
+  `cooked-meal` → `apps.list` returns only providers of `cooked-meal`
+  (plus the caller). No correlation across the user's full app set.
+  Sufficient for the use-cases in this plan; minimises fingerprint.
+- **Option B:** require a one-time grant ("Habit Tracker wants to see
+  your installed apps. Allow?"). Like browser permission prompts.
+  Higher friction but unlocks dashboards that need the full set
+  (Daily Briefing).
 
-**Today:** `apps/platform/src/lib/container/ai-worker.ts` dispatcher
-exists, backend selection (WebNN→WebGPU→WASM) works, but
-`@huggingface/transformers` isn't installed so the loader reports
+**Decision:** Ship A first. If Daily Briefing needs the full set,
+add B as `apps.list({ scope: 'all' })` requiring grant.
+
+**Test invariant:** an iframe declaring no intents calls `apps.list()`
+and gets back `[]` — never the user's full app set.
+
+#### `agent.insights` — DESIGN
+
+Filtering by `callerAppId` is necessary but not sufficient. The
+**source-data invariant** is: the agent must only return insights
+derived from data the calling app already has access to (its own
+namespace + intents it consumes).
+
+**Implementation rule:** before returning an insight, check that
+every input row in the insight's provenance belongs to a namespace
+the caller has read access to (its own slug or a granted intent).
+Insights computed from cross-app correlations the caller never
+saw are dropped.
+
+**Test invariant:** install three apps A, B, C. A has no intent
+overlap with B/C. Run the agent. A calls `agent.insights()`. The
+result must contain zero insights derived from B or C data, even
+if they're tagged with A's slug.
+
+#### `data.transferDrop` — DESIGN
+
+Rev 1 missed the **target-selection step**. Without one, the source
+iframe doesn't know which destinations have a matching drop zone.
+
+**Three-message dance:**
+1. Source iframe broadcasts `transferDrop.starting({ kind, preview })`
+   when the user starts a drag.
+2. Container forwards to all granted iframes; eligible destinations
+   render a "drop here" overlay (the SDK exposes a hook for this).
+3. On drop, source calls `transferDrop.commit({ payload, targetSlug })`.
+   Container delivers payload to that target.
+
+**Eligibility:** a destination iframe declares `acceptsTransfer:
+{ kinds: ['recipe', 'note', ...] }` in its `shippie.json`. Container
+filters destinations by kind match. No hardcoded routing.
+
+**Permission:** universal for declaring acceptance. Per-source-target
+pair grant on first commit (mirrors the intent-grant flow).
+
+#### Implementation (after design lands)
+
+For each cap: contract entry, host handler, SDK helper, vitest
+suite. Same pattern as `intent.provide` we shipped in A2. Each cap
+ships as its own commit.
+
+**Definition of done per cap:**
+- Test invariants above pass.
+- iframe-sdk has a typed helper.
+- Existing showcase using each cap (Habit Tracker for `apps.list`
+  and `agent.insights`; Meal Planner ↔ Recipe Saver for
+  `data.transferDrop`) demos end-to-end.
+
+**Health gate after P1A:** 41/41 typecheck · ~58/58 test (+6 cap
+tests) · 37/37 build.
+
+### P1B — AI model loader (~10h, was 1d)
+
+> Increased from 1d after cache budget + iOS verification reality.
+
+**Today:** worker dispatcher exists, model loader stubbed
 `'unavailable'`.
 
-**Plan:**
-1. **Install `@huggingface/transformers`** as a worker-only dependency
-   (lazy-loaded; not in the main bundle). ~50KB of glue, ~MB-scale
-   model downloads streamed on first use.
-2. **Pick model presets** for each task. Decisions and defaults:
-   - `embed`: `Xenova/all-MiniLM-L6-v2` (already coded as default)
-   - `classify`: `Xenova/nli-deberta-v3-xsmall`
-   - `sentiment`: `Xenova/distilbert-base-uncased-finetuned-sst-2-english`
-   - `vision` (general): `Xenova/vit-base-patch16-224` (image classify)
-   - `vision` (OCR): `Xenova/trocr-base-printed`
-   - `whisper` (new task): `Xenova/whisper-tiny` (speech-to-text)
-3. **Stream models from `https://models.shippie.app`** (already the
-   default). Cache via Cache Storage (already wired in
-   `packages/local-ai/src/loader.ts`).
-4. **Add `whisper` task** to the worker dispatcher and SDK
-   (currently embed/classify/sentiment/moderate/vision).
-5. **Verify on a real device** — the WebNN/WebGPU/WASM detection
-   needs at least one model run on Chrome (WebGPU) and Safari (WASM).
-6. **First-run UX:** when the model isn't cached yet, the first call
-   shows progress (the SDK adds an `onProgress` callback).
+#### Cache footprint budget
 
-**Definition of done:** `ai.run('classify', 'recipe', { labels: ['food','drink','tool'] })` returns `{ label: 'food', confidence: 0.92, source: 'local', backend: 'wasm' }` after the first model load (~3-8s) and instantly thereafter.
+Full-precision sizes if a user installs every showcase that needs
+each model:
 
-### P1C — CORS proxy (~1 hour)
+| Model | Full | Quantized (q8) | Apps that need it |
+|---|---|---|---|
+| `Xenova/all-MiniLM-L6-v2` | 22 MB | ~6 MB | Daily Briefing, future search |
+| `Xenova/distilbert-base-uncased-finetuned-sst-2-english` | 250 MB | ~67 MB | Journal sentiment |
+| `Xenova/nli-deberta-v3-xsmall` | 70 MB | ~22 MB | Shopping List aisle classify |
+| `Xenova/vit-base-patch16-224` | 88 MB | ~25 MB | Recipe + Pantry + Body Metrics vision |
+| `Xenova/trocr-base-printed` | 330 MB | ~95 MB | Recipe Saver OCR |
+| `Xenova/whisper-tiny` | 39 MB | ~10 MB | Journal voice notes |
+| **Total full** | **~800 MB** | **~225 MB** | All 6 |
 
-Read-It-Later wants to fetch arbitrary URLs and stash the article
-locally. CORS blocks it.
+**Decisions:**
+1. **Ship quantized (q8) variants by default.** ~225 MB is acceptable
+   when amortized across many apps; ~800 MB is a launch blocker on
+   iOS where Cache Storage faces aggressive eviction.
+2. **LRU eviction** when CacheStorage rejects a put (`QuotaExceededError`).
+   Drop least-recently-used model entries; the next call re-downloads.
+3. **First-run UX** shows model name + size + estimated download
+   time, asks for "OK to download" on cellular (`navigator.connection`).
+4. **`models.shippie.app` is a CF Worker** that proxies HuggingFace
+   with **CF caching enabled**. Currently TBD — verify before P1B
+   ships. If it's a passthrough, set up a CF Worker for it as part
+   of this commit (3h additional).
 
-**Plan:**
-- Route: `apps/platform/src/routes/__shippie/proxy/+server.ts`
-- Accepts `?url=<absolute-url>`, refuses non-http(s), follows up to 3
-  redirects, caps response size at 5MB, strips Set-Cookie, passes
-  through Content-Type, returns `Access-Control-Allow-Origin: *`.
-- Optional content sanitisation via Readability.js on the worker
-  side (or push that to the client).
-- Rate-limited by Cloudflare's built-in rate limiting on the route.
+**Implementation:**
+1. Add `@huggingface/transformers` as a worker-only dep.
+2. Update `packages/local-ai/src/transformers-adapter.ts` defaults
+   to point at q8 variants.
+3. Add `whisper` task to dispatcher + SDK.
+4. Wire LRU eviction in `packages/local-ai/src/loader.ts`.
+5. Verify on real Chrome/Android (WebGPU) AND real iOS Safari
+   (WASM). The verification eats ~half a day if any backend
+   misbehaves — budgeted in.
 
-**Definition of done:** Read-It-Later can fetch any public article and
-render it offline.
+**Definition of done:**
+- `ai.run('classify', text, { labels })` returns `local` source on
+  Chrome and Safari.
+- LRU eviction test passes (mock CacheStorage with QuotaExceededError).
+- Cellular first-run UX surfaces a confirm dialog.
 
-### P1D — HRM GATT helper (~2 hours)
+**Health gate after P1B:** typecheck/test/build counts unchanged;
+new tests in `packages/local-ai`.
 
-The BLE primitive shipped in Phase 6 handles discovery + scanning.
-Heart-Rate Service is `0x180D` with notify characteristic `0x2A37`.
+### P1C — CORS proxy with SSRF guards (~3.5h, was 1h)
 
-**Plan:** add `pairHrm()` to `packages/proximity/src/ble-beacon.ts`
-that returns a `ReadableStream<{ bpm: number, rrIntervalsMs: number[] }>`.
-Pure browser primitive, falls back gracefully on unsupported
-runtimes.
+> Triple-revised from 1h after the security review.
 
-**Definition of done:** Workout Logger can pair to a real Polar / Wahoo
-strap, surfaces live BPM during a session.
+**Threat model:** an attacker's iframe asks the proxy to fetch
+`http://169.254.169.254/latest/meta-data/` (AWS metadata) or
+`http://10.0.0.1/admin` (private IP) and reads back internal data.
+
+**Mitigations (mandatory):**
+
+1. **Block private IP ranges** before fetch:
+   - IPv4: `0.0.0.0/8`, `10.0.0.0/8`, `127.0.0.0/8`, `169.254.0.0/16`
+     (AWS metadata + link-local), `172.16.0.0/12`, `192.0.0.0/24`,
+     `192.168.0.0/16`, `198.18.0.0/15`, `224.0.0.0/4`, `240.0.0.0/4`.
+   - IPv6: `::1`, `fc00::/7`, `fe80::/10`, `2001:db8::/32`.
+2. **Resolve hostname before request, then block based on the
+   resolved IP** — not the hostname. Prevents DNS-rebinding attacks
+   where `evil.com` resolves to a public IP at first lookup but a
+   private IP on the next.
+3. **Refuse non-http(s)** schemes outright (`file://`, `gopher://`,
+   etc.).
+4. **Disable redirects past the first one OR re-run SSRF check on
+   each redirect target.** A 302 → internal IP must be caught.
+5. **Per-user quota** — 100 fetches per hour per session, enforced
+   by D1 row keyed on session id. Not just CF's global rate limit.
+6. **Response size cap** — 5 MB max; stream and abort.
+7. **Strip Set-Cookie + sensitive headers** from response.
+8. **Refuse content types not in allowlist:** `text/html`,
+   `application/xhtml+xml`, `text/plain`, `application/rss+xml`,
+   `application/atom+xml`. No images, no PDFs (Read-It-Later is
+   text-only).
+
+**Implementation file:** `apps/platform/src/routes/__shippie/proxy/+server.ts`
+
+**Tests:** SSRF allowlist + denylist, redirect-into-private-IP block,
+DNS-rebind block, quota enforcement, content-type allowlist.
+
+**Definition of done:** Read-It-Later can fetch any public article
+and the SSRF test suite (~20 cases) passes.
+
+**Health gate after P1C:** +1 platform test file.
+
+### P1D — HRM GATT helper (~3h, with explicit iOS no-go)
+
+iOS Safari **does not implement Web Bluetooth.** This is a hard
+non-support, not a graceful fallback. Workout Logger's HRM feature
+is **Chrome-on-Android-only.**
+
+**Showcase UX must say so explicitly:**
+- Header on the BLE pairing screen: "Heart-rate pairing requires
+  Chrome on Android. On iPhone, log workouts manually — every other
+  feature still works."
+- Don't render the pair button on iOS at all (use
+  `detectBleAvailability()` we shipped in Phase 6).
+
+**Implementation:** add `pairHrm()` to
+`packages/proximity/src/ble-beacon.ts`. Connects to GATT service
+`0x180D`, subscribes to characteristic `0x2A37`, parses HR + RR
+intervals from the Heart Rate Measurement format. Returns a
+`ReadableStream<{ bpm: number, rrIntervalsMs: number[] }>`.
+
+**Tests:** parse-format unit tests against the spec's example bytes;
+mock `navigator.bluetooth` for connection flow.
+
+**Definition of done:** Workout Logger pairs to a real Polar/Wahoo
+strap on Chrome Android. iOS shows the explanatory message instead.
+
+**Health gate after P1D:** +1 proximity test file.
 
 ---
 
-## P2 — Tooling (~4 hours, after P1A)
+## P2 — Tooling (~5h, after P1A)
 
 ### P2A — `bun run new:showcase <slug>` scaffold
 
-10 new apps × 30 minutes of boilerplate per app = 5 hours of pure
-copy/paste. Worth investing 4 hours up front to make it 30 seconds
-each.
+10 new apps × ~30 min boilerplate per = ~5h saved. Worth investing
+~5h up front (was 4 — bumped for first-run debug + template polish).
 
 **Plan:**
-- Add `scripts/new-showcase.mjs` at repo root
-- Reads a template directory, performs slug substitution, creates:
-  - `apps/showcase-<slug>/{package.json,tsconfig.json,vite.config.ts,index.html,shippie.json}`
-  - `apps/showcase-<slug>/public/{manifest.webmanifest,icon.svg}`
-  - `apps/showcase-<slug>/src/{main.tsx,App.tsx,styles.css,bun-test.d.ts}`
-  - Picks an unused port from 5191+
-- Adds the showcase to `apps/platform/src/lib/container/state.ts`
-  curated list (with a TODO for the user to fill specific intents)
-- Adds the slug to `apps/platform/src/hooks.server.ts`
-  `FIRST_PARTY_SHOWCASE_SLUGS` set
-- Adds the seed row to `apps/platform/drizzle/0011_seed_showcase_apps.sql`
-  (or a newer migration)
+- `scripts/new-showcase.mjs` reads `templates/showcase-template/`,
+  performs slug substitution, creates `apps/showcase-<slug>/{...}`,
+  picks an unused port from 5191+, registers in container's curated
+  list (with TODO comments for intents), adds to
+  `FIRST_PARTY_SHOWCASE_SLUGS` in `hooks.server.ts`, appends to the
+  seed migration.
 
-**Definition of done:** `bun run new:showcase widgets` creates a
-working iframe-sdk-wired Vite + React showcase that builds, deploys,
-and shows in the container — 30 seconds end-to-end.
+**Definition of done:** `bun run new:showcase widgets` produces a
+working showcase that builds, deploys, and renders in the container
+in 60s end-to-end (including verification curl).
 
 ---
 
-## P3 — Existing-app pass A: sensory + intent + UI polish (~22 hours, parallel-safe)
+## P3 — Existing-app pass A: sensory + intent + UI polish (~28h)
 
-One commit per app. Each commit makes the same kinds of changes:
-1. Wire `@shippie/iframe-sdk` (already done for 6 apps; do it for the
-   remaining 5).
-2. Fire `feel.texture(...)` on every meaningful state transition
-   (save / cooked / completed / error).
-3. Broadcast intents the app provides; subscribe to intents it
-   consumes.
-4. Per-app small UI improvements that don't need AI.
+> Re-estimated from 22h — per-app touch averages ~2.5h not 2h once
+> you include intent-broadcast tests, demo cuts, and per-app
+> manifest tweaks.
+
+**Pattern per app:** wire iframe-sdk (5 already done; 5 to go),
+fire `feel.texture(...)` on every meaningful state transition,
+broadcast provided intents and subscribe to consumed ones, ship
+2–3 small UI polish items.
 
 ### Per-app to-do list
 
+(Same list as rev 1 — copied here for completeness.)
+
 #### Recipe Saver
-- [ ] Cooking-mode timer broadcasts `cooking-now` intent (re-uses
-  existing `intent.broadcast`).
-- [ ] Mark-cooked button fires `milestone` texture (currently nothing).
-- [ ] Subscribe to `pantry-inventory` from Pantry Scanner; render
-  ingredients green/red based on what's already in stock.
-- [ ] Save button fires `confirm` texture.
+- Cooking-mode timer → `cooking-now` intent broadcast.
+- `milestone` texture on mark-cooked.
+- Subscribe to `pantry-inventory`; render ingredients green/red.
+- `confirm` texture on save.
 
 #### Journal
-- [ ] Wire iframe-sdk.
-- [ ] Three-tap entry flow: mood-slider → one sentence → done.
-- [ ] Subscribe to `cooked-meal`, `workout-completed`,
-  `body-metrics-logged`. When any fire and Journal is open, surface a
-  prompt: "How did dinner go?" / "How did the workout feel?".
-- [ ] Save fires `complete` texture; mood-slider fires `tap` haptic
-  on detent.
+- Wire iframe-sdk.
+- Three-tap entry flow: mood-slider → one sentence → done.
+- Subscribe to `cooked-meal`, `workout-completed`,
+  `body-metrics-logged`. Surface contextual prompts.
+- `complete` texture on save; `tap` haptic on slider detents.
 
 #### Whiteboard
-- [ ] Wire iframe-sdk.
-- [ ] Mesh-only mode by default — when in a Nearby room, drawings
-  sync over `@shippie/proximity` Group; alone, fall back to local
-  IndexedDB only.
-- [ ] Stroke-replay scrubber via the proximity `EventLog`.
-- [ ] `navigate` texture on undo, `refresh` on clear, `confirm` on
-  stroke commit.
+- Wire iframe-sdk.
+- Mesh-only mode by default via `@shippie/proximity` Group.
+- Stroke-replay scrubber via proximity `EventLog`.
+- `navigate` on undo, `refresh` on clear, `confirm` on stroke.
 
 #### Live Room
-- [ ] Wire iframe-sdk.
-- [ ] Live-latency overlay: each buzzer-press shows ms-since-question
-  for that user.
-- [ ] Mesh-status badge integration.
-- [ ] Crowd-poll integration via the `crowd-poll` primitive.
-- [ ] `error` for wrong answer, `milestone` for round winner,
-  `install` on session start.
+- Wire iframe-sdk.
+- Live-latency overlay: ms-since-question per buzzer.
+- Mesh-status badge integration.
+- Crowd-poll integration (Phase-6 primitive).
+- `error` for wrong, `milestone` for round winner, `install` on
+  session start.
 
 #### Habit Tracker
-- [ ] Streak grid — 365-day GitHub-contributions-style render per
-  habit.
-- [ ] Subscribe to all installed apps' broadcasted intents (after
-  P1A's `apps.list`); auto-suggest habits when new providers arrive.
-- [ ] Insight strip in the habit detail page (after P1A's
-  `agent.insights`).
-- [ ] `confirm` texture on tap-check, `milestone` at 7/30/100-day
-  streaks.
+- 365-day streak grid per habit.
+- Auto-suggest habits from `apps.list` results (after P1A).
+- Per-app insight strip via `agent.insights` (after P1A).
+- `confirm` on tap, `milestone` at 7/30/100-day streaks.
 
 #### Workout Logger
-- [ ] Session timer with rest-period haptics. Set 90s rest → device
-  buzzes when up.
-- [ ] Subscribe to `sleep-logged`. After 14 days, surface "trained
-  18% harder on 7+h sleep nights".
-- [ ] Auto-detect workout type via DeviceMotion. Phone-in-pocket →
-  "looks like 32-min walk".
-- [ ] `error` on overtraining, `milestone` on PRs, `complete` on
-  session close.
-- [ ] BLE heart-rate pairing (after P1D).
+- Session timer with rest-period haptics.
+- Subscribe to `sleep-logged`; surface 14-day correlation.
+- DeviceMotion auto-detect walk/run.
+- `error` on overtraining, `milestone` on PR, `complete` on close.
+- HRM pairing (after P1D, Chrome Android only).
 
 #### Pantry Scanner
-- [ ] Camera scan via `BarcodeDetector` (Chrome path; manual fallback).
-- [ ] Expiry tracking — store `expiresAt`. Local notification (Web
-  Push via the wrapper SDK) when items are 2 days from expiry.
-- [ ] `pantry-low` intent broadcast when stock hits 0.
-- [ ] `confirm` on scan, `refresh` on inventory update.
+- Camera scan via `BarcodeDetector`.
+- Expiry tracking + Web Push notification 2 days before.
+- `pantry-low` intent on stock = 0.
+- `confirm` on scan, `refresh` on update.
 
 #### Meal Planner
-- [ ] Subscribe to `cooked-meal` history (already done) — render "you
-  cooked Carbonara last Tuesday — schedule again?" suggestions.
-- [ ] Smart leftover routing: when servings exceed weekly, propose
-  next-week lunch slots.
-- [ ] `spring-transition` on slot fill, `complete` when full week
-  is planned.
-- [ ] Drag-and-drop from Recipe Saver (after P1A's
-  `data.transferDrop`).
+- `cooked-meal` history → "schedule again?" suggestions.
+- Smart leftover routing.
+- Drag-from-Recipe-Saver via `data.transferDrop` (after P1A).
+- `spring` on slot fill, `complete` when week is full.
 
 #### Shopping List
-- [ ] Multi-phone mesh sync via `@shippie/proximity` Group when in a
-  Nearby room.
-- [ ] Cross-off haptic + line-through transition.
-- [ ] `needs-restocking` intent broadcast.
-- [ ] `tap` on each cross-off, `milestone` when list is complete.
+- Multi-phone mesh sync via `@shippie/proximity` Group.
+- Cross-off haptic + line-through transition.
+- `needs-restocking` intent broadcast.
+- `tap` on cross-off, `milestone` when list complete.
 
 #### Sleep Logger
-- [ ] Render correlation as a scatter plot (locally drawn SVG, no
-  charting lib).
-- [ ] Sleep-debt running average (last 7 nights vs target).
-- [ ] Subscribe to `caffeine-logged` (will work once Caffeine Log
-  ships in P4A).
-- [ ] `error` on sub-5h night, `milestone` on 7-night streak of 7+h.
+- Correlation scatter plot (locally drawn SVG).
+- Sleep-debt running average.
+- Subscribe to `caffeine-logged` (Caffeine Log lands in P4A).
+- `error` on sub-5h night, `milestone` on 7-night 7+h streak.
 
 #### Body Metrics
-- [ ] Photo time-lapse: scrub a slider through stored photos
-  chronologically.
-- [ ] Privacy ribbon at top: "Photos stored locally only. No upload
-  path exists. github.com/…/photo-store.ts" with link to actual code.
-- [ ] `body-metrics-logged` intent broadcast.
-- [ ] `complete` on log, `error` if storage near quota.
+- Photo time-lapse scrub.
+- Permanent privacy ribbon at top with link to source code.
+- `body-metrics-logged` intent broadcast.
+- `complete` on log, `error` near storage quota.
+
+**Health gate after P3:** 41/41 typecheck · ~85/85 test (+27
+per-app intent acceptance tests) · 37/37 build.
 
 ---
 
-## P4 — New apps (~50 hours, parallel by cluster)
+## P4 — New apps (~52h, was 50)
 
-Use the P2A scaffold for each.
+### P4A — Micro-logger template + 5 configs (~12h, was 15)
 
-### P4A — Micro-loggers (5 apps × ~3 hours = 15 hours)
+> Rewritten per review. Build the template **once**; the 5 apps are
+> config files, not 5 implementations. Saves ~8h vs 5-implementations
+> approach AND becomes a marketplace story ("this is how easy a
+> Shippie app is — 30 lines of config").
 
-Each is a one-screen "tap to log" app. They share a pattern: one
-button, one local IndexedDB row, one intent broadcast, one micro
-chart.
+**New package:** `packages/micro-logger`
 
-| Slug | Provides | Consumes | One-line |
-|---|---|---|---|
-| `caffeine-log` | `caffeine-logged` | — | Single tap to log a coffee/tea. |
-| `hydration` | `hydration-logged` | `cooked-meal` | Daily water target. |
-| `mood-pulse` | `mood-logged` | `caffeine-logged`, `workout-completed`, `sleep-logged` | 3-second mood tap; correlations. |
-| `symptom-tracker` | `symptom-logged` | — | Aches, allergies, headaches with severity. |
-| `steps-counter` | `walked` | `workout-completed` | DeviceMotion-based step count, doesn't double-count gym. |
+```ts
+// packages/micro-logger/src/index.ts
+export interface MicroLoggerConfig {
+  appId: string;          // 'app_caffeine_log'
+  slug: string;           // 'caffeine-log'
+  name: string;           // 'Caffeine Log'
+  intent: string;         // 'caffeine-logged'
+  consumes?: string[];
+  buttonLabel: string;    // 'Log a coffee'
+  themeColor: string;
+  chart: 'sparkline' | 'heatmap' | 'count';
+  rowSchema: Record<string, 'string' | 'number' | 'date'>;
+  defaults?: Record<string, unknown>;
+}
 
-### P4B — Productivity (3 apps × ~6 hours = 18 hours)
+export function createMicroLoggerApp(config: MicroLoggerConfig): React.FC;
+```
 
-| Slug | Notes |
-|---|---|
-| `pomodoro` | 25/5 cycle; `feel.texture('navigate')` on phase transition; `focus-session` intent broadcast on completion. |
-| `read-later` | Paste URL → fetch via `/__shippie/proxy?url=` (P1C) → store HTML locally → render via Readability.js in-iframe. Subscribes to `mood-logged` for mood-based suggestions. Capability: offline reader, no Pocket account. |
-| `daily-briefing` | After P4A apps land. Subscribes to ~9 intents. Renders one screen at 8am: "yesterday in your apps." Uses `agent.insights` (P1A) and consumes everything. |
+Each showcase app becomes:
 
-### P4C — Memory + social (2 apps × ~6 hours = 12 hours)
+```tsx
+// apps/showcase-caffeine-log/src/App.tsx
+import { createMicroLoggerApp } from '@shippie/micro-logger';
+import config from './config.ts';
+export const App = createMicroLoggerApp(config);
+```
 
-| Slug | Notes |
-|---|---|
-| `restaurant-memory` | Where you ate, what you had, with whom. Photos in IndexedDB. Subscribes to `cooked-meal` to compute home-vs-out ratio. Provides `dined-out`. |
-| `show-and-tell` | Mesh-only ephemeral scratchpad. Anyone in a Nearby room drops photo/link/text into a shared canvas. Auto-clears when room empties. No persistence. Capability: AirDrop replacement that crosses platforms. |
+**5 configs:**
 
----
+| Slug | Provides | Consumes | Chart | One-line |
+|---|---|---|---|---|
+| `caffeine-log` | `caffeine-logged` | — | sparkline | Single tap to log a coffee/tea. |
+| `hydration` | `hydration-logged` | `cooked-meal` | count (vs target) | Daily water target. |
+| `mood-pulse` | `mood-logged` | `caffeine-logged`, `workout-completed`, `sleep-logged` | sparkline + correlation overlay | 3-second mood tap. |
+| `symptom-tracker` | `symptom-logged` | — | heatmap | Aches, allergies, headaches with severity. |
+| `steps-counter` | `walked` | `workout-completed` | sparkline | DeviceMotion-based step count, doesn't double-count gym. |
 
-## P5 — Existing-app pass B: AI features (~25 hours, depends on P1B)
+**Build cost:**
+- Template: ~6h (UI + IndexedDB + intent broadcast + 3 chart variants
+  + tests).
+- 5 configs: ~1.2h each (config file + manifest + seed migration +
+  port + curated registration).
+- Total: ~12h.
 
-Each AI feature gets a flag — falls back gracefully when the model
-fails to load.
+**Health gate after P4A:** +1 package (`@shippie/micro-logger`) +5
+showcase workspaces → 47/47 typecheck · ~95/95 test · 43/43 build.
 
-| App | Feature | Model |
+### P4B — Productivity (~22h, was 18)
+
+> +4h for Read-It-Later's reader UI (was under-budgeted) and
+> Daily Briefing's dependency on P3 apps wiring intents (additional
+> integration testing after each P3 app lands).
+
+| Slug | Effort | Notes |
 |---|---|---|
-| Recipe Saver | Photo → ingredients OCR | TrOCR |
-| Recipe Saver | Photo → "what dish is this?" | ViT |
-| Journal | Sentiment-arc sparkline (after 14 entries) | DistilBERT |
-| Journal | Voice-note transcription | Whisper-tiny |
-| Whiteboard | Shape recognition (rough rectangle → clean) | ViT or custom CNN |
-| Pantry Scanner | Photo-to-item identification (no barcode) | ViT |
-| Shopping List | Item-by-aisle classifier | DeBERTa-xsmall (zero-shot classify) |
-| Body Metrics | Body-fat % estimate (heavily disclaimed) | ViT or bespoke vision model |
+| `pomodoro` | ~5h | 25/5 cycle; `feel.texture('navigate')` on phase transition; `focus-session` intent broadcast on completion. |
+| `read-later` | ~9h | Paste URL → fetch via `/__shippie/proxy?url=` (P1C) → store HTML locally → render via Readability.js in-iframe. Subscribes to `mood-logged` for mood-based suggestions. Reader UI (typography, themes, scroll progress). |
+| `daily-briefing` | ~8h | **Depends on P3 + P4A.** Subscribes to ~9 intents. Renders one screen at 8am. Uses `agent.insights` (P1A). |
+
+### P4C — Memory + social (~14h, was 12)
+
+| Slug | Effort | Notes |
+|---|---|---|
+| `restaurant-memory` | ~7h | Photos in IndexedDB. Subscribes to `cooked-meal` for home-vs-out ratio. Provides `dined-out`. Geolocation API for "where". |
+| `show-and-tell` | ~7h | Mesh-only ephemeral scratchpad. Anyone in a Nearby room drops content. Auto-clears when room empties. No persistence. |
+
+### P4D — Daily Briefing dependency note
+
+**Daily Briefing depends on BOTH P3 (intents broadcast by existing
+apps) AND P4A (intents broadcast by new micro-loggers).** Land it
+last in P4. Without P3 wiring, the briefing has nothing from Recipe
+Saver / Journal / Workout Logger / etc. to surface.
+
+**Health gate after P4D:** +10 showcase workspaces total →
+51/51 typecheck · ~115/115 test · 47/47 build.
+
+---
+
+## P5 — Existing-app pass B: AI features (~30h, was 25)
+
+> +5h after review: each integration is ~5–6h not 3h once you include
+> first-run UX, fallback rendering when model load fails, iOS
+> verification, and acceptance test.
+
+| App | Feature | Model | Effort |
+|---|---|---|---|
+| Recipe Saver | Photo → ingredients OCR | TrOCR-q8 | ~6h |
+| Recipe Saver | Photo → "what dish is this?" | ViT-q8 | ~3h (shared model with below) |
+| Journal | Sentiment-arc sparkline | DistilBERT-SST2-q8 | ~5h |
+| Journal | Voice-note transcription | Whisper-tiny-q8 | ~6h (mic permission + recording UI) |
+| Whiteboard | Shape recognition | ViT-q8 + custom heuristic | ~4h |
+| Pantry Scanner | Photo-to-item identification | ViT-q8 | ~4h |
+| Shopping List | Item-by-aisle classifier | DeBERTa-xsmall-q8 | ~3h |
+| Body Metrics | Body-fat % estimate (heavily disclaimed) | ViT-q8 + height/weight | ~4h |
 
 **Pattern per integration:**
-1. Showcase calls `shippie.ai.run({ task, input })` via the iframe-sdk.
-2. Surface a "first-run download" progress UI on initial use.
+1. Showcase calls `shippie.ai.run({ task, input })` via iframe-sdk.
+2. Surface first-run download progress (size + ETA + cellular warn).
 3. Cache hit on subsequent calls — instant.
-4. If `source: 'unavailable'`, render a fallback UI ("AI features
-   loading… or unavailable on this browser").
+4. **Feature flag:** if `source: 'unavailable'`, hide the AI feature
+   instead of showing it broken. App still works without.
+5. **iOS verification per feature** — the WASM backend on iOS Safari
+   is the slowest path; some features may be honestly unusable
+   (Whisper-tiny WASM on iOS will likely take 5–8s for a 10s clip
+   — that's in the risk register).
+
+**Health gate after P5:** package counts unchanged; +8 acceptance
+tests (one per AI integration); per-feature feature-flag tests.
 
 ---
 
-## P6 — Polish + acceptance (~12 hours, throughout)
+## P6 — Acceptance + polish (~14h, throughout)
 
 ### P6A — Cross-cluster intent acceptance tests
 
-Every new intent gets a vitest in
-`apps/platform/src/lib/container/intent-broadcast.test.ts` style:
-provider broadcasts → consumer receives → asserts row content.
-
-New intents introduced by this plan:
-`cooking-now`, `pantry-inventory` (broadcast added),
-`pantry-low`, `caffeine-logged`, `hydration-logged`,
-`mood-logged`, `symptom-logged`, `walked`, `dined-out`,
-`focus-session`, `read-saved`, `sleep-debt-high`,
-`body-metrics-logged`, `journal-entry-added`,
-`workout-completed-detail` (HR/cadence variant).
+15+ new intents introduced; each gets a vitest in
+`apps/platform/src/lib/container/intent-broadcast.test.ts` style.
 
 ### P6B — Per-pass demo recordings
 
-After each P3 / P4 / P5 lands, record a 30s vignette via the existing
-Playwright recording tool (`tools/recording`). Cumulative cuts:
-- After P3: a 60s "every existing app got cross-app + sensory"
-- After P4A: "log everything in 3 taps"
-- After P4B: "Pomodoro + Read-It-Later + Daily Briefing"
-- After P4D: "Daily Briefing" hero shot
-- After P5: "AI runs on your phone"
+After each P3 / P4 / P5 lands, a 30s vignette via
+`tools/recording/cross-cluster.record.ts`. Cumulative cuts for
+homepage hero, Twitter, Hacker News submission.
 
-The 2-min C2 master cut from `docs/launch/c2-demo-storyboard.md`
-gets re-cut at the very end.
+### P6C — Marketplace metadata refresh
 
-### P6C — Marketplace metadata
-
-Each new app:
-- Real `tagline` and `description` in `0011_seed_showcase_apps.sql`
-  pattern (or a follow-up `00XX_seed_more_apps.sql`).
-- Better category (current values are hand-picked; review against
-  the marketplace's existing categories).
-- An `icon.svg` that's visually distinct from siblings.
-- Manifest `categories` field to align with the marketplace browse
-  filters.
+Each app gets real `tagline`, real `description`, real category,
+real `icon.svg`. Update the seed migration or follow-up migration.
 
 ### P6D — Showcase catalog refresh
 
-`packages/templates/src/showcase-catalog.ts` currently knows about
-the 8 demo apps. Update it to know about all 21 (11 existing + 10
-new) so the cross-cluster acceptance test surface stays
-authoritative.
+`packages/templates/src/showcase-catalog.ts` updated to know about
+all 21 apps so the cross-cluster test surface stays authoritative.
+
+---
+
+## P7 — Launch verification (~8h, USER-SIDE)
+
+> New phase. Distinguishes code-complete from launch-complete.
+> CLAUDE.md flags this as user-side outstanding; rev 1 didn't budget
+> the lag between "I shipped P5" and "I verified on a phone."
+
+### P7A — Real-device walkthrough
+
+- iPhone Safari + Android Chrome
+- Add-to-Home-Screen on each
+- All 21 apps install via the container, render, persist data
+- Mesh demo on **two real phones** in the same room (not browser
+  contexts) — verify P3 Whiteboard sync, Live Room buzzer, Show &
+  Tell ephemeral share
+- AI runs locally on real iOS — confirm Whisper-tiny is or isn't
+  usable in WASM on real hardware
+- Cellular model-download check — does the cellular UX warn correctly?
+
+### P7B — Production deploy verification
+
+- All 21 showcases reachable at `https://shippie.app/run/<slug>/`
+- All 21 visible at `https://shippie.app/apps`
+- Every cross-app intent demonstrated end-to-end on a real phone
+
+### P7C — 2-min master cut re-recorded
+
+The Playwright rough-cut at
+`docs/launch/recordings/c2-cross-cluster.webm` is replaced by a real
+2-min screen recording on real devices, per the storyboard at
+`docs/launch/c2-demo-storyboard.md`.
+
+---
+
+## Risk register
+
+(New section per review.)
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| **WebGPU detection on iOS Safari** — none today, all AI runs through WASM | Certain | Quantized models (P1B); LRU eviction; honest disclaimers in UX. Whisper-tiny WASM on iOS Safari likely 5–8s for a 10s clip — may need to disable on iOS. |
+| **CacheStorage eviction on iOS under storage pressure** | High | LRU strategy in P1B; first-run UX warns ~225MB total cache; quantized models keep budget down. |
+| **`models.shippie.app` CDN doesn't exist as a CF-cached origin** | Medium | Verified explicitly in P1B as a checkbox; if not, set up a CF Worker proxy as part of P1B (3h additional). |
+| **iOS Safari Web Bluetooth = zero support** | Certain | P1D ships HRM as Chrome-Android-only; UX states this loudly; no surprise at P7. |
+| **iOS Safari aggressive Cache eviction during P5 demos** | High | LRU eviction on QuotaExceededError; per-feature feature flag drops AI gracefully. |
+| **Proximity mesh under poor RF** (typical venue) | Medium | Existing `@shippie/proximity` falls back through STUN/TURN if direct mesh fails. Demo recordings shot on a known-good network. |
+| **Model downloads on cellular** | Medium | First-run UX detects `navigator.connection.type` and warns + asks confirmation before download. |
+| **Per-iframe iOS storage scoping inconsistencies** | Medium | All showcases use IndexedDB scoped to the runtime origin (`shippie.app`); no per-subdomain partitioning needed since `/run/<slug>/` is same-origin. |
+| **CORS proxy abused as SSRF vector** | High if not guarded | Full SSRF guard list (P1C): private IP block + DNS-rebind block + redirect re-check + per-user quota. |
+| **Cross-app intent fingerprinting via `apps.list`** | Medium | Scoped to overlap-only (P1A Option A). Option B grant flow if needed later. |
+| **Daily Briefing nothing-to-show on day 1** | Certain | Empty-state copy: "Your briefing fills in as you use other Shippie apps. Try Caffeine Log first." |
+| **Real-device demo regressions between deploys** | Medium | `bun run smoke` already wired (Phase B); add to CI on every PR. |
 
 ---
 
 ## Cross-cutting patterns
 
-### Reuse
-
-| Pattern | Where |
-|---|---|
-| Tap-to-log micro-app | P4A — 5 apps share scaffold + 1-button UI + IndexedDB row + intent broadcast |
-| Photo + IndexedDB privacy showcase | Body Metrics, Restaurant Memory |
-| Cross-app correlation (subscribe to N intents) | Mood Pulse, Sleep Logger, Daily Briefing, Habit Tracker |
-| Mesh-aware collaboration | Whiteboard, Shopping List, Show & Tell |
-| AI-on-device privacy showcase | Recipe Saver, Journal, Whiteboard, Pantry Scanner, Body Metrics |
-
-### Things that simplify the plan, not the scope
-
-1. **iframe-sdk consolidation** — already shipped. Every new app uses it; every existing app gets migrated in P3.
-2. **The new-showcase scaffold (P2A)** — saves ~30 minutes per app × 10 = 5 hours.
-3. **Single-pass platform unblockers (P1)** — three bridge caps in one commit, model loader in one, etc. Avoids context-switch tax.
-4. **Feature flags on AI-dependent features** — let P5 ship even before all models load on every device.
+| Pattern | Where | Saving |
+|---|---|---|
+| iframe-sdk consolidation | already shipped | ~30h vs hand-rolling postMessage |
+| `bun run new:showcase` scaffold | P2A | ~5h × 10 apps = 50h saved... wait, that's high. Realistic saving: ~30 min × 10 = 5h |
+| `@shippie/micro-logger` template | P4A | ~8h vs 5 implementations |
+| Single P1B for all AI | P1B | ~12h vs per-app model loaders |
+| Feature flags on AI-dependent features | P5 | Lets P5 ship before all models load on every device |
+| Per-track ethos audit | every commit body | Avoids architectural drift |
 
 ---
 
-## Acceptance criteria
+## Realistic effort summary
 
-The plan is done when:
-
-1. **Every app demonstrates a specific Shippie ideology claim** stated in code (the `proves` field on `@shippie/templates`'s catalog entries).
-2. **`bun run smoke` passes** the cross-cluster acceptance with all 21 apps installed and three intent flows verified end-to-end (e.g. cooked-meal → habit auto-check, mood-logged → daily briefing surfaces, pantry-low → shopping list adds item).
-3. **Health stays green** at every track boundary.
-4. **Production deploy at `shippie.app/container` shows all 21 apps.**
-5. **Real-device walkthrough** verifies AI runs on iOS Safari + Android Chrome, mesh works between two real phones, and the Add-to-Home-Screen flow lands cleanly.
+| Phase | Hours | Notes |
+|---|---|---|
+| P1A bridge caps | 10 | +design pass |
+| P1B AI loader | 10 | +cache budget, +iOS verify, +CF proxy verify |
+| P1C CORS + SSRF | 3.5 | +full SSRF list, +per-user quota |
+| P1D HRM | 3 | Chrome-Android-only, doc'd |
+| P2A scaffold | 5 | first-run debug |
+| P3 (11 apps × ~2.5h) | 28 | per-app intent + sensory + polish |
+| P4A micro-logger + 5 configs | 12 | template, not implementations |
+| P4B productivity (3) | 22 | reader UI, briefing dependency |
+| P4C memory+social (2) | 14 | photo + mesh |
+| P4D briefing | included in P4B above |
+| P5 (8 AI integrations) | 30 | first-run UX, fallback, iOS verify per |
+| P6 acceptance + polish | 14 | tests, recordings, metadata |
+| **Subtotal focused work** | **~152** | rev 1 said 100–150 |
+| Review/feedback/redeploy buffer (~25%) | ~38 | not in rev 1 |
+| **Realistic focused total** | **~190** | |
+| P7 launch verification (user-side) | 8 | not in rev 1 |
+| **Total to launch** | **~198 hours** | **5–7 weeks elapsed** |
 
 ---
 
-## Critical path
+## Critical path (revised)
 
-If only one person works on this:
+If only one person works on this, **the minimum demonstrable slice** is:
 
 ```
-P1B (1d) → P2A (4h) → P4A (15h) → P4D (8h) → P5 Recipe Saver (4h)
-                                                    ↓
-                                              demo recording
+P1B (10h) → P2A (5h) → P4A (12h) → P3 partial (8h to wire intents
+                                     in apps Daily Briefing reads)
+                                  → P4D (8h) → P5 Recipe Saver (6h)
+                                  → demo recording (2h)
 ```
 
-That's ~3 days of focused work for the *minimum demonstrable
-slice*: AI loader works → scaffold ready → 5 micro-loggers live →
-Daily Briefing renders → at least one AI feature visible. After that,
-P3 + remaining P4/P5 land in any order.
+That's ~51 focused hours = **~1.5 weeks** for the minimum showcase.
+After that, the rest lands in any order.
 
 If two or more people:
 - Person A: P1 → P5 (AI track)
 - Person B: P2 → P3 → P4 (apps track)
 - Both converge for P6.
+- Solo / user-side: P7.
+
+---
+
+## Health gate targets per phase
+
+Today's baseline: **41 typecheck · 52 test packages · 37 build · 1061 individual tests passing.**
+
+| After phase | Typecheck | Test pkgs | Build | New tests |
+|---|---|---|---|---|
+| P1A | 41 | 52 | 37 | +6 cap tests |
+| P1B | 41 | 52 | 37 | +5 loader tests |
+| P1C | 41 | 52 | 37 | +20 SSRF tests |
+| P1D | 41 | 52 | 37 | +4 HRM tests |
+| P2A | 41 | 52 | 37 | +1 scaffold smoke |
+| P3 | 41 | 52 | 37 | +27 per-app intent tests |
+| P4A | 47 | 58 | 43 | +1 template + 5 config + 5 acceptance |
+| P4B | 50 | 61 | 46 | +3 app tests |
+| P4C | 52 | 63 | 48 | +2 app tests |
+| P4D | 53 | 64 | 49 | +1 briefing test + cross-app integration |
+| P5 | 53 | 64 | 49 | +8 AI feature flag tests |
+| P6 | 53 | 64 | 49 | +N acceptance |
+
+Any phase that doesn't hit its target = does not ship.
 
 ---
 
 ## What this plan deliberately does NOT do
 
-- **Native shell graduation for the showcases.** The `shippie graduate`
-  CLI we shipped in Phase 6 covers the path; actual Capacitor wraps
-  for showcases stay deferred until a maker asks (per CLAUDE.md
-  Phase 6 deferral principle).
-- **A real Pages-per-app deployment.** Option-3 from the URL-strategy
-  decision stays — `/run/<slug>/` is the canonical URL.
-- **iOS-only PWA install flows per app.** The container is the install
-  surface; per-app subdomain installs would require Option 1 from the
-  same URL-strategy decision and are deferred.
-- **The remaining Phase 6 items** (hotspot handoff, stadium pilot,
-  cross-LAN federation real-hardware testing, OS dissolution) — same
-  Phase 6 deferral as before.
+- **Native shell graduation per showcase** — `shippie graduate` CLI exists; real wraps wait for maker pull.
+- **Per-app CF Pages projects** (Option 1 from URL-strategy) — `/run/<slug>/` is the canonical URL.
+- **iOS-only PWA install per showcase** — container is the install surface.
+- **Remaining Phase 6** — hotspot handoff, stadium pilot, cross-LAN federation real-hardware testing, OS dissolution.
 
 ---
 
 ## Suggested next action
 
-Ship P1 in a single coherent commit (3 caps + model loader + CORS
-proxy + HRM helper). It's ~2.5 days but the rest of the plan unlocks
-behind it. The minute P1 lands and `bun run health` is green, every
-other track can move in parallel.
+Authorise P1A → P1D as **four separate commits** (not one squash).
+Each is independently reviewable. Each has its own design pass + tests.
+Total: ~3 days of focused work.
 
-I can start P1 right now if authorised. Otherwise this doc is the
-brief and the rest is sequencing.
+After P1 lands and `bun run health` is green at the right counts,
+P2/P3/P4 can move in parallel.
+
+I can start P1A right now if authorised. Otherwise this doc is the
+brief.
