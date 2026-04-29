@@ -1184,6 +1184,17 @@
     } else if (!activeAppId || !appById.has(activeAppId)) {
       activeAppId = openAppIds[0] ?? null;
     }
+    // Honour `?section=` so the focused-mode "Your Data" link from
+    // inside an app routes the user to the right dashboard tab on
+    // the way out. Valid values: 'home' | 'create' | 'data'.
+    if (!data.focused) {
+      const url = new URL(window.location.href);
+      const requestedSection = url.searchParams.get('section');
+      if (requestedSection === 'home' || requestedSection === 'create' || requestedSection === 'data') {
+        section = requestedSection;
+        if (requestedSection !== 'home') activeAppId = null;
+      }
+    }
     storageReady = true;
     void loadCollection();
   });
@@ -1280,7 +1291,16 @@
       edge="left"
     >
       <div class="focused-drawer">
-        <h2>Apps</h2>
+        <header class="focused-drawer-head">
+          <a class="focused-home" href="/container" aria-label="Shippie home">
+            <span class="focused-rocket" aria-hidden="true">🚀</span>
+            <span>Shippie</span>
+          </a>
+          <a class="focused-data" href="/container?section=data" aria-label="Your Data">
+            Your Data
+          </a>
+        </header>
+        <h2>Switch app</h2>
         <div class="focused-grid">
           {#each apps as app (app.id)}
             <button
@@ -1298,6 +1318,19 @@
             </button>
           {/each}
         </div>
+        {#if agentInsights.length > 0}
+          <h2 class="focused-insights-heading">Insights</h2>
+          <ul class="focused-insights">
+            {#each agentInsights.slice(0, 3) as insight (insight.id)}
+              <li class={`focused-insight focused-insight-${insight.urgency}`}>
+                <strong>{insight.title}</strong>
+                {#if insight.body}
+                  <p>{insight.body}</p>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
     </AppSwitcherGesture>
   </section>
@@ -2090,10 +2123,79 @@
     gap: 16px;
     color: var(--text, #14120f);
   }
+  .focused-drawer-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  .focused-home {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: inherit;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 18px;
+  }
+  .focused-rocket {
+    font-size: 20px;
+    line-height: 1;
+  }
+  .focused-data {
+    color: var(--sunset, #e8603c);
+    font-size: 13px;
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid rgba(232, 96, 60, 0.4);
+    border-radius: 999px;
+  }
+  .focused-data:hover {
+    background: rgba(232, 96, 60, 0.08);
+  }
   .focused-drawer h2 {
     margin: 0;
-    font-size: 22px;
+    font-size: 13px;
     font-weight: 600;
+    color: rgba(0, 0, 0, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .focused-insights-heading {
+    margin-top: 8px;
+  }
+  .focused-insights {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .focused-insight {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .focused-insight strong {
+    display: block;
+    font-size: 14px;
+  }
+  .focused-insight p {
+    margin: 4px 0 0;
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 13px;
+  }
+  .focused-insight-high {
+    border-color: rgba(232, 96, 60, 0.5);
+    background: rgba(232, 96, 60, 0.05);
+  }
+  .focused-insight-medium {
+    border-color: rgba(94, 167, 119, 0.4);
+    background: rgba(94, 167, 119, 0.06);
   }
   .focused-grid {
     display: grid;
