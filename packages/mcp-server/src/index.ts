@@ -480,8 +480,18 @@ async function handleDeploy(args: { directory: string; slug?: string; trial?: bo
         isError: true,
       };
     }
+    const lines = [`Deploy failed: ${result.error ?? 'unknown error'}`];
+    const blockers = result.preflight?.blockers ?? [];
+    if (blockers.length > 0) {
+      lines.push('', 'Blocked by:');
+      for (const blocker of blockers.slice(0, 8)) {
+        lines.push(`- ${blocker.title}`);
+        if (blocker.detail) lines.push(`  ${blocker.detail}`);
+      }
+      if (blockers.length > 8) lines.push(`- ...and ${blockers.length - 8} more`);
+    }
     return {
-      content: [{ type: 'text', text: `Deploy failed: ${result.error ?? 'unknown error'}` }],
+      content: [{ type: 'text', text: lines.join('\n') }],
       isError: true,
     };
   }

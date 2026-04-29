@@ -20,7 +20,7 @@
         totalBytes?: number;
         preflightMs?: number;
       }
-    | { kind: 'error'; reason: string; blockers?: Array<{ rule: string; title: string }> };
+    | { kind: 'error'; reason: string; blockers?: Array<{ rule: string; title: string; detail?: string }> };
 
   let slug = $state('recipes');
   let file = $state<File | null>(null);
@@ -66,7 +66,9 @@
         result = {
           kind: 'error',
           reason: String(j.reason ?? j.error ?? 'Deploy failed.'),
-          blockers: (j.preflight as { blockers?: Array<{ rule: string; title: string }> })?.blockers,
+          blockers: (
+            j.preflight as { blockers?: Array<{ rule: string; title: string; detail?: string }> } | undefined
+          )?.blockers,
         };
       }
     } catch (err) {
@@ -165,7 +167,12 @@
       {#if result.blockers && result.blockers.length > 0}
         <ul>
           {#each result.blockers as b (b.rule + b.title)}
-            <li><strong>{b.rule}</strong>: {b.title}</li>
+            <li>
+              <strong>{b.title}</strong>
+              {#if b.detail}
+                <span>{b.detail}</span>
+              {/if}
+            </li>
           {/each}
         </ul>
       {/if}
@@ -279,6 +286,8 @@
   }
   .error-head { font-weight: 700; margin: 0; }
   .error ul { margin: 0.5rem 0 0 1.25rem; padding: 0; font-family: ui-monospace, monospace; font-size: 12px; }
+  .error li + li { margin-top: 0.375rem; }
+  .error li span { display: block; margin-top: 0.125rem; color: rgba(180,63,42,0.78); }
   @media (prefers-color-scheme: dark) {
     .slug-input, .suffix, .share-input, .copy-btn { border-color: #3A352D; }
     .suffix { background: rgba(255,255,255,0.03); }

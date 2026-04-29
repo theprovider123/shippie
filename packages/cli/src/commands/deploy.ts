@@ -9,7 +9,7 @@
  */
 import { existsSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
-import { createClient } from '@shippie/core';
+import { createClient, type DeployResult } from '@shippie/core';
 import { streamCommand } from './stream.js';
 
 const OUTPUT_DIRS = ['dist', 'build', 'out', '.output/public', 'public', '_site'];
@@ -56,7 +56,7 @@ export async function deployCommand(
     });
 
     if (!result.ok) {
-      printDeployError(result.error ?? 'unknown_error');
+      printDeployError(result);
       process.exit(1);
     }
 
@@ -86,7 +86,8 @@ export async function deployCommand(
   }
 }
 
-function printDeployError(error: string): void {
+function printDeployError(result: DeployResult): void {
+  const error = result.error ?? 'unknown_error';
   if (error === 'trial_rate_limit') {
     console.error('Trial rate limit hit (3/hour/IP). Wait an hour or sign in for unlimited deploys.');
     return;
@@ -102,4 +103,16 @@ function printDeployError(error: string): void {
     return;
   }
   console.error('Deploy failed:', error);
+  const blockers = result.preflight?.blockers ?? [];
+  if (blockers.length > 0) {
+    console.error('');
+    console.error('Blocked by:');
+    for (const blocker of blockers.slice(0, 8)) {
+      console.error(`- ${blocker.title}`);
+      if (blocker.detail) console.error(`  ${blocker.detail}`);
+    }
+    if (blockers.length > 8) {
+      console.error(`- ...and ${blockers.length - 8} more`);
+    }
+  }
 }

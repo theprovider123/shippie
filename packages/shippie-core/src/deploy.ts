@@ -20,9 +20,25 @@ export interface DeployResult {
   claimUrl?: string;
   /** Raw error or message when ok=false. */
   error?: string;
+  preflight?: DeployPreflightReport;
   /** HTTP status from the platform. Useful for tooling to disambiguate
    *  rate-limit vs auth-failure vs validation-error. */
   status?: number;
+}
+
+export interface DeployPreflightFinding {
+  rule: string;
+  severity: 'pass' | 'warn' | 'block' | 'fix';
+  title: string;
+  detail?: string;
+}
+
+export interface DeployPreflightReport {
+  passed: boolean;
+  findings: DeployPreflightFinding[];
+  warnings: DeployPreflightFinding[];
+  blockers: DeployPreflightFinding[];
+  durationMs: number;
 }
 
 interface InternalCtx {
@@ -85,12 +101,17 @@ export async function deployDirectory(
 
   if (!res.ok) {
     const reason =
-      typeof json.error === 'string'
-        ? json.error
-        : typeof json.reason === 'string'
-          ? json.reason
+      typeof json.reason === 'string'
+        ? json.reason
+        : typeof json.error === 'string'
+          ? json.error
           : res.statusText;
-    return { ok: false, status: res.status, error: reason };
+    return {
+      ok: false,
+      status: res.status,
+      error: reason,
+      preflight: parsePreflightReport(json.preflight),
+    };
   }
 
   return {
@@ -105,4 +126,40 @@ export async function deployDirectory(
     expiresAt: typeof json.expires_at === 'string' ? json.expires_at : undefined,
     claimUrl: typeof json.claim_url === 'string' ? json.claim_url : undefined,
   };
+}
+
+function parsePreflightReport(input: unknown): DeployPreflightReport | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const raw = input as Record<string, unknown>;
+  return {
+    passed: raw.passed === true,
+    findings: parsePreflightFindings(raw.findings),
+    warnings: parsePreflightFindings(raw.warnings),
+    blockers: parsePreflightFindings(raw.blockers),
+    durationMs: typeof raw.durationMs === 'number' ? raw.durationMs : 0,
+  };
+}
+
+function parsePreflightFindings(input: unknown): DeployPreflightFinding[] {
+  if (!Array.isArray(input)) return [];
+  return input.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const raw = item as Record<string, unknown>;
+    if (typeof raw.rule !== 'string' || typeof raw.title !== 'string') return [];
+    const severity = raw.severity;
+    if (
+      severity !== 'pass' &&
+      severity !== 'warn' &&
+      severity !== 'block' &&
+      severity !== 'fix'
+    ) {
+      return [];
+    }
+    return [{
+      rule: raw.rule,
+      severity,
+      title: raw.title,
+      detail: typeof raw.detail === 'string' ? raw.detail : undefined,
+    }];
+  });
 }
