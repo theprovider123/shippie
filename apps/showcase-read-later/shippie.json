@@ -1,0 +1,25 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Read Later",
+  "slug": "read-later",
+  "description": "Save articles. Fetched via the SSRF-guarded proxy, extracted with Readability, stored locally.",
+  "icon": "/icon.svg",
+  "theme_color": "#3F51B5",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "consumes": ["mood-logged"]
+  },
+  "data_schemas": {
+    "articles": {
+      "id": "text primary key",
+      "url": "text not null",
+      "title": "text",
+      "content_html": "text",
+      "read_minutes": "integer",
+      "saved_at": "datetime",
+      "read": "boolean"
+    }
+  }
+}

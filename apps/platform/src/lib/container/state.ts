@@ -447,6 +447,23 @@ export const curatedApps: ContainerApp[] = [
     permissions: localPermissions('pomodoro', { provides: ['focus-session'] }),
     devUrl: 'http://localhost:5196/',
   },
+  {
+    id: 'app_read_later',
+    slug: 'read-later',
+    name: 'Read Later',
+    shortName: 'Read',
+    description: 'Save articles via the SSRF-guarded proxy. Mood-logged subscribers see short-read suggestions.',
+    appKind: 'connected',
+    entry: 'app/index.html',
+    labelKind: 'Connected',
+    icon: 'RE',
+    accent: '#3F51B5',
+    version: '1',
+    packageHash: `sha256:${'b'.repeat(64)}`,
+    standaloneUrl: '/run/read-later',
+    permissions: localPermissions('read-later', { consumes: ['mood-logged'] }),
+    devUrl: 'http://localhost:5197/',
+  },
 ];
 
 // ---------------------------------------------------------------------------

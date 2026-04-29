@@ -1,0 +1,30 @@
+{
+  "name": "@shippie/showcase-read-later",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Save articles. Fetched via the SSRF-guarded proxy, extracted with a tiny Readability port, stored locally.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "bun test src",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@shippie/iframe-sdk": "workspace:*",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.12",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "happy-dom": "^15.7.4",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

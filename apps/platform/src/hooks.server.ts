@@ -45,6 +45,7 @@ const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
   'symptom-tracker',
   'steps-counter',
   'pomodoro',
+  'read-later',
 ]);
 
 export const handle: Handle = async ({ event, resolve }) => {
