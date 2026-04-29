@@ -61,3 +61,55 @@ export function focusApp<T>(
 export function unfocusApp<T>(openAppIds: readonly T[]): LruDecision<T> {
   return { openAppIds: [...openAppIds], evicted: null };
 }
+
+/**
+ * Pending evictions — keyed by the *new* focused app id, valued by the
+ * app id whose iframe + bridge host should be disposed once the new
+ * one is ready. Held off until the new frame fires markFrameReady or
+ * markFrameError so we don't destroy a still-booting iframe under a
+ * rapid-click sequence (the bug that produced "click did nothing"
+ * reports).
+ *
+ * Pure data structure — callers operate on it via queue/consume.
+ */
+export type PendingEvictions<T = string> = ReadonlyMap<T, T>;
+
+/**
+ * Queue an eviction to fire when `focused`'s frame becomes ready.
+ * If `evicted` is null, returns `pending` unchanged. If `focused`
+ * already had a queued eviction, the old one is replaced and returned
+ * as `superseded` so the caller can dispose it immediately (the
+ * previously-pending app is no longer the one that's about to
+ * disappear behind a fresh focus).
+ */
+export function queueEviction<T>(
+  pending: PendingEvictions<T>,
+  focused: T,
+  evicted: T | null,
+): { next: PendingEvictions<T>; superseded: T | null } {
+  if (evicted === null) {
+    return { next: pending, superseded: null };
+  }
+  const superseded = pending.get(focused) ?? null;
+  const next = new Map(pending);
+  next.set(focused, evicted);
+  return { next, superseded };
+}
+
+/**
+ * Consume the pending eviction for `settled` (the app that just hit
+ * `ready` or `error`). Returns the evicted id (caller disposes) and
+ * the new pending map without that entry.
+ */
+export function consumeEviction<T>(
+  pending: PendingEvictions<T>,
+  settled: T,
+): { next: PendingEvictions<T>; evicted: T | null } {
+  const evicted = pending.get(settled) ?? null;
+  if (evicted === null) {
+    return { next: pending, evicted: null };
+  }
+  const next = new Map(pending);
+  next.delete(settled);
+  return { next, evicted };
+}

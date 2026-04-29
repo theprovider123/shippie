@@ -86,7 +86,12 @@
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
-  import { focusApp } from '$lib/container/iframe-lifecycle';
+  import {
+    consumeEviction,
+    focusApp,
+    queueEviction,
+    type PendingEvictions,
+  } from '$lib/container/iframe-lifecycle';
   import { appPackageSrcdoc } from '$lib/container/app-srcdoc';
   import {
     createOrReusePackageFrameSource,
@@ -117,6 +122,11 @@
   const defaultAppId = $derived(merged.defaultAppId);
   const hosts = new Map<string, ContainerBridgeHost>();
   const frames = new Map<string, HTMLIFrameElement>();
+  // Eviction queue — a pending eviction won't dispose its target's
+  // bridge host or frame source until the new (focusing) app's frame
+  // fires markFrameReady or markFrameError. Closes the LRU race where
+  // a rapid-click sequence destroys an iframe still mid-boot.
+  let pendingEvictions: PendingEvictions<string> = new Map();
   const packageObjectUrls: PackageFrameSourceCache = new Map();
 
   let section = $state<ContainerSection>('home');
@@ -382,15 +392,22 @@
   function openApp(appId: string) {
     // LRU mount cap — keep at most 8 apps live. Re-focusing an
     // already-open app moves it to the head; opening a new one past
-    // the cap evicts the oldest. Eviction frees the bridge host +
-    // package frame source so memory stays bounded on heavy users.
+    // the cap evicts the oldest. Eviction is deferred until the new
+    // app's frame settles (ready or error) so a rapid-click sequence
+    // can't destroy an iframe still mid-boot. queue + supersede flow
+    // (see iframe-lifecycle.ts) handles the case where the user
+    // clicks past the queued frame before it settles.
     const decision = focusApp(openAppIds, appId);
     openAppIds = [...decision.openAppIds];
     if (decision.evicted) {
-      hosts.get(decision.evicted)?.dispose();
-      hosts.delete(decision.evicted);
-      frames.delete(decision.evicted);
-      revokePackageFrameSource(decision.evicted, packageObjectUrls);
+      const queued = queueEviction(pendingEvictions, appId, decision.evicted);
+      pendingEvictions = queued.next;
+      // If a previously-pending eviction got superseded (user clicked
+      // through before the prior focus settled), dispose the prior
+      // target now — there's no longer a frame waiting on it.
+      if (queued.superseded) {
+        disposeApp(queued.superseded);
+      }
     }
     const app = appById.get(appId);
     if (app && !receiptsByApp[appId]) {
@@ -401,6 +418,21 @@
     }
     activeAppId = appId;
     section = 'home';
+  }
+
+  function disposeApp(appId: string) {
+    hosts.get(appId)?.dispose();
+    hosts.delete(appId);
+    frames.delete(appId);
+    revokePackageFrameSource(appId, packageObjectUrls);
+  }
+
+  function commitPendingEviction(settledAppId: string) {
+    const consumed = consumeEviction(pendingEvictions, settledAppId);
+    if (consumed.evicted) {
+      pendingEvictions = consumed.next;
+      disposeApp(consumed.evicted);
+    }
   }
 
   function goHome() {
@@ -439,10 +471,15 @@
 
   function markFrameReady(appId: string) {
     frameStates = markFrameReadyState(frameStates, appId);
+    commitPendingEviction(appId);
   }
 
   function markFrameError(appId: string, message = 'This app could not open in the container.') {
     frameStates = markFrameErrorState(frameStates, appId, message);
+    // Also commit the queued eviction even on error — there's no point
+    // holding the old app's resources hostage when the new one isn't
+    // going to render anyway.
+    commitPendingEviction(appId);
   }
 
   function reloadFrame(appId: string) {
