@@ -62,6 +62,10 @@ Internal packages expose `exports.types` and `exports.import` as `./src/index.ts
 
 - `bun run X 2>&1 | tail -N` returns `tail`'s exit code, not `bun`'s. For "is the command green?" checks, capture full output to a file then grep for failure markers separately, or use `set -o pipefail`. An "exit 0" task notification can mask a real failure.
 
+## Dev environment gotchas
+
+- **`/apps` 500s on a fresh checkout** until you run `bun run db:migrate:local` from `apps/platform/`. The marketplace SSR query needs the D1 schema + showcase seeds (migrations `0001` through `0022`). The homepage tolerates the empty table; `/apps` doesn't.
+
 ## What's outstanding (user-side, not code)
 
 1. Walk through `docs/launch/cf-google-deploy.md` — create CF resources, set secrets, register Google OAuth client.

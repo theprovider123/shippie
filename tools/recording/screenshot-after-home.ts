@@ -23,6 +23,10 @@ async function main() {
   });
   await page.waitForTimeout(800);
   await page.screenshot({ path: OUT, fullPage: false });
+  await page.screenshot({
+    path: OUT.replace("after-home.png", "after-home-full.png"),
+    fullPage: true,
+  });
   await browser.close();
   console.log(`[after] ${OUT}`);
 }

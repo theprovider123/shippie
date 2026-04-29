@@ -44,6 +44,34 @@ export function applyVisual(target: Element | null, recipe: VisualRecipe): void 
   }
   if (recipe.particles) particleBurst(el, recipe.particles);
   if (recipe.glow && recipe.kind !== 'glow') glow(el, recipe);
+  if (recipe.flash) flash(recipe.flash);
+}
+
+/**
+ * Full-viewport overlay that fades in to `opacity` then fades out across
+ * `durationMs`. Used by the install signature moment to wash the whole page
+ * sunset orange. No-op when no document or under reduced-motion.
+ */
+function flash(spec: NonNullable<VisualRecipe['flash']>): void {
+  if (typeof document === 'undefined' || reduced()) return;
+  const layer = document.createElement('div');
+  layer.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    `background:${spec.color}`,
+    'opacity:0',
+    'pointer-events:none',
+    'z-index:2147483647',
+    `transition:opacity ${spec.durationMs / 2}ms ease-out`,
+  ].join(';');
+  document.body.appendChild(layer);
+  requestAnimationFrame(() => {
+    layer.style.opacity = String(spec.opacity);
+    setTimeout(() => {
+      layer.style.opacity = '0';
+      setTimeout(() => layer.remove(), spec.durationMs / 2 + 50);
+    }, spec.durationMs / 2);
+  });
 }
 
 function scaleSpring(el: HTMLElement): void {

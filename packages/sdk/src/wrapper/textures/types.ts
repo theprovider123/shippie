@@ -44,6 +44,12 @@ export interface VisualRecipe {
   /** Optional secondary effect (particles, glow) layered on top. */
   particles?: { count: number; radiusPx: number; colors: string[]; durationMs: number };
   glow?: { color: string; opacityMax: number; durationMs: number };
+  /**
+   * Optional full-viewport flash overlay. Used by the install signature moment
+   * to glow the whole page sunset orange briefly. Independent of `glow` (which
+   * targets the originating element).
+   */
+  flash?: { color: string; opacity: number; durationMs: number };
 }
 
 export interface SensoryTexture {
