@@ -96,6 +96,11 @@
   let pointerStartX = 0;
   let pointerStartY = 0;
   let pointerActive = false;
+  // Last horizontal delta seen during an in-progress swipe. Recorded
+  // even when the move is sub-threshold, so handlePointerUp can detect
+  // "user tried to swipe but didn't pull far enough" and fire a
+  // confirmation haptic.
+  let lastPointerDx = 0;
 
   function handlePointerDown(event: PointerEvent) {
     if (open) return;
@@ -103,12 +108,14 @@
     pointerStartX = event.clientX;
     pointerStartY = event.clientY;
     pointerActive = true;
+    lastPointerDx = 0;
   }
 
   function handlePointerMove(event: PointerEvent) {
     if (!pointerActive || open) return;
     const dx = event.clientX - pointerStartX;
     const dy = event.clientY - pointerStartY;
+    lastPointerDx = dx;
     if (Math.abs(dx) < edgeSwipeThreshold) return;
     const angle = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
     if (angle > edgeSwipeMaxAngle) return;
@@ -118,7 +125,26 @@
   }
 
   function handlePointerUp() {
+    // Sub-threshold release: user started swiping but didn't pull far
+    // enough. Without feedback, the gesture reads as broken. Fire a
+    // confirmation haptic — "we noticed, but you didn't pull far
+    // enough" — without changing any visual state.
+    if (pointerActive && edge === 'left' && lastPointerDx > 0 && lastPointerDx < edgeSwipeThreshold) {
+      void fireSubThresholdHaptic();
+    }
     pointerActive = false;
+    lastPointerDx = 0;
+  }
+
+  async function fireSubThresholdHaptic() {
+    if (typeof window === 'undefined') return;
+    try {
+      const mod = await import('@shippie/sdk/wrapper');
+      mod.haptic?.('tap');
+    } catch {
+      // SDK not available in this context — silent. iOS doesn't have
+      // navigator.vibrate either, so nothing else to fall back to.
+    }
   }
 
   // Bottom-pill trigger.
