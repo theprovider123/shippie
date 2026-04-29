@@ -12,7 +12,7 @@ export interface ListItem {
   id: string;
   name: string;
   checked: boolean;
-  source: 'meal-plan' | 'manual' | 'mesh';
+  source: 'meal-plan' | 'manual' | 'mesh' | 'pantry-low';
   addedAt: string;
 }
 

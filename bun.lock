@@ -208,6 +208,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/proximity": "workspace:*",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
       },

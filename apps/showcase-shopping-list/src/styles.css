@@ -100,6 +100,58 @@ li.done .name { text-decoration: line-through; color: var(--muted); }
 }
 .src[data-src="meal-plan"] { color: var(--accent); }
 .src[data-src="mesh"] { color: #74A57F; }
+.src[data-src="pantry-low"] { color: #B23A2B; }
+
+li.done .name { transition: color 200ms ease, text-decoration-color 200ms ease; }
+
+.mesh {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 18px;
+}
+.mesh h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.mesh-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.mesh-controls input {
+  flex: 1;
+  min-width: 120px;
+}
+.mesh-controls span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.mesh-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mesh-live strong {
+  color: #74A57F;
+}
+.mesh-live code {
+  background: rgba(116, 165, 127, 0.12);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+.mesh-live .ghost {
+  margin-left: auto;
+}
 
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .empty { color: var(--muted); margin: 0 0 16px; font-size: 14px; }

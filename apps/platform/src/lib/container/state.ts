@@ -284,7 +284,10 @@ export const curatedApps: ContainerApp[] = [
     version: '1',
     packageHash: `sha256:${'8'.repeat(64)}`,
     standaloneUrl: '/run/shopping-list',
-    permissions: localPermissions('shopping-list', { consumes: ['shopping-list'] }),
+    permissions: localPermissions('shopping-list', {
+      provides: ['needs-restocking'],
+      consumes: ['shopping-list', 'pantry-low'],
+    }),
     category: 'tools',
     devUrl: 'http://localhost:5188/',
   },
