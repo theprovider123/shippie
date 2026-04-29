@@ -82,6 +82,7 @@
   import IntentPromptModal from '$lib/container/IntentPromptModal.svelte';
   import TransferPromptModal from '$lib/container/TransferPromptModal.svelte';
   import AppFrameHost from '$lib/container/AppFrameHost.svelte';
+  import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import { appPackageSrcdoc } from '$lib/container/app-srcdoc';
   import {
@@ -118,6 +119,9 @@
   let section = $state<ContainerSection>('home');
   let activeAppId = $state<string | null>(null);
   let openAppIds = $state<string[]>([]);
+  // Focused-mode app-switcher drawer open state. Only meaningful when
+  // `data.focused === true`; ignored in dashboard mode.
+  let focusedDrawerOpen = $state(false);
   let receiptsByApp = $state<Record<string, AppReceipt>>({});
   let receiptExport = $state('');
   let backupPassphrase = $state('');
@@ -1226,6 +1230,68 @@
   onDeny={declinePendingTransfer}
 />
 
+{#if data.focused}
+  <!--
+    Focused mode — entered via /run/<slug>/ → /container?app=&focused=1.
+    Render the requested app full-bleed, no sidebar / topbar / tabs.
+    The app-switcher gesture component sits as a fixed overlay; the
+    drawer (when open) shows a compact app grid for instant switching.
+
+    Bridge handlers + intent registry + texture engine + everything
+    else stay wired exactly as in dashboard mode — they're orchestrated
+    by the surrounding script block. Focused mode is a presentation
+    branch, not a behaviour branch.
+  -->
+  <section class="focused-shell">
+    <div class="focused-frame">
+      {#each openAppIds as appId (appId)}
+        {@const app = appById.get(appId)}
+        {#if app}
+          <AppFrameHost
+            {app}
+            active={activeAppId === app.id}
+            reloadNonce={frameReloadNonce[app.id] ?? 0}
+            {frameStates}
+            runtimeSrc={runtimeSrcFor(app)}
+            packageFrameSrc={frameSrcFor(app)}
+            srcdoc={srcdocFor(app)}
+            onRegister={registerFrame}
+            onReady={markFrameReady}
+            onError={markFrameError}
+            onReload={reloadFrame}
+            onGoHome={goHome}
+          />
+        {/if}
+      {/each}
+    </div>
+    <AppSwitcherGesture
+      open={focusedDrawerOpen}
+      onOpenChange={(value) => (focusedDrawerOpen = value)}
+      edge="left"
+    >
+      <div class="focused-drawer">
+        <h2>Apps</h2>
+        <div class="focused-grid">
+          {#each apps as app (app.id)}
+            <button
+              class="focused-tile"
+              class:active={activeAppId === app.id}
+              style:--accent={app.accent}
+              onclick={() => {
+                openApp(app.id);
+                focusedDrawerOpen = false;
+              }}
+            >
+              <span class="focused-dot" aria-hidden="true">{app.icon}</span>
+              <strong>{app.name}</strong>
+              <small>{openAppIds.includes(app.id) ? 'Live' : 'Open'}</small>
+            </button>
+          {/each}
+        </div>
+      </div>
+    </AppSwitcherGesture>
+  </section>
+{:else}
 <section class="shell">
   <aside class="sidebar">
     <div>
@@ -1524,6 +1590,7 @@
     </div>
   </main>
 </section>
+{/if}
 
 <style>
   .shell {
@@ -1979,5 +2046,84 @@
     color: var(--text);
     font-size: 12px;
     cursor: pointer;
+  }
+
+  /* Unification plan — focused mode. /run/<slug>/ → /container?app=
+     &focused=1 lands here. Full-bleed app + invisible chrome. The
+     AppSwitcherGesture component owns its own overlays; this just
+     sets up the iframe stage. */
+  .focused-shell {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-pure, #fff);
+  }
+  .focused-frame {
+    position: fixed;
+    inset: 0;
+  }
+  .focused-frame :global(.frame-stage) {
+    position: fixed;
+    inset: 0;
+  }
+  .focused-frame :global(.frame-stage iframe) {
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    border: 0;
+    display: block;
+  }
+
+  .focused-drawer {
+    padding: env(safe-area-inset-top, 24px) 20px env(safe-area-inset-bottom, 24px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    color: var(--text, #14120f);
+  }
+  .focused-drawer h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  .focused-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .focused-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+  }
+  .focused-tile.active {
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .focused-tile strong {
+    font-size: 14px;
+  }
+  .focused-tile small {
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+  }
+  .focused-dot {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-bottom: 4px;
   }
 </style>

@@ -20,11 +20,17 @@ export type ContainerPackageSummary = {
 
 export const load: PageServerLoad = async ({ platform, url }) => {
   const requestedAppSlug = url.searchParams.get('app');
+  // Focused mode is the unification plan's "invisible chrome" view.
+  // /run/<slug>/ redirects here with `focused=1`. The page hides the
+  // sidebar, topbar, and section tabs and renders the requested app
+  // full-bleed with the AppSwitcherGesture for switching.
+  const focused = url.searchParams.get('focused') === '1';
 
   if (!platform?.env.DB || !platform.env.APPS) {
     return {
       packages: [] as ContainerPackageSummary[],
       requestedAppSlug,
+      focused,
     };
   }
 
@@ -66,6 +72,7 @@ export const load: PageServerLoad = async ({ platform, url }) => {
     return {
       packages: [] as ContainerPackageSummary[],
       requestedAppSlug,
+      focused,
     };
   }
 
@@ -102,6 +109,7 @@ export const load: PageServerLoad = async ({ platform, url }) => {
   return {
     packages: packages.filter(Boolean) as ContainerPackageSummary[],
     requestedAppSlug,
+    focused,
   };
 };
 
