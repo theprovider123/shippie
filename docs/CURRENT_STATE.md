@@ -2,10 +2,61 @@
 
 > Living truth file. If a doc, plan, or memory disagrees with this, **trust this file**. Re-verify against HEAD before encoding any new claims into a plan.
 >
-> **Last updated:** 2026-04-29
-> **HEAD commit (origin/main):** `be7223d` — Phase A+B+C + Phase 6 + production hosting all shipped.
+> **Last updated:** 2026-04-29 (evening — improvement plan rev2 P1–P6 complete)
+> **Recent HEAD anchor:** `5905702` (P6D catalogue refresh) — sits on top of the P1–P5 stack documented at the bottom of this file.
 
 This file replaces stale assumptions about Shippie's architecture. Read it before planning anything.
+
+---
+
+## 2026-04-29 evening status — improvement-plan rev2 P1–P6 shipped
+
+The `docs/launch/2026-04-29-improvement-plan.md` rev2 is now code-complete for phases P1 through P6 (P7 is explicitly USER-SIDE: real-phone smoke + Cloudflare deploy). The plan landed in 26 commits on top of the rev2 doc.
+
+**What's new at HEAD that this file's older sections don't yet describe:**
+
+- **3 new bridge capabilities** in `packages/app-package-contract` — `apps.list` (overlap-only scoping), `agent.insights` (source-data invariant via `provenance: string[]` on every Insight), `data.transferDrop` (per-(source,target) grant flow). All gated through the existing capability bridge.
+- **AI worker hardening** — q8 quantized models by default in `@shippie/local-ai`, plus a 225 MB LRU cache budget (`apps/platform/src/lib/container/ai-cache-budget.ts`) with full Cache Storage eviction.
+- **CORS proxy** at `/__shippie/proxy?url=...` with full SSRF guards: RFC1918 + AWS metadata + IPv6 ULA/link-local + DoH-driven DNS rebind protection + redirect re-validation + 5 MB stream cap + Set-Cookie strip + per-session quota. Read-Later showcase consumes it.
+- **HRM GATT helper** in `@shippie/proximity` — `pairHrm()` returns a `ReadableStream<HeartRateSample>`; gated behind `detectBleAvailability()` so iOS Safari sees an explanatory message instead of a stack trace.
+- **`bun run new:showcase <slug>` scaffold** — generates a working showcase from `templates/showcase-template/` with port allocation, curated-app entry, FIRST_PARTY_SHOWCASE_SLUGS update, and a fresh seed migration. Used to spin up all 11 P4 apps.
+- **22 showcase apps** wired into the cross-app intent graph (was 11). New apps: `caffeine-log`, `hydration`, `mood-pulse`, `symptom-tracker`, `steps-counter`, `pomodoro`, `read-later`, `daily-briefing`, `restaurant-memory`, `show-and-tell`. The 11 originals each got a P3 pass A (textures, intent wiring, mesh, photo time-lapse, latency overlay, etc).
+- **`@shippie/micro-logger` package** — config-driven single-tap logger template that powers the 5 P4A showcases as ~20-line config files.
+- **`shippie.ai.run`** added to the iframe-SDK; first integrations live in Journal (sentiment sparkline), Pantry Scanner (photo classify), Shopping List (aisle classifier). All gate on `source !== 'unavailable'` and hide cleanly when the AI worker can't serve the task.
+- **Intent graph integrity test** at `apps/platform/src/lib/container/intent-graph.test.ts` — single suite asserts every consumer has a producer, every provider has a consumer (or is on the orphan list), heavy-hitters have ≥2 consumers, the cross-cluster acceptance pair resolves.
+- **Showcase catalogue at `@shippie/templates`** updated to all 18 launch entries across food / health / productivity / memory clusters; cross-cluster acceptance test asserts the count + intent-completeness invariants.
+
+**Health gate** (composite of `bun run typecheck && test && build`): **48/48 tasks pass** at HEAD (was 37 at rev2 baseline).
+
+**Cross-app intent graph at HEAD** — 16 distinct intents flow across 22 apps:
+
+```
+cooked-meal       (recipe-saver)        → habit-tracker, meal-planner, journal,
+                                          restaurant-memory, daily-briefing, hydration
+cooking-now       (recipe-saver)
+shopping-list     (recipe-saver, meal-planner) → shopping-list, meal-planner
+pantry-inventory  (pantry-scanner)      → recipe-saver, meal-planner
+pantry-low        (pantry-scanner)      → shopping-list
+needs-restocking  (shopping-list)
+workout-completed (workout-logger)      → habit-tracker, sleep-logger,
+                                          journal, daily-briefing, mood-pulse,
+                                          steps-counter
+sleep-logged      (sleep-logger)        → workout-logger, mood-pulse, daily-briefing
+caffeine-logged   (caffeine-log)        → mood-pulse, sleep-logger, daily-briefing
+mood-logged       (mood-pulse)          → daily-briefing, read-later
+hydration-logged  (hydration)           → daily-briefing
+body-metrics-logged (body-metrics)      → journal, daily-briefing
+symptom-logged    (symptom-tracker)     → daily-briefing
+walked            (steps-counter)
+focus-session     (pomodoro)            → daily-briefing
+dined-out         (restaurant-memory)
+```
+
+Plus the data-transferDrop pair: Recipe Saver `recipe` → Meal Planner.
+
+**What remains** (none of it code):
+- **P6B** — re-record the cross-cluster demo with the full 22-app surface. Existing `tools/recording/cross-cluster.smoke.ts` gates the flow; a fresh recording is a manual run against a live dev server.
+- **P7** — walk `docs/launch/cf-google-deploy.md` on a real CF account; walk `docs/launch/real-phone-checklist.md` on iPhone Safari + Android Chrome.
 
 ---
 
@@ -29,7 +80,7 @@ The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`).
 
 - `apps/platform/` — SvelteKit + Cloudflare Workers + D1 / R2 / KV / Durable Objects. The blessed platform app. Dev port **4101**.
 - `apps/shippie-ai/` — Cross-origin AI iframe (Vite + vite-plugin-pwa). Runs micro-models via Workbox-cached Service Worker.
-- `apps/showcase-{recipe,journal,whiteboard,live-room,habit-tracker,workout-logger,pantry-scanner,meal-planner,shopping-list,sleep-logger,body-metrics}/` — 10 demo apps proving the wrapper + cross-app intent flows end-to-end. Each runs on a pinned dev port (5180–5190).
+- `apps/showcase-*/` — 22 demo apps (post-rev2-P4) proving wrapper + cross-app intent + AI + mesh flows end-to-end. Originals on dev ports 5180–5190; P4 additions on 5191–5200. Full enumeration: recipe (5180), journal (5181), whiteboard (5182), live-room (5183), habit-tracker (5184), workout-logger (5185), pantry-scanner (5186), meal-planner (5187), shopping-list (5188), sleep-logger (5189), body-metrics (5190), caffeine-log (5191), hydration (5192), mood-pulse (5193), symptom-tracker (5194), steps-counter (5195), pomodoro (5196), read-later (5197), daily-briefing (5198), restaurant-memory (5199), show-and-tell (5200).
 - `services/hub/` — Self-hosted venue device (Bun server, mDNS, WebSocket signal). Active.
 - `services/worker/` — **DELETED.** Functionality ported into `apps/platform/src/lib/server/wrapper/`.
 - `apps/web/` — **DELETED.** Was the legacy Next.js platform.
