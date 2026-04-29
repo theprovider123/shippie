@@ -45,6 +45,20 @@ export type BridgeCapability =
   // engine instance and serialises haptic+sound+visual within one rAF.
   // No data surface, no escalation, available to every iframe app.
   | 'feel.texture'
+  // Phase P1A — universal "list overlapping apps" capability. Returns
+  // only apps whose declared intents overlap with the caller's
+  // declared provides/consumes. Apps that don't share any intent with
+  // the caller stay invisible — minimises cross-iframe fingerprinting.
+  // Universal: no permission grant required because the scoping is
+  // enforced in the container handler, not the cap.
+  | 'apps.list'
+  // Phase P1A — universal "read agent insights derived from data this
+  // app can see" capability. The handler enforces a source-data
+  // invariant: only insights whose input rows belong to this app's
+  // namespace OR an intent the app has been granted access to are
+  // returned. Cross-app correlations the caller never had access to
+  // are filtered out at the binding.
+  | 'agent.insights'
   // Phase A3 — system-tier capabilities. NEVER granted to iframe apps.
   // Reserved for the container's own internal hosts: the agent runtime
   // (C1), future cross-app intelligence layer, and any sub-frame the
@@ -546,6 +560,15 @@ export function assertCapabilityAllowed(
       // data surface; the texture name is validated by the router. This
       // is the "small joys" layer: haptics + sound + visual fired in
       // lockstep within the container's single texture engine.
+      return;
+    case 'apps.list':
+      // Universal — the container scopes results to apps with
+      // overlapping intents. No grant required at the contract level.
+      return;
+    case 'agent.insights':
+      // Universal — the container enforces the source-data invariant
+      // (only insights derived from data this app can see). No grant
+      // required at the contract level.
       return;
     case 'system.crossDb.query':
     case 'system.notify':

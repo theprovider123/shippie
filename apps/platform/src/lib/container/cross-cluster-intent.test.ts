@@ -120,6 +120,8 @@ describe('Cross-cluster intent acceptance — Recipe Saver → Habit Tracker', (
       fireTexture: () => ({ fired: true, name: 'confirm' }),
       runAi: async () => ({ task: 'classify', output: null, source: 'unavailable' }),
       broadcastIntent: () => ({ delivered: 0 }),
+      listOverlappingApps: () => [],
+      insightsForApp: () => [],
     };
     const handlers = createAppHandlers(ctx);
 

@@ -40,6 +40,8 @@ function buildHandler(broadcastIntent: AppHandlerContext['broadcastIntent']) {
     fireTexture: () => ({ fired: true, name: 'confirm' }),
     runAi: async () => ({ task: 'classify', output: null, source: 'unavailable' }),
     broadcastIntent,
+    listOverlappingApps: () => [],
+    insightsForApp: () => [],
   };
   return createAppHandlers(ctx);
 }

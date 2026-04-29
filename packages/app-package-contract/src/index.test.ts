@@ -375,6 +375,15 @@ describe('@shippie/app-package-contract', () => {
     expect(() => assertCapabilityAllowed(minimal, 'data.openPanel')).not.toThrow();
   });
 
+  test('P1A — apps.list and agent.insights are universal at the contract level', () => {
+    const minimal: AppPermissions = {
+      schema: SHIPPIE_PERMISSIONS_SCHEMA,
+      capabilities: {},
+    };
+    expect(() => assertCapabilityAllowed(minimal, 'apps.list')).not.toThrow();
+    expect(() => assertCapabilityAllowed(minimal, 'agent.insights')).not.toThrow();
+  });
+
   test('B4 — feel.texture is universal: any app can fire built-in presets', () => {
     const minimal: AppPermissions = {
       schema: SHIPPIE_PERMISSIONS_SCHEMA,

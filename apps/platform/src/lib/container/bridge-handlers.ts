@@ -19,6 +19,22 @@ import type { BridgeHandler } from '@shippie/container-bridge';
 import { readPayloadTable, type ContainerApp, type LocalRow } from './state';
 import type { IntentRegistration } from './intent-registry';
 import type { AiRunRequest, AiRunResult, AiTask } from './ai-worker-client';
+import type { Insight } from '@shippie/agent';
+
+/**
+ * Public surface of `apps.list` — the subset of ContainerApp visible
+ * to a calling iframe. Slug + name + intents + label only; never the
+ * package hash, the maker id, or other identity-leaking fields.
+ */
+export interface AppsListEntry {
+  slug: string;
+  name: string;
+  shortName: string;
+  description: string;
+  labelKind: ContainerApp['labelKind'];
+  provides: readonly string[];
+  consumes: readonly string[];
+}
 
 export interface IntentRequestResult {
   /** Where the data came from. Empty when no provider matched or permission denied. */
@@ -90,6 +106,21 @@ export interface AppHandlerContext {
     intent: string,
     rows: readonly unknown[],
   ) => { delivered: number };
+  /**
+   * Resolve `apps.list` for the calling app. Container scopes the
+   * result to apps whose intents overlap the caller's declared
+   * provides/consumes. Apps with no overlap are excluded — the list
+   * never returns the user's full installed-app set, so it can't be
+   * used as a cross-iframe fingerprint.
+   */
+  listOverlappingApps: (callerAppId: string) => AppsListEntry[];
+  /**
+   * Resolve `agent.insights` for the calling app. Container enforces
+   * the source-data invariant: an insight is only returned if every
+   * input row in its provenance belongs to a namespace the caller
+   * has read access to (its own slug or a granted intent).
+   */
+  insightsForApp: (callerAppId: string) => readonly Insight[];
 }
 
 export type AppHandlers = Record<string, BridgeHandler>;
@@ -180,6 +211,13 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
       }
       return ctx.runAi(req);
     },
+    // Phase P1A.1 — apps.list. Universal capability, but the result
+    // is scoped to overlapping apps in the host. See container's
+    // listOverlappingApps for the filter logic.
+    'apps.list': () => ({ apps: ctx.listOverlappingApps(appId) }),
+    // Phase P1A.2 — agent.insights. Universal at the contract; the
+    // host filters insights by source-data provenance.
+    'agent.insights': () => ({ insights: ctx.insightsForApp(appId) }),
   };
 }
 

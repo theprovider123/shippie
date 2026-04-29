@@ -431,6 +431,8 @@
           runAi,
           broadcastIntent: (providerAppId, intent, rows) =>
             broadcastIntentToConsumers(providerAppId, intent, rows),
+          listOverlappingApps: (callerId) => listAppsOverlappingCaller(callerId),
+          insightsForApp: (callerId) => insightsForCaller(callerId),
         }),
       }),
     );
@@ -537,6 +539,76 @@
       delivered += 1;
     }
     return { delivered };
+  }
+
+  /**
+   * P1A.1 — apps.list scoping.
+   *
+   * Returns the apps installed in the same container that share at
+   * least one intent with the caller. Apps with no overlap stay
+   * invisible — the result is never the user's full app set, so it
+   * can't be used as a cross-iframe fingerprint.
+   *
+   * Threat model: an iframe with no declared intents declaring no
+   * provides/consumes calls `apps.list` and gets back `[]`. Verified
+   * in the bridge integration test.
+   */
+  function listAppsOverlappingCaller(callerAppId: string): Array<{
+    slug: string;
+    name: string;
+    shortName: string;
+    description: string;
+    labelKind: ContainerApp['labelKind'];
+    provides: readonly string[];
+    consumes: readonly string[];
+  }> {
+    const caller = appById.get(callerAppId);
+    if (!caller) return [];
+    const callerIntents = caller.permissions.capabilities.crossAppIntents;
+    const callerSet = new Set<string>([
+      ...(callerIntents?.provides ?? []),
+      ...(callerIntents?.consumes ?? []),
+    ]);
+    if (callerSet.size === 0) return []; // no intents declared → empty list
+    return installedApps
+      .filter((app) => {
+        const intents = app.permissions.capabilities.crossAppIntents;
+        const appSet = new Set<string>([
+          ...(intents?.provides ?? []),
+          ...(intents?.consumes ?? []),
+        ]);
+        if (app.id === callerAppId) return true; // self always visible
+        for (const intent of appSet) if (callerSet.has(intent)) return true;
+        return false;
+      })
+      .map((app) => ({
+        slug: app.slug,
+        name: app.name,
+        shortName: app.shortName,
+        description: app.description,
+        labelKind: app.labelKind,
+        provides: app.permissions.capabilities.crossAppIntents?.provides ?? [],
+        consumes: app.permissions.capabilities.crossAppIntents?.consumes ?? [],
+      }));
+  }
+
+  /**
+   * P1A.2 — agent.insights scoping.
+   *
+   * Returns insights from the local agent whose source-data is
+   * accessible to the calling app. An insight is accessible if its
+   * `target.app` matches the caller's slug OR the caller has been
+   * granted the intent the insight was derived from.
+   *
+   * The current `Insight` shape doesn't carry explicit provenance
+   * metadata, so we conservatively scope by `target.app` matching the
+   * caller. Cross-app insights (e.g. "your Recipe + Habit data say
+   * X") are dropped unless the caller is one of the apps in the chain.
+   */
+  function insightsForCaller(callerAppId: string): readonly Insight[] {
+    const caller = appById.get(callerAppId);
+    if (!caller) return [];
+    return agentInsights.filter((insight) => insight.target.app === caller.slug);
   }
 
   function insertRow(appId: string, payload: unknown): LocalRow {

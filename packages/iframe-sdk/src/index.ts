@@ -23,6 +23,28 @@
  */
 
 const PROTOCOL = 'shippie.bridge.v1' as const;
+const DEFAULT_RPC_TIMEOUT_MS = 5_000;
+
+export interface AppsListEntry {
+  slug: string;
+  name: string;
+  shortName: string;
+  description: string;
+  labelKind: 'Local' | 'Connected' | 'Cloud';
+  provides: readonly string[];
+  consumes: readonly string[];
+}
+
+export interface AgentInsight {
+  id: string;
+  strategy: string;
+  urgency: 'low' | 'medium' | 'high';
+  title: string;
+  body: string;
+  target: { app: string; route?: string; query?: Record<string, unknown> };
+  expiresAt?: number;
+  generatedAt: number;
+}
 
 const BUILTIN_TEXTURES = [
   'confirm',
@@ -62,6 +84,24 @@ export interface ShippieIframeSdk {
   data: {
     openPanel(): void;
   };
+  apps: {
+    /**
+     * Return apps installed in the same container that share at least
+     * one intent with this app. Apps with no overlap are filtered out
+     * by the container — `apps.list` is not a fingerprint of the
+     * user's full app set.
+     */
+    list(): Promise<AppsListEntry[]>;
+  };
+  agent: {
+    /**
+     * Return insights from the local agent that are derived from
+     * data this app can already see (own namespace + granted intents).
+     * Cross-app correlations the caller never had access to are
+     * filtered out by the container.
+     */
+    insights(): Promise<AgentInsight[]>;
+  };
   /** Trigger the container's permission prompt for an intent the app declares. */
   requestIntent(intent: string): void;
   /** True only when running inside an iframe whose parent isn't the same window. */
@@ -73,19 +113,75 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
   const w = typeof window === 'undefined' ? null : window;
   const inContainer = Boolean(w && w.parent && w.parent !== w);
 
+  // RPC correlation table — request id → resolver. The container's
+  // ContainerBridgeHost responds with `{ protocol, id, ok, result|error }`
+  // on the same id we send. We listen on `message` and dispatch.
+  const pending = new Map<
+    string,
+    { resolve: (v: unknown) => void; reject: (err: Error) => void; timer: ReturnType<typeof setTimeout> }
+  >();
+  let rpcListenerInstalled = false;
+
+  function ensureRpcListener(): void {
+    if (rpcListenerInstalled || !w) return;
+    rpcListenerInstalled = true;
+    w.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as
+        | { protocol?: string; id?: string; ok?: boolean; result?: unknown; error?: { message: string } }
+        | null;
+      if (!data || data.protocol !== PROTOCOL) return;
+      if (typeof data.id !== 'string' || typeof data.ok !== 'boolean') return;
+      const entry = pending.get(data.id);
+      if (!entry) return;
+      pending.delete(data.id);
+      clearTimeout(entry.timer);
+      if (data.ok) entry.resolve(data.result);
+      else entry.reject(new Error(data.error?.message ?? 'bridge error'));
+    });
+  }
+
+  function nextId(capability: string): string {
+    return `${appId}_${capability}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  }
+
   function send(capability: string, method: string, payload: Record<string, unknown>): void {
     if (!inContainer || !w) return;
     w.parent.postMessage(
-      {
-        protocol: PROTOCOL,
-        id: `${appId}_${capability}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        appId,
-        capability,
-        method,
-        payload,
-      },
+      { protocol: PROTOCOL, id: nextId(capability), appId, capability, method, payload },
       '*',
     );
+  }
+
+  /**
+   * Request/response over the bridge. Resolves with `result`, rejects
+   * with the bridge error or a timeout. Outside the container, returns
+   * a fallback value so showcases keep working standalone.
+   */
+  function call<T>(
+    capability: string,
+    method: string,
+    payload: Record<string, unknown>,
+    fallback: T,
+    timeoutMs = DEFAULT_RPC_TIMEOUT_MS,
+  ): Promise<T> {
+    if (!inContainer || !w) return Promise.resolve(fallback);
+    ensureRpcListener();
+    return new Promise<T>((resolve, reject) => {
+      const id = nextId(capability);
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(`${capability} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+      pending.set(id, {
+        resolve: (v) => resolve(v as T),
+        reject,
+        timer,
+      });
+      w.parent.postMessage(
+        { protocol: PROTOCOL, id, appId, capability, method, payload },
+        '*',
+      );
+    });
   }
 
   const handlers = new Map<string, Set<IntentHandler>>();
@@ -139,6 +235,28 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
     data: {
       openPanel() {
         send('data.openPanel', 'open', {});
+      },
+    },
+    apps: {
+      async list() {
+        const result = await call<{ apps?: AppsListEntry[] }>(
+          'apps.list',
+          'list',
+          {},
+          { apps: [] },
+        );
+        return result.apps ?? [];
+      },
+    },
+    agent: {
+      async insights() {
+        const result = await call<{ insights?: AgentInsight[] }>(
+          'agent.insights',
+          'list',
+          {},
+          { insights: [] },
+        );
+        return result.insights ?? [];
       },
     },
     requestIntent(intent) {
