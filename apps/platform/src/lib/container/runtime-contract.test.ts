@@ -145,6 +145,7 @@ describe('container runtime contracts', () => {
         rowsByApp: { [installed.app.id]: [{ id: 'row_1', table: 'items', payload: {}, createdAt: 'now' }] },
         packageFilesByApp: { [installed.app.id]: installed.packageFiles },
         intentGrants: grants,
+        transferGrants: {},
         activeAppId: installed.app.id,
       },
       installed.app.id,

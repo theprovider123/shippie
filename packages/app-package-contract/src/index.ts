@@ -59,6 +59,21 @@ export type BridgeCapability =
   // returned. Cross-app correlations the caller never had access to
   // are filtered out at the binding.
   | 'agent.insights'
+  // Phase P1A — universal "drop a payload onto another app" capability.
+  // Drives a three-message dance:
+  //   1. `transferDrop.starting`  — source broadcasts the drag preview
+  //      and `kind`. Container forwards to every iframe whose manifest
+  //      declares `acceptsTransfer.kinds` matching the kind, so they can
+  //      light up a drop zone.
+  //   2. (UI) — destination iframes render their drop overlays.
+  //   3. `transferDrop.commit` — source posts the actual payload at a
+  //      single `targetSlug`. The container delivers the payload to that
+  //      target only and prompts the user once per source→target pair
+  //      (grant flow mirrors `intent.consume`'s pendingPrompt queue).
+  // The capability itself is universal — eligibility is driven by the
+  // destination's declared `acceptsTransfer.kinds`, and the per-pair
+  // grant covers actually delivering the payload.
+  | 'data.transferDrop'
   // Phase A3 — system-tier capabilities. NEVER granted to iframe apps.
   // Reserved for the container's own internal hosts: the agent runtime
   // (C1), future cross-app intelligence layer, and any sub-frame the
@@ -167,6 +182,19 @@ export interface CrossAppIntentPermissions {
 }
 
 /**
+ * Phase P1A — destination-side capability declaration for
+ * `data.transferDrop`. An iframe app lists the kinds of payload it can
+ * accept (e.g. `['recipe', 'photo', 'shopping-list']`); the container
+ * routes `transferDrop.starting` broadcasts to apps whose `kinds`
+ * intersect the source's announced kind. The actual payload delivery
+ * still requires per-source-target user consent — declaring acceptance
+ * is the surface that makes you addressable, not the grant.
+ */
+export interface AcceptsTransferPermission {
+  kinds: readonly string[];
+}
+
+/**
  * Phase A3 — system-tier grant. NEVER set on iframe-app permissions.
  * Reserved for hosts the container itself instantiates: the agent
  * runtime, cross-app intelligence layer, future maintenance workers.
@@ -189,6 +217,7 @@ export interface AppPermissions {
     localAi?: LocalAiPermission;
     network?: NetworkPermissions;
     crossAppIntents?: CrossAppIntentPermissions;
+    acceptsTransfer?: AcceptsTransferPermission;
     feedback?: { enabled: boolean };
     analytics?: { enabled: boolean; mode: 'aggregate-only' };
     system?: SystemPermission;
@@ -569,6 +598,12 @@ export function assertCapabilityAllowed(
       // Universal — the container enforces the source-data invariant
       // (only insights derived from data this app can see). No grant
       // required at the contract level.
+      return;
+    case 'data.transferDrop':
+      // Universal — the cap is gated by the destination's declared
+      // `acceptsTransfer.kinds` (kind-match in the registry) and a
+      // per-source-target user grant on first commit. No contract-level
+      // grant needed for source apps to call `starting` / `commit`.
       return;
     case 'system.crossDb.query':
     case 'system.notify':

@@ -95,6 +95,8 @@ export type ContainerState = {
   rowsByApp: Record<string, LocalRow[]>;
   /** Phase A2 — cross-app intent grants. Per-pair `consumer → provider`. */
   intentGrants?: Record<string, Record<string, boolean>>;
+  /** Phase P1A.3 — transferDrop grants. Per-pair `source → target`. */
+  transferGrants?: Record<string, Record<string, boolean>>;
   /** Phase C1 — dismissed insight ids → ms timestamp of dismissal. */
   dismissedInsightIds?: Record<string, number>;
 };
@@ -438,6 +440,7 @@ export function loadContainerState(storage: Storage): ContainerState | null {
       receiptsByApp: parsed.receiptsByApp,
       rowsByApp: parsed.rowsByApp,
       intentGrants: parsed.intentGrants ?? {},
+      transferGrants: parsed.transferGrants ?? {},
       dismissedInsightIds: parsed.dismissedInsightIds ?? {},
     };
   } catch {

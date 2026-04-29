@@ -52,6 +52,8 @@ function buildHandlers(
     broadcastIntent: () => ({ delivered: 0 }),
     listOverlappingApps,
     insightsForApp: () => [],
+    startTransferDrop: () => ({ kind: '', acceptors: [] }),
+    commitTransferDrop: () => ({ delivered: false, target: null, reason: 'no_target' as const }),
   };
   return createAppHandlers(ctx);
 }

@@ -35,6 +35,42 @@ export interface AppsListEntry {
   consumes: readonly string[];
 }
 
+export interface TransferAcceptor {
+  slug: string;
+  name: string;
+  kinds: readonly string[];
+}
+
+export interface TransferStartResult {
+  kind: string;
+  acceptors: TransferAcceptor[];
+}
+
+export interface TransferCommitResult {
+  delivered: boolean;
+  target: { slug: string; name: string } | null;
+  reason?:
+    | 'no_target'
+    | 'kind_not_accepted'
+    | 'permission_not_yet_granted'
+    | 'permission_denied';
+}
+
+export interface IncomingTransferStart {
+  /** The kind the source app announced. */
+  kind: string;
+  /** Free-form preview the source attached (label, thumb url, etc). */
+  preview: unknown;
+  /** Internal id of the source app. Use only for display de-dup; not stable. */
+  sourceAppId: string;
+}
+
+export interface IncomingTransferCommit {
+  kind: string;
+  payload: unknown;
+  sourceAppId: string;
+}
+
 export interface AgentInsight {
   id: string;
   strategy: string;
@@ -101,6 +137,34 @@ export interface ShippieIframeSdk {
      * filtered out by the container.
      */
     insights(): Promise<AgentInsight[]>;
+  };
+  transfer: {
+    /**
+     * Announce a drag of `kind` with a free-form preview. Container
+     * forwards the preview to every iframe whose manifest declared
+     * `acceptsTransfer.kinds` matching this kind, then returns the
+     * eligible-acceptor list so the source can show a drop indicator.
+     */
+    start(kind: string, preview?: unknown): Promise<TransferStartResult>;
+    /**
+     * Commit the actual payload to a single chosen target. First commit
+     * from this source→target pair triggers a one-time user prompt.
+     */
+    commit(input: {
+      kind: string;
+      targetSlug: string;
+      payload: unknown;
+    }): Promise<TransferCommitResult>;
+    /**
+     * Subscribe to incoming `transferDrop.starting` broadcasts.
+     * Destination iframes call this to light up drop overlays.
+     */
+    onIncomingStart(handler: (event: IncomingTransferStart) => void): () => void;
+    /**
+     * Subscribe to delivered `transferDrop.commit` payloads. Fires
+     * after the user has granted the source→target pair.
+     */
+    onIncomingCommit(handler: (event: IncomingTransferCommit) => void): () => void;
   };
   /** Trigger the container's permission prompt for an intent the app declares. */
   requestIntent(intent: string): void;
@@ -207,6 +271,47 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
     });
   }
 
+  // Transfer-drop wire format. Two channels: `shippie.transfer.starting`
+  // (preview broadcasts) and `shippie.transfer.commit` (delivered
+  // payloads). Each carries `transferKind`, `sourceAppId`, and either
+  // a `preview` or a `payload`.
+  const incomingStartHandlers = new Set<(event: IncomingTransferStart) => void>();
+  const incomingCommitHandlers = new Set<(event: IncomingTransferCommit) => void>();
+  let transferListenerInstalled = false;
+
+  function ensureTransferListener(): void {
+    if (transferListenerInstalled || !w) return;
+    transferListenerInstalled = true;
+    w.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as
+        | {
+            kind?: string;
+            transferKind?: string;
+            preview?: unknown;
+            payload?: unknown;
+            sourceAppId?: string;
+          }
+        | null;
+      if (!data || typeof data.transferKind !== 'string') return;
+      if (typeof data.sourceAppId !== 'string') return;
+      if (data.kind === 'shippie.transfer.starting') {
+        const evt: IncomingTransferStart = {
+          kind: data.transferKind,
+          preview: data.preview,
+          sourceAppId: data.sourceAppId,
+        };
+        for (const h of incomingStartHandlers) h(evt);
+      } else if (data.kind === 'shippie.transfer.commit') {
+        const evt: IncomingTransferCommit = {
+          kind: data.transferKind,
+          payload: data.payload,
+          sourceAppId: data.sourceAppId,
+        };
+        for (const h of incomingCommitHandlers) h(evt);
+      }
+    });
+  }
+
   return {
     intent: {
       broadcast(intent, rows) {
@@ -257,6 +362,38 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
           { insights: [] },
         );
         return result.insights ?? [];
+      },
+    },
+    transfer: {
+      async start(kind, preview) {
+        return call<TransferStartResult>(
+          'data.transferDrop',
+          'starting',
+          { kind, preview },
+          { kind, acceptors: [] },
+        );
+      },
+      async commit({ kind, targetSlug, payload }) {
+        return call<TransferCommitResult>(
+          'data.transferDrop',
+          'commit',
+          { kind, targetSlug, payload },
+          { delivered: false, target: null, reason: 'no_target' },
+        );
+      },
+      onIncomingStart(handler) {
+        ensureTransferListener();
+        incomingStartHandlers.add(handler);
+        return () => {
+          incomingStartHandlers.delete(handler);
+        };
+      },
+      onIncomingCommit(handler) {
+        ensureTransferListener();
+        incomingCommitHandlers.add(handler);
+        return () => {
+          incomingCommitHandlers.delete(handler);
+        };
       },
     },
     requestIntent(intent) {

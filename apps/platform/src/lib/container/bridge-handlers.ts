@@ -45,6 +45,44 @@ export interface IntentRequestResult {
   reason?: 'no_provider' | 'permission_denied' | 'permission_not_yet_granted';
 }
 
+/**
+ * Public surface of a `data.transferDrop` acceptor — what a source
+ * iframe sees when the container responds to `transferDrop.starting`.
+ * Only what's needed to render a drop overlay; never internal app ids.
+ */
+export interface TransferAcceptor {
+  slug: string;
+  name: string;
+  kinds: readonly string[];
+}
+
+/**
+ * Result of starting a transfer. Source iframe uses `acceptors` to
+ * decide whether to show a drop indicator; if empty there's nowhere
+ * eligible to drop.
+ */
+export interface TransferStartResult {
+  kind: string;
+  acceptors: TransferAcceptor[];
+}
+
+/**
+ * Result of committing a transfer to a specific target. Mirrors the
+ * intent-grant flow: when the user hasn't yet granted source→target
+ * delivery, the container queues a prompt and returns
+ * `permission_not_yet_granted` so the source iframe can show a "Pending
+ * confirmation" hint.
+ */
+export interface TransferCommitResult {
+  delivered: boolean;
+  target: { slug: string; name: string } | null;
+  reason?:
+    | 'no_target'
+    | 'kind_not_accepted'
+    | 'permission_not_yet_granted'
+    | 'permission_denied';
+}
+
 export interface AppHandlerContext {
   appId: string;
   app: ContainerApp;
@@ -121,6 +159,33 @@ export interface AppHandlerContext {
    * has read access to (its own slug or a granted intent).
    */
   insightsForApp: (callerAppId: string) => readonly Insight[];
+  /**
+   * Start a transfer drop. Container looks up acceptors whose declared
+   * `acceptsTransfer.kinds` includes the source's announced kind,
+   * forwards the preview to those iframes so they can light up drop
+   * zones, and returns the eligible-acceptor list so the source can
+   * decide whether to bother showing a drag indicator.
+   */
+  startTransferDrop: (
+    sourceAppId: string,
+    kind: string,
+    preview: unknown,
+  ) => TransferStartResult;
+  /**
+   * Commit a transfer drop. The source iframe specifies which target
+   * (`targetSlug`) it picked; the container delivers the payload to
+   * that target if the kind is accepted AND the user has granted the
+   * source→target pair. First-time deliveries enqueue a permission
+   * prompt and resolve once the user accepts (delivered) or declines
+   * (`permission_denied`). Synchronous resolution is allowed when the
+   * grant already exists or the kind isn't accepted at all.
+   */
+  commitTransferDrop: (
+    sourceAppId: string,
+    targetSlug: string,
+    kind: string,
+    payload: unknown,
+  ) => TransferCommitResult | Promise<TransferCommitResult>;
 }
 
 export type AppHandlers = Record<string, BridgeHandler>;
@@ -218,7 +283,58 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
     // Phase P1A.2 — agent.insights. Universal at the contract; the
     // host filters insights by source-data provenance.
     'agent.insights': () => ({ insights: ctx.insightsForApp(appId) }),
+    // Phase P1A.3 — data.transferDrop. Universal at the contract; the
+    // host enforces kind-match (registry) and per-source-target grant
+    // (the user prompt mirrors the intent-grant flow).
+    //
+    // Two methods on this single capability:
+    //   `transferDrop.starting` — broadcast preview to acceptors of the
+    //   announced kind. Source uses the returned acceptor list to
+    //   decide whether to show a drop indicator.
+    //   `transferDrop.commit`   — actually deliver payload to a single
+    //   target the source picked. Container queues a permission prompt
+    //   on first delivery from this source→target pair.
+    'data.transferDrop': async ({ payload, method }) => {
+      const kind = readPayloadKind(payload);
+      if (!kind) {
+        return {
+          delivered: false,
+          target: null,
+          reason: 'no_target' as const,
+        } satisfies TransferCommitResult;
+      }
+      if (method === 'commit') {
+        const targetSlug = readPayloadTargetSlug(payload);
+        if (!targetSlug) {
+          return {
+            delivered: false,
+            target: null,
+            reason: 'no_target' as const,
+          } satisfies TransferCommitResult;
+        }
+        const dropPayload = (payload as Record<string, unknown> | null)?.payload;
+        return ctx.commitTransferDrop(appId, targetSlug, kind, dropPayload);
+      }
+      // Default method: starting (preview broadcast). The bridge wraps
+      // the iframe message at `method` — we accept both the literal
+      // 'starting' and any non-commit method as a "broadcast" signal so
+      // the SDK doesn't have to special-case the verb.
+      const preview = (payload as Record<string, unknown> | null)?.preview ?? null;
+      return ctx.startTransferDrop(appId, kind, preview);
+    },
   };
+}
+
+function readPayloadKind(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const value = (payload as Record<string, unknown>).kind;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function readPayloadTargetSlug(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const value = (payload as Record<string, unknown>).targetSlug;
+  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 const VALID_AI_TASKS = new Set<AiTask>([

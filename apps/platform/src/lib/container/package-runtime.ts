@@ -7,6 +7,7 @@ import {
 import { manifestToContainerApp } from './app-registry';
 import { createPackageFileCache, type ContainerApp, type LocalRow, type PackageFileCache } from './state';
 import { removeAppIntentGrants, type IntentGrants } from './intent-registry';
+import { removeAppTransferGrants, type TransferGrants } from './transfer-registry';
 
 export interface InstalledPackage {
   app: ContainerApp;
@@ -20,6 +21,7 @@ export interface ContainerInstallState {
   rowsByApp: Record<string, LocalRow[]>;
   packageFilesByApp: Record<string, Record<string, PackageFileCache>>;
   intentGrants: IntentGrants;
+  transferGrants: TransferGrants;
   activeAppId: string | null;
 }
 
@@ -75,6 +77,7 @@ export function uninstallContainerAppState(
     rowsByApp: nextRows,
     packageFilesByApp: nextFiles,
     intentGrants: removeAppIntentGrants(state.intentGrants, appId),
+    transferGrants: removeAppTransferGrants(state.transferGrants, appId),
     activeAppId: state.activeAppId === appId ? null : state.activeAppId,
   };
 }

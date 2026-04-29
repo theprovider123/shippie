@@ -42,6 +42,9 @@
     createAppHandlers,
     filterRowsByTable,
     type IntentRequestResult,
+    type TransferAcceptor,
+    type TransferCommitResult,
+    type TransferStartResult,
   } from '$lib/container/bridge-handlers';
   import {
     createIntentRegistry,
@@ -50,6 +53,12 @@
     revokeIntent,
     type IntentGrants,
   } from '$lib/container/intent-registry';
+  import {
+    createTransferRegistry,
+    grantTransfer,
+    isTransferGranted,
+    type TransferGrants,
+  } from '$lib/container/transfer-registry';
   import { createYourDataHost } from '$lib/container/your-data-host';
   import { createTextureRouter, type TextureName } from '$lib/container/texture-router';
   import {
@@ -138,6 +147,24 @@
     pendingIntentQueue.length > 0 ? pendingIntentQueue[0]! : null,
   );
   const intentRegistry = createIntentRegistry();
+  // P1A.3 — transfer drop state. `transferGrants` is per (sourceId,
+  // targetId) pair; `pendingTransferQueue` mirrors the intent prompt
+  // queue so the user resolves one transfer at a time.
+  let transferGrants = $state<TransferGrants>({});
+  type PendingTransferPrompt = {
+    sourceId: string;
+    sourceName: string;
+    targetId: string;
+    targetName: string;
+    kind: string;
+    payload: unknown;
+    resolve: (result: TransferCommitResult) => void;
+  };
+  let pendingTransferQueue = $state<PendingTransferPrompt[]>([]);
+  const pendingTransferPrompt = $derived<PendingTransferPrompt | null>(
+    pendingTransferQueue.length > 0 ? pendingTransferQueue[0]! : null,
+  );
+  const transferRegistry = createTransferRegistry();
   let yourDataOpenForApp = $state<string | null>(null);
   const yourDataHost = createYourDataHost({
     onChange: (next) => {
@@ -433,6 +460,10 @@
             broadcastIntentToConsumers(providerAppId, intent, rows),
           listOverlappingApps: (callerId) => listAppsOverlappingCaller(callerId),
           insightsForApp: (callerId) => insightsForCaller(callerId),
+          startTransferDrop: (sourceId, kind, preview) =>
+            startTransferDrop(sourceId, kind, preview),
+          commitTransferDrop: (sourceId, targetSlug, kind, payload) =>
+            commitTransferDrop(sourceId, targetSlug, kind, payload),
         }),
       }),
     );
@@ -635,6 +666,162 @@
     });
   }
 
+  /**
+   * P1A.3 — `data.transferDrop` `starting` step.
+   *
+   * Source iframe announces a drag of `kind`. We look up acceptors
+   * declared with that kind, broadcast the preview to each so they can
+   * light up drop zones, and return the eligible-acceptor list back to
+   * the source for its own UI affordance.
+   *
+   * No grant is needed at this step: nothing user-data crosses the
+   * boundary yet, just a UI hint. The grant happens at commit.
+   */
+  function startTransferDrop(
+    sourceAppId: string,
+    kind: string,
+    preview: unknown,
+  ): TransferStartResult {
+    const acceptors = transferRegistry
+      .acceptorsFor(kind)
+      .filter((entry) => entry.appId !== sourceAppId);
+    for (const acceptor of acceptors) {
+      const frame = frames.get(acceptor.appId);
+      const target = frame?.contentWindow;
+      if (!target) continue;
+      target.postMessage(
+        {
+          kind: 'shippie.transfer.starting',
+          transferKind: kind,
+          preview,
+          sourceAppId,
+        },
+        '*',
+      );
+    }
+    return {
+      kind,
+      acceptors: acceptors.map((entry) => {
+        const acceptorApp = appById.get(entry.appId);
+        return {
+          slug: entry.appSlug,
+          name: entry.appName,
+          kinds: acceptorApp?.permissions.capabilities.acceptsTransfer?.kinds ?? [kind],
+        };
+      }),
+    };
+  }
+
+  /**
+   * P1A.3 — `data.transferDrop` `commit` step.
+   *
+   * Source picked a target by slug; we resolve it to an app id, verify
+   * the target accepts the announced kind, then check the per-pair
+   * grant. First-time deliveries enqueue a permission prompt and
+   * resolve once the user accepts/declines.
+   */
+  function commitTransferDrop(
+    sourceAppId: string,
+    targetSlug: string,
+    kind: string,
+    payload: unknown,
+  ): TransferCommitResult | Promise<TransferCommitResult> {
+    const sourceApp = appById.get(sourceAppId);
+    if (!sourceApp) {
+      return { delivered: false, target: null, reason: 'no_target' };
+    }
+    const targetApp = apps.find((a) => a.slug === targetSlug && a.id !== sourceAppId);
+    if (!targetApp) {
+      return { delivered: false, target: null, reason: 'no_target' };
+    }
+    const accepts = targetApp.permissions.capabilities.acceptsTransfer?.kinds ?? [];
+    if (!accepts.includes(kind)) {
+      return {
+        delivered: false,
+        target: { slug: targetApp.slug, name: targetApp.name },
+        reason: 'kind_not_accepted',
+      };
+    }
+    if (!isTransferGranted(transferGrants, sourceAppId, targetApp.id)) {
+      // De-dupe: same (source, target) already queued → resolve when
+      // existing prompt resolves. Mirrors the intent-grant queue.
+      const existing = pendingTransferQueue.find(
+        (p) => p.sourceId === sourceAppId && p.targetId === targetApp.id,
+      );
+      if (existing) {
+        return {
+          delivered: false,
+          target: { slug: targetApp.slug, name: targetApp.name },
+          reason: 'permission_not_yet_granted',
+        };
+      }
+      return new Promise<TransferCommitResult>((resolve) => {
+        pendingTransferQueue = [
+          ...pendingTransferQueue,
+          {
+            sourceId: sourceAppId,
+            sourceName: sourceApp.name,
+            targetId: targetApp.id,
+            targetName: targetApp.name,
+            kind,
+            payload,
+            resolve,
+          },
+        ];
+      });
+    }
+    return deliverTransfer(sourceAppId, targetApp.id, kind, payload);
+  }
+
+  function deliverTransfer(
+    sourceAppId: string,
+    targetAppId: string,
+    kind: string,
+    payload: unknown,
+  ): TransferCommitResult {
+    const targetApp = appById.get(targetAppId);
+    if (!targetApp) {
+      return { delivered: false, target: null, reason: 'no_target' };
+    }
+    const frame = frames.get(targetAppId);
+    const target = frame?.contentWindow;
+    if (target) {
+      target.postMessage(
+        {
+          kind: 'shippie.transfer.commit',
+          transferKind: kind,
+          payload,
+          sourceAppId,
+        },
+        '*',
+      );
+    }
+    return {
+      delivered: true,
+      target: { slug: targetApp.slug, name: targetApp.name },
+    };
+  }
+
+  function approvePendingTransfer() {
+    const prompt = pendingTransferPrompt;
+    if (!prompt) return;
+    transferGrants = grantTransfer(transferGrants, prompt.sourceId, prompt.targetId);
+    pendingTransferQueue = pendingTransferQueue.slice(1);
+    const result = deliverTransfer(prompt.sourceId, prompt.targetId, prompt.kind, prompt.payload);
+    prompt.resolve(result);
+  }
+
+  function declinePendingTransfer() {
+    const prompt = pendingTransferPrompt;
+    if (!prompt) return;
+    pendingTransferQueue = pendingTransferQueue.slice(1);
+    prompt.resolve({
+      delivered: false,
+      target: null,
+      reason: 'permission_denied',
+    });
+  }
+
   function insertRow(appId: string, payload: unknown): LocalRow {
     const slug = appById.get(appId)?.slug ?? 'app';
     const existing = rowsByApp[appId] ?? [];
@@ -675,6 +862,7 @@
         rowsByApp,
         packageFilesByApp,
         intentGrants,
+        transferGrants,
         activeAppId,
       },
       appId,
@@ -685,6 +873,7 @@
     rowsByApp = next.rowsByApp;
     packageFilesByApp = next.packageFilesByApp;
     intentGrants = next.intentGrants;
+    transferGrants = next.transferGrants;
     activeAppId = next.activeAppId;
     if (!activeAppId) section = 'home';
   }
@@ -929,6 +1118,7 @@
   // bridge handlers consult it on every intent.consume call.
   $effect(() => {
     intentRegistry.refresh(apps);
+    transferRegistry.refresh(apps);
   });
 
   $effect(() => {
@@ -940,6 +1130,7 @@
       receiptsByApp,
       rowsByApp,
       intentGrants,
+      transferGrants,
       dismissedInsightIds,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -959,6 +1150,7 @@
       };
       rowsByApp = saved.rowsByApp;
       intentGrants = saved.intentGrants ?? {};
+      transferGrants = saved.transferGrants ?? {};
       dismissedInsightIds = saved.dismissedInsightIds ?? {};
     } else if (defaultAppId) {
       const defaultApp = appById.get(defaultAppId);
