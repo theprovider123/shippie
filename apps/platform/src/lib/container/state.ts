@@ -302,7 +302,10 @@ export const curatedApps: ContainerApp[] = [
     version: '1',
     packageHash: `sha256:${'9'.repeat(64)}`,
     standaloneUrl: '/run/sleep-logger',
-    permissions: localPermissions('sleep-logger', { consumes: ['workout-completed', 'caffeine-logged'] }),
+    permissions: localPermissions('sleep-logger', {
+      provides: ['sleep-logged'],
+      consumes: ['workout-completed', 'caffeine-logged'],
+    }),
     category: 'fitness',
     devUrl: 'http://localhost:5189/',
   },

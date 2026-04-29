@@ -9,6 +9,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
+    "provides": ["sleep-logged"],
     "consumes": ["workout-completed", "caffeine-logged"]
   },
   "data_schemas": {

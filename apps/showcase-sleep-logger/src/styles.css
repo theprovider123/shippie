@@ -109,3 +109,51 @@ li button {
 }
 
 .empty { color: var(--muted); margin: 0; font-size: 14px; }
+
+.debt {
+  background: rgba(78, 124, 154, 0.08);
+  border: 1px solid rgba(78, 124, 154, 0.4);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.debt strong {
+  font-size: 16px;
+}
+.debt small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.scatter-section {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  margin: 0 0 18px;
+}
+.scatter-section h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.scatter {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.scatter-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  color: var(--muted);
+  font-size: 13px;
+}
