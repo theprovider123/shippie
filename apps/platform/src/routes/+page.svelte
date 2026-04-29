@@ -8,53 +8,55 @@
 
 <section class="hero">
   <div class="wrap">
-    <img
-      src="/__shippie-pwa/icon.svg"
-      alt=""
-      width="96"
-      height="96"
-      class="hero-mark"
-      aria-hidden="true"
-    />
-    <p class="badge">
-      <img src="/__shippie-pwa/icon.svg" alt="" width="11" height="11" />
-      Open source · Free forever
-    </p>
-    <h1 class="hero-heading">
-      <span class="line">Ship <span class="accent">local.</span></span>
-      <span class="line">Your app. Your device.</span>
-      <span class="line">Your data.</span>
-    </h1>
-    <p class="hero-sub">
-      Deploy any web app. Shippie wraps it into a phone-native experience,
-      runs it on the user's device, and connects nearby phones directly
-      when they're in the same room.
-    </p>
-    <div class="hero-ctas">
-      <Button href="/new" variant="primary" size="lg">Deploy now →</Button>
-      <Button href="/apps" variant="secondary" size="lg">Browse apps</Button>
-    </div>
-    <p class="hero-foot">
-      <em>60 seconds</em> for zip uploads, MCP, and CLI deploys.
-      <a href="/docs#auto-deploys">GitHub auto-deploys take 2–5 min.</a>
-    </p>
+    <div class="hero-grid">
+      <div class="hero-pitch">
+        <img
+          src="/__shippie-pwa/icon.svg"
+          alt=""
+          width="96"
+          height="96"
+          class="hero-mark"
+          aria-hidden="true"
+        />
+        <p class="badge">
+          <img src="/__shippie-pwa/icon.svg" alt="" width="11" height="11" />
+          Open source · Free forever
+        </p>
+        <h1 class="hero-heading">
+          <span class="line">Ship <span class="accent">local.</span></span>
+          <span class="line">Your app. Your device.</span>
+          <span class="line">Your data.</span>
+        </h1>
+        <p class="hero-sub">
+          Deploy any web app. Shippie wraps it into a phone-native experience,
+          runs it on the user's device, and connects nearby phones directly
+          when they're in the same room.
+        </p>
+        <div class="hero-ctas">
+          <Button href="/new" variant="primary" size="lg">Deploy now →</Button>
+          <Button href="/apps" variant="secondary" size="lg">Browse apps</Button>
+        </div>
+        <p class="hero-foot">
+          <em>60 seconds</em> for zip uploads, MCP, and CLI deploys.
+          <a href="/docs#auto-deploys">GitHub auto-deploys take 2–5 min.</a>
+        </p>
+      </div>
 
-    <article class="terms-card" aria-labelledby="hero-terms-title">
-      <header class="terms-head">
+      <aside class="hero-terms" aria-labelledby="hero-terms-title">
         <p class="terms-eyebrow">The terms</p>
         <h2 id="hero-terms-title" class="terms-title">Read in 60 seconds.</h2>
         <p class="terms-meta">200 words · Plain English · v1</p>
-      </header>
-      <div class="terms-body">
-        <p><strong>Free.</strong> Shippie is free for makers. No tiers, no caps, no "free until you succeed". Tips welcome at <span class="mono">tip.shippie.app</span>.</p>
-        <p><strong>You own your code.</strong> We host it; you keep it. Open source platform. Fork it, self-host it, take it with you any time.</p>
-        <p><strong>We can't see end-user data.</strong> Apps store everything in SQLite on the user's phone. Shippie's servers never touch it. There is no database to breach because there is no database.</p>
-        <p><strong>We don't sell anything to advertisers.</strong> No ads, no tracking, no analytics piped to a third party. The only telemetry is per-app capability proofs the maker chooses to publish.</p>
-        <p><strong>We can take down apps that break the platform.</strong> Malware, illegal content, or attempts to exfiltrate user data get removed. We post every removal publicly with the reason.</p>
-        <p><strong>If we shut down, your apps still work.</strong> They're PWAs. The data is on the device. Shippie is the wrapper, not the runtime — pull the wrapper, the apps still run.</p>
-        <p>That's the deal. The architecture <em>is</em> the policy.</p>
-      </div>
-    </article>
+        <div class="terms-body">
+          <p><strong>Free.</strong> Shippie is free for makers. No tiers, no caps, no "free until you succeed".</p>
+          <p><strong>You own your code.</strong> We host it; you keep it. Open source platform. Fork it, self-host it, take it with you any time.</p>
+          <p><strong>We can't see end-user data.</strong> Apps store everything in SQLite on the user's phone. Shippie's servers never touch it. There is no database to breach because there is no database.</p>
+          <p><strong>We don't sell anything to advertisers.</strong> No ads, no tracking, no analytics piped to a third party. The only telemetry is per-app capability proofs the maker chooses to publish.</p>
+          <p><strong>We can take down apps that break the platform.</strong> Malware, illegal content, or attempts to exfiltrate user data get removed. We post every removal publicly with the reason.</p>
+          <p><strong>If we shut down, your apps still work.</strong> They're PWAs. The data is on the device. Shippie is the wrapper, not the runtime — pull the wrapper, the apps still run.</p>
+          <p class="terms-coda">That's the deal. The architecture <em>is</em> the policy.</p>
+        </div>
+      </aside>
+    </div>
   </div>
 </section>
 
@@ -70,7 +72,7 @@
       </p>
     </header>
     <ol class="steps">
-      <li>
+      <li class="pillar pillar-wrap">
         <span class="step-num">01</span>
         <h3>Wrap</h3>
         <p>
@@ -79,7 +81,7 @@
           the Your Data panel — automatic, no SDK calls required.
         </p>
       </li>
-      <li>
+      <li class="pillar pillar-run">
         <span class="step-num">02</span>
         <h3>Run</h3>
         <p>
@@ -88,7 +90,7 @@
           holds your end users' data.
         </p>
       </li>
-      <li>
+      <li class="pillar pillar-connect">
         <span class="step-num">03</span>
         <h3>Connect</h3>
         <p>
@@ -154,6 +156,19 @@
     pointer-events: none;
   }
   .hero > .wrap { position: relative; z-index: 1; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2xl);
+    align-items: start;
+  }
+  @media (min-width: 1024px) {
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: var(--space-3xl);
+    }
+  }
+  .hero-pitch { display: flex; flex-direction: column; }
   .hero-mark {
     display: block;
     width: 96px;
@@ -206,21 +221,15 @@
   .hero-foot em { font-style: normal; color: var(--text); }
   .hero-foot a { color: var(--sunset); text-decoration: underline; }
 
-  .terms-card {
-    margin-top: var(--space-2xl);
+  .hero-terms {
     background: var(--surface);
     border: 1px solid var(--border);
     border-left: 4px solid var(--sunset);
     padding: var(--space-xl);
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-md);
-  }
-  @media (min-width: 768px) {
-    .terms-card {
-      grid-template-columns: 220px 1fr;
-      gap: var(--space-xl);
-    }
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
   }
   .terms-eyebrow {
     font-family: var(--font-mono);
@@ -234,32 +243,35 @@
     font-family: var(--font-heading);
     font-size: 1.5rem;
     letter-spacing: -0.015em;
-    margin: var(--space-xs) 0 var(--space-sm);
+    margin: 0;
   }
   .terms-meta {
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
-    margin: 0;
+    margin: 0 0 var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px dashed var(--border-light);
   }
   .terms-body {
     font-family: var(--font-heading);
-    font-size: 1.0625rem;
-    line-height: 1.65;
+    font-size: 1rem;
+    line-height: 1.6;
     color: var(--text);
-    column-count: 1;
-  }
-  @media (min-width: 1100px) {
-    .terms-body { column-count: 2; column-gap: var(--space-xl); }
   }
   .terms-body p {
-    margin: 0 0 var(--space-md);
-    break-inside: avoid;
+    margin: 0 0 var(--space-sm);
   }
-  .terms-body p:first-child { font-weight: 500; }
   .terms-body strong { color: var(--sunset); font-weight: 600; }
   .terms-body em { font-style: italic; color: var(--text); }
-  .terms-body .mono { font-family: var(--font-mono); font-size: 0.95em; }
+  .terms-body .terms-coda {
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px dashed var(--border-light);
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+  .terms-body .terms-coda em { color: var(--sunset); font-style: normal; font-weight: 500; }
 
   .section { padding: var(--section-pad) 0; }
   .section-intro { margin-bottom: var(--space-2xl); max-width: 640px; }
@@ -282,12 +294,57 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: var(--space-xl);
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--space-md);
   }
-  .steps li { display: flex; flex-direction: column; gap: var(--space-sm); }
-  .steps h3 { font-family: var(--font-heading); font-size: 1.25rem; margin: 0; }
-  .steps p { color: var(--text-secondary); font-size: var(--small-size); line-height: 1.6; margin: 0; }
+  .pillar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-xl);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--border);
+    transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), transform 0.2s var(--spring);
+    position: relative;
+    overflow: hidden;
+  }
+  .pillar:hover {
+    background: var(--surface-alt);
+    transform: translateY(-2px);
+  }
+  .pillar::after {
+    content: "";
+    position: absolute;
+    inset: auto -40px -40px auto;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.2s var(--ease-out);
+  }
+  .pillar:hover::after { opacity: 0.85; }
+  .pillar h3 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    letter-spacing: -0.015em;
+    margin: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .pillar p {
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.65;
+    margin: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .pillar-wrap    { --accent: var(--sunset);    --accent-glow: rgba(232, 96, 60, 0.18); border-top-color: var(--sunset); }
+  .pillar-run     { --accent: var(--sage-moss); --accent-glow: rgba(94, 123, 92, 0.22); border-top-color: var(--sage-moss); }
+  .pillar-connect { --accent: var(--marigold);  --accent-glow: rgba(232, 197, 71, 0.2); border-top-color: var(--marigold); }
+  .pillar:hover { border-color: var(--accent); }
   .step-num {
     display: inline-flex;
     align-items: center;
@@ -295,14 +352,15 @@
     width: 36px;
     height: 36px;
     border-radius: 0;
-    background: var(--sunset);
+    background: var(--accent);
     color: var(--bg-pure);
     font-family: var(--font-mono);
     font-weight: 700;
     font-size: var(--small-size);
+    position: relative;
+    z-index: 1;
   }
-  .steps li:nth-child(2) .step-num { background: var(--sage-moss); }
-  .steps li:nth-child(3) .step-num { background: var(--marigold); color: var(--bg-pure); }
+  .pillar-connect .step-num { color: var(--text); }
 
   .featured { background: var(--bg-pure); border-top: 1px solid var(--border-light); }
   .see-all {
