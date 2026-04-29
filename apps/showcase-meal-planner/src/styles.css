@@ -127,3 +127,51 @@ button.ghost.danger { color: #B23A2B; border-color: rgba(178, 58, 43, 0.4); }
 .shopping small { color: var(--muted); font-size: 12px; }
 
 .empty { color: var(--muted); margin: 0; font-size: 14px; }
+
+.transfer-banner {
+  background: rgba(232, 96, 60, 0.1);
+  border: 1px dashed rgba(232, 96, 60, 0.5);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: center;
+}
+.transfer-banner.success {
+  background: rgba(94, 167, 119, 0.1);
+  border-color: rgba(94, 167, 119, 0.5);
+  border-style: solid;
+  color: #3d7a55;
+}
+
+.schedule-again {
+  margin: 0 0 18px;
+}
+.schedule-again h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.schedule-again .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.schedule-again .chip {
+  background: rgba(232, 96, 60, 0.05);
+  border: 1px dashed rgba(232, 96, 60, 0.45);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.schedule-again .chip:hover {
+  background: rgba(232, 96, 60, 0.12);
+}

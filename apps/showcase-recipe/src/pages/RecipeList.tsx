@@ -5,6 +5,40 @@ import { deleteRecipe, listRecipes, searchRecipes } from '../db/queries.ts';
 import { resolveLocalDb } from '../db/runtime.ts';
 import { RecipeCard } from '../components/RecipeCard.tsx';
 import { INGREDIENTS_TABLE } from '../db/schema.ts';
+import { getRecipe } from '../db/queries.ts';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+
+const shippie = createShippieIframeSdk({ appId: 'app_recipe_saver' });
+
+/**
+ * P3 — send a recipe to any app that declared
+ * `acceptsTransfer.kinds: ['recipe']` (Meal Planner ships with this
+ * declaration). The container handles target picking; Recipe Saver
+ * just announces the kind, then commits to the first acceptor.
+ */
+async function sendRecipeToPlanner(recipeId: string): Promise<string | null> {
+  const db = resolveLocalDb();
+  const full = await getRecipe(db, recipeId);
+  if (!full) return null;
+  const payload = {
+    recipeName: full.title,
+    title: full.title,
+    ingredients: full.ingredients.map((i) => i.name),
+  };
+  const start = await shippie.transfer.start('recipe', { title: full.title });
+  const target = start.acceptors[0];
+  if (!target) return 'No app accepts recipes yet.';
+  const result = await shippie.transfer.commit({
+    kind: 'recipe',
+    targetSlug: target.slug,
+    payload,
+  });
+  if (result.delivered) return `Sent to ${result.target?.name ?? target.name}`;
+  if (result.reason === 'permission_not_yet_granted') {
+    return 'Pending — accept the prompt to send.';
+  }
+  return result.reason ?? 'Could not send.';
+}
 
 interface RecipeListProps {
   onOpen: (id: string) => void;
@@ -96,20 +130,41 @@ interface RowProps {
 }
 
 function RecipeCardWithCookButton({ recipe, count, onOpen, onCookingMode, onDelete }: RowProps) {
+  const [sendStatus, setSendStatus] = useState<string | null>(null);
+
+  async function handleSend(e: React.MouseEvent) {
+    e.stopPropagation();
+    setSendStatus('Sending…');
+    const status = await sendRecipeToPlanner(recipe.id);
+    setSendStatus(status);
+    window.setTimeout(() => setSendStatus(null), 4000);
+  }
+
   return (
     <div className="recipe-row">
       <RecipeCard recipe={recipe} ingredientCount={count} onOpen={onOpen} onDelete={onDelete} />
-      <button
-        type="button"
-        className="cook-button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onCookingMode();
-        }}
-        aria-label={`Cook ${recipe.title}`}
-      >
-        Cook
-      </button>
+      <div className="recipe-actions">
+        <button
+          type="button"
+          className="cook-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCookingMode();
+          }}
+          aria-label={`Cook ${recipe.title}`}
+        >
+          Cook
+        </button>
+        <button
+          type="button"
+          className="send-button"
+          onClick={handleSend}
+          aria-label={`Send ${recipe.title} to Meal Planner`}
+        >
+          → Plan
+        </button>
+      </div>
+      {sendStatus && <p className="send-status">{sendStatus}</p>}
     </div>
   );
 }

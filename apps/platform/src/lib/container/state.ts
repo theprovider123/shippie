@@ -105,7 +105,12 @@ export const STORAGE_KEY = 'shippie.container.v1';
 
 export const localPermissions = (
   namespace: string,
-  intents?: { provides?: string[]; consumes?: string[] },
+  intents?: {
+    provides?: string[];
+    consumes?: string[];
+    /** P1A.3 — declared transfer-drop kinds this app can accept. */
+    acceptsTransfer?: string[];
+  },
 ): AppPermissions => ({
   schema: SHIPPIE_PERMISSIONS_SCHEMA,
   capabilities: {
@@ -113,13 +118,16 @@ export const localPermissions = (
     localFiles: { enabled: true, namespace },
     feedback: { enabled: true },
     analytics: { enabled: true, mode: 'aggregate-only' },
-    ...(intents
+    ...(intents && (intents.provides || intents.consumes)
       ? {
           crossAppIntents: {
             provides: intents.provides ?? [],
             consumes: intents.consumes ?? [],
           },
         }
+      : {}),
+    ...(intents?.acceptsTransfer && intents.acceptsTransfer.length > 0
+      ? { acceptsTransfer: { kinds: intents.acceptsTransfer } }
       : {}),
   },
 });
@@ -254,7 +262,8 @@ export const curatedApps: ContainerApp[] = [
     standaloneUrl: '/run/meal-planner',
     permissions: localPermissions('meal-planner', {
       provides: ['shopping-list'],
-      consumes: ['shopping-list', 'pantry-inventory', 'budget-limit'],
+      consumes: ['shopping-list', 'pantry-inventory', 'budget-limit', 'cooked-meal'],
+      acceptsTransfer: ['recipe'],
     }),
     category: 'cooking',
     devUrl: 'http://localhost:5187/',

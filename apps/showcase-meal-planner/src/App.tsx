@@ -17,25 +17,48 @@ interface PlanCell {
 
 type Plan = Partial<Record<Day, Partial<Record<Slot, PlanCell>>>>;
 
+interface CookedMealRow {
+  recipeId?: string;
+  title: string;
+  cookedAt: string;
+  ingredients?: string[];
+}
+
 const STORAGE_KEY = 'shippie.meal-planner.v1';
 
 interface PersistedState {
   plan: Plan;
   pantry: { name: string }[];
+  cookedHistory?: CookedMealRow[];
 }
 
 function load(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { plan: {}, pantry: [] };
+    if (!raw) return { plan: {}, pantry: [], cookedHistory: [] };
     const parsed = JSON.parse(raw) as PersistedState;
     return {
       plan: parsed.plan ?? {},
       pantry: Array.isArray(parsed.pantry) ? parsed.pantry : [],
+      cookedHistory: Array.isArray(parsed.cookedHistory) ? parsed.cookedHistory : [],
     };
   } catch {
-    return { plan: {}, pantry: [] };
+    return { plan: {}, pantry: [], cookedHistory: [] };
   }
+}
+
+/**
+ * P3 — find the next empty slot in the week so a dropped recipe or
+ * a "schedule again" tap doesn't overwrite an existing meal. Walks
+ * Mon→Sun, Lunch then Dinner. Returns null when the week is full.
+ */
+function nextEmptySlot(plan: Plan): { day: Day; slot: Slot } | null {
+  for (const day of DAYS) {
+    for (const slot of SLOTS) {
+      if (!plan[day]?.[slot]) return { day, slot };
+    }
+  }
+  return null;
 }
 
 function broadcastShoppingList(rows: { name: string; count: number }[]): void {
@@ -49,10 +72,16 @@ export function App() {
   const [editing, setEditing] = useState<{ day: Day; slot: Slot } | null>(null);
   const [draftRecipe, setDraftRecipe] = useState('');
   const [draftIngredients, setDraftIngredients] = useState('');
+  const [cookedHistory, setCookedHistory] = useState<CookedMealRow[]>(initial.cookedHistory ?? []);
+  const [transferActive, setTransferActive] = useState(false);
+  const [recentDrop, setRecentDrop] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ plan, pantry }));
-  }, [plan, pantry]);
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ plan, pantry, cookedHistory }),
+    );
+  }, [plan, pantry, cookedHistory]);
 
   // Subscribe to pantry-inventory broadcasts via the SDK. Once-per-mount
   // request triggers the container's permission prompt; subsequent
@@ -73,6 +102,66 @@ export function App() {
       setPantry(items);
     });
   }, []);
+
+  // P3 — subscribe to cooked-meal so the "schedule again" panel
+  // shows recently-cooked recipes the user may want to repeat.
+  useEffect(() => {
+    shippie.requestIntent('cooked-meal');
+    return shippie.intent.subscribe('cooked-meal', ({ rows }) => {
+      const next: CookedMealRow[] = [];
+      for (const row of rows as Array<Partial<CookedMealRow>>) {
+        if (typeof row?.title !== 'string') continue;
+        next.push({
+          recipeId: typeof row.recipeId === 'string' ? row.recipeId : undefined,
+          title: row.title,
+          cookedAt: typeof row.cookedAt === 'string' ? row.cookedAt : new Date().toISOString(),
+          ingredients: Array.isArray(row.ingredients)
+            ? row.ingredients.filter((s): s is string => typeof s === 'string')
+            : undefined,
+        });
+      }
+      if (next.length === 0) return;
+      setCookedHistory((prev) => mergeHistory(prev, next));
+    });
+  }, []);
+
+  // P1A.3 — receive `recipe`-kind transfers from Recipe Saver. A drag
+  // start lights up the planner with a banner; the actual commit
+  // populates the next empty slot.
+  useEffect(() => {
+    const offStart = shippie.transfer.onIncomingStart(({ kind }) => {
+      if (kind !== 'recipe') return;
+      setTransferActive(true);
+      // Auto-clear the highlight after 5s in case the source app
+      // never commits — the banner shouldn't strand the UI.
+      window.setTimeout(() => setTransferActive(false), 5000);
+    });
+    const offCommit = shippie.transfer.onIncomingCommit(({ kind, payload }) => {
+      if (kind !== 'recipe') return;
+      setTransferActive(false);
+      const cell = readRecipePayload(payload);
+      if (!cell) return;
+      const target = nextEmptySlot(plan);
+      if (!target) {
+        setRecentDrop('Week is full — clear a slot first.');
+        return;
+      }
+      setPlan((prev) => ({
+        ...prev,
+        [target.day]: {
+          ...prev[target.day],
+          [target.slot]: cell,
+        },
+      }));
+      setRecentDrop(`${cell.recipeName} → ${target.day} ${target.slot}`);
+      shippie.feel.texture('install');
+      window.setTimeout(() => setRecentDrop(null), 4000);
+    });
+    return () => {
+      offStart();
+      offCommit();
+    };
+  }, [plan]);
 
   const allIngredients = useMemo(() => {
     const out: { name: string }[] = [];
@@ -128,12 +217,74 @@ export function App() {
     setEditing(null);
   }
 
+  function scheduleAgain(row: CookedMealRow) {
+    const target = nextEmptySlot(plan);
+    if (!target) return;
+    const ingredients = row.ingredients ?? [];
+    setPlan((prev) => ({
+      ...prev,
+      [target.day]: {
+        ...prev[target.day],
+        [target.slot]: { recipeName: row.title, ingredients },
+      },
+    }));
+    shippie.feel.texture('confirm');
+  }
+
+  // De-dup recently-cooked rows by recipeId/title; keep the 6 most
+  // recent and skip anything already on the plan to avoid suggesting
+  // a repeat the user just scheduled.
+  const scheduleAgainCandidates = useMemo(() => {
+    const planned = new Set<string>();
+    for (const day of DAYS) {
+      for (const slot of SLOTS) {
+        const cell = plan[day]?.[slot];
+        if (cell) planned.add(cell.recipeName.toLowerCase());
+      }
+    }
+    return cookedHistory
+      .slice(-12)
+      .reverse()
+      .filter((row) => !planned.has(row.title.toLowerCase()))
+      .slice(0, 6);
+  }, [cookedHistory, plan]);
+
   return (
     <main>
       <header>
         <h1>Meal Planner</h1>
         <p>{shopping.length} ingredient{shopping.length === 1 ? '' : 's'} to buy this week</p>
       </header>
+
+      {transferActive && (
+        <div className="transfer-banner" role="status">
+          Drop a recipe here — it'll land in the next empty slot.
+        </div>
+      )}
+      {recentDrop && (
+        <div className="transfer-banner success" role="status">
+          ✓ {recentDrop}
+        </div>
+      )}
+
+      {scheduleAgainCandidates.length > 0 && (
+        <section className="schedule-again" aria-label="Schedule again">
+          <h2>Schedule again</h2>
+          <div className="chips">
+            {scheduleAgainCandidates.map((row) => (
+              <button
+                key={`${row.recipeId ?? row.title}-${row.cookedAt}`}
+                type="button"
+                className="chip"
+                onClick={() => scheduleAgain(row)}
+                title={`Cooked ${new Date(row.cookedAt).toLocaleDateString()}`}
+              >
+                + {row.title}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid">
         <div className="grid-head">
@@ -216,4 +367,29 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function readRecipePayload(payload: unknown): PlanCell | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as Record<string, unknown>;
+  const title = typeof obj.title === 'string' ? obj.title : null;
+  const recipeName = typeof obj.recipeName === 'string' ? obj.recipeName : title;
+  if (!recipeName) return null;
+  const ingredients = Array.isArray(obj.ingredients)
+    ? obj.ingredients.filter((s): s is string => typeof s === 'string')
+    : [];
+  return { recipeName, ingredients };
+}
+
+function mergeHistory(
+  prev: readonly CookedMealRow[],
+  next: readonly CookedMealRow[],
+): CookedMealRow[] {
+  const seen = new Map<string, CookedMealRow>();
+  for (const row of prev) seen.set(row.cookedAt + '|' + row.title, row);
+  for (const row of next) seen.set(row.cookedAt + '|' + row.title, row);
+  // Keep last ~30 to keep storage bounded.
+  return [...seen.values()]
+    .sort((a, b) => a.cookedAt.localeCompare(b.cookedAt))
+    .slice(-30);
 }

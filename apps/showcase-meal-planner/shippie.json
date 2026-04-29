@@ -10,7 +10,10 @@
   "orientation": "portrait",
   "intents": {
     "provides": ["shopping-list"],
-    "consumes": ["shopping-list", "pantry-inventory", "budget-limit"]
+    "consumes": ["shopping-list", "pantry-inventory", "budget-limit", "cooked-meal"]
+  },
+  "acceptsTransfer": {
+    "kinds": ["recipe"]
   },
   "data_schemas": {
     "plans": {
