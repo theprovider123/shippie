@@ -897,6 +897,24 @@
     return createOrReusePackageFrameSource(app, packageFilesByApp[app.id], packageObjectUrls);
   }
 
+  /**
+   * Pick the iframe URL for an app based on environment:
+   *   - Localhost dev: prefer devUrl (Vite dev server with HMR)
+   *   - Production: standaloneUrl (e.g. /run/<slug>/) served by the
+   *     SvelteKit Cloudflare adapter from apps/platform/static/run/
+   *   - Otherwise null — fall through to package archive or srcdoc.
+   */
+  function runtimeSrcFor(app: ContainerApp): string | null {
+    if (typeof window === 'undefined') return null;
+    const onLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '[::1]';
+    if (onLocalhost && app.devUrl) return app.devUrl;
+    if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) return app.standaloneUrl;
+    return null;
+  }
+
 </script>
 
 <svelte:head>
@@ -1243,14 +1261,15 @@
         {@const app = appById.get(appId)}
         {#if app}
           {@const packageFrameSrc = frameSrcFor(app)}
+          {@const runtimeSrc = runtimeSrcFor(app)}
           <div class="frame-stage" class:active={activeAppId === app.id}>
             {#key `${app.id}:${frameReloadNonce[app.id] ?? 0}`}
-              {#if app.devUrl}
+              {#if runtimeSrc}
                 <iframe
                   use:registerFrame={app.id}
                   title={`${app.name} container app`}
                   sandbox="allow-scripts allow-forms allow-same-origin"
-                  src={app.devUrl}
+                  src={runtimeSrc}
                   onload={() => markFrameReady(app.id)}
                   onerror={() => markFrameError(app.id)}
                 ></iframe>

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && bun scripts/wrap-worker-with-scheduled.mjs",
+    "prepare:showcases": "bun scripts/prepare-showcases.mjs",
+    "build": "bun scripts/prepare-showcases.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
     "preview": "wrangler dev",
     "deploy": "bun scripts/upload-sdk-bundle.mjs && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

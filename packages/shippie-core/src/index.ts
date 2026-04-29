@@ -12,15 +12,20 @@
  *   - client.deploy({ directory, slug?, trial? })
  *   - client.status(deployId)
  *   - client.appsList()
+ *   - client.logs({ slug?, limit? })
+ *   - client.config.get/set/reset(slug)
+ *   - listTemplates() / getTemplate(id)
  *
- * Phase 7 (master plan) expands this to: logs, config, classify, localize,
- * workspaces, templates.
+ * Phase 7 (master plan) expands this to: workspaces.
  */
 export * from './client.ts';
 export * from './deploy.ts';
 export * from './status.ts';
 export * from './apps.ts';
+export * from './logs.ts';
+export * from './config.ts';
 export * from './auth.ts';
 export * from './stream.ts';
 export * from './classify.ts';
 export * from './install.ts';
+export * from './templates.ts';

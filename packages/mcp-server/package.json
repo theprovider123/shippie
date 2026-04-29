@@ -43,6 +43,7 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@shippie/analyse": "workspace:*",
     "@shippie/core": "workspace:*",
+    "@shippie/templates": "workspace:*",
     "adm-zip": "^0.5.16"
   },
   "devDependencies": {

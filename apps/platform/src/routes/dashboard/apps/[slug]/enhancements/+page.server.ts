@@ -19,6 +19,7 @@ import {
   writeShippieJsonOverride,
   clearShippieJsonOverride,
 } from '$server/deploy/kv-write';
+import { validateShippieJsonOverride } from '$server/deploy/shippie-json-validation';
 import {
   CAPABILITY_CATALOG,
   extractEnabledCapabilityIds,
@@ -87,44 +88,6 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
   };
 };
 
-interface ShippieJsonValidation {
-  ok: true;
-  value: Record<string, unknown>;
-}
-interface ShippieJsonRejection {
-  ok: false;
-  error: string;
-}
-
-/**
- * Light validation — enough to catch obvious mistakes without
- * pulling Zod for one schema. The deploy pipeline does the canonical
- * validation; this just stops the maker from saving total nonsense.
- */
-function validateShippieJson(parsed: unknown): ShippieJsonValidation | ShippieJsonRejection {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return { ok: false, error: 'shippie.json must be a JSON object.' };
-  }
-  const obj = parsed as Record<string, unknown>;
-  const HEX_RE = /^#[0-9a-fA-F]{6}$/;
-  if (obj.themeColor !== undefined && (typeof obj.themeColor !== 'string' || !HEX_RE.test(obj.themeColor))) {
-    return { ok: false, error: 'themeColor must be a 6-digit hex like #E8603C.' };
-  }
-  if (
-    obj.backgroundColor !== undefined &&
-    (typeof obj.backgroundColor !== 'string' || !HEX_RE.test(obj.backgroundColor))
-  ) {
-    return { ok: false, error: 'backgroundColor must be a 6-digit hex like #FFFFFF.' };
-  }
-  if (obj.sound !== undefined && typeof obj.sound !== 'boolean') {
-    return { ok: false, error: 'sound must be a boolean.' };
-  }
-  if (obj.ai !== undefined && obj.ai !== false && !Array.isArray(obj.ai)) {
-    return { ok: false, error: 'ai must be an array of task names or false.' };
-  }
-  return { ok: true, value: obj };
-}
-
 export const actions: Actions = {
   /**
    * Save raw shippie.json text. Returns ?/save with `error` on failure
@@ -143,7 +106,7 @@ export const actions: Actions = {
     } catch (e) {
       return fail(400, { error: `Invalid JSON: ${(e as Error).message}`, text: raw });
     }
-    const validated = validateShippieJson(parsed);
+    const validated = validateShippieJsonOverride(parsed);
     if (!validated.ok) {
       return fail(400, { error: validated.error, text: raw });
     }

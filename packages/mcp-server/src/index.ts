@@ -6,6 +6,9 @@
  *   deploy   — zip a directory and deploy (authed) or trial-deploy (no auth)
  *   status   — poll a deploy by deploy_id through hot → cold phases
  *   apps     — list maker-owned apps
+ *   logs     — read privacy-preserving feedback / usage / function logs
+ *   config   — read/write maker shippie.json overrides
+ *   templates — list blessed starter templates
  *
  * Note on uploads: `AdmZip` builds the archive in memory (no temp file on
  * disk) and FormData wraps the Buffer into a Blob that Node's undici fetch
@@ -32,7 +35,7 @@ import {
   type LocalizeTransform,
   type UsageSignals,
 } from '@shippie/analyse';
-import { createClient } from '@shippie/core';
+import { createClient, getTemplate, listTemplates } from '@shippie/core';
 
 // Single shared client — picks up SHIPPIE_API_URL + SHIPPIE_TOKEN/~/.shippie/token.
 // Same code path runs against shippie.app and hub.local.
@@ -99,6 +102,65 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object' as const,
         properties: {},
+      },
+    },
+    {
+      name: 'logs',
+      description:
+        'Show privacy-preserving maker logs: anonymous feedback, aggregate usage rollups, and function errors. ' +
+        'This intentionally omits user ids, session ids, IPs, and arbitrary metadata. Optionally pass slug to scope to one app.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          slug: {
+            type: 'string',
+            description: 'Optional app slug to scope logs to one app.',
+          },
+          limit: {
+            type: 'number',
+            description: 'Rows per section, max 100.',
+            default: 20,
+          },
+        },
+      },
+    },
+    {
+      name: 'config',
+      description:
+        'Read, replace, or reset an app maker shippie.json override. This is the same override shown in the dashboard and applies on the next deploy.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          slug: {
+            type: 'string',
+            description: 'App slug.',
+          },
+          action: {
+            type: 'string',
+            enum: ['get', 'set', 'reset'],
+            description: 'get reads the override, set replaces it, reset clears it.',
+            default: 'get',
+          },
+          config: {
+            type: 'object',
+            description: 'Required when action=set. Full shippie.json override object.',
+          },
+        },
+        required: ['slug'],
+      },
+    },
+    {
+      name: 'templates',
+      description:
+        'List Shippie starter templates and the capability each proves. Pass id to inspect one template.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Optional template id, such as recipe-saver or habit-tracker.',
+          },
+        },
       },
     },
     {
@@ -240,6 +302,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === 'apps') {
     return await handleApps();
+  }
+
+  if (name === 'logs') {
+    return await handleLogs(args as { slug?: string; limit?: number });
+  }
+
+  if (name === 'config') {
+    return await handleConfig(args as { slug: string; action?: string; config?: Record<string, unknown> });
+  }
+
+  if (name === 'templates') {
+    return handleTemplates(args as { id?: string });
   }
 
   if (name === 'classify_kind') {
@@ -479,6 +553,133 @@ async function handleApps() {
         : `Apps request failed: ${message}`;
     return { content: [{ type: 'text', text: hint }], isError: true };
   }
+}
+
+async function handleLogs(args: { slug?: string; limit?: number }) {
+  try {
+    const logs = await client.logs({ slug: args.slug, limit: args.limit });
+    const lines = [
+      args.slug ? `Logs for ${args.slug}` : 'Recent Shippie logs',
+      '',
+    ];
+
+    if (logs.feedback.length === 0 && logs.usage.length === 0 && logs.functions.length === 0) {
+      lines.push('No feedback, usage rollups, or function logs yet.');
+      return { content: [{ type: 'text', text: lines.join('\n') }] };
+    }
+
+    if (logs.feedback.length > 0) {
+      lines.push('Feedback:');
+      for (const item of logs.feedback) {
+        const rating = item.rating ? ` - ${item.rating}/5` : '';
+        lines.push(`- ${item.appSlug} - ${item.type} - ${item.status}${rating} - ${item.createdAt}`);
+        if (item.title) lines.push(`  ${item.title}`);
+        if (item.body) lines.push(`  ${item.body}`);
+      }
+      lines.push('');
+    }
+
+    if (logs.usage.length > 0) {
+      lines.push('Usage rollups:');
+      for (const item of logs.usage) {
+        lines.push(`- ${item.appSlug} - ${item.day} - ${item.eventType}: ${item.count}`);
+      }
+      lines.push('');
+    }
+
+    if (logs.functions.length > 0) {
+      lines.push('Function logs:');
+      for (const item of logs.functions) {
+        const status = item.status == null ? 'unknown' : String(item.status);
+        const duration = item.durationMs == null ? '' : ` - ${item.durationMs}ms`;
+        lines.push(`- ${item.appSlug} - ${item.functionName} ${item.method} ${status}${duration} - ${item.createdAt}`);
+        if (item.error) lines.push(`  ${item.error}`);
+      }
+    }
+
+    return { content: [{ type: 'text', text: lines.join('\n').trimEnd() }] };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown_error';
+    const hint =
+      message === 'no_auth_token' || message === 'unauthenticated'
+        ? 'No valid Shippie token found. Run `shippie login` or set SHIPPIE_TOKEN.'
+        : `Logs request failed: ${message}`;
+    return { content: [{ type: 'text', text: hint }], isError: true };
+  }
+}
+
+async function handleConfig(args: { slug: string; action?: string; config?: Record<string, unknown> }) {
+  try {
+    const action = args.action ?? 'get';
+    if (action === 'set' && !args.config) {
+      return {
+        content: [{ type: 'text', text: 'Config request failed: action=set requires a config object.' }],
+        isError: true,
+      };
+    }
+    const result =
+      action === 'reset'
+        ? await client.config.reset(args.slug)
+        : action === 'set'
+          ? await client.config.set(args.slug, args.config!)
+          : await client.config.get(args.slug);
+
+    const heading =
+      action === 'reset'
+        ? 'Config override reset.'
+        : action === 'set'
+          ? 'Config override saved. It applies on the next deploy.'
+          : 'Config override:';
+    return {
+      content: [
+        {
+          type: 'text',
+          text: [
+            heading,
+            `App: ${result.slug}`,
+            `Override: ${result.hasOverride ? 'yes' : 'no'}`,
+            JSON.stringify(result.config, null, 2),
+          ].join('\n'),
+        },
+      ],
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown_error';
+    const hint =
+      message === 'no_auth_token' || message === 'unauthenticated'
+        ? 'No valid Shippie token found. Run `shippie login` or set SHIPPIE_TOKEN.'
+        : `Config request failed: ${message}`;
+    return { content: [{ type: 'text', text: hint }], isError: true };
+  }
+}
+
+function handleTemplates(args: { id?: string }) {
+  const templates = args.id ? [getTemplate(args.id)].filter(isPresent) : listTemplates();
+  if (args.id && templates.length === 0) {
+    return {
+      content: [{ type: 'text', text: `Unknown template: ${args.id}` }],
+      isError: true,
+    };
+  }
+
+  const lines = [args.id ? `Template: ${args.id}` : 'Shippie templates', ''];
+  for (const template of templates) {
+    lines.push(`${template.id} - ${template.name}`);
+    lines.push(`  ${template.description}`);
+    lines.push(`  proves: ${template.proves.capability}`);
+    lines.push(`  assertion: ${template.proves.assertion}`);
+    const intents = [
+      template.intents?.provides?.length ? `provides ${template.intents.provides.join(', ')}` : null,
+      template.intents?.consumes?.length ? `consumes ${template.intents.consumes.join(', ')}` : null,
+    ].filter(Boolean);
+    if (intents.length > 0) lines.push(`  intents: ${intents.join(' - ')}`);
+    lines.push('');
+  }
+  return { content: [{ type: 'text', text: lines.join('\n').trimEnd() }] };
+}
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
 }
 
 // ---------------------------------------------------------------------------

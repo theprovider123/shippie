@@ -32,6 +32,9 @@ import { classifyCommand } from './commands/classify.js';
 import { installCommand } from './commands/install.js';
 import { localizePlanCommand } from './commands/localize-plan.js';
 import { appsCommand } from './commands/apps.js';
+import { logsCommand } from './commands/logs.js';
+import { configCommand } from './commands/config.js';
+import { templatesCommand } from './commands/templates.js';
 
 function deriveSlug(url: string): string {
   try {
@@ -81,6 +84,30 @@ program
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .option('--json', 'Emit JSON instead of human-readable output')
   .action(appsCommand);
+
+program
+  .command('logs [slug]')
+  .description('Show privacy-preserving feedback, usage rollups, and function logs')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--limit <n>', 'Rows per section', '20')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(logsCommand);
+
+program
+  .command('config <slug>')
+  .description('Read, replace, or reset the maker shippie.json override for an app')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--set <json>', 'Replace override with this JSON object')
+  .option('--file <path>', 'Replace override with JSON read from a file')
+  .option('--reset', 'Clear the override and return to deploy defaults')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(configCommand);
+
+program
+  .command('templates [id]')
+  .description('List Shippie starter templates and the capability each proves')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(templatesCommand);
 
 program
   .command('deploy [dir]')

@@ -349,6 +349,7 @@
         "@shippie/analyse": "workspace:*",
         "@shippie/app-package-contract": "workspace:*",
         "@shippie/core": "workspace:*",
+        "@shippie/templates": "workspace:*",
         "adm-zip": "^0.5.16",
         "commander": "^13.0.0",
       },
@@ -485,6 +486,7 @@
         "@modelcontextprotocol/sdk": "^1.0.0",
         "@shippie/analyse": "workspace:*",
         "@shippie/core": "workspace:*",
+        "@shippie/templates": "workspace:*",
         "adm-zip": "^0.5.16",
       },
       "devDependencies": {
@@ -561,6 +563,7 @@
         "@shippie/analyse": "workspace:*",
         "@shippie/app-package-builder": "workspace:*",
         "@shippie/app-package-contract": "workspace:*",
+        "@shippie/templates": "workspace:*",
         "adm-zip": "^0.5.16",
       },
       "devDependencies": {

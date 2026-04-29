@@ -2,6 +2,13 @@ import { readToken } from './auth.ts';
 import { deployDirectory, type DeployOptions, type DeployResult } from './deploy.ts';
 import { fetchStatus, type StatusResult } from './status.ts';
 import { fetchAppsList, type AppListItem } from './apps.ts';
+import { fetchLogs, type LogsOptions, type LogsResult } from './logs.ts';
+import {
+  fetchAppConfig,
+  resetAppConfig,
+  updateAppConfig,
+  type AppConfigResult,
+} from './config.ts';
 import { streamDeploy, type StreamEvent, type StreamOptions } from './stream.ts';
 
 /**
@@ -25,6 +32,12 @@ export interface Client {
   status(deployId: string): Promise<StatusResult>;
   stream(deployId: string, opts?: StreamOptions): AsyncGenerator<StreamEvent, void, void>;
   appsList(): Promise<AppListItem[]>;
+  logs(opts?: LogsOptions): Promise<LogsResult>;
+  config: {
+    get(slug: string): Promise<AppConfigResult>;
+    set(slug: string, config: Record<string, unknown>): Promise<AppConfigResult>;
+    reset(slug: string): Promise<AppConfigResult>;
+  };
 }
 
 export function createClient(config: ClientConfig = {}): Client {
@@ -39,5 +52,11 @@ export function createClient(config: ClientConfig = {}): Client {
     status: (deployId) => fetchStatus({ apiUrl }, deployId),
     stream: (deployId, opts) => streamDeploy({ apiUrl }, deployId, opts),
     appsList: () => fetchAppsList({ apiUrl, token }),
+    logs: (opts) => fetchLogs({ apiUrl, token }, opts),
+    config: {
+      get: (slug) => fetchAppConfig({ apiUrl, token }, slug),
+      set: (slug, appConfig) => updateAppConfig({ apiUrl, token }, slug, appConfig),
+      reset: (slug) => resetAppConfig({ apiUrl, token }, slug),
+    },
   };
 }
