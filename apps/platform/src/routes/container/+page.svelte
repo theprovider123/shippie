@@ -900,18 +900,24 @@
   /**
    * Pick the iframe URL for an app based on environment:
    *   - Localhost dev: prefer devUrl (Vite dev server with HMR)
-   *   - Production: standaloneUrl (e.g. /run/<slug>/) served by the
-   *     SvelteKit Cloudflare adapter from apps/platform/static/run/
-   *   - Otherwise null — fall through to package archive or srcdoc.
+   *   - On *.shippie.app: prefer the showcase's clean subdomain URL
+   *     (e.g. https://recipe.shippie.app/), which the platform Worker
+   *     rewrites to /run/<slug>/ in apps/platform/src/hooks.server.ts
+   *   - Otherwise: standaloneUrl (e.g. /run/<slug>/) on the same origin
    */
   function runtimeSrcFor(app: ContainerApp): string | null {
     if (typeof window === 'undefined') return null;
-    const onLocalhost =
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname === '[::1]';
+    const host = window.location.hostname;
+    const onLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
     if (onLocalhost && app.devUrl) return app.devUrl;
-    if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) return app.standaloneUrl;
+    // In prod, prefer the subdomain URL extracted from /run/<slug>/.
+    if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) {
+      const slug = app.standaloneUrl.slice('/run/'.length).replace(/\/+$/, '');
+      if (host.endsWith('.shippie.app') || host === 'shippie.app') {
+        return `https://${slug}.shippie.app/`;
+      }
+      return app.standaloneUrl; // fallback for hub.local etc
+    }
     return null;
   }
 

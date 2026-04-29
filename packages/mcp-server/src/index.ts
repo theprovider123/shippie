@@ -9,6 +9,7 @@
  *   logs     — read privacy-preserving feedback / usage / function logs
  *   config   — read/write maker shippie.json overrides
  *   templates — list blessed starter templates
+ *   deploy_workspace — deploy several connected apps from shippie-workspace.json
  *
  * Note on uploads: `AdmZip` builds the archive in memory (no temp file on
  * disk) and FormData wraps the Buffer into a Blob that Node's undici fetch
@@ -164,6 +165,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'deploy_workspace',
+      description:
+        'Deploy every app declared in a shippie-workspace.json file. Use this for multi-app products such as fan/control/display venue workspaces.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          path: {
+            type: 'string',
+            description:
+              'Path to shippie-workspace.json, or a directory containing it. Defaults to the current directory.',
+          },
+          trial: {
+            type: 'boolean',
+            description: 'Deploy every app as a no-signup trial.',
+            default: false,
+          },
+          dry_run: {
+            type: 'boolean',
+            description: 'Validate and print the workspace plan without uploading.',
+            default: false,
+          },
+        },
+      },
+    },
+    {
       name: 'classify_kind',
       description:
         "Classify an app source directory as Shippie's Local / Connected / Cloud. " +
@@ -314,6 +340,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === 'templates') {
     return handleTemplates(args as { id?: string });
+  }
+
+  if (name === 'deploy_workspace') {
+    return await handleDeployWorkspace(args as { path?: string; trial?: boolean; dry_run?: boolean });
   }
 
   if (name === 'classify_kind') {
@@ -676,6 +706,59 @@ function handleTemplates(args: { id?: string }) {
     lines.push('');
   }
   return { content: [{ type: 'text', text: lines.join('\n').trimEnd() }] };
+}
+
+async function handleDeployWorkspace(args: { path?: string; trial?: boolean; dry_run?: boolean }) {
+  try {
+    const result = await client.workspace.deploy({
+      path: args.path ?? '.',
+      trial: args.trial,
+      dryRun: args.dry_run,
+    });
+
+    if (!result.ok && result.error) {
+      return {
+        content: [{ type: 'text', text: `Workspace failed: ${result.error}` }],
+        isError: true,
+      };
+    }
+
+    const lines = [
+      `Workspace: ${result.plan.workspace}`,
+      `Plan: ${result.plan.file}`,
+      '',
+    ];
+
+    if (args.dry_run) {
+      lines.push('Apps:');
+      for (const app of result.apps) {
+        const role = app.role ? ` (${app.role})` : '';
+        lines.push(`- ${app.slug}${role}: ${app.absoluteDirectory}`);
+      }
+      return { content: [{ type: 'text', text: lines.join('\n') }] };
+    }
+
+    for (const app of result.apps) {
+      const role = app.role ? ` (${app.role})` : '';
+      if (app.result?.ok) {
+        lines.push(`- ${app.slug}${role}: live`);
+        if (app.result.liveUrl) lines.push(`  ${app.result.liveUrl}`);
+        if (app.result.deployId) lines.push(`  deploy: ${app.result.deployId}`);
+      } else {
+        lines.push(`- ${app.slug}${role}: failed`);
+        lines.push(`  ${app.result?.error ?? 'unknown_error'}`);
+      }
+    }
+
+    return { content: [{ type: 'text', text: lines.join('\n') }], isError: !result.ok };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown_error';
+    const hint =
+      message === 'no_auth_token' || message === 'unauthenticated'
+        ? 'No valid Shippie token found. Run `shippie login` or set SHIPPIE_TOKEN.'
+        : `Workspace failed: ${message}`;
+    return { content: [{ type: 'text', text: hint }], isError: true };
+  }
 }
 
 function isPresent<T>(value: T | null): value is T {

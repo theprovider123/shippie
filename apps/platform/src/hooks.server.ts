@@ -19,6 +19,28 @@ import { dispatchMakerSubdomain } from '$server/wrapper/dispatcher';
 
 const PLATFORM_HOSTS = new Set(['next.shippie.app', 'shippie.app', 'www.shippie.app', 'localhost']);
 
+// First-party showcase apps bundled into apps/platform/static/run/ at
+// build time by scripts/prepare-showcases.mjs. Hitting
+// <slug>.shippie.app rewrites to /run/<slug>/* so the Cloudflare
+// adapter serves their dist directly. Maker apps (everything else
+// under *.shippie.app) still flow through the wrapper dispatcher.
+//
+// Keep this set in sync with the slugs the prepare script produces
+// (apps/showcase-*/shippie.json:slug, falling back to dir name).
+const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
+  'recipe',
+  'journal',
+  'whiteboard',
+  'live-room',
+  'habit-tracker',
+  'workout-logger',
+  'pantry-scanner',
+  'meal-planner',
+  'shopping-list',
+  'sleep-logger',
+  'body-metrics',
+]);
+
 export const handle: Handle = async ({ event, resolve }) => {
   const hostname = event.url.hostname;
 
@@ -28,6 +50,23 @@ export const handle: Handle = async ({ event, resolve }) => {
     !PLATFORM_HOSTS.has(hostname) &&
     hostname !== 'ai.shippie.app'
   ) {
+    // First-party showcase fast-path: <slug>.shippie.app/* fetches the
+    // bundled static dist at /run/<slug>/*. No D1 / R2 lookup, no
+    // wrapper injection — just a same-Worker subrequest.
+    const subdomain = hostname.slice(0, -'.shippie.app'.length);
+    if (FIRST_PARTY_SHOWCASE_SLUGS.has(subdomain)) {
+      const targetPath = event.url.pathname === '/' ? '/' : event.url.pathname;
+      const rewrittenUrl = `https://shippie.app/run/${subdomain}${targetPath}${event.url.search}`;
+      return event.fetch(rewrittenUrl, {
+        method: event.request.method,
+        headers: event.request.headers,
+        body:
+          event.request.method === 'GET' || event.request.method === 'HEAD'
+            ? undefined
+            : event.request.body,
+      });
+    }
+
     if (!event.platform?.env) {
       return new Response('Platform bindings unavailable.', {
         status: 503,

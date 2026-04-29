@@ -10,6 +10,13 @@ import {
   type AppConfigResult,
 } from './config.ts';
 import { streamDeploy, type StreamEvent, type StreamOptions } from './stream.ts';
+import {
+  deployWorkspace,
+  readWorkspacePlan,
+  type WorkspaceDeployOptions,
+  type WorkspaceDeployResult,
+  type WorkspacePlan,
+} from './workspace.ts';
 
 /**
  * Per-instance client config. Construct via `createClient`.
@@ -38,6 +45,10 @@ export interface Client {
     set(slug: string, config: Record<string, unknown>): Promise<AppConfigResult>;
     reset(slug: string): Promise<AppConfigResult>;
   };
+  workspace: {
+    plan(path?: string): WorkspacePlan | { error: string };
+    deploy(opts: WorkspaceDeployOptions): Promise<WorkspaceDeployResult>;
+  };
 }
 
 export function createClient(config: ClientConfig = {}): Client {
@@ -57,6 +68,10 @@ export function createClient(config: ClientConfig = {}): Client {
       get: (slug) => fetchAppConfig({ apiUrl, token }, slug),
       set: (slug, appConfig) => updateAppConfig({ apiUrl, token }, slug, appConfig),
       reset: (slug) => resetAppConfig({ apiUrl, token }, slug),
+    },
+    workspace: {
+      plan: (path = '.') => readWorkspacePlan(path),
+      deploy: (opts) => deployWorkspace({ apiUrl, token }, opts),
     },
   };
 }

@@ -15,8 +15,7 @@
  *   - client.logs({ slug?, limit? })
  *   - client.config.get/set/reset(slug)
  *   - listTemplates() / getTemplate(id)
- *
- * Phase 7 (master plan) expands this to: workspaces.
+ *   - client.workspace.plan/deploy(path)
  */
 export * from './client.ts';
 export * from './deploy.ts';
@@ -29,3 +28,4 @@ export * from './stream.ts';
 export * from './classify.ts';
 export * from './install.ts';
 export * from './templates.ts';
+export * from './workspace.ts';

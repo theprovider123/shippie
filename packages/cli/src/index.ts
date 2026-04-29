@@ -35,6 +35,7 @@ import { appsCommand } from './commands/apps.js';
 import { logsCommand } from './commands/logs.js';
 import { configCommand } from './commands/config.js';
 import { templatesCommand } from './commands/templates.js';
+import { workspaceCommand } from './commands/workspace.js';
 
 function deriveSlug(url: string): string {
   try {
@@ -108,6 +109,15 @@ program
   .description('List Shippie starter templates and the capability each proves')
   .option('--json', 'Emit JSON instead of human-readable output')
   .action(templatesCommand);
+
+program
+  .command('workspace [path]')
+  .description('Deploy every app in a shippie-workspace.json file')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--trial', 'Deploy every app as a no-signup trial')
+  .option('--dry-run', 'Read and validate the workspace without uploading')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(workspaceCommand);
 
 program
   .command('deploy [dir]')
