@@ -3,7 +3,7 @@
 > Living truth file. If a doc, plan, or memory disagrees with this, **trust this file**. Re-verify against HEAD before encoding any new claims into a plan.
 >
 > **Last updated:** 2026-04-29
-> **HEAD commit:** `120cdcc` plus uncommitted Phase A+B+C work (see "Uncommitted state" below)
+> **HEAD commit (origin/main):** `be7223d` — Phase A+B+C + Phase 6 + production hosting all shipped.
 
 This file replaces stale assumptions about Shippie's architecture. Read it before planning anything.
 
@@ -146,9 +146,40 @@ Green = baseline acceptable.
 
 ---
 
-## Uncommitted state (2026-04-29 session)
+## Shipped state (2026-04-29 session)
 
-Phase A1–A5 + B1–B4 + C1 + C2 (incl. 7 new showcase apps + cross-cluster forwarding + Playwright recording rough cut) are all code-complete and green, but **not committed**. Per CLAUDE.md, commits to main need explicit authorization.
+Phase A1–A5 + B1–B4 + C1 + C2 + Phase 6 + production hosting are all on `origin/main`. Live in production at `https://shippie.app`. Latest commit: `be7223d`.
+
+### Live URL pattern
+
+| URL | Status |
+|---|---|
+| `https://shippie.app/` | apex marketplace |
+| `https://shippie.app/container` | container shell |
+| `https://shippie.app/run/<slug>/` | showcase runtime — what the container iframe loads |
+| `https://<slug>.shippie.app/` | 302 → `/run/<slug>/` |
+
+Showcase URLs in production (all 11 verified 200):
+
+```
+shippie.app/run/recipe          shippie.app/run/journal
+shippie.app/run/whiteboard      shippie.app/run/habit-tracker
+shippie.app/run/workout-logger  shippie.app/run/pantry-scanner
+shippie.app/run/meal-planner    shippie.app/run/shopping-list
+shippie.app/run/sleep-logger    shippie.app/run/body-metrics
+shippie.app/run/live-room
+```
+
+### Why `/run/` (not bare subdomains)
+
+Three options were considered (per-app CF Pages projects, separate static-only Worker, or `/run/` namespace). Chose option 3 — `/run/<slug>/` — because:
+
+- Single deploy, single Worker, single bindings
+- Same-origin → container iframe + bridge calls without cross-origin cost
+- Showcases are first-party demos of the container, not standalone-shipped apps. The runtime URL is implementation detail; the user sees the container.
+- Trivial to add a showcase: drop into `apps/showcase-X/`, prepare script picks it up, deploy.
+
+If a showcase ever needs to graduate to its own subdomain origin (own SW scope, own storage), that's a one-time migration to a CF Pages project — defer until demand asks for it.
 
 Per-track summary:
 
