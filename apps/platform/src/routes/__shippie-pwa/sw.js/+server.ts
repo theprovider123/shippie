@@ -18,6 +18,19 @@ const SW_BODY = `// shippie-marketplace SW
 const CACHE = 'shippie-marketplace-v1';
 const APPS_PREFIX = '/apps';
 
+// Branded offline response — used when network fails and there is no
+// usable cached document. Inline rocket + system fonts (no remote font
+// fetch when offline) + 10s auto-retry. Beats the prior text/plain
+// 503 which iOS Safari sometimes rendered as nothing inside a PWA.
+const OFFLINE_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline · Shippie</title><style>html,body{margin:0;background:#14120F;color:#EDE4D3;height:100%;font-family:system-ui,-apple-system,sans-serif}.wrap{min-height:100vh;display:grid;place-items:center;padding:32px;text-align:center}.r{width:96px;height:96px;margin-bottom:24px}h1{font-size:1.6rem;font-weight:600;margin:0 0 8px;color:#EDE4D3}p{color:#B8A88F;margin:0 0 24px;line-height:1.5}small{color:#7A6B58;font-size:.8rem;letter-spacing:.05em}</style></head><body><div class="wrap"><div><svg class="r" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><g transform="translate(0,10)"><path d="M512 180 L442 250 H582 Z" fill="#EDE4D3"/><rect x="440" y="260" width="64" height="64" fill="#3A4D35"/><rect x="520" y="260" width="64" height="64" fill="#E8603C"/><rect x="440" y="340" width="64" height="64" fill="#5E7B5C"/><rect x="520" y="340" width="64" height="64" fill="#A8C491"/><rect x="440" y="420" width="64" height="64" fill="#5E7B5C"/><rect x="520" y="420" width="64" height="64" fill="#A8C491"/><rect x="440" y="500" width="64" height="64" fill="#3A4D35"/><rect x="520" y="500" width="64" height="64" fill="#7A9A6E"/><rect x="440" y="580" width="64" height="64" fill="#7A9A6E"/><rect x="520" y="580" width="64" height="64" fill="#5E7B5C"/><path d="M356 516 L430 590 L430 676 L356 603 Z" fill="#5E7B5C"/><path d="M668 516 L594 590 L594 676 L668 603 Z" fill="#A8C491"/><path d="M512 652 C530 690 550 717 552 757 C537 742 522 746 512 780 C502 746 487 742 472 757 C474 717 494 690 512 652 Z" fill="#E8603C"/></g></svg><h1>You are offline</h1><p>Reconnect to browse the marketplace.</p><small>Auto-retrying every 10s</small></div></div><script>setTimeout(function(){location.reload()},10000)</script></body></html>';
+
+function offlineResponse() {
+  return new Response(OFFLINE_HTML, {
+    status: 503,
+    headers: { 'content-type': 'text/html; charset=utf-8' },
+  });
+}
+
 self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
@@ -70,13 +83,10 @@ self.addEventListener('fetch', (e) => {
       }
       try {
         const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
+        if (res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
-        return new Response('You are offline. The marketplace will refresh when you reconnect.', {
-          status: 503,
-          headers: { 'content-type': 'text/plain' },
-        });
+        return offlineResponse();
       }
     })());
     return;
@@ -89,16 +99,13 @@ self.addEventListener('fetch', (e) => {
       try {
         const res = await fetch(req);
         const cache = await caches.open(CACHE);
-        if (res.ok) cache.put(req, res.clone());
+        if (res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
         const cache = await caches.open(CACHE);
         const cached = await cache.match(req) || await cache.match('/');
         if (cached) return cached;
-        return new Response('Shippie is offline. Reconnect to browse.', {
-          status: 503,
-          headers: { 'content-type': 'text/plain' },
-        });
+        return offlineResponse();
       }
     })());
   }
