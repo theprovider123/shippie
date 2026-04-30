@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import '$lib/styles/tokens.css';
   import Nav from '$lib/components/layout/Nav.svelte';
   import Footer from '$lib/components/layout/Footer.svelte';
@@ -11,6 +12,10 @@
   }
 
   let { data, children }: Props = $props();
+
+  onMount(() => {
+    document.body.dataset.appReady = 'true';
+  });
 </script>
 
 <svelte:head>
