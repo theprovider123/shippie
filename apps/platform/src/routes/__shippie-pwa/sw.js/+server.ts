@@ -22,6 +22,14 @@ self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
+// Page can postMessage('SKIP_WAITING') to flip to the new SW immediately
+// after the user taps "Refresh" on the new-version-available toast.
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING' || (e.data && e.data.type === 'SKIP_WAITING')) {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     const names = await caches.keys();

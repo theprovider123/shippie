@@ -68,7 +68,10 @@ export const GET: RequestHandler = async ({ url }) => {
     status: 200,
     headers: {
       'content-type': 'application/manifest+json; charset=utf-8',
-      'cache-control': 'public, max-age=300',
+      // Short TTL so the OS picks up new builds quickly. The wrapper SW
+      // handles in-app "new version available" notifications; this is the
+      // belt-and-braces layer for cold reopens after the SW has churned.
+      'cache-control': 'public, max-age=60',
     },
   });
 };

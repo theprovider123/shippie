@@ -10,11 +10,43 @@
     safe-area-inset-right so devices with right-side cutouts behave too.
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { toast, type Toast } from '$lib/stores/toast';
 
   function variantClass(kind: Toast['kind']): string {
     return `toast variant-${kind}`;
   }
+
+  // The SW registration in app.html dispatches `shippie:sw-update-ready`
+  // when a new worker has installed and a controller exists. Push a
+  // sticky info toast with a "Refresh" action that activates the new
+  // worker and reloads.
+  onMount(() => {
+    function onUpdateReady() {
+      toast.push({
+        kind: 'info',
+        message: 'New version available.',
+        durationMs: 0,
+        action: {
+          label: 'Refresh',
+          run: () => {
+            const reg = (window as { __shippieSwReg?: ServiceWorkerRegistration })
+              .__shippieSwReg;
+            const worker = reg?.waiting ?? reg?.installing;
+            if (worker) {
+              worker.postMessage('SKIP_WAITING');
+            } else {
+              location.reload();
+            }
+          },
+        },
+      });
+    }
+    window.addEventListener('shippie:sw-update-ready', onUpdateReady);
+    return () => {
+      window.removeEventListener('shippie:sw-update-ready', onUpdateReady);
+    };
+  });
 </script>
 
 <div class="toast-stack" aria-live="polite" aria-atomic="false">

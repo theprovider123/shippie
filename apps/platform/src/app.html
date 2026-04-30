@@ -23,6 +23,17 @@
       // Phase 9.1 — register the marketplace service worker on the
       // root platform host only. Maker subdomains have their own SW
       // served by the wrapper at /__shippie/sw.js.
+      //
+      // Update flow:
+      //  1. On registration, listen for `updatefound`.
+      //  2. When a new worker reaches `installed` AND there's already a
+      //     controller (i.e. this isn't a first install), fire a
+      //     window-level event that the Toast layer picks up and renders
+      //     "New version available · Tap to refresh".
+      //  3. The toast action posts 'SKIP_WAITING' to the new worker;
+      //     `controllerchange` then reloads the page.
+      //  4. Calling `registration.update()` on `visibilitychange` makes
+      //     the PWA pick up new builds when the user returns to the tab.
       if ('serviceWorker' in navigator) {
         var h = location.hostname;
         var isPlatform = h === 'shippie.app' || h === 'www.shippie.app' ||
@@ -30,7 +41,38 @@
         if (isPlatform) {
           window.addEventListener('load', function () {
             navigator.serviceWorker.register('/__shippie-pwa/sw.js', { scope: '/' })
+              .then(function (reg) {
+                window.__shippieSwReg = reg;
+                function watchInstalling(worker) {
+                  if (!worker) return;
+                  worker.addEventListener('statechange', function () {
+                    if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                      window.dispatchEvent(new CustomEvent('shippie:sw-update-ready'));
+                    }
+                  });
+                }
+                if (reg.waiting && navigator.serviceWorker.controller) {
+                  window.dispatchEvent(new CustomEvent('shippie:sw-update-ready'));
+                }
+                if (reg.installing) watchInstalling(reg.installing);
+                reg.addEventListener('updatefound', function () {
+                  watchInstalling(reg.installing);
+                });
+              })
               .catch(function (err) { console.warn('[shippie] marketplace sw failed', err); });
+            // Reload once when control flips to the new worker.
+            var refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function () {
+              if (refreshing) return;
+              refreshing = true;
+              location.reload();
+            });
+            // Poll for new builds when the tab returns to visible.
+            document.addEventListener('visibilitychange', function () {
+              if (document.visibilityState === 'visible' && window.__shippieSwReg) {
+                window.__shippieSwReg.update().catch(function () {});
+              }
+            });
           });
         }
       }
