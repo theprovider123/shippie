@@ -1,13 +1,20 @@
+/* Canonical Shippie tokens — sunset/sage/marigold, Fraunces, sharp corners.
+   Journal inherits the dark default and remaps its sentiment palette to
+   canonical tones (sage for positive, sunset-dim for negative). The blue
+   --accent of the old build is gone; everything's sunset now. */
+@import "@shippie/design-tokens/tokens.css";
+
 :root {
-  --bg: #0E0E11;
-  --surface: #18181D;
-  --fg: #F5F2EE;
-  --muted: #8E8A86;
-  --line: rgba(255, 255, 255, 0.08);
-  --accent: #3F6EE0;
-  --positive: #3FB07C;
-  --neutral: #8E8A86;
-  --negative: #D8624A;
+  /* Journal-specific aliases on top of canonical tokens. --bg / --surface
+     flow from canonical (no local override). The remaining names stay so
+     the existing 400+ lines downstream don't need a global rename. */
+  --fg: var(--text);
+  --muted: var(--text-light);
+  --line: var(--border-light);
+  --accent: var(--sunset);
+  --positive: var(--sage-leaf);
+  --neutral: var(--text-light);
+  --negative: var(--sunset-dim);
   --safe-top: env(safe-area-inset-top, 0);
   --safe-bottom: env(safe-area-inset-bottom, 0);
   /* Patina: 0 = brand-new, 1 = a year of use. Dark theme warms toward
@@ -33,7 +40,7 @@ body {
     #1a0e08 calc(var(--shippie-patina-warmth) * 14%)
   );
   color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.5;
@@ -84,15 +91,17 @@ textarea {
 }
 
 .page-header h1 {
-  font-size: 22px;
+  font-family: var(--font-heading);
+  font-size: 24px;
   font-weight: 600;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 button {
   height: 38px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--fg);
@@ -125,7 +134,7 @@ button:disabled {
 .search-input {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   color: var(--fg);
   padding: 12px 14px;
   font-size: 16px;
@@ -152,7 +161,7 @@ button:disabled {
 .topic-pill {
   background: var(--accent);
   color: #fff;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 4px 12px;
   font-size: 12px;
   text-transform: uppercase;
@@ -164,7 +173,7 @@ button:disabled {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid;
   font-size: 13px;
   font-weight: 500;
@@ -177,7 +186,7 @@ button:disabled {
 }
 
 .mood-score {
-  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   opacity: 0.8;
 }
@@ -191,7 +200,7 @@ button:disabled {
 .entry-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 0;
   padding: 14px 16px;
   text-align: left;
   color: var(--fg);
@@ -215,10 +224,10 @@ button:disabled {
 }
 
 .entry-card-topic {
-  background: rgba(63, 110, 224, 0.15);
+  background: rgba(232, 96, 60, 0.15);
   color: var(--accent);
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 .entry-card-title {
@@ -238,7 +247,7 @@ button:disabled {
   margin: 0;
   font-size: 12px;
   color: var(--accent);
-  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--font-mono);
 }
 
 .filter-row {
@@ -249,7 +258,7 @@ button:disabled {
 
 .pill {
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   border: 1px solid var(--line);
   color: var(--fg);
@@ -268,7 +277,7 @@ button:disabled {
 .pill-count {
   font-size: 11px;
   background: rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0 6px;
   line-height: 1.7;
 }
@@ -285,7 +294,7 @@ button:disabled {
 .chart-figure {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 0;
   padding: 12px 12px 6px;
   margin: 0;
 }
@@ -309,7 +318,7 @@ button:disabled {
 }
 
 .chart-area {
-  fill: rgba(63, 110, 224, 0.18);
+  fill: rgba(232, 96, 60, 0.18);
   stroke: none;
 }
 
@@ -333,7 +342,7 @@ button:disabled {
 .chart-axis-label {
   fill: var(--muted);
   font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--font-mono);
 }
 
 .bottom-tabs {
@@ -351,7 +360,7 @@ button:disabled {
 
 .tab {
   flex: 1;
-  border-radius: 10px;
+  border-radius: 0;
   background: transparent;
   border: 0;
   color: var(--muted);
@@ -361,7 +370,7 @@ button:disabled {
 
 .tab-active {
   color: var(--fg);
-  background: rgba(63, 110, 224, 0.15);
+  background: rgba(232, 96, 60, 0.15);
 }
 
 .your-data-button {
@@ -402,14 +411,14 @@ button:disabled {
   color: var(--muted);
 }
 .quick-stepper li.active {
-  background: rgba(63, 110, 224, 0.2);
-  border-color: rgba(63, 110, 224, 0.5);
+  background: rgba(232, 96, 60, 0.2);
+  border-color: rgba(232, 96, 60, 0.5);
   color: #fff;
 }
 .quick-stepper li.done {
-  background: rgba(63, 110, 224, 0.4);
+  background: rgba(232, 96, 60, 0.4);
   color: #fff;
-  border-color: rgba(63, 110, 224, 0.6);
+  border-color: rgba(232, 96, 60, 0.6);
 }
 .quick-entry .step {
   display: flex;
@@ -423,13 +432,13 @@ button:disabled {
 }
 .quick-entry input[type='range'] {
   width: 100%;
-  accent-color: rgba(63, 110, 224, 0.7);
+  accent-color: rgba(232, 96, 60, 0.7);
 }
 .mood-readout {
   text-align: center;
   font-size: 32px;
   font-weight: 600;
-  color: rgba(63, 110, 224, 0.85);
+  color: rgba(232, 96, 60, 0.85);
   font-variant-numeric: tabular-nums;
 }
 .prompt-chips {
@@ -439,21 +448,21 @@ button:disabled {
   margin-bottom: 4px;
 }
 .prompt-chips .chip {
-  background: rgba(63, 110, 224, 0.1);
-  border: 1px dashed rgba(63, 110, 224, 0.4);
-  color: rgba(63, 110, 224, 0.95);
-  border-radius: 999px;
+  background: rgba(232, 96, 60, 0.1);
+  border: 1px dashed rgba(232, 96, 60, 0.4);
+  color: rgba(232, 96, 60, 0.95);
+  border-radius: 0;
   padding: 6px 12px;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
 }
 .prompt-chips .chip:hover {
-  background: rgba(63, 110, 224, 0.18);
+  background: rgba(232, 96, 60, 0.18);
 }
 .quick-entry textarea {
   width: 100%;
-  border-radius: 14px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: var(--surface);
   color: inherit;
@@ -474,7 +483,7 @@ button:disabled {
 .quick-body {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px 14px;
   color: var(--fg);
   white-space: pre-wrap;
@@ -488,10 +497,10 @@ button:disabled {
   gap: 10px;
   margin: 0 0 8px;
   padding: 8px 12px;
-  background: rgba(63, 110, 224, 0.08);
-  border: 1px solid rgba(63, 110, 224, 0.25);
-  border-radius: 12px;
-  color: rgba(63, 110, 224, 0.9);
+  background: rgba(232, 96, 60, 0.08);
+  border: 1px solid rgba(232, 96, 60, 0.25);
+  border-radius: 0;
+  color: rgba(232, 96, 60, 0.9);
 }
 .sentiment-sparkline svg {
   width: 100%;
