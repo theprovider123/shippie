@@ -57,10 +57,36 @@ self.addEventListener('message', (e) => {
   }
 });
 
+// Migrate-then-delete: when a new versioned SW activates, copy entries
+// from any prior 'shippie-marketplace-*' cache into the new cache before
+// deletion, then delete the old caches. Preserves the user's cached app
+// shells across deploys. Safe because the bridge protocol is append-only
+// at shippie.bridge.v1 (see lib/container/bridge-handlers.ts) — a stale
+// shell can't break against a newer container.
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    const names = await caches.keys();
-    await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+    const newCache = await caches.open(CACHE);
+    const oldNames = (await caches.keys()).filter(
+      (n) => n !== CACHE && n.startsWith('shippie-marketplace-'),
+    );
+    for (const name of oldNames) {
+      try {
+        const old = await caches.open(name);
+        const reqs = await old.keys();
+        // Parallel migration — sequential put would block activate for
+        // seconds on a populated cache. allSettled + per-entry catch
+        // keeps activate snappy and survives quota errors per entry.
+        await Promise.allSettled(
+          reqs.map(async (req) => {
+            const hit = await old.match(req);
+            if (hit) await newCache.put(req, hit).catch(() => {});
+          }),
+        );
+      } catch {
+        /* best effort */
+      }
+      await caches.delete(name);
+    }
     await self.clients.claim();
   })());
 });
@@ -80,6 +106,30 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/dashboard/')) return;
   if (url.pathname.startsWith('/admin/')) return;
+
+  // /_app/immutable/* — SvelteKit's hashed JS + CSS chunks. Different
+  // deploys produce different hashes (= different URLs), so cache-first
+  // is safe: a cached hit always matches its content. Without this
+  // handler, iOS PWAs lose JS chunks under storage pressure and pages
+  // stop hydrating offline — the page looks like only the boot loader
+  // rendered (rocket forever, no marketplace). 504 fallback when cache
+  // miss + offline; modern SvelteKit's import-on-demand makes that
+  // rare once entry chunks are warm.
+  if (url.pathname.startsWith('/_app/immutable/')) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      try {
+        const res = await fetch(req);
+        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch {
+        return new Response('', { status: 504 });
+      }
+    })());
+    return;
+  }
 
   // /run/<slug>/* — stale-while-revalidate. Showcase apps the user has
   // opened cache here and continue working offline. Stale-shell-vs-new-
