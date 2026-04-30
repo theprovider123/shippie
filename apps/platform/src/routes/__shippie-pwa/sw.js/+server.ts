@@ -15,7 +15,7 @@
 import type { RequestHandler } from './$types';
 
 const SW_BODY = `// shippie-marketplace SW
-const CACHE = 'shippie-marketplace-v1';
+const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
 const APPS_PREFIX = '/apps';
 
 // Branded offline response — used when network fails and there is no
@@ -112,8 +112,15 @@ self.addEventListener('fetch', (e) => {
 });
 `;
 
-export const GET: RequestHandler = async () => {
-  return new Response(SW_BODY, {
+export const GET: RequestHandler = async ({ platform }) => {
+  // Stamp the cache name with the deployment version ID so old caches
+  // drop on activate when the worker version changes. Falls back to
+  // 'dev' locally where the binding doesn't exist; the literal makes
+  // every dev session share one cache, which matches dev expectations.
+  const buildId =
+    (platform?.env as { CF_VERSION_METADATA?: { id?: string } } | undefined)?.CF_VERSION_METADATA?.id ?? 'dev';
+  const body = SW_BODY.replace(/__SHIPPIE_BUILD__/g, buildId);
+  return new Response(body, {
     status: 200,
     headers: {
       'content-type': 'application/javascript; charset=utf-8',
