@@ -12,12 +12,6 @@ createRoot(container).render(
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-}
-
 // Plan E Task 9: kick off ambient analysis on app open. Fire-and-forget.
 // The wrapper's observe-init.ts will surface any insights this produces
 // via the insight-card on the next render tick.

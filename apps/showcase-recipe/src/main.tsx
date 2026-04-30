@@ -10,13 +10,3 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
-
-// Service worker registration — the runtime worker injects /__shippie/sw.js,
-// but we register a fallback for standalone/dev builds.
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      /* SW registration is best-effort; runtime worker handles this on shippie.app. */
-    });
-  });
-}
