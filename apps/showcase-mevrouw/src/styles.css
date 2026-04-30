@@ -1,0 +1,165 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@source "./**/*.{ts,tsx}";
+@source "../index.html";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Fraunces", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --font-heading: "Fraunces", Georgia, serif;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-glow: var(--gold-glow);
+  --color-gold-wash: var(--gold-wash);
+  --color-forest: var(--forest);
+  --color-forest-light: var(--forest-light);
+}
+
+/* Forest & Antique Brass — dark mode only app */
+:root {
+  --background: oklch(0.13 0.035 150);
+  --foreground: oklch(0.93 0.012 80);
+  --card: oklch(0.18 0.045 150);
+  --card-foreground: oklch(0.93 0.012 80);
+  --popover: oklch(0.18 0.045 150);
+  --popover-foreground: oklch(0.93 0.012 80);
+  --primary: oklch(0.72 0.15 70);
+  --primary-foreground: oklch(0.13 0.035 150);
+  --secondary: oklch(0.22 0.055 150);
+  --secondary-foreground: oklch(0.93 0.012 80);
+  --muted: oklch(0.22 0.055 150);
+  --muted-foreground: oklch(0.68 0.025 80);
+  --accent: oklch(0.72 0.15 70);
+  --accent-foreground: oklch(0.13 0.035 150);
+  --destructive: oklch(0.55 0.2 25);
+  --border: oklch(0.25 0.06 150);
+  --input: oklch(0.25 0.06 150);
+  --ring: oklch(0.72 0.15 70);
+  --radius: 1rem;
+
+  --gold: oklch(0.72 0.15 70);
+  --gold-soft: oklch(0.78 0.15 70);
+  --gold-glow: oklch(0.72 0.15 70 / 14%);
+  --gold-wash: oklch(0.72 0.15 70 / 12%);
+  --forest: oklch(0.25 0.06 150);
+  --forest-light: oklch(0.32 0.07 150);
+}
+
+/* Anniversary mode — opt-in via [data-anniversary="true"] on <html>.
+   Swaps the brass accent for a love-coral. Background warms. */
+:root[data-anniversary="true"] {
+  --background: oklch(0.16 0.05 20);
+  --card: oklch(0.21 0.06 20);
+  --secondary: oklch(0.25 0.07 20);
+  --muted: oklch(0.25 0.07 20);
+  --primary: oklch(0.72 0.16 25);
+  --accent: oklch(0.72 0.16 25);
+  --ring: oklch(0.72 0.16 25);
+  --gold: oklch(0.72 0.16 25);
+  --gold-soft: oklch(0.8 0.16 25);
+  --gold-glow: oklch(0.72 0.16 25 / 18%);
+  --gold-wash: oklch(0.72 0.16 25 / 14%);
+  --forest: oklch(0.28 0.07 20);
+  --forest-light: oklch(0.36 0.08 20);
+  --border: oklch(0.32 0.08 20);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html, body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* Subtle gold-wash backgrounds for cards. */
+.gold-wash {
+  background: var(--gold-wash);
+}
+.gold-glow {
+  box-shadow: 0 0 0 1px var(--gold-glow);
+}
+
+/* Sealed letter sheen */
+@keyframes sealed-shimmer {
+  0%, 100% { background-position: -200% 0; }
+  50% { background-position: 200% 0; }
+}
+.sealed-sheen {
+  background: linear-gradient(
+    90deg,
+    var(--card) 0%,
+    var(--gold-glow) 50%,
+    var(--card) 100%
+  );
+  background-size: 200% 100%;
+  animation: sealed-shimmer 8s ease-in-out infinite;
+}
+
+/* Gentle pulse for the floating action buttons */
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--gold-glow); }
+  50% { box-shadow: 0 0 0 8px transparent; }
+}
+.fab-pulse {
+  animation: fab-pulse 3s ease-in-out infinite;
+}
+
+/* Pulse seen halo */
+@keyframes pulse-seen {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}

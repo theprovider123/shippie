@@ -1,0 +1,20 @@
+{
+  "name": "Mevrouw",
+  "short_name": "Mevrouw",
+  "description": "A private space for two phones — local-first, no server holds anything between you.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1F2A24",
+  "theme_color": "#1F2A24",
+  "categories": ["lifestyle", "social"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
