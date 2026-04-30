@@ -168,7 +168,26 @@ export function startInstallRuntime(
 
   // Desktop handoff: no PWA install path on desktop — help the user
   // continue on mobile via QR, email-to-self, or push (Phase 3).
-  if (ctx.platform === 'desktop' && ctx.iab === null) {
+  //
+  // BUT only on the *marketing/install* surface. The runtime ships on
+  // every Shippie page including the app itself — without this guard,
+  // visiting journal.shippie.app or shippie.app/run/journal/ shows a
+  // handoff QR card on top of the actual journal UI. The user reported
+  // exactly that ("the journal app just opens a QR code").
+  //
+  // App surfaces:
+  //   - /run/<slug>/   (first-party showcases, served by ASSETS bridge)
+  //   - <slug>.shippie.app   (maker apps via wrapper subdomain)
+  // Marketing/install surfaces (handoff makes sense here):
+  //   - shippie.app, www.shippie.app, next.shippie.app  (the platform
+  //     hostname browsing the marketplace)
+  const isAppSurface =
+    /^\/run\//.test(window.location.pathname) ||
+    (/\.shippie\.app$/.test(window.location.hostname) &&
+      !['shippie.app', 'www.shippie.app', 'next.shippie.app', 'localhost'].includes(
+        window.location.hostname,
+      ));
+  if (ctx.platform === 'desktop' && ctx.iab === null && !isAppSurface) {
     const handoffUrl = buildHandoffUrl(window.location.href);
 
     const postHandoff = async (body: Record<string, unknown>): Promise<void> => {
