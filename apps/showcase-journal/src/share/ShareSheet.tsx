@@ -19,6 +19,9 @@ export function ShareSheet({ entry, onClose }: ShareSheetProps) {
   const [bytes, setBytes] = useState(0);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [blob, setBlob] = useState<ShareBlob<JournalSharePayload> | null>(null);
+  const [pinning, setPinning] = useState(false);
+  const [pinnedUrl, setPinnedUrl] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +75,41 @@ export function ShareSheet({ entry, onClose }: ShareSheetProps) {
       }
     }
     void copyLink();
+  }
+
+  async function pinPublicLink() {
+    if (!blob) return;
+    setPinning(true);
+    setPinError(null);
+    try {
+      const res = await fetch('https://shippie.app/api/c', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(blob),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`pin failed (${res.status}): ${txt}`);
+      }
+      const j = (await res.json()) as { url: string };
+      setPinnedUrl(j.url);
+    } catch (e) {
+      setPinError((e as Error).message ?? 'Could not pin link.');
+    } finally {
+      setPinning(false);
+    }
+  }
+
+  async function copyPinned() {
+    if (!pinnedUrl) return;
+    try {
+      await navigator.clipboard.writeText(pinnedUrl);
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 2000);
+    } catch {
+      setCopyState('error');
+      window.setTimeout(() => setCopyState('idle'), 2000);
+    }
   }
 
   const previewTitle = entry.title || (entry.body ? entry.body.slice(0, 32) + '…' : 'untitled entry');
@@ -128,6 +166,37 @@ export function ShareSheet({ entry, onClose }: ShareSheetProps) {
                 signed by {blob.author.name ?? 'this device'} · {bytes} bytes
               </p>
             ) : null}
+
+            <div className="share-pin">
+              {pinnedUrl ? (
+                <>
+                  <p className="muted small">
+                    Public link · pinned for 90 days · anyone can open it,
+                    no Shippie needed
+                  </p>
+                  <div className="share-url-row">
+                    <code className="share-url" title={pinnedUrl}>{pinnedUrl}</code>
+                  </div>
+                  <button type="button" onClick={copyPinned}>
+                    {copyState === 'copied' ? 'Copied!' : 'Copy public link'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="muted small">
+                    Sending to someone without Shippie? Pin a 90-day public
+                    link. The entry goes to Shippie's R2 keyed by hash; the
+                    URL renders a read-only preview anyone can open.
+                  </p>
+                  <button type="button" onClick={pinPublicLink} disabled={pinning}>
+                    {pinning ? 'Pinning…' : 'Pin a public link (90 days)'}
+                  </button>
+                  {pinError ? (
+                    <p className="error" style={{ fontSize: 12 }}>{pinError}</p>
+                  ) : null}
+                </>
+              )}
+            </div>
           </>
         )}
       </div>

@@ -657,6 +657,30 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: 11px;
 }
+.share-pin {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.share-pin button {
+  align-self: flex-start;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 0;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  cursor: pointer;
+}
+.share-pin button:hover { background: rgba(232, 96, 60, 0.08); }
+.share-pin button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Import card — shared structure with the share sheet but centered */
 .import-card-header {

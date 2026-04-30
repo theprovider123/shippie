@@ -148,6 +148,16 @@ ul li button {
 }
 .share-sheet-actions button.primary { background: #E8603C; border-color: #E8603C; color: #fff; }
 .share-author { text-align: center; margin: 4px 0 0; font-family: ui-monospace, monospace; font-size: 11px; }
+.share-pin { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.share-pin button {
+  align-self: flex-start; height: 36px; padding: 0 14px;
+  border-radius: 0; border: 1px solid #E8603C; color: #E8603C;
+  background: transparent; font-family: ui-monospace, monospace;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; cursor: pointer;
+}
+.share-pin button:hover { background: rgba(232, 96, 60, 0.08); }
+.share-pin button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .import-card-header { display: flex; flex-direction: column; gap: 4px; }
 .import-card-header h2 { font-family: 'Fraunces', Georgia, serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
