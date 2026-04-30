@@ -19,6 +19,7 @@
  */
 
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   cpSync,
   existsSync,
@@ -104,7 +105,49 @@ function copyDist(distDir, slug) {
       `[prepare-showcases] stripped ${stripped} wa-sqlite asset(s) from static/run/${slug}/assets — served from /__shippie/wasm/wa-sqlite/`,
     );
   }
+  // Emit __shippie-assets.json — the per-showcase asset manifest the
+  // marketplace SW reads when the user taps "Save for offline." Walks
+  // the post-strip tree so wa-sqlite WASM is correctly excluded; the
+  // shared WASM is listed separately in shell-assets.json (warmed once
+  // on first download). buildId is a stable hash of the asset list +
+  // sizes so future deploys can detect "your saved app is out of date."
+  writeAssetManifest(target, slug);
   console.log(`[prepare-showcases] copied ${slug} → static/run/${slug}/`);
+}
+
+function listAssetsRecursive(dir, prefix = '') {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const child = join(dir, entry.name);
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      out.push(...listAssetsRecursive(child, rel));
+    } else if (entry.isFile()) {
+      out.push({ rel, size: statSync(child).size });
+    }
+  }
+  return out;
+}
+
+function writeAssetManifest(targetDir, slug) {
+  // Skip the manifest file itself — emit AFTER the walk so it never
+  // self-references, but the safety belt below also filters it out in
+  // case a previous run left one behind.
+  const MANIFEST_NAME = '__shippie-assets.json';
+  const files = listAssetsRecursive(targetDir).filter((f) => f.rel !== MANIFEST_NAME);
+  // Sort by path so the buildId hash is order-stable across runs.
+  files.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  const hash = createHash('sha256');
+  for (const f of files) hash.update(`${f.rel}:${f.size}\n`);
+  const buildId = hash.digest('hex').slice(0, 16);
+  const manifest = {
+    slug,
+    buildId,
+    totalBytes,
+    assets: files.map((f) => `/run/${slug}/${f.rel}`),
+  };
+  writeFileSync(join(targetDir, MANIFEST_NAME), JSON.stringify(manifest, null, 2) + '\n');
 }
 
 function stripWaSqliteAssets(targetDir) {
