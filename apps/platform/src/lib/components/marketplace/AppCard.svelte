@@ -48,50 +48,54 @@
   const showSeal = $derived(sealed || inferredSeal);
 </script>
 
-<a class="app-card" class:sealed={showSeal} href={`/apps/${slug}`}>
-  <div class="row">
-    <IconOrMonogram {name} {slug} {iconUrl} {themeColor} size={64} />
-    <div class="meta">
-      <h2 class="name">
-        <span class="name-text">{name}</span>
-        {#if showSeal}
-          <span
-            class="seal"
-            title="Shippie Seal — top-trust app. Privacy A+, security ≥ 95, fully offline."
-            aria-label="Shippie Seal"
-          >
-            <img src="/__shippie-pwa/icon.svg" alt="" width="12" height="12" />
-          </span>
+<div class="app-card" class:sealed={showSeal}>
+  <a class="app-card-link" href={`/apps/${slug}`} aria-label={`Open ${name}`}>
+    <div class="row">
+      <IconOrMonogram {name} {slug} {iconUrl} {themeColor} size={64} />
+      <div class="meta">
+        <h2 class="name">
+          <span class="name-text">{name}</span>
+          {#if showSeal}
+            <span
+              class="seal"
+              title="Shippie Seal — top-trust app. Privacy A+, security ≥ 95, fully offline."
+              aria-label="Shippie Seal"
+            >
+              <img src="/__shippie-pwa/icon.svg" alt="" width="12" height="12" />
+            </span>
+          {/if}
+        </h2>
+        <p class="kind">{type} · {category}</p>
+        <p class="blurb">{blurb}</p>
+        {#if kind}
+          <div class="kind-row">
+            <KindBadge {kind} status={kindStatus} compact />
+          </div>
         {/if}
-      </h2>
-      <p class="kind">{type} · {category}</p>
-      <p class="blurb">{blurb}</p>
-      {#if kind}
-        <div class="kind-row">
-          <KindBadge {kind} status={kindStatus} compact />
+        {#if badges.length > 0}
+          <div class="badges">
+            <CapabilityBadges {badges} max={3} compact />
+          </div>
+        {/if}
+        <div class="counts">
+          {#if upvoteCount > 0}
+            <span aria-label="upvotes">♥ {upvoteCount}</span>
+          {/if}
+          {#if installCount > 0}
+            <span aria-label="installs">{installCount.toLocaleString()} installs</span>
+          {/if}
         </div>
-      {/if}
-      {#if badges.length > 0}
-        <div class="badges">
-          <CapabilityBadges {badges} max={3} compact />
-        </div>
-      {/if}
-      <div class="counts">
-        {#if upvoteCount > 0}
-          <span aria-label="upvotes">♥ {upvoteCount}</span>
-        {/if}
-        {#if installCount > 0}
-          <span aria-label="installs">{installCount.toLocaleString()} installs</span>
-        {/if}
       </div>
     </div>
-  </div>
-</a>
+  </a>
+  <!-- Slot for sibling controls (e.g. download button) lands in commit 5.
+       Positioned absolute top-right so click events don't bubble into the
+       link. Card is now `position: relative` to anchor that placement. -->
+</div>
 
 <style>
   .app-card {
-    display: block;
-    padding: var(--space-lg);
+    position: relative;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
@@ -107,6 +111,12 @@
   }
   .app-card.sealed:hover {
     border-color: var(--sunset-hover);
+  }
+  .app-card-link {
+    display: block;
+    padding: var(--space-lg);
+    color: inherit;
+    text-decoration: none;
   }
   .row {
     display: flex;
