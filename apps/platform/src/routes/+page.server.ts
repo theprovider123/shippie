@@ -12,10 +12,19 @@ import { getDrizzleClient, schema } from '$server/db/client';
 import { findFeatured } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
 
-export const load: PageServerLoad = async ({ platform, depends }) => {
+export const load: PageServerLoad = async ({ platform, depends, locals, setHeaders }) => {
   // Tag so VisibilityPicker can `invalidate('app:apps')` after a
   // visibility change without a full reload.
   depends('app:apps');
+  // Anonymous traffic = cacheable. Logged-in users see personalised nav
+  // in the layout, so skip the edge cache to avoid serving someone else's
+  // chrome. CF still gets the bulk of homepage hits (anon visitors) under
+  // the s-maxage/SWR window.
+  if (!locals.user) {
+    setHeaders({
+      'cache-control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
+    });
+  }
   if (!platform?.env.DB) {
     return { featured: [], status: 'no-platform' as const };
   }

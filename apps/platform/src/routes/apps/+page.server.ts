@@ -20,7 +20,7 @@ import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
 const PER_PAGE = 24;
 
-export const load: PageServerLoad = async ({ platform, url, depends }) => {
+export const load: PageServerLoad = async ({ platform, url, depends, locals, setHeaders }) => {
   // Tag so VisibilityPicker can `invalidate('app:apps')` after a
   // visibility change without a full reload.
   depends('app:apps');
@@ -44,6 +44,17 @@ export const load: PageServerLoad = async ({ platform, url, depends }) => {
       ? kindFilterRaw
       : null;
   const categoryFilter = (url.searchParams.get('category') ?? '').trim() || null;
+
+  // Default browse (no search, no filters, first page) is cacheable for
+  // anonymous traffic — that's the bulk of /apps hits. Filtered/searched
+  // results vary per request and skip the edge. Logged-in users always
+  // skip too because their layout chrome is personalised.
+  const isDefaultBrowse = !query && !kindFilter && !categoryFilter && page === 1;
+  if (isDefaultBrowse && !locals.user) {
+    setHeaders({
+      'cache-control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
+    });
+  }
 
   // Filter pushed into the DB query so pagination is correct.
   const [appRows, categories] = await Promise.all([
