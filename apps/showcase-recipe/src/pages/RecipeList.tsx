@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { LocalDbRecord } from '@shippie/local-runtime-contract';
-import type { Ingredient, Recipe } from '../db/schema.ts';
+import type { Ingredient, Recipe, RecipeWithIngredients } from '../db/schema.ts';
 import { deleteRecipe, listRecipes, searchRecipes } from '../db/queries.ts';
 import { resolveLocalDb } from '../db/runtime.ts';
 import { RecipeCard } from '../components/RecipeCard.tsx';
 import { INGREDIENTS_TABLE } from '../db/schema.ts';
 import { getRecipe } from '../db/queries.ts';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { ShareSheet } from '../share/ShareSheet.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_recipe_saver' });
 
@@ -53,6 +54,12 @@ export function RecipeList({ onOpen, onNew, onCookingMode, refreshKey, onChanged
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sharing, setSharing] = useState<RecipeWithIngredients | null>(null);
+
+  async function openShareSheet(id: string) {
+    const full = await getRecipe(resolveLocalDb(), id);
+    if (full) setSharing(full);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -112,11 +119,15 @@ export function RecipeList({ onOpen, onNew, onCookingMode, refreshKey, onChanged
               count={counts[r.id] ?? 0}
               onOpen={() => onOpen(r.id)}
               onCookingMode={() => onCookingMode(r.id)}
+              onShare={() => void openShareSheet(r.id)}
               onDelete={() => void handleDelete(r.id)}
             />
           ))}
         </ul>
       )}
+      {sharing ? (
+        <ShareSheet recipe={sharing} onClose={() => setSharing(null)} />
+      ) : null}
     </div>
   );
 }
@@ -126,10 +137,11 @@ interface RowProps {
   count: number;
   onOpen: () => void;
   onCookingMode: () => void;
+  onShare: () => void;
   onDelete: () => void;
 }
 
-function RecipeCardWithCookButton({ recipe, count, onOpen, onCookingMode, onDelete }: RowProps) {
+function RecipeCardWithCookButton({ recipe, count, onOpen, onCookingMode, onShare, onDelete }: RowProps) {
   const [sendStatus, setSendStatus] = useState<string | null>(null);
 
   async function handleSend(e: React.MouseEvent) {
@@ -162,6 +174,17 @@ function RecipeCardWithCookButton({ recipe, count, onOpen, onCookingMode, onDele
           aria-label={`Send ${recipe.title} to Meal Planner`}
         >
           → Plan
+        </button>
+        <button
+          type="button"
+          className="share-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onShare();
+          }}
+          aria-label={`Share ${recipe.title}`}
+        >
+          ↗ Share
         </button>
       </div>
       {sendStatus && <p className="send-status">{sendStatus}</p>}

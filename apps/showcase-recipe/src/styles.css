@@ -247,6 +247,154 @@ button:disabled {
   color: var(--muted, #5C5751);
 }
 
+.share-button {
+  align-self: stretch;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent, #E8603C);
+  border: 1px solid rgba(232, 96, 60, 0.4);
+  padding: 0 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+.share-button:hover { background: rgba(232, 96, 60, 0.08); }
+
+/* ── Share sheet (recipe → QR + URL + Web Share) ───────────── */
+.share-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  animation: share-sheet-fade 200ms var(--ease-out, ease-out);
+}
+.share-sheet {
+  background: var(--bg);
+  color: var(--fg);
+  width: 100%;
+  max-width: 460px;
+  padding: 20px 20px calc(28px + var(--safe-bottom));
+  border-top: 3px solid var(--accent);
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.18);
+  animation: share-sheet-rise 240ms var(--spring, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.share-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.share-sheet-header h2 {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+  flex: 1;
+  min-width: 0;
+}
+.share-sheet-header .ghost {
+  height: 32px;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 10px;
+}
+.share-sheet-blurb {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.share-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.share-qr-frame {
+  width: 240px;
+  height: 240px;
+  background: #FAF7EF;
+  padding: 10px;
+  box-sizing: content-box;
+}
+.share-qr-frame :global(svg),
+.share-qr-frame svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.share-qr-caption {
+  text-align: center;
+  margin: 0;
+}
+.share-qr-fallback {
+  border: 1px dashed var(--line);
+  padding: 14px;
+  text-align: center;
+}
+.share-url-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(232, 96, 60, 0.08);
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+}
+.share-url {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  word-break: break-all;
+  flex: 1;
+  color: var(--accent);
+}
+.share-sheet-actions {
+  display: flex;
+  gap: 8px;
+}
+.share-sheet-actions button {
+  flex: 1;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.share-author {
+  text-align: center;
+  margin: 4px 0 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+@keyframes share-sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes share-sheet-rise {
+  from { transform: translateY(24px); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .share-sheet-overlay,
+  .share-sheet { animation: none; }
+}
+@media (prefers-color-scheme: dark) {
+  .share-sheet { background: #1F1B16; color: rgba(255, 255, 255, 0.92); }
+  .share-qr-frame { background: #FAF7EF; }
+  .share-sheet-blurb,
+  .share-author { color: rgba(255, 255, 255, 0.7); }
+}
+
 .field {
   display: flex;
   flex-direction: column;

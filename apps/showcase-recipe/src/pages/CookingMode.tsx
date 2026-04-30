@@ -4,6 +4,7 @@ import { getRecipe } from '../db/queries.ts';
 import { resolveLocalDb } from '../db/runtime.ts';
 import type { RecipeWithIngredients } from '../db/schema.ts';
 import { IngredientList } from '../components/IngredientList.tsx';
+import { ShareSheet } from '../share/ShareSheet.tsx';
 import { haptic } from '@shippie/sdk/wrapper';
 
 const shippie = createShippieIframeSdk({ appId: 'app_recipe_saver' });
@@ -25,6 +26,7 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
   const rafRef = useRef<number | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
+  const [sharing, setSharing] = useState(false);
   // P3 — pantry-inventory subscription. Map of name → in-stock so the
   // ingredient list can render green/red against what we have.
   const [pantryStock, setPantryStock] = useState<Record<string, boolean>>({});
@@ -148,6 +150,16 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
       <video data-shippie-canvas autoPlay loop muted playsInline className="cooking-video-stub" />
       <canvas data-shippie-canvas ref={canvasRef} className="cooking-canvas" aria-hidden="true" />
       <header className="cooking-header">
+        {recipe ? (
+          <button
+            type="button"
+            className="ghost light"
+            onClick={() => setSharing(true)}
+            aria-label="Share this recipe"
+          >
+            ↗ Share
+          </button>
+        ) : null}
         <button type="button" className="ghost light" onClick={onClose}>
           Done
         </button>
@@ -211,6 +223,9 @@ export function CookingMode({ recipeId, onClose }: CookingModeProps) {
           </div>
         ) : null}
       </div>
+      {sharing && recipe ? (
+        <ShareSheet recipe={recipe} onClose={() => setSharing(false)} />
+      ) : null}
     </div>
   );
 }
