@@ -91,7 +91,33 @@ function copyDist(distDir, slug) {
   rmSync(target, { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
   cpSync(distDir, target, { recursive: true });
+  // Strip wa-sqlite WASM blobs from each showcase's static copy. The
+  // platform serves a single canonical copy at /__shippie/wasm/wa-sqlite/
+  // and @shippie/local-db's runtime locateFile override fetches from
+  // there on prod origins, so per-showcase copies are dead bytes that
+  // also defeat cross-app HTTP caching. Saves ~1.65 MB per showcase
+  // that imports local-db, and removes orphaned WASM from showcases
+  // whose JS doesn't reference it (e.g. live-room, whiteboard) at all.
+  const stripped = stripWaSqliteAssets(target);
+  if (stripped > 0) {
+    console.log(
+      `[prepare-showcases] stripped ${stripped} wa-sqlite asset(s) from static/run/${slug}/assets — served from /__shippie/wasm/wa-sqlite/`,
+    );
+  }
   console.log(`[prepare-showcases] copied ${slug} → static/run/${slug}/`);
+}
+
+function stripWaSqliteAssets(targetDir) {
+  const assetsDir = join(targetDir, 'assets');
+  if (!existsSync(assetsDir)) return 0;
+  let count = 0;
+  for (const entry of readdirSync(assetsDir)) {
+    if (/^wa-sqlite[\w.-]*\.wasm$/.test(entry)) {
+      rmSync(join(assetsDir, entry), { force: true });
+      count += 1;
+    }
+  }
+  return count;
 }
 
 function writePrecacheList(slugs) {

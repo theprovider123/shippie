@@ -33,6 +33,7 @@
     "@shippie/proximity": "workspace:*",
     "@shippie/qr": "workspace:*",
     "@shippie/sdk": "workspace:*",
+    "@shippie/share": "workspace:*",
     "@shippie/templates": "workspace:*",
     "@shippie/shared": "workspace:*",
     "arctic": "^2.0.0",

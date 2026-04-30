@@ -28,6 +28,9 @@ export function ShareSheet({ recipe, onClose }: ShareSheetProps) {
   const [bytes, setBytes] = useState<number>(0);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [blob, setBlob] = useState<ShareBlob<RecipeSharePayload> | null>(null);
+  const [pinning, setPinning] = useState(false);
+  const [pinnedUrl, setPinnedUrl] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +84,50 @@ export function ShareSheet({ recipe, onClose }: ShareSheetProps) {
       }
     }
     void copyLink();
+  }
+
+  // Pin to a 90-day public link via /api/c. Useful when you want to
+  // text the recipe to someone who doesn't have Shippie installed —
+  // the URL renders a static read-only preview at shippie.app/c/<hash>
+  // with an "Open in Recipe Saver" deep-link. The blob still travels
+  // signed; the server just stores the bytes by their hash.
+  async function pinPublicLink() {
+    if (!blob) return;
+    setPinning(true);
+    setPinError(null);
+    try {
+      // Hit the platform's API on the canonical host. Recipe runs on
+      // recipe.shippie.app or shippie.app/run/recipe/, so we always
+      // POST to https://shippie.app to dodge cross-origin issues with
+      // the static-bake bridge.
+      const res = await fetch('https://shippie.app/api/c', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(blob),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`pin failed (${res.status}): ${txt}`);
+      }
+      const j = (await res.json()) as { url: string };
+      setPinnedUrl(j.url);
+    } catch (e) {
+      setPinError((e as Error).message ?? 'Could not pin link.');
+    } finally {
+      setPinning(false);
+    }
+  }
+
+  async function copyPinned() {
+    if (!pinnedUrl) return;
+    try {
+      await navigator.clipboard.writeText(pinnedUrl);
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 2000);
+    } catch {
+      setCopyState('error');
+      window.setTimeout(() => setCopyState('idle'), 2000);
+    }
   }
 
   return (
@@ -146,6 +193,46 @@ export function ShareSheet({ recipe, onClose }: ShareSheetProps) {
                 signed by {blob.author.name ?? 'this device'} · {bytes} bytes
               </p>
             ) : null}
+
+            <div className="share-pin">
+              {pinnedUrl ? (
+                <>
+                  <p className="muted small">
+                    Public link · pinned for 90 days · anyone can open it,
+                    no Shippie needed
+                  </p>
+                  <div className="share-url-row">
+                    <code className="share-url" title={pinnedUrl}>
+                      {pinnedUrl}
+                    </code>
+                  </div>
+                  <button type="button" className="ghost" onClick={copyPinned}>
+                    {copyState === 'copied' ? 'Copied!' : 'Copy public link'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="muted small">
+                    Sending to someone without Shippie? Pin a 90-day public
+                    link. The recipe goes to Shippie's R2 keyed by hash; the
+                    URL renders a read-only preview anyone can open.
+                  </p>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={pinPublicLink}
+                    disabled={pinning}
+                  >
+                    {pinning ? 'Pinning…' : 'Pin a public link (90 days)'}
+                  </button>
+                  {pinError ? (
+                    <p className="error" style={{ fontSize: 12 }}>
+                      {pinError}
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
           </>
         )}
       </div>

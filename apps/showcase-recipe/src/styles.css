@@ -376,6 +376,31 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 
+.share-pin {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.share-pin .ghost {
+  align-self: flex-start;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 0;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: transparent;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  cursor: pointer;
+}
+.share-pin .ghost:hover { background: rgba(232, 96, 60, 0.08); }
+.share-pin .ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
 @keyframes share-sheet-fade {
   from { opacity: 0; }
   to { opacity: 1; }

@@ -28,6 +28,7 @@
         "@shippie/proximity": "workspace:*",
         "@shippie/qr": "workspace:*",
         "@shippie/sdk": "workspace:*",
+        "@shippie/share": "workspace:*",
         "@shippie/shared": "workspace:*",
         "@shippie/templates": "workspace:*",
         "arctic": "^2.0.0",
