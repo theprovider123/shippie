@@ -26,10 +26,17 @@ export function App() {
     (async () => {
       try {
         const result = await seedIfEmpty(db);
-        if (!cancelled && result.seeded) {
+        if (cancelled) return;
+        if (result.seeded) {
           setSeedNote(`Seeded ${result.count} example recipes — swipe to delete any of them.`);
           window.setTimeout(() => !cancelled && setSeedNote(null), 6000);
         }
+        // Force RecipeList to re-fetch. Without this, the list mounts and
+        // queries the DB before seedIfEmpty resolves, so the seeded rows
+        // appear blank until the user navigates away and back. Bumping
+        // refreshKey after the seed lands fixes the race for first-load
+        // and is a no-op on subsequent renders (the rows are already there).
+        setRefreshKey((n) => n + 1);
       } catch (err) {
         // first-load failures shouldn't block render
         console.warn('[recipe-saver] seed failed', err);
