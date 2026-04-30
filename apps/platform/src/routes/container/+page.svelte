@@ -85,6 +85,7 @@
   import AppFrameHost from '$lib/container/AppFrameHost.svelte';
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
+  import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import {
     consumeEviction,
@@ -474,6 +475,17 @@
   function markFrameReady(appId: string) {
     frameStates = markFrameReadyState(frameStates, appId);
     commitPendingEviction(appId);
+    // Emit a window-level event so PushOptInToast can offer notifications
+    // after a successful first open. Keeps the container untangled from
+    // the notification subsystem.
+    const app = appById.get(appId);
+    if (app && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('shippie:app-opened', {
+          detail: { slug: app.slug, name: app.name },
+        }),
+      );
+    }
   }
 
   function markFrameError(appId: string, message = 'This app could not open in the container.') {
@@ -1333,6 +1345,7 @@
   onApprove={approveIntentPrompt}
   onDeny={denyIntentPrompt}
 />
+<PushOptInToast />
 <TransferPromptModal
   prompt={pendingTransferPrompt}
   onApprove={approvePendingTransfer}
