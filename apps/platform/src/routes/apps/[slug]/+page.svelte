@@ -5,6 +5,7 @@
   import CapabilityBadges from '$lib/components/marketplace/CapabilityBadges.svelte';
   import UpvoteButton from '$lib/components/marketplace/UpvoteButton.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import { toast } from '$lib/stores/toast';
 
   let { data }: PageProps = $props();
 
@@ -13,6 +14,56 @@
   // route covers both hostnames.
   function installUrl(slug: string): string {
     return `https://${slug}.shippie.app/`;
+  }
+
+  // Share copy varies by viewer:
+  //   public app, any viewer → public marketplace URL
+  //   private app, owner    → link to access page (where invites live)
+  //   private app, invitee  → marketplace detail page (their grant cookie
+  //                           survives sharing within their own session
+  //                           but not across users; this is a sane default
+  //                           — for cross-user sharing, the maker uses the
+  //                           invite QR/link in /access)
+  function sharePayload(): { title: string; text: string; url: string } {
+    const origin =
+      typeof window === 'undefined' ? 'https://shippie.app' : window.location.origin;
+    if (data.app.visibility === 'private' && data.isMaker) {
+      return {
+        title: `Share ${data.app.name}`,
+        text: `Send a private invite to ${data.app.name}.`,
+        url: `${origin}/dashboard/apps/${encodeURIComponent(data.app.slug)}/access`,
+      };
+    }
+    if (data.app.visibility === 'private') {
+      return {
+        title: `Join me on ${data.app.name}`,
+        text: data.app.tagline ?? `${data.app.name} on Shippie`,
+        url: `${origin}/apps/${encodeURIComponent(data.app.slug)}`,
+      };
+    }
+    return {
+      title: `${data.app.name} on Shippie`,
+      text: data.app.tagline ?? `${data.app.name} on Shippie`,
+      url: `${origin}/apps/${encodeURIComponent(data.app.slug)}`,
+    };
+  }
+
+  async function shareApp() {
+    const payload = sharePayload();
+    if ('share' in navigator) {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch {
+        // User cancelled — fall through to copy.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(payload.url);
+      toast.push({ kind: 'success', message: 'Link copied to clipboard.' });
+    } catch {
+      toast.push({ kind: 'error', message: 'Could not copy. Long-press the link to copy.' });
+    }
   }
 </script>
 
@@ -45,6 +96,14 @@
           <a class="install-btn" href={data.ownership.standaloneUrl}>
             Open {data.app.name}
           </a>
+          <button
+            type="button"
+            class="share-btn"
+            onclick={shareApp}
+            aria-label="Share this app"
+          >
+            Share
+          </button>
           <UpvoteButton slug={data.app.slug} initialCount={data.app.upvoteCount} />
         </div>
       </div>
@@ -245,6 +304,23 @@
     transition: background 0.2s;
   }
   .install-btn:hover { background: #000; }
+  .share-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 1.25rem;
+    background: transparent;
+    color: inherit;
+    border: 1px solid currentColor;
+    border-radius: 0;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: var(--small-size);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .share-btn:hover { background: rgba(232, 96, 60, 0.08); }
 
   .body {
     padding: var(--space-2xl) 0 var(--space-3xl);

@@ -159,6 +159,10 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       themeColor: app.themeColor,
       upvoteCount: app.upvoteCount,
       installCount: app.installCount,
+      visibility: (app.visibilityScope ?? 'public') as
+        | 'public'
+        | 'unlisted'
+        | 'private',
     },
     ownership: {
       maker: {
