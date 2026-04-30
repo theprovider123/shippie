@@ -4,6 +4,9 @@ import { RecipeEdit } from './pages/RecipeEdit.tsx';
 import { CookingMode } from './pages/CookingMode.tsx';
 import { resolveLocalDb } from './db/runtime.ts';
 import { seedIfEmpty } from './db/seed.ts';
+import { readImportFragment } from '@shippie/share';
+import { ImportCard } from './share/ImportCard.tsx';
+import { checkRecipeImport, type RecipeImportCheck } from './share/recipe-import.ts';
 import { wrapNavigation } from '@shippie/sdk/wrapper';
 
 interface ShippieRoot {
@@ -19,6 +22,9 @@ export function App() {
   const [route, setRoute] = useState<Route>({ kind: 'list' });
   const [refreshKey, setRefreshKey] = useState(0);
   const [seedNote, setSeedNote] = useState<string | null>(null);
+  const [pendingImport, setPendingImport] = useState<
+    Extract<RecipeImportCheck, { ok: true }> | null
+  >(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +47,31 @@ export function App() {
         // first-load failures shouldn't block render
         console.warn('[recipe-saver] seed failed', err);
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Detect a #shippie-import=… fragment and surface the import card.
+  // Pure client-side — the fragment never reaches a server. The card
+  // verifies the signature, previews the recipe, then either imports
+  // it (creating a fresh recipe row + ingredients with a provenance
+  // footer in notes) or discards. Either path clears the fragment so
+  // a reload doesn't re-prompt.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      const blob = await readImportFragment(window.location.href);
+      if (!blob || cancelled) return;
+      const check = await checkRecipeImport(blob);
+      if (!check.ok) {
+        // Wrong type or version — silently ignore. The fragment may have
+        // been intended for a sibling app; don't pop a recipe modal.
+        return;
+      }
+      if (!cancelled) setPendingImport(check);
     })();
     return () => {
       cancelled = true;
@@ -97,6 +128,18 @@ export function App() {
         >
           Your Data
         </button>
+      ) : null}
+
+      {pendingImport ? (
+        <ImportCard
+          check={pendingImport}
+          onImported={(id) => {
+            setPendingImport(null);
+            setRefreshKey((n) => n + 1);
+            navigate({ kind: 'edit', recipeId: id });
+          }}
+          onDiscard={() => setPendingImport(null)}
+        />
       ) : null}
     </div>
   );
