@@ -31,7 +31,8 @@ export class WaSqliteEngine implements SqliteEngine {
 
   static async open(opts: WaSqliteEngineOptions = {}): Promise<WaSqliteEngine> {
     const moduleFactory = opts.opfs ? SQLiteAsyncESMFactory : SQLiteESMFactory;
-    const module = await moduleFactory(locateWasm(opts.wasmUrl));
+    const wasmUrl = opts.wasmUrl ?? defaultWasmUrl(opts.opfs);
+    const module = await moduleFactory(locateWasm(wasmUrl));
     const sqlite3 = SQLite.Factory(module) as SQLiteApi;
     let vfs: { name: string; close?: () => Promise<void> } | undefined;
     if (opts.opfs) {
@@ -89,6 +90,24 @@ function locateWasm(wasmUrl?: string): object | undefined {
   return {
     locateFile: (path: string) => (path.endsWith('.wasm') ? wasmUrl : path),
   };
+}
+
+/**
+ * On production shippie.app origins, the platform hosts a single canonical
+ * copy of the wa-sqlite WASM at /__shippie/wasm/wa-sqlite/ so cross-app
+ * navigation reuses the browser's HTTP cache instead of re-downloading
+ * per showcase. On localhost / dev, return undefined so vite-dev's bundled
+ * copy is used instead (the canonical path is only served by the platform
+ * Worker, not by individual showcase dev servers).
+ */
+function defaultWasmUrl(opfs?: boolean): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const origin = window.location.origin;
+  if (/^https?:\/\/(localhost|127\.|192\.168\.|10\.)/.test(origin)) {
+    return undefined;
+  }
+  const filename = opfs ? 'wa-sqlite-async.wasm' : 'wa-sqlite.wasm';
+  return `/__shippie/wasm/wa-sqlite/${filename}`;
 }
 
 function toSQLiteCompatible(value: SqliteParam): SQLiteCompatible {
