@@ -76,3 +76,11 @@ class_name = "SignalRoom"
 [vars]
 SHIPPIE_ENV = "production"
 PUBLIC_ORIGIN = "https://shippie.app"
+
+# Cloudflare populates env.CF_VERSION_METADATA.id with the deployment
+# version ID. The marketplace SW reads it to stamp the cache name so
+# old caches drop on activate when the worker version changes. Without
+# this binding the SW falls back to a 'dev' literal and stops
+# invalidating on deploy.
+[version_metadata]
+binding = "CF_VERSION_METADATA"
