@@ -66,10 +66,36 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/dashboard/')) return;
   if (url.pathname.startsWith('/admin/')) return;
-  // Skip /run/<slug>/ — these are 302 redirects into focused-mode and
-  // must always reflect current routing logic. A cached redirect can
-  // serve a stale shell with a different bridge protocol.
-  if (url.pathname.startsWith('/run/')) return;
+
+  // /run/<slug>/* — stale-while-revalidate. Showcase apps the user has
+  // opened cache here and continue working offline. Stale-shell-vs-new-
+  // container risk is mitigated two ways: (a) cache name carries the
+  // deploy version ID so old caches drop on activate, (b) the bridge
+  // protocol is append-only at shippie.bridge.v1 (see
+  // packages/iframe-sdk and lib/container/bridge-handlers.ts) so a
+  // stale shell never breaks against a newer container — it might be
+  // missing a new feature, but the existing message shapes still work.
+  if (url.pathname.startsWith('/run/')) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(req);
+      if (cached) {
+        // Refresh in background; same defensive pattern as /apps/*.
+        fetch(req).then((res) => {
+          if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        }).catch(() => {});
+        return cached;
+      }
+      try {
+        const res = await fetch(req);
+        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch {
+        return offlineResponse();
+      }
+    })());
+    return;
+  }
 
   if (url.pathname.startsWith(APPS_PREFIX)) {
     // cache-first for the apps directory

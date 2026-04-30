@@ -13,6 +13,28 @@
  *   A5  → data.openPanel                    ✅ landed
  *   B4  → feel.texture                      ✅ landed
  *   B1  → ai.run                            ✅ landed
+ *
+ * ── Bridge protocol stability ─────────────────────────────────────────
+ * Every postMessage envelope carries `protocol: 'shippie.bridge.v1'`.
+ * The v1 protocol is **append-only**:
+ *
+ *   - New capabilities and methods may be added without breaking
+ *     existing message shapes.
+ *   - Existing fields keep their semantics. A stale iframe shell from
+ *     before a deploy will continue to talk to the new container fine
+ *     — it might be missing a newly-added feature, but no message
+ *     shape it knows about will be rejected.
+ *
+ * Breaking changes bump the protocol to `shippie.bridge.v2` with
+ * explicit coexistence: handlers route on the protocol field and keep
+ * v1 handlers alive for at least one full release cycle. Deliberate,
+ * documented decision — never a silent regression.
+ *
+ * The marketplace SW caches showcase shells (see
+ * apps/platform/src/routes/__shippie-pwa/sw.js/+server.ts) under a
+ * deploy-versioned cache name. Old caches drop on activate. A user on
+ * the old SW between deploy and update-banner-tap continues to see v1
+ * messages, which keep working because of this guarantee.
  */
 
 import type { BridgeHandler } from '@shippie/container-bridge';
