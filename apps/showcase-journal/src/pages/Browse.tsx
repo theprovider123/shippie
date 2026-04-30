@@ -4,6 +4,7 @@ import { TOPIC_LABELS } from '../db/schema.ts';
 import { listEntries } from '../db/queries.ts';
 import { resolveLocalDb } from '../db/runtime.ts';
 import { EntryCard } from '../components/EntryCard.tsx';
+import { ShareSheet } from '../share/ShareSheet.tsx';
 import { groupByTopic } from '../ai/cluster.ts';
 
 interface BrowseProps {
@@ -19,6 +20,7 @@ export function Browse({ refreshKey }: BrowseProps) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [filter, setFilter] = useState<Topic | 'all'>('all');
   const [loading, setLoading] = useState(true);
+  const [sharing, setSharing] = useState<JournalEntry | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,10 +70,11 @@ export function Browse({ refreshKey }: BrowseProps) {
       ) : (
         <div className="entry-grid">
           {filtered.map((e) => (
-            <EntryCard key={e.id} entry={e} />
+            <EntryCard key={e.id} entry={e} onShare={() => setSharing(e)} />
           ))}
         </div>
       )}
+      {sharing ? <ShareSheet entry={sharing} onClose={() => setSharing(null)} /> : null}
     </div>
   );
 }

@@ -1,13 +1,11 @@
 /**
- * Shippie design tokens — ported from apps/web/app/globals.css.
+ * Shippie design tokens.
  *
  * Brand palette: warm-pitch black, sunset orange, sage moss, marigold
  * accent. Cream inversion for editorial sections. Fraunces (display) +
- * General Sans (body) + JetBrains Mono (numerics / labels).
- *
- * Layout / spacing / motion variables are kept in the same hierarchy
- * as the source so CSS lifted from the Next.js components works
- * 1:1 inside Svelte components.
+ * Inter (body) + JetBrains Mono (numerics / labels). Inter is loaded
+ * from Google Fonts in `+layout.svelte`; fallbacks here cover any
+ * load failure.
  */
 
 :root {
@@ -49,7 +47,7 @@
 
   /* ── Type ───────────────────────────────────────────────────── */
   --font-heading: "Fraunces", "Georgia", serif;
-  --font-body: "General Sans", "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
 
   --hero-size: clamp(2.8rem, 6.5vw + 0.8rem, 5.6rem);

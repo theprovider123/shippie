@@ -19,7 +19,9 @@
     "@shippie/iframe-sdk": "workspace:*",
     "@shippie/local-db": "workspace:*",
     "@shippie/local-runtime-contract": "workspace:*",
+    "@shippie/qr": "workspace:*",
     "@shippie/sdk": "workspace:*",
+    "@shippie/share": "workspace:*",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },

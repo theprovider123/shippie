@@ -713,7 +713,7 @@ button:disabled {
 }
 
 .cooking-timer {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono, ui-monospace, monospace);
   font-size: clamp(56px, 18vw, 96px);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;

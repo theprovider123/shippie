@@ -7,6 +7,9 @@ import { Trends } from './pages/Trends.tsx';
 import { YearInReview } from './pages/YearInReview.tsx';
 import { Recall } from './pages/Recall.tsx';
 import { isLocalAiAvailable } from './ai/runtime.ts';
+import { readImportFragment } from '@shippie/share';
+import { ImportCard } from './share/ImportCard.tsx';
+import { checkJournalImport, type JournalImportCheck } from './share/journal-share.ts';
 import { wrapNavigation } from '@shippie/sdk/wrapper';
 
 interface ShippieRoot {
@@ -29,6 +32,9 @@ export function App() {
   const [tab, setTab] = useState<Tab>('quick');
   const [refreshKey, setRefreshKey] = useState(0);
   const [encryptionNotice, setEncryptionNotice] = useState<string | null>(null);
+  const [pendingImport, setPendingImport] = useState<
+    Extract<JournalImportCheck, { ok: true }> | null
+  >(null);
 
   useEffect(() => {
     // The SQLCipher status is reported by the runtime via `shippie.local.db.usage()` —
@@ -36,6 +42,26 @@ export function App() {
     if (!isLocalAiAvailable()) {
       setEncryptionNotice('Running in dev mode: AI uses a local fallback (no model). Open the AI app to enable real inference.');
     }
+  }, []);
+
+  // Detect a #shippie-import=… fragment carrying a journal entry. Pure
+  // client-side — fragments don't reach servers. The card verifies the
+  // signature, previews the entry, then either imports (creates a fresh
+  // entry with a provenance footer) or discards. Either path clears the
+  // fragment so a reload doesn't re-prompt.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      const blob = await readImportFragment(window.location.href);
+      if (!blob || cancelled) return;
+      const check = await checkJournalImport(blob);
+      if (!check.ok) return; // wrong type — silently ignore
+      if (!cancelled) setPendingImport(check);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const navigate = (next: Tab) => {
@@ -85,6 +111,18 @@ export function App() {
       <button type="button" className="your-data-button" onClick={openYourData} aria-label="Your data">
         Your Data
       </button>
+
+      {pendingImport ? (
+        <ImportCard
+          check={pendingImport}
+          onImported={() => {
+            setPendingImport(null);
+            setRefreshKey((n) => n + 1);
+            navigate('browse');
+          }}
+          onDiscard={() => setPendingImport(null)}
+        />
+      ) : null}
     </div>
   );
 }
