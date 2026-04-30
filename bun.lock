@@ -25,6 +25,7 @@
         "@shippie/local-ai": "workspace:*",
         "@shippie/local-runtime-contract": "workspace:*",
         "@shippie/proximity": "workspace:*",
+        "@shippie/qr": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "@shippie/shared": "workspace:*",
         "@shippie/templates": "workspace:*",

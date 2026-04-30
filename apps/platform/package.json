@@ -30,6 +30,7 @@
     "@shippie/backup-providers": "workspace:*",
     "@shippie/container-bridge": "workspace:*",
     "@shippie/proximity": "workspace:*",
+    "@shippie/qr": "workspace:*",
     "@shippie/sdk": "workspace:*",
     "@shippie/templates": "workspace:*",
     "@shippie/shared": "workspace:*",
