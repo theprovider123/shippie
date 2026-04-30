@@ -57,12 +57,25 @@ self.addEventListener('message', (e) => {
   }
 });
 
-// Migrate-then-delete: when a new versioned SW activates, copy entries
-// from any prior 'shippie-marketplace-*' cache into the new cache before
-// deletion, then delete the old caches. Preserves the user's cached app
-// shells across deploys. Safe because the bridge protocol is append-only
-// at shippie.bridge.v1 (see lib/container/bridge-handlers.ts) — a stale
-// shell can't break against a newer container.
+// Migrate-then-delete: when a new versioned SW activates, copy ONLY
+// content-addressed entries (/_app/immutable/* and /run/*) from any
+// prior 'shippie-marketplace-*' cache into the new cache, then delete
+// the old caches.
+//
+// Why selective: platform HTML pages (/, /apps, /apps/<slug>) reference
+// the current deploy's chunk hashes inside their <script> tags. After a
+// deploy, those hashes change. A migrated stale HTML page references
+// hashes that 404 on the server — SvelteKit's client tries to load
+// them, fails, and +error.svelte fires ("Something went wrong" while
+// browsing).
+//
+// /run/<slug>/* is self-consistent — the showcase HTML and its hashed
+// chunks build together, so caching the bundle is safe across platform
+// deploys. /_app/immutable/* is content-addressed by hash so a cached
+// hit always matches its filename.
+//
+// Stale platform HTML naturally re-warms via the network-first nav
+// handler on the user's first online navigation after activation.
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     const newCache = await caches.open(CACHE);
@@ -73,11 +86,12 @@ self.addEventListener('activate', (e) => {
       try {
         const old = await caches.open(name);
         const reqs = await old.keys();
-        // Parallel migration — sequential put would block activate for
-        // seconds on a populated cache. allSettled + per-entry catch
-        // keeps activate snappy and survives quota errors per entry.
         await Promise.allSettled(
           reqs.map(async (req) => {
+            const path = new URL(req.url).pathname;
+            const safeToMigrate =
+              path.startsWith('/run/') || path.startsWith('/_app/immutable/');
+            if (!safeToMigrate) return;
             const hit = await old.match(req);
             if (hit) await newCache.put(req, hit).catch(() => {});
           }),
