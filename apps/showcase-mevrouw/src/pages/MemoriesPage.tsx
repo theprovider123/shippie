@@ -5,7 +5,9 @@ import { ScreenHeader } from '@/components/ScreenHeader.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { readCoupleMeta } from '@/features/couple/couple-state.ts';
 import { addMemory, readMemories, toggleFavourite } from '@/features/memories/memories-state.ts';
+import type { Memory } from '@/features/memories/memories-state.ts';
 import { readTrips } from '@/features/schedule/schedule-state.ts';
+import { ShareSheet } from '@/share/ShareSheet.tsx';
 import { useYjs } from '@/sync/useYjs.ts';
 import { cn } from '@/lib/cn.ts';
 import { formatDateShort, toLocalDateString } from '@/lib/dates.ts';
@@ -20,6 +22,7 @@ export function MemoriesPage({ doc, myDeviceId }: Props) {
   const meta = useYjs(doc, readCoupleMeta);
   const trips = useYjs(doc, readTrips);
   const [composing, setComposing] = useState(false);
+  const [sharing, setSharing] = useState<Memory | null>(null);
 
   return (
     <div className="flex flex-col gap-4 px-4">
@@ -70,16 +73,26 @@ export function MemoriesPage({ doc, myDeviceId }: Props) {
                 {formatDateShort(m.memory_date)}
               </p>
               {m.content && <p className="text-sm font-serif line-clamp-3">{m.content}</p>}
-              <button
-                type="button"
-                onClick={() => toggleFavourite(doc, m.id)}
-                className={cn(
-                  'self-start text-xs font-mono uppercase tracking-wider',
-                  m.is_favourite ? 'text-[var(--gold)]' : 'text-[var(--muted-foreground)]',
-                )}
-              >
-                {m.is_favourite ? '★ favourite' : '☆ favourite'}
-              </button>
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleFavourite(doc, m.id)}
+                  className={cn(
+                    'text-xs font-mono uppercase tracking-wider',
+                    m.is_favourite ? 'text-[var(--gold)]' : 'text-[var(--muted-foreground)]',
+                  )}
+                >
+                  {m.is_favourite ? '★ favourite' : '☆ favourite'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSharing(m)}
+                  className="text-xs font-mono uppercase tracking-wider text-[var(--gold)] hover:opacity-80"
+                  aria-label="Share memory"
+                >
+                  ↗ share
+                </button>
+              </div>
             </div>
           </li>
         ))}
@@ -92,6 +105,10 @@ export function MemoriesPage({ doc, myDeviceId }: Props) {
           onClose={() => setComposing(false)}
         />
       )}
+
+      {sharing ? (
+        <ShareSheet memory={sharing} onClose={() => setSharing(null)} />
+      ) : null}
     </div>
   );
 }

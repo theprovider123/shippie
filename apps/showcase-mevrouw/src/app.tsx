@@ -36,6 +36,12 @@ import { readSurprises } from '@/features/surprises/surprises-state.ts';
 import { isSurpriseUnlocked } from '@/lib/surprises.ts';
 import { isAnniversaryToday } from '@/lib/anniversary.ts';
 import { usePresenceHeartbeat } from '@/features/presence/usePresenceHeartbeat.ts';
+import { readImportFragment } from '@shippie/share';
+import { ImportCard as MemoryImportCard } from '@/share/ImportCard.tsx';
+import {
+  checkMemoryImport,
+  type MemoryImportCheck,
+} from '@/share/memory-share.ts';
 import { useYjs } from '@/sync/useYjs.ts';
 import type { Route } from '@/router.ts';
 import { TOP_LEVEL_ROUTES } from '@/router.ts';
@@ -109,6 +115,29 @@ function Bound({
   // Heartbeat presence — pings every 5s while visible.
   usePresenceHeartbeat(doc, pairing.deviceId);
 
+  // Detect a #shippie-import=… fragment carrying a single memory shared
+  // from outside this couple-doc. Verifies the signature, previews the
+  // memory, and on accept saves it into this couple's timeline as a
+  // new row authored by this device — original sender is preserved in
+  // the content body via the provenance footer.
+  const [pendingImport, setPendingImport] = useState<
+    Extract<MemoryImportCheck, { ok: true }> | null
+  >(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      const blob = await readImportFragment(window.location.href);
+      if (!blob || cancelled) return;
+      const check = await checkMemoryImport(blob);
+      if (!check.ok) return;
+      if (!cancelled) setPendingImport(check);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Self-introduce on first run if name not set yet
   const meta = useYjs(doc, readCoupleMeta);
   useEffect(() => {
@@ -180,6 +209,19 @@ function Bound({
         partnerName={partner?.display_name ?? null}
         unreadCount={unread}
       />
+
+      {pendingImport ? (
+        <MemoryImportCard
+          doc={doc}
+          myDeviceId={pairing.deviceId}
+          check={pendingImport}
+          onImported={() => {
+            setPendingImport(null);
+            onRoute('memories');
+          }}
+          onDiscard={() => setPendingImport(null)}
+        />
+      ) : null}
     </div>
   );
 }

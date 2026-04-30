@@ -231,6 +231,8 @@
       "name": "@shippie/showcase-mevrouw",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/qr": "workspace:*",
+        "@shippie/share": "workspace:*",
         "@tailwindcss/vite": "^4.2.4",
         "clsx": "^2.1.1",
         "react": "^19.2.5",
