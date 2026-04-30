@@ -1,6 +1,7 @@
 <script lang="ts">
   import IconOrMonogram from './IconOrMonogram.svelte';
   import CapabilityBadges from './CapabilityBadges.svelte';
+  import DownloadButton from './DownloadButton.svelte';
   import KindBadge from './KindBadge.svelte';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
@@ -88,9 +89,7 @@
       </div>
     </div>
   </a>
-  <!-- Slot for sibling controls (e.g. download button) lands in commit 5.
-       Positioned absolute top-right so click events don't bubble into the
-       link. Card is now `position: relative` to anchor that placement. -->
+  <DownloadButton {slug} />
 </div>
 
 <style>
