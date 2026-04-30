@@ -12,6 +12,7 @@ dist
 # step, not source).
 static/run/
 static/brand-preview/
+static/__shippie-pwa/shell-assets.json
 
 # Build output from `bun scripts/prepare-whitepaper.mjs` (regenerated
 # every `bun run build`; the .md at docs/WHITEPAPER.md is the source

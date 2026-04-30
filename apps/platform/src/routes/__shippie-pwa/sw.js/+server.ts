@@ -49,11 +49,188 @@ self.addEventListener('install', (e) => {
   })());
 });
 
-// Page can postMessage('SKIP_WAITING') to flip to the new SW immediately
-// after the user taps "Refresh" on the new-version-available toast.
+// ── Save-for-offline orchestration ───────────────────────────────────
+// The page-side download utility posts MessageChannel-port messages to
+// the active SW; the SW does all cache work and reports back via the
+// port. This keeps the cache name (which is stamped here from
+// CF_VERSION_METADATA) entirely internal — page code never has to guess.
+
+async function cacheAddAll(cache, urls, onProgress) {
+  // 3-at-a-time avoids hammering CF rate limits on bulk downloads.
+  // Each fetch is best-effort; on failure the URL ends up in failed[].
+  let done = 0;
+  const total = urls.length;
+  const failed = [];
+  for (let i = 0; i < urls.length; i += 3) {
+    const chunk = urls.slice(i, i + 3);
+    await Promise.allSettled(chunk.map(async (url) => {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          await cache.put(url, res.clone()).catch(() => {});
+        } else {
+          failed.push(url);
+        }
+      } catch {
+        failed.push(url);
+      } finally {
+        done += 1;
+        try { onProgress(done, total); } catch { /* progress is best-effort */ }
+      }
+    }));
+  }
+  return failed;
+}
+
+async function checkManifestComplete(cache, assets) {
+  // Verify every URL in the manifest is in the cache. Catches partial
+  // downloads where the network failed mid-way; saved-state should
+  // never be claimed without this proof.
+  let done = 0;
+  for (const url of assets) {
+    if (await cache.match(url)) done += 1;
+  }
+  return { complete: done === assets.length, done, total: assets.length };
+}
+
+async function warmShell(cache) {
+  // First DOWNLOAD_APP per SW activation also warms the platform shell
+  // so saved apps can open offline through /apps -> /run/<slug>/. Gated
+  // by a sentinel so subsequent downloads skip this. Cleared on every
+  // activate (sentinel isn't migrated; shell HTML naturally re-warms
+  // online via the network-first nav handler — the WASM survives via
+  // the migration allowlist).
+  const SENTINEL = '/__shippie-pwa/.shell-warmed';
+  if (await cache.match(SENTINEL)) return;
+  try {
+    const res = await fetch('/__shippie-pwa/shell-assets.json');
+    if (!res.ok) return;
+    const shell = await res.json();
+    const urls = [
+      ...(Array.isArray(shell.wasm) ? shell.wasm : []),
+      ...(Array.isArray(shell.routes) ? shell.routes : []),
+    ];
+    await cacheAddAll(cache, urls, () => {});
+    await cache.put(
+      new Request(SENTINEL),
+      new Response('1', { headers: { 'content-type': 'text/plain' } }),
+    ).catch(() => {});
+  } catch {
+    /* best effort — shell will warm on next attempt */
+  }
+}
+
+async function handleDownloadApp(slug, port) {
+  try {
+    const cache = await caches.open(CACHE);
+    const res = await fetch('/run/' + slug + '/__shippie-assets.json');
+    if (!res.ok) throw new Error('manifest_fetch_failed_' + res.status);
+    const manifest = await res.json();
+    const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
+    if (assets.length === 0) throw new Error('manifest_empty');
+    await warmShell(cache);
+    await cacheAddAll(cache, assets, (done, total) => {
+      port.postMessage({ type: 'progress', slug, done, total });
+    });
+    const check = await checkManifestComplete(cache, assets);
+    if (check.complete) {
+      port.postMessage({ type: 'done', state: 'saved', slug, total: check.total });
+    } else {
+      port.postMessage({
+        type: 'done', state: 'partial', slug,
+        done: check.done, total: check.total,
+      });
+    }
+  } catch (err) {
+    port.postMessage({ type: 'done', state: 'error', slug, error: String(err && err.message || err) });
+  }
+}
+
+async function handleRemoveApp(slug, port) {
+  try {
+    const cache = await caches.open(CACHE);
+    const reqs = await cache.keys();
+    const prefix = '/run/' + slug + '/';
+    let count = 0;
+    for (const req of reqs) {
+      const path = new URL(req.url).pathname;
+      if (path.startsWith(prefix)) {
+        await cache.delete(req);
+        count += 1;
+      }
+    }
+    port.postMessage({ type: 'done', state: 'removed', slug, count });
+  } catch (err) {
+    port.postMessage({ type: 'done', state: 'error', slug, error: String(err && err.message || err) });
+  }
+}
+
+async function handleGetStatus(slug, port) {
+  try {
+    const cache = await caches.open(CACHE);
+    const res = await fetch('/run/' + slug + '/__shippie-assets.json');
+    if (!res.ok) {
+      port.postMessage({ type: 'status', slug, state: 'idle', done: 0, total: 0 });
+      return;
+    }
+    const manifest = await res.json();
+    const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
+    const check = await checkManifestComplete(cache, assets);
+    let state = 'idle';
+    if (check.done === check.total && check.total > 0) state = 'saved';
+    else if (check.done > 0) state = 'partial';
+    port.postMessage({
+      type: 'status', slug, state,
+      done: check.done, total: check.total,
+    });
+  } catch {
+    port.postMessage({ type: 'status', slug, state: 'idle', done: 0, total: 0 });
+  }
+}
+
+async function handleClearOffline(port) {
+  // Delete user-saved app bundles only. Keep the platform shell:
+  // /_app/immutable/* (chunks), /__shippie/wasm/* (shared WASM),
+  // /__shippie-pwa/* (sentinel + shell-assets manifest), nav HTML.
+  try {
+    const cache = await caches.open(CACHE);
+    const reqs = await cache.keys();
+    let count = 0;
+    for (const req of reqs) {
+      const path = new URL(req.url).pathname;
+      if (path.startsWith('/run/')) {
+        await cache.delete(req);
+        count += 1;
+      }
+    }
+    port.postMessage({ type: 'done', state: 'cleared', count });
+  } catch (err) {
+    port.postMessage({ type: 'done', state: 'error', error: String(err && err.message || err) });
+  }
+}
+
 self.addEventListener('message', (e) => {
+  // Existing skip-waiting trigger (page → SW after user taps "Refresh"
+  // on the new-version-available toast).
   if (e.data === 'SKIP_WAITING' || (e.data && e.data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
+    return;
+  }
+  // Save-for-offline messages always carry a MessageChannel port so
+  // the SW can stream progress + a final state.
+  const port = e.ports && e.ports[0];
+  if (!port) return;
+  const msg = e.data || {};
+  if (msg.type === 'DOWNLOAD_APP' && typeof msg.slug === 'string') {
+    handleDownloadApp(msg.slug, port);
+  } else if (msg.type === 'REMOVE_APP' && typeof msg.slug === 'string') {
+    handleRemoveApp(msg.slug, port);
+  } else if (msg.type === 'GET_APP_STATUS' && typeof msg.slug === 'string') {
+    handleGetStatus(msg.slug, port);
+  } else if (msg.type === 'CLEAR_OFFLINE') {
+    handleClearOffline(port);
+  } else {
+    port.postMessage({ type: 'done', state: 'error', error: 'unknown_message' });
   }
 });
 
@@ -90,7 +267,9 @@ self.addEventListener('activate', (e) => {
           reqs.map(async (req) => {
             const path = new URL(req.url).pathname;
             const safeToMigrate =
-              path.startsWith('/run/') || path.startsWith('/_app/immutable/');
+              path.startsWith('/run/') ||
+              path.startsWith('/_app/immutable/') ||
+              path.startsWith('/__shippie/wasm/');
             if (!safeToMigrate) return;
             const hit = await old.match(req);
             if (hit) await newCache.put(req, hit).catch(() => {});

@@ -39,6 +39,8 @@ const REPO_ROOT = resolve(PLATFORM_DIR, '..', '..');
 const APPS_DIR = resolve(REPO_ROOT, 'apps');
 const STATIC_RUN_DIR = resolve(PLATFORM_DIR, 'static', 'run');
 const PRECACHE_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'precache-list.ts');
+const SHELL_ASSETS_OUT = resolve(PLATFORM_DIR, 'static', '__shippie-pwa', 'shell-assets.json');
+const WASM_DIR = resolve(PLATFORM_DIR, 'static', '__shippie', 'wasm');
 
 const SKIP = new Set(['platform', 'shippie-ai']);
 
@@ -163,6 +165,40 @@ function stripWaSqliteAssets(targetDir) {
   return count;
 }
 
+function writeShellAssets() {
+  // Emit the shared-platform asset manifest the marketplace SW reads
+  // when it warms the platform shell on the user's first DOWNLOAD_APP
+  // tap. Two parts:
+  //   - wasm: shared /__shippie/wasm/* binaries (currently wa-sqlite),
+  //     warmed once and cached durably across deploys (the SW's
+  //     migration allowlist whitelists /__shippie/wasm/).
+  //   - routes: shell HTML routes the user navigates through to reach
+  //     a saved app — re-warmed on every activation since they
+  //     reference the current deploy's hashed chunks. Listed here so
+  //     the SW knows what to cache.add() proactively rather than
+  //     waiting for the user to visit each route online.
+  const wasmAssets = [];
+  let totalWasmBytes = 0;
+  if (existsSync(WASM_DIR)) {
+    const files = listAssetsRecursive(WASM_DIR);
+    files.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+    for (const f of files) {
+      wasmAssets.push(`/__shippie/wasm/${f.rel}`);
+      totalWasmBytes += f.size;
+    }
+  }
+  const manifest = {
+    wasm: wasmAssets,
+    routes: ['/', '/apps'],
+    totalWasmBytes,
+  };
+  mkdirSync(dirname(SHELL_ASSETS_OUT), { recursive: true });
+  writeFileSync(SHELL_ASSETS_OUT, JSON.stringify(manifest, null, 2) + '\n');
+  console.log(
+    `[prepare-showcases] wrote ${SHELL_ASSETS_OUT} (${wasmAssets.length} wasm + ${manifest.routes.length} routes)`,
+  );
+}
+
 function writePrecacheList(slugs) {
   // Emit the slug list the marketplace SW reads on `install` to warm
   // the cache with showcase entry HTMLs. Per-app assets cache on first
@@ -186,6 +222,7 @@ function main() {
   if (showcases.length === 0) {
     console.log('[prepare-showcases] no showcase-* apps found.');
     writePrecacheList([]);
+    writeShellAssets();
     return;
   }
   const failures = [];
@@ -202,6 +239,7 @@ function main() {
     }
   }
   writePrecacheList(built);
+  writeShellAssets();
   console.log(
     `[prepare-showcases] done. ${showcases.length - failures.length}/${showcases.length} showcases hosted at /run/<slug>/.`,
   );
