@@ -1,0 +1,124 @@
+/**
+ * Shippie design tokens — canonical source of truth.
+ *
+ * Brand palette: warm-pitch black, sunset orange, sage moss, marigold
+ * accent. Cream inversion for editorial sections. Fraunces (display) +
+ * General Sans (body) + JetBrains Mono (numerics / labels).
+ *
+ * Mirrored from apps/platform/src/lib/styles/tokens.css. Showcases
+ * import this file and inherit the brand. The platform also imports
+ * this so there's one definition; if a token changes, every consumer
+ * picks it up.
+ *
+ * Hallmarks (see ./checklist.md for the full 10-item rubric):
+ *   - Sharp corners — `border-radius: 0`. No 12px / 999px.
+ *   - Fraunces for display headlines with tight tracking + italic accent.
+ *   - Sunset / sage / marigold only — no ad-hoc blues, no Tailwind sky-500.
+ *   - Dark default; cream inversion via `[data-theme="light"]`.
+ */
+
+:root {
+  /* ── Shell layout ──────────────────────────────────────────── */
+  --nav-height: 72px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* ── Brand ─────────────────────────────────────────────────── */
+  --sunset: #E8603C;
+  --sunset-dim: #C84A2A;
+  --sunset-hover: #F47552;
+  --sunset-glow: rgba(232, 96, 60, 0.15);
+  --sunset-intense: rgba(232, 96, 60, 0.4);
+  --sage-deep: #3A4D35;
+  --sage-moss: #5E7B5C;
+  --sage-leaf: #7A9A6E;
+  --sage-highlight: #A8C491;
+  --marigold: #E8C547;
+
+  /* ── Neutral (warm-pitch black) ────────────────────────────── */
+  --bg: #14120F;
+  --bg-pure: #0F0D0A;
+  --surface: #1E1A15;
+  --surface-alt: #252019;
+  --surface-elevated: #2A2520;
+  --text: #EDE4D3;
+  --text-secondary: #B8A88F;
+  --text-light: #7A6B58;
+  --border: #3D3530;
+  --border-light: #2E2822;
+
+  /* ── Cream (oat paper inversion) ────────────────────────────── */
+  --cream-bg: #F5EFE4;
+  --cream-text: #2C1F14;
+  --cream-secondary: #5C4A3A;
+  --cream-muted: #8A7A66;
+  --cream-border: #C9B99A;
+
+  /* ── Type ───────────────────────────────────────────────────── */
+  --font-heading: "Fraunces", "Georgia", serif;
+  --font-body: "General Sans", "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+
+  --hero-size: clamp(2.8rem, 6.5vw + 0.8rem, 5.6rem);
+  --h1-size: clamp(2.5rem, 5vw, 4.5rem);
+  --h2-size: clamp(1.75rem, 3.5vw, 3rem);
+  --h3-size: clamp(1.25rem, 2vw, 1.75rem);
+  --body-size: 1.0625rem;
+  --small-size: 0.875rem;
+  --caption-size: 0.75rem;
+
+  /* ── Spacing ───────────────────────────────────────────────── */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+  --section-pad: clamp(5rem, 10vw, 8rem);
+
+  /* ── Motion ────────────────────────────────────────────────── */
+  --spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --duration: 0.6s;
+
+  color-scheme: dark;
+}
+
+/* Light mode (oat-paper) — opt-in via [data-theme="light"]. */
+[data-theme="light"] {
+  --bg: #F5EFE4;
+  --bg-pure: #EDE4D3;
+  --surface: #E2D6BE;
+  --surface-alt: #D8C9A5;
+  --surface-elevated: #CFBFA0;
+  --text: #2C1F14;
+  --text-secondary: #5C4A3A;
+  --text-light: #8A7A66;
+  --border: #C9B99A;
+  --border-light: #D8C9A5;
+  --cream-bg: #14120F;
+  --cream-text: #EDE4D3;
+  --cream-secondary: #B8A88F;
+  --cream-muted: #7A6B58;
+  --cream-border: #3D3530;
+  color-scheme: light;
+}
+
+/* ── Eyebrow primitive — used everywhere ────────────────────── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--caption-size);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  margin: 0;
+}
+
+/* ── Square icons (Shippie hallmark) ─────────────────────────── */
+.shippie-icon {
+  border-radius: 0;
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}

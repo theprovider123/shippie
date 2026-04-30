@@ -1,0 +1,70 @@
+/**
+ * Tailwind v4 @theme mapping for the Shippie tokens.
+ *
+ * Tailwind v4 reads `@theme` and generates utilities from the
+ * `--color-*`, `--font-*`, `--spacing-*`, `--text-*` namespaces.
+ * Without this layer, a Tailwind app importing `tokens.css` only
+ * gets the CSS vars on `:root` — utilities like `bg-bg`, `text-text`,
+ * `font-heading` won't exist.
+ *
+ * Usage (e.g. mevrouw, future Tailwind apps):
+ *   @import "tailwindcss";
+ *   @import "@shippie/design-tokens/tokens.css";
+ *   @import "@shippie/design-tokens/tailwind-theme.css";
+ *
+ * Plain-CSS apps don't need this file — they just import tokens.css
+ * and reference `var(--sunset)` directly.
+ */
+
+@theme inline {
+  /* Brand colours */
+  --color-sunset: var(--sunset);
+  --color-sunset-dim: var(--sunset-dim);
+  --color-sunset-hover: var(--sunset-hover);
+  --color-sage-deep: var(--sage-deep);
+  --color-sage-moss: var(--sage-moss);
+  --color-sage-leaf: var(--sage-leaf);
+  --color-sage-highlight: var(--sage-highlight);
+  --color-marigold: var(--marigold);
+
+  /* Neutrals */
+  --color-bg: var(--bg);
+  --color-bg-pure: var(--bg-pure);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-light: var(--text-light);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+
+  /* Type */
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  /* Spacing scale (Tailwind merges with default scale) */
+  --spacing-xs: var(--space-xs);
+  --spacing-sm: var(--space-sm);
+  --spacing-md: var(--space-md);
+  --spacing-lg: var(--space-lg);
+  --spacing-xl: var(--space-xl);
+  --spacing-2xl: var(--space-2xl);
+  --spacing-3xl: var(--space-3xl);
+  --spacing-4xl: var(--space-4xl);
+
+  /* Motion easing */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-default: cubic-bezier(0, 0, 0.2, 1);
+
+  /* Sharp corners — explicit override of Tailwind's defaults */
+  --radius-none: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-full: 9999px; /* keep for circular avatars only */
+}

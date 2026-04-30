@@ -29,6 +29,7 @@
     "@shippie/app-package-contract": "workspace:*",
     "@shippie/backup-providers": "workspace:*",
     "@shippie/container-bridge": "workspace:*",
+    "@shippie/design-tokens": "workspace:*",
     "@shippie/proximity": "workspace:*",
     "@shippie/qr": "workspace:*",
     "@shippie/sdk": "workspace:*",
