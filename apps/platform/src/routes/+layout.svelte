@@ -2,6 +2,7 @@
   import '$lib/styles/tokens.css';
   import Nav from '$lib/components/layout/Nav.svelte';
   import Footer from '$lib/components/layout/Footer.svelte';
+  import Toast from '$lib/components/ui/Toast.svelte';
   import type { LayoutData } from './$types';
 
   interface Props {
@@ -39,6 +40,7 @@
   {@render children()}
 </main>
 <Footer />
+<Toast />
 
 <style>
   main {
