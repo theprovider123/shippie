@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { readImportFragment } from '@shippie/share';
 import { deletePhoto, loadPhoto, savePhoto } from './photo-store.ts';
+import { ShareSheet } from './share/ShareSheet.tsx';
+import { ImportCard } from './share/ImportCard.tsx';
+import { checkVisitImport, type VisitImportCheck } from './share/visit-share.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_restaurant_memory' });
 
@@ -63,6 +67,28 @@ export function App() {
   const [notes, setNotes] = useState('');
   const [rating, setRating] = useState(4);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [sharing, setSharing] = useState<RestaurantVisit | null>(null);
+  const [pendingImport, setPendingImport] = useState<
+    Extract<VisitImportCheck, { ok: true }> | null
+  >(null);
+
+  // Detect a #shippie-import=… fragment carrying a restaurant visit.
+  // Pure client-side. Verifies the signature, previews the visit (with
+  // photo if attached), then either imports or discards.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      const blob = await readImportFragment(window.location.href);
+      if (!blob || cancelled) return;
+      const check = await checkVisitImport(blob);
+      if (!check.ok) return;
+      if (!cancelled) setPendingImport(check);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     save({ visits, homeCookedToday: homeCooked });
@@ -214,12 +240,54 @@ export function App() {
                   </small>
                   {v.notes && <p>{v.notes}</p>}
                 </div>
-                <button onClick={() => void remove(v)} aria-label={`Remove ${v.name}`}>×</button>
+                <div className="visit-actions">
+                  <button
+                    type="button"
+                    className="share-btn"
+                    onClick={() => setSharing(v)}
+                    aria-label={`Share ${v.name}`}
+                  >
+                    ↗ Share
+                  </button>
+                  <button onClick={() => void remove(v)} aria-label={`Remove ${v.name}`}>×</button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {sharing ? (
+        <ShareSheet
+          visit={{
+            name: sharing.name,
+            notes: sharing.notes,
+            rating: sharing.rating,
+            visitedAt: sharing.visitedAt,
+            photoLocalId: sharing.photoLocalId,
+          }}
+          onClose={() => setSharing(null)}
+        />
+      ) : null}
+
+      {pendingImport ? (
+        <ImportCard
+          check={pendingImport}
+          onImported={(imported) => {
+            const newVisit: RestaurantVisit = {
+              id: `v_${Date.now()}`,
+              name: imported.name,
+              notes: imported.notes,
+              rating: imported.rating,
+              photoLocalId: imported.photoLocalId,
+              visitedAt: imported.visitedAt,
+            };
+            setVisits((prev) => [newVisit, ...prev]);
+            setPendingImport(null);
+          }}
+          onDiscard={() => setPendingImport(null)}
+        />
+      ) : null}
     </main>
   );
 }
