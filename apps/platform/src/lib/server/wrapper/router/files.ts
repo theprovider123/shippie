@@ -48,6 +48,14 @@ export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
       });
     }
 
+    // Auto-bridge: a maker hasn't published via the deploy pipeline, but a
+    // statically-baked /run/<slug>/ shell exists in Workers Assets. Redirect
+    // to the canonical static URL so first-party showcases (and seeded apps
+    // like mevrouw) work without the maker clicking Ship-Now. Building wins
+    // over this — that's why this branch sits below the building check.
+    const bridged = await tryStaticBridge(ctx, slug);
+    if (bridged) return bridged;
+
     return new Response(unpublishedHtml(slug), {
       status: 404,
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -142,6 +150,45 @@ function toStream(bytes: Uint8Array): ReadableStream<Uint8Array> {
     start(controller) {
       controller.enqueue(bytes);
       controller.close();
+    }
+  });
+}
+
+async function tryStaticBridge(
+  ctx: WrapperContext,
+  slug: string
+): Promise<Response | null> {
+  const assets = ctx.env.ASSETS;
+  if (!assets) return null;
+
+  // Probe the canonical static shell. Workers Assets matches by pathname,
+  // so the host on the probe URL is irrelevant — but use shippie.app to
+  // keep the redirect target self-consistent.
+  const probeUrl = `https://shippie.app/run/${encodeURIComponent(slug)}/index.html`;
+  let probe: Response;
+  try {
+    probe = await assets.fetch(new Request(probeUrl, { method: 'GET' }));
+  } catch {
+    return null;
+  }
+  // Drain so the binding doesn't leak.
+  try {
+    await probe.body?.cancel();
+  } catch {
+    /* noop */
+  }
+  if (!probe.ok) return null;
+
+  const incoming = new URL(ctx.request.url);
+  // Strip leading slash so we don't double up — pathname always starts with /.
+  const targetPath = incoming.pathname === '/' ? '/' : incoming.pathname;
+  const target = `https://shippie.app/run/${encodeURIComponent(slug)}${targetPath}${incoming.search}`;
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: target,
+      'cache-control': 'public, max-age=300',
+      'x-shippie-bridge': 'static'
     }
   });
 }

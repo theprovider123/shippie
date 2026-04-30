@@ -35,6 +35,7 @@ export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
   'daily-briefing',
   'restaurant-memory',
   'show-and-tell',
+  'mevrouw',
 ]);
 
 export function isFirstPartyShowcase(slug: string): boolean {

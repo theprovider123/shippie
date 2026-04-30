@@ -73,16 +73,44 @@ function fakeR2(store: Record<string, Stored>): R2Bucket {
   } as unknown as R2Bucket;
 }
 
-function envWith(kv: KVNamespace, apps: R2Bucket): WrapperEnv {
+function envWith(
+  kv: KVNamespace,
+  apps: R2Bucket,
+  assets?: { fetch: typeof fetch }
+): WrapperEnv {
   return {
     DB: {} as never,
     APPS: apps,
-    ASSETS: undefined,
+    ASSETS: assets,
     PLATFORM_ASSETS: {} as never,
     CACHE: kv,
     SHIPPIE_ENV: 'test',
     PUBLIC_ORIGIN: 'https://test.invalid',
     INVITE_SECRET: 'test-invite'
+  };
+}
+
+/**
+ * Stand-in for the SvelteKit Workers-Assets binding. Returns 200 for any
+ * pathname in `available`, 404 otherwise.
+ */
+function fakeAssets(available: Set<string>): { fetch: typeof fetch } {
+  return {
+    fetch: ((input: Request | string, _init?: RequestInit) => {
+      const url =
+        typeof input === 'string'
+          ? new URL(input)
+          : new URL((input as Request).url);
+      if (available.has(url.pathname)) {
+        return Promise.resolve(
+          new Response('<!doctype html><title>baked</title>', {
+            status: 200,
+            headers: { 'content-type': 'text/html' }
+          })
+        );
+      }
+      return Promise.resolve(new Response('not found', { status: 404 }));
+    }) as typeof fetch
   };
 }
 
@@ -234,6 +262,89 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     expect(res.status).toBe(404);
     const text = await res.text();
     expect(text).toContain("hasn't shipped yet");
+  });
+
+  test('auto-bridge: KV active null + ASSETS hit → 302 to /run/<slug>/', async () => {
+    const env = envWith(
+      fakeKv({}),
+      fakeR2({}),
+      fakeAssets(new Set(['/run/mevrouw/index.html']))
+    );
+    const res = await serveFromR2({
+      request: new Request('https://mevrouw.shippie.app/some/path?ref=share', {
+        headers: { host: 'mevrouw.shippie.app' }
+      }),
+      env,
+      slug: 'mevrouw',
+      traceId: 't'
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(
+      'https://shippie.app/run/mevrouw/some/path?ref=share'
+    );
+    expect(res.headers.get('x-shippie-bridge')).toBe('static');
+    expect(res.headers.get('cache-control')).toContain('max-age=300');
+  });
+
+  test('auto-bridge: KV active null + ASSETS hit + root path → /run/<slug>/', async () => {
+    const env = envWith(
+      fakeKv({}),
+      fakeR2({}),
+      fakeAssets(new Set(['/run/mevrouw/index.html']))
+    );
+    const res = await serveFromR2({
+      request: new Request('https://mevrouw.shippie.app/', {
+        headers: { host: 'mevrouw.shippie.app' }
+      }),
+      env,
+      slug: 'mevrouw',
+      traceId: 't'
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('https://shippie.app/run/mevrouw/');
+  });
+
+  test('auto-bridge: KV active null + ASSETS miss → unpublished page', async () => {
+    const env = envWith(fakeKv({}), fakeR2({}), fakeAssets(new Set()));
+    const res = await serveFromR2({
+      request: new Request('https://nope.shippie.app/', {
+        headers: { host: 'nope.shippie.app' }
+      }),
+      env,
+      slug: 'nope',
+      traceId: 't'
+    });
+    expect(res.status).toBe(404);
+    const text = await res.text();
+    expect(text).toContain("hasn't shipped yet");
+  });
+
+  test('auto-bridge: building flag still wins over static fallback', async () => {
+    // Even though the static shell exists, an active deploy in flight should
+    // show the shipping… progress page so the maker sees it land.
+    const kv = fakeKv({
+      'apps:mevrouw:building': JSON.stringify({
+        commit_sha: 'feedface',
+        started_at: Date.now(),
+        source: 'github'
+      })
+    });
+    const env = envWith(
+      kv,
+      fakeR2({}),
+      fakeAssets(new Set(['/run/mevrouw/index.html']))
+    );
+    const res = await serveFromR2({
+      request: new Request('https://mevrouw.shippie.app/', {
+        headers: { host: 'mevrouw.shippie.app' }
+      }),
+      env,
+      slug: 'mevrouw',
+      traceId: 't'
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Shippie-Status')).toBe('building');
+    expect(res.headers.get('Refresh')).toBe('5');
   });
 
   test('building flag → shipping… page with refresh', async () => {
