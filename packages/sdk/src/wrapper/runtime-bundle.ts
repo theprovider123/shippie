@@ -28,6 +28,7 @@ import {
   noteGracefulDegrade,
   notePersonalDataLeak,
 } from './kind-emitter.ts';
+import { openYourData } from './your-data-panel.ts';
 
 interface AppMetaPayload {
   slug: string;
@@ -153,6 +154,10 @@ const shippie = {
     noteGracefulDegrade,
     notePersonalDataLeak,
   },
+  // Mounts the Shadow-DOM "Your Data" panel so makers can drop a
+  // `<button onClick={() => shippie.openYourData()}>` anywhere and
+  // users see backup / export / receipts in one place.
+  openYourData: () => openYourData(),
   // Phase 2+ surfaces — keep the API shape stable for maker code,
   // forward to dev-stub warnings until the real wiring lands.
   auth: {
