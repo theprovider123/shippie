@@ -13,6 +13,7 @@
  * land naturally on next visit because the body changes when we deploy.
  */
 import type { RequestHandler } from './$types';
+import { SHOWCASE_PRECACHE } from '$lib/_generated/precache-list';
 
 const SW_BODY = `// shippie-marketplace SW
 const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
@@ -31,8 +32,21 @@ function offlineResponse() {
   });
 }
 
+// Precache the showcase entry HTMLs so a fresh PWA install can open
+// any showcase offline without first having visited it. The list is
+// substituted at request time from the build-time-generated
+// SHOWCASE_PRECACHE constant. cache.add is best-effort per entry; a
+// network or 404 failure on one slug never blocks install.
+const SHOWCASE_PRECACHE = __SHOWCASE_PRECACHE__;
+
 self.addEventListener('install', (e) => {
-  self.skipWaiting();
+  e.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.allSettled(
+      SHOWCASE_PRECACHE.map((url) => cache.add(url).catch(() => {})),
+    );
+    self.skipWaiting();
+  })());
 });
 
 // Page can postMessage('SKIP_WAITING') to flip to the new SW immediately
@@ -145,7 +159,9 @@ export const GET: RequestHandler = async ({ platform }) => {
   // every dev session share one cache, which matches dev expectations.
   const buildId =
     (platform?.env as { CF_VERSION_METADATA?: { id?: string } } | undefined)?.CF_VERSION_METADATA?.id ?? 'dev';
-  const body = SW_BODY.replace(/__SHIPPIE_BUILD__/g, buildId);
+  const body = SW_BODY
+    .replace(/__SHIPPIE_BUILD__/g, buildId)
+    .replace('__SHOWCASE_PRECACHE__', JSON.stringify(SHOWCASE_PRECACHE));
   return new Response(body, {
     status: 200,
     headers: {
