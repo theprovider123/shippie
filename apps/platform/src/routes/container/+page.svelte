@@ -1216,7 +1216,13 @@
       transferGrants,
       dismissedInsightIds,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // localStorage may be blocked (iOS PWA partitioning, private
+      // browsing, or quota exceeded). Persistence fails silently;
+      // session state continues in memory until the user reloads.
+    }
   });
 
   onMount(() => {
