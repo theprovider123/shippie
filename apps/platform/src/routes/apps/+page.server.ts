@@ -20,7 +20,10 @@ import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
 const PER_PAGE = 24;
 
-export const load: PageServerLoad = async ({ platform, url }) => {
+export const load: PageServerLoad = async ({ platform, url, depends }) => {
+  // Tag so VisibilityPicker can `invalidate('app:apps')` after a
+  // visibility change without a full reload.
+  depends('app:apps');
   if (!platform?.env.DB) {
     return {
       apps: [],

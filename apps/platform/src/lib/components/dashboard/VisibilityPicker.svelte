@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { invalidate } from '$app/navigation';
+  import { toast } from '$lib/stores/toast';
+
   type Scope = 'public' | 'unlisted' | 'private';
 
   let { slug, initial }: { slug: string; initial: Scope } = $props();
@@ -26,9 +29,15 @@
     if (!res.ok) {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       error = j.error ?? 'Save failed';
+      toast.push({ kind: 'error', message: error });
       return;
     }
     scope = next;
+    toast.push({ kind: 'success', message: `Visibility set to ${next}.` });
+    // In-tab invalidate only — cross-tab marketplace updates would need
+    // BroadcastChannel, which conflicts with the iframe-fanout decision
+    // recorded in project_open_unification memory. Don't reach for it here.
+    void invalidate('app:apps');
   }
 </script>
 

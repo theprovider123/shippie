@@ -12,7 +12,10 @@ import { getDrizzleClient, schema } from '$server/db/client';
 import { findFeatured } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
 
-export const load: PageServerLoad = async ({ platform }) => {
+export const load: PageServerLoad = async ({ platform, depends }) => {
+  // Tag so VisibilityPicker can `invalidate('app:apps')` after a
+  // visibility change without a full reload.
+  depends('app:apps');
   if (!platform?.env.DB) {
     return { featured: [], status: 'no-platform' as const };
   }
