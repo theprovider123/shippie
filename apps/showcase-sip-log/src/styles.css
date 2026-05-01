@@ -1,0 +1,298 @@
+/* Canonical Shippie tokens — sunset/sage/marigold, Fraunces, sharp corners. */
+@import "@shippie/design-tokens/tokens.css";
+
+:root {
+  /* Sip Log is dark by default — nighttime water tracking + caffeine
+     ceiling read better against a forest backdrop. The water/coffee/tea
+     accents stay vivid on dark. */
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+button, input { font: inherit; }
+
+.app {
+  min-height: 100%;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  padding: calc(20px + env(safe-area-inset-top, 0)) 20px calc(80px + env(safe-area-inset-bottom, 0));
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.app-header h1 {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--text-light);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.total {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--sage-leaf);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.total:nth-child(2) { border-top-color: var(--sunset); }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  margin: 0;
+}
+.big {
+  font-family: var(--font-heading);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1;
+}
+.big-warn { color: var(--sunset); }
+.unit {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  margin-left: 2px;
+  color: var(--text-secondary);
+}
+.small { font-size: 12px; }
+.muted { color: var(--text-light); }
+.near { color: var(--marigold); }
+.over { color: var(--sunset); }
+.center { text-align: center; }
+
+.bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  margin-top: 6px;
+}
+.bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--sage-leaf);
+  transition: width 0.4s var(--spring);
+}
+.bar-fill-water { background: #5b9bc7; }
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.tap-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 16px 8px;
+  border-radius: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.1s ease, border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.tap-btn:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  background: var(--surface-alt);
+}
+.tap-btn:active:not(:disabled) { transform: scale(0.97); }
+
+.tap-emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+.tap-label {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+}
+.tap-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-light);
+}
+.tap-water { border-top: 3px solid #5b9bc7; }
+.tap-coffee { border-top: 3px solid #8b5a3c; }
+.tap-tea { border-top: 3px solid var(--sage-leaf); }
+
+.undo {
+  background: transparent;
+  border: 0;
+  color: var(--sunset);
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 100px;
+}
+.day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.day-bar-track {
+  width: 100%;
+  height: 80px;
+  display: flex;
+  align-items: flex-end;
+}
+.day-bar {
+  width: 100%;
+  background: var(--sage-leaf);
+  min-height: 2px;
+  transition: height 0.4s var(--spring);
+}
+.day-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-light);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.your-data {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  right: 16px;
+  z-index: 5;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--surface);
+  color: var(--text-light);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  border-radius: 0;
+}
+.your-data:hover { color: var(--text); border-color: var(--text-secondary); }
+
+/* Custom amount sheet */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet {
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  max-width: 460px;
+  padding: 20px 20px calc(28px + env(safe-area-inset-bottom, 0));
+  border-top: 3px solid var(--sunset);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sheet h2 {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+.field input {
+  height: 44px;
+  padding: 0 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
+.field input:focus { outline: none; border-color: var(--sunset); }
+.sheet-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sheet-actions button {
+  flex: 1;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0;
+  cursor: pointer;
+}
+.sheet-actions .primary {
+  background: var(--sunset);
+  color: var(--bg-pure);
+  border: 0;
+}
+.sheet-actions .ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
