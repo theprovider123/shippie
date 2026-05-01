@@ -249,3 +249,51 @@ describe('SignalRoom — malformed input', () => {
     expect(a.sent.length).toBe(0);
   });
 });
+
+describe('SignalRoom — relay fan-out', () => {
+  test('relay broadcasts payload to other peers, not the sender', async () => {
+    const room = makeRoom();
+    const a = connectPeer(room);
+    a.fire('message', { data: JSON.stringify({ t: 'hello', peerId: 'a' }) });
+    const b = connectPeer(room);
+    b.fire('message', { data: JSON.stringify({ t: 'hello', peerId: 'b' }) });
+    const c = connectPeer(room);
+    c.fire('message', { data: JSON.stringify({ t: 'hello', peerId: 'c' }) });
+
+    a.sent.length = 0;
+    b.sent.length = 0;
+    c.sent.length = 0;
+
+    a.fire('message', { data: JSON.stringify({ t: 'relay', payload: 'opaque-bytes' }) });
+
+    expect(a.sent.length).toBe(0); // sender never receives its own relay
+    expect(sentJson(b)).toEqual([{ t: 'relay', from: 'a', payload: 'opaque-bytes' }]);
+    expect(sentJson(c)).toEqual([{ t: 'relay', from: 'a', payload: 'opaque-bytes' }]);
+  });
+
+  test('relay before hello is silently dropped (only authenticated peers)', async () => {
+    const room = makeRoom();
+    const a = connectPeer(room);
+    const b = connectPeer(room);
+    b.fire('message', { data: JSON.stringify({ t: 'hello', peerId: 'b' }) });
+    b.sent.length = 0;
+
+    // a never sent hello; its relay must not reach b.
+    a.fire('message', { data: JSON.stringify({ t: 'relay', payload: 'sneaky' }) });
+
+    expect(b.sent.length).toBe(0);
+  });
+
+  test('relay with non-string payload is dropped', async () => {
+    const room = makeRoom();
+    const a = connectPeer(room);
+    a.fire('message', { data: JSON.stringify({ t: 'hello', peerId: 'a' }) });
+    const b = connectPeer(room);
+    b.fire('message', { data: JSON.stringify({ t: 'hello', peerId: 'b' }) });
+    b.sent.length = 0;
+
+    a.fire('message', { data: JSON.stringify({ t: 'relay', payload: 42 }) });
+
+    expect(b.sent.length).toBe(0);
+  });
+});

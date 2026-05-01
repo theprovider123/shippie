@@ -11,9 +11,16 @@
  *   offer       { t, from, to, sdp }                 — targeted to one peer
  *   answer      { t, from, to, sdp }                 — targeted to one peer
  *   ice         { t, from, to, candidate }           — targeted to one peer
+ *   relay       { t, from?, payload }                — fan-out opaque bytes
  *
  * The DO never persists state — signalling traffic is ephemeral. After
  * WebRTC handshake completes, peers talk P2P and the DO is silent.
+ *
+ * Relay mode (added 2026-05-01 for mevrouw cross-device sync): apps
+ * that need server-relayed sync (couples app on different networks,
+ * where WebRTC P2P + STUN can't punch through CGNAT) post a `relay`
+ * message; the DO fans out `payload` to every other peer in the room.
+ * Payload is opaque to the DO — apps E2E-encrypt their own bytes.
  *
  * Auth: the route forwarding to this DO is responsible for any auth
  * gating (e.g., room visibility checks). The DO itself is pure routing.
@@ -40,6 +47,7 @@ type AnyMessage = {
   to?: string;
   sdp?: string;
   candidate?: unknown;
+  payload?: string;
 };
 
 interface DurableObjectStateLite {
@@ -127,6 +135,20 @@ export class SignalRoom {
         const target = this.peers.get(msg.to);
         if (!target) return;
         this.send(target.ws, msg);
+        return;
+      }
+
+      // Fan-out relay — broadcast opaque payload to every other peer.
+      // Used by apps that need server-relayed sync regardless of network
+      // topology (e.g. mevrouw on cellular ↔ Wi-Fi). DO never decrypts;
+      // apps E2E-encrypt their own bytes.
+      if (msg.t === 'relay' && typeof msg.payload === 'string') {
+        if (myPeerId === null) return; // only authenticated peers can relay
+        const stamped: AnyMessage = { t: 'relay', from: myPeerId, payload: msg.payload };
+        for (const peer of this.peers.values()) {
+          if (peer.id === myPeerId) continue;
+          this.send(peer.ws, stamped);
+        }
         return;
       }
     });

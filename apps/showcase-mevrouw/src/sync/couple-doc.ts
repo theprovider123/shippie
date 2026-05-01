@@ -2,15 +2,19 @@
  * The Couple Y.Doc — every piece of shared state lives in here, in
  * its own namespace.
  *
- * Persistence: y-indexeddb keeps a copy on each device.
+ * Three layers, all bound here:
+ *  1. y-indexeddb persistence — keeps a copy on each device.
+ *  2. BroadcastChannel cross-tab sync — same-origin only, free; lets
+ *     two windows on the same laptop sync live (helpful for dev/demo).
+ *  3. RelayProvider cross-device sync — opens a WebSocket to the
+ *     Shippie SignalRoom DO and fans out E2E-encrypted Y updates to
+ *     all paired devices. Works on any network topology (cellular ↔
+ *     Wi-Fi, two different LANs). This is the load-bearing path for
+ *     real two-phone sync.
  *
- * Cross-tab sync: BroadcastChannel between tabs on the same machine
- * (free, no infra). This gives the user a real "two devices syncing"
- * demo today: open two windows on the same laptop, both pair to the
- * same code, edits flow live.
- *
- * Cross-device sync: in production, a y-webrtc + Shippie SignalRoom
- * transport plugs in here. The Y.Doc shape doesn't change.
+ * E2E: every relay frame is AES-GCM encrypted with a key derived from
+ * the couple code via PBKDF2 (see crypto.ts). The DO sees ciphertext
+ * + nonce and never plaintext.
  */
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
@@ -21,11 +25,14 @@ import {
   packFrame,
   unpackFrame,
 } from './crypto.ts';
+import { bindRelayProvider, type RelayProvider } from './relay-provider.ts';
 
 export interface BoundCoupleDoc {
   doc: Y.Doc;
   persistence: IndexeddbPersistence;
   whenSynced: Promise<void>;
+  /** Live cross-device relay status — exposed for UI surfacing. */
+  relay: RelayProvider | null;
   destroy: () => void;
 }
 
@@ -104,11 +111,21 @@ export function bindCoupleDoc(roomId: string, coupleCode?: string): BoundCoupleD
     });
   }
 
+  // Cross-device sync via the platform's SignalRoom DO. Only enabled
+  // when a couple code is present — without it we have no key for E2E
+  // encryption and would be exposing plaintext to the relay.
+  let relay: RelayProvider | null = null;
+  if (coupleCode && typeof WebSocket !== 'undefined') {
+    relay = bindRelayProvider({ doc, roomId, coupleCode });
+  }
+
   return {
     doc,
     persistence,
+    relay,
     whenSynced: keyReady ? Promise.all([whenSynced, keyReady]).then(() => {}) : whenSynced,
     destroy: () => {
+      relay?.destroy();
       channel?.close();
       void persistence.destroy();
       doc.destroy();
