@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type * as Y from 'yjs';
 import { ScreenHeader } from '@/components/ScreenHeader.tsx';
+import { SyncStatus } from '@/components/SyncStatus.tsx';
 import { Button } from '@/components/ui/button.tsx';
+import type { RelayProvider } from '@/sync/relay-provider.ts';
 import {
   bothOptedInToAfterHours,
   meName as resolveMyName,
@@ -23,11 +25,12 @@ interface Props {
   doc: Y.Doc;
   myDeviceId: string;
   pairing: Pairing;
+  relay: RelayProvider | null;
   onNavigate: (r: Route) => void;
   onUnpair: () => void;
 }
 
-export function MorePage({ doc, myDeviceId, pairing, onNavigate, onUnpair }: Props) {
+export function MorePage({ doc, myDeviceId, pairing, relay, onNavigate, onUnpair }: Props) {
   const meta = useYjs(doc, readCoupleMeta);
   const partner = partnerOf(meta, myDeviceId);
   const me = resolveMyName(meta, myDeviceId);
@@ -80,6 +83,15 @@ export function MorePage({ doc, myDeviceId, pairing, onNavigate, onUnpair }: Pro
   return (
     <div className="flex flex-col gap-4 px-4 pb-8">
       <ScreenHeader eyebrow="More" title="Settings & spaces." />
+
+      <Section title="Sync">
+        <SyncStatus relay={relay} />
+        <p className="text-xs text-[var(--muted-foreground)] pt-2">
+          Couple code: <span className="font-mono text-[var(--foreground)]">{pairing.coupleCode}</span>
+          <br />
+          If sync isn't working, check this code matches your partner's. If it does and the dot still isn't green, tap "Sync now" — that force-reconnects and pushes your full state across.
+        </p>
+      </Section>
 
       <Section title="You two">
         <Field label="My picture">

@@ -9,6 +9,7 @@ import { TabNav } from '@/components/TabNav.tsx';
 import { PulseFab } from '@/components/PulseFab.tsx';
 import { PulseInbox } from '@/components/PulseInbox.tsx';
 import { InstallNudge } from '@/components/InstallNudge.tsx';
+import { PullToRefresh } from '@/components/PullToRefresh.tsx';
 import { HomePage } from '@/pages/HomePage.tsx';
 import { SchedulePage } from '@/pages/SchedulePage.tsx';
 import { JournalPage } from '@/pages/JournalPage.tsx';
@@ -21,6 +22,7 @@ import { GamesPage } from '@/pages/GamesPage.tsx';
 import { GlimpsesPage } from '@/pages/GlimpsesPage.tsx';
 import { AfterHoursPage } from '@/pages/AfterHoursPage.tsx';
 import { bindCoupleDoc } from '@/sync/couple-doc.ts';
+import type { RelayProvider } from '@/sync/relay-provider.ts';
 import {
   loadPairing,
   type Pairing,
@@ -49,17 +51,20 @@ import { TOP_LEVEL_ROUTES } from '@/router.ts';
 export function App() {
   const [pairing, setPairingState] = useState<Pairing | null>(() => loadPairing());
   const [doc, setDoc] = useState<Y.Doc | null>(null);
+  const [relay, setRelay] = useState<RelayProvider | null>(null);
   const [synced, setSynced] = useState(false);
   const [route, setRoute] = useState<Route>('home');
 
   useEffect(() => {
     if (!pairing) {
       setDoc(null);
+      setRelay(null);
       setSynced(false);
       return;
     }
     const bound = bindCoupleDoc(roomIdFor(pairing.coupleCode), pairing.coupleCode);
     setDoc(bound.doc);
+    setRelay(bound.relay);
     setSynced(false);
     void bound.whenSynced.then(() => setSynced(true));
     return () => {
@@ -92,6 +97,7 @@ export function App() {
     <Bound
       pairing={pairing}
       doc={doc}
+      relay={relay}
       route={route}
       onRoute={setRoute}
       onUnpair={() => setPairingState(null)}
@@ -102,12 +108,14 @@ export function App() {
 function Bound({
   pairing,
   doc,
+  relay,
   route,
   onRoute,
   onUnpair,
 }: {
   pairing: Pairing;
   doc: Y.Doc;
+  relay: RelayProvider | null;
   route: Route;
   onRoute: (r: Route) => void;
   onUnpair: () => void;
@@ -171,6 +179,10 @@ function Bound({
 
   return (
     <div className="min-h-dvh flex flex-col pb-24">
+      <PullToRefresh
+        onRefresh={() => relay?.resync()}
+        disabled={!relay}
+      />
       <main className="flex-1 mx-auto w-full max-w-md">
         {route === 'home' && (
           <HomePage doc={doc} myDeviceId={pairing.deviceId} onNavigate={onRoute} />
@@ -183,6 +195,7 @@ function Bound({
             doc={doc}
             myDeviceId={pairing.deviceId}
             pairing={pairing}
+            relay={relay}
             onNavigate={onRoute}
             onUnpair={onUnpair}
           />
