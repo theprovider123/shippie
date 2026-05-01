@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn.ts';
 
-const SEEN_KEY = 'mev:install-nudge-seen';
+// Stores the wall-clock ms of the last dismiss, not just a boolean.
+// 7-day cooldown lets the nudge resurface for users who tapped "×" by
+// accident or who came back later wanting to install. iOS Safari's own
+// share-sheet prompt operates on a similar cadence.
+export const INSTALL_NUDGE_KEY = 'mev:install-nudge-dismissed-at';
+const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -24,22 +29,68 @@ function detect(): Platform {
   return 'other';
 }
 
+function isWithinCooldown(): boolean {
+  if (typeof localStorage === 'undefined') return true;
+  const raw = localStorage.getItem(INSTALL_NUDGE_KEY);
+  if (!raw) return false;
+  // Legacy '1' value from prior builds: treat as "dismissed long ago"
+  // so the nudge re-appears once after this build lands. The 7-day
+  // cooldown then kicks in normally.
+  if (raw === '1') return false;
+  const at = Number(raw);
+  if (!Number.isFinite(at) || at <= 0) return false;
+  return Date.now() - at < COOLDOWN_MS;
+}
+
+export function resetInstallNudge(): void {
+  try {
+    localStorage.removeItem(INSTALL_NUDGE_KEY);
+  } catch {
+    // private mode etc
+  }
+}
+
 export function InstallNudge() {
   const [platform, setPlatform] = useState<Platform>('other');
   const [bipEvent, setBipEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState<boolean>(() => {
-    if (typeof localStorage === 'undefined') return true;
-    return localStorage.getItem(SEEN_KEY) === '1';
-  });
+  const [dismissed, setDismissed] = useState<boolean>(() => isWithinCooldown());
 
   useEffect(() => {
     setPlatform(detect());
+
     function onBip(e: Event) {
       e.preventDefault();
       setBipEvent(e as BeforeInstallPromptEvent);
     }
+    function onInstalled() {
+      // Fired by the browser after the user installs the PWA from the
+      // share sheet / Chrome's native prompt. Auto-dismiss in this
+      // (still-open) pre-install tab.
+      setDismissed(true);
+      setBipEvent(null);
+      try {
+        localStorage.setItem(INSTALL_NUDGE_KEY, String(Date.now()));
+      } catch {
+        /* best effort */
+      }
+    }
     window.addEventListener('beforeinstallprompt', onBip);
-    return () => window.removeEventListener('beforeinstallprompt', onBip);
+    window.addEventListener('appinstalled', onInstalled);
+
+    // Re-check display-mode reactively. iOS Safari can flip from
+    // browser to standalone without a full reload (PWA opens via the
+    // home-screen icon while a Safari tab is still open).
+    const mq = window.matchMedia?.('(display-mode: standalone)');
+    function onMq() {
+      setPlatform(detect());
+    }
+    mq?.addEventListener?.('change', onMq);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBip);
+      window.removeEventListener('appinstalled', onInstalled);
+      mq?.removeEventListener?.('change', onMq);
+    };
   }, []);
 
   if (dismissed) return null;
@@ -48,7 +99,7 @@ export function InstallNudge() {
   function dismiss() {
     setDismissed(true);
     try {
-      localStorage.setItem(SEEN_KEY, '1');
+      localStorage.setItem(INSTALL_NUDGE_KEY, String(Date.now()));
     } catch {
       // private mode etc — best-effort
     }
