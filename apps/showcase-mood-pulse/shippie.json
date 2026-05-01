@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Mood Pulse",
+  "slug": "mood-pulse",
+  "description": "Three seconds, once a day. Tap how you feel (1-5 with emoji), optionally drop a one-line note. 30-day sparkline shows the rhythm. Provides mood-logged so daily-briefing + read-later have a real provider.",
+  "icon": "/icon.svg",
+  "theme_color": "#E8C547",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["mood-logged"],
+    "consumes": ["caffeine-logged", "workout-completed", "sleep-logged"]
+  },
+  "data_schemas": {
+    "moods": {
+      "id": "text primary key",
+      "score": "integer not null",
+      "note": "text",
+      "logged_at": "datetime not null"
+    }
+  }
+}
