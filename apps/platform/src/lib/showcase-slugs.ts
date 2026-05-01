@@ -28,8 +28,6 @@ export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
   'caffeine-log',
   'hydration',
   'mood-pulse',
-  'symptom-tracker',
-  'steps-counter',
   'pomodoro',
   'read-later',
   'daily-briefing',
