@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type * as Y from 'yjs';
 import { ScreenHeader } from '@/components/ScreenHeader.tsx';
 import { Button } from '@/components/ui/button.tsx';
+import { DownloadableImage } from '@/components/DownloadableImage.tsx';
+import { PhotoUpload } from '@/components/PhotoUpload.tsx';
 import {
   addItineraryItem,
   addTripPhoto,
@@ -63,33 +65,9 @@ export function TripDetailPage({ doc, tripId, onBack }: Props) {
     setNewLabel('');
   }
 
-  function pickPhoto(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return;
-      const img = new Image();
-      img.onload = () => {
-        // Resize to max 1600px on long edge → keep doc reasonable.
-        const max = 1600;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, w, h);
-          addTripPhoto(doc, trip!.id, canvas.toDataURL('image/jpeg', 0.85));
-        } else {
-          addTripPhoto(doc, trip!.id, reader.result as string);
-        }
-      };
-      img.onerror = () => addTripPhoto(doc, trip!.id, reader.result as string);
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  }
+  // Photo handling lives in <PhotoUpload> below — it reads + downsizes
+  // + reports a clear "Reading photo… / ✓ Photo added / ↻ Try again"
+  // state ladder. Drops directly into addTripPhoto on completion.
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-8">
@@ -183,15 +161,9 @@ export function TripDetailPage({ doc, tripId, onBack }: Props) {
       </Section>
 
       <Section title="Photos">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) pickPhoto(f);
-            e.target.value = '';
-          }}
-          className="text-xs"
+        <PhotoUpload
+          label="Add a photo"
+          onPicked={(dataUrl) => addTripPhoto(doc, trip.id, dataUrl)}
         />
         {trip.photos.length === 0 ? (
           <p className="text-[var(--muted-foreground)] text-sm">No photos yet.</p>
@@ -199,7 +171,11 @@ export function TripDetailPage({ doc, tripId, onBack }: Props) {
           <ul className="grid grid-cols-2 gap-2">
             {trip.photos.map((p, i) => (
               <li key={i} className="relative group">
-                <img src={p} alt="" className="w-full aspect-square object-cover rounded-xl" />
+                <DownloadableImage
+                  src={p}
+                  baseName={`mevrouw-trip-${trip.id.slice(0, 6)}`}
+                  className="w-full aspect-square object-cover rounded-xl"
+                />
                 <button
                   type="button"
                   onClick={() => deleteTripPhoto(doc, trip.id, i)}

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type * as Y from 'yjs';
 import { ConstellationMap } from '@/components/ConstellationMap.tsx';
+import { DownloadableImage } from '@/components/DownloadableImage.tsx';
+import { PhotoUpload } from '@/components/PhotoUpload.tsx';
 import { ScreenHeader } from '@/components/ScreenHeader.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { readCoupleMeta } from '@/features/couple/couple-state.ts';
@@ -60,7 +62,11 @@ export function MemoriesPage({ doc, myDeviceId }: Props) {
             )}
           >
             {m.photo_data_url ? (
-              <img src={m.photo_data_url} alt="" className="w-full aspect-square object-cover" />
+              <DownloadableImage
+                src={m.photo_data_url}
+                baseName={`mevrouw-memory-${m.id.slice(0, 6)}`}
+                className="w-full aspect-square object-cover"
+              />
             ) : (
               <div className="w-full aspect-square bg-[var(--forest)] flex items-center justify-center">
                 <span className="font-serif italic text-3xl text-[var(--muted-foreground)]">
@@ -136,27 +142,11 @@ function ComposeMemory({
     onClose();
   }
 
-  function pickPhoto(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setPhoto(reader.result);
-    };
-    reader.readAsDataURL(file);
-  }
-
   return (
     <div className="fixed inset-0 z-50 bg-[var(--background)]/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-[var(--card)] border border-[var(--border)] rounded-3xl p-5 flex flex-col gap-3">
         <h3 className="font-serif text-xl">A new memory</h3>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) pickPhoto(f);
-          }}
-          className="text-xs"
-        />
+        <PhotoUpload label={photo ? 'Replace photo' : 'Add a photo'} onPicked={setPhoto} />
         {photo && <img src={photo} alt="" className="w-full max-h-48 object-cover rounded-xl" />}
         <textarea
           rows={3}

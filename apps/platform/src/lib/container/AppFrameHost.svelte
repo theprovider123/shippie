@@ -63,7 +63,8 @@
       <iframe
         use:onRegister={app.id}
         title={`${app.name} container app`}
-        sandbox="allow-scripts allow-forms allow-same-origin"
+        sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
         src={runtimeSrc}
         onload={() => onReady(app.id)}
         onerror={() => onError(app.id)}
@@ -72,7 +73,8 @@
       <iframe
         use:onRegister={app.id}
         title={`${app.name} container app`}
-        sandbox="allow-scripts allow-forms"
+        sandbox="allow-scripts allow-forms allow-downloads"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
         src={packageFrameSrc}
         onload={() => onReady(app.id)}
         onerror={() => onError(app.id)}
@@ -81,7 +83,8 @@
       <iframe
         use:onRegister={app.id}
         title={`${app.name} container app`}
-        sandbox="allow-scripts allow-forms"
+        sandbox="allow-scripts allow-forms allow-downloads"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
         {srcdoc}
         onload={() => onReady(app.id)}
         onerror={() => onError(app.id)}
