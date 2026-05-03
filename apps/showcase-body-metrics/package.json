@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Body Metrics — privacy showcase. Weight + body photos. Photos never leave the device.",
+  "description": "Body Metrics \u2014 privacy showcase. Weight + body photos. Photos never leave the device.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +14,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

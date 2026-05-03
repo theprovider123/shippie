@@ -1,14 +1,18 @@
+/* Canonical Shippie tokens. Restaurant Memory's accent maps to
+   sunset-dim — warm dining without the bright orange of Recipe. */
+@import "@shippie/design-tokens/tokens.css";
+
 :root {
   color-scheme: light;
-  --bg: #faf7ef;
-  --fg: #14120f;
-  --muted: #5c5751;
-  --line: rgba(20, 18, 15, 0.08);
-  --accent: #a86060;
+  --bg: var(--cream-bg);
+  --fg: var(--cream-text);
+  --muted: var(--cream-secondary);
+  --accent: var(--sunset-dim);
+  --line: var(--cream-border);
 }
 
 * { box-sizing: border-box; }
-html, body, #root { margin: 0; padding: 0; min-height: 100vh; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; }
+html, body, #root { margin: 0; padding: 0; min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--font-body); }
 main { max-width: 480px; margin: 0 auto; padding: 24px 20px 40px; }
 
 .privacy-ribbon {
@@ -33,7 +37,7 @@ header p { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
 form {
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 0;
   padding: 16px;
   margin-bottom: 20px;
   display: flex;
@@ -42,7 +46,7 @@ form {
 }
 form input[type='text'] {
   height: 40px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: #fff;
   padding: 0 12px;
@@ -59,7 +63,7 @@ form .rating, form .photo {
 form input[type='range'] { accent-color: var(--accent); }
 form button[type='submit'] {
   height: 44px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 0;
   background: var(--accent);
   color: #fff;
@@ -77,13 +81,13 @@ ul li {
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid var(--line);
   padding: 10px;
-  border-radius: 12px;
+  border-radius: 0;
   align-items: center;
 }
 ul li img {
   width: 64px;
   height: 64px;
-  border-radius: 8px;
+  border-radius: 0;
   object-fit: cover;
 }
 ul li .meta strong { display: block; font-size: 14px; }
@@ -92,7 +96,7 @@ ul li .meta p { margin: 4px 0 0; font-size: 13px; }
 ul li button {
   width: 32px;
   height: 32px;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--line);

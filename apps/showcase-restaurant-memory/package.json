@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Restaurant Memory — generated showcase. Replace this once the app does something.",
+  "description": "Restaurant Memory \u2014 generated showcase. Replace this once the app does something.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +14,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "@shippie/qr": "workspace:*",
     "@shippie/share": "workspace:*",

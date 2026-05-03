@@ -83,6 +83,7 @@
       "name": "@shippie/showcase-body-metrics",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
@@ -240,6 +241,7 @@
       "name": "@shippie/showcase-pantry-scanner",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
@@ -316,6 +318,7 @@
       "name": "@shippie/showcase-restaurant-memory",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/qr": "workspace:*",
         "@shippie/share": "workspace:*",
@@ -335,6 +338,7 @@
       "name": "@shippie/showcase-shopping-list",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "react": "^19.2.5",

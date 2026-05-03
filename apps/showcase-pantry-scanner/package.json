@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Pantry Scanner — barcode + on-device vision. Provides pantry-inventory intent.",
+  "description": "Pantry Scanner \u2014 barcode + on-device vision. Provides pantry-inventory intent.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +14,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
