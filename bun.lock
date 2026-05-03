@@ -179,6 +179,7 @@
       "name": "@shippie/showcase-meal-planner",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
@@ -389,6 +390,7 @@
       "name": "@shippie/showcase-sleep-logger",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
@@ -425,6 +427,7 @@
       "name": "@shippie/showcase-workout-logger",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "react": "^19.2.5",
