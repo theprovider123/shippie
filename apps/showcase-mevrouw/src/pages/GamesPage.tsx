@@ -7,6 +7,9 @@ import { TtolGame } from '@/features/games/TtolGame.tsx';
 import { DailyGame } from '@/features/games/DailyGame.tsx';
 import { HwdkmGame } from '@/features/games/HwdkmGame.tsx';
 import { TodGame } from '@/features/games/TodGame.tsx';
+import { TotGame } from '@/features/games/TotGame.tsx';
+import { WhispersGame } from '@/features/games/WhispersGame.tsx';
+import { NhieGame } from '@/features/games/NhieGame.tsx';
 import type { Route } from '@/router.ts';
 
 interface Props {
@@ -15,7 +18,7 @@ interface Props {
   onNavigate: (r: Route) => void;
 }
 
-type Pick = 'menu' | 'wyr' | 'ttol' | 'daily' | 'hwdkm' | 'tod';
+type Pick = 'menu' | 'wyr' | 'ttol' | 'daily' | 'hwdkm' | 'tod' | 'tot' | 'whispers' | 'nhie';
 
 const PLAYABLE = [
   {
@@ -43,12 +46,22 @@ const PLAYABLE = [
     label: 'Truth or Dare',
     desc: 'Pick a heat. Roll. Both phones see the same prompt — soft, warm, or spicy.',
   },
+  {
+    key: 'whispers' as const,
+    label: 'Whispers',
+    desc: 'Soft prompts. No score, just talking. Both write a response and the thread saves.',
+  },
+  {
+    key: 'tot' as const,
+    label: 'Twenty-one truths',
+    desc: 'Slow turn-based prompts. End of the run, save the whole thread as a memory.',
+  },
+  {
+    key: 'nhie' as const,
+    label: 'Never have I ever',
+    desc: 'Pick a tier. Tap I have / I have not. Sips count up. Drinking optional.',
+  },
 ];
-
-const COMING = [
-  { key: 'tot', label: 'Twenty-one truths', desc: 'Slow questions, in turn. Saved as memory threads.' },
-  { key: 'whispers', label: 'Whispers', desc: 'Soft prompts. No score, just talking.' },
-] as const;
 
 export function GamesPage({ doc, myDeviceId, onNavigate }: Props) {
   const [pick, setPick] = useState<Pick>('menu');
@@ -58,6 +71,9 @@ export function GamesPage({ doc, myDeviceId, onNavigate }: Props) {
   if (pick === 'daily') return <DailyGame doc={doc} myDeviceId={myDeviceId} onExit={() => setPick('menu')} />;
   if (pick === 'hwdkm') return <HwdkmGame doc={doc} myDeviceId={myDeviceId} onExit={() => setPick('menu')} />;
   if (pick === 'tod') return <TodGame doc={doc} myDeviceId={myDeviceId} onExit={() => setPick('menu')} />;
+  if (pick === 'tot') return <TotGame doc={doc} myDeviceId={myDeviceId} onExit={() => setPick('menu')} />;
+  if (pick === 'whispers') return <WhispersGame doc={doc} myDeviceId={myDeviceId} onExit={() => setPick('menu')} />;
+  if (pick === 'nhie') return <NhieGame doc={doc} myDeviceId={myDeviceId} onExit={() => setPick('menu')} />;
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-4">
@@ -81,18 +97,6 @@ export function GamesPage({ doc, myDeviceId, onNavigate }: Props) {
             <p className="text-sm text-[var(--muted-foreground)]">{g.desc}</p>
             <Button size="sm" className="self-start">
               Play
-            </Button>
-          </li>
-        ))}
-        {COMING.map((g) => (
-          <li
-            key={g.key}
-            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col gap-2 opacity-60"
-          >
-            <h3 className="font-serif text-lg">{g.label}</h3>
-            <p className="text-sm text-[var(--muted-foreground)]">{g.desc}</p>
-            <Button size="sm" variant="ghost" disabled>
-              Coming next port
             </Button>
           </li>
         ))}
