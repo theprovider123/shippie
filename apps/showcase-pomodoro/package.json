@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Pomodoro — generated showcase. Replace this once the app does something.",
+  "description": "Pomodoro \u2014 generated showcase. Replace this once the app does something.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +14,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

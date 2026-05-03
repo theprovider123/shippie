@@ -1,12 +1,19 @@
+/* Canonical Shippie tokens. Pomodoro's three-phase palette maps to:
+     focus  = sunset (the orange working-now state)
+     short  = sage-moss (a calmer pause)
+     long   = sage-leaf (the deeper rest at the end of 4 cycles)
+   The ad-hoc blue for short-break is gone. */
+@import "@shippie/design-tokens/tokens.css";
+
 :root {
   color-scheme: light;
-  --bg: #faf7ef;
-  --fg: #14120f;
-  --muted: #5c5751;
-  --line: rgba(20, 18, 15, 0.08);
-  --focus: #e8603c;
-  --short: #4e7c9a;
-  --long: #5ea777;
+  --bg: var(--cream-bg);
+  --fg: var(--cream-text);
+  --muted: var(--cream-secondary);
+  --line: var(--cream-border);
+  --focus: var(--sunset);
+  --short: var(--sage-moss);
+  --long: var(--sage-leaf);
 }
 
 * { box-sizing: border-box; }
@@ -16,7 +23,7 @@ html, body, #root {
   background: var(--bg);
   color: var(--fg);
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  font-family: var(--font-body);
 }
 main { max-width: 480px; margin: 0 auto; padding: 24px 20px 40px; }
 header h1 { margin: 0 0 4px; font-size: 28px; font-weight: 600; color: var(--focus); }
@@ -53,7 +60,7 @@ header p { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
 .controls { display: flex; gap: 8px; justify-content: center; margin: 16px 0 24px; }
 .controls button {
   padding: 12px 22px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 0;
   font: inherit;
   font-weight: 600;
@@ -78,7 +85,7 @@ li {
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid var(--line);
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: 0;
 }
 li strong { display: block; font-size: 13px; }
 li small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }

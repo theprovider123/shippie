@@ -1,17 +1,21 @@
+/* Canonical Shippie tokens. Habit Tracker keeps its sage-moss accent —
+   the colour reads as "still-going, on-track". */
+@import "@shippie/design-tokens/tokens.css";
+
 :root {
   color-scheme: light;
-  --bg: #FAF7EF;
-  --fg: #14120F;
-  --muted: #5C5751;
-  --accent: #5EA777;
-  --line: rgba(20, 18, 15, 0.08);
+  --bg: var(--cream-bg);
+  --fg: var(--cream-text);
+  --muted: var(--cream-secondary);
+  --accent: var(--sage-moss);
+  --line: var(--cream-border);
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--fg);
   min-height: 100vh;
@@ -50,7 +54,7 @@ li button {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.6);
   color: inherit;
@@ -68,7 +72,7 @@ li.done button {
 .box {
   width: 24px;
   height: 24px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 2px solid var(--line);
   display: flex;
   align-items: center;
@@ -110,7 +114,7 @@ form {
 input {
   flex: 1;
   height: 44px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.7);
   padding: 0 16px;
@@ -120,7 +124,7 @@ input {
 form button[type='submit'] {
   height: 44px;
   padding: 0 18px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 0;
   background: var(--accent);
   color: #fff;
@@ -139,7 +143,7 @@ form button[type='submit'] {
 .insight {
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px 14px;
 }
 .insight h2 {
@@ -179,7 +183,7 @@ form button[type='submit'] {
 }
 .chip {
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px dashed rgba(94, 167, 119, 0.5);
   background: rgba(94, 167, 119, 0.05);
   color: var(--accent);

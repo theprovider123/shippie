@@ -1,11 +1,16 @@
+/* Canonical Shippie tokens. Read Later swaps the ad-hoc indigo for
+   sunset — reading is the action, sunset is the action colour across
+   the suite. Warn maps to sunset-dim. */
+@import "@shippie/design-tokens/tokens.css";
+
 :root {
   color-scheme: light;
-  --bg: #faf7ef;
-  --fg: #14120f;
-  --muted: #5c5751;
-  --line: rgba(20, 18, 15, 0.08);
-  --accent: #3f51b5;
-  --warn: #d65a3a;
+  --bg: var(--cream-bg);
+  --fg: var(--cream-text);
+  --muted: var(--cream-secondary);
+  --line: var(--cream-border);
+  --accent: var(--sunset);
+  --warn: var(--sunset-dim);
 }
 
 * { box-sizing: border-box; }

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Habit Tracker — cross-cluster intent consumer (Health). Auto-checks habits when other apps fire matching intents.",
+  "description": "Habit Tracker \u2014 cross-cluster intent consumer (Health). Auto-checks habits when other apps fire matching intents.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +14,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
