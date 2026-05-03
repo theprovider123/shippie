@@ -1,10 +1,14 @@
+/* Canonical Shippie tokens. Show and Tell uses marigold for the
+   ephemeral "look at this" beat — distinct from sunset's "do this". */
+@import "@shippie/design-tokens/tokens.css";
+
 :root {
   color-scheme: light;
-  --bg: #faf7ef;
-  --fg: #14120f;
-  --muted: #5c5751;
-  --line: rgba(20, 18, 15, 0.08);
-  --accent: #e0b345;
+  --bg: var(--cream-bg);
+  --fg: var(--cream-text);
+  --muted: var(--cream-secondary);
+  --line: var(--cream-border);
+  --accent: var(--marigold);
 }
 
 * { box-sizing: border-box; }

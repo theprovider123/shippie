@@ -1,10 +1,14 @@
+/* Canonical Shippie tokens. Live Room maps positive to sage-leaf —
+   the "first-buzz" success colour, distinct from Habit Tracker. */
+@import "@shippie/design-tokens/tokens.css";
+
 :root {
-  --bg: #FAF7EF;
-  --fg: #14120F;
-  --muted: #5C5751;
-  --line: rgba(20, 18, 15, 0.08);
-  --accent: #E8603C;
-  --positive: #2c9b56;
+  --bg: var(--cream-bg);
+  --fg: var(--cream-text);
+  --muted: var(--cream-secondary);
+  --line: var(--cream-border);
+  --accent: var(--sunset);
+  --positive: var(--sage-leaf);
   --safe-top: env(safe-area-inset-top, 0);
   --safe-bottom: env(safe-area-inset-bottom, 0);
   --shippie-patina-warmth: 0;

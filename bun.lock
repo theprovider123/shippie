@@ -162,6 +162,7 @@
       "name": "@shippie/showcase-live-room",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "@shippie/sdk": "workspace:*",
@@ -361,6 +362,7 @@
       "name": "@shippie/showcase-show-and-tell",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "react": "^19.2.5",
@@ -416,6 +418,7 @@
       "name": "@shippie/showcase-whiteboard",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "@shippie/sdk": "workspace:*",

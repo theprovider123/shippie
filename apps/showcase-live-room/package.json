@@ -13,6 +13,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "@shippie/proximity": "workspace:*",
     "@shippie/sdk": "workspace:*",
