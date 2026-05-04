@@ -8,10 +8,25 @@
  *   - trips:  Y.Array of Y.Map (one map per trip; mutable fields)
  */
 import * as Y from 'yjs';
-import type { ItineraryItem, Shift, ShiftType, Trip } from '@/lib/schedule.ts';
+import type {
+  DayParts,
+  DaySegment,
+  ItineraryItem,
+  Shift,
+  ShiftType,
+  Trip,
+} from '@/lib/schedule.ts';
 
 function getShiftsMap(doc: Y.Doc): Y.Map<ShiftType> {
   return doc.getMap<ShiftType>('shifts');
+}
+
+function getDayPartsMap(doc: Y.Doc): Y.Map<DayParts> {
+  return doc.getMap<DayParts>('shift-parts');
+}
+
+function getScheduleRefMap(doc: Y.Doc): Y.Map<string> {
+  return doc.getMap<string>('schedule-refs');
 }
 
 function getTripsArray(doc: Y.Doc): Y.Array<Y.Map<unknown>> {
@@ -34,6 +49,71 @@ export function setShift(doc: Y.Doc, userId: string, date: string, type: ShiftTy
   const key = SHIFT_KEY(userId, date);
   if (type === null) map.delete(key);
   else map.set(key, type);
+}
+
+// ── Day parts (morning / afternoon / evening overrides) ────────────────
+
+export function readDayPartsAll(doc: Y.Doc): Record<string, DayParts> {
+  const out: Record<string, DayParts> = {};
+  getDayPartsMap(doc).forEach((parts, key) => {
+    out[key] = parts;
+  });
+  return out;
+}
+
+export function readDayParts(doc: Y.Doc, userId: string, date: string): DayParts | undefined {
+  return getDayPartsMap(doc).get(SHIFT_KEY(userId, date));
+}
+
+export function setDayPart(
+  doc: Y.Doc,
+  userId: string,
+  date: string,
+  segment: DaySegment,
+  type: ShiftType,
+): void {
+  doc.transact(() => {
+    const map = getDayPartsMap(doc);
+    const key = SHIFT_KEY(userId, date);
+    const existing: DayParts = { ...(map.get(key) ?? {}) };
+    if (type === null && !(segment in existing)) {
+      // No-op: clearing an unset segment.
+      return;
+    }
+    existing[segment] = type;
+    // If every segment cleared, drop the key.
+    const stillSet = (['morning', 'afternoon', 'evening'] as DaySegment[]).filter(
+      (s) => s in existing && existing[s] !== undefined && existing[s] !== null,
+    );
+    if (stillSet.length === 0) map.delete(key);
+    else map.set(key, existing);
+  });
+}
+
+export function clearDayParts(doc: Y.Doc, userId: string, date: string): void {
+  getDayPartsMap(doc).delete(SHIFT_KEY(userId, date));
+}
+
+// ── Schedule reference photo (per-user) ────────────────────────────────
+
+export function readScheduleRef(doc: Y.Doc, userId: string): string | null {
+  return getScheduleRefMap(doc).get(userId) ?? null;
+}
+
+export function readScheduleRefsAll(doc: Y.Doc): Record<string, string> {
+  const out: Record<string, string> = {};
+  getScheduleRefMap(doc).forEach((dataUrl, userId) => {
+    if (typeof dataUrl === 'string' && dataUrl.length > 0) out[userId] = dataUrl;
+  });
+  return out;
+}
+
+export function setScheduleRef(doc: Y.Doc, userId: string, dataUrl: string): void {
+  getScheduleRefMap(doc).set(userId, dataUrl);
+}
+
+export function clearScheduleRef(doc: Y.Doc, userId: string): void {
+  getScheduleRefMap(doc).delete(userId);
 }
 
 export function readTrips(doc: Y.Doc): Trip[] {

@@ -2,10 +2,45 @@ import { addDays, parseLocalDateString, toLocalDateString, getDaysUntil } from '
 
 export type ShiftType = 'work' | 'busy' | 'half' | 'off' | null;
 
+export type DaySegment = 'morning' | 'afternoon' | 'evening';
+export const DAY_SEGMENTS: ReadonlyArray<DaySegment> = ['morning', 'afternoon', 'evening'];
+
 export interface Shift {
   user_id: string;
   date: string; // YYYY-MM-DD
   shift_type: ShiftType;
+}
+
+/**
+ * Per-segment override for a single user/date. Sparse — only set when
+ * the user wants more granularity than the whole-day shift. Reading
+ * code falls back to the whole-day shift for any unset segment, which
+ * keeps every existing record valid without migration.
+ */
+export type DayParts = Partial<Record<DaySegment, ShiftType>>;
+
+/**
+ * Resolve the effective shift for a (user, date, segment) triple given
+ * both the whole-day shift and any per-segment overrides. Per-segment
+ * always wins when set (even if set to null/free); whole-day fills the
+ * gaps; null means unmarked.
+ */
+export function effectiveShift(
+  allDay: ShiftType,
+  parts: DayParts | undefined,
+  segment: DaySegment,
+): ShiftType {
+  if (parts && segment in parts) return parts[segment] ?? null;
+  return allDay;
+}
+
+/**
+ * True if any segment differs from the whole-day shift — used to render
+ * a "split shift" indicator on the daily row.
+ */
+export function hasSegmentOverride(parts: DayParts | undefined): boolean {
+  if (!parts) return false;
+  return DAY_SEGMENTS.some((s) => s in parts);
 }
 
 export interface ItineraryItem {
