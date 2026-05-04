@@ -5,7 +5,6 @@ import { users } from './users';
 
 /**
  * Deploys — per-version source of truth for deploy state.
- * D1/SQLite port of packages/db/src/schema/deploys.ts.
  */
 export const deploys = sqliteTable(
   'deploys',

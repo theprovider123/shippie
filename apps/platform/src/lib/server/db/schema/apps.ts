@@ -4,14 +4,14 @@ import { organizations } from './organizations';
 import { users } from './users';
 
 /**
- * Apps — the central entity. D1/SQLite port of packages/db/src/schema/apps.ts.
+ * Apps — the central entity.
  *
- * Notes on the port:
- * - JSONB columns use `text(..., { mode: 'json' })` — Drizzle auto handles
+ * D1/SQLite specifics:
+ * - JSON columns use `text(..., { mode: 'json' })` — Drizzle auto handles
  *   stringify/parse so call sites continue to read objects.
- * - Postgres `text[]` arrays (screenshotUrls) become JSON-typed text.
- * - Triggers that maintained `latest_*` cached pointers are not yet
- *   modeled; we leave the columns and wire them in Phase 5 if needed.
+ * - Array-shaped fields (screenshotUrls) are JSON-typed text.
+ * - Triggers that would maintain `latest_*` cached pointers are not yet
+ *   modeled; columns are present and wired application-side as needed.
  *
  * Spec v6 §18.2.
  */

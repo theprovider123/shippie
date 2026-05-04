@@ -1,9 +1,8 @@
 /**
- * Schema barrel — D1/SQLite port of packages/db/src/schema/index.ts.
+ * Schema barrel.
  *
- * Order mirrors the Postgres barrel so that table dependencies resolve
- * the same way during code-walk, and the mirror script can iterate
- * tables in dependency order.
+ * Re-export order is dependency-ordered (parents before children) so that
+ * table references resolve cleanly when the schema is walked.
  */
 export * from './users';
 export * from './auth';

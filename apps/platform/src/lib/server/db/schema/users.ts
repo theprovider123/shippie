@@ -4,11 +4,8 @@ import { sql } from 'drizzle-orm';
 /**
  * Users — both makers and end-users of deployed apps.
  *
- * D1/SQLite port of packages/db/src/schema/users.ts. Reconciles the Phase 1
- * Lucia-required columns (username, displayName, avatarUrl, isAdmin,
- * googleId) with the Postgres-side columns (verifiedMaker, firstDeployAt,
- * etc.). Column names match the Postgres source so the mirror script can
- * map row-by-row.
+ * Carries the Lucia auth columns (username, displayName, avatarUrl, isAdmin,
+ * googleId) alongside maker-side columns (verifiedMaker, firstDeployAt, etc.).
  *
  * Spec v6 §18.1, §6.
  */

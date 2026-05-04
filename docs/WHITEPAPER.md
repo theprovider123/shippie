@@ -94,7 +94,7 @@ The interesting work isn't inventing primitives — the platform invented them a
 
 None of these are Shippie's invention. The composition is. Each individual component is documented in its package; this whitepaper is the meta-document that says how they fit together.
 
-The license positions reflect this: `apps/platform`, `apps/shippie-ai`, `services/hub`, `packages/pwa-injector`, `packages/db` are AGPL-3.0 — fork and self-host freely; network-accessible modifications must publish under the same license. SDK, CLI, MCP server, shared types, templates are MIT — link into your apps without constraint. The platform is the part that's worth federating; the SDK is the part that should spread.
+The license positions reflect this: `apps/platform`, `apps/shippie-ai`, `services/hub`, `packages/pwa-injector` are AGPL-3.0 — fork and self-host freely; network-accessible modifications must publish under the same license. SDK, CLI, MCP server, shared types, templates are MIT — link into your apps without constraint. The platform is the part that's worth federating; the SDK is the part that should spread.
 
 ---
 

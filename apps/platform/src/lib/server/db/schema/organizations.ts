@@ -4,7 +4,6 @@ import { users } from './users';
 
 /**
  * Organizations — multi-tenant primitives for business customers.
- * D1/SQLite port of packages/db/src/schema/organizations.ts.
  *
  * Spec v6 §15.1, §18.8.
  */
