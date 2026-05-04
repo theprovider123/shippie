@@ -1,0 +1,37 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Coffee",
+  "slug": "coffee",
+  "description": "Ratio dial, saved bean presets with grind settings, brew timer. Provides coffee-brewed (consumed by sleep-logger, daily-briefing) and caffeine-logged (subsumes part of sip-log for V60 obsessives).",
+  "icon": "/icon.svg",
+  "theme_color": "#8B5A3C",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["coffee-brewed", "caffeine-logged"]
+  },
+  "data_schemas": {
+    "beans": {
+      "id": "text primary key",
+      "name": "text not null",
+      "roaster": "text",
+      "roast_level": "text",
+      "method": "text",
+      "preferred_ratio": "real",
+      "grind_setting": "text",
+      "tasting_notes": "text"
+    },
+    "brews": {
+      "id": "text primary key",
+      "bean_id": "text",
+      "weight_g": "real",
+      "water_g": "real",
+      "ratio": "real",
+      "method": "text",
+      "brew_seconds": "integer",
+      "taste_rating": "integer",
+      "brewed_at": "datetime"
+    }
+  }
+}
