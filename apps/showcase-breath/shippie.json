@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Breath",
+  "slug": "breath",
+  "description": "Box (4-4-4-4), 4-7-8, and Wim Hof breathing patterns with a visual ring that grows and shrinks with the count. Quiet by design — no audio, just rhythm. Provides mindful-session (consumed by daily-briefing's morning calm card and by Habit Tracker for auto-tick).",
+  "icon": "/icon.svg",
+  "theme_color": "#5E7B5C",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["mindful-session"]
+  },
+  "data_schemas": {
+    "sessions": {
+      "id": "text primary key",
+      "pattern": "text not null",
+      "rounds": "integer",
+      "duration_seconds": "integer",
+      "completed_at": "datetime"
+    }
+  }
+}

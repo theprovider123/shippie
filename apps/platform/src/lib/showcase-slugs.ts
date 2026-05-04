@@ -30,6 +30,8 @@ export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([
   'coffee',
   'cooking',
   'dough',
+  'pace',
+  'breath',
   'pomodoro',
   'read-later',
   'daily-briefing',

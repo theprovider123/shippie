@@ -92,6 +92,13 @@
       "when": 1779222000000,
       "tag": "0024_seed_calculator_apps",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1779394800000,
+      "tag": "0025_seed_pace_breath",
+      "breakpoints": true
     }
   ]
 }

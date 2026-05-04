@@ -1,0 +1,25 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Pace",
+  "slug": "pace",
+  "description": "Distance × time × pace dial for runs, walks, and rides. Save plans (Saturday long run, evening cycle), see splits, get a finish-time estimate from your start. Provides run-planned (consumed by Workout Logger to compare target vs actual).",
+  "icon": "/icon.svg",
+  "theme_color": "#5EA777",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["run-planned"],
+    "consumes": ["workout-completed"]
+  },
+  "data_schemas": {
+    "plans": {
+      "id": "text primary key",
+      "name": "text not null",
+      "sport": "text not null",
+      "distance_km": "real",
+      "target_minutes": "integer",
+      "saved_at": "datetime"
+    }
+  }
+}
