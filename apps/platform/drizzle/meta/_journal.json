@@ -85,6 +85,13 @@
       "when": 1778962800000,
       "tag": "0023_consolidate_stubs",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1779222000000,
+      "tag": "0024_seed_calculator_apps",
+      "breakpoints": true
     }
   ]
 }
