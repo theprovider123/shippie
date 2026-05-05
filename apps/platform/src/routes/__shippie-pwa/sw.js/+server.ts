@@ -17,7 +17,13 @@ import { SHOWCASE_PRECACHE } from '$lib/_generated/precache-list';
 
 const SW_BODY = `// shippie-marketplace SW
 const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
+const MODEL_CACHE = 'shippie.models.v1';
 const APPS_PREFIX = '/apps';
+// Phase 1 source: esm.sh CDN. The shim resolves transitive imports
+// (onnxruntime-web, buffer, process) to esm.sh paths automatically;
+// browser HTTP cache picks them up on first AI call. Phase 2 will
+// mirror onto models.shippie.app for fully self-hosted delivery.
+const AI_RUNTIME_URLS = ['https://esm.sh/@huggingface/transformers@3.0.0'];
 
 // Branded offline response — used when network fails and there is no
 // usable cached document. Inline rocket + system fonts (no remote font
@@ -30,6 +36,33 @@ function offlineResponse() {
     status: 503,
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });
+}
+
+async function marketplaceFallback(cache, req) {
+  return (
+    (await cache.match(req)) ||
+    (await cache.match('/apps')) ||
+    (await cache.match('/apps/')) ||
+    (await cache.match('/')) ||
+    null
+  );
+}
+
+async function warmAiRuntime(urls = AI_RUNTIME_URLS) {
+  if (!Array.isArray(urls) || urls.length === 0) return;
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    await Promise.allSettled(
+      urls.map(async (url) => {
+        const cached = await cache.match(url);
+        if (cached) return;
+        const res = await fetch(url);
+        if (res.ok) await cache.put(url, res.clone()).catch(() => {});
+      }),
+    );
+  } catch {
+    /* best effort — first AI use can still fetch and cache the runtime */
+  }
 }
 
 // Precache the showcase entry HTMLs so a fresh PWA install can open
@@ -45,6 +78,7 @@ self.addEventListener('install', (e) => {
     await Promise.allSettled(
       SHOWCASE_PRECACHE.map((url) => cache.add(url).catch(() => {})),
     );
+    await warmAiRuntime();
     self.skipWaiting();
   })());
 });
@@ -111,6 +145,7 @@ async function warmShell(cache) {
       ...(Array.isArray(shell.routes) ? shell.routes : []),
     ];
     await cacheAddAll(cache, urls, () => {});
+    await warmAiRuntime(Array.isArray(shell.aiRuntime) ? shell.aiRuntime : AI_RUNTIME_URLS);
     await cache.put(
       new Request(SENTINEL),
       new Response('1', { headers: { 'content-type': 'text/plain' } }),
@@ -348,7 +383,8 @@ self.addEventListener('fetch', (e) => {
         if (res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
-        return offlineResponse();
+        const fallback = await marketplaceFallback(cache, req);
+        return fallback ?? offlineResponse();
       }
     })());
     return;
@@ -369,7 +405,8 @@ self.addEventListener('fetch', (e) => {
         if (res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
-        return offlineResponse();
+        const fallback = await marketplaceFallback(cache, req);
+        return fallback ?? offlineResponse();
       }
     })());
     return;
@@ -386,7 +423,7 @@ self.addEventListener('fetch', (e) => {
         return res;
       } catch {
         const cache = await caches.open(CACHE);
-        const cached = await cache.match(req) || await cache.match('/');
+        const cached = await marketplaceFallback(cache, req);
         if (cached) return cached;
         return offlineResponse();
       }

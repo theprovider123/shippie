@@ -35,7 +35,13 @@ const MODEL_BYTE_HINTS: Record<string, number> = {
 };
 const MODEL_FALLBACK_BYTES = 50 * 1024 * 1024;
 const SHIPPIE_MODEL_CACHE_NAME = 'shippie.models.v1';
-const TRANSFORMERS_RUNTIME_URL = 'https://models.shippie.app/runtime/transformers.js';
+// Phase 1: served from esm.sh (CDN-backed ESM with CORS + 1-year
+// immutable cache + transitive bare-specifier resolution). Phase 2
+// will mirror this onto models.shippie.app once the CF zone exists,
+// but esm.sh unblocks every on-device AI feature today. Pinned to a
+// specific version so an upstream breaking change can't break the
+// container's AI worker without an explicit code change.
+const TRANSFORMERS_RUNTIME_URL = 'https://esm.sh/@huggingface/transformers@3.0.0';
 
 const cacheBudget: CacheBudget = createAiCacheBudget();
 
@@ -77,6 +83,36 @@ function deviceForBackend(b: AiBackend): 'webnn' | 'webgpu' | 'cpu' | undefined 
   return undefined;
 }
 
+async function loadTransformersRuntime(): Promise<unknown> {
+  const cachesApi = (globalThis as { caches?: CacheStorage }).caches;
+  if (cachesApi) {
+    try {
+      const cache = await cachesApi.open(SHIPPIE_MODEL_CACHE_NAME);
+      let res = await cache.match(TRANSFORMERS_RUNTIME_URL);
+      if (!res) {
+        const fetched = await fetch(TRANSFORMERS_RUNTIME_URL);
+        if (fetched.ok) {
+          await cache.put(TRANSFORMERS_RUNTIME_URL, fetched.clone()).catch(() => {});
+          res = fetched;
+        }
+      }
+      if (res?.ok && typeof URL !== 'undefined' && typeof Blob !== 'undefined') {
+        const source = await res.text();
+        const objectUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+        try {
+          return await import(/* @vite-ignore */ objectUrl);
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      }
+    } catch (err) {
+      console.warn('[ai-worker] cached Transformers runtime unavailable', err);
+    }
+  }
+  const dynamicImport = (s: string) => import(/* @vite-ignore */ s);
+  return dynamicImport(TRANSFORMERS_RUNTIME_URL);
+}
+
 async function getLocalAi(): Promise<ShippieLocalAi | null> {
   if (!localAiPromise) {
     localAiPromise = (async () => {
@@ -88,8 +124,7 @@ async function getLocalAi(): Promise<ShippieLocalAi | null> {
             // than bundled into the platform JS. This keeps the Shippie
             // container light while still allowing the model runtime to
             // become local after the first successful fetch.
-            const dynamicImport = (s: string) => import(/* @vite-ignore */ s);
-            const mod = (await dynamicImport(TRANSFORMERS_RUNTIME_URL)) as unknown;
+            const mod = await loadTransformersRuntime();
             return mod as never;
           },
           device: deviceForBackend(backend),
