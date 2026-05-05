@@ -265,18 +265,31 @@ export function startInstallRuntime(
     deferredPrompt: null as BeforeInstallPromptEvent | null,
     lastTick: Date.now(),
     lastRenderedTier: null as PromptTier | null,
+    forceGuide: false,
   };
   localStorage.setItem(storageKey, serialize(refs.state));
 
   const onBip = (event: Event) => {
     event.preventDefault();
     refs.deferredPrompt = event as BeforeInstallPromptEvent;
+    refs.lastRenderedTier = null;
     render();
   };
   window.addEventListener('beforeinstallprompt', onBip);
 
+  const onAppInstalled = () => {
+    refs.state = recordDismissal(refs.state, Date.now());
+    localStorage.setItem(storageKey, serialize(refs.state));
+    setThemeColor(THEME_DEFAULT);
+    unmountAll();
+    clearReferral();
+    haptic('success');
+    void beacon('pwa_displayed', { outcome: 'appinstalled' });
+  };
+  window.addEventListener('appinstalled', onAppInstalled);
+
   const render = (): void => {
-    const tier = computePromptTier(refs.state, Date.now());
+    const tier = refs.forceGuide ? 'full' : computePromptTier(refs.state, Date.now());
     if (tier === refs.lastRenderedTier) return;
     refs.lastRenderedTier = tier;
     if (tier !== 'none') {
@@ -285,6 +298,10 @@ export function startInstallRuntime(
     }
     mountInstallBanner({
       tier,
+      platform: ctx.platform,
+      method: refs.deferredPrompt ? 'one-tap' : ctx.method,
+      hasNativePrompt: refs.deferredPrompt !== null,
+      appName: document.title?.split('—')[0]?.trim() || 'Shippie',
       onInstall: async () => {
         haptic('tap');
         if (refs.deferredPrompt) {
@@ -302,12 +319,15 @@ export function startInstallRuntime(
           }
           return;
         }
-        // iOS / manual: Phase 2 lands the full guide sheet.
+        refs.forceGuide = true;
+        refs.lastRenderedTier = null;
         beacon('prompt_shown', { outcome: 'manual-guide-opened' });
+        render();
       },
       onDismiss: () => {
         refs.state = recordDismissal(refs.state, Date.now());
         localStorage.setItem(storageKey, serialize(refs.state));
+        refs.forceGuide = false;
         beacon('prompt_dismissed');
         setThemeColor(THEME_DEFAULT);
         unmountAll();
@@ -331,6 +351,7 @@ export function startInstallRuntime(
 
   return () => {
     window.removeEventListener('beforeinstallprompt', onBip);
+    window.removeEventListener('appinstalled', onAppInstalled);
     window.clearInterval(interval);
     detachVitals();
     setThemeColor(THEME_DEFAULT);

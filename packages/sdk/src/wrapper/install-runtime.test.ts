@@ -91,6 +91,32 @@ describe('startInstallRuntime', () => {
     cleanup();
   });
 
+  test('manual install CTA opens the guided sheet', () => {
+    setUa(ANDROID_UA);
+    const prior = {
+      visit_count: 1,
+      first_visit_at: Date.now() - 60 * 60 * 1000,
+      last_visit_at: Date.now() - 60 * 60 * 1000,
+      dwell_ms: 0,
+      meaningful_actions: 0,
+      last_dismissed_at: null,
+    };
+    win.localStorage.setItem('shippie-install-state', JSON.stringify(prior));
+
+    const cleanup = startInstallRuntime({ tickMs: 9_999_999 });
+    const installBtn = win.document.querySelector(
+      'button[data-shippie-install]',
+    ) as unknown as HTMLButtonElement | null;
+    expect(installBtn?.textContent?.toLowerCase()).toContain('show me');
+    installBtn?.click();
+
+    const guide = win.document.querySelector('[data-shippie-banner][data-shippie-guide]');
+    expect(guide).not.toBeNull();
+    expect(guide?.getAttribute('data-shippie-tier')).toBe('full');
+    expect(guide?.textContent).toContain('Open the browser menu');
+    cleanup();
+  });
+
   test('cleanup removes the banner from the DOM', () => {
     setUa(ANDROID_UA);
     const prior = {

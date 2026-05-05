@@ -75,7 +75,7 @@ export const CAPABILITY_CATALOG: readonly CapabilityEntry[] = [
   {
     id: 'groups',
     label: 'Local groups (mesh)',
-    blurb: 'Real-time collaboration over the local network or internet — no server in the path.',
+    blurb: 'Real-time collaboration over local network or encrypted relay — no app content stored on Shippie servers.',
     snippet: { groups: { enabled: true } },
     docsHref: '/docs/groups',
     category: 'mesh',

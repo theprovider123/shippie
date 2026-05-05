@@ -73,6 +73,8 @@
     type AiRunRequest,
     type AiRunResult,
   } from '$lib/container/ai-worker-client';
+  import { selectAiBackend, type AiBackend } from '$lib/container/ai-backend';
+  import { SHIPPIE_MODEL_CACHE_NAME, TRANSFORMERS_RUNTIME_URL } from '$lib/container/ai-runtime';
   import {
     builtinStrategies,
     runAgent,
@@ -166,6 +168,7 @@
   let rowsByApp = $state<Record<string, LocalRow[]>>({});
   let logs = $state<BridgeLog[]>([]);
   let bridgeStatus = $state<'waiting' | 'ready'>('waiting');
+  let frameCanGoBackByApp = $state<Record<string, boolean>>({});
   let storageReady = $state(false);
   let intentGrants = $state<IntentGrants>({});
   type PendingPrompt = {
@@ -327,9 +330,68 @@
     });
   }
   let aiClient = buildPlaceholderAiClient();
+  type AiReadiness = {
+    backend: AiBackend;
+    runtimeCached: boolean;
+    modelCount: number;
+    checked: boolean;
+  };
+  let aiReadiness = $state<AiReadiness>({
+    backend: 'unavailable',
+    runtimeCached: false,
+    modelCount: 0,
+    checked: false,
+  });
   async function runAi(req: AiRunRequest): Promise<AiRunResult> {
-    return aiClient.run(req);
+    try {
+      return await aiClient.run(req);
+    } finally {
+      void refreshAiReadiness();
+    }
   }
+
+  async function refreshAiReadiness(): Promise<void> {
+    const backend = selectAiBackend().backend;
+    const cachesApi = (globalThis as { caches?: CacheStorage }).caches;
+    if (!cachesApi) {
+      aiReadiness = { backend, runtimeCached: false, modelCount: 0, checked: true };
+      return;
+    }
+    try {
+      const cache = await cachesApi.open(SHIPPIE_MODEL_CACHE_NAME);
+      const keys = await cache.keys();
+      const runtimeCached = Boolean(await cache.match(TRANSFORMERS_RUNTIME_URL));
+      const modelCount = keys.filter((req) => {
+        const url = req.url;
+        return url !== TRANSFORMERS_RUNTIME_URL && !url.endsWith('/runtime/transformers.js');
+      }).length;
+      aiReadiness = { backend, runtimeCached, modelCount, checked: true };
+    } catch {
+      aiReadiness = { backend, runtimeCached: false, modelCount: 0, checked: true };
+    }
+  }
+
+  const aiReadinessLabel = $derived.by(() => {
+    if (!aiReadiness.checked) return 'Checking';
+    if (aiReadiness.backend === 'unavailable') return 'Unsupported on this device';
+    if (!aiReadiness.runtimeCached) return 'Needs WiFi setup';
+    if (aiReadiness.modelCount === 0) return 'Runtime ready';
+    return 'Ready offline';
+  });
+
+  const aiReadinessBody = $derived.by(() => {
+    if (!aiReadiness.checked) return 'Checking local runtime and model cache.';
+    if (aiReadiness.backend === 'unavailable') {
+      return 'This browser cannot run the local model backend yet, so apps will degrade gracefully.';
+    }
+    if (!aiReadiness.runtimeCached) {
+      return 'The AI runtime has not been cached on this device yet. Connect once, then AI setup can become local.';
+    }
+    if (aiReadiness.modelCount === 0) {
+      return 'The AI runtime is cached. The first app that uses AI will download its model once, then it can run offline.';
+    }
+    return `${aiReadiness.modelCount} AI cache ${aiReadiness.modelCount === 1 ? 'entry is' : 'entries are'} stored locally.`;
+  });
   // Phase C1 — local agent insights. Computed from the same rowsByApp
   // + appById state the bridge handlers see, so the agent's view of the
   // user matches what's actually installed and active. Dismissed ids
@@ -427,6 +489,8 @@
     hosts.get(appId)?.dispose();
     hosts.delete(appId);
     frames.delete(appId);
+    const { [appId]: _removed, ...rest } = frameCanGoBackByApp;
+    frameCanGoBackByApp = rest;
     revokePackageFrameSource(appId, packageObjectUrls);
   }
 
@@ -560,6 +624,29 @@
       frameBridgeOrigins(runtimeSrcFor(app), window.location.href).targetOrigin,
     );
     return true;
+  }
+
+  function appIdForMessageSource(source: MessageEventSource | null): string | null {
+    if (!source) return null;
+    for (const [appId, frame] of frames.entries()) {
+      if (frame.contentWindow === source) return appId;
+    }
+    return null;
+  }
+
+  function recordFrameNavigation(event: MessageEvent) {
+    const payload = event.data as { type?: string; canGoBack?: unknown } | null;
+    if (!payload || payload.type !== 'shippie:navigation-state') return;
+    const appId = appIdForMessageSource(event.source);
+    if (!appId) return;
+    const canGoBack = payload.canGoBack === true;
+    if (frameCanGoBackByApp[appId] === canGoBack) return;
+    frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: canGoBack };
+  }
+
+  function requestActiveFrameBack(): boolean {
+    if (!activeAppId || frameCanGoBackByApp[activeAppId] !== true) return false;
+    return postToAppFrame(activeAppId, { type: 'shippie:navigation-back' });
   }
 
   async function consumeIntent(
@@ -1193,7 +1280,11 @@
 
   $effect(() => {
     window.addEventListener('message', recordFromEvent);
-    return () => window.removeEventListener('message', recordFromEvent);
+    window.addEventListener('message', recordFrameNavigation);
+    return () => {
+      window.removeEventListener('message', recordFromEvent);
+      window.removeEventListener('message', recordFrameNavigation);
+    };
   });
 
   // Refresh the cross-app intent registry whenever the installed-apps
@@ -1247,9 +1338,7 @@
       receiptsByApp = defaultApp ? { [defaultAppId]: createReceiptFor(defaultApp) } : {};
       activeAppId = defaultAppId;
     }
-    const requestedApp = data.requestedAppSlug
-      ? apps.find((app) => app.slug === data.requestedAppSlug)
-      : null;
+    const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
     if (requestedApp) {
       openApp(requestedApp.id);
     } else if (data.requestedAppSlug && data.focused) {
@@ -1274,6 +1363,7 @@
       }
     }
     storageReady = true;
+    void refreshAiReadiness();
     // First-run pill hint: pulse the bottom-pill once when this device
     // enters focused mode for the first time, so users discover the
     // exit gesture. Gated by localStorage so it never repeats.
@@ -1305,11 +1395,28 @@
   });
 
   function handleFocusedPopstate() {
+    if (!data.focused) return;
+    if (focusedDrawerOpen) {
+      focusedDrawerOpen = false;
+      try {
+        history.pushState({ shippieFocused: true }, '');
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (requestActiveFrameBack()) {
+      try {
+        history.pushState({ shippieFocused: true }, '');
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     // popstate fires after the browser already moved one entry back.
     // We're now at the entry we want to leave from; goto() replaces
     // it with /container so refreshes don't bounce back into focused
     // mode.
-    if (!data.focused) return;
     goto('/container', { replaceState: true });
   }
 
@@ -1622,6 +1729,19 @@
               <button onclick={() => yourDataHost.close()}>Dismiss</button>
             </div>
           {/if}
+          <div class="ai-readiness" role="status">
+            <div>
+              <p class="mini-label">On-device AI</p>
+              <h3>{aiReadinessLabel}</h3>
+              <p>{aiReadinessBody}</p>
+            </div>
+            <div class="ai-readiness-meta">
+              <span>{aiReadiness.backend.toUpperCase()}</span>
+              <span>{aiReadiness.runtimeCached ? 'Runtime cached' : 'Runtime not cached'}</span>
+              <span>{aiReadiness.modelCount} model cache entries</span>
+              <button onclick={refreshAiReadiness}>Check again</button>
+            </div>
+          </div>
           <div class="data-list">
             {#each installedApps as app (app.id)}
               <article>
@@ -1993,6 +2113,39 @@
   .export-button {
     padding: 0.55rem 0.75rem;
   }
+  .ai-readiness {
+    padding: var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    background: var(--bg-pure);
+  }
+  .ai-readiness h3,
+  .ai-readiness p {
+    margin: 0;
+  }
+  .ai-readiness p:not(.mini-label) {
+    color: var(--text-secondary);
+  }
+  .ai-readiness-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .ai-readiness-meta span,
+  .ai-readiness-meta button {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+  }
   .row-actions {
     display: flex;
     flex-wrap: wrap;
@@ -2109,6 +2262,13 @@
       align-items: flex-start;
       flex-direction: column;
     }
+    .ai-readiness {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .ai-readiness-meta {
+      justify-content: flex-start;
+    }
   }
 
   /* Phase B2 — mesh status badge in topbar */
@@ -2200,7 +2360,8 @@
   .focused-frame :global(.frame-stage iframe) {
     width: 100%;
     height: 100%;
-    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
     border: 0;
     display: block;
   }

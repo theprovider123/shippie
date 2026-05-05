@@ -11,6 +11,12 @@
  */
 import { startObserve } from './observe/index.ts';
 import { installPatina } from './patina/index.ts';
+import {
+  attachBackSwipe,
+  attachKeyboardAvoidance,
+  attachPressFeedback,
+  attachPullToRefresh,
+} from './gestures.ts';
 import type { EnhanceConfig } from './observe/types.ts';
 
 interface ShippieMeta {
@@ -23,6 +29,7 @@ interface ShippieMeta {
 }
 
 let started = false;
+let immersiveDefaultsStarted = false;
 
 export function bootstrapObserve(metaOverride?: ShippieMeta): void {
   if (started) return;
@@ -42,6 +49,7 @@ export function bootstrapObserve(metaOverride?: ShippieMeta): void {
     if (started) return;
     started = true;
     startObserve({ config });
+    installImmersiveDefaults();
     // Patina is cosmetic + cosmetic-only; failures are swallowed inside
     // installPatina, so fire-and-forget without awaiting.
     void installPatina();
@@ -78,6 +86,42 @@ export function bootstrapObserve(metaOverride?: ShippieMeta): void {
   }
 }
 
+function installImmersiveDefaults(): void {
+  if (immersiveDefaultsStarted) return;
+  immersiveDefaultsStarted = true;
+  attachPressFeedback(document);
+  attachKeyboardAvoidance(document);
+  attachPullToRefresh(document.documentElement, {
+    threshold: 72,
+    onRefresh: () => {
+      try {
+        const ev = new CustomEvent('shippie:refresh', {
+          cancelable: true,
+          detail: { source: 'pull' },
+        });
+        const allowed = window.dispatchEvent(ev);
+        const reloadOptIn = document.documentElement.dataset.shippieRefreshDefault === 'reload';
+        if (allowed && reloadOptIn && !document.hidden) window.location.reload();
+      } catch {
+        /* refresh is best-effort */
+      }
+    },
+  });
+  attachBackSwipe({
+    edgeWidth: 18,
+    threshold: 72,
+    onTrigger: () => {
+      try {
+        const ev = new CustomEvent('shippie:back', { cancelable: true });
+        const allowed = window.dispatchEvent(ev);
+        if (allowed && history.length > 1) history.back();
+      } catch {
+        /* back gesture is best-effort */
+      }
+    },
+  });
+}
+
 /**
  * SPA navigation -> `shippie:pageview` bridge.
  *
@@ -104,6 +148,9 @@ export function bootstrapObserve(metaOverride?: ShippieMeta): void {
  */
 const PAGE_VIEW_EVENT = 'shippie:pageview';
 const PV_INSTALLED_FLAG = '__shippie_pv_installed';
+const NAV_STATE_EVENT = 'shippie:navigation-state';
+const NAV_BACK_EVENT = 'shippie:navigation-back';
+let navDepth = 0;
 
 function dispatchPageView(): void {
   if (typeof window === 'undefined' || typeof location === 'undefined') return;
@@ -111,6 +158,7 @@ function dispatchPageView(): void {
     window.dispatchEvent(
       new CustomEvent(PAGE_VIEW_EVENT, { detail: { path: location.pathname } }),
     );
+    postNavigationState();
   } catch {
     // No-op: dispatch should never throw, but if a polyfilled CustomEvent
     // misbehaves we'd rather lose one analytics tick than crash the page.
@@ -132,6 +180,7 @@ function installPageViewEmitter(): void {
     url?: string | URL | null,
   ): void {
     origPush(data, unused, url ?? null);
+    navDepth += 1;
     dispatchPageView();
   } as typeof history.pushState;
 
@@ -145,8 +194,46 @@ function installPageViewEmitter(): void {
   } as typeof history.replaceState;
 
   window.addEventListener('popstate', () => {
+    navDepth = Math.max(0, navDepth - 1);
     dispatchPageView();
   });
+
+  window.addEventListener('message', (event) => {
+    if (event.source !== window.parent) return;
+    const data = event.data as { type?: string } | null;
+    if (!data || data.type !== NAV_BACK_EVENT) return;
+    if (navDepth > 0) {
+      history.back();
+      postNavigationBackResult(true);
+    } else {
+      postNavigationBackResult(false);
+    }
+  });
+  postNavigationState();
+}
+
+function postNavigationState(): void {
+  try {
+    if (window.parent === window) return;
+    window.parent.postMessage(
+      { type: NAV_STATE_EVENT, canGoBack: navDepth > 0 },
+      '*',
+    );
+  } catch {
+    /* parent may be unavailable */
+  }
+}
+
+function postNavigationBackResult(handled: boolean): void {
+  try {
+    if (window.parent === window) return;
+    window.parent.postMessage(
+      { type: 'shippie:navigation-back-result', handled },
+      '*',
+    );
+  } catch {
+    /* parent may be unavailable */
+  }
 }
 
 /**

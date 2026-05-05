@@ -1,6 +1,11 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import { attachBackSwipe, attachPullToRefresh } from './gestures.ts';
+import {
+  attachBackSwipe,
+  attachKeyboardAvoidance,
+  attachPressFeedback,
+  attachPullToRefresh,
+} from './gestures.ts';
 
 let win: Window;
 const originalWindow = (globalThis as { window?: unknown }).window;
@@ -99,6 +104,34 @@ describe('attachPullToRefresh', () => {
     firePointer(target, 'pointermove', { clientX: 100, clientY: 200, pointerId: 1 });
     firePointer(target, 'pointerup', { clientX: 100, clientY: 200, pointerId: 1 });
     expect(refreshed).toBe(0);
+    detach();
+  });
+});
+
+describe('attachPressFeedback', () => {
+  test('marks interactive elements while pressed and clears on release', () => {
+    win.document.body.innerHTML = '<button id="b">Tap</button>';
+    const button = win.document.getElementById('b')!;
+    const detach = attachPressFeedback(win.document);
+    firePointer(button, 'pointerdown', { clientX: 10, clientY: 10, pointerId: 1 });
+    expect(button.getAttribute('data-shippie-pressing')).toBe('true');
+    firePointer(button, 'pointerup', { clientX: 10, clientY: 10, pointerId: 1 });
+    expect(button.getAttribute('data-shippie-pressing')).toBeNull();
+    detach();
+  });
+});
+
+describe('attachKeyboardAvoidance', () => {
+  test('scrolls focused text inputs into view after a short delay', async () => {
+    win.document.body.innerHTML = '<input id="i" />';
+    const input = win.document.getElementById('i') as unknown as HTMLInputElement & { scrolled?: boolean };
+    input.scrollIntoView = () => {
+      input.scrolled = true;
+    };
+    const detach = attachKeyboardAvoidance(win.document, { delayMs: 0 });
+    input.dispatchEvent(new win.Event('focusin', { bubbles: true }) as unknown as Event);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    expect(input.scrolled).toBe(true);
     detach();
   });
 });

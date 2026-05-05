@@ -13,13 +13,10 @@
  * the implementation seam between the URL pattern and the existing
  * orchestrator shell at /container.
  *
- * First-party showcases ALSO have static dist files at
- * `apps/platform/static/run/<slug>/` (built by
- * `scripts/prepare-showcases.mjs`). SvelteKit's static handler
- * resolves those before this dynamic route runs, so static files
- * for first-party showcases continue to serve directly. This route
- * only fires for slugs that DON'T have static files — i.e., maker
- * apps and any showcase that hasn't been pre-built.
+ * Top-level first-party showcase navigations are intercepted in
+ * `hooks.server.ts` before static assets resolve. Runtime iframes add
+ * `?shippie_embed=1`, which bypasses the redirect and loads the real
+ * static bundle.
  *
  * Why a redirect rather than rendering inline:
  *   - The container shell at /container already owns the
@@ -33,12 +30,13 @@
  */
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { containerSlugForRequest } from '$lib/showcase-slugs';
 
 export const GET: RequestHandler = ({ params, url }) => {
   const slug = params.slug;
   if (!slug) throw redirect(302, '/');
   const target = new URL('/container', url);
-  target.searchParams.set('app', slug);
+  target.searchParams.set('app', containerSlugForRequest(slug));
   target.searchParams.set('focused', '1');
   // Preserve any query a deep-link carried (e.g., `?recipe=stir-fry`).
   for (const [k, v] of url.searchParams.entries()) {

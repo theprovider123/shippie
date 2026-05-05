@@ -65,6 +65,8 @@ Internal packages expose `exports.types` and `exports.import` as `./src/index.ts
 ## Dev environment gotchas
 
 - **`/apps` 500s on a fresh checkout** until you run `bun run db:migrate:local` from `apps/platform/`. The marketplace SSR query needs the D1 schema + showcase seeds (migrations `0001` through `0022`). The homepage tolerates the empty table; `/apps` doesn't.
+- **`bunx wrangler deploy` after `prepare-showcases.mjs` is a no-op for assets unless you `bun run build` in between.** SvelteKit's `static/` only flows into `.svelte-kit/cloudflare/` via the build step. The deploy log is honest ("No updated asset files to upload") but it's easy to misread as "nothing changed in source." Always: generator → build → deploy.
+- **`prepare-showcases.mjs` does not clean orphan `static/run/<slug>/` dirs** when a showcase source disappears. After stub consolidation those orphan bakes survive in the worker's asset bundle, get served by the wrapper auto-bridge, and create ghost subdomains for retired apps. Either rm them by hand when retiring, or eventually teach the script to diff source vs. baked dirs.
 
 ## What's outstanding (user-side, not code)
 

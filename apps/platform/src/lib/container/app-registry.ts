@@ -7,6 +7,7 @@
  */
 
 import type { AppPackageManifest, AppPermissions, TrustReport } from '@shippie/app-package-contract';
+import { containerSlugForRequest } from '$lib/showcase-slugs';
 import {
   accentForKind,
   curatedApps,
@@ -109,7 +110,8 @@ export function findRequestedApp(
   requestedSlug: string | null | undefined,
 ): ContainerApp | null {
   if (!requestedSlug) return null;
-  return apps.find((app) => app.slug === requestedSlug) ?? null;
+  const normalized = containerSlugForRequest(requestedSlug);
+  return apps.find((app) => app.slug === normalized || app.slug === requestedSlug) ?? null;
 }
 
 /**

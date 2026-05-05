@@ -72,8 +72,12 @@ export {
 
 export {
   attachBackSwipe,
+  attachKeyboardAvoidance,
+  attachPressFeedback,
   attachPullToRefresh,
   type BackSwipeOptions,
+  type KeyboardAvoidanceOptions,
+  type PressFeedbackOptions,
   type PullToRefreshOptions,
 } from './gestures.ts';
 

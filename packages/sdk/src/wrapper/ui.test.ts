@@ -25,12 +25,12 @@ afterAll(() => {
 });
 
 describe('mountInstallBanner', () => {
-  test('renders a banner with INSTALL button when tier=soft', () => {
+  test('renders a soft banner that opens the install flow', () => {
     mountInstallBanner({ tier: 'soft', onInstall: () => {}, onDismiss: () => {} });
     const banner = win.document.querySelector('[data-shippie-banner]');
     expect(banner).not.toBeNull();
     const btn = banner?.querySelector('button[data-shippie-install]');
-    expect(btn?.textContent?.toLowerCase()).toContain('install');
+    expect(btn?.textContent?.toLowerCase()).toContain('show me');
   });
 
   test('renders nothing when tier=none', () => {
@@ -43,6 +43,22 @@ describe('mountInstallBanner', () => {
     mountInstallBanner({ tier: 'soft', onInstall: () => {}, onDismiss: () => {} });
     mountInstallBanner({ tier: 'soft', onInstall: () => {}, onDismiss: () => {} });
     expect(win.document.querySelectorAll('[data-shippie-banner]')).toHaveLength(1);
+  });
+
+  test('renders full tier as a guided install sheet', () => {
+    mountInstallBanner({
+      tier: 'full',
+      method: 'ios-safari',
+      platform: 'ios',
+      appName: 'Shippie',
+      onInstall: () => {},
+      onDismiss: () => {},
+    });
+    const sheet = win.document.querySelector('[data-shippie-banner][data-shippie-guide]');
+    expect(sheet).not.toBeNull();
+    expect(sheet?.textContent).toContain('Add Shippie to Home Screen');
+    expect(sheet?.textContent).toContain('Share button');
+    expect(sheet?.querySelectorAll('[data-shippie-install-steps] li').length).toBe(3);
   });
 
   test('install button invokes onInstall', () => {

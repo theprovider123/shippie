@@ -11,13 +11,22 @@ describe('resolveRuntimeSrc', () => {
     ).toBe('http://localhost:5192');
   });
 
-  test('uses same-origin /run path in production', () => {
+  test('uses iframe-safe same-origin /run path in production', () => {
     expect(
       resolveRuntimeSrc(
         { devUrl: 'http://localhost:5192', standaloneUrl: '/run/recipe/' },
         'shippie.app',
       ),
-    ).toBe('/run/recipe/');
+    ).toBe('/run/recipe/?shippie_embed=1');
+  });
+
+  test('normalizes extensionless /run paths before adding embed marker', () => {
+    expect(
+      resolveRuntimeSrc(
+        { devUrl: null, standaloneUrl: '/run/recipe' },
+        'shippie.app',
+      ),
+    ).toBe('/run/recipe/?shippie_embed=1');
   });
 
   test('allows absolute standalone URLs for custom domains and subdomains', () => {

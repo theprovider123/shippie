@@ -16,7 +16,18 @@ export function resolveRuntimeSrc(app: RuntimeApp, currentHostname: string): str
     currentHostname === '127.0.0.1' ||
     currentHostname === '[::1]';
   if (onLocalhost && app.devUrl) return app.devUrl;
-  if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) return app.standaloneUrl;
+  if (!onLocalhost && app.standaloneUrl?.startsWith('/run/')) {
+    return iframeRuntimeUrl(app.standaloneUrl);
+  }
   if (app.standaloneUrl && /^https?:\/\//i.test(app.standaloneUrl)) return app.standaloneUrl;
   return null;
+}
+
+function iframeRuntimeUrl(path: string): string {
+  const [rawPath, rawQuery = ''] = path.split('?', 2);
+  const normalizedPath = /^\/run\/[^/]+$/.test(rawPath) ? `${rawPath}/` : rawPath;
+  const params = new URLSearchParams(rawQuery);
+  params.set('shippie_embed', '1');
+  const query = params.toString();
+  return query ? `${normalizedPath}?${query}` : normalizedPath;
 }

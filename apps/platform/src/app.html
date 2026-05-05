@@ -7,7 +7,7 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-167.png" sizes="167x167" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-152.png" sizes="152x152" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#14120F" />
     <meta property="og:title" content="Shippie — Ship local." />
     <meta property="og:description" content="Open marketplace for installable web apps. No app store. Just the web, installed." />
@@ -64,7 +64,8 @@
       if ('serviceWorker' in navigator) {
         var h = location.hostname;
         var isPlatform = h === 'shippie.app' || h === 'www.shippie.app' ||
-                         h === 'next.shippie.app' || h === 'localhost';
+                         h === 'next.shippie.app' || h === 'localhost' ||
+                         h === '127.0.0.1' || h === '::1' || h === '[::1]';
         if (isPlatform) {
           window.addEventListener('load', function () {
             navigator.serviceWorker.register('/__shippie-pwa/sw.js', { scope: '/' })

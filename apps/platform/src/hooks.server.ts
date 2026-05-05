@@ -16,9 +16,17 @@
 import type { Handle } from '@sveltejs/kit';
 import { createLucia } from '$server/auth/lucia';
 import { dispatchMakerSubdomain } from '$server/wrapper/dispatcher';
-import { FIRST_PARTY_SHOWCASE_SLUGS } from '$lib/showcase-slugs';
+import { FIRST_PARTY_SHOWCASE_SLUGS, containerSlugForRequest } from '$lib/showcase-slugs';
 
-const PLATFORM_HOSTS = new Set(['next.shippie.app', 'shippie.app', 'www.shippie.app', 'localhost']);
+const PLATFORM_HOSTS = new Set([
+  'next.shippie.app',
+  'shippie.app',
+  'www.shippie.app',
+  'localhost',
+  '127.0.0.1',
+  '::1',
+  '[::1]',
+]);
 
 // First-party showcase apps bundled into apps/platform/static/run/ at
 // build time by scripts/prepare-showcases.mjs. Hitting
@@ -70,6 +78,9 @@ export const handle: Handle = async ({ event, resolve }) => {
     // resolveHostFull returns null for). Should be a 404 page.
   }
 
+  const focusedRunRedirect = focusedRunTarget(event);
+  if (focusedRunRedirect) return focusedRunRedirect;
+
   // Platform host — wire Lucia.
   event.locals.user = null;
   event.locals.session = null;
@@ -113,3 +124,26 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   return resolve(event);
 };
+
+function focusedRunTarget(event: Parameters<Handle>[0]['event']): Response | null {
+  const match = /^\/run\/([^/]+)\/?$/.exec(event.url.pathname);
+  if (!match) return null;
+  if (event.url.searchParams.get('shippie_embed') === '1') return null;
+
+  // Only redirect the human top-level document. Runtime iframes and
+  // offline cache warms still need the real static /run/<slug>/ bundle.
+  const destination = event.request.headers.get('sec-fetch-dest');
+  if (destination !== 'document') return null;
+
+  const target = new URL('/container', event.url);
+  target.searchParams.set('app', containerSlugForRequest(decodeURIComponent(match[1]!)));
+  target.searchParams.set('focused', '1');
+  for (const [key, value] of event.url.searchParams.entries()) {
+    if (key === 'app' || key === 'focused' || key === 'shippie_embed') continue;
+    target.searchParams.set(key, value);
+  }
+  return new Response(null, {
+    status: 302,
+    headers: { location: target.pathname + target.search, 'cache-control': 'no-store' },
+  });
+}

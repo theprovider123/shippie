@@ -31,6 +31,7 @@ describe('injectEssentials', () => {
     const out = injectEssentials('<html><head></head><body></body></html>', CSP_META, manifest);
     expect(out).toContain('name="viewport"');
     expect(out).toContain('width=device-width');
+    expect(out).toContain('interactive-widget=resizes-content');
   });
 
   test('does not duplicate viewport meta when maker provided one', () => {
@@ -38,6 +39,17 @@ describe('injectEssentials', () => {
       '<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head></html>';
     const out = injectEssentials(html, CSP_META, manifest);
     const matches = out.match(/name="viewport"/g);
+    expect(matches?.length).toBe(1);
+  });
+
+  test('adds immersive mobile baseline styles once', () => {
+    const out = injectEssentials('<html><head></head><body></body></html>', CSP_META, manifest);
+    expect(out).toContain('data-shippie-immersive-base');
+    expect(out).toContain('overscroll-behavior-y:contain');
+    expect(out).toContain('touch-action:manipulation');
+
+    const second = injectEssentials(out, CSP_META, manifest);
+    const matches = second.match(/data-shippie-immersive-base/g);
     expect(matches?.length).toBe(1);
   });
 

@@ -29,6 +29,8 @@ import { readAppProfile } from '$server/deploy/kv-write';
 import { canonicalAppUrl } from '$lib/showcase-slugs';
 import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
+import type { R2Bucket } from '@cloudflare/workers-types';
+import type { TrustReport } from '@shippie/app-package-contract';
 
 export const load: PageServerLoad = async ({ platform, params, cookies, locals, url }) => {
   if (!platform?.env.DB) throw error(503, 'Database binding unavailable');
@@ -114,6 +116,7 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
           channel: schema.appPackages.channel,
           packageHash: schema.appPackages.packageHash,
           containerEligibility: schema.appPackages.containerEligibility,
+          trustReportPath: schema.appPackages.trustReportPath,
           createdAt: schema.appPackages.createdAt,
         })
         .from(schema.appPackages)
@@ -128,6 +131,10 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     latestDeploy?.autopackagingReport,
     appProfile,
   );
+  const latestTrust =
+    platform.env.APPS && packageRows[0]?.trustReportPath
+      ? await readJson<TrustReport>(platform.env.APPS, packageRows[0].trustReportPath)
+      : null;
 
   // Changelog from the autopackaging report — only show if the app
   // actually wrote one (no 'default' filler).
@@ -195,6 +202,17 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       // and proxies maker R2 bundles, this branch collapses.
       standaloneUrl: canonicalAppUrl(app.slug),
     },
+    trustCard: latestTrust
+      ? {
+          privacyGrade: latestTrust.privacy.grade,
+          securityScore: latestTrust.security.score,
+          externalDomains: latestTrust.privacy.externalDomains,
+          containerEligibility: latestTrust.containerEligibility,
+          dataLocation: 'On this device by default',
+          serverContent: 'No app content stored on Shippie servers by default',
+          proofBadges: capabilityBadges.filter((badge) => badge.proven).map((badge) => badge.label),
+        }
+      : null,
     grantedPermissions,
     capabilityBadges,
     changelog,
@@ -203,3 +221,13 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     isMaker: locals.user?.id === app.makerId,
   };
 };
+
+async function readJson<T>(bucket: R2Bucket, key: string): Promise<T | null> {
+  try {
+    const obj = await bucket.get(key);
+    if (!obj) return null;
+    return JSON.parse(await obj.text()) as T;
+  } catch {
+    return null;
+  }
+}

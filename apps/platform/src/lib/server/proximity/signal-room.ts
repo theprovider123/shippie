@@ -22,6 +22,11 @@
  * message; the DO fans out `payload` to every other peer in the room.
  * Payload is opaque to the DO — apps E2E-encrypt their own bytes.
  *
+ * Privacy boundary: this DO can still observe room membership, peer IDs,
+ * connection timing, and relay volume while a room is active. The claim is
+ * "no app content is stored on Shippie servers by default", not "no
+ * metadata exists".
+ *
  * Auth: the route forwarding to this DO is responsible for any auth
  * gating (e.g., room visibility checks). The DO itself is pure routing.
  *

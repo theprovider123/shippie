@@ -65,6 +65,19 @@
       toast.push({ kind: 'error', message: 'Could not copy. Long-press the link to copy.' });
     }
   }
+
+  function eligibilityLabel(value: string): string {
+    if (value === 'first_party') return 'First-party container app';
+    if (value === 'curated') return 'Curated for Shippie';
+    if (value === 'compatible') return 'Container compatible';
+    if (value === 'standalone_only') return 'Standalone only';
+    if (value === 'blocked') return 'Blocked from container';
+    return value.replaceAll('_', ' ');
+  }
+
+  function securityLabel(score: number | null): string {
+    return score === null ? 'Unscored' : `${score}/100`;
+  }
 </script>
 
 <svelte:head>
@@ -112,6 +125,70 @@
 </header>
 
 <div class="body wrap">
+  {#if data.trustCard}
+    <section class="section trust-card" aria-labelledby="trust-card-title">
+      <div class="section-intro">
+        <h2 id="trust-card-title">Trust Card</h2>
+        <p>What Shippie could verify before you open this app.</p>
+      </div>
+      <div class="trust-grid">
+        <article>
+          <span>Data location</span>
+          <strong>{data.trustCard.dataLocation}</strong>
+          <p>{data.trustCard.serverContent}</p>
+        </article>
+        <article>
+          <span>Privacy grade</span>
+          <strong>{data.trustCard.privacyGrade ?? 'Ungraded'}</strong>
+          <p>
+            {data.trustCard.externalDomains.length === 0
+              ? 'No external domains detected.'
+              : `${data.trustCard.externalDomains.length} external domain${data.trustCard.externalDomains.length === 1 ? '' : 's'} detected.`}
+          </p>
+        </article>
+        <article>
+          <span>Security</span>
+          <strong>{securityLabel(data.trustCard.securityScore)}</strong>
+          <p>{eligibilityLabel(data.trustCard.containerEligibility)}</p>
+        </article>
+        <article>
+          <span>Proof badges</span>
+          <strong>{data.trustCard.proofBadges.length}</strong>
+          <p>
+            {data.trustCard.proofBadges.length > 0
+              ? data.trustCard.proofBadges.join(' · ')
+              : 'No runtime proof badges earned yet.'}
+          </p>
+        </article>
+      </div>
+      <div class="trust-detail">
+        <div>
+          <span>Declared permissions</span>
+          <p>
+            {data.grantedPermissions.length > 0
+              ? data.grantedPermissions.join(' · ')
+              : 'No extra permissions declared.'}
+          </p>
+        </div>
+        <div>
+          <span>External connections</span>
+          {#if data.trustCard.externalDomains.length > 0}
+            <div class="domain-list trust-domains">
+              {#each data.trustCard.externalDomains as domain (domain.domain)}
+                <p>
+                  {domain.domain} · {domain.purpose}
+                  {domain.personalData ? ' · may involve personal data' : ''}
+                </p>
+              {/each}
+            </div>
+          {:else}
+            <p>No external network domains were detected in the latest package scan.</p>
+          {/if}
+        </div>
+      </div>
+    </section>
+  {/if}
+
   {#if data.grantedPermissions.length > 0}
     <section class="section">
       <h2>What this app can do</h2>
@@ -336,6 +413,65 @@
     margin: 0 0 var(--space-md);
     letter-spacing: -0.01em;
   }
+  .section-intro h2 { margin-bottom: 0.35rem; }
+  .section-intro p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+  }
+  .trust-card {
+    display: grid;
+    gap: var(--space-md);
+  }
+  .trust-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-md);
+  }
+  .trust-grid article,
+  .trust-detail {
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    background: var(--surface);
+  }
+  .trust-grid article {
+    min-width: 0;
+    padding: var(--space-md);
+    display: grid;
+    gap: 6px;
+  }
+  .trust-grid span,
+  .trust-detail span {
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    color: var(--text-light);
+  }
+  .trust-grid strong {
+    color: var(--text);
+    font-size: 1.1rem;
+    line-height: 1.2;
+  }
+  .trust-grid p,
+  .trust-detail p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.6;
+  }
+  .trust-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+    padding: var(--space-md);
+  }
+  .trust-detail > div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+  .trust-domains {
+    font-size: var(--small-size);
+  }
   .perms {
     list-style: none;
     margin: 0;
@@ -446,6 +582,17 @@
   }
   @media (max-width: 640px) {
     .ownership-grid {
+      grid-template-columns: 1fr;
+    }
+    .trust-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .trust-detail {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 520px) {
+    .trust-grid {
       grid-template-columns: 1fr;
     }
   }

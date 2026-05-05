@@ -11,8 +11,8 @@
  *      `apps/showcase-<slug>/` with placeholder substitution.
  *   2. Picks the next free port from 5191+ by scanning every existing
  *      `apps/showcase-* /vite.config.ts` for `port: NNNN`.
- *   3. Adds the slug to `FIRST_PARTY_SHOWCASE_SLUGS` in
- *      `apps/platform/src/hooks.server.ts`.
+ *   3. Relies on `prepare-showcases.mjs` to regenerate the first-party
+ *      showcase catalog from apps/showcase-*.
  *   4. Appends a curated-apps entry to
  *      `apps/platform/src/lib/container/state.ts` (with TODO comments
  *      for intents — the maker fills these in once the surface exists).
@@ -53,7 +53,6 @@ const PLATFORM_DIR = resolve(__dirname, '..');
 const REPO_ROOT = resolve(PLATFORM_DIR, '..', '..');
 const APPS_DIR = resolve(REPO_ROOT, 'apps');
 const TEMPLATE_DIR = resolve(REPO_ROOT, 'templates', 'showcase-template');
-const HOOKS_FILE = resolve(PLATFORM_DIR, 'src', 'hooks.server.ts');
 const STATE_FILE = resolve(PLATFORM_DIR, 'src', 'lib', 'container', 'state.ts');
 const DRIZZLE_DIR = resolve(PLATFORM_DIR, 'drizzle');
 
@@ -97,8 +96,7 @@ copyTemplate(TEMPLATE_DIR, targetDir, {
   __PORT__: String(port),
 });
 
-console.log('→ registering slug in FIRST_PARTY_SHOWCASE_SLUGS');
-patchHooksFile(slug);
+console.log('→ showcase catalog will refresh on next prepare-showcases/build run');
 
 console.log('→ adding curated-apps entry to state.ts');
 patchCuratedApps(slug, name, short, desc, accent, port);
@@ -167,23 +165,6 @@ function walkAndReplace(dir, replacements) {
       if (next !== text) writeFileSync(path, next, 'utf8');
     }
   }
-}
-
-function patchHooksFile(slug) {
-  const text = readFileSync(HOOKS_FILE, 'utf8');
-  if (text.includes(`'${slug}'`)) {
-    console.log(`  ${slug} already in FIRST_PARTY_SHOWCASE_SLUGS — skipping`);
-    return;
-  }
-  const marker = `]);`;
-  const setStart = text.indexOf('FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>([');
-  if (setStart < 0) fail('Could not find FIRST_PARTY_SHOWCASE_SLUGS in hooks.server.ts.');
-  const closeIdx = text.indexOf(marker, setStart);
-  if (closeIdx < 0) fail('Could not find closing ]); for FIRST_PARTY_SHOWCASE_SLUGS.');
-  const prefix = text.slice(0, closeIdx);
-  const rest = text.slice(closeIdx);
-  const insert = `  '${slug}',\n`;
-  writeFileSync(HOOKS_FILE, prefix + insert + rest, 'utf8');
 }
 
 function patchCuratedApps(slug, name, short, desc, accent, port) {

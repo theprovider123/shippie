@@ -115,7 +115,7 @@
   {:else if meshStatus.state === 'connecting'}
     <p>Connecting locally…</p>
   {:else}
-    <p>Connect locally with people in the same room — no servers, no accounts.</p>
+    <p>Connect with nearby people. App content stays peer-to-peer when possible, with encrypted relay fallback.</p>
     <div class="mesh-actions">
       <button class="mesh-create" onclick={onCreateMeshRoom}>Start a room</button>
       <span>or</span>

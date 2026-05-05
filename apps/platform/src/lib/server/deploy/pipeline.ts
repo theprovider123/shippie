@@ -72,6 +72,14 @@ import {
   type DeployEventEmitter,
 } from './deploy-events';
 
+const IMMERSIVE_BASE_STYLE = `<style data-shippie-immersive-base>
+:root{--shippie-safe-top:env(safe-area-inset-top,0px);--shippie-safe-right:env(safe-area-inset-right,0px);--shippie-safe-bottom:env(safe-area-inset-bottom,0px);--shippie-safe-left:env(safe-area-inset-left,0px)}
+html{min-height:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+body{min-height:100svh;min-height:100dvh;overscroll-behavior-y:contain}
+button,a[role="button"],[role="button"],nav,header,[data-shippie-ui],.card,.tile{-webkit-user-select:none;user-select:none;touch-action:manipulation}
+input,textarea,select,[contenteditable="true"],article,main,p,li{-webkit-user-select:text;user-select:text}
+</style>`;
+
 export interface DeployStaticInput {
   slug: string;
   makerId: string;
@@ -631,8 +639,14 @@ export function injectEssentials(
   if (!/<meta\s+[^>]*name\s*=\s*["']viewport["']/i.test(out)) {
     out = out.replace(
       /<head([^>]*)>/i,
-      `<head$1>\n  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`,
+      `<head$1>\n  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">`,
     );
+  }
+
+  // 3b. Immersive phone baseline — keep maker design intact while making
+  // every wrapped app behave less like a loose browser page on mobile.
+  if (!/data-shippie-immersive-base/i.test(out)) {
+    out = out.replace(/<head([^>]*)>/i, `<head$1>\n  ${IMMERSIVE_BASE_STYLE}`);
   }
 
   // 4. lang on <html> — only set if absent. Best-effort 'en' default.
