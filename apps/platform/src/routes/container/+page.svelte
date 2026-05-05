@@ -597,6 +597,7 @@
             yourDataHost.openFor(id);
             return { opened: true };
           },
+          trackAnalytics,
           fireTexture: (name) => textureRouter.fire(name),
           runAi,
           broadcastIntent: (providerAppId, intent, rows) =>
@@ -1276,6 +1277,65 @@
       },
       ...logs.slice(0, 11),
     ];
+  }
+
+  async function trackAnalytics(appId: string, payload: unknown) {
+    const app = appById.get(appId);
+    if (!app) {
+      return {
+        accepted: false,
+        mode: 'aggregate-only' as const,
+        persisted: false,
+        reason: 'analytics_unavailable' as const,
+      };
+    }
+    const event = normalizeAnalyticsEvent(payload);
+    if (!event) {
+      return {
+        accepted: false,
+        mode: 'aggregate-only' as const,
+        persisted: false,
+        reason: 'invalid_event' as const,
+      };
+    }
+
+    try {
+      const res = await fetch(`/__shippie/analytics?slug=${encodeURIComponent(app.slug)}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ events: [event] }),
+      });
+      return {
+        accepted: res.ok,
+        mode: 'aggregate-only' as const,
+        persisted: res.ok,
+        reason: res.ok ? undefined : ('analytics_unavailable' as const),
+      };
+    } catch {
+      return {
+        accepted: false,
+        mode: 'aggregate-only' as const,
+        persisted: false,
+        reason: 'network_error' as const,
+      };
+    }
+  }
+
+  function normalizeAnalyticsEvent(payload: unknown):
+    | { event: string; props?: Record<string, unknown>; ts: number }
+    | null {
+    if (!payload || typeof payload !== 'object') return null;
+    const record = payload as Record<string, unknown>;
+    const event = record.event ?? record.event_name;
+    if (typeof event !== 'string' || event.length === 0 || event.length > 128) return null;
+    const props = record.props ?? record.properties;
+    return {
+      event,
+      props: props && typeof props === 'object' && !Array.isArray(props)
+        ? (props as Record<string, unknown>)
+        : undefined,
+      ts: typeof record.ts === 'number' ? record.ts : Date.now(),
+    };
   }
 
   $effect(() => {

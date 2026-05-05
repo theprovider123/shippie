@@ -16,10 +16,6 @@ import {
 
 const shippie = createShippieIframeSdk({ appId: 'app_coffee' });
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
-
 const ROAST_LEVELS: ReadonlyArray<RoastLevel> = ['light', 'medium', 'dark'];
 const METHODS: ReadonlyArray<BrewMethod> = [
   'v60',
@@ -168,10 +164,7 @@ export function App() {
   }
 
   function openYourData() {
-    if (typeof window === 'undefined') return;
-    const root = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof root?.openYourData === 'function') root.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'coffee' });
   }
 
   const recentBrews = useMemo(() => brews.slice(0, 6), [brews]);

@@ -10,10 +10,6 @@ import { load, newId, save, type Session } from './db.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_breath' });
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
-
 export function App() {
   const initial = load();
   const [sessions, setSessions] = useState<Session[]>(initial.sessions);
@@ -110,10 +106,7 @@ export function App() {
   }
 
   function openYourData() {
-    if (typeof window === 'undefined') return;
-    const root = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof root?.openYourData === 'function') root.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'breath' });
   }
 
   const remainingSec = Math.max(0, Math.ceil(target - elapsed));

@@ -15,10 +15,6 @@ import { load, newId, save, type Cook } from './db.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_cooking' });
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
-
 const DONENESS_ORDER: Doneness[] = [
   'rare',
   'med-rare',
@@ -132,10 +128,7 @@ export function App() {
   }
 
   function openYourData() {
-    if (typeof window === 'undefined') return;
-    const root = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof root?.openYourData === 'function') root.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'cooking' });
   }
 
   return (

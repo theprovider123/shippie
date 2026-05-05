@@ -105,6 +105,13 @@ export interface TransferCommitResult {
     | 'permission_denied';
 }
 
+export interface AnalyticsTrackResult {
+  accepted: boolean;
+  mode: 'aggregate-only';
+  persisted: boolean;
+  reason?: 'analytics_unavailable' | 'invalid_event' | 'network_error';
+}
+
 export interface AppHandlerContext {
   appId: string;
   app: ContainerApp;
@@ -208,6 +215,15 @@ export interface AppHandlerContext {
     kind: string,
     payload: unknown,
   ) => TransferCommitResult | Promise<TransferCommitResult>;
+  /**
+   * Persist or forward aggregate-only analytics for iframe apps. The
+   * handler is optional for unit tests, but production/container code
+   * supplies it so `analytics.track` is not a fake acknowledgement.
+   */
+  trackAnalytics?: (
+    appId: string,
+    payload: unknown,
+  ) => AnalyticsTrackResult | Promise<AnalyticsTrackResult>;
 }
 
 export type AppHandlers = Record<string, BridgeHandler>;
@@ -230,11 +246,15 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
       appId,
       received: payload,
     }),
-    'analytics.track': ({ payload }) => ({
-      accepted: true,
-      mode: 'aggregate-only' as const,
-      event: payload,
-    }),
+    'analytics.track': ({ payload }) =>
+      ctx.trackAnalytics
+        ? ctx.trackAnalytics(appId, payload)
+        : {
+            accepted: false,
+            mode: 'aggregate-only' as const,
+            persisted: false,
+            reason: 'analytics_unavailable' as const,
+          },
     // Phase A2 — cross-app intents.
     //
     // intent.consume — caller asks "give me data for intent X". The

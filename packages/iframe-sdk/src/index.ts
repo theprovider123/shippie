@@ -132,6 +132,14 @@ export interface ShippieIframeSdkOptions {
   appId: string;
 }
 
+export interface OpenYourDataOptions {
+  /**
+   * Container/catalog slug to preserve when falling back to the platform
+   * Your Data surface outside an iframe.
+   */
+  appSlug?: string;
+}
+
 export interface IntentBroadcast {
   intent: string;
   rows: ReadonlyArray<unknown>;
@@ -210,6 +218,13 @@ export interface ShippieIframeSdk {
      */
     onIncomingCommit(handler: (event: IncomingTransferCommit) => void): () => void;
   };
+  /**
+   * Open the best available Your Data surface:
+   *   1. container bridge overlay when iframe-loaded,
+   *   2. wrapper Shadow DOM panel on maker subdomains,
+   *   3. platform container data section for first-party /run apps.
+   */
+  openYourData(options?: OpenYourDataOptions): void;
   /** Trigger the container's permission prompt for an intent the app declares. */
   requestIntent(intent: string): void;
   /** True only when running inside an iframe whose parent isn't the same window. */
@@ -258,6 +273,25 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
       { protocol: PROTOCOL, id: nextId(capability), appId, capability, method, payload },
       '*',
     );
+  }
+
+  function openYourData(options: OpenYourDataOptions = {}): void {
+    if (!w) return;
+    if (inContainer) {
+      send('data.openPanel', 'open', {});
+      return;
+    }
+
+    const root = (w as unknown as { shippie?: { openYourData?: () => void } }).shippie;
+    if (typeof root?.openYourData === 'function') {
+      root.openYourData();
+      return;
+    }
+
+    const target = new URL('/container', w.location.origin);
+    target.searchParams.set('section', 'data');
+    if (options.appSlug) target.searchParams.set('app', options.appSlug);
+    w.location.assign(`${target.pathname}${target.search}`);
   }
 
   /**
@@ -454,6 +488,7 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
         };
       },
     },
+    openYourData,
     requestIntent(intent) {
       send('intent.consume', 'consume', { intent });
     },

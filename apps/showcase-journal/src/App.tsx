@@ -11,10 +11,9 @@ import { readImportFragment } from '@shippie/share';
 import { ImportCard } from './share/ImportCard.tsx';
 import { checkJournalImport, type JournalImportCheck } from './share/journal-share.ts';
 import { wrapNavigation } from '@shippie/sdk/wrapper';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
+const shippie = createShippieIframeSdk({ appId: 'app_journal' });
 
 type Tab = 'quick' | 'write' | 'browse' | 'search' | 'recall' | 'trends' | 'year';
 
@@ -69,10 +68,7 @@ export function App() {
   };
 
   const openYourData = () => {
-    if (typeof window === 'undefined') return;
-    const shippie = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof shippie?.openYourData === 'function') shippie.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'journal' });
   };
 
   return (

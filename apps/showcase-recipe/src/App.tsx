@@ -8,10 +8,9 @@ import { readImportFragment } from '@shippie/share';
 import { ImportCard } from './share/ImportCard.tsx';
 import { checkRecipeImport, type RecipeImportCheck } from './share/recipe-import.ts';
 import { wrapNavigation } from '@shippie/sdk/wrapper';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
+const shippie = createShippieIframeSdk({ appId: 'app_recipe_saver' });
 
 type Route =
   | { kind: 'list' }
@@ -83,14 +82,7 @@ export function App() {
   };
 
   const openYourData = () => {
-    if (typeof window === 'undefined') return;
-    const shippie = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof shippie?.openYourData === 'function') {
-      shippie.openYourData();
-    } else {
-      // Standalone fallback: open the worker route. Works even if SDK not loaded.
-      window.open('/__shippie/data', '_blank', 'noopener');
-    }
+    shippie.openYourData({ appSlug: 'recipe-saver' });
   };
 
   return (

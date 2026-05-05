@@ -16,10 +16,6 @@ import {
 
 const shippie = createShippieIframeSdk({ appId: 'app_pace' });
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
-
 const SPORTS: Sport[] = ['run', 'walk', 'cycle'];
 
 export function App() {
@@ -126,10 +122,7 @@ export function App() {
   const kph = paceToKph(paceSec);
 
   function openYourData() {
-    if (typeof window === 'undefined') return;
-    const root = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof root?.openYourData === 'function') root.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'pace' });
   }
 
   return (

@@ -23,7 +23,9 @@ interface EventPayload {
 }
 
 const MAX_BATCH = 20;
+const MAX_RETRY_QUEUE = 100;
 const FLUSH_INTERVAL_MS = 5_000;
+const RETRY_STORAGE_KEY = 'shippie:analytics:retry:v1';
 
 let buffer: EventPayload[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -89,12 +91,58 @@ function scheduleFlush(): void {
 }
 
 export async function flush(): Promise<void> {
-  if (buffer.length === 0) return;
-  const batch = buffer;
+  const pending = [...readRetryQueue(), ...buffer];
+  if (pending.length === 0) return;
+  const batch = pending.slice(0, MAX_BATCH);
+  const remaining = pending.slice(MAX_BATCH);
   buffer = [];
   try {
     await post('/analytics', { events: batch });
+    writeRetryQueue(remaining);
+    if (remaining.length > 0) scheduleFlush();
   } catch {
-    // Swallow — analytics must never break the app. Drop the batch.
+    // Swallow — analytics must never break the app. Keep a bounded
+    // retry queue so temporary offline / route failures don't look like
+    // success while silently losing every event.
+    writeRetryQueue(pending);
   }
+}
+
+function readRetryQueue(): EventPayload[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(RETRY_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isEventPayload).slice(-MAX_RETRY_QUEUE);
+  } catch {
+    return [];
+  }
+}
+
+function writeRetryQueue(events: EventPayload[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const next = events.filter(isEventPayload).slice(-MAX_RETRY_QUEUE);
+    if (next.length === 0) localStorage.removeItem(RETRY_STORAGE_KEY);
+    else localStorage.setItem(RETRY_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage may be unavailable in private/partitioned contexts.
+  }
+}
+
+function isEventPayload(value: unknown): value is EventPayload {
+  if (!value || typeof value !== 'object') return false;
+  const event = (value as EventPayload).event;
+  const ts = (value as EventPayload).ts;
+  const identify = (value as EventPayload).identify;
+  return (
+    typeof event === 'string' &&
+    event.length > 0 &&
+    event.length <= 128 &&
+    typeof ts === 'number' &&
+    Number.isFinite(ts) &&
+    (identify === undefined || typeof identify === 'boolean')
+  );
 }

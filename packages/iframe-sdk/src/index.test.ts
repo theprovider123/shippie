@@ -120,6 +120,37 @@ describe('createShippieIframeSdk — wire format + helpers', () => {
     delete (globalThis as any).window;
   });
 
+  test('openYourData uses the container bridge when iframe-loaded', () => {
+    const { win, posted } = fakeWindow();
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    sdk.openYourData({ appSlug: 'recipe-saver' });
+    expect(posted).toHaveLength(1);
+    expect((posted[0]!.message as any).capability).toBe('data.openPanel');
+    delete (globalThis as any).window;
+  });
+
+  test('openYourData falls back to the platform data section outside a container', () => {
+    let assigned = '';
+    const win: any = {
+      addEventListener() {},
+      removeEventListener() {},
+      location: {
+        origin: 'https://shippie.app',
+        assign(value: string) {
+          assigned = value;
+        },
+      },
+    };
+    win.parent = win;
+    win.self = win;
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    sdk.openYourData({ appSlug: 'recipe-saver' });
+    expect(assigned).toBe('/container?section=data&app=recipe-saver');
+    delete (globalThis as any).window;
+  });
+
   test('all calls no-op outside a container (parent === window)', () => {
     const win: any = {
       addEventListener() {},

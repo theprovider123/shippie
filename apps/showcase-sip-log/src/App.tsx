@@ -17,10 +17,6 @@ const shippie = createShippieIframeSdk({ appId: 'app_sip_log' });
 const HYDRATION_TARGET_ML = 2000; // 8 × 250ml
 const CAFFEINE_LIMIT_MG = 400;
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
-
 export function App() {
   const initial = load();
   const [sips, setSips] = useState<Sip[]>(initial.sips);
@@ -94,10 +90,7 @@ export function App() {
   const maxMl = Math.max(HYDRATION_TARGET_ML, ...last7.map((d) => d.ml));
 
   function openYourData() {
-    if (typeof window === 'undefined') return;
-    const root = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof root?.openYourData === 'function') root.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'sip-log' });
   }
 
   return (

@@ -12,10 +12,6 @@ import { load, newId, save, type Bake } from './db.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_dough' });
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
-
 function defaultReadyTime(): string {
   const d = new Date();
   d.setHours(d.getHours() + 24, 0, 0, 0);
@@ -114,10 +110,7 @@ export function App() {
   }
 
   function openYourData() {
-    if (typeof window === 'undefined') return;
-    const root = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof root?.openYourData === 'function') root.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'dough' });
   }
 
   return (

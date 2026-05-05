@@ -12,10 +12,6 @@ import {
 
 const shippie = createShippieIframeSdk({ appId: 'app_mood_pulse' });
 
-interface ShippieRoot {
-  openYourData?: () => void;
-}
-
 export function App() {
   const initial = load();
   const [moods, setMoods] = useState<MoodEntry[]>(initial.moods);
@@ -112,10 +108,7 @@ export function App() {
   }, [last30]);
 
   function openYourData() {
-    if (typeof window === 'undefined') return;
-    const root = (window as unknown as { shippie?: ShippieRoot }).shippie;
-    if (typeof root?.openYourData === 'function') root.openYourData();
-    else window.open('/__shippie/data', '_blank', 'noopener');
+    shippie.openYourData({ appSlug: 'mood-pulse' });
   }
 
   const correlations: string[] = [];
