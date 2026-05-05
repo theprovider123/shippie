@@ -1,0 +1,11 @@
+{
+  "name": "Symptom Diary",
+  "short_name": "Symptoms",
+  "description": "Chronic illness symptoms, triggers, medications, and exportable history.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#74A57F",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

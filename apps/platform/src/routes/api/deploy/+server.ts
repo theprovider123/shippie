@@ -66,6 +66,10 @@ export const POST: RequestHandler = async (event) => {
       );
     }
 
+    if (!result.deployId) {
+      return json({ error: 'deploy_failed', message: 'missing_deploy_id' }, { status: 500 });
+    }
+
     return json({
       success: true,
       slug,
@@ -74,6 +78,8 @@ export const POST: RequestHandler = async (event) => {
       files: result.files,
       total_bytes: result.totalBytes,
       live_url: result.liveUrl,
+      report_url: `/dashboard/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
+      report_json_url: `/api/deploy/${encodeURIComponent(result.deployId)}/report`,
       preflight: {
         passed: true,
         warnings: result.preflight.warnings.map((w) => ({ rule: w.rule, title: w.title })),

@@ -2483,6 +2483,27 @@
     flex-shrink: 0;
   }
 
+  @media (max-width: 640px) {
+    .focused-exit-pill {
+      top: calc(env(safe-area-inset-top, 0px) + 12px);
+      right: calc(env(safe-area-inset-right, 0px) + 12px);
+      left: auto;
+      width: 38px;
+      height: 38px;
+      justify-content: center;
+      padding: 0;
+      opacity: 0.55;
+    }
+    .focused-exit-pill span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+  }
+
   .focused-drawer {
     padding: env(safe-area-inset-top, 24px) 20px env(safe-area-inset-bottom, 24px);
     display: flex;

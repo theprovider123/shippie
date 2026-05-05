@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Therapy Notes",
+  "slug": "therapy-notes",
+  "description": "Local CBT worksheets, check-ins, and therapist handoff exports.",
+  "icon": "/icon.svg",
+  "theme_color": "#5E7B5C",
+  "background_color": "#151A17",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["therapy-checkin", "mood-logged"],
+    "consumes": ["sleep-logged", "mindful-session"]
+  },
+  "data_schemas": {
+    "worksheets": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  }
+}

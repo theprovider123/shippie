@@ -288,10 +288,16 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
       return;
     }
 
-    const target = new URL('/container', w.location.origin);
+    const platformOrigin =
+      w.location.hostname === 'localhost' || w.location.hostname === '127.0.0.1'
+        ? `${w.location.protocol}//${w.location.hostname}:4101`
+        : w.location.origin;
+    const target = new URL('/container', platformOrigin);
     target.searchParams.set('section', 'data');
     if (options.appSlug) target.searchParams.set('app', options.appSlug);
-    w.location.assign(`${target.pathname}${target.search}`);
+    w.location.assign(
+      target.origin === w.location.origin ? `${target.pathname}${target.search}` : target.href,
+    );
   }
 
   /**

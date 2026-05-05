@@ -1,0 +1,11 @@
+{
+  "name": "Cycle",
+  "short_name": "Cycle",
+  "description": "Local menstrual and fertility tracking with optional partner mesh.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F8EFEA",
+  "theme_color": "#A86060",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

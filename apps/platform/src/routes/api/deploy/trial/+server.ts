@@ -111,6 +111,10 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
+  if (!result.deployId) {
+    return json({ error: 'deploy_failed', message: 'missing_deploy_id' }, { status: 500 });
+  }
+
   // Flip trial flags on the freshly-inserted row.
   if (result.appId) {
     const trialUntil = new Date(Date.now() + TRIAL_TTL_MS).toISOString();
@@ -131,6 +135,8 @@ export const POST: RequestHandler = async (event) => {
     slug,
     deploy_id: result.deployId,
     live_url: result.liveUrl,
+    report_url: `/dashboard/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
+    report_json_url: `/api/deploy/${encodeURIComponent(result.deployId)}/report`,
     expires_at: new Date(Date.now() + TRIAL_TTL_MS).toISOString(),
     files: result.files,
     total_bytes: result.totalBytes,

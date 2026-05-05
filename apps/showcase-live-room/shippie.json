@@ -1,7 +1,13 @@
 {
+  "$schema": "https://shippie.app/schemas/app.json",
   "name": "Live Room",
-  "category": "social",
-  "themeColor": "#E8603C",
-  "backgroundColor": "#FAF7EF",
-  "groups": { "enabled": true }
+  "slug": "live-room",
+  "description": "Same-room quiz and buzzer sessions over the local mesh.",
+  "icon": "/icon.svg",
+  "theme_color": "#E8603C",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "groups": { "enabled": true },
+  "data_schemas": {}
 }

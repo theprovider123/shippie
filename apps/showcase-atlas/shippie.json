@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Atlas",
+  "slug": "atlas",
+  "description": "Offline trip companion for maps, places, photos, and notes.",
+  "icon": "/icon.svg",
+  "theme_color": "#4E7C9A",
+  "background_color": "#EDF3F1",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["trip-note", "place-pinned"],
+    "consumes": ["dined-out"]
+  },
+  "data_schemas": {
+    "places": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  }
+}

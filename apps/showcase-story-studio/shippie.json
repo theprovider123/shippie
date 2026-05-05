@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Story Studio",
+  "slug": "story-studio",
+  "description": "Kids draw, dictate, and mesh-share stories with family.",
+  "icon": "/icon.svg",
+  "theme_color": "#E0B345",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["story-shared", "story-draft"],
+    "consumes": []
+  },
+  "data_schemas": {
+    "stories": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  }
+}

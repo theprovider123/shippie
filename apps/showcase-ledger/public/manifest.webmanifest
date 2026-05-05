@@ -1,0 +1,11 @@
+{
+  "name": "Ledger",
+  "short_name": "Ledger",
+  "description": "Private expense tracking without bank scraping or aggregators.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#151A17",
+  "theme_color": "#17694D",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

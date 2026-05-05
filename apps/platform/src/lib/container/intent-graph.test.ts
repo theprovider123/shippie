@@ -10,7 +10,7 @@
  *   2. Every provider has at least one declared consumer OR is on
  *      the allowed-orphan list (intents some apps may listen to in
  *      future without yet having a producer in-tree).
- *   3. The cross-cluster acceptance pair (Recipe Saver →
+ *   3. The cross-cluster acceptance pair (Recipe Saver ->
  *      Habit Tracker on `cooked-meal`) resolves through the
  *      registry exactly the way the design pass requires.
  *   4. Heavy-hitting intents (cooked-meal, workout-completed,
@@ -29,14 +29,7 @@ import { curatedApps } from './state';
  * dined-out, walked) will gain consumers in P7+ as more apps land.
  */
 const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
-  'cooking-now',
-  'shopping-list',
-  'needs-restocking',
-  'symptom-logged',
-  'walked',
-  'focus-session',
-  'dined-out',
-  'hydration-logged',
+  'dough-ferment-started',
 ]);
 
 /**
@@ -46,6 +39,7 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
  */
 const ALLOWED_ORPHAN_CONSUMERS = new Set<string>([
   'budget-limit',
+  'symptom-logged',
 ]);
 
 describe('intent graph — registry resolves all curated intents', () => {
@@ -78,7 +72,7 @@ describe('intent graph — registry resolves all curated intents', () => {
   test('cross-cluster acceptance: Recipe Saver provides cooked-meal to Habit Tracker', () => {
     const providers = registry.providersFor('cooked-meal');
     const consumers = registry.consumersFor('cooked-meal');
-    expect(providers.map((p) => p.appSlug)).toContain('recipe-saver');
+    expect(providers.map((p) => p.appSlug)).toContain('recipe');
     expect(consumers.map((c) => c.appSlug)).toContain('habit-tracker');
   });
 

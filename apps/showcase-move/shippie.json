@@ -1,0 +1,26 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Move",
+  "slug": "move",
+  "description": "Pace, workout, and sleep correlations in one local log.",
+  "icon": "/icon.svg",
+  "theme_color": "#5EA777",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["run-planned", "workout-completed", "sleep-logged"],
+    "consumes": ["caffeine-logged"]
+  },
+  "data_schemas": {
+    "entries": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "minutes": "integer",
+      "distance_km": "real",
+      "sleep_hours": "real",
+      "quality": "integer",
+      "created_at": "datetime"
+    }
+  }
+}

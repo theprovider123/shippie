@@ -66,6 +66,6 @@ describe('hooks.server first-party showcase routing', () => {
     expect(resolve).not.toHaveBeenCalled();
     const body = (await res.json()) as { ok: boolean; slug: string };
     expect(body.ok).toBe(true);
-    expect(body.slug).toBe('recipe-saver');
+    expect(body.slug).toBe('recipe');
   });
 });

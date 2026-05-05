@@ -1,0 +1,11 @@
+{
+  "name": "Story Studio",
+  "short_name": "Stories",
+  "description": "Kids draw, dictate, and mesh-share stories with family.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#E0B345",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -25,11 +25,7 @@ export function canonicalShowcaseSlug(slug: string): string {
 }
 
 export function containerSlugForRequest(slug: string): string {
-  // The curated container still uses recipe-saver as the app id/slug
-  // because existing intent tests and permissions refer to that app.
-  // /run/recipe remains the public runtime slug.
-  if (slug === 'recipe') return 'recipe-saver';
-  return slug;
+  return canonicalShowcaseSlug(slug);
 }
 
 export function canonicalAppUrl(slug: string): string {

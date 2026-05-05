@@ -21,7 +21,11 @@ import {
   finalizeWrapperResponse,
 } from '$server/wrapper/dispatcher';
 import type { WrapperContext } from '$server/wrapper/env';
-import { FIRST_PARTY_SHOWCASE_SLUGS, containerSlugForRequest } from '$lib/showcase-slugs';
+import {
+  canonicalShowcaseSlug,
+  containerSlugForRequest,
+  isFirstPartyShowcase,
+} from '$lib/showcase-slugs';
 
 const PLATFORM_HOSTS = new Set([
   'next.shippie.app',
@@ -64,7 +68,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     // to shippie.app/run/<slug>/. Subdomain hygiene is acceptable;
     // 522s aren't.
     const subdomain = hostname.slice(0, -'.shippie.app'.length);
-    if (FIRST_PARTY_SHOWCASE_SLUGS.has(subdomain)) {
+    if (isFirstPartyShowcase(subdomain)) {
+      const showcaseSlug = canonicalShowcaseSlug(subdomain);
       if (event.url.pathname.startsWith('/__shippie/')) {
         if (!event.platform?.env) {
           return new Response('Platform bindings unavailable.', {
@@ -93,7 +98,7 @@ export const handle: Handle = async ({ event, resolve }) => {
         );
       }
       const targetPath = event.url.pathname === '/' ? '/' : event.url.pathname;
-      const target = `https://shippie.app/run/${subdomain}${targetPath}${event.url.search}`;
+      const target = `https://shippie.app/run/${showcaseSlug}${targetPath}${event.url.search}`;
       return new Response(null, {
         status: 302,
         headers: { location: target, 'cache-control': 'public, max-age=300' },

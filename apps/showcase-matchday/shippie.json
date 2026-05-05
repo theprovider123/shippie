@@ -1,0 +1,13 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Matchday",
+  "slug": "matchday",
+  "description": "Sport-flavoured group play today; crowd aggregation later.",
+  "icon": "/icon.svg",
+  "theme_color": "#17694D",
+  "background_color": "#F5F4EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "groups": { "enabled": true },
+  "data_schemas": {}
+}

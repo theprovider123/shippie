@@ -1,0 +1,13 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Whiteboard",
+  "slug": "whiteboard",
+  "description": "A shared sketch space for nearby groups and venue sessions.",
+  "icon": "/icon.svg",
+  "theme_color": "#4E7C9A",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "any",
+  "groups": { "enabled": true },
+  "data_schemas": {}
+}
