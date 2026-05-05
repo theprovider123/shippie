@@ -52,11 +52,13 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
   }
   const body = (await ctx.request.json().catch(() => ({}))) as { events?: SdkEvent[] };
   const raw = Array.isArray(body.events) ? body.events : [];
-  if (raw.length === 0) return Response.json({ success: true, ingested: 0 });
-  if (raw.length > 50) return Response.json({ error: 'batch_too_large' }, { status: 400 });
+  if (raw.length === 0) return Response.json({ success: true, received: 0, ingested: 0 });
+  if (raw.length > 50) return Response.json({ success: false, error: 'batch_too_large' }, { status: 400 });
 
   const events = raw.map(normalize).filter((e): e is PlatformEvent => e !== null);
-  if (events.length === 0) return Response.json({ success: true, ingested: 0 });
+  if (events.length === 0) {
+    return Response.json({ success: true, received: raw.length, ingested: 0, dropped: raw.length });
+  }
 
   const rl = checkRateLimit({
     key: `analytics:${ctx.slug}:${clientKey(ctx.request)}`,
@@ -65,7 +67,7 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
   });
   if (!rl.ok) {
     return Response.json(
-      { error: 'rate_limited', retry_after_ms: rl.retryAfterMs },
+      { success: false, error: 'rate_limited', retry_after_ms: rl.retryAfterMs },
       {
         status: 429,
         headers: { 'retry-after': String(Math.ceil(rl.retryAfterMs / 1000)) },
@@ -79,7 +81,7 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
     where: eq(schema.apps.slug, ctx.slug),
     columns: { id: true },
   });
-  if (!app) return Response.json({ error: 'unknown_app' }, { status: 404 });
+  if (!app) return Response.json({ success: false, error: 'unknown_app', slug: ctx.slug }, { status: 404 });
 
   let ingested = 0;
   try {
@@ -97,8 +99,15 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
     ingested = events.length;
   } catch (err) {
     console.error('[wrapper:analytics] insert failed', { slug: ctx.slug, err });
-    return Response.json({ error: 'insert_failed' }, { status: 500 });
+    return Response.json({ success: false, error: 'insert_failed' }, { status: 500 });
   }
 
-  return Response.json({ ingested });
+  return Response.json({
+    success: true,
+    slug: ctx.slug,
+    received: raw.length,
+    ingested,
+    dropped: raw.length - events.length,
+    traceId: ctx.traceId,
+  });
 }

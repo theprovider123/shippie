@@ -63,13 +63,14 @@ describe('analytics.track — container bridge persistence path', () => {
       accepted: true,
       mode: 'aggregate-only' as const,
       persisted: true,
+      ingested: 1,
     }));
     const handlers = buildHandlers(trackAnalytics);
     const payload = { event: 'recipe_saved', props: { source: 'test' } };
     const result = await handlers['analytics.track']!({ payload, ...dummyContext });
 
     expect(trackAnalytics).toHaveBeenCalledWith('app_recipe-saver', payload);
-    expect(result).toMatchObject({ accepted: true, persisted: true });
+    expect(result).toMatchObject({ accepted: true, persisted: true, ingested: 1 });
   });
 
   test('reports analytics_unavailable when no host tracker is supplied', async () => {

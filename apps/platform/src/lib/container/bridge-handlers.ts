@@ -109,7 +109,13 @@ export interface AnalyticsTrackResult {
   accepted: boolean;
   mode: 'aggregate-only';
   persisted: boolean;
-  reason?: 'analytics_unavailable' | 'invalid_event' | 'network_error';
+  reason?:
+    | 'analytics_unavailable'
+    | 'invalid_event'
+    | 'network_error'
+    | 'unknown_app'
+    | 'rate_limited';
+  ingested?: number;
 }
 
 export interface AppHandlerContext {

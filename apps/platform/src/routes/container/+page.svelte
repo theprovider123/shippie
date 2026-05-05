@@ -1305,11 +1305,16 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ events: [event] }),
       });
+      const body = (await res.json().catch(() => ({}))) as {
+        ingested?: number;
+        error?: string;
+      };
       return {
         accepted: res.ok,
         mode: 'aggregate-only' as const,
         persisted: res.ok,
-        reason: res.ok ? undefined : ('analytics_unavailable' as const),
+        ingested: typeof body.ingested === 'number' ? body.ingested : undefined,
+        reason: res.ok ? undefined : analyticsFailureReason(body.error),
       };
     } catch {
       return {
@@ -1319,6 +1324,12 @@
         reason: 'network_error' as const,
       };
     }
+  }
+
+  function analyticsFailureReason(error: string | undefined) {
+    if (error === 'unknown_app') return 'unknown_app' as const;
+    if (error === 'rate_limited') return 'rate_limited' as const;
+    return 'analytics_unavailable' as const;
   }
 
   function normalizeAnalyticsEvent(payload: unknown):

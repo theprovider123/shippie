@@ -96,16 +96,16 @@ export async function dispatchMakerSubdomain(
   // also gated. Skipped for /__shippie/*.
   const meta = await loadAppMeta(env.CACHE, slug);
   const gated = await runAccessGate(ctx, { meta });
-  if (gated) return finalizeResponse(gated, ctx);
+  if (gated) return finalizeWrapperResponse(gated, ctx);
 
   const url = new URL(request.url);
   const path = url.pathname;
 
   // System routes are always platform-owned, never the maker's.
   if (path.startsWith('/__shippie/')) {
-    const res = await dispatchSystem(ctx, path);
-    if (res) return finalizeResponse(res, ctx);
-    return finalizeResponse(
+    const res = await dispatchWrapperSystemRoute(ctx, path);
+    if (res) return finalizeWrapperResponse(res, ctx);
+    return finalizeWrapperResponse(
       Response.json(
         {
           error: 'not_found',
@@ -121,18 +121,18 @@ export async function dispatchMakerSubdomain(
   // Wrap mode → reverse proxy.
   const wrap = await loadWrapMeta(env.CACHE, slug);
   if (wrap) {
-    return finalizeResponse(await proxyWrappedApp({ ctx, wrap }), ctx);
+    return finalizeWrapperResponse(await proxyWrappedApp({ ctx, wrap }), ctx);
   }
 
   // Static maker app → R2.
-  return finalizeResponse(await serveFromR2(ctx), ctx);
+  return finalizeWrapperResponse(await serveFromR2(ctx), ctx);
 }
 
 /**
  * Dispatch /__shippie/* paths. Returns null if no handler matches so
  * the caller can decide on the 404 shape.
  */
-async function dispatchSystem(
+export async function dispatchWrapperSystemRoute(
   ctx: WrapperContext,
   path: string
 ): Promise<Response | null> {
@@ -211,7 +211,7 @@ async function dispatchSystem(
 /**
  * Apply per-app CSP from KV + standard hardening headers + trace echo.
  */
-async function finalizeResponse(
+export async function finalizeWrapperResponse(
   res: Response,
   ctx: WrapperContext
 ): Promise<Response> {

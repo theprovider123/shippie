@@ -22,6 +22,14 @@ interface EventPayload {
   ts: number;
 }
 
+export interface AnalyticsHealth {
+  buffered: number;
+  queued: number;
+  lastFlushAt: number | null;
+  lastFlushOk: boolean | null;
+  lastError: string | null;
+}
+
 const MAX_BATCH = 20;
 const MAX_RETRY_QUEUE = 100;
 const FLUSH_INTERVAL_MS = 5_000;
@@ -30,6 +38,9 @@ const RETRY_STORAGE_KEY = 'shippie:analytics:retry:v1';
 let buffer: EventPayload[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let manifestCache: { identifiable_analytics: boolean } | null = null;
+let lastFlushAt: number | null = null;
+let lastFlushOk: boolean | null = null;
+let lastError: string | null = null;
 
 async function ensureManifest(): Promise<{ identifiable_analytics: boolean }> {
   if (manifestCache) return manifestCache;
@@ -98,14 +109,30 @@ export async function flush(): Promise<void> {
   buffer = [];
   try {
     await post('/analytics', { events: batch });
+    lastFlushAt = Date.now();
+    lastFlushOk = true;
+    lastError = null;
     writeRetryQueue(remaining);
     if (remaining.length > 0) scheduleFlush();
-  } catch {
+  } catch (error) {
     // Swallow — analytics must never break the app. Keep a bounded
     // retry queue so temporary offline / route failures don't look like
     // success while silently losing every event.
+    lastFlushAt = Date.now();
+    lastFlushOk = false;
+    lastError = error instanceof Error ? error.message : 'analytics_flush_failed';
     writeRetryQueue(pending);
   }
+}
+
+export function getAnalyticsHealth(): AnalyticsHealth {
+  return {
+    buffered: buffer.length,
+    queued: readRetryQueue().length,
+    lastFlushAt,
+    lastFlushOk,
+    lastError,
+  };
 }
 
 function readRetryQueue(): EventPayload[] {

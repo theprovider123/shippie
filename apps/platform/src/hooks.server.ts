@@ -15,7 +15,12 @@
  */
 import type { Handle } from '@sveltejs/kit';
 import { createLucia } from '$server/auth/lucia';
-import { dispatchMakerSubdomain } from '$server/wrapper/dispatcher';
+import {
+  dispatchMakerSubdomain,
+  dispatchWrapperSystemRoute,
+  finalizeWrapperResponse,
+} from '$server/wrapper/dispatcher';
+import type { WrapperContext } from '$server/wrapper/env';
 import { FIRST_PARTY_SHOWCASE_SLUGS, containerSlugForRequest } from '$lib/showcase-slugs';
 
 const PLATFORM_HOSTS = new Set([
@@ -47,7 +52,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     hostname !== 'ai.shippie.app'
   ) {
     // First-party showcase: <slug>.shippie.app/* redirects to the
-    // canonical /run/<slug>/* on the apex host. We tried serving via
+    // canonical /run/<slug>/* on the apex host. System routes stay on
+    // the subdomain and use the same wrapper route handlers as maker
+    // apps, so /__shippie/data, /__shippie/analytics, /__shippie/install,
+    // and friends work before/after the apex redirect.
+    //
+    // We tried serving app assets via
     // ASSETS.fetch from the subdomain context, but the binding refuses
     // cross-host fetches and synthesises a 522. A 302 keeps URLs
     // working — the address bar just changes from <slug>.shippie.app
@@ -55,6 +65,33 @@ export const handle: Handle = async ({ event, resolve }) => {
     // 522s aren't.
     const subdomain = hostname.slice(0, -'.shippie.app'.length);
     if (FIRST_PARTY_SHOWCASE_SLUGS.has(subdomain)) {
+      if (event.url.pathname.startsWith('/__shippie/')) {
+        if (!event.platform?.env) {
+          return new Response('Platform bindings unavailable.', {
+            status: 503,
+            headers: { 'content-type': 'text/plain; charset=utf-8' },
+          });
+        }
+        const ctx: WrapperContext = {
+          request: event.request,
+          env: event.platform.env,
+          slug: containerSlugForRequest(subdomain),
+          traceId: firstPartyTraceId(event.request),
+        };
+        const res = await dispatchWrapperSystemRoute(ctx, event.url.pathname);
+        return finalizeWrapperResponse(
+          res ??
+            Response.json(
+              {
+                error: 'not_found',
+                message:
+                  'This __shippie/* route is not yet implemented in the current build.',
+              },
+              { status: 404 },
+            ),
+          ctx,
+        );
+      }
       const targetPath = event.url.pathname === '/' ? '/' : event.url.pathname;
       const target = `https://shippie.app/run/${subdomain}${targetPath}${event.url.search}`;
       return new Response(null, {
@@ -124,6 +161,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   return resolve(event);
 };
+
+function firstPartyTraceId(request: Request): string {
+  const incoming = request.headers.get('x-shippie-trace-id');
+  if (incoming && /^[a-zA-Z0-9-]{1,64}$/.test(incoming)) return incoming;
+  return crypto.randomUUID();
+}
 
 function focusedRunTarget(event: Parameters<Handle>[0]['event']): Response | null {
   const match = /^\/run\/([^/]+)\/?$/.exec(event.url.pathname);

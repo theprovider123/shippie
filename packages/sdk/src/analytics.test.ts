@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { flush, track } from './analytics.ts';
+import { flush, getAnalyticsHealth, track } from './analytics.ts';
 
 const RETRY_STORAGE_KEY = 'shippie:analytics:retry:v1';
 
@@ -30,6 +30,10 @@ describe('analytics retry queue', () => {
 
     const queued = JSON.parse(store.get(RETRY_STORAGE_KEY) ?? '[]') as Array<{ event: string }>;
     expect(queued.map((e) => e.event)).toContain('recipe_saved');
+    expect(getAnalyticsHealth()).toMatchObject({
+      queued: 1,
+      lastFlushOk: false,
+    });
   });
 
   test('replays and clears queued events when posting succeeds', async () => {
@@ -51,5 +55,10 @@ describe('analytics retry queue', () => {
       'queued_event',
     );
     expect(store.get(RETRY_STORAGE_KEY)).toBeUndefined();
+    expect(getAnalyticsHealth()).toMatchObject({
+      queued: 0,
+      lastFlushOk: true,
+      lastError: null,
+    });
   });
 });

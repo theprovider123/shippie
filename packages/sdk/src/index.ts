@@ -29,7 +29,7 @@ import * as installApi from './install.ts';
 import * as nativeApi from './native/index.ts';
 import { local as localRuntime } from './local.ts';
 import { meta } from './meta.ts';
-import { track, flush } from './analytics.ts';
+import { flush, getAnalyticsHealth, track } from './analytics.ts';
 import { configure, isConfigured, getBackendMeta } from './configure.ts';
 import { backup as backupApi } from './backup.ts';
 import { startInstallRuntime } from './wrapper/install-runtime.ts';
@@ -103,6 +103,9 @@ export const shippie = {
 
   track,
   flush,
+  analytics: {
+    health: getAnalyticsHealth,
+  },
   meta,
 
   /**
