@@ -33,7 +33,7 @@ describe('bucketByDay', () => {
 
   test('counts rows landing inside the window', () => {
     const rows = [row(NOW), row(NOW - DAY), row(NOW - DAY)];
-    const buckets = bucketByDay(rows, 7);
+    const buckets = bucketByDay(rows, 7, NOW);
     expect(buckets.length).toBe(7);
     const today = buckets.find((b) => b.date === dayKey(NOW));
     expect(today?.count).toBe(1);

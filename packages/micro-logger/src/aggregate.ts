@@ -18,13 +18,17 @@ export interface DayBucket {
   count: number;
 }
 
-export function bucketByDay(rows: readonly LoggedRow[], windowDays: number): DayBucket[] {
-  const cutoff = Date.now() - windowDays * MS_PER_DAY;
+export function bucketByDay(
+  rows: readonly LoggedRow[],
+  windowDays: number,
+  now: number = Date.now(),
+): DayBucket[] {
+  const cutoff = now - windowDays * MS_PER_DAY;
   const counts = new Map<string, number>();
   // Pre-seed every day in the window so the chart has a stable
   // x-axis even on days with zero rows.
   for (let i = windowDays - 1; i >= 0; i--) {
-    counts.set(dayKey(Date.now() - i * MS_PER_DAY), 0);
+    counts.set(dayKey(now - i * MS_PER_DAY), 0);
   }
   for (const row of rows) {
     if (row.loggedAt < cutoff) continue;
