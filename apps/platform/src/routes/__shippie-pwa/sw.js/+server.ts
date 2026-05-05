@@ -14,16 +14,19 @@
  */
 import type { RequestHandler } from './$types';
 import { SHOWCASE_PRECACHE } from '$lib/_generated/precache-list';
+import { AI_RUNTIME_URLS } from '$lib/container/ai-runtime';
 
 const SW_BODY = `// shippie-marketplace SW
 const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
 const MODEL_CACHE = 'shippie.models.v1';
 const APPS_PREFIX = '/apps';
-// Phase 1 source: esm.sh CDN. The shim resolves transitive imports
-// (onnxruntime-web, buffer, process) to esm.sh paths automatically;
-// browser HTTP cache picks them up on first AI call. Phase 2 will
-// mirror onto models.shippie.app for fully self-hosted delivery.
-const AI_RUNTIME_URLS = ['https://esm.sh/@huggingface/transformers@3.0.0'];
+// Phase 2: same-origin /__esm/<pkg> proxy serves the pinned
+// Transformers runtime + its transitive graph through our own zone.
+// The proxy rewrites every absolute import in the JS bodies back into
+// the same /__esm/ namespace, so once we warm the entry URL the rest
+// of the closure is also same-origin and cacheable here.
+const AI_RUNTIME_URLS = __AI_RUNTIME_URLS__;
+const AI_RUNTIME_PATH_PREFIX = '/__esm/';
 
 // Branded offline response — used when network fails and there is no
 // usable cached document. Inline rocket + system fonts (no remote font
@@ -324,6 +327,31 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
+  // AI runtime — same-origin /__esm/* proxy. Cache-first against the
+  // dedicated MODEL_CACHE because the proxy serves immutable artifacts
+  // (pinned versions, content-addressed transitive paths) and this
+  // cache survives platform deploys via its separate name. Covers both
+  // the entry URLs from AI_RUNTIME_URLS and any rewritten transitive
+  // import the runtime pulls in at parse time.
+  if (
+    url.origin === self.location.origin &&
+    url.pathname.startsWith(AI_RUNTIME_PATH_PREFIX)
+  ) {
+    e.respondWith((async () => {
+      const cache = await caches.open(MODEL_CACHE);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      try {
+        const res = await fetch(req);
+        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch {
+        return new Response('', { status: 504 });
+      }
+    })());
+    return;
+  }
+
   // Only same-origin marketplace traffic.
   if (url.origin !== self.location.origin) return;
 
@@ -441,6 +469,7 @@ export const GET: RequestHandler = async ({ platform }) => {
     (platform?.env as { CF_VERSION_METADATA?: { id?: string } } | undefined)?.CF_VERSION_METADATA?.id ?? 'dev';
   const body = SW_BODY
     .replace(/__SHIPPIE_BUILD__/g, buildId)
+    .replace('__AI_RUNTIME_URLS__', JSON.stringify(AI_RUNTIME_URLS))
     .replace('__SHOWCASE_PRECACHE__', JSON.stringify(SHOWCASE_PRECACHE));
   return new Response(body, {
     status: 200,
