@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type * as Y from 'yjs';
+import { DownloadableImage } from '@/components/DownloadableImage.tsx';
+import { PhotoUpload } from '@/components/PhotoUpload.tsx';
 import { ScreenHeader } from '@/components/ScreenHeader.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { VoiceRecorder } from '@/components/VoiceRecorder.tsx';
@@ -163,14 +165,27 @@ function SurpriseBody({
   onOpen?: (() => void) | undefined;
 }) {
   if (s.kind === 'image') {
+    // Sender always sees their own image with a download affordance.
+    // Receiver: keep the tap-to-mark-read ritual on the unread state
+    // (plain img with onClick) — once read, swap to DownloadableImage
+    // so they can save it.
+    const showDownload = isMine || !!s.read_at;
     return (
       <div className="flex flex-col gap-2">
-        <img
-          src={s.body}
-          alt=""
-          className="w-full max-h-80 object-cover rounded-xl"
-          onClick={!isMine && !s.read_at ? onOpen : undefined}
-        />
+        {showDownload ? (
+          <DownloadableImage
+            src={s.body}
+            baseName={`mevrouw-surprise-${s.id.slice(0, 6)}`}
+            className="w-full max-h-80 object-cover rounded-xl"
+          />
+        ) : (
+          <img
+            src={s.body}
+            alt=""
+            className="w-full max-h-80 object-cover rounded-xl cursor-pointer"
+            onClick={onOpen}
+          />
+        )}
       </div>
     );
   }
@@ -225,14 +240,9 @@ function SurpriseComposer({
     onClose();
   }
 
-  function onPickImage(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      setBody(typeof reader.result === 'string' ? reader.result : '');
-      setKind('image');
-    };
-    reader.readAsDataURL(file);
-  }
+  // Image picking lives in <PhotoUpload> below — clear state ladder
+  // (idle → reading → ✓ added → retry) and ~1600px downscale to keep
+  // the Y.Doc lean across syncs.
 
   return (
     <div className="fixed inset-0 z-50 bg-[var(--background)]/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
@@ -272,14 +282,12 @@ function SurpriseComposer({
         )}
         {kind === 'image' && (
           <div className="flex flex-col gap-2">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onPickImage(f);
+            <PhotoUpload
+              label={body ? 'Replace photo' : 'Add a photo'}
+              onPicked={(dataUrl) => {
+                setBody(dataUrl);
+                setKind('image');
               }}
-              className="text-xs"
             />
             {body && <img src={body} alt="" className="w-full max-h-60 object-cover rounded-lg" />}
           </div>
