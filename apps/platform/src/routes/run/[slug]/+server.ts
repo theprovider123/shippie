@@ -14,9 +14,9 @@
  * orchestrator shell at /container.
  *
  * Top-level first-party showcase navigations are intercepted in
- * `hooks.server.ts` before static assets resolve. Runtime iframes add
- * `?shippie_embed=1`, which bypasses the redirect and loads the real
- * static bundle.
+ * `hooks.server.ts` before static assets resolve. Runtime iframes load
+ * `/run/<slug>/index.html?shippie_embed=1`, which bypasses this dynamic
+ * route entirely and loads the real static bundle.
  *
  * Why a redirect rather than rendering inline:
  *   - The container shell at /container already owns the

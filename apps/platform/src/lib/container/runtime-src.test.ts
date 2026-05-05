@@ -17,7 +17,7 @@ describe('resolveRuntimeSrc', () => {
         { devUrl: 'http://localhost:5192', standaloneUrl: '/run/recipe/' },
         'shippie.app',
       ),
-    ).toBe('/run/recipe/?shippie_embed=1');
+    ).toBe('/run/recipe/index.html?shippie_embed=1');
   });
 
   test('normalizes extensionless /run paths before adding embed marker', () => {
@@ -26,7 +26,7 @@ describe('resolveRuntimeSrc', () => {
         { devUrl: null, standaloneUrl: '/run/recipe' },
         'shippie.app',
       ),
-    ).toBe('/run/recipe/?shippie_embed=1');
+    ).toBe('/run/recipe/index.html?shippie_embed=1');
   });
 
   test('allows absolute standalone URLs for custom domains and subdomains', () => {

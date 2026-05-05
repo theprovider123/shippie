@@ -25,7 +25,9 @@ export function resolveRuntimeSrc(app: RuntimeApp, currentHostname: string): str
 
 function iframeRuntimeUrl(path: string): string {
   const [rawPath, rawQuery = ''] = path.split('?', 2);
-  const normalizedPath = /^\/run\/[^/]+$/.test(rawPath) ? `${rawPath}/` : rawPath;
+  const normalizedPath = /^\/run\/[^/]+\/?$/.test(rawPath)
+    ? `${rawPath.replace(/\/$/, '')}/index.html`
+    : rawPath;
   const params = new URLSearchParams(rawQuery);
   params.set('shippie_embed', '1');
   const query = params.toString();
