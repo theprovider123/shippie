@@ -10,15 +10,25 @@ import type { SensoryTexture, TextureName } from './types.ts';
 
 beforeEach(() => {
   _resetTextureEngineForTest();
-  // Default rAF in bun:test runs synchronously when polyfilled; ensure it
-  // exists by stubbing if absent.
-  if (typeof (globalThis as { requestAnimationFrame?: unknown }).requestAnimationFrame !== 'function') {
-    (globalThis as { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = (cb) => {
+  // Own the scheduling primitive so CI and local Bun both run texture
+  // callbacks synchronously before assertions.
+  Object.defineProperty(globalThis, 'requestAnimationFrame', {
+    configurable: true,
+    writable: true,
+    value: (cb: FrameRequestCallback) => {
       cb(0);
       return 0;
-    };
-  }
+    },
+  });
 });
+
+function setNavigatorVibrate(vibrate: (pattern: number | number[]) => boolean): void {
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    writable: true,
+    value: { vibrate },
+  });
+}
 
 describe('texture engine', () => {
   it('throws if firing an unregistered texture name', () => {
@@ -29,7 +39,7 @@ describe('texture engine', () => {
     const tex: SensoryTexture = { name: 'confirm', haptic: { pattern: 12 } };
     registerTexture(tex);
     const vibrate = mock((_p: number | number[]) => true);
-    (globalThis as unknown as { navigator: { vibrate: typeof vibrate } }).navigator = { vibrate };
+    setNavigatorVibrate(vibrate);
     fireTexture('confirm');
     expect(vibrate).toHaveBeenCalledWith(12);
   });
@@ -38,7 +48,7 @@ describe('texture engine', () => {
     registerTexture({ name: 'confirm', haptic: { pattern: 12 } });
     configureTextureEngine({ haptics: false });
     const vibrate = mock((_p: number | number[]) => true);
-    (globalThis as unknown as { navigator: { vibrate: typeof vibrate } }).navigator = { vibrate };
+    setNavigatorVibrate(vibrate);
     fireTexture('confirm');
     expect(vibrate).not.toHaveBeenCalled();
   });
@@ -76,7 +86,7 @@ describe('texture engine', () => {
     registerTexture({ name: 'confirm', haptic: { pattern: 12 } });
     configureTextureEngine({ enabled: false });
     const vibrate = mock((_p: number | number[]) => true);
-    (globalThis as unknown as { navigator: { vibrate: typeof vibrate } }).navigator = { vibrate };
+    setNavigatorVibrate(vibrate);
     fireTexture('confirm');
     expect(vibrate).not.toHaveBeenCalled();
   });
