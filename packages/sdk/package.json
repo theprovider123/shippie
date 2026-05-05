@@ -51,7 +51,7 @@
     "provenance": true
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsup --dts-only --silent",
     "lint": "echo 'lint placeholder'",
     "test": "bun test",
     "build": "tsup && node scripts/smoke-global-bundle.mjs",
