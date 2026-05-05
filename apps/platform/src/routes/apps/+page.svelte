@@ -81,7 +81,7 @@
               class="cat-chip"
               class:active={isActive}
               href={categoryHref(isActive ? null : cat)}
-              aria-pressed={isActive}
+              aria-current={isActive ? 'page' : undefined}
             >
               {cat}{#if isActive} ✕{/if}
             </a>

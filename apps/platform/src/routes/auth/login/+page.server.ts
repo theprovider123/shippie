@@ -56,7 +56,13 @@ export const actions: Actions = {
     }
 
     const origin = platform.env.PUBLIC_ORIGIN ?? url.origin;
-    const link = `${origin.replace(/\/$/, '')}/auth/email-link/${encodeURIComponent(mint.token)}`;
+    const returnTo = url.searchParams.get('return_to');
+    const linkUrl = new URL(
+      `/auth/email-link/${encodeURIComponent(mint.token)}`,
+      origin.replace(/\/$/, ''),
+    );
+    if (returnTo) linkUrl.searchParams.set('return_to', returnTo);
+    const link = linkUrl.toString();
 
     try {
       await sendMagicLink({ to: email, url: link, env: platform.env });

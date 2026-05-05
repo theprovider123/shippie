@@ -2,7 +2,7 @@
   import type { LayoutData } from './$types';
 
   let { data }: { data: LayoutData } = $props();
-  const apps = data.myApps;
+  const apps = $derived(data.myApps);
 </script>
 
 <svelte:head>

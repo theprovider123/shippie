@@ -14,6 +14,8 @@
         kind: 'success';
         slug: string;
         liveUrl: string;
+        claimUrl?: string;
+        expiresAt?: string;
         deployId?: string;
         version?: number;
         files?: number;
@@ -22,6 +24,11 @@
       }
     | { kind: 'error'; reason: string; blockers?: Array<{ rule: string; title: string; detail?: string }> };
 
+  interface Props {
+    trialMode?: boolean;
+  }
+
+  let { trialMode = false }: Props = $props();
   let slug = $state('recipes');
   let file = $state<File | null>(null);
   let result = $state<Result>({ kind: 'idle' });
@@ -38,21 +45,26 @@
 
   async function handleSubmit(ev: SubmitEvent) {
     ev.preventDefault();
-    if (!file || !slug) return;
+    if (!file || (!trialMode && !slug)) return;
     result = { kind: 'submitting' };
 
     const fd = new FormData();
-    fd.append('slug', slug);
+    if (!trialMode) fd.append('slug', slug);
     fd.append('zip', file);
 
     try {
-      const res = await fetch('/api/deploy', { method: 'POST', body: fd });
+      const res = await fetch(trialMode ? '/api/deploy/trial' : '/api/deploy', {
+        method: 'POST',
+        body: fd,
+      });
       const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       if (res.ok && j.success) {
         result = {
           kind: 'success',
           slug: String(j.slug),
           liveUrl: String(j.live_url),
+          claimUrl: typeof j.claim_url === 'string' ? j.claim_url : undefined,
+          expiresAt: typeof j.expires_at === 'string' ? j.expires_at : undefined,
           deployId: typeof j.deploy_id === 'string' ? j.deploy_id : undefined,
           version: typeof j.version === 'number' ? j.version : undefined,
           files: typeof j.files === 'number' ? j.files : undefined,
@@ -104,30 +116,48 @@
 </script>
 
 <form onsubmit={handleSubmit} class="form">
-  <label>
-    <span class="label">Slug</span>
-    <div class="slug-row">
-      <input bind:value={slug} pattern="[a-z0-9][a-z0-9\-]*" required class="slug-input" />
-      <span class="suffix">.shippie.app</span>
+  {#if !trialMode}
+    <label>
+      <span class="label">Slug</span>
+      <div class="slug-row">
+        <input bind:value={slug} pattern="[a-z0-9][a-z0-9\-]*" required class="slug-input" />
+        <span class="suffix">.shippie.app</span>
+      </div>
+    </label>
+  {:else}
+    <div class="trial-note">
+      <span class="label">Trial URL</span>
+      <p>
+        Shippie will choose a temporary <code>trial-*</code> slug and publish it unlisted.
+      </p>
     </div>
-  </label>
+  {/if}
 
   <label>
     <span class="label">Zip (built output)</span>
     <input type="file" accept=".zip,application/zip" onchange={handleFile} required class="file-input" />
   </label>
 
-  <button type="submit" disabled={result.kind === 'submitting' || !file || !slug} class="btn-primary">
-    {result.kind === 'submitting' ? 'Shipping…' : 'Ship it →'}
+  <button
+    type="submit"
+    disabled={result.kind === 'submitting' || !file || (!trialMode && !slug)}
+    class="btn-primary"
+  >
+    {result.kind === 'submitting' ? 'Shipping…' : trialMode ? 'Ship trial →' : 'Ship it →'}
   </button>
 
   {#if result.kind === 'success'}
     <div class="success">
-      <p class="success-head">✓ Shipped{result.version ? ` — v${result.version}` : ''}</p>
+      <p class="success-head">
+        ✓ {trialMode ? 'Trial shipped' : 'Shipped'}{result.version ? ` — v${result.version}` : ''}
+      </p>
       <p>
         Live at
         <a href={result.liveUrl} target="_blank" rel="noreferrer">{result.liveUrl}</a>
       </p>
+      {#if result.expiresAt}
+        <p>This trial stays live until {new Date(result.expiresAt).toLocaleString()}.</p>
+      {/if}
       {#if result.deployId}
         <p>
           Review the
@@ -137,20 +167,26 @@
 
       <div class="share-card">
         <div class="share-head">
-          <p>Share this app</p>
-          <div class="vis-toggle" role="radiogroup" aria-label="Visibility">
-            {#each ['public', 'unlisted', 'private'] as v (v)}
-              <button
-                type="button"
-                class:active={visibility === v}
-                onclick={() => patchVisibility(v as 'public' | 'unlisted' | 'private')}>{v}</button>
-            {/each}
+          <p>{trialMode ? 'Keep this app' : 'Share this app'}</p>
+          {#if !trialMode}
+            <div class="vis-toggle" role="radiogroup" aria-label="Visibility">
+              {#each ['public', 'unlisted', 'private'] as v (v)}
+                <button
+                  type="button"
+                  class:active={visibility === v}
+                  onclick={() => patchVisibility(v as 'public' | 'unlisted' | 'private')}>{v}</button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+        {#if trialMode && result.claimUrl}
+          <a class="claim-link" href={result.claimUrl}>Sign in to claim it</a>
+        {:else}
+          <div class="share-row">
+            <input type="text" readonly value={shareUrl} class="share-input" />
+            <button type="button" onclick={onCopy} class="copy-btn">{copied ? 'Copied' : 'Copy'}</button>
           </div>
-        </div>
-        <div class="share-row">
-          <input type="text" readonly value={shareUrl} class="share-input" />
-          <button type="button" onclick={onCopy} class="copy-btn">{copied ? 'Copied' : 'Copy'}</button>
-        </div>
+        {/if}
       </div>
 
       {#if result.files != null || result.totalBytes != null || result.preflightMs != null}
@@ -216,6 +252,16 @@
     border-radius: 0 8px 8px 0;
   }
   .file-input { margin-top: 0.25rem; }
+  .trial-note {
+    border-left: 2px solid #E8603C;
+    padding-left: 0.75rem;
+  }
+  .trial-note p {
+    margin: 0.25rem 0 0;
+    color: #6F675E;
+    font-size: 13px;
+    line-height: 1.45;
+  }
   .btn-primary {
     height: 48px;
     background: #E8603C;
@@ -277,6 +323,18 @@
     cursor: pointer;
     color: inherit;
   }
+  .claim-link {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    padding: 0 0.75rem;
+    background: #2E7D5B;
+    color: white !important;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
   .error {
     padding: 1rem 1.25rem;
     border: 1px solid rgba(180,63,42,0.4);
@@ -295,5 +353,6 @@
     .share-head p { color: #EDE4D3; }
     .vis-toggle { background: rgba(255,255,255,0.05); }
     .share-input { background: #1F1B16; }
+    .trial-note p { color: #AFA693; }
   }
 </style>

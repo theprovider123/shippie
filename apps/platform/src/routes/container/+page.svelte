@@ -2418,6 +2418,7 @@
   .focused-shell {
     position: fixed;
     inset: 0;
+    z-index: 1000;
     background: var(--bg-pure, #fff);
   }
   .focused-frame {

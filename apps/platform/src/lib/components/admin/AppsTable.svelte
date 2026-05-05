@@ -12,7 +12,9 @@
     sort: string;
   } = $props();
 
-  const [currentKey, currentDir] = (sort ?? 'created:desc').split(':') as [SortKey, SortDir];
+  const currentSort = $derived((sort ?? 'created:desc').split(':') as [SortKey, SortDir]);
+  const currentKey = $derived(currentSort[0]);
+  const currentDir = $derived(currentSort[1]);
 
   // Helper for cycling sort: same key → flip dir; new key → desc default
   // (with name/visibility/status defaulting to asc since alpha makes

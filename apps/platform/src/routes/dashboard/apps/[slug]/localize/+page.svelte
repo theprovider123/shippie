@@ -89,7 +89,7 @@
   {/if}
 </div>
 
-<script lang="ts" context="module">
+<script module lang="ts">
   function describeTransform(name: string): string {
     switch (name) {
       case 'supabase-basic-queries':

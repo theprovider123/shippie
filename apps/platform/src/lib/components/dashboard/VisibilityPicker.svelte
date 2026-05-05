@@ -6,9 +6,13 @@
 
   let { slug, initial }: { slug: string; initial: Scope } = $props();
 
-  let scope = $state<Scope>(initial);
+  let scope = $state<Scope>('public');
   let saving = $state(false);
   let error = $state<string | null>(null);
+
+  $effect(() => {
+    scope = initial;
+  });
 
   const OPTIONS: Array<{ value: Scope; label: string; blurb: string }> = [
     { value: 'public', label: 'Public', blurb: 'Listed on /apps and /leaderboards.' },

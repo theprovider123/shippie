@@ -9,7 +9,11 @@
   }
 
   let { initial = '', placeholder = 'Search apps...' }: Props = $props();
-  let q = $state(initial);
+  let q = $state('');
+
+  $effect(() => {
+    q = initial;
+  });
 </script>
 
 <form action="/apps" method="get" class="search-form" role="search">

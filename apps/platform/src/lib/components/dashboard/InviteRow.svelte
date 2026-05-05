@@ -30,7 +30,7 @@
     }
   }
 
-  const inviteUrl = `/invite/${invite.token}`;
+  const inviteUrl = $derived(`/invite/${invite.token}`);
 </script>
 
 {#if !revoked}

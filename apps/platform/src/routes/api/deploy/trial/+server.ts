@@ -134,7 +134,9 @@ export const POST: RequestHandler = async (event) => {
     expires_at: new Date(Date.now() + TRIAL_TTL_MS).toISOString(),
     files: result.files,
     total_bytes: result.totalBytes,
-    claim_url: `/auth/login?claim_trial=${encodeURIComponent(slug)}`,
+    claim_url: `/auth/login?return_to=${encodeURIComponent(
+      `/dashboard?claim_trial=${encodeURIComponent(slug)}`,
+    )}`,
   });
 };
 

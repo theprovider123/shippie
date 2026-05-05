@@ -11,12 +11,20 @@
     'Keeps URL ownership and container eligibility separate',
   ];
 
-  const paths = [
-    { label: 'I have a built folder', action: 'Zip it and upload here', time: 'about 60s' },
-    { label: 'It is already hosted', action: 'Wrap the URL', time: 'about 60s' },
+  const paths = $derived([
+    {
+      label: 'I have a built folder',
+      action: data.user ? 'Zip it and upload here' : 'Drop a zip, no sign-in',
+      time: 'about 60s',
+    },
+    {
+      label: 'It is already hosted',
+      action: data.user ? 'Wrap the URL' : 'Sign in to wrap a URL',
+      time: 'about 60s',
+    },
     { label: 'I am in my editor', action: 'Use CLI or MCP', time: 'about 60s' },
     { label: 'I want repo deploys', action: 'Connect GitHub after first ship', time: '2-5min' },
-  ];
+  ]);
 </script>
 
 <svelte:head><title>Ship a new app · Shippie</title></svelte:head>
@@ -68,29 +76,46 @@
 
     <section class="primary-flow" aria-labelledby="quick-ship">
       <div class="section-head">
-        <p class="eyebrow">Fastest path</p>
-        <h2 id="quick-ship">Upload a zip</h2>
+        <p class="eyebrow">{data.user ? 'Fastest path' : 'No-signup trial'}</p>
+        <h2 id="quick-ship">{data.user ? 'Upload a zip' : 'Drop a zip. Get a link.'}</h2>
         <p>
-          Drop a zip of your built output or project export. Common roots like
-          <code>dist/</code>, <code>build/</code>, and <code>out/</code> are normalized automatically.
+          {#if data.user}
+            Drop a zip of your built output or project export. Common roots like
+            <code>dist/</code>, <code>build/</code>, and <code>out/</code> are normalized automatically.
+          {:else}
+            Your first upload creates a 24-hour unlisted trial app. Sign in only
+            when you want to claim it, keep it, or open the dashboard.
+          {/if}
         </p>
       </div>
       <div class="form-surface">
-        <UploadForm />
+        <UploadForm trialMode={!data.user} />
       </div>
     </section>
 
     <section class="secondary-flow" aria-labelledby="wrap-url">
       <div class="section-head">
-        <p class="eyebrow">Already online</p>
+        <p class="eyebrow">{data.user ? 'Already online' : 'Maker account'}</p>
         <h2 id="wrap-url">Wrap a hosted URL</h2>
         <p>
-          Keep your current hosting. Shippie gives it a maker subdomain, PWA install,
-          proof surfaces, ratings, and a path into the container when it earns trust.
+          {#if data.user}
+            Keep your current hosting. Shippie gives it a maker subdomain, PWA install,
+            proof surfaces, ratings, and a path into the container when it earns trust.
+          {:else}
+            URL wrapping touches ownership, redirects, and dashboard settings, so it starts
+            after a magic-link sign-in. The zip trial above stays open.
+          {/if}
         </p>
       </div>
       <div class="form-surface">
-        <WrapForm />
+        {#if data.user}
+          <WrapForm />
+        {:else}
+          <div class="signin-panel">
+            <p>Already hosted somewhere else?</p>
+            <a href="/auth/login?return_to=/new">Sign in to wrap a URL</a>
+          </div>
+        {/if}
       </div>
     </section>
 
@@ -126,7 +151,13 @@ shippie deploy ./dist</code></pre>
       </ol>
     </aside>
 
-    <p class="footer">Signed in as {data.user.email}</p>
+    <p class="footer">
+      {#if data.user}
+        Signed in as {data.user.email}
+      {:else}
+        Anonymous trial deploys expire after 24 hours.
+      {/if}
+    </p>
   </div>
 </main>
 
@@ -203,6 +234,24 @@ shippie deploy ./dist</code></pre>
   }
   .section-head p { color: #6F675E; font-size: 14px; margin: 0.8rem 0 0; line-height: 1.55; }
   .form-surface { min-width: 0; }
+  .signin-panel {
+    border-left: 2px solid #E8603C;
+    padding: 1rem 0 1rem 1rem;
+  }
+  .signin-panel p {
+    margin: 0 0 0.75rem;
+    color: #6F675E;
+    font-size: 14px;
+  }
+  .signin-panel a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    padding: 0 1rem;
+    background: #14120F;
+    color: #EDE4D3;
+    font-weight: 700;
+  }
 
   .toolbelt {
     display: grid;
@@ -255,5 +304,7 @@ shippie deploy ./dist</code></pre>
     pre { background: #0D0B09; }
     .next { background: rgba(232, 96, 60, 0.06); }
     .lede, .section-head p, .toolbelt p, .hero-status ul, .next ol { color: #AFA693; }
+    .signin-panel p { color: #AFA693; }
+    .signin-panel a { background: #EDE4D3; color: #14120F; }
   }
 </style>
