@@ -1,0 +1,27 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Dough",
+  "slug": "dough",
+  "description": "Baker's percentages for pizza Neapolitan, NY-style, sourdough, poolish, focaccia, bread. Schedule generator working backwards from your target time. Provides dough-ferment-started + dough-ready (push-notified when timer fires).",
+  "icon": "/icon.svg",
+  "theme_color": "#E8C547",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["dough-ferment-started", "dough-ready"]
+  },
+  "data_schemas": {
+    "bakes": {
+      "id": "text primary key",
+      "recipe": "text not null",
+      "balls": "integer",
+      "ball_g": "real",
+      "hydration": "real",
+      "started_at": "datetime",
+      "ready_at": "datetime",
+      "crumb_rating": "integer",
+      "notes": "text"
+    }
+  }
+}

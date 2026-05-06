@@ -12,22 +12,21 @@ import { SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
 
 const SLUG_ALIASES: Record<string, string> = {
   'recipe-saver': 'recipe',
-  // Phase 2 cleanup — legacy showcases consolidated into Move / Quiet /
-  // Field Kitchen. Old install shortcuts and shared links resolve to the
-  // consolidator so users don't 404 on stale URLs.
+  // Phase 2 cleanup — Move + Quiet absorbed several single-screen
+  // wellness apps that worked better as composed surfaces. Old
+  // install shortcuts redirect to the consolidator.
   pace: 'move',
   'sleep-logger': 'move',
   'workout-logger': 'move',
   pomodoro: 'quiet',
   'mood-pulse': 'quiet',
-  coffee: 'field-kitchen',
-  cooking: 'field-kitchen',
-  dough: 'field-kitchen',
-  'sip-log': 'field-kitchen',
-  // daily-briefing demoted to platform-side `/today` surface (see
-  // post-launch follow-up in plan). Until that lands, alias to recipe
-  // — the most stable polished destination — so links don't 404.
+  // daily-briefing demoted to platform-side `/today` surface; until
+  // that's fully discoverable, alias to recipe so links don't 404.
   'daily-briefing': 'recipe',
+  // NOTE: coffee / cooking / dough / sip-log remain best-in-class
+  // standalone apps (Field Kitchen consolidator was tried and
+  // reverted — each kitchen ritual deserves its own depth, not a
+  // tabs-on-tabs shell). No aliases needed.
 };
 
 export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>(SHOWCASE_SLUGS);

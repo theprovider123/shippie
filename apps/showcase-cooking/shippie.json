@@ -1,0 +1,26 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Cooking",
+  "slug": "cooking",
+  "description": "Method × cut × doneness — internal temps and timing for sous vide, smoking, roasting, grilling, pan. Start a cook → cooking-now broadcasts to daily-briefing's kitchen-status card. Mark cooked → cooked-meal feeds Habit Tracker, Restaurant Memory, Journal.",
+  "icon": "/icon.svg",
+  "theme_color": "#E8603C",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["cooking-now", "cooked-meal"]
+  },
+  "data_schemas": {
+    "cooks": {
+      "id": "text primary key",
+      "method": "text not null",
+      "cut": "text not null",
+      "doneness": "text",
+      "weight_g": "real",
+      "target_temp_c": "real",
+      "started_at": "datetime",
+      "finished_at": "datetime"
+    }
+  }
+}

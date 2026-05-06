@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Sip Log",
+  "slug": "sip-log",
+  "description": "One-tap water, coffee, and tea logger. Daily targets + 7-day chart. Provides hydration-logged + caffeine-logged so Sleep Logger and Daily Briefing have something to correlate against.",
+  "icon": "/icon.svg",
+  "theme_color": "#5EA777",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["hydration-logged", "caffeine-logged"]
+  },
+  "data_schemas": {
+    "sips": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "ml": "integer",
+      "mg": "integer",
+      "logged_at": "datetime"
+    }
+  }
+}
