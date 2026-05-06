@@ -12,6 +12,7 @@ import type {
   TripTimelineItem,
 } from '../types';
 import type { Copy } from '../data/translations';
+import type { ReactNode } from 'react';
 import { DayToggle } from './Atoms';
 import { Icon } from './Icon';
 import type { TripPhase } from '../utils/state';
@@ -39,6 +40,7 @@ interface TripViewProps {
   groups: CrewGroup[];
   activePlayer: Player;
   palette: ThemePalette;
+  onboarding?: ReactNode;
   onPulse: (kind: PulseKind) => void;
   onGo: (tab: Tab) => void;
   onSecondary: () => void;
@@ -67,6 +69,8 @@ export function TripView(props: TripViewProps) {
       )}
 
       <DayToggle days={props.days} selectedDayId={props.activeDayId} onSelect={props.onSelectDay} />
+
+      {props.onboarding}
 
       <PhasePrimary
         phase={props.phase}

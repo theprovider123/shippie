@@ -56,7 +56,6 @@ import {
   canSeeChallenge,
   createFreshCrewtripState,
   downloadTextFile,
-  firstCrewPlayerId,
   formatBackupTime,
   formatBytes,
   getDeviceId,
@@ -99,6 +98,8 @@ import { ChallengeGrid, GameHighlights, GameResultBoard, GameSubmissions, Leader
 import { EntryScreen } from './components/EntryScreen';
 import { Dialog } from './components/Dialog';
 import { Confirm, type ConfirmRequest } from './components/Confirm';
+import { OnboardingCard } from './components/OnboardingCard';
+import { generateWrapCard, shareWrapCard } from './utils/wrap-card';
 
 import './styles.css';
 
@@ -110,12 +111,17 @@ function usePersistentState() {
     try {
       const joinedEventCode = readJoinedEventCode();
       const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? normalizeCrewtripState({ ...initialState, ...JSON.parse(raw) }) : initialState;
+      // No persisted state and no join code → empty trip (no seeded demo
+      // players/polls/memories). Hosts get the EntryScreen; eventees with
+      // a join code get a synced room they can populate together.
+      const parsed = raw
+        ? normalizeCrewtripState({ ...initialState, ...JSON.parse(raw) })
+        : createFreshCrewtripState();
       return joinedEventCode && parsed.eventCode !== joinedEventCode
         ? createFreshCrewtripState({ eventCode: joinedEventCode, language: parsed.language, theme: parsed.theme })
         : parsed;
     } catch {
-      return initialState;
+      return createFreshCrewtripState();
     }
   });
 
@@ -1102,19 +1108,44 @@ export function App() {
   }
 
   if (!role) {
+    // A trip counts as "existing" if there's at least one named player
+    // beyond the lone Host seed and we haven't already cleared it.
+    const hasExistingTrip = state.players.length > 1
+      || state.memories.length > 0
+      || state.stops.some((stop) => stop.title !== 'Start planning');
     return (
       <EntryScreen
         themeStyle={themeVars}
-        eventName={state.eventName}
-        description={state.description}
-        eventCode={state.eventCode}
-        onHost={() => {
+        hasExistingTrip={hasExistingTrip}
+        existingTripName={state.eventName !== 'Crewtrip' ? state.eventName : undefined}
+        onContinue={() => {
           setRole('host');
           setTab('now');
         }}
-        onCrew={() => {
-          setRole('eventee');
-          update((current) => ({ ...current, activePlayerId: firstCrewPlayerId(current.players) }));
+        onStartNew={(name) => {
+          const next = createFreshCrewtripState({
+            eventCode: newEventCode(),
+            language,
+            theme,
+          });
+          if (name) next.eventName = name;
+          setState(markLocalUpdate(next, deviceId));
+          setRole('host');
+          setTab('now');
+          setSelectedDayId(next.days[0]?.id ?? 'day-1');
+        }}
+        onJoinCode={(code) => {
+          if (typeof window === 'undefined') return;
+          const url = new URL(window.location.href);
+          url.searchParams.set('event', code);
+          url.searchParams.set('role', 'crew');
+          window.location.assign(url.toString());
+        }}
+        onTryDemo={() => {
+          // The original seeded state lives in `initialState`. Opt-in path
+          // for browsing the showcase rather than a real first run.
+          setState(markLocalUpdate(initialState, deviceId));
+          setRole('host');
           setTab('now');
         }}
       />
@@ -1125,24 +1156,16 @@ export function App() {
     <main className="app-shell" style={themeVars}>
       <header className="app-header">
         <div className="header-copy">
-          <p>{role === 'host' ? copy.host : copy.crew} / {state.location}</p>
           <h1>{state.eventName || 'Crewtrip'}</h1>
+          <p className="trip-meta">
+            <span className="trip-code">{state.eventCode}</span>
+            <span className={`sync-pill ${sync.status}`} title={syncLabel(sync, language)}>{syncLabelShort(sync, language)}</span>
+          </p>
         </div>
-        <div className="header-actions">
-          <span className={`sync-pill ${sync.status}`} title={syncLabel(sync, language)}>{syncLabelShort(sync, language)}</span>
-          <button type="button" onClick={copyShareLink}>
-            <Icon name="share" size={14} /> {shareCopied ? copy.copied : copy.share}
-          </button>
-          {role === 'host' ? (
-            <select value={state.activePlayerId} aria-label="Active crew member" onChange={(event) => update((current) => ({ ...current, activePlayerId: event.target.value }))}>
-              {state.players.map((player) => (
-                <option key={player.id} value={player.id}>{player.name}</option>
-              ))}
-            </select>
-          ) : (
-            <span className="person-pill">{activePlayer.name}</span>
-          )}
-        </div>
+        <button type="button" className="share-button" onClick={copyShareLink}>
+          <Icon name="share" size={14} />
+          <span>{shareCopied ? copy.copied : copy.share}</span>
+        </button>
       </header>
 
       <LiveActivityStrip activities={liveActivities} reduceMotion={reduceMotion} />
@@ -1168,6 +1191,22 @@ export function App() {
           groups={groups}
           activePlayer={activePlayer}
           palette={palette}
+          onboarding={
+            <OnboardingCard
+              state={state}
+              syncPeers={sync.peers}
+              onShare={copyShareLink}
+              onAddStop={() => {
+                if (role === 'host') {
+                  setHostSection('manage');
+                  setTab('host');
+                } else {
+                  setActionSheetOpen(true);
+                }
+              }}
+              onAddMemory={() => setTab('memories')}
+            />
+          }
           onPulse={sendPulse}
           onGo={(nextTab) => setTab(nextTab)}
           onSecondary={() => {
@@ -1489,9 +1528,39 @@ export function App() {
               <h3>{wrapHighlights.title}</h3>
               <p>{wrapHighlights.detail}</p>
             </div>
-            <button type="button" onClick={() => void navigator.clipboard?.writeText(`${wrapHighlights.title}\n${wrapHighlights.detail}\n${shareUrl}`)}>
-              Copy recap
-            </button>
+            <div className="wrap-share-actions">
+              <button
+                type="button"
+                onClick={async () => {
+                  const blob = await generateWrapCard({
+                    state,
+                    palette,
+                    awards: wrapAwards,
+                    memories: state.memories,
+                    coverUrl,
+                  });
+                  if (!blob) {
+                    setBackupNotice('Could not build the share image. Try again on a connected device.');
+                    return;
+                  }
+                  const result = await shareWrapCard(blob, state);
+                  setBackupNotice(result === 'shared'
+                    ? 'Shared.'
+                    : result === 'downloaded'
+                      ? 'Wrap image saved to downloads.'
+                      : 'Could not share or save the image.');
+                }}
+              >
+                Share image
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => void navigator.clipboard?.writeText(`${wrapHighlights.title}\n${wrapHighlights.detail}\n${shareUrl}`)}
+              >
+                Copy recap
+              </button>
+            </div>
           </section>
           {wrapHighlights.items.length ? (
             <section className="wrap-highlights">
@@ -1899,9 +1968,20 @@ export function App() {
         </View>
       )}
 
-      <button type="button" className="fab" aria-label="Open quick actions" onClick={() => setActionSheetOpen(true)}>
-        <Icon name="plus" size={22} />
-      </button>
+      <div className="fab-row">
+        <label className="fab fab-camera" aria-label="Snap a memory">
+          <Icon name="memories" size={22} />
+          <input
+            type="file"
+            accept="image/*,video/*"
+            capture="environment"
+            onChange={(event) => void addMediaMemory(event)}
+          />
+        </label>
+        <button type="button" className="fab" aria-label="Open quick actions" onClick={() => setActionSheetOpen(true)}>
+          <Icon name="plus" size={22} />
+        </button>
+      </div>
 
       <Dialog open={actionSheetOpen} onClose={() => setActionSheetOpen(false)} label="Crewtrip quick actions">
         <div className="sheet-handle" />
