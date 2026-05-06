@@ -7,6 +7,8 @@
 </script>
 
 <script lang="ts">
+  import { qrSvg } from '@shippie/qr';
+
   type Result =
     | { kind: 'idle' }
     | { kind: 'submitting' }
@@ -17,6 +19,8 @@
         claimUrl?: string;
         expiresAt?: string;
         deployId?: string;
+        reportUrl?: string;
+        reportJsonUrl?: string;
         version?: number;
         files?: number;
         totalBytes?: number;
@@ -34,6 +38,7 @@
   let result = $state<Result>({ kind: 'idle' });
   let visibility = $state<'public' | 'unlisted' | 'private'>('public');
   let copied = $state(false);
+  let liveQrMarkup = $state<string | null>(null);
 
   const shareUrl = $derived(
     result.kind === 'success'
@@ -66,6 +71,8 @@
           claimUrl: typeof j.claim_url === 'string' ? j.claim_url : undefined,
           expiresAt: typeof j.expires_at === 'string' ? j.expires_at : undefined,
           deployId: typeof j.deploy_id === 'string' ? j.deploy_id : undefined,
+          reportUrl: typeof j.report_url === 'string' ? j.report_url : undefined,
+          reportJsonUrl: typeof j.report_json_url === 'string' ? j.report_json_url : undefined,
           version: typeof j.version === 'number' ? j.version : undefined,
           files: typeof j.files === 'number' ? j.files : undefined,
           totalBytes: typeof j.total_bytes === 'number' ? j.total_bytes : undefined,
@@ -113,6 +120,31 @@
       // clipboard unavailable — silent
     }
   }
+
+  function absoluteUrl(pathOrUrl: string | undefined): string {
+    if (!pathOrUrl) return '';
+    if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}${pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`}`;
+  }
+
+  $effect(() => {
+    if (result.kind !== 'success') {
+      liveQrMarkup = null;
+      return;
+    }
+    let cancelled = false;
+    void qrSvg(result.liveUrl, { ecc: 'M', size: 176 })
+      .then((svg) => {
+        if (!cancelled) liveQrMarkup = svg;
+      })
+      .catch(() => {
+        if (!cancelled) liveQrMarkup = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
 </script>
 
 <form onsubmit={handleSubmit} class="form">
@@ -148,20 +180,42 @@
 
   {#if result.kind === 'success'}
     <div class="success">
-      <p class="success-head">
-        ✓ {trialMode ? 'Trial shipped' : 'Shipped'}{result.version ? ` — v${result.version}` : ''}
-      </p>
-      <p>
-        Live at
-        <a href={result.liveUrl} target="_blank" rel="noreferrer">{result.liveUrl}</a>
-      </p>
+      <div class="success-grid">
+        <div>
+          <p class="success-head">
+            ✓ {trialMode ? 'Trial shipped' : 'Shipped'}{result.version ? ` — v${result.version}` : ''}
+          </p>
+          <p class="live-line">
+            Live at
+            <a href={result.liveUrl} target="_blank" rel="noreferrer">{result.liveUrl}</a>
+          </p>
+          <div class="action-row" aria-label="Next actions">
+            <a href={result.liveUrl} target="_blank" rel="noreferrer">Open app</a>
+            {#if result.reportUrl || result.deployId}
+              <a href={absoluteUrl(result.reportUrl ?? `/dashboard/apps/${result.slug}/deploys/${result.deployId}`)}>
+                Flight Recorder
+              </a>
+            {/if}
+            {#if result.reportJsonUrl}
+              <a href={absoluteUrl(result.reportJsonUrl)} target="_blank" rel="noreferrer">Export JSON</a>
+            {/if}
+          </div>
+        </div>
+        <div class="qr-panel" aria-label="Install on phone">
+          {#if liveQrMarkup}
+            <div class="qr">{@html liveQrMarkup}</div>
+          {:else}
+            <div class="qr-placeholder">QR</div>
+          {/if}
+          <span>Scan to open on phone</span>
+        </div>
+      </div>
       {#if result.expiresAt}
         <p>This trial stays live until {new Date(result.expiresAt).toLocaleString()}.</p>
       {/if}
       {#if result.deployId}
         <p>
-          Review the
-          <a href={`/dashboard/apps/${result.slug}/deploys/${result.deployId}`}>deploy intelligence report</a>
+          Review the App Flight Recorder for policy, package, privacy, security, and proof evidence.
         </p>
       {/if}
 
@@ -283,7 +337,57 @@
     color: #2E7D5B;
   }
   .success-head { font-weight: 700; margin: 0; }
+  .success-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: start;
+  }
+  .live-line { margin-bottom: 0.75rem; }
   .success a { color: inherit; font-family: ui-monospace, monospace; }
+  .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .action-row a {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    padding: 0 0.75rem;
+    border: 1px solid rgba(46,125,91,0.35);
+    background: rgba(255,255,255,0.52);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .qr-panel {
+    width: 176px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    color: #6F675E;
+    font-family: ui-monospace, monospace;
+    font-size: 10px;
+    text-align: center;
+  }
+  .qr,
+  .qr-placeholder {
+    width: 176px;
+    height: 176px;
+    background: #FAF7EF;
+    padding: 8px;
+    border: 1px solid rgba(46,125,91,0.25);
+    box-sizing: border-box;
+  }
+  .qr :global(svg) { width: 100%; height: 100%; display: block; }
+  .qr-placeholder {
+    display: grid;
+    place-items: center;
+    color: #8B847A;
+  }
   .meta { font-family: ui-monospace, monospace; font-size: 11px; color: #8B847A; margin: 0.5rem 0 0 0; }
   .share-card { margin-top: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.5); border-radius: 0; }
   .share-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
@@ -354,5 +458,11 @@
     .vis-toggle { background: rgba(255,255,255,0.05); }
     .share-input { background: #1F1B16; }
     .trial-note p { color: #AFA693; }
+    .action-row a { background: rgba(255,255,255,0.04); }
+    .qr, .qr-placeholder { background: #FAF7EF; }
+  }
+  @media (max-width: 640px) {
+    .success-grid { grid-template-columns: 1fr; }
+    .qr-panel { width: min(176px, 100%); }
   }
 </style>

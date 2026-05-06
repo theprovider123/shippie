@@ -10,7 +10,7 @@
  * reconciles the store against the SW on demand (mount, post-deploy,
  * after a successful download/remove).
  */
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import {
   type AppDownloadProgress,
   clearOfflineApps,
@@ -20,6 +20,13 @@ import {
 } from '$lib/offline/download-app';
 
 export const cachedSlugs = writable<Set<string>>(new Set());
+export const offlineStatuses = writable<Record<string, AppDownloadProgress>>({});
+
+const inFlight = new Map<string, Promise<AppDownloadProgress>>();
+
+function setOfflineStatus(slug: string, progress: AppDownloadProgress): void {
+  offlineStatuses.update((statuses) => ({ ...statuses, [slug]: progress }));
+}
 
 /**
  * Reconcile the store against the SW for the given slug list. Called
@@ -32,8 +39,9 @@ export async function refreshCachedSlugs(slugs: readonly string[]): Promise<void
   const results = await Promise.allSettled(slugs.map((slug) => getAppStatus(slug)));
   for (let i = 0; i < slugs.length; i += 1) {
     const r = results[i];
-    if (r.status === 'fulfilled' && r.value.state === 'saved') {
-      next.add(slugs[i]);
+    if (r.status === 'fulfilled') {
+      setOfflineStatus(slugs[i], r.value);
+      if (r.value.state === 'saved') next.add(slugs[i]);
     }
   }
   cachedSlugs.set(next);
@@ -47,7 +55,12 @@ export async function downloadAppAndTrack(
   slug: string,
   onProgress?: (p: AppDownloadProgress) => void,
 ): Promise<AppDownloadProgress> {
-  const result = await downloadApp(slug, onProgress);
+  setOfflineStatus(slug, { slug, state: 'downloading', done: 0, total: 0 });
+  const result = await downloadApp(slug, (progress) => {
+    setOfflineStatus(slug, progress);
+    onProgress?.(progress);
+  });
+  setOfflineStatus(slug, result);
   if (result.state === 'saved') {
     cachedSlugs.update((s) => {
       if (s.has(slug)) return s;
@@ -59,8 +72,23 @@ export async function downloadAppAndTrack(
   return result;
 }
 
+export function ensureAppOffline(slug: string): Promise<AppDownloadProgress> {
+  const current = get(offlineStatuses)[slug];
+  if (current?.state === 'saved' || get(cachedSlugs).has(slug)) {
+    return Promise.resolve(current ?? { slug, state: 'saved', done: 0, total: 0 });
+  }
+  const existing = inFlight.get(slug);
+  if (existing) return existing;
+  const run = downloadAppAndTrack(slug).finally(() => {
+    inFlight.delete(slug);
+  });
+  inFlight.set(slug, run);
+  return run;
+}
+
 export async function removeAppAndTrack(slug: string): Promise<void> {
   await removeApp(slug);
+  setOfflineStatus(slug, { slug, state: 'idle', done: 0, total: 0 });
   cachedSlugs.update((s) => {
     if (!s.has(slug)) return s;
     const next = new Set(s);
@@ -71,5 +99,6 @@ export async function removeAppAndTrack(slug: string): Promise<void> {
 
 export async function clearOfflineAndTrack(): Promise<void> {
   await clearOfflineApps();
+  offlineStatuses.set({});
   cachedSlugs.set(new Set());
 }

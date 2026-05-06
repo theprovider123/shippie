@@ -411,6 +411,20 @@ self.addEventListener('fetch', (e) => {
         if (res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
+        const focusedMatch = url.pathname.match(/^\\/run\\/([^/]+)$/);
+        if (focusedMatch) {
+          return Response.redirect(
+            '/container?app=' + encodeURIComponent(focusedMatch[1]) + '&focused=1',
+            302,
+          );
+        }
+        const nestedMatch = url.pathname.match(/^\\/run\\/([^/]+)\\/.+/);
+        if (nestedMatch) {
+          const entry =
+            (await cache.match('/run/' + nestedMatch[1] + '/')) ||
+            (await cache.match('/run/' + nestedMatch[1] + '/index.html'));
+          if (entry) return entry;
+        }
         const fallback = await marketplaceFallback(cache, req);
         return fallback ?? offlineResponse();
       }

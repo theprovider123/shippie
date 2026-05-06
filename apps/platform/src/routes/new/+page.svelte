@@ -7,7 +7,8 @@
   const checks = [
     'Detects framework output and app kind',
     'Blocks hard security failures before publish',
-    'Writes a portable deploy report artifact',
+    'Writes an App Flight Recorder export',
+    'Checks declared App Policy when present',
     'Keeps URL ownership and container eligibility separate',
   ];
 
@@ -45,7 +46,7 @@
         <h1>Ship your first app in under a minute.</h1>
         <p class="lede">
           Upload a build, wrap a live URL, or let CLI/MCP send it from your editor.
-          Shippie checks the app, explains what happened, and gives you a link people can install.
+          Shippie checks the app, gives you a phone QR, and records what happened without seeing user data.
         </p>
       </div>
       <div class="hero-status" aria-label="Deploy checks">
@@ -145,7 +146,7 @@ shippie deploy ./dist</code></pre>
       </div>
       <ol>
         <li>Live at <code>{'<slug>'}.shippie.app</code> with install support and the wrapper runtime.</li>
-        <li>The deploy report shows detected kind, blocked risks, fixed essentials, and health checks.</li>
+        <li>The App Flight Recorder shows detected kind, blocked risks, fixed essentials, App Policy checks, and health checks.</li>
         <li>The dashboard tracks enhancements and runtime proof as real devices use the app.</li>
         <li>Share the URL, keep your custom domain story, and let the container become the richer home.</li>
       </ol>

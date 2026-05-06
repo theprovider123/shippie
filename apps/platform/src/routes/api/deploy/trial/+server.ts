@@ -13,6 +13,7 @@ import { getDrizzleClient, schema } from '$server/db/client';
 import { deployStatic } from '$server/deploy/pipeline';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
 import { TRIAL_MAKER_ID, ensureTrialMakerSeeded } from '$server/deploy/trial-maker';
+import { createTrialClaimReceipt } from '$server/deploy/trial-claim';
 
 const TRIAL_MAX_ZIP_BYTES = 50 * 1024 * 1024; // 50MB
 const TRIAL_PER_IP_LIMIT = 3;
@@ -64,6 +65,7 @@ export const POST: RequestHandler = async (event) => {
 
   const arrayBuffer = await zip.arrayBuffer();
   const zipBuffer = new Uint8Array(arrayBuffer);
+  const zipSha256 = await sha256Hex(zipBuffer);
 
   const slug = generateTrialSlug();
   const reservedSlugs = await loadReservedSlugs(env.DB);
@@ -130,6 +132,23 @@ export const POST: RequestHandler = async (event) => {
       .where(eq(schema.apps.id, result.appId));
   }
 
+  const expiresAt = new Date(Date.now() + TRIAL_TTL_MS).toISOString();
+  const claimReceipt =
+    env.AUTH_SECRET && result.appId
+      ? await createTrialClaimReceipt(
+          {
+            slug,
+            appId: result.appId,
+            deployId: result.deployId,
+            zipSha256,
+            expiresAt,
+          },
+          env.AUTH_SECRET,
+        )
+      : null;
+  const claimTarget = new URLSearchParams({ claim_trial: slug });
+  if (claimReceipt) claimTarget.set('claim_receipt', claimReceipt);
+
   return json({
     success: true,
     slug,
@@ -137,12 +156,10 @@ export const POST: RequestHandler = async (event) => {
     live_url: result.liveUrl,
     report_url: `/dashboard/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
     report_json_url: `/api/deploy/${encodeURIComponent(result.deployId)}/report`,
-    expires_at: new Date(Date.now() + TRIAL_TTL_MS).toISOString(),
+    expires_at: expiresAt,
     files: result.files,
     total_bytes: result.totalBytes,
-    claim_url: `/auth/login?return_to=${encodeURIComponent(
-      `/dashboard?claim_trial=${encodeURIComponent(slug)}`,
-    )}`,
+    claim_url: `/auth/login?return_to=${encodeURIComponent(`/dashboard?${claimTarget}`)}`,
   });
 };
 
@@ -159,6 +176,12 @@ function getClientIp(req: Request): string {
 
 async function hashIp(ip: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const ownedBytes = new Uint8Array(bytes);
+  const buf = await crypto.subtle.digest('SHA-256', ownedBytes);
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 

@@ -74,7 +74,15 @@ function eventFor(file = new File(['hello'], 'app.zip', { type: 'application/zip
       headers: { 'x-forwarded-for': '203.0.113.10' },
       body: form,
     }),
-    platform: { env: { DB: {}, APPS: {}, CACHE: {}, PUBLIC_ORIGIN: 'https://shippie.app' } },
+    platform: {
+      env: {
+        DB: {},
+        APPS: {},
+        CACHE: {},
+        PUBLIC_ORIGIN: 'https://shippie.app',
+        AUTH_SECRET: 'test-secret',
+      },
+    },
   } as unknown as Parameters<typeof POST>[0];
 }
 
@@ -98,11 +106,11 @@ describe('POST /api/deploy/trial', () => {
     const body = (await response.json()) as { slug: string; claim_url: string };
 
     expect(body.slug).toMatch(/^trial-[a-f0-9]{8}$/);
-    expect(body.claim_url).toBe(
-      `/auth/login?return_to=${encodeURIComponent(
-        `/dashboard?claim_trial=${encodeURIComponent(body.slug)}`,
-      )}`,
-    );
+    expect(body.claim_url).toContain('/auth/login?return_to=');
+    const claimLogin = new URL(body.claim_url, 'https://shippie.app');
+    const returnTo = claimLogin.searchParams.get('return_to');
+    expect(returnTo).toContain(`/dashboard?claim_trial=${body.slug}`);
+    expect(returnTo).toContain('claim_receipt=');
     expect(mocks.deployStatic).toHaveBeenCalledWith(
       expect.objectContaining({
         slug: body.slug,

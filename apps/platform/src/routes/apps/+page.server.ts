@@ -13,28 +13,68 @@
  */
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
+import { curatedApps } from '$lib/container/state';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories, type KindFilter } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
 import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
-const PER_PAGE = 24;
+const PER_PAGE = 48;
+
+function marketplaceCategory(category: string | undefined): string {
+  if (category === 'cooking') return 'food-drink';
+  if (category === 'fitness' || category === 'wellness' || category === 'health') return 'health-fitness';
+  if (category === 'journal' || category === 'money') return 'productivity';
+  if (category === 'memory' || category === 'home' || category === 'family' || category === 'travel') return 'lifestyle';
+  return category ?? 'tools';
+}
+
+function fallbackApps() {
+  return curatedApps.map((app) => ({
+    id: app.id,
+    slug: app.slug,
+    name: app.name,
+    tagline: app.description,
+    description: app.description,
+    type: 'app',
+    category: marketplaceCategory(app.category),
+    iconUrl: null,
+    themeColor: app.accent,
+    upvoteCount: 0,
+    installCount: 0,
+    compatibilityScore: 100,
+    currentDetectedKind: app.appKind,
+    currentPublicKindStatus: 'confirmed',
+    badges: [],
+    kind: app.appKind,
+    kindStatus: 'confirmed' as PublicKindStatus,
+  }));
+}
+
+function filteredFallbackApps(
+  query: string,
+  kindFilter: KindFilter | null,
+  categoryFilter: string | null,
+) {
+  const fallback = fallbackApps();
+  const filtered = fallback.filter((app) => {
+    const haystack = `${app.name} ${app.tagline ?? ''} ${app.category}`.toLowerCase();
+    const matchesQuery = !query || haystack.includes(query.toLowerCase());
+    const matchesKind = !kindFilter || app.kind === kindFilter;
+    const matchesCategory = !categoryFilter || app.category === categoryFilter;
+    return matchesQuery && matchesKind && matchesCategory;
+  });
+  return {
+    apps: filtered,
+    categories: [...new Set(fallback.map((app) => app.category))].sort(),
+  };
+}
 
 export const load: PageServerLoad = async ({ platform, url, depends, locals, setHeaders }) => {
   // Tag so VisibilityPicker can `invalidate('app:apps')` after a
   // visibility change without a full reload.
   depends('app:apps');
-  if (!platform?.env.DB) {
-    return {
-      apps: [],
-      query: '',
-      page: 1,
-      hasMore: false,
-      categories: [],
-    };
-  }
 
-  const db = getDrizzleClient(platform.env.DB);
   const query = (url.searchParams.get('q') ?? '').trim();
   const page = Math.max(1, Number.parseInt(url.searchParams.get('p') ?? '1', 10) || 1);
   const offset = (page - 1) * PER_PAGE;
@@ -44,6 +84,20 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       ? kindFilterRaw
       : null;
   const categoryFilter = (url.searchParams.get('category') ?? '').trim() || null;
+  if (!platform?.env.DB) {
+    const fallback = filteredFallbackApps(query, kindFilter, categoryFilter);
+    return {
+      apps: fallback.apps.slice(offset, offset + PER_PAGE),
+      query,
+      page,
+      hasMore: fallback.apps.length > offset + PER_PAGE,
+      categories: fallback.categories,
+      kindFilter,
+      categoryFilter,
+    };
+  }
+
+  const db = getDrizzleClient(platform.env.DB);
 
   // Default browse (no search, no filters, first page) is cacheable for
   // anonymous traffic — that's the bulk of /apps hits. Filtered/searched
@@ -63,6 +117,19 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       : browsePublic(db, { limit: PER_PAGE + 1, offset, kind: kindFilter, category: categoryFilter }),
     listCategories(db),
   ]);
+
+  if (appRows.length === 0) {
+    const fallback = filteredFallbackApps(query, kindFilter, categoryFilter);
+    return {
+      apps: fallback.apps.slice(offset, offset + PER_PAGE),
+      query,
+      page,
+      hasMore: fallback.apps.length > offset + PER_PAGE,
+      categories: categories.length > 0 ? categories : fallback.categories,
+      kindFilter,
+      categoryFilter,
+    };
+  }
 
   const visible = appRows.slice(0, PER_PAGE);
   const ids = visible.map((a) => a.id).filter((id): id is string => typeof id === 'string');
