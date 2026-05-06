@@ -1,0 +1,59 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Field Kitchen",
+  "slug": "field-kitchen",
+  "description": "Four kitchen rituals in one shell: brew (coffee), bake (dough), cook (sous vide / smoking / roasting / pan), hydrate (drinks log). Replaces the four single-purpose apps with one tactile counter-top tool.",
+  "icon": "/icon.svg",
+  "theme_color": "#E8603C",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "coffee-brewed",
+      "caffeine-logged",
+      "dough-ferment-started",
+      "dough-ready",
+      "cooking-now",
+      "cooked-meal",
+      "hydration"
+    ]
+  },
+  "data_schemas": {
+    "beans": {
+      "id": "text primary key",
+      "name": "text not null",
+      "roast_date": "text",
+      "origin": "text",
+      "notes": "text"
+    },
+    "brews": {
+      "id": "text primary key",
+      "ratio": "real",
+      "water_g": "real",
+      "coffee_g": "real",
+      "brewed_at": "datetime"
+    },
+    "dough_schedules": {
+      "id": "text primary key",
+      "hydration": "real",
+      "salt_pct": "real",
+      "leaven_pct": "real",
+      "started_at": "datetime",
+      "ready_at": "datetime"
+    },
+    "meals": {
+      "id": "text primary key",
+      "method": "text not null",
+      "internal_temp": "real",
+      "started_at": "datetime",
+      "ended_at": "datetime",
+      "label": "text"
+    },
+    "drinks": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "logged_at": "datetime"
+    }
+  }
+}

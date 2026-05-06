@@ -1,0 +1,11 @@
+{
+  "name": "Field Kitchen",
+  "short_name": "Field Kitchen",
+  "description": "Four kitchen rituals (brew, bake, cook, hydrate) in one shell.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#14120F",
+  "theme_color": "#E8603C",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
