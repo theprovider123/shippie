@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@shippie/showcase-kit/styles.css';
+import '@shippie/design-tokens/tokens.css';
+import './styles.css';
 import { App } from './App.tsx';
 
 createRoot(document.getElementById('root')!).render(
