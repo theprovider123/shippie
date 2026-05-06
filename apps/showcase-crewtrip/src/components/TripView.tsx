@@ -17,6 +17,7 @@ import { Icon } from './Icon';
 import type { TripPhase } from '../utils/state';
 import type { buildPersonalTrip, buildPulseStats } from '../utils/state';
 import { pulseActions } from '../data/games';
+import type { ThemePalette } from '../data/themes';
 
 interface TripViewProps {
   copy: Copy;
@@ -37,6 +38,7 @@ interface TripViewProps {
   coverUrl: string | null;
   groups: CrewGroup[];
   activePlayer: Player;
+  palette: ThemePalette;
   onPulse: (kind: PulseKind) => void;
   onGo: (tab: Tab) => void;
   onSecondary: () => void;
@@ -79,6 +81,7 @@ export function TripView(props: TripViewProps) {
       <PulseDock
         pulses={pulseActions}
         stats={props.pulseStats}
+        palette={props.palette}
         onPulse={props.onPulse}
       />
 
@@ -139,6 +142,7 @@ function PhasePrimary(props: {
 function PulseDock(props: {
   pulses: typeof pulseActions;
   stats: ReturnType<typeof buildPulseStats>;
+  palette: ThemePalette;
   onPulse: (kind: PulseKind) => void;
 }) {
   const [pulseFlash, setPulseFlash] = useState<PulseKind | null>(null);
@@ -149,21 +153,25 @@ function PulseDock(props: {
         <small>{props.stats.total ? props.stats.topLabel : 'Ask for a quick signal'}</small>
       </div>
       <div className="pulse-dock">
-        {props.pulses.map((pulse) => (
-          <button
-            key={pulse.kind}
-            type="button"
-            className={pulseFlash === pulse.kind ? 'pulse-flash' : ''}
-            onClick={() => {
-              setPulseFlash(pulse.kind);
-              window.setTimeout(() => setPulseFlash((current) => (current === pulse.kind ? null : current)), 360);
-              props.onPulse(pulse.kind);
-            }}
-          >
-            <strong>{pulse.label}</strong>
-            <small>{pulse.detail}</small>
-          </button>
-        ))}
+        {props.pulses.map((pulse) => {
+          const color = props.palette.pulseColors[pulse.kind] ?? 'var(--accent)';
+          return (
+            <button
+              key={pulse.kind}
+              type="button"
+              className={pulseFlash === pulse.kind ? 'pulse-flash' : ''}
+              style={{ ['--pulse-color' as string]: color }}
+              onClick={() => {
+                setPulseFlash(pulse.kind);
+                window.setTimeout(() => setPulseFlash((current) => (current === pulse.kind ? null : current)), 360);
+                props.onPulse(pulse.kind);
+              }}
+            >
+              <strong>{pulse.label}</strong>
+              <small>{pulse.detail}</small>
+            </button>
+          );
+        })}
       </div>
       {props.stats.total ? (
         <div className="pulse-summary">

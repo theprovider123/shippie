@@ -52,8 +52,8 @@ export const initialState: CrewtripState = {
   eventName: 'Crewtrip',
   location: 'Trip HQ',
   eventCode: newEventCode(),
-  description: 'A shared trip hub for plans, votes, games, requests, and memories.',
-  hostNote: 'Set the vibe, invite the crew, then let everyone help shape the day.',
+  description: 'The trip is what you make of it. Plans, votes, games, the moments worth keeping.',
+  hostNote: 'Set the vibe. Invite the crew. The day is whatever you make of it together.',
   energy: 64,
   activePlayerId: 'host',
   days: [

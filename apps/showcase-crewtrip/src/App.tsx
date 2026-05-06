@@ -297,6 +297,15 @@ export function App() {
     if (meta) meta.setAttribute('content', palette.themeColor);
   }, [palette.themeColor]);
 
+  // Flip data-mode on the document so light/dark CSS branches work, and
+  // make sure the page background matches the palette outside our shell.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const mode = palette.vars['--mode'] ?? 'light';
+    document.documentElement.setAttribute('data-mode', mode);
+    document.documentElement.style.colorScheme = mode === 'dark' ? 'dark' : 'light';
+  }, [palette.vars]);
+
   useEffect(() => {
     if (!visibleTabs.includes(tab) && tab !== 'vote' && tab !== 'requests' && tab !== 'memories' && tab !== 'chat' && tab !== 'wrap' && tab !== 'host') {
       setTab(visibleTabs[0] ?? 'now');
@@ -1158,6 +1167,7 @@ export function App() {
           coverUrl={coverUrl}
           groups={groups}
           activePlayer={activePlayer}
+          palette={palette}
           onPulse={sendPulse}
           onGo={(nextTab) => setTab(nextTab)}
           onSecondary={() => {
