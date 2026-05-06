@@ -7,11 +7,8 @@ export const SHOWCASE_SLUGS = [
   "body-metrics",
   "breath",
   "co-pilot",
-  "coffee",
-  "cooking",
+  "crewtrip",
   "cycle",
-  "daily-briefing",
-  "dough",
   "habit-tracker",
   "hearth",
   "journal",
@@ -20,24 +17,18 @@ export const SHOWCASE_SLUGS = [
   "matchday",
   "meal-planner",
   "mevrouw",
-  "mood-pulse",
   "move",
-  "pace",
   "pantry-scanner",
-  "pomodoro",
   "quiet",
   "read-later",
   "recipe",
   "restaurant-memory",
   "shopping-list",
   "show-and-tell",
-  "sip-log",
-  "sleep-logger",
   "story-studio",
   "symptom-diary",
   "therapy-notes",
-  "whiteboard",
-  "workout-logger"
+  "whiteboard"
 ] as const;
 
 export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.flatMap((slug) => [
