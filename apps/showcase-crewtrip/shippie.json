@@ -1,0 +1,154 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Crewtrip",
+  "slug": "crewtrip",
+  "description": "Crewtrip turns a friends trip into a live party hub: itinerary, host broadcasts, polls, games, competitions, and memories owned by the host and the crew.",
+  "icon": "/icon.svg",
+  "theme_color": "#1a1d19",
+  "background_color": "#1a1d19",
+  "display": "standalone",
+  "orientation": "any",
+  "intents": {
+    "provides": ["event-memory", "event-score", "event-plan"],
+    "consumes": ["trip-note", "place-pinned", "dined-out"]
+  },
+  "data_schemas": {
+    "events": {
+      "id": "text primary key",
+      "name": "text not null",
+      "location": "text",
+      "description": "text",
+      "host_note": "text",
+      "cover_media_url": "text",
+      "language": "text",
+      "theme": "text",
+      "created_at": "datetime"
+    },
+    "event_days": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "label": "text not null",
+      "date_label": "text"
+    },
+    "crew_groups": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "name": "text not null",
+      "color": "text",
+      "emoji": "text",
+      "image_url": "text"
+    },
+    "eventees": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "display_name": "text not null",
+      "group_id": "text",
+      "team": "text",
+      "avatar_url": "text",
+      "score": "integer"
+    },
+    "itinerary_items": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "day_id": "text",
+      "group_id": "text",
+      "title": "text not null",
+      "place": "text",
+      "starts_at": "datetime",
+      "status": "text"
+    },
+    "polls": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "question": "text not null",
+      "is_open": "integer"
+    },
+    "score_events": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "eventee_id": "text not null",
+      "points": "integer not null",
+      "reason": "text",
+      "kind": "text",
+      "day_id": "text",
+      "group_id": "text"
+    },
+    "game_definitions": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "title": "text not null",
+      "kind": "text",
+      "points": "integer not null",
+      "day_id": "text",
+      "group_id": "text",
+      "status": "text"
+    },
+    "game_submissions": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "game_id": "text not null",
+      "eventee_id": "text not null",
+      "group_id": "text",
+      "caption": "text",
+      "media_url": "text",
+      "media_kind": "text",
+      "cheer_count": "integer",
+      "created_at": "datetime"
+    },
+    "memories": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "author": "text",
+      "body": "text not null",
+      "kind": "text",
+      "day_id": "text",
+      "group_id": "text",
+      "media_url": "text",
+      "media_name": "text"
+    },
+    "crew_messages": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "author_id": "text not null",
+      "group_id": "text",
+      "scope": "text not null",
+      "body": "text not null",
+      "created_at": "datetime"
+    },
+    "crew_pulses": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "eventee_id": "text not null",
+      "group_id": "text",
+      "kind": "text not null",
+      "label": "text not null",
+      "created_at": "datetime"
+    },
+    "surprise_drops": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "title": "text not null",
+      "message": "text not null",
+      "unlock_type": "text not null",
+      "unlock_value": "text",
+      "revealed_at": "datetime",
+      "created_at": "datetime"
+    },
+    "trip_wraps": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "title": "text not null",
+      "note": "text",
+      "is_published": "integer",
+      "created_at": "datetime"
+    },
+    "crew_requests": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "eventee_id": "text not null",
+      "body": "text not null",
+      "status": "text",
+      "created_at": "datetime"
+    }
+  }
+}
