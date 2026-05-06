@@ -180,6 +180,18 @@ export interface AppHandlerContext {
     rows: readonly unknown[],
   ) => { delivered: number };
   /**
+   * Optional tap for the platform-side `/today` cross-app summary.
+   * The host wires this to `recordIntents` from `lib/intent-store`.
+   * Records to IndexedDB on the user's device — never the server.
+   * Best-effort; a missing implementation or a write error must not
+   * break the cross-app fan-out (the broadcast already fired).
+   */
+  recordIntentForToday?: (
+    providerAppId: string,
+    intent: string,
+    rows: readonly unknown[],
+  ) => void;
+  /**
    * Resolve `apps.list` for the calling app. Container scopes the
    * result to apps whose intents overlap the caller's declared
    * provides/consumes. Apps with no overlap are excluded — the list
@@ -290,6 +302,10 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
       let delivered = 0;
       if (intent && rows.length > 0) {
         delivered = ctx.broadcastIntent(appId, intent, rows).delivered;
+        // Tap the broadcast for the platform-side `/today` summary.
+        // IndexedDB-backed; never reaches a Shippie server. Best-effort
+        // — a write failure must not break the cross-app fan-out.
+        ctx.recordIntentForToday?.(appId, intent, rows);
       }
       return {
         intent: intent ?? null,

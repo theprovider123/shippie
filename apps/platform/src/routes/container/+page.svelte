@@ -31,6 +31,7 @@
     sectionTitle,
     STORAGE_KEY,
   } from '$lib/container/state';
+  import { recordIntents } from '$lib/intent-store/store';
   import {
     findRequestedApp,
     manifestToContainerApp,
@@ -267,6 +268,13 @@
       meshError = err instanceof Error ? err.message : 'Could not start a room.';
       meshStore.set({ state: 'error', message: meshError });
     }
+  }
+
+  function dataTrustLine(app: ContainerApp): string {
+    const grade = app.trust?.privacy.grade ?? 'ungraded';
+    const domains = app.trust?.privacy.externalDomains.length ?? 0;
+    const score = app.trust?.security.score;
+    return `Privacy ${grade} · ${domains} external domain${domains === 1 ? '' : 's'} · security ${score ?? 'unscored'}`;
   }
   async function joinMeshRoom() {
     meshError = '';
@@ -602,6 +610,11 @@
           runAi,
           broadcastIntent: (providerAppId, intent, rows) =>
             broadcastIntentToConsumers(providerAppId, intent, rows),
+          recordIntentForToday: (providerAppId, intent, rows) => {
+            // IndexedDB write — fire-and-forget. The /today summary
+            // is observability, not consistency-critical.
+            void recordIntents(providerAppId, intent, rows).catch(() => {});
+          },
           listOverlappingApps: (callerId) => listAppsOverlappingCaller(callerId),
           insightsForApp: (callerId) => insightsForCaller(callerId),
           startTransferDrop: (sourceId, kind, preview) =>
@@ -1823,6 +1836,7 @@
                     · {(rowsByApp[app.id]?.length ?? 0)} local rows
                     · {app.packageHash.slice(0, 18)}...
                   </p>
+                  <p class="data-trust">{dataTrustLine(app)}</p>
                 </div>
                 <div class="row-actions">
                   <button onclick={() => openApp(app.id)}>Open</button>
