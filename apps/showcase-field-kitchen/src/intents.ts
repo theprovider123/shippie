@@ -10,7 +10,7 @@
  *   - dough-ready           (Bake: "Bread ready")
  *   - cooking-now           (Cook: "Cooking now")
  *   - cooked-meal           (Cook: "Cooked meal")
- *   - hydration             (Hydrate: any drink log)
+ *   - hydration-logged      (Hydrate: any drink log)
  *
  * Payloads are intentionally small and JSON-friendly. Consumers
  * should treat unknown fields as ignorable.
@@ -25,7 +25,7 @@ export type IntentName =
   | 'dough-ready'
   | 'cooking-now'
   | 'cooked-meal'
-  | 'hydration';
+  | 'hydration-logged';
 
 export interface CoffeeBrewedPayload {
   ratio: number;

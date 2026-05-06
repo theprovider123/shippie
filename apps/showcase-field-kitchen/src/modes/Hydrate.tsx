@@ -38,7 +38,7 @@ export function Hydrate({ db, shippie, refreshKey, onChanged, onToast }: Hydrate
     setDrinks((prev) => [drink, ...prev].slice(0, 50));
     onChanged();
     shippie.feel.texture('confirm');
-    shippie.intent.broadcast('hydration', [
+    shippie.intent.broadcast('hydration-logged', [
       { kind: drink.kind, logged_at: drink.logged_at },
     ]);
     if (kind === 'coffee' || kind === 'tea') {
