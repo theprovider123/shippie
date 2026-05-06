@@ -1,93 +1,129 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { RECIPES, type Recipe, modeForLeaven, type Mode } from './recipes.ts';
 import {
-  RECIPES,
-  compute,
-  formatHM,
-  planFromReady,
-  totalScheduleMinutes,
-  type Recipe,
-} from './recipes.ts';
-import { load, newId, save, type Bake } from './db.ts';
+  load,
+  newId,
+  save,
+  type Bake,
+  type BakeOutcome,
+  type Prefs,
+} from './db.ts';
+import { Home } from './pages/Home.tsx';
+import { NewRecipe } from './pages/NewRecipe.tsx';
+import { Recipe as RecipePage } from './pages/Recipe.tsx';
+import { TimelineView } from './pages/TimelineView.tsx';
+import { ActiveBakes } from './pages/ActiveBakes.tsx';
+import { History } from './pages/History.tsx';
+import {
+  planFromStart,
+} from './lib/schedule.ts';
+import {
+  notifyStatus,
+  requestNotifyPermission,
+  scheduleAll,
+  type NotifyAt,
+} from './lib/notify.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_dough' });
 
-function defaultReadyTime(): string {
-  const d = new Date();
-  d.setHours(d.getHours() + 24, 0, 0, 0);
-  // datetime-local format: YYYY-MM-DDTHH:MM
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+type Route =
+  | { kind: 'home' }
+  | { kind: 'new-recipe' }
+  | { kind: 'recipe'; recipeId: string }
+  | { kind: 'bake'; bakeId: string }
+  | { kind: 'active' }
+  | { kind: 'history' };
 
 export function App() {
   const initial = load();
   const [bakes, setBakes] = useState<Bake[]>(initial.bakes);
-  const [recipeId, setRecipeId] = useState<string>(RECIPES[0]!.id);
-  const recipe = RECIPES.find((r) => r.id === recipeId) ?? RECIPES[0]!;
-  const [balls, setBalls] = useState<number>(recipe.defaultBalls);
-  const [ballG, setBallG] = useState<number>(recipe.defaultBallG);
-  const [readyAt, setReadyAt] = useState<string>(defaultReadyTime());
+  const [customRecipes, setCustomRecipes] = useState<Recipe[]>(initial.recipes);
+  const [prefs, setPrefs] = useState<Prefs>(initial.prefs);
+  const [route, setRoute] = useState<Route>({ kind: 'home' });
+  const [notifyPerm, setNotifyPerm] = useState(notifyStatus());
 
+  // Persist on every state change. Cheap; localStorage is small.
   useEffect(() => {
-    save({ bakes });
-  }, [bakes]);
+    save({ bakes, recipes: customRecipes, prefs });
+  }, [bakes, customRecipes, prefs]);
 
-  function pickRecipe(r: Recipe) {
-    setRecipeId(r.id);
-    setBalls(r.defaultBalls);
-    setBallG(r.defaultBallG);
-  }
+  // Active-bake notification scheduler. For each in-flight bake, wire
+  // setTimeouts for each sub-prompt fireAt, plus a final "ready" at
+  // ready_at. The cancel handle clears them on unmount or when bakes
+  // change. This is page-open-only — production wires a SW push.
+  useEffect(() => {
+    if (notifyPerm !== 'granted') return;
+    const cancels: Array<() => void> = [];
+    for (const b of bakes) {
+      if (b.finished_at) continue;
+      const plan = planFromStart(
+        b.recipe_snapshot.stages,
+        new Date(b.started_at),
+      );
+      const events: NotifyAt[] = [];
+      for (const sp of plan.subPrompts) {
+        if (sp.fireAt.getTime() <= Date.now()) continue;
+        events.push({
+          fireAt: sp.fireAt,
+          title: `${b.recipe_name} · ${sp.label}`,
+          body: sp.body,
+        });
+      }
+      const ready = new Date(b.ready_at);
+      if (ready.getTime() > Date.now()) {
+        events.push({
+          fireAt: ready,
+          title: `${b.recipe_name} · ready`,
+          body: 'Bake should be done. Pull, log the outcome.',
+        });
+      }
+      cancels.push(scheduleAll(events));
+    }
+    return () => cancels.forEach((c) => c());
+  }, [bakes, notifyPerm]);
 
-  const totals = useMemo(
-    () => compute(recipe, balls, ballG),
-    [recipe, balls, ballG],
+  // Persisted recipe lookup — checks customRecipes first, then presets.
+  const findRecipe = useCallback(
+    (id: string): Recipe | undefined =>
+      customRecipes.find((r) => r.id === id) ?? RECIPES.find((r) => r.id === id),
+    [customRecipes],
   );
 
-  const readyDate = useMemo(() => {
-    const t = new Date(readyAt);
-    return isNaN(t.getTime()) ? new Date(Date.now() + 24 * 60 * 60_000) : t;
-  }, [readyAt]);
+  const findBake = useCallback(
+    (id: string): Bake | undefined => bakes.find((b) => b.id === id),
+    [bakes],
+  );
 
-  const plan = useMemo(() => planFromReady(recipe, readyDate), [recipe, readyDate]);
-  const startAt = plan[0]?.start_at ?? readyDate;
-  const totalMinutes = totalScheduleMinutes(recipe);
+  const lastMode: Mode = useMemo(() => prefs.lastMode ?? 'sourdough', [prefs.lastMode]);
 
-  function startFerment() {
+  function startBake(recipe: Recipe, totalG: number, readyAt: Date) {
     const bake: Bake = {
-      id: newId(),
+      id: newId('b'),
       recipe_id: recipe.id,
       recipe_name: recipe.name,
-      balls,
-      ball_g: ballG,
-      hydration: recipe.hydration,
-      flour_g: totals.flour_g,
-      water_g: totals.water_g,
-      salt_g: totals.salt_g,
-      leaven_g: totals.leaven_g,
+      recipe_snapshot: recipe,
+      total_g: totalG,
       started_at: new Date().toISOString(),
-      ready_at: readyDate.toISOString(),
-      crumb_rating: null,
-      notes: '',
+      ready_at: readyAt.toISOString(),
+      finished_at: null,
+      outcome: null,
     };
-    setBakes((prev) => [bake, ...prev].slice(0, 100));
+    setBakes((prev) => [bake, ...prev]);
+    setPrefs((prev) => ({ ...prev, lastMode: modeForLeaven(recipe.leaven) }));
     shippie.feel.texture('confirm');
     shippie.intent.broadcast('dough-ferment-started', [
       {
         recipe: recipe.id,
         recipe_name: recipe.name,
         hydration: recipe.hydration,
-        flour_g: totals.flour_g,
-        balls,
+        flour_g: totalG, // approximate; downstream apps don't need exact
         started_at: bake.started_at,
         ready_at: bake.ready_at,
       },
     ]);
-    // Schedule a `dough-ready` broadcast so daily-briefing / future
-    // kitchen-clock can react. For v1 just fire setTimeout while the
-    // page is open — production wires the SW for a push at the right
-    // moment.
-    const ms = readyDate.getTime() - Date.now();
+    // Best-effort dough-ready broadcast while page is open.
+    const ms = readyAt.getTime() - Date.now();
     if (ms > 0 && ms < 24 * 60 * 60 * 1000) {
       window.setTimeout(() => {
         shippie.intent.broadcast('dough-ready', [
@@ -100,13 +136,39 @@ export function App() {
         shippie.feel.texture('milestone');
       }, ms);
     }
+    setRoute({ kind: 'bake', bakeId: bake.id });
   }
 
-  function rateBake(id: string, rating: number) {
+  function logOutcome(bakeId: string, outcome: BakeOutcome) {
     setBakes((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, crumb_rating: rating } : b)),
+      prev.map((b) =>
+        b.id === bakeId
+          ? { ...b, outcome, finished_at: new Date().toISOString() }
+          : b,
+      ),
     );
-    shippie.feel.texture('confirm');
+    shippie.feel.texture('milestone');
+    setRoute({ kind: 'home' });
+  }
+
+  function abandonBake(bakeId: string) {
+    if (!confirm('Drop this bake from the active list? It will not be logged in history.')) {
+      return;
+    }
+    setBakes((prev) => prev.filter((b) => b.id !== bakeId));
+    setRoute({ kind: 'home' });
+  }
+
+  function deleteCustomRecipe(id: string) {
+    if (!confirm('Delete this recipe from your library?')) return;
+    setCustomRecipes((prev) => prev.filter((r) => r.id !== id));
+    setRoute({ kind: 'home' });
+  }
+
+  async function ensureNotifyPerm() {
+    const next = await requestNotifyPermission();
+    setNotifyPerm(next);
+    setPrefs((prev) => ({ ...prev, notifyOptIn: next === 'granted' }));
   }
 
   function openYourData() {
@@ -114,173 +176,101 @@ export function App() {
   }
 
   return (
-    <main className="app">
-      <header className="app-header">
-        <h1>Dough</h1>
-        <p className="subtitle">baker's percentages · schedule</p>
-      </header>
+    <>
+      {route.kind === 'home' ? (
+        <Home
+          bakes={bakes}
+          customRecipes={customRecipes}
+          onPickRecipe={(r) => setRoute({ kind: 'recipe', recipeId: r.id })}
+          onNewRecipe={() => setRoute({ kind: 'new-recipe' })}
+          onOpenBake={(id) => setRoute({ kind: 'bake', bakeId: id })}
+          onOpenActive={() => setRoute({ kind: 'active' })}
+          onOpenHistory={() => setRoute({ kind: 'history' })}
+        />
+      ) : null}
 
-      {/* Recipe picker */}
-      <section className="recipe-grid">
-        {RECIPES.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            className={`recipe-chip ${r.id === recipe.id ? 'active' : ''}`}
-            onClick={() => pickRecipe(r)}
-          >
-            <span className="recipe-name">{r.name}</span>
-            <span className="recipe-meta">
-              {r.hydration}% · {r.leaven}
-            </span>
-          </button>
-        ))}
-      </section>
+      {route.kind === 'new-recipe' ? (
+        <NewRecipe
+          defaultMode={lastMode}
+          onSave={(recipe) => {
+            setCustomRecipes((prev) => [recipe, ...prev]);
+            setPrefs((prev) => ({ ...prev, lastMode: modeForLeaven(recipe.leaven) }));
+            shippie.feel.texture('confirm');
+            setRoute({ kind: 'recipe', recipeId: recipe.id });
+          }}
+          onCancel={() => setRoute({ kind: 'home' })}
+        />
+      ) : null}
 
-      {/* Yield input */}
-      <section className="yield">
-        <div className="field-row">
-          <label className="field">
-            <span>balls / loaves</span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              step={1}
-              value={balls}
-              onChange={(e) => setBalls(Math.max(1, Number(e.target.value) || 1))}
-            />
-          </label>
-          <label className="field">
-            <span>each (g)</span>
-            <input
-              type="number"
-              min={50}
-              max={2000}
-              step={10}
-              value={ballG}
-              onChange={(e) => setBallG(Math.max(50, Number(e.target.value) || 50))}
-            />
-          </label>
-        </div>
-        <p className="muted small total-line">
-          total dough: <strong>{totals.total_g}g</strong>
-        </p>
-      </section>
-
-      {/* Quantities */}
-      <section className="quantities">
-        <p className="eyebrow">to mix</p>
-        <ul>
-          <li>
-            <span className="qty-name">Flour</span>
-            <span className="qty-value">{totals.flour_g}g</span>
-            <span className="muted small qty-pct">100%</span>
-          </li>
-          <li>
-            <span className="qty-name">Water</span>
-            <span className="qty-value">{totals.water_g}g</span>
-            <span className="muted small qty-pct">{recipe.hydration}%</span>
-          </li>
-          <li>
-            <span className="qty-name">Salt</span>
-            <span className="qty-value">{totals.salt_g}g</span>
-            <span className="muted small qty-pct">{recipe.salt}%</span>
-          </li>
-          <li>
-            <span className="qty-name">{leavenName(recipe)}</span>
-            <span className="qty-value">{totals.leaven_g}g</span>
-            <span className="muted small qty-pct">{recipe.leavenPct}%</span>
-          </li>
-        </ul>
-      </section>
-
-      {/* Schedule generator */}
-      <section className="schedule">
-        <p className="eyebrow">working backwards</p>
-        <label className="field">
-          <span>ready at</span>
-          <input
-            type="datetime-local"
-            value={readyAt}
-            onChange={(e) => setReadyAt(e.target.value)}
+      {route.kind === 'recipe' ? (() => {
+        const recipe = findRecipe(route.recipeId);
+        if (!recipe) {
+          return (
+            <main className="app">
+              <p className="muted empty">Recipe not found.</p>
+              <button type="button" className="primary" onClick={() => setRoute({ kind: 'home' })}>
+                Back home
+              </button>
+            </main>
+          );
+        }
+        return (
+          <RecipePage
+            recipe={recipe}
+            onCancel={() => setRoute({ kind: 'home' })}
+            onStart={(totalG, readyAt) => startBake(recipe, totalG, readyAt)}
+            onDelete={recipe.preset ? undefined : () => deleteCustomRecipe(recipe.id)}
           />
-        </label>
-        <p className="muted small">
-          start at <strong>{startAt.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</strong>{' '}
-          · total {formatHM(totalMinutes)}
-        </p>
-        <ol className="plan">
-          {plan.map((step, i) => (
-            <li key={i}>
-              <p className="plan-line">
-                <strong>{step.label}</strong>
-                <span className="muted small">
-                  {step.start_at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {' → '}
-                  {step.end_at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </p>
-              <p className="muted small">{formatHM(step.minutes)}{step.note ? ` · ${step.note}` : ''}</p>
-            </li>
-          ))}
-        </ol>
-        <button type="button" className="primary" onClick={startFerment}>
-          Start ferment
-        </button>
-      </section>
+        );
+      })() : null}
 
-      {/* Past bakes */}
-      {bakes.length > 0 ? (
-        <section className="log">
-          <p className="eyebrow">recent bakes</p>
-          <ul>
-            {bakes.slice(0, 6).map((b) => (
-              <li key={b.id}>
-                <div className="log-line">
-                  <strong>{b.recipe_name}</strong>
-                  <span className="muted small">
-                    {b.balls} × {b.ball_g}g · {b.hydration}%
-                  </span>
-                </div>
-                <p className="muted small">
-                  {new Date(b.started_at).toLocaleDateString()}
-                </p>
-                <div className="rate-row">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      className={`star ${b.crumb_rating && n <= b.crumb_rating ? 'on' : ''}`}
-                      onClick={() => rateBake(b.id, n)}
-                      aria-label={`Crumb ${n}/5`}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {route.kind === 'bake' ? (() => {
+        const bake = findBake(route.bakeId);
+        if (!bake) {
+          return (
+            <main className="app">
+              <p className="muted empty">Bake not found.</p>
+              <button type="button" className="primary" onClick={() => setRoute({ kind: 'home' })}>
+                Back home
+              </button>
+            </main>
+          );
+        }
+        return (
+          <TimelineView
+            bake={bake}
+            onCancel={() => setRoute({ kind: 'home' })}
+            onLogOutcome={(o) => logOutcome(bake.id, o)}
+            onAbandon={() => abandonBake(bake.id)}
+          />
+        );
+      })() : null}
+
+      {route.kind === 'active' ? (
+        <ActiveBakes
+          bakes={bakes}
+          onCancel={() => setRoute({ kind: 'home' })}
+          onOpenBake={(id) => setRoute({ kind: 'bake', bakeId: id })}
+        />
+      ) : null}
+
+      {route.kind === 'history' ? (
+        <History bakes={bakes} onCancel={() => setRoute({ kind: 'home' })} />
+      ) : null}
+
+      {route.kind === 'home' && notifyPerm === 'default' ? (
+        <button
+          type="button"
+          className="notify-prompt"
+          onClick={ensureNotifyPerm}
+        >
+          Enable bake reminders
+        </button>
       ) : null}
 
       <button type="button" className="your-data" onClick={openYourData}>
         Your Data
       </button>
-    </main>
+    </>
   );
-}
-
-function leavenName(r: Recipe): string {
-  switch (r.leaven) {
-    case 'instant-yeast':
-      return 'Instant yeast';
-    case 'fresh-yeast':
-      return 'Fresh yeast';
-    case 'sourdough':
-      return 'Levain';
-    case 'poolish':
-      return 'Poolish';
-  }
 }
