@@ -1,57 +1,100 @@
-import { LaunchShowcaseApp, type LaunchShowcaseConfig } from '@shippie/showcase-kit';
-
-const config = {
-  appId: 'app_co_pilot',
-  slug: 'co-pilot',
-  eyebrow: 'Co-Pilot',
-  title: 'Handover without a middleman.',
-  subtitle: 'Schedule, meds, and notes for separated co-parents. Paired devices, not surveillance.',
-  privacyLine: 'Nothing is brokered by a company. The shared history lives on the parents paired devices.',
-  tone: 'sea',
-  tags: ['mesh co-parenting', 'handover notes', 'local meds log'],
-  placeholder: 'PE kit packed, inhaler in front pocket, pickup at 5...',
-  emptyText: 'Add a handover, custody schedule note, or medication entry.',
-  workspaceTitle: 'Care lanes',
-  workspaceItems: [
-    { modeId: 'handover', label: 'Handover', detail: 'The notes that need to survive the doorway.' },
-    { modeId: 'meds', label: 'Meds', detail: 'Dose history held by the paired parents.' },
-    { modeId: 'schedule', label: 'Schedule', detail: 'Pickup, school, and custody changes.' },
-  ],
-  handoff: {
-    title: 'Pickup summary',
-    description: 'A local handoff note for the next exchange. No chat monitoring, no account export.',
-    empty: 'No pickup notes yet.',
-  },
-  modes: [
-    {
-      id: 'handover',
-      label: 'Handover',
-      verb: 'Save handover',
-      detail: 'Capture the practical notes that should survive pickup and dropoff.',
-      intent: 'handover-note',
-    },
-    {
-      id: 'meds',
-      label: 'Meds',
-      verb: 'Log meds',
-      detail: 'Record a dose without sending medical context to a third party.',
-      intent: 'meds-logged',
-      metricLabel: 'doses',
-      unit: 'dose',
-      min: 1,
-      max: 4,
-      defaultValue: 1,
-    },
-    {
-      id: 'schedule',
-      label: 'Schedule',
-      verb: 'Add schedule',
-      detail: 'Mark a custody or pickup change in the shared local stream.',
-      intent: 'custody-event',
-    },
-  ],
-} satisfies LaunchShowcaseConfig;
+/**
+ * Co-Pilot — root.
+ *
+ * Gates on pairing. If the device isn't paired, render the pairing
+ * screen. Once paired, bind the shared Y.Doc, mount the tab UI, and
+ * render whichever page is active.
+ *
+ * The shared room id derives from the pair code via a one-way hash, so
+ * two phones with the same code converge on the same room without ever
+ * sending the human-readable code to the relay.
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { ROUTES, type Route } from './router.ts';
+import {
+  bindCoParentDoc,
+  readUnreadHandoverFor,
+  type BoundCoParentDoc,
+} from './sync/coparent-doc.ts';
+import {
+  loadPairing,
+  clearPairing,
+  roomIdFor,
+  type Pairing,
+} from './sync/pairing.ts';
+import type { RelayState } from './sync/relay-provider.ts';
+import { TabNav } from './components/TabNav.tsx';
+import { SyncBar } from './components/SyncBar.tsx';
+import { HomePage } from './pages/Home.tsx';
+import { SchedulePage } from './pages/Schedule.tsx';
+import { MedsPage } from './pages/Meds.tsx';
+import { HandoverPage } from './pages/Handover.tsx';
+import { SettingsPage } from './pages/Settings.tsx';
+import { PairingScreen } from './pages/Pairing.tsx';
+import { useYjs } from './sync/useYjs.ts';
 
 export function App() {
-  return <LaunchShowcaseApp config={config} />;
+  const [pairing, setPairing] = useState<Pairing | null>(() => loadPairing());
+
+  if (!pairing) return <PairingScreen onPaired={setPairing} />;
+
+  return <PairedApp pairing={pairing} onLeaveRoom={() => { clearPairing(); setPairing(null); }} />;
+}
+
+interface PairedProps {
+  pairing: Pairing;
+  onLeaveRoom: () => void;
+}
+
+function PairedApp({ pairing, onLeaveRoom }: PairedProps) {
+  const [route, setRoute] = useState<Route>('home');
+  const bound = useMemo<BoundCoParentDoc>(
+    () => bindCoParentDoc(roomIdFor(pairing.pairCode), pairing.pairCode),
+    [pairing.pairCode],
+  );
+
+  useEffect(() => () => bound.destroy(), [bound]);
+
+  const [relayState, setRelayState] = useState<RelayState | null>(() =>
+    bound.relay ? { ...bound.relay } : null,
+  );
+
+  useEffect(() => {
+    if (!bound.relay) return;
+    const unsub = bound.relay.subscribe((s) => setRelayState({ ...s }));
+    return unsub;
+  }, [bound]);
+
+  const unread = useYjs(bound.doc, (d) => readUnreadHandoverFor(d, pairing.role));
+
+  function handleNavigate(next: Route) {
+    if (ROUTES.includes(next)) setRoute(next);
+  }
+
+  return (
+    <div className="co-app">
+      <header className="co-header">
+        <p className="co-eyebrow">Co-Pilot</p>
+        <SyncBar state={relayState} onResync={() => bound.relay?.resync()} />
+      </header>
+      <main className="co-main">
+        {route === 'home' && (
+          <HomePage doc={bound.doc} viewer={pairing.role} onNavigate={handleNavigate} />
+        )}
+        {route === 'schedule' && (
+          <SchedulePage doc={bound.doc} viewer={pairing.role} />
+        )}
+        {route === 'meds' && (
+          <MedsPage doc={bound.doc} viewer={pairing.role} />
+        )}
+        {route === 'handover' && (
+          <HandoverPage doc={bound.doc} viewer={pairing.role} />
+        )}
+        {route === 'settings' && (
+          <SettingsPage pairing={pairing} onLeaveRoom={onLeaveRoom} />
+        )}
+      </main>
+      <TabNav current={route} unread={unread.length} onChange={handleNavigate} />
+    </div>
+  );
 }
