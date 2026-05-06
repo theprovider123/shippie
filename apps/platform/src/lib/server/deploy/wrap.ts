@@ -10,6 +10,7 @@ import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { getDrizzleClient, schema } from '../db/client';
 import { writeWrapMeta, writeAppMeta } from './kv-write';
 import { resolveLiveUrl } from './pipeline';
+import { probeWrappedUrlPwaReadiness } from './pwa-readiness';
 
 export interface CreateWrappedAppInput {
   slug: string;
@@ -57,6 +58,8 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
     return { success: false, reason: 'slug_taken' };
   }
 
+  const pwaReadiness = await probeWrappedUrlPwaReadiness(input.upstreamUrl);
+
   const [appRow] = await db
     .insert(schema.apps)
     .values({
@@ -72,6 +75,9 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
       upstreamConfig: { cspMode: input.cspMode ?? 'lenient' },
       themeColor: input.themeColor ?? '#E8603C',
       visibilityScope: input.visibilityScope ?? 'public',
+      currentPwaReadiness: pwaReadiness.status,
+      currentPwaReadinessReasons: pwaReadiness.reasons,
+      currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
     })
     .onConflictDoUpdate({
       target: schema.apps.slug,
@@ -79,6 +85,9 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
         sourceKind: 'wrapped_url',
         upstreamUrl: input.upstreamUrl,
         upstreamConfig: { cspMode: input.cspMode ?? 'lenient' },
+        currentPwaReadiness: pwaReadiness.status,
+        currentPwaReadinessReasons: pwaReadiness.reasons,
+        currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
         updatedAt: new Date().toISOString(),
       },
     })
@@ -126,6 +135,11 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
     background_color: '#ffffff',
     version: 1,
     visibility_scope: input.visibilityScope ?? 'public',
+    pwa_readiness: {
+      status: pwaReadiness.status,
+      reasons: pwaReadiness.reasons,
+      checked_at: pwaReadiness.checkedAt,
+    },
   });
 
   const liveUrl = resolveLiveUrl(input.publicOrigin, input.slug);

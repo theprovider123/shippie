@@ -170,6 +170,11 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
         | 'public'
         | 'unlisted'
         | 'private',
+      pwaReadiness: {
+        status: app.currentPwaReadiness,
+        reasons: app.currentPwaReadinessReasons ?? [],
+        checkedAt: app.currentPwaReadinessCheckedAt,
+      },
     },
     ownership: {
       maker: {

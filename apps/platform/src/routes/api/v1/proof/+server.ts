@@ -151,7 +151,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   // Resolve appSlug → appId. We store events keyed by appId so renames
   // don't orphan the proof history.
   const app = await db
-    .select({ id: schema.apps.id })
+    .select({
+      id: schema.apps.id,
+      currentPwaReadinessReasons: schema.apps.currentPwaReadinessReasons,
+    })
     .from(schema.apps)
     .where(eq(schema.apps.slug, parsed.value.appSlug))
     .limit(1);
@@ -168,6 +171,22 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     payload: ev.payload ?? null,
   }));
   await db.insert(schema.proofEvents).values(rows);
+
+  if (parsed.value.events.some((ev) => ev.eventType === 'pwa_installable')) {
+    const reasonSet = new Set<string>([
+      ...((app[0]?.currentPwaReadinessReasons as string[] | null) ?? []),
+      'beforeinstallprompt-fired',
+      'service-worker-active',
+    ]);
+    await db
+      .update(schema.apps)
+      .set({
+        currentPwaReadiness: 'confirmed',
+        currentPwaReadinessReasons: [...reasonSet],
+        currentPwaReadinessCheckedAt: Math.floor(Date.now() / 1000),
+      })
+      .where(eq(schema.apps.id, appId));
+  }
 
   return json({ accepted: rows.length }, { status: 202 });
 };

@@ -26,6 +26,26 @@ Three concepts, externally: **Wrap. Run. Connect.** Nine engineering components,
 
 ---
 
+## Continuity without custody
+
+Apps work on every device. Data stays on your devices. A Shippie app version is a signed package with a stable slug and package hash, so the same app can run on a phone, laptop, standalone URL, installed PWA, or local Hub without becoming a cloud account. The local state is separate on each device until the user deliberately connects devices.
+
+Pair devices to move or sync data directly. A QR code carries a short-lived route, key, or invite, not the whole app and not a Shippie account token. If the app package is already cached, the QR can open it offline. If a paired device or Hub has the package, another device can install it locally. Nearby sync uses peer-to-peer or LAN transport; backup uses user-owned encrypted storage when the user wants continuity while devices are apart.
+
+```text
+Same app package
+  recipe-saver@sha256:...
+        |
+        +-- phone: local DB + local files
+        +-- laptop: local DB + local files
+        +-- Hub: app/model cache, signalling, no user data
+        +-- BYO backup: encrypted archive, user-owned storage
+```
+
+This is the product line: cloud convenience, without cloud custody. Shippie should not promise "sync everywhere automatically" unless the user has explicitly chosen a continuity layer that makes that true.
+
+---
+
 ## The stack — a tour
 
 ### Wrap (Shell · Boost · Sense)
@@ -49,7 +69,7 @@ The user's device is the computer.
 
 - **Core**: `@shippie/local-db` is wa-sqlite compiled to WASM, persisted in OPFS. Drizzle-style API on top so makers write `db.recipes.where(...).all()`, not raw SQL. `@shippie/local-files` wraps OPFS with a path-based abstraction. The local runtime contract is in `@shippie/local-runtime-contract` — a tiny package that lets local-first apps share a vocabulary.
 - **AI**: the container owns the model cache and loads a versioned Transformers runtime artifact through `apps/platform/src/lib/container/ai-worker.ts`. Models are downloaded once per device and shared by every app opened inside Shippie. WebNN routes to the Neural Processing Unit when available, WebGPU when not, WASM as the floor. The maker calls `shippie.ai.classify(text, labels)` or the bridge equivalent and never sees the worker. Every response carries a `source` field so the dashboard can show which backend ran the inference. **No prompt content is ever logged. The privacy invariant is load-bearing.**
-- **Vault**: `@shippie/backup-providers` adapts to Google Drive (others to follow) using Bring-Your-Own-Cloud. Encryption is AES-256-GCM with Argon2id key derivation from a user passphrase. The OAuth coordinator at `https://shippie.app/oauth/[provider]` mints signed envelopes — the platform holds the OAuth client secret, the maker app holds nothing. Tokens are postMessaged back to the maker's signed origin (never URL-derived) and stored in OPFS, never localStorage, never on a Shippie server. Device transfer (`@shippie/proximity/transfer`) uses a one-time room with a transfer key encoded in a QR — older device → newer device, encrypted in transit, no cloud involved.
+- **Vault**: `@shippie/backup-providers` adapts to Google Drive (others to follow) using Bring-Your-Own-Cloud. The current backup envelope uses PBKDF2-SHA256 at 210k iterations plus AES-256-GCM from a user passphrase; Argon2id remains the preferred future KDF once the browser/runtime path is settled. The OAuth coordinator at `https://shippie.app/oauth/[provider]` mints signed envelopes — the platform holds the OAuth client secret, the maker app holds nothing. Tokens are postMessaged back to the maker's signed origin (never URL-derived) and stored in OPFS, never localStorage, never on a Shippie server. Device transfer (`@shippie/proximity/transfer`) uses a one-time room with a transfer key encoded in a QR — older device → newer device, encrypted in transit, no cloud involved.
 
 The composition under Run: wa-sqlite + OPFS, Origin Private File System Access API, Transformers.js / ONNX Runtime Web / WebNN, Web Crypto API, Workbox precaching, the Cache Storage API, and a per-app permission namespace inside one local container.
 
@@ -87,7 +107,7 @@ The interesting work isn't inventing primitives — the platform invented them a
 | App ownership | standalone URLs + custom domains + signed `.shippie` package metadata + container receipts |
 | App isolation | sandboxed iframes + bridge capability grants + deploy-time trust scanning + package permissions |
 | Mesh networking | WebRTC + Yjs CRDTs + X25519 ephemeral keys + AES-256-GCM + Cloudflare Durable Objects for signalling |
-| BYO-Cloud backup | Google Drive REST API + AES-GCM + Argon2id + OAuth 2.0 PKCE + Cloudflare Workers as the coordinator |
+| BYO-Cloud backup | Google Drive REST API + AES-GCM + PBKDF2-SHA256 today, Argon2id roadmapped + OAuth 2.0 PKCE + Cloudflare Workers as the coordinator |
 | Service worker injection | vite-plugin-pwa + Workbox + a thin static analyser that picks the right caching strategy |
 | Proof event spine | Cloudflare D1 + Drizzle + a daily cron + a typed event taxonomy |
 | Subdomain wrapper | SvelteKit's `hooks.server.ts` + an HTML rewriter that injects the wrapper script |

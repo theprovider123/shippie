@@ -117,6 +117,18 @@ export const apps = sqliteTable(
      */
     currentDetectedKind: text('current_detected_kind'),
     currentPublicKindStatus: text('current_public_kind_status'),
+
+    /**
+     * PWA readiness is separate from App Kind. It answers "does this launch
+     * like an installable app?" while App Kind answers "where does data live?"
+     * `confirmed` is reserved for runtime proof from real devices.
+     */
+    currentPwaReadiness: text('current_pwa_readiness'),
+    currentPwaReadinessReasons: text('current_pwa_readiness_reasons', { mode: 'json' })
+      .$type<string[]>()
+      .default(sql`('[]')`)
+      .notNull(),
+    currentPwaReadinessCheckedAt: integer('current_pwa_readiness_checked_at'),
   },
   (t) => [
     index('apps_slug_active_idx').on(t.slug),

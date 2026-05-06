@@ -5,6 +5,7 @@
   import CapabilityBadges from '$lib/components/marketplace/CapabilityBadges.svelte';
   import UpvoteButton from '$lib/components/marketplace/UpvoteButton.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import { pwaSurfaceLabel } from '$lib/types/pwa-readiness';
   import { toast } from '$lib/stores/toast';
 
   let { data }: PageProps = $props();
@@ -78,6 +79,10 @@
   function securityLabel(score: number | null): string {
     return score === null ? 'Unscored' : `${score}/100`;
   }
+
+  const pwaLabel = $derived(
+    pwaSurfaceLabel(data.app.pwaReadiness.status, data.app.pwaReadiness.reasons),
+  );
 </script>
 
 <svelte:head>
@@ -99,7 +104,7 @@
       <div class="hero-meta">
         <h1 class="title">{data.app.name}</h1>
         <p class="tagline">{data.app.tagline ?? data.app.description ?? ''}</p>
-        <p class="kind">{data.app.type} · {data.app.category}</p>
+        <p class="kind">{pwaLabel} · {data.app.category}</p>
         {#if data.capabilityBadges.length > 0}
           <div class="badges">
             <CapabilityBadges badges={data.capabilityBadges} max={5} />
@@ -158,6 +163,17 @@
             {data.trustCard.proofBadges.length > 0
               ? data.trustCard.proofBadges.join(' · ')
               : 'No runtime proof badges earned yet.'}
+          </p>
+        </article>
+        <article>
+          <span>PWA readiness</span>
+          <strong>{pwaLabel}</strong>
+          <p>
+            {data.app.pwaReadiness.status === 'confirmed'
+              ? 'Confirmed by runtime proof from a real device.'
+              : data.app.pwaReadiness.reasons.includes('manifest-found')
+                ? 'Detected from deploy-time signals; awaiting runtime proof.'
+                : 'Wrapped as a web app while PWA signals are missing.'}
           </p>
         </article>
       </div>

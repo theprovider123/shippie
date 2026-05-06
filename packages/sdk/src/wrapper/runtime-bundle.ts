@@ -61,6 +61,7 @@ function captureBeforeInstallPrompt(): void {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     bipEvent = e as BeforeInstallPromptEvent;
+    emitProofEvent('pwa_installable');
   });
   window.addEventListener('appinstalled', () => {
     bipEvent = null;

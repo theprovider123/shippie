@@ -32,6 +32,11 @@ export interface AppMeta {
   routing?: {
     mode: RouteMode;
   };
+  pwa_readiness?: {
+    status: string;
+    reasons: string[];
+    checked_at: number;
+  };
 }
 
 export async function writeAppMeta(

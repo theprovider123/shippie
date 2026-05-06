@@ -13,7 +13,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { POST } from './+server';
 
 interface FakeDb {
-  rows: { id: string }[];
+  rows: { id: string; currentPwaReadinessReasons?: string[] }[];
   inserts: unknown[][];
 }
 
@@ -50,18 +50,31 @@ vi.mock('$server/db/client', () => {
         }
         return Promise.resolve();
       },
+      set(value: unknown) {
+        fakeContext.lastUpdate = value;
+        return builder;
+      },
     };
     return builder;
   };
-  const fakeContext = { lastInsert: [] as unknown[], existingRows: [] as { id: string }[] };
+  const fakeContext = {
+    lastInsert: [] as unknown[],
+    lastUpdate: null as unknown,
+    existingRows: [] as { id: string; currentPwaReadinessReasons?: string[] }[],
+  };
   return {
     schema: {
-      apps: { id: 'apps.id', slug: 'apps.slug' },
+      apps: {
+        id: 'apps.id',
+        slug: 'apps.slug',
+        currentPwaReadinessReasons: 'apps.currentPwaReadinessReasons',
+      },
       proofEvents: 'proofEvents-table',
     },
     getDrizzleClient: () => ({
       select: () => passthroughChain((kind) => (kind === 'select' ? fakeContext.existingRows : null)),
       insert: () => passthroughChain(() => null),
+      update: () => passthroughChain(() => null),
     }),
     __fake: fakeContext,
   };
@@ -73,7 +86,8 @@ vi.mock('drizzle-orm', () => ({
 
 interface FakeContextShape {
   lastInsert: unknown[];
-  existingRows: { id: string }[];
+  lastUpdate: unknown;
+  existingRows: { id: string; currentPwaReadinessReasons?: string[] }[];
 }
 
 async function getFakeContext(): Promise<FakeContextShape> {
@@ -236,5 +250,30 @@ describe('proof ingestion — validation', () => {
     const body = (await res.json()) as { accepted: number };
     expect(body.accepted).toBe(2);
     expect(ctx.lastInsert.length).toBe(2);
+  });
+
+  test('accepts pwa_installable and promotes readiness state', async () => {
+    const ctx = await getFakeContext();
+    ctx.existingRows = [{ id: 'app-uuid-1', currentPwaReadinessReasons: ['manifest-found'] }];
+    ctx.lastInsert = [];
+    ctx.lastUpdate = null;
+    const res = (await POST(
+      eventFor({
+        body: {
+          appSlug: 'recipe',
+          deviceHash: 'a'.repeat(32),
+          events: [{ eventType: 'pwa_installable' }],
+        },
+      }),
+    )) as Response;
+    expect(res.status).toBe(202);
+    expect(ctx.lastUpdate).toMatchObject({
+      currentPwaReadiness: 'confirmed',
+      currentPwaReadinessReasons: expect.arrayContaining([
+        'manifest-found',
+        'beforeinstallprompt-fired',
+        'service-worker-active',
+      ]),
+    });
   });
 });

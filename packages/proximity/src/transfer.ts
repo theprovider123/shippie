@@ -84,6 +84,8 @@ export interface TransferGroupApi {
 // ---------------------------------------------------------------------
 
 export const TRANSFER_CHANNEL = 'transfer:v1';
+export const TRANSFER_INVITE_TTL_SECONDS = 5 * 60;
+export const TRANSFER_INVITE_CLOCK_SKEW_SECONDS = 30;
 
 export type TransferFrame =
   | TransferManifestFrame
@@ -233,6 +235,10 @@ export interface SendTransferOptions {
   signal?: AbortSignal;
   /** Bytes per file chunk on the wire. Default 256 KiB. */
   chunkBytes?: number;
+  /** Unix seconds. When reached, sender cancels instead of streaming more data. */
+  expiresAt?: number;
+  /** Test hook for deterministic expiry checks. Returns Unix seconds. */
+  now?: () => number;
 }
 
 export interface SendTransferResult {
@@ -253,13 +259,26 @@ export async function sendTransfer(opts: SendTransferOptions): Promise<SendTrans
   let rowsSent = 0;
   let filesSent = 0;
   let cancelled = false;
+  let cancelReason = 'sender-aborted';
+  const now = opts.now ?? (() => Math.floor(Date.now() / 1000));
 
   const abortListener = () => {
     cancelled = true;
+    cancelReason = 'sender-aborted';
   };
   opts.signal?.addEventListener('abort', abortListener, { once: true });
 
+  const expireIfNeeded = (): boolean => {
+    if (opts.expiresAt && now() > opts.expiresAt + TRANSFER_INVITE_CLOCK_SKEW_SECONDS) {
+      cancelled = true;
+      cancelReason = 'invite-expired';
+      return true;
+    }
+    return false;
+  };
+
   const send = async (frame: TransferFrame): Promise<void> => {
+    if (frame.t !== 'cancel' && expireIfNeeded()) return;
     const wire = await encryptFrame(key, frame);
     await opts.group.broadcastBinary(TRANSFER_CHANNEL, wire);
     bytesSent += wire.byteLength;
@@ -274,6 +293,7 @@ export async function sendTransfer(opts: SendTransferOptions): Promise<SendTrans
   };
 
   try {
+    expireIfNeeded();
     const manifest: TransferManifestFrame = {
       t: 'manifest',
       schemaVersion: opts.snapshot.schemaVersion,
@@ -287,14 +307,14 @@ export async function sendTransfer(opts: SendTransferOptions): Promise<SendTrans
 
     let rowIdx = 0;
     for await (const batch of opts.snapshot.rows) {
-      if (cancelled) break;
+      if (cancelled || expireIfNeeded()) break;
       await send({ t: 'rows', table: batch.table, idx: rowIdx++, rows: batch.rows });
       rowsSent += batch.rows.length;
       emit({ type: 'row-batch', table: batch.table, rows: batch.rows.length });
     }
 
     for await (const file of opts.snapshot.files) {
-      if (cancelled) break;
+      if (cancelled || expireIfNeeded()) break;
       await send({
         t: 'file-meta',
         fileId: file.fileId,
@@ -334,7 +354,7 @@ export async function sendTransfer(opts: SendTransferOptions): Promise<SendTrans
       };
 
       for await (const part of file.bytes) {
-        if (cancelled) break;
+        if (cancelled || expireIfNeeded()) break;
         buffer.push(part);
         buffered += part.byteLength;
         while (buffered >= chunkBytes) {
@@ -366,8 +386,8 @@ export async function sendTransfer(opts: SendTransferOptions): Promise<SendTrans
     }
 
     if (cancelled) {
-      await send({ t: 'cancel', reason: 'sender-aborted' });
-      emit({ type: 'cancelled', reason: 'sender-aborted' });
+      await send({ t: 'cancel', reason: cancelReason });
+      emit({ type: 'cancelled', reason: cancelReason });
       return { ok: false, bytesSent, rowsSent, filesSent, cancelled: true };
     }
 
@@ -523,6 +543,9 @@ export interface TransferQrPayload {
   joinCode: JoinCode;
   transferKey: Uint8Array;
   appSlug: string;
+  /** Unix seconds. v2 payloads include both timestamps. */
+  createdAt?: number;
+  expiresAt?: number;
 }
 
 /**
@@ -530,14 +553,22 @@ export interface TransferQrPayload {
  * scanQR helper parses the URL and feeds it back to the receiver.
  */
 export function encodeTransferQr(payload: TransferQrPayload): string {
+  const createdAt = payload.createdAt ?? Math.floor(Date.now() / 1000);
+  const expiresAt = payload.expiresAt ?? createdAt + TRANSFER_INVITE_TTL_SECONDS;
   const params = new URLSearchParams();
+  params.set('v', '2');
   params.set('app', payload.appSlug);
   params.set('code', payload.joinCode);
   params.set('k', bytesToBase64Url(payload.transferKey));
+  params.set('t', String(createdAt));
+  params.set('exp', String(expiresAt));
   return `shippie-transfer://?${params.toString()}`;
 }
 
-export function decodeTransferQr(text: string): TransferQrPayload | null {
+export function decodeTransferQr(
+  text: string,
+  opts: { now?: number; allowLegacyV1?: boolean } = {},
+): TransferQrPayload | null {
   let url: URL;
   try {
     url = new URL(text);
@@ -545,10 +576,12 @@ export function decodeTransferQr(text: string): TransferQrPayload | null {
     return null;
   }
   if (url.protocol !== 'shippie-transfer:') return null;
+  const version = url.searchParams.get('v') ?? '1';
   const code = url.searchParams.get('code');
   const k = url.searchParams.get('k');
   const app = url.searchParams.get('app');
   if (!code || !k || !app) return null;
+  if (version !== '1' && version !== '2') return null;
   let bytes: Uint8Array;
   try {
     bytes = base64UrlToBytes(k);
@@ -556,7 +589,17 @@ export function decodeTransferQr(text: string): TransferQrPayload | null {
     return null;
   }
   if (bytes.byteLength !== 32) return null;
-  return { joinCode: code, transferKey: bytes, appSlug: app };
+  if (version === '1') {
+    if (opts.allowLegacyV1 === false) return null;
+    return { joinCode: code, transferKey: bytes, appSlug: app };
+  }
+  const createdAt = parseUnixSeconds(url.searchParams.get('t'));
+  const expiresAt = parseUnixSeconds(url.searchParams.get('exp'));
+  if (createdAt === null || expiresAt === null) return null;
+  if (expiresAt < createdAt) return null;
+  const now = opts.now ?? Math.floor(Date.now() / 1000);
+  if (now > expiresAt + TRANSFER_INVITE_CLOCK_SKEW_SECONDS) return null;
+  return { joinCode: code, transferKey: bytes, appSlug: app, createdAt, expiresAt };
 }
 
 /**
@@ -592,6 +635,13 @@ function base64UrlToBytes(value: string): Uint8Array {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+function parseUnixSeconds(value: string | null): number | null {
+  if (!value) return null;
+  if (!/^\d{1,12}$/.test(value)) return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) ? n : null;
 }
 
 /** Base64 string byte length without decoding. */
