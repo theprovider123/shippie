@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["symptom-logged"],
+    "provides": ["symptom-logged", "med-taken"],
     "consumes": ["sleep-logged", "mood-logged", "cooked-meal", "body-metrics-logged"]
   },
   "data_schemas": {
