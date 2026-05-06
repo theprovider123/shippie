@@ -1,63 +1,91 @@
-import { LaunchShowcaseApp, type LaunchShowcaseConfig } from '@shippie/showcase-kit';
-
-const config = {
-  appId: 'app_hearth',
-  slug: 'hearth',
-  eyebrow: 'Hearth',
-  title: 'Home logistics, held locally.',
-  subtitle: 'Chores, fridge notes, dinner plans, and house reminders shared by pairing code.',
-  privacyLine: 'Household data stays on paired devices. No chore emails, no grocery profiling.',
-  tone: 'paper',
-  tags: ['mesh household', 'shared fridge', 'local calendar'],
-  placeholder: 'Olive oil is low, boiler service Tuesday, bins tonight...',
-  emptyText: 'Add a chore, fridge note, or dinner plan to start the shared home stream.',
-  consumes: ['needs-restocking', 'cooked-meal'],
-  workspaceTitle: 'House board',
-  workspaceItems: [
-    { modeId: 'chore', label: 'Chores', detail: 'Shared tasks with no scorekeeping.' },
-    { modeId: 'fridge', label: 'Fridge', detail: 'Groceries, repairs, and small house facts.' },
-    { modeId: 'dinner', label: 'Dinner', detail: 'What is happening tonight.' },
-  ],
-  handoff: {
-    title: 'House handoff',
-    description: 'Copy a plain-text local summary for whoever is walking in next.',
-    empty: 'No house notes to hand off yet.',
-  },
-  modes: [
-    {
-      id: 'chore',
-      label: 'Chore',
-      verb: 'Save chore',
-      detail: 'Capture a household task without turning home into a points dashboard.',
-      intent: 'chore-done',
-      metricLabel: 'people',
-      unit: 'person',
-      min: 1,
-      max: 6,
-      defaultValue: 2,
-    },
-    {
-      id: 'fridge',
-      label: 'Fridge',
-      verb: 'Post note',
-      detail: 'Leave the kind of fridge note that usually gets lost in chat.',
-      intent: 'household-note',
-    },
-    {
-      id: 'dinner',
-      label: 'Dinner',
-      verb: 'Plan dinner',
-      detail: 'Agree what is for dinner and let Daily see the household plan.',
-      intent: 'dinner-planned',
-      metricLabel: 'servings',
-      unit: 'servings',
-      min: 1,
-      max: 10,
-      defaultValue: 4,
-    },
-  ],
-} satisfies LaunchShowcaseConfig;
+import { useEffect, useMemo, useState } from 'react';
+import { ROUTES, type Route } from './router.ts';
+import {
+  bindHearthDoc,
+  announceMember,
+  type BoundHearthDoc,
+} from './sync/hearth-doc.ts';
+import {
+  loadPairing,
+  clearPairing,
+  roomSlugFor,
+  type HousePairing,
+} from './sync/pairing.ts';
+import type { RelayState } from './sync/relay-provider.ts';
+import { TabNav } from './components/TabNav.tsx';
+import { SyncBar } from './components/SyncBar.tsx';
+import { TodayPage } from './pages/Today.tsx';
+import { ChoresPage } from './pages/Chores.tsx';
+import { FridgePage } from './pages/Fridge.tsx';
+import { DinnerPage } from './pages/Dinner.tsx';
+import { HousePage } from './pages/House.tsx';
+import { PairingScreen } from './pages/Pairing.tsx';
 
 export function App() {
-  return <LaunchShowcaseApp config={config} />;
+  const [pairing, setPairing] = useState<HousePairing | null>(() => loadPairing());
+
+  if (!pairing) return <PairingScreen onPaired={setPairing} />;
+
+  return <PairedHearth pairing={pairing} onLeave={() => { clearPairing(); setPairing(null); }} />;
+}
+
+interface PairedProps {
+  pairing: HousePairing;
+  onLeave: () => void;
+}
+
+function PairedHearth({ pairing, onLeave }: PairedProps) {
+  const [route, setRoute] = useState<Route>('today');
+  const bound = useMemo<BoundHearthDoc>(
+    () => bindHearthDoc(roomSlugFor(pairing.roomCode), pairing.phrase),
+    [pairing.roomCode, pairing.phrase],
+  );
+
+  useEffect(() => {
+    bound.whenSynced.then(() => {
+      announceMember(bound.doc, pairing.memberId, pairing.memberName);
+    });
+    return () => bound.destroy();
+  }, [bound, pairing.memberId, pairing.memberName]);
+
+  const [relayState, setRelayState] = useState<RelayState | null>(() =>
+    bound.relay ? { ...bound.relay } : null,
+  );
+
+  useEffect(() => {
+    if (!bound.relay) return;
+    const unsub = bound.relay.subscribe((s) => setRelayState({ ...s }));
+    return unsub;
+  }, [bound]);
+
+  function handleNavigate(next: Route) {
+    if (ROUTES.includes(next)) setRoute(next);
+  }
+
+  return (
+    <div className="hearth-app">
+      <header className="hearth-header">
+        <p className="hearth-app-eyebrow">Hearth</p>
+        <SyncBar state={relayState} onResync={() => bound.relay?.resync()} />
+      </header>
+      <main className="hearth-main">
+        {route === 'today' && (
+          <TodayPage doc={bound.doc} myMemberId={pairing.memberId} onNavigate={handleNavigate} />
+        )}
+        {route === 'chores' && (
+          <ChoresPage doc={bound.doc} myMemberId={pairing.memberId} />
+        )}
+        {route === 'fridge' && (
+          <FridgePage doc={bound.doc} myMemberId={pairing.memberId} />
+        )}
+        {route === 'dinner' && (
+          <DinnerPage doc={bound.doc} myMemberId={pairing.memberId} />
+        )}
+        {route === 'house' && (
+          <HousePage doc={bound.doc} pairing={pairing} onLeave={onLeave} />
+        )}
+      </main>
+      <TabNav current={route} onChange={handleNavigate} />
+    </div>
+  );
 }

@@ -1,0 +1,473 @@
+/**
+ * Hearth — kitchen-noticeboard look.
+ *
+ * Imports the canonical Shippie tokens, then layers a warmer cream
+ * palette over the top so Hearth feels like the cosy kitchen variant
+ * of the brand. Sharp corners are kept (Shippie hallmark); generous
+ * spacing and big tap targets follow the voice doc — "this isn't
+ * Asana for the home".
+ */
+@import '@shippie/design-tokens/tokens.css';
+
+:root {
+  /* Override to the cream/oat palette by default — Hearth lives in
+     light mode by feel. The Shippie cream tokens are reused so we
+     don't drift from the brand. */
+  --bg: #F5EFE4;
+  --bg-pure: #EDE4D3;
+  --surface: #FBF5E8;
+  --surface-alt: #E8DEC6;
+  --surface-elevated: #FFFEF7;
+  --text: #2C1F14;
+  --text-secondary: #5C4A3A;
+  --text-light: #8A7A66;
+  --border: #D8C9A5;
+  --border-light: #E8DEC6;
+  color-scheme: light;
+
+  --hearth-accent: #5EA777;
+  --hearth-accent-dim: #4A8961;
+  --hearth-accent-glow: rgba(94, 167, 119, 0.18);
+  --hearth-warm: #D9A658;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+body {
+  font-size: var(--body-size);
+  line-height: 1.55;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--caption-size);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  margin: 0;
+}
+
+/* ── Layout shell ──────────────────────────────────────── */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top, 0px) 0 calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-shell > main {
+  flex: 1;
+  padding: var(--space-md) var(--space-md) var(--space-xl);
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-lg) var(--space-md) var(--space-md);
+}
+
+.page-header h1 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+}
+
+.page-header .lede {
+  color: var(--text-secondary);
+  font-size: var(--small-size);
+}
+
+/* ── Tab bar (bottom nav) ──────────────────────────────── */
+
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface-elevated);
+  border-top: 1px solid var(--border);
+  padding: var(--space-xs) var(--space-md) calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-xs);
+  z-index: 10;
+}
+
+.tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-xs) 0;
+  color: var(--text-light);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.tab-btn[aria-current='true'] {
+  color: var(--hearth-accent-dim);
+  font-weight: 600;
+}
+
+.tab-btn .glyph {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* ── Cards / panels ─────────────────────────────────────── */
+
+.card {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.card + .card { margin-top: var(--space-sm); }
+
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.card-title {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.muted { color: var(--text-secondary); }
+.dim   { color: var(--text-light); }
+
+/* ── Buttons ────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: 48px;
+  padding: 0 var(--space-md);
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.btn:active { transform: scale(0.98); }
+
+.btn.primary {
+  background: var(--hearth-accent);
+  border-color: var(--hearth-accent-dim);
+  color: white;
+}
+
+.btn.primary:hover {
+  background: var(--hearth-accent-dim);
+}
+
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.btn.danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-light);
+}
+.btn.danger:hover {
+  color: #b04a3a;
+}
+
+.btn.block {
+  width: 100%;
+}
+
+.btn-row {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+/* ── Inputs ─────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field-label {
+  font-family: var(--font-mono);
+  font-size: var(--caption-size);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+
+input.input,
+textarea.input,
+select.input {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+input.input:focus,
+textarea.input:focus,
+select.input:focus {
+  outline: none;
+  border-color: var(--hearth-accent);
+  box-shadow: 0 0 0 3px var(--hearth-accent-glow);
+}
+
+.code-input {
+  font-family: var(--font-mono);
+  letter-spacing: 0.32em;
+  font-size: 1.5rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* ── Pills / chips ──────────────────────────────────────── */
+
+.whose-turn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 4px var(--space-sm);
+  background: var(--hearth-accent-glow);
+  border: 1px solid var(--hearth-accent);
+  color: var(--hearth-accent-dim);
+  font-size: var(--small-size);
+  font-weight: 500;
+}
+
+.whose-turn-pill.due {
+  background: rgba(217, 166, 88, 0.18);
+  border-color: var(--hearth-warm);
+  color: #8a6520;
+}
+
+.cadence-chip {
+  font-family: var(--font-mono);
+  font-size: var(--caption-size);
+  letter-spacing: 0.06em;
+  color: var(--text-light);
+  padding: 2px 8px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-light);
+}
+
+/* ── Avatar ─────────────────────────────────────────────── */
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hearth-warm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.avatar.lg {
+  width: 48px;
+  height: 48px;
+  font-size: 1.1rem;
+}
+
+.avatar-row {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+/* ── Lists ──────────────────────────────────────────────── */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.empty-state {
+  padding: var(--space-xl) var(--space-md);
+  text-align: center;
+  color: var(--text-light);
+  font-style: italic;
+}
+
+/* ── Pairing screen ─────────────────────────────────────── */
+
+.pairing-screen {
+  min-height: 100dvh;
+  padding: var(--space-xl) var(--space-md);
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.pairing-screen .hero h1 {
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.05;
+}
+
+.pairing-screen .hero p {
+  color: var(--text-secondary);
+  margin-top: var(--space-sm);
+}
+
+.code-display {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  padding: var(--space-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.code-display .code {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  letter-spacing: 0.24em;
+  color: var(--hearth-accent-dim);
+  font-weight: 600;
+}
+
+.code-display .phrase {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  letter-spacing: 0.18em;
+  color: var(--hearth-warm);
+  font-weight: 600;
+}
+
+.qr-card {
+  background: var(--surface-elevated);
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-card svg, .qr-card img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Privacy banner ─────────────────────────────────────── */
+
+.privacy-banner {
+  background: var(--hearth-accent-glow);
+  border: 1px solid var(--hearth-accent);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--small-size);
+  color: var(--hearth-accent-dim);
+}
+
+/* ── Sync status dot ────────────────────────────────────── */
+
+.sync-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--text-light);
+}
+.sync-dot.open { background: var(--hearth-accent); }
+.sync-dot.connecting { background: var(--hearth-warm); }
+.sync-dot.closed { background: var(--text-light); }
+
+/* ── Suggestion card (dinner) ───────────────────────────── */
+
+.suggestion {
+  background: linear-gradient(160deg, var(--surface-elevated), var(--surface));
+  border: 1px solid var(--border);
+  padding: var(--space-lg) var(--space-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.suggestion .label {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.suggestion .matched {
+  font-family: var(--font-mono);
+  font-size: var(--caption-size);
+  letter-spacing: 0.08em;
+  color: var(--hearth-accent-dim);
+  text-transform: lowercase;
+}
