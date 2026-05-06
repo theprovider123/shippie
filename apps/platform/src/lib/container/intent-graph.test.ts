@@ -29,7 +29,71 @@ import { curatedApps } from './state';
  * dined-out, walked) will gain consumers in P7+ as more apps land.
  */
 const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
+  // Field Kitchen — fermentation has no current consumer (was Bake's
+  // outbound signal for a future "fermentation tracker" sibling).
   'dough-ferment-started',
+  // Hearth — household-internal events. The cross-app graph might
+  // surface these via /today but no other app subscribes by design
+  // (housemates' chore rota isn't another app's business).
+  'chore-done',
+  'fridge-added',
+  'dinner-eaten',
+  // Co-Pilot — separated co-parents domain; no app consumes by
+  // design (kid-side data is deliberately out of scope).
+  'coparent-handover-noted',
+  'coparent-med-given',
+  'coparent-day-changed',
+  // Cycle — predicted-window publishes for body-metrics / mood
+  // correlation surfaces that aren't curated yet.
+  'cycle-window-predicted',
+  // Story Studio — creation-only; share signals don't have curated
+  // consumers (the recipient's grandparent device is the consumer).
+  'story-made',
+  'story-shared',
+  // Atlas — trip lifecycle has no curated consumer in-tree (an
+  // analytics surface might land later).
+  'trip-started',
+  'stop-pinned',
+  'trip-ended',
+  // Symptom Diary — med-taken is provided alongside symptom-logged;
+  // no curated cross-app consumer for med-taken specifically.
+  'med-taken',
+  // Therapy Notes — journal-entry is captured for future surfacing.
+  'journal-entry',
+  // Ledger — expense-logged provides the cross-app finance signal;
+  // no curated consumer beyond /today.
+  'expense-logged',
+  // Field Kitchen — daily-briefing was the previous consumer of these
+  // (it aggregated across the kitchen-rituals); /today now plays that
+  // role but reads from the IndexedDB intent store directly, not
+  // through the in-tree registry.
+  'coffee-brewed',
+  'cooking-now',
+  'dough-ready',
+  'hydration-logged',
+  // Cycle — single-user journal-shape; no curated consumer.
+  'cycle-logged',
+  // Hearth — household-internal events; no curated cross-app consumer
+  // by design.
+  'household-note',
+  'dinner-planned',
+  // Story Studio — share signals don't have curated consumers (the
+  // grandparent device IS the consumer, off-platform).
+  'story-draft',
+  // Therapy Notes — local journaling surface for /today; no in-tree
+  // consumer subscribes to therapy-checkin.
+  'therapy-checkin',
+  // Atlas — trip-note + place-pinned are consumed by Crewtrip.
+  // (No whitelist needed — actually consumed.)
+  // Quiet — focus-session was previously aggregated by daily-briefing;
+  // /today picks it up via the IndexedDB store now.
+  'focus-session',
+  // Move — run-planned was previously a Pace→Workout-Logger handshake;
+  // both retired, so the intent is provider-only now.
+  'run-planned',
+  // Symptom Diary — both provided AND in ALLOWED_ORPHAN_CONSUMERS
+  // (it's published locally, no curated consumer in-tree).
+  'symptom-logged',
 ]);
 
 /**
