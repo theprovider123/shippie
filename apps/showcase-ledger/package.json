@@ -3,16 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Ledger - private expense tracking without bank scraping or aggregators.",
+  "description": "Ledger — private expense tracking without bank scraping or aggregators.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
+    "test": "bun test src",
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
+    "@shippie/iframe-sdk": "workspace:*",
+    "@shippie/local-db": "workspace:*",
+    "@shippie/local-runtime-contract": "workspace:*",
+    "@shippie/sdk": "workspace:*",
     "@shippie/showcase-kit": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

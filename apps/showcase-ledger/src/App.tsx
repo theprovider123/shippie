@@ -1,58 +1,333 @@
-import { LaunchShowcaseApp, type LaunchShowcaseConfig } from '@shippie/showcase-kit';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { resolveLocalDb } from './db/runtime.ts';
+import {
+  formatCents,
+  getCurrency,
+  listCategories,
+  parseAmountToCents,
+  seedDefaultCategories,
+} from './db/queries.ts';
+import type { Category, Entry } from './db/schema.ts';
+import { EntryList } from './pages/EntryList.tsx';
+import { MonthView } from './pages/MonthView.tsx';
+import { Categories } from './pages/Categories.tsx';
+import { Recurring } from './pages/Recurring.tsx';
+import { Export } from './pages/Export.tsx';
+import { Settings } from './pages/Settings.tsx';
 
-const config = {
-  appId: 'app_ledger',
-  slug: 'ledger',
-  eyebrow: 'Ledger',
-  title: 'Money notes without bank access.',
-  subtitle: 'Tap-fast expense capture, budgets, and CSV-ready history with no Plaid story.',
-  privacyLine: 'Ledger stores what the user types. It never scrapes banks or syncs a finance profile.',
-  tone: 'ink',
-  tags: ['privacy-essential', 'no aggregator', 'CSV export ready'],
-  placeholder: 'Groceries, train ticket, pharmacy receipt...',
-  emptyText: 'Log an expense or set a local budget limit.',
-  consumes: ['dined-out', 'shopping-list'],
-  workspaceTitle: 'Month ledger',
-  workspaceItems: [
-    { modeId: 'expense', label: 'Expenses', detail: 'Manual capture without bank scraping.' },
-    { modeId: 'budget', label: 'Budgets', detail: 'Private limits for the wider graph.' },
-  ],
-  handoff: {
-    title: 'CSV preview',
-    description: 'A local export shape for spreadsheet handoff, built from typed entries only.',
-    empty: 'No expense rows to preview yet.',
-    actionLabel: 'Copy CSV preview',
-    format: 'csv',
-  },
-  modes: [
-    {
-      id: 'expense',
-      label: 'Expense',
-      verb: 'Log expense',
-      detail: 'Capture an expense locally, with no bank connection.',
-      intent: 'expense-logged',
-      metricLabel: 'amount',
-      unit: 'GBP',
-      min: 1,
-      max: 250,
-      defaultValue: 18,
-    },
-    {
-      id: 'budget',
-      label: 'Budget',
-      verb: 'Set budget',
-      detail: 'Set a private category limit for the cross-app graph.',
-      intent: 'budget-limit',
-      metricLabel: 'limit',
-      unit: 'GBP',
-      min: 25,
-      max: 1000,
-      step: 25,
-      defaultValue: 250,
-    },
-  ],
-} satisfies LaunchShowcaseConfig;
+type Tab = 'entries' | 'month' | 'recurring' | 'categories' | 'export' | 'settings';
+
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'entries', label: 'Entries' },
+  { id: 'month', label: 'Month' },
+  { id: 'recurring', label: 'Recurring' },
+  { id: 'categories', label: 'Cats' },
+  { id: 'export', label: 'CSV' },
+];
+
+const shippie = createShippieIframeSdk({ appId: 'app_ledger' });
+
+interface ConsumePrompt {
+  intent: 'dined-out' | 'shopping-list';
+  amountCents: number | null;
+  amountText: string;
+  note: string;
+  categoryHint: string;
+}
 
 export function App() {
-  return <LaunchShowcaseApp config={config} />;
+  const db = useMemo(() => resolveLocalDb(), []);
+  const today = useMemo(() => new Date(), []);
+  const [tab, setTab] = useState<Tab>('entries');
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth() + 1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [currency, setCurrencyState] = useState<string>('GBP');
+  const [toast, setToast] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState<ConsumePrompt | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // Boot: ensure schema, seed defaults, load categories + currency.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await seedDefaultCategories(db);
+        const [cats, cur] = await Promise.all([listCategories(db), getCurrency(db)]);
+        if (cancelled) return;
+        setCategories(cats);
+        setCurrencyState(cur);
+      } catch (err) {
+        console.warn('[ledger] boot failed', err);
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [db]);
+
+  // Reload categories whenever something changes them.
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    (async () => {
+      const cats = await listCategories(db);
+      if (!cancelled) setCategories(cats);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [db, refreshKey, ready]);
+
+  // Subscribe to dined-out / shopping-list — turn them into "log this as
+  // an expense?" prompts. The user always confirms before a row is saved.
+  useEffect(() => {
+    const unsubDined = shippie.intent.subscribe('dined-out', (broadcast) => {
+      const row = broadcast.rows[0] as
+        | { amount?: number | string; cost?: number | string; note?: string; restaurant?: string }
+        | undefined;
+      if (!row) return;
+      const raw = row.amount ?? row.cost;
+      const text =
+        typeof raw === 'number' ? raw.toFixed(2) : typeof raw === 'string' ? raw : '';
+      const cents = text ? parseAmountToCents(String(text)) : null;
+      setPrompt({
+        intent: 'dined-out',
+        amountText: text,
+        amountCents: cents,
+        note: typeof row.note === 'string' ? row.note : row.restaurant ?? 'Dining',
+        categoryHint: 'Food',
+      });
+    });
+    const unsubShop = shippie.intent.subscribe('shopping-list', (broadcast) => {
+      const row = broadcast.rows[0] as
+        | { total?: number | string; amount?: number | string; note?: string; store?: string }
+        | undefined;
+      if (!row) return;
+      const raw = row.total ?? row.amount;
+      const text =
+        typeof raw === 'number' ? raw.toFixed(2) : typeof raw === 'string' ? raw : '';
+      const cents = text ? parseAmountToCents(String(text)) : null;
+      setPrompt({
+        intent: 'shopping-list',
+        amountText: text,
+        amountCents: cents,
+        note: typeof row.note === 'string' ? row.note : row.store ?? 'Shopping',
+        categoryHint: 'Food',
+      });
+    });
+    return () => {
+      unsubDined();
+      unsubShop();
+    };
+  }, []);
+
+  const refresh = useCallback(() => setRefreshKey((n) => n + 1), []);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2400);
+  }, []);
+
+  const handleEntryCreated = useCallback(
+    (entry: Entry) => {
+      // Provide on the existing intents — kept verbatim from the prior
+      // showcase config. `expense-logged` is the every-save signal;
+      // `budget-limit` only fires when an entry's note hints at a limit
+      // (note starts with "limit:" — a low-friction power-user feature
+      // until we ship a proper budget UI).
+      shippie.intent.broadcast('expense-logged', [
+        {
+          id: entry.id,
+          kind: entry.kind,
+          amount: entry.amount_cents / 100,
+          currency: entry.currency,
+          category: entry.category_id,
+          note: entry.note,
+          occurredOn: entry.occurred_on,
+        },
+      ]);
+      const noteLower = (entry.note ?? '').trim().toLowerCase();
+      if (entry.kind === 'spend' && noteLower.startsWith('limit:')) {
+        shippie.intent.broadcast('budget-limit', [
+          {
+            id: entry.id,
+            limit: entry.amount_cents / 100,
+            currency: entry.currency,
+            label: entry.note?.slice('limit:'.length).trim() ?? '',
+          },
+        ]);
+      }
+      shippie.feel.texture('confirm');
+    },
+    [],
+  );
+
+  const handleCurrencyChange = useCallback(
+    (next: string) => {
+      setCurrencyState(next);
+      showToast(`Currency set to ${next}.`);
+    },
+    [showToast],
+  );
+
+  const acceptPrompt = useCallback(() => {
+    if (!prompt) return;
+    setPrompt(null);
+    setTab('entries');
+    // EntryList opens the spend draft via the URL hash convention. Using
+    // local state instead: we drop the prompt onto a starter draft by
+    // toggling tab + a query param. Simplest path is to push the values
+    // into a sessionStorage stash that EntryList reads on mount of its
+    // editor — but we don't currently wire that. For now, surface a
+    // toast that the prompt cleared and trust the user to retype if
+    // needed. The intent here is to NOT silently log a row.
+    const summary = prompt.amountText
+      ? `${prompt.amountText} for ${prompt.note}`
+      : prompt.note;
+    showToast(`Tap "+ Log spending" to record ${summary}.`);
+  }, [prompt, showToast]);
+
+  if (!ready) {
+    return (
+      <div className="app">
+        <main className="app-main">
+          <section className="page">
+            <div className="eyebrow-row">
+              <span>Ledger</span>
+            </div>
+            <p style={{ color: 'var(--muted)' }}>Loading…</p>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      <main className="app-main">
+        {tab === 'entries' ? (
+          <EntryList
+            db={db}
+            year={year}
+            month={month}
+            onMonthChange={(y, m) => {
+              setYear(y);
+              setMonth(m);
+            }}
+            categories={categories}
+            refreshKey={refreshKey}
+            onChanged={refresh}
+            onEntryCreated={handleEntryCreated}
+            onToast={showToast}
+          />
+        ) : null}
+        {tab === 'month' ? (
+          <MonthView
+            db={db}
+            year={year}
+            month={month}
+            onMonthChange={(y, m) => {
+              setYear(y);
+              setMonth(m);
+            }}
+            currency={currency}
+            refreshKey={refreshKey}
+            onExport={() => setTab('export')}
+          />
+        ) : null}
+        {tab === 'recurring' ? (
+          <Recurring
+            db={db}
+            categories={categories}
+            currency={currency}
+            refreshKey={refreshKey}
+            onChanged={refresh}
+            onToast={showToast}
+          />
+        ) : null}
+        {tab === 'categories' ? (
+          <Categories
+            db={db}
+            categories={categories}
+            onChanged={refresh}
+            onToast={showToast}
+          />
+        ) : null}
+        {tab === 'export' ? (
+          <Export
+            db={db}
+            year={year}
+            month={month}
+            categories={categories}
+            refreshKey={refreshKey}
+            onToast={showToast}
+          />
+        ) : null}
+        {tab === 'settings' ? (
+          <Settings
+            db={db}
+            currency={currency}
+            onCurrencyChange={handleCurrencyChange}
+          />
+        ) : null}
+      </main>
+
+      <nav className="bottom-tabs" role="tablist" aria-label="Sections">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`tab ${tab === t.id ? 'tab-active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      <button
+        type="button"
+        className="your-data-button"
+        onClick={() => shippie.openYourData({ appSlug: 'ledger' })}
+        aria-label="Your data"
+      >
+        Your Data
+      </button>
+
+      {prompt ? (
+        <div className="consume-prompt" role="dialog" aria-label="Log this as an expense?">
+          <span className="summary">
+            <strong>Log this as an expense?</strong>
+            <br />
+            {prompt.intent === 'dined-out' ? 'Dining' : 'Shopping'}
+            {prompt.amountCents !== null
+              ? ` · ${formatCents(prompt.amountCents, currency)}`
+              : ''}
+            {prompt.note ? ` · ${prompt.note}` : ''}
+          </span>
+          <div className="actions">
+            <button type="button" className="ghost" onClick={() => setPrompt(null)}>
+              Dismiss
+            </button>
+            <button type="button" className="primary" onClick={acceptPrompt}>
+              Open log form
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div className="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      ) : null}
+    </div>
+  );
 }
