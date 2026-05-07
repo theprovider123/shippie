@@ -18,14 +18,83 @@ export const pulseActions: Array<{ kind: PulseKind; label: string; detail: strin
   { kind: 'moment', label: 'Best moment', detail: 'Save this' },
 ];
 
-export const featureOptions: Array<{ key: FeatureKey; label: string; hint: string }> = [
-  { key: 'crew', label: 'Crew names', hint: 'Guests can add themselves' },
+export const tabFeatureOptions: Array<{ key: FeatureKey; label: string; hint: string }> = [
+  { key: 'crew', label: 'Crew tab', hint: 'Names, photos, and teams' },
+  { key: 'games', label: 'Challenges tab', hint: 'Crew challenges and proof' },
+  { key: 'memories', label: 'Memories tab', hint: 'Text, photos, videos' },
+];
+
+export const detailFeatureOptions: Array<{ key: FeatureKey; label: string; hint: string }> = [
   { key: 'plan', label: 'Plan', hint: 'Shared itinerary' },
-  { key: 'polls', label: 'Polls', hint: 'Quick decisions' },
-  { key: 'games', label: 'Games', hint: 'Challenges and points' },
+  { key: 'polls', label: 'Votes', hint: 'Quick decisions' },
   { key: 'requests', label: 'Requests', hint: 'Crew can ask the host' },
-  { key: 'memories', label: 'Memories', hint: 'Text, photos, videos' },
+  { key: 'soundtrack', label: 'Soundtrack', hint: 'DJ sets and playlists' },
+  { key: 'surprises', label: 'Surprise drops', hint: 'Timed or manual reveals' },
   { key: 'chat', label: 'Chat', hint: 'All-crew and group messages' },
   { key: 'wrap', label: 'Trip wrap', hint: 'Share the end-of-trip recap' },
-  { key: 'scores', label: 'Energy', hint: 'Score and vibe tracking' },
+  { key: 'scores', label: 'Points', hint: 'Scores and leaderboards' },
+];
+
+export const featureOptions = [...tabFeatureOptions, ...detailFeatureOptions];
+
+export const featurePresets: Array<{
+  key: 'simple' | 'party' | 'festival';
+  label: string;
+  hint: string;
+  features: Record<FeatureKey, boolean>;
+}> = [
+  {
+    key: 'simple',
+    label: 'Simple trip',
+    hint: 'Plan, crew, soundtrack, memories',
+    features: {
+      crew: true,
+      plan: true,
+      polls: false,
+      games: false,
+      requests: true,
+      soundtrack: true,
+      surprises: false,
+      memories: true,
+      chat: false,
+      wrap: true,
+      scores: false,
+    },
+  },
+  {
+    key: 'party',
+    label: 'Party trip',
+    hint: 'Votes, challenges, drops, wrap',
+    features: {
+      crew: true,
+      plan: true,
+      polls: true,
+      games: true,
+      requests: true,
+      soundtrack: true,
+      surprises: true,
+      memories: true,
+      chat: false,
+      wrap: true,
+      scores: true,
+    },
+  },
+  {
+    key: 'festival',
+    label: 'Festival trip',
+    hint: 'Groups, votes, chat, set clashes',
+    features: {
+      crew: true,
+      plan: true,
+      polls: true,
+      games: true,
+      requests: true,
+      soundtrack: true,
+      surprises: true,
+      memories: true,
+      chat: true,
+      wrap: true,
+      scores: true,
+    },
+  },
 ];

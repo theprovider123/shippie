@@ -1,7 +1,7 @@
 {
   "name": "Crewtrip",
   "short_name": "Crewtrip",
-  "description": "Crewtrip turns a friends trip into a live party hub: itinerary, host broadcasts, polls, games, competitions, and memories owned by the host and the crew.",
+  "description": "Crewtrip turns a friends trip into a live party hub: itinerary, host broadcasts, votes, challenges, playlists, and memories owned by the host and the crew.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#FAF7EF",

@@ -9,6 +9,7 @@ import { Icon } from './Icon';
  */
 interface OnboardingCardProps {
   state: CrewtripState;
+  features: CrewtripState['features'];
   syncPeers: number;
   onShare: () => void;
   onAddStop: () => void;
@@ -38,23 +39,23 @@ export function OnboardingCard(props: OnboardingCardProps) {
       cta: 'Share',
       onClick: props.onShare,
     },
-    {
+    props.features.plan ? {
       id: 'plan',
       done: hasStop,
       label: 'Add the first plan',
       detail: 'A meet point, a meal, a sunset spot — anything to anchor the day.',
       cta: 'Add',
       onClick: props.onAddStop,
-    },
-    {
+    } : null,
+    props.features.memories ? {
       id: 'memory',
       done: hasMemory,
       label: 'Drop the first memory',
       detail: 'A quote, a photo, a tiny moment worth keeping.',
       cta: 'Save',
       onClick: props.onAddMemory,
-    },
-  ];
+    } : null,
+  ].filter(Boolean) as Step[];
 
   const allDone = steps.every((step) => step.done);
   if (allDone) return null;

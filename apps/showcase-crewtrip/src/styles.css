@@ -1,3 +1,67 @@
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf') format('truetype');
+}
+
 /*
  * Crewtrip — sun-baked summer aesthetic.
  *
@@ -23,15 +87,15 @@
   /* Defaults match the Coast palette so first-paint is warm even before
      the inline theme vars apply. */
   --mode: light;
-  --bg: #F2EAD8;
-  --bg-tint: rgba(216, 168, 122, 0.18);
-  --paper: #F8F1E0;
-  --paper-warm: #F4E5C9;
+  --bg: #E9DEC8;
+  --bg-tint: rgba(177, 126, 76, 0.2);
+  --paper: #F3E7D0;
+  --paper-warm: #EBD7B4;
   --ink: #2A1F16;
   --ink-soft: #4E3D2C;
   --ink-faint: #75614C;
-  --line: rgba(94, 63, 32, 0.16);
-  --line-strong: rgba(94, 63, 32, 0.32);
+  --line: rgba(94, 63, 32, 0.22);
+  --line-strong: rgba(94, 63, 32, 0.4);
   --accent: #C8643A;
   --accent-soft: rgba(200, 100, 58, 0.18);
   --accent-foreground: #FBF3DE;
@@ -39,9 +103,9 @@
   --gold-soft: rgba(215, 165, 90, 0.22);
   --leaf: #7C9F86;
   --sea: #5A8FA0;
-  --shadow-soft: 0 12px 28px rgba(94, 63, 32, 0.12);
-  --shadow-card: 0 18px 38px rgba(94, 63, 32, 0.14);
-  --shadow-hero: 0 30px 60px rgba(94, 63, 32, 0.22);
+  --shadow-soft: 0 14px 30px rgba(94, 63, 32, 0.16);
+  --shadow-card: 0 20px 42px rgba(94, 63, 32, 0.2);
+  --shadow-hero: 0 32px 64px rgba(94, 63, 32, 0.26);
 }
 
 * { box-sizing: border-box; }
@@ -592,6 +656,44 @@ p { margin: 0; }
   font-family: var(--font-mono);
   font-size: 0.7rem;
   letter-spacing: 0.06em;
+}
+
+.soundtrack-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-card);
+  background: var(--paper-warm);
+  border: 1px solid var(--line);
+}
+
+.soundtrack-card h3 {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 1.22rem;
+  font-weight: 600;
+}
+
+.soundtrack-card p {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.soundtrack-card a {
+  min-height: 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .mode-broadcast {
@@ -2414,6 +2516,12 @@ p { margin: 0; }
   accent-color: var(--accent);
 }
 
+.advanced-game .feature-toggle input {
+  width: 22px;
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
 /* Host disclosure */
 .host-disclosure {
   padding: 0;
@@ -2593,6 +2701,11 @@ p { margin: 0; }
   color: var(--ink);
   font-family: var(--font-body);
   padding: 10px;
+}
+
+.template-row button small {
+  display: block;
+  margin-top: 4px;
 }
 
 .surprise-list { display: grid; gap: 8px; }
@@ -2999,12 +3112,15 @@ p { margin: 0; }
 .preset-strip button:first-child small { color: rgba(251, 243, 222, 0.78); }
 
 .advanced-game {
-  display: grid;
-  gap: 8px;
+  display: block;
   border-top: 1px solid var(--line);
   padding-top: 12px;
   margin-top: 4px;
 }
+
+.advanced-game > :not(summary) { margin-top: 8px; }
+
+.advanced-game:not([open]) > :not(summary) { display: none; }
 
 .advanced-game summary {
   min-height: 42px;
@@ -3508,4 +3624,3 @@ p { margin: 0; }
   color: var(--ink);
   font-weight: 500;
 }
-

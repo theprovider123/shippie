@@ -8,6 +8,7 @@ export type IconName =
   | 'memories'
   | 'chat'
   | 'requests'
+  | 'soundtrack'
   | 'wrap'
   | 'host'
   | 'more'
@@ -94,6 +95,13 @@ const ICON_PATHS: Record<IconName, ReactElement> = {
       <path d="M5 5h14v9H9l-4 4z" />
       <path d="M9 9h6" />
       <path d="M9 12h4" />
+    </>
+  ),
+  soundtrack: (
+    <>
+      <path d="M9 18V6l9-2v12" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="15" cy="16" r="3" />
     </>
   ),
   wrap: (

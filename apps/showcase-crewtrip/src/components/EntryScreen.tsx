@@ -33,7 +33,7 @@ export function EntryScreen(props: EntryScreenProps) {
           <h1>The trip is <em>what you make of it.</em></h1>
           <p>
             A shared hub for the days you'll talk about for years. Plans, votes,
-            games, requests, and the moments worth keeping — owned by the host
+            challenges, playlists, requests, and the moments worth keeping — owned by the host
             and the crew.
           </p>
           <div className="entry-actions">
@@ -72,6 +72,7 @@ export function EntryScreen(props: EntryScreenProps) {
           <input
             className="entry-input"
             type="text"
+            name="trip-name"
             value={tripName}
             placeholder="Trip name"
             onChange={(event) => setTripName(event.target.value)}
@@ -107,6 +108,7 @@ export function EntryScreen(props: EntryScreenProps) {
         <input
           className="entry-input mono"
           type="text"
+          name="trip-code"
           value={code}
           placeholder="OLIVE-PORCH-07"
           autoCapitalize="characters"

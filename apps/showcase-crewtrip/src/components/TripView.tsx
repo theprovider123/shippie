@@ -6,6 +6,7 @@ import type {
   Player,
   PulseKind,
   Role,
+  SoundtrackSlot,
   SurpriseDrop,
   Tab,
   TripDay,
@@ -17,6 +18,7 @@ import { DayToggle } from './Atoms';
 import { Icon } from './Icon';
 import type { TripPhase } from '../utils/state';
 import type { buildPersonalTrip, buildPulseStats } from '../utils/state';
+import { playlistProviderLabel } from '../utils/state';
 import { pulseActions } from '../data/games';
 import type { ThemePalette } from '../data/themes';
 
@@ -35,6 +37,9 @@ interface TripViewProps {
   hostPrompts: string[];
   currentStop: ItineraryStop;
   nextStop: ItineraryStop | undefined;
+  soundtrack: SoundtrackSlot | undefined;
+  showPlan: boolean;
+  showPoints: boolean;
   tripTimelineItems: TripTimelineItem[];
   coverUrl: string | null;
   groups: CrewGroup[];
@@ -72,15 +77,19 @@ export function TripView(props: TripViewProps) {
 
       {props.onboarding}
 
-      <PhasePrimary
-        phase={props.phase}
-        role={props.role}
-        latestBroadcast={props.latestBroadcast}
-        currentStop={props.currentStop}
-        nextStop={props.nextStop}
-        onGo={props.onGo}
-        onSecondary={props.onSecondary}
-      />
+      {props.showPlan ? (
+        <PhasePrimary
+          phase={props.phase}
+          role={props.role}
+          latestBroadcast={props.latestBroadcast}
+          currentStop={props.currentStop}
+          nextStop={props.nextStop}
+          onGo={props.onGo}
+          onSecondary={props.onSecondary}
+        />
+      ) : null}
+
+      <SoundtrackCard slot={props.soundtrack} />
 
       <PulseDock
         pulses={pulseActions}
@@ -94,11 +103,17 @@ export function TripView(props: TripViewProps) {
       <details className="trip-fold">
         <summary>
           <span>{props.role === 'host' ? 'Host signals' : 'My trip'}</span>
-          <small>{props.role === 'host' ? `${props.hostPrompts.length} prompts` : `${props.personalTrip.score} pts`}</small>
+          <small>
+            {props.role === 'host'
+              ? `${props.hostPrompts.length} prompts`
+              : props.showPoints
+                ? `${props.personalTrip.score} pts`
+                : `${props.personalTrip.entries} entries`}
+          </small>
         </summary>
         {props.role === 'host'
           ? <HostPromptStack prompts={props.hostPrompts} />
-          : <PersonalTripCard personalTrip={props.personalTrip} />}
+          : <PersonalTripCard personalTrip={props.personalTrip} showPoints={props.showPoints} />}
       </details>
 
       <details className="trip-fold">
@@ -139,6 +154,22 @@ function PhasePrimary(props: {
         <button type="button" onClick={() => props.onGo(props.phase.primaryTab)}>{props.phase.primaryAction}</button>
         <button type="button" className="ghost" onClick={props.onSecondary}>{props.role === 'host' ? 'Send update' : 'Memories'}</button>
       </div>
+    </article>
+  );
+}
+
+function SoundtrackCard({ slot }: { slot?: SoundtrackSlot }) {
+  if (!slot) return null;
+  return (
+    <article className="soundtrack-card app-card">
+      <div>
+        <p className="eyebrow">{slot.time}</p>
+        <h3>{slot.title}</h3>
+        <p>{slot.dj}{slot.note ? ` / ${slot.note}` : ''}</p>
+      </div>
+      {slot.link ? (
+        <a href={slot.link} target="_blank" rel="noreferrer">{playlistProviderLabel(slot.link)}</a>
+      ) : null}
     </article>
   );
 }
@@ -209,7 +240,7 @@ function SurpriseShelf(props: { surprises: SurpriseDrop[]; lockedCount: number; 
       {props.lockedCount ? (
         <article className="locked">
           <span>{props.lockedCount} locked</span>
-          <strong>More surprises waiting</strong>
+          <strong>More drops waiting</strong>
           <p>Host drops unlock as the trip moves.</p>
         </article>
       ) : null}
@@ -219,7 +250,7 @@ function SurpriseShelf(props: { surprises: SurpriseDrop[]; lockedCount: number; 
 
 function HostPromptStack({ prompts }: { prompts: string[] }) {
   if (!prompts.length) {
-    return <p className="empty-note">All clear — the crew is settled. Send a broadcast or drop a surprise to nudge.</p>;
+    return <p className="empty-note">All clear — the crew is settled. Send a broadcast or add a drop to nudge.</p>;
   }
   return (
     <div className="host-prompts-list">
@@ -228,11 +259,11 @@ function HostPromptStack({ prompts }: { prompts: string[] }) {
   );
 }
 
-function PersonalTripCard({ personalTrip }: { personalTrip: ReturnType<typeof buildPersonalTrip> }) {
+function PersonalTripCard({ personalTrip, showPoints }: { personalTrip: ReturnType<typeof buildPersonalTrip>; showPoints: boolean }) {
   return (
     <div className="personal-trip">
       <strong>My trip</strong>
-      <span>{personalTrip.score} pts</span>
+      {showPoints ? <span>{personalTrip.score} pts</span> : null}
       <span>{personalTrip.entries} entries</span>
       <span>{personalTrip.memories} memories</span>
       <small>{personalTrip.award}</small>

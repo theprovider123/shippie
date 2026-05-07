@@ -7,6 +7,7 @@ interface WrapCardOptions {
   awards: CrewAward[];
   memories: Memory[];
   coverUrl: string | null;
+  includeScores?: boolean;
 }
 
 const CARD_WIDTH = 1080;
@@ -95,7 +96,9 @@ export async function generateWrapCard(options: WrapCardOptions): Promise<Blob |
   ctx.font = '600 24px "JetBrains Mono", "SF Mono", ui-monospace, monospace';
   ctx.fillStyle = inkSoft;
   ctx.textAlign = 'left';
-  const statsText = `${crewCount} CREW · ${memoryCount} MEMORIES · ${totalScore} POINTS`;
+  const statsText = options.includeScores === false
+    ? `${crewCount} CREW · ${memoryCount} MEMORIES`
+    : `${crewCount} CREW · ${memoryCount} MEMORIES · ${totalScore} POINTS`;
   ctx.fillText(statsText, heroX + 12, statsY);
 
   // Top award.

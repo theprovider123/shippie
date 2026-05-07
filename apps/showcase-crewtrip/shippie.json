@@ -2,7 +2,7 @@
   "$schema": "https://shippie.app/schemas/app.json",
   "name": "Crewtrip",
   "slug": "crewtrip",
-  "description": "Crewtrip turns a friends trip into a live party hub: itinerary, host broadcasts, polls, games, competitions, and memories owned by the host and the crew.",
+  "description": "Crewtrip turns a friends trip into a live party hub: itinerary, host broadcasts, votes, challenges, playlists, and memories owned by the host and the crew.",
   "icon": "/icon.svg",
   "theme_color": "#1a1d19",
   "background_color": "#1a1d19",
@@ -133,6 +133,17 @@
       "unlock_value": "text",
       "revealed_at": "datetime",
       "created_at": "datetime"
+    },
+    "soundtrack_slots": {
+      "id": "text primary key",
+      "event_id": "text not null",
+      "day_id": "text",
+      "title": "text not null",
+      "dj": "text",
+      "playlist_url": "text",
+      "note": "text",
+      "starts_at": "datetime",
+      "status": "text"
     },
     "trip_wraps": {
       "id": "text primary key",

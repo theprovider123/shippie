@@ -3,7 +3,7 @@ export type Tab = 'now' | 'crew' | 'vote' | 'games' | 'requests' | 'memories' | 
 export type StopStatus = 'now' | 'next' | 'later';
 export type RequestStatus = 'new' | 'shared' | 'done';
 export type MemoryKind = 'text' | 'image' | 'video' | 'award';
-export type FeatureKey = 'crew' | 'plan' | 'polls' | 'games' | 'requests' | 'memories' | 'chat' | 'wrap' | 'scores';
+export type FeatureKey = 'crew' | 'plan' | 'polls' | 'games' | 'requests' | 'memories' | 'chat' | 'wrap' | 'scores' | 'soundtrack' | 'surprises';
 export type GameKind = 'photo' | 'bingo' | 'prediction' | 'award' | 'mission' | 'challenge';
 export type MessageScope = 'all' | 'group';
 export type HostSection = 'setup' | 'manage' | 'fun' | 'wrap';
@@ -77,10 +77,21 @@ export interface Challenge {
   submissions?: GameSubmission[];
 }
 
+export interface SoundtrackSlot {
+  id: string;
+  dayId?: string;
+  time: string;
+  title: string;
+  dj: string;
+  link?: string;
+  note?: string;
+  status: StopStatus;
+}
+
 export interface TripTimelineItem {
   id: string;
   time: string;
-  kind: 'plan' | 'host' | 'poll' | 'game' | 'memory';
+  kind: 'plan' | 'host' | 'poll' | 'game' | 'memory' | 'soundtrack';
   title: string;
   detail: string;
   status?: string;
@@ -92,7 +103,7 @@ export interface LiveActivity {
   id: string;
   text: string;
   at: string;
-  kind: 'presence' | 'pulse' | 'host' | 'memory' | 'game' | 'poll' | 'surprise';
+  kind: 'presence' | 'pulse' | 'host' | 'memory' | 'game' | 'poll' | 'surprise' | 'soundtrack';
 }
 
 export interface CrewAward {
@@ -212,6 +223,7 @@ export interface CrewtripState {
   messages: CrewMessage[];
   pulses: CrewPulse[];
   surprises: SurpriseDrop[];
+  soundtracks: SoundtrackSlot[];
   wrapUp: WrapUpSettings;
   features: FeatureSettings;
   language: Language;
@@ -250,4 +262,5 @@ export interface EventTemplate {
   stops: ItineraryStop[];
   polls: Poll[];
   challenges: Challenge[];
+  soundtracks?: SoundtrackSlot[];
 }

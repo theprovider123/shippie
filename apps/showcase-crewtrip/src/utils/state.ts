@@ -21,6 +21,7 @@ import type {
   RecoveryPack,
   LocalBackup,
   CrewPulse,
+  SoundtrackSlot,
 } from '../types';
 import { newId, newEventCode, timeNow, timeRank } from './ids';
 import { paletteFor } from '../data/themes';
@@ -52,7 +53,7 @@ export const initialState: CrewtripState = {
   eventName: 'Crewtrip',
   location: 'Trip HQ',
   eventCode: newEventCode(),
-  description: 'The trip is what you make of it. Plans, votes, games, the moments worth keeping.',
+  description: 'The trip is what you make of it. Plans, votes, playlists, challenges, the moments worth keeping.',
   hostNote: 'Set the vibe. Invite the crew. The day is whatever you make of it together.',
   energy: 64,
   activePlayerId: 'host',
@@ -69,6 +70,9 @@ export const initialState: CrewtripState = {
     { id: 's1', dayId: 'day-1', time: '10:00', title: 'Host opens the trip', place: 'Join by link or QR', status: 'now' },
     { id: 's2', dayId: 'day-1', time: '11:30', title: 'Crew vote', place: 'Pick the first group move', status: 'next' },
     { id: 's3', dayId: 'day-2', time: '18:00', title: 'Memory drop', place: 'Best moments, photos, videos, quotes', status: 'later' },
+  ],
+  soundtracks: [
+    { id: 'dj-1', dayId: 'day-1', time: '21:00', title: 'Sunset warm-up', dj: 'Host', link: 'https://open.spotify.com/', note: 'Crew playlist opens before dinner.', status: 'later' },
   ],
   polls: [
     {
@@ -103,15 +107,15 @@ export const initialState: CrewtripState = {
   requests: [
     { id: 'r1', authorId: 'crew-1', authorName: 'Alex', text: 'Can we add a food stop before the main plan?', status: 'new', at: '10:18' },
   ],
-  messages: [
+    messages: [
     { id: 'msg-1', authorId: 'host', authorName: 'Host', scope: 'all', text: 'Use chat for quick meet-up notes. Host updates stay pinned on Today.', at: '10:01' },
     { id: 'msg-2', authorId: 'crew-1', authorName: 'Alex', scope: 'group', groupId: 'beach', text: 'Beach crew checking in.', at: '10:09' },
   ],
-  pulses: [
+    pulses: [
     { id: 'pulse-1', playerId: 'crew-1', playerName: 'Alex', groupId: 'beach', kind: 'hype', label: 'Hype', at: '10:16' },
     { id: 'pulse-2', playerId: 'crew-2', playerName: 'Sam', groupId: 'food', kind: 'hungry', label: 'Hungry', at: '10:20' },
   ],
-  surprises: [
+    surprises: [
     { id: 'drop-1', title: 'First secret mission', message: 'Find the best proof that the crew has officially arrived.', unlockType: 'first-photo', unlockValue: 'first photo', createdAt: '10:00' },
   ],
   wrapUp: {
@@ -122,16 +126,18 @@ export const initialState: CrewtripState = {
     includePolls: true,
     includeTimeline: true,
   },
-  features: {
+    features: {
     crew: true,
     plan: true,
     polls: true,
     games: true,
     requests: true,
     memories: true,
-    chat: true,
+    chat: false,
     wrap: true,
     scores: true,
+    soundtrack: true,
+    surprises: true,
   },
   language: 'en',
   theme: 'sunset',
@@ -145,7 +151,7 @@ export function createFreshCrewtripState(options: { eventCode?: string; language
     eventName: 'Crewtrip',
     location: 'Trip HQ',
     eventCode,
-    description: 'A shared trip hub for plans, votes, games, requests, and memories.',
+    description: 'A shared trip hub for plans, votes, challenges, playlists, requests, and memories.',
     hostNote: 'Set the vibe, invite the crew, then let everyone help shape the day.',
     energy: 50,
     language: options.language ?? initialState.language,
@@ -163,6 +169,7 @@ export function createFreshCrewtripState(options: { eventCode?: string; language
     messages: [],
     pulses: [],
     surprises: [],
+    soundtracks: [],
     wrapUp: { ...initialState.wrapUp, published: false },
     features: { ...initialState.features },
   };
@@ -193,6 +200,7 @@ export function normalizeCrewtripState(state: CrewtripState): CrewtripState {
     messages: state.messages ?? initialState.messages,
     pulses: state.pulses ?? initialState.pulses,
     surprises: state.surprises ?? initialState.surprises,
+    soundtracks: state.soundtracks ?? initialState.soundtracks,
     wrapUp: { ...initialState.wrapUp, ...(state.wrapUp ?? {}) },
     language: state.language ?? initialState.language,
     theme: state.theme ?? initialState.theme,
@@ -305,6 +313,7 @@ export function mergeCrewtripState(remoteRaw: CrewtripState, currentRaw: Crewtri
     messages: sortRecent(mergeById(current.messages ?? [], remote.messages ?? [], remoteWins)),
     pulses: sortRecent(mergeById(current.pulses ?? [], remote.pulses ?? [], remoteWins)).slice(0, 36),
     surprises: sortRecent(mergeById(current.surprises ?? [], remote.surprises ?? [], remoteWins)),
+    soundtracks: mergeById(current.soundtracks ?? [], remote.soundtracks ?? [], remoteWins),
     features: { ...current.features, ...remote.features },
     wrapUp: remoteWins ? { ...current.wrapUp, ...remote.wrapUp } : { ...remote.wrapUp, ...current.wrapUp },
     updatedAt: Math.max(current.updatedAt, remote.updatedAt),
@@ -388,6 +397,32 @@ export function unlockLabel(drop: SurpriseDrop): string {
   return `opens ${drop.unlockValue}`;
 }
 
+export function normalizePlaylistUrl(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+export function playlistProviderLabel(raw?: string): string {
+  if (!raw) return 'Open playlist';
+  try {
+    const host = new URL(raw).hostname.replace(/^www\./, '').toLowerCase();
+    if (host.includes('spotify.com')) return 'Open Spotify';
+    if (host.includes('soundcloud.com')) return 'Open SoundCloud';
+    if (host.includes('music.apple.com')) return 'Open Apple Music';
+  } catch {
+    return 'Open playlist';
+  }
+  return 'Open playlist';
+}
+
 function newestRank(items: Array<{ at?: string }>): number {
   const newest = Math.min(...items.map((item) => timeRank(item.at)));
   const now = timeRank(timeNow());
@@ -412,6 +447,7 @@ export function buildLiveActivities(state: CrewtripState, sync: SyncState, group
     ...state.memories.slice(0, 4).map((memory) => ({ id: `memory-${memory.id}`, text: `${memory.author} added ${memory.kind === 'text' ? 'a memory' : memory.kind}`, at: memory.at ?? 'Now', kind: 'memory' as const })),
     ...state.challenges.flatMap((challenge) => (challenge.submissions ?? []).slice(0, 2).map((submission) => ({ id: `entry-${challenge.id}-${submission.id}`, text: `${submission.playerName} submitted proof`, at: submission.at, kind: 'game' as const }))),
     ...state.surprises.filter((drop) => isSurpriseUnlocked(drop, state)).slice(0, 2).map((drop) => ({ id: `drop-${drop.id}`, text: `Surprise unlocked: ${drop.title}`, at: drop.revealedAt ?? drop.createdAt, kind: 'surprise' as const })),
+    ...(state.soundtracks ?? []).slice(0, 2).map((slot) => ({ id: `soundtrack-${slot.id}`, text: `${slot.dj}: ${slot.title}`, at: slot.time, kind: 'soundtrack' as const })),
   ];
   return sortRecent(activities).slice(0, 10);
 }
@@ -465,7 +501,7 @@ export function buildTripPhase(
     return {
       label: role === 'host' ? 'Host setup' : 'Invite received',
       title: role === 'host' ? 'Set up the trip' : 'Join the crew',
-      detail: role === 'host' ? 'Add the cover, first plan, teams, and invite link.' : 'Add your name, send a pulse, and follow the first plan.',
+      detail: role === 'host' ? 'Add the cover, first plan, playlist, teams, and invite link.' : 'Add your name, send a pulse, and follow the first plan.',
       primaryAction: role === 'host' ? 'Open settings' : 'Add crew',
       primaryTab: role === 'host' ? 'host' : 'crew',
     };
@@ -488,14 +524,15 @@ export function buildTripPhase(
   };
 }
 
-export function buildHostPrompts(state: CrewtripState, sync: SyncState, wrapUp: WrapUpSettings): string[] {
+export function buildHostPrompts(state: CrewtripState, sync: SyncState, wrapUp: WrapUpSettings, features: CrewtripState['features'] = initialState.features): string[] {
   const prompts: string[] = [];
-  if (state.players.length > 3 && !state.polls.some((poll) => poll.open)) prompts.push(`${state.players.length} people joined. Start a quick vote.`);
-  if (state.memories.length === 0 || newestRank(state.memories) > 180) prompts.push('No fresh memory yet. Prompt a quote, photo, or award.');
-  if (state.requests.some((request) => request.status === 'new')) prompts.push('New crew requests are waiting to be shared back.');
-  if (state.challenges.length && !state.challenges.some((challenge) => challenge.submissions?.length)) prompts.push('Games are live but need proof. Boost the first one.');
-  if (sync.status === 'open' && sync.peers > 2) prompts.push(`${sync.peers + 1} devices are live. Drop a surprise while everyone is here.`);
-  if (!wrapUp.published && state.memories.length >= 3) prompts.push('The trip has enough material for a wrap ceremony.');
+  if (features.polls && state.players.length > 3 && !state.polls.some((poll) => poll.open)) prompts.push(`${state.players.length} people joined. Start a quick vote.`);
+  if (features.memories && (state.memories.length === 0 || newestRank(state.memories) > 180)) prompts.push('No fresh memory yet. Prompt a quote, photo, or award.');
+  if (features.requests && state.requests.some((request) => request.status === 'new')) prompts.push('New crew requests are waiting to be shared back.');
+  if (features.games && state.challenges.length && !state.challenges.some((challenge) => challenge.submissions?.length)) prompts.push('Challenges are live but need proof. Boost the first one.');
+  if (features.soundtrack && !state.soundtracks?.length) prompts.push('Add a playlist or DJ set so the night has a soundtrack.');
+  if (features.surprises && sync.status === 'open' && sync.peers > 2) prompts.push(`${sync.peers + 1} devices are live. Drop something while everyone is here.`);
+  if (features.wrap && !wrapUp.published && state.memories.length >= 3) prompts.push('The trip has enough material for a wrap ceremony.');
   return prompts;
 }
 
@@ -525,9 +562,9 @@ export function buildGameHighlights(challenges: Challenge[], players: Player[], 
   });
 }
 
-export function buildCrewAwards(players: Player[], memories: Memory[], challenges: Challenge[], groups: CrewGroup[]): CrewAward[] {
+export function buildCrewAwards(players: Player[], memories: Memory[], challenges: Challenge[], groups: CrewGroup[], features: CrewtripState['features'] = initialState.features): CrewAward[] {
   const topScore = Math.max(...players.map((player) => player.score), 0);
-  return players.map((player) => {
+  const awards = players.map((player) => {
     const groupName = groups.find((group) => group.id === player.groupId)?.name ?? player.team;
     const memoryCount = memories.filter((memory) => memory.author === player.name).length;
     const gameEntries = challenges.flatMap((challenge) => challenge.submissions ?? []).filter((submission) => submission.playerId === player.id);
@@ -535,17 +572,17 @@ export function buildCrewAwards(players: Player[], memories: Memory[], challenge
     const completed = challenges.filter((challenge) => challenge.doneBy.includes(player.id)).length;
     let title = 'Trip original';
     let detail = 'Checked in and became part of the story.';
-    if (player.score === topScore && topScore > 0) {
+    if (features.scores && player.score === topScore && topScore > 0) {
       title = 'Top scorer';
       detail = `${player.score} points across the trip.`;
-    } else if (memoryCount > 0) {
+    } else if (features.memories && memoryCount > 0) {
       title = 'Memory maker';
       detail = `${memoryCount} saved moment${memoryCount === 1 ? '' : 's'} for the crew.`;
-    } else if (cheers > 0) {
+    } else if (features.games && cheers > 0) {
       title = 'Cheer magnet';
-      detail = `${cheers} cheer${cheers === 1 ? '' : 's'} on game proof.`;
-    } else if (completed > 0) {
-      title = 'Game finisher';
+      detail = `${cheers} cheer${cheers === 1 ? '' : 's'} on challenge proof.`;
+    } else if (features.games && completed > 0) {
+      title = 'Challenge finisher';
       detail = `${completed} completed challenge${completed === 1 ? '' : 's'}.`;
     }
     return {
@@ -557,23 +594,30 @@ export function buildCrewAwards(players: Player[], memories: Memory[], challenge
       detail,
       score: player.score,
     };
-  }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  });
+  return features.scores
+    ? awards.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+    : awards.sort((a, b) => a.title.localeCompare(b.title) || a.name.localeCompare(b.name));
 }
 
-export function buildWrapHighlights(state: CrewtripState, awards: CrewAward[], gameHighlights: ReturnType<typeof buildGameHighlights>) {
-  const topAward = awards[0];
-  const topGame = gameHighlights.find((highlight) => !highlight.detail.includes('Waiting'));
-  const funniestRequest = state.requests[0]?.text;
+export function buildWrapHighlights(state: CrewtripState, awards: CrewAward[], gameHighlights: ReturnType<typeof buildGameHighlights>, features: CrewtripState['features'] = initialState.features) {
+  const topAward = features.scores ? awards[0] : undefined;
+  const topGame = features.games ? gameHighlights.find((highlight) => !highlight.detail.includes('Waiting')) : undefined;
+  const funniestRequest = features.requests ? state.requests[0]?.text : undefined;
+  const soundtrack = features.soundtrack ? state.soundtracks?.[0] : undefined;
   const title = `${state.eventName || 'Crewtrip'} wrapped`;
-  const detail = topAward ? `${topAward.name} led the trip with ${topAward.score} points. ${state.memories.length} memories made it into the reel.` : `${state.memories.length} memories made it into the reel.`;
+  const detail = topAward
+    ? `${topAward.name} led the trip with ${topAward.score} points. ${state.memories.length} memories made it into the reel.`
+    : `${state.memories.length} memories made it into the reel.`;
   return {
     title,
     detail,
     items: [
       topAward ? `Top crew: ${topAward.name}` : '',
-      topGame ? `Game moment: ${topGame.detail}` : '',
+      soundtrack ? `Soundtrack: ${soundtrack.title}` : '',
+      topGame ? `Challenge moment: ${topGame.detail}` : '',
       funniestRequest ? `Request of the trip: ${funniestRequest}` : '',
-      state.polls.length ? `${state.polls.length} crew vote${state.polls.length === 1 ? '' : 's'}` : '',
+      features.polls && state.polls.length ? `${state.polls.length} crew vote${state.polls.length === 1 ? '' : 's'}` : '',
     ].filter(Boolean),
   };
 }
@@ -621,6 +665,16 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       tab: 'games',
       challengeId: challenge.id,
     }));
+  const soundtrackItems: TripTimelineItem[] = (state.soundtracks ?? [])
+    .filter((slot) => (slot.dayId ?? activeDayId) === activeDayId)
+    .map((slot) => ({
+      id: `soundtrack-${slot.id}`,
+      time: slot.time || 'TBC',
+      kind: 'soundtrack' as const,
+      title: slot.title,
+      detail: `${slot.dj}${slot.note ? ` / ${slot.note}` : ''}`,
+      status: slot.status,
+    }));
   const memoryItems: TripTimelineItem[] = state.memories
     .filter((memory) => (memory.dayId ?? days[0]?.id) === activeDayId)
     .slice(0, 4)
@@ -632,7 +686,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       detail: memory.author,
       tab: 'memories',
     }));
-  return [...stopItems, ...broadcastItems, ...pollItems, ...gameItems, ...memoryItems]
+  return [...stopItems, ...broadcastItems, ...pollItems, ...gameItems, ...soundtrackItems, ...memoryItems]
     .sort((a, b) => timeRank(a.time) - timeRank(b.time));
 }
 

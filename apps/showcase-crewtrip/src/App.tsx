@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ChangeEvent } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { qrSvg } from '@shippie/qr';
@@ -24,10 +24,11 @@ import type {
   SurpriseUnlock,
   Language,
   ThemeKey,
+  SoundtrackSlot,
 } from './types';
 import { translations } from './data/translations';
 import { themePalettes, paletteFor } from './data/themes';
-import { gamePresets, pulseActions, featureOptions } from './data/games';
+import { gamePresets, pulseActions, tabFeatureOptions, detailFeatureOptions, featurePresets } from './data/games';
 import { eventTemplates } from './data/templates';
 import { newId, newEventCode, timeNow } from './utils/ids';
 import {
@@ -65,6 +66,7 @@ import {
   legacyVoteIds,
   markLocalUpdate,
   normalizeCrewtripState,
+  normalizePlaylistUrl,
   parseRecoveryPack,
   readJoinedEventCode,
   readLocalBackups,
@@ -76,6 +78,7 @@ import {
   unlockLabel,
   writeLocalBackup,
   crewColorAt,
+  type TripPhase,
 } from './utils/state';
 import { useCrewtripSync } from './utils/sync';
 
@@ -94,7 +97,7 @@ import {
 } from './components/Atoms';
 import { Icon, type IconName } from './components/Icon';
 import { TripView, LiveActivityStrip } from './components/TripView';
-import { ChallengeGrid, GameHighlights, GameResultBoard, GameSubmissions, Leaderboard } from './components/Games';
+import { ChallengeGrid, GameHighlights, GameSubmissions, Leaderboard } from './components/Games';
 import { EntryScreen } from './components/EntryScreen';
 import { Dialog } from './components/Dialog';
 import { Confirm, type ConfirmRequest } from './components/Confirm';
@@ -155,11 +158,79 @@ function themeStyle(theme: ThemeKey): CSSProperties {
   return paletteFor(theme).vars as CSSProperties;
 }
 
-function tabsForRole(role: Role | null): Tab[] {
-  if (role === 'host') {
-    return ['now', 'crew', 'games', 'memories', 'more'];
+function tabsForRole(role: Role | null, features: CrewtripState['features']): Tab[] {
+  const enabled = features ?? initialState.features;
+  const tabs: Tab[] = ['now'];
+  if (enabled.crew) tabs.push('crew');
+  if (enabled.games) tabs.push('games');
+  if (enabled.memories) tabs.push('memories');
+  if (role === 'host' || enabled.polls || enabled.requests || enabled.soundtrack || enabled.chat || enabled.wrap) {
+    tabs.push('more');
   }
-  return ['now', 'crew', 'games', 'memories', 'more'];
+  return tabs;
+}
+
+function isTabAllowed(tab: Tab, role: Role | null, features: CrewtripState['features']): boolean {
+  const enabled = features ?? initialState.features;
+  if (tabsForRole(role, enabled).includes(tab)) return true;
+  if (tab === 'vote') return enabled.polls;
+  if (tab === 'requests') return enabled.requests;
+  if (tab === 'chat') return enabled.chat;
+  if (tab === 'wrap') return enabled.wrap;
+  if (tab === 'host') return role === 'host';
+  return false;
+}
+
+function featureAllowsTimelineItem(item: TripTimelineItem, features: CrewtripState['features']): boolean {
+  const enabled = features ?? initialState.features;
+  if (item.kind === 'plan') return enabled.plan;
+  if (item.kind === 'poll') return enabled.polls;
+  if (item.kind === 'game') return enabled.games;
+  if (item.kind === 'memory') return enabled.memories;
+  if (item.kind === 'soundtrack') return enabled.soundtrack;
+  return true;
+}
+
+function shapeTimelineItem(item: TripTimelineItem, features: CrewtripState['features']): TripTimelineItem {
+  const enabled = features ?? initialState.features;
+  if (item.kind === 'game' && !enabled.scores) {
+    return { ...item, detail: item.detail.replace(/^\d+ pts \/ /, '') };
+  }
+  return item;
+}
+
+function featureAllowsActivity(activity: { kind: string }, features: CrewtripState['features']): boolean {
+  const enabled = features ?? initialState.features;
+  if (activity.kind === 'poll') return enabled.polls;
+  if (activity.kind === 'game') return enabled.games;
+  if (activity.kind === 'memory') return enabled.memories;
+  if (activity.kind === 'soundtrack') return enabled.soundtrack;
+  if (activity.kind === 'surprise') return enabled.surprises;
+  return true;
+}
+
+function fallbackBackTab(tab: Tab, role: Role | null, features: CrewtripState['features']): Tab {
+  if (tab === 'vote' || tab === 'requests' || tab === 'chat' || tab === 'wrap' || tab === 'host') {
+    return isTabAllowed('more', role, features) ? 'more' : 'now';
+  }
+  return 'now';
+}
+
+function buildTripFallbackPhase(state: CrewtripState, role: Role | null, features: CrewtripState['features']): TripPhase {
+  const primaryTab: Tab = features.memories
+    ? 'memories'
+    : features.requests
+      ? 'requests'
+      : isTabAllowed('more', role, features)
+        ? 'more'
+        : 'now';
+  return {
+    label: state.location || 'Live trip',
+    title: state.eventName || 'Crewtrip',
+    detail: state.description || 'A shared trip hub for the crew.',
+    primaryAction: features.memories ? 'Add memory' : features.requests ? 'Ask host' : 'Open trip',
+    primaryTab,
+  };
 }
 
 function tabIcon(tab: Tab): IconName {
@@ -211,6 +282,9 @@ export function App() {
   const reduceMotion = usePrefersReducedMotion();
 
   const [tab, setTab] = useState<Tab>('now');
+  const [tabStack, setTabStack] = useState<Tab[]>([]);
+  const tabRef = useRef<Tab>('now');
+  const touchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
   const [draftMemory, setDraftMemory] = useState('');
   const [draftRequest, setDraftRequest] = useState('');
   const [draftBroadcast, setDraftBroadcast] = useState('');
@@ -226,6 +300,7 @@ export function App() {
   const [draftPoll, setDraftPoll] = useState({ question: '', options: 'Yes, No, Maybe', closes: 'Open' });
   const [draftChallenge, setDraftChallenge] = useState({ title: '', points: '8', kind: 'challenge' as GameKind, groupId: 'all', deadline: 'TBC' });
   const [draftSurprise, setDraftSurprise] = useState({ title: '', message: '', unlockType: 'time' as SurpriseUnlock, unlockValue: '21:00' });
+  const [draftSoundtrack, setDraftSoundtrack] = useState({ time: '21:00', title: '', dj: '', link: '', note: '' });
   const [draftGameEntry, setDraftGameEntry] = useState('');
   const [memoryFilter, setMemoryFilter] = useState<MemoryFilter>('all');
   const [selectedPoll, setSelectedPoll] = useState<Record<string, string>>({});
@@ -261,7 +336,6 @@ export function App() {
     .sort((a, b) => b.at - a.at), [backupRevision, minuteTick, state.eventCode, state.updatedAt]);
   const activeDayId = days.some((day) => day.id === selectedDayId) ? selectedDayId : days[0]!.id;
   const activeGroup = activePlayer.groupId ? groups.find((group) => group.id === activePlayer.groupId) : null;
-  const activeEditableGroup = groups.find((group) => group.id === (activePlayer.groupId ?? 'all')) ?? groups[0] ?? null;
   const dayStops = state.stops.filter((stop) => (stop.dayId ?? days[0]!.id) === activeDayId);
   const currentStop = dayStops.find((stop) => stop.status === 'now') ?? dayStops[0] ?? state.stops[0]!;
   const nextStop = dayStops.find((stop) => stop.status === 'next');
@@ -271,19 +345,36 @@ export function App() {
   const selectedChallenge = selectedChallengeId ? state.challenges.find((challenge) => challenge.id === selectedChallengeId) : null;
   const latestMemory = filteredMemories[0] ?? state.memories[0];
   const latestBroadcast = state.broadcasts[0] ?? null;
+  const activeSoundtrack = (state.soundtracks ?? []).find((slot) => (slot.dayId ?? activeDayId) === activeDayId && slot.status === 'now')
+    ?? (state.soundtracks ?? []).find((slot) => (slot.dayId ?? activeDayId) === activeDayId)
+    ?? state.soundtracks?.[0];
   const unlockedSurprises = useMemo(() => state.surprises.filter((drop) => isSurpriseUnlocked(drop, state)), [minuteTick, state]);
   const lockedSurpriseCount = Math.max(0, state.surprises.length - unlockedSurprises.length);
-  const liveActivities = useMemo(() => buildLiveActivities(state, sync, groups), [groups, state, sync]);
+  const liveActivities = useMemo(() => buildLiveActivities(state, sync, groups)
+    .filter((activity) => featureAllowsActivity(activity, features)), [features, groups, state, sync]);
   const pulseStats = useMemo(() => buildPulseStats(state.pulses, groups), [groups, state.pulses]);
-  const tripPhase = useMemo(() => buildTripPhase(state, role, sync, currentStop, nextStop, wrapUp, unlockedSurprises.length), [currentStop, nextStop, role, state, sync, unlockedSurprises.length, wrapUp]);
-  const hostPrompts = useMemo(() => buildHostPrompts(state, sync, wrapUp), [state, sync, wrapUp]);
+  const tripPhase = useMemo(() => features.plan
+    ? buildTripPhase(
+      state,
+      role,
+      sync,
+      currentStop,
+      nextStop,
+      features.wrap ? wrapUp : { ...wrapUp, published: false },
+      features.surprises ? unlockedSurprises.length : 0,
+    )
+    : buildTripFallbackPhase(state, role, features),
+  [currentStop, features, nextStop, role, state, sync, unlockedSurprises.length, wrapUp]);
+  const hostPrompts = useMemo(() => buildHostPrompts(state, sync, wrapUp, features), [features, state, sync, wrapUp]);
   const personalTrip = useMemo(() => buildPersonalTrip(activePlayer, state, groups), [activePlayer, groups, state]);
   const gameHighlights = useMemo(() => buildGameHighlights(state.challenges, state.players, groups), [groups, state.challenges, state.players]);
-  const wrapAwards = useMemo(() => buildCrewAwards(state.players, state.memories, state.challenges, groups), [groups, state.challenges, state.memories, state.players]);
-  const wrapHighlights = useMemo(() => buildWrapHighlights(state, wrapAwards, gameHighlights), [gameHighlights, state, wrapAwards]);
+  const wrapAwards = useMemo(() => buildCrewAwards(state.players, state.memories, state.challenges, groups, features), [features, groups, state.challenges, state.memories, state.players]);
+  const wrapHighlights = useMemo(() => buildWrapHighlights(state, wrapAwards, gameHighlights, features), [features, gameHighlights, state, wrapAwards]);
   const tripTimelineItems = useMemo(
-    () => buildTripTimelineItems(state, activeDayId, days, groups, role, activePlayer),
-    [activeDayId, days, groups, role, activePlayer, state],
+    () => buildTripTimelineItems(state, activeDayId, days, groups, role, activePlayer)
+      .filter((item) => featureAllowsTimelineItem(item, features))
+      .map((item) => shapeTimelineItem(item, features)),
+    [activeDayId, days, features, groups, role, activePlayer, state],
   );
   const visibleMessages = messages.filter((message) => selectedChatScope === 'all'
     ? message.scope === 'all'
@@ -294,7 +385,50 @@ export function App() {
     media: filteredMemories.filter((memory) => memory.kind === 'image' || memory.kind === 'video').length,
     awards: filteredMemories.filter((memory) => memory.kind === 'award').length,
   }), [filteredMemories]);
-  const visibleTabs = useMemo(() => tabsForRole(role), [role]);
+  const visibleTabs = useMemo(() => tabsForRole(role, features), [features, role]);
+  const visibleHostSections = useMemo(
+    () => (['manage', 'fun', 'setup', 'wrap'] as HostSection[]).filter((section) => section !== 'wrap' || features.wrap),
+    [features.wrap],
+  );
+  const resolveTab = (nextTab: Tab): Tab => (isTabAllowed(nextTab, role, features) ? nextTab : visibleTabs[0] ?? 'now');
+  const goToTab = (nextTab: Tab, options: { replace?: boolean } = {}) => {
+    const resolved = resolveTab(nextTab);
+    const current = tabRef.current;
+    if (resolved !== current && !options.replace) {
+      setTabStack((stack) => [...stack, current].slice(-10));
+    }
+    tabRef.current = resolved;
+    setTab(resolved);
+  };
+  const goBack = () => {
+    if (confirmRequest) {
+      setConfirmRequest(null);
+      return;
+    }
+    if (selectedChallengeId) {
+      setSelectedChallengeId(null);
+      return;
+    }
+    if (actionSheetOpen) {
+      setActionSheetOpen(false);
+      return;
+    }
+    const stack = [...tabStack];
+    while (stack.length) {
+      const previous = stack.pop()!;
+      if (isTabAllowed(previous, role, features) && previous !== tab) {
+        setTabStack(stack);
+        tabRef.current = previous;
+        setTab(previous);
+        return;
+      }
+    }
+    const fallback = fallbackBackTab(tab, role, features);
+    setTabStack([]);
+    tabRef.current = fallback;
+    setTab(fallback);
+  };
+  const hasQuickActions = role === 'host' || features.memories || features.requests || features.crew || features.chat;
 
   // Sync browser theme-color with the active palette.
   useEffect(() => {
@@ -302,6 +436,10 @@ export function App() {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', palette.themeColor);
   }, [palette.themeColor]);
+
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
 
   // Flip data-mode on the document so light/dark CSS branches work, and
   // make sure the page background matches the palette outside our shell.
@@ -313,10 +451,49 @@ export function App() {
   }, [palette.vars]);
 
   useEffect(() => {
-    if (!visibleTabs.includes(tab) && tab !== 'vote' && tab !== 'requests' && tab !== 'memories' && tab !== 'chat' && tab !== 'wrap' && tab !== 'host') {
-      setTab(visibleTabs[0] ?? 'now');
+    if (!isTabAllowed(tab, role, features)) {
+      goToTab(visibleTabs[0] ?? 'now', { replace: true });
     }
-  }, [tab, visibleTabs]);
+  }, [features, role, tab, visibleTabs]);
+
+  useEffect(() => {
+    if (!visibleHostSections.includes(hostSection)) {
+      setHostSection(visibleHostSections[0] ?? 'setup');
+    }
+  }, [hostSection, visibleHostSections]);
+
+  useEffect(() => {
+    if (!features.games && selectedChallengeId) setSelectedChallengeId(null);
+  }, [features.games, selectedChallengeId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const interactiveSelector = 'input, textarea, select, button, a, label, [role="tab"], .day-toggle, .segmented-control, .action-sheet';
+    function onTouchStart(event: TouchEvent) {
+      const touch = event.touches[0];
+      if (!touch || touch.clientX > 38) return;
+      const target = event.target as Element | null;
+      if (target?.closest(interactiveSelector)) return;
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+    }
+    function onTouchEnd(event: TouchEvent) {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      const touch = event.changedTouches[0];
+      if (!start || !touch) return;
+      const dx = touch.clientX - start.x;
+      const dy = Math.abs(touch.clientY - start.y);
+      if (dx > 84 && dy < 60 && Date.now() - start.at < 650) {
+        goBack();
+      }
+    }
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [actionSheetOpen, confirmRequest, features, role, selectedChallengeId, tab, tabStack, visibleTabs]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setMinuteTick((tick) => tick + 1), 30_000);
@@ -504,7 +681,7 @@ export function App() {
             }
           : item,
       ),
-      players: alreadyScored
+      players: alreadyScored || !features.scores
         ? current.players
         : current.players.map((player) =>
             player.id === activePlayer.id ? { ...player, score: player.score + challenge.points } : player,
@@ -767,14 +944,14 @@ export function App() {
             },
             ...current.polls,
           ],
-          broadcasts: [{ id: newId('b'), text: `Crew request is now a poll: ${request.text}`, at: timeNow() }, ...current.broadcasts],
+          broadcasts: [{ id: newId('b'), text: `Crew request is now a vote: ${request.text}`, at: timeNow() }, ...current.broadcasts],
         };
       }
       return {
         ...current,
         requests: sharedRequests,
         challenges: [{ id: newId('c'), kind: 'mission' as GameKind, dayId: activeDayId, status: 'open' as const, title: request.text, points: 8, doneBy: [], submissions: [] }, ...current.challenges],
-        broadcasts: [{ id: newId('b'), text: `Crew request became a game: ${request.text}`, at: timeNow() }, ...current.broadcasts],
+        broadcasts: [{ id: newId('b'), text: `Crew request became a challenge: ${request.text}`, at: timeNow() }, ...current.broadcasts],
       };
     });
     sdk.feel.texture('confirm');
@@ -836,6 +1013,29 @@ export function App() {
       broadcasts: [{ id: newId('b'), text: `Host scheduled a surprise: ${title}`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
     }));
     setDraftSurprise({ title: '', message: '', unlockType: 'time', unlockValue: '21:00' });
+    sdk.feel.texture('confirm');
+  }
+
+  function addSoundtrack() {
+    const title = draftSoundtrack.title.trim();
+    const dj = draftSoundtrack.dj.trim() || 'Host';
+    if (!title) return;
+    const slot: SoundtrackSlot = {
+      id: newId('dj'),
+      dayId: activeDayId,
+      time: draftSoundtrack.time.trim() || 'TBC',
+      title,
+      dj,
+      link: normalizePlaylistUrl(draftSoundtrack.link),
+      note: draftSoundtrack.note.trim() || undefined,
+      status: 'later',
+    };
+    update((current) => ({
+      ...current,
+      soundtracks: [slot, ...(current.soundtracks ?? [])],
+      broadcasts: [{ id: newId('b'), text: `${dj} added ${title} to the soundtrack.`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
+    }));
+    setDraftSoundtrack({ time: '21:00', title: '', dj: '', link: '', note: '' });
     sdk.feel.texture('confirm');
   }
 
@@ -958,6 +1158,10 @@ export function App() {
     }));
   }
 
+  function applyFeaturePreset(features: Record<FeatureKey, boolean>) {
+    update((current) => ({ ...current, features: { ...features } }));
+  }
+
   function updateWrap(updater: (current: WrapUpSettings) => WrapUpSettings) {
     update((current) => ({ ...current, wrapUp: updater(current.wrapUp ?? initialState.wrapUp) }));
   }
@@ -981,7 +1185,7 @@ export function App() {
     setConfirmRequest({
       title: keepJoinLink ? 'Clear this trip?' : 'Start a new trip?',
       body: keepJoinLink
-        ? 'Removes plans, polls, games, memories, requests, messages, crew, and media from this device and live peers. The join link stays the same.'
+        ? 'Removes plans, votes, challenges, playlists, memories, requests, messages, crew, and media from this device and live peers. The join link stays the same.'
         : 'Creates a fresh blank trip with a new join code. Your selected language and theme stay.',
       confirmLabel: keepJoinLink ? 'Clear' : 'Start new',
       destructive: true,
@@ -1010,6 +1214,7 @@ export function App() {
       description: template.description,
       hostNote: template.hostNote,
       stops: template.stops.map((stop) => ({ ...stop, id: newId('s') })),
+      soundtracks: (template.soundtracks ?? current.soundtracks ?? []).map((slot) => ({ ...slot, id: newId('dj') })),
       polls: template.polls.map((poll) => ({
         ...poll,
         id: newId('p'),
@@ -1104,7 +1309,7 @@ export function App() {
 
   function onTimelineSelect(item: TripTimelineItem) {
     if (item.challengeId) setSelectedChallengeId(item.challengeId);
-    if (item.tab) setTab(item.tab);
+    if (item.tab) goToTab(item.tab);
   }
 
   if (!role) {
@@ -1180,8 +1385,11 @@ export function App() {
           phase={tripPhase}
           pulseStats={pulseStats}
           latestBroadcast={latestBroadcast}
-          surprises={unlockedSurprises}
-          lockedSurpriseCount={lockedSurpriseCount}
+          surprises={features.surprises ? unlockedSurprises : []}
+          lockedSurpriseCount={features.surprises ? lockedSurpriseCount : 0}
+          soundtrack={features.soundtrack ? activeSoundtrack : undefined}
+          showPlan={features.plan}
+          showPoints={features.scores}
           personalTrip={personalTrip}
           hostPrompts={hostPrompts}
           currentStop={currentStop}
@@ -1194,6 +1402,7 @@ export function App() {
           onboarding={
             <OnboardingCard
               state={state}
+              features={features}
               syncPeers={sync.peers}
               onShare={copyShareLink}
               onAddStop={() => {
@@ -1204,18 +1413,18 @@ export function App() {
                   setActionSheetOpen(true);
                 }
               }}
-              onAddMemory={() => setTab('memories')}
+              onAddMemory={() => goToTab('memories')}
             />
           }
           onPulse={sendPulse}
-          onGo={(nextTab) => setTab(nextTab)}
+          onGo={goToTab}
           onSecondary={() => {
             if (role === 'host') {
               setHostSection('manage');
-              setTab('host');
+              goToTab('host');
               return;
             }
-            setTab('memories');
+            goToTab('memories');
           }}
           onReveal={revealSurprise}
           onSelectTimelineItem={onTimelineSelect}
@@ -1223,7 +1432,7 @@ export function App() {
       )}
 
       {tab === 'crew' && features.crew && (
-        <View title={copy.crew} kicker={copy.crewKicker}>
+        <View title={copy.crew} kicker={copy.crewKicker} onBack={goBack} backLabel={copy.backToTrip}>
           <section className="crew-summary">
             <article className="you-card">
               <div>
@@ -1233,17 +1442,17 @@ export function App() {
                   <strong>{activePlayer.name}</strong>
                 </div>
               </div>
-              <b>{activePlayer.score} pts</b>
+              {features.scores ? <b>{activePlayer.score} pts</b> : null}
               <p>{activeGroup ? activeGroup.name : activePlayer.team}</p>
               <label className="file-button profile-file">
                 {activePlayer.avatarName ? copy.changePhoto : copy.addPhoto}
-                <input type="file" accept="image/*" onChange={(event) => addPlayerImage(event, activePlayer.id)} />
+                <input name={`player-photo-${activePlayer.id}`} type="file" accept="image/*" onChange={(event) => addPlayerImage(event, activePlayer.id)} />
               </label>
             </article>
             <details className="simple-drawer">
               <summary>
-                <span>Change team</span>
-                <small>{activeGroup?.name ?? activePlayer.team}</small>
+                <span>Your team</span>
+                <small>Tap one to switch</small>
               </summary>
               <div className="group-chip-row">
                 {groups.map((group) => {
@@ -1263,52 +1472,6 @@ export function App() {
                 })}
               </div>
             </details>
-            {activeEditableGroup ? (
-              <details className="team-identity simple-drawer">
-                <summary>
-                  <span>Team look</span>
-                  <small>{copy.teamEmoji}, {copy.teamColour}, {copy.teamImage}</small>
-                </summary>
-                <div className="team-identity-head">
-                  <GroupMark group={activeEditableGroup} size="large" />
-                  <div>
-                    <small>{copy.teamIdentity}</small>
-                    <strong>{activeEditableGroup.name}</strong>
-                  </div>
-                </div>
-                <div className="team-identity-controls" aria-label={copy.teamIdentity}>
-                  <label>
-                    <span>{copy.teamEmoji}</span>
-                    <input
-                      className="emoji-input"
-                      value={activeEditableGroup.emoji ?? ''}
-                      maxLength={2}
-                      onChange={(event) => updateGroup(activeEditableGroup.id, { emoji: event.target.value })}
-                      placeholder="★"
-                    />
-                  </label>
-                  <label>
-                    <span>{copy.teamColour}</span>
-                    <div className="color-swatches">
-                      {palette.crewColors.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          aria-label={`Use ${color}`}
-                          className={activeEditableGroup.color.toLowerCase() === color.toLowerCase() ? 'swatch active' : 'swatch'}
-                          style={{ background: color }}
-                          onClick={() => updateGroup(activeEditableGroup.id, { color })}
-                        />
-                      ))}
-                    </div>
-                  </label>
-                  <label className="file-button team-file">
-                    {activeEditableGroup.imageName ? copy.changeImage : copy.teamImage}
-                    <input type="file" accept="image/*" onChange={(event) => addGroupImage(event, activeEditableGroup.id)} />
-                  </label>
-                </div>
-              </details>
-            ) : null}
           </section>
 
           <details className="join-panel compact-join">
@@ -1320,42 +1483,50 @@ export function App() {
               <h3>{copy.joinTrip}</h3>
               <p>{copy.joinTripHint}</p>
             </div>
-            <select value={state.activePlayerId} onChange={(event) => update((current) => ({ ...current, activePlayerId: event.target.value }))}>
+            <select name="active-player" value={state.activePlayerId} onChange={(event) => update((current) => ({ ...current, activePlayerId: event.target.value }))}>
               {state.players.map((player) => (
                 <option key={player.id} value={player.id}>{player.name}</option>
               ))}
             </select>
             <div className="composer three">
-              <input value={draftCrewName} onChange={(event) => setDraftCrewName(event.target.value)} placeholder="Your name" />
-              <select value={draftCrewTeam} onChange={(event) => setDraftCrewTeam(event.target.value)}>
+              <input name="crew-name" value={draftCrewName} onChange={(event) => setDraftCrewName(event.target.value)} placeholder="Your name" />
+              <select name="crew-team" value={draftCrewTeam} onChange={(event) => setDraftCrewTeam(event.target.value)}>
                 {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
               </select>
               <button onClick={addCrewMember}>{copy.addMe}</button>
             </div>
           </details>
 
-          <div className="leaderboard">
-            <div className="list-head">
-              <h3>{copy.leaderboard}</h3>
-              <span>{state.players.length} {copy.crew}</span>
-            </div>
-            {sortedPlayers.length ? sortedPlayers.map((player, index) => (
-              <article key={player.id} className="rank-row">
-                <span>{index + 1}</span>
-                <PlayerAvatar player={player} />
-                <div>
-                  <strong>{player.name}</strong>
-                  <small>Team {player.team}</small>
+          {features.scores ? (
+            <details className="simple-drawer">
+              <summary>
+                <span>{copy.leaderboard}</span>
+                <small>{state.players.length} people</small>
+              </summary>
+              <div className="leaderboard">
+                <div className="list-head">
+                  <h3>{copy.leaderboard}</h3>
+                  <span>{state.players.length} {copy.crew}</span>
                 </div>
-                <b>{player.score}</b>
-              </article>
-            )) : <p className="empty-note">No crew yet — add the first name above.</p>}
-          </div>
+                {sortedPlayers.length ? sortedPlayers.map((player, index) => (
+                  <article key={player.id} className="rank-row">
+                    <span>{index + 1}</span>
+                    <PlayerAvatar player={player} />
+                    <div>
+                      <strong>{player.name}</strong>
+                      <small>{player.team}</small>
+                    </div>
+                    <b>{player.score}</b>
+                  </article>
+                )) : <p className="empty-note">No crew yet - add the first name above.</p>}
+              </div>
+            </details>
+          ) : null}
         </View>
       )}
 
       {tab === 'vote' && features.polls && (
-        <View title={copy.polls} kicker={copy.pollsKicker}>
+        <View title={copy.polls} kicker={copy.pollsKicker} onBack={goBack} backLabel="Back">
           {state.polls.length ? (
             <div className="poll-stack">
               {state.polls.map((poll) => (
@@ -1369,44 +1540,54 @@ export function App() {
               ))}
             </div>
           ) : (
-            <p className="empty-note">No polls yet — host can add one from the + menu.</p>
+            <p className="empty-note">No votes yet — host can add one from the + menu.</p>
           )}
         </View>
       )}
 
       {tab === 'games' && features.games && (
-        <View title={copy.games} kicker={`${activePlayer.score} ${copy.pointsFor} ${activePlayer.name}`}>
+        <View title={copy.games} kicker="Pick a challenge, mark it done, add proof if you want" onBack={goBack} backLabel={copy.backToTrip}>
           <DayToggle days={days} selectedDayId={activeDayId} onSelect={setSelectedDayId} />
-          <SegmentedControl
-            value={leaderboardMode}
-            options={[
-              { value: 'people', label: copy.people },
-              { value: 'teams', label: copy.teams },
-            ]}
-            onChange={setLeaderboardMode}
-            ariaLabel="Leaderboard scope"
-          />
-          <Leaderboard players={sortedPlayers} groups={groups} title={copy.leaderboard} mode={leaderboardMode} />
-          <GameHighlights highlights={gameHighlights} onSelect={setSelectedChallengeId} />
           <ChallengeGrid
             copy={copy}
             challenges={dayChallenges}
             groups={groups}
             activePlayerId={activePlayer.id}
+            showPoints={features.scores}
             onSelect={setSelectedChallengeId}
             onScore={completeChallenge}
             onUploadProof={(event, challengeId) => void addGameMediaEntry(event, challengeId)}
           />
+          {features.scores ? (
+            <details className="simple-drawer">
+              <summary>
+                <span>{copy.leaderboard}</span>
+                <small>{activePlayer.score} {copy.pointsFor}</small>
+              </summary>
+              <SegmentedControl
+                value={leaderboardMode}
+                options={[
+                  { value: 'people', label: copy.people },
+                  { value: 'teams', label: copy.teams },
+                ]}
+                onChange={setLeaderboardMode}
+                ariaLabel="Points scope"
+              />
+              <Leaderboard players={sortedPlayers} groups={groups} title={copy.leaderboard} mode={leaderboardMode} />
+              <GameHighlights highlights={gameHighlights} onSelect={setSelectedChallengeId} />
+            </details>
+          ) : null}
         </View>
       )}
 
       {tab === 'requests' && features.requests && (
-        <View title={role === 'host' ? copy.inbox : copy.requests} kicker={copy.requestsKicker}>
+        <View title={role === 'host' ? copy.inbox : copy.requests} kicker={copy.requestsKicker} onBack={goBack} backLabel="Back">
           <div className="composer">
             <input
+              name="crew-request"
               value={draftRequest}
               onChange={(event) => setDraftRequest(event.target.value)}
-              placeholder="Ask the host for a plan, poll, game, or change"
+              placeholder="Ask the host for a plan, vote, challenge, song, or change"
             />
             <button onClick={addRequest}>{copy.request}</button>
           </div>
@@ -1427,7 +1608,7 @@ export function App() {
       )}
 
       {tab === 'memories' && features.memories && (
-        <View title={copy.memories} kicker={copy.memoriesKicker} onBack={() => setTab('now')} backLabel={copy.backToTrip}>
+        <View title={copy.memories} kicker={copy.memoriesKicker} onBack={goBack} backLabel={copy.backToTrip}>
           <DayToggle days={days} selectedDayId={activeDayId} onSelect={setSelectedDayId} />
           <section className="memory-studio">
             <div className="memory-spotlight">
@@ -1440,6 +1621,7 @@ export function App() {
             </div>
             <div className="memory-composer">
               <textarea
+                name="memory-text"
                 value={draftMemory}
                 onChange={(event) => setDraftMemory(event.target.value)}
                 placeholder={copy.memoryPlaceholder}
@@ -1449,7 +1631,7 @@ export function App() {
                 <button className="ghost" onClick={() => addMemory('award')}>{copy.giveAward}</button>
                 <label className="file-button">
                   {copy.media}
-                  <input type="file" accept="image/*,video/*" onChange={addMediaMemory} />
+                  <input name="memory-media" type="file" accept="image/*,video/*" onChange={addMediaMemory} />
                 </label>
               </div>
             </div>
@@ -1476,7 +1658,7 @@ export function App() {
       )}
 
       {tab === 'chat' && features.chat && (
-        <View title={copy.chat} kicker={selectedChatScope === 'group' && activeGroup ? activeGroup.name : copy.allCrew}>
+        <View title={copy.chat} kicker={selectedChatScope === 'group' && activeGroup ? activeGroup.name : copy.allCrew} onBack={goBack} backLabel="Back">
           <SegmentedControl
             value={selectedChatScope}
             options={[
@@ -1488,6 +1670,7 @@ export function App() {
           />
           <div className="composer">
             <input
+              name="chat-message"
               value={draftMessage}
               onChange={(event) => setDraftMessage(event.target.value)}
               placeholder={selectedChatScope === 'group' ? 'Message your group' : 'Message everyone'}
@@ -1510,7 +1693,7 @@ export function App() {
       )}
 
       {tab === 'wrap' && features.wrap && (
-        <View title={copy.wrap} kicker={wrapUp.published ? copy.readyToShare : copy.wrapDraft} onBack={() => setTab('now')} backLabel={copy.backToTrip}>
+        <View title={copy.wrap} kicker={wrapUp.published ? copy.readyToShare : copy.wrapDraft} onBack={goBack} backLabel={copy.backToTrip}>
           <article className="wrap-card finale">
             <p className="eyebrow">{state.eventName}</p>
             <h3>{wrapUp.title}</h3>
@@ -1518,8 +1701,9 @@ export function App() {
             <div className="mini-grid">
               <Metric label="Memories" value={String(state.memories.length)} />
               <Metric label="Crew" value={String(state.players.length)} />
-              {wrapUp.includeGames ? <Metric label="Game points" value={String(totalScore(state.players))} /> : null}
-              {wrapUp.includePolls ? <Metric label="Polls" value={String(state.polls.length)} /> : null}
+              {features.soundtrack && state.soundtracks?.length ? <Metric label="Sets" value={String(state.soundtracks.length)} /> : null}
+              {features.scores && wrapUp.includeGames ? <Metric label="Challenge pts" value={String(totalScore(state.players))} /> : null}
+              {features.polls && wrapUp.includePolls ? <Metric label="Votes" value={String(state.polls.length)} /> : null}
             </div>
           </article>
           <section className="wrap-share-card">
@@ -1538,6 +1722,7 @@ export function App() {
                     awards: wrapAwards,
                     memories: state.memories,
                     coverUrl,
+                    includeScores: features.scores,
                   });
                   if (!blob) {
                     setBackupNotice('Could not build the share image. Try again on a connected device.');
@@ -1582,7 +1767,7 @@ export function App() {
                     <h4>{award.title}</h4>
                     <p>{award.detail}</p>
                   </div>
-                  <b>{award.score}</b>
+                  {features.scores ? <b>{award.score}</b> : null}
                 </article>
               ))}
             </div>
@@ -1615,10 +1800,10 @@ export function App() {
       )}
 
       {tab === 'host' && role === 'host' && (
-        <View title={copy.settings} kicker={copy.settingsKicker}>
+        <View title={copy.settings} kicker={copy.settingsKicker} onBack={goBack} backLabel="Back">
           <SegmentedControl
             value={hostSection}
-            options={(['manage', 'fun', 'setup', 'wrap'] as HostSection[]).map((section) => ({ value: section, label: section }))}
+            options={visibleHostSections.map((section) => ({ value: section, label: section === 'fun' ? 'drops' : section }))}
             onChange={setHostSection}
             ariaLabel="Host section"
           />
@@ -1626,7 +1811,7 @@ export function App() {
             {hostSection === 'manage' ? (
               <>
                 <ControlPanel title="Broadcast" tone="primary">
-                  <input value={draftBroadcast} onChange={(event) => setDraftBroadcast(event.target.value)} placeholder="Pinned host note for the crew" />
+                  <input name="host-broadcast" value={draftBroadcast} onChange={(event) => setDraftBroadcast(event.target.value)} placeholder="Pinned host note for the crew" />
                   <button onClick={addBroadcast}>Send</button>
                 </ControlPanel>
                 {features.requests ? (
@@ -1638,8 +1823,8 @@ export function App() {
                         <div>
                           <button onClick={() => updateRequest(request.id, 'shared')}>Share back</button>
                           {features.plan ? <button onClick={() => transformRequest(request.id, 'plan')}>Make plan</button> : null}
-                          {features.polls ? <button onClick={() => transformRequest(request.id, 'poll')}>Make poll</button> : null}
-                          {features.games ? <button onClick={() => transformRequest(request.id, 'game')}>Make game</button> : null}
+                          {features.polls ? <button onClick={() => transformRequest(request.id, 'poll')}>Make vote</button> : null}
+                          {features.games ? <button onClick={() => transformRequest(request.id, 'game')}>Make challenge</button> : null}
                           <button className="ghost" onClick={() => updateRequest(request.id, 'done')}>Done</button>
                         </div>
                       </div>
@@ -1648,21 +1833,21 @@ export function App() {
                 ) : null}
                 {features.plan ? (
                   <HostDisclosure title="Plan item" hint="Add a stop to the day">
-                    <select value={draftStop.dayId} onChange={(event) => setDraftStop((current) => ({ ...current, dayId: event.target.value }))}>
+                    <select name="host-stop-day" value={draftStop.dayId} onChange={(event) => setDraftStop((current) => ({ ...current, dayId: event.target.value }))}>
                       {days.map((day) => <option key={day.id} value={day.id}>{day.label}</option>)}
                     </select>
-                    <select value={draftStop.groupId} onChange={(event) => setDraftStop((current) => ({ ...current, groupId: event.target.value }))}>
+                    <select name="host-stop-group" value={draftStop.groupId} onChange={(event) => setDraftStop((current) => ({ ...current, groupId: event.target.value }))}>
                       {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
                     </select>
-                    <input value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00 or TBC)" />
-                    <input value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value }))} placeholder="Plan title" />
-                    <input value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
+                    <input name="host-stop-time" value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00 or TBC)" />
+                    <input name="host-stop-title" value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value }))} placeholder="Plan title" />
+                    <input name="host-stop-place" value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
                     <button onClick={addStop}>Add plan</button>
                     <button className="ghost" onClick={advancePlan}>Advance now</button>
                   </HostDisclosure>
                 ) : null}
                 {features.polls ? (
-                  <HostDisclosure title="Poll status" hint="Open or close existing polls">
+                  <HostDisclosure title="Vote status" hint="Open or close existing votes">
                     {state.polls.length ? state.polls.map((poll) => (
                       <button
                         key={poll.id}
@@ -1674,7 +1859,7 @@ export function App() {
                       >
                         {poll.open ? 'Close' : 'Open'} / {poll.question}
                       </button>
-                    )) : <p className="empty-note">No polls yet.</p>}
+                    )) : <p className="empty-note">No votes yet.</p>}
                   </HostDisclosure>
                 ) : null}
               </>
@@ -1683,15 +1868,25 @@ export function App() {
             {hostSection === 'fun' ? (
               <>
                 {features.polls ? (
-                  <ControlPanel title="Poll builder" tone="primary">
-                    <input value={draftPoll.question} onChange={(event) => setDraftPoll((current) => ({ ...current, question: event.target.value }))} placeholder="Question, e.g. Pick the next stop" />
-                    <input value={draftPoll.options} onChange={(event) => setDraftPoll((current) => ({ ...current, options: event.target.value }))} placeholder="Options separated by commas" />
-                    <input value={draftPoll.closes} onChange={(event) => setDraftPoll((current) => ({ ...current, closes: event.target.value }))} placeholder="Closes (e.g. Open, 21:00)" />
-                    <button onClick={addPoll}>Open poll</button>
+                  <ControlPanel title="Vote drop" tone="primary">
+                    <input name="host-poll-question" value={draftPoll.question} onChange={(event) => setDraftPoll((current) => ({ ...current, question: event.target.value }))} placeholder="Question, e.g. Pick the next stop" />
+                    <input name="host-poll-options" value={draftPoll.options} onChange={(event) => setDraftPoll((current) => ({ ...current, options: event.target.value }))} placeholder="Options separated by commas" />
+                    <input name="host-poll-closes" value={draftPoll.closes} onChange={(event) => setDraftPoll((current) => ({ ...current, closes: event.target.value }))} placeholder="Closes (e.g. Open, 21:00)" />
+                    <button onClick={addPoll}>Open vote</button>
+                  </ControlPanel>
+                ) : null}
+                {features.soundtrack ? (
+                  <ControlPanel title="Soundtrack drop" tone="primary">
+                    <input name="host-soundtrack-title" value={draftSoundtrack.title} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, title: event.target.value }))} placeholder="Set or playlist title" />
+                    <input name="host-soundtrack-dj" value={draftSoundtrack.dj} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, dj: event.target.value }))} placeholder="DJ, curator, or host" />
+                    <input name="host-soundtrack-time" value={draftSoundtrack.time} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 21:00)" />
+                    <input name="host-soundtrack-link" value={draftSoundtrack.link} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, link: event.target.value }))} placeholder="Spotify, SoundCloud, or playlist link" />
+                    <input name="host-soundtrack-note" value={draftSoundtrack.note} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, note: event.target.value }))} placeholder="Note, requests, or vibe" />
+                    <button onClick={addSoundtrack}>Add soundtrack</button>
                   </ControlPanel>
                 ) : null}
                 {features.games ? (
-                  <ControlPanel title="Game builder" tone="primary">
+                  <ControlPanel title="Challenge drop" tone="primary">
                     <div className="template-row compact">
                       {(Object.keys(gamePresets) as GameKind[]).map((kind) => (
                         <button key={kind} onClick={() => addGamePreset(kind)}>{gamePresets[kind].label}</button>
@@ -1699,54 +1894,49 @@ export function App() {
                     </div>
                     <details className="advanced-game">
                       <summary>{copy.customGame}</summary>
-                      <select value={draftChallenge.kind} onChange={(event) => setDraftChallenge((current) => ({ ...current, kind: event.target.value as GameKind }))}>
+                      <select name="host-challenge-kind" value={draftChallenge.kind} onChange={(event) => setDraftChallenge((current) => ({ ...current, kind: event.target.value as GameKind }))}>
                         {(Object.keys(gamePresets) as GameKind[]).map((kind) => <option key={kind} value={kind}>{gamePresets[kind].label}</option>)}
                       </select>
-                      <select value={draftChallenge.groupId} onChange={(event) => setDraftChallenge((current) => ({ ...current, groupId: event.target.value }))}>
+                      <select name="host-challenge-group" value={draftChallenge.groupId} onChange={(event) => setDraftChallenge((current) => ({ ...current, groupId: event.target.value }))}>
                         {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
                       </select>
-                      <input value={draftChallenge.title} onChange={(event) => setDraftChallenge((current) => ({ ...current, title: event.target.value }))} placeholder="Title" />
-                      <input value={draftChallenge.deadline} onChange={(event) => setDraftChallenge((current) => ({ ...current, deadline: event.target.value }))} placeholder="Deadline (e.g. 19:00, TBC)" />
-                      <input type="number" min="1" value={draftChallenge.points} onChange={(event) => setDraftChallenge((current) => ({ ...current, points: event.target.value }))} placeholder="Points (whole number)" />
-                      <button onClick={addChallenge}>Add game</button>
+                      <input name="host-challenge-title" value={draftChallenge.title} onChange={(event) => setDraftChallenge((current) => ({ ...current, title: event.target.value }))} placeholder="Title" />
+                      <input name="host-challenge-deadline" value={draftChallenge.deadline} onChange={(event) => setDraftChallenge((current) => ({ ...current, deadline: event.target.value }))} placeholder="Deadline (e.g. 19:00, TBC)" />
+                      {features.scores ? (
+                        <input name="host-challenge-points" type="number" min="1" value={draftChallenge.points} onChange={(event) => setDraftChallenge((current) => ({ ...current, points: event.target.value }))} placeholder="Points (whole number)" />
+                      ) : null}
+                      <button onClick={addChallenge}>Add challenge</button>
                     </details>
                   </ControlPanel>
                 ) : null}
-                <HostDisclosure title="Surprise drops" hint="Schedule unlock-on-X reveals">
-                  <input value={draftSurprise.title} onChange={(event) => setDraftSurprise((current) => ({ ...current, title: event.target.value }))} placeholder="Title (e.g. After-dinner mission)" />
-                  <textarea value={draftSurprise.message} onChange={(event) => setDraftSurprise((current) => ({ ...current, message: event.target.value }))} placeholder="Hidden note, secret mission, or award prompt" />
-                  <select value={draftSurprise.unlockType} onChange={(event) => setDraftSurprise((current) => ({ ...current, unlockType: event.target.value as SurpriseUnlock }))}>
-                    <option value="time">Open at time</option>
-                    <option value="submissions">Unlock after submissions</option>
-                    <option value="first-photo">Unlock after first photo</option>
-                    <option value="manual">Host reveals manually</option>
-                  </select>
-                  <input value={draftSurprise.unlockValue} onChange={(event) => setDraftSurprise((current) => ({ ...current, unlockValue: event.target.value }))} placeholder={draftSurprise.unlockType === 'time' ? '21:00' : draftSurprise.unlockType === 'submissions' ? '5' : 'note'} />
-                  <button onClick={addSurpriseDrop}>Schedule drop</button>
-                  <div className="surprise-list">
-                    {state.surprises.map((drop) => {
-                      const unlocked = isSurpriseUnlocked(drop, state);
-                      return (
-                        <article key={drop.id} className={unlocked ? 'surprise-row unlocked' : 'surprise-row'}>
-                          <strong>{drop.title}</strong>
-                          <small>{unlocked ? 'unlocked' : unlockLabel(drop)}</small>
-                          {drop.unlockType === 'manual' && !drop.revealedAt ? <button type="button" onClick={() => revealSurprise(drop.id)}>Reveal</button> : null}
-                        </article>
-                      );
-                    })}
-                  </div>
-                </HostDisclosure>
-                {features.scores ? (
-                  <HostDisclosure title="Energy" hint="Set the room vibe">
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={state.energy}
-                      onChange={(event) => update((current) => ({ ...current, energy: Number(event.target.value) }))}
-                    />
-                    <button onClick={() => update((current) => ({ ...current, energy: Math.min(100, current.energy + 8) }))}>Lift</button>
+                {features.surprises ? (
+                  <HostDisclosure title="Surprise drop" hint="Schedule unlock-on-X reveals">
+                    <input name="host-surprise-title" value={draftSurprise.title} onChange={(event) => setDraftSurprise((current) => ({ ...current, title: event.target.value }))} placeholder="Title (e.g. After-dinner mission)" />
+                    <textarea name="host-surprise-message" value={draftSurprise.message} onChange={(event) => setDraftSurprise((current) => ({ ...current, message: event.target.value }))} placeholder="Hidden note, secret mission, or award prompt" />
+                    <select name="host-surprise-unlock-type" value={draftSurprise.unlockType} onChange={(event) => setDraftSurprise((current) => ({ ...current, unlockType: event.target.value as SurpriseUnlock }))}>
+                      <option value="time">Open at time</option>
+                      <option value="submissions">Unlock after submissions</option>
+                      <option value="first-photo">Unlock after first photo</option>
+                      <option value="manual">Host reveals manually</option>
+                    </select>
+                    <input name="host-surprise-unlock-value" value={draftSurprise.unlockValue} onChange={(event) => setDraftSurprise((current) => ({ ...current, unlockValue: event.target.value }))} placeholder={draftSurprise.unlockType === 'time' ? '21:00' : draftSurprise.unlockType === 'submissions' ? '5' : 'note'} />
+                    <button onClick={addSurpriseDrop}>Schedule drop</button>
+                    <div className="surprise-list">
+                      {state.surprises.map((drop) => {
+                        const unlocked = isSurpriseUnlocked(drop, state);
+                        return (
+                          <article key={drop.id} className={unlocked ? 'surprise-row unlocked' : 'surprise-row'}>
+                            <strong>{drop.title}</strong>
+                            <small>{unlocked ? 'unlocked' : unlockLabel(drop)}</small>
+                            {drop.unlockType === 'manual' && !drop.revealedAt ? <button type="button" onClick={() => revealSurprise(drop.id)}>Reveal</button> : null}
+                          </article>
+                        );
+                      })}
+                    </div>
                   </HostDisclosure>
+                ) : null}
+                {!features.polls && !features.soundtrack && !features.games && !features.surprises ? (
+                  <p className="empty-note">Turn on a drop feature in Trip mode.</p>
                 ) : null}
               </>
             ) : null}
@@ -1760,12 +1950,12 @@ export function App() {
                   <button onClick={copyShareLink}>{shareCopied ? copy.copied : copy.copyJoinLink}</button>
                 </ControlPanel>
                 <HostDisclosure title="Trip details" hint="Title, description, cover image">
-                  <input value={state.eventName} onChange={(event) => update((current) => ({ ...current, eventName: event.target.value }))} placeholder="Event title" />
-                  <input value={state.location} onChange={(event) => update((current) => ({ ...current, location: event.target.value }))} placeholder="Location or group label" />
-                  <textarea value={state.description} onChange={(event) => update((current) => ({ ...current, description: event.target.value }))} placeholder="Event description" />
+                  <input name="trip-event-name" value={state.eventName} onChange={(event) => update((current) => ({ ...current, eventName: event.target.value }))} placeholder="Event title" />
+                  <input name="trip-location" value={state.location} onChange={(event) => update((current) => ({ ...current, location: event.target.value }))} placeholder="Location or group label" />
+                  <textarea name="trip-description" value={state.description} onChange={(event) => update((current) => ({ ...current, description: event.target.value }))} placeholder="Event description" />
                   <label className="file-button">
                     {state.coverImageName ? 'Change cover' : 'Add cover image'}
-                    <input type="file" accept="image/*" onChange={addCoverImage} />
+                    <input name="trip-cover-image" type="file" accept="image/*" onChange={addCoverImage} />
                   </label>
                 </HostDisclosure>
                 <HostDisclosure title="Trip feeling" hint={`${palette.name} palette`}>
@@ -1791,14 +1981,14 @@ export function App() {
                 <HostDisclosure title="Days" hint={`${days.length} days in the trip`}>
                   <DayToggle days={days} selectedDayId={activeDayId} onSelect={setSelectedDayId} />
                   <div className="composer three">
-                    <input value={draftDay.label} onChange={(event) => setDraftDay((current) => ({ ...current, label: event.target.value }))} placeholder="Day label (e.g. Day 2)" />
-                    <input value={draftDay.date} onChange={(event) => setDraftDay((current) => ({ ...current, date: event.target.value }))} placeholder="Short date (e.g. Sat)" />
+                    <input name="trip-day-label" value={draftDay.label} onChange={(event) => setDraftDay((current) => ({ ...current, label: event.target.value }))} placeholder="Day label (e.g. Day 2)" />
+                    <input name="trip-day-date" value={draftDay.date} onChange={(event) => setDraftDay((current) => ({ ...current, date: event.target.value }))} placeholder="Short date (e.g. Sat)" />
                     <button onClick={addDay}>Add day</button>
                   </div>
                 </HostDisclosure>
                 <HostDisclosure title="Teams" hint={`${groups.length} teams`}>
                   <div className="composer">
-                    <input value={draftGroup} onChange={(event) => setDraftGroup(event.target.value)} placeholder="Team name (e.g. Beach crew)" />
+                    <input name="trip-team-name" value={draftGroup} onChange={(event) => setDraftGroup(event.target.value)} placeholder="Team name (e.g. Beach crew)" />
                     <button onClick={addGroup}>Add team</button>
                   </div>
                   <div className="team-editor-list">
@@ -1816,6 +2006,7 @@ export function App() {
                             <span>{copy.teamEmoji}</span>
                             <input
                               className="emoji-input mini"
+                              name={`group-emoji-${group.id}`}
                               value={group.emoji ?? ''}
                               maxLength={2}
                               onChange={(event) => updateGroup(group.id, { emoji: event.target.value })}
@@ -1840,7 +2031,7 @@ export function App() {
                           </label>
                           <label className="file-button mini">
                             {group.imageName ? copy.changeImage : copy.teamImage}
-                            <input type="file" accept="image/*" onChange={(event) => addGroupImage(event, group.id)} />
+                            <input name={`group-image-${group.id}`} type="file" accept="image/*" onChange={(event) => addGroupImage(event, group.id)} />
                           </label>
                         </div>
                       </details>
@@ -1857,6 +2048,7 @@ export function App() {
                           <small>{groups.find((group) => group.id === (player.groupId ?? 'all'))?.name ?? player.team}</small>
                         </div>
                         <select
+                          name={`player-group-${player.id}`}
                           value={player.groupId ?? 'all'}
                           aria-label={`Assign ${player.name} group`}
                           onChange={(event) => assignPlayerGroup(player.id, event.target.value)}
@@ -1868,7 +2060,7 @@ export function App() {
                   </div>
                 </HostDisclosure>
                 <HostDisclosure title={copy.language} hint="Trip-wide language">
-                  <select value={language} onChange={(event) => update((current) => ({ ...current, language: event.target.value as Language }))}>
+                  <select name="trip-language" value={language} onChange={(event) => update((current) => ({ ...current, language: event.target.value as Language }))}>
                     <option value="en">English</option>
                     <option value="fr">Français</option>
                   </select>
@@ -1878,23 +2070,58 @@ export function App() {
                     <button key={template.id} onClick={() => applyTemplate(template)}>{template.name}</button>
                   ))}
                 </HostDisclosure>
-                <HostDisclosure title="Features" hint="Turn modules on or off">
-                  <div className="feature-list">
-                    {featureOptions.map((feature) => (
-                      <label key={feature.key} className="feature-toggle">
-                        <span>
-                          <strong>{feature.label}</strong>
-                          <small>{feature.hint}</small>
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={features[feature.key]}
-                          onChange={() => toggleFeature(feature.key)}
-                        />
-                      </label>
+                <HostDisclosure title="Trip mode" hint="Pick a simpler feature set">
+                  <div className="template-row compact">
+                    {featurePresets.map((preset) => (
+                      <button key={preset.key} type="button" onClick={() => applyFeaturePreset(preset.features)}>
+                        <strong>{preset.label}</strong>
+                        <small>{preset.hint}</small>
+                      </button>
                     ))}
                   </div>
+                  <details className="advanced-game" open>
+                    <summary>Section controls</summary>
+                    <p className="sync-note">Changes sync live for the crew.</p>
+                    <div className="feature-list">
+                      {tabFeatureOptions.map((feature) => (
+                        <label key={feature.key} className="feature-toggle">
+                          <span>
+                            <strong>{feature.label}</strong>
+                            <small>{feature.hint}</small>
+                          </span>
+                          <input
+                            name={`tab-feature-${feature.key}`}
+                            type="checkbox"
+                            checked={features[feature.key]}
+                            onChange={() => toggleFeature(feature.key)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                  <details className="advanced-game" open>
+                    <summary>Feature controls</summary>
+                    <div className="feature-list">
+                      {detailFeatureOptions.map((feature) => (
+                        <label key={feature.key} className="feature-toggle">
+                          <span>
+                            <strong>{feature.label}</strong>
+                            <small>{feature.hint}</small>
+                          </span>
+                          <input
+                            name={`detail-feature-${feature.key}`}
+                            type="checkbox"
+                            checked={features[feature.key]}
+                            onChange={() => toggleFeature(feature.key)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </details>
                 </HostDisclosure>
+                {/*
+                  Recovery stays in setup so More remains a user-facing overflow.
+                */}
                 <ControlPanel title="Trip safety" tone="recessed">
                   <div className="recovery-status">
                     <span>
@@ -1910,7 +2137,7 @@ export function App() {
                     {localBackups[0] ? <button type="button" className="ghost" onClick={() => restoreLocalBackup(localBackups[0]!)}>Restore latest local snapshot</button> : null}
                     <label className="file-button">
                       Restore pack
-                      <input type="file" accept="application/json,.json" onChange={(event) => void importRecoveryPack(event)} />
+                      <input name="recovery-pack" type="file" accept="application/json,.json" onChange={(event) => void importRecoveryPack(event)} />
                     </label>
                   </div>
                   {backupNotice ? <p className="sync-note">{backupNotice}</p> : null}
@@ -1934,19 +2161,21 @@ export function App() {
 
             {hostSection === 'wrap' && features.wrap ? (
               <ControlPanel title="Trip wrap" tone="primary">
-                <input value={wrapUp.title} onChange={(event) => updateWrap((current) => ({ ...current, title: event.target.value }))} placeholder="Wrap title (e.g. Trip wrapped)" />
-                <textarea value={wrapUp.note} onChange={(event) => updateWrap((current) => ({ ...current, note: event.target.value }))} placeholder="Wrap note (one line for the crew)" />
+                <input name="wrap-title" value={wrapUp.title} onChange={(event) => updateWrap((current) => ({ ...current, title: event.target.value }))} placeholder="Wrap title (e.g. Trip wrapped)" />
+                <textarea name="wrap-note" value={wrapUp.note} onChange={(event) => updateWrap((current) => ({ ...current, note: event.target.value }))} placeholder="Wrap note (one line for the crew)" />
                 <label className="feature-toggle">
                   <span><strong>Include timeline</strong><small>Plan highlights in the wrap</small></span>
-                  <input type="checkbox" checked={wrapUp.includeTimeline} onChange={() => updateWrap((current) => ({ ...current, includeTimeline: !current.includeTimeline }))} />
+                  <input name="wrap-include-timeline" type="checkbox" checked={wrapUp.includeTimeline} onChange={() => updateWrap((current) => ({ ...current, includeTimeline: !current.includeTimeline }))} />
                 </label>
-                <label className="feature-toggle">
-                  <span><strong>Include games</strong><small>Scores and winners</small></span>
-                  <input type="checkbox" checked={wrapUp.includeGames} onChange={() => updateWrap((current) => ({ ...current, includeGames: !current.includeGames }))} />
-                </label>
+                {features.games ? (
+                  <label className="feature-toggle">
+                    <span><strong>Include challenges</strong><small>{features.scores ? 'Scores and winners' : 'Challenge winners'}</small></span>
+                    <input name="wrap-include-games" type="checkbox" checked={wrapUp.includeGames} onChange={() => updateWrap((current) => ({ ...current, includeGames: !current.includeGames }))} />
+                  </label>
+                ) : null}
                 <label className="feature-toggle">
                   <span><strong>Publish wrap</strong><small>Make the Wrap tab feel final</small></span>
-                  <input type="checkbox" checked={wrapUp.published} onChange={() => updateWrap((current) => ({ ...current, published: !current.published }))} />
+                  <input name="wrap-published" type="checkbox" checked={wrapUp.published} onChange={() => updateWrap((current) => ({ ...current, published: !current.published }))} />
                 </label>
               </ControlPanel>
             ) : null}
@@ -1955,32 +2184,37 @@ export function App() {
       )}
 
       {tab === 'more' && (
-        <View title="More" kicker="Everything else, kept out of the way">
+        <View title="More" kicker="Everything else, kept out of the way" onBack={goBack} backLabel={copy.backToTrip}>
           <div className="more-list">
-            {features.polls ? <MoreButton icon={<Icon name="vote" size={16} />} label={copy.polls} meta={`${openPolls.length} open`} onClick={() => setTab('vote')} /> : null}
-            {features.requests ? <MoreButton icon={<Icon name="requests" size={16} />} label={role === 'host' ? copy.inbox : copy.requests} meta={`${pendingRequests.length} new`} onClick={() => setTab('requests')} /> : null}
-            {features.chat ? <MoreButton icon={<Icon name="chat" size={16} />} label={copy.chat} meta={activeGroup?.name ?? copy.allCrew} onClick={() => setTab('chat')} /> : null}
-            {features.wrap ? <MoreButton icon={<Icon name="wrap" size={16} />} label={copy.wrap} meta={wrapUp.published ? 'published' : 'draft'} onClick={() => setTab('wrap')} /> : null}
-            {role === 'host' ? <MoreButton icon={<Icon name="host" size={16} />} label={copy.settings} meta="setup, manage, fun, wrap" onClick={() => setTab('host')} /> : null}
-            <MoreButton icon={<Icon name="check" size={16} />} label="Recovery pack" meta="save a copy" onClick={downloadRecoveryPack} />
+            {features.polls ? <MoreButton icon={<Icon name="vote" size={16} />} label={copy.polls} meta={`${openPolls.length} open`} onClick={() => goToTab('vote')} /> : null}
+            {features.requests ? <MoreButton icon={<Icon name="requests" size={16} />} label={role === 'host' ? copy.inbox : copy.requests} meta={`${pendingRequests.length} new`} onClick={() => goToTab('requests')} /> : null}
+            {features.soundtrack && activeSoundtrack ? <MoreButton icon={<Icon name="soundtrack" size={16} />} label={copy.soundtrack} meta={activeSoundtrack.title} onClick={() => setTab('now')} /> : null}
+            {features.chat && (groups.length > 1 || role === 'host') ? <MoreButton icon={<Icon name="chat" size={16} />} label={copy.chat} meta={activeGroup?.name ?? copy.allCrew} onClick={() => goToTab('chat')} /> : null}
+            {features.wrap ? <MoreButton icon={<Icon name="wrap" size={16} />} label={copy.wrap} meta={wrapUp.published ? 'published' : 'draft'} onClick={() => goToTab('wrap')} /> : null}
+            {role === 'host' ? <MoreButton icon={<Icon name="host" size={16} />} label={copy.settings} meta={features.wrap ? 'manage, drops, setup, wrap' : 'manage, drops, setup'} onClick={() => goToTab('host')} /> : null}
             <MoreButton icon={<Icon name="switch" size={16} />} label={copy.switch} meta="leave this session" onClick={leaveSession} />
           </div>
         </View>
       )}
 
       <div className="fab-row">
-        <label className="fab fab-camera" aria-label="Snap a memory">
-          <Icon name="memories" size={22} />
-          <input
-            type="file"
-            accept="image/*,video/*"
-            capture="environment"
-            onChange={(event) => void addMediaMemory(event)}
-          />
-        </label>
-        <button type="button" className="fab" aria-label="Open quick actions" onClick={() => setActionSheetOpen(true)}>
-          <Icon name="plus" size={22} />
-        </button>
+        {features.memories ? (
+          <label className="fab fab-camera" aria-label="Snap a memory">
+            <Icon name="memories" size={22} />
+            <input
+              name="quick-memory-media"
+              type="file"
+              accept="image/*,video/*"
+              capture="environment"
+              onChange={(event) => void addMediaMemory(event)}
+            />
+          </label>
+        ) : null}
+        {hasQuickActions ? (
+          <button type="button" className="fab" aria-label="Open quick actions" onClick={() => setActionSheetOpen(true)}>
+            <Icon name="plus" size={22} />
+          </button>
+        ) : null}
       </div>
 
       <Dialog open={actionSheetOpen} onClose={() => setActionSheetOpen(false)} label="Crewtrip quick actions">
@@ -1992,26 +2226,34 @@ export function App() {
         {role === 'host' ? (
           <div className="sheet-stack">
             <ControlPanel title="Broadcast">
-              <input value={draftBroadcast} onChange={(event) => setDraftBroadcast(event.target.value)} placeholder="Pinned note for the crew" />
+              <input name="quick-host-broadcast" value={draftBroadcast} onChange={(event) => setDraftBroadcast(event.target.value)} placeholder="Pinned note for the crew" />
               <button onClick={() => { addBroadcast(); setActionSheetOpen(false); }}>Send</button>
             </ControlPanel>
             {features.plan ? (
               <HostDisclosure title="Plan item" hint="Add to the current day">
-                <input value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00)" />
-                <input value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value, dayId: activeDayId }))} placeholder="Plan title" />
-                <input value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
+                <input name="quick-stop-time" value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00)" />
+                <input name="quick-stop-title" value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value, dayId: activeDayId }))} placeholder="Plan title" />
+                <input name="quick-stop-place" value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
                 <button onClick={() => { addStop(); setActionSheetOpen(false); }}>Add plan</button>
               </HostDisclosure>
             ) : null}
             {features.polls ? (
-              <HostDisclosure title="Poll" hint="Ask the crew">
-                <input value={draftPoll.question} onChange={(event) => setDraftPoll((current) => ({ ...current, question: event.target.value }))} placeholder="Question" />
-                <input value={draftPoll.options} onChange={(event) => setDraftPoll((current) => ({ ...current, options: event.target.value }))} placeholder="Options separated by commas" />
-                <button onClick={() => { addPoll(); setActionSheetOpen(false); }}>Open poll</button>
+              <HostDisclosure title="Vote" hint="Ask the crew">
+                <input name="quick-poll-question" value={draftPoll.question} onChange={(event) => setDraftPoll((current) => ({ ...current, question: event.target.value }))} placeholder="Question" />
+                <input name="quick-poll-options" value={draftPoll.options} onChange={(event) => setDraftPoll((current) => ({ ...current, options: event.target.value }))} placeholder="Options separated by commas" />
+                <button onClick={() => { addPoll(); setActionSheetOpen(false); }}>Open vote</button>
+              </HostDisclosure>
+            ) : null}
+            {features.soundtrack ? (
+              <HostDisclosure title="Soundtrack" hint="Add a DJ set or playlist">
+                <input name="quick-soundtrack-title" value={draftSoundtrack.title} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, title: event.target.value }))} placeholder="Set or playlist title" />
+                <input name="quick-soundtrack-dj" value={draftSoundtrack.dj} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, dj: event.target.value }))} placeholder="DJ or curator" />
+                <input name="quick-soundtrack-link" value={draftSoundtrack.link} onChange={(event) => setDraftSoundtrack((current) => ({ ...current, link: event.target.value }))} placeholder="Playlist link" />
+                <button onClick={() => { addSoundtrack(); setActionSheetOpen(false); }}>Add soundtrack</button>
               </HostDisclosure>
             ) : null}
             {features.games ? (
-              <HostDisclosure title="Game" hint="Create a light challenge">
+              <HostDisclosure title="Challenge" hint="Create a light challenge">
                 <div className="preset-strip">
                   {(Object.keys(gamePresets) as GameKind[]).map((kind) => (
                     <button
@@ -2023,7 +2265,7 @@ export function App() {
                       }}
                     >
                       <strong>{gamePresets[kind].label}</strong>
-                      <small>{gamePresets[kind].points} pts</small>
+                      {features.scores ? <small>{gamePresets[kind].points} pts</small> : null}
                     </button>
                   ))}
                 </div>
@@ -2034,29 +2276,29 @@ export function App() {
           <div className="sheet-stack">
             {features.memories ? (
               <ControlPanel title="Memory">
-                <input value={draftMemory} onChange={(event) => setDraftMemory(event.target.value)} placeholder="Quote, caption, or moment" />
+                <input name="quick-memory-text" value={draftMemory} onChange={(event) => setDraftMemory(event.target.value)} placeholder="Quote, caption, or moment" />
                 <button onClick={() => { addMemory('text'); setActionSheetOpen(false); }}>Add memory</button>
                 <label className="file-button">
                   Add photo/video
-                  <input type="file" accept="image/*,video/*" onChange={(event) => { void addMediaMemory(event); setActionSheetOpen(false); }} />
+                  <input name="quick-memory-upload" type="file" accept="image/*,video/*" onChange={(event) => { void addMediaMemory(event); setActionSheetOpen(false); }} />
                 </label>
               </ControlPanel>
             ) : null}
             {features.requests ? (
               <ControlPanel title="Request">
-                <input value={draftRequest} onChange={(event) => setDraftRequest(event.target.value)} placeholder="Ask the host for something" />
+                <input name="quick-request-text" value={draftRequest} onChange={(event) => setDraftRequest(event.target.value)} placeholder="Ask the host for something" />
                 <button onClick={() => { addRequest(); setActionSheetOpen(false); }}>Send request</button>
               </ControlPanel>
             ) : null}
             <div className="quick-jump">
-              <button onClick={() => { setTab('crew'); setActionSheetOpen(false); }}>Add my name</button>
-              {features.chat ? <button onClick={() => { setTab('chat'); setActionSheetOpen(false); }}>Message crew</button> : null}
+              {features.crew ? <button onClick={() => { goToTab('crew'); setActionSheetOpen(false); }}>Add my name</button> : null}
+              {features.chat ? <button onClick={() => { goToTab('chat'); setActionSheetOpen(false); }}>Message crew</button> : null}
             </div>
           </div>
         )}
       </Dialog>
 
-      <Dialog open={Boolean(selectedChallenge)} onClose={() => setSelectedChallengeId(null)} label="Game detail" className="game-detail-sheet">
+      <Dialog open={Boolean(selectedChallenge)} onClose={() => setSelectedChallengeId(null)} label="Challenge detail" className="game-detail-sheet">
         {selectedChallenge ? (
           <>
             <div className="sheet-handle" />
@@ -2068,7 +2310,7 @@ export function App() {
               <button type="button" onClick={() => setSelectedChallengeId(null)} aria-label="Close"><Icon name="close" size={16} /></button>
             </div>
             <div className="game-detail-meta">
-              <Metric label={copy.points} value={String(selectedChallenge.points)} />
+              {features.scores ? <Metric label={copy.points} value={String(selectedChallenge.points)} /> : null}
               <Metric label={copy.done} value={String(selectedChallenge.doneBy.length)} />
             </div>
             <div className="game-visibility">
@@ -2082,6 +2324,7 @@ export function App() {
             {selectedChallenge.status === 'closed' ? <p className="empty-note">{copy.closedForEntries}</p> : (
               <div className="game-entry-composer">
                 <input
+                  name="challenge-entry"
                   value={draftGameEntry}
                   onChange={(event) => setDraftGameEntry(event.target.value)}
                   placeholder={copy.gameEntryPlaceholder}
@@ -2089,20 +2332,10 @@ export function App() {
                 <button onClick={() => submitGameEntry(selectedChallenge.id)}>{copy.submitEntry}</button>
                 <label className="file-button">
                   {copy.addProof}
-                  <input type="file" accept="image/*,video/*" onChange={(event) => void addGameMediaEntry(event, selectedChallenge.id)} />
+                  <input name={`challenge-proof-${selectedChallenge.id}`} type="file" accept="image/*,video/*" onChange={(event) => void addGameMediaEntry(event, selectedChallenge.id)} />
                 </label>
               </div>
             )}
-            <SegmentedControl
-              value={leaderboardMode}
-              options={[
-                { value: 'people', label: copy.people },
-                { value: 'teams', label: copy.teams },
-              ]}
-              onChange={setLeaderboardMode}
-              ariaLabel="Result scope"
-            />
-            <GameResultBoard challenge={selectedChallenge} players={state.players} groups={groups} mode={leaderboardMode} />
             <GameSubmissions
               challenge={selectedChallenge}
               groups={groups}
@@ -2113,19 +2346,24 @@ export function App() {
             {role === 'host' ? (
               <details className="advanced-game host-game-controls">
                 <summary>{copy.hostControls}</summary>
+                {features.scores ? (
+                  <input
+                    name="host-challenge-detail-points"
+                    type="number"
+                    min="1"
+                    value={selectedChallenge.points}
+                    onChange={(event) => updateChallenge(selectedChallenge.id, { points: Math.max(1, Number(event.target.value) || 1) })}
+                    placeholder={copy.points}
+                  />
+                ) : null}
                 <input
-                  type="number"
-                  min="1"
-                  value={selectedChallenge.points}
-                  onChange={(event) => updateChallenge(selectedChallenge.id, { points: Math.max(1, Number(event.target.value) || 1) })}
-                  placeholder={copy.points}
-                />
-                <input
+                  name="host-challenge-detail-deadline"
                   value={selectedChallenge.deadline ?? 'TBC'}
                   onChange={(event) => updateChallenge(selectedChallenge.id, { deadline: event.target.value })}
                   placeholder="Deadline (e.g. 19:00, TBC)"
                 />
                 <select
+                  name="host-challenge-detail-group"
                   value={selectedChallenge.groupId ?? 'all'}
                   onChange={(event) => updateChallenge(selectedChallenge.id, { groupId: event.target.value === 'all' ? undefined : event.target.value })}
                 >
@@ -2144,7 +2382,7 @@ export function App() {
 
       <nav className="tabbar" aria-label="Crewtrip sections">
         {visibleTabs.map((item) => (
-          <button key={item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>
+          <button key={item} className={tab === item ? 'active' : ''} onClick={() => goToTab(item)}>
             <span><Icon name={tabIcon(item)} size={18} /></span>
             <small>{tabLabel(item, role, copy)}</small>
           </button>

@@ -75,24 +75,21 @@ export function ChallengeGrid(props: {
   challenges: Challenge[];
   groups: CrewGroup[];
   activePlayerId: string;
+  showPoints: boolean;
   onSelect: (challengeId: string) => void;
   onScore: (challengeId: string) => void;
   onUploadProof: (event: React.ChangeEvent<HTMLInputElement>, challengeId: string) => void;
 }) {
-  if (!props.challenges.length) {
-    return <p className="empty-note">No games today — host can add one from the + menu.</p>;
-  }
   const [scoredFlash, setScoredFlash] = useState<string | null>(null);
+  if (!props.challenges.length) {
+    return <p className="empty-note">No challenges today — host can add one from the + menu.</p>;
+  }
   return (
     <div className="challenge-grid">
       {props.challenges.map((challenge) => {
         const done = challenge.doneBy.includes(props.activePlayerId);
         const groupName = challenge.groupId ? props.groups.find((group) => group.id === challenge.groupId)?.name : null;
         const submissions = challenge.submissions ?? [];
-        const leader = submissions[0]?.playerName ?? (challenge.doneBy[0]
-          ? null
-          : null);
-        const cheerCount = submissions.reduce((sum, submission) => sum + submission.cheers.length, 0);
         return (
           <article
             key={challenge.id}
@@ -101,10 +98,10 @@ export function ChallengeGrid(props: {
           >
             <div className="challenge-meta">
               <span>{challenge.kind ?? 'challenge'}</span>
-              <b>{challenge.points} pts</b>
+              {props.showPoints ? <b>{challenge.points} pts</b> : null}
             </div>
             <strong>{challenge.title}</strong>
-            <span>{challenge.deadline ?? 'TBC'} / {challenge.doneBy.length} {props.copy.done} / {submissions.length} {props.copy.entries}{cheerCount ? ` / ${cheerCount} ${props.copy.cheers}` : ''}{leader ? ` / ${props.copy.leader}: ${leader}` : ''}{groupName ? ` / ${groupName}` : ''}</span>
+            <span>{challenge.deadline ?? 'TBC'} / {challenge.doneBy.length} done{submissions.length ? ` / ${submissions.length} proof` : ''}{groupName ? ` / ${groupName}` : ''}</span>
             <div className="challenge-actions">
               <button
                 disabled={done || challenge.status === 'closed'}
@@ -124,6 +121,7 @@ export function ChallengeGrid(props: {
                 {props.copy.addProof}
                 <input
                   type="file"
+                  name={`challenge-proof-${challenge.id}`}
                   accept="image/*,video/*"
                   disabled={challenge.status === 'closed'}
                   onClick={(event) => event.stopPropagation()}
@@ -146,72 +144,6 @@ export function ChallengeGrid(props: {
           </article>
         );
       })}
-    </div>
-  );
-}
-
-export function GameResultBoard(props: { challenge: Challenge; players: Player[]; groups: CrewGroup[]; mode: 'people' | 'teams' }) {
-  const submissions = props.challenge.submissions ?? [];
-  if (props.mode === 'teams') {
-    const teams = props.groups
-      .map((group) => {
-        const groupEntries = submissions.filter((submission) => (submission.groupId ?? 'all') === group.id);
-        const completed = new Set([
-          ...props.players.filter((player) => props.challenge.doneBy.includes(player.id) && (player.groupId ?? 'all') === group.id).map((player) => player.id),
-          ...groupEntries.map((submission) => submission.playerId),
-        ]).size;
-        const cheers = groupEntries.reduce((sum, submission) => sum + submission.cheers.length, 0);
-        return { ...group, completed, cheers, score: (completed * props.challenge.points) + cheers };
-      })
-      .filter((group) => group.completed > 0)
-      .sort((a, b) => b.score - a.score);
-    return (
-      <div className="game-results">
-        {teams[0] ? (
-          <article className="winner-card">
-            <span>Team leader</span>
-            <strong>{teams[0].name}</strong>
-            <small>{teams[0].score} pts / {teams[0].cheers} cheers</small>
-          </article>
-        ) : null}
-        {teams.length ? teams.map((group, index) => (
-          <article key={group.id} className="result-row">
-            <span>{index + 1}</span>
-            <GroupMark group={group} />
-            <strong>{group.name}</strong>
-            <small>{group.score} pts / {group.completed} done / {group.cheers} cheers</small>
-          </article>
-        )) : <p className="empty-note">No team scores yet — be first to submit proof.</p>}
-      </div>
-    );
-  }
-
-  const entryScores = props.players
-    .filter((player) => props.challenge.doneBy.includes(player.id) || submissions.some((submission) => submission.playerId === player.id))
-    .map((player) => {
-      const playerEntries = submissions.filter((submission) => submission.playerId === player.id);
-      const cheers = playerEntries.reduce((sum, submission) => sum + submission.cheers.length, 0);
-      return { ...player, cheers, entries: playerEntries.length, score: props.challenge.points + cheers };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  return (
-    <div className="game-results">
-      {entryScores[0] ? (
-        <article className="winner-card">
-          <span>Current winner</span>
-          <strong>{entryScores[0].name}</strong>
-          <small>{entryScores[0].score} pts / {entryScores[0].cheers} cheers</small>
-        </article>
-      ) : null}
-      {entryScores.length ? entryScores.map((player, index) => (
-        <article key={player.id} className="result-row">
-          <span>{index + 1}</span>
-          <PlayerAvatar player={player} />
-          <strong>{player.name}</strong>
-          <small>{player.score} pts / {player.entries} entries / {player.cheers} cheers</small>
-        </article>
-      )) : <p className="empty-note">No one has scored this yet — be first.</p>}
     </div>
   );
 }

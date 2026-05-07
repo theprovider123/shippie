@@ -5,6 +5,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { App, mergeCrewtripState } from './App.tsx';
+import { normalizePlaylistUrl, playlistProviderLabel } from './utils/state.ts';
 import type { CrewtripState } from './App.tsx';
 
 describe('App', () => {
@@ -111,6 +112,33 @@ describe('App', () => {
     expect(merged.players[0]?.avatarDataUrl).toBe('data:image/jpeg;base64,local-avatar');
     expect(merged.players[0]?.score).toBe(12);
   });
+
+  test('keeps soundtrack slots during realtime merges', () => {
+    const base = makeState();
+    const local: CrewtripState = {
+      ...base,
+      updatedAt: 20,
+      updatedBy: 'local',
+      soundtracks: [{ id: 'dj-local', time: '21:00', title: 'Warm-up', dj: 'Alex', status: 'later' }],
+    };
+    const remote: CrewtripState = {
+      ...base,
+      updatedAt: 21,
+      updatedBy: 'remote',
+      soundtracks: [{ id: 'dj-remote', time: '23:00', title: 'After-hours', dj: 'Sam', status: 'later' }],
+    };
+
+    const merged = mergeCrewtripState(remote, local);
+
+    expect(merged.soundtracks.map((slot) => slot.id).sort()).toEqual(['dj-local', 'dj-remote']);
+  });
+
+  test('normalizes playlist URLs and labels known services', () => {
+    expect(normalizePlaylistUrl('open.spotify.com/playlist/abc')).toBe('https://open.spotify.com/playlist/abc');
+    expect(normalizePlaylistUrl('javascript:alert(1)')).toBeUndefined();
+    expect(playlistProviderLabel('https://soundcloud.com/crew/set')).toBe('Open SoundCloud');
+    expect(playlistProviderLabel('https://music.apple.com/gb/playlist/demo')).toBe('Open Apple Music');
+  });
 });
 
 function makeState(): CrewtripState {
@@ -136,6 +164,7 @@ function makeState(): CrewtripState {
     messages: [],
     pulses: [],
     surprises: [],
+    soundtracks: [],
     wrapUp: {
       published: false,
       title: 'Wrapped',
@@ -154,6 +183,8 @@ function makeState(): CrewtripState {
       chat: true,
       wrap: true,
       scores: true,
+      soundtrack: true,
+      surprises: true,
     },
     language: 'en',
     theme: 'sunset',

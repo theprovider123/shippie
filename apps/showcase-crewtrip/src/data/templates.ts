@@ -6,12 +6,15 @@ export const eventTemplates: EventTemplate[] = [
     id: 'weekend',
     name: 'Weekend Away',
     location: 'Trip HQ',
-    description: 'Plans, votes, games, requests, and memories for a weekend crew.',
+    description: 'Plans, votes, playlists, requests, and memories for a weekend crew.',
     hostNote: 'Join the trip, add your name, and help shape the next move.',
     stops: [
       { id: 'tw1', time: 'Now', title: 'Everyone joins', place: 'QR/link check-in', status: 'now' },
       { id: 'tw2', time: 'Next', title: 'First group vote', place: 'Food, drinks, walk, or reset', status: 'next' },
       { id: 'tw3', time: 'Later', title: 'Memory drop', place: 'Photos, videos, quotes, awards', status: 'later' },
+    ],
+    soundtracks: [
+      { id: 'tdw1', time: '20:00', title: 'Weekend warm-up', dj: 'Host', note: 'Crew playlist for the first night', status: 'later' },
     ],
     polls: [
       {
@@ -31,12 +34,15 @@ export const eventTemplates: EventTemplate[] = [
     id: 'birthday',
     name: 'Birthday Crew',
     location: 'Party HQ',
-    description: 'A host-led birthday plan with polls, games, requests, and a memory wall.',
+    description: 'A host-led birthday plan with votes, challenges, playlists, requests, and a memory wall.',
     hostNote: 'Add your name, vote on the next moment, and upload the evidence.',
     stops: [
       { id: 'tb1', time: 'Now', title: 'Guest check-in', place: 'Names, teams, first request', status: 'now' },
       { id: 'tb2', time: 'Next', title: 'Host toast', place: 'One shared moment before chaos', status: 'next' },
       { id: 'tb3', time: 'Later', title: 'Awards', place: 'Best dressed, funniest quote, MVP', status: 'later' },
+    ],
+    soundtracks: [
+      { id: 'tdb1', time: '22:00', title: 'Birthday set', dj: 'Birthday crew', note: 'Requests open all night', status: 'later' },
     ],
     polls: [
       {
@@ -62,6 +68,9 @@ export const eventTemplates: EventTemplate[] = [
       { id: 'tf1', time: 'Now', title: 'Meet point locked', place: 'Host updates this when plans shift', status: 'now' },
       { id: 'tf2', time: 'Next', title: 'Set clash vote', place: 'Let the crew choose', status: 'next' },
       { id: 'tf3', time: 'Later', title: 'After-hours decision', place: 'Host shares the final call', status: 'later' },
+    ],
+    soundtracks: [
+      { id: 'tdf1', time: 'Next', title: 'Next set shortlist', dj: 'Field HQ', note: 'Use votes for set clashes', status: 'next' },
     ],
     polls: [
       {
