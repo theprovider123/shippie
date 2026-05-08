@@ -1,6 +1,6 @@
 # Real-Phone Verification Checklist
 
-> One-pass pre-launch verification on iPhone Safari + Android Chrome. Walk through this with both phones in hand. Estimated time: 60-90 minutes.
+> One-pass pre-launch verification on iPhone Safari + Android Chrome. Walk through this with both phones in hand. Estimated time: ~3 hours for the full 12-showcase + platform-surface walk; ~60-90 minutes if you skim the polish-batch surfaces and focus on Live Room / Recipe / Journal / Whiteboard / Crewtrip / Hero Trio.
 
 **Pre-requisites:** the platform is deployed (see [`cf-google-deploy.md`](./cf-google-deploy.md)), DNS is propagated, you can `curl -sI https://shippie.app` and get 200.
 
@@ -96,7 +96,122 @@ Acceptance for Live Room:
 
 ---
 
-## After all four showcases pass
+## Showcase 5 — Crewtrip (camera + canvas wrap share)
+
+1. **Open `https://shippie.app/run/crewtrip/` on phone A as a fresh visit (clear localStorage if needed).**
+   - [ ] EntryScreen offers Continue / Start new / Join with code / See demo. NOT auto-dropped into seeded demo.
+2. **Start a new trip.** Pick a theme (Coast / Olive / Tangerine / After dark). Confirm Fraunces serif renders + the palette warmth changes the page background.
+3. **Camera FAB.** Tap the camera pill in the FAB row → iOS rear camera opens directly (no permission prompt before picker; the prompt fires on first capture). Take a photo.
+   - [ ] Memory polaroid appears with ±0.4°/0.7° rotation.
+4. **Wrap share image.** Open Wrap tab → tap "Share image".
+   - [ ] On iOS Safari: native share sheet opens with a 1080×1350 PNG attached.
+   - [ ] On Android: share sheet OR download fallback (browser-dependent).
+5. **Word codes.** Note the join code (e.g. `OLIVE-PORCH-07`). Read it aloud — does it parse cleanly?
+6. **Phone B joins.** Open the join URL on phone B → confirm the trip name, palette, and 1+ memory replicate.
+
+---
+
+## Showcase 6 — Receipt Snap (on-device vision)
+
+1. **Open `https://shippie.app/run/receipt-snap/` on phone A.**
+2. **Capture a receipt.** Tap the camera button → take a photo of any printed receipt.
+   - [ ] iOS first-capture permission prompt fires; allow.
+   - [ ] On-device OCR runs — Transformers vision pipeline pulls from `/__esm/` (first run is slow, ~5-10s warmup; subsequent runs <2s).
+3. **Verify extraction.** Confirm vendor, line items, total, and confidence score appear. Edit any field that's wrong.
+4. **Receipt persists.** Reload page → receipt is still there (local-db / OPFS).
+5. **Glance check.** Visit `/glance` afterwards → confirm "1 expense logged" or similar appears in today's headline (intent `expense-logged`).
+
+---
+
+## Showcase 7 — Tab (nearby bill split, no account)
+
+1. **Phone A:** open `https://shippie.app/run/tab/` → tap "+ new tab".
+2. **Phone A:** add 3 line items (e.g. "Pizza 12.50", "Beers 8.00", "Tip 4.00"). Tap "Share with the table".
+3. **Phone B:** scan QR or tap the share link (Mevrouw 2-party mesh — uses `relay-provider.ts` with PBKDF2 + AES-GCM).
+   - [ ] Both phones show the same tab in <10s — no signup, no account.
+4. **Phone B:** add an item from their side. Phone A should see it within <5s.
+5. **Split view.** Swipe to "Split evenly" or "Per person" and confirm both phones agree on totals.
+
+---
+
+## Showcase 8 — Voice Memo (on-device Whisper)
+
+1. **Open `https://shippie.app/run/voice-memo/` on phone A.**
+2. **Hold the record button.** Speak ~10 seconds of clear English. Release.
+   - [ ] iOS first-capture: microphone permission prompt fires; allow.
+3. **Whisper transcription.** First run downloads model via `/__esm/` proxy — expect a 10-20s "loading model" indicator. Subsequent recordings transcribe in ~3-5s.
+   - [ ] Transcript matches what you said (small fillers/hesitations expected).
+4. **Confirm staying local.** DevTools Network tab during recording should show NO outbound request to `*.openai.com`, `*.assemblyai.com`, or any external transcription API. Only `/__esm/*` traffic.
+5. **Storage.** Recording persists across reload — check `/__shippie/data` for the audio blob (OPFS).
+
+---
+
+## Showcase 9 — Site Visit (offline inspections + print-PDF)
+
+1. **Open `https://shippie.app/run/site-visit/` on phone A.**
+2. **Toggle airplane mode.** App should still load (PWA cache).
+3. **Add a site → start a visit → use the "Food safety" template.**
+   - [ ] Capture 2 photos via the camera FAB.
+   - [ ] Tap "Sign" → draw a signature on the canvas pad.
+   - [ ] Flag 1 incident with severity + note.
+4. **Print PDF.** Tap "Print report" → browser print dialog opens with `@media print` view.
+   - [ ] On iOS: "Save to Files" produces a usable PDF.
+   - [ ] On Android: "Save as PDF" or print to paper.
+5. **Reconnect.** Toggle airplane mode off — confirm the visit's events appear in `/glance` (`visit-completed`, `incident-flagged`).
+
+---
+
+## Showcase 10 — Touch (private follow-up tracker)
+
+1. **Open `https://shippie.app/run/touch/` on phone A.**
+2. **Add 5 contacts** with cadence (weekly / fortnightly / monthly / quarterly / yearly).
+3. **Mark one as "Touched today".** Confirm the next-touch pill updates.
+4. **Weekly review surface.** Open the weekly review screen — "Due this week" / "Overdue" / "Coming up" categories.
+5. **CSV export.** Tap export → CSV downloads. Open in a sheet app and confirm it has rows + headers.
+
+---
+
+## Showcase 11 — Pitch Forge (on-device drafting)
+
+1. **Open `https://shippie.app/run/pitch-forge/` on phone A.**
+2. **Pick the "Grant" template.** Fill in 3 prompts (problem / solution / ask).
+3. **Tap "Draft".**
+   - [ ] First run: model warmup via `/__esm/` (~10-15s). Show progress.
+   - [ ] Subsequent runs: ~3-5s.
+   - [ ] DevTools Network: no outbound to OpenAI / Anthropic / etc. Only `/__esm/`.
+4. **Edit + snapshot.** Edit the draft → tap "Save version".
+5. **Diff compare.** Open versions panel → diff old vs new shows line-level changes.
+6. **Print PDF.** Tap "Print" → @media print produces a usable handoff document.
+
+---
+
+## Showcase 12 — Care Log (caregiver mesh, solo by default)
+
+1. **Open `https://shippie.app/run/care-log/` on phone A.**
+2. **Solo flow first.**
+   - [ ] First-run: prompt to identify primary caregiver (you).
+   - [ ] Add 1 medication + dose + schedule.
+   - [ ] Mark dose as "given" — log entry timestamps.
+   - [ ] Add 1 symptom record.
+3. **Co-caregiver pairing (optional).** Tap "Share with another caregiver" → 8-char pair code generated (Mevrouw template).
+4. **Phone B joins.** Enter pair code on phone B → both phones share state E2E-encrypted.
+5. **Handover.** Phone A taps "Generate handover note" → produces auditable list of meds-given + symptoms-logged-since-last-handover. Print or share.
+
+---
+
+## Platform surface — /glance + /today
+
+1. **After running 3+ of the above showcases, open `https://shippie.app/glance` on phone A.**
+   - [ ] One-sentence headline reflects today's activity ("Today: 1 receipt, 1 voice memo, and a site visit").
+   - [ ] 7-day sparklines render for each app that's seen activity.
+   - [ ] "Gone quiet" panel shows apps not used in ≥7 days (will be empty on first visit).
+2. **Open `https://shippie.app/today`.**
+   - [ ] Same data, log-shape per-app cards with drilldowns.
+3. **Verify privacy.** DevTools Network on `/glance` load — only platform asset requests, NO outbound POST to anything that looks like analytics. The aggregator runs on-device against IndexedDB.
+
+---
+
+## After all twelve showcases pass
 
 - [ ] **Public listing pages** at `/apps/recipe`, `/apps/journal`, `/apps/whiteboard`, `/apps/live-room` show **proven** Capability Proof Badges (filled sage-green pills with ✓) once the daily 4am rollup has run at least once. Allow 24 hours after the smoke for badges to appear.
 - [ ] **Maker dashboard** at `/dashboard/apps/[slug]/proof` shows per-event distinct-device counts and pending-badge progress.
