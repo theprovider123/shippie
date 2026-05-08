@@ -614,6 +614,51 @@ const curatedAppSpecs: CuratedAppSpec[] = [
       provides: ['tab-item-added', 'tab-settled'],
     },
   },
+  {
+    slug: 'pitch-forge',
+    name: 'Pitch Forge',
+    shortName: 'Pitch',
+    description:
+      'Pitches stay on this phone. Grant proposals, RFP responses, sponsorship asks — drafted by AI in your browser, never uploaded.',
+    appKind: 'local',
+    icon: 'PF',
+    accent: '#17694D',
+    category: 'productivity',
+    port: 5222,
+    intents: {
+      provides: ['pitch-drafted', 'pitch-sent'],
+    },
+  },
+  {
+    slug: 'touch',
+    name: 'Touch',
+    shortName: 'Touch',
+    description:
+      'A follow-up tracker for the 30 people who matter. No sales CRM gravity. Your Rolodex stays yours.',
+    appKind: 'local',
+    icon: 'TC',
+    accent: '#A86060',
+    category: 'productivity',
+    port: 5221,
+    intents: {
+      provides: ['touch-logged'],
+      consumes: ['coffee-brewed', 'dined-out'],
+    },
+  },
+  {
+    slug: 'care-log',
+    name: 'Care Log',
+    shortName: 'Care',
+    description: 'Track meds and symptoms for someone you care for. Optional co-caregiver mesh. Records stay on the paired devices.',
+    appKind: 'connected',
+    icon: 'CL',
+    accent: '#74A57F',
+    category: 'health',
+    port: 5223,
+    intents: {
+      provides: ['care-dose-given', 'care-symptom-noted', 'care-handover-noted'],
+    },
+  },
 ];
 
 export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp);

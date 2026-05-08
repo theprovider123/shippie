@@ -103,6 +103,20 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // curated consumer in-tree today.
   'tab-item-added',
   'tab-settled',
+  // Pitch Forge — drafted/sent are surfaced in /today and (eventually)
+  // a maker dashboard, but no in-tree app currently consumes them.
+  'pitch-drafted',
+  'pitch-sent',
+  // Touch — touch-logged is broadcast for optional cross-app surfacing
+  // (Journal could weave touches into daily summaries later); no
+  // curated consumer in-tree today.
+  'touch-logged',
+  // Care Log — caregiver tooling for someone else's data. Symptom
+  // Diary is for tracking your own; Care Log is for tracking another
+  // person's. Streams don't share consumers in-tree by design.
+  'care-dose-given',
+  'care-symptom-noted',
+  'care-handover-noted',
 ]);
 
 /**

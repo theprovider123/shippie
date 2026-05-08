@@ -6,6 +6,7 @@ export const SHOWCASE_SLUGS = [
   "atlas",
   "body-metrics",
   "breath",
+  "care-log",
   "co-pilot",
   "coffee",
   "cooking",
@@ -22,6 +23,7 @@ export const SHOWCASE_SLUGS = [
   "mevrouw",
   "move",
   "pantry-scanner",
+  "pitch-forge",
   "quiet",
   "read-later",
   "receipt-snap",
@@ -30,10 +32,12 @@ export const SHOWCASE_SLUGS = [
   "shopping-list",
   "show-and-tell",
   "sip-log",
+  "site-visit",
   "story-studio",
   "symptom-diary",
   "tab",
   "therapy-notes",
+  "touch",
   "voice-memo",
   "whiteboard"
 ] as const;
