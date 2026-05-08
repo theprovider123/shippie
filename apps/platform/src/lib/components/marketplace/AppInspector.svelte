@@ -41,6 +41,7 @@
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
   const blurb = $derived(app ? app.tagline ?? app.description ?? `${app.name} on Shippie` : '');
+  const typeLabel = $derived(app ? (app.type.toLowerCase() === 'app' ? 'tool' : app.type) : '');
   const proofBadges = $derived((app?.badges ?? []).filter((badge) => badge.proven));
   const launchHref = $derived(app ? `/run/${encodeURIComponent(app.slug)}` : '/apps');
   const offlineStatus = $derived(app ? $offlineStatuses[app.slug] : undefined);
@@ -61,7 +62,7 @@
     if (!app?.kind) return 'Not scanned yet';
     if (app.kind === 'local') return 'Data stays on this device';
     if (app.kind === 'connected') return 'Local data with live connections';
-    return 'Cloud-backed app';
+    return 'Cloud-backed tool';
   });
 
   async function copyAppLink() {
@@ -108,6 +109,21 @@
       toast.push({ kind: 'error', message: 'Could not update offline copy.' });
     }
   }
+
+  function togglePinned() {
+    if (!app) return;
+    const shouldSave = !pinned;
+    togglePinnedApp(app.slug);
+    if (shouldSave) {
+      void ensureAppOffline(app.slug).catch(() => {
+        toast.push({ kind: 'error', message: 'Pinned, but could not save offline yet.' });
+      });
+    } else {
+      void removeAppAndTrack(app.slug).catch(() => {
+        toast.push({ kind: 'error', message: 'Unpinned, but could not remove offline copy yet.' });
+      });
+    }
+  }
 </script>
 
 {#if app}
@@ -123,7 +139,7 @@
         size={72}
       />
       <div>
-        <p class="eyebrow">{app.type} · {app.category}</p>
+        <p class="eyebrow">{typeLabel} · {app.category}</p>
         <h2>{app.name}</h2>
         <p class="blurb">{blurb}</p>
       </div>
@@ -131,7 +147,7 @@
 
     <div class="actions">
       <a href={launchHref} onclick={launchAndRemember}>Open</a>
-      <button type="button" onclick={() => togglePinnedApp(app.slug)}>
+      <button type="button" onclick={togglePinned}>
         {pinned ? 'Unpin' : 'Pin'}
       </button>
       <button type="button" class:copied={copyState === 'copied'} class:error={copyState === 'error'} onclick={copyAppLink}>

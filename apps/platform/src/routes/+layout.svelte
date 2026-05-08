@@ -20,10 +20,6 @@
 
 <svelte:head>
   <title>Shippie — No app store. Just the web, installed.</title>
-  <meta
-    name="description"
-    content="Build it with AI. On your phone. In 60 seconds. Open marketplace for installable web apps."
-  />
   <meta name="theme-color" content="#14120F" />
   <link
     rel="preconnect"

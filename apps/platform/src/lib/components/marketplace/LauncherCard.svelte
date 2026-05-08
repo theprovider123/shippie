@@ -12,6 +12,7 @@
     cachedSlugs,
     ensureAppOffline,
     offlineStatuses,
+    removeAppAndTrack,
   } from '$lib/stores/cached-slugs';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
@@ -53,7 +54,8 @@
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
   const blurb = $derived(app.tagline ?? app.description ?? `${app.name} on Shippie`);
-  const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
+  const typeLabel = $derived(app.type.toLowerCase() === 'app' ? 'tool' : app.type);
+  const launchHref = $derived(`/container?app=${encodeURIComponent(app.slug)}&focused=1`);
   const proofCount = $derived((app.badges ?? []).filter((badge) => badge.proven).length);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
@@ -104,6 +106,10 @@
     onInspect?.(app);
   }
 
+  function keepActionClick(event: Event) {
+    event.stopPropagation();
+  }
+
   function pin(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
@@ -117,14 +123,15 @@
       void ensureAppOffline(app.slug).catch(() => {
         toast.push({ kind: 'error', message: 'Could not save for offline yet.' });
       });
+    } else {
+      void removeAppAndTrack(app.slug).catch(() => {
+        toast.push({ kind: 'error', message: 'Could not remove offline copy yet.' });
+      });
     }
   }
 
   function launchAndRemember() {
-    const launchCount = recordAppLaunch(app.slug);
-    if (launchCount >= 2) {
-      void ensureAppOffline(app.slug).catch(() => {});
-    }
+    recordAppLaunch(app.slug);
   }
 </script>
 
@@ -151,7 +158,7 @@
           <span>{recentLabel}</span>
         {/if}
       </div>
-      <p class="kind">{app.type} · {app.category}</p>
+      <p class="kind">{typeLabel} · {app.category}</p>
       <p class="blurb">{blurb}</p>
       <div class="signals">
         {#if app.kind}
@@ -181,13 +188,20 @@
     </div>
   </a>
 
-  <div class="quick-actions" aria-label={`${app.name} actions`}>
+  <div
+    class="quick-actions"
+    aria-label={`${app.name} actions`}
+    onpointerdown={keepActionClick}
+    ontouchstart={keepActionClick}
+    onclick={keepActionClick}
+  >
     <button
       type="button"
       class:active={pinned}
       onclick={pin}
       title={pinned ? 'Unpin' : 'Pin'}
       aria-label={pinned ? `Unpin ${app.name}` : `Pin ${app.name}`}
+      aria-pressed={pinned}
     >
       {pinned ? '★' : '☆'}
     </button>
@@ -333,10 +347,11 @@
     z-index: 2;
     display: flex;
     gap: 4px;
+    touch-action: manipulation;
   }
   .quick-actions button {
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     display: inline-grid;
     place-items: center;
     border: 1px solid var(--border);
@@ -346,6 +361,7 @@
     font-family: var(--font-mono);
     font-size: 0.85rem;
     cursor: pointer;
+    touch-action: manipulation;
     transition:
       border-color 0.15s var(--ease-out),
       color 0.15s var(--ease-out),
@@ -368,7 +384,16 @@
     .compact .launch-link {
       grid-template-columns: 1fr;
       padding-right: var(--space-md);
-      padding-top: 3.75rem;
+      padding-top: 4.25rem;
+    }
+    .quick-actions {
+      top: var(--space-md);
+      right: var(--space-md);
+      gap: 6px;
+    }
+    .quick-actions button {
+      width: 40px;
+      height: 40px;
     }
   }
 </style>

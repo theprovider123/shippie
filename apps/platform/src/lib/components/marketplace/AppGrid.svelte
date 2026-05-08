@@ -31,7 +31,7 @@
 
   let {
     apps,
-    emptyLabel = 'No apps yet.',
+    emptyLabel = 'No tools yet.',
     emptyBody = '',
     emptyActionLabel = '',
     emptyActionHref = '',

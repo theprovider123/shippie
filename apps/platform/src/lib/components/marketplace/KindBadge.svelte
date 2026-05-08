@@ -32,7 +32,7 @@
     if (resolvedKind === 'connected') {
       return 'Your data stays on this device. Connects for live information.';
     }
-    return 'Needs internet. Data is stored by the app maker or third-party services.';
+    return 'Needs internet. Data is stored by the tool maker or third-party services.';
   });
 </script>
 

@@ -1,389 +1,610 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { PageProps } from './$types';
-  import AppGrid from '$lib/components/marketplace/AppGrid.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
+  import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
+  import LauncherCard from '$lib/components/marketplace/LauncherCard.svelte';
+  import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
+  import { ensureAppOffline, refreshCachedSlugs } from '$lib/stores/cached-slugs';
+  import {
+    hydrateLauncherMemory,
+    launcherMemory,
+    togglePinnedApp,
+  } from '$lib/stores/launcher-memory';
 
   let { data }: PageProps = $props();
+  let selectedSlug = $state<string | null>(null);
+  const autoSaving = new Set<string>();
+
+  type LauncherApp = (typeof data.apps)[number];
+
+  const appBySlug = $derived.by(() => new Map(data.apps.map((app) => [app.slug, app])));
+  const selectedApp = $derived(selectedSlug ? (appBySlug.get(selectedSlug) ?? null) : null);
+  const filtered = $derived(Boolean(data.query || data.categoryFilter));
+  const pinnedSet = $derived.by(() => new Set($launcherMemory.pinned));
+  const pinnedApps = $derived.by(() =>
+    $launcherMemory.pinned
+      .map((slug) => appBySlug.get(slug))
+      .filter((app): app is LauncherApp => Boolean(app)),
+  );
+  const recentApps = $derived.by(() =>
+    $launcherMemory.recents
+      .map((recent) => appBySlug.get(recent.slug))
+      .filter((app): app is LauncherApp => Boolean(app)),
+  );
+  const continueApps = $derived.by(() => {
+    const source = recentApps.length > 0 ? recentApps : data.apps;
+    return source.slice(0, 4);
+  });
+  const continueSet = $derived.by(() => new Set(continueApps.map((app) => app.slug)));
+  const featuredApps = $derived.by(() =>
+    (data.featured ?? []).filter((app) => !continueSet.has(app.slug)),
+  );
+  const featuredSet = $derived.by(() => new Set(featuredApps.map((app) => app.slug)));
+  const localApps = $derived.by(() =>
+    data.apps
+      .filter((app) =>
+        (app.kind === 'local' || app.kind === 'connected')
+        && !continueSet.has(app.slug)
+        && !featuredSet.has(app.slug),
+      )
+      .slice(0, 8),
+  );
+  const exploreApps = $derived(data.apps);
+  const isFirstVisit = $derived.by(() => {
+    const totalLaunches = Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, n) => sum + n, 0);
+    return totalLaunches === 0;
+  });
+
+  onMount(() => {
+    hydrateLauncherMemory();
+    void refreshCachedSlugs(data.apps.map((app) => app.slug));
+  });
+
+  $effect(() => {
+    for (const slug of $launcherMemory.pinned) {
+      keepReady(slug);
+    }
+  });
+
+  function inspectApp(app: LauncherApp) {
+    selectedSlug = app.slug;
+  }
+
+  function closeInspector() {
+    selectedSlug = null;
+  }
+
+  function keepReady(slug: string) {
+    if (!appBySlug.has(slug) || autoSaving.has(slug)) return;
+    autoSaving.add(slug);
+    void ensureAppOffline(slug)
+      .catch(() => {})
+      .finally(() => {
+        autoSaving.delete(slug);
+      });
+  }
+
+  function onKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') closeInspector();
+  }
+
+  function recentLabel(slug: string): string {
+    const recent = $launcherMemory.recents.find((item) => item.slug === slug);
+    if (!recent) return '';
+    const opened = new Date(recent.lastOpened);
+    if (Number.isNaN(opened.getTime())) return 'Recent';
+    const diff = Date.now() - opened.getTime();
+    const minutes = Math.max(1, Math.round(diff / 60000));
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.round(hours / 24);
+    return `${days}d`;
+  }
+
+  function pageHref(q: string, page: number, category: string | null | undefined): string {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (page > 1) params.set('p', String(page));
+    if (category) params.set('category', category);
+    const qs = params.toString();
+    return qs ? `/?${qs}` : '/';
+  }
+
+  // Categories are a proper toggle: clicking the active chip removes
+  // the filter, clicking another swaps. The href is computed from
+  // *current* state so the URL params stay in sync.
+  function categoryHref(cat: string | null): string {
+    const params = new URLSearchParams();
+    if (data.query) params.set('q', data.query);
+    if (cat) params.set('category', cat);
+    const qs = params.toString();
+    return qs ? `/?${qs}` : '/';
+  }
 </script>
 
-<section class="hero">
-  <div class="wrap">
-    <div class="hero-grid">
-      <div class="hero-pitch">
-        <img
-          src="/__shippie-pwa/icon.svg"
-          alt=""
-          width="96"
-          height="96"
-          class="hero-mark"
-          aria-hidden="true"
-        />
-        <p class="badge">
-          <img src="/__shippie-pwa/icon.svg" alt="" width="11" height="11" />
-          Open source · Free forever
-        </p>
-        <h1 class="hero-heading">
-          <span class="line">Ship <span class="accent">local.</span></span>
-          <span class="line">Your app. Your device.</span>
-          <span class="line">Your data.</span>
-        </h1>
-        <p class="hero-sub">
-          Deploy any web app. Shippie wraps it into a phone-native experience,
-          runs it on the user's device, and connects nearby phones directly
-          when they're in the same room.
-        </p>
-        <div class="hero-ctas">
-          <Button href="/new" variant="primary" size="lg">Deploy now →</Button>
-          <Button href="/apps" variant="secondary" size="lg">Browse apps</Button>
-        </div>
-        <p class="hero-foot">
-          <em>60 seconds</em> for zip uploads, MCP, and CLI deploys.
-          <a href="/docs#auto-deploys">GitHub auto-deploys take 2–5 min.</a>
+<svelte:head>
+  <title>Shippie — small tools that work on your device</title>
+  <meta name="description" content="Tap a tool to use it. They run on your device, work offline, and share local signals when it helps. No signup, no install, no subscription." />
+  {#each (data.topFourSlugs ?? []) as slug}
+    <link rel="prefetch" href="/run/{slug}/" as="document" />
+  {/each}
+</svelte:head>
+
+<svelte:window onkeydown={onKeydown} />
+
+<div class="page">
+  <header class="head wrap">
+    <p class="eyebrow">
+      <img src="/__shippie-pwa/icon.svg" alt="" width="14" height="14" />
+      Tool launcher
+    </p>
+    <div class="head-grid">
+      <div>
+        <h1 class="title">Shippie</h1>
+        <p class="lede">
+          Tap a tool to use it. They run on your device, work offline, and share local signals when it helps.
         </p>
       </div>
-
-      <aside class="hero-terms" aria-labelledby="hero-terms-title">
-        <p class="terms-eyebrow">The terms</p>
-        <h2 id="hero-terms-title" class="terms-title">Read in 60 seconds.</h2>
-        <p class="terms-meta">200 words · Plain English · v1</p>
-        <div class="terms-body">
-          <p><strong>Free.</strong> Shippie is free for makers. No tiers, no caps, no "free until you succeed".</p>
-          <p><strong>You own your code.</strong> We host it; you keep it. Open source platform. Fork it, self-host it, take it with you any time.</p>
-          <p><strong>We can't see end-user data.</strong> Apps store everything in SQLite on the user's phone. Shippie's servers never touch it. There is no database to breach because there is no database.</p>
-          <p><strong>We don't sell anything to advertisers.</strong> No ads, no tracking, no analytics piped to a third party. The only telemetry is per-app capability proofs the maker chooses to publish.</p>
-          <p><strong>We can take down apps that break the platform.</strong> Malware, illegal content, or attempts to exfiltrate user data get removed. We post every removal publicly with the reason.</p>
-          <p><strong>If we shut down, your apps still work.</strong> They're PWAs. The data is on the device. Shippie is the wrapper, not the runtime — pull the wrapper, the apps still run.</p>
-          <p class="terms-coda">That's the deal. The architecture <em>is</em> the policy.</p>
-        </div>
-      </aside>
+      <div class="search-row">
+        <SearchBar initial={data.query} placeholder="Search tools..." />
+      </div>
     </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
-    <header class="section-intro">
-      <p class="eyebrow">Three pillars</p>
-      <h2 class="section-heading">Wrap. Run. Connect.</h2>
-      <p class="section-sub">
-        Deploy any web app. Shippie wraps it into a phone-native experience,
-        runs it on the user's device with their data on their device, and
-        connects nearby phones directly when they're in the same room.
-      </p>
-    </header>
-    <ol class="steps">
-      <li class="pillar pillar-wrap">
-        <span class="step-num">01</span>
-        <h3>Wrap</h3>
-        <p>
-          Deploy your app — Shippie makes it installable, offline-capable,
-          tactile, and fast. Haptics, spring transitions, install prompt,
-          the Your Data panel — automatic, no SDK calls required.
-        </p>
-      </li>
-      <li class="pillar pillar-run">
-        <span class="step-num">02</span>
-        <h3>Run</h3>
-        <p>
-          Local SQLite, local files, local AI on the device's NPU when
-          available. Backups go to the user's own cloud. Shippie never
-          holds your end users' data.
-        </p>
-      </li>
-      <li class="pillar pillar-connect">
-        <span class="step-num">03</span>
-        <h3>Connect</h3>
-        <p>
-          Real-time rooms, peer-to-peer over WebRTC. Pub quizzes, classroom
-          tools, collaborative whiteboards. Sub-30 ms remote latency on
-          local Wi-Fi — nearby phones talk directly.
-        </p>
-      </li>
-    </ol>
-  </div>
-</section>
-
-<section class="section featured">
-  <div class="wrap">
-    <header class="section-intro">
-      <p class="eyebrow">Featured apps</p>
-      <h2 class="section-heading">What's been shipped.</h2>
-      <p class="section-sub">
-        {#if data.featured.length === 0}
-          The marketplace is just getting started. Be the first to launch one.
-        {:else}
-          Real apps, made with AI, deployed in seconds, installed on real phones.
-        {/if}
-      </p>
-    </header>
-    <AppGrid
-      apps={data.featured}
-      emptyLabel="No apps deployed yet — be the first to launch one."
-    />
-    {#if data.featured.length > 0}
-      <p class="see-all">
-        <a href="/apps">See all apps →</a>
-      </p>
+    {#if data.categories.length > 0}
+      <ul class="cats" aria-label="Browse categories">
+        <li>
+          <a class="cat-chip" class:active={!data.categoryFilter} href={categoryHref(null)}>All</a>
+        </li>
+        {#each data.categories as cat (cat)}
+          {@const isActive = data.categoryFilter === cat}
+          <li>
+            <a
+              class="cat-chip"
+              class:active={isActive}
+              href={categoryHref(isActive ? null : cat)}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {cat}{#if isActive} ✕{/if}
+            </a>
+          </li>
+        {/each}
+      </ul>
     {/if}
-  </div>
-</section>
+  </header>
 
-<section class="section cta">
-  <div class="wrap">
-    <h2 class="cta-heading">Your first app is 60 seconds away.</h2>
-    <p class="cta-sub">
-      No review. No credit card. No one telling you it isn't ready.
-    </p>
-    <Button href="/new" variant="primary" size="lg">Deploy now →</Button>
-  </div>
-</section>
+  {#if isFirstVisit && !filtered}
+    <section class="first-visit-hero wrap" aria-label="Welcome">
+      <div class="hero-copy">
+        <h2>Ship local.</h2>
+        <p>Small tools that work on your device, talk to each other locally, and never ask for more than they need.</p>
+        <p class="hero-hint">↓ Tap one below.</p>
+      </div>
+    </section>
+  {/if}
+
+  <section class="results wrap">
+    {#if filtered}
+      <section class="launcher-section primary" aria-labelledby="results-title">
+        <div class="section-head">
+          <div>
+            <h2 id="results-title">{data.query ? `Results for "${data.query}"` : 'Results'}</h2>
+            <p>
+              {data.apps.length === 0
+                ? 'No matching tools yet.'
+                : `${data.apps.length} tool${data.apps.length === 1 ? '' : 's'} ready to launch.`}
+            </p>
+          </div>
+        </div>
+        {#if data.apps.length > 0}
+          <ul class="launcher-grid compact-grid" role="list">
+            {#each data.apps as app (app.slug)}
+              <li>
+                <LauncherCard
+                  {app}
+                  pinned={pinnedSet.has(app.slug)}
+                  compact
+                  recentLabel={recentLabel(app.slug)}
+                  onInspect={() => inspectApp(app)}
+                  onTogglePin={togglePinnedApp}
+                />
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+
+      {#if data.page > 1 || data.hasMore}
+        <nav class="pager" aria-label="Pagination">
+          {#if data.page > 1}
+            <a class="page-link" href={pageHref(data.query, data.page - 1, data.categoryFilter)} rel="prev">← Previous</a>
+          {:else}
+            <span></span>
+          {/if}
+          {#if data.hasMore}
+            <a class="page-link" href={pageHref(data.query, data.page + 1, data.categoryFilter)} rel="next">Next →</a>
+          {/if}
+        </nav>
+      {/if}
+    {:else}
+      {#if pinnedApps.length > 0}
+        <section class="launcher-section pinned-section" aria-labelledby="pinned-title">
+          <div class="section-head">
+            <div>
+              <h2 id="pinned-title">Pinned</h2>
+              <p>Your saved launch row.</p>
+            </div>
+          </div>
+          <ul class="launcher-grid compact-grid" role="list">
+            {#each pinnedApps as app (app.slug)}
+              <li>
+                <LauncherCard
+                  {app}
+                  pinned
+                  compact
+                  recentLabel={recentLabel(app.slug)}
+                  onInspect={() => inspectApp(app)}
+                  onTogglePin={togglePinnedApp}
+                />
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+
+      <section class="launcher-section primary" aria-labelledby="continue-title">
+        <div class="section-head">
+          <div>
+            <h2 id="continue-title">{recentApps.length > 0 ? 'Continue' : 'Start'}</h2>
+            <p>{recentApps.length > 0 ? 'Most recently opened.' : 'Fast paths into the catalogue.'}</p>
+          </div>
+        </div>
+        <ul class="launcher-grid featured" role="list">
+          {#each continueApps as app (app.slug)}
+            <li>
+              <LauncherCard
+                {app}
+                pinned={pinnedSet.has(app.slug)}
+                recentLabel={recentLabel(app.slug)}
+                onInspect={() => inspectApp(app)}
+                onTogglePin={togglePinnedApp}
+              />
+            </li>
+          {/each}
+        </ul>
+      </section>
+
+      {#if featuredApps.length > 0}
+        <section class="launcher-section" aria-labelledby="featured-title">
+          <div class="section-head">
+            <div>
+              <h2 id="featured-title">Featured</h2>
+              <p>The strongest tools to start with.</p>
+            </div>
+          </div>
+          <ul class="launcher-grid compact-grid" role="list">
+            {#each featuredApps as app (app.slug)}
+              <li>
+                <LauncherCard
+                  {app}
+                  pinned={pinnedSet.has(app.slug)}
+                  compact
+                  recentLabel={recentLabel(app.slug)}
+                  onInspect={() => inspectApp(app)}
+                  onTogglePin={togglePinnedApp}
+                />
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+
+      {#if localApps.length > 0}
+        <section class="launcher-section" aria-labelledby="local-title">
+          <div class="section-head">
+            <div>
+              <h2 id="local-title">Local</h2>
+              <p>Tools with local or nearby-first behaviour.</p>
+            </div>
+          </div>
+          <ul class="launcher-grid compact-grid" role="list">
+            {#each localApps as app (app.slug)}
+              <li>
+                <LauncherCard
+                  {app}
+                  pinned={pinnedSet.has(app.slug)}
+                  compact
+                  recentLabel={recentLabel(app.slug)}
+                  onInspect={() => inspectApp(app)}
+                  onTogglePin={togglePinnedApp}
+                />
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+
+      <section class="launcher-section" aria-labelledby="explore-title">
+        <div class="section-head">
+          <div>
+            <h2 id="explore-title">Explore</h2>
+            <p>All tools ready to launch.</p>
+          </div>
+        </div>
+        <ul class="launcher-grid compact-grid" role="list">
+          {#each exploreApps as app (app.slug)}
+            <li>
+              <LauncherCard
+                {app}
+                pinned={pinnedSet.has(app.slug)}
+                compact
+                recentLabel={recentLabel(app.slug)}
+                onInspect={() => inspectApp(app)}
+                onTogglePin={togglePinnedApp}
+              />
+            </li>
+          {/each}
+        </ul>
+      </section>
+
+      {#if data.page > 1 || data.hasMore}
+        <nav class="pager" aria-label="Pagination">
+          {#if data.page > 1}
+            <a class="page-link" href={pageHref(data.query, data.page - 1, data.categoryFilter)} rel="prev">← Previous</a>
+          {:else}
+            <span></span>
+          {/if}
+          {#if data.hasMore}
+            <a class="page-link" href={pageHref(data.query, data.page + 1, data.categoryFilter)} rel="next">Next →</a>
+          {/if}
+        </nav>
+      {/if}
+    {/if}
+  </section>
+
+  <section class="builder-strip wrap" aria-labelledby="builder-strip-title">
+    <div>
+      <p class="eyebrow">For builders</p>
+      <h2 id="builder-strip-title">Ship a tool.</h2>
+      <p>Built with HTML and one SDK. Shippie adds offline, haptics, local data, and proof — automatically.</p>
+    </div>
+    <a class="builder-strip-cta" href="/build">Start building →</a>
+  </section>
+</div>
+
+<AppInspector
+  app={selectedApp}
+  pinned={selectedApp ? pinnedSet.has(selectedApp.slug) : false}
+  onClose={closeInspector}
+/>
 
 <style>
-  .hero {
-    padding: var(--space-3xl) 0 var(--space-2xl);
-    border-bottom: 1px solid var(--border-light);
-    position: relative;
-    overflow: hidden;
+  .page {
+    padding-top: var(--space-xl);
+    padding-bottom: var(--space-3xl);
   }
-  .hero::after {
-    content: "";
-    position: absolute;
-    top: -120px;
-    right: -120px;
-    width: 360px;
-    height: 360px;
-    background: radial-gradient(circle, rgba(232, 96, 60, 0.08), transparent 70%);
-    pointer-events: none;
-  }
-  .hero > .wrap { position: relative; z-index: 1; }
-  .hero-grid {
+  .head { padding-bottom: var(--space-lg); }
+  .head-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-2xl);
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 480px);
+    gap: var(--space-xl);
+    align-items: end;
   }
-  @media (min-width: 1024px) {
-    .hero-grid {
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: var(--space-3xl);
-    }
-  }
-  .hero-pitch { display: flex; flex-direction: column; }
-  .hero-mark {
-    display: block;
-    width: 96px;
-    height: 96px;
-    margin: 0 0 var(--space-lg);
-  }
-  .badge {
+  .eyebrow {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.3rem 0.75rem;
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--marigold);
-    border: 1px solid var(--marigold);
-    margin: 0 0 var(--space-xl);
-  }
-  .badge img { display: block; }
-  .hero-heading {
-    font-family: var(--font-heading);
-    font-weight: 600;
-    line-height: 1;
-    font-size: clamp(2.4rem, 5vw + 0.4rem, 4.5rem);
-    letter-spacing: -0.035em;
-    margin: 0;
-  }
-  .hero-heading .line { display: block; }
-  .hero-heading .accent { color: var(--sunset); font-style: italic; }
-  .hero-sub {
-    margin-top: var(--space-xl);
-    max-width: 560px;
-    color: var(--text-secondary);
-    font-size: clamp(1rem, 1.8vw, 1.25rem);
-    line-height: 1.6;
-  }
-  .hero-ctas {
-    margin-top: var(--space-xl);
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-md);
-  }
-  .hero-foot {
-    margin-top: var(--space-md);
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    color: var(--text-light);
-  }
-  .hero-foot em { font-style: normal; color: var(--text); }
-  .hero-foot a { color: var(--sunset); text-decoration: underline; }
-
-  .hero-terms {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--sunset);
-    padding: var(--space-xl);
-    align-self: stretch;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-  }
-  .terms-eyebrow {
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--sunset);
-    margin: 0;
+    color: var(--text-light);
+    margin: 0 0 0.55rem;
   }
-  .terms-title {
+  .eyebrow img { display: block; }
+  .title {
     font-family: var(--font-heading);
-    font-size: 1.5rem;
-    letter-spacing: -0.015em;
+    font-size: clamp(2rem, 4vw, 2.85rem);
+    letter-spacing: -0.02em;
     margin: 0;
   }
-  .terms-meta {
+  .lede {
+    color: var(--text-secondary);
+    margin: 0.65rem 0 0;
+    max-width: 620px;
+    font-size: var(--small-size);
+  }
+  .search-row {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .cats {
+    list-style: none;
+    margin: var(--space-md) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .cats a,
+  .cats .cat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
-    margin: 0 0 var(--space-md);
-    padding-bottom: var(--space-md);
-    border-bottom: 1px dashed var(--border-light);
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
-  .terms-body {
-    font-family: var(--font-heading);
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--text);
+  .cats a:hover,
+  .cats .cat-chip:hover { color: var(--sunset); border-color: var(--sunset); }
+  .cats .cat-chip.active {
+    color: var(--bg-pure);
+    background: var(--text);
+    border-color: var(--text);
   }
-  .terms-body p {
-    margin: 0 0 var(--space-sm);
+  .results { padding-top: 0; }
+  .launcher-section {
+    display: grid;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
   }
-  .terms-body strong { color: var(--sunset); font-weight: 600; }
-  .terms-body em { font-style: italic; color: var(--text); }
-  .terms-body .terms-coda {
-    margin-top: var(--space-md);
-    padding-top: var(--space-md);
-    border-top: 1px dashed var(--border-light);
-    color: var(--text-secondary);
-    font-style: italic;
+  .launcher-section.primary {
+    margin-bottom: var(--space-xl);
   }
-  .terms-body .terms-coda em { color: var(--sunset); font-style: normal; font-weight: 500; }
-
-  .section { padding: var(--section-pad) 0; }
-  .section-intro { margin-bottom: var(--space-2xl); max-width: 640px; }
-  .section-heading {
-    font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    margin: 0.25rem 0 var(--space-md);
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: var(--space-md);
   }
-  .section-sub {
-    color: var(--text-secondary);
-    font-size: var(--body-size);
-    line-height: 1.6;
+  .section-head h2 {
     margin: 0;
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    letter-spacing: -0.01em;
   }
-
-  .steps {
+  .section-head p {
+    margin: 0.3rem 0 0;
+    color: var(--text-light);
+    font-size: var(--small-size);
+  }
+  .section-head a {
+    flex-shrink: 0;
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.45rem 0.7rem;
+    cursor: pointer;
+  }
+  .section-head a:hover {
+    color: var(--sunset);
+    border-color: var(--sunset);
+  }
+  .launcher-grid {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: var(--space-md);
   }
-  .pillar {
+  .launcher-grid.featured {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .compact-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .pager {
+    margin-top: var(--space-2xl);
     display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-    padding: var(--space-xl);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--border);
-    transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), transform 0.2s var(--spring);
-    position: relative;
-    overflow: hidden;
-  }
-  .pillar:hover {
-    background: var(--surface-alt);
-    transform: translateY(-2px);
-  }
-  .pillar::after {
-    content: "";
-    position: absolute;
-    inset: auto -40px -40px auto;
-    width: 140px;
-    height: 140px;
-    background: radial-gradient(circle, var(--accent-glow), transparent 70%);
-    opacity: 0.5;
-    pointer-events: none;
-    transition: opacity 0.2s var(--ease-out);
-  }
-  .pillar:hover::after { opacity: 0.85; }
-  .pillar h3 {
-    font-family: var(--font-heading);
-    font-size: 1.5rem;
-    letter-spacing: -0.015em;
-    margin: 0;
-    position: relative;
-    z-index: 1;
-  }
-  .pillar p {
-    color: var(--text-secondary);
-    font-size: var(--small-size);
-    line-height: 1.65;
-    margin: 0;
-    position: relative;
-    z-index: 1;
-  }
-  .pillar-wrap    { --accent: var(--sunset);    --accent-glow: rgba(232, 96, 60, 0.18); border-top-color: var(--sunset); }
-  .pillar-run     { --accent: var(--sage-moss); --accent-glow: rgba(94, 123, 92, 0.22); border-top-color: var(--sage-moss); }
-  .pillar-connect { --accent: var(--marigold);  --accent-glow: rgba(232, 197, 71, 0.2); border-top-color: var(--marigold); }
-  .pillar:hover { border-color: var(--accent); }
-  .step-num {
-    display: inline-flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 0;
-    background: var(--accent);
-    color: var(--bg-pure);
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: var(--small-size);
-    position: relative;
-    z-index: 1;
+    gap: var(--space-md);
   }
-  .pillar-connect .step-num { color: var(--text); }
-
-  .featured { background: var(--bg-pure); border-top: 1px solid var(--border-light); }
-  .see-all {
-    margin-top: var(--space-xl);
+  .page-link {
     font-family: var(--font-mono);
     font-size: var(--small-size);
+    color: var(--sunset);
   }
-  .see-all a { color: var(--sunset); text-decoration: underline; }
+  @media (max-width: 820px) {
+    .head-grid,
+    .launcher-grid.featured {
+      grid-template-columns: 1fr;
+    }
+    .search-row {
+      justify-content: stretch;
+    }
+  }
+  @media (max-width: 560px) {
+    .section-head {
+      align-items: start;
+      flex-direction: column;
+    }
+    .compact-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 
-  .cta {
-    text-align: center;
-    border-top: 1px solid var(--border-light);
+  /* First-visit hero — shows once, hides after launchCounts > 0 */
+  .first-visit-hero {
+    padding: var(--space-lg) 0 var(--space-md);
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: var(--space-md);
   }
-  .cta-heading {
+  .first-visit-hero .hero-copy {
+    max-width: 32rem;
+  }
+  .first-visit-hero h2 {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 1.05;
+    font-size: clamp(2rem, 5vw, 2.5rem);
+    font-weight: 600;
     letter-spacing: -0.02em;
-    margin: 0;
+    line-height: 1;
+    margin: 0 0 var(--space-sm);
+    color: var(--text);
   }
-  .cta-sub {
+  .first-visit-hero p {
+    margin: 0 0 var(--space-xs);
     color: var(--text-secondary);
-    margin: var(--space-md) auto var(--space-xl);
-    max-width: 480px;
+    font-size: 1.05rem;
+    line-height: 1.45;
+  }
+  .first-visit-hero .hero-hint {
+    margin-top: var(--space-sm);
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: var(--small-size);
+    letter-spacing: 0.06em;
+  }
+
+  /* Builder strip — quiet maker CTA at the bottom of the launcher */
+  .builder-strip {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+    align-items: end;
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl) var(--space-lg);
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+  }
+  @media (min-width: 720px) {
+    .builder-strip {
+      grid-template-columns: 1fr auto;
+    }
+  }
+  .builder-strip h2 {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: var(--space-xs) 0;
+    color: var(--text);
+  }
+  .builder-strip p {
+    margin: 0;
+    color: var(--text-secondary);
+    max-width: 40rem;
+  }
+  .builder-strip-cta {
+    display: inline-block;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--sunset);
+    color: var(--bg);
+    font-family: var(--font-body);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .builder-strip-cta:hover {
+    background: var(--sunset-hover);
   }
 </style>

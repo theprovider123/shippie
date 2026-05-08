@@ -12,9 +12,10 @@
     slug: string;
     initialCount: number;
     initiallyUpvoted?: boolean;
+    label?: string;
   }
 
-  let { slug, initialCount, initiallyUpvoted = false }: Props = $props();
+  let { slug, initialCount, initiallyUpvoted = false, label = '' }: Props = $props();
   let count = $state(0);
   let isUpvoted = $state(false);
   let pending = $state(false);
@@ -54,6 +55,9 @@
   disabled={pending}
 >
   <span class="heart" aria-hidden="true">{isUpvoted ? '♥' : '♡'}</span>
+  {#if label}
+    <span>{label}</span>
+  {/if}
   <span class="count">{count}</span>
 </button>
 

@@ -182,6 +182,16 @@
   const pendingIntentPrompt = $derived<PendingPrompt | null>(
     pendingIntentQueue.length > 0 ? pendingIntentQueue[0]! : null,
   );
+  const pendingIntentBatch = $derived.by(() => {
+    const first = pendingIntentQueue[0];
+    if (!first) return null;
+    const items = pendingIntentQueue.filter((p) => p.consumerId === first.consumerId);
+    return {
+      consumerId: first.consumerId,
+      consumerName: first.consumerName,
+      intents: items.map((p) => p.intent),
+    };
+  });
   const intentRegistry = createIntentRegistry();
   // P1A.3 — transfer drop state. `transferGrants` is per (sourceId,
   // targetId) pair; `pendingTransferQueue` mirrors the intent prompt
@@ -463,6 +473,7 @@
   );
 
   function openApp(appId: string) {
+    const wasAlreadyFocused = activeAppId === appId && section === 'home';
     // LRU mount cap — keep at most 8 apps live. Re-focusing an
     // already-open app moves it to the head; opening a new one past
     // the cap evicts the oldest. Eviction is deferred until the new
@@ -491,6 +502,53 @@
     }
     activeAppId = appId;
     section = 'home';
+    if (!wasAlreadyFocused) {
+      void trackAppOpen(appId);
+    }
+  }
+
+  function trackAppOpen(appId: string) {
+    const app = appById.get(appId);
+    if (!app) return;
+    if (!claimAppOpenEvent(appId)) return;
+    void trackAnalytics(appId, {
+      event: 'app_open',
+      session_id: analyticsSessionId(),
+      props: {
+        source: 'container',
+        focused: data.focused,
+        app_kind: app.appKind,
+        category: app.category ?? null,
+      },
+      ts: Date.now(),
+    });
+  }
+
+  function claimAppOpenEvent(appId: string, now = Date.now()): boolean {
+    const key = `shippie:analytics-open:${appId}`;
+    try {
+      const previous = Number(sessionStorage.getItem(key) ?? '0');
+      if (Number.isFinite(previous) && now - previous < 10_000) return false;
+      sessionStorage.setItem(key, String(now));
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  function analyticsSessionId(): string {
+    const key = 'shippie:analytics-session:v1';
+    try {
+      const existing = sessionStorage.getItem(key);
+      if (existing) return existing;
+      const id = `anon_${typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`}`;
+      sessionStorage.setItem(key, id);
+      return id;
+    } catch {
+      return `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+    }
   }
 
   function disposeApp(appId: string) {
@@ -716,20 +774,29 @@
 
   function approveIntentPrompt() {
     if (!pendingIntentPrompt) return;
-    const { consumerId, intent, resolve } = pendingIntentPrompt;
-    intentGrants = grantIntent(intentGrants, consumerId, intent);
-    resolve(collectRowsForIntent(intent));
-    pendingIntentQueue = pendingIntentQueue.slice(1);
+    const consumerId = pendingIntentPrompt.consumerId;
+    const batch = pendingIntentQueue.filter((p) => p.consumerId === consumerId);
+    let nextGrants = intentGrants;
+    for (const prompt of batch) {
+      nextGrants = grantIntent(nextGrants, prompt.consumerId, prompt.intent);
+      prompt.resolve(collectRowsForIntent(prompt.intent));
+    }
+    intentGrants = nextGrants;
+    pendingIntentQueue = pendingIntentQueue.filter((p) => p.consumerId !== consumerId);
   }
 
   function denyIntentPrompt() {
     if (!pendingIntentPrompt) return;
-    pendingIntentPrompt.resolve({
-      provider: null,
-      rows: [],
-      reason: 'permission_denied',
-    });
-    pendingIntentQueue = pendingIntentQueue.slice(1);
+    const consumerId = pendingIntentPrompt.consumerId;
+    const batch = pendingIntentQueue.filter((p) => p.consumerId === consumerId);
+    for (const prompt of batch) {
+      prompt.resolve({
+        provider: null,
+        rows: [],
+        reason: 'permission_denied',
+      });
+    }
+    pendingIntentQueue = pendingIntentQueue.filter((p) => p.consumerId !== consumerId);
   }
 
   function revokeIntentGrant(consumerId: string, intent: string) {
@@ -1346,7 +1413,12 @@
   }
 
   function normalizeAnalyticsEvent(payload: unknown):
-    | { event: string; props?: Record<string, unknown>; ts: number }
+    | {
+        event: string;
+        props?: Record<string, unknown>;
+        ts: number;
+        session_id?: string;
+      }
     | null {
     if (!payload || typeof payload !== 'object') return null;
     const record = payload as Record<string, unknown>;
@@ -1359,6 +1431,7 @@
         ? (props as Record<string, unknown>)
         : undefined,
       ts: typeof record.ts === 'number' ? record.ts : Date.now(),
+      session_id: typeof record.session_id === 'string' ? record.session_id : undefined,
     };
   }
 
@@ -1524,7 +1597,8 @@
 
   function runtimeSrcFor(app: ContainerApp): string | null {
     if (typeof window === 'undefined') return null;
-    return resolveRuntimeSrc(app, window.location.hostname);
+    const preferDevUrl = new URL(window.location.href).searchParams.get('dev_apps') === '1';
+    return resolveRuntimeSrc(app, window.location.hostname, { preferDevUrl });
   }
 
 </script>
@@ -1538,7 +1612,7 @@
 </svelte:head>
 
 <IntentPromptModal
-  prompt={pendingIntentPrompt}
+  prompt={pendingIntentBatch}
   onApprove={approveIntentPrompt}
   onDeny={denyIntentPrompt}
 />
@@ -2523,7 +2597,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    color: var(--text, #14120f);
+    color: #14120f;
   }
   .focused-drawer-head {
     display: flex;

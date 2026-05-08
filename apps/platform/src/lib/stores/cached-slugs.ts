@@ -86,8 +86,7 @@ export function ensureAppOffline(slug: string): Promise<AppDownloadProgress> {
   return run;
 }
 
-export async function removeAppAndTrack(slug: string): Promise<void> {
-  await removeApp(slug);
+export function forgetCachedSlug(slug: string): void {
   setOfflineStatus(slug, { slug, state: 'idle', done: 0, total: 0 });
   cachedSlugs.update((s) => {
     if (!s.has(slug)) return s;
@@ -95,6 +94,14 @@ export async function removeAppAndTrack(slug: string): Promise<void> {
     next.delete(slug);
     return next;
   });
+}
+
+export async function removeAppAndTrack(slug: string): Promise<void> {
+  try {
+    await removeApp(slug);
+  } finally {
+    forgetCachedSlug(slug);
+  }
 }
 
 export async function clearOfflineAndTrack(): Promise<void> {

@@ -2,11 +2,21 @@ import { describe, expect, test } from 'vitest';
 import { resolveRuntimeSrc } from './runtime-src';
 
 describe('resolveRuntimeSrc', () => {
-  test('uses devUrl on localhost', () => {
+  test('uses bundled /run app on localhost by default', () => {
     expect(
       resolveRuntimeSrc(
         { devUrl: 'http://localhost:5192', standaloneUrl: '/run/recipe/' },
         'localhost',
+      ),
+    ).toBe('/run/recipe/index.html?shippie_embed=1');
+  });
+
+  test('uses devUrl on localhost when explicitly requested', () => {
+    expect(
+      resolveRuntimeSrc(
+        { devUrl: 'http://localhost:5192', standaloneUrl: '/run/recipe/' },
+        'localhost',
+        { preferDevUrl: true },
       ),
     ).toBe('http://localhost:5192');
   });

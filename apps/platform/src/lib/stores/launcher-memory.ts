@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 
 const STORAGE_KEY = 'shippie:launcher:v1';
+const COOKIE_KEY = 'shippie_launcher';
 const MAX_RECENTS = 12;
 
 export interface LauncherRecent {
@@ -21,6 +22,48 @@ const DEFAULT_MEMORY: LauncherMemory = {
 };
 
 export const launcherMemory = writable<LauncherMemory>(DEFAULT_MEMORY);
+
+function readStoredMemory(): string | null {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return raw;
+    } catch {
+      // Fall through to cookie backup.
+    }
+  }
+  if (typeof document !== 'undefined') {
+    try {
+      const found = document.cookie
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${COOKIE_KEY}=`));
+      if (found) return decodeURIComponent(found.slice(COOKIE_KEY.length + 1));
+    } catch {
+      // No durable storage available.
+    }
+  }
+  return null;
+}
+
+function writeStoredMemory(next: LauncherMemory): void {
+  const raw = JSON.stringify(next);
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, raw);
+    } catch {
+      // Storage can be blocked or quota-limited on some mobile browsers.
+      // The in-memory store still updates so the UI responds immediately.
+    }
+  }
+  if (typeof document !== 'undefined') {
+    try {
+      document.cookie = `${COOKIE_KEY}=${encodeURIComponent(raw)}; Max-Age=31536000; Path=/; SameSite=Lax`;
+    } catch {
+      // Cookie backup is best-effort too.
+    }
+  }
+}
 
 function normalize(raw: unknown): LauncherMemory {
   if (!raw || typeof raw !== 'object') return DEFAULT_MEMORY;
@@ -52,14 +95,12 @@ function normalize(raw: unknown): LauncherMemory {
 
 function persist(next: LauncherMemory): void {
   launcherMemory.set(next);
-  if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  writeStoredMemory(next);
 }
 
 export function hydrateLauncherMemory(): void {
-  if (typeof localStorage === 'undefined') return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readStoredMemory();
     persist(normalize(raw ? JSON.parse(raw) : null));
   } catch {
     persist(DEFAULT_MEMORY);
@@ -73,9 +114,7 @@ export function togglePinnedApp(slug: string): void {
       ? memory.pinned.filter((item) => item !== slug)
       : [slug, ...memory.pinned];
     const next = { ...memory, pinned };
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    }
+    writeStoredMemory(next);
     return next;
   });
 }
@@ -93,9 +132,7 @@ export function recordAppLaunch(slug: string, now = new Date()): number {
       recents,
       launchCounts: { ...memory.launchCounts, [slug]: nextCount },
     };
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    }
+    writeStoredMemory(next);
     return next;
   });
   return nextCount;

@@ -41,11 +41,49 @@ deploy this to Shippie as recipe-saver
 
 It reads your project, picks a type, and ships.
 
+To remix an existing public app, ask for the handoff first:
+
+```
+remix_info slug=recipe-saver
+```
+
+The tool returns the source repo, license, GitHub fork URL when available, and the exact deploy call to preserve lineage:
+
+```
+deploy directory=/absolute/path/to/dist slug=recipe-saver-remix remix_from=recipe-saver
+```
+
 ## Option 4: GitHub (auto-deploy)
 
 1. Install the Shippie GitHub App on your repo
 2. Push to `main`
 3. Shippie auto-builds and deploys
+
+## Remixing an app
+
+Remix requires a public app whose maker has published source, a license, and remix permission. A GitHub account is only required when you want GitHub fork history or private-repo access; local clone/edit/upload works without GitHub.
+
+```bash
+# Inspect source, license, fork URL, and redeploy commands
+npx @shippie/cli remix recipe-saver
+
+# After cloning or forking and rebuilding your copy
+npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
+```
+
+Multi-app workspaces can keep lineage per app:
+
+```json
+{
+  "apps": [
+    {
+      "slug": "recipe-saver-remix",
+      "directory": "dist",
+      "remixFrom": "recipe-saver"
+    }
+  ]
+}
+```
 
 ## Adding a backend (optional)
 
