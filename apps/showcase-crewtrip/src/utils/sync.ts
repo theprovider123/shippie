@@ -133,6 +133,9 @@ function roomIdFor(eventCode: string): string {
 
 function signalUrlForRoom(roomId: string): string {
   if (typeof location === 'undefined') return `wss://shippie.app/__shippie/signal/${encodeURIComponent(roomId)}`;
+  if (location.hostname === 'shippie.app' && location.pathname.startsWith('/run/crewtrip')) {
+    return `wss://crewtrip.shippie.app/__shippie/signal/${encodeURIComponent(roomId)}`;
+  }
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${proto}//${location.host}/__shippie/signal/${encodeURIComponent(roomId)}`;
 }
