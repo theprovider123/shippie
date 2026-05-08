@@ -34,6 +34,7 @@ export const PROOF_EVENT_TYPES = [
   'permissions_scanned',
   'external_domains_shown',
   'permission_diff_surfaced',
+  'pwa_installable',
   // App Kinds (docs/app-kinds.md). The wrapper emits these to upgrade or
   // demote `publicKindStatus`. Personal-data leak demotes Local; the
   // others contribute to confirmation.

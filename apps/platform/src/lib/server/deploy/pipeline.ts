@@ -71,6 +71,7 @@ import {
   deployEventsKey,
   type DeployEventEmitter,
 } from './deploy-events';
+import { detectStaticBundlePwaReadiness } from './pwa-readiness';
 
 const IMMERSIVE_BASE_STYLE = `<style data-shippie-immersive-base>
 :root{--shippie-safe-top:env(safe-area-inset-top,0px);--shippie-safe-right:env(safe-area-inset-right,0px);--shippie-safe-bottom:env(safe-area-inset-bottom,0px);--shippie-safe-left:env(safe-area-inset-left,0px)}
@@ -158,6 +159,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     return failReport(input.slug, `Invalid shippie.json: ${manifestResult.error}`);
   }
   const manifest = manifestResult.manifest;
+  const pwaReadiness = detectStaticBundlePwaReadiness({ files, manifest });
 
   const assetRecovery = recoverAssetReferences(files);
   files = assetRecovery.files;
@@ -229,6 +231,9 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
         backgroundColor: manifest.background_color ?? '#ffffff',
         sourceType: 'zip',
         makerId: input.makerId,
+        currentPwaReadiness: pwaReadiness.status,
+        currentPwaReadinessReasons: pwaReadiness.reasons,
+        currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
       })
       .returning();
     if (!inserted) return failReport(input.slug, 'Failed to create app row');
@@ -318,6 +323,9 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       latestDeployStatus: 'success',
       lastDeployedAt: completedAt,
       firstPublishedAt: appRow.firstPublishedAt ?? completedAt,
+      currentPwaReadiness: pwaReadiness.status,
+      currentPwaReadinessReasons: pwaReadiness.reasons,
+      currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
       updatedAt: completedAt,
     })
     .where(eq(schema.apps.id, appRow.id));
@@ -378,6 +386,11 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     allowed_connect_domains: manifest.allowed_connect_domains ?? [],
     workflow_probes: manifest.workflow_probes ?? [],
     routing: { mode: routing.mode },
+    pwa_readiness: {
+      status: pwaReadiness.status,
+      reasons: pwaReadiness.reasons,
+      checked_at: pwaReadiness.checkedAt,
+    },
   });
   await writeCspHeader(input.kv, input.slug, csp.header);
 

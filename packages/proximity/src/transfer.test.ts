@@ -16,6 +16,7 @@ import {
   receiveTransfer,
   sendTransfer,
   TRANSFER_CHANNEL,
+  TRANSFER_INVITE_TTL_SECONDS,
   type TransferFrame,
   type TransferGroupHandle,
   type TransferSnapshot,
@@ -294,18 +295,73 @@ describe('end-to-end transfer over fake Group', () => {
     expect(recvResult.ok).toBe(false);
     expect(recvResult.error).toBeDefined();
   });
+
+  test('sender cancels when the transfer invite expires', async () => {
+    const { owner, receiver } = pairGroups();
+    const transferKey = generateTransferKey();
+    const recvEvents: string[] = [];
+    const recvPromise = receiveTransfer({
+      group: receiver,
+      transferKey,
+      apply: () => {},
+      on: (e) => {
+        if (e.type === 'cancelled') recvEvents.push(e.reason ?? '');
+      },
+    });
+
+    const sendResult = await sendTransfer({
+      group: owner,
+      transferKey,
+      snapshot: snapshotOf({ rows: [{ table: 't', rows: [{ id: 1 }] }], files: [] }),
+      expiresAt: 100,
+      now: () => 200,
+    });
+
+    expect(sendResult.ok).toBe(false);
+    expect(sendResult.cancelled).toBe(true);
+    const recvResult = await recvPromise;
+    expect(recvResult.cancelled).toBe(true);
+    expect(recvEvents).toContain('invite-expired');
+  });
 });
 
 describe('QR encoding helpers', () => {
   test('encode/decode round-trips', () => {
     const key = generateTransferKey();
-    const url = encodeTransferQr({ joinCode: 'ABCD2345', transferKey: key, appSlug: 'recipes' });
+    const url = encodeTransferQr({
+      joinCode: 'ABCD2345',
+      transferKey: key,
+      appSlug: 'recipes',
+      createdAt: 100,
+    });
     expect(url.startsWith('shippie-transfer://')).toBe(true);
-    const decoded = decodeTransferQr(url);
+    const decoded = decodeTransferQr(url, { now: 120 });
     expect(decoded).not.toBeNull();
     expect(decoded!.joinCode).toBe('ABCD2345');
     expect(decoded!.appSlug).toBe('recipes');
+    expect(decoded!.createdAt).toBe(100);
+    expect(decoded!.expiresAt).toBe(100 + TRANSFER_INVITE_TTL_SECONDS);
     expect([...decoded!.transferKey]).toEqual([...key]);
+  });
+
+  test('decode rejects expired v2 invites with clock-skew tolerance', () => {
+    const key = generateTransferKey();
+    const url = encodeTransferQr({
+      joinCode: 'ABCD2345',
+      transferKey: key,
+      appSlug: 'recipes',
+      createdAt: 100,
+      expiresAt: 200,
+    });
+    expect(decodeTransferQr(url, { now: 229 })).not.toBeNull();
+    expect(decodeTransferQr(url, { now: 231 })).toBeNull();
+  });
+
+  test('decode accepts legacy v1 during transition unless disabled', () => {
+    const key = generateTransferKey();
+    const legacy = `shippie-transfer://?app=recipes&code=ABCD2345&k=${encodeKeyForTest(key)}`;
+    expect(decodeTransferQr(legacy)).not.toBeNull();
+    expect(decodeTransferQr(legacy, { allowLegacyV1: false })).toBeNull();
   });
 
   test('decode rejects bad protocol', () => {
@@ -317,6 +373,12 @@ describe('QR encoding helpers', () => {
     expect(decodeTransferQr(url)).toBeNull();
   });
 });
+
+function encodeKeyForTest(key: Uint8Array): string {
+  let bin = '';
+  for (const b of key) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
 
 // Sanity: TRANSFER_CHANNEL is stable so future protocol versions can
 // negotiate without colliding.

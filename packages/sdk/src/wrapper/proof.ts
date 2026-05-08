@@ -55,6 +55,7 @@ export type ProofEventType =
   | 'permissions_scanned'
   | 'external_domains_shown'
   | 'permission_diff_surfaced'
+  | 'pwa_installable'
   // App Kinds (docs/app-kinds.md). Emitted by the wrapper to upgrade or
   // demote `publicKindStatus`. Wrapper auto-emission lands in Phase 1b;
   // for now, surfaces that observe these conditions can call
