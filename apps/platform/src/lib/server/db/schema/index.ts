@@ -31,6 +31,7 @@ export * from './custom-domains';
 export * from './cli-auth';
 export * from './github-installations';
 export * from './app-events';
+export * from './cron-runs';
 export * from './wrapper-push-subscriptions';
 export * from './app-ratings';
 export * from './user-touch-graph';
