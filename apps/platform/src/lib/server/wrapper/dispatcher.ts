@@ -20,6 +20,7 @@ import { handleHealth } from './router/health';
 import { handleMeta } from './router/meta';
 import { handleManifest } from './router/manifest';
 import { handleSw } from './router/sw';
+import { handleAssetsManifest } from './router/assets';
 import { handleSdk } from './router/sdk';
 import { handleIcon } from './router/icons';
 import { handleSplash } from './router/splash';
@@ -150,6 +151,8 @@ export async function dispatchWrapperSystemRoute(
       return handleManifest(ctx);
     case '/__shippie/sw.js':
       return handleSw(ctx);
+    case '/__shippie/assets.json':
+      return handleAssetsManifest(ctx);
     case '/__shippie/sdk.js':
       return handleSdk(ctx);
     case '/__shippie/local.js':
