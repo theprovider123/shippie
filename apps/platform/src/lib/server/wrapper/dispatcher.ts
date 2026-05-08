@@ -230,7 +230,10 @@ async function handleSignal(ctx: WrapperContext, encodedRoomId: string): Promise
   }
 
   const id = signalRoom.idFromName(roomId);
-  return signalRoom.get(id).fetch(ctx.request);
+  // workers-types Request/Response collide with DOM types here.
+  // Runtime call is fine; the cast escapes the type collision.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (signalRoom.get(id) as any).fetch(ctx.request) as Response;
 }
 
 /**
