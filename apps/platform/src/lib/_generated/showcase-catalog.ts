@@ -24,6 +24,7 @@ export const SHOWCASE_SLUGS = [
   "pantry-scanner",
   "quiet",
   "read-later",
+  "receipt-snap",
   "recipe",
   "restaurant-memory",
   "shopping-list",

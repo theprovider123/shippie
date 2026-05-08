@@ -94,6 +94,15 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // Symptom Diary — both provided AND in ALLOWED_ORPHAN_CONSUMERS
   // (it's published locally, no curated consumer in-tree).
   'symptom-logged',
+  // Voice Memo — provides memo-recorded for future surfacing
+  // (Read Later or Journal could pick it up). No curated consumer
+  // in-tree at the moment.
+  'memo-recorded',
+  // Tab — bill-splitter publishes per-item and settlement events for
+  // optional cross-app logging (Ledger could subscribe later); no
+  // curated consumer in-tree today.
+  'tab-item-added',
+  'tab-settled',
 ]);
 
 /**

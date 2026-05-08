@@ -1,0 +1,14 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Voice Memo",
+  "slug": "voice-memo",
+  "description": "Hold to record. Whisper transcribes on this phone. Searchable forever; uploaded never.",
+  "icon": "/icon.svg",
+  "theme_color": "#A86060",
+  "background_color": "#F5EFE4",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["memo-recorded"]
+  }
+}

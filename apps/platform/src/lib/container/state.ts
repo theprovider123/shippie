@@ -560,6 +560,19 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     },
   },
   {
+    slug: 'voice-memo',
+    name: 'Voice Memo',
+    shortName: 'Memo',
+    description:
+      'Hold to record. Whisper transcribes on this phone. Searchable forever; uploaded never.',
+    appKind: 'local',
+    icon: 'VM',
+    accent: '#A86060',
+    category: 'productivity',
+    port: 5219,
+    intents: { provides: ['memo-recorded'] },
+  },
+  {
     slug: 'crewtrip',
     name: 'Crewtrip',
     shortName: 'Crewtrip',
@@ -571,6 +584,34 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     port: 5215,
     intents: {
       consumes: ['trip-note', 'place-pinned', 'dined-out'],
+    },
+  },
+  {
+    slug: 'receipt-snap',
+    name: 'Receipt Snap',
+    shortName: 'Receipt',
+    description: 'Snap a receipt — extract vendor, total, items on this phone. Photos never leave the device.',
+    appKind: 'local',
+    icon: 'RC',
+    accent: '#5EA777',
+    category: 'money',
+    port: 5216,
+    intents: {
+      provides: ['expense-logged', 'dined-out'],
+    },
+  },
+  {
+    slug: 'tab',
+    name: 'Tab',
+    shortName: 'Tab',
+    description: 'Split a bill across nearby phones. No accounts. The room code lives only on these phones.',
+    appKind: 'connected',
+    icon: 'TB',
+    accent: '#E8C547',
+    category: 'money',
+    port: 5218,
+    intents: {
+      provides: ['tab-item-added', 'tab-settled'],
     },
   },
 ];
