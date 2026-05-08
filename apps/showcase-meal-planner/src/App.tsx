@@ -1,110 +1,140 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
-import { computeShoppingList } from './missing-items.ts';
+import { Week } from './pages/Week.tsx';
+import { Day } from './pages/Day.tsx';
+import { CookTonight } from './pages/CookTonight.tsx';
+import { Nutrition } from './pages/Nutrition.tsx';
+import { Settings } from './pages/Settings.tsx';
+import { computeShoppingListFromPlan } from './missing-items.ts';
+import { deriveLeftover } from './lib/leftover-tracker.ts';
+import { cellFromCandidate, type CookTonightRow } from './lib/cook-tonight.ts';
+import { DEFAULT_COST_PER_SERVING } from './lib/cost-estimate.ts';
+import { DAYS } from './lib/types.ts';
+import type {
+  CookedMealRow,
+  Day as DayName,
+  LeftoverRow,
+  Plan,
+  PlanCell,
+  Slot,
+} from './lib/types.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_meal_planner' });
+const STORAGE_KEY = 'shippie.meal-planner.v2';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
-const SLOTS = ['Lunch', 'Dinner'] as const;
+type Tab = 'week' | 'day' | 'cook' | 'nutrition' | 'settings';
 
-type Day = typeof DAYS[number];
-type Slot = typeof SLOTS[number];
-
-interface PlanCell {
-  recipeName: string;
-  ingredients: string[];
-}
-
-type Plan = Partial<Record<Day, Partial<Record<Slot, PlanCell>>>>;
-
-interface CookedMealRow {
-  recipeId?: string;
-  title: string;
-  cookedAt: string;
-  ingredients?: string[];
-}
-
-const STORAGE_KEY = 'shippie.meal-planner.v1';
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'week', label: 'Week' },
+  { id: 'day', label: 'Day' },
+  { id: 'cook', label: 'Cook tonight' },
+  { id: 'nutrition', label: 'Nutrition' },
+  { id: 'settings', label: 'Settings' },
+];
 
 interface PersistedState {
   plan: Plan;
   pantry: { name: string }[];
-  cookedHistory?: CookedMealRow[];
+  cookedHistory: CookedMealRow[];
+  leftovers: LeftoverRow[];
+  fallbackPerServing: number;
+  currency: string;
+  budgetCap: number | null;
+  selectedDay: DayName;
+}
+
+function emptyState(): PersistedState {
+  return {
+    plan: {},
+    pantry: [],
+    cookedHistory: [],
+    leftovers: [],
+    fallbackPerServing: DEFAULT_COST_PER_SERVING,
+    currency: '',
+    budgetCap: null,
+    selectedDay: 'Mon',
+  };
 }
 
 function load(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { plan: {}, pantry: [], cookedHistory: [] };
-    const parsed = JSON.parse(raw) as PersistedState;
+    if (!raw) return emptyState();
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
     return {
+      ...emptyState(),
+      ...parsed,
       plan: parsed.plan ?? {},
       pantry: Array.isArray(parsed.pantry) ? parsed.pantry : [],
       cookedHistory: Array.isArray(parsed.cookedHistory) ? parsed.cookedHistory : [],
+      leftovers: Array.isArray(parsed.leftovers) ? parsed.leftovers : [],
     };
   } catch {
-    return { plan: {}, pantry: [], cookedHistory: [] };
+    return emptyState();
   }
 }
 
-/**
- * P3 — find the next empty slot in the week so a dropped recipe or
- * a "schedule again" tap doesn't overwrite an existing meal. Walks
- * Mon→Sun, Lunch then Dinner. Returns null when the week is full.
- */
-function nextEmptySlot(plan: Plan): { day: Day; slot: Slot } | null {
+function nextEmptySlot(plan: Plan): { day: DayName; slot: Slot } | null {
+  // Walk Mon→Sun. Prefer Dinner, then Lunch, then Breakfast — most
+  // users plan dinner first, so a dropped recipe slots there.
   for (const day of DAYS) {
-    for (const slot of SLOTS) {
-      if (!plan[day]?.[slot]) return { day, slot };
-    }
+    if (!plan[day]?.['Dinner']) return { day, slot: 'Dinner' };
+  }
+  for (const day of DAYS) {
+    if (!plan[day]?.['Lunch']) return { day, slot: 'Lunch' };
+  }
+  for (const day of DAYS) {
+    if (!plan[day]?.['Breakfast']) return { day, slot: 'Breakfast' };
   }
   return null;
 }
 
-function broadcastShoppingList(rows: { name: string; count: number }[]): void {
-  shippie.intent.broadcast('shopping-list', rows);
-}
-
 export function App() {
   const initial = load();
+  const [tab, setTab] = useState<Tab>('week');
   const [plan, setPlan] = useState<Plan>(initial.plan);
   const [pantry, setPantry] = useState<{ name: string }[]>(initial.pantry);
-  const [editing, setEditing] = useState<{ day: Day; slot: Slot } | null>(null);
-  const [draftRecipe, setDraftRecipe] = useState('');
-  const [draftIngredients, setDraftIngredients] = useState('');
-  const [cookedHistory, setCookedHistory] = useState<CookedMealRow[]>(initial.cookedHistory ?? []);
+  const [cookedHistory, setCookedHistory] = useState<CookedMealRow[]>(initial.cookedHistory);
+  const [leftovers, setLeftovers] = useState<LeftoverRow[]>(initial.leftovers);
+  const [fallbackPerServing, setFallbackPerServing] = useState<number>(initial.fallbackPerServing);
+  const [currency, setCurrency] = useState<string>(initial.currency);
+  const [budgetCap, setBudgetCap] = useState<number | null>(initial.budgetCap);
+  const [selectedDay, setSelectedDay] = useState<DayName>(initial.selectedDay);
   const [transferActive, setTransferActive] = useState(false);
   const [recentDrop, setRecentDrop] = useState<string | null>(null);
 
+  // Persist a denormalised snapshot. Keep cookedHistory/leftovers
+  // bounded so storage doesn't grow forever.
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ plan, pantry, cookedHistory }),
-    );
-  }, [plan, pantry, cookedHistory]);
+    const snapshot: PersistedState = {
+      plan,
+      pantry,
+      cookedHistory: cookedHistory.slice(-30),
+      leftovers: leftovers.slice(-20),
+      fallbackPerServing,
+      currency,
+      budgetCap,
+      selectedDay,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  }, [plan, pantry, cookedHistory, leftovers, fallbackPerServing, currency, budgetCap, selectedDay]);
 
-  // Subscribe to pantry-inventory broadcasts via the SDK. Once-per-mount
-  // request triggers the container's permission prompt; subsequent
-  // broadcasts arrive on the subscribe handler.
+  // Pantry inventory feed.
   useEffect(() => {
     shippie.requestIntent('pantry-inventory');
     return shippie.intent.subscribe('pantry-inventory', ({ rows }) => {
-      const items = rows
-        .map((r) => {
-          const candidate = r ?? {};
-          if (candidate && typeof candidate === 'object' && 'name' in candidate) {
-            const name = (candidate as { name?: unknown }).name;
-            return typeof name === 'string' ? { name } : null;
-          }
-          return null;
-        })
-        .filter((x): x is { name: string } => x !== null);
+      const items: { name: string }[] = [];
+      for (const r of rows) {
+        if (r && typeof r === 'object' && 'name' in r) {
+          const name = (r as { name?: unknown }).name;
+          if (typeof name === 'string') items.push({ name });
+        }
+      }
       setPantry(items);
     });
   }, []);
 
-  // P3 — subscribe to cooked-meal so the "schedule again" panel
-  // shows recently-cooked recipes the user may want to repeat.
+  // Cooked-meal log fed back from the recipe app (or any cooking surface).
   useEffect(() => {
     shippie.requestIntent('cooked-meal');
     return shippie.intent.subscribe('cooked-meal', ({ rows }) => {
@@ -121,19 +151,31 @@ export function App() {
         });
       }
       if (next.length === 0) return;
-      setCookedHistory((prev) => mergeHistory(prev, next));
+      setCookedHistory((prev) => mergeCookedHistory(prev, next));
     });
   }, []);
 
-  // P1A.3 — receive `recipe`-kind transfers from Recipe Saver. A drag
-  // start lights up the planner with a banner; the actual commit
-  // populates the next empty slot.
+  // Budget cap — read-only consumer; we don't push back.
+  useEffect(() => {
+    shippie.requestIntent('budget-limit');
+    return shippie.intent.subscribe('budget-limit', ({ rows }) => {
+      for (const row of rows) {
+        if (row && typeof row === 'object' && 'amount' in row) {
+          const amount = (row as { amount?: unknown }).amount;
+          if (typeof amount === 'number' && Number.isFinite(amount) && amount > 0) {
+            setBudgetCap(amount);
+            return;
+          }
+        }
+      }
+    });
+  }, []);
+
+  // Recipe transfer drop → next empty slot.
   useEffect(() => {
     const offStart = shippie.transfer.onIncomingStart(({ kind }) => {
       if (kind !== 'recipe') return;
       setTransferActive(true);
-      // Auto-clear the highlight after 5s in case the source app
-      // never commits — the banner shouldn't strand the UI.
       window.setTimeout(() => setTransferActive(false), 5000);
     });
     const offCommit = shippie.transfer.onIncomingCommit(({ kind, payload }) => {
@@ -144,15 +186,10 @@ export function App() {
       const target = nextEmptySlot(plan);
       if (!target) {
         setRecentDrop('Week is full — clear a slot first.');
+        window.setTimeout(() => setRecentDrop(null), 4000);
         return;
       }
-      setPlan((prev) => ({
-        ...prev,
-        [target.day]: {
-          ...prev[target.day],
-          [target.slot]: cell,
-        },
-      }));
+      assignSlot(target.day, target.slot, cell);
       setRecentDrop(`${cell.recipeName} → ${target.day} ${target.slot}`);
       shippie.feel.texture('install');
       window.setTimeout(() => setRecentDrop(null), 4000);
@@ -163,208 +200,197 @@ export function App() {
     };
   }, [plan]);
 
-  const allIngredients = useMemo(() => {
-    const out: { name: string }[] = [];
-    for (const day of DAYS) {
-      for (const slot of SLOTS) {
-        const cell = plan[day]?.[slot];
-        if (!cell) continue;
-        for (const ing of cell.ingredients) out.push({ name: ing });
-      }
-    }
-    return out;
-  }, [plan]);
-
-  const shopping = useMemo(() => computeShoppingList(allIngredients, pantry), [allIngredients, pantry]);
-
-  // Whenever the shopping list changes, broadcast to consumers (Shopping List).
+  // Provide shopping-list whenever the plan/pantry/portion-scaling moves.
+  const shopping = useMemo(() => computeShoppingListFromPlan(plan, pantry), [plan, pantry]);
   useEffect(() => {
-    if (shopping.length > 0) broadcastShoppingList(shopping);
+    if (shopping.length > 0) {
+      shippie.intent.broadcast('shopping-list', shopping);
+    }
   }, [shopping]);
 
-  function startEdit(day: Day, slot: Slot) {
-    setEditing({ day, slot });
-    const cell = plan[day]?.[slot];
-    setDraftRecipe(cell?.recipeName ?? '');
-    setDraftIngredients(cell?.ingredients.join(', ') ?? '');
-  }
+  // Provide leftover-available whenever the leftover ledger changes.
+  useEffect(() => {
+    if (leftovers.length > 0) {
+      shippie.intent.broadcast('leftover-available', leftovers);
+    }
+  }, [leftovers]);
 
-  function saveCell() {
-    if (!editing) return;
-    const ingredients = draftIngredients
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    setPlan((prev) => ({
-      ...prev,
-      [editing.day]: {
-        ...prev[editing.day],
-        [editing.slot]: { recipeName: draftRecipe.trim() || '—', ingredients },
-      },
-    }));
-    setEditing(null);
-    setDraftRecipe('');
-    setDraftIngredients('');
-  }
-
-  function clearCell() {
-    if (!editing) return;
+  function assignSlot(day: DayName, slot: Slot, cell: PlanCell | null) {
     setPlan((prev) => {
-      const dayPlan = { ...(prev[editing.day] ?? {}) };
-      delete dayPlan[editing.slot];
-      return { ...prev, [editing.day]: dayPlan };
+      const dayPlan = { ...(prev[day] ?? {}) };
+      if (cell === null) {
+        delete dayPlan[slot];
+      } else {
+        dayPlan[slot] = cell;
+      }
+      return { ...prev, [day]: dayPlan };
     });
-    setEditing(null);
+    if (cell) {
+      shippie.intent.broadcast('meal-planned', [
+        {
+          day,
+          slot,
+          recipeName: cell.recipeName,
+          servings: cell.servings,
+        },
+      ]);
+    }
   }
 
-  function scheduleAgain(row: CookedMealRow) {
-    const target = nextEmptySlot(plan);
-    if (!target) return;
-    const ingredients = row.ingredients ?? [];
-    setPlan((prev) => ({
-      ...prev,
-      [target.day]: {
-        ...prev[target.day],
-        [target.slot]: { recipeName: row.title, ingredients },
-      },
-    }));
+  function moveDay(from: DayName, to: DayName) {
+    if (from === to) return;
+    setPlan((prev) => {
+      const fromPlan = prev[from];
+      const toPlan = prev[to];
+      // Swap so dragging Tue → Wed actually moves Tue's plan to Wed
+      // and Wed's old plan back to Tue.
+      return { ...prev, [from]: toPlan, [to]: fromPlan };
+    });
     shippie.feel.texture('confirm');
   }
 
-  // De-dup recently-cooked rows by recipeId/title; keep the 6 most
-  // recent and skip anything already on the plan to avoid suggesting
-  // a repeat the user just scheduled.
-  const scheduleAgainCandidates = useMemo(() => {
-    const planned = new Set<string>();
-    for (const day of DAYS) {
-      for (const slot of SLOTS) {
-        const cell = plan[day]?.[slot];
-        if (cell) planned.add(cell.recipeName.toLowerCase());
-      }
+  function markCooked(day: DayName, slot: Slot, cookedFor: number) {
+    const cell = plan[day]?.[slot];
+    if (!cell) return;
+    const cookedAt = new Date();
+    setPlan((prev) => {
+      const dayPlan = { ...(prev[day] ?? {}) };
+      const existing = dayPlan[slot];
+      if (!existing) return prev;
+      dayPlan[slot] = { ...existing, cooked: true };
+      return { ...prev, [day]: dayPlan };
+    });
+    shippie.intent.broadcast('cooked-meal', [
+      {
+        title: cell.recipeName,
+        cookedAt: cookedAt.toISOString(),
+        ingredients: cell.ingredients.map((i) => i.name),
+      },
+    ]);
+    shippie.feel.texture('confirm');
+
+    const leftover = deriveLeftover({
+      recipeName: cell.recipeName,
+      scaledServings: cell.servings,
+      cookedFor,
+      cookedAt,
+      idSeed: `${day}|${slot}|${cell.recipeName}`,
+    });
+    if (leftover) {
+      setLeftovers((prev) => mergeLeftovers(prev, [leftover]));
     }
-    return cookedHistory
-      .slice(-12)
-      .reverse()
-      .filter((row) => !planned.has(row.title.toLowerCase()))
-      .slice(0, 6);
-  }, [cookedHistory, plan]);
+  }
+
+  function dismissLeftover(id: string) {
+    setLeftovers((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  function cookFromTonight(row: CookTonightRow) {
+    const target = nextEmptySlot(plan) ?? { day: 'Mon' as DayName, slot: 'Dinner' as Slot };
+    const cell = cellFromCandidate(row, 2);
+    assignSlot(target.day, target.slot, cell);
+    setRecentDrop(`${row.recipeName} → ${target.day} ${target.slot}`);
+    setTab('week');
+    window.setTimeout(() => setRecentDrop(null), 4000);
+  }
+
+  function shiftSelectedDay(delta: -1 | 1) {
+    const idx = DAYS.indexOf(selectedDay);
+    const nextIdx = Math.min(DAYS.length - 1, Math.max(0, idx + delta));
+    const next = DAYS[nextIdx];
+    if (next) setSelectedDay(next);
+  }
+
+  function clearWeek() {
+    setPlan({});
+    setLeftovers([]);
+  }
 
   return (
     <main>
-      <header>
-        <h1>Meal Planner</h1>
-        <p>{shopping.length} ingredient{shopping.length === 1 ? '' : 's'} to buy this week</p>
-      </header>
+      <nav className="topnav" aria-label="Sections">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`navtab${tab === t.id ? ' active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-      {transferActive && (
+      {transferActive ? (
         <div className="transfer-banner" role="status">
-          Drop a recipe here — it'll land in the next empty slot.
+          Drop a recipe — it lands in your next open dinner.
         </div>
-      )}
-      {recentDrop && (
+      ) : null}
+      {recentDrop ? (
         <div className="transfer-banner success" role="status">
           ✓ {recentDrop}
         </div>
-      )}
+      ) : null}
 
-      {scheduleAgainCandidates.length > 0 && (
-        <section className="schedule-again" aria-label="Schedule again">
-          <h2>Schedule again</h2>
-          <div className="chips">
-            {scheduleAgainCandidates.map((row) => (
-              <button
-                key={`${row.recipeId ?? row.title}-${row.cookedAt}`}
-                type="button"
-                className="chip"
-                onClick={() => scheduleAgain(row)}
-                title={`Cooked ${new Date(row.cookedAt).toLocaleDateString()}`}
-              >
-                + {row.title}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="grid">
-        <div className="grid-head">
-          <div />
-          {DAYS.map((d) => (
-            <div key={d} className="day">{d}</div>
-          ))}
-        </div>
-        {SLOTS.map((slot) => (
-          <div key={slot} className="grid-row">
-            <div className="slot">{slot}</div>
-            {DAYS.map((day) => {
-              const cell = plan[day]?.[slot];
-              return (
-                <button
-                  key={day + slot}
-                  className={`cell${cell ? ' filled' : ''}`}
-                  onClick={() => startEdit(day, slot)}
-                >
-                  {cell ? cell.recipeName : '+'}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </section>
-
-      {editing && (
-        <section className="editor" aria-label="Edit meal slot">
-          <h2>{editing.day} · {editing.slot}</h2>
-          <input
-            type="text"
-            value={draftRecipe}
-            onChange={(e) => setDraftRecipe(e.target.value)}
-            placeholder="Recipe name"
-            aria-label="Recipe name"
-          />
-          <textarea
-            value={draftIngredients}
-            onChange={(e) => setDraftIngredients(e.target.value)}
-            placeholder="Comma-separated ingredients"
-            aria-label="Ingredients"
-            rows={3}
-          />
-          <div className="row">
-            <button className="ghost" onClick={() => setEditing(null)}>Cancel</button>
-            <button className="ghost danger" onClick={clearCell}>Clear</button>
-            <button onClick={saveCell}>Save</button>
-          </div>
-        </section>
-      )}
-
-      <section>
-        <h2>Pantry (live)</h2>
-        {pantry.length === 0 ? (
-          <p className="empty">Pantry shows up here when Pantry Scanner shares its inventory.</p>
-        ) : (
-          <ul className="tags">
-            {pantry.slice(0, 24).map((p) => (
-              <li key={p.name}>{p.name}</li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section>
-        <h2>Shopping list</h2>
-        {shopping.length === 0 ? (
-          <p className="empty">Plan some meals — anything not in your pantry will land here.</p>
-        ) : (
-          <ul className="shopping">
-            {shopping.map((s) => (
-              <li key={s.name}>
-                <span>{s.name}</span>
-                {s.count > 1 && <small>× {s.count} recipes</small>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {tab === 'week' ? (
+        <Week
+          plan={plan}
+          pantry={pantry}
+          cookedHistory={cookedHistory}
+          leftovers={leftovers}
+          onSlotChange={assignSlot}
+          onMoveDay={moveDay}
+          onMarkCooked={markCooked}
+          onDismissLeftover={dismissLeftover}
+        />
+      ) : null}
+      {tab === 'day' ? (
+        <Day
+          day={selectedDay}
+          plan={plan}
+          onPickSlot={(day, slot) => {
+            setSelectedDay(day);
+            // Hop to Week so the editor opens there — keeps the editor in one place.
+            setTab('week');
+            // Use sessionStorage to hint Week which slot to preselect.
+            try {
+              sessionStorage.setItem('shippie.meal-planner.preselect', JSON.stringify({ day, slot }));
+            } catch {
+              /* non-fatal */
+            }
+          }}
+          onShiftDay={shiftSelectedDay}
+        />
+      ) : null}
+      {tab === 'cook' ? (
+        <CookTonight
+          plan={plan}
+          cookedHistory={cookedHistory}
+          pantry={pantry}
+          onCook={cookFromTonight}
+        />
+      ) : null}
+      {tab === 'nutrition' ? (
+        <Nutrition
+          plan={plan}
+          budgetCap={budgetCap}
+          fallbackPerServing={fallbackPerServing}
+          currency={currency}
+        />
+      ) : null}
+      {tab === 'settings' ? (
+        <Settings
+          fallbackPerServing={fallbackPerServing}
+          currency={currency}
+          onChange={({ fallbackPerServing: f, currency: c }) => {
+            setFallbackPerServing(f);
+            setCurrency(c);
+          }}
+          onClearWeek={clearWeek}
+        />
+      ) : null}
     </main>
   );
 }
@@ -375,21 +401,77 @@ function readRecipePayload(payload: unknown): PlanCell | null {
   const title = typeof obj.title === 'string' ? obj.title : null;
   const recipeName = typeof obj.recipeName === 'string' ? obj.recipeName : title;
   if (!recipeName) return null;
-  const ingredients = Array.isArray(obj.ingredients)
-    ? obj.ingredients.filter((s): s is string => typeof s === 'string')
-    : [];
-  return { recipeName, ingredients };
+  const ingredientsRaw = Array.isArray(obj.ingredients) ? obj.ingredients : [];
+  const ingredients = ingredientsRaw
+    .map((entry) => {
+      if (typeof entry === 'string') return { name: entry };
+      if (entry && typeof entry === 'object') {
+        const name = (entry as { name?: unknown }).name;
+        if (typeof name !== 'string') return null;
+        const qty = (entry as { quantity?: unknown }).quantity;
+        const unit = (entry as { unit?: unknown }).unit;
+        return {
+          name,
+          ...(typeof qty === 'number' && Number.isFinite(qty) ? { quantity: qty } : {}),
+          ...(typeof unit === 'string' ? { unit } : {}),
+        };
+      }
+      return null;
+    })
+    .filter((x): x is { name: string; quantity?: number; unit?: string } => x !== null);
+  const servings = typeof obj.servings === 'number' && obj.servings > 0 ? obj.servings : 2;
+  const baseServings = servings;
+  const nutrition =
+    obj.nutrition && typeof obj.nutrition === 'object'
+      ? readNutrition(obj.nutrition as Record<string, unknown>)
+      : undefined;
+  const costPerServing =
+    typeof obj.costPerServing === 'number' && Number.isFinite(obj.costPerServing)
+      ? obj.costPerServing
+      : undefined;
+  return {
+    recipeName,
+    ingredients,
+    servings,
+    baseServings,
+    ...(nutrition ? { nutrition } : {}),
+    ...(costPerServing !== undefined ? { costPerServing } : {}),
+  };
 }
 
-function mergeHistory(
+function readNutrition(raw: Record<string, unknown>) {
+  const num = (k: string) => {
+    const v = raw[k];
+    return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+  };
+  const calories = num('calories');
+  if (calories <= 0) return undefined;
+  return {
+    calories,
+    protein: num('protein'),
+    carbs: num('carbs'),
+    fat: num('fat'),
+    fibre: num('fibre'),
+  };
+}
+
+function mergeCookedHistory(
   prev: readonly CookedMealRow[],
   next: readonly CookedMealRow[],
 ): CookedMealRow[] {
   const seen = new Map<string, CookedMealRow>();
   for (const row of prev) seen.set(row.cookedAt + '|' + row.title, row);
   for (const row of next) seen.set(row.cookedAt + '|' + row.title, row);
-  // Keep last ~30 to keep storage bounded.
-  return [...seen.values()]
-    .sort((a, b) => a.cookedAt.localeCompare(b.cookedAt))
-    .slice(-30);
+  return [...seen.values()].sort((a, b) => a.cookedAt.localeCompare(b.cookedAt)).slice(-30);
 }
+
+function mergeLeftovers(
+  prev: readonly LeftoverRow[],
+  next: readonly LeftoverRow[],
+): LeftoverRow[] {
+  const seen = new Map<string, LeftoverRow>();
+  for (const row of prev) seen.set(row.id, row);
+  for (const row of next) seen.set(row.id, row);
+  return [...seen.values()].sort((a, b) => a.cookedAt.localeCompare(b.cookedAt)).slice(-20);
+}
+
