@@ -1,0 +1,28 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Receipt Snap",
+  "slug": "receipt-snap",
+  "description": "Snap a receipt — extract vendor, total, items on this phone. Photos never leave the device.",
+  "icon": "/icon.svg",
+  "theme_color": "#5EA777",
+  "background_color": "#F5EFE4",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["expense-logged", "dined-out"]
+  },
+  "data_schemas": {
+    "receipts": {
+      "id": "text primary key",
+      "vendor": "text",
+      "total_cents": "integer",
+      "currency": "text",
+      "category": "text",
+      "occurred_on": "text",
+      "captured_at": "datetime",
+      "raw_ocr_text": "text",
+      "image_data_url": "text",
+      "note": "text"
+    }
+  }
+}
