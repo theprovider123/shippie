@@ -106,11 +106,7 @@
     onInspect?.(app);
   }
 
-  function keepActionClick(event: Event) {
-    event.stopPropagation();
-  }
-
-  function pin(event: MouseEvent) {
+  function save(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
     const shouldSave = !pinned;
@@ -121,11 +117,11 @@
     }
     if (shouldSave) {
       void ensureAppOffline(app.slug).catch(() => {
-        toast.push({ kind: 'error', message: 'Could not save for offline yet.' });
+        toast.push({ kind: 'error', message: 'Could not save this tool yet.' });
       });
     } else {
       void removeAppAndTrack(app.slug).catch(() => {
-        toast.push({ kind: 'error', message: 'Could not remove offline copy yet.' });
+        toast.push({ kind: 'error', message: 'Could not remove saved copy yet.' });
       });
     }
   }
@@ -191,16 +187,13 @@
   <div
     class="quick-actions"
     aria-label={`${app.name} actions`}
-    onpointerdown={keepActionClick}
-    ontouchstart={keepActionClick}
-    onclick={keepActionClick}
   >
     <button
       type="button"
       class:active={pinned}
-      onclick={pin}
-      title={pinned ? 'Unpin' : 'Pin'}
-      aria-label={pinned ? `Unpin ${app.name}` : `Pin ${app.name}`}
+      onclick={save}
+      title={pinned ? 'Saved' : 'Save'}
+      aria-label={pinned ? `Remove ${app.name} from saved tools` : `Save ${app.name}`}
       aria-pressed={pinned}
     >
       {pinned ? '★' : '☆'}
@@ -229,17 +222,21 @@
 <style>
   .launcher-card {
     position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: 100%;
     min-height: 176px;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
+    box-sizing: border-box;
     transition:
       border-color 0.16s var(--ease-out),
       background 0.16s var(--ease-out),
       transform 0.18s var(--ease-out);
   }
   .launcher-card:hover {
-    border-color: var(--sage-moss);
+    border-color: var(--sunset);
     background: var(--surface-alt);
     transform: translateY(-2px);
   }
@@ -247,24 +244,26 @@
     min-height: 144px;
   }
   .launch-link {
+    grid-column: 1;
+    grid-row: 1;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: var(--space-md);
     min-height: inherit;
     padding: var(--space-lg);
-    padding-right: 6.75rem;
     color: inherit;
     text-decoration: none;
   }
   .compact .launch-link {
     padding: var(--space-md);
-    padding-right: 6.25rem;
   }
   .icon-wrap {
     padding-top: 0.1rem;
   }
   .copy {
     min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
   .title-row {
     display: flex;
@@ -309,9 +308,16 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .signals,
+  .signals {
+    margin-top: auto;
+    padding-top: 0.7rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
   .badges {
-    margin-top: 0.7rem;
+    margin-top: 0.45rem;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -341,12 +347,17 @@
     background: rgba(226, 192, 104, 0.08);
   }
   .quick-actions {
-    position: absolute;
-    top: var(--space-sm);
-    right: var(--space-sm);
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
     z-index: 2;
     display: flex;
+    flex-direction: column;
     gap: 4px;
+    align-self: stretch;
+    padding: var(--space-sm);
+    border-left: 1px solid var(--border);
+    background: rgba(12, 11, 9, 0.18);
     touch-action: manipulation;
   }
   .quick-actions button {
@@ -380,6 +391,9 @@
     background: rgba(232, 96, 60, 0.08);
   }
   @media (max-width: 640px) {
+    .launcher-card {
+      grid-template-columns: 1fr;
+    }
     .launch-link,
     .compact .launch-link {
       grid-template-columns: 1fr;
@@ -387,9 +401,15 @@
       padding-top: 4.25rem;
     }
     .quick-actions {
+      position: absolute;
       top: var(--space-md);
       right: var(--space-md);
+      flex-direction: row;
       gap: 6px;
+      align-self: auto;
+      padding: 0;
+      border-left: 0;
+      background: transparent;
     }
     .quick-actions button {
       width: 40px;

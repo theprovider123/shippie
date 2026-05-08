@@ -50,12 +50,6 @@
     edgeSwipeMaxAngle?: number;
     /** Width in CSS px of the touch zone along the left edge. */
     edgeGrabberWidth?: number;
-    /**
-     * Pulse the bottom-pill once on mount to telegraph its existence to
-     * first-time users. Parent gates this with localStorage so it never
-     * repeats on the same device.
-     */
-    firstRun?: boolean;
   }
 
   let {
@@ -66,7 +60,6 @@
     edgeSwipeThreshold = 20,
     edgeSwipeMaxAngle = 30,
     edgeGrabberWidth = 24,
-    firstRun = false,
   }: Props = $props();
 
   // Gesture-tuning constants. Pulled out for ease of real-phone
@@ -147,11 +140,6 @@
     }
   }
 
-  // Bottom-pill trigger.
-  function handlePillTap() {
-    onOpenChange(true);
-  }
-
   // Backdrop tap → close.
   function handleBackdropTap(event: MouseEvent) {
     if (event.target === event.currentTarget) {
@@ -198,15 +186,6 @@
     onpointercancel={handlePointerUp}
     role="presentation"
   ></div>
-  <button
-    class="bottom-pill"
-    class:first-run={firstRun}
-    type="button"
-    onclick={handlePillTap}
-    aria-label="Open app switcher"
-  >
-    <span class="pill-handle" aria-hidden="true"></span>
-  </button>
 {/if}
 
 <div
@@ -247,52 +226,6 @@
     left: 0;
   }
 
-  /* Bottom pill: the discoverable secondary trigger. Thin enough to
-     vanish visually, opaque enough to be findable. Reachable with
-     thumb on a 6.7" device in portrait. */
-  .bottom-pill {
-    position: fixed;
-    left: 50%;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
-    transform: translateX(-50%);
-    width: 80px;
-    height: 24px;
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    padding: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .pill-handle {
-    width: 80px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(20, 18, 15, 0.25);
-    transition: background 200ms ease;
-  }
-  .bottom-pill:hover .pill-handle,
-  .bottom-pill:focus-visible .pill-handle {
-    background: rgba(20, 18, 15, 0.5);
-  }
-  /* First-run pulse: one-shot animation on the pill-handle the very
-     first time a device enters focused mode. Telegraphs that the pill
-     is interactive without a toast or modal. */
-  .bottom-pill.first-run .pill-handle {
-    animation: shippie-pill-pulse 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
-  }
-  @keyframes shippie-pill-pulse {
-    0%   { transform: scale(1);    background: rgba(20, 18, 15, 0.25); }
-    35%  { transform: scale(1.1);  background: rgba(20, 18, 15, 0.5); }
-    70%  { transform: scale(0.95); background: rgba(20, 18, 15, 0.5); }
-    100% { transform: scale(1);    background: rgba(20, 18, 15, 0.25); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .bottom-pill.first-run .pill-handle { animation: none; }
-  }
-
   /* Backdrop: dim + scale the underlying app while the drawer is
      open. The parent applies these transforms on its own iframe
      container; we expose CSS vars for the parent to consume. */
@@ -315,9 +248,11 @@
   .drawer {
     position: fixed;
     z-index: 60;
-    background: var(--bg, #faf7ef);
+    background: var(--cream-bg, #faf7ef);
+    color: var(--cream-text, #14120f);
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
     will-change: transform;
+    overscroll-behavior: contain;
   }
   .drawer.from-left {
     top: 0;

@@ -146,9 +146,15 @@
   // onto a different app.
   let notFoundSlug = $state<string | null>(null);
   // True on a user's first-ever entry into focused mode. Drives a one-
-  // shot pulse on the bottom-pill so first-run users learn the gesture.
-  // Gated by localStorage so the hint never repeats on the same device.
+  // shot pulse on the focused-exit-pill (Shippie mark) so first-run users
+  // discover that the mark opens the tool switcher. Gated by localStorage.
   let firstRunHint = $state(false);
+  // Viewport width for drawer-edge selection. ≤640px → drawer rises from
+  // the bottom (matches the mark's top-right placement on mobile via the
+  // existing media query); larger → slides in from the left next to the
+  // mark's top-left placement on desktop.
+  let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
+  const focusedDrawerEdge = $derived<'left' | 'bottom'>(viewportWidth <= 640 ? 'bottom' : 'left');
   let receiptsByApp = $state<Record<string, AppReceipt>>({});
   let receiptExport = $state('');
   let backupPassphrase = $state('');
@@ -1611,6 +1617,8 @@
   />
 </svelte:head>
 
+<svelte:window onresize={() => (viewportWidth = window.innerWidth)} />
+
 <IntentPromptModal
   prompt={pendingIntentBatch}
   onApprove={approveIntentPrompt}
@@ -1636,10 +1644,13 @@
     branch, not a behaviour branch.
   -->
   <section class="focused-shell">
-    <a
+    <button
+      type="button"
       class="focused-exit-pill"
-      href="/container"
-      aria-label="Leave this app and return to Shippie"
+      class:first-run={firstRunHint}
+      aria-label="Open tool switcher"
+      aria-expanded={focusedDrawerOpen}
+      onclick={() => (focusedDrawerOpen = !focusedDrawerOpen)}
     >
       <img
         src="/__shippie-pwa/icon.svg"
@@ -1649,7 +1660,7 @@
         aria-hidden="true"
       />
       <span>Shippie</span>
-    </a>
+    </button>
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -1685,20 +1696,26 @@
     <AppSwitcherGesture
       open={focusedDrawerOpen}
       onOpenChange={(value) => (focusedDrawerOpen = value)}
-      edge="left"
-      firstRun={firstRunHint}
+      edge={focusedDrawerEdge}
     >
       <div class="focused-drawer">
         <header class="focused-drawer-head">
           <a class="focused-home" href="/container" aria-label="Shippie home">
-            <span class="focused-rocket" aria-hidden="true">🚀</span>
+            <img
+              class="focused-rocket"
+              src="/__shippie-pwa/icon.svg"
+              alt=""
+              width="20"
+              height="20"
+              aria-hidden="true"
+            />
             <span>Shippie</span>
           </a>
           <a class="focused-data" href="/container?section=data" aria-label="Your Data">
             Your Data
           </a>
         </header>
-        <h2>Switch app</h2>
+        <h2>Switch tool</h2>
         <div class="focused-grid">
           {#each apps as app (app.id)}
             <button
@@ -2555,10 +2572,26 @@
     font-size: 0.95rem;
     letter-spacing: -0.015em;
     text-decoration: none;
+    cursor: pointer;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     opacity: 0.7;
-    transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .focused-exit-pill.first-run {
+    /* One-shot pulse on the very first focused-mode visit. Telegraphs
+       that the mark is interactive without a toast or modal. Gated by
+       localStorage so it never repeats. */
+    animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
+  }
+  @keyframes shippie-mark-pulse {
+    0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.7; }
+    35%  { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(232, 96, 60, 0.30); opacity: 1; }
+    70%  { transform: scale(1.0);  box-shadow: 0 0 0 14px rgba(232, 96, 60, 0); opacity: 1; }
+    100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.7; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .focused-exit-pill.first-run { animation: none; }
   }
   .focused-exit-pill:hover,
   .focused-exit-pill:focus-visible {
@@ -2597,7 +2630,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    color: #14120f;
+    color: var(--cream-text, #14120f);
   }
   .focused-drawer-head {
     display: flex;
@@ -2605,7 +2638,7 @@
     align-items: center;
     gap: 8px;
     padding-bottom: 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
   }
   .focused-home {
     display: inline-flex;
@@ -2617,8 +2650,9 @@
     font-size: 18px;
   }
   .focused-rocket {
-    font-size: 20px;
-    line-height: 1;
+    display: block;
+    width: 20px;
+    height: 20px;
   }
   .focused-data {
     color: var(--sunset, #e8603c);
@@ -2635,7 +2669,7 @@
     margin: 0;
     font-size: 13px;
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
@@ -2651,8 +2685,8 @@
     gap: 6px;
   }
   .focused-insight {
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: var(--cream-bg, rgba(255, 255, 255, 0.85));
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
     border-radius: 12px;
     padding: 12px 14px;
   }
@@ -2662,7 +2696,7 @@
   }
   .focused-insight p {
     margin: 4px 0 0;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
     font-size: 13px;
   }
   .focused-insight-high {
@@ -2684,17 +2718,22 @@
     align-items: flex-start;
     gap: 4px;
     padding: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: var(--cream-bg, rgba(255, 255, 255, 0.85));
     cursor: pointer;
     text-align: left;
     color: inherit;
     font: inherit;
+    transition: border-color 150ms ease, background 150ms ease;
+  }
+  .focused-tile:hover {
+    border-color: var(--sunset, #e8603c);
+    background: var(--sunset-glow, rgba(232, 96, 60, 0.15));
   }
   .focused-tile.active {
-    border-color: var(--accent);
-    background: #fff;
-    box-shadow: 0 0 0 2px var(--accent);
+    border-color: var(--sunset, #e8603c);
+    background: var(--sunset-glow, rgba(232, 96, 60, 0.15));
+    box-shadow: 0 0 0 2px var(--sunset, #e8603c);
   }
   .focused-tile strong {
     font-size: 14px;
