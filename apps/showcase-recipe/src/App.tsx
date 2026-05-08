@@ -6,10 +6,14 @@ import { resolveLocalDb } from './db/runtime.ts';
 import { seedIfEmpty } from './db/seed.ts';
 import {
   chooseStartupBackupPrompt,
+  dismissInstallNudge,
+  hasRequestedPersistence,
   loadBackupMeta,
+  loadPersistenceMeta,
   promptText,
   recordRecipeSaveAndChoosePrompt,
   requestDurableRecipeStorage,
+  shouldNudgeInstall,
   type BackupPromptReason,
 } from './db/data-safety.ts';
 import { readImportFragment } from '@shippie/share';
@@ -28,6 +32,8 @@ export function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [seedNote, setSeedNote] = useState<string | null>(null);
   const [backupPrompt, setBackupPrompt] = useState<BackupPromptReason | null>(null);
+  const [installNudge, setInstallNudge] = useState(false);
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const [dataPanelOpen, setDataPanelOpen] = useState(false);
   const [pendingImport, setPendingImport] = useState<
     Extract<RecipeImportCheck, { ok: true }> | null
@@ -52,6 +58,16 @@ export function App() {
         setRefreshKey((n) => n + 1);
         const stale = chooseStartupBackupPrompt(loadBackupMeta());
         if (stale) setBackupPrompt(stale);
+        // Silent retry of persistence-grant on subsequent launches.
+        // Browsers grant more readily once the site has engagement, so
+        // a previously-declined request can succeed later. Skip the
+        // very first launch — `requestDurableRecipeStorage` is the
+        // first-meaningful-save trigger and we want that user-engaged
+        // signal in the request.
+        const meta = loadPersistenceMeta();
+        if (meta && meta.granted === false && !cancelled) {
+          void requestDurableRecipeStorage(db);
+        }
       } catch (err) {
         // first-load failures shouldn't block render
         console.warn('[recipe-saver] seed failed', err);
@@ -93,9 +109,20 @@ export function App() {
 
   const handleSaved = () => {
     const db = resolveLocalDb();
-    void requestDurableRecipeStorage(db);
+    // Only ask for persistence the first time. Browsers grant more
+    // readily for sites with engagement, so the first meaningful save
+    // is the right hook. Subsequent declines retry silently from the
+    // boot effect above.
+    if (!hasRequestedPersistence()) void requestDurableRecipeStorage(db);
     const prompt = recordRecipeSaveAndChoosePrompt(loadBackupMeta());
-    if (prompt) setBackupPrompt(prompt);
+    // On iOS Safari the install nudge takes priority over the
+    // first-save backup banner — installing solves durability more
+    // comprehensively than asking for a backup we can't yet target.
+    if (prompt && shouldNudgeInstall()) {
+      setInstallNudge(true);
+    } else if (prompt) {
+      setBackupPrompt(prompt);
+    }
     setRefreshKey((n) => n + 1);
     navigate({ kind: 'list' });
   };
@@ -103,6 +130,25 @@ export function App() {
   return (
     <div className="app">
       {seedNote ? <div className="banner" role="status">{seedNote}</div> : null}
+      {installNudge ? (
+        <div className="banner install-nudge-banner" role="status">
+          <span>Install on your Home Screen so iPhone doesn’t clear your recipes.</span>
+          <button type="button" onClick={() => setInstallHelpOpen(true)}>
+            How to install
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => {
+              dismissInstallNudge();
+              setInstallNudge(false);
+            }}
+            aria-label="Dismiss install nudge"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
       {backupPrompt ? (
         <div className="banner backup-banner" role="status">
           <span>{promptText(backupPrompt)}</span>
@@ -112,6 +158,36 @@ export function App() {
           <button type="button" className="ghost" onClick={() => setBackupPrompt(null)} aria-label="Dismiss backup prompt">
             ×
           </button>
+        </div>
+      ) : null}
+      {installHelpOpen ? (
+        <div className="install-help-backdrop" role="presentation" onClick={() => setInstallHelpOpen(false)}>
+          <section
+            className="install-help"
+            role="dialog"
+            aria-labelledby="install-help-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header>
+              <h2 id="install-help-title">Install Recipe Saver</h2>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setInstallHelpOpen(false)}
+                aria-label="Close install help"
+              >
+                ×
+              </button>
+            </header>
+            <ol>
+              <li>Tap the Share button in Safari.</li>
+              <li>Scroll down and tap "Add to Home Screen".</li>
+              <li>Tap "Add" in the top right.</li>
+            </ol>
+            <p className="install-help-note">
+              Installed apps stay even when iPhone clears website data after inactivity.
+            </p>
+          </section>
         </div>
       ) : null}
       {route.kind === 'list' ? (
@@ -150,9 +226,13 @@ export function App() {
           check={pendingImport}
           onImported={(id) => {
             setPendingImport(null);
-            void requestDurableRecipeStorage(resolveLocalDb());
+            if (!hasRequestedPersistence()) void requestDurableRecipeStorage(resolveLocalDb());
             const prompt = recordRecipeSaveAndChoosePrompt(loadBackupMeta());
-            if (prompt) setBackupPrompt(prompt);
+            if (prompt && shouldNudgeInstall()) {
+              setInstallNudge(true);
+            } else if (prompt) {
+              setBackupPrompt(prompt);
+            }
             setRefreshKey((n) => n + 1);
             navigate({ kind: 'edit', recipeId: id });
           }}

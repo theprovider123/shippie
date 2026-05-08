@@ -4,6 +4,7 @@ import {
   exportRecipeBackup,
   restoreRecipeBackup,
   inspectRecipeBackup,
+  saveBackupBlob,
   type RecipeBackupInfo,
 } from '../db/backup.ts';
 import {
@@ -11,6 +12,7 @@ import {
   requestDurableRecipeStorage,
   saveBackupMeta,
   type RecipeStorageHealth,
+  type StorageStatus,
 } from '../db/data-safety.ts';
 
 interface RecipeDataPanelProps {
@@ -58,13 +60,21 @@ export function RecipeDataPanel({ db, onClose, onChanged, onBackupComplete }: Re
     setStatus(null);
     try {
       const { blob, info } = await exportRecipeBackup(db, passphrase);
-      downloadBlob(blob, backupFilename(info));
+      const result = await saveBackupBlob(blob, backupFilename(info));
       saveBackupMeta(info);
       onBackupComplete();
-      setStatus(`Downloaded encrypted backup with ${info.recipeCount} recipes.`);
+      setStatus(
+        result.via === 'share'
+          ? `Saved encrypted backup with ${info.recipeCount} recipes — pick a Files location.`
+          : `Downloaded encrypted backup with ${info.recipeCount} recipes.`,
+      );
       await refresh();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Backup failed.');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setStatus('Backup was cancelled before saving. Try again to keep the file.');
+      } else {
+        setStatus(err instanceof Error ? err.message : 'Backup failed.');
+      }
     } finally {
       setBusy(false);
     }
@@ -110,6 +120,20 @@ export function RecipeDataPanel({ db, onClose, onChanged, onBackupComplete }: Re
         {health?.mode === 'memory' ? (
           <div className="data-warning" role="alert">
             Demo memory is active. Recipes can disappear on reload until Shippie local storage is available.
+          </div>
+        ) : null}
+
+        {health?.iosRiskLevel === 'critical' ? (
+          <div className="data-warning ios-eviction-warning" role="alert">
+            On iPhone Safari, website data may be cleared after inactivity. Install to Home Screen
+            to keep recipes safe.
+          </div>
+        ) : null}
+
+        {health ? (
+          <div className={`data-status-tile data-status-${health.status}`} role="status">
+            <span className="data-status-label">{statusHeadline(health.status)}</span>
+            <span className="data-status-detail">{statusDetail(health)}</span>
           </div>
         ) : null}
 
@@ -207,15 +231,26 @@ function backupFilename(info: RecipeBackupInfo): string {
   return `recipe-saver-${info.createdAt.slice(0, 10)}.shippiebak`;
 }
 
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+function statusHeadline(status: StorageStatus): string {
+  if (status === 'safe') return 'Safe';
+  if (status === 'protected-locally') return 'Protected on this device';
+  if (status === 'only-on-this-device') return 'Only on this device';
+  return 'At risk';
+}
+
+function statusDetail(health: RecipeStorageHealth): string {
+  if (health.status === 'safe') return 'Backed up recently and protected by your browser.';
+  if (health.status === 'protected-locally') {
+    return 'Storage protection is active. Make a backup so recipes survive a reset.';
+  }
+  if (health.status === 'only-on-this-device') {
+    return 'No storage protection yet. Browsers may evict data under pressure.';
+  }
+  if (health.mode === 'memory') return 'Demo memory — recipes will disappear on reload.';
+  if (health.iosRiskLevel === 'critical') {
+    return 'iPhone Safari can clear website data after inactivity. Install or back up.';
+  }
+  return 'Storage is at risk. Save a backup before adding more recipes.';
 }
 
 function formatBytes(bytes: number): string {

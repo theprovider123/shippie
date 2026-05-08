@@ -167,6 +167,76 @@ button:disabled {
   color: var(--fg);
 }
 
+.install-nudge-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.install-nudge-banner button {
+  height: 30px;
+  border-color: var(--bg);
+  color: var(--bg);
+  background: transparent;
+}
+
+.install-nudge-banner button:first-of-type {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.install-help-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.36);
+  display: grid;
+  place-items: center;
+  z-index: 90;
+  padding: 16px;
+}
+
+.install-help {
+  width: min(420px, 100%);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+.install-help header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.install-help h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.install-help ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.install-help-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .search-input {
   width: 100%;
   height: 44px;
@@ -759,6 +829,68 @@ button:disabled {
   color: var(--danger);
   padding: 10px 12px;
   font-size: 14px;
+}
+
+.ios-eviction-warning {
+  border-color: var(--danger);
+  background: rgba(204, 51, 51, 0.06);
+}
+
+.data-status-tile {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.data-status-tile .data-status-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.data-status-tile .data-status-detail {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.data-status-safe {
+  border-color: rgba(50, 138, 88, 0.45);
+  background: rgba(50, 138, 88, 0.08);
+}
+
+.data-status-safe .data-status-label {
+  color: rgb(40, 110, 70);
+}
+
+.data-status-protected-locally {
+  border-color: rgba(80, 110, 200, 0.4);
+  background: rgba(80, 110, 200, 0.06);
+}
+
+.data-status-protected-locally .data-status-label {
+  color: rgb(60, 90, 170);
+}
+
+.data-status-only-on-this-device {
+  border-color: var(--line);
+}
+
+.data-status-only-on-this-device .data-status-label {
+  color: var(--muted);
+}
+
+.data-status-at-risk {
+  border-color: var(--danger);
+  background: rgba(204, 51, 51, 0.06);
+}
+
+.data-status-at-risk .data-status-label {
+  color: var(--danger);
 }
 
 .data-health-grid {

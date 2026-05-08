@@ -115,6 +115,59 @@ export async function restoreRecipeBackup(
   return info;
 }
 
+/**
+ * Save the encrypted backup blob using the platform's most useful path.
+ *
+ * On iOS Safari and other Web Share-capable browsers, we route through
+ * `navigator.share({ files: [...] })` so the user lands directly in the
+ * native Files / iCloud Drive picker. iOS cannot silently re-write the
+ * same file later — that's why this lives outside the cloud-style
+ * BackupProviderApi: there is no `list` or `download` to symmetrise.
+ *
+ * Everywhere else we fall back to a same-origin anchor download.
+ *
+ * Returns the route taken so the caller can show appropriate copy.
+ */
+export async function saveBackupBlob(
+  blob: Blob,
+  filename: string,
+): Promise<{ via: 'share' | 'download' }> {
+  if (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function'
+  ) {
+    try {
+      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return { via: 'share' };
+      }
+    } catch (err) {
+      // AbortError fires when the user cancels the share sheet — surface
+      // it so the caller doesn't claim the backup succeeded.
+      if (err instanceof Error && err.name === 'AbortError') throw err;
+      // Any other share-sheet failure (Permission, NotAllowed, etc.) falls
+      // through to the anchor-download fallback below.
+    }
+  }
+  if (typeof URL === 'undefined' || typeof document === 'undefined') {
+    throw new Error('No supported way to save the backup file in this environment.');
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+  return { via: 'download' };
+}
+
 function assertRecipeBackupPayload(value: RecipeBackupPlaintext): void {
   if (!value || value.kind !== RECIPE_BACKUP_KIND) {
     throw new Error('This is not a Recipe Saver backup.');
