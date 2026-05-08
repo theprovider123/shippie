@@ -4,6 +4,7 @@ import { actions } from './+page.server';
 const mocks = vi.hoisted(() => ({
   mintVerificationToken: vi.fn(),
   sendMagicLink: vi.fn(async () => {}),
+  checkMagicLinkRateLimit: vi.fn(async () => ({ ok: true, remaining: 2, retryAfterMs: 0 })),
 }));
 
 vi.mock('$server/auth/verification-tokens', () => ({
@@ -16,6 +17,10 @@ vi.mock('$server/auth/email', () => ({
 
 vi.mock('$server/auth/env', () => ({
   getAuthSecret: () => 'test-auth-secret',
+}));
+
+vi.mock('$server/auth/rate-limit', () => ({
+  checkMagicLinkRateLimit: mocks.checkMagicLinkRateLimit,
 }));
 
 vi.mock('$server/auth/github', () => ({

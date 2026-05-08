@@ -16,6 +16,7 @@ import { isGoogleConfigured } from '$server/auth/google';
 import { mintVerificationToken } from '$server/auth/verification-tokens';
 import { sendMagicLink } from '$server/auth/email';
 import { getAuthSecret } from '$server/auth/env';
+import { checkMagicLinkRateLimit } from '$server/auth/rate-limit';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
   // Already signed in? Bounce to the return target or home.
@@ -41,6 +42,20 @@ export const actions: Actions = {
     }
     if (!platform?.env.DB) {
       return fail(500, { error: 'Database unavailable.' });
+    }
+    const rateLimit = await checkMagicLinkRateLimit({
+      db: platform.env.DB,
+      request,
+      email,
+    }).catch((err) => {
+      console.error('[auth] checkMagicLinkRateLimit failed', err);
+      return { ok: false as const, remaining: 0, retryAfterMs: 60_000 };
+    });
+    if (!rateLimit.ok) {
+      return fail(429, {
+        error: 'Too many sign-in attempts. Please try again in a few minutes.',
+        retryAfterMs: rateLimit.retryAfterMs,
+      });
     }
 
     let mint;
