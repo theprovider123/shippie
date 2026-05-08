@@ -23,7 +23,14 @@ function findOutputDir(base: string): string {
 
 export async function deployCommand(
   dir: string | undefined,
-  opts: { slug?: string; skipBuild?: boolean; api?: string; trial?: boolean; watch?: boolean },
+  opts: {
+    slug?: string;
+    remix?: string;
+    skipBuild?: boolean;
+    api?: string;
+    trial?: boolean;
+    watch?: boolean;
+  },
 ) {
   const targetDir = resolve(dir ?? '.');
   const apiUrl = opts.api ?? 'https://shippie.app';
@@ -38,10 +45,10 @@ export async function deployCommand(
   const deployDir = resolve(targetDir, outputDir);
 
   if (opts.trial) {
-    console.log(`Packaging ${deployDir} as a trial deploy...`);
+    console.log(`Packaging ${deployDir} as a trial deploy${opts.remix ? ` remixing ${opts.remix}` : ''}...`);
   } else {
     const slug = opts.slug ?? basename(targetDir).toLowerCase().replace(/[^a-z0-9-]/g, '-');
-    console.log(`Packaging ${deployDir} as "${slug}"...`);
+    console.log(`Packaging ${deployDir} as "${slug}"${opts.remix ? ` remixing ${opts.remix}` : ''}...`);
   }
 
   console.log('Uploading...');
@@ -53,6 +60,7 @@ export async function deployCommand(
       directory: deployDir,
       slug: opts.trial ? undefined : slug,
       trial: opts.trial,
+      remixFrom: opts.remix,
     });
 
     if (!result.ok) {
@@ -75,6 +83,7 @@ export async function deployCommand(
     if (result.files != null) console.log(`Files:   ${result.files}`);
     if (result.totalBytes != null) console.log(`Bytes:   ${result.totalBytes}`);
     if (result.deployId) console.log(`Deploy:  ${result.deployId}`);
+    if (opts.remix) console.log(`Remix:   ${opts.remix}`);
     console.log('');
 
     if (opts.watch && result.deployId) {

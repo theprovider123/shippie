@@ -6,6 +6,8 @@ export interface DeployOptions {
   directory: string;
   slug?: string;
   trial?: boolean;
+  /** Existing public app slug to attribute this deploy as a remix of. */
+  remixFrom?: string;
 }
 
 export interface DeployResult {
@@ -60,6 +62,7 @@ export async function deployDirectory(
 
   const form = new FormData();
   form.append('zip', new Blob([buffer]), 'deploy.zip');
+  if (opts.remixFrom) form.append('remix_from', opts.remixFrom);
 
   const endpoint = opts.trial ? '/api/deploy/trial' : '/api/deploy';
   const headers: Record<string, string> = {};

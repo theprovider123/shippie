@@ -17,6 +17,7 @@ import {
   type WorkspaceDeployResult,
   type WorkspacePlan,
 } from './workspace.ts';
+import { fetchRemixInfo, type RemixHandoff } from './remix.ts';
 
 /**
  * Per-instance client config. Construct via `createClient`.
@@ -38,6 +39,7 @@ export interface Client {
   deploy(opts: DeployOptions): Promise<DeployResult>;
   status(deployId: string): Promise<StatusResult>;
   stream(deployId: string, opts?: StreamOptions): AsyncGenerator<StreamEvent, void, void>;
+  remix(slug: string): Promise<RemixHandoff>;
   appsList(): Promise<AppListItem[]>;
   logs(opts?: LogsOptions): Promise<LogsResult>;
   config: {
@@ -62,6 +64,7 @@ export function createClient(config: ClientConfig = {}): Client {
     deploy: (opts) => deployDirectory({ apiUrl, token }, opts),
     status: (deployId) => fetchStatus({ apiUrl }, deployId),
     stream: (deployId, opts) => streamDeploy({ apiUrl }, deployId, opts),
+    remix: (slug) => fetchRemixInfo({ apiUrl }, slug),
     appsList: () => fetchAppsList({ apiUrl, token }),
     logs: (opts) => fetchLogs({ apiUrl, token }, opts),
     config: {

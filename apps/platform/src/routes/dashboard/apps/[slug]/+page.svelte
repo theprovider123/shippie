@@ -145,6 +145,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   <div class="card">
     <h2>Visibility</h2>
     <p><span class="vis vis-{data.app.visibilityScope}">{data.app.visibilityScope}</span></p>
+    <a href={`/dashboard/apps/${data.app.slug}/profile`}>Edit profile →</a>
     <a href={`/dashboard/apps/${data.app.slug}/access`}>Manage access →</a>
   </div>
 

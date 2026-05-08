@@ -78,4 +78,35 @@ describe('deployDirectory', () => {
       },
     ]);
   });
+
+  test('sends remix lineage to the deploy endpoint', async () => {
+    const calls: Array<{ url: string; remixFrom: FormDataEntryValue | null }> = [];
+    globalThis.fetch = (async (input, init) => {
+      const body = init?.body as FormData;
+      calls.push({
+        url: String(input),
+        remixFrom: body.get('remix_from'),
+      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          slug: 'better-recipes',
+          live_url: 'https://better-recipes.shippie.app/',
+          deploy_id: 'dep_1',
+          version: 1,
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    const result = await deployDirectory(
+      { apiUrl: 'https://example.com', token: 'tok' },
+      { directory: TMP, slug: 'better-recipes', remixFrom: 'recipe-saver' },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(calls).toEqual([
+      { url: 'https://example.com/api/deploy', remixFrom: 'recipe-saver' },
+    ]);
+  });
 });

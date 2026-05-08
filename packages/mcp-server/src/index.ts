@@ -9,6 +9,7 @@
  *   logs     — read privacy-preserving feedback / usage / function logs
  *   config   — read/write maker shippie.json overrides
  *   templates — list blessed starter templates
+ *   remix_info — get source, license, fork URL, and redeploy commands
  *   deploy_workspace — deploy several connected apps from shippie-workspace.json
  *
  * Note on uploads: `AdmZip` builds the archive in memory (no temp file on
@@ -73,6 +74,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
               'Trial deploy — no signup needed, 24-hour TTL, 50MB limit. ' +
               'Good for first-run demos and E2E testing the B2 trial backend.',
             default: false,
+          },
+          remix_from: {
+            type: 'string',
+            description:
+              'Existing public app slug to remix. Shippie validates source/license/remix terms and records parent lineage on the new deploy.',
           },
         },
         required: ['directory'],
@@ -165,9 +171,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'remix_info',
+      description:
+        'Fetch the public remix handoff for an app slug: source repo, license, GitHub fork URL when available, and exact CLI/MCP/workspace redeploy commands. Use before copying or improving another app.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          slug: {
+            type: 'string',
+            description: 'Public app slug to remix.',
+          },
+        },
+        required: ['slug'],
+      },
+    },
+    {
       name: 'deploy_workspace',
       description:
-        'Deploy every app declared in a shippie-workspace.json file. Use this for multi-app products such as fan/control/display venue workspaces.',
+        'Deploy every app declared in a shippie-workspace.json file. Use this for multi-app products such as fan/control/display venue workspaces. ' +
+        'Each app entry may include remixFrom or remix_from to preserve remix lineage.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -319,7 +341,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   if (name === 'deploy') {
-    return await handleDeploy(args as { directory: string; slug?: string; trial?: boolean });
+    return await handleDeploy(args as { directory: string; slug?: string; trial?: boolean; remix_from?: string });
   }
 
   if (name === 'status') {
@@ -340,6 +362,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === 'templates') {
     return handleTemplates(args as { id?: string });
+  }
+
+  if (name === 'remix_info') {
+    return await handleRemixInfo(args as { slug: string });
   }
 
   if (name === 'deploy_workspace') {
@@ -418,6 +444,33 @@ function privacyGradeOrNull(value: unknown): DeploySignals['privacyGrade'] {
   return null;
 }
 
+async function handleRemixInfo(args: { slug: string }) {
+  try {
+    const remix = await client.remix(args.slug);
+    const lines = [
+      `Remix: ${remix.name} (${remix.slug})`,
+      remix.tagline ? remix.tagline : null,
+      `Source:  ${remix.sourceRepo}`,
+      `License: ${remix.license}`,
+      remix.latestVersion ? `Version: ${remix.latestVersion}` : null,
+      remix.forkUrl ? `Fork:    ${remix.forkUrl}` : null,
+      '',
+      'After editing, redeploy with lineage:',
+      `CLI: ${remix.deploy.cli}`,
+      `MCP: deploy(directory="${remix.deploy.mcp.arguments.directory}", slug="${remix.deploy.mcp.arguments.slug}", remix_from="${remix.deploy.mcp.arguments.remix_from}")`,
+      'Workspace app entry:',
+      JSON.stringify(remix.deploy.workspace, null, 2),
+    ].filter((line): line is string => line !== null);
+
+    return { content: [{ type: 'text', text: lines.join('\n') }] };
+  } catch (err) {
+    return {
+      content: [{ type: 'text', text: `Remix lookup failed: ${(err as Error).message}` }],
+      isError: true,
+    };
+  }
+}
+
 async function handleStream(args: { deploy_id: string }) {
   // Replay-mode stream — no delay because Claude Code reads the full
   // tool output at once.
@@ -440,13 +493,14 @@ async function handleStream(args: { deploy_id: string }) {
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
-async function handleDeploy(args: { directory: string; slug?: string; trial?: boolean }) {
+async function handleDeploy(args: { directory: string; slug?: string; trial?: boolean; remix_from?: string }) {
   // All deploy logic now in @shippie/core. MCP just adapts the result to
   // the MCP tool-response shape. CLI will use the same core call.
   const result = await client.deploy({
     directory: args.directory,
     slug: args.slug,
     trial: args.trial,
+    remixFrom: args.remix_from,
   });
 
   if (!result.ok) {
@@ -506,6 +560,7 @@ async function handleDeploy(args: { directory: string; slug?: string; trial?: bo
   if (result.totalBytes != null) lines.push(`Bytes:     ${result.totalBytes}`);
   if (result.expiresAt)       lines.push(`Expires:   ${result.expiresAt} (sign in to claim)`);
   if (result.claimUrl)        lines.push(`Claim:     ${client.apiUrl}${result.claimUrl}`);
+  if (args.remix_from)        lines.push(`Remix of:  ${args.remix_from}`);
   lines.push('');
   if (result.deployId) {
     lines.push('Deploy intelligence:');
@@ -738,7 +793,8 @@ async function handleDeployWorkspace(args: { path?: string; trial?: boolean; dry
       lines.push('Apps:');
       for (const app of result.apps) {
         const role = app.role ? ` (${app.role})` : '';
-        lines.push(`- ${app.slug}${role}: ${app.absoluteDirectory}`);
+        const remix = app.remixFrom ? ` remixing ${app.remixFrom}` : '';
+        lines.push(`- ${app.slug}${role}: ${app.absoluteDirectory}${remix}`);
       }
       return { content: [{ type: 'text', text: lines.join('\n') }] };
     }
@@ -749,6 +805,7 @@ async function handleDeployWorkspace(args: { path?: string; trial?: boolean; dry
         lines.push(`- ${app.slug}${role}: live`);
         if (app.result.liveUrl) lines.push(`  ${app.result.liveUrl}`);
         if (app.result.deployId) lines.push(`  deploy: ${app.result.deployId}`);
+        if (app.remixFrom) lines.push(`  remix of: ${app.remixFrom}`);
       } else {
         lines.push(`- ${app.slug}${role}: failed`);
         lines.push(`  ${app.result?.error ?? 'unknown_error'}`);

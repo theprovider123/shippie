@@ -9,6 +9,7 @@ export interface WorkspaceApp {
   directory: string;
   role?: string;
   description?: string;
+  remixFrom?: string;
 }
 
 export interface ShippieWorkspace {
@@ -97,6 +98,7 @@ export async function deployWorkspace(
       directory: app.absoluteDirectory,
       slug: app.slug,
       trial: opts.trial,
+      remixFrom: app.remixFrom,
     });
     if (!result.ok) ok = false;
     apps.push({ ...app, result });
@@ -171,6 +173,12 @@ function normalizeWorkspaceApp(
     directory,
     absoluteDirectory,
     role: typeof obj.role === 'string' && obj.role.trim() ? obj.role.trim() : undefined,
+    remixFrom:
+      typeof obj.remixFrom === 'string' && obj.remixFrom.trim()
+        ? obj.remixFrom.trim()
+        : typeof obj.remix_from === 'string' && obj.remix_from.trim()
+          ? obj.remix_from.trim()
+          : undefined,
     description:
       typeof obj.description === 'string' && obj.description.trim()
         ? obj.description.trim()

@@ -26,9 +26,11 @@ import {
   runPrivacyAudit,
   computeSecurityScore,
   computePrivacyGrade,
+  extractRemixSpec,
   localize,
   type SecurityScanReport,
   type LocalizeTransform,
+  type RemixSpec,
 } from '@shippie/analyse';
 import { buildShippiePackage, createShippiePackageArchive } from '@shippie/app-package-builder';
 import {
@@ -86,6 +88,7 @@ export interface DeployStaticInput {
   makerId: string;
   zipBuffer: Uint8Array;
   shippieJson?: ShippieJsonLite;
+  lineage?: DeployLineageOverride;
   reservedSlugs: ReadonlySet<string>;
   /** Bindings — pulled from event.platform.env in the route. */
   db: D1Database;
@@ -93,6 +96,15 @@ export interface DeployStaticInput {
   kv: KVNamespace;
   /** PUBLIC_ORIGIN env var, e.g. "https://shippie.app". Drives live-URL shape. */
   publicOrigin: string;
+}
+
+export interface DeployLineageOverride {
+  templateId?: string | null;
+  parentAppId?: string | null;
+  parentVersion?: string | null;
+  sourceRepo?: string | null;
+  license?: string | null;
+  remixAllowed?: boolean;
 }
 
 export interface DeployStaticResult {
@@ -120,6 +132,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   }
   let files = extracted.files;
   let totalBytes = extracted.totalBytes;
+  const remixSpec = extractRemixSpec({ files });
   emitter.emit({
     type: 'deploy_received',
     slug: input.slug,
@@ -242,6 +255,19 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     return failReport(input.slug, `Slug '${input.slug}' is already claimed by another maker.`);
   }
 
+  const [existingLineage] = await db
+    .select()
+    .from(schema.appLineage)
+    .where(eq(schema.appLineage.appId, appRow.id))
+    .limit(1);
+  const resolvedLineage = resolveLineageValues(
+    manifest,
+    input.lineage,
+    existingLineage ?? null,
+    appRow.githubRepo,
+  );
+  const sourceMetadata = sourceMetadataFromLineage(resolvedLineage);
+
   // Determine next version
   const latest = await db
     .select({ version: schema.deploys.version })
@@ -350,12 +376,12 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     });
 
   const lineageValues = {
-    templateId: manifest.template_id ?? null,
-    parentAppId: manifest.parent_app_id ?? null,
-    parentVersion: manifest.parent_version ?? null,
-    sourceRepo: manifest.source_repo ?? appRow.githubRepo ?? null,
-    license: manifest.license ?? null,
-    remixAllowed: manifest.remix_allowed ?? false,
+    templateId: resolvedLineage.templateId,
+    parentAppId: resolvedLineage.parentAppId,
+    parentVersion: resolvedLineage.parentVersion,
+    sourceRepo: resolvedLineage.sourceRepo,
+    license: resolvedLineage.license,
+    remixAllowed: resolvedLineage.remixAllowed,
     updatedAt: completedAt,
   };
   await db
@@ -460,6 +486,8 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       routing,
       kindProfile: kindProfileForReport,
       manifest,
+      remixSpec,
+      sourceMetadata,
       durationMs: Date.now() - startedAt,
       totalBytes: upload.totalBytes,
       preflight,
@@ -740,6 +768,8 @@ interface WriteDeployReportInput {
   routing: RouteModeDecision;
   kindProfile: ReturnType<typeof profileFromDetection> | null;
   manifest: ShippieJsonLite;
+  remixSpec: RemixSpec;
+  sourceMetadata: SourceMetadata;
   durationMs: number;
   totalBytes: number;
   preflight: PreflightReport;
@@ -753,6 +783,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   report.files = input.files.size;
   report.totalBytes = input.totalBytes;
   report.routing = input.routing;
+  report.remixSpec = input.remixSpec;
 
   const steps: DeployStep[] = [];
   steps.push({
@@ -963,7 +994,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
         },
       },
       permissions: packagePermissions,
-      source: sourceMetadataFromManifest(input.manifest),
+      source: input.sourceMetadata,
       trustReport: packageTrustReport,
       deployReport: report,
       migrations: input.manifest.migrations ?? { operations: [] },
@@ -1198,14 +1229,39 @@ export function containerEligibilityFromDeployReport(
   return 'standalone_only';
 }
 
-function sourceMetadataFromManifest(manifest: ShippieJsonLite): SourceMetadata {
-  const license = manifest.license ?? 'UNLICENSED';
-  const sourceAvailable = Boolean(manifest.source_repo);
-  const remixAllowed = Boolean(manifest.remix_allowed && sourceAvailable && manifest.license);
+interface ResolvedLineageValues {
+  templateId: string | null;
+  parentAppId: string | null;
+  parentVersion: string | null;
+  sourceRepo: string | null;
+  license: string | null;
+  remixAllowed: boolean;
+}
+
+function resolveLineageValues(
+  manifest: ShippieJsonLite,
+  override: DeployLineageOverride | undefined,
+  existing: ResolvedLineageValues | null,
+  githubRepo: string | null,
+): ResolvedLineageValues {
+  return {
+    templateId: manifest.template_id ?? override?.templateId ?? existing?.templateId ?? null,
+    parentAppId: manifest.parent_app_id ?? override?.parentAppId ?? existing?.parentAppId ?? null,
+    parentVersion: manifest.parent_version ?? override?.parentVersion ?? existing?.parentVersion ?? null,
+    sourceRepo: manifest.source_repo ?? override?.sourceRepo ?? existing?.sourceRepo ?? githubRepo ?? null,
+    license: manifest.license ?? override?.license ?? existing?.license ?? null,
+    remixAllowed: manifest.remix_allowed ?? override?.remixAllowed ?? existing?.remixAllowed ?? false,
+  };
+}
+
+function sourceMetadataFromLineage(lineage: ResolvedLineageValues): SourceMetadata {
+  const license = lineage.license ?? 'UNLICENSED';
+  const sourceAvailable = Boolean(lineage.sourceRepo);
+  const remixAllowed = Boolean(lineage.remixAllowed && sourceAvailable && lineage.license);
 
   return {
     license,
-    repo: manifest.source_repo,
+    repo: lineage.sourceRepo ?? undefined,
     sourceAvailable,
     remix: {
       allowed: remixAllowed,
@@ -1213,9 +1269,9 @@ function sourceMetadataFromManifest(manifest: ShippieJsonLite): SourceMetadata {
       attributionRequired: true,
     },
     lineage: {
-      template: manifest.template_id,
-      parentAppId: manifest.parent_app_id,
-      forkedFromVersion: manifest.parent_version,
+      template: lineage.templateId ?? undefined,
+      parentAppId: lineage.parentAppId,
+      forkedFromVersion: lineage.parentVersion,
     },
   };
 }

@@ -30,10 +30,14 @@
 
   interface Props {
     trialMode?: boolean;
+    initialSlug?: string;
+    remixFrom?: string | null;
   }
 
-  let { trialMode = false }: Props = $props();
-  let slug = $state('recipes');
+  let { trialMode = false, initialSlug = 'recipes', remixFrom = null }: Props = $props();
+  // svelte-ignore state_referenced_locally -- the slug field should seed once, then stay user-editable.
+  const startingSlug = initialSlug;
+  let slug = $state(startingSlug);
   let file = $state<File | null>(null);
   let result = $state<Result>({ kind: 'idle' });
   let visibility = $state<'public' | 'unlisted' | 'private'>('public');
@@ -55,6 +59,7 @@
 
     const fd = new FormData();
     if (!trialMode) fd.append('slug', slug);
+    if (remixFrom) fd.append('remix_from', remixFrom);
     fd.append('zip', file);
 
     try {

@@ -14,6 +14,7 @@ import { deployStatic } from '$server/deploy/pipeline';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
 import { TRIAL_MAKER_ID, ensureTrialMakerSeeded } from '$server/deploy/trial-maker';
 import { createTrialClaimReceipt } from '$server/deploy/trial-claim';
+import { remixEligibilityForSlug } from '$server/remix/eligibility';
 
 const TRIAL_MAX_ZIP_BYTES = 50 * 1024 * 1024; // 50MB
 const TRIAL_PER_IP_LIMIT = 3;
@@ -53,6 +54,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const zip = form.get('zip');
+  const remixFrom = String(form.get('remix_from') ?? '').trim();
   if (!(zip instanceof File)) {
     return json({ error: 'missing_zip' }, { status: 400 });
   }
@@ -69,6 +71,11 @@ export const POST: RequestHandler = async (event) => {
 
   const slug = generateTrialSlug();
   const reservedSlugs = await loadReservedSlugs(env.DB);
+  const remix = remixFrom ? await remixEligibilityForSlug(db, remixFrom) : null;
+  if (remix?.ok === false) {
+    return json({ error: 'remix_unavailable', reason: remix.reason }, { status: 400 });
+  }
+  const remixApp = remix?.ok ? remix.app : null;
 
   // Self-heal the synthetic trial-maker user row so the apps.maker_id FK
   // is satisfied even on D1 instances where 0005_trial_maker_seed hasn't
@@ -89,6 +96,14 @@ export const POST: RequestHandler = async (event) => {
       slug,
       makerId: TRIAL_MAKER_ID,
       zipBuffer,
+      lineage: remixApp
+        ? {
+            parentAppId: remixApp.id,
+            parentVersion: remixApp.latestVersion,
+            license: remixApp.license,
+            remixAllowed: false,
+          }
+        : undefined,
       reservedSlugs,
       db: env.DB,
       r2: env.APPS,

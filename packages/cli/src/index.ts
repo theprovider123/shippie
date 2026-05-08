@@ -10,6 +10,7 @@
  *     --trial            Post to /api/deploy/trial — no signup, 24h TTL
  *     --watch            Replay the deploy intelligence stream after upload
  *   init                 Scaffold a shippie.json
+ *   remix <slug>         Show source, license, fork URL, and redeploy commands
  *   status <deploy-id>   Check deploy status (use --watch to follow)
  *
  * MIT license.
@@ -23,6 +24,7 @@ import { graduateScaffold } from './commands/graduate.js';
 import { initCommand } from './commands/init.js';
 import { loginCommand } from './commands/login.js';
 import { rollbackCommand } from './commands/rollback.js';
+import { remixCommand } from './commands/remix.js';
 import { statusCommand } from './commands/status.js';
 import { whoamiCommand } from './commands/whoami.js';
 import { wrapCommand } from './commands/wrap.js';
@@ -111,6 +113,13 @@ program
   .action(templatesCommand);
 
 program
+  .command('remix <slug>')
+  .description('Show source, license, fork URL, and redeploy commands for a remixable app')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(remixCommand);
+
+program
   .command('workspace [path]')
   .description('Deploy every app in a shippie-workspace.json file')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
@@ -123,6 +132,7 @@ program
   .command('deploy [dir]')
   .description('Deploy a directory to Shippie')
   .option('-s, --slug <slug>', 'App slug (defaults to directory name)')
+  .option('--remix <slug>', 'Deploy as a remix of an existing public app slug')
   .option('--skip-build', 'Skip install + build, deploy as-is')
   .option('--trial', 'Deploy as a 24-hour no-signup trial (no auth required)')
   .option('-w, --watch', 'Replay the deploy intelligence stream after upload')

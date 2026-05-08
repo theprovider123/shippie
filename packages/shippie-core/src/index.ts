@@ -11,6 +11,7 @@
  *   - client.auth.getToken()
  *   - client.deploy({ directory, slug?, trial? })
  *   - client.status(deployId)
+ *   - client.remix(slug)
  *   - client.appsList()
  *   - client.logs({ slug?, limit? })
  *   - client.config.get/set/reset(slug)
@@ -20,6 +21,7 @@
 export * from './client.ts';
 export * from './deploy.ts';
 export * from './status.ts';
+export * from './remix.ts';
 export * from './apps.ts';
 export * from './logs.ts';
 export * from './config.ts';

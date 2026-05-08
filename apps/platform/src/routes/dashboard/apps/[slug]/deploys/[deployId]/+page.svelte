@@ -8,6 +8,7 @@
   const frameworkEvent = $derived(events.find((event) => event.type === 'framework_detected'));
   const routeEvent = $derived(events.find((event) => event.type === 'route_mode_detected'));
   const assetFixes = $derived(events.filter((event) => event.type === 'asset_fixed'));
+  const remixSpec = $derived(report?.remixSpec);
 
   function gradeColor(grade: string | undefined): string {
     if (!grade) return 'var(--text-light)';
@@ -228,6 +229,47 @@
         </div>
       {/if}
     </section>
+
+    {#if remixSpec}
+      <section class="card">
+        <div class="section-head">
+          <h3>Remix plan</h3>
+          <span class="pill">intent capture</span>
+        </div>
+        <div class="truth-grid">
+          <div>
+            <span class="label">Routes</span>
+            <strong>{remixSpec.routes.length}</strong>
+            <p>{remixSpec.routes.slice(0, 3).map((route) => route.path).join(', ') || 'Needs maker notes'}</p>
+          </div>
+          <div>
+            <span class="label">Data</span>
+            <strong>{remixSpec.schema.length}</strong>
+            <p>{remixSpec.schema.slice(0, 3).map((table) => table.name).join(', ') || 'No entities detected'}</p>
+          </div>
+          <div>
+            <span class="label">Forms</span>
+            <strong>{remixSpec.forms.length}</strong>
+            <p>{remixSpec.forms.slice(0, 2).map((form) => form.inputs.join(', ')).join(' · ') || 'No forms detected'}</p>
+          </div>
+          <div>
+            <span class="label">APIs</span>
+            <strong>{remixSpec.externalApis.length}</strong>
+            <p>{remixSpec.externalApis.slice(0, 3).map((api) => api.host).join(', ') || 'No external APIs'}</p>
+          </div>
+        </div>
+        {#if remixSpec.detectedStack.length}
+          <p class="caveat">Stack hints: {remixSpec.detectedStack.join(', ')}</p>
+        {/if}
+        {#if remixSpec.openQuestions.length}
+          <ul class="reasons route-reasons">
+            {#each remixSpec.openQuestions.slice(0, 3) as question}
+              <li>{question}</li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+    {/if}
 
     {#if report.security.score?.deductions.length}
       <section class="card">

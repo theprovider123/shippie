@@ -13,6 +13,8 @@ import type { RequestHandler } from './$types';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { deployStatic } from '$server/deploy/pipeline';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
+import { getDrizzleClient } from '$server/db/client';
+import { remixEligibilityForSlug } from '$server/remix/eligibility';
 
 export const POST: RequestHandler = async (event) => {
   const env = event.platform?.env;
@@ -32,6 +34,7 @@ export const POST: RequestHandler = async (event) => {
 
   const slug = String(form.get('slug') ?? '').trim();
   const zip = form.get('zip');
+  const remixFrom = String(form.get('remix_from') ?? '').trim();
 
   if (!slug) return json({ error: 'missing slug' }, { status: 400 });
   if (!(zip instanceof File)) {
@@ -42,12 +45,27 @@ export const POST: RequestHandler = async (event) => {
   const zipBuffer = new Uint8Array(arrayBuffer);
 
   const reservedSlugs = await loadReservedSlugs(env.DB);
+  const remix = remixFrom
+    ? await remixEligibilityForSlug(getDrizzleClient(env.DB), remixFrom)
+    : null;
+  if (remix?.ok === false) {
+    return json({ error: 'remix_unavailable', reason: remix.reason }, { status: 400 });
+  }
+  const remixApp = remix?.ok ? remix.app : null;
 
   try {
     const result = await deployStatic({
       slug,
       makerId: who.userId,
       zipBuffer,
+      lineage: remixApp
+        ? {
+            parentAppId: remixApp.id,
+            parentVersion: remixApp.latestVersion,
+            license: remixApp.license,
+            remixAllowed: false,
+          }
+        : undefined,
       reservedSlugs,
       db: env.DB,
       r2: env.APPS,
