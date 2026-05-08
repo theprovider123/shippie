@@ -1,0 +1,11 @@
+{
+  "name": "Tab",
+  "short_name": "Tab",
+  "description": "Split a bill across nearby phones. No accounts. The room code lives only on these phones.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FBF5E8",
+  "theme_color": "#E8C547",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

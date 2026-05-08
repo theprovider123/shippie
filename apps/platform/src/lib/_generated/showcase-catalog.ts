@@ -32,7 +32,9 @@ export const SHOWCASE_SLUGS = [
   "sip-log",
   "story-studio",
   "symptom-diary",
+  "tab",
   "therapy-notes",
+  "voice-memo",
   "whiteboard"
 ] as const;
 

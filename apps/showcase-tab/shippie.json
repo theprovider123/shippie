@@ -1,0 +1,14 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Tab",
+  "slug": "tab",
+  "description": "Split a bill across nearby phones. No accounts. The room code lives only on these phones.",
+  "icon": "/icon.svg",
+  "theme_color": "#E8C547",
+  "background_color": "#FBF5E8",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["tab-item-added", "tab-settled"]
+  }
+}
