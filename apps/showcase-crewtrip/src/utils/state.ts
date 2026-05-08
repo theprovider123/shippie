@@ -1,4 +1,5 @@
 import type {
+  AwardEffect,
   CrewtripState,
   PollOption,
   Memory,
@@ -22,6 +23,9 @@ import type {
   LocalBackup,
   CrewPulse,
   SoundtrackSlot,
+  Tournament,
+  TournamentEvent,
+  TournamentMatch,
 } from '../types';
 import { newId, newEventCode, timeNow, timeRank } from './ids';
 import { paletteFor } from '../data/themes';
@@ -53,7 +57,7 @@ export const initialState: CrewtripState = {
   eventName: 'Crewtrip',
   location: 'Trip HQ',
   eventCode: newEventCode(),
-  description: 'The trip is what you make of it. Plans, votes, playlists, challenges, the moments worth keeping.',
+  description: 'The trip is what you make of it. Plans, votes, playlists, games, the moments worth keeping.',
   hostNote: 'Set the vibe. Invite the crew. The day is whatever you make of it together.',
   energy: 64,
   activePlayerId: 'host',
@@ -115,9 +119,12 @@ export const initialState: CrewtripState = {
     { id: 'pulse-1', playerId: 'crew-1', playerName: 'Alex', groupId: 'beach', kind: 'hype', label: 'Hype', at: '10:16' },
     { id: 'pulse-2', playerId: 'crew-2', playerName: 'Sam', groupId: 'food', kind: 'hungry', label: 'Hungry', at: '10:20' },
   ],
-    surprises: [
+  surprises: [
     { id: 'drop-1', title: 'First secret mission', message: 'Find the best proof that the crew has officially arrived.', unlockType: 'first-photo', unlockValue: 'first photo', createdAt: '10:00' },
   ],
+  tournaments: [],
+  tournamentEvents: [],
+  tournamentMatches: [],
   wrapUp: {
     published: false,
     title: 'Crewtrip wrapped',
@@ -125,12 +132,14 @@ export const initialState: CrewtripState = {
     includeGames: true,
     includePolls: true,
     includeTimeline: true,
+    assignedAwards: [],
   },
     features: {
     crew: true,
     plan: true,
     polls: true,
     games: true,
+    tournaments: false,
     requests: true,
     memories: true,
     chat: false,
@@ -151,7 +160,7 @@ export function createFreshCrewtripState(options: { eventCode?: string; language
     eventName: 'Crewtrip',
     location: 'Trip HQ',
     eventCode,
-    description: 'A shared trip hub for plans, votes, challenges, playlists, requests, and memories.',
+    description: 'A shared trip hub for plans, votes, games, playlists, requests, and memories.',
     hostNote: 'Set the vibe, invite the crew, then let everyone help shape the day.',
     energy: 50,
     language: options.language ?? initialState.language,
@@ -170,6 +179,9 @@ export function createFreshCrewtripState(options: { eventCode?: string; language
     pulses: [],
     surprises: [],
     soundtracks: [],
+    tournaments: [],
+    tournamentEvents: [],
+    tournamentMatches: [],
     wrapUp: { ...initialState.wrapUp, published: false },
     features: { ...initialState.features },
   };
@@ -201,7 +213,22 @@ export function normalizeCrewtripState(state: CrewtripState): CrewtripState {
     pulses: state.pulses ?? initialState.pulses,
     surprises: state.surprises ?? initialState.surprises,
     soundtracks: state.soundtracks ?? initialState.soundtracks,
-    wrapUp: { ...initialState.wrapUp, ...(state.wrapUp ?? {}) },
+    tournaments: (state.tournaments ?? []).map((tournament) => ({
+      ...tournament,
+      status: tournament.status ?? 'setup',
+      leaderboardView: tournament.leaderboardView ?? 'points',
+    })),
+    tournamentEvents: (state.tournamentEvents ?? []).map((event) => ({
+      ...event,
+      status: ((event.status as string) === 'upcoming' ? 'setup' : event.status ?? 'setup') as TournamentEvent['status'],
+      scoringMode: event.scoringMode ?? 'placement',
+    })),
+    tournamentMatches: (state.tournamentMatches ?? []).map((match) => ({
+      ...match,
+      status: match.status ?? 'pending',
+      readyParticipantIds: match.readyParticipantIds ?? [],
+    })),
+    wrapUp: { ...initialState.wrapUp, ...(state.wrapUp ?? {}), assignedAwards: (state.wrapUp?.assignedAwards ?? []).map(normalizeAssignedAward) },
     language: state.language ?? initialState.language,
     theme: state.theme ?? initialState.theme,
     stops: state.stops.map((stop, index) => ({ ...stop, dayId: stop.dayId ?? days[Math.min(index, days.length - 1)]?.id ?? days[0]!.id })),
@@ -231,6 +258,43 @@ function mergeById<T extends { id: string }>(current: T[], remote: T[], remoteWi
   for (const item of first) map.set(item.id, item);
   for (const item of second) map.set(item.id, { ...(map.get(item.id) ?? item), ...item });
   return Array.from(map.values());
+}
+
+function mergeByUpdatedAtField<T extends { id: string; updatedAt: number; updatedBy: string }>(current: T[], remote: T[]): T[] {
+  const map = new Map<string, T>();
+  for (const item of current) map.set(item.id, item);
+  for (const item of remote) {
+    const existing = map.get(item.id);
+    if (!existing) {
+      map.set(item.id, item);
+      continue;
+    }
+    const incomingWins = item.updatedAt !== existing.updatedAt
+      ? item.updatedAt > existing.updatedAt
+      : item.updatedBy > existing.updatedBy;
+    if (incomingWins) map.set(item.id, item);
+  }
+  return Array.from(map.values());
+}
+
+function sortTournaments(items: Tournament[]): Tournament[] {
+  return [...items].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+}
+
+function sortTournamentEvents(items: TournamentEvent[]): TournamentEvent[] {
+  return [...items].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+}
+
+function sortTournamentMatches(items: TournamentMatch[]): TournamentMatch[] {
+  return [...items].sort((a, b) => a.roundIndex - b.roundIndex || a.index - b.index || a.id.localeCompare(b.id));
+}
+
+function normalizeAssignedAward(award: WrapUpSettings['assignedAwards'][number]): WrapUpSettings['assignedAwards'][number] {
+  return {
+    ...award,
+    trophy: award.trophy ?? '🏆',
+    effect: award.effect ?? 'gold',
+  };
 }
 
 function mergePollOptions(current: PollOption[], remote: PollOption[], remoteWins: boolean): PollOption[] {
@@ -314,6 +378,9 @@ export function mergeCrewtripState(remoteRaw: CrewtripState, currentRaw: Crewtri
     pulses: sortRecent(mergeById(current.pulses ?? [], remote.pulses ?? [], remoteWins)).slice(0, 36),
     surprises: sortRecent(mergeById(current.surprises ?? [], remote.surprises ?? [], remoteWins)),
     soundtracks: mergeById(current.soundtracks ?? [], remote.soundtracks ?? [], remoteWins),
+    tournaments: sortTournaments(mergeByUpdatedAtField(current.tournaments ?? [], remote.tournaments ?? [])),
+    tournamentEvents: sortTournamentEvents(mergeByUpdatedAtField(current.tournamentEvents ?? [], remote.tournamentEvents ?? [])),
+    tournamentMatches: sortTournamentMatches(mergeByUpdatedAtField(current.tournamentMatches ?? [], remote.tournamentMatches ?? [])),
     features: { ...current.features, ...remote.features },
     wrapUp: remoteWins ? { ...current.wrapUp, ...remote.wrapUp } : { ...remote.wrapUp, ...current.wrapUp },
     updatedAt: Math.max(current.updatedAt, remote.updatedAt),
@@ -429,11 +496,41 @@ function newestRank(items: Array<{ at?: string }>): number {
   return Number.isFinite(newest) ? Math.abs(now - newest) : Number.MAX_SAFE_INTEGER;
 }
 
+function formatClockMs(value?: number): string {
+  if (!value) return 'TBC';
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function participantLabel(id: string, state: CrewtripState, groups: CrewGroup[]): string {
+  if (id === '__bye__' || id === '__score_entry__') return 'Bye';
+  return state.players.find((player) => player.id === id)?.name
+    ?? groups.find((group) => group.id === id)?.name
+    ?? id;
+}
+
+function matchLabel(match: TournamentMatch, state: CrewtripState, groups: CrewGroup[]): string {
+  return `${participantLabel(match.sideA.participantId, state, groups)} vs ${participantLabel(match.sideB.participantId, state, groups)}`;
+}
+
 export function buildLiveActivities(state: CrewtripState, sync: SyncState, groups: CrewGroup[]) {
+  const now = Date.now();
+  const tournamentActivities = (state.tournamentEvents ?? []).flatMap((event) => {
+    const items: Array<{ id: string; text: string; at: string; kind: 'tournament' }> = [];
+    const label = `${event.emoji ? `${event.emoji} ` : ''}${event.name}`;
+    const minutesUntil = event.scheduledAt ? Math.round((event.scheduledAt - now) / 60000) : null;
+    if (minutesUntil !== null && minutesUntil >= 0 && minutesUntil <= 20 && event.status !== 'done') {
+      items.push({ id: `tournament-soon-${event.id}`, text: `${label} starts ${minutesUntil <= 1 ? 'now' : `in ${minutesUntil} min`}`, at: formatClockMs(event.scheduledAt), kind: 'tournament' });
+    }
+    const live = (state.tournamentMatches ?? []).find((match) => match.eventId === event.id && match.status === 'live');
+    if (live) items.push({ id: `tournament-live-${live.id}`, text: `${label}: ${matchLabel(live, state, groups)}`, at: live.startedAt ? formatClockMs(live.startedAt) : 'Now', kind: 'tournament' });
+    const ready = (state.tournamentMatches ?? []).find((match) => match.eventId === event.id && match.status === 'pending' && (match.readyParticipantIds?.length ?? 0) > 0);
+    if (ready) items.push({ id: `tournament-ready-${ready.id}`, text: `${label}: ${matchLabel(ready, state, groups)} is getting ready`, at: 'Now', kind: 'tournament' });
+    return items;
+  });
   const activities = [
     {
       id: 'presence',
-      text: sync.status === 'open' ? `${sync.peers + 1} crew live` : 'Local session',
+      text: sync.status === 'open' ? `${sync.peers + 1} crew live` : `${state.eventName || 'Crewtrip'} ready`,
       at: 'Now',
       kind: 'presence' as const,
     },
@@ -446,6 +543,7 @@ export function buildLiveActivities(state: CrewtripState, sync: SyncState, group
     ...state.broadcasts.slice(0, 5).map((broadcast) => ({ id: `broadcast-${broadcast.id}`, text: broadcast.text, at: broadcast.at, kind: 'host' as const })),
     ...state.memories.slice(0, 4).map((memory) => ({ id: `memory-${memory.id}`, text: `${memory.author} added ${memory.kind === 'text' ? 'a memory' : memory.kind}`, at: memory.at ?? 'Now', kind: 'memory' as const })),
     ...state.challenges.flatMap((challenge) => (challenge.submissions ?? []).slice(0, 2).map((submission) => ({ id: `entry-${challenge.id}-${submission.id}`, text: `${submission.playerName} submitted proof`, at: submission.at, kind: 'game' as const }))),
+    ...tournamentActivities,
     ...state.surprises.filter((drop) => isSurpriseUnlocked(drop, state)).slice(0, 2).map((drop) => ({ id: `drop-${drop.id}`, text: `Surprise unlocked: ${drop.title}`, at: drop.revealedAt ?? drop.createdAt, kind: 'surprise' as const })),
     ...(state.soundtracks ?? []).slice(0, 2).map((slot) => ({ id: `soundtrack-${slot.id}`, text: `${slot.dj}: ${slot.title}`, at: slot.time, kind: 'soundtrack' as const })),
   ];
@@ -529,7 +627,7 @@ export function buildHostPrompts(state: CrewtripState, sync: SyncState, wrapUp: 
   if (features.polls && state.players.length > 3 && !state.polls.some((poll) => poll.open)) prompts.push(`${state.players.length} people joined. Start a quick vote.`);
   if (features.memories && (state.memories.length === 0 || newestRank(state.memories) > 180)) prompts.push('No fresh memory yet. Prompt a quote, photo, or award.');
   if (features.requests && state.requests.some((request) => request.status === 'new')) prompts.push('New crew requests are waiting to be shared back.');
-  if (features.games && state.challenges.length && !state.challenges.some((challenge) => challenge.submissions?.length)) prompts.push('Challenges are live but need proof. Boost the first one.');
+  if (features.games && state.challenges.length && !state.challenges.some((challenge) => challenge.submissions?.length)) prompts.push('Games are live but need proof. Boost the first one.');
   if (features.soundtrack && !state.soundtracks?.length) prompts.push('Add a playlist or DJ set so the night has a soundtrack.');
   if (features.surprises && sync.status === 'open' && sync.peers > 2) prompts.push(`${sync.peers + 1} devices are live. Drop something while everyone is here.`);
   if (features.wrap && !wrapUp.published && state.memories.length >= 3) prompts.push('The trip has enough material for a wrap ceremony.');
@@ -562,17 +660,30 @@ export function buildGameHighlights(challenges: Challenge[], players: Player[], 
   });
 }
 
-export function buildCrewAwards(players: Player[], memories: Memory[], challenges: Challenge[], groups: CrewGroup[], features: CrewtripState['features'] = initialState.features): CrewAward[] {
+function automaticAwardMark(title: string): { trophy: string; effect: AwardEffect } {
+  if (title === 'Top scorer') return { trophy: '🏆', effect: 'gold' };
+  if (title === 'Memory maker') return { trophy: '📸', effect: 'camera' };
+  if (title === 'Cheer magnet') return { trophy: '📣', effect: 'heart' };
+  if (title === 'Game finisher') return { trophy: '⭐', effect: 'star' };
+  return { trophy: '✨', effect: 'spark' };
+}
+
+export function buildCrewAwards(players: Player[], memories: Memory[], challenges: Challenge[], groups: CrewGroup[], features: CrewtripState['features'] = initialState.features, assignedAwards: WrapUpSettings['assignedAwards'] = []): CrewAward[] {
   const topScore = Math.max(...players.map((player) => player.score), 0);
+  const assignedByPlayer = new Map(assignedAwards.map((award) => [award.playerId, award]));
   const awards = players.map((player) => {
     const groupName = groups.find((group) => group.id === player.groupId)?.name ?? player.team;
     const memoryCount = memories.filter((memory) => memory.author === player.name).length;
     const gameEntries = challenges.flatMap((challenge) => challenge.submissions ?? []).filter((submission) => submission.playerId === player.id);
     const cheers = gameEntries.reduce((sum, submission) => sum + submission.cheers.length, 0);
     const completed = challenges.filter((challenge) => challenge.doneBy.includes(player.id)).length;
+    const assigned = assignedByPlayer.get(player.id);
     let title = 'Trip original';
     let detail = 'Checked in and became part of the story.';
-    if (features.scores && player.score === topScore && topScore > 0) {
+    if (assigned?.title.trim()) {
+      title = assigned.title.trim();
+      detail = assigned.detail.trim() || 'Host-assigned crew award.';
+    } else if (features.scores && player.score === topScore && topScore > 0) {
       title = 'Top scorer';
       detail = `${player.score} points across the trip.`;
     } else if (features.memories && memoryCount > 0) {
@@ -580,11 +691,14 @@ export function buildCrewAwards(players: Player[], memories: Memory[], challenge
       detail = `${memoryCount} saved moment${memoryCount === 1 ? '' : 's'} for the crew.`;
     } else if (features.games && cheers > 0) {
       title = 'Cheer magnet';
-      detail = `${cheers} cheer${cheers === 1 ? '' : 's'} on challenge proof.`;
+      detail = `${cheers} cheer${cheers === 1 ? '' : 's'} on game proof.`;
     } else if (features.games && completed > 0) {
-      title = 'Challenge finisher';
-      detail = `${completed} completed challenge${completed === 1 ? '' : 's'}.`;
+      title = 'Game finisher';
+      detail = `${completed} completed game${completed === 1 ? '' : 's'}.`;
     }
+    const mark = assigned?.title.trim()
+      ? { trophy: assigned.trophy ?? '🏆', effect: assigned.effect ?? 'gold' }
+      : automaticAwardMark(title);
     return {
       playerId: player.id,
       name: player.name,
@@ -593,6 +707,8 @@ export function buildCrewAwards(players: Player[], memories: Memory[], challenge
       title,
       detail,
       score: player.score,
+      trophy: mark.trophy,
+      effect: mark.effect,
     };
   });
   return features.scores
@@ -615,7 +731,7 @@ export function buildWrapHighlights(state: CrewtripState, awards: CrewAward[], g
     items: [
       topAward ? `Top crew: ${topAward.name}` : '',
       soundtrack ? `Soundtrack: ${soundtrack.title}` : '',
-      topGame ? `Challenge moment: ${topGame.detail}` : '',
+      topGame ? `Game moment: ${topGame.detail}` : '',
       funniestRequest ? `Request of the trip: ${funniestRequest}` : '',
       features.polls && state.polls.length ? `${state.polls.length} crew vote${state.polls.length === 1 ? '' : 's'}` : '',
     ].filter(Boolean),
@@ -675,6 +791,48 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       detail: `${slot.dj}${slot.note ? ` / ${slot.note}` : ''}`,
       status: slot.status,
     }));
+  const tournamentItems: TripTimelineItem[] = (state.tournamentEvents ?? [])
+    .filter(() => state.features?.tournaments || role === 'host')
+    .filter((event) => (event.unlockDayId ?? activeDayId) === activeDayId)
+    .map((event) => {
+      const tournament = state.tournaments.find((item) => item.id === event.tournamentId);
+      const eventMatches = (state.tournamentMatches ?? [])
+        .filter((match) => match.eventId === event.id)
+        .sort((a, b) => a.roundIndex - b.roundIndex || a.index - b.index);
+      const liveMatch = eventMatches.find((match) => match.status === 'live');
+      const readyMatch = eventMatches.find((match) => match.status === 'pending' && (match.readyParticipantIds?.length ?? 0) > 0);
+      const pendingMatch = eventMatches.find((match) => match.status === 'pending');
+      const focusMatch = liveMatch ?? readyMatch ?? pendingMatch;
+      const locked = tournament?.status === 'setup' || event.status === 'setup';
+      const minutesUntil = event.scheduledAt ? Math.round((event.scheduledAt - Date.now()) / 60000) : null;
+      const status = locked
+        ? 'locked'
+        : liveMatch
+          ? 'live'
+          : readyMatch
+            ? 'ready'
+            : minutesUntil !== null && minutesUntil >= 0 && minutesUntil <= 20
+              ? 'starts soon'
+              : event.scheduledAt && Date.now() < event.scheduledAt
+                ? 'scheduled'
+                : event.status;
+      const participantText = `${event.participantIds.length || 'No'} ${event.mode === 'team' ? 'teams' : 'players'}`;
+      const detail = focusMatch
+        ? `Next: ${matchLabel(focusMatch, state, groups)}`
+        : participantText;
+      return {
+        id: `tournament-${event.id}`,
+        time: formatClockMs(event.scheduledAt),
+        kind: 'tournament' as const,
+        title: `${event.emoji ? `${event.emoji} ` : ''}${event.name}`,
+        detail: `${detail} / ${event.scheduledAt ? `starts ${formatClockMs(event.scheduledAt)}` : 'unscheduled'}`,
+        status,
+        tab: 'games' as const,
+        tournamentEventId: event.id,
+        matchId: focusMatch?.id,
+        locked,
+      };
+    });
   const memoryItems: TripTimelineItem[] = state.memories
     .filter((memory) => (memory.dayId ?? days[0]?.id) === activeDayId)
     .slice(0, 4)
@@ -686,7 +844,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       detail: memory.author,
       tab: 'memories',
     }));
-  return [...stopItems, ...broadcastItems, ...pollItems, ...gameItems, ...soundtrackItems, ...memoryItems]
+  return [...stopItems, ...broadcastItems, ...pollItems, ...gameItems, ...tournamentItems, ...soundtrackItems, ...memoryItems]
     .sort((a, b) => timeRank(a.time) - timeRank(b.time));
 }
 

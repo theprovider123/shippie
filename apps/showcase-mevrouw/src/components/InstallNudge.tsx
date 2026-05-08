@@ -116,10 +116,11 @@ export function InstallNudge() {
   return (
     <div
       className={cn(
-        'fixed bottom-24 left-3 right-3 z-40',
+        'fixed left-3 right-3 z-40',
         'rounded-2xl border border-[var(--gold)] bg-[var(--card)] p-3',
         'flex flex-col gap-2 shadow-lg',
       )}
+      style={{ bottom: 'var(--dock-nudge-bottom, 6rem)' }}
       role="dialog"
       aria-label="Install Mevrouw"
     >

@@ -6,7 +6,7 @@ export const gamePresets: Record<GameKind, { label: string; title: string; point
   prediction: { label: 'Prediction', title: 'Predict the next crew decision', points: 5 },
   award: { label: 'Award', title: 'Nominate a crew award winner', points: 4 },
   mission: { label: 'Mission', title: 'Complete a secret crew mission', points: 8 },
-  challenge: { label: 'Challenge', title: 'Complete a host challenge', points: 8 },
+  challenge: { label: 'Open game', title: 'Complete a host game', points: 8 },
 };
 
 export const pulseActions: Array<{ kind: PulseKind; label: string; detail: string }> = [
@@ -20,7 +20,8 @@ export const pulseActions: Array<{ kind: PulseKind; label: string; detail: strin
 
 export const tabFeatureOptions: Array<{ key: FeatureKey; label: string; hint: string }> = [
   { key: 'crew', label: 'Crew tab', hint: 'Names, photos, and teams' },
-  { key: 'games', label: 'Challenges tab', hint: 'Crew challenges and proof' },
+  { key: 'games', label: 'Games tab', hint: 'Quick games, proof, and points' },
+  { key: 'tournaments', label: 'Tournament', hint: 'Brackets, group stages, and scoreboards' },
   { key: 'memories', label: 'Memories tab', hint: 'Text, photos, videos' },
 ];
 
@@ -52,6 +53,7 @@ export const featurePresets: Array<{
       plan: true,
       polls: false,
       games: false,
+      tournaments: false,
       requests: true,
       soundtrack: true,
       surprises: false,
@@ -70,6 +72,7 @@ export const featurePresets: Array<{
       plan: true,
       polls: true,
       games: true,
+      tournaments: true,
       requests: true,
       soundtrack: true,
       surprises: true,
@@ -88,6 +91,7 @@ export const featurePresets: Array<{
       plan: true,
       polls: true,
       games: true,
+      tournaments: true,
       requests: true,
       soundtrack: true,
       surprises: true,

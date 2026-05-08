@@ -75,6 +75,13 @@ export function TripView(props: TripViewProps) {
 
       <DayToggle days={props.days} selectedDayId={props.activeDayId} onSelect={props.onSelectDay} />
 
+      <TimelinePanel
+        title={props.copy.tripTimeline}
+        items={props.tripTimelineItems}
+        copy={props.copy}
+        onSelect={props.onSelectTimelineItem}
+      />
+
       {props.onboarding}
 
       {props.showPlan ? (
@@ -116,13 +123,6 @@ export function TripView(props: TripViewProps) {
           : <PersonalTripCard personalTrip={props.personalTrip} showPoints={props.showPoints} />}
       </details>
 
-      <details className="trip-fold">
-        <summary>
-          <span>{props.copy.tripTimeline}</span>
-          <small>{props.tripTimelineItems.length} items today</small>
-        </summary>
-        <TripTimeline items={props.tripTimelineItems} copy={props.copy} onSelect={props.onSelectTimelineItem} />
-      </details>
     </section>
   );
 }
@@ -282,7 +282,7 @@ function TripTimeline(props: {
   return (
     <div className="timeline combined">
       {props.items.map((item) => (
-        <button key={item.id} type="button" className={`timeline-item ${item.kind}`} onClick={() => props.onSelect(item)}>
+        <button key={item.id} type="button" className={`timeline-item ${item.kind}${item.locked ? ' locked' : ''}`} onClick={() => props.onSelect(item)}>
           <time>{item.time}</time>
           <div>
             <span>{props.copy[item.kind as keyof Copy] ?? item.kind}</span>
@@ -293,6 +293,27 @@ function TripTimeline(props: {
         </button>
       ))}
     </div>
+  );
+}
+
+function TimelinePanel(props: {
+  title: string;
+  items: TripTimelineItem[];
+  copy: Copy;
+  onSelect: (item: TripTimelineItem) => void;
+}) {
+  const nextItem = props.items.find((item) => item.status === 'now' || item.status === 'live' || item.status === 'ready') ?? props.items[0];
+  return (
+    <section className="timeline-panel" aria-label={props.title}>
+      <header>
+        <div>
+          <p className="eyebrow">Today</p>
+          <h3>{props.title}</h3>
+        </div>
+        <small>{nextItem ? `${nextItem.time} / ${nextItem.title}` : 'Nothing yet'}</small>
+      </header>
+      <TripTimeline items={props.items} copy={props.copy} onSelect={props.onSelect} />
+    </section>
   );
 }
 

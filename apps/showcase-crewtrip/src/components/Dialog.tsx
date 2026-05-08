@@ -10,6 +10,10 @@ interface DialogProps {
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+let openDialogCount = 0;
+let previousBodyOverflow = '';
+let previousBodyTouchAction = '';
+let previousHtmlOverflow = '';
 
 export function Dialog({ open, onClose, label, children, className }: DialogProps) {
   const sheetRef = useRef<HTMLElement>(null);
@@ -18,6 +22,15 @@ export function Dialog({ open, onClose, label, children, className }: DialogProp
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const sheet = sheetRef.current;
+    if (openDialogCount === 0) {
+      previousBodyOverflow = document.body.style.overflow;
+      previousBodyTouchAction = document.body.style.touchAction;
+      previousHtmlOverflow = document.documentElement.style.overflow;
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.overflow = 'hidden';
+    }
+    openDialogCount += 1;
     if (sheet) {
       const first = sheet.querySelector<HTMLElement>(FOCUSABLE);
       first?.focus();
@@ -45,6 +58,12 @@ export function Dialog({ open, onClose, label, children, className }: DialogProp
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
+      openDialogCount = Math.max(0, openDialogCount - 1);
+      if (openDialogCount === 0) {
+        document.body.style.overflow = previousBodyOverflow;
+        document.body.style.touchAction = previousBodyTouchAction;
+        document.documentElement.style.overflow = previousHtmlOverflow;
+      }
       previouslyFocused?.focus?.();
     };
   }, [open, onClose]);
@@ -52,7 +71,14 @@ export function Dialog({ open, onClose, label, children, className }: DialogProp
   if (!open) return null;
 
   return (
-    <div className="action-backdrop" role="presentation" onClick={onClose}>
+    <div
+      className="action-backdrop"
+      role="presentation"
+      onClick={onClose}
+      onTouchMove={(event) => {
+        if (event.target === event.currentTarget) event.preventDefault();
+      }}
+    >
       <section
         ref={sheetRef}
         className={className ? `action-sheet ${className}` : 'action-sheet'}
@@ -60,6 +86,7 @@ export function Dialog({ open, onClose, label, children, className }: DialogProp
         aria-modal="true"
         aria-label={label}
         onClick={(event) => event.stopPropagation()}
+        onTouchMove={(event) => event.stopPropagation()}
       >
         {children}
       </section>

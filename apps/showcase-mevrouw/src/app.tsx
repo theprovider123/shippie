@@ -47,6 +47,7 @@ import {
 import { useYjs } from '@/sync/useYjs.ts';
 import type { Route } from '@/router.ts';
 import { TOP_LEVEL_ROUTES } from '@/router.ts';
+import { useViewportDock } from '@/lib/useViewportDock.ts';
 
 export function App() {
   const [pairing, setPairingState] = useState<Pairing | null>(() => loadPairing());
@@ -122,6 +123,7 @@ function Bound({
 }) {
   // Heartbeat presence — pings every 5s while visible.
   usePresenceHeartbeat(doc, pairing.deviceId);
+  const dock = useViewportDock();
 
   // Detect a #shippie-import=… fragment carrying a single memory shared
   // from outside this couple-doc. Verifies the signature, previews the
@@ -178,12 +180,12 @@ function Bound({
   const tabActive: Route = TOP_LEVEL_ROUTES.includes(route) ? route : 'more';
 
   return (
-    <div className="min-h-dvh flex flex-col pb-24">
+    <div className={`min-h-dvh flex flex-col ${dock.className}`} style={dock.style}>
       <PullToRefresh
         onRefresh={() => relay?.resync()}
         disabled={!relay}
       />
-      <main className="flex-1 mx-auto w-full max-w-md">
+      <main className="flex-1 mx-auto w-full max-w-md pb-[var(--dock-reserve)]">
         {route === 'home' && (
           <HomePage doc={doc} myDeviceId={pairing.deviceId} onNavigate={onRoute} />
         )}

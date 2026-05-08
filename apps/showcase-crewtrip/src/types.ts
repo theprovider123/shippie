@@ -3,7 +3,7 @@ export type Tab = 'now' | 'crew' | 'vote' | 'games' | 'requests' | 'memories' | 
 export type StopStatus = 'now' | 'next' | 'later';
 export type RequestStatus = 'new' | 'shared' | 'done';
 export type MemoryKind = 'text' | 'image' | 'video' | 'award';
-export type FeatureKey = 'crew' | 'plan' | 'polls' | 'games' | 'requests' | 'memories' | 'chat' | 'wrap' | 'scores' | 'soundtrack' | 'surprises';
+export type FeatureKey = 'crew' | 'plan' | 'polls' | 'games' | 'tournaments' | 'requests' | 'memories' | 'chat' | 'wrap' | 'scores' | 'soundtrack' | 'surprises';
 export type GameKind = 'photo' | 'bingo' | 'prediction' | 'award' | 'mission' | 'challenge';
 export type MessageScope = 'all' | 'group';
 export type HostSection = 'setup' | 'manage' | 'fun' | 'wrap';
@@ -12,6 +12,13 @@ export type MemoryFilter = 'all' | 'media' | 'awards' | 'mine';
 export type ThemeKey = 'sunset' | 'coast' | 'garden' | 'night';
 export type PulseKind = 'hype' | 'ready' | 'hungry' | 'lost' | 'vote' | 'moment';
 export type SurpriseUnlock = 'time' | 'submissions' | 'first-photo' | 'manual';
+export type EventFormat = 'bracket' | 'round_robin' | 'open_scoreboard';
+export type EventMode = 'individual' | 'team';
+export type TournamentStatus = 'setup' | 'live' | 'done';
+export type MatchStatus = 'pending' | 'live' | 'done' | 'forfeit';
+export type LeaderboardView = 'points' | 'medals';
+export type TournamentScoringMode = 'placement' | 'winner_take_all' | 'participation' | 'medals_only';
+export type TournamentPairingMode = 'automatic' | 'host_defined';
 
 export type FeatureSettings = Record<FeatureKey, boolean>;
 
@@ -91,19 +98,22 @@ export interface SoundtrackSlot {
 export interface TripTimelineItem {
   id: string;
   time: string;
-  kind: 'plan' | 'host' | 'poll' | 'game' | 'memory' | 'soundtrack';
+  kind: 'plan' | 'host' | 'poll' | 'game' | 'tournament' | 'memory' | 'soundtrack';
   title: string;
   detail: string;
   status?: string;
   tab?: Tab;
   challengeId?: string;
+  tournamentEventId?: string;
+  matchId?: string;
+  locked?: boolean;
 }
 
 export interface LiveActivity {
   id: string;
   text: string;
   at: string;
-  kind: 'presence' | 'pulse' | 'host' | 'memory' | 'game' | 'poll' | 'surprise' | 'soundtrack';
+  kind: 'presence' | 'pulse' | 'host' | 'memory' | 'game' | 'poll' | 'surprise' | 'soundtrack' | 'tournament';
 }
 
 export interface CrewAward {
@@ -114,6 +124,21 @@ export interface CrewAward {
   title: string;
   detail: string;
   score: number;
+  trophy: string;
+  effect: AwardEffect;
+}
+
+export type AwardEffect = 'gold' | 'spark' | 'heart' | 'star' | 'camera';
+
+export interface AssignedCrewAward {
+  id: string;
+  playerId: string;
+  title: string;
+  detail: string;
+  trophy: string;
+  effect: AwardEffect;
+  updatedAt: number;
+  updatedBy: string;
 }
 
 export interface Memory {
@@ -196,6 +221,68 @@ export interface WrapUpSettings {
   includeGames: boolean;
   includePolls: boolean;
   includeTimeline: boolean;
+  assignedAwards: AssignedCrewAward[];
+}
+
+export interface Tournament {
+  id: string;
+  name: string;
+  hostId: string;
+  createdAt: number;
+  startedAt?: number;
+  status: TournamentStatus;
+  leaderboardView: LeaderboardView;
+  updatedAt: number;
+  updatedBy: string;
+}
+
+export interface TournamentEvent {
+  id: string;
+  tournamentId: string;
+  name: string;
+  emoji?: string;
+  format: EventFormat;
+  mode: EventMode;
+  participantIds: string[];
+  unlockDayId?: string;
+  scheduledAt?: number;
+  status: TournamentStatus;
+  scoringMode?: TournamentScoringMode;
+  gamesPerMatch?: number;
+  pointTarget?: number;
+  winBy?: number;
+  pairingMode?: TournamentPairingMode;
+  initialPairings?: Array<{ sideAId: string; sideBId?: string }>;
+  pointsFirst?: number;
+  pointsSecond?: number;
+  pointsThird?: number;
+  pointsParticipation?: number;
+  placement?: string[];
+  order: number;
+  updatedAt: number;
+  updatedBy: string;
+}
+
+export interface TournamentMatchSide {
+  participantId: string;
+  score?: number;
+}
+
+export interface TournamentMatch {
+  id: string;
+  eventId: string;
+  roundIndex: number;
+  index: number;
+  kind: 'head_to_head' | 'score_entry';
+  sideA: TournamentMatchSide;
+  sideB: TournamentMatchSide;
+  winnerId?: string;
+  readyParticipantIds?: string[];
+  startedAt?: number;
+  finishedAt?: number;
+  status: MatchStatus;
+  updatedAt: number;
+  updatedBy: string;
 }
 
 export interface CrewtripState {
@@ -224,6 +311,9 @@ export interface CrewtripState {
   pulses: CrewPulse[];
   surprises: SurpriseDrop[];
   soundtracks: SoundtrackSlot[];
+  tournaments: Tournament[];
+  tournamentEvents: TournamentEvent[];
+  tournamentMatches: TournamentMatch[];
   wrapUp: WrapUpSettings;
   features: FeatureSettings;
   language: Language;

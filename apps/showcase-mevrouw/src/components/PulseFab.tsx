@@ -33,7 +33,7 @@ export function PulseFab({ doc, myDeviceId }: Props) {
       )}
       <div
         className="fixed right-4 z-40 flex flex-col items-end gap-3"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' }}
+        style={{ bottom: 'var(--dock-action-bottom, calc(env(safe-area-inset-bottom, 0px) + 5.5rem))' }}
       >
         {open && (
           <ul className="flex flex-col gap-2 mb-1">

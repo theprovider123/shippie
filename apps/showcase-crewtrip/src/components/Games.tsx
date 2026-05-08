@@ -82,7 +82,7 @@ export function ChallengeGrid(props: {
 }) {
   const [scoredFlash, setScoredFlash] = useState<string | null>(null);
   if (!props.challenges.length) {
-    return <p className="empty-note">No challenges today — host can add one from the + menu.</p>;
+    return <p className="empty-note">No games today — host can add one from Games or the + menu.</p>;
   }
   return (
     <div className="challenge-grid">
