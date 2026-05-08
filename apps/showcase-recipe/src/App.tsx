@@ -4,13 +4,19 @@ import { RecipeEdit } from './pages/RecipeEdit.tsx';
 import { CookingMode } from './pages/CookingMode.tsx';
 import { resolveLocalDb } from './db/runtime.ts';
 import { seedIfEmpty } from './db/seed.ts';
+import {
+  chooseStartupBackupPrompt,
+  loadBackupMeta,
+  promptText,
+  recordRecipeSaveAndChoosePrompt,
+  requestDurableRecipeStorage,
+  type BackupPromptReason,
+} from './db/data-safety.ts';
 import { readImportFragment } from '@shippie/share';
 import { ImportCard } from './share/ImportCard.tsx';
 import { checkRecipeImport, type RecipeImportCheck } from './share/recipe-import.ts';
 import { wrapNavigation } from '@shippie/sdk/wrapper';
-import { createShippieIframeSdk } from '@shippie/iframe-sdk';
-
-const shippie = createShippieIframeSdk({ appId: 'app_recipe_saver' });
+import { RecipeDataPanel } from './components/RecipeDataPanel.tsx';
 
 type Route =
   | { kind: 'list' }
@@ -21,6 +27,8 @@ export function App() {
   const [route, setRoute] = useState<Route>({ kind: 'list' });
   const [refreshKey, setRefreshKey] = useState(0);
   const [seedNote, setSeedNote] = useState<string | null>(null);
+  const [backupPrompt, setBackupPrompt] = useState<BackupPromptReason | null>(null);
+  const [dataPanelOpen, setDataPanelOpen] = useState(false);
   const [pendingImport, setPendingImport] = useState<
     Extract<RecipeImportCheck, { ok: true }> | null
   >(null);
@@ -42,6 +50,8 @@ export function App() {
         // refreshKey after the seed lands fixes the race for first-load
         // and is a no-op on subsequent renders (the rows are already there).
         setRefreshKey((n) => n + 1);
+        const stale = chooseStartupBackupPrompt(loadBackupMeta());
+        if (stale) setBackupPrompt(stale);
       } catch (err) {
         // first-load failures shouldn't block render
         console.warn('[recipe-saver] seed failed', err);
@@ -81,13 +91,29 @@ export function App() {
     void wrapNavigation(() => setRoute(next), { kind: next.kind === 'list' ? 'crossfade' : 'rise' });
   };
 
-  const openYourData = () => {
-    shippie.openYourData({ appSlug: 'recipe-saver' });
+  const handleSaved = () => {
+    const db = resolveLocalDb();
+    void requestDurableRecipeStorage(db);
+    const prompt = recordRecipeSaveAndChoosePrompt(loadBackupMeta());
+    if (prompt) setBackupPrompt(prompt);
+    setRefreshKey((n) => n + 1);
+    navigate({ kind: 'list' });
   };
 
   return (
     <div className="app">
       {seedNote ? <div className="banner" role="status">{seedNote}</div> : null}
+      {backupPrompt ? (
+        <div className="banner backup-banner" role="status">
+          <span>{promptText(backupPrompt)}</span>
+          <button type="button" onClick={() => setDataPanelOpen(true)}>
+            Back up
+          </button>
+          <button type="button" className="ghost" onClick={() => setBackupPrompt(null)} aria-label="Dismiss backup prompt">
+            ×
+          </button>
+        </div>
+      ) : null}
       {route.kind === 'list' ? (
         <RecipeList
           onOpen={(id) => navigate({ kind: 'edit', recipeId: id })}
@@ -101,10 +127,7 @@ export function App() {
         <RecipeEdit
           recipeId={route.recipeId}
           onClose={() => navigate({ kind: 'list' })}
-          onSaved={() => {
-            setRefreshKey((n) => n + 1);
-            navigate({ kind: 'list' });
-          }}
+          onSaved={handleSaved}
         />
       ) : null}
       {route.kind === 'cook' ? (
@@ -115,7 +138,7 @@ export function App() {
         <button
           type="button"
           className="your-data-button"
-          onClick={openYourData}
+          onClick={() => setDataPanelOpen(true)}
           aria-label="Open Your Data panel"
         >
           Your Data
@@ -127,10 +150,22 @@ export function App() {
           check={pendingImport}
           onImported={(id) => {
             setPendingImport(null);
+            void requestDurableRecipeStorage(resolveLocalDb());
+            const prompt = recordRecipeSaveAndChoosePrompt(loadBackupMeta());
+            if (prompt) setBackupPrompt(prompt);
             setRefreshKey((n) => n + 1);
             navigate({ kind: 'edit', recipeId: id });
           }}
           onDiscard={() => setPendingImport(null)}
+        />
+      ) : null}
+
+      {dataPanelOpen ? (
+        <RecipeDataPanel
+          db={resolveLocalDb()}
+          onClose={() => setDataPanelOpen(false)}
+          onChanged={() => setRefreshKey((n) => n + 1)}
+          onBackupComplete={() => setBackupPrompt(null)}
         />
       ) : null}
     </div>

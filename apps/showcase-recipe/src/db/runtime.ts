@@ -178,6 +178,7 @@ function cryptoRandomId(): string {
 }
 
 let memoryDb: ShippieLocalDb | null = null;
+const memoryDbs = new WeakSet<ShippieLocalDb>();
 
 interface ShippieGlobal {
   local?: { db?: ShippieLocalDb };
@@ -188,8 +189,15 @@ export function resolveLocalDb(): ShippieLocalDb {
     const shippie = (window as unknown as { shippie?: ShippieGlobal }).shippie;
     if (shippie?.local?.db) return shippie.local.db;
   }
-  if (!memoryDb) memoryDb = new MemoryLocalDb();
+  if (!memoryDb) {
+    memoryDb = new MemoryLocalDb();
+    memoryDbs.add(memoryDb);
+  }
   return memoryDb;
+}
+
+export function isMemoryLocalDb(db: ShippieLocalDb): boolean {
+  return memoryDbs.has(db) || db instanceof MemoryLocalDb;
 }
 
 export { MemoryLocalDb };
