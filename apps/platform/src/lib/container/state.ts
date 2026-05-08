@@ -659,6 +659,18 @@ const curatedAppSpecs: CuratedAppSpec[] = [
       provides: ['care-dose-given', 'care-symptom-noted', 'care-handover-noted'],
     },
   },
+  {
+    slug: 'site-visit',
+    name: 'Site Visit',
+    shortName: 'Visit',
+    description: 'Offline inspection reports for tradespeople. Photos, signatures, PDF export — works underground and at site.',
+    appKind: 'local',
+    icon: 'SV',
+    accent: '#5E7B5C',
+    category: 'productivity',
+    port: 5220,
+    intents: { provides: ['visit-completed', 'incident-flagged'] },
+  },
 ];
 
 export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp);

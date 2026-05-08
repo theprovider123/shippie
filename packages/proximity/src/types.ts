@@ -54,13 +54,27 @@ export interface SignalIce {
   candidate: RTCIceCandidateInit;
 }
 
+/**
+ * Opaque-bytes fan-out. Used for end-to-end-encrypted gossip + Yjs
+ * relay flows (Mevrouw, Matchday, Tab, Care Log). The signal relay
+ * never sees plaintext — `payload` is whatever the sender encoded.
+ * `to` is optional: omitted = broadcast to all peers in the room.
+ */
+export interface SignalRelay {
+  t: 'relay';
+  from?: PeerId;
+  to?: PeerId;
+  payload: string;
+}
+
 export type SignalMessage =
   | SignalHello
   | SignalPeerJoined
   | SignalPeerLeft
   | SignalOffer
   | SignalAnswer
-  | SignalIce;
+  | SignalIce
+  | SignalRelay;
 
 // ---------------------------------------------------------------------
 // Group SDK shape

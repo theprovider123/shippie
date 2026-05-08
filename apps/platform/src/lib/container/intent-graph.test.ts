@@ -117,6 +117,10 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   'care-dose-given',
   'care-symptom-noted',
   'care-handover-noted',
+  // Site Visit — field inspection events for /today + future analytics
+  // dashboards. No in-tree consumer at the moment.
+  'visit-completed',
+  'incident-flagged',
 ]);
 
 /**
