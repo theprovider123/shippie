@@ -50,9 +50,17 @@ describe('extractReadable', () => {
     expect(result.contentHtml).not.toContain('console.log');
   });
 
-  test('readMinutes rounds based on a 220-words-per-minute baseline', () => {
-    const words = Array.from({ length: 660 }, (_, i) => `word${i}`).join(' ');
+  test('readMinutes rounds based on a 240-words-per-minute baseline', () => {
+    const words = Array.from({ length: 720 }, (_, i) => `word${i}`).join(' ');
     const html = `<html><body><article>${words}</article></body></html>`;
     expect(extractReadable('', parse(html)).readMinutes).toBe(3);
+  });
+
+  test('exposes plain text and word count for downstream consumers', () => {
+    const html = `<html><body><article><p>One two three.</p><p>Four five.</p></article></body></html>`;
+    const result = extractReadable('', parse(html));
+    expect(result.plainText).toContain('One two three.');
+    expect(result.plainText).toContain('Four five.');
+    expect(result.wordCount).toBe(5);
   });
 });
