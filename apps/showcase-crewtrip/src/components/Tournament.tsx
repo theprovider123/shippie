@@ -506,7 +506,7 @@ function LiveFormats(props: {
             <small>{displayEvent.scheduledAt ? `starts ${formatClock(displayEvent.scheduledAt)}` : displayEvent.status}</small>
           </header>
           {displayEvent.format === 'open_scoreboard' ? (
-            <Scoreboard event={displayEvent} matches={displayMatches} players={props.players} groups={props.groups} onScore={props.onScore} onReport={props.onReport} isHost={props.isHost} />
+            <Scoreboard event={displayEvent} matches={displayMatches} players={props.players} groups={props.groups} activePlayer={props.activePlayer} onScore={props.onScore} onReport={props.onReport} isHost={props.isHost} />
           ) : (
             <Bracket matches={displayMatches} event={displayEvent} players={props.players} groups={props.groups} activePlayer={props.activePlayer} isHost={props.isHost} focusedMatchId={props.selectedMatchId} onReady={props.onReady} onStartMatch={props.onStartMatch} onScore={props.onScore} onReport={props.onReport} onForfeit={props.onForfeit} />
           )}
@@ -580,24 +580,24 @@ function MatchCard(props: {
   const readyIds = props.match.readyParticipantIds ?? [];
   const activeParticipantId = participantIdForPlayer(props.event, props.match, props.activePlayer);
   const canReady = props.match.status === 'pending' && Boolean(activeParticipantId) && !readyIds.includes(activeParticipantId!);
-  const canEdit = props.isHost || props.match.status !== 'done';
+  const canControl = props.isHost || (Boolean(activeParticipantId) && props.match.status !== 'done');
   return (
     <article className={`match-card ${props.match.status}${props.focused ? ' focused' : ''}`}>
       <div className="match-sides">
         {sides.map((side) => (
           <div key={side.key} className={props.match.winnerId === side.participantId ? 'match-side-row winner' : 'match-side-row'}>
-            <button type="button" disabled={!props.isHost && props.match.status === 'done'} onClick={() => props.onReport(side.participantId)}>
+            <button type="button" disabled={!canControl} onClick={() => props.onReport(side.participantId)}>
               <ParticipantName id={side.participantId} players={props.players} groups={props.groups} />
               {readyIds.includes(side.participantId) ? <em>Ready</em> : null}
               {props.match.winnerId === side.participantId ? <Icon name="check" size={14} /> : null}
             </button>
-            <ScoreStepper value={side.score} disabled={!canEdit} onChange={(score) => props.onScore(side.key, score)} />
+            <ScoreStepper value={side.score} disabled={!canControl} onChange={(score) => props.onScore(side.key, score)} />
           </div>
         ))}
       </div>
       <footer>
         <small>{props.match.status} / {matchRuleLabel(props.event)}</small>
-        {canReady ? <button type="button" onClick={() => props.onReady(activeParticipantId!)}>I'm ready</button> : null}
+        {canReady ? <button type="button" onClick={() => props.onReady(activeParticipantId!)}>Ready / start</button> : null}
         {props.match.status === 'pending' && activeParticipantId && readyIds.includes(activeParticipantId) ? <small>You're ready</small> : null}
         {props.match.status === 'pending' && props.isHost ? <button type="button" onClick={props.onStart}>Start now</button> : null}
         {props.isHost && sides.length === 2 ? <button type="button" className="ghost" onClick={() => props.onForfeit(sides[0]!.participantId)}>Forfeit</button> : null}
@@ -611,6 +611,7 @@ function Scoreboard(props: {
   matches: TournamentMatch[];
   players: Player[];
   groups: CrewGroup[];
+  activePlayer: Player;
   isHost: boolean;
   onScore: (matchId: string, side: 'sideA' | 'sideB', score: number) => void;
   onReport: (matchId: string, winnerId: string) => void;
@@ -621,7 +622,11 @@ function Scoreboard(props: {
       {rows.map((match) => (
         <article key={match.id} className="score-row">
           <ParticipantName id={match.sideA.participantId} players={props.players} groups={props.groups} />
-          <ScoreStepper value={match.sideA.score ?? 0} disabled={!props.isHost && match.status === 'done'} onChange={(score) => props.onScore(match.id, 'sideA', score)} />
+          <ScoreStepper
+            value={match.sideA.score ?? 0}
+            disabled={!props.isHost && (!participantIdForPlayer(props.event, match, props.activePlayer) || match.status === 'done')}
+            onChange={(score) => props.onScore(match.id, 'sideA', score)}
+          />
           {props.isHost ? <button type="button" onClick={() => props.onReport(match.id, match.sideA.participantId)}>Place</button> : null}
         </article>
       ))}
@@ -792,6 +797,9 @@ function readyMatch(props: TournamentProps, matchId: string, participantId: stri
     ...current,
     tournamentMatches: current.tournamentMatches.map((match) => {
       if (match.id !== matchId) return match;
+      const event = current.tournamentEvents.find((item) => item.id === match.eventId);
+      const localParticipantId = event ? participantIdForPlayer(event, match, props.activePlayer) : null;
+      if (props.role !== 'host' && localParticipantId !== participantId) return match;
       const readyParticipantIds = Array.from(new Set([...(match.readyParticipantIds ?? []), participantId]));
       const sides = readySides(match);
       const bothReady = sides.length === 2 && sides.every((id) => readyParticipantIds.includes(id));
@@ -809,15 +817,23 @@ function readyMatch(props: TournamentProps, matchId: string, participantId: stri
 
 function startMatch(props: TournamentProps, matchId: string) {
   const at = Date.now();
-  props.onChange((current) => ({
-    ...current,
-    tournamentMatches: current.tournamentMatches.map((match) => match.id === matchId ? { ...match, readyParticipantIds: readySides(match), status: 'live', startedAt: match.startedAt ?? at, updatedAt: at, updatedBy: props.deviceId } : match),
-  }));
+  props.onChange((current) => {
+    const match = current.tournamentMatches.find((item) => item.id === matchId);
+    const event = current.tournamentEvents.find((item) => item.id === match?.eventId);
+    if (!match || !event || !canControlTournamentMatch(props, event, match)) return current;
+    return {
+      ...current,
+      tournamentMatches: current.tournamentMatches.map((item) => item.id === matchId ? { ...item, readyParticipantIds: readySides(item), status: 'live', startedAt: item.startedAt ?? at, updatedAt: at, updatedBy: props.deviceId } : item),
+    };
+  });
 }
 
 function scoreMatch(props: TournamentProps, matchId: string, side: 'sideA' | 'sideB', score: number) {
   const at = Date.now();
   props.onChange((current) => {
+    const currentMatch = current.tournamentMatches.find((match) => match.id === matchId);
+    const currentEvent = current.tournamentEvents.find((item) => item.id === currentMatch?.eventId);
+    if (!currentMatch || !currentEvent || !canControlTournamentMatch(props, currentEvent, currentMatch)) return current;
     let patched = current.tournamentMatches.map((match) => match.id === matchId ? { ...match, [side]: { ...match[side], score }, updatedAt: at, updatedBy: props.deviceId } : match);
     const changedMatch = patched.find((match) => match.id === matchId);
     const event = current.tournamentEvents.find((item) => item.id === changedMatch?.eventId);
@@ -838,6 +854,9 @@ function scoreMatch(props: TournamentProps, matchId: string, side: 'sideA' | 'si
 function reportMatch(props: TournamentProps, matchId: string, winnerId: string, status: 'done' | 'forfeit' = 'done') {
   const at = Date.now();
   props.onChange((current) => {
+    const currentMatch = current.tournamentMatches.find((match) => match.id === matchId);
+    const currentEvent = current.tournamentEvents.find((item) => item.id === currentMatch?.eventId);
+    if (!currentMatch || !currentEvent || !canControlTournamentMatch(props, currentEvent, currentMatch)) return current;
     const patched = current.tournamentMatches.map((match) => match.id === matchId ? { ...match, winnerId, status, finishedAt: at, updatedAt: at, updatedBy: props.deviceId } : match);
     const event = current.tournamentEvents.find((item) => item.id === patched.find((match) => match.id === matchId)?.eventId);
     if (!event) return { ...current, tournamentMatches: patched };
@@ -848,6 +867,12 @@ function reportMatch(props: TournamentProps, matchId: string, winnerId: string, 
       tournamentMatches: reconciled.matches,
     };
   });
+}
+
+function canControlTournamentMatch(props: TournamentProps, event: TournamentEvent, match: TournamentMatch): boolean {
+  if (props.role === 'host') return true;
+  if (match.status === 'done') return false;
+  return Boolean(participantIdForPlayer(event, match, props.activePlayer));
 }
 
 function initialDraft(preset: typeof PRESETS[number], players: Player[], groups: CrewGroup[], days: TripDay[]): Draft {
