@@ -383,18 +383,6 @@ label {
   font-size: 14px;
 }
 
-.your-data {
-  margin-top: auto;
-  align-self: flex-start;
-  background: transparent;
-  border: 1px dashed #DDD2C2;
-  color: #7E7570;
-  padding: 8px 12px;
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  cursor: pointer;
-}
-
 .fab {
   position: fixed;
   right: max(24px, calc((100vw - 520px) / 2 + 24px));

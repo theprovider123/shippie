@@ -20,6 +20,7 @@ const SW_BODY = `// shippie-marketplace SW
 const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
 const MODEL_CACHE = 'shippie.models.v1';
 const APPS_PREFIX = '/apps';
+const RUNTIME_PREFIX = '/__shippie-run';
 // Phase 2: same-origin /__esm/<pkg> proxy serves the pinned
 // Transformers runtime + its transitive graph through our own zone.
 // The proxy rewrites every absolute import in the JS bodies back into
@@ -44,9 +45,9 @@ function offlineResponse() {
 async function marketplaceFallback(cache, req) {
   return (
     (await cache.match(req)) ||
+    (await cache.match('/')) ||
     (await cache.match('/apps')) ||
     (await cache.match('/apps/')) ||
-    (await cache.match('/')) ||
     null
   );
 }
@@ -68,8 +69,9 @@ async function warmAiRuntime(urls = AI_RUNTIME_URLS) {
   }
 }
 
-// Precache the showcase entry HTMLs so a fresh PWA install can open
-// any showcase offline without first having visited it. The list is
+// Precache the raw showcase entry HTMLs so a fresh PWA install can open
+// any showcase iframe offline without first having visited it. These live
+// under /__shippie-run so bare /run/<slug>/ stays the focused shell. The list is
 // substituted at request time from the build-time-generated
 // SHOWCASE_PRECACHE constant. cache.add is best-effort per entry; a
 // network or 404 failure on one slug never blocks install.
@@ -161,12 +163,13 @@ async function warmShell(cache) {
 async function handleDownloadApp(slug, port) {
   try {
     const cache = await caches.open(CACHE);
-    const res = await fetch('/run/' + slug + '/__shippie-assets.json');
+    const res = await fetch(RUNTIME_PREFIX + '/' + slug + '/__shippie-assets.json');
     if (!res.ok) throw new Error('manifest_fetch_failed_' + res.status);
     const manifest = await res.json();
     const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
     if (assets.length === 0) throw new Error('manifest_empty');
     await warmShell(cache);
+    await cacheAddAll(cache, ['/run/' + slug + '/'], () => {});
     await cacheAddAll(cache, assets, (done, total) => {
       port.postMessage({ type: 'progress', slug, done, total });
     });
@@ -188,11 +191,12 @@ async function handleRemoveApp(slug, port) {
   try {
     const cache = await caches.open(CACHE);
     const reqs = await cache.keys();
-    const prefix = '/run/' + slug + '/';
+    const runtimePrefix = RUNTIME_PREFIX + '/' + slug + '/';
+    const shellPrefix = '/run/' + slug + '/';
     let count = 0;
     for (const req of reqs) {
       const path = new URL(req.url).pathname;
-      if (path.startsWith(prefix)) {
+      if (path.startsWith(runtimePrefix) || path.startsWith(shellPrefix)) {
         await cache.delete(req);
         count += 1;
       }
@@ -206,7 +210,7 @@ async function handleRemoveApp(slug, port) {
 async function handleGetStatus(slug, port) {
   try {
     const cache = await caches.open(CACHE);
-    const res = await fetch('/run/' + slug + '/__shippie-assets.json');
+    const res = await fetch(RUNTIME_PREFIX + '/' + slug + '/__shippie-assets.json');
     if (!res.ok) {
       port.postMessage({ type: 'status', slug, state: 'idle', done: 0, total: 0 });
       return;
@@ -236,7 +240,7 @@ async function handleClearOffline(port) {
     let count = 0;
     for (const req of reqs) {
       const path = new URL(req.url).pathname;
-      if (path.startsWith('/run/')) {
+      if (path.startsWith(RUNTIME_PREFIX + '/') || path.startsWith('/run/')) {
         await cache.delete(req);
         count += 1;
       }
@@ -252,6 +256,18 @@ self.addEventListener('message', (e) => {
   // on the new-version-available toast).
   if (e.data === 'SKIP_WAITING' || (e.data && e.data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
+    return;
+  }
+  // Version probe — the page asks the WAITING worker for its build id
+  // so the SwUpdateToast can use that as the suppression key for
+  // "skip this version" (instead of a 24h timestamp, which would
+  // suppress unrelated future updates). Replies via the MessageChannel
+  // port if provided; otherwise via the message source.
+  if (e.data && e.data.t === 'version') {
+    const port = e.ports && e.ports[0];
+    const reply = { versionId: '__SHIPPIE_BUILD__' };
+    if (port) port.postMessage(reply);
+    else if (e.source && 'postMessage' in e.source) e.source.postMessage(reply);
     return;
   }
   // Save-for-offline messages always carry a MessageChannel port so
@@ -273,7 +289,7 @@ self.addEventListener('message', (e) => {
 });
 
 // Migrate-then-delete: when a new versioned SW activates, copy ONLY
-// content-addressed entries (/_app/immutable/* and /run/*) from any
+// content-addressed entries (/_app/immutable/* and /__shippie-run/* assets) from any
 // prior 'shippie-marketplace-*' cache into the new cache, then delete
 // the old caches.
 //
@@ -284,10 +300,10 @@ self.addEventListener('message', (e) => {
 // them, fails, and +error.svelte fires ("Something went wrong" while
 // browsing).
 //
-// /run/<slug>/* is self-consistent — the showcase HTML and its hashed
-// chunks build together, so caching the bundle is safe across platform
-// deploys. /_app/immutable/* is content-addressed by hash so a cached
-// hit always matches its filename.
+// /__shippie-run/<slug>/?shippie_embed=1 and nested app assets are
+// self-consistent — the showcase HTML and its hashed chunks build together,
+// so caching the bundle is safe across platform deploys. The bare /run/<slug>/
+// route is platform shell HTML and must not migrate across deploys.
 //
 // Stale platform HTML naturally re-warms via the network-first nav
 // handler on the user's first online navigation after activation.
@@ -305,7 +321,7 @@ self.addEventListener('activate', (e) => {
           reqs.map(async (req) => {
             const path = new URL(req.url).pathname;
             const safeToMigrate =
-              path.startsWith('/run/') ||
+              path.startsWith(RUNTIME_PREFIX + '/') ||
               path.startsWith('/_app/immutable/') ||
               path.startsWith('/__shippie/wasm/');
             if (!safeToMigrate) return;
@@ -387,15 +403,10 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // /run/<slug>/* — stale-while-revalidate. Showcase apps the user has
-  // opened cache here and continue working offline. Stale-shell-vs-new-
-  // container risk is mitigated two ways: (a) cache name carries the
-  // deploy version ID so old caches drop on activate, (b) the bridge
-  // protocol is append-only at shippie.bridge.v1 (see
-  // packages/iframe-sdk and lib/container/bridge-handlers.ts) so a
-  // stale shell never breaks against a newer container — it might be
-  // missing a new feature, but the existing message shapes still work.
-  if (url.pathname.startsWith('/run/')) {
+  // /__shippie-run/<slug>/* — stale-while-revalidate for raw showcase
+  // runtime assets. These are content-addressed by the showcase build and
+  // are safe to keep offline across platform shell deploys.
+  if (url.pathname.startsWith(RUNTIME_PREFIX + '/')) {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req);
@@ -411,19 +422,40 @@ self.addEventListener('fetch', (e) => {
         if (res.ok) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
-        const focusedMatch = url.pathname.match(/^\\/run\\/([^/]+)$/);
+        const nestedMatch = url.pathname.match(/^\\/__shippie-run\\/([^/]+)\\/.+/);
+        if (nestedMatch) {
+          const entry =
+            (await cache.match(RUNTIME_PREFIX + '/' + nestedMatch[1] + '/?shippie_embed=1')) ||
+            (await cache.match(RUNTIME_PREFIX + '/' + nestedMatch[1] + '/index.html')) ||
+            (await cache.match(RUNTIME_PREFIX + '/' + nestedMatch[1] + '/'));
+          if (entry) return entry;
+        }
+        const fallback = await marketplaceFallback(cache, req);
+        return fallback ?? offlineResponse();
+      }
+    })());
+    return;
+  }
+
+  // /run/<slug>/ — public focused shell. Keep it network-first like other
+  // platform HTML so hashed SvelteKit chunks stay fresh, with a cached
+  // shell fallback when offline.
+  if (url.pathname.startsWith('/run/')) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const res = await fetch(req);
+        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch {
+        const cached = await cache.match(req);
+        if (cached) return cached;
+        const focusedMatch = url.pathname.match(/^\\/run\\/([^/]+)\\/?$/);
         if (focusedMatch) {
           return Response.redirect(
             '/container?app=' + encodeURIComponent(focusedMatch[1]) + '&focused=1',
             302,
           );
-        }
-        const nestedMatch = url.pathname.match(/^\\/run\\/([^/]+)\\/.+/);
-        if (nestedMatch) {
-          const entry =
-            (await cache.match('/run/' + nestedMatch[1] + '/')) ||
-            (await cache.match('/run/' + nestedMatch[1] + '/index.html'));
-          if (entry) return entry;
         }
         const fallback = await marketplaceFallback(cache, req);
         return fallback ?? offlineResponse();

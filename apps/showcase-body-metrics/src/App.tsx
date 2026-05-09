@@ -16,6 +16,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { Today } from './pages/Today.tsx';
 import { Photos } from './pages/Photos.tsx';
 import { TrendPage } from './pages/Trend.tsx';
@@ -47,6 +48,10 @@ export function App() {
   const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
   const [goal, setGoalState] = useState<Goal | null>(() => loadGoal());
   const [tab, setTab] = useState<Tab>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('today', setTab),
+    [],
+  );
 
   // Persistence — debounce-free; entries volume stays well under
   // localStorage's 5 MB ceiling because photo bytes live elsewhere.
@@ -57,6 +62,8 @@ export function App() {
   useEffect(() => {
     saveGoal(goal);
   }, [goal]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   const photoCount = useMemo(
     () => entries.filter((e) => e.photoLocalId).length,
@@ -142,7 +149,7 @@ export function App() {
             aria-selected={tab === t.id}
             className={`tab${tab === t.id ? ' is-active' : ''}`}
             onClick={() => {
-              setTab(t.id);
+              void localNavigation.navigate(t.id, { kind: 'crossfade' });
               shippie.feel.texture('navigate');
             }}
           >

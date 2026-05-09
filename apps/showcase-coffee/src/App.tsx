@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import {
   load,
   save,
@@ -16,12 +17,20 @@ import { HistoryPage } from './pages/History.tsx';
 const shippie = createShippieIframeSdk({ appId: 'app_coffee' });
 
 type Tab = 'brew' | 'beans' | 'history';
+interface Screen {
+  tab: Tab;
+  beanId: string | null;
+}
 
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'brew', label: 'Brew' },
   { id: 'beans', label: 'Beans' },
   { id: 'history', label: 'History' },
 ];
+
+function sameScreen(a: Screen, b: Screen): boolean {
+  return a.tab === b.tab && a.beanId === b.beanId;
+}
 
 export function App() {
   const initial = load();
@@ -32,10 +41,36 @@ export function App() {
   const [selectedBeanId, setSelectedBeanId] = useState<string | null>(initial.beans[0]?.id ?? null);
   // When set, render BeanPage instead of the active tab.
   const [openBeanId, setOpenBeanId] = useState<string | null>(null);
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Screen>(
+        { tab: 'brew', beanId: null },
+        (next) => {
+          setTab(next.tab);
+          setOpenBeanId(next.beanId);
+        },
+        { isEqual: sameScreen },
+      ),
+    [],
+  );
 
   useEffect(() => {
     save({ beans, brews, tasting_notes: tastingNotes });
   }, [beans, brews, tastingNotes]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigateTab(next: Tab): void {
+    void localNavigation.navigate({ tab: next, beanId: null }, { kind: 'crossfade' });
+  }
+
+  function openBeanById(id: string): void {
+    void localNavigation.navigate({ tab, beanId: id }, { kind: 'rise' });
+  }
+
+  function closeBean(): void {
+    void localNavigation.backOrReplace({ tab, beanId: null }, { kind: 'crossfade' });
+  }
 
   function addBrew(b: Brew) {
     setBrews((prev) => [b, ...prev].slice(0, 200));
@@ -97,17 +132,15 @@ export function App() {
       const next = beans.find((b) => b.id !== id) ?? null;
       setSelectedBeanId(next?.id ?? null);
     }
-    if (openBeanId === id) setOpenBeanId(null);
+    if (openBeanId === id) {
+      void localNavigation.replace({ tab, beanId: null }, { kind: 'crossfade' });
+    }
     setTastingNotes((prev) => prev.filter((n) => n.bean_id !== id));
   }
 
   function addTastingNote(n: TastingNote) {
     setTastingNotes((prev) => [n, ...prev]);
     shippie.feel.texture('confirm');
-  }
-
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'coffee' });
   }
 
   const openBean = openBeanId ? beans.find((b) => b.id === openBeanId) ?? null : null;
@@ -128,7 +161,7 @@ export function App() {
               type="button"
               aria-selected={t.id === tab}
               className={`tab ${t.id === tab ? 'active' : ''}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => navigateTab(t.id)}
             >
               {t.label}
             </button>
@@ -144,14 +177,12 @@ export function App() {
           onSave={saveBean}
           onDelete={(id) => {
             deleteBean(id);
-            setOpenBeanId(null);
           }}
           onAddTastingNote={addTastingNote}
-          onBack={() => setOpenBeanId(null)}
+          onBack={closeBean}
           onBrewWithThis={() => {
             setSelectedBeanId(openBean.id);
-            setOpenBeanId(null);
-            setTab('brew');
+            void localNavigation.navigate({ tab: 'brew', beanId: null }, { kind: 'crossfade' });
           }}
         />
       ) : tab === 'brew' ? (
@@ -168,16 +199,13 @@ export function App() {
       ) : tab === 'beans' ? (
         <BeansPage
           beans={beans}
-          onSelect={(id) => setOpenBeanId(id)}
+          onSelect={openBeanById}
           onSave={saveBean}
         />
       ) : (
         <HistoryPage brews={brews} />
       )}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </div>
   );
 }

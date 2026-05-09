@@ -5,8 +5,8 @@
  *
  * The unification plan's "Open" button uses this list to decide
  * whether an app's canonical URL can use the `/run/<slug>/` focused
- * shell route. Runtime iframes still load the underlying static bundle
- * with `?shippie_embed=1`.
+ * shell route. Runtime iframes load the underlying static bundle from
+ * `/__shippie-run/<slug>/` with `?shippie_embed=1`.
  */
 import { SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
 

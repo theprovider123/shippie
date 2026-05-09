@@ -27,6 +27,8 @@ interface PackageSummary {
   version: string;
   packageHash: string;
   standaloneUrl: string;
+  visibility?: ContainerApp['visibility'];
+  owned?: boolean;
   permissions: ContainerApp['permissions'];
   trust?: Pick<TrustReport, 'containerEligibility' | 'privacy' | 'security'>;
 }
@@ -51,6 +53,8 @@ export function packageToContainerApp(pkg: PackageSummary): ContainerApp {
     version: pkg.version,
     packageHash: pkg.packageHash,
     standaloneUrl: pkg.standaloneUrl,
+    visibility: pkg.visibility ?? 'public',
+    owned: pkg.owned,
     permissions: pkg.permissions,
     trust: pkg.trust,
   };
@@ -79,6 +83,8 @@ export function manifestToContainerApp(
     version: 'imported',
     packageHash: manifest.packageHash,
     standaloneUrl: manifest.domains.canonical,
+    visibility: 'local',
+    owned: true,
     permissions: permissions ?? localPermissions(manifest.slug),
   };
 }

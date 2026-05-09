@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite dev",
     "prepare:showcases": "bun scripts/prepare-showcases.mjs",
+    "audit:storage": "bun scripts/audit-showcase-storage.mjs",
     "prepare:whitepaper": "bun scripts/prepare-whitepaper.mjs",
-    "build": "bun --filter @shippie/sdk build && bun scripts/prepare-showcases.mjs && bun scripts/prepare-whitepaper.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
+    "build": "bun scripts/prepare-showcases.mjs && bun scripts/audit-showcase-storage.mjs && bun scripts/prepare-whitepaper.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
     "preview": "wrangler dev",
     "deploy": "bun run build && bun scripts/upload-sdk-bundle.mjs && wrangler deploy",
     "check": "bun scripts/prepare-whitepaper.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

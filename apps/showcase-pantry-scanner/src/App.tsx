@@ -9,6 +9,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { Today } from './pages/Today.tsx';
 import { Scan } from './pages/Scan.tsx';
 import { Pantry } from './pages/Pantry.tsx';
@@ -36,9 +37,15 @@ interface RestockOffer {
 
 export function App() {
   const [tab, setTab] = useState<Tab>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('today', setTab),
+    [],
+  );
   const store = usePantryStore(shippie);
   const [restockOffer, setRestockOffer] = useState<RestockOffer | null>(null);
   const [bulkAddNote, setBulkAddNote] = useState<string | null>(null);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   // Subscribe to cooked-meal: decrement matching rows by 1.
   useEffect(() => {
@@ -102,7 +109,7 @@ export function App() {
           <Today
             shippie={shippie}
             store={store}
-            onNavigateScan={() => setTab('scan')}
+            onNavigateScan={() => void localNavigation.navigate('scan', { kind: 'crossfade' })}
           />
         );
       case 'scan':
@@ -163,7 +170,7 @@ export function App() {
             className={`tab ${tab === t.id ? 'active' : ''}`}
             aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => {
-              setTab(t.id);
+              void localNavigation.navigate(t.id, { kind: 'crossfade' });
               shippie.feel.texture('navigate');
             }}
           >

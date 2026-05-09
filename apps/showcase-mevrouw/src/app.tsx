@@ -2,8 +2,9 @@
  * App shell — pairing → main app with bottom tab nav.
  * Routes are state-driven (no URL routing yet).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type * as Y from 'yjs';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { PairingScreen } from './PairingScreen.tsx';
 import { TabNav } from '@/components/TabNav.tsx';
 import { PulseFab } from '@/components/PulseFab.tsx';
@@ -55,6 +56,16 @@ export function App() {
   const [relay, setRelay] = useState<RelayProvider | null>(null);
   const [synced, setSynced] = useState(false);
   const [route, setRoute] = useState<Route>('home');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('home', setRoute),
+    [],
+  );
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Route): void {
+    void localNavigation.navigate(next, { kind: 'crossfade' });
+  }
 
   useEffect(() => {
     if (!pairing) {
@@ -100,7 +111,7 @@ export function App() {
       doc={doc}
       relay={relay}
       route={route}
-      onRoute={setRoute}
+      onRoute={navigate}
       onUnpair={() => setPairingState(null)}
     />
   );

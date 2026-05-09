@@ -32,6 +32,7 @@ import { ReportPage } from './pages/Report.tsx';
 import { SettingsPage } from './pages/Settings.tsx';
 import { PairingScreen } from './pages/Pairing.tsx';
 import { useYjs } from './sync/useYjs.ts';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 
 export function App() {
   const [pairing, setPairing] = useState<Pairing | null>(() => loadPairing());
@@ -56,6 +57,10 @@ interface PairedProps {
 
 function PairedApp({ pairing, onLeaveRoom }: PairedProps) {
   const [route, setRoute] = useState<Route>('home');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('home', setRoute),
+    [],
+  );
   const bound = useMemo<BoundCareDoc>(
     () =>
       bindCareDoc(
@@ -67,6 +72,7 @@ function PairedApp({ pairing, onLeaveRoom }: PairedProps) {
   );
 
   useEffect(() => () => bound.destroy(), [bound]);
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   const [relayState, setRelayState] = useState<RelayState | null>(() =>
     bound.relay ? { ...bound.relay } : null,
@@ -81,7 +87,9 @@ function PairedApp({ pairing, onLeaveRoom }: PairedProps) {
   const unread = useYjs(bound.doc, (d) => readUnreadHandoverFor(d, pairing.role));
 
   function handleNavigate(next: Route) {
-    if (ROUTES.includes(next)) setRoute(next);
+    if (ROUTES.includes(next)) {
+      void localNavigation.navigate(next, { kind: 'crossfade' });
+    }
   }
 
   return (

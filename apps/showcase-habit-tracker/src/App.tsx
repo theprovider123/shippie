@@ -4,6 +4,7 @@ import {
   type AgentInsight,
   type AppsListEntry,
 } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { cuesToFire, habitsToAutoCheck } from './intent-matcher.ts';
 import type { CheckStatus, Habit, HabitCheck, PersistedState } from './types.ts';
 import { load, save } from './store.ts';
@@ -50,14 +51,39 @@ type Route =
   | { kind: 'habit'; habitId: string }
   | { kind: 'archive' };
 
+function sameRoute(a: Route, b: Route): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'habit' && b.kind === 'habit') return a.habitId === b.habitId;
+  return true;
+}
+
 export function App() {
   const [{ habits, checks, lastReviewedWeek }, setState] = useState<PersistedState>(() => load());
   const [draft, setDraft] = useState('');
   const [route, setRoute] = useState<Route>({ kind: 'today' });
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Route>(
+        { kind: 'today' },
+        setRoute,
+        { isEqual: sameRoute },
+      ),
+    [],
+  );
   const [overlappingApps, setOverlappingApps] = useState<AppsListEntry[]>([]);
   const [insights, setInsights] = useState<AgentInsight[]>([]);
   const [pendingCues, setPendingCues] = useState<Map<string, string>>(new Map());
   const [reviewDismissedThisSession, setReviewDismissedThisSession] = useState(false);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Route, kind: 'crossfade' | 'rise' = 'crossfade'): void {
+    void localNavigation.navigate(next, { kind });
+  }
+
+  function closeTo(fallback: Route): void {
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+  }
 
   // Persist on every change. The store handles legacy migration on load.
   useEffect(() => {
@@ -282,7 +308,7 @@ export function App() {
 
   function archiveHabit(habit: Habit) {
     updateHabit({ ...habit, archivedAt: new Date().toISOString() });
-    setRoute({ kind: 'today' });
+    void localNavigation.replace({ kind: 'today' }, { kind: 'crossfade' });
     shippie.feel.texture('toggle');
   }
 
@@ -374,7 +400,7 @@ export function App() {
           }}
           onTick={toggleHabit}
           onPartial={partialHabit}
-          onOpen={(habit) => setRoute({ kind: 'habit', habitId: habit.id })}
+          onOpen={(habit) => navigate({ kind: 'habit', habitId: habit.id }, 'rise')}
           cuePrompts={cuePromptList}
           onDismissCue={dismissCue}
         />
@@ -387,7 +413,7 @@ export function App() {
           eligibleIntents={eligibleIntents}
           onUpdate={updateHabit}
           onArchive={() => archiveHabit(activeHabit)}
-          onBack={() => setRoute({ kind: 'today' })}
+          onBack={() => closeTo({ kind: 'today' })}
         />
       ) : null}
 
@@ -395,7 +421,7 @@ export function App() {
         <Archive
           habits={habits}
           onReactivate={reactivateHabit}
-          onBack={() => setRoute({ kind: 'today' })}
+          onBack={() => closeTo({ kind: 'today' })}
         />
       ) : null}
 
@@ -405,7 +431,7 @@ export function App() {
           role="tab"
           aria-selected={route.kind === 'today'}
           className={`tab ${route.kind === 'today' ? 'tab-active' : ''}`}
-          onClick={() => setRoute({ kind: 'today' })}
+          onClick={() => navigate({ kind: 'today' })}
         >
           Today
         </button>
@@ -414,7 +440,7 @@ export function App() {
           role="tab"
           aria-selected={route.kind === 'archive'}
           className={`tab ${route.kind === 'archive' ? 'tab-active' : ''}`}
-          onClick={() => setRoute({ kind: 'archive' })}
+          onClick={() => navigate({ kind: 'archive' })}
         >
           Archive
         </button>

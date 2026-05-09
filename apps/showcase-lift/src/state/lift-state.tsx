@@ -13,6 +13,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
 import { resolveLocalDb } from '../db/runtime.ts';
 import {
@@ -96,12 +97,18 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
   const [theme, setThemeInner] = useState<ThemeName>('iron');
   const [defaultUnit, setDefaultUnitInner] = useState<Unit>('kg');
-  const [tab, setTab] = useState<Tab>('today');
+  const [tab, setTabState] = useState<Tab>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('today', setTabState),
+    [],
+  );
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [templateForkOf, setTemplateForkOf] = useState<string | null>(null);
 
   if (!dbRef.current) dbRef.current = resolveLocalDb();
   const db = dbRef.current;
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   const setTheme = useCallback((next: ThemeName) => {
     setThemeInner(next);
@@ -120,6 +127,13 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
       // ignore
     }
   }, []);
+
+  const setTab = useCallback(
+    (next: Tab) => {
+      void localNavigation.navigate(next, { kind: 'crossfade' });
+    },
+    [localNavigation],
+  );
 
   const refresh = useCallback(async () => {
     const [
@@ -234,6 +248,7 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
       defaultUnit,
       setDefaultUnit,
       tab,
+      setTab,
       selectedExerciseId,
       templateForkOf,
       refresh,

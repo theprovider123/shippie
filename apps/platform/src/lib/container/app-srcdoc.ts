@@ -28,7 +28,7 @@ export function appPackageSrcdoc(
   <style>
     :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; }
     body { margin: 0; background: #fffaf2; color: #211d18; }
-    main { min-height: 100vh; padding: 24px; display: grid; align-content: center; justify-items: start; gap: 12px; }
+    main { min-height: 100svh; min-height: 100dvh; padding: 24px; display: grid; align-content: center; justify-items: start; gap: 12px; }
     h1 { margin: 0; font-size: 22px; }
     p { margin: 0; color: #5f554a; line-height: 1.5; max-width: 38ch; }
     button { border: 1px solid #211d18; background: transparent; color: #211d18; border-radius: 999px; padding: 10px 16px; font-weight: 600; cursor: pointer; }

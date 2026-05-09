@@ -268,7 +268,7 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     const env = envWith(
       fakeKv({}),
       fakeR2({}),
-      fakeAssets(new Set(['/run/mevrouw/index.html']))
+      fakeAssets(new Set(['/__shippie-run/mevrouw/index.html']))
     );
     const res = await serveFromR2({
       request: new Request('https://mevrouw.shippie.app/some/path?ref=share', {
@@ -290,7 +290,7 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     const env = envWith(
       fakeKv({}),
       fakeR2({}),
-      fakeAssets(new Set(['/run/mevrouw/index.html']))
+      fakeAssets(new Set(['/__shippie-run/mevrouw/index.html']))
     );
     const res = await serveFromR2({
       request: new Request('https://mevrouw.shippie.app/', {
@@ -332,7 +332,7 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     const env = envWith(
       kv,
       fakeR2({}),
-      fakeAssets(new Set(['/run/mevrouw/index.html']))
+      fakeAssets(new Set(['/__shippie-run/mevrouw/index.html']))
     );
     const res = await serveFromR2({
       request: new Request('https://mevrouw.shippie.app/', {

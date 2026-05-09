@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { HomePage } from './pages/Home.tsx';
 import { NewPitchPage, type NewPitchPayload } from './pages/NewPitch.tsx';
 import { PitchPage } from './pages/Pitch.tsx';
@@ -50,13 +51,46 @@ const NAV: Array<{ id: 'home' | 'templates' | 'settings'; label: string }> = [
   { id: 'settings', label: 'Settings' },
 ];
 
+function sameScreen(a: Screen, b: Screen): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'pitch' && b.kind === 'pitch') return a.pitchId === b.pitchId;
+  if (a.kind === 'print' && b.kind === 'print') return a.pitchId === b.pitchId;
+  if (a.kind === 'compare' && b.kind === 'compare') {
+    return (
+      a.pitchId === b.pitchId &&
+      a.before === b.before &&
+      a.after === b.after
+    );
+  }
+  return true;
+}
+
 export function App() {
   const [state, setState] = useState<Persisted>(() => load());
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Screen>(
+        { kind: 'home' },
+        setScreen,
+        { isEqual: sameScreen },
+      ),
+    [],
+  );
 
   useEffect(() => {
     save(state);
   }, [state]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Screen, kind: 'crossfade' | 'rise' = 'crossfade'): void {
+    void localNavigation.navigate(next, { kind });
+  }
+
+  function closeTo(fallback: Screen): void {
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+  }
 
   const activePitch = useMemo(() => {
     if (screen.kind === 'pitch' || screen.kind === 'compare' || screen.kind === 'print') {
@@ -110,7 +144,7 @@ export function App() {
       return next;
     });
     shippie.feel.texture('milestone');
-    setScreen({ kind: 'pitch', pitchId: pitch.id });
+    navigate({ kind: 'pitch', pitchId: pitch.id }, 'rise');
   }
 
   function patchPitch(id: string, patch: Partial<Pitch>) {
@@ -210,7 +244,7 @@ export function App() {
 
   function deletePitch(pitchId: string) {
     setState((prev) => removePitch(prev, pitchId));
-    setScreen({ kind: 'home' });
+    void localNavigation.replace({ kind: 'home' }, { kind: 'crossfade' });
   }
 
   function saveIdentity(identity: Identity) {
@@ -222,10 +256,6 @@ export function App() {
     clearAll();
     setState(load());
     shippie.feel.texture('milestone');
-  }
-
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'pitch-forge' });
   }
 
   // Top-level nav target derived from current screen.
@@ -254,7 +284,7 @@ export function App() {
               role="tab"
               aria-selected={navTarget === n.id}
               className={`tab ${navTarget === n.id ? 'active' : ''}`}
-              onClick={() => setScreen({ kind: n.id })}
+              onClick={() => navigate({ kind: n.id })}
             >
               {n.label}
             </button>
@@ -265,16 +295,16 @@ export function App() {
       {screen.kind === 'home' ? (
         <HomePage
           pitches={state.pitches}
-          onOpen={(id) => setScreen({ kind: 'pitch', pitchId: id })}
-          onNew={() => setScreen({ kind: 'new' })}
+          onOpen={(id) => navigate({ kind: 'pitch', pitchId: id }, 'rise')}
+          onNew={() => navigate({ kind: 'new' }, 'rise')}
         />
       ) : screen.kind === 'new' ? (
         <NewPitchPage
           onCreate={createPitch}
-          onCancel={() => setScreen({ kind: 'home' })}
+          onCancel={() => closeTo({ kind: 'home' })}
         />
       ) : screen.kind === 'templates' ? (
-        <TemplatesPage onBack={() => setScreen({ kind: 'home' })} />
+        <TemplatesPage onBack={() => closeTo({ kind: 'home' })} />
       ) : screen.kind === 'settings' ? (
         <SettingsPage
           identity={state.identity}
@@ -294,20 +324,20 @@ export function App() {
           onReorderSections={(ids) => reorderSecs(activePitch.id, ids)}
           onSaveBrief={(body) => saveBrief(activePitch.id, body)}
           onSnapshot={(label) => snapshotVersion(activePitch.id, label)}
-          onPrint={() => setScreen({ kind: 'print', pitchId: activePitch.id })}
+          onPrint={() => navigate({ kind: 'print', pitchId: activePitch.id }, 'rise')}
           onVersions={() =>
-            setScreen({
+            navigate({
               kind: 'compare',
               pitchId: activePitch.id,
               before: null,
               after: null,
-            })
+            }, 'rise')
           }
           onSent={() => markSent(activePitch.id)}
           onBack={() => {
             // Optional cleanup hook for empty pitches in the future.
             void deletePitch;
-            setScreen({ kind: 'home' });
+            closeTo({ kind: 'home' });
           }}
         />
       ) : screen.kind === 'compare' && activePitch ? (
@@ -318,30 +348,25 @@ export function App() {
           currentSections={activeSections}
           onRestore={(versionId) => {
             restoreVersion(versionId);
-            setScreen({ kind: 'pitch', pitchId: activePitch.id });
+            void localNavigation.replace({ kind: 'pitch', pitchId: activePitch.id }, { kind: 'crossfade' });
           }}
-          onBack={() => setScreen({ kind: 'pitch', pitchId: activePitch.id })}
+          onBack={() => closeTo({ kind: 'pitch', pitchId: activePitch.id })}
         />
       ) : screen.kind === 'print' && activePitch ? (
         <PrintViewPage
           pitch={activePitch}
           sections={activeSections}
           identity={state.identity}
-          onClose={() => setScreen({ kind: 'pitch', pitchId: activePitch.id })}
+          onClose={() => closeTo({ kind: 'pitch', pitchId: activePitch.id })}
         />
       ) : (
         <HomePage
           pitches={state.pitches}
-          onOpen={(id) => setScreen({ kind: 'pitch', pitchId: id })}
-          onNew={() => setScreen({ kind: 'new' })}
+          onOpen={(id) => navigate({ kind: 'pitch', pitchId: id }, 'rise')}
+          onNew={() => navigate({ kind: 'new' }, 'rise')}
         />
       )}
 
-      {screen.kind !== 'print' ? (
-        <button type="button" className="your-data no-print" onClick={openYourData}>
-          Your Data
-        </button>
-      ) : null}
     </div>
   );
 }

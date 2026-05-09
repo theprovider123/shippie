@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { summarizeMove, type MoveEntry } from './move.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_move' });
 const STORAGE_KEY = 'shippie.move.v1';
+type Mode = 'plan' | 'workout' | 'sleep';
 
 function load(): MoveEntry[] {
   try {
@@ -26,7 +28,11 @@ function save(entries: readonly MoveEntry[]): void {
 
 export function App() {
   const [entries, setEntries] = useState<MoveEntry[]>(() => load());
-  const [mode, setMode] = useState<'plan' | 'workout' | 'sleep'>('workout');
+  const [mode, setMode] = useState<Mode>('workout');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Mode>('workout', setMode),
+    [],
+  );
   const [distanceKm, setDistanceKm] = useState(5);
   const [minutes, setMinutes] = useState(35);
   const [sleepHours, setSleepHours] = useState(7.5);
@@ -34,6 +40,7 @@ export function App() {
   const [caffeineEvents, setCaffeineEvents] = useState(0);
 
   useEffect(() => save(entries), [entries]);
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   useEffect(() => {
     shippie.requestIntent('caffeine-logged');
@@ -95,9 +102,6 @@ export function App() {
         <p className="eyebrow">Move</p>
         <h1>Energy, load, recovery.</h1>
         <p>Plan a run, log a workout, close the loop with sleep. No leaderboard.</p>
-        <button type="button" onClick={() => shippie.openYourData({ appSlug: 'move' })}>
-          Your Data
-        </button>
       </header>
 
       <section className="summary" aria-label="Move summary">
@@ -117,7 +121,7 @@ export function App() {
             key={next}
             type="button"
             className={mode === next ? 'active' : ''}
-            onClick={() => setMode(next)}
+            onClick={() => void localNavigation.navigate(next, { kind: 'crossfade' })}
           >
             {next}
           </button>

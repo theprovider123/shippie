@@ -105,10 +105,6 @@ export function App() {
     setRounds(p.defaultRounds);
   }
 
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'breath' });
-  }
-
   const remainingSec = Math.max(0, Math.ceil(target - elapsed));
   const remainMin = Math.floor(remainingSec / 60);
   const remainSec = remainingSec % 60;
@@ -215,9 +211,6 @@ export function App() {
         </section>
       ) : null}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </main>
   );
 }

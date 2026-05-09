@@ -4,7 +4,6 @@ import { peopleBlob, touchesBlob } from '../lib/csv.ts';
 interface Props {
   people: Person[];
   touches: Touch[];
-  onOpenYourData: () => void;
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -19,7 +18,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function Settings({ people, touches, onOpenYourData }: Props) {
+export function Settings({ people, touches }: Props) {
   return (
     <div className="page">
       <div className="page-header">
@@ -53,17 +52,6 @@ export function Settings({ people, touches, onOpenYourData }: Props) {
             touches.csv ({touches.length})
           </button>
         </div>
-      </div>
-
-      <div className="card">
-        <h3>Backup</h3>
-        <p className="muted small">
-          Touch piggybacks on Shippie's encrypted-backup spine. Open Your Data to see what
-          this app holds and export the encrypted bundle.
-        </p>
-        <button type="button" className="ghost" onClick={onOpenYourData}>
-          Open Your Data
-        </button>
       </div>
 
       <div className="card">

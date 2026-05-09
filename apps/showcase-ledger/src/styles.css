@@ -642,22 +642,6 @@ button.subtle {
   font-weight: 600;
 }
 
-.your-data-button {
-  position: fixed;
-  bottom: calc(72px + var(--safe-bottom) + 12px);
-  right: 16px;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
-  color: var(--muted);
-  font-size: 11px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  z-index: 40;
-}
-
 @media (max-width: 480px) {
   .field-row {
     grid-template-columns: 1fr;

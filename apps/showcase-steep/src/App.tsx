@@ -248,7 +248,7 @@ export function App() {
                     setDataPanelOpen(true);
                   }}
                 >
-                  Your Data
+                  Backup
                 </button>
               </li>
             </ul>

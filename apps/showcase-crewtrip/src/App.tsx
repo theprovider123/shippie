@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ChangeEvent } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { qrSvg } from '@shippie/qr';
 
 import type {
@@ -69,6 +70,8 @@ import {
   normalizeCrewtripState,
   normalizePlaylistUrl,
   parseRecoveryPack,
+  readLocalHostClaim,
+  readLocalPlayerId,
   readJoinedEventCode,
   readLocalBackups,
   recoveryPackFileName,
@@ -77,6 +80,8 @@ import {
   syncLabelShort,
   totalScore,
   unlockLabel,
+  writeLocalHostClaim,
+  writeLocalPlayerId,
   writeLocalBackup,
   crewColorAt,
   type TripPhase,
@@ -371,13 +376,22 @@ export function App() {
   const [state, setState] = usePersistentState();
   const deviceId = useMemo(getDeviceId, []);
   const dock = useViewportDock();
-  const [role, setRole] = useState<Role | null>(() => initialRole());
+  const [role, setRole] = useState<Role | null>(() => initialRole(state.eventCode));
+  const [localPlayerId, setLocalPlayerId] = useState<string | null>(() => readLocalPlayerId(state.eventCode));
   const sync = useCrewtripSync(state, setState, deviceId, Boolean(role));
   const reduceMotion = usePrefersReducedMotion();
 
   const [tab, setTab] = useState<Tab>('now');
   const [tabStack, setTabStack] = useState<Tab[]>([]);
   const tabRef = useRef<Tab>('now');
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Tab>('now', (next) => {
+        tabRef.current = next;
+        setTab(next);
+      }),
+    [],
+  );
   const touchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
   const [draftMemory, setDraftMemory] = useState('');
   const [draftRequest, setDraftRequest] = useState('');
@@ -414,8 +428,12 @@ export function App() {
   const [minuteTick, setMinuteTick] = useState(0);
 
   const shareUrl = useMemo(() => buildShareUrl(state.eventCode, 'crew'), [state.eventCode]);
-  const hostShareUrl = useMemo(() => buildShareUrl(state.eventCode, 'join-host'), [state.eventCode]);
-  const activePlayer = state.players.find((player) => player.id === state.activePlayerId) ?? state.players[0]!;
+  const hostPlayer = state.players.find((player) => player.id === 'host') ?? state.players[0]!;
+  const localPlayer = localPlayerId ? state.players.find((player) => player.id === localPlayerId) : undefined;
+  const crewNeedsProfile = role === 'eventee' && (!localPlayer || localPlayer.id === 'host');
+  const activePlayer = role === 'host'
+    ? hostPlayer
+    : (localPlayer && localPlayer.id !== 'host' ? localPlayer : state.players.find((player) => player.id !== 'host') ?? hostPlayer);
   const openPolls = state.polls.filter((poll) => poll.open);
   const pendingRequests = state.requests.filter((request) => request.status === 'new');
   const sortedPlayers = [...state.players].sort((a, b) => b.score - a.score);
@@ -552,8 +570,11 @@ export function App() {
     if (resolved !== current && !options.replace) {
       setTabStack((stack) => [...stack, current].slice(-10));
     }
-    tabRef.current = resolved;
-    setTab(resolved);
+    if (options.replace) {
+      void localNavigation.replace(resolved, { kind: 'crossfade' });
+    } else {
+      void localNavigation.navigate(resolved, { kind: 'crossfade' });
+    }
   };
   const goBack = () => {
     if (inboxOpen) {
@@ -577,20 +598,13 @@ export function App() {
       setActionSheetOpen(false);
       return;
     }
-    const stack = [...tabStack];
-    while (stack.length) {
-      const previous = stack.pop()!;
-      if (isTabAllowed(previous, role, features) && previous !== tab) {
-        setTabStack(stack);
-        tabRef.current = previous;
-        setTab(previous);
-        return;
-      }
-    }
     const fallback = fallbackBackTab(tab, role, features);
     setTabStack([]);
-    tabRef.current = fallback;
-    setTab(fallback);
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+  };
+  const resetToNow = () => {
+    setTabStack([]);
+    void localNavigation.replace('now', { kind: 'crossfade' });
   };
   const hasQuickActions = role === 'host' || features.memories || features.requests || features.crew || features.chat;
 
@@ -603,6 +617,9 @@ export function App() {
   }
 
   // Sync browser theme-color with the active palette.
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  // Sync browser theme-color with the active palette.
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
@@ -612,6 +629,24 @@ export function App() {
   useEffect(() => {
     tabRef.current = tab;
   }, [tab]);
+
+  useEffect(() => {
+    const storedPlayer = readLocalPlayerId(state.eventCode);
+    if (storedPlayer !== localPlayerId) setLocalPlayerId(storedPlayer);
+  }, [state.eventCode]);
+
+  useEffect(() => {
+    if (role === 'host' && localPlayerId !== 'host') {
+      chooseLocalPlayer('host');
+    }
+  }, [localPlayerId, role, state.eventCode]);
+
+  useEffect(() => {
+    if (role) return;
+    if (!localPlayerId || localPlayerId === 'host') return;
+    if (!state.players.some((player) => player.id === localPlayerId)) return;
+    setRole('eventee');
+  }, [localPlayerId, role, state.players]);
 
   // Flip data-mode on the document so light/dark CSS branches work, and
   // make sure the page background matches the palette outside our shell.
@@ -740,6 +775,18 @@ export function App() {
     setState((current) => markLocalUpdate(updater(current), deviceId));
   }
 
+  function chooseLocalPlayer(playerId: string) {
+    setLocalPlayerId(playerId);
+    writeLocalPlayerId(state.eventCode, playerId);
+  }
+
+  function becomeHost(eventCode: string) {
+    writeLocalHostClaim(eventCode);
+    writeLocalPlayerId(eventCode, 'host');
+    setLocalPlayerId('host');
+    setRole('host');
+  }
+
   function vote(pollId: string, optionId: string) {
     update((current) => ({
       ...current,
@@ -809,10 +856,11 @@ export function App() {
     };
     update((current) => ({
       ...current,
-      activePlayerId: id,
+      activePlayerId: role === 'host' ? current.activePlayerId : id,
       players: [...current.players, nextPlayer],
       broadcasts: [{ id: newId('b'), text: `${name} joined the crew.`, at: timeNow() }, ...current.broadcasts],
     }));
+    chooseLocalPlayer(id);
     setDraftCrewName('');
     setDraftCrewTeam(groups[1]?.id ?? 'all');
     sdk.feel.texture('confirm');
@@ -1389,7 +1437,7 @@ export function App() {
       confirmLabel: 'Leave',
       onConfirm: () => {
         setRole(null);
-        setTab('now');
+        resetToNow();
         setSelectedChallengeId(null);
         setActionSheetOpen(false);
       },
@@ -1412,8 +1460,8 @@ export function App() {
           theme,
         });
         setState(markLocalUpdate(next, deviceId));
-        setRole('host');
-        setTab('now');
+        becomeHost(next.eventCode);
+        resetToNow();
         setSelectedDayId(next.days[0]?.id ?? 'day-1');
         setSelectedChallengeId(null);
         setActionSheetOpen(false);
@@ -1497,8 +1545,8 @@ export function App() {
       const pack = parseRecoveryPack(await file.text());
       const restored = markLocalUpdate(pack.state, deviceId);
       setState(restored);
-      setRole('host');
-      setTab('now');
+      becomeHost(restored.eventCode);
+      resetToNow();
       setSelectedDayId(restored.days[0]?.id ?? 'day-1');
       setSelectedChallengeId(null);
       setSelectedTournamentEventId(null);
@@ -1515,8 +1563,8 @@ export function App() {
   function restoreLocalBackup(backup: ReturnType<typeof readLocalBackups>[number]) {
     const restored = markLocalUpdate(backup.pack.state, deviceId);
     setState(restored);
-    setRole('host');
-    setTab('now');
+    becomeHost(restored.eventCode);
+    resetToNow();
     setSelectedDayId(restored.days[0]?.id ?? 'day-1');
     setSelectedChallengeId(null);
     setSelectedTournamentEventId(null);
@@ -1542,17 +1590,20 @@ export function App() {
   if (!role) {
     // A trip counts as "existing" if there's at least one named player
     // beyond the lone Host seed and we haven't already cleared it.
-    const hasExistingTrip = state.players.length > 1
+    const hasHostClaim = readLocalHostClaim(state.eventCode);
+    const hasExistingTrip = hasHostClaim && (
+      state.players.length > 1
       || state.memories.length > 0
-      || state.stops.some((stop) => stop.title !== 'Start planning');
+      || state.stops.some((stop) => stop.title !== 'Start planning')
+    );
     return (
       <EntryScreen
         themeStyle={themeVars}
         hasExistingTrip={hasExistingTrip}
         existingTripName={state.eventName !== 'Crewtrip' ? state.eventName : undefined}
         onContinue={() => {
-          setRole('host');
-          setTab('now');
+          becomeHost(state.eventCode);
+          resetToNow();
         }}
         onStartNew={(name) => {
           const next = createFreshCrewtripState({
@@ -1562,8 +1613,8 @@ export function App() {
           });
           if (name) next.eventName = name;
           setState(markLocalUpdate(next, deviceId));
-          setRole('host');
-          setTab('now');
+          becomeHost(next.eventCode);
+          resetToNow();
           setSelectedDayId(next.days[0]?.id ?? 'day-1');
         }}
         onJoinCode={(code) => {
@@ -1577,10 +1628,74 @@ export function App() {
           // The original seeded state lives in `initialState`. Opt-in path
           // for browsing the showcase rather than a real first run.
           setState(markLocalUpdate(initialState, deviceId));
-          setRole('host');
-          setTab('now');
+          becomeHost(initialState.eventCode);
+          resetToNow();
         }}
       />
+    );
+  }
+
+  if (crewNeedsProfile) {
+    return (
+      <main className={`app-shell ${dock.className}`} style={shellStyle}>
+        <header className="app-header">
+          <div className="header-copy">
+            <h1>{state.eventName || 'Crewtrip'}</h1>
+            <p className="trip-meta">
+              <span className="trip-code">{state.eventCode}</span>
+            </p>
+          </div>
+          <div className="header-actions">
+            <button type="button" className="share-button" onClick={copyShareLink}>
+              <Icon name="share" size={14} />
+              <span>{shareCopied ? copy.copied : copy.share}</span>
+            </button>
+          </div>
+        </header>
+        <LiveActivityStrip activities={liveActivities} reduceMotion={reduceMotion} />
+        <View title={copy.joinTrip} kicker="Crew view" onBack={leaveSession} backLabel="Leave">
+          <section className="crew-join-gate app-card">
+            <div>
+              <p className="eyebrow">{state.eventCode}</p>
+              <h2>Join as yourself</h2>
+              <p>
+                This invite opens the crew environment. Hosts manage plans, games, and settings;
+                crew can vote, request, chat, submit moments, and follow the trip.
+              </p>
+            </div>
+            <div className="composer three">
+              <input
+                name="crew-name"
+                value={draftCrewName}
+                onChange={(event) => setDraftCrewName(event.target.value)}
+                placeholder="Your name"
+              />
+              <select name="crew-team" value={draftCrewTeam} onChange={(event) => setDraftCrewTeam(event.target.value)}>
+                {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+              </select>
+              <button type="button" disabled={!draftCrewName.trim()} onClick={addCrewMember}>{copy.addMe}</button>
+            </div>
+          </section>
+          {state.players.some((player) => player.id !== 'host') ? (
+            <section className="crew-join-gate app-card">
+              <div>
+                <p className="eyebrow">Already joined?</p>
+                <h3>Use an existing crew profile</h3>
+              </div>
+              <div className="group-chip-row">
+                {state.players.filter((player) => player.id !== 'host').map((player) => (
+                  <button key={player.id} type="button" onClick={() => chooseLocalPlayer(player.id)}>
+                    <span className="mini-avatar" style={{ background: player.color }}>{player.name.slice(0, 1).toUpperCase()}</span>
+                    {player.name}
+                    <small>{player.team}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </View>
+        <Confirm request={confirmRequest} onClose={() => setConfirmRequest(null)} />
+      </main>
     );
   }
 
@@ -1641,13 +1756,14 @@ export function App() {
           onboarding={
             <OnboardingCard
               state={state}
+              role={role}
               features={features}
               syncPeers={sync.peers}
               onShare={copyShareLink}
               onAddStop={() => {
                 if (role === 'host') {
                   setHostSection('manage');
-                  setTab('host');
+                  goToTab('host');
                 } else {
                   setActionSheetOpen(true);
                 }
@@ -1722,8 +1838,15 @@ export function App() {
               <h3>{copy.joinTrip}</h3>
               <p>{copy.joinTripHint}</p>
             </div>
-            <select name="active-player" value={state.activePlayerId} onChange={(event) => update((current) => ({ ...current, activePlayerId: event.target.value }))}>
-              {state.players.map((player) => (
+            <select
+              name="active-player"
+              value={activePlayer.id}
+              onChange={(event) => {
+                chooseLocalPlayer(event.target.value);
+                if (role === 'host') update((current) => ({ ...current, activePlayerId: event.target.value }));
+              }}
+            >
+              {state.players.filter((player) => role === 'host' || player.id !== 'host').map((player) => (
                 <option key={player.id} value={player.id}>{player.name}</option>
               ))}
             </select>
@@ -2337,8 +2460,7 @@ export function App() {
                 </ControlPanel>
                 <ControlPanel title={copy.share} tone="primary">
                   {qrMarkup ? <div className="qr-frame" dangerouslySetInnerHTML={{ __html: qrMarkup }} /> : <code>{shareUrl}</code>}
-                  <code className="host-code">Join-host: {hostShareUrl}</code>
-                  <p className="sync-note">{syncLabel(sync, language)}</p>
+                  <p className="sync-note">{syncLabel(sync, language)} Host controls stay on this device.</p>
                   <button onClick={copyShareLink}>{shareCopied ? copy.copied : copy.copyJoinLink}</button>
                 </ControlPanel>
                 <HostDisclosure title="Trip feeling" hint={`${palette.name} palette`}>
@@ -2631,7 +2753,7 @@ export function App() {
             {features.crew ? <MoreButton icon={<Icon name="crew" size={16} />} label={copy.crew} meta={activeGroup?.name ?? activePlayer.team} onClick={() => goToTab('crew')} /> : null}
             {features.polls ? <MoreButton icon={<Icon name="vote" size={16} />} label={copy.polls} meta={`${openPolls.length} open`} onClick={() => goToTab('vote')} /> : null}
             {features.requests ? <MoreButton icon={<Icon name="requests" size={16} />} label={role === 'host' ? copy.inbox : copy.requests} meta={`${pendingRequests.length} new`} onClick={() => goToTab('requests')} /> : null}
-            {features.soundtrack && activeSoundtrack ? <MoreButton icon={<Icon name="soundtrack" size={16} />} label={copy.soundtrack} meta={activeSoundtrack.title} onClick={() => setTab('now')} /> : null}
+            {features.soundtrack && activeSoundtrack ? <MoreButton icon={<Icon name="soundtrack" size={16} />} label={copy.soundtrack} meta={activeSoundtrack.title} onClick={() => goToTab('now')} /> : null}
             {features.chat && (groups.length > 1 || role === 'host') ? <MoreButton icon={<Icon name="chat" size={16} />} label={copy.chat} meta={activeGroup?.name ?? copy.allCrew} onClick={() => goToTab('chat')} /> : null}
             {features.wrap ? <MoreButton icon={<Icon name="wrap" size={16} />} label={copy.wrap} meta={wrapUp.published ? 'published' : 'draft'} onClick={() => goToTab('wrap')} /> : null}
             {role === 'host' ? <MoreButton icon={<Icon name="host" size={16} />} label={copy.settings} meta={features.wrap ? 'manage, drops, setup, wrap' : 'manage, drops, setup'} onClick={() => goToTab('host')} /> : null}
@@ -2723,7 +2845,7 @@ export function App() {
       <Dialog open={actionSheetOpen} onClose={() => setActionSheetOpen(false)} label="Crewtrip quick actions">
         <div className="sheet-handle" />
         <div className="sheet-head">
-          <h2>{role === 'host' ? 'Quick add' : 'Add something'}</h2>
+          <h2>{role === 'host' ? 'Quick add' : 'Contribute'}</h2>
           <button type="button" onClick={() => setActionSheetOpen(false)} aria-label="Close"><Icon name="close" size={16} /></button>
         </div>
         {features.memories ? (
@@ -2891,7 +3013,7 @@ export function App() {
             {hasQuickActions && index === Math.ceil(dockTabs.length / 2) ? (
               <button type="button" className="tabbar-add" aria-label="Open quick actions" onClick={() => setActionSheetOpen(true)}>
                 <span><Icon name="plus" size={18} /></span>
-                <small>Add</small>
+                <small>{role === 'host' ? 'Add' : 'Contribute'}</small>
               </button>
             ) : null}
             <button type="button" className={tab === item ? 'active' : ''} onClick={() => goToTab(item)}>

@@ -2,7 +2,7 @@
  * Tiny IndexedDB wrapper for body photos.
  *
  * Photos NEVER leave the device. We store them as Blobs in a dedicated
- * object store so quota usage stays observable, and the Your Data panel
+ * object store so quota usage stays observable, and the Shippie data surface
  * can wipe them via the standard `caches.keys() + indexedDB.databases()`
  * teardown. The privacy claim in the C2 acceptance assertion depends on
  * this — there is no fetch path that uploads photos anywhere.

@@ -12,6 +12,7 @@
  * The app records what the user types. It doesn't interpret.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { Today } from './pages/Today.tsx';
 import { History } from './pages/History.tsx';
 import { Symptoms } from './pages/Symptoms.tsx';
@@ -44,10 +45,24 @@ export function App() {
   const db = useMemo(() => resolveLocalDb(), []);
 
   const [tab, setTab] = useState<Tab>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('today', setTab),
+    [],
+  );
   const [symptoms, setSymptoms] = useState<Symptom[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [softPrompt, setSoftPrompt] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Tab): void {
+    void localNavigation.navigate(next, { kind: 'crossfade' });
+  }
+
+  function closeTo(fallback: Tab): void {
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+  }
 
   // First-load: seed default symptoms if empty, then read.
   useEffect(() => {
@@ -215,8 +230,8 @@ export function App() {
             onLogMedDose={onLogMedDose}
             softPrompt={softPrompt}
             onDismissPrompt={() => setSoftPrompt(null)}
-            onManageSymptoms={() => setTab('symptoms')}
-            onManageMedications={() => setTab('medications')}
+            onManageSymptoms={() => navigate('symptoms')}
+            onManageMedications={() => navigate('medications')}
           />
         ) : null}
 
@@ -226,7 +241,7 @@ export function App() {
             medications={activeMedications}
             loadEntries={loadEntries}
             loadDoses={loadDoses}
-            onPrint={() => setTab('print')}
+            onPrint={() => navigate('print')}
           />
         ) : null}
 
@@ -236,7 +251,7 @@ export function App() {
             onCreate={onCreateSymptom}
             onDelete={onDeleteSymptom}
             onReorder={onReorderSymptoms}
-            onClose={() => setTab('today')}
+            onClose={() => closeTo('today')}
           />
         ) : null}
 
@@ -246,7 +261,7 @@ export function App() {
             onCreate={onCreateMedication}
             onUpdate={onUpdateMedication}
             onDelete={onDeleteMedication}
-            onClose={() => setTab('today')}
+            onClose={() => closeTo('today')}
           />
         ) : null}
 
@@ -256,7 +271,7 @@ export function App() {
             medications={medications}
             loadEntries={loadEntries}
             loadDoses={loadDoses}
-            onClose={() => setTab('history')}
+            onClose={() => closeTo('history')}
           />
         ) : null}
       </main>
@@ -266,28 +281,28 @@ export function App() {
           <button
             type="button"
             className={`nav-btn ${tab === 'today' ? 'nav-btn-active' : ''}`}
-            onClick={() => setTab('today')}
+            onClick={() => navigate('today')}
           >
             Today
           </button>
           <button
             type="button"
             className={`nav-btn ${tab === 'history' ? 'nav-btn-active' : ''}`}
-            onClick={() => setTab('history')}
+            onClick={() => navigate('history')}
           >
             History
           </button>
           <button
             type="button"
             className={`nav-btn ${tab === 'symptoms' ? 'nav-btn-active' : ''}`}
-            onClick={() => setTab('symptoms')}
+            onClick={() => navigate('symptoms')}
           >
             Symptoms
           </button>
           <button
             type="button"
             className={`nav-btn ${tab === 'medications' ? 'nav-btn-active' : ''}`}
-            onClick={() => setTab('medications')}
+            onClick={() => navigate('medications')}
           >
             Meds
           </button>

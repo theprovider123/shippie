@@ -62,6 +62,7 @@
     {#if runtimeSrc}
       <iframe
         use:onRegister={app.id}
+        data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
@@ -72,6 +73,7 @@
     {:else if packageFrameSrc}
       <iframe
         use:onRegister={app.id}
+        data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
@@ -82,6 +84,7 @@
     {:else}
       <iframe
         use:onRegister={app.id}
+        data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation"

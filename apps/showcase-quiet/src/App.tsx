@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { summarizeQuiet, type QuietSession } from './quiet.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_quiet' });
 const STORAGE_KEY = 'shippie.quiet.v1';
 const BREATH_SECONDS = 60;
 const FOCUS_SECONDS = 25 * 60;
+type Mode = 'breath' | 'focus' | 'mood';
 
 function load(): QuietSession[] {
   try {
@@ -28,7 +30,11 @@ function save(sessions: readonly QuietSession[]): void {
 
 export function App() {
   const [sessions, setSessions] = useState<QuietSession[]>(() => load());
-  const [mode, setMode] = useState<'breath' | 'focus' | 'mood'>('breath');
+  const [mode, setMode] = useState<Mode>('breath');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Mode>('breath', setMode),
+    [],
+  );
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [moodScore, setMoodScore] = useState(3);
@@ -36,6 +42,7 @@ export function App() {
   const startedAt = useRef<number | null>(null);
 
   useEffect(() => save(sessions), [sessions]);
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   useEffect(() => {
     shippie.requestIntent('caffeine-logged');
@@ -127,9 +134,6 @@ export function App() {
         <p className="eyebrow">Quiet</p>
         <h1>One calmer surface.</h1>
         <p>Breath, focus, and mood stay local, but still feed Daily.</p>
-        <button type="button" onClick={() => shippie.openYourData({ appSlug: 'quiet' })}>
-          Your Data
-        </button>
       </header>
 
       <section className="modes" aria-label="Quiet modes">
@@ -140,7 +144,7 @@ export function App() {
             className={mode === next ? 'active' : ''}
             onClick={() => {
               stop();
-              setMode(next);
+              void localNavigation.navigate(next, { kind: 'crossfade' });
             }}
           >
             {next}

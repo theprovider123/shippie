@@ -1,4 +1,4 @@
-import type { CrewtripState } from '../types';
+import type { CrewtripState, Role } from '../types';
 import { Icon } from './Icon';
 
 /**
@@ -9,6 +9,7 @@ import { Icon } from './Icon';
  */
 interface OnboardingCardProps {
   state: CrewtripState;
+  role: Role;
   features: CrewtripState['features'];
   syncPeers: number;
   onShare: () => void;
@@ -29,33 +30,53 @@ export function OnboardingCard(props: OnboardingCardProps) {
   const crewJoined = props.state.players.length > 1 || props.syncPeers > 0;
   const hasStop = props.state.stops.length > 0;
   const hasMemory = props.state.memories.length > 0;
+  const hasCrewRequest = props.state.requests.length > 0;
 
-  const steps: Step[] = [
-    {
-      id: 'invite',
-      done: crewJoined,
-      label: 'Invite the crew',
-      detail: 'Share the join code so everyone lands in the same trip.',
-      cta: 'Share',
-      onClick: props.onShare,
-    },
-    props.features.plan ? {
-      id: 'plan',
-      done: hasStop,
-      label: 'Add the first plan',
-      detail: 'A meet point, a meal, a sunset spot — anything to anchor the day.',
-      cta: 'Add',
-      onClick: props.onAddStop,
-    } : null,
-    props.features.memories ? {
-      id: 'memory',
-      done: hasMemory,
-      label: 'Drop the first memory',
-      detail: 'A quote, a photo, a tiny moment worth keeping.',
-      cta: 'Save',
-      onClick: props.onAddMemory,
-    } : null,
-  ].filter(Boolean) as Step[];
+  const steps: Step[] = props.role === 'host'
+    ? [
+        {
+          id: 'invite',
+          done: crewJoined,
+          label: 'Invite the crew',
+          detail: 'Share the join code so everyone lands in the same trip.',
+          cta: 'Share',
+          onClick: props.onShare,
+        },
+        props.features.plan ? {
+          id: 'plan',
+          done: hasStop,
+          label: 'Add the first plan',
+          detail: 'A meet point, a meal, a sunset spot — anything to anchor the day.',
+          cta: 'Add',
+          onClick: props.onAddStop,
+        } : null,
+        props.features.memories ? {
+          id: 'memory',
+          done: hasMemory,
+          label: 'Drop the first memory',
+          detail: 'A quote, a photo, a tiny moment worth keeping.',
+          cta: 'Save',
+          onClick: props.onAddMemory,
+        } : null,
+      ].filter(Boolean) as Step[]
+    : [
+        props.features.requests ? {
+          id: 'request',
+          done: hasCrewRequest,
+          label: 'Ask the host',
+          detail: 'Request a plan, vote, song, game, or useful change.',
+          cta: 'Ask',
+          onClick: props.onAddStop,
+        } : null,
+        props.features.memories ? {
+          id: 'memory',
+          done: hasMemory,
+          label: 'Add a memory',
+          detail: 'Save a quote, photo, or tiny moment from your side of the trip.',
+          cta: 'Save',
+          onClick: props.onAddMemory,
+        } : null,
+      ].filter(Boolean) as Step[];
 
   const allDone = steps.every((step) => step.done);
   if (allDone) return null;
@@ -63,8 +84,8 @@ export function OnboardingCard(props: OnboardingCardProps) {
   return (
     <article className="onboarding-card">
       <header>
-        <p className="eyebrow">Get the trip moving</p>
-        <h3>The first 60 seconds.</h3>
+        <p className="eyebrow">{props.role === 'host' ? 'Get the trip moving' : 'Crew mode'}</p>
+        <h3>{props.role === 'host' ? 'The first 60 seconds.' : 'Your first 60 seconds.'}</h3>
       </header>
       <ol>
         {steps.map((step) => (

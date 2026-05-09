@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createLocalFiles } from '@shippie/local-files';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import type {
   ShippieLocalDb,
   ShippieLocalFiles,
@@ -72,6 +73,11 @@ type View =
   | { kind: 'visit'; visitId: string }
   | { kind: 'print'; visitId: string };
 
+interface Screen {
+  tab: Tab;
+  view: View;
+}
+
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'home', label: 'Home' },
   { id: 'sites', label: 'Sites' },
@@ -112,12 +118,36 @@ function csvCell(v: unknown): string {
   return s;
 }
 
+function sameView(a: View, b: View): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'site' && b.kind === 'site') return a.siteId === b.siteId;
+  if (a.kind === 'visit' && b.kind === 'visit') return a.visitId === b.visitId;
+  if (a.kind === 'print' && b.kind === 'print') return a.visitId === b.visitId;
+  return true;
+}
+
+function sameScreen(a: Screen, b: Screen): boolean {
+  return a.tab === b.tab && sameView(a.view, b.view);
+}
+
 export function App() {
   const dbRef = useRef<ShippieLocalDb | null>(null);
   const [files, setFiles] = useState<ShippieLocalFiles | null>(null);
 
   const [tab, setTab] = useState<Tab>('home');
   const [view, setView] = useState<View>({ kind: 'tabs' });
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Screen>(
+        { tab: 'home', view: { kind: 'tabs' } },
+        (next) => {
+          setTab(next.tab);
+          setView(next.view);
+        },
+        { isEqual: sameScreen },
+      ),
+    [],
+  );
 
   const [sites, setSites] = useState<Site[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -166,6 +196,20 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Screen, kind: 'crossfade' | 'rise' = 'crossfade'): void {
+    void localNavigation.navigate(next, { kind });
+  }
+
+  function closeTo(fallback: Screen): void {
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+  }
+
+  function replaceWith(next: Screen): void {
+    void localNavigation.replace(next, { kind: 'crossfade' });
+  }
 
   const sitesById = useMemo(() => {
     const map = new Map<string, Site>();
@@ -241,8 +285,7 @@ export function App() {
     if (!db) return;
     await deleteSite(db, siteId);
     await Promise.all([reloadSites(), reloadVisits()]);
-    setView({ kind: 'tabs' });
-    setTab('sites');
+    replaceWith({ tab: 'sites', view: { kind: 'tabs' } });
   }
 
   async function handleStartVisit(siteId: string, opts: { templateId: TemplateId | 'blank'; weather: string }) {
@@ -259,7 +302,7 @@ export function App() {
     }
     await Promise.all([reloadVisits(), refreshVisit(visit.id)]);
     shippie.feel.texture('confirm');
-    setView({ kind: 'visit', visitId: visit.id });
+    navigate({ tab, view: { kind: 'visit', visitId: visit.id } }, 'rise');
   }
 
   async function handleAddCheck(visitId: string, label: string) {
@@ -392,7 +435,7 @@ export function App() {
     if (!db) return;
     await deleteVisit(db, visitId);
     await reloadVisits();
-    setView({ kind: 'tabs' });
+    replaceWith({ tab: 'home', view: { kind: 'tabs' } });
   }
 
   async function handleSaveTemplate(input: { name: string; checks: string[] }) {
@@ -449,12 +492,7 @@ export function App() {
     await Promise.all([reloadSites(), reloadVisits(), reloadTemplates()]);
     setChecksByVisit({});
     setIncidentsByVisit({});
-    setView({ kind: 'tabs' });
-    setTab('home');
-  }
-
-  function openYourData() {
-    shippie.data.openPanel();
+    replaceWith({ tab: 'home', view: { kind: 'tabs' } });
   }
 
   // ------------------------------------------------------------------
@@ -490,8 +528,8 @@ export function App() {
           site={site}
           visits={siteVisits}
           visitHasIssues={visitHasIssues}
-          onBack={() => setView({ kind: 'tabs' })}
-          onOpenVisit={(id) => setView({ kind: 'visit', visitId: id })}
+          onBack={() => closeTo({ tab: 'sites', view: { kind: 'tabs' } })}
+          onOpenVisit={(id) => navigate({ tab, view: { kind: 'visit', visitId: id } }, 'rise')}
           onStartVisit={(opts) => void handleStartVisit(view.siteId, opts)}
           onUpdateSite={(patch) => void handleUpdateSite(view.siteId, patch)}
           onDeleteSite={() => void handleDeleteSite(view.siteId)}
@@ -517,7 +555,7 @@ export function App() {
           checks={checks}
           incidents={incidents}
           files={files}
-          onBack={() => setView({ kind: 'site', siteId: visit.site_id })}
+          onBack={() => closeTo({ tab: 'sites', view: { kind: 'site', siteId: visit.site_id } })}
           onAddCheck={(label) => void handleAddCheck(visit.id, label)}
           onSetCheckStatus={(id, status) => void handleSetCheckStatus(id, visit.id, status)}
           onSetCheckNotes={(id, notes) => void handleSetCheckNotes(id, visit.id, notes)}
@@ -529,7 +567,7 @@ export function App() {
           onSetSignature={(svg) => void handleSetSignature(visit.id, svg)}
           onSubmit={() => void handleSubmitVisit(visit.id)}
           onReopen={() => void handleReopenVisit(visit.id)}
-          onPrint={() => setView({ kind: 'print', visitId: visit.id })}
+          onPrint={() => navigate({ tab, view: { kind: 'print', visitId: visit.id } }, 'rise')}
           onDeleteVisit={() => void handleDeleteVisit(visit.id)}
         />
         <SyncStatus />
@@ -553,7 +591,7 @@ export function App() {
         <PrintView
           payload={payload}
           files={files}
-          onBack={() => setView({ kind: 'visit', visitId: visit.id })}
+          onBack={() => closeTo({ tab, view: { kind: 'visit', visitId: visit.id } })}
         />
       </div>
     );
@@ -574,7 +612,7 @@ export function App() {
             role="tab"
             aria-selected={t.id === tab}
             className={`tab ${t.id === tab ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => navigate({ tab: t.id, view: { kind: 'tabs' } })}
           >
             {t.label}
           </button>
@@ -586,9 +624,9 @@ export function App() {
           visits={recentVisits}
           sitesById={sitesById}
           visitHasIssues={visitHasIssues}
-          onOpenVisit={(id) => setView({ kind: 'visit', visitId: id })}
+          onOpenVisit={(id) => navigate({ tab, view: { kind: 'visit', visitId: id } }, 'rise')}
           onNewVisit={() => {
-            setTab('sites');
+            navigate({ tab: 'sites', view: { kind: 'tabs' } });
           }}
         />
       ) : null}
@@ -597,7 +635,7 @@ export function App() {
         <Sites
           sites={sites}
           visitCounts={visitCounts}
-          onOpenSite={(id) => setView({ kind: 'site', siteId: id })}
+          onOpenSite={(id) => navigate({ tab, view: { kind: 'site', siteId: id } }, 'rise')}
           onCreateSite={(input) => void handleCreateSite(input)}
         />
       ) : null}
@@ -619,9 +657,6 @@ export function App() {
         />
       ) : null}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </div>
   );
 }

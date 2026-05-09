@@ -12,17 +12,69 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { toast, type Toast } from '$lib/stores/toast';
+  import { track } from '$lib/util/track';
 
   function variantClass(kind: Toast['kind']): string {
     return `toast variant-${kind}`;
   }
 
+  // Skip-key for the SW update toast. Stored in localStorage as the
+  // build id of a version the user explicitly skipped. On the next
+  // update, we ask the new WAITING worker for its build id; if it
+  // matches the stored skip, suppress the toast. If it differs, show.
+  // This is precise per-version — unlike a 24h timestamp, "Skip"
+  // doesn't accidentally hide unrelated future updates.
+  const SKIP_KEY = 'shippie:sw-skipped-version';
+
+  // Ask the WAITING worker (NOT the active controller) for its build
+  // id via MessageChannel. The active controller reports the currently-
+  // installed version; we want the pending one. Bails after 1s.
+  async function getWaitingWorkerVersion(
+    reg: ServiceWorkerRegistration,
+  ): Promise<string | null> {
+    const waiting = reg.waiting;
+    if (!waiting) return null;
+    return new Promise((resolve) => {
+      const channel = new MessageChannel();
+      let resolved = false;
+      const settle = (value: string | null) => {
+        if (resolved) return;
+        resolved = true;
+        resolve(value);
+      };
+      channel.port1.onmessage = (event) => {
+        const v = (event.data as { versionId?: string } | null)?.versionId;
+        settle(typeof v === 'string' && v ? v : null);
+      };
+      try {
+        waiting.postMessage({ t: 'version' }, [channel.port2]);
+      } catch {
+        settle(null);
+      }
+      window.setTimeout(() => settle(null), 1000);
+    });
+  }
+
   // The SW registration in app.html dispatches `shippie:sw-update-ready`
-  // when a new worker has installed and a controller exists. Push a
-  // sticky info toast with a "Refresh" action that activates the new
-  // worker and reloads.
+  // when a new worker has installed and a controller exists.
   onMount(() => {
-    function onUpdateReady() {
+    async function onUpdateReady() {
+      const reg = (window as { __shippieSwReg?: ServiceWorkerRegistration })
+        .__shippieSwReg;
+      if (!reg) return;
+
+      const pendingVersion = await getWaitingWorkerVersion(reg);
+      if (pendingVersion) {
+        try {
+          const skipped = localStorage.getItem(SKIP_KEY);
+          if (skipped && skipped === pendingVersion) return; // suppress
+        } catch {
+          // localStorage blocked (private mode / partitioned) — fall
+          // through and show the toast.
+        }
+      }
+
+      track('sw_update_shown', pendingVersion ? { version_id: pendingVersion } : undefined);
       toast.push({
         kind: 'info',
         message: 'New version available.',
@@ -30,9 +82,8 @@
         action: {
           label: 'Refresh',
           run: () => {
-            const reg = (window as { __shippieSwReg?: ServiceWorkerRegistration })
-              .__shippieSwReg;
-            const worker = reg?.waiting ?? reg?.installing;
+            track('sw_update_refreshed', pendingVersion ? { version_id: pendingVersion } : undefined);
+            const worker = reg.waiting ?? reg.installing;
             if (worker) {
               worker.postMessage('SKIP_WAITING');
             } else {
@@ -40,6 +91,21 @@
             }
           },
         },
+        // Secondary action: skip this version. Stores the build id so
+        // future deploys (different version) still surface the toast.
+        secondaryAction: pendingVersion
+          ? {
+              label: 'Skip this version',
+              run: () => {
+                track('sw_update_skipped', { version_id: pendingVersion });
+                try {
+                  localStorage.setItem(SKIP_KEY, pendingVersion);
+                } catch {
+                  // Silent — user will see the toast again on this device.
+                }
+              },
+            }
+          : undefined,
       });
     }
     window.addEventListener('shippie:sw-update-ready', onUpdateReady);
@@ -63,6 +129,18 @@
           }}
         >
           {t.action.label}
+        </button>
+      {/if}
+      {#if t.secondaryAction}
+        <button
+          type="button"
+          class="action secondary"
+          onclick={() => {
+            t.secondaryAction?.run();
+            toast.dismiss(t.id);
+          }}
+        >
+          {t.secondaryAction.label}
         </button>
       {/if}
       <button
@@ -140,6 +218,16 @@
   }
   .action:hover {
     background: rgba(217, 166, 88, 0.1);
+  }
+  /* Secondary action (e.g. "Skip this version") — recessed so the
+     primary action stays visually dominant. */
+  .action.secondary {
+    color: var(--text-secondary, #C9BEA9);
+    border-color: var(--border-light, rgba(255,255,255,0.18));
+  }
+  .action.secondary:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text, #EDE4D3);
   }
 
   .close {

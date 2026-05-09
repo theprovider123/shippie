@@ -60,6 +60,14 @@ describe('runAccessGate', () => {
     expect(res?.status).toBe(401);
   });
 
+  test('team without session → 403', async () => {
+    const ctx = ctxFor('team-app');
+    const res = await runAccessGate(ctx, {
+      meta: { slug: 'team-app', visibility_scope: 'team', organization_id: 'org_1' }
+    });
+    expect(res?.status).toBe(403);
+  });
+
   test('private with valid cookie → null (allow)', async () => {
     const token = await signInviteGrant(
       {

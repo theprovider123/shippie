@@ -622,26 +622,6 @@ button.small { height: 32px; padding: 0 10px; font-size: 12px; }
 .settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .danger-zone { border-color: rgba(182, 90, 44, 0.4); }
 
-/* Your Data fab */
-.your-data {
-  position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0));
-  right: 16px;
-  z-index: 5;
-  height: 36px;
-  padding: 0 14px;
-  background: var(--pf-paper-alt);
-  color: var(--pf-muted);
-  border: 1px solid var(--pf-line);
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  border-radius: 0;
-}
-.your-data:hover { color: var(--pf-ink); border-color: var(--pf-line-strong); }
-
 /* Print view */
 .print-view { display: flex; flex-direction: column; gap: 16px; }
 .print-controls {

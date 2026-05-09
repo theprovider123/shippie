@@ -37,11 +37,13 @@ const PLATFORM_HOSTS = new Set([
   '[::1]',
 ]);
 
-// First-party showcase apps bundled into apps/platform/static/run/ at
-// build time by scripts/prepare-showcases.mjs. Hitting
-// <slug>.shippie.app rewrites to /run/<slug>/* so the Cloudflare
-// adapter serves their dist directly. Maker apps (everything else
-// under *.shippie.app) still flow through the wrapper dispatcher.
+const LOCAL_PLATFORM_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+// First-party showcase apps are bundled into apps/platform/static/__shippie-run/
+// at build time by scripts/prepare-showcases.mjs. Hitting
+// <slug>.shippie.app rewrites to the apex /run/<slug>/ focused shell; the
+// shell iframes internal /__shippie-run/<slug>/ runtime assets. Maker apps
+// (everything else under *.shippie.app) still flow through the wrapper dispatcher.
 //
 // First-party showcase slug list lives in `$lib/showcase-slugs` so
 // the marketplace server load can read the same source of truth.
@@ -56,10 +58,10 @@ export const handle: Handle = async ({ event, resolve }) => {
     hostname !== 'ai.shippie.app'
   ) {
     // First-party showcase: <slug>.shippie.app/* redirects to the
-    // canonical /run/<slug>/* on the apex host. System routes stay on
-    // the subdomain and use the same wrapper route handlers as maker
-    // apps, so /__shippie/data, /__shippie/analytics, /__shippie/install,
-    // and friends work before/after the apex redirect.
+    // canonical apex /run/<slug>/ surface. System routes stay on the
+    // subdomain and use the same wrapper route handlers as maker apps,
+    // so /__shippie/data, /__shippie/analytics, /__shippie/install,
+    // and friends work before/after the apex handoff.
     //
     // We tried serving app assets via
     // ASSETS.fetch from the subdomain context, but the binding refuses
@@ -120,8 +122,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     // resolveHostFull returns null for). Should be a 404 page.
   }
 
-  const focusedRunRedirect = focusedRunTarget(event);
-  if (focusedRunRedirect) return focusedRunRedirect;
+  const runtimeAssetResponse = await runtimeAssetTarget(event);
+  if (runtimeAssetResponse) return runtimeAssetResponse;
 
   // Platform host — wire Lucia.
   event.locals.user = null;
@@ -173,25 +175,26 @@ function firstPartyTraceId(request: Request): string {
   return crypto.randomUUID();
 }
 
-function focusedRunTarget(event: Parameters<Handle>[0]['event']): Response | null {
-  const match = /^\/run\/([^/]+)\/?$/.exec(event.url.pathname);
+async function runtimeAssetTarget(event: Parameters<Handle>[0]['event']): Promise<Response | null> {
+  if (event.request.method !== 'GET' && event.request.method !== 'HEAD') return null;
+  const match = /^\/__shippie-run\/([^/]+)(?:\/(.*))?$/.exec(event.url.pathname);
   if (!match) return null;
-  if (event.url.searchParams.get('shippie_embed') === '1') return null;
-
-  // Only redirect the human top-level document. Runtime iframes and
-  // offline cache warms still need the real static /run/<slug>/ bundle.
-  const destination = event.request.headers.get('sec-fetch-dest');
-  if (destination !== 'document') return null;
-
-  const target = new URL('/container', event.url);
-  target.searchParams.set('app', containerSlugForRequest(decodeURIComponent(match[1]!)));
-  target.searchParams.set('focused', '1');
-  for (const [key, value] of event.url.searchParams.entries()) {
-    if (key === 'app' || key === 'focused' || key === 'shippie_embed') continue;
-    target.searchParams.set(key, value);
+  if (LOCAL_PLATFORM_HOSTS.has(event.url.hostname)) {
+    const localAssetPath = match[2] ?? '';
+    if (localAssetPath.includes('.')) return null;
+    const fallbackUrl = new URL(event.url);
+    fallbackUrl.pathname = `/__shippie-run/${match[1]}/index.html`;
+    return event.fetch(fallbackUrl);
   }
-  return new Response(null, {
-    status: 302,
-    headers: { location: target.pathname + target.search, 'cache-control': 'no-store' },
-  });
+  const assetPath = match[2] ?? '';
+
+  const assets = event.platform?.env.ASSETS;
+  if (!assets) return null;
+
+  const response = await assets.fetch(event.url);
+  if (response.status !== 404 || assetPath.includes('.')) return response;
+
+  const fallbackUrl = new URL(event.url);
+  fallbackUrl.pathname = `/__shippie-run/${match[1]}/index.html`;
+  return assets.fetch(fallbackUrl);
 }

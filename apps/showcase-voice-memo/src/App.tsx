@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { TodayPage } from './pages/Today.tsx';
 import { MemoPage } from './pages/Memo.tsx';
 import { SearchPage } from './pages/Search.tsx';
@@ -26,6 +27,10 @@ const shippie = createShippieIframeSdk({ appId: 'app_voice_memo' });
 const MODEL_FLAG_KEY = 'shippie.voice-memo.model-warm.v1';
 
 type Tab = 'today' | 'search' | 'settings';
+interface Screen {
+  tab: Tab;
+  memoId: string | null;
+}
 
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'today', label: 'Today' },
@@ -33,11 +38,27 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'settings', label: 'Settings' },
 ];
 
+function sameScreen(a: Screen, b: Screen): boolean {
+  return a.tab === b.tab && a.memoId === b.memoId;
+}
+
 export function App() {
   const [memos, setMemos] = useState<Memo[]>(() => loadMemos());
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [tab, setTab] = useState<Tab>('today');
   const [openMemoId, setOpenMemoId] = useState<string | null>(null);
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Screen>(
+        { tab: 'today', memoId: null },
+        (next) => {
+          setTab(next.tab);
+          setOpenMemoId(next.memoId);
+        },
+        { isEqual: sameScreen },
+      ),
+    [],
+  );
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<TranscriptionProgress | null>(null);
   const [modelDownloaded, setModelDownloaded] = useState<boolean>(() => {
@@ -52,6 +73,20 @@ export function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigateTab(next: Tab): void {
+    void localNavigation.navigate({ tab: next, memoId: null }, { kind: 'crossfade' });
+  }
+
+  function openMemoById(id: string): void {
+    void localNavigation.navigate({ tab, memoId: id }, { kind: 'rise' });
+  }
+
+  function closeMemo(): void {
+    void localNavigation.backOrReplace({ tab, memoId: null }, { kind: 'crossfade' });
+  }
 
   const openMemo = useMemo(
     () => (openMemoId ? memos.find((m) => m.id === openMemoId) ?? null : null),
@@ -144,7 +179,7 @@ export function App() {
       /* best-effort */
     }
     setMemos((prev) => removeMemo(prev, id));
-    setOpenMemoId(null);
+    void localNavigation.replace({ tab, memoId: null }, { kind: 'crossfade' });
   }
 
   async function handleClearAll() {
@@ -154,11 +189,7 @@ export function App() {
       /* */
     }
     setMemos([]);
-    setOpenMemoId(null);
-  }
-
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'voice-memo' });
+    void localNavigation.replace({ tab: 'today', memoId: null }, { kind: 'crossfade' });
   }
 
   return (
@@ -177,7 +208,7 @@ export function App() {
               type="button"
               aria-selected={t.id === tab}
               className={`tab ${t.id === tab ? 'active' : ''}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => navigateTab(t.id)}
             >
               {t.label}
             </button>
@@ -188,7 +219,7 @@ export function App() {
       {openMemo ? (
         <MemoPage
           memo={openMemo}
-          onBack={() => setOpenMemoId(null)}
+          onBack={closeMemo}
           onChange={handleMemoChange}
           onDelete={handleDeleteMemo}
         />
@@ -200,10 +231,10 @@ export function App() {
           busy={busy}
           progress={progress}
           onSaved={handleSaved}
-          onOpenMemo={(id) => setOpenMemoId(id)}
+          onOpenMemo={openMemoById}
         />
       ) : tab === 'search' ? (
-        <SearchPage memos={memos} onOpenMemo={(id) => setOpenMemoId(id)} />
+        <SearchPage memos={memos} onOpenMemo={openMemoById} />
       ) : (
         <SettingsPage
           settings={settings}
@@ -214,9 +245,6 @@ export function App() {
         />
       )}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </div>
   );
 }

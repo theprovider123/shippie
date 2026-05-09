@@ -2,6 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import AdmZip from 'adm-zip';
 import { deployDirectory } from './deploy.ts';
 
 const TMP = join(tmpdir(), 'shippie-core-deploy-test-' + Date.now());
@@ -25,7 +26,7 @@ describe('deployDirectory', () => {
       { directory: '/no/such/path' },
     );
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('directory not found');
+    expect(result.error).toContain('path not found');
   });
 
   test('non-trial deploy without token surfaces no_auth_token', async () => {
@@ -107,6 +108,49 @@ describe('deployDirectory', () => {
     expect(result.ok).toBe(true);
     expect(calls).toEqual([
       { url: 'https://example.com/api/deploy', remixFrom: 'recipe-saver' },
+    ]);
+  });
+
+  test('wraps a single html file and defaults it to unlisted', async () => {
+    const htmlFile = join(TMP, 'Ticket Prioritizer.html');
+    writeFileSync(htmlFile, '<!doctype html><title>Tickets</title><main>ok</main>');
+    const calls: Array<{ slug: FormDataEntryValue | null; visibility: FormDataEntryValue | null; files: string[] }> = [];
+    globalThis.fetch = (async (_input, init) => {
+      const body = init?.body as FormData;
+      const zipFile = body.get('zip') as File;
+      const buffer = Buffer.from(await zipFile.arrayBuffer());
+      const zip = new AdmZip(buffer);
+      calls.push({
+        slug: body.get('slug'),
+        visibility: body.get('visibility'),
+        files: zip.getEntries().map((entry) => entry.entryName).sort(),
+      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          slug: 'ticket-prioritizer',
+          live_url: 'https://ticket-prioritizer.shippie.app/',
+          visibility_scope: 'unlisted',
+          deploy_id: 'dep_1',
+          version: 1,
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    const result = await deployDirectory(
+      { apiUrl: 'https://example.com', token: 'tok' },
+      { directory: htmlFile },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.visibility).toBe('unlisted');
+    expect(calls).toEqual([
+      {
+        slug: 'ticket-prioritizer',
+        visibility: 'unlisted',
+        files: ['index.html', 'shippie.json'],
+      },
     ]);
   });
 });

@@ -161,10 +161,10 @@ async function tryStaticBridge(
   const assets = ctx.env.ASSETS;
   if (!assets) return null;
 
-  // Probe the canonical static shell. Workers Assets matches by pathname,
+  // Probe the internal static runtime. Workers Assets matches by pathname,
   // so the host on the probe URL is irrelevant — but use shippie.app to
   // keep the redirect target self-consistent.
-  const probeUrl = `https://shippie.app/run/${encodeURIComponent(slug)}/index.html`;
+  const probeUrl = `https://shippie.app/__shippie-run/${encodeURIComponent(slug)}/index.html`;
   let probe: Response;
   try {
     probe = await assets.fetch(new Request(probeUrl, { method: 'GET' }));

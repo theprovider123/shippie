@@ -38,6 +38,7 @@ import { logsCommand } from './commands/logs.js';
 import { configCommand } from './commands/config.js';
 import { templatesCommand } from './commands/templates.js';
 import { workspaceCommand } from './commands/workspace.js';
+import { promoteCommand, visibilityCommand } from './commands/visibility.js';
 
 function deriveSlug(url: string): string {
   try {
@@ -129,15 +130,36 @@ program
   .action(workspaceCommand);
 
 program
-  .command('deploy [dir]')
-  .description('Deploy a directory to Shippie')
-  .option('-s, --slug <slug>', 'App slug (defaults to directory name)')
+  .command('deploy [path]')
+  .description('Deploy a directory, .zip, or single .html file to Shippie')
+  .option('-s, --slug <slug>', 'App slug (defaults to path name)')
   .option('--remix <slug>', 'Deploy as a remix of an existing public app slug')
   .option('--skip-build', 'Skip install + build, deploy as-is')
   .option('--trial', 'Deploy as a 24-hour no-signup trial (no auth required)')
+  .option('--visibility <scope>', 'Visibility: public, unlisted, private, or team')
+  .option('--org <org>', 'Organization id or slug for --visibility team / --team')
+  .option('--private', 'Deploy as a hosted private app')
+  .option('--unlisted', 'Deploy as an unlisted app')
+  .option('--public', 'Deploy as a listed public app')
+  .option('--team', 'Deploy as a team app for --org')
   .option('-w, --watch', 'Replay the deploy intelligence stream after upload')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(deployCommand);
+
+program
+  .command('visibility <slug> <scope>')
+  .description('Change app visibility: public, unlisted, private, or team')
+  .option('--org <org>', 'Organization id or slug when scope is team')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(visibilityCommand);
+
+program
+  .command('promote <slug>')
+  .description('Promote an app to a broader visibility tier')
+  .option('--to <scope>', 'Target visibility: public or team', 'public')
+  .option('--org <org>', 'Organization id or slug when promoting to team')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(promoteCommand);
 
 program
   .command('init')

@@ -30,15 +30,29 @@ function emptyR2(): R2Bucket {
   } as unknown as R2Bucket;
 }
 
-function eventFor(url: string) {
+function fakeAssets(files: Record<string, string> = {}) {
+  return {
+    fetch: async (input: URL | RequestInfo) => {
+      const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
+      const body = files[url.pathname];
+      if (body === undefined) return new Response('missing', { status: 404 });
+      return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    },
+  };
+}
+
+function eventFor(url: string, init: { assets?: { fetch: typeof fetch } } = {}) {
+  const assets = init.assets ?? fakeAssets();
   return {
     url: new URL(url),
     request: new Request(url, { headers: { host: new URL(url).host } }),
+    fetch: (input: URL | RequestInfo) => assets.fetch(input),
     platform: {
       env: {
         DB: {} as never,
         APPS: emptyR2(),
         PLATFORM_ASSETS: emptyR2(),
+        ASSETS: assets,
         CACHE: fakeKv(),
         SHIPPIE_ENV: 'test',
         PUBLIC_ORIGIN: 'http://test.invalid',
@@ -67,5 +81,55 @@ describe('hooks.server first-party showcase routing', () => {
     const body = (await res.json()) as { ok: boolean; slug: string };
     expect(body.ok).toBe(true);
     expect(body.slug).toBe('recipe');
+  });
+
+  test('bare /run/<slug>/ falls through to the focused SvelteKit page', async () => {
+    const resolve = vi.fn(async () => new Response('focused page'));
+    const res = await handle({
+      event: eventFor('https://shippie.app/run/recipe/') as never,
+      resolve,
+    });
+
+    expect(await res.text()).toBe('focused page');
+    expect(resolve).toHaveBeenCalledOnce();
+  });
+
+  test('nested /__shippie-run/<slug>/ assets are served from the Workers Assets binding', async () => {
+    const resolve = vi.fn(async () => new Response('fallthrough'));
+    const res = await handle({
+      event: eventFor('https://shippie.app/__shippie-run/recipe/index.html?shippie_embed=1', {
+        assets: fakeAssets({ '/__shippie-run/recipe/index.html': '<h1>Recipe asset</h1>' }),
+      }) as never,
+      resolve,
+    });
+
+    expect(await res.text()).toBe('<h1>Recipe asset</h1>');
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  test('local /__shippie-run/<slug>/ directory requests fall back to static index HTML', async () => {
+    const resolve = vi.fn(async () => new Response('fallthrough'));
+    const res = await handle({
+      event: eventFor('http://127.0.0.1:4102/__shippie-run/recipe/?shippie_embed=1', {
+        assets: fakeAssets({ '/__shippie-run/recipe/index.html': '<h1>Recipe local SPA</h1>' }),
+      }) as never,
+      resolve,
+    });
+
+    expect(await res.text()).toBe('<h1>Recipe local SPA</h1>');
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  test('nested /__shippie-run/<slug>/ app paths fall back to the app index HTML', async () => {
+    const resolve = vi.fn(async () => new Response('fallthrough'));
+    const res = await handle({
+      event: eventFor('https://shippie.app/__shippie-run/recipe/recipes/42', {
+        assets: fakeAssets({ '/__shippie-run/recipe/index.html': '<h1>Recipe SPA</h1>' }),
+      }) as never,
+      resolve,
+    });
+
+    expect(await res.text()).toBe('<h1>Recipe SPA</h1>');
+    expect(resolve).not.toHaveBeenCalled();
   });
 });

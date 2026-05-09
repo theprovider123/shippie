@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { resolveLocalDb } from './db/runtime.ts';
 import {
   archivePerson,
@@ -56,10 +57,31 @@ interface TouchHint {
   summary: string;
 }
 
+interface Screen {
+  tab: Tab;
+  personId: string | null;
+}
+
+function sameScreen(a: Screen, b: Screen): boolean {
+  return a.tab === b.tab && a.personId === b.personId;
+}
+
 export function App() {
   const db = useMemo(() => resolveLocalDb(), []);
   const [tab, setTab] = useState<Tab>('today');
   const [openPersonId, setOpenPersonId] = useState<string | null>(null);
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Screen>(
+        { tab: 'today', personId: null },
+        (next) => {
+          setTab(next.tab);
+          setOpenPersonId(next.personId);
+        },
+        { isEqual: sameScreen },
+      ),
+    [],
+  );
   const [people, setPeople] = useState<Person[]>([]);
   const [touches, setTouches] = useState<Touch[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -83,6 +105,20 @@ export function App() {
     setTagList(tg);
     setPersonTagLinks(pl);
   }, [db]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigateTab(next: Tab): void {
+    void localNavigation.navigate({ tab: next, personId: null }, { kind: 'crossfade' });
+  }
+
+  function openPersonById(id: string): void {
+    void localNavigation.navigate({ tab, personId: id }, { kind: 'rise' });
+  }
+
+  function closePerson(): void {
+    void localNavigation.backOrReplace({ tab, personId: null }, { kind: 'crossfade' });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -227,7 +263,7 @@ export function App() {
   async function handleDeletePerson(id: string) {
     if (!confirm('Delete this person and all their touches/tasks?')) return;
     await deletePerson(db, id);
-    setOpenPersonId(null);
+    void localNavigation.replace({ tab, personId: null }, { kind: 'crossfade' });
     await refresh();
   }
 
@@ -260,10 +296,6 @@ export function App() {
     if (!confirm('Delete this tag?')) return;
     await deleteTag(db, id);
     await refresh();
-  }
-
-  function openYourData() {
-    shippie.openYourData?.({ appSlug: 'touch' });
   }
 
   const openPerson = openPersonId ? people.find((p) => p.id === openPersonId) ?? null : null;
@@ -324,7 +356,7 @@ export function App() {
               type="button"
               aria-selected={t.id === tab}
               className={`tab ${t.id === tab ? 'active' : ''}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => navigateTab(t.id)}
             >
               {t.label}
             </button>
@@ -374,7 +406,7 @@ export function App() {
           tasks={openPersonTasks}
           tags={tagList}
           selectedTagIds={openPersonSelectedTagIds}
-          onBack={() => setOpenPersonId(null)}
+          onBack={closePerson}
           onLogTouch={() => setLogging({ personId: openPerson.id })}
           onUpdate={(patch) => handleUpdatePerson(openPerson.id, patch)}
           onDelete={() => handleDeletePerson(openPerson.id)}
@@ -389,7 +421,7 @@ export function App() {
           tasks={tasks}
           tags={tagList}
           personTagLinks={personTagLinks}
-          onOpen={(id) => setOpenPersonId(id)}
+          onOpen={openPersonById}
           onToggleTask={handleToggleTask}
         />
       ) : tab === 'people' ? (
@@ -397,7 +429,7 @@ export function App() {
           people={people}
           tags={tagList}
           personTagLinks={personTagLinks}
-          onOpen={(id) => setOpenPersonId(id)}
+          onOpen={openPersonById}
           onAddPerson={handleAddPerson}
         />
       ) : tab === 'review' ? (
@@ -405,7 +437,7 @@ export function App() {
           people={people}
           touches={touches}
           tasks={tasks}
-          onOpen={(id) => setOpenPersonId(id)}
+          onOpen={openPersonById}
           onToggleTask={handleToggleTask}
         />
       ) : tab === 'tags' ? (
@@ -416,11 +448,7 @@ export function App() {
           onDelete={handleDeleteTag}
         />
       ) : (
-        <Settings
-          people={people}
-          touches={touches}
-          onOpenYourData={openYourData}
-        />
+        <Settings people={people} touches={touches} />
       )}
 
       {logging ? (

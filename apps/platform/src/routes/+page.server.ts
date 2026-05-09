@@ -132,12 +132,40 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   }
 
   // Filter pushed into the DB query so pagination is correct.
-  const [dbRows, dbCategories] = await Promise.all([
-    query
-      ? searchPublic(db, query, { limit: PER_PAGE + 1, offset, category: categoryFilter })
-      : browsePublic(db, { limit: PER_PAGE + 1, offset, category: categoryFilter }),
-    listCategories(db),
-  ]);
+  let dbRows: FeaturedApp[];
+  let dbCategories: string[];
+  try {
+    [dbRows, dbCategories] = await Promise.all([
+      query
+        ? searchPublic(db, query, { limit: PER_PAGE + 1, offset, category: categoryFilter })
+        : browsePublic(db, { limit: PER_PAGE + 1, offset, category: categoryFilter }),
+      listCategories(db),
+    ]);
+  } catch {
+    const fallback = filteredFallbackApps(query, categoryFilter);
+    const visible = fallback.apps.slice(offset, offset + PER_PAGE);
+    return {
+      apps: visible,
+      featured: isDefaultBrowse
+        ? LAUNCHER_FEATURED_SLUGS
+            .map((slug) => visible.find((app) => app.slug === slug))
+            .filter((app): app is (typeof visible)[number] => Boolean(app))
+        : [],
+      topFourSlugs: isDefaultBrowse
+        ? LAUNCHER_FEATURED_SLUGS
+            .map((slug) => visible.find((app) => app.slug === slug))
+            .filter((app): app is (typeof visible)[number] => Boolean(app))
+            .slice(0, 4)
+            .map((app) => app.slug)
+        : [],
+      query,
+      page,
+      hasMore: fallback.apps.length > offset + PER_PAGE,
+      categories: fallback.categories,
+      kindFilter: null,
+      categoryFilter,
+    };
+  }
 
   const fallback = filteredFallbackApps(query, categoryFilter);
   const categories = [...new Set([...dbCategories, ...fallback.categories])].sort();

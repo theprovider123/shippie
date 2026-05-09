@@ -43,9 +43,11 @@
   const blurb = $derived(app ? app.tagline ?? app.description ?? `${app.name} on Shippie` : '');
   const typeLabel = $derived(app ? (app.type.toLowerCase() === 'app' ? 'tool' : app.type) : '');
   const proofBadges = $derived((app?.badges ?? []).filter((badge) => badge.proven));
-  const launchHref = $derived(app ? `/run/${encodeURIComponent(app.slug)}` : '/apps');
+  const launchHref = $derived(app ? `/run/${encodeURIComponent(app.slug)}/` : '/apps');
   const offlineStatus = $derived(app ? $offlineStatuses[app.slug] : undefined);
   const isOffline = $derived(Boolean(app && ($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved')));
+  const isSaving = $derived(offlineStatus?.state === 'downloading');
+  const isSaved = $derived(Boolean(app && (pinned || isOffline)));
   const offlineLabel = $derived.by(() => {
     if (!app) return '';
     if (offlineStatus?.state === 'downloading') {
@@ -91,36 +93,31 @@
     }
   }
 
-  async function toggleOffline() {
-    if (!app || offlineStatus?.state === 'downloading') return;
-    try {
-      if (isOffline) {
-        await removeAppAndTrack(app.slug);
-        toast.push({ kind: 'success', message: 'Offline copy removed.' });
-      } else {
-        const result = await ensureAppOffline(app.slug);
-        toast.push(
-          result.state === 'saved'
-            ? { kind: 'success', message: 'Saved for offline.' }
-            : { kind: 'error', message: 'Offline save needs a refresh.' },
-        );
-      }
-    } catch {
-      toast.push({ kind: 'error', message: 'Could not update offline copy.' });
-    }
-  }
+  async function toggleSaved() {
+    if (!app || isSaving) return;
+    const currentlySaved = isSaved;
+    const hasOfflineCopy =
+      isOffline || offlineStatus?.state === 'partial' || offlineStatus?.state === 'error';
 
-  function togglePinned() {
-    if (!app) return;
-    const shouldSave = !pinned;
-    togglePinnedApp(app.slug);
-    if (shouldSave) {
-      void ensureAppOffline(app.slug).catch(() => {
-        toast.push({ kind: 'error', message: 'Pinned, but could not save offline yet.' });
-      });
-    } else {
-      void removeAppAndTrack(app.slug).catch(() => {
-        toast.push({ kind: 'error', message: 'Unpinned, but could not remove offline copy yet.' });
+    try {
+      if (currentlySaved) {
+        if (pinned) togglePinnedApp(app.slug);
+        if (hasOfflineCopy) await removeAppAndTrack(app.slug);
+        toast.push({ kind: 'success', message: 'Removed from saved tools.' });
+        return;
+      }
+
+      togglePinnedApp(app.slug);
+      const result = await ensureAppOffline(app.slug);
+      toast.push(
+        result.state === 'saved'
+          ? { kind: 'success', message: 'Saved to your tools.' }
+          : { kind: 'error', message: 'Saved, but offline copy needs a refresh.' },
+      );
+    } catch {
+      toast.push({
+        kind: 'error',
+        message: currentlySaved ? 'Could not remove saved copy.' : 'Could not save this tool yet.',
       });
     }
   }
@@ -147,19 +144,17 @@
 
     <div class="actions">
       <a href={launchHref} onclick={launchAndRemember}>Open</a>
-      <button type="button" onclick={togglePinned}>
-        {pinned ? 'Unpin' : 'Pin'}
+      <button
+        type="button"
+        class:saved={isSaved}
+        class:busy={isSaving}
+        aria-pressed={isSaved}
+        onclick={toggleSaved}
+      >
+        {isSaving ? 'Saving' : isSaved ? 'Saved' : 'Save'}
       </button>
       <button type="button" class:copied={copyState === 'copied'} class:error={copyState === 'error'} onclick={copyAppLink}>
         {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Failed' : 'Copy'}
-      </button>
-      <button
-        type="button"
-        class:offline={isOffline}
-        class:busy={offlineStatus?.state === 'downloading'}
-        onclick={toggleOffline}
-      >
-        {offlineStatus?.state === 'downloading' ? 'Saving' : isOffline ? 'Remove' : 'Save'}
       </button>
       <a href={`/apps/${encodeURIComponent(app.slug)}`}>Page</a>
     </div>
@@ -171,7 +166,7 @@
       </div>
       <div>
         <dt>Opens</dt>
-        <dd>{(app.installCount ?? 0).toLocaleString()} installs</dd>
+        <dd>{(app.installCount ?? 0).toLocaleString()} opens</dd>
       </div>
       <div>
         <dt>Offline</dt>
@@ -281,7 +276,7 @@
   }
   .actions {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
   }
   .actions a,
@@ -317,7 +312,7 @@
     color: var(--sage-leaf);
     background: rgba(122, 154, 110, 0.08);
   }
-  .actions button.offline {
+  .actions button.saved {
     border-color: var(--sage-leaf);
     color: var(--sage-leaf);
     background: rgba(122, 154, 110, 0.08);

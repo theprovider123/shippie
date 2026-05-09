@@ -351,20 +351,3 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   margin: 4px 0 8px;
   color: #1F2A24;
 }
-
-/* Your Data button — pinned bottom corner of the page */
-.your-data {
-  position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0));
-  right: 16px;
-  background: rgba(31, 42, 36, 0.9);
-  color: #FFFFFF;
-  border: 0;
-  padding: 8px 12px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.your-data:hover { background: #1F2A24; }

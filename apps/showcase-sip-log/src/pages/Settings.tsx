@@ -14,10 +14,9 @@ import type { Targets } from '../db.ts';
 interface SettingsProps {
   targets: Targets;
   onChange: (next: Targets) => void;
-  onOpenYourData: () => void;
 }
 
-export function Settings({ targets, onChange, onOpenYourData }: SettingsProps) {
+export function Settings({ targets, onChange }: SettingsProps) {
   const [draft, setDraft] = useState<Targets>(targets);
 
   function patch(part: Partial<Targets>) {
@@ -73,15 +72,6 @@ export function Settings({ targets, onChange, onOpenYourData }: SettingsProps) {
         </div>
       </section>
 
-      <section className="card" aria-label="Your data">
-        <p className="eyebrow">your data</p>
-        <p className="small muted">
-          sip-log keeps everything on this device. tap below to view, export, or delete it through Shippie's data console.
-        </p>
-        <button type="button" className="ghost wide" onClick={onOpenYourData}>
-          Open your data
-        </button>
-      </section>
     </div>
   );
 }

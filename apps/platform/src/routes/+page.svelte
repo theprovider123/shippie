@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { PageProps } from './$types';
   import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
+  import InstallNudge from '$lib/components/marketplace/InstallNudge.svelte';
   import LauncherCard from '$lib/components/marketplace/LauncherCard.svelte';
   import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
   import { ensureAppOffline, refreshCachedSlugs } from '$lib/stores/cached-slugs';
@@ -128,6 +129,7 @@
   <meta name="description" content="Tap a tool to use it. They run on your device, work offline, and share local signals when it helps. No signup, no install, no subscription." />
   {#each (data.topFourSlugs ?? []) as slug}
     <link rel="prefetch" href="/run/{slug}/" as="document" />
+    <link rel="prefetch" href="/__shippie-run/{slug}/?shippie_embed=1" as="document" />
   {/each}
 </svelte:head>
 
@@ -135,41 +137,38 @@
 
 <div class="page">
   <header class="head wrap">
-    <p class="eyebrow">
-      <img src="/__shippie-pwa/icon.svg" alt="" width="14" height="14" />
-      Tool launcher
-    </p>
     <div class="head-grid">
-      <div>
+      <div class="head-copy">
+        <p class="eyebrow">Tool launcher</p>
         <h1 class="title">Shippie</h1>
         <p class="lede">
           Tap a tool to use it. They run on your device, work offline, and share local signals when it helps.
         </p>
       </div>
-      <div class="search-row">
+      <div class="head-tools">
         <SearchBar initial={data.query} placeholder="Search tools..." />
+        {#if data.categories.length > 0}
+          <ul class="cats" aria-label="Browse categories">
+            <li>
+              <a class="cat-chip" class:active={!data.categoryFilter} href={categoryHref(null)}>All</a>
+            </li>
+            {#each data.categories as cat (cat)}
+              {@const isActive = data.categoryFilter === cat}
+              <li>
+                <a
+                  class="cat-chip"
+                  class:active={isActive}
+                  href={categoryHref(isActive ? null : cat)}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {cat}{#if isActive} ✕{/if}
+                </a>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
     </div>
-    {#if data.categories.length > 0}
-      <ul class="cats" aria-label="Browse categories">
-        <li>
-          <a class="cat-chip" class:active={!data.categoryFilter} href={categoryHref(null)}>All</a>
-        </li>
-        {#each data.categories as cat (cat)}
-          {@const isActive = data.categoryFilter === cat}
-          <li>
-            <a
-              class="cat-chip"
-              class:active={isActive}
-              href={categoryHref(isActive ? null : cat)}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              {cat}{#if isActive} ✕{/if}
-            </a>
-          </li>
-        {/each}
-      </ul>
-    {/if}
   </header>
 
   {#if isFirstVisit && !filtered}
@@ -182,7 +181,7 @@
     </section>
   {/if}
 
-  <section class="results wrap">
+  <section class="results wrap-wide">
     {#if filtered}
       <section class="launcher-section primary" aria-labelledby="results-title">
         <div class="section-head">
@@ -230,8 +229,8 @@
         <section class="launcher-section pinned-section" aria-labelledby="pinned-title">
           <div class="section-head">
             <div>
-              <h2 id="pinned-title">Pinned</h2>
-              <p>Your saved launch row.</p>
+              <h2 id="pinned-title">Saved</h2>
+              <p>Tools kept ready on this device.</p>
             </div>
           </div>
           <ul class="launcher-grid compact-grid" role="list">
@@ -369,6 +368,9 @@
     </div>
     <a class="builder-strip-cta" href="/build">Start building →</a>
   </section>
+  <div class="wrap">
+    <InstallNudge />
+  </div>
 </div>
 
 <AppInspector
@@ -380,19 +382,22 @@
 <style>
   .page {
     padding-top: var(--space-xl);
-    padding-bottom: var(--space-3xl);
+    /* Bottom padding includes the iOS home-indicator safe area so the
+       last row of cards never clips. max() keeps the existing visual
+       breathing room as the floor. */
+    padding-bottom: max(var(--space-3xl), env(safe-area-inset-bottom, 0px));
   }
-  .head { padding-bottom: var(--space-lg); }
+  .head {
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--border-light);
+  }
   .head-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 480px);
+    grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.72fr);
     gap: var(--space-xl);
     align-items: end;
   }
   .eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     letter-spacing: 0.12em;
@@ -400,37 +405,52 @@
     color: var(--text-light);
     margin: 0 0 0.55rem;
   }
-  .eyebrow img { display: block; }
+  .head-copy {
+    max-width: 36rem;
+  }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 2.85rem);
-    letter-spacing: -0.02em;
+    font-size: clamp(2.45rem, 5vw, 4.5rem);
+    letter-spacing: 0;
+    line-height: 0.94;
     margin: 0;
   }
   .lede {
     color: var(--text-secondary);
-    margin: 0.65rem 0 0;
-    max-width: 620px;
+    margin: var(--space-md) 0 0;
+    max-width: 34rem;
     font-size: var(--small-size);
+    line-height: 1.55;
   }
-  .search-row {
-    display: flex;
-    justify-content: flex-end;
+  .head-tools {
+    width: min(100%, 36rem);
+    justify-self: end;
+    display: grid;
+    gap: var(--space-sm);
+  }
+  .head-tools :global(.search-form) {
+    max-width: none;
+    background: rgba(30, 26, 21, 0.28);
   }
   .cats {
     list-style: none;
-    margin: var(--space-md) 0 0;
+    margin: 0;
     padding: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    justify-content: flex-end;
   }
   .cats a,
   .cats .cat-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 10px;
+    /* Apple HIG floor: 44px tap target. Below this, mis-taps register
+       on the chip border instead of the label, especially on notched
+       devices held in the thumb arc. */
+    min-height: 44px;
+    padding: 0 14px;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
@@ -446,7 +466,7 @@
     background: var(--text);
     border-color: var(--text);
   }
-  .results { padding-top: 0; }
+  .results { padding-top: var(--space-lg); }
   .launcher-section {
     display: grid;
     gap: var(--space-md);
@@ -499,6 +519,12 @@
   .launcher-grid.featured {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* Wide-viewport progression — only meaningful inside .wrap-wide;
+     the apex page upgrades its container to wrap-wide so these
+     queries actually have room to expand. */
+  @media (min-width: 1280px) { .launcher-grid.featured { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1536px) { .launcher-grid.featured { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (min-width: 1920px) { .launcher-grid.featured { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
   .compact-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
@@ -519,8 +545,15 @@
     .launcher-grid.featured {
       grid-template-columns: 1fr;
     }
-    .search-row {
-      justify-content: stretch;
+    .head-copy {
+      max-width: none;
+    }
+    .head-tools {
+      width: 100%;
+      justify-self: stretch;
+    }
+    .cats {
+      justify-content: flex-start;
     }
   }
   @media (max-width: 560px) {
@@ -530,6 +563,24 @@
     }
     .compact-grid {
       grid-template-columns: 1fr;
+    }
+    .page {
+      padding-top: var(--space-lg);
+    }
+    .title {
+      font-size: clamp(2.4rem, 18vw, 3.7rem);
+    }
+    .cats {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .cats::-webkit-scrollbar {
+      display: none;
+    }
+    .cats li {
+      flex: 0 0 auto;
     }
   }
 

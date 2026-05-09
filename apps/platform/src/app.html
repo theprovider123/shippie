@@ -7,8 +7,12 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-167.png" sizes="167x167" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-152.png" sizes="152x152" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#14120F" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Shippie" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta property="og:title" content="Shippie — Ship local." />
     <meta property="og:description" content="Open marketplace for installable web apps. No app store. Just the web, installed." />
     <meta property="og:image" content="/og-image.png" />
@@ -29,7 +33,7 @@
         display: grid; place-items: center;
         background: #14120F;
         opacity: 1; transition: opacity 200ms ease-out;
-        pointer-events: auto;
+        pointer-events: none;
       }
       #boot-loader svg {
         width: 96px; height: 96px;
@@ -91,6 +95,10 @@
             // Reload once when control flips to the new worker.
             var refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', function () {
+              if (window.__shippieSuppressNextControllerReload) {
+                window.__shippieSuppressNextControllerReload = false;
+                return;
+              }
               if (refreshing) return;
               refreshing = true;
               location.reload();
@@ -130,6 +138,25 @@
         </g>
       </svg>
     </div>
+    <script>
+      // The loader is cosmetic only. The Svelte root also marks the app
+      // ready, but installed PWAs can briefly boot from a stale shell; this
+      // fallback prevents the first screen from trapping taps if hydration is
+      // delayed by the service worker or a cold mobile resume.
+      (function () {
+        function markReady() {
+          document.body.dataset.appReady = 'true';
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            requestAnimationFrame(markReady);
+          }, { once: true });
+        } else {
+          requestAnimationFrame(markReady);
+        }
+        setTimeout(markReady, 1200);
+      })();
+    </script>
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>

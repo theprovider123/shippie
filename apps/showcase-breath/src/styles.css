@@ -234,25 +234,6 @@ button { font: inherit; }
   font-weight: 600;
 }
 
-.your-data {
-  position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0));
-  right: 16px;
-  z-index: 5;
-  height: 36px;
-  padding: 0 14px;
-  background: var(--surface);
-  color: var(--text-light);
-  border: 1px solid var(--border);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  border-radius: 0;
-}
-.your-data:hover { color: var(--text); border-color: var(--text-secondary); }
-
 @media (prefers-reduced-motion: reduce) {
   .ring { transition: none; }
 }

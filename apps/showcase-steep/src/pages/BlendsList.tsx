@@ -75,16 +75,14 @@ export function BlendsList({ refreshKey, onOpen, onNew, onLibrary }: BlendsListP
       />
 
       <nav className="intent-chip-row" aria-label="Filter by intent">
-        <IntentChip
-          tag={'sleep' as IntentTag}
-          // Render an "All" pseudo-chip alongside intents.
-          active={activeIntent === null}
+        <button
+          type="button"
+          className={`intent-chip intent-chip-sm${activeIntent === null ? ' active' : ''}`}
           onClick={() => setActiveIntent(null)}
-          size="sm"
-        />
-        {/* Workaround: IntentChip renders "Sleep" so above we override
-            visually via CSS sibling order; for clarity, render a
-            real "All" link separately below. */}
+          aria-pressed={activeIntent === null}
+        >
+          All
+        </button>
         {ALL_INTENTS.map((tag) => (
           <IntentChip
             key={tag}

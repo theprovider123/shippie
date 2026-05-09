@@ -136,13 +136,14 @@ function PhasePrimary(props: {
   onGo: (tab: Tab) => void;
   onSecondary: () => void;
 }) {
+  const waitingForHostPlan = props.role !== 'host' && props.currentStop.title === 'Start planning';
   return (
     <article className="trip-now app-card">
       <div className="trip-now-stop">
         <p className="eyebrow">{props.currentStop.time}</p>
-        <h3>{props.currentStop.title}</h3>
-        <p>{props.currentStop.place}</p>
-        {props.nextStop ? <span>Next: {props.nextStop.title}</span> : null}
+        <h3>{waitingForHostPlan ? props.phase.title : props.currentStop.title}</h3>
+        <p>{waitingForHostPlan ? props.phase.detail : props.currentStop.place}</p>
+        {!waitingForHostPlan && props.nextStop ? <span>Next: {props.nextStop.title}</span> : null}
       </div>
       {props.latestBroadcast ? (
         <article className="mode-broadcast">

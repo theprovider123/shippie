@@ -21,6 +21,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { resolveLocalDb } from './db/runtime.ts';
 import { Today } from './pages/Today.tsx';
 import { History } from './pages/History.tsx';
@@ -59,12 +60,18 @@ interface PartnerHandle {
 export function App() {
   const db = useMemo(() => resolveLocalDb(), []);
   const [route, setRoute] = useState<Route>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('today', setRoute),
+    [],
+  );
   const [refreshKey, setRefreshKey] = useState(0);
   const [moodHint, setMoodHint] = useState<string | null>(null);
   const partnerRef = useRef<PartnerHandle | null>(null);
   const lastPredictedRef = useRef<string>('');
 
   const bumpRefresh = useCallback(() => setRefreshKey((n) => n + 1), []);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   // Provide cycle-logged on every save. We pass an entry payload so
   // downstream consumers (Body Metrics, Mood) can correlate.
@@ -203,13 +210,6 @@ export function App() {
     <main className="cycle-app" data-route={route}>
       <header className="app-bar">
         <h1>Cycle</h1>
-        <button
-          type="button"
-          className="data-btn"
-          onClick={() => shippie.openYourData({ appSlug: 'cycle' })}
-        >
-          Your Data
-        </button>
       </header>
       <nav className="tabs" aria-label="Sections">
         {TABS.map((t) => (
@@ -217,7 +217,7 @@ export function App() {
             key={t.id}
             type="button"
             className={t.id === route ? 'tab active' : 'tab'}
-            onClick={() => setRoute(t.id)}
+            onClick={() => void localNavigation.navigate(t.id, { kind: 'crossfade' })}
           >
             {t.label}
           </button>

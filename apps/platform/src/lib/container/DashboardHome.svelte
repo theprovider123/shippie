@@ -56,11 +56,32 @@
     onLeaveMeshRoom,
     onMeshJoinCodeChange,
   }: Props = $props();
+  let showMineOnly = $state(false);
+  const visibleApps = $derived(showMineOnly ? apps.filter((app) => app.owned || app.visibility === 'local') : apps);
+
+  function tierLabel(app: ContainerApp): string {
+    if (app.visibility === 'private') return 'Private';
+    if (app.visibility === 'team') return 'Team';
+    if (app.visibility === 'local') return 'On device';
+    if (app.visibility === 'unlisted') return 'Unlisted';
+    return '';
+  }
 </script>
 
 <InsightStrip {insights} onOpen={onOpenInsight} onDismiss={onDismissInsight} />
 <div class="section-head">
-  <h2>Your Apps</h2>
+  <div class="section-title-row">
+    <h2>Your Apps</h2>
+    <button
+      class="mine-toggle"
+      class:active={showMineOnly}
+      type="button"
+      aria-pressed={showMineOnly}
+      onclick={() => (showMineOnly = !showMineOnly)}
+    >
+      My tools
+    </button>
+  </div>
   <p>Open apps stay warm in their sandbox. Switch away and return without a reload.</p>
 </div>
 <div class="updates">
@@ -96,10 +117,13 @@
   {/if}
 </div>
 <div class="app-grid">
-  {#each apps as app (app.id)}
+  {#each visibleApps as app (app.id)}
     {@const installed = openAppIds.includes(app.id)}
     <button class="app-tile" class:installable={!installed} onclick={() => onOpenApp(app.id)}>
       <span class="app-icon" style={`--accent:${app.accent}`}>{app.icon}</span>
+      {#if tierLabel(app)}
+        <span class={`tier-badge tier-${app.visibility ?? 'public'}`}>{tierLabel(app)}</span>
+      {/if}
       <strong>{app.name}</strong>
       <small>{installed ? app.labelKind : 'Install'}</small>
     </button>
@@ -144,6 +168,12 @@
   .section-head {
     margin: var(--space-md) 0 var(--space-sm);
   }
+  .section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+  }
   .section-head h2 {
     margin: 0 0 4px;
     font-size: 1.1rem;
@@ -152,6 +182,22 @@
     margin: 0;
     color: var(--text-secondary);
     font-size: 0.9rem;
+  }
+  .mine-toggle {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .mine-toggle.active,
+  .mine-toggle:hover {
+    color: var(--text);
+    border-color: var(--sunset);
   }
   .updates {
     margin-bottom: var(--space-md);
@@ -183,6 +229,7 @@
     margin-bottom: var(--space-md);
   }
   .app-tile {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -234,6 +281,29 @@
   .mesh-actions span {
     color: var(--text-secondary);
     font-size: 0.85rem;
+  }
+  .tier-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 3px 6px;
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .tier-private,
+  .tier-local {
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .tier-team {
+    color: #355f49;
+    border-color: rgba(53, 95, 73, 0.35);
+    background: rgba(94, 167, 119, 0.08);
   }
   .mesh-code-input {
     flex: 1;

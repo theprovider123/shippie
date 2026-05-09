@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { preloadData } from '$app/navigation';
   import IconOrMonogram from './IconOrMonogram.svelte';
   import KindBadge from './KindBadge.svelte';
   import CapabilityBadges from './CapabilityBadges.svelte';
@@ -51,11 +52,13 @@
     onTogglePin = undefined,
   }: Props = $props();
   let copyState = $state<'idle' | 'copied' | 'error'>('idle');
+  let launching = $state(false);
+  let prewarmed = false;
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
   const blurb = $derived(app.tagline ?? app.description ?? `${app.name} on Shippie`);
   const typeLabel = $derived(app.type.toLowerCase() === 'app' ? 'tool' : app.type);
-  const launchHref = $derived(`/container?app=${encodeURIComponent(app.slug)}&focused=1`);
+  const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}/`);
   const proofCount = $derived((app.badges ?? []).filter((badge) => badge.proven).length);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
@@ -126,16 +129,41 @@
     }
   }
 
+  function addPrefetchLink(href: string) {
+    if (typeof document === 'undefined') return;
+    if (document.head.querySelector(`link[rel="prefetch"][href="${href}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    link.as = 'document';
+    document.head.appendChild(link);
+  }
+
+  function warmLaunch() {
+    if (prewarmed) return;
+    prewarmed = true;
+    void preloadData(launchHref).catch(() => {});
+    addPrefetchLink(launchHref);
+    addPrefetchLink(`/__shippie-run/${encodeURIComponent(app.slug)}/?shippie_embed=1`);
+  }
+
   function launchAndRemember() {
+    launching = true;
+    warmLaunch();
     recordAppLaunch(app.slug);
   }
 </script>
 
-<article class="launcher-card" class:compact>
+<article class="launcher-card" class:compact class:launching aria-busy={launching}>
   <a
     class="launch-link"
     href={launchHref}
     onclick={launchAndRemember}
+    onpointerenter={warmLaunch}
+    onfocus={warmLaunch}
+    ontouchstart={warmLaunch}
+    data-sveltekit-preload-data="tap"
+    data-sveltekit-preload-code="eager"
     aria-label={`Open ${app.name}`}
   >
     <div class="icon-wrap">
@@ -180,6 +208,9 @@
         <div class="badges">
           <CapabilityBadges badges={app.badges ?? []} max={2} compact />
         </div>
+      {/if}
+      {#if launching}
+        <p class="launching-label" aria-live="polite">Opening…</p>
       {/if}
     </div>
   </a>
@@ -239,6 +270,26 @@
     border-color: var(--sunset);
     background: var(--surface-alt);
     transform: translateY(-2px);
+  }
+  .launcher-card.launching {
+    border-color: var(--sunset);
+    background:
+      linear-gradient(90deg, rgba(232, 96, 60, 0.1), transparent 42%),
+      var(--surface-alt);
+    transform: translateY(-1px);
+  }
+  .launcher-card.launching::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 2px;
+    background: var(--sunset);
+    transform-origin: left center;
+    animation: launch-line 0.7s var(--ease-out) infinite alternate;
+  }
+  @keyframes launch-line {
+    from { transform: scaleX(0.18); opacity: 0.65; }
+    to { transform: scaleX(1); opacity: 1; }
   }
   .launcher-card.compact {
     min-height: 144px;
@@ -322,6 +373,14 @@
     flex-wrap: wrap;
     gap: 6px;
     align-items: center;
+  }
+  .launching-label {
+    margin: 0.6rem 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sunset);
   }
   .signal {
     display: inline-flex;
@@ -414,6 +473,17 @@
     .quick-actions button {
       width: 40px;
       height: 40px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .launcher-card,
+    .launcher-card:hover,
+    .launcher-card.launching {
+      transform: none;
+    }
+    .launcher-card.launching::after {
+      animation: none;
+      transform: none;
     }
   }
 </style>

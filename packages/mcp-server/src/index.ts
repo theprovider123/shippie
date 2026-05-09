@@ -25,7 +25,8 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import {
   classifyKind,
@@ -54,7 +55,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: 'deploy',
       description:
         'Deploy a directory to Shippie. Returns the live URL, deploy_id, and deploy intelligence transcript. ' +
-        'Pass trial=true for a no-signup 24-hour trial deploy (no authentication required).',
+        'Pass trial=true for a no-signup 24-hour trial deploy (no authentication required). ' +
+        'Generated apps must feel like a real app inside Shippie — use 100dvh / 100svh (NOT 100vh) ' +
+        'for full-height layouts, env(safe-area-inset-*) for any fixed positioning, touch targets ' +
+        '≥44px (Apple HIG) / ≥48dp (Android), and call useKeyboard() from @shippie/sdk if the app ' +
+        'has text inputs so the host chrome adapts when the iOS keyboard opens. The deploy pipeline ' +
+        'injects an immersive baseline (viewport, sharp-corners, touch-action, iOS standalone metas) ' +
+        'idempotently — but writing in this style means local previews behave like production.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -80,8 +87,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description:
               'Existing public app slug to remix. Shippie validates source/license/remix terms and records parent lineage on the new deploy.',
           },
+          visibility: {
+            type: 'string',
+            enum: ['public', 'unlisted', 'private', 'team'],
+            description: 'Visibility for hosted deploys. Defaults to unlisted for single-file HTML deploys.',
+          },
+          organization: {
+            type: 'string',
+            description: 'Organization id or slug when visibility=team.',
+          },
         },
         required: ['directory'],
+      },
+    },
+    {
+      name: 'deploy_html',
+      description:
+        'Deploy a single generated HTML tool to Shippie. Use this for throwaway interactive HTML tools from Claude Code. Defaults to unlisted. ' +
+        'The HTML must use 100dvh / 100svh (NOT 100vh), env(safe-area-inset-*) for fixed positioning, ' +
+        'touch targets ≥44px, and inputs sized ≥16px font-size to prevent iOS zoom-on-focus. ' +
+        'Sharp corners (no border-radius) match the Shippie brand. The deploy pipeline injects ' +
+        'viewport + iOS standalone metas idempotently, so the maker only needs to focus on layout.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          html_content: { type: 'string', description: 'Complete HTML document to deploy.' },
+          slug: { type: 'string', description: 'Optional app slug.' },
+          visibility: {
+            type: 'string',
+            enum: ['public', 'unlisted', 'private', 'team'],
+            default: 'unlisted',
+          },
+          organization: {
+            type: 'string',
+            description: 'Organization id or slug when visibility=team.',
+          },
+        },
+        required: ['html_content'],
       },
     },
     {
@@ -341,7 +383,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   if (name === 'deploy') {
-    return await handleDeploy(args as { directory: string; slug?: string; trial?: boolean; remix_from?: string });
+    return await handleDeploy(args as { directory: string; slug?: string; trial?: boolean; remix_from?: string; visibility?: string; organization?: string });
+  }
+
+  if (name === 'deploy_html') {
+    return await handleDeployHtml(args as { html_content: string; slug?: string; visibility?: string; organization?: string });
   }
 
   if (name === 'status') {
@@ -493,7 +539,7 @@ async function handleStream(args: { deploy_id: string }) {
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
-async function handleDeploy(args: { directory: string; slug?: string; trial?: boolean; remix_from?: string }) {
+async function handleDeploy(args: { directory: string; slug?: string; trial?: boolean; remix_from?: string; visibility?: string; organization?: string }) {
   // All deploy logic now in @shippie/core. MCP just adapts the result to
   // the MCP tool-response shape. CLI will use the same core call.
   const result = await client.deploy({
@@ -501,6 +547,8 @@ async function handleDeploy(args: { directory: string; slug?: string; trial?: bo
     slug: args.slug,
     trial: args.trial,
     remixFrom: args.remix_from,
+    visibility: parseVisibility(args.visibility),
+    organization: args.organization,
   });
 
   if (!result.ok) {
@@ -573,6 +621,28 @@ async function handleDeploy(args: { directory: string; slug?: string; trial?: bo
   }
 
   return { content: [{ type: 'text', text: lines.join('\n') }] };
+}
+
+async function handleDeployHtml(args: { html_content: string; slug?: string; visibility?: string; organization?: string }) {
+  const dir = mkdtempSync(join(tmpdir(), 'shippie-html-'));
+  const file = join(dir, `${args.slug ?? 'tool'}.html`);
+  try {
+    writeFileSync(file, args.html_content);
+    return await handleDeploy({
+      directory: file,
+      slug: args.slug,
+      visibility: args.visibility ?? 'unlisted',
+      organization: args.organization,
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function parseVisibility(input: string | undefined): 'public' | 'unlisted' | 'private' | 'team' | undefined {
+  return input === 'public' || input === 'unlisted' || input === 'private' || input === 'team'
+    ? input
+    : undefined;
 }
 
 async function collectDeployStream(deployId: string): Promise<string[]> {

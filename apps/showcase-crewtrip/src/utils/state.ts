@@ -33,6 +33,8 @@ import { paletteFor } from '../data/themes';
 export const STORAGE_KEY = 'shippie-crewtrip-v3';
 export const BACKUP_KEY = 'shippie-crewtrip-v3-backups';
 export const DEVICE_KEY = 'shippie-crewtrip-device-id';
+export const HOST_CLAIM_KEY_PREFIX = 'shippie-crewtrip-host-v1:';
+export const LOCAL_PLAYER_KEY_PREFIX = 'shippie-crewtrip-player-v1:';
 export const BACKUP_LIMIT_PER_EVENT = 8;
 export const BACKUP_INTERVAL_MS = 45_000;
 export const PUBLIC_CREWTRIP_URL = 'https://shippie.app/run/crewtrip/';
@@ -406,11 +408,48 @@ export function readJoinedEventCode(): string | null {
   return new URLSearchParams(window.location.search).get('event');
 }
 
-export function initialRole(): Role | null {
+export function readLocalHostClaim(eventCode: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(`${HOST_CLAIM_KEY_PREFIX}${eventCode}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function writeLocalHostClaim(eventCode: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`${HOST_CLAIM_KEY_PREFIX}${eventCode}`, '1');
+  } catch {
+    // Host access is a local enhancement; ignore storage failures.
+  }
+}
+
+export function readLocalPlayerId(eventCode: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(`${LOCAL_PLAYER_KEY_PREFIX}${eventCode}`);
+  } catch {
+    return null;
+  }
+}
+
+export function writeLocalPlayerId(eventCode: string, playerId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`${LOCAL_PLAYER_KEY_PREFIX}${eventCode}`, playerId);
+  } catch {
+    // Local identity can still live in React state if persistence fails.
+  }
+}
+
+export function initialRole(currentEventCode?: string): Role | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
-  if (role === 'host' || role === 'join-host') return 'host';
+  const eventCode = params.get('event') ?? currentEventCode ?? '';
+  if ((role === 'host' || role === 'join-host') && eventCode && readLocalHostClaim(eventCode)) return 'host';
   if (role === 'crew' || params.has('event')) return 'eventee';
   return null;
 }
@@ -605,6 +644,19 @@ export function buildTripPhase(
     };
   }
   if (currentStop.time === 'Now' || currentStop.status === 'now') {
+    if (role !== 'host' && currentStop.title === 'Start planning') {
+      const canRequest = state.features?.requests ?? initialState.features.requests;
+      const canRemember = state.features?.memories ?? initialState.features.memories;
+      return {
+        label: 'Crew mode',
+        title: 'Waiting for the host plan',
+        detail: canRequest
+          ? 'Send a request, save a memory, or follow updates while the host sets the first plan.'
+          : 'Save a memory or follow updates while the host sets the first plan.',
+        primaryAction: canRequest ? 'Ask host' : canRemember ? 'Add memory' : 'Open crew',
+        primaryTab: canRequest ? 'requests' : canRemember ? 'memories' : 'crew',
+      };
+    }
     return {
       label: sync.status === 'open' ? `${sync.peers + 1} live now` : 'Arrival mode',
       title: currentStop.title,
@@ -746,8 +798,10 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       id: `stop-${stop.id}`,
       time: stop.time || 'TBC',
       kind: 'plan',
-      title: stop.title,
-      detail: stop.groupId ? `${stop.place} / ${groups.find((group) => group.id === stop.groupId)?.name ?? 'Group'}` : stop.place,
+      title: role !== 'host' && stop.title === 'Start planning' ? 'Host plan pending' : stop.title,
+      detail: role !== 'host' && stop.title === 'Start planning'
+        ? 'Send a request or save a memory while the host adds the first plan.'
+        : stop.groupId ? `${stop.place} / ${groups.find((group) => group.id === stop.groupId)?.name ?? 'Group'}` : stop.place,
       status: stop.status,
     }));
   const broadcastItems: TripTimelineItem[] = state.broadcasts.slice(0, 3).map((broadcast) => ({

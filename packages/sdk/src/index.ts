@@ -192,3 +192,12 @@ export type { ShippieSDKErrorCode } from './errors.ts';
 
 export { shippieFooter } from './footer.ts';
 export type { ShippieFooterOptions } from './footer.ts';
+
+export { useKeyboard } from './wrapper/use-keyboard.ts';
+export type { UseKeyboardOptions } from './wrapper/use-keyboard.ts';
+
+export { matchesStandalone } from './wrapper/standalone.ts';
+export { useSafeArea } from './wrapper/safe-area.ts';
+export type { SafeAreaInsets } from './wrapper/safe-area.ts';
+export { useViewport } from './wrapper/viewport.ts';
+export type { ViewportSnapshot } from './wrapper/viewport.ts';

@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import {
   load,
   newId,
@@ -44,12 +45,18 @@ export function App() {
   const [sips, setSips] = useState<Sip[]>(initial.sips);
   const [targets, setTargets] = useState<Targets>(initial.targets);
   const [route, setRoute] = useState<Route>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('today', setRoute),
+    [],
+  );
   const [customOpen, setCustomOpen] = useState<SipKind | null>(null);
 
   // Persist on every change.
   useEffect(() => {
     save({ sips, targets });
   }, [sips, targets]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   function broadcast(sip: Sip) {
     if (sip.ml > 0) {
@@ -102,10 +109,6 @@ export function App() {
     shippie.feel.texture('delete');
   }
 
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'sip-log' });
-  }
-
   return (
     <main className="app">
       <header className="app-header">
@@ -119,7 +122,7 @@ export function App() {
             key={tab.id}
             type="button"
             className={`tab ${route === tab.id ? 'tab-on' : ''}`}
-            onClick={() => setRoute(tab.id)}
+            onClick={() => void localNavigation.navigate(tab.id, { kind: 'crossfade' })}
           >
             {tab.label}
           </button>
@@ -139,9 +142,7 @@ export function App() {
       {route === 'history' ? (
         <History sips={sips} targets={targets} onUpdate={update} onRemove={remove} />
       ) : null}
-      {route === 'settings' ? (
-        <Settings targets={targets} onChange={setTargets} onOpenYourData={openYourData} />
-      ) : null}
+      {route === 'settings' ? <Settings targets={targets} onChange={setTargets} /> : null}
 
       {customOpen ? (
         <CustomSheet

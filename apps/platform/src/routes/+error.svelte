@@ -49,7 +49,8 @@
   /* Self-contained — this page may render without the +layout.svelte
      (e.g. when a layout-server-load throws). All styling lives here. */
   .page {
-    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
     background: #14120F;
     color: #EDE4D3;
     display: grid;

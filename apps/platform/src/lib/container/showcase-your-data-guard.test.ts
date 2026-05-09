@@ -12,7 +12,7 @@ function listSourceFiles(dir: string): string[] {
     const path = join(dir, name);
     const stat = statSync(path);
     if (stat.isDirectory()) out.push(...listSourceFiles(path));
-    else if (/\.(tsx?|jsx?)$/.test(name)) out.push(path);
+    else if (/\.(tsx?|jsx?|css)$/.test(name)) out.push(path);
   }
   return out;
 }
@@ -26,6 +26,31 @@ describe('showcase Your Data integration guard', () => {
 
     const offenders = showcaseDirs.flatMap((dir) =>
       listSourceFiles(dir).filter((file) => readFileSync(file, 'utf-8').includes('/__shippie/data')),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
+  test('showcase apps keep data controls in the Shippie drawer', () => {
+    const showcaseDirs = readdirSync(APPS_DIR)
+      .filter((name) => name.startsWith('showcase-'))
+      .map((name) => join(APPS_DIR, name, 'src'))
+      .filter((path) => existsSync(path));
+    const blocked = [
+      'Your Data',
+      'YOUR DATA',
+      'Open Your Data',
+      'openYourData',
+      'data.openPanel',
+      'your-data',
+      'your-data-button',
+    ];
+
+    const offenders = showcaseDirs.flatMap((dir) =>
+      listSourceFiles(dir).filter((file) => {
+        const text = readFileSync(file, 'utf-8');
+        return blocked.some((needle) => text.includes(needle));
+      }),
     );
 
     expect(offenders).toEqual([]);

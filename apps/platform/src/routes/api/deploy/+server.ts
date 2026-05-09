@@ -9,12 +9,17 @@
  *   { success, slug, version, deploy_id, files, total_bytes, live_url, preflight }
  */
 import { json, error } from '@sveltejs/kit';
+import { and, eq, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { deployStatic } from '$server/deploy/pipeline';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
-import { getDrizzleClient } from '$server/db/client';
+import { getDrizzleClient, schema } from '$server/db/client';
 import { remixEligibilityForSlug } from '$server/remix/eligibility';
+
+const VISIBILITY_SCOPES = ['public', 'unlisted', 'private', 'team'] as const;
+type DeployVisibilityScope = (typeof VISIBILITY_SCOPES)[number];
+const TEAM_DEPLOY_ROLES = new Set(['admin', 'deployer']);
 
 export const POST: RequestHandler = async (event) => {
   const env = event.platform?.env;
@@ -35,18 +40,31 @@ export const POST: RequestHandler = async (event) => {
   const slug = String(form.get('slug') ?? '').trim();
   const zip = form.get('zip');
   const remixFrom = String(form.get('remix_from') ?? '').trim();
+  const visibility = parseVisibilityScope(form.get('visibility') ?? form.get('visibility_scope'));
+  const organization = String(form.get('organization') ?? form.get('organization_id') ?? '').trim();
 
   if (!slug) return json({ error: 'missing slug' }, { status: 400 });
   if (!(zip instanceof File)) {
     return json({ error: 'missing zip file' }, { status: 400 });
+  }
+  if (visibility === 'invalid') {
+    return json({ error: 'invalid_visibility_scope' }, { status: 400 });
   }
 
   const arrayBuffer = await zip.arrayBuffer();
   const zipBuffer = new Uint8Array(arrayBuffer);
 
   const reservedSlugs = await loadReservedSlugs(env.DB);
+  const db = getDrizzleClient(env.DB);
+  const organizationId =
+    visibility === 'team'
+      ? await resolveDeployOrganization(db, who.userId, organization)
+      : undefined;
+  if (visibility === 'team' && !organizationId) {
+    return json({ error: 'invalid_or_forbidden_organization' }, { status: 403 });
+  }
   const remix = remixFrom
-    ? await remixEligibilityForSlug(getDrizzleClient(env.DB), remixFrom)
+    ? await remixEligibilityForSlug(db, remixFrom)
     : null;
   if (remix?.ok === false) {
     return json({ error: 'remix_unavailable', reason: remix.reason }, { status: 400 });
@@ -58,6 +76,8 @@ export const POST: RequestHandler = async (event) => {
       slug,
       makerId: who.userId,
       zipBuffer,
+      visibilityScope: visibility,
+      organizationId,
       lineage: remixApp
         ? {
             parentAppId: remixApp.id,
@@ -96,6 +116,7 @@ export const POST: RequestHandler = async (event) => {
       files: result.files,
       total_bytes: result.totalBytes,
       live_url: result.liveUrl,
+      visibility_scope: result.visibilityScope,
       report_url: `/dashboard/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
       report_json_url: `/api/deploy/${encodeURIComponent(result.deployId)}/report`,
       preflight: {
@@ -115,3 +136,42 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 };
+
+async function resolveDeployOrganization(
+  db: ReturnType<typeof getDrizzleClient>,
+  userId: string,
+  organization: string,
+): Promise<string | null> {
+  if (!organization) return null;
+  const [org] = await db
+    .select({ id: schema.organizations.id })
+    .from(schema.organizations)
+    .where(
+      or(
+        eq(schema.organizations.id, organization),
+        eq(schema.organizations.slug, organization),
+      ),
+    )
+    .limit(1);
+  if (!org) return null;
+
+  const [membership] = await db
+    .select({ role: schema.organizationMembers.role })
+    .from(schema.organizationMembers)
+    .where(
+      and(
+        eq(schema.organizationMembers.orgId, org.id),
+        eq(schema.organizationMembers.userId, userId),
+      ),
+    )
+    .limit(1);
+  return membership && TEAM_DEPLOY_ROLES.has(membership.role) ? org.id : null;
+}
+
+function parseVisibilityScope(value: FormDataEntryValue | null): DeployVisibilityScope | undefined | 'invalid' {
+  if (value == null || value === '') return undefined;
+  if (typeof value !== 'string') return 'invalid';
+  return (VISIBILITY_SCOPES as readonly string[]).includes(value)
+    ? (value as DeployVisibilityScope)
+    : 'invalid';
+}

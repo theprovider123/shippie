@@ -5,14 +5,16 @@ interface RuntimeApp {
 
 interface RuntimeSrcOptions {
   preferDevUrl?: boolean;
+  searchParams?: URLSearchParams | string;
 }
 
 /**
  * Pick the iframe URL for an app based on environment:
- * - Localhost uses the bundled /run/<slug>/ app by default so the
+ * - Localhost uses the bundled /__shippie-run/<slug>/ app by default so the
  *   launcher works without also running every showcase dev server.
  * - Localhost can opt into the app dev server with preferDevUrl.
- * - Production prefers same-origin /run/<slug>/ URLs when available.
+ * - Production prefers the internal same-origin runtime bundle when the
+ *   public standalone URL is a /run/<slug>/ Shippie route.
  * - Absolute standalone URLs (custom domains / app subdomains) are still
  *   valid container runtimes and are paired with precise origin filtering.
  */
@@ -27,18 +29,26 @@ export function resolveRuntimeSrc(
     currentHostname === '[::1]';
   if (onLocalhost && options.preferDevUrl && app.devUrl) return app.devUrl;
   if (app.standaloneUrl?.startsWith('/run/')) {
-    return iframeRuntimeUrl(app.standaloneUrl);
+    return iframeRuntimeUrl(app.standaloneUrl, options.searchParams);
   }
   if (app.standaloneUrl && /^https?:\/\//i.test(app.standaloneUrl)) return app.standaloneUrl;
   return null;
 }
 
-function iframeRuntimeUrl(path: string): string {
+function iframeRuntimeUrl(path: string, forwardedParams?: URLSearchParams | string): string {
   const [rawPath, rawQuery = ''] = path.split('?', 2);
-  const normalizedPath = /^\/run\/[^/]+\/?$/.test(rawPath)
-    ? `${rawPath.replace(/\/$/, '')}/index.html`
-    : rawPath;
+  const runtimePath = rawPath.replace(/^\/run\//, '/__shippie-run/');
+  const normalizedPath = /^\/__shippie-run\/[^/]+$/.test(runtimePath)
+    ? `${runtimePath}/`
+    : runtimePath;
   const params = new URLSearchParams(rawQuery);
+  if (forwardedParams) {
+    const forwarded = typeof forwardedParams === 'string' ? new URLSearchParams(forwardedParams) : forwardedParams;
+    forwarded.forEach((value, key) => {
+      if (key === 'shippie_embed') return;
+      params.set(key, value);
+    });
+  }
   params.set('shippie_embed', '1');
   const query = params.toString();
   return query ? `${normalizedPath}?${query}` : normalizedPath;

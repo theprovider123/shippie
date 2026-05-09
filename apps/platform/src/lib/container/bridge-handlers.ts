@@ -128,6 +128,21 @@ export interface AppHandlerContext {
    */
   insertRow: (appId: string, payload: unknown) => LocalRow;
   /**
+   * Ensure a local-db table exists for the app. The current container
+   * row store is schemaless, so this is mostly an acknowledgement for
+   * static showcase apps that call `shippie.local.db.create(...)` before
+   * inserting rows.
+   */
+  createTable?: (appId: string, payload: unknown) => { created: true; table: string };
+  /**
+   * Patch one local-db row by id.
+   */
+  updateRow?: (appId: string, payload: unknown) => { updated: boolean };
+  /**
+   * Delete one local-db row by id.
+   */
+  deleteRow?: (appId: string, payload: unknown) => { deleted: boolean };
+  /**
    * Read the app's namespace, optionally filtered by `payload.table`.
    */
   queryRows: (appId: string, payload: unknown) => { rows: LocalRow[] };
@@ -256,8 +271,29 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
       mode: 'container' as const,
       standaloneUrl: app.standaloneUrl,
     }),
-    'db.insert': ({ payload }) => ctx.insertRow(appId, payload),
-    'db.query': ({ payload }) => ctx.queryRows(appId, payload),
+    'db.insert': ({ payload, method }) => {
+      if (method === 'create') {
+        return ctx.createTable?.(appId, payload) ?? { created: true, table: readPayloadTable(payload) };
+      }
+      if (method === 'update') {
+        if (!ctx.updateRow) throw new Error('db.update is not available in this container.');
+        return ctx.updateRow(appId, payload);
+      }
+      if (method === 'delete') {
+        if (!ctx.deleteRow) throw new Error('db.delete is not available in this container.');
+        return ctx.deleteRow(appId, payload);
+      }
+      return ctx.insertRow(appId, payload);
+    },
+    'db.query': ({ payload, method }) => {
+      const result = ctx.queryRows(appId, payload);
+      if (method === 'count') return { count: result.rows.length };
+      if (method === 'search') return { rows: searchLocalDbRows(result.rows, payload) };
+      if (method === 'vectorSearch') return { rows: vectorSearchLocalDbRows(result.rows, payload) };
+      if (method === 'export') return { table: readPayloadTable(payload), rows: result.rows };
+      if (method === 'lastBackup') return null;
+      return result;
+    },
     'storage.getUsage': () => ctx.storageUsage(appId),
     'feedback.open': ({ payload }) => ({
       opened: true,
@@ -458,10 +494,12 @@ export function buildLocalRow(
   payload: unknown,
   existingRowCount: number,
 ): LocalRow {
+  const record = readPayloadValue(payload);
+  const id = readRecordId(record) ?? `${appSlug || 'app'}_${existingRowCount + 1}`;
   return {
-    id: `${appSlug || 'app'}_${existingRowCount + 1}`,
+    id,
     table: readPayloadTable(payload),
-    payload,
+    payload: record,
     createdAt: new Date().toISOString(),
   };
 }
@@ -471,9 +509,189 @@ export function filterRowsByTable(rows: LocalRow[], payload: unknown): LocalRow[
   return rows.filter((row) => row.table === table);
 }
 
+export function queryLocalDbRows(rows: LocalRow[], payload: unknown): LocalRow[] {
+  const opts = readQueryOptions(payload);
+  let matches = filterRowsByTable(rows, payload).filter((row) => matchesWhere(readRowRecord(row), opts.where));
+  if (opts.orderBy) matches = sortRows(matches, opts.orderBy);
+  const offset = opts.offset ?? 0;
+  const limit = opts.limit ?? matches.length;
+  return matches.slice(offset, offset + limit);
+}
+
+export function updateLocalDbRow(
+  rows: LocalRow[],
+  payload: unknown,
+): { rows: LocalRow[]; updated: boolean } {
+  const table = readPayloadTable(payload);
+  const id = readPayloadId(payload);
+  const patch = readPayloadPatch(payload);
+  if (!id || !patch) return { rows, updated: false };
+  let updated = false;
+  const nextRows = rows.map((row) => {
+    if (row.table !== table || row.id !== id) return row;
+    updated = true;
+    const record = readRowRecord(row);
+    return {
+      ...row,
+      payload: {
+        ...record,
+        ...patch,
+        id,
+      },
+    };
+  });
+  return { rows: nextRows, updated };
+}
+
+export function deleteLocalDbRow(
+  rows: LocalRow[],
+  payload: unknown,
+): { rows: LocalRow[]; deleted: boolean } {
+  const table = readPayloadTable(payload);
+  const id = readPayloadId(payload);
+  if (!id) return { rows, deleted: false };
+  const nextRows = rows.filter((row) => row.table !== table || row.id !== id);
+  return { rows: nextRows, deleted: nextRows.length !== rows.length };
+}
+
 export function computeStorageUsage(rows: LocalRow[]): { rows: number; bytes: number } {
   return {
     rows: rows.length,
     bytes: JSON.stringify(rows).length,
   };
+}
+
+function readPayloadValue(payload: unknown): unknown {
+  if (!payload || typeof payload !== 'object') return payload;
+  const value = (payload as Record<string, unknown>).value;
+  return value && typeof value === 'object' ? value : payload;
+}
+
+function readPayloadId(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const value = (payload as Record<string, unknown>).id;
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : null;
+}
+
+function readPayloadPatch(payload: unknown): Record<string, unknown> | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const value = (payload as Record<string, unknown>).patch;
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readRecordId(record: unknown): string | null {
+  if (!record || typeof record !== 'object') return null;
+  const value = (record as Record<string, unknown>).id;
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : null;
+}
+
+function readRowRecord(row: LocalRow): Record<string, unknown> {
+  return row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+    ? (row.payload as Record<string, unknown>)
+    : {};
+}
+
+function readQueryOptions(payload: unknown): {
+  where?: Record<string, unknown>;
+  orderBy?: Record<string, 'asc' | 'desc'>;
+  limit?: number;
+  offset?: number;
+} {
+  if (!payload || typeof payload !== 'object') return {};
+  const record = payload as Record<string, unknown>;
+  const opts = record.opts && typeof record.opts === 'object'
+    ? (record.opts as Record<string, unknown>)
+    : record;
+  return {
+    where: opts.where && typeof opts.where === 'object' && !Array.isArray(opts.where)
+      ? (opts.where as Record<string, unknown>)
+      : undefined,
+    orderBy: opts.orderBy && typeof opts.orderBy === 'object' && !Array.isArray(opts.orderBy)
+      ? (opts.orderBy as Record<string, 'asc' | 'desc'>)
+      : undefined,
+    limit: typeof opts.limit === 'number' ? opts.limit : undefined,
+    offset: typeof opts.offset === 'number' ? opts.offset : undefined,
+  };
+}
+
+function matchesWhere(row: Record<string, unknown>, where: Record<string, unknown> = {}): boolean {
+  return Object.entries(where).every(([key, expected]) => {
+    if (expected && typeof expected === 'object' && !Array.isArray(expected)) {
+      const ops = expected as Record<string, unknown>;
+      const value = row[key];
+      if (value === undefined) return false;
+      if ('gte' in ops && Number(value) < Number(ops.gte)) return false;
+      if ('lte' in ops && Number(value) > Number(ops.lte)) return false;
+      if ('gt' in ops && Number(value) <= Number(ops.gt)) return false;
+      if ('lt' in ops && Number(value) >= Number(ops.lt)) return false;
+      return true;
+    }
+    return row[key] === expected;
+  });
+}
+
+function sortRows(rows: LocalRow[], orderBy: Record<string, 'asc' | 'desc'>): LocalRow[] {
+  const [key, dir] = Object.entries(orderBy)[0] ?? [];
+  if (!key) return rows;
+  return [...rows].sort((a, b) => compareValues(readRowRecord(a)[key], readRowRecord(b)[key]) * (dir === 'desc' ? -1 : 1));
+}
+
+function compareValues(a: unknown, b: unknown): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return -1;
+  if (b == null) return 1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b));
+}
+
+function searchLocalDbRows(rows: LocalRow[], payload: unknown): LocalRow[] {
+  const query = payload && typeof payload === 'object'
+    ? (payload as Record<string, unknown>).query
+    : '';
+  const needle = typeof query === 'string' ? query.toLowerCase() : '';
+  if (!needle) return rows;
+  return rows.filter((row) =>
+    Object.values(readRowRecord(row)).some((value) =>
+      typeof value === 'string' && value.toLowerCase().includes(needle),
+    ),
+  );
+}
+
+function vectorSearchLocalDbRows(rows: LocalRow[], payload: unknown): Array<LocalRow & { score: number }> {
+  const vector = payload && typeof payload === 'object'
+    ? (payload as Record<string, unknown>).vector
+    : null;
+  const opts = payload && typeof payload === 'object'
+    ? ((payload as Record<string, unknown>).opts as Record<string, unknown> | undefined)
+    : undefined;
+  const target = Array.isArray(vector) ? vector.map(Number) : [];
+  const column = typeof opts?.column === 'string' ? opts.column : 'embedding';
+  const limit = typeof opts?.limit === 'number' ? opts.limit : 10;
+  return rows
+    .map((row) => ({ ...row, score: cosine(target, toNumberArray(readRowRecord(row)[column])) }))
+    .filter((row) => Number.isFinite(row.score))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+function toNumberArray(value: unknown): number[] {
+  if (Array.isArray(value)) return value.map(Number);
+  return [];
+}
+
+function cosine(a: number[], b: number[]): number {
+  if (a.length === 0 || a.length !== b.length) return Number.NaN;
+  let dot = 0;
+  let an = 0;
+  let bn = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    const av = a[i] ?? 0;
+    const bv = b[i] ?? 0;
+    dot += av * bv;
+    an += av * av;
+    bn += bv * bv;
+  }
+  return dot / (Math.sqrt(an) * Math.sqrt(bn));
 }

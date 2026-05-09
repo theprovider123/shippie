@@ -11,6 +11,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { CUTS, METHOD_LABEL, type Cut, type Doneness, type Method } from './data.ts';
 import { load, newId, save, isActive, type Cook } from './db.ts';
 import { Home } from './pages/Home.tsx';
@@ -36,6 +37,10 @@ export function App() {
   const initial = load();
   const [cooks, setCooks] = useState<Cook[]>(initial.cooks);
   const [tab, setTab] = useState<Tab>('home');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('home', setTab),
+    [],
+  );
 
   // The "currently composed cook" — drives Home + Method page.
   const [cutId, setCutId] = useState<string>(CUTS[0]!.id);
@@ -50,6 +55,8 @@ export function App() {
   useEffect(() => {
     save({ cooks });
   }, [cooks]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   const cut = useMemo<Cut>(
     () => CUTS.find((c) => c.id === cutId) ?? CUTS[0]!,
@@ -170,11 +177,7 @@ export function App() {
     setCutId(c.cut_id);
     setMethod(c.method);
     setTrackedCookId(c.id);
-    setTab('method');
-  }
-
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'cooking' });
+    void localNavigation.navigate('method', { kind: 'rise' });
   }
 
   return (
@@ -190,7 +193,7 @@ export function App() {
             key={t.id}
             type="button"
             className={`tab ${tab === t.id ? 'tab--active' : ''}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => void localNavigation.navigate(t.id, { kind: 'crossfade' })}
           >
             {t.label}
             {t.id === 'active' && activeCooks.length > 0 ? (
@@ -215,13 +218,17 @@ export function App() {
           method={effectiveMethod}
           onPickCut={pickCut}
           onPickMethod={pickMethod}
-          onOpenGuide={() => setTab('method')}
+          onOpenGuide={() => void localNavigation.navigate('method', { kind: 'rise' })}
         />
       ) : null}
 
       {tab === 'method' ? (
         <div className="page page--method">
-          <button type="button" className="back-link" onClick={() => setTab('home')}>
+          <button
+            type="button"
+            className="back-link"
+            onClick={() => void localNavigation.backOrReplace('home', { kind: 'crossfade' })}
+          >
             ← back
           </button>
           <p className="method-breadcrumb muted small">
@@ -248,9 +255,6 @@ export function App() {
 
       {tab === 'temps' ? <InternalTemps /> : null}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </main>
   );
 }

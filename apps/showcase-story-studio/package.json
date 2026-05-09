@@ -19,6 +19,7 @@
     "@shippie/local-db": "workspace:*",
     "@shippie/local-files": "workspace:*",
     "@shippie/local-runtime-contract": "workspace:*",
+    "@shippie/sdk": "workspace:*",
     "@shippie/share": "workspace:*",
     "@shippie/showcase-kit": "workspace:*",
     "react": "^19.2.5",

@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { App, mergeCrewtripState } from './App.tsx';
-import { normalizePlaylistUrl, playlistProviderLabel } from './utils/state.ts';
+import { initialRole, normalizePlaylistUrl, playlistProviderLabel } from './utils/state.ts';
 import type { CrewtripState } from './App.tsx';
 
 describe('App', () => {
@@ -139,7 +139,50 @@ describe('App', () => {
     expect(playlistProviderLabel('https://soundcloud.com/crew/set')).toBe('Open SoundCloud');
     expect(playlistProviderLabel('https://music.apple.com/gb/playlist/demo')).toBe('Open Apple Music');
   });
+
+  test('treats invite links as crew unless this device owns the host claim', () => {
+    withWindow('https://shippie.app/run/crewtrip/?event=CREW-TEST&role=crew', {}, () => {
+      expect(initialRole('CREW-TEST')).toBe('eventee');
+    });
+    withWindow('https://shippie.app/run/crewtrip/?event=CREW-TEST&role=join-host', {}, () => {
+      expect(initialRole('CREW-TEST')).toBe('eventee');
+    });
+    withWindow('https://shippie.app/run/crewtrip/?event=CREW-TEST&role=join-host', {
+      'shippie-crewtrip-host-v1:CREW-TEST': '1',
+    }, () => {
+      expect(initialRole('CREW-TEST')).toBe('host');
+    });
+  });
 });
+
+function withWindow(url: string, store: Record<string, string>, fn: () => void) {
+  const previous = (globalThis as typeof globalThis & { window?: unknown }).window;
+  const storage: Storage = {
+    length: Object.keys(store).length,
+    clear: () => {
+      for (const key of Object.keys(store)) delete store[key];
+    },
+    getItem: (key: string) => store[key] ?? null,
+    key: (index: number) => Object.keys(store)[index] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+  };
+  (globalThis as { window?: unknown }).window = {
+    location: new URL(url),
+    localStorage: storage,
+  };
+  (globalThis as { localStorage?: unknown }).localStorage = storage;
+  try {
+    fn();
+  } finally {
+    (globalThis as { window?: unknown }).window = previous;
+    (globalThis as { localStorage?: unknown }).localStorage = undefined;
+  }
+}
 
 function makeState(): CrewtripState {
   return {

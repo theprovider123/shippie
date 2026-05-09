@@ -127,6 +127,10 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   'workout-completed',
   'pr-broken',
   'set-logged',
+  // Steep — ritual events are useful for future wellness summaries,
+  // but no curated consumer ships in-tree yet.
+  'brewed-tea',
+  'wellness-ritual',
 ]);
 
 /**

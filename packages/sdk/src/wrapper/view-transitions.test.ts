@@ -1,18 +1,35 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import { installViewTransitionStyles, wrapNavigation, supportsViewTransitions } from './view-transitions.ts';
+import {
+  createLocalNavigation,
+  installViewTransitionStyles,
+  wrapNavigation,
+  supportsViewTransitions,
+} from './view-transitions.ts';
 
 let win: Window;
+const originalWindow = (globalThis as { window?: unknown }).window;
 const originalDocument = (globalThis as { document?: unknown }).document;
+const originalHistory = (globalThis as { history?: unknown }).history;
+const originalLocation = (globalThis as { location?: unknown }).location;
 
 beforeEach(() => {
   win = new Window({ url: 'https://shippie.app/' });
   // @ts-expect-error test env
+  globalThis.window = win;
+  // @ts-expect-error test env
   globalThis.document = win.document;
+  // @ts-ignore test env
+  globalThis.history = win.history;
+  // @ts-expect-error test env
+  globalThis.location = win.location;
 });
 
 afterAll(() => {
+  (globalThis as { window?: unknown }).window = originalWindow;
   (globalThis as { document?: unknown }).document = originalDocument;
+  (globalThis as { history?: unknown }).history = originalHistory;
+  (globalThis as { location?: unknown }).location = originalLocation;
 });
 
 describe('supportsViewTransitions', () => {
@@ -60,5 +77,42 @@ describe('wrapNavigation', () => {
     expect(a).toBe(b);
     expect(win.document.querySelectorAll('style[data-shippie-view-transitions]')).toHaveLength(1);
     expect(a?.textContent).toContain('180ms');
+  });
+});
+
+describe('createLocalNavigation', () => {
+  test('pushes local state and rewinds it on browser back', async () => {
+    let current = 'home';
+    const nav = createLocalNavigation('home', (next) => {
+      current = next;
+    });
+
+    await nav.navigate('detail', { kind: 'rise' });
+    expect(current).toBe('detail');
+    expect(nav.canGoBack()).toBe(true);
+
+    win.dispatchEvent(new win.PopStateEvent('popstate', { state: null } as PopStateEventInit));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(current).toBe('home');
+    expect(nav.canGoBack()).toBe(false);
+    nav.destroy();
+  });
+
+  test('backOrReplace uses history when present and replace fallback when absent', async () => {
+    let current = 'home';
+    const nav = createLocalNavigation('home', (next) => {
+      current = next;
+    });
+
+    await nav.navigate('detail');
+    expect(await nav.backOrReplace('home')).toBe('back');
+    win.dispatchEvent(new win.PopStateEvent('popstate', { state: null } as PopStateEventInit));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(current).toBe('home');
+
+    expect(await nav.backOrReplace('home')).toBe('replace');
+    expect(current).toBe('home');
+    nav.destroy();
   });
 });

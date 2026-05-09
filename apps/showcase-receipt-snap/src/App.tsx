@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { CapturePage } from './pages/Capture.tsx';
 import { ReviewPage } from './pages/Review.tsx';
 import { HistoryPage } from './pages/History.tsx';
@@ -24,6 +25,10 @@ const MODEL_WARM_KEY = 'shippie.receipt-snap.model-warm.v1';
 
 type Tab = 'capture' | 'history' | 'settings';
 type Screen = { kind: 'tab' } | { kind: 'review'; rawText: string; imageDataUrl: string };
+interface NavState {
+  tab: Tab;
+  screen: Screen;
+}
 
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'capture', label: 'Capture' },
@@ -33,10 +38,34 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
 
 const RESTAURANT_CATEGORIES = new Set<string>(['restaurant', 'food']);
 
+function sameScreen(a: Screen, b: Screen): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'review' && b.kind === 'review') {
+    return a.rawText === b.rawText && a.imageDataUrl === b.imageDataUrl;
+  }
+  return true;
+}
+
+function sameNavState(a: NavState, b: NavState): boolean {
+  return a.tab === b.tab && sameScreen(a.screen, b.screen);
+}
+
 export function App() {
   const [receipts, setReceipts] = useState<Receipt[]>(() => load().receipts);
   const [tab, setTab] = useState<Tab>('capture');
   const [screen, setScreen] = useState<Screen>({ kind: 'tab' });
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<NavState>(
+        { tab: 'capture', screen: { kind: 'tab' } },
+        (next) => {
+          setTab(next.tab);
+          setScreen(next.screen);
+        },
+        { isEqual: sameNavState },
+      ),
+    [],
+  );
   const [extracted, setExtracted] = useState<ExtractedReceipt | null>(null);
   const [modelWarm, setModelWarm] = useState<boolean>(() => {
     try {
@@ -50,6 +79,12 @@ export function App() {
     save({ receipts });
   }, [receipts]);
 
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigateTab(next: Tab): void {
+    void localNavigation.navigate({ tab: next, screen: { kind: 'tab' } }, { kind: 'crossfade' });
+  }
+
   function markModelWarm() {
     if (modelWarm) return;
     setModelWarm(true);
@@ -62,7 +97,10 @@ export function App() {
 
   function onExtracted(rawText: string, imageDataUrl: string) {
     setExtracted(parseReceipt(rawText));
-    setScreen({ kind: 'review', rawText, imageDataUrl });
+    void localNavigation.navigate(
+      { tab, screen: { kind: 'review', rawText, imageDataUrl } },
+      { kind: 'rise' },
+    );
   }
 
   function onSave(values: ReviewFormValues) {
@@ -82,9 +120,11 @@ export function App() {
     setReceipts((prev) => insert({ receipts: prev }, receipt).receipts);
     broadcastSaved(receipt);
     shippie.feel.texture('confirm');
-    setScreen({ kind: 'tab' });
     setExtracted(null);
-    setTab('history');
+    void localNavigation.navigate(
+      { tab: 'history', screen: { kind: 'tab' } },
+      { kind: 'crossfade', history: 'replace' },
+    );
   }
 
   function broadcastSaved(receipt: Receipt) {
@@ -114,8 +154,11 @@ export function App() {
   }
 
   function onCancel() {
-    setScreen({ kind: 'tab' });
     setExtracted(null);
+    void localNavigation.backOrReplace(
+      { tab: 'capture', screen: { kind: 'tab' } },
+      { kind: 'crossfade' },
+    );
   }
 
   function onDelete(id: string) {
@@ -130,10 +173,6 @@ export function App() {
     setReceipts([]);
     clearAll();
     shippie.feel.texture('milestone');
-  }
-
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'receipt-snap' });
   }
 
   // Make the linter aware we'll use CATEGORIES via the form components.
@@ -155,7 +194,7 @@ export function App() {
               type="button"
               aria-selected={t.id === tab}
               className={`tab ${t.id === tab ? 'active' : ''}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => navigateTab(t.id)}
             >
               {t.label}
             </button>
@@ -183,9 +222,6 @@ export function App() {
         <SettingsPage receipts={receipts} modelWarm={modelWarm} onClearAll={onClearAll} />
       )}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </div>
   );
 }

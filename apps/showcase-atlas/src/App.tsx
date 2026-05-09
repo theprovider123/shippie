@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { type Route } from './router.ts';
 import { resolveLocalDb } from './db/runtime.ts';
 import { ensureSchema } from './db/queries.ts';
@@ -21,6 +22,10 @@ interface Companion {
 export function App() {
   const [db, setDb] = useState<ShippieLocalDb | null>(null);
   const [route, setRoute] = useState<Route>('trips');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('trips', setRoute),
+    [],
+  );
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
   const [companion, setCompanion] = useState<Companion | null>(() => loadCompanion());
 
@@ -41,6 +46,7 @@ export function App() {
   }, [companion]);
 
   useEffect(() => () => bound?.destroy(), [bound]);
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   const [relayState, setRelayState] = useState<RelayState | null>(() =>
     bound?.relay ? { ...bound.relay } : null,
@@ -57,17 +63,17 @@ export function App() {
   }, [bound]);
 
   function go(next: Route) {
-    setRoute(next);
+    void localNavigation.navigate(next, { kind: 'crossfade' });
   }
 
   function openTrip(id: string) {
     setActiveTrip(id);
-    setRoute('trip');
+    void localNavigation.navigate('trip', { kind: 'rise' });
   }
 
   function backToTrips() {
     setActiveTrip(null);
-    setRoute('trips');
+    void localNavigation.backOrReplace('trips', { kind: 'crossfade' });
   }
 
   if (!db) {
@@ -90,7 +96,13 @@ export function App() {
           <TripPage db={db} tripId={activeTrip} onBack={backToTrips} onAddStop={() => go('pin')} />
         )}
         {route === 'pin' && (
-          <PinDropPage db={db} onPinned={(tripId) => openTrip(tripId)} />
+          <PinDropPage
+            db={db}
+            onPinned={(tripId) => {
+              setActiveTrip(tripId);
+              void localNavigation.backOrReplace('trip', { kind: 'crossfade' });
+            }}
+          />
         )}
         {route === 'companions' && (
           <CompanionsPage current={companion} onChange={setCompanion} />

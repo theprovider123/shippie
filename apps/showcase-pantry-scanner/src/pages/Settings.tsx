@@ -1,5 +1,5 @@
 /**
- * Settings — Your Data + housekeeping. Kept tiny: open the data panel,
+ * Settings — export + housekeeping. Kept tiny:
  * dump the inventory, clear everything.
  */
 import { useState } from 'react';
@@ -33,21 +33,6 @@ export function Settings({ shippie, store }: SettingsProps) {
         <h1>Settings</h1>
         <p>Privacy: every item lives on this device. Nothing leaves.</p>
       </header>
-
-      <section>
-        <h2>Your data</h2>
-        <p className="hint">
-          Open the platform Your Data panel to see exactly what's been
-          stored, what's been broadcast, and what was received.
-        </p>
-        <button
-          type="button"
-          className="row-btn row-btn-primary"
-          onClick={() => shippie.openYourData({ appSlug: 'pantry-scanner' })}
-        >
-          Open Your Data
-        </button>
-      </section>
 
       <section>
         <h2>Export</h2>

@@ -24,6 +24,8 @@
     {placeholder}
     aria-label="Search tools"
     class="search-input"
+    enterkeyhint="search"
+    autocomplete="off"
   />
   <button type="submit" class="search-btn" aria-label="Search">→</button>
 </form>

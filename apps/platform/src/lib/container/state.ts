@@ -22,6 +22,7 @@ import {
 } from '@shippie/app-package-contract';
 
 export type ContainerSection = 'home' | 'create' | 'data';
+export type ContainerVisibility = 'public' | 'unlisted' | 'private' | 'team' | 'local';
 
 export type ContainerApp = {
   id: string;
@@ -37,6 +38,8 @@ export type ContainerApp = {
   version: string;
   packageHash: string;
   standaloneUrl: string;
+  visibility?: ContainerVisibility;
+  owned?: boolean;
   permissions: AppPermissions;
   trust?: Pick<TrustReport, 'containerEligibility' | 'privacy' | 'security'>;
   /** AppProfile category, used by C1 agent strategies. Optional. */
@@ -166,6 +169,7 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
     version: '1',
     packageHash: `sha256:${(index + 1).toString(16).slice(-1).repeat(64)}`,
     standaloneUrl: `/run/${spec.slug}`,
+    visibility: 'public',
     permissions: localPermissions(spec.slug, spec.intents),
     category: spec.category,
     devUrl: `http://localhost:${spec.port}/`,
@@ -440,6 +444,18 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     category: 'wellness',
     port: 5199,
     intents: { provides: ['hydration-logged', 'caffeine-logged'] },
+  },
+  {
+    slug: 'steep',
+    name: 'Steep',
+    shortName: 'Steep',
+    description: 'A local-first notebook for medicinal tea blends. Loose-leaf, brewed properly.',
+    appKind: 'local',
+    icon: 'SP',
+    accent: '#2F4A3A',
+    category: 'wellness',
+    port: 5225,
+    intents: { provides: ['brewed-tea', 'wellness-ritual'] },
   },
   {
     slug: 'hearth',

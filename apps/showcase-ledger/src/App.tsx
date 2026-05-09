@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { resolveLocalDb } from './db/runtime.ts';
 import {
   formatCents,
@@ -40,6 +41,10 @@ export function App() {
   const db = useMemo(() => resolveLocalDb(), []);
   const today = useMemo(() => new Date(), []);
   const [tab, setTab] = useState<Tab>('entries');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('entries', setTab),
+    [],
+  );
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -48,6 +53,8 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<ConsumePrompt | null>(null);
   const [ready, setReady] = useState(false);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   // Boot: ensure schema, seed defaults, load categories + currency.
   useEffect(() => {
@@ -178,7 +185,7 @@ export function App() {
   const acceptPrompt = useCallback(() => {
     if (!prompt) return;
     setPrompt(null);
-    setTab('entries');
+    void localNavigation.navigate('entries', { kind: 'crossfade' });
     // EntryList opens the spend draft via the URL hash convention. Using
     // local state instead: we drop the prompt onto a starter draft by
     // toggling tab + a query param. Simplest path is to push the values
@@ -237,7 +244,7 @@ export function App() {
             }}
             currency={currency}
             refreshKey={refreshKey}
-            onExport={() => setTab('export')}
+            onExport={() => void localNavigation.navigate('export', { kind: 'crossfade' })}
           />
         ) : null}
         {tab === 'recurring' ? (
@@ -285,21 +292,12 @@ export function App() {
             role="tab"
             aria-selected={tab === t.id}
             className={`tab ${tab === t.id ? 'tab-active' : ''}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => void localNavigation.navigate(t.id, { kind: 'crossfade' })}
           >
             {t.label}
           </button>
         ))}
       </nav>
-
-      <button
-        type="button"
-        className="your-data-button"
-        onClick={() => shippie.openYourData({ appSlug: 'ledger' })}
-        aria-label="Your data"
-      >
-        Your Data
-      </button>
 
       {prompt ? (
         <div className="consume-prompt" role="dialog" aria-label="Log this as an expense?">

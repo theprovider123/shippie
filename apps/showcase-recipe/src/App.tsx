@@ -1,26 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RecipeList } from './pages/RecipeList.tsx';
 import { RecipeEdit } from './pages/RecipeEdit.tsx';
 import { CookingMode } from './pages/CookingMode.tsx';
 import { resolveLocalDb } from './db/runtime.ts';
 import { seedIfEmpty } from './db/seed.ts';
 import {
-  chooseStartupBackupPrompt,
   dismissInstallNudge,
   hasRequestedPersistence,
-  loadBackupMeta,
   loadPersistenceMeta,
-  promptText,
-  recordRecipeSaveAndChoosePrompt,
   requestDurableRecipeStorage,
   shouldNudgeInstall,
-  type BackupPromptReason,
 } from './db/data-safety.ts';
 import { readImportFragment } from '@shippie/share';
 import { ImportCard } from './share/ImportCard.tsx';
 import { checkRecipeImport, type RecipeImportCheck } from './share/recipe-import.ts';
-import { wrapNavigation } from '@shippie/sdk/wrapper';
-import { RecipeDataPanel } from './components/RecipeDataPanel.tsx';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 
 type Route =
   | { kind: 'list' }
@@ -29,15 +23,30 @@ type Route =
 
 export function App() {
   const [route, setRoute] = useState<Route>({ kind: 'list' });
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Route>(
+        { kind: 'list' },
+        setRoute,
+        {
+          isEqual: (a, b) =>
+            a.kind === b.kind &&
+            ('recipeId' in a ? a.recipeId : null) === ('recipeId' in b ? b.recipeId : null),
+        },
+      ),
+    [],
+  );
   const [refreshKey, setRefreshKey] = useState(0);
   const [seedNote, setSeedNote] = useState<string | null>(null);
-  const [backupPrompt, setBackupPrompt] = useState<BackupPromptReason | null>(null);
   const [installNudge, setInstallNudge] = useState(false);
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
-  const [dataPanelOpen, setDataPanelOpen] = useState(false);
   const [pendingImport, setPendingImport] = useState<
     Extract<RecipeImportCheck, { ok: true }> | null
   >(null);
+
+  useEffect(() => {
+    return () => localNavigation.destroy();
+  }, [localNavigation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,8 +65,6 @@ export function App() {
         // refreshKey after the seed lands fixes the race for first-load
         // and is a no-op on subsequent renders (the rows are already there).
         setRefreshKey((n) => n + 1);
-        const stale = chooseStartupBackupPrompt(loadBackupMeta());
-        if (stale) setBackupPrompt(stale);
         // Silent retry of persistence-grant on subsequent launches.
         // Browsers grant more readily once the site has engagement, so
         // a previously-declined request can succeed later. Skip the
@@ -104,7 +111,11 @@ export function App() {
   }, []);
 
   const navigate = (next: Route) => {
-    void wrapNavigation(() => setRoute(next), { kind: next.kind === 'list' ? 'crossfade' : 'rise' });
+    void localNavigation.navigate(next, { kind: next.kind === 'list' ? 'crossfade' : 'rise' });
+  };
+
+  const closeToList = () => {
+    void localNavigation.backOrReplace({ kind: 'list' }, { kind: 'crossfade' });
   };
 
   const handleSaved = () => {
@@ -114,17 +125,13 @@ export function App() {
     // is the right hook. Subsequent declines retry silently from the
     // boot effect above.
     if (!hasRequestedPersistence()) void requestDurableRecipeStorage(db);
-    const prompt = recordRecipeSaveAndChoosePrompt(loadBackupMeta());
-    // On iOS Safari the install nudge takes priority over the
-    // first-save backup banner — installing solves durability more
-    // comprehensively than asking for a backup we can't yet target.
-    if (prompt && shouldNudgeInstall()) {
+    // On iOS Safari the install nudge is the right durability prompt:
+    // installed apps are less likely to lose local browser data.
+    if (shouldNudgeInstall()) {
       setInstallNudge(true);
-    } else if (prompt) {
-      setBackupPrompt(prompt);
     }
     setRefreshKey((n) => n + 1);
-    navigate({ kind: 'list' });
+    closeToList();
   };
 
   return (
@@ -145,17 +152,6 @@ export function App() {
             }}
             aria-label="Dismiss install nudge"
           >
-            ×
-          </button>
-        </div>
-      ) : null}
-      {backupPrompt ? (
-        <div className="banner backup-banner" role="status">
-          <span>{promptText(backupPrompt)}</span>
-          <button type="button" onClick={() => setDataPanelOpen(true)}>
-            Back up
-          </button>
-          <button type="button" className="ghost" onClick={() => setBackupPrompt(null)} aria-label="Dismiss backup prompt">
             ×
           </button>
         </div>
@@ -202,23 +198,12 @@ export function App() {
       {route.kind === 'edit' ? (
         <RecipeEdit
           recipeId={route.recipeId}
-          onClose={() => navigate({ kind: 'list' })}
+          onClose={closeToList}
           onSaved={handleSaved}
         />
       ) : null}
       {route.kind === 'cook' ? (
-        <CookingMode recipeId={route.recipeId} onClose={() => navigate({ kind: 'list' })} />
-      ) : null}
-
-      {route.kind === 'list' ? (
-        <button
-          type="button"
-          className="your-data-button"
-          onClick={() => setDataPanelOpen(true)}
-          aria-label="Open Your Data panel"
-        >
-          Your Data
-        </button>
+        <CookingMode recipeId={route.recipeId} onClose={closeToList} />
       ) : null}
 
       {pendingImport ? (
@@ -227,25 +212,13 @@ export function App() {
           onImported={(id) => {
             setPendingImport(null);
             if (!hasRequestedPersistence()) void requestDurableRecipeStorage(resolveLocalDb());
-            const prompt = recordRecipeSaveAndChoosePrompt(loadBackupMeta());
-            if (prompt && shouldNudgeInstall()) {
+            if (shouldNudgeInstall()) {
               setInstallNudge(true);
-            } else if (prompt) {
-              setBackupPrompt(prompt);
             }
             setRefreshKey((n) => n + 1);
             navigate({ kind: 'edit', recipeId: id });
           }}
           onDiscard={() => setPendingImport(null)}
-        />
-      ) : null}
-
-      {dataPanelOpen ? (
-        <RecipeDataPanel
-          db={resolveLocalDb()}
-          onClose={() => setDataPanelOpen(false)}
-          onChanged={() => setRefreshKey((n) => n + 1)}
-          onBackupComplete={() => setBackupPrompt(null)}
         />
       ) : null}
     </div>

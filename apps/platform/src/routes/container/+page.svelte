@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { readShippiePackageArchive } from '@shippie/app-package-builder';
   import { ContainerBridgeHost, createWindowBridgeTransport } from '@shippie/container-bridge';
   import {
@@ -42,7 +43,10 @@
     buildLocalRow,
     computeStorageUsage,
     createAppHandlers,
+    deleteLocalDbRow,
     filterRowsByTable,
+    queryLocalDbRows,
+    updateLocalDbRow,
     type IntentRequestResult,
     type TransferAcceptor,
     type TransferCommitResult,
@@ -91,6 +95,12 @@
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import {
+    hydrateLauncherMemory,
+    launcherMemory,
+    recordAppLaunch,
+    togglePinnedApp,
+  } from '$lib/stores/launcher-memory';
+  import {
     consumeEviction,
     focusApp,
     queueEviction,
@@ -112,10 +122,16 @@
     type PackageFrameSourceCache,
   } from '$lib/container/frame-runtime';
   import {
+    buildSingleHtmlPackage,
     installBuiltPackage,
     recoveredReceiptsFor,
     uninstallContainerAppState,
   } from '$lib/container/package-runtime';
+  import {
+    deleteImportedPackage,
+    loadImportedPackage,
+    saveImportedPackage,
+  } from '$lib/container/local-package-store';
 
   let { data }: { data: PageData } = $props();
 
@@ -165,6 +181,7 @@
   let restoreStatus = $state('');
   let packageImportPayload = $state('');
   let packageImportStatus = $state('');
+  let packageDropActive = $state(false);
   let packageFilesByApp = $state<Record<string, Record<string, PackageFileCache>>>({});
   let frameStates = $state<FrameStates>({});
   let frameReloadNonce = $state<FrameReloadNonces>({});
@@ -176,6 +193,8 @@
   let logs = $state<BridgeLog[]>([]);
   let bridgeStatus = $state<'waiting' | 'ready'>('waiting');
   let frameCanGoBackByApp = $state<Record<string, boolean>>({});
+  let pendingFocusedBackAppId: string | null = null;
+  let pendingFocusedBackFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   let storageReady = $state(false);
   let intentGrants = $state<IntentGrants>({});
   type PendingPrompt = {
@@ -222,8 +241,12 @@
     onChange: (next) => {
       yourDataOpenForApp = next.appId;
       if (next.open) {
-        section = 'data';
-        activeAppId = null;
+        if (data.focused) {
+          exitFocusedMode('data');
+        } else {
+          section = 'data';
+          activeAppId = null;
+        }
       }
     },
   });
@@ -468,8 +491,54 @@
     dismissedInsightIds = { ...dismissedInsightIds, [insight.id]: Date.now() };
   }
 
+  function tierLabel(app: ContainerApp): string {
+    if (app.visibility === 'private') return 'Private';
+    if (app.visibility === 'team') return 'Team';
+    if (app.visibility === 'local') return 'On device';
+    if (app.visibility === 'unlisted') return 'Unlisted';
+    return '';
+  }
+
   const activeApp = $derived(activeAppId ? appById.get(activeAppId) : null);
+  const activeFrameCanGoBack = $derived(Boolean(activeAppId && frameCanGoBackByApp[activeAppId]));
   const installedApps = $derived(apps.filter((app) => openAppIds.includes(app.id)));
+  const appBySlug = $derived(new Map(apps.map((app) => [app.slug, app])));
+  const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
+  const drawerPinnedApps = $derived.by(() => {
+    const seen = new Set<string>();
+    return $launcherMemory.pinned
+      .map((slug) => appBySlug.get(slug))
+      .filter((app): app is ContainerApp => Boolean(app))
+      .filter((app) => {
+        if (seen.has(app.id)) return false;
+        seen.add(app.id);
+        return true;
+      });
+  });
+  const drawerRecentApps = $derived.by(() => {
+    const pinned = new Set($launcherMemory.pinned);
+    const seen = new Set<string>();
+    return $launcherMemory.recents
+      .map((recent) => appBySlug.get(recent.slug))
+      .filter((app): app is ContainerApp => {
+        if (!app) return false;
+        return !pinned.has(app.slug);
+      })
+      .filter((app) => {
+        if (seen.has(app.id)) return false;
+        seen.add(app.id);
+        return true;
+      });
+  });
+  const drawerPersonalized = $derived(drawerPinnedApps.length > 0 || drawerRecentApps.length > 0);
+  const drawerRemainingApps = $derived.by(() => {
+    if (!drawerPersonalized) return apps;
+    const shown = new Set([
+      ...drawerPinnedApps.map((app) => app.id),
+      ...drawerRecentApps.map((app) => app.id),
+    ]);
+    return apps.filter((app) => !shown.has(app.id));
+  });
   const recoveredReceipts = $derived(recoveredReceiptsFor(receiptsByApp, appById));
   const totalRows = $derived(Object.values(rowsByApp).reduce((sum, rows) => sum + rows.length, 0));
   const updateCards = $derived(
@@ -480,6 +549,25 @@
 
   function openApp(appId: string) {
     const wasAlreadyFocused = activeAppId === appId && section === 'home';
+    const app = appById.get(appId);
+
+    if (data.focused) {
+      openAppIds = [appId];
+      if (app && !receiptsByApp[appId]) {
+        receiptsByApp = {
+          ...receiptsByApp,
+          [appId]: createReceiptFor(app),
+        };
+      }
+      activeAppId = appId;
+      section = 'home';
+      if (!wasAlreadyFocused) {
+        rememberAppLaunch(app);
+        void trackAppOpen(appId);
+      }
+      return;
+    }
+
     // LRU mount cap — keep at most 8 apps live. Re-focusing an
     // already-open app moves it to the head; opening a new one past
     // the cap evicts the oldest. Eviction is deferred until the new
@@ -499,7 +587,6 @@
         disposeApp(queued.superseded);
       }
     }
-    const app = appById.get(appId);
     if (app && !receiptsByApp[appId]) {
       receiptsByApp = {
         ...receiptsByApp,
@@ -509,8 +596,54 @@
     activeAppId = appId;
     section = 'home';
     if (!wasAlreadyFocused) {
+      rememberAppLaunch(app);
       void trackAppOpen(appId);
     }
+  }
+
+  function switchFocusedApp(app: ContainerApp) {
+    openApp(app.id);
+    focusedDrawerOpen = false;
+    if (data.focused && typeof window !== 'undefined') {
+      const href = `/run/${encodeURIComponent(app.slug)}/`;
+      void goto(href, { replaceState: true, noScroll: true, keepFocus: true });
+    }
+  }
+
+  function exitFocusedMode(targetSection: ContainerSection = 'home') {
+    dismissTransientPrompts();
+    focusedDrawerOpen = false;
+    activeAppId = null;
+    section = targetSection;
+    const href = targetSection === 'home' ? '/' : `/container?section=${targetSection}`;
+    void goto(href, { noScroll: true, keepFocus: true });
+  }
+
+  function dismissTransientPrompts() {
+    if (pendingIntentQueue.length > 0) {
+      for (const prompt of pendingIntentQueue) {
+        prompt.resolve({ provider: null, rows: [], reason: 'permission_denied' });
+      }
+      pendingIntentQueue = [];
+    }
+    if (pendingTransferQueue.length > 0) {
+      for (const prompt of pendingTransferQueue) {
+        prompt.resolve({ delivered: false, target: null, reason: 'permission_denied' });
+      }
+      pendingTransferQueue = [];
+    }
+  }
+
+  function toggleDrawerPin(app: ContainerApp) {
+    togglePinnedApp(app.slug);
+  }
+
+  function rememberAppLaunch(app: ContainerApp | undefined) {
+    if (!app) return;
+    const recent = $launcherMemory.recents.find((item) => item.slug === app.slug);
+    const lastOpened = recent ? Date.parse(recent.lastOpened) : 0;
+    if (Number.isFinite(lastOpened) && Date.now() - lastOpened < 5_000) return;
+    recordAppLaunch(app.slug);
   }
 
   function trackAppOpen(appId: string) {
@@ -642,8 +775,10 @@
     const app = appById.get(appId);
     if (!app || hosts.has(appId)) return;
 
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    if (!frame.contentWindow) return;
+    if (!frame.contentWindow) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      if (!frame.contentWindow) return;
+    }
 
     hosts.set(
       appId,
@@ -656,11 +791,17 @@
           ...frameBridgeOrigins(runtimeSrcFor(app), window.location.href),
         }),
         maxPayloadBytes: 32 * 1024,
-        rateLimit: { maxRequests: 80, windowMs: 10_000 },
+        // Local-first apps can legitimately burst during first-run seeding.
+        // Keep a bounded bridge limit, but don't make builders batch around
+        // infrastructure just to persist starter data.
+        rateLimit: { maxRequests: 500, windowMs: 10_000 },
         handlers: createAppHandlers({
           appId,
           app,
           insertRow,
+          createTable,
+          updateRow,
+          deleteRow,
           queryRows,
           storageUsage,
           consumeIntent,
@@ -722,9 +863,60 @@
     frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: canGoBack };
   }
 
-  function requestActiveFrameBack(): boolean {
+  function recordFrameNavigationBackResult(event: MessageEvent) {
+    const payload = event.data as { type?: string; handled?: unknown } | null;
+    if (!payload || payload.type !== 'shippie:navigation-back-result') return;
+    const appId = appIdForMessageSource(event.source);
+    if (!appId || appId !== pendingFocusedBackAppId) return;
+    clearPendingFocusedBackFallback();
+    if (payload.handled === false) {
+      frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: false };
+      openFocusedDrawerAsBackFallback();
+    }
+  }
+
+  function clearPendingFocusedBackFallback() {
+    pendingFocusedBackAppId = null;
+    if (pendingFocusedBackFallbackTimer) {
+      clearTimeout(pendingFocusedBackFallbackTimer);
+      pendingFocusedBackFallbackTimer = null;
+    }
+  }
+
+  function restoreFocusedHistorySentinel() {
+    if (!data.focused || typeof window === 'undefined') return;
+    try {
+      history.pushState({ shippieFocused: true }, '');
+    } catch {
+      /* history API may be blocked */
+    }
+  }
+
+  function openFocusedDrawerAsBackFallback() {
+    if (!data.focused) return;
+    focusedDrawerOpen = true;
+    restoreFocusedHistorySentinel();
+  }
+
+  function requestActiveFrameBack(opts: { fallbackToDrawer?: boolean } = {}): boolean {
     if (!activeAppId || frameCanGoBackByApp[activeAppId] !== true) return false;
-    return postToAppFrame(activeAppId, { type: 'shippie:navigation-back' });
+    const posted = postToAppFrame(activeAppId, { type: 'shippie:navigation-back' });
+    if (!posted || !opts.fallbackToDrawer) return posted;
+    clearPendingFocusedBackFallback();
+    pendingFocusedBackAppId = activeAppId;
+    pendingFocusedBackFallbackTimer = setTimeout(() => {
+      if (pendingFocusedBackAppId === activeAppId) {
+        clearPendingFocusedBackFallback();
+        openFocusedDrawerAsBackFallback();
+      }
+    }, 900);
+    return true;
+  }
+
+  function goBackInActiveFrame() {
+    if (requestActiveFrameBack({ fallbackToDrawer: true })) {
+      restoreFocusedHistorySentinel();
+    }
   }
 
   async function consumeIntent(
@@ -1083,15 +1275,66 @@
     const slug = appById.get(appId)?.slug ?? 'app';
     const existing = rowsByApp[appId] ?? [];
     const row = buildLocalRow(appId, slug, payload, existing.length);
-    rowsByApp = {
+    const nextRowsByApp = {
       ...rowsByApp,
       [appId]: [row, ...existing],
     };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
     return row;
   }
 
   function queryRows(appId: string, payload: unknown) {
-    return { rows: filterRowsByTable(rowsByApp[appId] ?? [], payload) };
+    return { rows: queryLocalDbRows(rowsByApp[appId] ?? [], payload).map(plainLocalRow) };
+  }
+
+  function plainLocalRow(row: LocalRow): LocalRow {
+    return {
+      id: row.id,
+      table: row.table,
+      payload: plainBridgeValue(row.payload),
+      createdAt: row.createdAt,
+    };
+  }
+
+  function plainBridgeValue(value: unknown): unknown {
+    try {
+      return structuredClone(value);
+    } catch {
+      try {
+        return JSON.parse(JSON.stringify(value ?? null));
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  function createTable(_appId: string, payload: unknown) {
+    return { created: true as const, table: typeof payload === 'object' && payload !== null && 'table' in payload
+      ? String((payload as Record<string, unknown>).table)
+      : 'items' };
+  }
+
+  function updateRow(appId: string, payload: unknown) {
+    const result = updateLocalDbRow(rowsByApp[appId] ?? [], payload);
+    const nextRowsByApp = {
+      ...rowsByApp,
+      [appId]: result.rows,
+    };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
+    return { updated: result.updated };
+  }
+
+  function deleteRow(appId: string, payload: unknown) {
+    const result = deleteLocalDbRow(rowsByApp[appId] ?? [], payload);
+    const nextRowsByApp = {
+      ...rowsByApp,
+      [appId]: result.rows,
+    };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
+    return { deleted: result.deleted };
   }
 
   function storageUsage(appId: string) {
@@ -1099,10 +1342,12 @@
   }
 
   function clearAppData(appId: string) {
-    rowsByApp = {
+    const nextRowsByApp = {
       ...rowsByApp,
       [appId]: [],
     };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
   }
 
   function uninstallApp(appId: string) {
@@ -1132,6 +1377,8 @@
     intentGrants = next.intentGrants;
     transferGrants = next.transferGrants;
     activeAppId = next.activeAppId;
+    void deleteImportedPackage(appId);
+    persistContainerState(next.rowsByApp);
     if (!activeAppId) section = 'home';
   }
 
@@ -1260,6 +1507,38 @@
     }
   }
 
+  async function importPackageFile(file: File) {
+    packageImportStatus = '';
+    try {
+      if (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
+        const built = await buildSingleHtmlPackage(file);
+        const app = await cacheBuiltPackage(built);
+        packageImportStatus = `Imported ${app.name} on this device. Deploy with shippie deploy --private to use it elsewhere.`;
+        return;
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const built = await readShippiePackageArchive(bytes);
+      const app = await cacheBuiltPackage(built);
+      packageImportStatus = `Imported and cached ${app.name} from ${file.name}.`;
+    } catch (err) {
+      packageImportStatus = err instanceof Error ? err.message : `Could not import ${file.name}.`;
+    }
+  }
+
+  async function importSelectedFiles(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) await importPackageFile(file);
+    input.value = '';
+  }
+
+  async function dropImportFile(event: DragEvent) {
+    event.preventDefault();
+    packageDropActive = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) await importPackageFile(file);
+  }
+
   function importPackageManifest(parsed: unknown) {
     packageImportStatus = '';
     try {
@@ -1282,20 +1561,21 @@
     packageImportStatus = '';
     try {
       const built = await readShippiePackageArchive(packageImportPayload);
-      const app = cacheBuiltPackage(built);
+      const app = await cacheBuiltPackage(built);
       packageImportStatus = `Imported and cached ${app.name} from a verified .shippie archive.`;
     } catch (err) {
       packageImportStatus = err instanceof Error ? err.message : 'Could not import package archive.';
     }
   }
 
-  function cacheBuiltPackage(built: Awaited<ReturnType<typeof readShippiePackageArchive>>): ContainerApp {
+  async function cacheBuiltPackage(built: Awaited<ReturnType<typeof readShippiePackageArchive>>): Promise<ContainerApp> {
     const { app, packageFiles } = installBuiltPackage(built);
     importedApps = [...importedApps.filter((existing) => existing.id !== app.id), app];
     packageFilesByApp = {
       ...packageFilesByApp,
       [app.id]: packageFiles,
     };
+    void saveImportedPackage(app.id, packageFiles);
     openApp(app.id);
     return app;
   }
@@ -1335,7 +1615,7 @@
       if (built.packageHash !== entry.packageHash) {
         throw new Error('Downloaded package hash does not match the collection entry.');
       }
-      const app = cacheBuiltPackage(built);
+      const app = await cacheBuiltPackage(built);
       collectionStatus = `Installed ${app.name} from ${activeCollection?.name ?? 'collection'}.`;
     } catch (err) {
       collectionStatus = err instanceof Error ? err.message : `Could not install ${entry.name}.`;
@@ -1444,9 +1724,11 @@
   $effect(() => {
     window.addEventListener('message', recordFromEvent);
     window.addEventListener('message', recordFrameNavigation);
+    window.addEventListener('message', recordFrameNavigationBackResult);
     return () => {
       window.removeEventListener('message', recordFromEvent);
       window.removeEventListener('message', recordFrameNavigation);
+      window.removeEventListener('message', recordFrameNavigationBackResult);
     };
   });
 
@@ -1458,14 +1740,14 @@
     transferRegistry.refresh(apps);
   });
 
-  $effect(() => {
+  function persistContainerState(nextRowsByApp: Record<string, LocalRow[]> = rowsByApp) {
     if (!storageReady) return;
     const state: ContainerState = {
       openAppIds,
       importedApps,
       packageFilesByApp,
       receiptsByApp,
-      rowsByApp,
+      rowsByApp: nextRowsByApp,
       intentGrants,
       transferGrants,
       dismissedInsightIds,
@@ -1477,16 +1759,87 @@
       // browsing, or quota exceeded). Persistence fails silently;
       // session state continues in memory until the user reloads.
     }
+  }
+
+  async function hydrateImportedPackageFiles(appsToHydrate: readonly ContainerApp[]) {
+    const missing = appsToHydrate.filter((app) => !packageFilesByApp[app.id]);
+    if (missing.length === 0) return;
+    const loadedEntries = await Promise.all(
+      missing.map(async (app) => [app.id, await loadImportedPackage(app.id)] as const),
+    );
+    const loaded = Object.fromEntries(
+      loadedEntries.filter((entry): entry is readonly [string, Record<string, PackageFileCache>] => Boolean(entry[1])),
+    );
+    if (Object.keys(loaded).length === 0) return;
+    packageFilesByApp = { ...packageFilesByApp, ...loaded };
+    persistContainerState(rowsByApp);
+  }
+
+  $effect(() => {
+    if (!storageReady) return;
+    persistContainerState(rowsByApp);
   });
 
+  $effect(() => {
+    if (!storageReady) return;
+    const requestedSection = $page.url.searchParams.get('section');
+    const routeKey = `${data.focused ? 'focused' : 'dashboard'}:${data.requestedAppSlug ?? ''}:${requestedSection ?? ''}`;
+    applyRouteState(routeKey, requestedSection);
+  });
+
+  $effect(() => {
+    if (data.focused || section !== 'data') return;
+    if (pendingIntentQueue.length > 0 || pendingTransferQueue.length > 0) {
+      dismissTransientPrompts();
+    }
+  });
+
+  let lastAppliedRouteKey = $state('');
+
+  function applyRouteState(routeKey: string, requestedSection: string | null) {
+    if (routeKey === lastAppliedRouteKey) return;
+    lastAppliedRouteKey = routeKey;
+
+    if (data.focused) {
+      const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
+      if (requestedApp) {
+        notFoundSlug = null;
+        if (activeAppId !== requestedApp.id) {
+          openApp(requestedApp.id);
+        }
+      } else if (data.requestedAppSlug) {
+        notFoundSlug = data.requestedAppSlug;
+      }
+      return;
+    }
+
+    focusedDrawerOpen = false;
+    notFoundSlug = null;
+    if (requestedSection === 'home' || requestedSection === 'create' || requestedSection === 'data') {
+      section = requestedSection;
+      if (requestedSection !== 'home') {
+        activeAppId = null;
+      } else if (!activeAppId || !appById.has(activeAppId)) {
+        activeAppId = openAppIds[0] ?? null;
+      }
+    } else if (!activeAppId || !appById.has(activeAppId)) {
+      activeAppId = openAppIds[0] ?? null;
+    }
+  }
+
   onMount(() => {
+    hydrateLauncherMemory();
+    const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
     const saved = loadContainerState(localStorage);
     if (saved) {
       importedApps = saved.importedApps ?? [];
       packageFilesByApp = saved.packageFilesByApp ?? {};
+      void hydrateImportedPackageFiles(importedApps);
       const knownAppIds = new Set(apps.map((app) => app.id));
       const savedOpenApps = saved.openAppIds.filter((appId) => knownAppIds.has(appId));
-      openAppIds = savedOpenApps.length > 0 ? savedOpenApps : defaultAppId ? [defaultAppId] : [];
+      openAppIds = data.focused
+        ? (requestedApp ? [requestedApp.id] : [])
+        : savedOpenApps.length > 0 ? savedOpenApps : defaultAppId ? [defaultAppId] : [];
       receiptsByApp = {
         ...Object.fromEntries(openAppIds.map((appId) => [appId, createReceiptFor(appById.get(appId)!)])),
         ...saved.receiptsByApp,
@@ -1501,7 +1854,6 @@
       receiptsByApp = defaultApp ? { [defaultAppId]: createReceiptFor(defaultApp) } : {};
       activeAppId = defaultAppId;
     }
-    const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
     if (requestedApp) {
       openApp(requestedApp.id);
     } else if (data.requestedAppSlug && data.focused) {
@@ -1548,39 +1900,100 @@
       // whatever was before /run/<slug>/ — usually the marketplace,
       // sometimes a cold tab with no history at all.
       try {
-        history.pushState({ shippieFocused: true }, '');
+        restoreFocusedHistorySentinel();
         window.addEventListener('popstate', handleFocusedPopstate);
       } catch {
         // history API blocked — leave the user with the pill exits.
       }
+
+      // Origin-safe keyboard contract: child tools that include the SDK's
+      // useKeyboard() helper post `shippie:tool-keyboard-open/close` when
+      // their on-screen keyboard rises/falls. We adapt the focused chrome
+      // (push the exit-pill out of the way) by setting CSS variables on
+      // the root. 4-step validation per the plan:
+      //   1. message type matches our namespace
+      //   2. event.source matches the active app's iframe contentWindow
+      //   3. event.origin matches the expected origin for the active app
+      //   4. payload shape sanity
+      // Without all four, drop the message silently.
+      window.addEventListener('message', handleToolKeyboardMessage);
     }
     void loadCollection();
+  });
+
+  function expectedOriginForActiveApp(): string | null {
+    const app = activeAppId ? appById.get(activeAppId) : null;
+    if (!app) return null;
+    // First-party showcases render under the platform origin via /run/<slug>/.
+    // Maker subdomains have their own origin — derive from app.standaloneUrl
+    // if present, else fall back to the current origin.
+    if (app.standaloneUrl) {
+      try {
+        return new URL(app.standaloneUrl).origin;
+      } catch {
+        // fall through
+      }
+    }
+    return window.location.origin;
+  }
+
+  function handleToolKeyboardMessage(event: MessageEvent) {
+    const data = event.data as { type?: string; height?: number } | null;
+    const type = data?.type;
+    if (type !== 'shippie:tool-keyboard-open' && type !== 'shippie:tool-keyboard-close') return;
+
+    // Resolve the active iframe's contentWindow. The container hosts iframes
+    // via AppFrameHost; we don't have a direct map here, so we resolve via
+    // the rendered DOM by app id.
+    if (!activeAppId) return;
+    const iframe = document.querySelector<HTMLIFrameElement>(
+      `iframe[data-shippie-app-id="${activeAppId}"]`,
+    );
+    if (!iframe || event.source !== iframe.contentWindow) return;
+
+    const expectedOrigin = expectedOriginForActiveApp();
+    if (!expectedOrigin || event.origin !== expectedOrigin) return;
+
+    const root = document.documentElement;
+    if (type === 'shippie:tool-keyboard-open') {
+      const height = typeof data?.height === 'number' && data.height >= 0 ? data.height : 0;
+      root.style.setProperty('--keyboard-offset', `${height}px`);
+      root.dataset.keyboardOpen = 'true';
+      // One telemetry per (slug, session) so we don't spam on every focus.
+      const slug = activeApp?.slug;
+      try {
+        const key = `shippie:track:kb:${slug ?? 'unknown'}`;
+        if (slug && !sessionStorage.getItem(key)) {
+          void import('$lib/util/track').then(({ track }) => track('keyboard_open_in_tool', { slug }));
+          sessionStorage.setItem(key, '1');
+        }
+      } catch {
+        // sessionStorage blocked — skip the telemetry to avoid spamming.
+      }
+    } else {
+      root.style.removeProperty('--keyboard-offset');
+      delete root.dataset.keyboardOpen;
+    }
+  }
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('message', handleToolKeyboardMessage);
+    }
   });
 
   function handleFocusedPopstate() {
     if (!data.focused) return;
     if (focusedDrawerOpen) {
       focusedDrawerOpen = false;
-      try {
-        history.pushState({ shippieFocused: true }, '');
-      } catch {
-        /* ignore */
-      }
+      restoreFocusedHistorySentinel();
       return;
     }
-    if (requestActiveFrameBack()) {
-      try {
-        history.pushState({ shippieFocused: true }, '');
-      } catch {
-        /* ignore */
-      }
+    if (requestActiveFrameBack({ fallbackToDrawer: true })) {
+      restoreFocusedHistorySentinel();
       return;
     }
-    // popstate fires after the browser already moved one entry back.
-    // We're now at the entry we want to leave from; goto() replaces
-    // it with /container so refreshes don't bounce back into focused
-    // mode.
-    goto('/container', { replaceState: true });
+    openFocusedDrawerAsBackFallback();
   }
 
   onDestroy(() => {
@@ -1588,6 +2001,7 @@
     hosts.clear();
     revokeAllPackageFrameSources(packageObjectUrls);
     aiClient.dispose();
+    clearPendingFocusedBackFallback();
     if (typeof window !== 'undefined') {
       window.removeEventListener('popstate', handleFocusedPopstate);
     }
@@ -1603,17 +2017,30 @@
 
   function runtimeSrcFor(app: ContainerApp): string | null {
     if (typeof window === 'undefined') return null;
-    const preferDevUrl = new URL(window.location.href).searchParams.get('dev_apps') === '1';
-    return resolveRuntimeSrc(app, window.location.hostname, { preferDevUrl });
+    const currentUrl = new URL(window.location.href);
+    const preferDevUrl = currentUrl.searchParams.get('dev_apps') === '1';
+    const forwardedParams = data.focused && data.requestedAppSlug === app.slug
+      ? focusedRuntimeParams(currentUrl.searchParams)
+      : undefined;
+    return resolveRuntimeSrc(app, window.location.hostname, { preferDevUrl, searchParams: forwardedParams });
+  }
+
+  function focusedRuntimeParams(params: URLSearchParams): URLSearchParams {
+    const forwarded = new URLSearchParams();
+    params.forEach((value, key) => {
+      if (key === 'dev_apps' || key === 'focused' || key === 'app' || key === 'shippie_embed') return;
+      forwarded.append(key, value);
+    });
+    return forwarded;
   }
 
 </script>
 
 <svelte:head>
-  <title>Shippie Container</title>
+  <title>Shippie</title>
   <meta
     name="description"
-    content="The Shippie container runtime: one installed app for local-first apps, receipts, and portable packages."
+    content="Open your saved tools, manage local data, and keep Shippie apps ready on this device."
   />
 </svelte:head>
 
@@ -1633,7 +2060,7 @@
 
 {#if data.focused}
   <!--
-    Focused mode — entered via /run/<slug>/ → /container?app=&focused=1.
+    Focused mode — entered directly via /run/<slug>/ or via /container?app=&focused=1.
     Render the requested app full-bleed, no sidebar / topbar / tabs.
     The app-switcher gesture component sits as a fixed overlay; the
     drawer (when open) shows a compact app grid for instant switching.
@@ -1661,6 +2088,16 @@
       />
       <span>Shippie</span>
     </button>
+    {#if activeFrameCanGoBack}
+      <button
+        type="button"
+        class="focused-back-pill"
+        aria-label="Go back in current tool"
+        onclick={goBackInActiveFrame}
+      >
+        ←
+      </button>
+    {/if}
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -1697,42 +2134,91 @@
       open={focusedDrawerOpen}
       onOpenChange={(value) => (focusedDrawerOpen = value)}
       edge={focusedDrawerEdge}
+      canGoBack={activeFrameCanGoBack}
+      onBack={goBackInActiveFrame}
     >
       <div class="focused-drawer">
+        <div class="focused-drawer-grip" aria-hidden="true"></div>
         <header class="focused-drawer-head">
-          <a class="focused-home" href="/container" aria-label="Shippie home">
-            <img
-              class="focused-rocket"
-              src="/__shippie-pwa/icon.svg"
-              alt=""
-              width="20"
-              height="20"
-              aria-hidden="true"
-            />
-            <span>Shippie</span>
+          <a class="focused-home" href="/" aria-label="Shippie tools">
+            <span class="focused-brand-copy">
+              <strong>Shippie</strong>
+              <small>Local tools, one home.</small>
+            </span>
           </a>
-          <a class="focused-data" href="/container?section=data" aria-label="Your Data">
-            Your Data
-          </a>
+          <nav class="focused-drawer-actions" aria-label="Drawer actions">
+            <button class="focused-action" type="button" onclick={() => exitFocusedMode('home')}>Tools</button>
+            <button class="focused-action focused-action-data" type="button" onclick={() => exitFocusedMode('data')}>Data</button>
+          </nav>
         </header>
-        <h2>Switch tool</h2>
-        <div class="focused-grid">
-          {#each apps as app (app.id)}
+        {#snippet focusedToolTile(app: ContainerApp)}
+          <div
+            class="focused-tile"
+            class:active={activeAppId === app.id}
+            style:--accent={app.accent}
+          >
             <button
-              class="focused-tile"
-              class:active={activeAppId === app.id}
-              style:--accent={app.accent}
-              onclick={() => {
-                openApp(app.id);
-                focusedDrawerOpen = false;
-              }}
+              class="focused-open-tool"
+              type="button"
+              onclick={() => switchFocusedApp(app)}
+              aria-label={`Open ${app.name}`}
             >
               <span class="focused-dot" aria-hidden="true">{app.icon}</span>
               <strong>{app.name}</strong>
-              <small>{openAppIds.includes(app.id) ? 'Live' : 'Open'}</small>
+              <small>{tierLabel(app) || (activeAppId === app.id ? 'Current' : openAppIds.includes(app.id) ? 'Live' : 'Open')}</small>
             </button>
-          {/each}
-        </div>
+            <button
+              class="focused-pin"
+              class:active={drawerPinnedSet.has(app.slug)}
+              type="button"
+              aria-label={drawerPinnedSet.has(app.slug) ? `Unpin ${app.name}` : `Pin ${app.name}`}
+              aria-pressed={drawerPinnedSet.has(app.slug)}
+              title={drawerPinnedSet.has(app.slug) ? 'Unpin' : 'Pin'}
+              onclick={(event) => {
+                event.stopPropagation();
+                toggleDrawerPin(app);
+              }}
+            >
+              {drawerPinnedSet.has(app.slug) ? '★' : '☆'}
+            </button>
+          </div>
+        {/snippet}
+
+        {#if drawerPinnedApps.length > 0}
+          <div class="focused-section-head">
+            <h2>Pinned</h2>
+            <span>{drawerPinnedApps.length}</span>
+          </div>
+          <div class="focused-grid">
+            {#each drawerPinnedApps as app (app.id)}
+              {@render focusedToolTile(app)}
+            {/each}
+          </div>
+        {/if}
+
+        {#if drawerRecentApps.length > 0}
+          <div class="focused-section-head">
+            <h2>Recent</h2>
+            <span>{drawerRecentApps.length}</span>
+          </div>
+          <div class="focused-grid">
+            {#each drawerRecentApps as app (app.id)}
+              {@render focusedToolTile(app)}
+            {/each}
+          </div>
+        {/if}
+
+        {#if drawerRemainingApps.length > 0}
+          <div class="focused-section-head">
+            <h2>{drawerPersonalized ? 'All tools' : 'Tools'}</h2>
+            <span>{drawerRemainingApps.length} ready</span>
+          </div>
+          <div class="focused-grid">
+            {#each drawerRemainingApps as app (app.id)}
+              {@render focusedToolTile(app)}
+            {/each}
+          </div>
+        {/if}
         {#if agentInsights.length > 0}
           <h2 class="focused-insights-heading">Insights</h2>
           <ul class="focused-insights">
@@ -1753,21 +2239,21 @@
 <section class="shell">
   <aside class="sidebar">
     <div>
-      <p class="eyebrow">Shippie Container</p>
-      <h1>One Shippie. Every app. Your data stays here.</h1>
+      <p class="eyebrow">Shippie</p>
+      <h1>Your tools, ready where you left them.</h1>
       <p class="lede">
-        A package-aware shell for local-first apps. URLs still exist, but the
-        installed Shippie app becomes the user's quiet home.
+        Open tools, keep them available offline, and manage the data they store
+        on this device.
       </p>
     </div>
 
     <div class="status-panel">
       <span class="status" class:ready={bridgeStatus === 'ready'}>{bridgeStatus}</span>
-      <p>{installedApps.length} installed apps · {totalRows} local rows</p>
-      <p>{Object.keys(receiptsByApp).length} local receipts · sandboxed capability bridge.</p>
+      <p>{installedApps.length} saved tools · {totalRows} local records</p>
+      <p>{Object.keys(receiptsByApp).length} saved installs · local data controls ready.</p>
     </div>
 
-    <nav class="tabs" aria-label="Container sections">
+    <nav class="tabs" aria-label="Shippie sections">
       <button class:active={section === 'home'} onclick={() => showSection('home')}>Home</button>
       <button class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
       <button class:active={section === 'data'} onclick={() => showSection('data')}>Your Data</button>
@@ -1778,7 +2264,7 @@
     <div class="topbar">
       <button class="home-button" onclick={goHome}>Home</button>
       <div>
-        <p class="mini-label">Running in Shippie</p>
+        <p class="mini-label">Open in Shippie</p>
         <h2>{activeApp?.name ?? sectionTitle(section)}</h2>
       </div>
       {#if meshBadgeLabel(meshStatus)}
@@ -1793,7 +2279,7 @@
       {/if}
       {#if activeApp}
         {@const standaloneHref = runtimeSrcFor(activeApp) ?? activeApp.standaloneUrl}
-        <a href={standaloneHref} target="_blank" rel="noopener" class="open-link" data-sveltekit-preload-data="off">Open standalone</a>
+        <a href={standaloneHref} target="_blank" rel="noopener" class="open-link" data-sveltekit-preload-data="off">Open in new tab</a>
       {/if}
     </div>
 
@@ -1870,8 +2356,8 @@
           </div>
           <hr />
           <div class="section-head">
-            <h2>Build your own</h2>
-            <p>Entry points for MCP deploys, Remix, Fork, and package import.</p>
+            <h2>Deploy a tool</h2>
+            <p>Deploy from an upload, import a package, or connect a builder workflow.</p>
           </div>
           <div class="action-grid">
             <a href="/new">Deploy app</a>
@@ -1880,9 +2366,22 @@
           </div>
           <div class="backup-box">
             <div>
-              <h3>Import Package</h3>
-              <p>Paste a portable .shippie archive to cache an app locally, or a manifest to add its receipt.</p>
+              <h3>Import a tool</h3>
+              <p>Drop an HTML file or portable .shippie archive to keep a tool available locally.</p>
             </div>
+            <label
+              class="dropzone"
+              class:active={packageDropActive}
+              ondragover={(event) => {
+                event.preventDefault();
+                packageDropActive = true;
+              }}
+              ondragleave={() => (packageDropActive = false)}
+              ondrop={dropImportFile}
+            >
+              <input type="file" accept=".html,.htm,.shippie,application/json" onchange={importSelectedFiles} />
+              <span>Choose or drop HTML / .shippie</span>
+            </label>
             <textarea
               bind:value={packageImportPayload}
               placeholder="Paste a .shippie archive JSON or manifest.json"
@@ -1896,7 +2395,7 @@
         {:else}
           <div class="section-head">
             <h2>Your Data</h2>
-            <p>Receipts and local storage are user-owned. Export proves what is installed without needing an account.</p>
+            <p>Each tool keeps its data on this device. Export your installs and local records without an account.</p>
           </div>
           {#if yourDataOpenForApp && appById.get(yourDataOpenForApp)}
             <div class="data-trigger" role="status">
@@ -1939,10 +2438,10 @@
           </div>
           {#if recoveredReceipts.length > 0}
             <div class="recovered-receipts">
-              <h3>Receipts Waiting For Packages</h3>
+              <h3>Saved Installs Waiting For Packages</h3>
               <p>
-                These came back from a backup, but their app package is not installed here yet.
-                Your receipt stays local until you import the matching .shippie archive.
+                These came back from a backup, but the matching tool is not installed here yet.
+                The install record stays local until you import the matching .shippie archive.
               </p>
               <div class="data-list">
                 {#each recoveredReceipts as item (item.appId)}
@@ -1957,21 +2456,21 @@
                     </div>
                     <div class="row-actions">
                       <button onclick={() => importPackageForReceipt(item.appId)}>Import package</button>
-                      <button onclick={() => forgetRecoveredReceipt(item.appId)}>Forget receipt</button>
+                      <button onclick={() => forgetRecoveredReceipt(item.appId)}>Forget record</button>
                     </div>
                   </article>
                 {/each}
               </div>
             </div>
           {/if}
-          <button class="export-button" onclick={exportReceipts}>Export receipts</button>
+          <button class="export-button" onclick={exportReceipts}>Export install records</button>
           {#if receiptExport}
             <pre class="receipt-export">{receiptExport}</pre>
           {/if}
           <div class="backup-box">
             <div>
               <h3>Encrypted Backup</h3>
-              <p>Bundles receipts and local namespace rows into one passphrase-encrypted export.</p>
+              <p>Bundles saved installs and local tool records into one passphrase-encrypted export.</p>
             </div>
             <input
               type="password"
@@ -1990,7 +2489,7 @@
           <div class="backup-box">
             <div>
               <h3>Restore Backup</h3>
-              <p>Rehydrates receipts and rows locally. Unknown apps stay as receipts until package import exists.</p>
+              <p>Restores saved installs and local records. Unknown tools wait locally until their package is imported.</p>
             </div>
             <textarea
               bind:value={restorePayload}
@@ -2036,16 +2535,16 @@
 
     <div class="inspector">
       <section>
-        <h3>Local Namespaces</h3>
+        <h3>Tool Data</h3>
         {#each installedApps as app (app.id)}
           <p><code>{app.slug}</code> {rowsByApp[app.id]?.length ?? 0} rows</p>
         {/each}
       </section>
 
       <section>
-        <h3>Bridge Calls</h3>
+        <h3>Activity</h3>
         {#if logs.length === 0}
-          <p>No bridge calls yet.</p>
+          <p>No activity yet.</p>
         {:else}
           <ul>
             {#each logs as log (log.id)}
@@ -2066,7 +2565,9 @@
 
 <style>
   .shell {
-    min-height: calc(100vh - var(--nav-height));
+    /* dvh cascade — see +layout.svelte for rationale. */
+    min-height: calc(100svh - var(--nav-height));
+    min-height: calc(100dvh - var(--nav-height));
     display: grid;
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
     background: var(--bg);
@@ -2234,6 +2735,30 @@
   .data-list {
     display: grid;
     gap: 8px;
+  }
+  .dropzone {
+    min-height: 92px;
+    border: 1px dashed var(--border);
+    background: var(--surface);
+    display: grid;
+    place-items: center;
+    padding: var(--space-md);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--small-size);
+    cursor: pointer;
+  }
+  .dropzone.active,
+  .dropzone:hover {
+    border-color: var(--sunset);
+    color: var(--text);
+  }
+  .dropzone input {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    opacity: 0;
+    pointer-events: none;
   }
   .collection-list article,
   .data-list article {
@@ -2516,8 +3041,8 @@
     cursor: pointer;
   }
 
-  /* Unification plan — focused mode. /run/<slug>/ → /container?app=
-     &focused=1 lands here. Full-bleed app + invisible chrome. The
+  /* Unification plan — focused mode. /run/<slug>/ and /container?app=
+     &focused=1 land here. Full-bleed app + invisible chrome. The
      AppSwitcherGesture component owns its own overlays; this just
      sets up the iframe stage. */
   .focused-shell {
@@ -2529,10 +3054,16 @@
   .focused-frame {
     position: fixed;
     inset: 0;
+    /* Stop pull-to-refresh inside a running tool from reloading the
+       Shippie shell. Containment also prevents iOS rubber-band-bounce
+       from exposing the cream drawer behind the running iframe. */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
   .focused-frame :global(.frame-stage) {
     position: fixed;
     inset: 0;
+    overscroll-behavior: contain;
   }
   .focused-frame :global(.frame-stage iframe) {
     width: 100%;
@@ -2593,6 +3124,15 @@
   @media (prefers-reduced-motion: reduce) {
     .focused-exit-pill.first-run { animation: none; }
   }
+  /* Keyboard open inside the running tool — hide the chrome so it
+     doesn't float over the keyboard area. The :global selector matches
+     the data attribute set on <html> by handleToolKeyboardMessage. */
+  :global(html[data-keyboard-open="true"]) .focused-exit-pill {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-100%);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
   .focused-exit-pill:hover,
   .focused-exit-pill:focus-visible {
     opacity: 1;
@@ -2602,6 +3142,31 @@
   .focused-exit-pill img {
     display: block;
     flex-shrink: 0;
+  }
+  .focused-back-pill {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + var(--space-md));
+    right: calc(env(safe-area-inset-right, 0px) + var(--space-md));
+    z-index: 60;
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(168, 196, 145, 0.35);
+    background: rgba(20, 18, 15, 0.65);
+    color: var(--text);
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0.7;
+    transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  }
+  .focused-back-pill:hover,
+  .focused-back-pill:focus-visible {
+    opacity: 1;
+    background: rgba(20, 18, 15, 0.85);
+    border-color: var(--sage-leaf);
   }
 
   @media (max-width: 640px) {
@@ -2623,55 +3188,118 @@
       clip: rect(0 0 0 0);
       white-space: nowrap;
     }
+    .focused-back-pill {
+      top: calc(env(safe-area-inset-top, 0px) + 12px);
+      right: auto;
+      left: calc(env(safe-area-inset-left, 0px) + 12px);
+      width: 38px;
+      height: 38px;
+      opacity: 0.55;
+    }
   }
 
   .focused-drawer {
-    padding: env(safe-area-inset-top, 24px) 20px env(safe-area-inset-bottom, 24px);
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     color: var(--cream-text, #14120f);
+  }
+  .focused-drawer-grip {
+    display: none;
+    align-self: center;
+    width: 44px;
+    height: 3px;
+    background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
   .focused-drawer-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    padding-bottom: 12px;
+    gap: 14px;
+    padding-bottom: 14px;
     border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
   }
   .focused-home {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    min-width: 0;
+    gap: 10px;
     color: inherit;
     text-decoration: none;
-    font-weight: 600;
-    font-size: 18px;
   }
-  .focused-rocket {
-    display: block;
-    width: 20px;
-    height: 20px;
+  .focused-brand-copy {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
   }
-  .focused-data {
-    color: var(--sunset, #e8603c);
-    font-size: 13px;
+  .focused-brand-copy strong {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    line-height: 1;
+  }
+  .focused-brand-copy small {
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    font-size: 12px;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+  .focused-drawer-actions {
+    display: inline-flex;
+    flex-shrink: 0;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+  }
+  .focused-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 11px;
+    border: 0;
+    background: transparent;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.58));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
     text-decoration: none;
-    padding: 6px 12px;
-    border: 1px solid rgba(232, 96, 60, 0.4);
-    border-radius: 999px;
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease;
   }
-  .focused-data:hover {
-    background: rgba(232, 96, 60, 0.08);
+  .focused-action + .focused-action {
+    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
   }
+  .focused-action:hover,
+  .focused-action:focus-visible {
+    color: var(--cream-text, #14120f);
+    background: rgba(20, 18, 15, 0.04);
+  }
+  .focused-action-data {
+    color: var(--sunset, #e8603c);
+  }
+  .focused-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .focused-section-head h2,
   .focused-drawer h2 {
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.14em;
+    font-family: var(--font-mono);
+  }
+  .focused-section-head span {
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.45));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
   .focused-insights-heading {
     margin-top: 8px;
@@ -2709,48 +3337,115 @@
   }
   .focused-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
   .focused-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    padding: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px;
+    align-items: center;
+    min-height: 48px;
     border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
-    background: var(--cream-bg, rgba(255, 255, 255, 0.85));
-    cursor: pointer;
-    text-align: left;
+    background: transparent;
     color: inherit;
-    font: inherit;
-    transition: border-color 150ms ease, background 150ms ease;
+    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
   }
   .focused-tile:hover {
     border-color: var(--sunset, #e8603c);
-    background: var(--sunset-glow, rgba(232, 96, 60, 0.15));
+    background: rgba(232, 96, 60, 0.07);
+    transform: translateX(2px);
   }
   .focused-tile.active {
     border-color: var(--sunset, #e8603c);
-    background: var(--sunset-glow, rgba(232, 96, 60, 0.15));
-    box-shadow: 0 0 0 2px var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.1);
+    box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
-  .focused-tile strong {
-    font-size: 14px;
+  .focused-open-tool {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 7px 9px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
   }
-  .focused-tile small {
-    color: rgba(0, 0, 0, 0.55);
-    font-size: 12px;
+  .focused-open-tool strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-heading);
+    font-size: 15px;
+    line-height: 1.1;
+  }
+  .focused-open-tool small {
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .focused-pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    min-width: 34px;
+    border: 0;
+    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: transparent;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .focused-pin:hover,
+  .focused-pin:focus-visible,
+  .focused-pin.active {
+    color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.08);
   }
   .focused-dot {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     background: var(--accent);
     color: #fff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-family: var(--font-heading);
     font-weight: 700;
-    margin-bottom: 4px;
+    font-size: 15px;
+  }
+  @media (max-width: 640px) {
+    .focused-drawer {
+      padding-top: 10px;
+      gap: 12px;
+    }
+    .focused-drawer-grip {
+      display: block;
+    }
+    .focused-drawer-head {
+      padding-bottom: 12px;
+    }
+    .focused-brand-copy strong {
+      font-size: 20px;
+    }
+    .focused-brand-copy small {
+      font-size: 11px;
+    }
+    .focused-action {
+      min-height: 32px;
+      padding: 0 9px;
+      font-size: 10px;
+    }
   }
 </style>

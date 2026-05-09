@@ -1,16 +1,17 @@
 #!/usr/bin/env bun
 /**
  * Build every showcase app under apps/showcase-* and copy its dist
- * into apps/platform/static/run/<slug>/ so the SvelteKit Cloudflare
- * adapter serves them at https://shippie.app/run/<slug>/.
+ * into apps/platform/static/__shippie-run/<slug>/ so the focused shell can
+ * embed them from https://shippie.app/__shippie-run/<slug>/index.html.
  *
  * Wired into apps/platform's `build` script so production deploys
  * auto-include the showcases.
  *
  * Why /run/<slug>/ and not /apps/<slug>/: /apps/<slug> is the
  * marketplace detail page (a SvelteKit dynamic route showing install
- * count, capability badges, etc). /run/<slug>/ is the runtime
- * surface — the actual app HTML/JS/CSS the container iframes load.
+ * count, capability badges, etc). /run/<slug>/ is the focused shell
+ * users launch; /__shippie-run/<slug>/ is the internal runtime HTML/JS/CSS
+ * the container iframes load.
  *
  * Skip behaviour: a showcase whose package.json is missing a build
  * script, or whose vite.config.ts won't compile, is logged and
@@ -37,7 +38,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLATFORM_DIR = resolve(__dirname, '..');
 const REPO_ROOT = resolve(PLATFORM_DIR, '..', '..');
 const APPS_DIR = resolve(REPO_ROOT, 'apps');
-const STATIC_RUN_DIR = resolve(PLATFORM_DIR, 'static', 'run');
+const RUNTIME_BASE_PATH = '/__shippie-run';
+const STATIC_RUNTIME_DIR = resolve(PLATFORM_DIR, 'static', '__shippie-run');
 const CATALOG_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'showcase-catalog.ts');
 const PRECACHE_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'precache-list.ts');
 const SHELL_ASSETS_OUT = resolve(PLATFORM_DIR, 'static', '__shippie-pwa', 'shell-assets.json');
@@ -82,11 +84,11 @@ function slugFor(showcaseDir) {
 
 function buildOne(showcaseDir, slug) {
   const dir = join(APPS_DIR, showcaseDir);
-  console.log(`[prepare-showcases] building ${showcaseDir} with base=/run/${slug}/…`);
+  console.log(`[prepare-showcases] building ${showcaseDir} with base=${RUNTIME_BASE_PATH}/${slug}/…`);
   // --base rewrites every root-relative asset path (script src, link href,
-  // img src…) so the built dist works when served from /run/<slug>/.
+  // img src…) so the built dist works when served from /__shippie-run/<slug>/.
   // Dev mode (vite dev) ignores this — devUrl on localhost stays at root.
-  execSync(`bunx vite build --base=/run/${slug}/`, { cwd: dir, stdio: 'inherit' });
+  execSync(`bunx vite build --base=${RUNTIME_BASE_PATH}/${slug}/`, { cwd: dir, stdio: 'inherit' });
   const distDir = join(dir, 'dist');
   if (!existsSync(distDir) || !statSync(distDir).isDirectory()) {
     throw new Error(`${showcaseDir}: build finished but dist/ not found`);
@@ -95,7 +97,7 @@ function buildOne(showcaseDir, slug) {
 }
 
 function copyDist(distDir, slug) {
-  const target = join(STATIC_RUN_DIR, slug);
+  const target = join(STATIC_RUNTIME_DIR, slug);
   rmSync(target, { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
   cpSync(distDir, target, { recursive: true });
@@ -109,9 +111,10 @@ function copyDist(distDir, slug) {
   const stripped = stripWaSqliteAssets(target);
   if (stripped > 0) {
     console.log(
-      `[prepare-showcases] stripped ${stripped} wa-sqlite asset(s) from static/run/${slug}/assets — served from /__shippie/wasm/wa-sqlite/`,
+      `[prepare-showcases] stripped ${stripped} wa-sqlite asset(s) from static/__shippie-run/${slug}/assets — served from /__shippie/wasm/wa-sqlite/`,
     );
   }
+  injectContainerLocalDbBridge(target, slug);
   // Emit __shippie-assets.json — the per-showcase asset manifest the
   // marketplace SW reads when the user taps "Save for offline." Walks
   // the post-strip tree so wa-sqlite WASM is correctly excluded; the
@@ -119,7 +122,23 @@ function copyDist(distDir, slug) {
   // on first download). buildId is a stable hash of the asset list +
   // sizes so future deploys can detect "your saved app is out of date."
   writeAssetManifest(target, slug);
-  console.log(`[prepare-showcases] copied ${slug} → static/run/${slug}/`);
+  console.log(`[prepare-showcases] copied ${slug} → static/__shippie-run/${slug}/`);
+}
+
+function injectContainerLocalDbBridge(targetDir, slug) {
+  const indexPath = join(targetDir, 'index.html');
+  if (!existsSync(indexPath)) return;
+  const html = readFileSync(indexPath, 'utf8');
+  if (html.includes('data-shippie-container-local-db')) return;
+  const script = runtimeLocalBridgeScript(`app_${slug.replace(/-/g, '_')}`);
+  const nextHtml = /<head[\s>]/i.test(html)
+    ? html.replace(/<head([^>]*)>/i, `<head$1>${script}`)
+    : html.replace(/<script/i, `${script}<script`);
+  writeFileSync(indexPath, nextHtml);
+}
+
+function runtimeLocalBridgeScript(appId) {
+  return `<script data-shippie-container-local-db>(function(){var appId=${JSON.stringify(appId)};var protocol='shippie.bridge.v1';var seq=0;var pending=new Map();function request(capability,method,payload){var id='local_db_'+(++seq);return new Promise(function(resolve,reject){var timer=setTimeout(function(){pending.delete(id);reject(new Error('Shippie local DB request timed out.'));},5000);pending.set(id,{resolve:resolve,reject:reject,timer:timer});window.parent.postMessage({protocol:protocol,id:id,appId:appId,capability:capability,method:method,payload:payload},window.location.origin);});}window.addEventListener('message',function(event){if(event.origin!==window.location.origin)return;var data=event.data;if(!data||data.protocol!==protocol||!pending.has(data.id))return;var entry=pending.get(data.id);pending.delete(data.id);clearTimeout(entry.timer);if(data.ok){entry.resolve(data.result);return;}entry.reject(new Error(data.error&&data.error.message?data.error.message:'Shippie local DB request failed.'));});function rows(result){var list=result&&Array.isArray(result.rows)?result.rows:[];return list.map(function(row){return row&&row.payload&&typeof row.payload==='object'?row.payload:row;});}var shippie=window.shippie||{};var local=shippie.local||{};local.db={create:function(table,schema){return request('db.insert','create',{table:table,schema:schema}).then(function(){});},insert:function(table,value){return request('db.insert','insert',{table:table,value:value}).then(function(){});},query:function(table,opts){return request('db.query','query',Object.assign({table:table},opts||{})).then(rows);},search:function(table,query,opts){return request('db.query','search',Object.assign({table:table,query:query},opts||{})).then(rows);},vectorSearch:function(table,vector,opts){var v=Array.prototype.slice.call(vector||[]);return request('db.query','vectorSearch',{table:table,vector:v,opts:opts||{}}).then(function(result){return rows(result).map(function(row,index){var source=result&&result.rows&&result.rows[index];return Object.assign({},row,{score:source&&typeof source.score==='number'?source.score:0});});});},update:function(table,id,patch){return request('db.insert','update',{table:table,id:id,patch:patch}).then(function(){});},delete:function(table,id){return request('db.insert','delete',{table:table,id:id}).then(function(){});},count:function(table,opts){return request('db.query','count',Object.assign({table:table},opts||{})).then(function(result){return result&&typeof result.count==='number'?result.count:0;});},export:function(table,opts){return request('db.query','export',Object.assign({table:table},opts||{})).then(function(result){return new Blob([JSON.stringify(result)],{type:'application/json'});});},restore:function(){return Promise.resolve({createdAt:new Date().toISOString(),appId:appId,schemaVersion:1,encrypted:false});},lastBackup:function(){return request('db.query','lastBackup',{});},usage:function(){return request('storage.getUsage','usage',{}).then(function(result){return {usedBytes:result&&typeof result.bytes==='number'?result.bytes:0,warningLevel:'none',persisted:true};});},requestPersistence:function(){return Promise.resolve(true);}};shippie.local=local;window.shippie=shippie;})();</script>`;
 }
 
 function listAssetsRecursive(dir, prefix = '') {
@@ -152,7 +171,11 @@ function writeAssetManifest(targetDir, slug) {
     slug,
     buildId,
     totalBytes,
-    assets: files.map((f) => `/run/${slug}/${f.rel}`),
+    assets: files.map((f) =>
+      f.rel === 'index.html'
+        ? `${RUNTIME_BASE_PATH}/${slug}/?shippie_embed=1`
+        : `${RUNTIME_BASE_PATH}/${slug}/${f.rel}`,
+    ),
   };
   writeFileSync(join(targetDir, MANIFEST_NAME), JSON.stringify(manifest, null, 2) + '\n');
 }
@@ -170,18 +193,18 @@ function stripWaSqliteAssets(targetDir) {
   return count;
 }
 
-function pruneStaticRun(allowedSlugs) {
+function pruneStaticRuntime(allowedSlugs) {
   const allowed = new Set(allowedSlugs);
-  if (!existsSync(STATIC_RUN_DIR)) return;
+  if (!existsSync(STATIC_RUNTIME_DIR)) return;
   let pruned = 0;
-  for (const entry of readdirSync(STATIC_RUN_DIR, { withFileTypes: true })) {
+  for (const entry of readdirSync(STATIC_RUNTIME_DIR, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     if (allowed.has(entry.name)) continue;
-    rmSync(join(STATIC_RUN_DIR, entry.name), { recursive: true, force: true });
+    rmSync(join(STATIC_RUNTIME_DIR, entry.name), { recursive: true, force: true });
     pruned += 1;
   }
   if (pruned > 0) {
-    console.log(`[prepare-showcases] pruned ${pruned} stale static/run app(s)`);
+    console.log(`[prepare-showcases] pruned ${pruned} stale static/__shippie-run app(s)`);
   }
 }
 
@@ -232,10 +255,7 @@ function writeShowcaseCatalog(slugs) {
     `// Re-run \`bun scripts/prepare-showcases.mjs\` (or \`bun run build\`)\n` +
     `// to refresh from the showcase set under apps/showcase-*.\n\n` +
     `export const SHOWCASE_SLUGS = ${JSON.stringify([...slugs].sort(), null, 2)} as const;\n\n` +
-    `export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.flatMap((slug) => [\n` +
-    `  \`/run/\${slug}/\`,\n` +
-    `  \`/run/\${slug}/index.html\`,\n` +
-    `]);\n`;
+    `export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.map((slug) => \`${RUNTIME_BASE_PATH}/\${slug}/?shippie_embed=1\`);\n`;
   writeFileSync(CATALOG_OUT, body);
   console.log(`[prepare-showcases] wrote ${CATALOG_OUT} (${slugs.length} slugs)`);
 }
@@ -253,7 +273,7 @@ function writePrecacheList() {
 }
 
 function main() {
-  mkdirSync(STATIC_RUN_DIR, { recursive: true });
+  mkdirSync(STATIC_RUNTIME_DIR, { recursive: true });
   const showcases = listShowcases();
   if (showcases.length === 0) {
     console.log('[prepare-showcases] no showcase-* apps found.');
@@ -275,12 +295,12 @@ function main() {
       failures.push(showcase);
     }
   }
-  pruneStaticRun(built);
+  pruneStaticRuntime(built);
   writeShowcaseCatalog(built);
   writePrecacheList();
   writeShellAssets();
   console.log(
-    `[prepare-showcases] done. ${showcases.length - failures.length}/${showcases.length} showcases hosted at /run/<slug>/.`,
+    `[prepare-showcases] done. ${showcases.length - failures.length}/${showcases.length} showcases hosted under ${RUNTIME_BASE_PATH}/<slug>/index.html.`,
   );
   if (failures.length > 0) {
     console.warn(`[prepare-showcases] failed: ${failures.join(', ')}`);

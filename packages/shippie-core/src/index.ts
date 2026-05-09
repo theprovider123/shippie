@@ -32,3 +32,4 @@ export * from './classify.ts';
 export * from './install.ts';
 export * from './templates.ts';
 export * from './workspace.ts';
+export * from './visibility.ts';

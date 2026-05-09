@@ -10,6 +10,7 @@ import type { WrapperContext } from '../env';
 import { checkRateLimit, clientKey } from '../rate-limit';
 import { getDrizzleClient, schema } from '../../db/client';
 import { eq } from 'drizzle-orm';
+import { ensureShellAppSeeded, SHELL_APP_SLUG } from '../../../util/shippie-shell';
 
 interface SdkEvent {
   event?: string;
@@ -77,6 +78,13 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
 
   // Resolve slug → app_id (FK on analytics_events).
   const db = getDrizzleClient(ctx.env.DB);
+  // Shell-origin requests come from the platform itself (install nudge,
+  // viewport mode, SW update, keyboard signals). Self-heal the synthetic
+  // shell user + app row so the FK resolves on fresh D1 instances where
+  // migration 0034 hasn't applied yet.
+  if (ctx.slug === SHELL_APP_SLUG) {
+    await ensureShellAppSeeded(ctx.env.DB);
+  }
   const app = await db.query.apps.findFirst({
     where: eq(schema.apps.slug, ctx.slug),
     columns: { id: true },

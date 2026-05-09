@@ -20,6 +20,7 @@ import { FridgePage } from './pages/Fridge.tsx';
 import { DinnerPage } from './pages/Dinner.tsx';
 import { HousePage } from './pages/House.tsx';
 import { PairingScreen } from './pages/Pairing.tsx';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 
 export function App() {
   const [pairing, setPairing] = useState<HousePairing | null>(() => loadPairing());
@@ -36,6 +37,10 @@ interface PairedProps {
 
 function PairedHearth({ pairing, onLeave }: PairedProps) {
   const [route, setRoute] = useState<Route>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('today', setRoute),
+    [],
+  );
   const bound = useMemo<BoundHearthDoc>(
     () => bindHearthDoc(roomSlugFor(pairing.roomCode), pairing.phrase),
     [pairing.roomCode, pairing.phrase],
@@ -48,6 +53,8 @@ function PairedHearth({ pairing, onLeave }: PairedProps) {
     return () => bound.destroy();
   }, [bound, pairing.memberId, pairing.memberName]);
 
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
   const [relayState, setRelayState] = useState<RelayState | null>(() =>
     bound.relay ? { ...bound.relay } : null,
   );
@@ -59,7 +66,9 @@ function PairedHearth({ pairing, onLeave }: PairedProps) {
   }, [bound]);
 
   function handleNavigate(next: Route) {
-    if (ROUTES.includes(next)) setRoute(next);
+    if (ROUTES.includes(next)) {
+      void localNavigation.navigate(next, { kind: 'crossfade' });
+    }
   }
 
   return (

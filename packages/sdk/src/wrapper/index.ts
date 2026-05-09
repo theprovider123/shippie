@@ -63,9 +63,13 @@ export {
 } from './install-runtime.ts';
 
 export {
+  createLocalNavigation,
   wrapNavigation,
   supportsViewTransitions,
   installViewTransitionStyles,
+  type LocalNavigateOptions,
+  type LocalNavigationController,
+  type LocalNavigationOptions,
   type ViewTransitionKind,
   type ViewTransitionOptions,
 } from './view-transitions.ts';

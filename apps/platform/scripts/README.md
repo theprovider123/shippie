@@ -5,7 +5,8 @@ deploy helpers, and CI secret rotation reference.
 
 | Script | Purpose |
 |---|---|
-| `prepare-showcases.mjs` | Builds every `apps/showcase-*` and copies the dists into `static/run/<slug>/`. Wired into the platform `build` script. |
+| `prepare-showcases.mjs` | Builds every `apps/showcase-*` and copies the dists into `static/__shippie-run/<slug>/`. Wired into the platform `build` script. |
+| `audit-showcase-storage.mjs` | Audits every hosted showcase runtime and fails the build if persistence is not installed before app code. Warns when a source app uses the local DB contract but is not hosted. |
 | `prepare-whitepaper.mjs` | Renders `docs/WHITEPAPER.md` into the static whitepaper page. |
 | `new-showcase.mjs` | Scaffolds a new showcase from `templates/showcase-template/`. Invoked via `bun run new:showcase <slug>`. |
 | `upload-sdk-bundle.mjs` | Builds + uploads `@shippie/sdk` to `https://shippie.app/sdk/v1.latest.js`. |

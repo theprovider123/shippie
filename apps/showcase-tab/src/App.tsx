@@ -19,6 +19,7 @@ import { TabPage } from './pages/Tab.tsx';
 import { SettlementPage } from './pages/Settlement.tsx';
 import { MembersPage } from './pages/Members.tsx';
 import { PairingScreen } from './pages/Pairing.tsx';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 
 export function App() {
   const [pairing, setPairing] = useState<TabPairing | null>(() => loadPairing());
@@ -43,6 +44,10 @@ interface PairedProps {
 
 function PairedTab({ pairing, onLeave }: PairedProps) {
   const [route, setRoute] = useState<Route>('tab');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('tab', setRoute),
+    [],
+  );
   const bound = useMemo<BoundTabDoc>(
     () => bindTabDoc(roomSlugFor(pairing.roomCode), pairing.phrase),
     [pairing.roomCode, pairing.phrase],
@@ -56,6 +61,8 @@ function PairedTab({ pairing, onLeave }: PairedProps) {
     return () => bound.destroy();
   }, [bound, pairing.memberId, pairing.memberName]);
 
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
   const [relayState, setRelayState] = useState<RelayState | null>(() =>
     bound.relay ? { ...bound.relay } : null,
   );
@@ -67,7 +74,9 @@ function PairedTab({ pairing, onLeave }: PairedProps) {
   }, [bound]);
 
   function handleNavigate(next: Route) {
-    if (ROUTES.includes(next)) setRoute(next);
+    if (ROUTES.includes(next)) {
+      void localNavigation.navigate(next, { kind: 'crossfade' });
+    }
   }
 
   return (

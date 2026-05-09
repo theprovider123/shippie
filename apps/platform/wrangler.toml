@@ -35,6 +35,9 @@ bucket_name = "shippie-assets"
 directory = ".svelte-kit/cloudflare"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+# `/run/<slug>` is a product route. Send it through the Worker first so
+# future static assets cannot accidentally steal the clean launch URL.
+run_worker_first = ["/run/*"]
 
 # KV — fill in `id` after `wrangler kv namespace create shippie-platform-cache`.
 [[kv_namespaces]]

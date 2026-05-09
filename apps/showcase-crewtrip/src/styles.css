@@ -1446,6 +1446,38 @@ p { margin: 0; }
 
 .crew-summary { display: grid; gap: 12px; }
 
+.crew-join-gate {
+  display: grid;
+  gap: 14px;
+}
+
+.crew-join-gate h2,
+.crew-join-gate h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.crew-join-gate p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.mini-avatar {
+  width: 24px;
+  aspect-ratio: 1;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .you-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

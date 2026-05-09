@@ -24,6 +24,7 @@ export interface AppMeta {
   background_color: string;
   version: number;
   visibility_scope: string;
+  organization_id?: string;
   permissions?: ShippieJsonLite['permissions'];
   backend_type?: string | null;
   backend_url?: string | null;

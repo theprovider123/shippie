@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ShippieLocalDb, ShippieLocalFiles } from '@shippie/local-runtime-contract';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { resolveLocalDb } from './db/runtime.ts';
 import { resolveLocalFiles } from './files/runtime.ts';
 import { ensureSchema } from './db/queries.ts';
@@ -18,6 +19,16 @@ import { ParentHome } from './pages/ParentHome.tsx';
 import { SharePage } from './pages/Share.tsx';
 import { PairingPage } from './pages/Pairing.tsx';
 
+interface Screen {
+  mode: Mode;
+  route: Route;
+  storyId: string | null;
+}
+
+function sameScreen(a: Screen, b: Screen): boolean {
+  return a.mode === b.mode && a.route === b.route && a.storyId === b.storyId;
+}
+
 export function App() {
   const [db, setDb] = useState<ShippieLocalDb | null>(null);
   const [files, setFiles] = useState<ShippieLocalFiles | null>(null);
@@ -26,6 +37,29 @@ export function App() {
   const [mode, setMode] = useState<Mode>('parent');
   const [route, setRoute] = useState<Route>('parent-home');
   const [openStoryId, setOpenStoryId] = useState<string | null>(null);
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Screen>(
+        { mode: 'parent', route: 'parent-home', storyId: null },
+        (next) => {
+          setMode(next.mode);
+          setRoute(next.route);
+          setOpenStoryId(next.storyId);
+        },
+        { isEqual: sameScreen },
+      ),
+    [],
+  );
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Screen, kind: 'crossfade' | 'rise' = 'crossfade'): void {
+    void localNavigation.navigate(next, { kind });
+  }
+
+  function closeTo(fallback: Screen): void {
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+  }
 
   useEffect(() => {
     void (async () => {
@@ -41,8 +75,10 @@ export function App() {
       <SetupPage
         onDone={(name) => {
           setKidName(name);
-          setMode('kid');
-          setRoute('kid-home');
+          void localNavigation.replace(
+            { mode: 'kid', route: 'kid-home', storyId: null },
+            { kind: 'crossfade' },
+          );
         }}
       />
     );
@@ -65,8 +101,8 @@ export function App() {
           <KidHome
             db={db}
             kidName={kidName}
-            onNew={() => { setOpenStoryId(null); setRoute('studio'); }}
-            onOpen={(id) => { setOpenStoryId(id); setRoute('reader'); }}
+            onNew={() => navigate({ mode: 'kid', route: 'studio', storyId: null }, 'rise')}
+            onOpen={(id) => navigate({ mode: 'kid', route: 'reader', storyId: id }, 'rise')}
           />
         )}
         {route === 'studio' && (
@@ -75,7 +111,7 @@ export function App() {
             files={files}
             kidName={kidName}
             storyId={openStoryId}
-            onDone={() => { setRoute('kid-home'); setOpenStoryId(null); }}
+            onDone={() => closeTo({ mode: 'kid', route: 'kid-home', storyId: null })}
           />
         )}
         {route === 'reader' && openStoryId && (
@@ -83,14 +119,14 @@ export function App() {
             db={db}
             files={files}
             storyId={openStoryId}
-            onBack={() => setRoute('kid-home')}
+            onBack={() => closeTo({ mode: 'kid', route: 'kid-home', storyId: null })}
           />
         )}
 
         <button
           type="button"
           className="ss-mode-switch"
-          onClick={() => { setMode('parent'); setRoute('parent-home'); }}
+          onClick={() => navigate({ mode: 'parent', route: 'parent-home', storyId: null })}
           aria-label="Switch to parent view"
         >
           parent
@@ -105,10 +141,10 @@ export function App() {
       {route === 'parent-home' && (
         <ParentHome
           db={db}
-          onOpen={(id) => { setOpenStoryId(id); setRoute('reader'); }}
-          onShare={(id) => { setOpenStoryId(id); setRoute('share'); }}
-          onPair={() => setRoute('pairing')}
-          onSwitchToKid={() => { setMode('kid'); setRoute('kid-home'); }}
+          onOpen={(id) => navigate({ mode: 'parent', route: 'reader', storyId: id }, 'rise')}
+          onShare={(id) => navigate({ mode: 'parent', route: 'share', storyId: id }, 'rise')}
+          onPair={() => navigate({ mode: 'parent', route: 'pairing', storyId: null }, 'rise')}
+          onSwitchToKid={() => navigate({ mode: 'kid', route: 'kid-home', storyId: null })}
         />
       )}
       {route === 'reader' && openStoryId && (
@@ -116,7 +152,7 @@ export function App() {
           db={db}
           files={files}
           storyId={openStoryId}
-          onBack={() => setRoute('parent-home')}
+          onBack={() => closeTo({ mode: 'parent', route: 'parent-home', storyId: null })}
         />
       )}
       {route === 'share' && openStoryId && (
@@ -125,14 +161,14 @@ export function App() {
           files={files}
           storyId={openStoryId}
           pairings={pairings}
-          onDone={() => setRoute('parent-home')}
+          onDone={() => closeTo({ mode: 'parent', route: 'parent-home', storyId: null })}
         />
       )}
       {route === 'pairing' && (
         <PairingPage
           pairings={pairings}
           onChange={updatePairings}
-          onBack={() => setRoute('parent-home')}
+          onBack={() => closeTo({ mode: 'parent', route: 'parent-home', storyId: null })}
         />
       )}
     </div>

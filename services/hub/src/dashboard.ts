@@ -10,6 +10,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HubState } from './state.ts';
+import { readHubToolRegistry } from './packages.ts';
 
 export interface DashboardOptions {
   cacheRoot: string;
@@ -19,6 +20,7 @@ export interface DashboardOptions {
 export async function renderDashboard(opts: DashboardOptions): Promise<string> {
   const apps = await listCachedApps(opts.cacheRoot);
   const models = await listCachedModels(opts.cacheRoot);
+  const registry = await readHubToolRegistry(opts.cacheRoot);
   const rooms = opts.state.stats();
   const totalApps = apps.reduce((n, a) => n + a.bytes, 0);
   const totalModels = models.reduce((n, a) => n + a.bytes, 0);
@@ -69,6 +71,20 @@ export async function renderDashboard(opts: DashboardOptions): Promise<string> {
         )
         .join('') ||
       '<tr><td colspan="3" class="muted">No apps cached yet.</td></tr>'
+    }
+  </table>
+
+  <h2>Team tools (${registry.tools.length})</h2>
+  <table>
+    <tr><th>Tool</th><th>Group</th><th>Version</th></tr>
+    ${
+      registry.tools
+        .map(
+          (tool) =>
+            `<tr><td><code>${escapeHtml(tool.slug)}</code><br><span class="muted">${escapeHtml(tool.name)}</span></td><td>${escapeHtml(tool.group ?? 'All staff')}</td><td>${escapeHtml(tool.version)}</td></tr>`,
+        )
+        .join('') ||
+      '<tr><td colspan="3" class="muted">No team tools registered yet.</td></tr>'
     }
   </table>
 

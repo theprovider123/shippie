@@ -19,8 +19,9 @@
  * The nudge is optional, never required, and never the same line
  * twice — see `pickNudge()`.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { Home } from './pages/Home.tsx';
 import { NewNote } from './pages/NewNote.tsx';
 import { Checkin } from './pages/Checkin.tsx';
@@ -67,10 +68,18 @@ function pickNudge(reason: 'sleep' | 'mood'): string {
 
 export function App() {
   const [view, setView] = useState<View>('home');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<View>('home', setView),
+    [],
+  );
   const [refreshKey, setRefreshKey] = useState(0);
   const [nudge, setNudge] = useState<string | null>(null);
 
   // Cross-app consume: sleep-logged + mood-logged. Quiet, once-per-day.
+  useEffect(() => {
+    return () => localNavigation.destroy();
+  }, [localNavigation]);
+
   useEffect(() => {
     let alreadyShownToday = false;
     try {
@@ -119,7 +128,11 @@ export function App() {
   }, []);
 
   function go(next: View): void {
-    setView(next);
+    void localNavigation.navigate(next, { kind: 'crossfade' });
+  }
+
+  function closeTo(fallback: View): void {
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
   }
 
   function onNoteSaved(): void {
@@ -127,7 +140,7 @@ export function App() {
     // Keep the row payload minimal: kind only. Body never leaves the app.
     shippie.intent.broadcast('journal-entry', [{ kind: 'therapy-note', occurredAt: new Date().toISOString() }]);
     setRefreshKey((n) => n + 1);
-    go('home');
+    closeTo('home');
   }
 
   function onCheckinSaved(info: { mood: number | null; sleep: number | null }): void {
@@ -135,7 +148,7 @@ export function App() {
       shippie.intent.broadcast('mood-logged', [{ score: info.mood, scale: 5, source: 'therapy-notes' }]);
     }
     setRefreshKey((n) => n + 1);
-    go('home');
+    closeTo('home');
   }
 
   return (
@@ -153,11 +166,11 @@ export function App() {
         ) : null}
 
         {view === 'new' ? (
-          <NewNote onSaved={onNoteSaved} onCancel={() => go('home')} />
+          <NewNote onSaved={onNoteSaved} onCancel={() => closeTo('home')} />
         ) : null}
 
         {view === 'checkin' ? (
-          <Checkin onSaved={onCheckinSaved} onCancel={() => go('home')} />
+          <Checkin onSaved={onCheckinSaved} onCancel={() => closeTo('home')} />
         ) : null}
 
         {view === 'week' ? <WeeklySummary refreshKey={refreshKey} /> : null}
@@ -166,9 +179,9 @@ export function App() {
           <PrepForSession refreshKey={refreshKey} onPrint={() => go('print')} />
         ) : null}
 
-        {view === 'print' ? <PrintView onClose={() => go('prep')} /> : null}
+        {view === 'print' ? <PrintView onClose={() => closeTo('prep')} /> : null}
 
-        {view === 'settings' ? <Settings onBack={() => go('home')} /> : null}
+        {view === 'settings' ? <Settings onBack={() => closeTo('home')} /> : null}
       </main>
 
       <nav className="bottom-tabs no-print" role="tablist" aria-label="Sections">

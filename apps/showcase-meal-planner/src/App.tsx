@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { Week } from './pages/Week.tsx';
 import { Day } from './pages/Day.tsx';
 import { CookTonight } from './pages/CookTonight.tsx';
@@ -92,6 +93,10 @@ function nextEmptySlot(plan: Plan): { day: DayName; slot: Slot } | null {
 export function App() {
   const initial = load();
   const [tab, setTab] = useState<Tab>('week');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('week', setTab),
+    [],
+  );
   const [plan, setPlan] = useState<Plan>(initial.plan);
   const [pantry, setPantry] = useState<{ name: string }[]>(initial.pantry);
   const [cookedHistory, setCookedHistory] = useState<CookedMealRow[]>(initial.cookedHistory);
@@ -102,6 +107,12 @@ export function App() {
   const [selectedDay, setSelectedDay] = useState<DayName>(initial.selectedDay);
   const [transferActive, setTransferActive] = useState(false);
   const [recentDrop, setRecentDrop] = useState<string | null>(null);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Tab): void {
+    void localNavigation.navigate(next, { kind: 'crossfade' });
+  }
 
   // Persist a denormalised snapshot. Keep cookedHistory/leftovers
   // bounded so storage doesn't grow forever.
@@ -290,7 +301,7 @@ export function App() {
     const cell = cellFromCandidate(row, 2);
     assignSlot(target.day, target.slot, cell);
     setRecentDrop(`${row.recipeName} → ${target.day} ${target.slot}`);
-    setTab('week');
+    navigate('week');
     window.setTimeout(() => setRecentDrop(null), 4000);
   }
 
@@ -316,7 +327,7 @@ export function App() {
             role="tab"
             aria-selected={tab === t.id}
             className={`navtab${tab === t.id ? ' active' : ''}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => navigate(t.id)}
           >
             {t.label}
           </button>
@@ -353,7 +364,7 @@ export function App() {
           onPickSlot={(day, slot) => {
             setSelectedDay(day);
             // Hop to Week so the editor opens there — keeps the editor in one place.
-            setTab('week');
+            navigate('week');
             // Use sessionStorage to hint Week which slot to preselect.
             try {
               sessionStorage.setItem('shippie.meal-planner.preselect', JSON.stringify({ day, slot }));
@@ -474,4 +485,3 @@ function mergeLeftovers(
   for (const row of next) seen.set(row.id, row);
   return [...seen.values()].sort((a, b) => a.cookedAt.localeCompare(b.cookedAt)).slice(-20);
 }
-

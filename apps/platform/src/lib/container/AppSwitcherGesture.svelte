@@ -50,6 +50,10 @@
     edgeSwipeMaxAngle?: number;
     /** Width in CSS px of the touch zone along the left edge. */
     edgeGrabberWidth?: number;
+    /** Whether the parent has a meaningful in-tool back action. */
+    canGoBack?: boolean;
+    /** Triggered by a right-edge swipe when `canGoBack` is true. */
+    onBack?: () => void;
   }
 
   let {
@@ -60,6 +64,8 @@
     edgeSwipeThreshold = 20,
     edgeSwipeMaxAngle = 30,
     edgeGrabberWidth = 24,
+    canGoBack = false,
+    onBack = () => {},
   }: Props = $props();
 
   // Gesture-tuning constants. Pulled out for ease of real-phone
@@ -94,6 +100,10 @@
   // "user tried to swipe but didn't pull far enough" and fire a
   // confirmation haptic.
   let lastPointerDx = 0;
+  let backPointerStartX = 0;
+  let backPointerStartY = 0;
+  let backPointerActive = false;
+  let lastBackPointerDx = 0;
 
   function handlePointerDown(event: PointerEvent) {
     if (open) return;
@@ -109,15 +119,33 @@
     const dx = event.clientX - pointerStartX;
     const dy = event.clientY - pointerStartY;
     lastPointerDx = dx;
+
+    if (edge === 'bottom') {
+      const upwardPull = pointerStartY - event.clientY;
+      if (upwardPull < edgeSwipeThreshold) return;
+      const angle = (Math.atan2(Math.abs(dx), Math.abs(upwardPull)) * 180) / Math.PI;
+      if (angle > edgeSwipeMaxAngle) return;
+      pointerActive = false;
+      onOpenChange(true);
+      return;
+    }
+
     if (Math.abs(dx) < edgeSwipeThreshold) return;
     const angle = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
     if (angle > edgeSwipeMaxAngle) return;
-    if (edge === 'left' && dx <= 0) return;
+    if (dx <= 0) return;
     pointerActive = false;
     onOpenChange(true);
   }
 
   function handlePointerUp() {
+    if (pointerActive && edge === 'bottom') {
+      pointerActive = false;
+      lastPointerDx = 0;
+      onOpenChange(true);
+      return;
+    }
+
     // Sub-threshold release: user started swiping but didn't pull far
     // enough. Without feedback, the gesture reads as broken. Fire a
     // confirmation haptic — "we noticed, but you didn't pull far
@@ -138,6 +166,35 @@
       // SDK not available in this context — silent. iOS doesn't have
       // navigator.vibrate either, so nothing else to fall back to.
     }
+  }
+
+  function handleBackPointerDown(event: PointerEvent) {
+    if (open || !canGoBack || typeof window === 'undefined') return;
+    if (window.innerWidth - event.clientX > edgeGrabberWidth) return;
+    backPointerStartX = event.clientX;
+    backPointerStartY = event.clientY;
+    backPointerActive = true;
+    lastBackPointerDx = 0;
+  }
+
+  function handleBackPointerMove(event: PointerEvent) {
+    if (!backPointerActive || open || !canGoBack) return;
+    const dx = backPointerStartX - event.clientX;
+    const dy = event.clientY - backPointerStartY;
+    lastBackPointerDx = dx;
+    if (dx < edgeSwipeThreshold) return;
+    const angle = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
+    if (angle > edgeSwipeMaxAngle) return;
+    backPointerActive = false;
+    onBack();
+  }
+
+  function handleBackPointerUp() {
+    if (backPointerActive && lastBackPointerDx > 0 && lastBackPointerDx < edgeSwipeThreshold) {
+      void fireSubThresholdHaptic();
+    }
+    backPointerActive = false;
+    lastBackPointerDx = 0;
   }
 
   // Backdrop tap → close.
@@ -179,11 +236,24 @@
   <div
     class="edge-grabber"
     class:left-edge={edge === 'left'}
-    style:width={edge === 'left' ? `${edgeGrabberWidth}px` : '100%'}
+    class:bottom-edge={edge === 'bottom'}
+    style:--edge-grabber-width={`${edgeGrabberWidth}px`}
     onpointerdown={handlePointerDown}
     onpointermove={handlePointerMove}
     onpointerup={handlePointerUp}
     onpointercancel={handlePointerUp}
+    role="presentation"
+  ></div>
+{/if}
+
+{#if !open && canGoBack}
+  <div
+    class="edge-grabber back-edge"
+    style:--edge-grabber-width={`${edgeGrabberWidth}px`}
+    onpointerdown={handleBackPointerDown}
+    onpointermove={handleBackPointerMove}
+    onpointerup={handleBackPointerUp}
+    onpointercancel={handleBackPointerUp}
     role="presentation"
   ></div>
 {/if}
@@ -212,18 +282,36 @@
 </aside>
 
 <style>
-  /* Edge grabber: invisible touch zone along the left edge that
-     captures the pull-to-open gesture without consuming taps. */
+  /* Edge grabber: invisible touch zone for pull-to-open without
+     sitting over the focused controls. */
   .edge-grabber {
     position: fixed;
+    z-index: 55;
+  }
+  .edge-grabber.left-edge {
     top: 0;
     bottom: 0;
-    z-index: 100;
+    left: 0;
+    width: var(--edge-grabber-width);
     touch-action: pan-y;
     cursor: ew-resize;
   }
-  .edge-grabber.left-edge {
-    left: 0;
+  .edge-grabber.bottom-edge {
+    left: 50%;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    width: 80px;
+    height: 18px;
+    transform: translateX(-50%);
+    touch-action: none;
+    cursor: ns-resize;
+  }
+  .edge-grabber.back-edge {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--edge-grabber-width);
+    touch-action: pan-y;
+    cursor: w-resize;
   }
 
   /* Backdrop: dim + scale the underlying app while the drawer is

@@ -220,8 +220,8 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       })),
       // Single canonical URL — the unification plan collapsed the
       // dual "Open" + "Open in Shippie" buttons into one. First-party
-      // showcases land at /run/<slug>/ (the static run/ tree, soon
-      // the focused-mode shell route). Maker apps still resolve via
+      // showcases land at /run/<slug>/, the focused-mode shell route
+      // that embeds the static run tree. Maker apps still resolve via
       // their own subdomain; once the /run/[slug]/ shell route is in
       // and proxies maker R2 bundles, this branch collapses.
       standaloneUrl: canonicalAppUrl(app.slug),

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { RECIPES, type Recipe, modeForLeaven, type Mode } from './recipes.ts';
 import {
   load,
@@ -35,13 +36,39 @@ type Route =
   | { kind: 'active' }
   | { kind: 'history' };
 
+function sameRoute(a: Route, b: Route): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'recipe' && b.kind === 'recipe') return a.recipeId === b.recipeId;
+  if (a.kind === 'bake' && b.kind === 'bake') return a.bakeId === b.bakeId;
+  return true;
+}
+
 export function App() {
   const initial = load();
   const [bakes, setBakes] = useState<Bake[]>(initial.bakes);
   const [customRecipes, setCustomRecipes] = useState<Recipe[]>(initial.recipes);
   const [prefs, setPrefs] = useState<Prefs>(initial.prefs);
   const [route, setRoute] = useState<Route>({ kind: 'home' });
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Route>(
+        { kind: 'home' },
+        setRoute,
+        { isEqual: sameRoute },
+      ),
+    [],
+  );
   const [notifyPerm, setNotifyPerm] = useState(notifyStatus());
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Route, kind: 'crossfade' | 'rise' = 'crossfade'): void {
+    void localNavigation.navigate(next, { kind });
+  }
+
+  function closeHome(): void {
+    void localNavigation.backOrReplace({ kind: 'home' }, { kind: 'crossfade' });
+  }
 
   // Persist on every state change. Cheap; localStorage is small.
   useEffect(() => {
@@ -136,7 +163,7 @@ export function App() {
         shippie.feel.texture('milestone');
       }, ms);
     }
-    setRoute({ kind: 'bake', bakeId: bake.id });
+    navigate({ kind: 'bake', bakeId: bake.id }, 'rise');
   }
 
   function logOutcome(bakeId: string, outcome: BakeOutcome) {
@@ -148,7 +175,7 @@ export function App() {
       ),
     );
     shippie.feel.texture('milestone');
-    setRoute({ kind: 'home' });
+    closeHome();
   }
 
   function abandonBake(bakeId: string) {
@@ -156,13 +183,13 @@ export function App() {
       return;
     }
     setBakes((prev) => prev.filter((b) => b.id !== bakeId));
-    setRoute({ kind: 'home' });
+    closeHome();
   }
 
   function deleteCustomRecipe(id: string) {
     if (!confirm('Delete this recipe from your library?')) return;
     setCustomRecipes((prev) => prev.filter((r) => r.id !== id));
-    setRoute({ kind: 'home' });
+    void localNavigation.replace({ kind: 'home' }, { kind: 'crossfade' });
   }
 
   async function ensureNotifyPerm() {
@@ -171,21 +198,17 @@ export function App() {
     setPrefs((prev) => ({ ...prev, notifyOptIn: next === 'granted' }));
   }
 
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'dough' });
-  }
-
   return (
     <>
       {route.kind === 'home' ? (
         <Home
           bakes={bakes}
           customRecipes={customRecipes}
-          onPickRecipe={(r) => setRoute({ kind: 'recipe', recipeId: r.id })}
-          onNewRecipe={() => setRoute({ kind: 'new-recipe' })}
-          onOpenBake={(id) => setRoute({ kind: 'bake', bakeId: id })}
-          onOpenActive={() => setRoute({ kind: 'active' })}
-          onOpenHistory={() => setRoute({ kind: 'history' })}
+          onPickRecipe={(r) => navigate({ kind: 'recipe', recipeId: r.id }, 'rise')}
+          onNewRecipe={() => navigate({ kind: 'new-recipe' }, 'rise')}
+          onOpenBake={(id) => navigate({ kind: 'bake', bakeId: id }, 'rise')}
+          onOpenActive={() => navigate({ kind: 'active' })}
+          onOpenHistory={() => navigate({ kind: 'history' })}
         />
       ) : null}
 
@@ -196,9 +219,9 @@ export function App() {
             setCustomRecipes((prev) => [recipe, ...prev]);
             setPrefs((prev) => ({ ...prev, lastMode: modeForLeaven(recipe.leaven) }));
             shippie.feel.texture('confirm');
-            setRoute({ kind: 'recipe', recipeId: recipe.id });
+            void localNavigation.replace({ kind: 'recipe', recipeId: recipe.id }, { kind: 'crossfade' });
           }}
-          onCancel={() => setRoute({ kind: 'home' })}
+          onCancel={closeHome}
         />
       ) : null}
 
@@ -208,7 +231,7 @@ export function App() {
           return (
             <main className="app">
               <p className="muted empty">Recipe not found.</p>
-              <button type="button" className="primary" onClick={() => setRoute({ kind: 'home' })}>
+              <button type="button" className="primary" onClick={closeHome}>
                 Back home
               </button>
             </main>
@@ -217,7 +240,7 @@ export function App() {
         return (
           <RecipePage
             recipe={recipe}
-            onCancel={() => setRoute({ kind: 'home' })}
+            onCancel={closeHome}
             onStart={(totalG, readyAt) => startBake(recipe, totalG, readyAt)}
             onDelete={recipe.preset ? undefined : () => deleteCustomRecipe(recipe.id)}
           />
@@ -230,7 +253,7 @@ export function App() {
           return (
             <main className="app">
               <p className="muted empty">Bake not found.</p>
-              <button type="button" className="primary" onClick={() => setRoute({ kind: 'home' })}>
+              <button type="button" className="primary" onClick={closeHome}>
                 Back home
               </button>
             </main>
@@ -239,7 +262,7 @@ export function App() {
         return (
           <TimelineView
             bake={bake}
-            onCancel={() => setRoute({ kind: 'home' })}
+            onCancel={closeHome}
             onLogOutcome={(o) => logOutcome(bake.id, o)}
             onAbandon={() => abandonBake(bake.id)}
           />
@@ -249,13 +272,13 @@ export function App() {
       {route.kind === 'active' ? (
         <ActiveBakes
           bakes={bakes}
-          onCancel={() => setRoute({ kind: 'home' })}
-          onOpenBake={(id) => setRoute({ kind: 'bake', bakeId: id })}
+          onCancel={closeHome}
+          onOpenBake={(id) => navigate({ kind: 'bake', bakeId: id }, 'rise')}
         />
       ) : null}
 
       {route.kind === 'history' ? (
-        <History bakes={bakes} onCancel={() => setRoute({ kind: 'home' })} />
+        <History bakes={bakes} onCancel={closeHome} />
       ) : null}
 
       {route.kind === 'home' && notifyPerm === 'default' ? (
@@ -268,9 +291,6 @@ export function App() {
         </button>
       ) : null}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </>
   );
 }
