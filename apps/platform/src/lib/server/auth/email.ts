@@ -1,9 +1,8 @@
 /**
  * Magic-link email delivery.
  *
- * Production: POST to Resend API (https://api.resend.com/emails) using
- * RESEND_API_KEY. Dev: console.log the link with a banner so contributors
- * can sign in without SMTP credentials.
+ * Production: send through the Cloudflare Email Service EMAIL binding. Dev:
+ * console.log the link with a banner so contributors can sign in locally.
  *
  * Mirrors the existing template at apps/web/lib/auth/dev-email-provider.ts.
  */
@@ -12,26 +11,38 @@ export interface MagicLinkInput {
   to: string;
   url: string;
   env: {
+    EMAIL?: CloudflareEmailBinding;
     SHIPPIE_ENV?: string;
-    RESEND_API_KEY?: string;
     AUTH_EMAIL_FROM?: string;
   };
 }
 
-const DEFAULT_FROM = 'Shippie <onboarding@resend.dev>';
+interface CloudflareEmailBinding {
+  send(input: {
+    to: string;
+    from: string;
+    subject: string;
+    text: string;
+    html: string;
+  }): Promise<unknown>;
+}
+
+const DEFAULT_FROM = 'Shippie <login@shippie.app>';
+const MAGIC_LINK_SUBJECT = 'Sign in to Shippie';
 
 export async function sendMagicLink({ to, url, env }: MagicLinkInput): Promise<void> {
   const flavor = env.SHIPPIE_ENV ?? 'development';
-  const resendKey = env.RESEND_API_KEY?.trim();
   const from = env.AUTH_EMAIL_FROM?.trim() || DEFAULT_FROM;
+  const text = renderMagicLinkText(url);
+  const html = renderMagicLinkHtml(url);
 
-  if (resendKey) {
-    await sendViaResend({ apiKey: resendKey, from, to, url });
+  if (env.EMAIL) {
+    await sendViaCloudflareEmail({ email: env.EMAIL, from, to, text, html });
     return;
   }
 
   if (flavor === 'production') {
-    throw new Error('RESEND_API_KEY is required for email sign-in in production.');
+    throw new Error('Cloudflare EMAIL binding is required for email sign-in in production.');
   }
 
   // Dev/canary fallback — banner-print to the worker logs.
@@ -46,32 +57,30 @@ export async function sendMagicLink({ to, url, env }: MagicLinkInput): Promise<v
   console.log(`${banner}\n`);
 }
 
-async function sendViaResend(input: { apiKey: string; from: string; to: string; url: string }): Promise<void> {
-  const subject = 'Sign in to Shippie';
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${input.apiKey}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: input.from,
-      to: [input.to],
-      subject,
-      text: [
-        'Sign in to Shippie',
-        '',
-        `Open this magic link to finish signing in: ${input.url}`,
-        '',
-        'If you did not request this email, you can ignore it.',
-      ].join('\n'),
-      html: renderMagicLinkHtml(input.url),
-    }),
+async function sendViaCloudflareEmail(input: {
+  email: CloudflareEmailBinding;
+  from: string;
+  to: string;
+  text: string;
+  html: string;
+}): Promise<void> {
+  await input.email.send({
+    to: input.to,
+    from: input.from,
+    subject: MAGIC_LINK_SUBJECT,
+    text: input.text,
+    html: input.html,
   });
+}
 
-  if (!res.ok) {
-    throw new Error(`Resend delivery failed: ${res.status} ${await res.text()}`);
-  }
+function renderMagicLinkText(url: string): string {
+  return [
+    'Sign in to Shippie',
+    '',
+    `Open this magic link to finish signing in: ${url}`,
+    '',
+    'If you did not request this email, you can ignore it.',
+  ].join('\n');
 }
 
 export function renderMagicLinkHtml(url: string): string {

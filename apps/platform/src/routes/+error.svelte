@@ -4,6 +4,15 @@
   function retry() {
     location.reload();
   }
+
+  function repairShell() {
+    const repair = (window as unknown as { __shippieRepairShell?: () => void }).__shippieRepairShell;
+    if (repair) {
+      repair();
+      return;
+    }
+    location.href = '/';
+  }
 </script>
 
 <svelte:head>
@@ -40,6 +49,7 @@
 
     <div class="actions">
       <button class="primary" onclick={retry}>Retry</button>
+      <button class="ghost" onclick={repairShell}>Repair Shippie</button>
       <a class="ghost" href="/">Go home</a>
     </div>
   </div>

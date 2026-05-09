@@ -9,8 +9,15 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["household-note", "chore-done", "dinner-planned"],
-    "consumes": ["needs-restocking", "cooked-meal"]
+    "provides": [
+      "household-note",
+      "chore-done",
+      "dinner-planned"
+    ],
+    "consumes": [
+      "needs-restocking",
+      "cooked-meal"
+    ]
   },
   "data_schemas": {
     "entries": {
@@ -19,5 +26,9 @@
       "note": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools"
   }
 }

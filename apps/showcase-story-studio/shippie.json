@@ -9,7 +9,10 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["story-made", "story-shared"],
+    "provides": [
+      "story-made",
+      "story-shared"
+    ],
     "consumes": []
   },
   "data_schemas": {
@@ -30,5 +33,9 @@
       "audio_blob_id": "text",
       "kid_caption_text": "text"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "creative"
   }
 }

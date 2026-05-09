@@ -170,7 +170,7 @@ interface AppKindProfile {
   externalDomains: string[];
 
   // Detected backend providers: 'supabase' | 'firebase' | 'authjs' |
-  // 'next-auth' | 'vercel-functions' | 'sveltekit-endpoints' | ...
+  // 'next-auth' | 'server-functions' | 'sveltekit-endpoints' | ...
   backendProviders: string[];
 
   // Detected local signals: 'service-worker' | 'indexeddb' | 'opfs' |

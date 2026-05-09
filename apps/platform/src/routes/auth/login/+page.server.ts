@@ -2,7 +2,7 @@
  * /auth/login — page load + form actions.
  *
  * Actions:
- *   ?/email   → mint a magic-link token, send via Resend or print to console
+ *   ?/email   → mint a magic-link token, send through Cloudflare Email or print to console
  *   ?/github  → kick off OAuth (handled in +server.ts via redirect)
  *
  * GitHub starts via a separate redirect endpoint at /auth/login (POST → action),

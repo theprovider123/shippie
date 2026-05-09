@@ -76,13 +76,13 @@ Maker's HTML is untouched. Their app renders as-is; wrapper composes around it. 
 ### 4.4 Deliver (delivery pipeline — current state + target state)
 
 **Target state** (design intent, not all shipped yet):
-- GitHub App → Vercel Sandbox build → R2 upload → single-write atomic pointer swap (KV `apps:{slug}:active`)
+- GitHub App → GitHub Actions build workflow build → R2 upload → single-write atomic pointer swap (KV `apps:{slug}:active`)
 - Custom subdomain `slug.shippie.app` with wildcard SSL (Cloudflare Advanced Cert Manager)
 - Preview deploys per PR
 - Last 10 versions or 30 days retained for rollback
 
 **Current state at spec time** (what the wrapper plan has to be compatible with, not dependent on):
-- GitHub App deploys work; Vercel Sandbox-isolated builds are **gated behind `SHIPPIE_ALLOW_UNSANDBOXED_BUILDS=true`** — prod still runs some builds unsandboxed. Closing that gap is a separate track of work and is **not blocking** the wrapper ship.
+- GitHub App deploys work; GitHub Actions build workflow-isolated builds are **gated behind `SHIPPIE_ALLOW_UNSANDBOXED_BUILDS=true`** — prod still runs some builds unsandboxed. Closing that gap is a separate track of work and is **not blocking** the wrapper ship.
 - Version finalization currently issues more than one KV write on the hot path — the "atomic pointer swap" is a planned refactor, not a property the current code guarantees. The wrapper plan assumes only that `apps:{slug}:active`, `apps:{slug}:meta`, and `apps:{slug}:pwa` are eventually consistent at the end of a deploy; it does not require them to flip in a single transaction.
 - Preview deploys per PR: not yet wired to the subdomain router.
 - Rollback works via pointer updates but is not exposed in the dashboard yet.
@@ -109,7 +109,7 @@ Emit `iab_detected` event on load, `iab_bounced` on CTA click.
 When `window.innerWidth > 768 && !('ontouchstart' in window)`, the primary install CTA opens a **Handoff sheet** instead of triggering `beforeinstallprompt`:
 
 - QR code encoding the current URL with `?ref=handoff`
-- Email-to-self form (single field, Shippie sends via its own SES/Resend — one-line transactional)
+- Email-to-self form (single field, Shippie sends via its own SES/Cloudflare Email — one-line transactional)
 - If the user is signed into Shippie on mobile: "Send to my phone" — fires a Web Push to their installed Shippie with a deep link
 
 ### 5.3 Smart install prompt
@@ -300,7 +300,7 @@ CREATE INDEX ON app_events (event_type, ts);
 
 ### 10.1 Two planes (unchanged)
 
-- **Control plane** (`shippie.app`, Vercel, Next.js 16): marketing, marketplace, maker dashboard, deploy orchestration, event ingestion backend, billing.
+- **Control plane** (`shippie.app`, Cloudflare, Next.js 16): marketing, marketplace, maker dashboard, deploy orchestration, event ingestion backend, billing.
 - **Runtime plane** (`*.shippie.app`, Cloudflare Worker): serves maker static files from R2, owns `__shippie/*` routes, injects wrapper script, proxies feedback/analytics to control plane via signed requests.
 
 ### 10.2 Wrapper injection

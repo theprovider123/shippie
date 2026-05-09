@@ -45,6 +45,16 @@ export type ContainerApp = {
   /** AppProfile category, used by C1 agent strategies. Optional. */
   category?: string;
   /**
+   * Slate-curation surface. Comes from the per-showcase shippie.json
+   * `curation.surface` block via the generated first-party manifest.
+   * `featured` shows in the main marketplace; `arcade` shows in
+   * /arcade; `labs` shows in /labs; `archived` is hidden everywhere
+   * but still served at the direct URL (and via SLUG_ALIASES if a
+   * successor is set). Defaults to `featured` when the manifest has
+   * no entry for the slug (third-party apps, etc.).
+   */
+  surface?: import('$lib/_generated/first-party-curation').CurationSurface;
+  /**
    * Dev-only URL for the showcase's Vite dev server. When set, the
    * container loads this URL in the iframe instead of synthesising a
    * fixture page via `appSrcdoc`. Leave undefined in production.
@@ -702,9 +712,152 @@ const curatedAppSpecs: CuratedAppSpec[] = [
       provides: ['workout-completed', 'pr-broken', 'set-logged'],
     },
   },
+  // Slate v4 Phase 1 — engaging-mirror apps that produce data as a
+  // byproduct of a fun first action. Emit observation-vocabulary
+  // intents (counter.tapped, mood.color_picked, etc.) so Randomiser
+  // can surface them on the home capstone.
+  {
+    slug: 'tap-counter',
+    name: 'Tap Counter',
+    shortName: 'Tap',
+    description: 'Tap to count anything. Coffees, reps, people in a room. Big number, satisfying haptic.',
+    appKind: 'local',
+    icon: 'TC',
+    accent: '#C97B2D',
+    category: 'tools',
+    port: 5226,
+    intents: { provides: ['counter.tapped'] },
+  },
+  {
+    slug: 'colour-of-day',
+    name: 'Colour of the Day',
+    shortName: 'Colour',
+    description: 'One tap on a colour wheel for today. Mood as art. Builds a ribbon over time.',
+    appKind: 'local',
+    icon: 'CD',
+    accent: '#7FB269',
+    category: 'health',
+    port: 5227,
+    intents: { provides: ['mood.color_picked'] },
+  },
+  {
+    slug: 'would-you-rather',
+    name: 'Would You Rather',
+    shortName: 'WYR',
+    description: 'A new daily question. Two options, one tap. Builds a personal preference profile.',
+    appKind: 'local',
+    icon: 'WR',
+    accent: '#3F8AA8',
+    category: 'social',
+    port: 5228,
+    intents: { provides: ['preference.choice'] },
+  },
+  {
+    slug: 'daily-puzzle',
+    name: 'Daily Puzzle',
+    shortName: 'Daily',
+    description: 'One number puzzle a day. Same puzzle for everyone. Share your grid.',
+    appKind: 'local',
+    icon: 'DP',
+    accent: '#4FA487',
+    category: 'games',
+    port: 5229,
+    intents: { provides: ['game.completed'] },
+  },
+  {
+    slug: 'drawing-telephone',
+    name: 'Drawing Telephone',
+    shortName: 'DT',
+    description: 'Pictionary meets Chinese Whispers. Mesh game for 2–6 players, one device each.',
+    appKind: 'connected',
+    icon: 'DT',
+    accent: '#7E5B96',
+    category: 'games',
+    port: 5230,
+    intents: { provides: ['game.completed'] },
+  },
+  {
+    slug: 'photo-a-day',
+    name: 'Photo a Day',
+    shortName: 'Photo',
+    description: 'One photo per day. AI labels what you saw. Builds a visual diary.',
+    appKind: 'local',
+    icon: 'PD',
+    accent: '#F0734A',
+    category: 'creativity',
+    port: 5231,
+    intents: { provides: ['photo.labelled'] },
+  },
+  {
+    slug: 'snap-and-forget',
+    name: 'Snap and Forget',
+    shortName: 'Snap',
+    description: 'Photograph anything. AI labels it. Search by what was in it.',
+    appKind: 'local',
+    icon: 'SF',
+    accent: '#4FA487',
+    category: 'tools',
+    port: 5232,
+    intents: { provides: ['place.snapped'] },
+  },
+  {
+    slug: 'reaction',
+    name: 'Reaction',
+    shortName: 'React',
+    description: 'Wait for green, tap as fast as you can. Three-second hook. ms over time.',
+    appKind: 'local',
+    icon: 'RX',
+    accent: '#2EAD64',
+    category: 'games',
+    port: 5233,
+    intents: { provides: ['game.completed'] },
+  },
+  {
+    slug: 'memory-grid',
+    name: 'Memory Grid',
+    shortName: 'Memory',
+    description: 'Card-flip pair-match. Grid grows with skill. Cognitive sharpness as a game.',
+    appKind: 'local',
+    icon: 'MG',
+    accent: '#5C5BA3',
+    category: 'games',
+    port: 5234,
+    intents: { provides: ['game.completed'] },
+  },
+  {
+    slug: 'sudoku',
+    name: 'Sudoku',
+    shortName: 'Sudoku',
+    description: 'Algorithmic Sudoku. Infinite content. No ads. No nags. Ever.',
+    appKind: 'local',
+    icon: 'SU',
+    accent: '#3F8AA8',
+    category: 'games',
+    port: 5235,
+    intents: { provides: ['game.completed'] },
+  },
 ];
 
-export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp);
+// Build the curated app list, then enrich each entry with its
+// curation `surface` from the generated first-party manifest. Apps
+// without a manifest entry default to `featured` so third-party
+// additions or pre-manifest specs don't silently disappear.
+import { curationFor, showcasesBySurface as _showcasesBySurface } from '$lib/_generated/first-party-curation';
+import type { CurationSurface as _CurationSurface } from '$lib/_generated/first-party-curation';
+
+export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp).map((app) => {
+  const entry = curationFor(app.slug);
+  return entry ? { ...app, surface: entry.surface } : app;
+});
+
+/**
+ * Curated apps filtered to a specific marketplace surface. Use this
+ * over the raw `curatedApps` array when rendering surface-scoped
+ * listings (the main marketplace, /arcade, /labs).
+ */
+export function curatedAppsBySurface(surface: _CurationSurface): ContainerApp[] {
+  return curatedApps.filter((app) => (app.surface ?? 'featured') === surface);
+}
 
 // ---------------------------------------------------------------------------
 // Pure helpers

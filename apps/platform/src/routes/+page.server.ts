@@ -13,7 +13,7 @@
  */
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
-import { curatedApps } from '$lib/container/state';
+import { curatedAppsBySurface } from '$lib/container/state';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
@@ -46,7 +46,11 @@ function marketplaceCategory(category: string | undefined): string {
 }
 
 function fallbackApps() {
-  return curatedApps.map((app) => ({
+  // Marketplace home only shows `surface: 'featured'` apps. Archived
+  // (e.g. live-room → matchday) and arcade / labs entries surface in
+  // their own routes. Apps without a curation entry default to
+  // `featured` (see curatedApps in container/state.ts).
+  return curatedAppsBySurface('featured').map((app) => ({
     id: app.id,
     slug: app.slug,
     name: app.name,
@@ -120,16 +124,12 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
 
   const db = getDrizzleClient(platform.env.DB);
 
-  // Default browse (no search, no filters, first page) is cacheable for
-  // anonymous traffic — that's the bulk of /apps hits. Filtered/searched
-  // results vary per request and skip the edge. Logged-in users always
-  // skip too because their layout chrome is personalised.
+  // Shell HTML must stay fresh. Stale PWA/launcher documents are the
+  // fastest route to "Something went wrong" because they can reference
+  // chunks from an older deploy. Cache the immutable assets aggressively;
+  // keep the document itself network-first.
   const isDefaultBrowse = !query && !categoryFilter && page === 1;
-  if (isDefaultBrowse && !locals.user) {
-    setHeaders({
-      'cache-control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
-    });
-  }
+  setHeaders({ 'cache-control': 'no-store' });
 
   // Filter pushed into the DB query so pagination is correct.
   let dbRows: FeaturedApp[];

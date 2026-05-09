@@ -110,7 +110,7 @@ export function App() {
   const remainSec = remainingSec % 60;
 
   return (
-    <main className="app">
+    <main className="app" {...(running ? { 'data-shippie-wakelock': true } : {})}>
       <header className="app-header">
         <h1>Breath</h1>
         <p className="subtitle">box · 4-7-8 · wim hof</p>

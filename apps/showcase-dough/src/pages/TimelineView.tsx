@@ -65,7 +65,7 @@ export function TimelineView({ bake, onCancel, onLogOutcome, onAbandon }: Props)
   }
 
   return (
-    <main className="app">
+    <main className="app" data-shippie-wakelock>
       <header className="page-header">
         <button type="button" className="back" onClick={onCancel}>
           ← Back

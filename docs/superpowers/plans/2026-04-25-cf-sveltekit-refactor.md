@@ -13,7 +13,7 @@
 | Decision | Why it's right |
 |---|---|
 | One Worker for `shippie.app` + `*.shippie.app` | Removes proxy hop; HTMLRewriter native to runtime |
-| D1 native binding from server routes | Sub-ms internal latency; replaces Neon-over-HTTPS-from-Vercel |
+| D1 native binding from server routes | Sub-ms internal latency; replaces D1-over-HTTPS-from-Cloudflare |
 | R2 native binding | Free egress, S3-compatible; replaces multi-cloud storage shuttle |
 | Lucia + Arctic for auth | SvelteKit-native, D1 adapter exists, lighter than NextAuth |
 | GitHub Actions for clone-and-build | Free, isolated, disposable. Right call for source-from-repo deploys |
@@ -33,11 +33,11 @@
 - Many JSONB columns become TEXT + json_extract (autopackagingReport, app_profile, enhance_config, shippie_json, etc.)
 - All Postgres enums become TEXT + CHECK constraints (visibility_scope, source_kind, source_type, status, category, app_type, etc.)
 - All UUID columns become TEXT (with hex-encoded blob defaults)
-- D1 has 10GB hard limit per database (current Neon size is small enough today, but worth budgeting)
+- D1 has 10GB hard limit per database (current D1 size is small enough today, but worth budgeting)
 - Existing data needs export → transform → bulk import. **This is a downtime window or read-mirror window** — not a flag-flip.
 - D1 transaction semantics differ from Postgres; some current logic uses cross-table transactions that need re-examination.
 
-**B4. "Lucia replaces NextAuth"** glosses over the fact that **every existing session breaks at cutover.** All users get logged out the moment we switch. Magic-link via Resend (currently a NextAuth provider) becomes custom Lucia code. The dev-email-provider that prints links to console needs a Lucia equivalent. Plan for this re-issuance.
+**B4. "Lucia replaces NextAuth"** glosses over the fact that **every existing session breaks at cutover.** All users get logged out the moment we switch. Magic-link via Cloudflare Email (currently a NextAuth provider) becomes custom Lucia code. The dev-email-provider that prints links to console needs a Lucia equivalent. Plan for this re-issuance.
 
 **B5. "GitHub Actions for builds" breaks the under-60-second deploy claim.** GitHub Actions runners take 30s–2 minutes to start cold. Honest deploy times via this path: **2–5 minutes**. The fast-path for "upload a zip" should remain direct (R2 upload, no GH Actions) — that one CAN hit 60s. GH Actions is for the "connect a GitHub repo, we clone and build" flow.
 
@@ -49,7 +49,7 @@
 
 **B9. Big-bang cutover ("Phase 6: Verify + cut over") is risky.** 170 commits of recent work, real DB data, real users (you on yourself). Big-bang means one bad bug = full rollback. Better: **canary deploy to `next.shippie.app`** in parallel with `shippie.app`, mirror data via dual-write, cut DNS only when canary passes the same Lighthouse / functional checks for a week.
 
-**B10. Vercel Cron disappears.** Several existing endpoints (`api/internal/cron-*`) rely on Vercel's automatic `CRON_SECRET` injection. Cloudflare equivalent is `[triggers]` in wrangler.toml + `scheduled` event handler. **Different code path; needs porting.**
+**B10. Cloudflare scheduled triggers disappears.** Several existing endpoints (`api/internal/cron-*`) rely on Cloudflare's automatic `CRON_SECRET` injection. Cloudflare equivalent is `[triggers]` in wrangler.toml + `scheduled` event handler. **Different code path; needs porting.**
 
 **B11. `wrangler.toml` `[build]` block** is for old Pages-based deployments. Modern path is `wrangler deploy` of a Worker with Static Assets — no `[build]` block, build runs in CI before deploy. Update.
 
@@ -74,8 +74,8 @@
 - `packages/cf-storage/` — **retired.** CfKv + CfR2 are HTTP shims for cross-vendor calls; with native bindings they're dead weight.
 - `packages/db/` schema — replaced wholesale (Postgres → SQLite).
 - NextAuth tables (`accounts`, `sessions`, `verification_tokens`) — replaced by Lucia tables.
-- Vercel project — decommissioned at cutover (week 8).
-- Neon database — decommissioned **after** D1 cutover proves stable for 2 weeks.
+- Cloudflare project — decommissioned at cutover (week 8).
+- D1 database — decommissioned **after** D1 cutover proves stable for 2 weeks.
 
 ---
 
@@ -89,7 +89,7 @@ Before touching the SvelteKit app:
 
 - [ ] **Inventory current routes:** generate a complete list of `apps/web/app/**/route.ts` and `page.tsx` files into `docs/superpowers/refactor/route-inventory.md`. Each gets a status column: `port-1to1`, `simplify`, `deprecate`.
 - [ ] **Inventory schema usage:** every Drizzle table, every migration, list of Postgres-specific features in use (JSONB queries, transactions, RLS, triggers).
-- [ ] **D1 budget check:** export current Neon row counts and rough byte sizes. Confirm we fit under D1's 10GB per-DB limit with headroom.
+- [ ] **D1 budget check:** export current D1 row counts and rough byte sizes. Confirm we fit under D1's 10GB per-DB limit with headroom.
 - [ ] **Create the new Cloudflare resources** (separate from existing — no overlap):
   - D1 database `shippie-platform-d1`
   - R2 bucket `shippie-apps-prod` (existing `shippie-apps` keeps serving until cutover)
@@ -139,14 +139,14 @@ The migration's most error-prone part. Doing this BEFORE porting routes lets us 
   - `auth.ts` (NextAuth schema) → Lucia schema (user, session, key — different shape)
 - [ ] **Generate D1 migrations** in `apps/platform/drizzle/`. Run `wrangler d1 migrations apply shippie-platform-d1 --remote`.
 - [ ] **Build a one-shot mirror script** `scripts/mirror-pg-to-d1.ts`:
-  - Reads from current Neon
+  - Reads from current D1
   - Transforms (uuid→hex, jsonb→string, enum→text, etc.)
   - Bulk-inserts into D1 via `wrangler d1 execute --remote` or REST API
   - Idempotent: identifies rows by primary key, upserts
 - [ ] **Run the mirror**, verify counts match.
-- [ ] **Set up dual-write** (write to BOTH Neon and D1 from the existing `apps/web/`). Wraps existing `getDb()` with a `dualWrite()` shim. Reads still go to Neon. This means: as we develop the SvelteKit app against D1, real writes from `apps/web/` keep D1 fresh.
+- [ ] **Set up dual-write** (write to BOTH D1 and D1 from the existing `apps/web/`). Wraps existing `getDb()` with a `dualWrite()` shim. Reads still go to D1. This means: as we develop the SvelteKit app against D1, real writes from `apps/web/` keep D1 fresh.
 
-Acceptance: D1 has every row that's in Neon. Dual-write works without breaking existing Vercel deploys. Read-from-D1 in canary returns the same data as read-from-Neon in prod.
+Acceptance: D1 has every row that's in D1. Dual-write works without breaking existing Cloudflare deploys. Read-from-D1 in canary returns the same data as read-from-D1 in prod.
 
 ### Phase 3 — Auth + session migration (week 3)
 
@@ -154,7 +154,7 @@ Acceptance: D1 has every row that's in Neon. Dual-write works without breaking e
   - `lucia.ts` — D1Adapter, session cookie config (`.shippie.app` domain so subdomains see auth)
   - `github.ts` — Arctic GitHub provider
   - `google.ts` — Arctic Google provider
-  - `email.ts` — magic-link via Resend (replaces NextAuth EmailProvider). Dev fallback prints to console (preserves existing dev UX).
+  - `email.ts` — magic-link via Cloudflare Email (replaces NextAuth EmailProvider). Dev fallback prints to console (preserves existing dev UX).
 - [ ] **Routes:**
   - `routes/auth/login/+page.svelte` — provider buttons, email-link form
   - `routes/auth/callback/[provider]/+server.ts` — OAuth callbacks
@@ -165,7 +165,7 @@ Acceptance: D1 has every row that's in Neon. Dual-write works without breaking e
 - [ ] **CLI compatibility:** the CLI's `~/.shippie/token` format stays the same. The token contract between CLI and platform is what `packages/cli/` already implements. Add an adapter on the Lucia side to issue tokens with the same semantics.
 - [ ] **Magic-link email migration:** users with active NextAuth sessions get a one-time email "we updated our auth — sign in once more here" at cutover. Dev users can use the dev-signin endpoint.
 
-Acceptance: GitHub login works at `next.shippie.app`. Sign in, see your email in the session. CLI can `shippie login` against canary and get a token. Magic-link works (Resend in prod, console in dev).
+Acceptance: GitHub login works at `next.shippie.app`. Sign in, see your email in the session. CLI can `shippie login` against canary and get a token. Magic-link works (Cloudflare Email in prod, console in dev).
 
 ### Phase 4 — Marketplace + maker app subdomains (weeks 4-5)
 
@@ -225,7 +225,7 @@ Acceptance: a deployed maker app at `chiwit.next.shippie.app` injects manifest, 
   - Uploads to R2 via Cloudflare REST (since GH Action has no native bindings)
   - POSTs status back to platform's `/api/v1/deploy/callback` endpoint
   - **Honest deploy time: 2–5 minutes** for source-from-repo flows (cold runner + npm install)
-- [ ] **Vercel Cron replacement:** `wrangler.toml [triggers] crons = [...]` + `scheduled` event handler routing to existing cron logic in `lib/internal/cron-*`. Schedules port 1:1.
+- [ ] **Cloudflare scheduled triggers replacement:** `wrangler.toml [triggers] crons = [...]` + `scheduled` event handler routing to existing cron logic in `lib/internal/cron-*`. Schedules port 1:1.
 - [ ] `routes/admin/+page.svelte`, `routes/admin/audit/+page.svelte` — admin surfaces, locked behind admin role.
 
 Acceptance: deploy a GitHub-connected app via the new flow → see GH Actions run → app live at canary subdomain. Cron jobs fire at scheduled times. Admin pages auth-gate correctly.
@@ -234,15 +234,15 @@ Acceptance: deploy a GitHub-connected app via the new flow → see GH Actions ru
 
 Big day. Step-by-step:
 
-- [ ] **T-7d:** dual-write running for full week. Sample comparison queries (`apps`, `users`, `app_ratings`) — D1 row counts equal Neon. No write divergence.
+- [ ] **T-7d:** dual-write running for full week. Sample comparison queries (`apps`, `users`, `app_ratings`) — D1 row counts equal D1. No write divergence.
 - [ ] **T-1d:** announcement banner on `shippie.app` — "we're upgrading our infrastructure for the next hour, your data is safe."
-- [ ] **T-0:** flip DNS for `shippie.app` apex from Vercel → Cloudflare Pages/Worker. `*.shippie.app` already serves from CF Worker via the route pattern in `wrangler.toml`.
+- [ ] **T-0:** flip DNS for `shippie.app` apex from Cloudflare → Cloudflare Pages/Worker. `*.shippie.app` already serves from CF Worker via the route pattern in `wrangler.toml`.
 - [ ] **T+0 to T+1h:** monitor. Check: signin works, deploys work, marketplace renders, dashboards load, signal route accepts WebSocket upgrades, cron jobs fire.
 - [ ] **T+1d:** disable dual-write — D1 is now sole source of truth.
-- [ ] **T+7d:** Vercel project decommissioned. `apps/web/` deleted from main (kept in git history).
-- [ ] **T+14d:** Neon database deleted (assuming D1 stable for 2 weeks).
+- [ ] **T+7d:** Cloudflare project decommissioned. `apps/web/` deleted from main (kept in git history).
+- [ ] **T+14d:** D1 database deleted (assuming D1 stable for 2 weeks).
 
-**Roll-back trigger:** any of these in the first hour → roll DNS back to Vercel:
+**Roll-back trigger:** any of these in the first hour → roll DNS back to Cloudflare:
 - 5xx rate >2% on signin or deploy endpoints
 - D1 query latency p95 >500ms
 - Any data divergence between dual-write traces
@@ -251,7 +251,7 @@ Big day. Step-by-step:
 
 ## Acceptance criteria — final cutover checks
 
-- [ ] `shippie.app` serves from Cloudflare. Vercel returns 410 Gone or NXDOMAIN.
+- [ ] `shippie.app` serves from Cloudflare. Cloudflare returns 410 Gone or NXDOMAIN.
 - [ ] `shippie.app/auth/login` → GitHub → returns to dashboard with valid session.
 - [ ] `shippie.app/new` → upload chiwit.zip → live at `chiwit.shippie.app` in <60s.
 - [ ] `shippie.app/api/v1/webhook/github` receives a push → GH Actions builds → R2 updated → live in 2–5min.
@@ -275,7 +275,7 @@ Big day. Step-by-step:
 | DNS propagation lag | Lower TTL to 60s a week before cutover; flip during low-traffic window |
 | Existing CLI tokens stop working | Token format unchanged; Lucia issues with same shape; explicit test before cutover |
 | WebSocket DO state lost on cutover | Active rooms drop. Acceptable: rooms are ephemeral, users rejoin |
-| Existing GitHub App installations work | Webhook URL changes from `*-vercel.app/api/github/webhook` to `shippie.app/api/v1/webhook/github` — update GitHub App config day-of |
+| Existing GitHub App installations work | Webhook URL changes from `*-cloudflare.app/api/github/webhook` to `shippie.app/api/v1/webhook/github` — update GitHub App config day-of |
 | Lighthouse regression on canary | Per-route perf budgets in CI before cutover; reject merges that exceed |
 
 ---
@@ -286,13 +286,13 @@ Big day. Step-by-step:
 |---|---|
 | 0 | Pre-flight inventory + new CF resources provisioned |
 | 1 | `next.shippie.app` returns hello, all bindings live |
-| 2 | D1 has full Neon mirror; dual-write enabled in `apps/web/` |
+| 2 | D1 has full D1 mirror; dual-write enabled in `apps/web/` |
 | 3 | Auth works on canary; GitHub login round-trip green |
 | 4 | Marketplace + app detail + invite flows live on canary |
 | 5 | Deploy + dashboard live on canary; can ship Recipe Saver to canary subdomain |
 | 6 | Wrapper rewriter ported; maker apps on canary fully functional including DO signalling |
 | 7 | Internal/admin/cron/webhooks ported; GH Actions builds work |
-| 8 | Cutover. `shippie.app` is Cloudflare. Vercel + Neon scheduled for decommission. |
+| 8 | Cutover. `shippie.app` is Cloudflare. Cloudflare + D1 scheduled for decommission. |
 
 ---
 
@@ -301,13 +301,13 @@ Big day. Step-by-step:
 The vertical-integration win the spec describes is real. Once cutover is done:
 
 - **Sub-ms internal latency.** A SvelteKit `+page.server.ts` that queries D1, reads KV, and serves R2 files runs in a single Worker invocation. Zero cross-vendor hops.
-- **One deploy command.** `wrangler deploy` from `apps/platform/` deploys everything (platform + worker logic + DOs + cron). Replaces Vercel deploy + worker deploy + env-var sync dance.
+- **One deploy command.** `wrangler deploy` from `apps/platform/` deploys everything (platform + worker logic + DOs + cron). Replaces Cloudflare deploy + worker deploy + env-var sync dance.
 - **Cost: $5–10/mo at current scale.** Spec said $5–20 but D1/R2/KV free tiers cover most of what we'd grow into.
 - **Native bindings unlock features:** `caches.default` for edge caching, `event.waitUntil()` for background work post-response, Streams for live deploy logs, Durable Objects for any future stateful primitive without an extra service.
 - **The cf-storage workspace deletion:** ~600 lines of HTTP-shim code we no longer maintain.
 - **The HMAC dance deletion:** the platform↔worker signed-request system goes away. One service, no internal auth boundary.
 
-This is the foundation everything in the post-cloud platform plan is supposed to run on. The 12-week post-cloud build is currently deployed to Vercel-via-this-refactor; until the refactor lands, the showcase apps work but don't realize the cost/latency wins.
+This is the foundation everything in the post-cloud platform plan is supposed to run on. The 12-week post-cloud build is currently deployed to Cloudflare-via-this-refactor; until the refactor lands, the showcase apps work but don't realize the cost/latency wins.
 
 ---
 
@@ -322,7 +322,7 @@ The spec said 14 days. This plan says 8 weeks. The difference is honesty about s
 
 8 weeks is itself optimistic for one engineer with anything else on their plate. If shipping the post-cloud platform demos publicly is also active, this slips to 10–12 weeks.
 
-If 8 weeks is too long: the order is right, just stop earlier. Phase 4 alone (canary running marketplace + deploy at `next.shippie.app`) is shippable on its own as "Shippie 2.0 preview" — keeps Vercel alive for prod, demos the new stack publicly. That's a 5-week milestone with a real moat.
+If 8 weeks is too long: the order is right, just stop earlier. Phase 4 alone (canary running marketplace + deploy at `next.shippie.app`) is shippable on its own as "Shippie 2.0 preview" — keeps Cloudflare alive for prod, demos the new stack publicly. That's a 5-week milestone with a real moat.
 
 ---
 
@@ -341,14 +341,14 @@ Parallel-safe (touches only `packages/*` and `apps/showcase-*/`, no platform cod
 
 Blocked-by-refactor (must wait for cutover):
 - Domain custom-routing (depends on D1 + Worker KV bindings being native).
-- Vercel-Cron-triggered jobs (must use Cloudflare scheduled triggers post-cutover).
+- Cloudflare scheduled-triggered jobs (must use Cloudflare scheduled triggers post-cutover).
 - Anything that needs new endpoints in `apps/platform/` (those don't exist until they're ported).
 
 **Practice:** keep the parallel work on a `feature/post-cloud-v2` branch. Merge to main only when both refactor and the feature are ready. Avoids dependency tangles where a feature accidentally calls a Next-only API that disappears at cutover.
 
 ### Cron job inventory + Cloudflare equivalents
 
-Current crons in `vercel.json`:
+Current crons in `wrangler.toml`:
 
 | Path | Schedule | Purpose | Cloudflare scheduled trigger |
 |---|---|---|---|
@@ -385,13 +385,13 @@ Each phase's "Acceptance" section gets these tests added:
 - `bindings.test.ts`: `wrangler dev` starts; `GET /` returns 200; D1 prepare-and-execute returns; R2 put/get round-trip; KV put/get; DO upgrade WebSocket.
 
 **Phase 2 (D1 + dual-write):**
-- `migration.test.ts`: row-count parity between Neon and D1 after mirror; sample row deep-equals after JSON column normalization.
-- `dual-write.test.ts`: write to Neon via `apps/web/`, verify D1 sees same row within 5s; revert + retry.
+- `migration.test.ts`: row-count parity between D1 and D1 after mirror; sample row deep-equals after JSON column normalization.
+- `dual-write.test.ts`: write to D1 via `apps/web/`, verify D1 sees same row within 5s; revert + retry.
 
 **Phase 3 (auth):**
 - `auth.test.ts`: GitHub OAuth round-trip via Playwright with mock GitHub; session cookie set; `/dashboard` reachable; logout clears session.
 - `cli-auth.test.ts`: device flow start → poll → complete; `~/.shippie/token` issued; subsequent `/api/v1/whoami` returns the user.
-- `magic-link.test.ts`: dev-mode prints link to console; clicking the link signs in; resend-mode exercises the Resend client via mock.
+- `magic-link.test.ts`: dev-mode prints link to console; clicking the link signs in; cloudflare-email-mode exercises the Cloudflare Email client via mock.
 
 **Phase 4 (marketplace + maker subdomains):**
 - `marketplace.test.ts`: GET `/apps` returns ≥1 row; FTS search hits indexed text; app detail page renders.
@@ -417,7 +417,7 @@ Each phase's "Acceptance" section gets these tests added:
 
 ### Observability + monitoring plan
 
-The current Vercel observability story (build logs, runtime logs, web vitals) needs replacements before cutover. Concretely:
+The current Cloudflare observability story (build logs, runtime logs, web vitals) needs replacements before cutover. Concretely:
 
 **1. Live request logs.**
 - `wrangler tail --format=json` for live tailing during dev/debug.

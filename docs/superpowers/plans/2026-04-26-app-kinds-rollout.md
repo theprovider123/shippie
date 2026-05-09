@@ -116,7 +116,7 @@ deploy produces an `AppKindProfile`.
       `packages/analyse/src/kind-classifier.ts`):
       - Cloud markers: imports of `@supabase/supabase-js`,
         `firebase/{firestore,auth,storage}`, `next-auth`, `@auth/*`,
-        `@vercel/postgres`, RSC server-action emissions, SvelteKit server
+        RSC server-action emissions, SvelteKit server
         endpoints, Next.js API routes, server-side Supabase clients
         (`createServerClient` from `@supabase/ssr`).
       - Local markers: service-worker registration, IndexedDB usage, OPFS

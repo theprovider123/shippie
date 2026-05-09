@@ -28,6 +28,7 @@ import {
   noteGracefulDegrade,
   notePersonalDataLeak,
 } from './kind-emitter.ts';
+import { installAppLifecycleReporter } from './lifecycle.ts';
 import { openYourData } from './your-data-panel.ts';
 
 interface AppMetaPayload {
@@ -123,8 +124,11 @@ async function bootstrap(): Promise<void> {
     // slug. Surface installs still work because the BIP capture is set
     // up above. Log once and return.
     console.warn('[shippie] /__shippie/meta unavailable — proof + kind disabled this session');
+    installAppLifecycleReporter({ source: 'sdk' });
     return;
   }
+
+  installAppLifecycleReporter({ appId: meta.slug, source: 'sdk' });
 
   configureProof({ appSlug: meta.slug });
   configureKindEmitter({

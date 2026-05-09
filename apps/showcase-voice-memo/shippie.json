@@ -9,6 +9,13 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["memo-recorded"]
+    "provides": [
+      "memo-recorded",
+      "voice.recorded"
+    ]
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "tools"
   }
 }

@@ -7,6 +7,16 @@ import type { D1Database, R2Bucket, KVNamespace, DurableObjectNamespace } from '
 import type { Session } from 'lucia';
 import type { AppUser, AppLucia } from '$server/auth/lucia';
 
+type CloudflareEmailBinding = {
+  send(input: {
+    to: string;
+    from: string;
+    subject: string;
+    text: string;
+    html: string;
+  }): Promise<unknown>;
+};
+
 declare global {
   namespace App {
     interface Error {
@@ -44,7 +54,7 @@ declare global {
         GOOGLE_CLIENT_ID?: string;
         GOOGLE_CLIENT_SECRET?: string;
         AUTH_SECRET?: string;
-        RESEND_API_KEY?: string;
+        EMAIL?: CloudflareEmailBinding;
         AUTH_EMAIL_FROM?: string;
       };
       cf: CfProperties;

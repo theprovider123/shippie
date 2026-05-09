@@ -9,7 +9,11 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["care-dose-given", "care-symptom-noted", "care-handover-noted"],
+    "provides": [
+      "care-dose-given",
+      "care-symptom-noted",
+      "care-handover-noted"
+    ],
     "consumes": []
   },
   "data_schemas": {
@@ -19,5 +23,10 @@
       "note": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness",
+    "successor": "co-pilot"
   }
 }

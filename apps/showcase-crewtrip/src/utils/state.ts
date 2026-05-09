@@ -40,6 +40,10 @@ export const BACKUP_INTERVAL_MS = 45_000;
 export const PUBLIC_CREWTRIP_URL = 'https://shippie.app/run/crewtrip/';
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+export function normalizeEventCode(value?: string | null): string {
+  return (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 export function toDateInputValue(date: Date = new Date()): string {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 10);
@@ -423,6 +427,33 @@ export function mergeCrewtripState(remoteRaw: CrewtripState, currentRaw: Crewtri
   };
 }
 
+export function pollSelectionForPlayer(poll: Poll, playerId: string): string | undefined {
+  return poll.options.find((option) => (option.voterIds ?? legacyVoteIds(option)).includes(playerId))?.id;
+}
+
+export function setPollVote(poll: Poll, optionId: string, playerId: string): Poll {
+  return {
+    ...poll,
+    options: poll.options.map((option) => {
+      const voters = new Set(option.voterIds ?? legacyVoteIds(option));
+      voters.delete(playerId);
+      if (option.id === optionId) voters.add(playerId);
+      const voterIds = Array.from(voters);
+      return { ...option, voterIds, votes: voterIds.length };
+    }),
+  };
+}
+
+export function clearPollVote(poll: Poll, playerId: string): Poll {
+  return {
+    ...poll,
+    options: poll.options.map((option) => {
+      const voters = (option.voterIds ?? legacyVoteIds(option)).filter((id) => id !== playerId);
+      return { ...option, voterIds: voters, votes: voters.length };
+    }),
+  };
+}
+
 export function buildShareUrl(eventCode: string, role: 'crew' | 'join-host' = 'crew'): string {
   if (typeof window === 'undefined') return '';
   const current = new URL(window.location.href);
@@ -432,19 +463,22 @@ export function buildShareUrl(eventCode: string, role: 'crew' | 'join-host' = 'c
     url.pathname = '/run/crewtrip/';
   }
   url.searchParams.set('role', role);
-  url.searchParams.set('event', eventCode);
+  url.searchParams.set('event', normalizeEventCode(eventCode) || eventCode);
   return url.toString();
 }
 
 export function readJoinedEventCode(): string | null {
   if (typeof window === 'undefined') return null;
-  return new URLSearchParams(window.location.search).get('event');
+  const code = normalizeEventCode(new URLSearchParams(window.location.search).get('event'));
+  return code || null;
 }
 
 export function readLocalHostClaim(eventCode: string): boolean {
   if (typeof window === 'undefined') return false;
+  const normalized = normalizeEventCode(eventCode) || eventCode;
   try {
-    return localStorage.getItem(`${HOST_CLAIM_KEY_PREFIX}${eventCode}`) === '1';
+    return localStorage.getItem(`${HOST_CLAIM_KEY_PREFIX}${normalized}`) === '1'
+      || (normalized !== eventCode && localStorage.getItem(`${HOST_CLAIM_KEY_PREFIX}${eventCode}`) === '1');
   } catch {
     return false;
   }
@@ -453,16 +487,35 @@ export function readLocalHostClaim(eventCode: string): boolean {
 export function writeLocalHostClaim(eventCode: string): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(`${HOST_CLAIM_KEY_PREFIX}${eventCode}`, '1');
+    localStorage.setItem(`${HOST_CLAIM_KEY_PREFIX}${normalizeEventCode(eventCode) || eventCode}`, '1');
   } catch {
     // Host access is a local enhancement; ignore storage failures.
   }
 }
 
+export function readLocalHostEventCodes(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const codes: string[] = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith(HOST_CLAIM_KEY_PREFIX)) continue;
+      if (localStorage.getItem(key) !== '1') continue;
+      const code = normalizeEventCode(key.slice(HOST_CLAIM_KEY_PREFIX.length));
+      if (code) codes.push(code);
+    }
+    return Array.from(new Set(codes));
+  } catch {
+    return [];
+  }
+}
+
 export function readLocalPlayerId(eventCode: string): string | null {
   if (typeof window === 'undefined') return null;
+  const normalized = normalizeEventCode(eventCode) || eventCode;
   try {
-    return localStorage.getItem(`${LOCAL_PLAYER_KEY_PREFIX}${eventCode}`);
+    return localStorage.getItem(`${LOCAL_PLAYER_KEY_PREFIX}${normalized}`)
+      ?? (normalized !== eventCode ? localStorage.getItem(`${LOCAL_PLAYER_KEY_PREFIX}${eventCode}`) : null);
   } catch {
     return null;
   }
@@ -471,7 +524,7 @@ export function readLocalPlayerId(eventCode: string): string | null {
 export function writeLocalPlayerId(eventCode: string, playerId: string): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(`${LOCAL_PLAYER_KEY_PREFIX}${eventCode}`, playerId);
+    localStorage.setItem(`${LOCAL_PLAYER_KEY_PREFIX}${normalizeEventCode(eventCode) || eventCode}`, playerId);
   } catch {
     // Local identity can still live in React state if persistence fails.
   }
@@ -955,11 +1008,12 @@ export function syncLabelShort(sync: SyncState, language: Language): string {
 }
 
 export function createRecoveryPack(state: CrewtripState): RecoveryPack {
+  const normalized = normalizeCrewtripState(state);
   return {
     app: 'crewtrip',
     version: 1,
     exportedAt: new Date().toISOString(),
-    state: normalizeCrewtripState(state),
+    state: { ...normalized, eventCode: normalizeEventCode(normalized.eventCode) || normalized.eventCode },
   };
 }
 
@@ -972,11 +1026,12 @@ export function parseRecoveryPack(raw: string): RecoveryPack {
   if (parsed.app !== 'crewtrip' || parsed.version !== 1 || !parsed.state?.eventCode) {
     throw new Error('Invalid Crewtrip recovery pack');
   }
+  const state = normalizeCrewtripState(parsed.state);
   return {
     app: 'crewtrip',
     version: 1,
     exportedAt: parsed.exportedAt ?? new Date().toISOString(),
-    state: normalizeCrewtripState(parsed.state),
+    state: { ...state, eventCode: normalizeEventCode(state.eventCode) || state.eventCode },
   };
 }
 
@@ -997,6 +1052,55 @@ export function readLocalBackups(): LocalBackup[] {
   }
 }
 
+export function latestLocalBackupForEvent(eventCode: string): LocalBackup | null {
+  const normalized = normalizeEventCode(eventCode);
+  if (!normalized) return null;
+  return readLocalBackups()
+    .filter((backup) => normalizeEventCode(backup.eventCode) === normalized)
+    .sort((a, b) => b.at - a.at)[0] ?? null;
+}
+
+export function readHostedLocalBackups(): LocalBackup[] {
+  const hostedCodes = new Set(readLocalHostEventCodes());
+  if (!hostedCodes.size) return [];
+  const latestByEvent = new Map<string, LocalBackup>();
+  for (const backup of readLocalBackups()) {
+    const code = normalizeEventCode(backup.eventCode);
+    if (!hostedCodes.has(code)) continue;
+    const existing = latestByEvent.get(code);
+    if (!existing || backup.at > existing.at) latestByEvent.set(code, backup);
+  }
+  return Array.from(latestByEvent.values()).sort((a, b) => b.at - a.at);
+}
+
+export function resolveInitialCrewtripState(raw: string | null, joinedEventCodeRaw: string | null): CrewtripState {
+  const joinedEventCode = normalizeEventCode(joinedEventCodeRaw);
+  let parsed: CrewtripState | null = null;
+
+  try {
+    parsed = raw ? normalizeCrewtripState({ ...initialState, ...JSON.parse(raw) }) : null;
+  } catch {
+    parsed = null;
+  }
+
+  if (joinedEventCode) {
+    if (parsed && normalizeEventCode(parsed.eventCode) === joinedEventCode) {
+      return normalizeCrewtripState({ ...parsed, eventCode: joinedEventCode });
+    }
+    const backup = latestLocalBackupForEvent(joinedEventCode);
+    if (backup) {
+      return normalizeCrewtripState({ ...backup.pack.state, eventCode: joinedEventCode });
+    }
+    return createFreshCrewtripState({
+      eventCode: joinedEventCode,
+      language: parsed?.language,
+      theme: parsed?.theme,
+    });
+  }
+
+  return parsed ?? createFreshCrewtripState();
+}
+
 export function writeLocalBackup(
   state: CrewtripState,
   reason: LocalBackup['reason'],
@@ -1006,8 +1110,9 @@ export function writeLocalBackup(
   try {
     const existing = readLocalBackups();
     const now = Date.now();
+    const eventCode = normalizeEventCode(state.eventCode) || state.eventCode;
     const latestForEvent = existing
-      .filter((backup) => backup.eventCode === state.eventCode)
+      .filter((backup) => normalizeEventCode(backup.eventCode) === eventCode)
       .sort((a, b) => b.at - a.at)[0];
     if (!force && latestForEvent && now - latestForEvent.at < BACKUP_INTERVAL_MS) {
       return { saved: false };
@@ -1016,17 +1121,17 @@ export function writeLocalBackup(
     const serialized = JSON.stringify(pack);
     const nextBackup: LocalBackup = {
       id: newId('backup'),
-      eventCode: state.eventCode,
+      eventCode,
       eventName: state.eventName || 'Crewtrip',
       at: now,
       reason,
       bytes: new Blob([serialized]).size,
       pack,
     };
-    const sameEvent = [nextBackup, ...existing.filter((backup) => backup.eventCode === state.eventCode)]
+    const sameEvent = [nextBackup, ...existing.filter((backup) => normalizeEventCode(backup.eventCode) === eventCode)]
       .sort((a, b) => b.at - a.at)
       .slice(0, BACKUP_LIMIT_PER_EVENT);
-    const otherEvents = existing.filter((backup) => backup.eventCode !== state.eventCode).slice(0, 18);
+    const otherEvents = existing.filter((backup) => normalizeEventCode(backup.eventCode) !== eventCode).slice(0, 18);
     localStorage.setItem(BACKUP_KEY, JSON.stringify([...sameEvent, ...otherEvents]));
     return { saved: true };
   } catch {

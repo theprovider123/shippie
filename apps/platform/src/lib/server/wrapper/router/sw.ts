@@ -4,8 +4,8 @@
  *
  * Cache strategy:
  *   - install        → best-effort precache from /__shippie/assets.json
- *   - HTML documents → network-first with cache + repair fallback
- *   - Other assets   → cache-first with network fallback
+ *   - HTML documents → network-first with typed cache + repair fallback
+ *   - Other assets   → cache-first with typed network fallback
  *   - __shippie/*    → bypass, except manifest/sdk/assets/sw essentials
  */
 import type { WrapperContext } from '../env';
@@ -29,6 +29,20 @@ function recoveryResponse() {
   });
 }
 
+function expectedResponse(req, res) {
+  if (!res || !res.ok) return false;
+  const url = new URL(req.url);
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  if (url.pathname.endsWith('/') || url.pathname.endsWith('/index.html')) return type.includes('text/html');
+  if (url.pathname.endsWith('.html')) return type.includes('text/html');
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.mjs')) return type.includes('javascript') || type.includes('ecmascript');
+  if (url.pathname.endsWith('.css')) return type.includes('text/css');
+  if (url.pathname.endsWith('.wasm')) return type.includes('application/wasm');
+  if (url.pathname.endsWith('.json')) return type.includes('json');
+  if (url.pathname.endsWith('.svg')) return type.includes('image/svg');
+  return !type.includes('text/html');
+}
+
 async function cacheManifestAssets() {
   const cache = await caches.open(CACHE);
   try {
@@ -41,7 +55,7 @@ async function cacheManifestAssets() {
         try {
           const req = new Request(url, { cache: 'reload' });
           const res = await fetch(req);
-          if (res.ok) await cache.put(url, res.clone()).catch(() => {});
+          if (expectedResponse(req, res)) await cache.put(url, res.clone()).catch(() => {});
         } catch {
           /* best effort */
         }
@@ -87,7 +101,7 @@ self.addEventListener('fetch', (event) => {
       try {
         const networkReq = repair ? new Request(req, { cache: 'reload' }) : req;
         const res = await fetch(networkReq);
-        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        if (expectedResponse(req, res)) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
         const cached =
@@ -106,7 +120,7 @@ self.addEventListener('fetch', (event) => {
     if (cached) return cached;
     try {
       const res = await fetch(req);
-      if (res.ok) cache.put(req, res.clone());
+      if (expectedResponse(req, res)) cache.put(req, res.clone());
       return res;
     } catch {
       if (req.destination === 'script' || req.destination === 'style') {

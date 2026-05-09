@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createObservationClient } from '@shippie/observations';
 import { readImportFragment } from '@shippie/share';
 import { deletePhoto, loadPhoto, savePhoto } from './photo-store.ts';
 import { ShareSheet } from './share/ShareSheet.tsx';
@@ -7,6 +8,7 @@ import { ImportCard } from './share/ImportCard.tsx';
 import { checkVisitImport, type VisitImportCheck } from './share/visit-share.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_restaurant_memory' });
+const observations = createObservationClient(shippie);
 
 const STORAGE_KEY = 'shippie.restaurant-memory.v1';
 
@@ -157,6 +159,14 @@ export function App() {
         visitedAt: visit.visitedAt,
       },
     ]);
+    // Observation bus — restaurant name as a label so Randomiser can
+    // surface "the place with the dumplings". Coords stay local even
+    // when present on the visit row.
+    observations.emit({
+      kind: 'place.snapped',
+      labels: [visit.name],
+      at: visit.visitedAt,
+    });
   }
 
   async function remove(visit: RestaurantVisit) {

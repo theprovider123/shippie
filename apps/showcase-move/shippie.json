@@ -9,8 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["run-planned", "workout-completed", "sleep-logged"],
-    "consumes": ["caffeine-logged"]
+    "provides": [
+      "run-planned",
+      "workout-completed",
+      "sleep-logged"
+    ],
+    "consumes": [
+      "caffeine-logged"
+    ]
   },
   "data_schemas": {
     "entries": {
@@ -22,5 +28,10 @@
       "quality": "integer",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness",
+    "successor": "lift"
   }
 }

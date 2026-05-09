@@ -8,6 +8,12 @@
   "background_color": "#F5F4EF",
   "display": "standalone",
   "orientation": "portrait",
-  "groups": { "enabled": true },
-  "data_schemas": {}
+  "groups": {
+    "enabled": true
+  },
+  "data_schemas": {},
+  "curation": {
+    "surface": "featured",
+    "category": "social"
+  }
 }

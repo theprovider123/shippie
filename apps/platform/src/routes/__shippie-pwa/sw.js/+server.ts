@@ -5,8 +5,8 @@
  * /__shippie/sw.js (which serves maker subdomains via the wrapper).
  *
  * Strategy:
- *   - cache-first for /apps directory listings (small, useful offline)
- *   - network-first for everything else (auth, deploy flows)
+ *   - cache-first only for immutable assets and raw showcase bundles
+ *   - network-first for app shell documents (never stored in Cache API)
  *   - graceful offline fallback — show "you're offline" branded page
  *
  * Tiny on purpose: under 2KB minified. The browser caches it. Updates
@@ -37,18 +37,52 @@ const OFFLINE_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"
 
 function offlineResponse() {
   return new Response(OFFLINE_HTML, {
-    status: 503,
+    // A PWA navigation should never become the generic SvelteKit 500/503
+    // error surface just because the device is briefly offline. This is a
+    // real app state, so serve the branded offline shell as a successful
+    // document and let it auto-retry.
+    status: 200,
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });
 }
 
-async function marketplaceFallback(cache, req) {
-  return (
-    (await cache.match(req)) ||
-    (await cache.match('/')) ||
-    (await cache.match('/apps')) ||
-    (await cache.match('/apps/')) ||
-    null
+function expectedAssetResponse(req, res) {
+  if (!res || !res.ok) return false;
+  const path = new URL(req.url).pathname;
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  if (path.endsWith('.js') || path.endsWith('.mjs')) return type.includes('javascript') || type.includes('ecmascript');
+  if (path.endsWith('.css')) return type.includes('text/css');
+  if (path.endsWith('.wasm')) return type.includes('application/wasm');
+  if (path.endsWith('.json')) return type.includes('json');
+  if (path.endsWith('.svg')) return type.includes('image/svg');
+  return !type.includes('text/html');
+}
+
+function expectedRuntimeResponse(req, res) {
+  if (!res || !res.ok) return false;
+  const url = new URL(req.url);
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  const isEntryDocument =
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('/index.html') ||
+    url.searchParams.get('shippie_embed') === '1';
+  if (isEntryDocument) return type.includes('text/html');
+  return expectedAssetResponse(req, res);
+}
+
+async function purgeShellDocuments(cache) {
+  const reqs = await cache.keys();
+  await Promise.allSettled(
+    reqs.map(async (req) => {
+      const path = new URL(req.url).pathname;
+      const keep =
+        path.startsWith(RUNTIME_PREFIX + '/') ||
+        path.startsWith('/_app/immutable/') ||
+        path.startsWith('/__shippie/wasm/') ||
+        path.startsWith(AI_RUNTIME_PATH_PREFIX) ||
+        path === '/__shippie-pwa/.shell-warmed';
+      if (!keep) await cache.delete(req);
+    }),
   );
 }
 
@@ -61,7 +95,7 @@ async function warmAiRuntime(urls = AI_RUNTIME_URLS) {
         const cached = await cache.match(url);
         if (cached) return;
         const res = await fetch(url);
-        if (res.ok) await cache.put(url, res.clone()).catch(() => {});
+        if (expectedAssetResponse(new Request(url), res)) await cache.put(url, res.clone()).catch(() => {});
       }),
     );
   } catch {
@@ -73,16 +107,14 @@ async function warmAiRuntime(urls = AI_RUNTIME_URLS) {
 // any showcase iframe offline without first having visited it. These live
 // under /__shippie-run so bare /run/<slug>/ stays the focused shell. The list is
 // substituted at request time from the build-time-generated
-// SHOWCASE_PRECACHE constant. cache.add is best-effort per entry; a
-// network or 404 failure on one slug never blocks install.
+// SHOWCASE_PRECACHE constant. Caching is best-effort per entry; a network,
+// 404, or wrong content-type on one slug never blocks install.
 const SHOWCASE_PRECACHE = __SHOWCASE_PRECACHE__;
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await Promise.allSettled(
-      SHOWCASE_PRECACHE.map((url) => cache.add(url).catch(() => {})),
-    );
+    await cacheAddAll(cache, SHOWCASE_PRECACHE, () => {});
     await warmAiRuntime();
     self.skipWaiting();
   })());
@@ -105,7 +137,11 @@ async function cacheAddAll(cache, urls, onProgress) {
     await Promise.allSettled(chunk.map(async (url) => {
       try {
         const res = await fetch(url);
-        if (res.ok) {
+        const req = new Request(url);
+        const shouldStore = url.startsWith(RUNTIME_PREFIX + '/')
+          ? expectedRuntimeResponse(req, res)
+          : expectedAssetResponse(req, res);
+        if (shouldStore) {
           await cache.put(url, res.clone()).catch(() => {});
         } else {
           failed.push(url);
@@ -133,12 +169,10 @@ async function checkManifestComplete(cache, assets) {
 }
 
 async function warmShell(cache) {
-  // First DOWNLOAD_APP per SW activation also warms the platform shell
-  // so saved apps can open offline through /apps -> /run/<slug>/. Gated
-  // by a sentinel so subsequent downloads skip this. Cleared on every
-  // activate (sentinel isn't migrated; shell HTML naturally re-warms
-  // online via the network-first nav handler — the WASM survives via
-  // the migration allowlist).
+  // First DOWNLOAD_APP per SW activation warms only shared, deploy-safe
+  // runtime files. We intentionally do not cache SvelteKit route HTML
+  // here: shell documents include current chunk hashes and are the main
+  // source of random white screens after a deploy or hard PWA resume.
   const SENTINEL = '/__shippie-pwa/.shell-warmed';
   if (await cache.match(SENTINEL)) return;
   try {
@@ -147,7 +181,6 @@ async function warmShell(cache) {
     const shell = await res.json();
     const urls = [
       ...(Array.isArray(shell.wasm) ? shell.wasm : []),
-      ...(Array.isArray(shell.routes) ? shell.routes : []),
     ];
     await cacheAddAll(cache, urls, () => {});
     await warmAiRuntime(Array.isArray(shell.aiRuntime) ? shell.aiRuntime : AI_RUNTIME_URLS);
@@ -169,7 +202,6 @@ async function handleDownloadApp(slug, port) {
     const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
     if (assets.length === 0) throw new Error('manifest_empty');
     await warmShell(cache);
-    await cacheAddAll(cache, ['/run/' + slug + '/'], () => {});
     await cacheAddAll(cache, assets, (done, total) => {
       port.postMessage({ type: 'progress', slug, done, total });
     });
@@ -231,16 +263,16 @@ async function handleGetStatus(slug, port) {
 }
 
 async function handleClearOffline(port) {
-  // Delete user-saved app bundles only. Keep the platform shell:
+  // Delete user-saved app bundles only. Keep deploy-safe platform assets:
   // /_app/immutable/* (chunks), /__shippie/wasm/* (shared WASM),
-  // /__shippie-pwa/* (sentinel + shell-assets manifest), nav HTML.
+  // /__shippie-pwa/* (sentinel + shell-assets manifest).
   try {
     const cache = await caches.open(CACHE);
     const reqs = await cache.keys();
     let count = 0;
     for (const req of reqs) {
       const path = new URL(req.url).pathname;
-      if (path.startsWith(RUNTIME_PREFIX + '/') || path.startsWith('/run/')) {
+      if (path.startsWith(RUNTIME_PREFIX + '/')) {
         await cache.delete(req);
         count += 1;
       }
@@ -305,8 +337,8 @@ self.addEventListener('message', (e) => {
 // so caching the bundle is safe across platform deploys. The bare /run/<slug>/
 // route is platform shell HTML and must not migrate across deploys.
 //
-// Stale platform HTML naturally re-warms via the network-first nav
-// handler on the user's first online navigation after activation.
+// Stale platform HTML is never warmed or migrated. If a prior worker
+// already cached it under the current cache name, purge it on activation.
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     const newCache = await caches.open(CACHE);
@@ -334,6 +366,7 @@ self.addEventListener('activate', (e) => {
       }
       await caches.delete(name);
     }
+    await purgeShellDocuments(newCache);
     await self.clients.claim();
   })());
 });
@@ -359,7 +392,7 @@ self.addEventListener('fetch', (e) => {
       if (cached) return cached;
       try {
         const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        if (expectedAssetResponse(req, res)) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
         return new Response('', { status: 504 });
@@ -394,7 +427,7 @@ self.addEventListener('fetch', (e) => {
       if (cached) return cached;
       try {
         const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        if (expectedAssetResponse(req, res)) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
         return new Response('', { status: 504 });
@@ -411,15 +444,16 @@ self.addEventListener('fetch', (e) => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req);
       if (cached) {
-        // Refresh in background; same defensive pattern as /apps/*.
+        // Refresh in background. Only keep complete app package entries
+        // or typed assets, never accidental HTML error documents.
         fetch(req).then((res) => {
-          if (res.ok) cache.put(req, res.clone()).catch(() => {});
+          if (expectedRuntimeResponse(req, res)) cache.put(req, res.clone()).catch(() => {});
         }).catch(() => {});
         return cached;
       }
       try {
         const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone()).catch(() => {});
+        if (expectedRuntimeResponse(req, res)) cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
         const nestedMatch = url.pathname.match(/^\\/__shippie-run\\/([^/]+)\\/.+/);
@@ -430,75 +464,47 @@ self.addEventListener('fetch', (e) => {
             (await cache.match(RUNTIME_PREFIX + '/' + nestedMatch[1] + '/'));
           if (entry) return entry;
         }
-        const fallback = await marketplaceFallback(cache, req);
-        return fallback ?? offlineResponse();
+        return offlineResponse();
       }
     })());
     return;
   }
 
-  // /run/<slug>/ — public focused shell. Keep it network-first like other
-  // platform HTML so hashed SvelteKit chunks stay fresh, with a cached
-  // shell fallback when offline.
+  // /run/<slug>/ — public focused shell. Network-only for route HTML so
+  // hashed SvelteKit chunks stay fresh; offline gets the branded shell
+  // instead of a stale route document.
   if (url.pathname.startsWith('/run/')) {
     e.respondWith((async () => {
-      const cache = await caches.open(CACHE);
       try {
-        const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone()).catch(() => {});
-        return res;
+        return await fetch(req);
       } catch {
-        const cached = await cache.match(req);
-        if (cached) return cached;
-        const focusedMatch = url.pathname.match(/^\\/run\\/([^/]+)\\/?$/);
-        if (focusedMatch) {
-          return Response.redirect(
-            '/container?app=' + encodeURIComponent(focusedMatch[1]) + '&focused=1',
-            302,
-          );
-        }
-        const fallback = await marketplaceFallback(cache, req);
-        return fallback ?? offlineResponse();
+        return offlineResponse();
       }
     })());
     return;
   }
 
   if (url.pathname.startsWith(APPS_PREFIX)) {
-    // cache-first for the apps directory
+    // Legacy marketplace route. Route HTML is network-only; app assets
+    // are handled by the immutable/runtime branches above.
     e.respondWith((async () => {
-      const cache = await caches.open(CACHE);
-      const cached = await cache.match(req);
-      if (cached) {
-        // refresh in background
-        fetch(req).then((res) => { if (res.ok) cache.put(req, res); }).catch(() => {});
-        return cached;
-      }
       try {
-        const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone()).catch(() => {});
-        return res;
+        return await fetch(req);
       } catch {
-        const fallback = await marketplaceFallback(cache, req);
-        return fallback ?? offlineResponse();
+        return offlineResponse();
       }
     })());
     return;
   }
 
-  // Network-first elsewhere with cache fallback for navigations.
+  // Network-first elsewhere for route documents. Do not cache these in
+  // Cache API; SvelteKit HTML is deploy-coupled to current chunk hashes.
   const isDoc = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
   if (isDoc) {
     e.respondWith((async () => {
       try {
-        const res = await fetch(req);
-        const cache = await caches.open(CACHE);
-        if (res.ok) cache.put(req, res.clone()).catch(() => {});
-        return res;
+        return await fetch(req);
       } catch {
-        const cache = await caches.open(CACHE);
-        const cached = await marketplaceFallback(cache, req);
-        if (cached) return cached;
         return offlineResponse();
       }
     })());

@@ -15,7 +15,7 @@
 **Phase 2 deliverables:**
 - Desktop → mobile handoff UI sheet (modal with QR + email-to-self + push-to-phone).
 - `/__shippie/handoff` Worker endpoint (proxies email/push via signed requests to platform).
-- `/api/shippie/handoff` platform endpoint (Resend email + Web Push dispatch).
+- `/api/shippie/handoff` platform endpoint (Cloudflare Email email + Web Push dispatch).
 - View Transitions API wrapping for route navigations (marketplace + wrapper runtime).
 - Back-swipe gesture detector + peek-to-pop animation.
 - Pull-to-refresh drag handler on scrollable containers.
@@ -57,7 +57,7 @@
 - `apps/web/app/components/theme-color.test.tsx` — smoke test
 - `services/worker/src/router/handoff.ts` — `POST /__shippie/handoff` endpoint, signs + proxies to platform
 - `services/worker/src/router/handoff.test.ts` — route behavior tests
-- `apps/web/app/api/shippie/handoff/route.ts` — platform handler; dispatches via Resend + Web Push
+- `apps/web/app/api/shippie/handoff/route.ts` — platform handler; dispatches via Cloudflare Email + Web Push
 - `apps/web/lib/shippie/handoff.ts` — pure helpers (email template, push payload)
 - `apps/web/lib/shippie/handoff.test.ts` — pure function tests
 
@@ -85,7 +85,7 @@
 - `apps/web/lib/shippie/splash-gen.test.ts` — generates expected sizes
 - `services/worker/src/router/splash.ts` — `GET /__shippie/splash/<device>.png` from R2
 - `services/worker/src/router/splash.test.ts` — route tests
-- `vercel.json` cron entry for rollups + retention
+- `wrangler.toml` cron entry for rollups + retention
 
 ### Modified files
 
@@ -95,7 +95,7 @@
 - `packages/sdk/tsup.config.ts` — no change expected (entries already a map)
 - `services/worker/src/router/system.ts` — register `handoff` route
 - `apps/web/app/layout.tsx` — optional: mount the React `<ThemeColor />` for marketplace
-- `apps/web/.env.example` — `RESEND_API_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- `apps/web/.env.example` — `AUTH_EMAIL_FROM`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 
 #### Phase 3
 - `services/worker/src/router/system.ts` — register `beacon`, `push/*`, `splash/*` routes
@@ -103,7 +103,7 @@
 - `apps/web/lib/deploy/index.ts` — call `splash-gen` after a successful build
 - `packages/pwa-injector/src/inject-html.ts` — inject `<link rel="apple-touch-startup-image">` tags from generated manifest
 - `apps/web/app/dashboard/apps/[slug]/page.tsx` — link to the new analytics page
-- `vercel.json` — add crons
+- `wrangler.toml` — add crons
 
 ---
 
@@ -1515,7 +1515,7 @@ Register all three in `system.ts`.
 
 - [ ] Route in `apps/web/app/api/shippie/handoff/route.ts`:
   - Accepts `{ slug, mode, email?, handoff_url }`.
-  - For `mode='email'`: Resend client sends via `fetch('https://api.resend.com/emails', {...})` using `process.env.RESEND_API_KEY`. If key absent in dev, log and return 200 with `{ simulated: true }`.
+  - For `mode='email'`: Cloudflare Email client sends via `fetch('https://Cloudflare Email binding', {...})` using `process.env.AUTH_EMAIL_FROM`. If key absent in dev, log and return 200 with `{ simulated: true }`.
   - For `mode='push'`: look up maker's push subscription in DB (via `@shippie/db` query `select * from push_subscriptions where slug=?`), send Web Push via helper from Task 13. For Phase 2 test path, stub when no subscription exists; return `{ sent: 0 }`.
   - Validate signed request from Worker using existing `packages/session-crypto` helpers (pattern from `apps/web/app/api/internal/*`).
 
@@ -1664,7 +1664,7 @@ Batched under one task because they share the DB layer.
 
 **Files:** `apps/web/lib/shippie/splash-gen.ts` + `.test.ts`, `apps/web/lib/deploy/index.ts` (edit).
 
-- [ ] Use `sharp` (available via Vercel Sandbox):
+- [ ] Use `sharp` (available via GitHub Actions build workflow):
   - `generateIcons(src: Buffer): Promise<Array<{ size: number; maskable: boolean; buffer: Buffer }>>` — outputs 192, 512 standard + 192, 512 maskable (with safe-area padding).
   - `generateSplashes(src: Buffer, backgroundColor: string): Promise<Array<{ device: string; buffer: Buffer }>>` — outputs 15 iPhone/iPad sizes as PNG with the source icon centered on a solid background.
 
@@ -1680,7 +1680,7 @@ Batched under one task because they share the DB layer.
 
 ## Task 16 — Cron wiring + env + layout
 
-- [ ] `vercel.json` — add:
+- [ ] `wrangler.toml` — add:
   ```json
   "crons": [
     { "path": "/api/internal/rollups", "schedule": "0 */1 * * *" },
@@ -1689,7 +1689,7 @@ Batched under one task because they share the DB layer.
   ```
   Preserve existing entries.
 
-- [ ] `apps/web/.env.example` — add `RESEND_API_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `SHIPPIE_EVENT_INGEST_SECRET`.
+- [ ] `apps/web/.env.example` — add `AUTH_EMAIL_FROM`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `SHIPPIE_EVENT_INGEST_SECRET`.
 
 - [ ] `apps/web/app/layout.tsx` — mount `<ThemeColor color="#14120F" />` at root for the marketplace.
 

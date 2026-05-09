@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let a maker wrap an already-hosted URL (`https://mevrouw.vercel.app`) as a Shippie marketplace app served via Worker reverse-proxy at `{slug}.shippie.app`, with PWA manifest + SDK injected into every HTML response, CSS/JS streamed through, and full install funnel + ratings support.
+**Goal:** Let a maker wrap an already-hosted URL (`https://mevrouw.example.com`) as a Shippie marketplace app served via Worker reverse-proxy at `{slug}.shippie.app`, with PWA manifest + SDK injected into every HTML response, CSS/JS streamed through, and full install funnel + ratings support.
 
 **Architecture:** Additive to the static deploy path. New `source_kind='wrapped_url'` value on `apps`. Control plane `POST /api/deploy/wrap` validates the upstream, upserts the app + KV config. Worker routes by `source_kind`: existing static pipeline unchanged; wrap pipeline fetches upstream, streams response, uses `HTMLRewriter` to inject manifest + SDK tags. Cookie domain + CSP rewriting performed at the proxy edge.
 
@@ -231,7 +231,7 @@ describe('createWrappedApp', () => {
     const r = await createWrappedApp({
       slug: testSlug,
       makerId: '00000000-0000-0000-0000-000000000001',
-      upstreamUrl: 'https://mevrouw.vercel.app',
+      upstreamUrl: 'https://mevrouw.example.com',
       name: 'Mevrouw',
       type: 'app',
       category: 'tools',
@@ -247,7 +247,7 @@ describe('createWrappedApp', () => {
     const db = await getDb();
     const [row] = await db.select().from(schema.apps).where(eq(schema.apps.slug, testSlug));
     expect(row?.sourceKind).toBe('wrapped_url');
-    expect(row?.upstreamUrl).toBe('https://mevrouw.vercel.app');
+    expect(row?.upstreamUrl).toBe('https://mevrouw.example.com');
   });
 });
 ```
@@ -441,7 +441,7 @@ describe('POST /api/deploy/wrap', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           slug: 'mevrouw',
-          upstream_url: 'https://mevrouw.vercel.app',
+          upstream_url: 'https://mevrouw.example.com',
           name: 'Mevrouw',
           type: 'app',
           category: 'tools',
@@ -1225,7 +1225,7 @@ describe('shippie wrap', () => {
   test('success path prints slug, live URL, redirect URI', async () => {
     const out: string[] = [];
     await wrapCommand({
-      upstreamUrl: 'https://mevrouw.vercel.app',
+      upstreamUrl: 'https://mevrouw.example.com',
       slug: 'mevrouw',
       name: 'Mevrouw',
       type: 'app',
@@ -1438,7 +1438,7 @@ export function WrapForm() {
 
   return (
     <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-      <Field label="Upstream URL" name="upstream_url" placeholder="https://mevrouw.vercel.app" required />
+      <Field label="Upstream URL" name="upstream_url" placeholder="https://mevrouw.example.com" required />
       <Field label="Slug" name="slug" placeholder="mevrouw" required />
       <Field label="Name" name="name" placeholder="Mevrouw" required />
       <Field label="Tagline (optional)" name="tagline" />
@@ -1510,7 +1510,7 @@ import { WrapForm } from './wrap-form';
     Or wrap an already-hosted app
   </h2>
   <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', maxWidth: 560 }}>
-    Keep your app on Vercel / Netlify / your own server. We add the marketplace, PWA install, and ratings.
+    Keep your app on its current host. We add the marketplace, PWA install, and ratings.
   </p>
   <WrapForm />
 </section>
@@ -1546,14 +1546,14 @@ In `apps/web/app/docs/page.tsx`, inside the `Quick start` `<Section>` add a new 
 ```tsx
 <Subsection title="Wrap an already-hosted app">
   <p>
-    Your app already lives on Vercel / Netlify / your own server? Don&apos;t move it.
+    Your app already lives somewhere? Don&apos;t move it.
     Point Shippie at the URL and we&apos;ll generate a marketplace entry + PWA shell
     + install funnel, served via edge reverse-proxy at{' '}
     <code>{'{slug}'}.shippie.app</code>.
   </p>
   <Code
     lines={[
-      'shippie wrap https://mevrouw.vercel.app --slug mevrouw',
+      'shippie wrap https://mevrouw.example.com --slug mevrouw',
       '',
       '# → live at https://mevrouw.shippie.app/',
       '# → add this redirect URI to your auth provider:',
@@ -1714,4 +1714,4 @@ git log --oneline --since="1 day" | head
 - **Cost modeling.** Per-request `fetch` to upstream + HTMLRewriter CPU. Monitor once real wraps are live.
 - **Custom CSP header overrides per maker.** Today the choice is lenient (Shippie CSP) or strict (upstream CSP). A maker-supplied CSP string is a future nice-to-have.
 - **Caching of upstream responses.** We re-fetch every time. Cache-API layer can be added behind a wrap config flag.
-- **JS-generated cross-origin URLs.** Anything the upstream's JS dynamically builds (`fetch('https://mevrouw.vercel.app/api/...')`) still escapes the proxy. Document in the wrap guide.
+- **JS-generated cross-origin URLs.** Anything the upstream's JS dynamically builds (`fetch('https://mevrouw.example.com/api/...')`) still escapes the proxy. Document in the wrap guide.

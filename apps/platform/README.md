@@ -1,6 +1,6 @@
 # @shippie/platform
 
-SvelteKit on Cloudflare Workers — the v2 platform app. Replaces `apps/web` (Next.js on Vercel) at cutover (Phase 8).
+SvelteKit on Cloudflare Workers — the production platform app.
 
 ## Status
 
@@ -32,7 +32,7 @@ bunx wrangler d1 migrations apply shippie-platform-d1 --remote
 
 # Deploy
 bunx wrangler deploy
-# → outputs the workers.dev hostname; add `next.shippie.app` CNAME to it in CF DNS
+# → outputs the workers.dev hostname; route shippie.app through Cloudflare DNS
 ```
 
 ## Local dev

@@ -132,4 +132,30 @@ describe('hooks.server first-party showcase routing', () => {
     expect(await res.text()).toBe('<h1>Recipe SPA</h1>');
     expect(resolve).not.toHaveBeenCalled();
   });
+
+  // Slate v4 Phase 0 alias coverage. Each consolidation pair has an
+  // entry in SLUG_ALIASES (live-room→matchday, care-log→co-pilot,
+  // journal→therapy-notes, move→lift). A request to the OLD slug's
+  // subdomain must 302 to the CANONICAL `/run/<successor>/` so old
+  // shortcuts visibly migrate. The bare `/run/<old>/` 302 lives in
+  // routes/run/[slug]/+page.server.ts (covered by its own test); this
+  // covers the subdomain-edge path.
+  for (const [oldSlug, canonical] of [
+    ['live-room', 'matchday'],
+    ['care-log', 'co-pilot'],
+    ['journal', 'therapy-notes'],
+    ['move', 'lift'],
+  ] as const) {
+    test(`subdomain ${oldSlug}.shippie.app/ 302s to /run/${canonical}/`, async () => {
+      const resolve = vi.fn(async () => new Response('fallthrough'));
+      const res = await handle({
+        event: eventFor(`https://${oldSlug}.shippie.app/`) as never,
+        resolve,
+      });
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe(`https://shippie.app/run/${canonical}/`);
+      expect(resolve).not.toHaveBeenCalled();
+    });
+  }
 });

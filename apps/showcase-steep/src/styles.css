@@ -636,14 +636,22 @@ button.intent-chip:hover:not(:disabled) {
 }
 
 .recipe-card {
+  /* `height: auto` overrides the global `button { height: 38px }` rule
+     because the home + library pages render cards as <button> elements
+     for tap targets. Without it, every card collapses to 38px and the
+     description text bleeds onto the next card. */
   display: block;
   width: 100%;
+  height: auto;
   background: #fff;
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 0;
   cursor: pointer;
   text-align: left;
+  font-family: inherit;
+  font-weight: 400;
+  color: var(--fg);
 }
 
 /* ── Parts list (blend ingredients) ─────────────────────────── */

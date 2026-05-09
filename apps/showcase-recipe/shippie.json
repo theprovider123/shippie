@@ -10,8 +10,14 @@
   "orientation": "portrait",
   "ai": [],
   "intents": {
-    "provides": ["cooked-meal", "cooking-now", "shopping-list"],
-    "consumes": ["pantry-inventory"]
+    "provides": [
+      "cooked-meal",
+      "cooking-now",
+      "shopping-list"
+    ],
+    "consumes": [
+      "pantry-inventory"
+    ]
   },
   "enhance": {
     "rules": {
@@ -28,7 +34,10 @@
       }
     }
   },
-  "permissions": ["camera", "wake-lock"],
+  "permissions": [
+    "camera",
+    "wake-lock"
+  ],
   "data_schemas": {
     "recipes": {
       "id": "text primary key",
@@ -46,5 +55,9 @@
       "barcode": "text",
       "brand": "text"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "food-drink"
   }
 }

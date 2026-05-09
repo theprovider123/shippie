@@ -5,7 +5,7 @@
  * routes to one or more idempotent handlers. Errors are logged but don't
  * abort the dispatch — the runtime will fire the next cron on schedule.
  *
- * Schedules port 1:1 from vercel.json (see Phase 7 of the refactor plan):
+ * Cloudflare scheduled triggers:
  *
  *   *\/5 * * * *   reconcile-kv
  *   0 * * * *     reap-trials + rollups (both fire on the hour)

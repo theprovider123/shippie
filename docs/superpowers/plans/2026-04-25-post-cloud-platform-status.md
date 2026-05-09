@@ -68,9 +68,9 @@
 ## Manual setup the user owes for prod
 
 1. **Cloudflare** — KV namespace + R2 buckets created earlier session (`caa6a30a2af640a68305fefd4348a6e1`, `shippie-apps`, `shippie-public`). Outstanding: `shippie-public` bucket (paused mid-flight), `wrangler secret put WORKER_PLATFORM_SECRET`, `wrangler deploy`, DNS records for `*.shippie.app` and `proximity.shippie.app` and `ai.shippie.app`.
-2. **Google Cloud Console** — single OAuth client at `https://shippie.app/oauth/google-drive`. Drive API enabled. Scope `drive.file`. Client ID + secret into Vercel env.
-3. **Vercel env** — `OAUTH_COORDINATOR_SECRET` (`openssl rand -hex 32`), `GOOGLE_DRIVE_CLIENT_ID/SECRET`, plus the full env set from earlier session (CF_*, AUTH_*, etc.).
-4. **`apps/shippie-ai/` deployment** — separate static deploy (Vercel project or Cloudflare Pages). Cannot use the maker zip pipeline; this is platform infrastructure not a maker app.
+2. **Google Cloud Console** — single OAuth client at `https://shippie.app/oauth/google-drive`. Drive API enabled. Scope `drive.file`. Client ID + secret into Cloudflare env.
+3. **Cloudflare env** — `OAUTH_COORDINATOR_SECRET` (`openssl rand -hex 32`), `GOOGLE_DRIVE_CLIENT_ID/SECRET`, plus the full env set from earlier session (CF_*, AUTH_*, etc.).
+4. **`apps/shippie-ai/` deployment** — separate static deploy (Cloudflare project or Cloudflare Pages). Cannot use the maker zip pipeline; this is platform infrastructure not a maker app.
 
 ## Known caveats (raised by agents)
 

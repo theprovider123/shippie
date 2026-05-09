@@ -9,8 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["cycle-logged", "cycle-window-predicted"],
-    "consumes": ["body-metrics-logged", "mood-logged"]
+    "provides": [
+      "cycle-logged",
+      "cycle-window-predicted"
+    ],
+    "consumes": [
+      "body-metrics-logged",
+      "mood-logged"
+    ]
   },
   "data_schemas": {
     "cycles": {
@@ -36,5 +42,9 @@
       "partner_pair_code": "text",
       "partner_seen_fields_json": "text"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
   }
 }

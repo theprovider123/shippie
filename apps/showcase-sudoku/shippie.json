@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Sudoku",
+  "slug": "sudoku",
+  "description": "Algorithmic Sudoku. Infinite content. Satisfying haptics. No ads. No nags. Ever.",
+  "icon": "/icon.png",
+  "theme_color": "#3F8AA8",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["game.completed"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games"
+  }
+}

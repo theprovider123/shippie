@@ -579,6 +579,17 @@ button.small {
 .entry-row-note { font-size: 14px; }
 .entry-row-trigger { margin-top: 2px; }
 
+/* Privacy note — VOICE.md required copy. Sits above the bottom nav,
+   subtle, never repeats per-page. */
+.privacy-note {
+  margin: 16px 0 calc(80px + env(safe-area-inset-bottom));
+  padding: 0 20px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 /* ── Bottom nav ────────────────────────────────────────────── */
 .app-nav {
   position: fixed;

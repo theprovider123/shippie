@@ -15,7 +15,7 @@ Approved umbrella plan lives at `/Users/devante/.claude/plans/review-all-of-this
 - Hub (venue device): Bun + Docker (`services/hub/`)
 - Showcases: Vite + React (`apps/showcase-{recipe,journal,whiteboard,live-room}/`)
 
-**No Vercel, no Next.js, no Neon.** All retired in commit `56179bf` (2026-04-26). Vercel/Next.js/Auth.js skill suggestions from the plugin auto-suggester are spurious — ignore them. The `project_cloudflare_only` auto-memory entry covers this.
+Current infrastructure is Cloudflare-first. Keep platform work on Workers, D1, R2, KV, Durable Objects, scheduled triggers, and Cloudflare Email unless the user explicitly opens a new architecture discussion. The `project_cloudflare_only` auto-memory entry covers this.
 
 ## Health — `bun run health`
 

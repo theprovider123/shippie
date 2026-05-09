@@ -5,6 +5,7 @@
   import InstallNudge from '$lib/components/marketplace/InstallNudge.svelte';
   import LauncherCard from '$lib/components/marketplace/LauncherCard.svelte';
   import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
+  import Randomiser from '$lib/components/randomiser/Randomiser.svelte';
   import { ensureAppOffline, refreshCachedSlugs } from '$lib/stores/cached-slugs';
   import {
     hydrateLauncherMemory,
@@ -179,6 +180,12 @@
         <p class="hero-hint">↓ Tap one below.</p>
       </div>
     </section>
+  {/if}
+
+  {#if !filtered && !isFirstVisit}
+    <div class="wrap-wide">
+      <Randomiser />
+    </div>
   {/if}
 
   <section class="results wrap-wide">

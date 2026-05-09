@@ -8,9 +8,27 @@
   "background_color": "#14120F",
   "display": "standalone",
   "orientation": "portrait",
+  "permissions": [
+    "wake-lock"
+  ],
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      }
+    }
+  },
   "intents": {
-    "provides": ["mindful-session", "focus-session", "mood-logged"],
-    "consumes": ["caffeine-logged", "workout-completed", "sleep-logged"]
+    "provides": [
+      "mindful-session",
+      "focus-session",
+      "mood-logged"
+    ],
+    "consumes": [
+      "caffeine-logged",
+      "workout-completed",
+      "sleep-logged"
+    ]
   },
   "data_schemas": {
     "sessions": {
@@ -21,5 +39,9 @@
       "note": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness"
   }
 }

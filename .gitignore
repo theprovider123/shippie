@@ -11,11 +11,9 @@ node_modules
 # Build outputs
 dist
 build
-.next
 .turbo
 out
 .output
-.vercel
 .wrangler
 
 # Showcase apps copied into the platform's static dir at build time —
@@ -72,16 +70,12 @@ Thumbs.db
 # Drizzle
 drizzle/meta
 
-# Vercel
-.vercel
-
 # Cloudflare
 .dev.vars
 wrangler.toml.local
 
 # Misc
 *.tsbuildinfo
-next-env.d.ts
 
 # Dev state
 .pglite-dev/

@@ -8,8 +8,21 @@
   "background_color": "#14120F",
   "display": "standalone",
   "orientation": "portrait",
+  "permissions": [
+    "wake-lock"
+  ],
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      }
+    }
+  },
   "intents": {
-    "provides": ["dough-ferment-started", "dough-ready"]
+    "provides": [
+      "dough-ferment-started",
+      "dough-ready"
+    ]
   },
   "data_schemas": {
     "bakes": {
@@ -23,5 +36,9 @@
       "crumb_rating": "integer",
       "notes": "text"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "food-drink"
   }
 }

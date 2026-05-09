@@ -7,6 +7,8 @@
  * Firefox). Callers never need to branch on support themselves.
  */
 
+import { reportAppNavigation } from './lifecycle.ts';
+
 interface ViewTransitionLike {
   finished: Promise<void>;
 }
@@ -134,6 +136,7 @@ export function createLocalNavigation<T>(
   }
 
   function postState() {
+    reportAppNavigation({ canGoBack: canGoBack(), navDepth: index });
     try {
       if (typeof window === 'undefined' || window.parent === window) return;
       window.parent.postMessage(

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createObservationClient } from '@shippie/observations';
 import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { TodayPage } from './pages/Today.tsx';
 import { MemoPage } from './pages/Memo.tsx';
@@ -23,6 +24,7 @@ import {
 import { deriveTitle, transcribe, type TranscriptionProgress } from './lib/transcribe.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_voice_memo' });
+const observations = createObservationClient(shippie);
 
 const MODEL_FLAG_KEY = 'shippie.voice-memo.model-warm.v1';
 
@@ -152,6 +154,12 @@ export function App() {
           recorded_at: recordedAt,
         },
       ]);
+      // Observation bus — duration only, never transcript bytes.
+      observations.emit({
+        kind: 'voice.recorded',
+        duration_seconds: placeholder.duration_s,
+        at: recordedAt,
+      });
     } catch (err) {
       console.warn('[voice-memo] transcribe failed', err);
       setMemos((prev) =>

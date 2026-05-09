@@ -3,10 +3,8 @@ compatibility_date = "2026-04-01"
 compatibility_flags = ["nodejs_compat"]
 main = ".svelte-kit/cloudflare/_worker.js"
 
-# Routes — apex + wildcard claim production hostnames.
-# Cutover happened earlier than the plan called for: Vercel CNAME removed,
-# new Worker now serves the marketplace. Maker subdomains return a Phase-5
-# placeholder until the R2-backed serving lands.
+# Routes — apex + wildcard claim production hostnames. The Worker serves
+# the marketplace and maker subdomains directly.
 routes = [
   { pattern = "shippie.app/*", zone_name = "shippie.app" },
   { pattern = "*.shippie.app/*", zone_name = "shippie.app" }
@@ -35,16 +33,25 @@ bucket_name = "shippie-assets"
 directory = ".svelte-kit/cloudflare"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-# `/run/<slug>` is a product route. Send it through the Worker first so
-# future static assets cannot accidentally steal the clean launch URL.
-run_worker_first = ["/run/*"]
+# Product shell routes must run through SvelteKit first so their
+# cache-control stays no-store. The immutable chunks and showcase runtime
+# assets still go straight through Workers Assets for speed.
+run_worker_first = ["/", "/apps", "/apps/*", "/container", "/run/*"]
 
 # KV — fill in `id` after `wrangler kv namespace create shippie-platform-cache`.
 [[kv_namespaces]]
 binding = "CACHE"
 id = "48e2f658cb534627a873decda3bb2f20"
 
-# Phase 6: scheduled triggers — ports vercel.json crons 1:1.
+# Cloudflare Email Service — used by the magic-link sign-in flow.
+# Requires shippie.app to be onboarded in Cloudflare Email Sending with
+# login@shippie.app as a valid sender before production deploy.
+[[send_email]]
+name = "EMAIL"
+remote = true
+allowed_sender_addresses = ["login@shippie.app"]
+
+# Phase 6: scheduled triggers.
 #   */5 * * * *   reconcile-kv
 #   0 * * * *     reap-trials + rollups (both fire on the hour)
 #   0 4 * * *     retention (daily 4am UTC)
@@ -79,6 +86,7 @@ class_name = "SignalRoom"
 [vars]
 SHIPPIE_ENV = "production"
 PUBLIC_ORIGIN = "https://shippie.app"
+AUTH_EMAIL_FROM = "Shippie <login@shippie.app>"
 
 # Cloudflare populates env.CF_VERSION_METADATA.id with the deployment
 # version ID. The marketplace SW reads it to stamp the cache name so

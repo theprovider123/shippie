@@ -29,7 +29,7 @@ D1 hard limits (paid plan, current as of 2026):
 - 100k row limit per query result
 - 1 KB per row default (configurable up to 4 KB)
 
-Current Neon row counts (estimates from staging — production will be similar order of magnitude):
+Current D1 row counts (estimates from staging — production will be similar order of magnitude):
 
 | Table | Rough size | D1 fit |
 |---|---|---|
@@ -57,7 +57,7 @@ These commands must be run by the user in their terminal — they create billabl
 bunx wrangler d1 create shippie-platform-d1
 # Capture the database_id from output and paste into apps/platform/wrangler.toml
 
-# R2 buckets (don't reuse the existing shippie-apps until cutover — keeps the prod-Vercel pipeline working alongside canary)
+# R2 buckets (don't reuse the existing shippie-apps until cutover — keeps the prod-Cloudflare pipeline working alongside canary)
 bunx wrangler r2 bucket create shippie-apps-prod
 bunx wrangler r2 bucket create shippie-assets
 
@@ -98,17 +98,17 @@ In your Cloudflare dashboard for `shippie.app`:
 
 Verify: `dig next.shippie.app` should resolve, and `curl -I https://next.shippie.app` should return 200 (or whatever the empty shell serves).
 
-### D. Resend account for magic-link emails (already exists from prior session — reuse)
+### D. Cloudflare Email account for magic-link emails (already exists from prior session — reuse)
 
-Confirm `RESEND_API_KEY` is in your password manager. Same key used for the canary app's magic-link emails. Don't need a separate key.
+Confirm `AUTH_EMAIL_FROM` is in your password manager. Same key used for the canary app's magic-link emails. Don't need a separate key.
 
-In Resend dashboard:
+In Cloudflare Email dashboard:
 1. Add `next.shippie.app` as an authorized sending domain (DNS records will be provided).
-2. Or, for the canary phase, use `onboarding@resend.dev` as the From address — fine for a test environment.
+2. Or, for the canary phase, use `onboarding@cloudflare-email.dev` as the From address — fine for a test environment.
 
-### E. Vercel cron preserved during transition
+### E. Cloudflare scheduled trigger preserved during transition
 
-**Don't disable Vercel crons until Phase 7.** The crons keep firing on the Vercel platform throughout the canary phase. After Phase 7 completes (when `scheduled` handlers are running on Cloudflare), the Vercel crons get disabled in `vercel.json` (set the `crons` array to `[]`).
+**Don't disable Cloudflare scheduled triggers until Phase 7.** The crons keep firing on the Cloudflare platform throughout the canary phase. After Phase 7 completes (when `scheduled` handlers are running on Cloudflare), the Cloudflare scheduled triggers get disabled in `wrangler.toml` (set the `crons` array to `[]`).
 
 ---
 
@@ -135,7 +135,7 @@ These are NOT being done in Phase 0 per the main plan — flagging so they're no
 - **No data migration yet.** Phase 2 does the dual-write + mirror.
 - **No auth migration yet.** Phase 3 ports NextAuth → Lucia.
 - **No route ports yet.** Phase 4+ does this in priority order.
-- **Existing `apps/web/` keeps running on Vercel.** Don't decommission anything.
+- **Existing `apps/web/` keeps running on Cloudflare.** Don't decommission anything.
 - **`packages/cf-storage/` not deleted yet.** Phase 6 retires it after the platform Worker uses native bindings exclusively.
 
-Cutover is week 8. Until then, Vercel is prod, Cloudflare is canary, both operate in parallel.
+Cutover is week 8. Until then, Cloudflare is prod, Cloudflare is canary, both operate in parallel.

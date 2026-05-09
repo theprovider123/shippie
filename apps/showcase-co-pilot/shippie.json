@@ -9,7 +9,11 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["custody-event", "meds-logged", "handover-note"],
+    "provides": [
+      "custody-event",
+      "meds-logged",
+      "handover-note"
+    ],
     "consumes": []
   },
   "data_schemas": {
@@ -19,5 +23,9 @@
       "note": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
   }
 }

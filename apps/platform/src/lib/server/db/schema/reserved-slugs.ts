@@ -57,6 +57,5 @@ export const RESERVED_SLUGS_SEED: ReadonlyArray<{ slug: string; reason: string }
   { slug: 'anthropic', reason: 'brand' },
   { slug: 'stripe', reason: 'brand' },
   { slug: 'github', reason: 'brand' },
-  { slug: 'vercel', reason: 'brand' },
   { slug: 'cloudflare', reason: 'brand' },
 ];

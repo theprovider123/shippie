@@ -10,20 +10,20 @@
 
 ## 1. Goal
 
-Let a maker whose app is already hosted elsewhere (Vercel, Netlify, Render, Fly, their own VPS) list it on Shippie as a first-class marketplace app — with a PWA shell, install funnel, ratings, and a `*.shippie.app` runtime URL — **without Shippie having to host or build their code**. The Shippie Worker acts as a reverse proxy in front of the upstream origin, injecting the PWA manifest + SDK and capturing marketplace events.
+Let a maker whose app is already hosted elsewhere list it on Shippie as a first-class marketplace app — with a PWA shell, install funnel, ratings, and a `*.shippie.app` runtime URL — **without Shippie having to host or build their code**. The Shippie Worker acts as a reverse proxy in front of the upstream origin, injecting the PWA manifest + SDK and capturing marketplace events.
 
 **Non-goal:** running SSR Node code on Shippie. We never execute the maker's server — the maker keeps doing that where they already do it.
 
 ## 2. The proxy-vs-redirect decision
 
-The Worker at `mevrouw.shippie.app` **proxies** requests to the upstream (fetches from Vercel, streams back). We explicitly rejected 302-redirect as the MVP because:
+The Worker at `mevrouw.shippie.app` **proxies** requests to the upstream (fetches from Cloudflare, streams back). We explicitly rejected 302-redirect as the MVP because:
 
 - With redirect, the installed PWA's `start_url` is `shippie.app` which then bounces the browser away — jarring UX on iOS, breaks Android's tab-reuse heuristics.
 - With redirect, the SDK can't inject (different origin). No ratings, no install attribution, no analytics — we'd lose the marketplace value prop for wrapped apps.
 - With redirect, the maker's app has two publicly-visible URLs (Shippie + upstream), confusing users.
 - Cloudflare Workers do this exact pattern natively and cheaply (HTMLRewriter, streaming fetch).
 
-Proxy keeps the shippie.app origin as the real origin from the browser's perspective. All cookies, URLs, auth flows stay consistent. The maker's backend is still "on Vercel" — Shippie is the edge + marketplace + PWA shell.
+Proxy keeps the shippie.app origin as the real origin from the browser's perspective. All cookies, URLs, auth flows stay consistent. The maker's backend is still "on Cloudflare" — Shippie is the edge + marketplace + PWA shell.
 
 ## 3. Proxy behaviour — what the Worker does
 
@@ -72,7 +72,7 @@ alter table apps add column upstream_config jsonb not null default '{}'::jsonb;
 ```json
 {
   "slug": "mevrouw",
-  "upstream_url": "https://mevrouw.vercel.app",
+  "upstream_url": "https://mevrouw.example.com",
   "name": "mevrouw",
   "tagline": "A private PWA for two.",
   "type": "app",
@@ -141,7 +141,7 @@ All events land in `/api/ingest` via the same trace-id-tagged pipeline. The inge
 
 ## 8. Auth provider redirect URIs — the maker's one responsibility
 
-Supabase, Auth0, Clerk, and friends all require the maker to allowlist each public origin. When a maker wraps an app, the redirect URI for their auth provider changes from `https://mevrouw.vercel.app/api/auth/callback` to `https://mevrouw.shippie.app/api/auth/callback`.
+Supabase, Auth0, Clerk, and friends all require the maker to allowlist each public origin. When a maker wraps an app, the redirect URI for their auth provider changes from `https://mevrouw.example.com/api/auth/callback` to `https://mevrouw.shippie.app/api/auth/callback`.
 
 **MVP handling:** the wrap response includes a `runtime_config.required_redirect_uris` array and the dashboard shows a copy-pasteable snippet. Auto-configuration via the provider's Management API is out of scope for Phase A — documented as a post-MVP follow-up.
 
@@ -197,14 +197,14 @@ No private-visibility logic. All wrapped apps in Phase A are `visibility_scope =
 
 ## 14. Risks
 
-1. **Upstream change detection.** If the maker's Vercel deploy changes, Shippie has no build hook to invalidate cached metadata. Accepted: we don't cache upstream responses in Phase A; every request is a fresh `fetch`. Optional Cache API layer is Phase D.
+1. **Upstream change detection.** If the maker's Cloudflare deploy changes, Shippie has no build hook to invalidate cached metadata. Accepted: we don't cache upstream responses in Phase A; every request is a fresh `fetch`. Optional Cache API layer is Phase D.
 2. **Auth cookie edge cases.** Third-party cookie restrictions on Safari could bite for certain flows. Mitigation: proxy makes the cookie same-origin to the request host, so third-party rules don't apply. Needs e2e testing against mevrouw-style Supabase flows.
 3. **SW double-registration race.** If the maker's SW aggressively claims control over `/__shippie/*`, our SW can't register. Mitigation: the SDK logs a loud error + falls back to non-SW install funnel. Documented in the wrap docs.
 4. **Abuse.** Someone wraps `https://competitor.example.com` and publishes a ratings page for it. Mitigation: slug uniqueness (only one `competitor` slug), reserved-slugs list, and DMCA-style takedown via `is_archived`. Trust & safety tooling is Phase C.
 
 ## 15. Success criteria
 
-- A maker can wrap an arbitrary hosted PWA (mevrouw, a portfolio site, a Vercel app) and get a working `*.shippie.app` URL within 60s, with zero changes to the upstream app code.
+- A maker can wrap an arbitrary hosted PWA (mevrouw, a portfolio site, a Cloudflare app) and get a working `*.shippie.app` URL within 60s, with zero changes to the upstream app code.
 - Rating + install events fire from the wrapped app and appear in the maker dashboard.
 - A mobile user can install the wrapped app from `*.shippie.app` and use it offline (if the upstream supports offline).
 - The page load time budget from edge to first byte is ≤ 300 ms on top of the upstream's own TTFB.

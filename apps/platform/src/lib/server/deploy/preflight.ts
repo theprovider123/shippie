@@ -51,11 +51,9 @@ const ROOT_SW_EXACT = new Set([
 ]);
 
 const SERVER_DIR_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
-  { pattern: /(^|\/)\.vercel\/output\//, label: '.vercel/output/' },
   { pattern: /(^|\/)pages\/api\//, label: 'pages/api/' },
   { pattern: /(^|\/)app\/api\//, label: 'app/api/' },
   { pattern: /(^|\/)server\//, label: 'server/' },
-  { pattern: /(^|\/)netlify\/functions\//, label: 'netlify/functions/' },
   { pattern: /(^|\/)functions\//, label: 'functions/' },
   { pattern: /(^|\/)\.output\/server\//, label: '.output/server/' },
 ];

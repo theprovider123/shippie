@@ -5,8 +5,8 @@
  * instead of node:crypto so it runs in the Cloudflare Worker runtime.
  *
  * RS256 signing: imports the PEM private key as a CryptoKey and signs the
- * JWT header.payload with RSA-SHA256. The base64-encoded private key
- * arrives in the env var the same way it does on the legacy Vercel side.
+ * JWT header.payload with RSA-SHA256. The base64-encoded private key is
+ * decoded here so secrets can be stored safely in Cloudflare.
  *
  * Tokens are NOT cached cross-request in this implementation — the Worker
  * isolate may live longer than a single request, but D1/KV calls are cheap.

@@ -17,9 +17,12 @@ import {
   attachPressFeedback,
   attachPullToRefresh,
 } from './gestures.ts';
+import { installAppLifecycleReporter } from './lifecycle.ts';
 import type { EnhanceConfig } from './observe/types.ts';
 
 interface ShippieMeta {
+  slug?: string;
+  appSlug?: string;
   enhance?: EnhanceConfig | false;
   intelligence?: {
     spatial?: boolean;
@@ -53,6 +56,10 @@ export function bootstrapObserve(metaOverride?: ShippieMeta): void {
     // Patina is cosmetic + cosmetic-only; failures are swallowed inside
     // installPatina, so fire-and-forget without awaiting.
     void installPatina();
+    installAppLifecycleReporter({
+      appId: meta.slug ?? meta.appSlug,
+      source: 'observe',
+    });
     installPageViewEmitter();
     // Fire the initial-load page view after the emitter is wired so any
     // wrapper-internal listeners (e.g. @shippie/intelligence) installed

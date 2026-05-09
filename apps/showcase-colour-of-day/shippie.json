@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Colour of the Day",
+  "slug": "colour-of-day",
+  "description": "One tap on a colour wheel for today. Mood as art. Builds a ribbon of colours over time.",
+  "icon": "/icon.png",
+  "theme_color": "#7FB269",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["mood.color_picked"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
+  }
+}

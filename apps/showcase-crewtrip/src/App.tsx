@@ -66,20 +66,24 @@ import {
   initialRole,
   initialState,
   isSurpriseUnlocked,
-  legacyVoteIds,
   markLocalUpdate,
   nextTripDayLabel,
-  normalizeCrewtripState,
+  normalizeEventCode,
   normalizePlaylistUrl,
+  pollSelectionForPlayer,
   parseRecoveryPack,
   readLocalHostClaim,
+  readHostedLocalBackups,
   readLocalPlayerId,
   readJoinedEventCode,
   readLocalBackups,
   recoveryPackFileName,
+  resolveInitialCrewtripState,
+  setPollVote,
   stringifyRecoveryPack,
   syncLabel,
   syncLabelShort,
+  clearPollVote,
   totalScore,
   unlockLabel,
   tripDayDateInputValue,
@@ -134,17 +138,9 @@ function usePersistentState() {
     try {
       const joinedEventCode = readJoinedEventCode();
       const raw = localStorage.getItem(STORAGE_KEY);
-      // No persisted state and no join code → empty trip (no seeded demo
-      // players/polls/memories). Hosts get the EntryScreen; eventees with
-      // a join code get a synced room they can populate together.
-      const parsed = raw
-        ? normalizeCrewtripState({ ...initialState, ...JSON.parse(raw) })
-        : createFreshCrewtripState();
-      return joinedEventCode && parsed.eventCode !== joinedEventCode
-        ? createFreshCrewtripState({ eventCode: joinedEventCode, language: parsed.language, theme: parsed.theme })
-        : parsed;
+      return resolveInitialCrewtripState(raw, joinedEventCode);
     } catch {
-      return createFreshCrewtripState();
+      return resolveInitialCrewtripState(null, readJoinedEventCode());
     }
   });
 
@@ -393,14 +389,16 @@ export function App() {
   const [tab, setTab] = useState<Tab>('now');
   const [tabStack, setTabStack] = useState<Tab[]>([]);
   const tabRef = useRef<Tab>('now');
-  const localNavigation = useMemo(
-    () =>
-      createLocalNavigation<Tab>('now', (next) => {
+  const localNavigationRef = useRef<ReturnType<typeof createLocalNavigation<Tab>> | null>(null);
+  const getLocalNavigation = () => {
+    if (!localNavigationRef.current) {
+      localNavigationRef.current = createLocalNavigation<Tab>('now', (next) => {
         tabRef.current = next;
         setTab(next);
-      }),
-    [],
-  );
+      });
+    }
+    return localNavigationRef.current;
+  };
   const touchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
   const [draftMemory, setDraftMemory] = useState('');
   const [draftRequest, setDraftRequest] = useState('');
@@ -420,7 +418,6 @@ export function App() {
   const [draftSoundtrack, setDraftSoundtrack] = useState({ time: '21:00', title: '', dj: '', link: '', note: '' });
   const [draftGameEntry, setDraftGameEntry] = useState('');
   const [memoryFilter, setMemoryFilter] = useState<MemoryFilter>('all');
-  const [selectedPoll, setSelectedPoll] = useState<Record<string, string>>({});
   const [leaderboardMode, setLeaderboardMode] = useState<'people' | 'teams'>('people');
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
   const [gameComposerMode, setGameComposerMode] = useState<'challenge' | 'structured'>('challenge');
@@ -460,8 +457,9 @@ export function App() {
   const shellStyle = useMemo(() => ({ ...themeVars, ...dock.style }), [dock.style, themeVars]);
   const copy = getCopy(language);
   const localBackups = useMemo(() => readLocalBackups()
-    .filter((backup) => backup.eventCode === state.eventCode)
+    .filter((backup) => normalizeEventCode(backup.eventCode) === normalizeEventCode(state.eventCode))
     .sort((a, b) => b.at - a.at), [backupRevision, minuteTick, state.eventCode, state.updatedAt]);
+  const hostedBackups = useMemo(() => readHostedLocalBackups(), [backupRevision, minuteTick, state.eventCode, state.updatedAt]);
   const activeDayId = days.some((day) => day.id === selectedDayId) ? selectedDayId : days[0]!.id;
   const activeDay = days.find((day) => day.id === activeDayId) ?? days[0]!;
   const draftStopDay = days.find((day) => day.id === draftStop.dayId) ?? activeDay;
@@ -584,9 +582,9 @@ export function App() {
       setTabStack((stack) => [...stack, current].slice(-10));
     }
     if (options.replace) {
-      void localNavigation.replace(resolved, { kind: 'crossfade' });
+      void getLocalNavigation().replace(resolved, { kind: 'crossfade' });
     } else {
-      void localNavigation.navigate(resolved, { kind: 'crossfade' });
+      void getLocalNavigation().navigate(resolved, { kind: 'crossfade' });
     }
   };
   const goBack = () => {
@@ -613,11 +611,11 @@ export function App() {
     }
     const fallback = fallbackBackTab(tab, role, features);
     setTabStack([]);
-    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+    void getLocalNavigation().backOrReplace(fallback, { kind: 'crossfade' });
   };
   const resetToNow = () => {
     setTabStack([]);
-    void localNavigation.replace('now', { kind: 'crossfade' });
+    void getLocalNavigation().replace('now', { kind: 'crossfade' });
   };
   const hasQuickActions = role === 'host' || features.memories || features.requests || features.crew || features.chat;
 
@@ -629,8 +627,13 @@ export function App() {
     goToTab('more');
   }
 
-  // Sync browser theme-color with the active palette.
-  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+  useEffect(() => {
+    const controller = getLocalNavigation();
+    return () => {
+      controller.destroy();
+      if (localNavigationRef.current === controller) localNavigationRef.current = null;
+    };
+  }, []);
 
   // Sync browser theme-color with the active palette.
   useEffect(() => {
@@ -803,55 +806,19 @@ export function App() {
   function vote(pollId: string, optionId: string) {
     update((current) => ({
       ...current,
-      polls: current.polls.map((poll) =>
-        poll.id === pollId
-          ? {
-              ...poll,
-              options: poll.options.map((option) =>
-                option.id === optionId
-                  ? {
-                      ...option,
-                      votes: option.votes + 1,
-                      voterIds: Array.from(new Set([...(option.voterIds ?? legacyVoteIds(option)), activePlayer.id])),
-                    }
-                  : option,
-              ),
-            }
-          : poll,
-      ),
-      broadcasts: [{ id: newId('b'), text: `${activePlayer.name} voted.`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
+      polls: current.polls.map((poll) => (poll.id === pollId ? setPollVote(poll, optionId, activePlayer.id) : poll)),
+      broadcasts: current.polls.find((poll) => poll.id === pollId && pollSelectionForPlayer(poll, activePlayer.id) !== optionId)
+        ? [{ id: newId('b'), text: `${activePlayer.name} voted.`, at: timeNow() }, ...current.broadcasts].slice(0, 18)
+        : current.broadcasts,
     }));
-    setSelectedPoll((current) => ({ ...current, [pollId]: optionId }));
     sdk.feel.texture('confirm');
   }
 
   function changeVote(pollId: string) {
-    const previous = selectedPoll[pollId];
-    if (!previous) return;
     update((current) => ({
       ...current,
-      polls: current.polls.map((poll) =>
-        poll.id === pollId
-          ? {
-              ...poll,
-              options: poll.options.map((option) =>
-                option.id === previous
-                  ? {
-                      ...option,
-                      votes: Math.max(0, option.votes - 1),
-                      voterIds: (option.voterIds ?? legacyVoteIds(option)).filter((id) => id !== activePlayer.id),
-                    }
-                  : option,
-              ),
-            }
-          : poll,
-      ),
+      polls: current.polls.map((poll) => (poll.id === pollId ? clearPollVote(poll, activePlayer.id) : poll)),
     }));
-    setSelectedPoll((current) => {
-      const next = { ...current };
-      delete next[pollId];
-      return next;
-    });
   }
 
   function addCrewMember() {
@@ -1706,14 +1673,23 @@ export function App() {
 
   if (!role) {
     const hasHostClaim = readLocalHostClaim(state.eventCode);
+    const hostResumeBackup = hostedBackups.find((backup) => normalizeEventCode(backup.eventCode) !== normalizeEventCode(state.eventCode)) ?? hostedBackups[0] ?? null;
     return (
       <EntryScreen
         themeStyle={themeVars}
-        hasExistingTrip={hasHostClaim}
-        existingTripName={state.eventName !== 'Crewtrip' ? state.eventName : undefined}
+        hasExistingTrip={hasHostClaim || Boolean(hostResumeBackup)}
+        existingTripName={hasHostClaim
+          ? (state.eventName !== 'Crewtrip' ? state.eventName : undefined)
+          : hostResumeBackup?.eventName}
         onContinue={() => {
-          becomeHost(state.eventCode);
-          resetToNow();
+          if (hasHostClaim) {
+            becomeHost(state.eventCode);
+            resetToNow();
+            return;
+          }
+          if (hostResumeBackup) {
+            restoreLocalBackup(hostResumeBackup);
+          }
         }}
         onStartNew={(name) => {
           const next = createFreshCrewtripState({
@@ -1729,8 +1705,10 @@ export function App() {
         }}
         onJoinCode={(code) => {
           if (typeof window === 'undefined') return;
+          const eventCode = normalizeEventCode(code);
+          if (!eventCode) return;
           const url = new URL(window.location.href);
-          url.searchParams.set('event', code);
+          url.searchParams.set('event', eventCode);
           url.searchParams.set('role', 'crew');
           window.location.assign(url.toString());
         }}
@@ -2015,7 +1993,7 @@ export function App() {
                 <PollCard
                   key={poll.id}
                   poll={poll}
-                  selected={selectedPoll[poll.id]}
+                  selected={pollSelectionForPlayer(poll, activePlayer.id)}
                   onVote={(optionId) => vote(poll.id, optionId)}
                   onChange={() => changeVote(poll.id)}
                 />
@@ -2467,6 +2445,11 @@ export function App() {
 
             {hostSection === 'fun' ? (
               <>
+                {(features.soundtrack || features.games) && days.length > 1 ? (
+                  <HostDisclosure title="Drop date" hint={`${activeDay.label} / ${formatTripDayDate(activeDay.date)}`}>
+                    <DayToggle days={days} selectedDayId={activeDayId} onSelect={setSelectedDayId} />
+                  </HostDisclosure>
+                ) : null}
                 {features.polls ? (
                   <ControlPanel title="Vote drop" tone="primary">
                     <input name="host-poll-question" value={draftPoll.question} onChange={(event) => setDraftPoll((current) => ({ ...current, question: event.target.value }))} placeholder="Question, e.g. Pick the next stop" />

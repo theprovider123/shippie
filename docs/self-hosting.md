@@ -9,7 +9,7 @@ This guide covers two scenarios:
 
 These are independent. You can run a Hub without running the full platform; you can run the full platform without ever deploying a Hub.
 
-The active Cloudflare-only deploy steps for the public platform live in [`docs/superpowers/plans/2026-04-26-prod-deploy-runbook.md`](./superpowers/plans/2026-04-26-prod-deploy-runbook.md). Anything in earlier specs that references `apps/web`, `services/worker`, or Vercel is pre-cutover and should not be followed.
+The active Cloudflare deploy steps for the public platform live in [`docs/superpowers/plans/2026-04-26-prod-deploy-runbook.md`](./superpowers/plans/2026-04-26-prod-deploy-runbook.md). Treat older architecture sketches as superseded by the current Workers, D1, R2, KV, Durable Objects, Workers Assets, scheduled triggers, and Cloudflare Email setup.
 
 ---
 

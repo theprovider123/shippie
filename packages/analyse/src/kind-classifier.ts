@@ -47,8 +47,6 @@ const CLOUD_PROVIDERS: ProviderRule[] = [
   { pattern: /firebase\/storage/, provider: 'firebase-storage' },
   { pattern: /(?:^|[^a-z])next-auth/, provider: 'next-auth', transform: 'authjs-to-local-identity' },
   { pattern: /@auth\/(?:core|sveltekit|nextjs)/, provider: 'authjs', transform: 'authjs-to-local-identity' },
-  { pattern: /@vercel\/postgres/, provider: 'vercel-postgres', blocker: 'vercel-postgres' },
-  { pattern: /@neondatabase\/serverless/, provider: 'neon', blocker: 'neon-serverless' },
   { pattern: /@planetscale\/database/, provider: 'planetscale', blocker: 'planetscale' },
 ];
 

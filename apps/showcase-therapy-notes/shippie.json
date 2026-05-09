@@ -9,8 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["therapy-checkin", "mood-logged"],
-    "consumes": ["sleep-logged", "mindful-session"]
+    "provides": [
+      "therapy-checkin",
+      "mood-logged"
+    ],
+    "consumes": [
+      "sleep-logged",
+      "mindful-session"
+    ]
   },
   "data_schemas": {
     "worksheets": {
@@ -19,5 +25,9 @@
       "note": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
   }
 }

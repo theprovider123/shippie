@@ -8,5 +8,9 @@
   "background_color": "#FAF7EF",
   "display": "standalone",
   "orientation": "portrait",
-  "data_schemas": {}
+  "data_schemas": {},
+  "curation": {
+    "surface": "featured",
+    "category": "social"
+  }
 }

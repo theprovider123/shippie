@@ -10,7 +10,10 @@
   "orientation": "portrait",
   "ai": [],
   "intents": {
-    "provides": ["brewed-tea", "wellness-ritual"],
+    "provides": [
+      "brewed-tea",
+      "wellness-ritual"
+    ],
     "consumes": []
   },
   "enhance": {
@@ -24,7 +27,9 @@
       }
     }
   },
-  "permissions": ["wake-lock"],
+  "permissions": [
+    "wake-lock"
+  ],
   "data_schemas": {
     "herbs": {
       "id": "text primary key",
@@ -76,5 +81,9 @@
       "batch_label": "text",
       "note": "text"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "food-drink"
   }
 }

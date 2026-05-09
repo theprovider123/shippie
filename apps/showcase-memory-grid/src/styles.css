@@ -1,0 +1,110 @@
+:root {
+  color-scheme: light;
+  --bg: #F8F1E0;
+  --fg: #2A1F16;
+  --muted: #6B5C4A;
+  --line: rgba(42, 31, 22, 0.16);
+  --accent: #5C5BA3;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.45;
+}
+button { font: inherit; }
+
+.app {
+  min-height: 100%;
+  padding: 16px 20px 80px;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+.muted { color: var(--muted); font-size: 13px; }
+.muted.small { font-size: 12px; }
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.moves {
+  font-family: 'Fraunces', serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.size-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tab {
+  height: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  font-size: 13px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.tab.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+.grid {
+  display: grid;
+  gap: 8px;
+}
+
+.card {
+  appearance: none;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  background: var(--accent);
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-size: clamp(28px, 8vw, 48px);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
+}
+.card:active { transform: scale(0.97); }
+.card.flipped { background: #fff; color: var(--fg); }
+.card.matched { background: #fff; color: var(--muted); opacity: 0.6; cursor: default; }
+
+.done {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.finish-line {
+  margin: 0;
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+}
+.finish-line strong { color: var(--accent); font-weight: 600; }
+
+button.primary {
+  height: 42px;
+  padding: 0 18px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  cursor: pointer;
+  border-radius: 0;
+}

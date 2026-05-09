@@ -277,6 +277,12 @@ export function App() {
       </main>
 
       {tab !== 'print' ? (
+        <p className="privacy-note" role="note">
+          Symptom Diary stays on this phone. The PDF you generate is yours to share — or not.
+        </p>
+      ) : null}
+
+      {tab !== 'print' ? (
         <nav className="app-nav" aria-label="Primary">
           <button
             type="button"

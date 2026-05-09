@@ -9,8 +9,13 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["touch-logged"],
-    "consumes": ["coffee-brewed", "dined-out"]
+    "provides": [
+      "touch-logged"
+    ],
+    "consumes": [
+      "coffee-brewed",
+      "dined-out"
+    ]
   },
   "data_schemas": {
     "people": {
@@ -54,5 +59,9 @@
       "done_at": "datetime",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "social"
   }
 }

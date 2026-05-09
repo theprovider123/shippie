@@ -1,0 +1,96 @@
+:root {
+  color-scheme: light;
+  --bg: #F8F1E0;
+  --fg: #2A1F16;
+  --muted: #6B5C4A;
+  --line: rgba(42, 31, 22, 0.16);
+  --waiting: #C97B2D;
+  --go: #2EAD64;
+  --early: #E84A2D;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.45;
+}
+button { font: inherit; }
+
+.app {
+  min-height: 100%;
+  padding: 16px 20px 80px;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+h1, h2 { margin: 0; font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.01em; }
+h1 { font-size: 28px; }
+h2 { font-size: 18px; }
+.muted { color: var(--muted); font-size: 13px; }
+.muted.small { font-size: 12px; }
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.stage {
+  flex: 1;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  text-align: center;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.stage-idle { background: #fff; color: var(--fg); }
+.stage-waiting { background: var(--waiting); color: var(--bg); }
+.stage-go { background: var(--go); color: var(--bg); }
+.stage-result { background: #fff; color: var(--fg); }
+.stage-too-early { background: var(--early); color: var(--bg); }
+
+.stage p { margin: 0; }
+.stage .ms { font-size: 96px; line-height: 1; }
+.stage .unit { font-size: 24px; margin-left: 4px; opacity: 0.7; }
+
+button.ghost {
+  align-self: flex-start;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.ribbon-section { display: flex; flex-direction: column; gap: 8px; }
+.ribbon {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 4px;
+}
+.tile {
+  display: block;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+}

@@ -122,6 +122,11 @@
     type PackageFrameSourceCache,
   } from '$lib/container/frame-runtime';
   import {
+    appLifecycleErrorMessage,
+    parseAppLifecycleMessage,
+    type AppLifecycleMessage,
+  } from '$lib/container/app-lifecycle';
+  import {
     buildSingleHtmlPackage,
     installBuiltPackage,
     recoveredReceiptsFor,
@@ -193,6 +198,7 @@
   let logs = $state<BridgeLog[]>([]);
   let bridgeStatus = $state<'waiting' | 'ready'>('waiting');
   let frameCanGoBackByApp = $state<Record<string, boolean>>({});
+  let frameLifecycleByApp = $state<Record<string, AppLifecycleMessage>>({});
   let pendingFocusedBackAppId: string | null = null;
   let pendingFocusedBackFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   let storageReady = $state(false);
@@ -502,6 +508,39 @@
   const activeApp = $derived(activeAppId ? appById.get(activeAppId) : null);
   const activeFrameCanGoBack = $derived(Boolean(activeAppId && frameCanGoBackByApp[activeAppId]));
   const installedApps = $derived(apps.filter((app) => openAppIds.includes(app.id)));
+
+  /**
+   * Cross-tool observation flows for the Your Data panel.
+   *
+   * Walks every installed provider's declared
+   * `crossAppIntents.provides` and, for each declared intent, lists
+   * the consumers that have an active grant in `intentGrants`. Powers
+   * the "Cross-tool flows" section: per provider → per intent →
+   * granted consumers + revoke control.
+   *
+   * Note on emit-counts: this derives from declarations + grants, not
+   * from runtime broadcasts. Tracking historical emit counts requires
+   * a separate per-app log (deferred to a later phase).
+   */
+  const observationFlows = $derived.by(() => {
+    type Flow = {
+      provider: ContainerApp;
+      intent: string;
+      consumers: ContainerApp[];
+    };
+    const flows: Flow[] = [];
+    for (const provider of installedApps) {
+      const provides = provider.permissions.capabilities.crossAppIntents?.provides ?? [];
+      for (const intent of provides) {
+        const consumers = installedApps.filter(
+          (consumer) =>
+            consumer.id !== provider.id && isIntentGranted(intentGrants, consumer.id, intent),
+        );
+        flows.push({ provider, intent, consumers });
+      }
+    }
+    return flows;
+  });
   const appBySlug = $derived(new Map(apps.map((app) => [app.slug, app])));
   const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
   const drawerPinnedApps = $derived.by(() => {
@@ -696,7 +735,37 @@
     frames.delete(appId);
     const { [appId]: _removed, ...rest } = frameCanGoBackByApp;
     frameCanGoBackByApp = rest;
+    const { [appId]: _removedLifecycle, ...restLifecycle } = frameLifecycleByApp;
+    frameLifecycleByApp = restLifecycle;
     revokePackageFrameSource(appId, packageObjectUrls);
+  }
+
+  const prewarmedRuntimeHrefs = new Set<string>();
+
+  function prewarmRuntime(app: ContainerApp | null | undefined) {
+    if (!app || typeof document === 'undefined') return;
+    const href = runtimeSrcFor(app);
+    if (!href || prewarmedRuntimeHrefs.has(href)) return;
+    prewarmedRuntimeHrefs.add(href);
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.as = 'document';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  function prewarmLikelyNextApps() {
+    const seen = new Set<string>();
+    const candidates = [
+      ...drawerPinnedApps,
+      ...drawerRecentApps,
+      ...installedApps,
+    ].filter((app) => {
+      if (!app || app.id === activeAppId || seen.has(app.id)) return false;
+      seen.add(app.id);
+      return true;
+    });
+    for (const app of candidates.slice(0, 4)) prewarmRuntime(app);
   }
 
   function commitPendingEviction(settledAppId: string) {
@@ -741,13 +810,46 @@
     frameStates = markFrameBootingState(frameStates, appId);
   }
 
-  function markFrameReady(appId: string) {
+  function markFrameReady(appId: string, frame?: HTMLIFrameElement) {
+    const app = appById.get(appId);
+    if (frame && app && isInspectableRuntimeFrame(frame, app)) {
+      window.requestAnimationFrame(() => {
+        if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+        if (frameLooksPainted(frame)) {
+          markFrameReady(appId);
+          return;
+        }
+        window.setTimeout(() => {
+          if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+          if (frameLooksPainted(frame)) {
+            markFrameReady(appId);
+            return;
+          }
+          // Apps that speak the lifecycle contract get a slightly longer
+          // grace period because their SDK waits for a meaningful DOM paint
+          // before reporting ready. Older apps still fall back quickly.
+          const lifecycleAware = Boolean(frameLifecycleByApp[appId]);
+          const fallbackDelay = lifecycleAware ? 3_200 : 1_600;
+          window.setTimeout(() => {
+            if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+            if (frameLooksPainted(frame)) {
+              markFrameReady(appId);
+              return;
+            }
+            markFrameError(
+              appId,
+              `${app.name} loaded but did not paint. This is usually a stale app bundle or a script crash; reload it once.`,
+            );
+          }, fallbackDelay);
+        }, 0);
+      });
+      return;
+    }
     frameStates = markFrameReadyState(frameStates, appId);
     commitPendingEviction(appId);
     // Emit a window-level event so PushOptInToast can offer notifications
     // after a successful first open. Keeps the container untangled from
     // the notification subsystem.
-    const app = appById.get(appId);
     if (app && typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('shippie:app-opened', {
@@ -755,6 +857,35 @@
         }),
       );
     }
+  }
+
+  function isInspectableRuntimeFrame(frame: HTMLIFrameElement, app: ContainerApp): boolean {
+    const src = frame.getAttribute('src') ?? runtimeSrcFor(app);
+    if (!src) return false;
+    try {
+      const url = new URL(src, window.location.href);
+      return url.origin === window.location.origin && url.pathname.startsWith('/__shippie-run/');
+    } catch {
+      return false;
+    }
+  }
+
+  function frameLooksPainted(frame: HTMLIFrameElement): boolean {
+    let doc: Document | null = null;
+    try {
+      doc = frame.contentDocument;
+    } catch {
+      return true;
+    }
+    if (!doc?.body) return true;
+    const bodyText = (doc.body.innerText || doc.body.textContent || '').trim();
+    if (/something went wrong|application error|failed to load|not found|404|500/i.test(bodyText)) return false;
+    if (bodyText.length > 0) return true;
+    if (doc.querySelector('canvas, svg, img, video, button, input, textarea, select, [role="button"], [role="main"]')) {
+      return true;
+    }
+    const root = doc.querySelector('#root, #app, main');
+    return Boolean(root && root.children.length > 0);
   }
 
   function markFrameError(appId: string, message = 'This app could not open in the container.') {
@@ -861,6 +992,28 @@
     const canGoBack = payload.canGoBack === true;
     if (frameCanGoBackByApp[appId] === canGoBack) return;
     frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: canGoBack };
+  }
+
+  function recordAppLifecycle(event: MessageEvent) {
+    const payload = parseAppLifecycleMessage(event.data);
+    if (!payload) return;
+    const appId = appIdForMessageSource(event.source);
+    if (!appId) return;
+
+    frameLifecycleByApp = { ...frameLifecycleByApp, [appId]: payload };
+
+    if (typeof payload.canGoBack === 'boolean' && frameCanGoBackByApp[appId] !== payload.canGoBack) {
+      frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: payload.canGoBack };
+    }
+
+    if (payload.event === 'ready' || payload.event === 'heartbeat') {
+      if (frameStates[appId]?.status !== 'ready') markFrameReady(appId);
+      return;
+    }
+
+    if (payload.event === 'error') {
+      markFrameError(appId, appLifecycleErrorMessage(payload));
+    }
   }
 
   function recordFrameNavigationBackResult(event: MessageEvent) {
@@ -1723,10 +1876,12 @@
 
   $effect(() => {
     window.addEventListener('message', recordFromEvent);
+    window.addEventListener('message', recordAppLifecycle);
     window.addEventListener('message', recordFrameNavigation);
     window.addEventListener('message', recordFrameNavigationBackResult);
     return () => {
       window.removeEventListener('message', recordFromEvent);
+      window.removeEventListener('message', recordAppLifecycle);
       window.removeEventListener('message', recordFrameNavigation);
       window.removeEventListener('message', recordFrameNavigationBackResult);
     };
@@ -1878,6 +2033,7 @@
       }
     }
     storageReady = true;
+    prewarmLikelyNextApps();
     void refreshAiReadiness();
     // First-run pill hint: pulse the bottom-pill once when this device
     // enters focused mode for the first time, so users discover the
@@ -2088,16 +2244,6 @@
       />
       <span>Shippie</span>
     </button>
-    {#if activeFrameCanGoBack}
-      <button
-        type="button"
-        class="focused-back-pill"
-        aria-label="Go back in current tool"
-        onclick={goBackInActiveFrame}
-      >
-        ←
-      </button>
-    {/if}
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -2416,6 +2562,53 @@
               <button onclick={refreshAiReadiness}>Check again</button>
             </div>
           </div>
+
+          <!--
+            Slate v4 Phase 0 — Cross-tool observation flows.
+            Lists every installed provider's declared `crossAppIntents.provides`
+            and, for each intent, the consumers with an active grant. Revoking
+            here disables the consumer's `intent.subscribe` for that intent on
+            the next cross-app prompt.
+          -->
+          <div class="data-section observation-flows">
+            <div class="section-head">
+              <h3>Cross-tool flows</h3>
+              <p>What each tool can broadcast, and which other tools have access.</p>
+            </div>
+            {#if observationFlows.length === 0}
+              <p class="muted">No cross-tool intents declared by installed apps yet.</p>
+            {:else}
+              <ul class="flow-list">
+                {#each observationFlows as flow (flow.provider.id + ':' + flow.intent)}
+                  <li class="flow-row">
+                    <div class="flow-meta">
+                      <strong>{flow.provider.name}</strong>
+                      <code class="flow-intent">{flow.intent}</code>
+                    </div>
+                    {#if flow.consumers.length === 0}
+                      <p class="muted small">No subscribers yet.</p>
+                    {:else}
+                      <ul class="flow-consumers">
+                        {#each flow.consumers as consumer (consumer.id)}
+                          <li>
+                            <span>{consumer.name}</span>
+                            <button
+                              class="revoke-button"
+                              onclick={() => {
+                                intentGrants = revokeIntent(intentGrants, consumer.id, flow.intent);
+                              }}
+                              aria-label={`Revoke ${consumer.name}'s access to ${flow.intent}`}
+                            >Revoke</button>
+                          </li>
+                        {/each}
+                      </ul>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+
           <div class="data-list">
             {#each installedApps as app (app.id)}
               <article>
@@ -2847,6 +3040,92 @@
     font-family: var(--font-mono);
     font-size: var(--caption-size);
   }
+  .observation-flows {
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .observation-flows .section-head h3 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .observation-flows .section-head p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .flow-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .flow-row {
+    border-top: 1px solid var(--border-light);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .flow-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .flow-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .flow-meta strong {
+    font-weight: 600;
+  }
+  .flow-intent {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+  }
+  .flow-consumers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .flow-consumers li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .revoke-button {
+    padding: 4px 10px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .revoke-button:hover {
+    border-color: var(--text);
+    color: var(--text);
+  }
+  .small {
+    font-size: 13px;
+  }
   .row-actions {
     display: flex;
     flex-wrap: wrap;
@@ -3081,22 +3360,25 @@
     padding: clamp(1.5rem, 4vw, 3rem);
   }
 
-  /* Persistent exit affordance — fixed top-left, always visible in
-     focused mode. Distinct from the drawer-internal .focused-home
-     (which is gated behind opening the drawer). Sits above the iframe;
-     never obscures the corner of the underlying app's content beyond
-     a small badge. Respects iOS safe-area-inset-top. */
+  /* Persistent drawer affordance — fixed to the right rail, always
+     visible in focused mode. It is deliberately not a header-corner
+     badge: app builders should own their top bars without having to
+     reserve space for Shippie chrome. */
   .focused-exit-pill {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--space-md));
-    left: calc(env(safe-area-inset-left, 0px) + var(--space-md));
+    top: 50%;
+    right: calc(env(safe-area-inset-right, 0px) - 18px);
     z-index: 60;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.65rem 0.4rem 0.45rem;
+    justify-content: center;
+    width: 42px;
+    height: 46px;
+    padding: 0;
     background: rgba(20, 18, 15, 0.65);
     border: 1px solid rgba(168, 196, 145, 0.35);
+    border-right: 0;
+    border-radius: 16px 0 0 16px;
     color: var(--text);
     font-family: var(--font-heading);
     font-weight: 700;
@@ -3106,8 +3388,14 @@
     cursor: pointer;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    opacity: 0.7;
-    transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    opacity: 0.42;
+    transform: translateY(-50%);
+    transition:
+      opacity 0.18s ease,
+      background 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
   }
   .focused-exit-pill.first-run {
     /* One-shot pulse on the very first focused-mode visit. Telegraphs
@@ -3116,10 +3404,10 @@
     animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
   }
   @keyframes shippie-mark-pulse {
-    0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.7; }
-    35%  { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(232, 96, 60, 0.30); opacity: 1; }
-    70%  { transform: scale(1.0);  box-shadow: 0 0 0 14px rgba(232, 96, 60, 0); opacity: 1; }
-    100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.7; }
+    0%   { transform: translateY(-50%) translateX(0) scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.42; }
+    35%  { transform: translateY(-50%) translateX(-18px) scale(1.06); box-shadow: 0 0 0 6px rgba(232, 96, 60, 0.30); opacity: 1; }
+    70%  { transform: translateY(-50%) translateX(-18px) scale(1.0);  box-shadow: 0 0 0 14px rgba(232, 96, 60, 0); opacity: 1; }
+    100% { transform: translateY(-50%) translateX(0) scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.42; }
   }
   @media (prefers-reduced-motion: reduce) {
     .focused-exit-pill.first-run { animation: none; }
@@ -3130,7 +3418,7 @@
   :global(html[data-keyboard-open="true"]) .focused-exit-pill {
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-100%);
+    transform: translateY(-50%) translateX(100%);
     transition: opacity 0.18s ease, transform 0.18s ease;
   }
   .focused-exit-pill:hover,
@@ -3138,63 +3426,25 @@
     opacity: 1;
     background: rgba(20, 18, 15, 0.85);
     border-color: var(--sage-leaf);
+    transform: translateY(-50%) translateX(-18px);
   }
   .focused-exit-pill img {
     display: block;
     flex-shrink: 0;
   }
-  .focused-back-pill {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--space-md));
-    right: calc(env(safe-area-inset-right, 0px) + var(--space-md));
-    z-index: 60;
-    width: 38px;
-    height: 38px;
-    border: 1px solid rgba(168, 196, 145, 0.35);
-    background: rgba(20, 18, 15, 0.65);
-    color: var(--text);
-    font-family: var(--font-heading);
-    font-size: 1.15rem;
-    line-height: 1;
-    cursor: pointer;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    opacity: 0.7;
-    transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  .focused-exit-pill span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
-  .focused-back-pill:hover,
-  .focused-back-pill:focus-visible {
-    opacity: 1;
-    background: rgba(20, 18, 15, 0.85);
-    border-color: var(--sage-leaf);
-  }
-
   @media (max-width: 640px) {
     .focused-exit-pill {
-      top: calc(env(safe-area-inset-top, 0px) + 12px);
-      right: calc(env(safe-area-inset-right, 0px) + 12px);
-      left: auto;
-      width: 38px;
-      height: 38px;
-      justify-content: center;
-      padding: 0;
-      opacity: 0.55;
-    }
-    .focused-exit-pill span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
-    }
-    .focused-back-pill {
-      top: calc(env(safe-area-inset-top, 0px) + 12px);
-      right: auto;
-      left: calc(env(safe-area-inset-left, 0px) + 12px);
-      width: 38px;
-      height: 38px;
-      opacity: 0.55;
+      width: 40px;
+      height: 48px;
+      border-radius: 18px 0 0 18px;
     }
   }
 

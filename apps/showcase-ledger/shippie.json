@@ -9,8 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["expense-logged", "budget-limit"],
-    "consumes": ["dined-out", "shopping-list"]
+    "provides": [
+      "expense-logged",
+      "budget-limit"
+    ],
+    "consumes": [
+      "dined-out",
+      "shopping-list"
+    ]
   },
   "data_schemas": {
     "expenses": {
@@ -20,5 +26,9 @@
       "amount": "real",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools"
   }
 }

@@ -75,6 +75,25 @@ export {
 } from './view-transitions.ts';
 
 export {
+  SHIPPIE_APP_LIFECYCLE_EVENT,
+  SHIPPIE_APP_LIFECYCLE_VERSION,
+  createAppLifecyclePayload,
+  installAppLifecycleReporter,
+  postAppLifecycle,
+  reportAppError,
+  reportAppHeartbeat,
+  reportAppNavigation,
+  reportAppReady,
+  type AppLifecycleError,
+  type AppLifecycleEventName,
+  type AppLifecycleInput,
+  type AppLifecyclePayload,
+  type AppLifecycleSource,
+  type AppLifecycleTiming,
+  type InstallAppLifecycleOptions,
+} from './lifecycle.ts';
+
+export {
   attachBackSwipe,
   attachKeyboardAvoidance,
   attachPressFeedback,

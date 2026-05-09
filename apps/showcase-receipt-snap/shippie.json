@@ -9,7 +9,11 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["expense-logged", "dined-out"]
+    "provides": [
+      "expense-logged",
+      "dined-out",
+      "place.snapped"
+    ]
   },
   "data_schemas": {
     "receipts": {
@@ -24,5 +28,9 @@
       "image_data_url": "text",
       "note": "text"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "tools"
   }
 }

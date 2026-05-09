@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Daily Puzzle",
+  "slug": "daily-puzzle",
+  "description": "One number puzzle a day. Same puzzle for everyone, deterministic from the date. Share your grid.",
+  "icon": "/icon.png",
+  "theme_color": "#4FA487",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["game.completed"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games"
+  }
+}

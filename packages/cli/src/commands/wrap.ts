@@ -6,7 +6,7 @@
  * we just register the upstream + config, and the edge handles the rest.
  *
  * Examples:
- *   shippie wrap https://mevrouw.vercel.app
+ *   shippie wrap https://mevrouw.example.com
  *   shippie wrap https://example.com --slug cool-app --name "Cool App"
  *   shippie wrap https://app.acme.io --strict-csp
  */
@@ -58,7 +58,7 @@ export async function wrapCommand(input: WrapInput): Promise<void> {
   log(`wrapped ${res.slug}`);
   log(`  live: ${res.live_url}`);
   log('');
-  log('  Add this redirect URI to your auth provider (Supabase / Auth0 / Clerk):');
+  log('  Add this redirect URI to your auth provider:');
   for (const uri of res.runtime_config.required_redirect_uris) {
     log(`    ${uri}`);
   }

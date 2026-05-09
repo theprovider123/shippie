@@ -51,6 +51,67 @@
     </style>
     %sveltekit.head%
     <script>
+      // Self-healing PWA shell. If an installed PWA resumes with a stale
+      // SvelteKit document, modulepreload/dynamic imports can fail before
+      // the app has a chance to render anything useful. Clear only Shippie
+      // shell caches and reload once; the fresh service worker will rebuild
+      // the cache with the current deploy.
+      (function () {
+        var RECOVERY_KEY = 'shippie:shell-recovered-once';
+        var RECOVERY_PARAM = 'shippie_recover';
+        function isAssetUrl(value) {
+          return typeof value === 'string' &&
+            (value.indexOf('/_app/immutable/') !== -1 || value.indexOf('/__shippie-run/') !== -1);
+        }
+        function looksLikeShellAssetFailure(reason) {
+          var message = '';
+          if (typeof reason === 'string') message = reason;
+          else if (reason && typeof reason.message === 'string') message = reason.message;
+          return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Load failed|Loading chunk|module script/i.test(message);
+        }
+        function clearShippieCaches() {
+          if (!('caches' in window)) return Promise.resolve();
+          return caches.keys().then(function (names) {
+            return Promise.all(names
+              .filter(function (name) {
+                return name.indexOf('shippie-marketplace-') === 0 || name === 'shippie.models.v1';
+              })
+              .map(function (name) { return caches.delete(name); }));
+          }).catch(function () {});
+        }
+        function recover() {
+          try {
+            var url = new URL(location.href);
+            if (url.searchParams.has(RECOVERY_PARAM)) return;
+            if (sessionStorage.getItem(RECOVERY_KEY) === '1') return;
+            sessionStorage.setItem(RECOVERY_KEY, '1');
+            url.searchParams.set(RECOVERY_PARAM, String(Date.now()));
+            clearShippieCaches().then(function () {
+              location.replace(url.toString());
+            });
+          } catch (_) {
+            location.reload();
+          }
+        }
+        window.__shippieRepairShell = function () {
+          try { sessionStorage.removeItem(RECOVERY_KEY); } catch (_) {}
+          clearShippieCaches().then(function () {
+            location.replace('/');
+          });
+        };
+        window.addEventListener('error', function (event) {
+          var target = event && event.target;
+          if (target && (isAssetUrl(target.src) || isAssetUrl(target.href))) {
+            recover();
+            return;
+          }
+          if (looksLikeShellAssetFailure(event.error || event.message)) recover();
+        }, true);
+        window.addEventListener('unhandledrejection', function (event) {
+          if (looksLikeShellAssetFailure(event.reason)) recover();
+        });
+      })();
+
       // Phase 9.1 — register the marketplace service worker on the
       // root platform host only. Maker subdomains have their own SW
       // served by the wrapper at /__shippie/sw.js.

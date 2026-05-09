@@ -34,7 +34,7 @@ npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
 
 ## How Shippie compares
 
-| | Shippie | App Store | Vercel | Glide |
+| | Shippie | App Store | Generic Hosting | No-Code App Builders |
 |---|---|---|---|---|
 | **Time to live** | 60s | 14 days | 60s | minutes |
 | **Revenue share** | 0% | 30% | 0% | — |

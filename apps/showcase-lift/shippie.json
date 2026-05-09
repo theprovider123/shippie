@@ -9,6 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["workout-completed", "pr-broken", "set-logged"]
+    "provides": [
+      "workout-completed",
+      "pr-broken",
+      "set-logged"
+    ]
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
   }
 }

@@ -324,10 +324,8 @@ const BAAS_PROVIDERS: readonly BaasProvider[] = [
   },
   { name: 'Clerk', patterns: ['*.clerk.accounts.dev', '*.clerk.com', 'clerk.dev', '*.clerk.dev'] },
   { name: 'Auth0', patterns: ['*.auth0.com'] },
-  { name: 'Vercel Storage', patterns: ['*.vercel-storage.com', '*.public.blob.vercel-storage.com'] },
   { name: 'Upstash', patterns: ['*.upstash.io'] },
   { name: 'PlanetScale', patterns: ['*.planetscale.com', '*.psdb.cloud'] },
-  { name: 'Neon', patterns: ['*.neon.tech'] },
 ];
 
 interface BaasScanResult {

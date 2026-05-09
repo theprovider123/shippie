@@ -30,7 +30,7 @@ export function ActiveCooks({ cooks, onSelect }: ActiveCooksProps) {
   }
 
   return (
-    <section className="active-list">
+    <section className="active-list" data-shippie-wakelock>
       <p className="eyebrow">cooking now · {cooks.length}</p>
       <ul>
         {cooks.map((c) => {

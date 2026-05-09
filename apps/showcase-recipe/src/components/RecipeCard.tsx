@@ -5,19 +5,35 @@ import { haptic } from '@shippie/sdk/wrapper';
 export interface RecipeCardProps {
   recipe: Recipe;
   ingredientCount: number;
+  sendStatus?: string | null;
   onOpen: () => void;
+  onCook: () => void;
+  onPlan: (event: React.MouseEvent) => void;
+  onShare: () => void;
   onDelete: () => void;
 }
 
 const SWIPE_THRESHOLD = 80;
 
 /**
- * Swipe-to-reveal recipe row. The wrapper's list-swipe rule auto-applies
- * to <ul data-shippie-list>; we add a per-card touch handler so the
- * showcase still works in dev (no wrapper) and so the haptic threshold
- * cross is unmistakable.
+ * Recipe card — the home-screen row.
+ *
+ * Single card frame holds: sunset accent stripe → title → meta → action
+ * bar (Cook · Plan · Share · Delete). Tap the card body to open the
+ * editor; the action bar stops propagation. Swipe-left reveals a
+ * larger Delete affordance on touch devices; desktop users get a
+ * hover-revealed delete control built into the action bar.
  */
-export function RecipeCard({ recipe, ingredientCount, onOpen, onDelete }: RecipeCardProps) {
+export function RecipeCard({
+  recipe,
+  ingredientCount,
+  sendStatus,
+  onOpen,
+  onCook,
+  onPlan,
+  onShare,
+  onDelete,
+}: RecipeCardProps) {
   const [offset, setOffset] = useState(0);
   const startX = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -77,28 +93,74 @@ export function RecipeCard({ recipe, ingredientCount, onOpen, onDelete }: Recipe
         ref={cardRef}
         className="recipe-card"
         style={{ transform: `translateX(${offset}px)` }}
-        role="button"
-        tabIndex={0}
-        onClick={() => {
-          if (offset !== 0) {
-            setOffset(0);
-            return;
-          }
-          onOpen();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onOpen();
-          }
-        }}
       >
-        <h3>{recipe.title}</h3>
-        <p className="muted">
-          {ingredientCount} ingredient{ingredientCount === 1 ? '' : 's'}
-          {recipe.cook_minutes ? ` · ${recipe.cook_minutes} min` : ''}
-          {recipe.servings ? ` · serves ${recipe.servings}` : ''}
-        </p>
+        <button
+          type="button"
+          className="recipe-card-body"
+          onClick={() => {
+            if (offset !== 0) {
+              setOffset(0);
+              return;
+            }
+            onOpen();
+          }}
+        >
+          <span className="recipe-card-stripe" aria-hidden="true" />
+          <span className="recipe-card-title-block">
+            <h3>{recipe.title}</h3>
+            <p className="recipe-card-meta">
+              {ingredientCount} ingredient{ingredientCount === 1 ? '' : 's'}
+              {recipe.cook_minutes ? ` · ${recipe.cook_minutes} min` : ''}
+              {recipe.servings ? ` · serves ${recipe.servings}` : ''}
+            </p>
+          </span>
+        </button>
+        <div className="recipe-card-actions" aria-label={`Actions for ${recipe.title}`}>
+          <button
+            type="button"
+            className="recipe-action recipe-action-primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCook();
+            }}
+            aria-label={`Cook ${recipe.title}`}
+          >
+            Cook
+          </button>
+          <button
+            type="button"
+            className="recipe-action"
+            onClick={onPlan}
+            aria-label={`Send ${recipe.title} to Meal Planner`}
+          >
+            Plan
+          </button>
+          <button
+            type="button"
+            className="recipe-action"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare();
+            }}
+            aria-label={`Share ${recipe.title}`}
+          >
+            Share
+          </button>
+          <button
+            type="button"
+            className="recipe-action recipe-action-delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              haptic('warn');
+              onDelete();
+            }}
+            aria-label={`Delete ${recipe.title}`}
+            title="Delete"
+          >
+            ×
+          </button>
+        </div>
+        {sendStatus ? <p className="recipe-card-status">{sendStatus}</p> : null}
       </div>
     </li>
   );

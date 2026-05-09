@@ -8,6 +8,13 @@
   "background_color": "#FAF7EF",
   "display": "standalone",
   "orientation": "portrait",
-  "groups": { "enabled": true },
-  "data_schemas": {}
+  "groups": {
+    "enabled": true
+  },
+  "data_schemas": {},
+  "curation": {
+    "surface": "archived",
+    "category": "social",
+    "successor": "matchday"
+  }
 }

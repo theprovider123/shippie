@@ -402,7 +402,7 @@ All patches keep the contract between the maker promise and the launch implement
 
 ## Open Questions For Next Review
 
-1. Should Pro-tier store credentials be shareable across apps the same user owns, or scoped per-app? (Current patch: shared across all user's apps, matching how Vercel/Render handle tokens.)
+1. Should Pro-tier store credentials be shareable across apps the same user owns, or scoped per-app? (Current patch: shared across all user's apps, matching common token handling.)
 2. Should the "not_applicable" readiness items be hidden or shown greyed-out in the readiness UI? (Recommendation: shown with a "Not needed for this app" label, so makers understand the shape of the gate.)
 3. For iOS Prep Kit launch: should we ship a hosted web UI that walks the maker through the local `shippie ios-build` step with live error capture, or keep it to docs-only for launch? (Recommendation: docs-only at launch, hosted walkthrough in Phase 2.)
 4. After Patch 4, should the old `apps.deploy_status` column be dropped immediately or kept for one migration cycle as a safety net? (Recommendation: drop immediately — v5 hasn't shipped yet so there's no production data.)

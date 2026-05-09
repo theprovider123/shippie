@@ -136,33 +136,42 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     const sessionId = event.cookies.get(lucia.sessionCookieName) ?? null;
     if (sessionId) {
-      const { session, user } = await lucia.validateSession(sessionId);
-      if (session && session.fresh) {
-        const cookie = lucia.createSessionCookie(session.id);
-        event.cookies.set(cookie.name, cookie.value, {
-          path: '.',
-          ...cookie.attributes
-        });
-      }
-      if (!session) {
+      try {
+        const { session, user } = await lucia.validateSession(sessionId);
+        if (session && session.fresh) {
+          const cookie = lucia.createSessionCookie(session.id);
+          event.cookies.set(cookie.name, cookie.value, {
+            path: '.',
+            ...cookie.attributes
+          });
+        }
+        if (!session) {
+          const blank = lucia.createBlankSessionCookie();
+          event.cookies.set(blank.name, blank.value, {
+            path: '.',
+            ...blank.attributes
+          });
+        }
+        if (user) {
+          // Populate locals.user with our app shape (id from row PK + attrs).
+          event.locals.user = {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+            isAdmin: user.isAdmin
+          };
+        }
+        event.locals.session = session;
+      } catch (err) {
+        console.error('[auth] session validation failed; continuing anonymous', err);
         const blank = lucia.createBlankSessionCookie();
         event.cookies.set(blank.name, blank.value, {
           path: '.',
           ...blank.attributes
         });
       }
-      if (user) {
-        // Populate locals.user with our app shape (id from row PK + attrs).
-        event.locals.user = {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          isAdmin: user.isAdmin
-        };
-      }
-      event.locals.session = session;
     }
   }
 

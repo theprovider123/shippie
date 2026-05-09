@@ -129,7 +129,7 @@ export function App() {
   }
 
   return (
-    <main>
+    <main {...(running ? { 'data-shippie-wakelock': true } : {})}>
       <header>
         <p className="eyebrow">Quiet</p>
         <h1>One calmer surface.</h1>

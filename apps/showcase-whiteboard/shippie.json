@@ -8,6 +8,12 @@
   "background_color": "#FAF7EF",
   "display": "standalone",
   "orientation": "any",
-  "groups": { "enabled": true },
-  "data_schemas": {}
+  "groups": {
+    "enabled": true
+  },
+  "data_schemas": {},
+  "curation": {
+    "surface": "featured",
+    "category": "creative"
+  }
 }

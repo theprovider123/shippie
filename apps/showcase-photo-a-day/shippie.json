@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Photo a Day",
+  "slug": "photo-a-day",
+  "description": "One photo per day. Three seconds. AI labels what you saw. Builds a visual diary.",
+  "icon": "/icon.png",
+  "theme_color": "#F0734A",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["photo.labelled"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "creative"
+  }
+}

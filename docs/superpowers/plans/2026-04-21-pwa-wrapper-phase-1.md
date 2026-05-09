@@ -6,7 +6,7 @@
 
 **Architecture:** Wrapper code lives in `packages/sdk/src/wrapper/` alongside existing SDK modules, exposed both via npm (`@shippie/sdk/wrapper`) and same-origin via the existing `__shippie/sdk.js` route. The Worker's `__shippie/manifest` route is extended to merge a maker's `shippie.json` declarations with modern PWA fields (`launch_handler`, `display_override`, `id`, `share_target`, maskable icons, screenshots). The marketplace's existing `PwaInstallBanner` component is replaced with a thin React wrapper over the shared runtime so Shippie dogfoods its own install funnel.
 
-**Tech Stack:** TypeScript, Bun test runner, Hono (Worker), React 19 (Next.js 16 App Router on Vercel), existing `@shippie/shared` types, existing `@shippie/sdk` package.
+**Tech Stack:** TypeScript, Bun test runner, Hono (Worker), React 19 (Next.js 16 App Router on Cloudflare), existing `@shippie/shared` types, existing `@shippie/sdk` package.
 
 ---
 
@@ -976,7 +976,7 @@ export function buildHandoffUrl(currentUrl: string): string {
 }
 
 // Minimal, deliberately-strict email check. Good enough for
-// client-side validation before POST; server-side Resend/SES
+// client-side validation before POST; server-side Cloudflare Email/SES
 // validation is the real gate.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -2251,7 +2251,7 @@ Expected: `nothing to commit, working tree clean`. If anything is outstanding (e
 
 **4. Integration point correctness:** `PwaInstallBanner` is currently mounted in `apps/web/app/page.tsx` (import line 9, JSX line 382), not in `apps/web/app/layout.tsx`. Task 17 points at the correct file. ✓
 
-**5. Deploy-pipeline independence:** This plan does not depend on Vercel Sandbox gating being closed or on the pointer-swap refactor. It reads only from existing KV keys (`apps:{slug}:active`, `apps:{slug}:meta`, `apps:{slug}:pwa`) and tolerates non-atomic writes. ✓
+**5. Deploy-pipeline independence:** This plan does not depend on GitHub Actions build workflow gating being closed or on the pointer-swap refactor. It reads only from existing KV keys (`apps:{slug}:active`, `apps:{slug}:meta`, `apps:{slug}:pwa`) and tolerates non-atomic writes. ✓
 
 **6. Gaps deferred to later phase plans:** desktop handoff UI sheet + backend endpoint, per-route theme-color component, View Transitions wrapping, back-swipe, pull-to-refresh, splash image generation at deploy time, branded offline page, update toast, event spine + dashboard. These remain in the spec; plans for Phases 2–5 follow after Phase 1 ships.
 

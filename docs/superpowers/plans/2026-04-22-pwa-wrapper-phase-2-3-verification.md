@@ -71,7 +71,7 @@
 
 ### Cron wiring
 
-`vercel.json` now schedules:
+`wrangler.toml` now schedules:
 - `/api/internal/rollups` — hourly (`0 */1 * * *`)
 - `/api/internal/retention` — daily at 04:00 UTC (`0 4 * * *`)
 
@@ -80,9 +80,9 @@ Pre-existing crons preserved: `reconcile-kv`, `reap-trials`.
 ### Env additions
 
 New entries in `apps/web/.env.example`:
-- `RESEND_API_KEY` (handoff email dispatch)
+- `AUTH_EMAIL_FROM` (handoff email dispatch)
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (Web Push)
-- `CRON_SECRET` (Vercel cron bearer for rollups + retention)
+- `CRON_SECRET` (Cloudflare scheduled trigger bearer for rollups + retention)
 - `SHIPPIE_INTERNAL_CRON_TOKEN` (self-host / manual-invoke alternative)
 
 ### Wrapper SDK surface (final)
@@ -142,7 +142,7 @@ These don't block Phase 2+3 landing. Each is one bounded module of work.
 a1a791f feat(web/layout): mount ThemeColor for consistent status bar tint
 4b5f4b0 feat(web): ThemeColor React wrapper over setThemeColor
 3ec0528 chore(web): .env.example additions for Phase 2+3 wrapper
-7ff96a6 chore(vercel): cron entries for rollups + retention
+7ff96a6 chore(cloudflare): cron entries for rollups + retention
 7c93382 feat(sdk/wrapper): export all Phase 2+3 submodules
 5cabbc1 feat(pwa-injector): emit apple-touch-startup-image link tags
 3e73070 feat(web/deploy): hook splash+icon generation into pipeline
@@ -166,7 +166,7 @@ e7d9bcd feat(ingest-events): signed ingestion into app_events spine
 5ad9a76 feat(rollups): pure daily bucket aggregator
 eae007f test(rollups): failing aggregator tests
 e834057 feat(db): app_events + usage_daily + wrapper_push_subscriptions schema
-0309e62 chore(web): .env.example entries for Resend + VAPID
+0309e62 chore(web): .env.example entries for Cloudflare Email + VAPID
 2533a12 feat(web/handoff): platform dispatcher for email + push
 fdbf81a test(web/handoff): failing platform handoff route tests
 8f6c8d5 feat(web/handoff): pure email + push payload renderers

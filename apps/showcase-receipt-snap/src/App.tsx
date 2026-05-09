@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { createObservationClient } from '@shippie/observations';
 import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { CapturePage } from './pages/Capture.tsx';
 import { ReviewPage } from './pages/Review.tsx';
@@ -20,6 +21,7 @@ import { parseReceipt, type ExtractedReceipt } from './lib/parse-receipt.ts';
 import type { ReviewFormValues } from './components/ReviewForm.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_receipt_snap' });
+const observations = createObservationClient(shippie);
 
 const MODEL_WARM_KEY = 'shippie.receipt-snap.model-warm.v1';
 
@@ -150,6 +152,16 @@ export function App() {
           currency: receipt.currency,
         },
       ]);
+    }
+    // Observation bus — vendor as a single-item label set so Randomiser
+    // can surface "the bakery on Tuesday" without seeing the photo or
+    // total. No geo: that needs an explicit per-app grant.
+    if (receipt.vendor) {
+      observations.emit({
+        kind: 'place.snapped',
+        labels: [receipt.vendor],
+        at: receipt.captured_at,
+      });
     }
   }
 

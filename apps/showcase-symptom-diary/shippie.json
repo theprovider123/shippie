@@ -9,8 +9,16 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["symptom-logged", "med-taken"],
-    "consumes": ["sleep-logged", "mood-logged", "cooked-meal", "body-metrics-logged"]
+    "provides": [
+      "symptom-logged",
+      "med-taken"
+    ],
+    "consumes": [
+      "sleep-logged",
+      "mood-logged",
+      "cooked-meal",
+      "body-metrics-logged"
+    ]
   },
   "data_schemas": {
     "symptoms": {
@@ -19,5 +27,9 @@
       "note": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
   }
 }

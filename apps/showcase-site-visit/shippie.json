@@ -9,7 +9,10 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["visit-completed", "incident-flagged"]
+    "provides": [
+      "visit-completed",
+      "incident-flagged"
+    ]
   },
   "data_schemas": {
     "sites": {
@@ -55,5 +58,9 @@
       "name": "text not null",
       "checks_json": "text"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools"
   }
 }

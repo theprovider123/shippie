@@ -115,10 +115,7 @@ The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`).
 - `apps/shippie-ai/` — Cross-origin AI iframe (Vite + vite-plugin-pwa). Runs micro-models via Workbox-cached Service Worker.
 - `apps/showcase-*/` — 22 demo apps (post-rev2-P4) proving wrapper + cross-app intent + AI + mesh flows end-to-end. Originals on dev ports 5180–5190; P4 additions on 5191–5200. Full enumeration: recipe (5180), journal (5181), whiteboard (5182), live-room (5183), habit-tracker (5184), workout-logger (5185), pantry-scanner (5186), meal-planner (5187), shopping-list (5188), sleep-logger (5189), body-metrics (5190), caffeine-log (5191), hydration (5192), mood-pulse (5193), symptom-tracker (5194), steps-counter (5195), pomodoro (5196), read-later (5197), daily-briefing (5198), restaurant-memory (5199), show-and-tell (5200).
 - `services/hub/` — Self-hosted venue device (Bun server, mDNS, WebSocket signal). Active.
-- `services/worker/` — **DELETED.** Functionality ported into `apps/platform/src/lib/server/wrapper/`.
-- `apps/web/` — **DELETED.** Was the legacy Next.js platform.
-- `packages/cf-storage/` — **DELETED.** Replaced by native `event.platform.env.*` Cloudflare bindings.
-- `vercel.json` — **DELETED.** Stack is Cloudflare-only.
+- Retired platform services are kept out of the tree; wrapper, storage, cron, and auth now live in `apps/platform/` with native Cloudflare bindings.
 
 ### Workspace packages (verified at HEAD)
 

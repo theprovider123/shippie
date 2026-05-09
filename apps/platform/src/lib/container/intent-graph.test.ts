@@ -131,6 +131,16 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // but no curated consumer ships in-tree yet.
   'brewed-tea',
   'wellness-ritual',
+  // Slate v4 Phase 1 — observation-vocabulary intents emitted by the
+  // new mirror + arcade apps. The Randomiser home capstone consumes
+  // them at the platform-shell level (not via an in-tree iframe app),
+  // so they look orphan from the cross-app registry's POV.
+  'counter.tapped',
+  'mood.color_picked',
+  'preference.choice',
+  'game.completed',
+  'photo.labelled',
+  'place.snapped',
 ]);
 
 /**

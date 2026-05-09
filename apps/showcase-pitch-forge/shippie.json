@@ -9,7 +9,10 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["pitch-drafted", "pitch-sent"]
+    "provides": [
+      "pitch-drafted",
+      "pitch-sent"
+    ]
   },
   "data_schemas": {
     "pitches": {
@@ -50,5 +53,9 @@
       "section_kinds_json": "text",
       "is_builtin": "integer"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "creative"
   }
 }

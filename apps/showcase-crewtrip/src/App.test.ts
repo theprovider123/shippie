@@ -5,7 +5,21 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { App, mergeCrewtripState } from './App.tsx';
-import { initialRole, normalizePlaylistUrl, playlistProviderLabel } from './utils/state.ts';
+import {
+  BACKUP_KEY,
+  STORAGE_KEY,
+  clearPollVote,
+  createRecoveryPack,
+  initialRole,
+  latestLocalBackupForEvent,
+  normalizeEventCode,
+  normalizePlaylistUrl,
+  playlistProviderLabel,
+  pollSelectionForPlayer,
+  readHostedLocalBackups,
+  resolveInitialCrewtripState,
+  setPollVote,
+} from './utils/state.ts';
 import type { CrewtripState } from './App.tsx';
 
 describe('App', () => {
@@ -140,6 +154,34 @@ describe('App', () => {
     expect(playlistProviderLabel('https://music.apple.com/gb/playlist/demo')).toBe('Open Apple Music');
   });
 
+  test('keeps poll votes tied to saved player identity across refreshes', () => {
+    const poll = makeState().polls[0]!;
+    const firstVote = setPollVote(poll, 'o1', 'alex');
+    const repeatVote = setPollVote(firstVote, 'o1', 'alex');
+    const cleared = clearPollVote(repeatVote, 'alex');
+
+    expect(pollSelectionForPlayer(firstVote, 'alex')).toBe('o1');
+    expect(repeatVote.options[0]?.votes).toBe(1);
+    expect(repeatVote.options[0]?.voterIds).toEqual(['alex']);
+    expect(pollSelectionForPlayer(cleared, 'alex')).toBeUndefined();
+    expect(cleared.options[0]?.votes).toBe(0);
+  });
+
+  test('moves a player vote instead of double-counting it', () => {
+    const poll = {
+      ...makeState().polls[0]!,
+      options: [
+        { id: 'o1', label: 'Yes', votes: 0 },
+        { id: 'o2', label: 'No', votes: 0 },
+      ],
+    };
+
+    const moved = setPollVote(setPollVote(poll, 'o1', 'alex'), 'o2', 'alex');
+
+    expect(pollSelectionForPlayer(moved, 'alex')).toBe('o2');
+    expect(moved.options.map((option) => option.votes)).toEqual([0, 1]);
+  });
+
   test('treats invite links as crew unless this device owns the host claim', () => {
     withWindow('https://shippie.app/run/crewtrip/?event=CREW-TEST&role=crew', {}, () => {
       expect(initialRole('CREW-TEST')).toBe('eventee');
@@ -161,6 +203,47 @@ describe('App', () => {
       'shippie-crewtrip-host-v1:CREW-TEST': '1',
     }, () => {
       expect(initialRole('CREW-TEST')).toBe('host');
+    });
+  });
+
+  test('normalizes typed and linked trip codes', () => {
+    expect(normalizeEventCode(' olive porch 07 ')).toBe('OLIVE-PORCH-07');
+    expect(normalizeEventCode('olive/porch/07')).toBe('OLIVE-PORCH-07');
+    withWindow('https://shippie.app/run/crewtrip/?event=olive%20porch%2007&role=crew', {}, () => {
+      expect(initialRole('OLIVE-PORCH-07')).toBe('eventee');
+    });
+  });
+
+  test('restores the joined event from a local backup when active storage was replaced', () => {
+    const active = { ...makeState(), eventCode: 'OTHER-TRIP-01', eventName: 'Other trip' };
+    const hosted = {
+      ...makeState(),
+      eventCode: 'HOST-TRIP-01',
+      eventName: 'Hosted weekend',
+      memories: [{ id: 'm-hosted', author: 'Host', kind: 'text' as const, text: 'Original plan', at: '12:00' }],
+    };
+    const backup = {
+      id: 'backup_1',
+      eventCode: hosted.eventCode,
+      eventName: hosted.eventName,
+      at: 123,
+      reason: 'auto' as const,
+      bytes: 100,
+      pack: createRecoveryPack(hosted),
+    };
+
+    withWindow('https://shippie.app/run/crewtrip/?event=host%20trip%2001&role=join-host', {
+      [STORAGE_KEY]: JSON.stringify(active),
+      [BACKUP_KEY]: JSON.stringify([backup]),
+      'shippie-crewtrip-host-v1:HOST-TRIP-01': '1',
+    }, () => {
+      const restored = resolveInitialCrewtripState(localStorage.getItem(STORAGE_KEY), 'host trip 01');
+
+      expect(latestLocalBackupForEvent('host trip 01')?.eventName).toBe('Hosted weekend');
+      expect(readHostedLocalBackups()[0]?.eventCode).toBe('HOST-TRIP-01');
+      expect(restored.eventCode).toBe('HOST-TRIP-01');
+      expect(restored.eventName).toBe('Hosted weekend');
+      expect(restored.memories.some((memory) => memory.id === 'm-hosted')).toBe(true);
     });
   });
 });

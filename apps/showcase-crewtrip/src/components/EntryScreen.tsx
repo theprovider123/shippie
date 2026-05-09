@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
+import { normalizeEventCode } from '../utils/state';
 
 interface EntryScreenProps {
   themeStyle: CSSProperties;
@@ -97,7 +98,7 @@ export function EntryScreen(props: EntryScreenProps) {
   }
 
   // mode === 'crew-join'
-  const trimmed = code.trim().toUpperCase();
+  const trimmed = normalizeEventCode(code);
   const valid = CODE_PATTERN.test(trimmed);
   return (
     <main className="entry-shell" style={props.themeStyle}>
@@ -115,7 +116,7 @@ export function EntryScreen(props: EntryScreenProps) {
           autoCorrect="off"
           autoComplete="off"
           spellCheck={false}
-          onChange={(event) => setCode(event.target.value.toUpperCase())}
+          onChange={(event) => setCode(normalizeEventCode(event.target.value))}
           autoFocus
           onKeyDown={(event) => {
             if (event.key === 'Enter' && valid) props.onJoinCode(trimmed);

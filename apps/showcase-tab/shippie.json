@@ -9,6 +9,13 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["tab-item-added", "tab-settled"]
+    "provides": [
+      "tab-item-added",
+      "tab-settled"
+    ]
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "social"
   }
 }

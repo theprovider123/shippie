@@ -9,8 +9,13 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["trip-note", "place-pinned"],
-    "consumes": ["dined-out"]
+    "provides": [
+      "trip-note",
+      "place-pinned"
+    ],
+    "consumes": [
+      "dined-out"
+    ]
   },
   "data_schemas": {
     "places": {
@@ -19,5 +24,9 @@
       "note": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools"
   }
 }
