@@ -152,6 +152,16 @@ describe('App', () => {
     }, () => {
       expect(initialRole('CREW-TEST')).toBe('host');
     });
+    withWindow('https://shippie.app/run/crewtrip/?event=CREW-TEST&role=crew', {
+      'shippie-crewtrip-host-v1:CREW-TEST': '1',
+    }, () => {
+      expect(initialRole('CREW-TEST')).toBe('host');
+    });
+    withWindow('https://shippie.app/run/crewtrip/', {
+      'shippie-crewtrip-host-v1:CREW-TEST': '1',
+    }, () => {
+      expect(initialRole('CREW-TEST')).toBe('host');
+    });
   });
 });
 

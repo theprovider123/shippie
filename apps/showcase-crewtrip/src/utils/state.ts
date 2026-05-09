@@ -38,13 +38,46 @@ export const LOCAL_PLAYER_KEY_PREFIX = 'shippie-crewtrip-player-v1:';
 export const BACKUP_LIMIT_PER_EVENT = 8;
 export const BACKUP_INTERVAL_MS = 45_000;
 export const PUBLIC_CREWTRIP_URL = 'https://shippie.app/run/crewtrip/';
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function toDateInputValue(date: Date = new Date()): string {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+export function tripDayDateInputValue(value?: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) return '';
+  if (ISO_DATE_RE.test(trimmed)) return trimmed;
+  if (trimmed.toLowerCase() === 'today') return toDateInputValue();
+  return '';
+}
+
+export function formatTripDayDate(value: string): string {
+  const inputValue = tripDayDateInputValue(value);
+  if (!inputValue) return value;
+  const parts = inputValue.split('-').map(Number);
+  const year = parts[0];
+  const month = parts[1];
+  const day = parts[2];
+  if (!year || !month || !day) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(year, month - 1, day));
+}
+
+export function nextTripDayLabel(days: TripDay[]): string {
+  return `Day ${days.length + 1}`;
+}
 
 export function defaultGroupEmoji(name: string): string {
   const lower = name.toLowerCase();
   if (lower.includes('beach') || lower.includes('sea') || lower.includes('pool')) return '☀';
   if (lower.includes('food') || lower.includes('dinner') || lower.includes('brunch')) return '◆';
   if (lower.includes('party') || lower.includes('dance')) return '✦';
-  return '★';
+  return '👥';
 }
 
 export function crewColorAt(theme: ThemeKey, index: number): string {
@@ -68,7 +101,7 @@ export const initialState: CrewtripState = {
     { id: 'day-2', label: 'Day 2', date: 'Sat' },
   ],
   groups: [
-    { id: 'all', name: 'All crew', color: '#F0BD55', emoji: '★' },
+    { id: 'all', name: 'All crew', color: '#F0BD55', emoji: '👥' },
     { id: 'beach', name: 'Beach crew', color: '#5F91A3', emoji: '☀' },
     { id: 'food', name: 'Food squad', color: '#7B9868', emoji: '◆' },
   ],
@@ -169,7 +202,7 @@ export function createFreshCrewtripState(options: { eventCode?: string; language
     theme: options.theme ?? initialState.theme,
     activePlayerId: 'host',
     days: [{ id: 'day-1', label: 'Day 1', date: 'Today' }],
-    groups: [{ id: 'all', name: 'All crew', color: '#F0BD55', emoji: '★' }],
+    groups: [{ id: 'all', name: 'All crew', color: '#F0BD55', emoji: '👥' }],
     stops: [{ id: 's1', dayId: 'day-1', time: 'TBC', title: 'Start planning', place: 'Add the first plan item', status: 'now' }],
     polls: [],
     players: [{ id: 'host', name: 'Host', team: 'All crew', groupId: 'all', color: '#E8603C', score: 0 }],
@@ -449,7 +482,7 @@ export function initialRole(currentEventCode?: string): Role | null {
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
   const eventCode = params.get('event') ?? currentEventCode ?? '';
-  if ((role === 'host' || role === 'join-host') && eventCode && readLocalHostClaim(eventCode)) return 'host';
+  if (eventCode && readLocalHostClaim(eventCode)) return 'host';
   if (role === 'crew' || params.has('event')) return 'eventee';
   return null;
 }

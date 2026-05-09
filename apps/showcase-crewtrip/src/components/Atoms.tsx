@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { CrewGroup, Memory, Player, TripDay } from '../types';
 import { readOpfsFileUrl } from '../utils/media';
+import { formatTripDayDate } from '../utils/state';
 
 export function GroupMark({ group, size }: { group: CrewGroup; size?: 'small' | 'large' }) {
   const label = group.emoji || group.name.slice(0, 1).toUpperCase();
@@ -35,7 +36,7 @@ export function DayToggle({ days, selectedDayId, onSelect }: { days: TripDay[]; 
             onClick={() => onSelect(day.id)}
           >
             <strong>{day.label}</strong>
-            <span>{day.date}</span>
+            <span>{formatTripDayDate(day.date)}</span>
           </button>
         );
       })}

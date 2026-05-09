@@ -27,6 +27,7 @@ import type {
   Language,
   ThemeKey,
   SoundtrackSlot,
+  TripDay,
 } from './types';
 import { translations } from './data/translations';
 import { themePalettes, paletteFor } from './data/themes';
@@ -67,6 +68,7 @@ import {
   isSurpriseUnlocked,
   legacyVoteIds,
   markLocalUpdate,
+  nextTripDayLabel,
   normalizeCrewtripState,
   normalizePlaylistUrl,
   parseRecoveryPack,
@@ -80,6 +82,8 @@ import {
   syncLabelShort,
   totalScore,
   unlockLabel,
+  tripDayDateInputValue,
+  formatTripDayDate,
   writeLocalHostClaim,
   writeLocalPlayerId,
   writeLocalBackup,
@@ -172,6 +176,11 @@ function usePrefersReducedMotion(): boolean {
 
 function themeStyle(theme: ThemeKey): CSSProperties {
   return paletteFor(theme).vars as CSSProperties;
+}
+
+function findDayByInputDate(days: TripDay[], dateValue: string): TripDay | undefined {
+  if (!dateValue) return undefined;
+  return days.find((day) => tripDayDateInputValue(day.date) === dateValue);
 }
 
 function tabsForRole(role: Role | null, features: CrewtripState['features']): Tab[] {
@@ -400,7 +409,7 @@ export function App() {
   const [draftCrewTeam, setDraftCrewTeam] = useState('all');
   const [selectedDayId, setSelectedDayId] = useState('day-1');
   const [hostSection, setHostSection] = useState<HostSection>('manage');
-  const [draftStop, setDraftStop] = useState({ dayId: 'day-1', groupId: 'all', time: '', title: '', place: '' });
+  const [draftStop, setDraftStop] = useState({ dayId: 'day-1', date: '', groupId: 'all', time: '', title: '', place: '' });
   const [draftDay, setDraftDay] = useState({ label: '', date: '' });
   const [draftGroup, setDraftGroup] = useState('');
   const [draftMessage, setDraftMessage] = useState('');
@@ -428,6 +437,7 @@ export function App() {
   const [minuteTick, setMinuteTick] = useState(0);
 
   const shareUrl = useMemo(() => buildShareUrl(state.eventCode, 'crew'), [state.eventCode]);
+  const hostReturnUrl = useMemo(() => buildShareUrl(state.eventCode, 'join-host'), [state.eventCode]);
   const hostPlayer = state.players.find((player) => player.id === 'host') ?? state.players[0]!;
   const localPlayer = localPlayerId ? state.players.find((player) => player.id === localPlayerId) : undefined;
   const crewNeedsProfile = role === 'eventee' && (!localPlayer || localPlayer.id === 'host');
@@ -453,6 +463,9 @@ export function App() {
     .filter((backup) => backup.eventCode === state.eventCode)
     .sort((a, b) => b.at - a.at), [backupRevision, minuteTick, state.eventCode, state.updatedAt]);
   const activeDayId = days.some((day) => day.id === selectedDayId) ? selectedDayId : days[0]!.id;
+  const activeDay = days.find((day) => day.id === activeDayId) ?? days[0]!;
+  const draftStopDay = days.find((day) => day.id === draftStop.dayId) ?? activeDay;
+  const draftStopDateValue = draftStop.date || tripDayDateInputValue(draftStopDay.date);
   const activeGroup = activePlayer.groupId ? groups.find((group) => group.id === activePlayer.groupId) : null;
   const dayStops = state.stops.filter((stop) => (stop.dayId ?? days[0]!.id) === activeDayId);
   const currentStop = dayStops.find((stop) => stop.status === 'now') ?? dayStops[0] ?? state.stops[0]!;
@@ -1051,12 +1064,51 @@ export function App() {
     sdk.feel.texture('confirm');
   }
 
+  function resetDraftStop(dayId = activeDayId, date = '') {
+    const day = days.find((item) => item.id === dayId);
+    setDraftStop({
+      dayId: day?.id ?? dayId,
+      date: date || tripDayDateInputValue(day?.date),
+      groupId: 'all',
+      time: '',
+      title: '',
+      place: '',
+    });
+  }
+
+  function selectDraftStopDay(dayId: string) {
+    const day = days.find((item) => item.id === dayId) ?? activeDay;
+    setDraftStop((current) => ({
+      ...current,
+      dayId: day.id,
+      date: tripDayDateInputValue(day.date),
+    }));
+  }
+
+  function selectDraftStopDate(date: string) {
+    const existingDay = findDayByInputDate(days, date);
+    setDraftStop((current) => ({
+      ...current,
+      date,
+      dayId: existingDay?.id ?? current.dayId,
+    }));
+  }
+
   function addDay() {
-    const label = draftDay.label.trim();
-    if (!label) return;
-    const day = { id: newId('day'), label, date: draftDay.date.trim() || label };
+    const date = draftDay.date.trim();
+    const label = draftDay.label.trim() || nextTripDayLabel(days);
+    if (!date && !draftDay.label.trim()) return;
+    const existingDay = findDayByInputDate(days, date);
+    if (existingDay) {
+      setSelectedDayId(existingDay.id);
+      resetDraftStop(existingDay.id);
+      setDraftDay({ label: '', date: '' });
+      return;
+    }
+    const day = { id: newId('day'), label, date: date || label };
     update((current) => ({ ...current, days: [...(current.days ?? initialState.days), day] }));
     setSelectedDayId(day.id);
+    setDraftStop((current) => ({ ...current, dayId: day.id, date }));
     setDraftDay({ label: '', date: '' });
   }
 
@@ -1283,13 +1335,25 @@ export function App() {
   function addStop() {
     const title = draftStop.title.trim();
     if (!title) return;
+    const date = draftStop.date.trim();
+    const currentDays = days.length ? days : initialState.days;
+    const existingDateDay = findDayByInputDate(currentDays, date);
+    const newDateDay = date && !existingDateDay
+      ? { id: newId('day'), label: nextTripDayLabel(currentDays), date }
+      : null;
+    const stopDayId = existingDateDay?.id
+      ?? newDateDay?.id
+      ?? (currentDays.some((day) => day.id === draftStop.dayId) ? draftStop.dayId : activeDayId);
     update((current) => ({
       ...current,
+      days: newDateDay && !findDayByInputDate(current.days ?? initialState.days, date)
+        ? [...(current.days ?? initialState.days), newDateDay]
+        : current.days,
       stops: [
         ...current.stops,
         {
           id: newId('s'),
-          dayId: draftStop.dayId,
+          dayId: stopDayId,
           groupId: draftStop.groupId === 'all' ? undefined : draftStop.groupId,
           time: draftStop.time.trim() || 'TBC',
           title,
@@ -1298,7 +1362,50 @@ export function App() {
         },
       ],
     }));
-    setDraftStop({ dayId: activeDayId, groupId: 'all', time: '', title: '', place: '' });
+    setSelectedDayId(stopDayId);
+    resetDraftStop(stopDayId, newDateDay?.date ?? existingDateDay?.date ?? '');
+  }
+
+  function renderPlanDateControls(prefix: string) {
+    const newDateSelected = Boolean(draftStop.date && !findDayByInputDate(days, draftStop.date));
+    return (
+      <>
+        <div className="plan-day-picker" role="group" aria-label="Existing trip dates">
+          {days.map((day) => {
+            const selected = !newDateSelected && draftStop.dayId === day.id;
+            return (
+              <button
+                key={day.id}
+                type="button"
+                aria-pressed={selected}
+                className={selected ? 'active' : ''}
+                onClick={() => selectDraftStopDay(day.id)}
+              >
+                <strong>{day.label}</strong>
+                <span>{formatTripDayDate(day.date)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="plan-date-controls">
+          <label>
+            <span>Date</span>
+            <input
+              name={`${prefix}-date`}
+              type="date"
+              value={draftStopDateValue}
+              onChange={(event) => selectDraftStopDate(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>Group</span>
+            <select name={`${prefix}-group`} value={draftStop.groupId} onChange={(event) => setDraftStop((current) => ({ ...current, groupId: event.target.value }))}>
+              {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+            </select>
+          </label>
+        </div>
+      </>
+    );
   }
 
   function addPoll() {
@@ -1516,6 +1623,16 @@ export function App() {
     }
   }
 
+  async function copyHostReturnLink() {
+    try {
+      await navigator.clipboard?.writeText(hostReturnUrl);
+      setBackupNotice('Host return link copied. Bookmark it on this browser before closing.');
+      sdk.feel.texture('confirm');
+    } catch {
+      setBackupNotice('Could not copy the host return link here. Use the recovery pack as a backup.');
+    }
+  }
+
   function downloadRecoveryPack() {
     const result = writeLocalBackup(state, 'manual', true);
     setBackupRevision((revision) => revision + 1);
@@ -1588,18 +1705,11 @@ export function App() {
   }
 
   if (!role) {
-    // A trip counts as "existing" if there's at least one named player
-    // beyond the lone Host seed and we haven't already cleared it.
     const hasHostClaim = readLocalHostClaim(state.eventCode);
-    const hasExistingTrip = hasHostClaim && (
-      state.players.length > 1
-      || state.memories.length > 0
-      || state.stops.some((stop) => stop.title !== 'Start planning')
-    );
     return (
       <EntryScreen
         themeStyle={themeVars}
-        hasExistingTrip={hasExistingTrip}
+        hasExistingTrip={hasHostClaim}
         existingTripName={state.eventName !== 'Crewtrip' ? state.eventName : undefined}
         onContinue={() => {
           becomeHost(state.eventCode);
@@ -1646,9 +1756,14 @@ export function App() {
             </p>
           </div>
           <div className="header-actions">
-            <button type="button" className="share-button" onClick={copyShareLink}>
-              <Icon name="share" size={14} />
-              <span>{shareCopied ? copy.copied : copy.share}</span>
+            <button
+              type="button"
+              className="share-button"
+              onClick={copyShareLink}
+              aria-label={shareCopied ? copy.copied : copy.share}
+              title={shareCopied ? copy.copied : copy.share}
+            >
+              <span aria-hidden="true">{shareCopied ? '✓' : '🔗'}</span>
             </button>
           </div>
         </header>
@@ -1720,9 +1835,14 @@ export function App() {
               {headerInboxCount ? <span>{Math.min(headerInboxCount, 9)}</span> : null}
             </button>
           ) : null}
-          <button type="button" className="share-button" onClick={copyShareLink}>
-            <Icon name="share" size={14} />
-            <span>{shareCopied ? copy.copied : copy.share}</span>
+          <button
+            type="button"
+            className="share-button"
+            onClick={copyShareLink}
+            aria-label={shareCopied ? copy.copied : copy.share}
+            title={shareCopied ? copy.copied : copy.share}
+          >
+            <span aria-hidden="true">{shareCopied ? '✓' : '🔗'}</span>
           </button>
         </div>
       </header>
@@ -2317,13 +2437,8 @@ export function App() {
                   </ControlPanel>
                 ) : null}
                 {features.plan ? (
-                  <HostDisclosure title="Plan item" hint="Add a stop to the day">
-                    <select name="host-stop-day" value={draftStop.dayId} onChange={(event) => setDraftStop((current) => ({ ...current, dayId: event.target.value }))}>
-                      {days.map((day) => <option key={day.id} value={day.id}>{day.label}</option>)}
-                    </select>
-                    <select name="host-stop-group" value={draftStop.groupId} onChange={(event) => setDraftStop((current) => ({ ...current, groupId: event.target.value }))}>
-                      {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-                    </select>
+                  <HostDisclosure title="Plan item" hint="Pick or add a date">
+                    {renderPlanDateControls('host-stop')}
                     <input name="host-stop-time" value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00 or TBC)" />
                     <input name="host-stop-title" value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value }))} placeholder="Plan title" />
                     <input name="host-stop-place" value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
@@ -2462,6 +2577,8 @@ export function App() {
                   {qrMarkup ? <div className="qr-frame" dangerouslySetInnerHTML={{ __html: qrMarkup }} /> : <code>{shareUrl}</code>}
                   <p className="sync-note">{syncLabel(sync, language)} Host controls stay on this device.</p>
                   <button onClick={copyShareLink}>{shareCopied ? copy.copied : copy.copyJoinLink}</button>
+                  <button type="button" className="ghost" onClick={() => void copyHostReturnLink()}>Copy host return link</button>
+                  <p className="sync-note">Bookmark the host return link on this browser. Crew should only get the join link or QR.</p>
                 </ControlPanel>
                 <HostDisclosure title="Trip feeling" hint={`${palette.name} palette`}>
                   <div className="theme-grid">
@@ -2483,12 +2600,12 @@ export function App() {
                     ))}
                   </div>
                 </HostDisclosure>
-                <HostDisclosure title="Days" hint={`${days.length} days in the trip`}>
+                <HostDisclosure title="Dates" hint={`${days.length} trip dates`}>
                   <DayToggle days={days} selectedDayId={activeDayId} onSelect={setSelectedDayId} />
                   <div className="composer three">
-                    <input name="trip-day-label" value={draftDay.label} onChange={(event) => setDraftDay((current) => ({ ...current, label: event.target.value }))} placeholder="Day label (e.g. Day 2)" />
-                    <input name="trip-day-date" value={draftDay.date} onChange={(event) => setDraftDay((current) => ({ ...current, date: event.target.value }))} placeholder="Short date (e.g. Sat)" />
-                    <button onClick={addDay}>Add day</button>
+                    <input name="trip-day-date" type="date" value={draftDay.date} onChange={(event) => setDraftDay((current) => ({ ...current, date: event.target.value }))} />
+                    <input name="trip-day-label" value={draftDay.label} onChange={(event) => setDraftDay((current) => ({ ...current, label: event.target.value }))} placeholder={`Label (${nextTripDayLabel(days)})`} />
+                    <button onClick={addDay}>Add date</button>
                   </div>
                 </HostDisclosure>
                 <HostDisclosure title="Teams" hint={`${groups.length} teams`}>
@@ -2867,9 +2984,10 @@ export function App() {
               <button onClick={() => { addBroadcast(); setActionSheetOpen(false); }}>Send</button>
             </ControlPanel>
             {features.plan ? (
-              <HostDisclosure title="Plan item" hint="Add to the current day">
+              <HostDisclosure title="Plan item" hint="Pick or add a date">
+                {renderPlanDateControls('quick-stop')}
                 <input name="quick-stop-time" value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00)" />
-                <input name="quick-stop-title" value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value, dayId: activeDayId }))} placeholder="Plan title" />
+                <input name="quick-stop-title" value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value }))} placeholder="Plan title" />
                 <input name="quick-stop-place" value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
                 <button onClick={() => { addStop(); setActionSheetOpen(false); }}>Add plan</button>
               </HostDisclosure>
@@ -3032,5 +3150,5 @@ function defaultGroupEmojiInline(name: string): string {
   if (lower.includes('beach') || lower.includes('sea') || lower.includes('pool')) return '☀';
   if (lower.includes('food') || lower.includes('dinner') || lower.includes('brunch')) return '◆';
   if (lower.includes('party') || lower.includes('dance')) return '✦';
-  return '★';
+  return '👥';
 }
