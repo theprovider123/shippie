@@ -1,0 +1,14 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Lift",
+  "slug": "lift",
+  "description": "A private strength tracker for the minute between sets. Two taps to log. One line to see you're stronger.",
+  "icon": "/icon.svg",
+  "theme_color": "#1a1a1a",
+  "background_color": "#1a1a1a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["workout-completed", "pr-broken", "set-logged"]
+  }
+}
