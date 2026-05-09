@@ -121,6 +121,12 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // dashboards. No in-tree consumer at the moment.
   'visit-completed',
   'incident-flagged',
+  // Lift — strength-training events for /today + /glance summaries.
+  // No in-tree consumer for the per-set / per-PR streams; Body Metrics
+  // could subscribe to workout-completed eventually but doesn't today.
+  'workout-completed',
+  'pr-broken',
+  'set-logged',
 ]);
 
 /**

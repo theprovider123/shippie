@@ -17,6 +17,7 @@ export const SHOWCASE_SLUGS = [
   "hearth",
   "journal",
   "ledger",
+  "lift",
   "live-room",
   "matchday",
   "meal-planner",

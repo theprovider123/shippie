@@ -671,6 +671,21 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     port: 5220,
     intents: { provides: ['visit-completed', 'incident-flagged'] },
   },
+  {
+    slug: 'lift',
+    name: 'Lift',
+    shortName: 'Lift',
+    description:
+      "A private strength tracker for the minute between sets. Two taps to log. One line to see you're stronger.",
+    appKind: 'local',
+    icon: 'LF',
+    accent: '#C24E1F',
+    category: 'health',
+    port: 5224,
+    intents: {
+      provides: ['workout-completed', 'pr-broken', 'set-logged'],
+    },
+  },
 ];
 
 export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp);
