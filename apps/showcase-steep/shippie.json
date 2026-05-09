@@ -1,0 +1,80 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Steep",
+  "slug": "steep",
+  "description": "A local-first notebook for medicinal tea blends. Loose-leaf, brewed properly.",
+  "icon": "/icon.png",
+  "theme_color": "#2F4A3A",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "ai": [],
+  "intents": {
+    "provides": ["brewed-tea", "wellness-ritual"],
+    "consumes": []
+  },
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      },
+      "list-swipe": {
+        "selector": "ul[data-shippie-list]",
+        "haptic": "tap"
+      }
+    }
+  },
+  "permissions": ["wake-lock"],
+  "data_schemas": {
+    "herbs": {
+      "id": "text primary key",
+      "slug": "text not null",
+      "common_name": "text not null",
+      "latin_name": "text",
+      "tastes": "text",
+      "actions": "text",
+      "energetics": "text",
+      "traditional_uses": "text",
+      "default_brew_temp_c": "integer",
+      "default_steep_minutes": "integer",
+      "max_resteeps": "integer",
+      "notes": "text",
+      "source": "text not null",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    },
+    "blends": {
+      "id": "text primary key",
+      "name": "text not null",
+      "notes": "text",
+      "intent_tags": "text",
+      "default_temp_c": "integer",
+      "default_steep_minutes": "integer",
+      "max_resteeps": "integer",
+      "default_batch": "text",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    },
+    "blend_ingredients": {
+      "id": "text primary key",
+      "blend_id": "text not null",
+      "herb_id": "text not null",
+      "parts": "real not null",
+      "notes": "text"
+    },
+    "inventory": {
+      "id": "text primary key",
+      "herb_id": "text not null",
+      "grams_on_hand": "real not null",
+      "low_threshold_g": "real",
+      "last_restocked_at": "datetime"
+    },
+    "brew_log": {
+      "id": "text primary key",
+      "blend_id": "text not null",
+      "brewed_at": "datetime not null",
+      "batch_label": "text",
+      "note": "text"
+    }
+  }
+}

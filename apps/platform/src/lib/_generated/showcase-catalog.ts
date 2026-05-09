@@ -34,6 +34,7 @@ export const SHOWCASE_SLUGS = [
   "show-and-tell",
   "sip-log",
   "site-visit",
+  "steep",
   "story-studio",
   "symptom-diary",
   "tab",
@@ -43,7 +44,4 @@ export const SHOWCASE_SLUGS = [
   "whiteboard"
 ] as const;
 
-export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.flatMap((slug) => [
-  `/run/${slug}/`,
-  `/run/${slug}/index.html`,
-]);
+export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.map((slug) => `/__shippie-run/${slug}/?shippie_embed=1`);
