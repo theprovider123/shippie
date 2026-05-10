@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createObservationClient } from '@shippie/observations';
 import { haptic } from '@shippie/sdk/wrapper';
+import { createSoundBank, isMuted, toggleMuted, Particles } from '@shippie/juice';
+import { ARCADE_SAMPLES } from '@shippie/juice/samples';
 import {
   CAMPAIGN_LEVELS,
   COLORS_HEX,
@@ -24,6 +26,18 @@ import {
   type Board,
   type Special,
 } from './match3';
+
+const sfx = createSoundBank({
+  tap: ARCADE_SAMPLES.tap,
+  pop: ARCADE_SAMPLES.pop,
+  whoosh: ARCADE_SAMPLES.whoosh,
+  bing: ARCADE_SAMPLES.bing,
+  success: ARCADE_SAMPLES.success,
+  fail: ARCADE_SAMPLES.fail,
+  levelUp: ARCADE_SAMPLES.levelUp,
+});
+
+interface ScoreFloat { id: number; r: number; c: number; value: number; }
 
 /**
  * Lustre — match-3 with cascade physics.
@@ -87,8 +101,52 @@ export function App() {
   const [step, setStep] = useState<Step>('idle');
   const [shareNote, setShareNote] = useState<string | null>(null);
   const [done, setDone] = useState<'win' | 'lose' | null>(null);
+  const [muted, setMutedState] = useState(() => isMuted());
+  const [scoreFloats, setScoreFloats] = useState<ScoreFloat[]>([]);
+  const [comboBanner, setComboBanner] = useState<{ id: number; n: number } | null>(null);
+  const cascadeDepthRef = useRef(0);
+  const floatIdRef = useRef(0);
+  const particlesRef = useRef<Particles | null>(null);
+  const fxCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { saveProgress(progress); }, [progress]);
+
+  // Mount the canvas particle system once.
+  useEffect(() => {
+    const canvas = fxCanvasRef.current;
+    if (!canvas) return;
+    const fx = new Particles(canvas);
+    particlesRef.current = fx;
+    const resize = () => fx.resize();
+    resize();
+    window.addEventListener('resize', resize);
+    fx.start();
+    return () => {
+      window.removeEventListener('resize', resize);
+      fx.stop();
+      particlesRef.current = null;
+    };
+  }, []);
+
+  const burstAt = (r: number, c: number, color: string) => {
+    const grid = gridRef.current;
+    const canvas = fxCanvasRef.current;
+    if (!grid || !canvas || !particlesRef.current) return;
+    const gridRect = grid.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const cellW = gridRect.width / SIZE;
+    const cellH = gridRect.height / SIZE;
+    const x = gridRect.left - canvasRect.left + cellW * c + cellW / 2;
+    const y = gridRect.top - canvasRect.top + cellH * r + cellH / 2;
+    particlesRef.current.emit({ x, y, count: 10, colour: color, kind: 'burst', speed: 1.2, lifetimeMs: 700 });
+  };
+
+  const pushScoreFloat = (r: number, c: number, value: number) => {
+    const id = ++floatIdRef.current;
+    setScoreFloats((prev) => [...prev, { id, r, c, value }]);
+    window.setTimeout(() => setScoreFloats((prev) => prev.filter((f) => f.id !== id)), 700);
+  };
 
   const target = useMemo(() => mode === 'campaign' ? levelTarget(levelN) : { scoreTarget: Number.MAX_SAFE_INTEGER, movesAllowed: 0 }, [mode, levelN]);
 
@@ -119,13 +177,13 @@ export function App() {
         const next = cloneBoard(prev);
         const matches = findMatches(next);
         if (matches.length === 0) {
-          // Stable — return to idle.
           setStep('idle');
-          // Check win/lose conditions.
-          const newScore = score; // already updated in the previous cycles
+          cascadeDepthRef.current = 0;
+          const newScore = score;
           if (mode === 'campaign' && newScore >= target.scoreTarget) {
             setDone('win');
             haptic('success');
+            sfx.play('levelUp');
             const nextLvl = Math.min(CAMPAIGN_LEVELS, levelN + 1);
             setProgress((p) => ({ ...p, campaignLevel: Math.max(p.campaignLevel, nextLvl), bestScore: Math.max(p.bestScore, newScore), totalRuns: p.totalRuns + 1 }));
             observations.emit({
@@ -137,17 +195,38 @@ export function App() {
           } else if (movesLeft <= 0 && mode === 'campaign') {
             setDone('lose');
             haptic('error');
+            sfx.play('fail');
           }
           return next;
         }
-        // Promote specials.
+        cascadeDepthRef.current += 1;
+        const depth = cascadeDepthRef.current;
         const promotions = promoteSpecials(matches, null);
-        // Score additions.
         let added = 0;
         for (const g of matches) added += scoreClear(g);
         setScore((s) => s + added);
         haptic('tap');
-        // Clear matched cells (but skip cells that become specials).
+        // Audio + visual juice per match group.
+        for (const g of matches) {
+          const baseValue = scoreClear(g);
+          // Slightly higher pitch each cascade level for the "rising"
+          // feel of a match-3 chain.
+          const pitch = Math.min(1.6, 0.95 + depth * 0.08);
+          sfx.play(g.length >= 4 ? 'bing' : 'pop', { pitch, volume: 0.6 });
+          // Particle burst at each cleared cell, scaled-up by length.
+          for (const cell of g.cells) {
+            const colour = COLORS_HEX[next[cell.r]![cell.c]!.color] ?? '#fff';
+            burstAt(cell.r, cell.c, colour);
+          }
+          // One float per group, anchored at its centre.
+          const centre = g.cells[Math.floor(g.cells.length / 2)]!;
+          pushScoreFloat(centre.r, centre.c, baseValue);
+        }
+        if (depth >= 2) {
+          const banner = { id: ++floatIdRef.current, n: depth };
+          setComboBanner(banner);
+          window.setTimeout(() => setComboBanner((b) => (b?.id === banner.id ? null : b)), 1000);
+        }
         const promotionSet = new Set(promotions.map((p) => `${p.r},${p.c}`));
         const toClear: Array<{ r: number; c: number }> = [];
         for (const g of matches) {
@@ -156,7 +235,6 @@ export function App() {
           }
         }
         clearCells(next, toClear);
-        // Apply special promotions on top of remaining cells.
         for (const p of promotions) {
           if (next[p.r]?.[p.c]) {
             next[p.r]![p.c] = { ...next[p.r]![p.c]!, special: p.special as Special };
@@ -187,14 +265,19 @@ export function App() {
     // Try the swap.
     const cell = board[r]![c]!;
     if (cell.special !== 'none' || board[selected.r]![selected.c]!.special !== 'none') {
-      // Triggering a special — clear its expansion + cascade.
       const next = cloneBoard(board);
       swap(next, selected, { r, c });
       const origin = next[r]![c]!.special !== 'none' ? { r, c } : selected;
       const blasted = expandSpecial(next, origin);
+      // Particle burst per blasted cell BEFORE clearing.
+      for (const cell of blasted) {
+        const colour = COLORS_HEX[next[cell.r]![cell.c]!.color] ?? '#fff';
+        burstAt(cell.r, cell.c, colour);
+      }
       clearCells(next, blasted);
-      let added = blasted.length * 15;
+      const added = blasted.length * 15;
       setScore((s) => s + added);
+      pushScoreFloat(origin.r, origin.c, added);
       applyGravity(next);
       refillBoard(next);
       setBoard(next);
@@ -202,17 +285,19 @@ export function App() {
       setSelected(null);
       setStep('cascading');
       haptic('success');
+      sfx.play('whoosh');
       return;
     }
     const candidate = cloneBoard(board);
     swap(candidate, selected, { r, c });
     const matches = findMatches(candidate);
     if (matches.length === 0) {
-      // Reverse — invalid swap.
       haptic('error');
+      sfx.play('fail', { volume: 0.5 });
       setSelected(null);
       return;
     }
+    sfx.play('tap', { pitch: 1.2 });
     setBoard(candidate);
     setMovesLeft((m) => m - 1);
     setSelected(null);
@@ -243,6 +328,9 @@ export function App() {
             {' · '}{score} pts · {movesLeft === Number.MAX_SAFE_INTEGER ? '∞' : movesLeft} moves
           </p>
         </div>
+        <button type="button" className="ghost" onClick={() => setMutedState(toggleMuted())} aria-label={muted ? 'Unmute' : 'Mute'}>
+          {muted ? '🔇' : '🔊'}
+        </button>
       </header>
 
       <section className="mode-row">
@@ -258,25 +346,48 @@ export function App() {
         ))}
       </section>
 
-      <section className="grid" aria-label="Match-3 grid">
-        {board.map((row, r) =>
-          row.map((cell, c) => {
-            const isSelected = selected?.r === r && selected?.c === c;
-            return (
-              <button
-                key={`${r}-${c}`}
-                type="button"
-                className={`gem${isSelected ? ' selected' : ''}${cell.special !== 'none' ? ` special special-${cell.special}` : ''}`}
-                style={{ background: cell.color === -1 ? 'transparent' : COLORS_HEX[cell.color] }}
-                onClick={() => tap(r, c)}
-                aria-label={`Gem at ${r},${c}`}
-              >
-                {cell.special === 'bomb' ? '✦' : cell.special === 'rainbow' ? '✺' : cell.special === 'flame' ? '◆' : ''}
-              </button>
-            );
-          }),
-        )}
-      </section>
+      <div className="grid-wrap">
+        <canvas ref={fxCanvasRef} className="fx-canvas" aria-hidden />
+        <section className="grid" aria-label="Match-3 grid" ref={gridRef}>
+          {board.map((row, r) =>
+            row.map((cell, c) => {
+              const isSelected = selected?.r === r && selected?.c === c;
+              return (
+                <button
+                  key={`${r}-${c}`}
+                  type="button"
+                  className={`gem${isSelected ? ' selected' : ''}${cell.special !== 'none' ? ` special special-${cell.special}` : ''}`}
+                  style={{ background: cell.color === -1 ? 'transparent' : COLORS_HEX[cell.color] }}
+                  onClick={() => tap(r, c)}
+                  aria-label={`Gem at ${r},${c}`}
+                >
+                  {cell.special === 'bomb' ? '✦' : cell.special === 'rainbow' ? '✺' : cell.special === 'flame' ? '◆' : ''}
+                </button>
+              );
+            }),
+          )}
+          {scoreFloats.map((f) => (
+            <span
+              key={f.id}
+              className="score-float"
+              style={{
+                left: `${(f.c / SIZE) * 100}%`,
+                top: `${(f.r / SIZE) * 100}%`,
+                width: `${100 / SIZE}%`,
+                height: `${100 / SIZE}%`,
+              }}
+            >
+              +{f.value}
+            </span>
+          ))}
+        </section>
+
+        {comboBanner ? (
+          <div key={comboBanner.id} className="combo-banner" aria-live="polite">
+            Combo ×{comboBanner.n}!
+          </div>
+        ) : null}
+      </div>
 
       {done ? (
         <section className="overlay" aria-live="polite">

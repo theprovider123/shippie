@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createObservationClient } from '@shippie/observations';
 import { haptic } from '@shippie/sdk/wrapper';
+import { createSoundBank, isMuted, toggleMuted } from '@shippie/juice';
+import { ARCADE_SAMPLES } from '@shippie/juice/samples';
+import { Confetti } from '@shippie/juice/react';
 import {
   BANK_VERSION,
   LANGS,
@@ -15,6 +18,17 @@ import {
   type Lang,
   type TileState,
 } from './wordbank';
+
+const sfx = createSoundBank({
+  tap: ARCADE_SAMPLES.tap,
+  pop: ARCADE_SAMPLES.pop,
+  bing: ARCADE_SAMPLES.bing,
+  success: ARCADE_SAMPLES.success,
+  fail: ARCADE_SAMPLES.fail,
+});
+
+const FLIP_STAGGER_MS = 250;
+const FLIP_DURATION_MS = 480;
 
 /**
  * Five Letter — daily word puzzle in 3 languages.
@@ -107,6 +121,16 @@ export function App() {
   const [shake, setShake] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'daily' | 'practice'>('daily');
+  // Tracks the last-submitted guess for tile-flip animation. Index N
+  // becomes "revealed" at FLIP_STAGGER_MS × N + FLIP_DURATION_MS, so
+  // the row reveals letter-by-letter (Wordle-cadence).
+  const [flipping, setFlipping] = useState<{ rowIdx: number; revealedThrough: number } | null>(null);
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [muted, setMutedState] = useState(() => isMuted());
+  // Keep the keyboard state from updating until the row finishes
+  // flipping — the green/yellow/grey colours should land WITH the
+  // tiles, not before.
+  const lastSubmitTimerRef = useRef<number | null>(null);
 
   const today = todayKey();
   const lang = settings.lang;
@@ -142,8 +166,13 @@ export function App() {
 
   const keyStates = useMemo<Record<string, TileState>>(() => {
     const out: Record<string, TileState> = {};
-    for (const row of rows) {
-      for (let i = 0; i < row.guess.length; i++) {
+    // Skip the still-flipping row so keyboard tints don't precede the
+    // tile reveal (they should land WITH the tiles, not before).
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r]!;
+      const isFlippingRow = flipping?.rowIdx === r;
+      const upTo = isFlippingRow ? Math.max(0, flipping.revealedThrough + 1) : row.guess.length;
+      for (let i = 0; i < upTo; i++) {
         const ch = row.guess[i]!;
         const next = row.states[i]!;
         const prev = out[ch];
@@ -155,7 +184,7 @@ export function App() {
       }
     }
     return out;
-  }, [rows]);
+  }, [rows, flipping]);
 
   const finished = activeAttempt?.finished ?? false;
   const won = activeAttempt?.won ?? false;
@@ -166,12 +195,14 @@ export function App() {
     if (currentGuess.length !== 5) return;
     if (!wordSet.has(currentGuess.toLowerCase())) {
       haptic('error');
+      sfx.play('fail');
       setShake(true);
       window.setTimeout(() => setShake(false), 300);
       return;
     }
     const guess = currentGuess.toLowerCase();
     haptic('tap');
+    sfx.play('tap');
     const states = scoreGuess(activePuzzle.answer, guess);
     const isWin = states.every((s) => s === 'correct');
     const nextGuesses = [...(activeAttempt?.guesses ?? []), guess];
@@ -187,15 +218,38 @@ export function App() {
     };
     setAttempts((m) => ({ ...m, [activePuzzle.puzzle_id]: next }));
     setCurrentGuess('');
-    if (isFinished) {
-      if (isWin) haptic('success');
-      observations.emit({
-        kind: 'game.completed',
-        game: 'five-letter',
-        result: isWin ? `${nextGuesses.length}/6` : `X/6`,
-        at: new Date().toISOString(),
-      });
+
+    // Tile-flip reveal sequence — staggered per-tile, then optional
+    // win celebration on the row.
+    const newRowIdx = nextGuesses.length - 1;
+    setFlipping({ rowIdx: newRowIdx, revealedThrough: -1 });
+    for (let i = 0; i < 5; i++) {
+      window.setTimeout(() => {
+        sfx.play('pop', { pitch: 1 + i * 0.05 });
+        setFlipping({ rowIdx: newRowIdx, revealedThrough: i });
+      }, i * FLIP_STAGGER_MS + FLIP_DURATION_MS / 2);
     }
+    // Clear the flipping marker once the last tile lands.
+    const totalRevealMs = 4 * FLIP_STAGGER_MS + FLIP_DURATION_MS;
+    if (lastSubmitTimerRef.current) window.clearTimeout(lastSubmitTimerRef.current);
+    lastSubmitTimerRef.current = window.setTimeout(() => {
+      setFlipping(null);
+      if (isFinished) {
+        if (isWin) {
+          haptic('success');
+          sfx.play('success');
+          setConfettiTrigger((n) => n + 1);
+        } else {
+          sfx.play('fail');
+        }
+        observations.emit({
+          kind: 'game.completed',
+          game: 'five-letter',
+          result: isWin ? `${nextGuesses.length}/6` : `X/6`,
+          at: new Date().toISOString(),
+        });
+      }
+    }, totalRevealMs);
   }, [activePuzzle, activeAttempt, currentGuess, finished, wordSet]);
 
   const onKey = useCallback(
@@ -299,19 +353,30 @@ export function App() {
           <h1>Five Letter</h1>
           <p className="muted small">{activeMode === 'daily' ? `Daily · ${today}` : 'Practice mode'}</p>
         </div>
-        <div className="lang-row">
-          {LANGS.map((l) => (
-            <button
-              key={l.code}
-              type="button"
-              className={l.code === lang ? 'lang active' : 'lang'}
-              onClick={() => setSettings({ lang: l.code })}
-              aria-pressed={l.code === lang}
-              title={l.label}
-            >
-              {l.flag}
-            </button>
-          ))}
+        <div className="head-actions">
+          <button
+            type="button"
+            className="lang"
+            onClick={() => setMutedState(toggleMuted())}
+            aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+            title={muted ? 'Unmute' : 'Mute'}
+          >
+            {muted ? '🔇' : '🔊'}
+          </button>
+          <div className="lang-row">
+            {LANGS.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                className={l.code === lang ? 'lang active' : 'lang'}
+                onClick={() => setSettings({ lang: l.code })}
+                aria-pressed={l.code === lang}
+                title={l.label}
+              >
+                {l.flag}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -325,6 +390,8 @@ export function App() {
               const isCurrent = !finished && ri === rows.length;
               const guess = isCurrent ? currentGuess : row?.guess ?? '';
               const states = row?.states;
+              const isFlippingRow = flipping?.rowIdx === ri;
+              const winRow = finished && won && ri === rows.length - 1;
               return (
                 <div
                   key={ri}
@@ -334,10 +401,29 @@ export function App() {
                   {Array.from({ length: 5 }).map((_, ci) => {
                     const ch = guess[ci] ?? '';
                     const state = states?.[ci];
+                    // During flip, the per-tile state is hidden until
+                    // the stagger reveals it. After the row settles,
+                    // states are always shown.
+                    const revealed = isFlippingRow ? ci <= flipping.revealedThrough : true;
+                    const showState = state && revealed;
                     return (
                       <span
                         key={ci}
-                        className={`tile${state ? ` tile-${state}` : ''}${ch && !state ? ' tile-typed' : ''}`}
+                        className={[
+                          'tile',
+                          showState ? `tile-${state}` : '',
+                          ch && !state ? 'tile-typed' : '',
+                          isFlippingRow ? 'flipping' : '',
+                          isFlippingRow && revealed ? 'flipped' : '',
+                          winRow && !isFlippingRow ? 'win-bounce' : '',
+                        ].filter(Boolean).join(' ')}
+                        style={
+                          isFlippingRow
+                            ? { animationDelay: `${ci * FLIP_STAGGER_MS}ms` }
+                            : winRow
+                              ? { animationDelay: `${ci * 80}ms` }
+                              : undefined
+                        }
                       >
                         {ch.toUpperCase()}
                       </span>
@@ -369,6 +455,8 @@ export function App() {
               </div>
             ))}
           </section>
+
+          <Confetti trigger={confettiTrigger} />
 
           {finished ? (
             <section className="finish" aria-live="polite">

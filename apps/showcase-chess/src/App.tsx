@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createObservationClient } from '@shippie/observations';
 import { haptic } from '@shippie/sdk/wrapper';
+import { createSoundBank, isMuted, toggleMuted } from '@shippie/juice';
+import { ARCADE_SAMPLES } from '@shippie/juice/samples';
 import {
   applyMove,
   isCheck,
@@ -16,6 +18,15 @@ import {
 } from './rules';
 import { pickBotMove } from './bot';
 import { exitFullscreen, isFullscreen, requestFullscreen } from './fullscreen';
+
+const sfx = createSoundBank({
+  tap: ARCADE_SAMPLES.tap,
+  pop: ARCADE_SAMPLES.pop,
+  warn: ARCADE_SAMPLES.warn,
+  success: ARCADE_SAMPLES.success,
+  fail: ARCADE_SAMPLES.fail,
+  levelUp: ARCADE_SAMPLES.levelUp,
+});
 
 /**
  * Chess showcase — three modes:
@@ -62,6 +73,11 @@ export function App() {
   const [selected, setSelected] = useState<Square | null>(null);
   const [thinking, setThinking] = useState(false);
   const [fullscreen, setFullscreenState] = useState(false);
+  const [muted, setMutedState] = useState(() => isMuted());
+  const [promotionPending, setPromotionPending] = useState<{ from: Square; to: Square } | null>(null);
+  const [dragFrom, setDragFrom] = useState<Square | null>(null);
+  const dragOverRef = useRef<Square | null>(null);
+  const lastMove = moves[moves.length - 1] ?? null;
 
   const position = history[history.length - 1]!;
   const gameStatus = useMemo(() => status(position), [position]);
@@ -84,7 +100,12 @@ export function App() {
         setHistory((h) => [...h, next]);
         setMoves((m) => [...m, move]);
         haptic('tap');
-        if (isCheck(next)) haptic('warn');
+        sfx.play(move.capture ? 'pop' : 'tap', { volume: move.capture ? 0.7 : 0.5 });
+        if (move.isCastle) sfx.play('levelUp', { volume: 0.5 });
+        if (isCheck(next)) {
+          haptic('warn');
+          sfx.play('warn');
+        }
       }
       setThinking(false);
     }, 200);
@@ -98,6 +119,7 @@ export function App() {
     if (endRef.done) return;
     endRef.done = true;
     haptic(gameStatus.kind === 'checkmate' ? 'success' : 'warn');
+    sfx.play(gameStatus.kind === 'checkmate' ? 'success' : 'warn');
     observations.emit({
       kind: 'game.completed',
       game: 'chess',
@@ -106,21 +128,47 @@ export function App() {
     });
   }, [gameStatus, endRef]);
 
+  const commitMove = (move: Move) => {
+    const next = applyMove(position, move);
+    setHistory((h) => [...h, next]);
+    setMoves((m) => [...m, move]);
+    setSelected(null);
+    haptic('tap');
+    sfx.play(move.capture ? 'pop' : 'tap', { volume: move.capture ? 0.7 : 0.5 });
+    if (move.isCastle) sfx.play('levelUp', { volume: 0.5 });
+    if (move.promotion) sfx.play('levelUp', { volume: 0.6 });
+    if (isCheck(next)) {
+      haptic('warn');
+      sfx.play('warn');
+    }
+  };
+
+  const tryMove = (from: Square, to: Square) => {
+    const move = legalMoves(position, from).find((m) => m.to[0] === to[0] && m.to[1] === to[1]);
+    if (!move) return false;
+    if (move.promotion) {
+      // Hold the promotion until the user picks a piece.
+      setPromotionPending({ from, to });
+      return true;
+    }
+    commitMove(move);
+    return true;
+  };
+
+  const choosePromotion = (kind: 'q' | 'r' | 'b' | 'n') => {
+    if (!promotionPending) return;
+    const move = legalMoves(position, promotionPending.from).find(
+      (m) => m.to[0] === promotionPending.to[0] && m.to[1] === promotionPending.to[1] && m.promotion === kind,
+    );
+    if (move) commitMove(move);
+    setPromotionPending(null);
+  };
+
   const onSquare = (sq: Square) => {
     if (gameStatus.kind !== 'playing') return;
     if (settings.mode === 'vsComputer' && position.turn !== 'w') return;
     if (selected) {
-      const move = legalMoves(position, selected).find((m) => m.to[0] === sq[0] && m.to[1] === sq[1]);
-      if (move) {
-        const final: Move = move.promotion ? { ...move, promotion: 'q' } : move;
-        const next = applyMove(position, final);
-        setHistory((h) => [...h, next]);
-        setMoves((m) => [...m, final]);
-        setSelected(null);
-        haptic('tap');
-        if (isCheck(next)) haptic('warn');
-        return;
-      }
+      if (tryMove(selected, sq)) return;
       const piece = position.board[sq[0]]?.[sq[1]];
       if (piece && piece.color === position.turn) setSelected(sq);
       else setSelected(null);
@@ -128,6 +176,34 @@ export function App() {
       const piece = position.board[sq[0]]?.[sq[1]];
       if (piece && piece.color === position.turn) setSelected(sq);
     }
+  };
+
+  // Drag-and-drop. Pointer events on a square start the drag; pointer
+  // up over a target square commits. Falls back to click flow above.
+  const onSquarePointerDown = (sq: Square, e: React.PointerEvent<HTMLButtonElement>) => {
+    if (gameStatus.kind !== 'playing') return;
+    if (settings.mode === 'vsComputer' && position.turn !== 'w') return;
+    const piece = position.board[sq[0]]?.[sq[1]];
+    if (!piece || piece.color !== position.turn) return;
+    setDragFrom(sq);
+    setSelected(sq);
+    dragOverRef.current = sq;
+    (e.currentTarget as Element).releasePointerCapture?.(e.pointerId);
+  };
+  const onSquarePointerEnter = (sq: Square) => {
+    if (!dragFrom) return;
+    dragOverRef.current = sq;
+  };
+  const onAppPointerUp = () => {
+    if (!dragFrom) return;
+    const target = dragOverRef.current;
+    setDragFrom(null);
+    if (!target) return;
+    if (target[0] === dragFrom[0] && target[1] === dragFrom[1]) {
+      // Tap-style click — keep selection so the user can click to move.
+      return;
+    }
+    tryMove(dragFrom, target);
   };
 
   const undo = () => {
@@ -170,7 +246,7 @@ export function App() {
   const files = settings.flipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
 
   return (
-    <main className="app">
+    <main className="app" onPointerUp={onAppPointerUp}>
       <header className="head">
         <div>
           <h1>Chess</h1>
@@ -183,6 +259,7 @@ export function App() {
           </p>
         </div>
         <div className="head-actions">
+          <button type="button" className="ghost" onClick={() => setMutedState(toggleMuted())} aria-label={muted ? 'Unmute' : 'Mute'}>{muted ? '🔇' : '🔊'}</button>
           <button type="button" className="ghost" onClick={() => setSettings({ ...settings, flipped: !settings.flipped })} aria-label="Flip board">⇅</button>
           <button type="button" className="ghost" onClick={toggleFullscreen} aria-label="Toggle fullscreen">{fullscreen ? '⤡' : '⛶'}</button>
         </div>
@@ -211,12 +288,26 @@ export function App() {
             const dark = (f + r) % 2 === 0;
             const isSelected = selected?.[0] === f && selected?.[1] === r;
             const isLegal = legalDestinations.has(`${f},${r}`);
+            const isLastFrom = lastMove && lastMove.from[0] === f && lastMove.from[1] === r;
+            const isLastTo = lastMove && lastMove.to[0] === f && lastMove.to[1] === r;
+            const isCheckSq = inCheck && piece?.type === 'k' && piece.color === position.turn;
+            const isCapture = isLegal && piece && piece.color !== position.turn;
             return (
               <button
                 key={`${f}-${r}`}
                 type="button"
-                className={`sq ${dark ? 'dark' : 'light'}${isSelected ? ' selected' : ''}${isLegal ? ' legal' : ''}`}
+                className={[
+                  'sq',
+                  dark ? 'dark' : 'light',
+                  isSelected ? 'selected' : '',
+                  isLegal ? (isCapture ? 'legal-capture' : 'legal') : '',
+                  isLastFrom ? 'last-from' : '',
+                  isLastTo ? 'last-to' : '',
+                  isCheckSq ? 'in-check' : '',
+                ].filter(Boolean).join(' ')}
                 onClick={() => onSquare([f, r])}
+                onPointerDown={(e) => onSquarePointerDown([f, r], e)}
+                onPointerEnter={() => onSquarePointerEnter([f, r])}
                 aria-label={`${squareToAlg([f, r])}${piece ? ` ${piece.color}${piece.type}` : ''}`}
               >
                 {piece ? PIECE_GLYPH[`${piece.color}${piece.type.toUpperCase()}`] : ''}
@@ -243,6 +334,42 @@ export function App() {
             ))}
           </ol>
         </section>
+      ) : null}
+
+      {promotionPending ? (
+        <div className="promotion-overlay" role="dialog" aria-label="Choose promotion piece">
+          <div className="promotion-card">
+            <p className="muted small">Promote to:</p>
+            <div className="promotion-row">
+              {(['q', 'r', 'b', 'n'] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className="promotion-btn"
+                  onClick={() => choosePromotion(kind)}
+                >
+                  {PIECE_GLYPH[`${position.turn}${kind.toUpperCase()}`]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {gameStatus.kind !== 'playing' ? (
+        <div className="endgame-overlay" role="dialog" aria-live="polite">
+          <div className="endgame-card">
+            <p className="endgame-title">
+              {gameStatus.kind === 'checkmate'
+                ? `${gameStatus.winner === 'w' ? 'White' : 'Black'} wins by checkmate`
+                : gameStatus.kind === 'stalemate' ? 'Stalemate' : `Draw — ${gameStatus.reason}`}
+            </p>
+            <div className="row-actions">
+              <button type="button" className="primary" onClick={newGame}>New game</button>
+              <button type="button" className="ghost" onClick={exportPgn}>Copy PGN</button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </main>
   );

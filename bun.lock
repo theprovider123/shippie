@@ -150,6 +150,7 @@
       "dependencies": {
         "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/juice": "workspace:*",
         "@shippie/observations": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "react": "^19.2.5",
@@ -192,6 +193,7 @@
       "dependencies": {
         "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/juice": "workspace:*",
         "@shippie/observations": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "react": "^19.2.5",
@@ -313,6 +315,7 @@
       "dependencies": {
         "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/juice": "workspace:*",
         "@shippie/observations": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "react": "^19.2.5",
@@ -418,6 +421,7 @@
       "dependencies": {
         "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/juice": "workspace:*",
         "@shippie/observations": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "react": "^19.2.5",
@@ -569,6 +573,7 @@
       "dependencies": {
         "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/juice": "workspace:*",
         "@shippie/observations": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "react": "^19.2.5",
@@ -973,6 +978,7 @@
       "dependencies": {
         "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/juice": "workspace:*",
         "@shippie/observations": "workspace:*",
         "@shippie/sdk": "workspace:*",
         "react": "^19.2.5",
@@ -1358,6 +1364,22 @@
         "happy-dom": "15",
         "typescript": "^5.7.0",
       },
+    },
+    "packages/juice": {
+      "name": "@shippie/juice",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "^1.3.12",
+        "@types/react": "^19.2.14",
+        "react": "^19.2.5",
+        "typescript": "^5.7.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+      },
+      "optionalPeers": [
+        "react",
+      ],
     },
     "packages/local-ai": {
       "name": "@shippie/local-ai",
@@ -2084,6 +2106,8 @@
     "@shippie/iframe-sdk": ["@shippie/iframe-sdk@workspace:packages/iframe-sdk"],
 
     "@shippie/intelligence": ["@shippie/intelligence@workspace:packages/intelligence"],
+
+    "@shippie/juice": ["@shippie/juice@workspace:packages/juice"],
 
     "@shippie/local-ai": ["@shippie/local-ai@workspace:packages/local-ai"],
 

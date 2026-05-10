@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createObservationClient } from '@shippie/observations';
 import { haptic } from '@shippie/sdk/wrapper';
+import { createSoundBank, isMuted, toggleMuted } from '@shippie/juice';
+import { ARCADE_SAMPLES } from '@shippie/juice/samples';
+import { Confetti } from '@shippie/juice/react';
 import {
   COLS,
   ROWS,
@@ -13,6 +16,15 @@ import {
   dailySeedForDate,
 } from './levels';
 import { exitFullscreen, isFullscreen, requestFullscreen } from './fullscreen';
+
+const sfx = createSoundBank({
+  tap: ARCADE_SAMPLES.tap,
+  splash: ARCADE_SAMPLES.splash,
+  thud: ARCADE_SAMPLES.thud,
+  success: ARCADE_SAMPLES.success,
+  levelUp: ARCADE_SAMPLES.levelUp,
+  fail: ARCADE_SAMPLES.fail,
+});
 
 /**
  * Crossing — Frogger-style hop-the-road game.
@@ -80,6 +92,9 @@ export function App() {
   const [lives, setLives] = useState(STARTING_LIVES);
   const [score, setScore] = useState(0);
   const [fullscreen, setFullscreenState] = useState(false);
+  const [muted, setMutedState] = useState(() => isMuted());
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [deathFx, setDeathFx] = useState<{ kind: 'splash' | 'splat'; col: number; row: number } | null>(null);
   const [, force] = useState(0);
 
   const tickRef = useRef(0);
@@ -110,12 +125,17 @@ export function App() {
     tickRef.current = 0;
   };
 
-  const die = useCallback(() => {
+  const die = useCallback((kind: 'splash' | 'splat') => {
     haptic('error');
+    sfx.play(kind === 'splash' ? 'splash' : 'thud');
+    const f = frogRef.current;
+    setDeathFx({ kind, col: f.col + f.drift, row: f.row });
+    window.setTimeout(() => setDeathFx(null), 500);
     setLives((l) => {
       const next = l - 1;
       if (next <= 0) {
         setPhase('lose');
+        sfx.play('fail');
         observations.emit({
           kind: 'game.completed',
           game: 'crossing',
@@ -133,11 +153,14 @@ export function App() {
 
   const winLevel = useCallback(() => {
     haptic('success');
+    sfx.play('levelUp');
+    setConfettiTrigger((n) => n + 1);
     setScore((s) => s + 100 + lives * 25);
     if (mode === 'campaign') {
       const next = levelN + 1;
       if (next > CAMPAIGN_LEVELS) {
         setPhase('win');
+        sfx.play('success');
         observations.emit({
           kind: 'game.completed',
           game: 'crossing',
@@ -160,6 +183,7 @@ export function App() {
     const nextRow = Math.max(0, Math.min(ROWS - 1, f.row + dy));
     if (nextCol === f.col && nextRow === f.row) return;
     haptic('tap');
+    sfx.play('tap', { volume: 0.5, pitch: 0.9 + Math.random() * 0.2 });
     hopRef.current = {
       from: { col: f.col, row: f.row },
       to: { col: nextCol, row: nextRow },
@@ -229,16 +253,16 @@ export function App() {
         if (log) {
           frogRef.current.drift += log.speed * dt;
           const px = frogRef.current.col + frogRef.current.drift;
-          if (px < -0.5 || px > COLS - 0.5) die();
+          if (px < -0.5 || px > COLS - 0.5) die('splash');
         } else if (!hopRef.current) {
-          die();
+          die('splash');
         }
       } else {
         frogRef.current.drift = 0;
       }
 
       if (lane?.kind === 'road' && !hopRef.current) {
-        if (hitsObstacle(lane, tickRef.current, frogRef.current.col + frogRef.current.drift)) die();
+        if (hitsObstacle(lane, tickRef.current, frogRef.current.col + frogRef.current.drift)) die('splat');
       }
 
       if (frogRef.current.row === level.goalRow && !hopRef.current) winLevel();
@@ -277,18 +301,39 @@ export function App() {
     const frogCol = isFrogRow
       ? animPos?.row === r ? animPos.col : frogRef.current.col + frogRef.current.drift
       : null;
+    const isHopping = isFrogRow && hopRef.current !== null;
+    const showDeath = deathFx && deathFx.row === r;
     renderRows.push(
       <div key={r} className={`lane lane-${lane.kind}`}>
         {lane.kind !== 'safe' &&
-          obstacles.map((x, idx) => (
-            <span
-              key={idx}
-              className={`obstacle obstacle-${lane.kind}`}
-              style={{ left: `${(x / COLS) * 100}%`, width: `${(lane.length / COLS) * 100}%` }}
-            />
-          ))}
+          obstacles.map((x, idx) => {
+            const dirRight = lane.speed > 0;
+            return (
+              <span
+                key={idx}
+                className={`obstacle obstacle-${lane.kind} ${dirRight ? 'dir-right' : 'dir-left'}`}
+                style={{ left: `${(x / COLS) * 100}%`, width: `${(lane.length / COLS) * 100}%` }}
+                aria-hidden
+              >
+                {lane.kind === 'road' ? <CarSprite right={dirRight} /> : <LogSprite />}
+              </span>
+            );
+          })}
         {frogCol !== null ? (
-          <span className="frog" style={{ left: `${(frogCol / COLS) * 100}%`, width: `${(1 / COLS) * 100}%` }} aria-label="frog">🐸</span>
+          <span
+            className={`frog${isHopping ? ' hopping' : ''}`}
+            style={{ left: `${(frogCol / COLS) * 100}%`, width: `${(1 / COLS) * 100}%` }}
+            aria-label="frog"
+          >
+            <FrogSprite />
+          </span>
+        ) : null}
+        {showDeath ? (
+          <span
+            className={`death-fx death-fx-${deathFx.kind}`}
+            style={{ left: `${(deathFx.col / COLS) * 100}%`, width: `${(1 / COLS) * 100}%` }}
+            aria-hidden
+          />
         ) : null}
       </div>,
     );
@@ -299,9 +344,16 @@ export function App() {
       <header className="head">
         <div>
           <h1>Crossing</h1>
-          <p className="muted small">Level {levelN} · {lives}♥ · {score} pts</p>
+          <p className="muted small">
+            Level {levelN} · {Array.from({ length: STARTING_LIVES }).map((_, i) => (
+              <span key={i} className={i < lives ? 'life-icon' : 'life-icon dead'} aria-hidden>🐸</span>
+            ))} · {score} pts
+          </p>
         </div>
         <div className="head-actions">
+          <button type="button" className="ghost" onClick={() => setMutedState(toggleMuted())} aria-label={muted ? 'Unmute' : 'Mute'}>
+            {muted ? '🔇' : '🔊'}
+          </button>
           <button type="button" className="ghost" onClick={toggleFullscreen} aria-label="Toggle fullscreen">
             {fullscreen ? '⤡' : '⛶'}
           </button>
@@ -342,6 +394,52 @@ export function App() {
       <footer className="footer">
         <span className="muted small">Best: lvl {progress.bestLevel} · {progress.bestScore} pts</span>
       </footer>
+
+      <Confetti trigger={confettiTrigger} />
     </main>
+  );
+}
+
+function FrogSprite() {
+  return (
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <ellipse cx="16" cy="22" rx="12" ry="7" fill="#4FA487" />
+      <ellipse cx="16" cy="20" rx="10" ry="5" fill="#7FB269" />
+      <circle cx="10" cy="13" r="4.5" fill="#7FB269" />
+      <circle cx="22" cy="13" r="4.5" fill="#7FB269" />
+      <circle cx="10" cy="13" r="2.2" fill="#fff" />
+      <circle cx="22" cy="13" r="2.2" fill="#fff" />
+      <circle cx="10.4" cy="13.2" r="1.2" fill="#1a1715" />
+      <circle cx="21.6" cy="13.2" r="1.2" fill="#1a1715" />
+    </svg>
+  );
+}
+
+function CarSprite({ right }: { right: boolean }) {
+  return (
+    <svg viewBox="0 0 64 32" preserveAspectRatio="none" style={{ transform: right ? 'none' : 'scaleX(-1)' }} aria-hidden>
+      <rect x="2" y="10" width="60" height="14" rx="3" fill="#E84A2D" />
+      <rect x="14" y="4" width="36" height="10" rx="2" fill="#C24E1F" />
+      <rect x="46" y="13" width="6" height="3" fill="#F4B860" />
+      <circle cx="14" cy="26" r="3.5" fill="#1a1715" />
+      <circle cx="50" cy="26" r="3.5" fill="#1a1715" />
+    </svg>
+  );
+}
+
+function LogSprite() {
+  return (
+    <svg viewBox="0 0 64 32" preserveAspectRatio="none" aria-hidden>
+      <rect x="0" y="6" width="64" height="20" rx="6" fill="#8B4513" />
+      <rect x="0" y="6" width="64" height="20" rx="6" fill="url(#logGrain)" opacity="0.4" />
+      <ellipse cx="6" cy="16" rx="4" ry="9" fill="#6B3410" />
+      <ellipse cx="58" cy="16" rx="4" ry="9" fill="#6B3410" />
+      <defs>
+        <linearGradient id="logGrain" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.2" />
+        </linearGradient>
+      </defs>
+    </svg>
   );
 }

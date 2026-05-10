@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createObservationClient } from '@shippie/observations';
 import { haptic } from '@shippie/sdk/wrapper';
+import { createSoundBank, isMuted, toggleMuted } from '@shippie/juice';
+import { ARCADE_SAMPLES } from '@shippie/juice/samples';
 import {
   WIDTH,
   HEIGHT,
@@ -39,13 +41,27 @@ import { exitFullscreen, isFullscreen, requestFullscreen } from './fullscreen';
 
 type Mode = 'marathon' | 'sprint' | 'ultra';
 
-const SOFT_DROP_INTERVAL_MS = 50;
 const LOCK_DELAY_MS = 500;
 const SPRINT_TARGET_LINES = 40;
 const ULTRA_DURATION_MS = 120_000;
 
 const sdk = createShippieIframeSdk({ appId: 'app_stack' });
 const observations = createObservationClient(sdk);
+const sfx = createSoundBank({
+  tap: ARCADE_SAMPLES.tap,
+  pop: ARCADE_SAMPLES.pop,
+  whoosh: ARCADE_SAMPLES.whoosh,
+  bing: ARCADE_SAMPLES.bing,
+  success: ARCADE_SAMPLES.success,
+  fail: ARCADE_SAMPLES.fail,
+  levelUp: ARCADE_SAMPLES.levelUp,
+});
+
+interface Toast {
+  id: number;
+  text: string;
+  flavour: 'tspin' | 'tetris' | 'b2b' | 'combo';
+}
 
 const STORAGE_KEY = 'shippie:stack:v1';
 
@@ -104,12 +120,21 @@ export function App() {
   const [fullscreen, setFullscreenState] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [muted, setMutedState] = useState(() => isMuted());
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastIdRef = useRef(0);
 
   const lastFallRef = useRef(performance.now());
   const lockTimerRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { saveRecords(records); }, [records]);
+
+  const pushToast = useCallback((text: string, flavour: Toast['flavour']) => {
+    const id = ++toastIdRef.current;
+    setToasts((t) => [...t, { id, text, flavour }]);
+    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 1500);
+  }, []);
 
   const elapsed = startedAt ? now - startedAt : 0;
   const sprintRemaining = SPRINT_TARGET_LINES - game.lines;
@@ -119,6 +144,7 @@ export function App() {
     setRunning(false);
     setPaused(false);
     haptic(reason === 'win' ? 'success' : 'error');
+    sfx.play(reason === 'win' ? 'success' : 'fail');
     const score = game.score;
     setRecords((r) => {
       const prev = r[mode];
@@ -157,8 +183,32 @@ export function App() {
           if (lockTimerRef.current === null) {
             lockTimerRef.current = window.setTimeout(() => {
               lockTimerRef.current = null;
+              const beforeLevel = game.level;
+              const beforeCombo = game.combo;
+              const beforeB2B = game.b2b;
               const { cleared, tspin } = lockPiece(game);
+              sfx.play('pop', { volume: 0.7 });
               applyScoring(game, cleared, tspin);
+              // Audio + toast reactions to the clear quality.
+              if (cleared > 0) {
+                if (cleared === 4) {
+                  sfx.play('bing');
+                  pushToast(beforeB2B && game.b2b ? 'B2B Tetris!' : 'Tetris!', 'tetris');
+                } else if (tspin) {
+                  sfx.play('bing');
+                  pushToast(beforeB2B && game.b2b ? `B2B T-Spin ${labelForCleared(cleared)}!` : `T-Spin ${labelForCleared(cleared)}!`, 'tspin');
+                } else {
+                  sfx.play('whoosh', { volume: 0.8 });
+                  if (cleared >= 2) pushToast(labelForCleared(cleared), 'b2b');
+                }
+                if (game.combo - beforeCombo > 0 && game.combo > 1) {
+                  pushToast(`Combo ×${game.combo}`, 'combo');
+                }
+                if (game.level !== beforeLevel) {
+                  sfx.play('levelUp');
+                  pushToast(`Level ${game.level}`, 'b2b');
+                }
+              }
               const ok = spawnNext(game);
               if (!ok) finishGame('topout');
               setGame({ ...game });
@@ -212,25 +262,43 @@ export function App() {
       if (!running || paused || game.over) return;
       switch (action) {
         case 'left':
-          if (tryMove(game, -1, 0)) { haptic('tap'); setGame({ ...game }); }
+          if (tryMove(game, -1, 0)) { haptic('tap'); sfx.play('tap', { volume: 0.4 }); setGame({ ...game }); }
           break;
         case 'right':
-          if (tryMove(game, 1, 0)) { haptic('tap'); setGame({ ...game }); }
+          if (tryMove(game, 1, 0)) { haptic('tap'); sfx.play('tap', { volume: 0.4 }); setGame({ ...game }); }
           break;
         case 'down':
           if (tryMove(game, 0, 1)) { game.score += 1; setGame({ ...game }); }
           break;
         case 'rotateL':
-          if (tryRotate(game, -1)) { haptic('tap'); setGame({ ...game }); }
+          if (tryRotate(game, -1)) { haptic('tap'); sfx.play('tap', { pitch: 1.2, volume: 0.5 }); setGame({ ...game }); }
           break;
         case 'rotateR':
-          if (tryRotate(game, 1)) { haptic('tap'); setGame({ ...game }); }
+          if (tryRotate(game, 1)) { haptic('tap'); sfx.play('tap', { pitch: 1.2, volume: 0.5 }); setGame({ ...game }); }
           break;
         case 'hard': {
           const dy = hardDrop(game);
           game.score += dy * 2;
+          const beforeCombo = game.combo;
+          const beforeB2B = game.b2b;
           const { cleared, tspin } = lockPiece(game);
+          sfx.play('whoosh');
           applyScoring(game, cleared, tspin);
+          if (cleared > 0) {
+            if (cleared === 4) {
+              sfx.play('bing');
+              pushToast(beforeB2B && game.b2b ? 'B2B Tetris!' : 'Tetris!', 'tetris');
+            } else if (tspin) {
+              sfx.play('bing');
+              pushToast(`T-Spin ${labelForCleared(cleared)}!`, 'tspin');
+            } else {
+              sfx.play('pop');
+              if (cleared >= 2) pushToast(labelForCleared(cleared), 'b2b');
+            }
+            if (game.combo - beforeCombo > 0 && game.combo > 1) {
+              pushToast(`Combo ×${game.combo}`, 'combo');
+            }
+          }
           const ok = spawnNext(game);
           if (!ok) finishGame('topout');
           haptic('success');
@@ -238,7 +306,7 @@ export function App() {
           break;
         }
         case 'hold':
-          if (holdSwap(game)) { haptic('tap'); setGame({ ...game }); }
+          if (holdSwap(game)) { haptic('tap'); sfx.play('tap', { pitch: 0.8 }); setGame({ ...game }); }
           break;
       }
     },
@@ -275,20 +343,6 @@ export function App() {
     else void requestFullscreen(containerRef.current);
   };
 
-  // Render board with the active piece + ghost overlay.
-  const overlay = useMemo(() => {
-    const cells: Array<{ x: number; y: number; v: number; ghost?: boolean }> = [];
-    const ghost = ghostY(game);
-    // Render ghost first.
-    const shape = (() => {
-      // Mirror SHAPES in tetris.ts — duplicated lookup.
-      const s = require('./tetris');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (s as { default?: unknown }) && undefined;
-    })();
-    return { ghost, cells };
-  }, [game]);
-
   return (
     <main className="app" ref={containerRef}>
       <header className="head">
@@ -299,6 +353,9 @@ export function App() {
         <div className="head-actions">
           <button type="button" className="ghost" onClick={togglePause} aria-label="Pause">
             {paused ? '▶' : '⏸'}
+          </button>
+          <button type="button" className="ghost" onClick={() => setMutedState(toggleMuted())} aria-label={muted ? 'Unmute' : 'Mute'}>
+            {muted ? '🔇' : '🔊'}
           </button>
           <button type="button" className="ghost" onClick={toggleFullscreen} aria-label="Toggle fullscreen">
             {fullscreen ? '⤡' : '⛶'}
@@ -352,6 +409,12 @@ export function App() {
         <button type="button" onClick={() => onAction('hard')}>DROP</button>
       </section>
 
+      <div className="toast-stack" aria-live="polite">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast toast-${t.flavour}`}>{t.text}</div>
+        ))}
+      </div>
+
       {!running ? (
         <section className="overlay">
           {game.over ? <p className="finish-line">Top-out · {game.score} pts</p> : null}
@@ -363,6 +426,14 @@ export function App() {
   );
 }
 
+function labelForCleared(n: number): string {
+  if (n === 1) return 'Single';
+  if (n === 2) return 'Double';
+  if (n === 3) return 'Triple';
+  if (n === 4) return 'Tetris';
+  return `${n}-line`;
+}
+
 function PieceMini({ type }: { type: PieceType | null }) {
   if (!type) return <div className="piece-mini empty" />;
   return <div className="piece-mini" style={{ background: COLOR[pieceIndex(type)] }}>{type}</div>;
@@ -372,24 +443,23 @@ function pieceIndex(t: PieceType): number {
   return { I: 1, J: 2, L: 3, O: 4, S: 5, T: 6, Z: 7 }[t];
 }
 
+// Inline SRS rotations — same shape as the engine, kept here so the
+// renderer doesn't depend on a private export.
+const RENDER_SHAPES: Record<PieceType, ReadonlyArray<ReadonlyArray<readonly [number, number]>>> = {
+  I: [[[0,1],[1,1],[2,1],[3,1]],[[2,0],[2,1],[2,2],[2,3]],[[0,2],[1,2],[2,2],[3,2]],[[1,0],[1,1],[1,2],[1,3]]],
+  J: [[[0,0],[0,1],[1,1],[2,1]],[[1,0],[2,0],[1,1],[1,2]],[[0,1],[1,1],[2,1],[2,2]],[[1,0],[1,1],[0,2],[1,2]]],
+  L: [[[2,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[1,2],[2,2]],[[0,1],[1,1],[2,1],[0,2]],[[0,0],[1,0],[1,1],[1,2]]],
+  O: [[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]]],
+  S: [[[1,0],[2,0],[0,1],[1,1]],[[1,0],[1,1],[2,1],[2,2]],[[1,1],[2,1],[0,2],[1,2]],[[0,0],[0,1],[1,1],[1,2]]],
+  T: [[[1,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[2,1],[1,2]],[[1,0],[0,1],[1,1],[1,2]]],
+  Z: [[[0,0],[1,0],[1,1],[2,1]],[[2,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[1,2],[2,2]],[[1,0],[0,1],[1,1],[0,2]]],
+};
+
 function Board({ game }: { game: GameState }) {
-  // Clone the board + stamp the active piece + ghost on top.
   const display = new Uint8Array(game.board);
   const ghost = ghostY(game);
-  // Ghost (lowest priority — only on empty cells).
-  const tetromino = require('./tetris');
-  // Inline shape lookup to avoid extra imports.
-  const SHAPES_LOCAL: Record<PieceType, ReadonlyArray<ReadonlyArray<readonly [number, number]>>> = {
-    I: [[[0,1],[1,1],[2,1],[3,1]],[[2,0],[2,1],[2,2],[2,3]],[[0,2],[1,2],[2,2],[3,2]],[[1,0],[1,1],[1,2],[1,3]]],
-    J: [[[0,0],[0,1],[1,1],[2,1]],[[1,0],[2,0],[1,1],[1,2]],[[0,1],[1,1],[2,1],[2,2]],[[1,0],[1,1],[0,2],[1,2]]],
-    L: [[[2,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[1,2],[2,2]],[[0,1],[1,1],[2,1],[0,2]],[[0,0],[1,0],[1,1],[1,2]]],
-    O: [[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]]],
-    S: [[[1,0],[2,0],[0,1],[1,1]],[[1,0],[1,1],[2,1],[2,2]],[[1,1],[2,1],[0,2],[1,2]],[[0,0],[0,1],[1,1],[1,2]]],
-    T: [[[1,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[2,1],[1,2]],[[1,0],[0,1],[1,1],[1,2]]],
-    Z: [[[0,0],[1,0],[1,1],[2,1]],[[2,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[1,2],[2,2]],[[1,0],[0,1],[1,1],[0,2]]],
-  };
-  const shape = SHAPES_LOCAL[game.active.type][game.active.rotation]!;
-  // Ghost cells.
+  const shape = RENDER_SHAPES[game.active.type][game.active.rotation]!;
+  // Ghost cells (rendered with reduced opacity in CSS).
   const ghostMarks = new Set<number>();
   for (const [cx, cy] of shape) {
     const x = game.active.x + cx;
@@ -397,7 +467,7 @@ function Board({ game }: { game: GameState }) {
     if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) continue;
     if (display[y * WIDTH + x] === 0) ghostMarks.add(y * WIDTH + x);
   }
-  // Active piece (overrides ghost).
+  // Active piece overrides ghost.
   for (const [cx, cy] of shape) {
     const x = game.active.x + cx;
     const y = game.active.y + cy;
@@ -405,7 +475,7 @@ function Board({ game }: { game: GameState }) {
     display[y * WIDTH + x] = pieceIndex(game.active.type);
     ghostMarks.delete(y * WIDTH + x);
   }
-  void tetromino;
+  const ghostColor = COLOR[pieceIndex(game.active.type)];
   return (
     <div className="board" style={{ gridTemplateColumns: `repeat(${WIDTH}, 1fr)` }}>
       {Array.from(display, (v, idx) => {
@@ -413,8 +483,8 @@ function Board({ game }: { game: GameState }) {
         return (
           <span
             key={idx}
-            className={`cell${v === 0 ? '' : ' filled'}${ghostHere ? ' ghost' : ''}`}
-            style={{ background: ghostHere ? 'transparent' : COLOR[v] ?? 'transparent' }}
+            className={`cell${v === 0 && !ghostHere ? '' : ' filled'}${ghostHere ? ' ghost' : ''}`}
+            style={{ background: ghostHere ? `${ghostColor}38` : COLOR[v] ?? 'transparent' }}
           />
         );
       })}
