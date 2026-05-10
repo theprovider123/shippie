@@ -3,6 +3,8 @@ import {
   applyMove,
   isCheck,
   legalMoves,
+  moveFromUci,
+  positionToFen,
   startingPosition,
   status,
 } from './rules';
@@ -81,5 +83,39 @@ describe('castling', () => {
     }
     const castle = legalMoves(p).find((mv) => mv.isCastle === 'k');
     expect(castle).toBeDefined();
+  });
+});
+
+describe('FEN + UCI bridge', () => {
+  test('starting FEN matches the canonical string', () => {
+    const fen = positionToFen(startingPosition());
+    expect(fen).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+  });
+
+  test('moveFromUci resolves a normal pawn move', () => {
+    const p = startingPosition();
+    const move = moveFromUci(p, 'e2e4');
+    expect(move).toBeDefined();
+    expect(move?.from).toEqual([4, 1]);
+    expect(move?.to).toEqual([4, 3]);
+  });
+
+  test('moveFromUci resolves a promotion move', () => {
+    // White pawn one move away from promotion.
+    const p = startingPosition();
+    p.board[0]![1] = null;
+    p.board[0]![6] = null;
+    p.board[0]![7] = null;
+    p.board[0]![6] = { type: 'p', color: 'w' };
+    p.board[0]![7] = null;
+    p.turn = 'w';
+    const move = moveFromUci(p, 'a7a8q');
+    expect(move).toBeDefined();
+    expect(move?.promotion).toBe('q');
+  });
+
+  test('moveFromUci returns null for illegal input', () => {
+    const p = startingPosition();
+    expect(moveFromUci(p, 'e2e5')).toBeNull();
   });
 });

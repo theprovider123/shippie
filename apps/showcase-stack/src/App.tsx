@@ -8,12 +8,14 @@ import {
   WIDTH,
   HEIGHT,
   applyScoring,
+  canMove,
   createGame,
   ghostY,
   gravityIntervalMs,
   hardDrop,
   holdSwap,
   lockPiece,
+  pieceCells,
   spawnNext,
   tryMove,
   tryRotate,
@@ -127,6 +129,13 @@ export function App() {
   const lastFallRef = useRef(performance.now());
   const lockTimerRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Bumped whenever the active piece locks; Board consumes it to fire
+  // a one-shot flash animation on the freshly-locked cells.
+  const [lockFlashKey, setLockFlashKey] = useState(0);
+  // Sub-cell vertical offset for the active piece (0..1). Driven by
+  // the per-frame gravity timestamp, so the piece visibly slides
+  // between rows instead of snapping. Reset to 0 on hard-drop / lock.
+  const [fallProgress, setFallProgress] = useState(0);
 
   useEffect(() => { saveRecords(records); }, [records]);
 
@@ -175,6 +184,13 @@ export function App() {
     const loop = (ts: number) => {
       setNow(Date.now());
       const interval = gravityIntervalMs(game.level);
+      // Visual sub-cell offset between gravity steps. Cap at 1 so we
+      // never overshoot during the lock-delay window. When the piece
+      // can't move down (resting on stack/floor), pin to 0.
+      const cantFall = !canMove(game, 0, 1);
+      const rawProgress = (ts - lastFallRef.current) / interval;
+      const next = cantFall ? 0 : Math.max(0, Math.min(1, rawProgress));
+      setFallProgress(next);
       if (ts - lastFallRef.current >= interval) {
         lastFallRef.current = ts;
         const moved = tryMove(game, 0, 1);
@@ -212,6 +228,9 @@ export function App() {
               const ok = spawnNext(game);
               if (!ok) finishGame('topout');
               setGame({ ...game });
+              setLockFlashKey((k) => k + 1);
+              setFallProgress(0);
+              lastFallRef.current = performance.now();
             }, LOCK_DELAY_MS);
           }
         } else {
@@ -303,6 +322,9 @@ export function App() {
           if (!ok) finishGame('topout');
           haptic('success');
           setGame({ ...game });
+          setLockFlashKey((k) => k + 1);
+          setFallProgress(0);
+          lastFallRef.current = performance.now();
           break;
         }
         case 'hold':
@@ -391,7 +413,7 @@ export function App() {
           )}
         </aside>
 
-        <Board game={game} />
+        <Board game={game} fallProgress={fallProgress} lockFlashKey={lockFlashKey} />
 
         <aside className="side">
           <p className="muted small">Next</p>
@@ -455,30 +477,37 @@ const RENDER_SHAPES: Record<PieceType, ReadonlyArray<ReadonlyArray<readonly [num
   Z: [[[0,0],[1,0],[1,1],[2,1]],[[2,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[1,2],[2,2]],[[1,0],[0,1],[1,1],[0,2]]],
 };
 
-function Board({ game }: { game: GameState }) {
-  const display = new Uint8Array(game.board);
+function Board({
+  game,
+  fallProgress,
+  lockFlashKey,
+}: {
+  game: GameState;
+  fallProgress: number;
+  lockFlashKey: number;
+}) {
   const ghost = ghostY(game);
   const shape = RENDER_SHAPES[game.active.type][game.active.rotation]!;
-  // Ghost cells (rendered with reduced opacity in CSS).
+  // Ghost overlay cells (sub-cell offset NOT applied — ghost shows
+  // landing position).
   const ghostMarks = new Set<number>();
   for (const [cx, cy] of shape) {
     const x = game.active.x + cx;
     const y = ghost + cy;
     if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) continue;
-    if (display[y * WIDTH + x] === 0) ghostMarks.add(y * WIDTH + x);
+    if (game.board[y * WIDTH + x] === 0) ghostMarks.add(y * WIDTH + x);
   }
-  // Active piece overrides ghost.
-  for (const [cx, cy] of shape) {
-    const x = game.active.x + cx;
-    const y = game.active.y + cy;
-    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) continue;
-    display[y * WIDTH + x] = pieceIndex(game.active.type);
-    ghostMarks.delete(y * WIDTH + x);
-  }
-  const ghostColor = COLOR[pieceIndex(game.active.type)];
+  const ghostColor = COLOR[pieceIndex(game.active.type)] ?? '#fff';
+  const activeColor = COLOR[pieceIndex(game.active.type)] ?? '#fff';
   return (
-    <div className="board" style={{ gridTemplateColumns: `repeat(${WIDTH}, 1fr)` }}>
-      {Array.from(display, (v, idx) => {
+    <div
+      className="board"
+      style={{
+        gridTemplateColumns: `repeat(${WIDTH}, 1fr)`,
+        gridTemplateRows: `repeat(${HEIGHT}, 1fr)`,
+      }}
+    >
+      {Array.from(game.board, (v, idx) => {
         const ghostHere = ghostMarks.has(idx);
         return (
           <span
@@ -488,6 +517,60 @@ function Board({ game }: { game: GameState }) {
           />
         );
       })}
+      <ActiveOverlay
+        cells={pieceCells(game.active)}
+        x={game.active.x}
+        y={game.active.y}
+        offsetY={fallProgress}
+        colour={activeColor}
+      />
+      <LockFlash key={lockFlashKey} />
     </div>
   );
+}
+
+function ActiveOverlay({
+  cells,
+  x,
+  y,
+  offsetY,
+  colour,
+}: {
+  cells: ReadonlyArray<readonly [number, number]>;
+  x: number;
+  y: number;
+  offsetY: number;
+  colour: string;
+}) {
+  return (
+    <span className="active-overlay" aria-hidden>
+      {cells.map(([cx, cy], i) => {
+        const px = x + cx;
+        const py = y + cy;
+        if (px < 0 || px >= WIDTH || py < 0 || py >= HEIGHT) return null;
+        return (
+          <span
+            key={i}
+            className="active-tile"
+            style={{
+              left: `${(px / WIDTH) * 100}%`,
+              top: `${((py + offsetY) / HEIGHT) * 100}%`,
+              width: `${(1 / WIDTH) * 100}%`,
+              height: `${(1 / HEIGHT) * 100}%`,
+              background: colour,
+            }}
+          />
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * One-shot flash overlay rendered with a fresh React key on every
+ * lock event — drives a CSS keyframe so the freshly-locked piece
+ * pulses briefly before settling into the locked-cell colour.
+ */
+function LockFlash() {
+  return <span className="lock-flash" aria-hidden />;
 }

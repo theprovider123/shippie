@@ -198,6 +198,21 @@ export function tryMove(state: GameState, dx: number, dy: number): boolean {
   return true;
 }
 
+/**
+ * Non-mutating dry run of `tryMove`. Used by the renderer to know
+ * whether to apply a sub-cell visual fall offset (false = piece is
+ * resting, render at integer Y).
+ */
+export function canMove(state: GameState, dx: number, dy: number): boolean {
+  const next: ActivePiece = { ...state.active, x: state.active.x + dx, y: state.active.y + dy };
+  return !collides(state.board, next);
+}
+
+/** Read-only piece cells for renderers. */
+export function pieceCells(p: ActivePiece): ReadonlyArray<readonly [number, number]> {
+  return cells(p);
+}
+
 export function tryRotate(state: GameState, dir: 1 | -1): boolean {
   const next: ActivePiece = {
     ...state.active,

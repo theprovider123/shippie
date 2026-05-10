@@ -113,6 +113,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
 }
 
 .board {
+  position: relative;
   display: grid;
   grid-template-rows: repeat(20, 1fr);
   gap: 1px;
@@ -123,6 +124,38 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   margin: 0 auto;
   width: 100%;
   max-width: 360px;
+}
+
+.active-overlay {
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  display: block;
+}
+.active-tile {
+  position: absolute;
+  display: block;
+  border-radius: 1px;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              0 1px 2px rgba(0, 0, 0, 0.35);
+  /* Smooth out integer Y jumps when fallProgress wraps from 1 → 0 */
+  transition: left 0.06s linear;
+  will-change: left, top;
+}
+
+.lock-flash {
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.9);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: lock-flash 180ms ease-out forwards;
+}
+@keyframes lock-flash {
+  0%   { opacity: 0.55; }
+  100% { opacity: 0; }
 }
 .cell {
   background: rgba(255, 255, 255, 0.04);

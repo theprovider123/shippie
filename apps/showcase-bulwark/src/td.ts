@@ -74,8 +74,16 @@ export interface Tower {
   cooldownLeft: number; // ms
 }
 
+/**
+ * Enemy visual + stat archetype. Cycled per wave so the player sees
+ * variety: grunts at low waves, runners every 3rd, tanks at high
+ * waves, bosses every 5th wave.
+ */
+export type EnemyClass = 'grunt' | 'runner' | 'tank' | 'boss';
+
 export interface Enemy {
   id: number;
+  kind: EnemyClass;
   /** Distance travelled along path (cells). */
   dist: number;
   hp: number;
@@ -87,11 +95,31 @@ export interface Enemy {
   size: number;
 }
 
+/**
+ * Visual projectile in flight. Lives in the World so the renderer can
+ * animate it without re-implementing the engine's targeting logic.
+ * Spawned by `tickWorld` every time a tower fires; auto-cleared once
+ * the projectile reaches its target (or the target's last position
+ * if the target died mid-flight).
+ */
+export interface Projectile {
+  id: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  spawnedTickMs: number;
+  durationMs: number;
+  kind: 'bullet' | 'shell' | 'missile' | 'frost' | 'emp' | 'laser';
+  colour: string;
+}
+
 export interface World {
   tick: number; // monotonic
   path: { x: number; y: number }[]; // cells along the enemy path
   towers: Tower[];
   enemies: Enemy[];
+  projectiles: Projectile[];
   bank: number;
   lives: number;
   wave: number;
@@ -102,6 +130,8 @@ export interface World {
   score: number;
   over: boolean;
   won: boolean;
+  /** Monotonic ms accumulator from tickWorld(dt) — drives projectile fade. */
+  worldTimeMs: number;
 }
 
 /** Produce a fixed S-curve path across the grid. */
@@ -130,6 +160,7 @@ export function createWorld(): World {
     path: makePath(),
     towers: [],
     enemies: [],
+    projectiles: [],
     bank: 200,
     lives: 20,
     wave: 0,
@@ -140,6 +171,7 @@ export function createWorld(): World {
     score: 0,
     over: false,
     won: false,
+    worldTimeMs: 0,
   };
 }
 
@@ -155,21 +187,46 @@ function waveEnemyCount(wave: number): number {
   return 5 + wave * 2;
 }
 
+/**
+ * Pick the enemy archetype for the next spawn. Boss every 5th wave,
+ * tank every 4th, runner every 3rd, otherwise grunt. Mixed via the
+ * existing spawn cadence so a single wave shows visible variety.
+ */
+function pickEnemyClass(wave: number, indexInWave: number): EnemyClass {
+  if (wave > 0 && wave % 5 === 0 && indexInWave === 0) return 'boss';
+  if (indexInWave % 4 === 3 && wave >= 3) return 'tank';
+  if (indexInWave % 3 === 2 && wave >= 2) return 'runner';
+  return 'grunt';
+}
+
 function spawnEnemy(world: World): void {
   const wave = world.wave;
+  const indexInWave = waveEnemyCount(wave) - world.enemiesToSpawn;
+  const kind = pickEnemyClass(wave, indexInWave);
   const baseHp = 30 + wave * 18;
   const baseSpeed = 1.0 + wave * 0.05;
   const reward = 8 + wave * 2;
+  // Per-class multipliers — runners are fast + frail, tanks slow +
+  // beefy, bosses both slow and tough but worth far more.
+  const tuning: Record<EnemyClass, { hp: number; speed: number; reward: number; size: number }> = {
+    grunt:  { hp: 1.0, speed: 1.0, reward: 1.0, size: 0.45 },
+    runner: { hp: 0.6, speed: 1.7, reward: 1.0, size: 0.4 },
+    tank:   { hp: 2.4, speed: 0.6, reward: 1.6, size: 0.55 },
+    boss:   { hp: 6.0, speed: 0.55, reward: 4.0, size: 0.7 },
+  };
+  const t = tuning[kind];
+  const hp = Math.round(baseHp * t.hp);
   const enemy: Enemy = {
     id: world.nextEntityId++,
+    kind,
     dist: 0,
-    hp: baseHp,
-    maxHp: baseHp,
-    baseSpeed,
+    hp,
+    maxHp: hp,
+    baseSpeed: baseSpeed * t.speed,
     slowUntil: 0,
     slowFactor: 1,
-    reward,
-    size: 0.45,
+    reward: Math.round(reward * t.reward),
+    size: t.size,
   };
   world.enemies.push(enemy);
 }
@@ -233,11 +290,46 @@ export function sellTower(world: World, towerId: number): boolean {
   return true;
 }
 
+const PROJECTILE_COLOURS: Record<Projectile['kind'], string> = {
+  bullet: '#FFFFFF',
+  shell: '#F4B860',
+  missile: '#E84A2D',
+  frost: '#7AC4E8',
+  emp: '#7E5B96',
+  laser: '#E84A2D',
+};
+
+const PROJECTILE_DURATIONS: Record<Projectile['kind'], number> = {
+  bullet: 100,
+  shell: 320,
+  missile: 260,
+  frost: 180,
+  emp: 240,
+  laser: 80,
+};
+
+const TOWER_PROJECTILE_KIND: Record<TowerType, Projectile['kind']> = {
+  gun: 'bullet',
+  cannon: 'shell',
+  missile: 'missile',
+  slow: 'frost',
+  emp: 'emp',
+  sniper: 'laser',
+};
+
 /** Advance the simulation by `dt` seconds. */
 export function tickWorld(world: World, dt: number): void {
   if (world.over || world.won) return;
   world.tick++;
   const dtMs = dt * 1000;
+  world.worldTimeMs += dtMs;
+  // Cull expired projectiles before towers add new ones.
+  if (world.projectiles.length > 0) {
+    const cutoff = world.worldTimeMs;
+    world.projectiles = world.projectiles.filter(
+      (p) => p.spawnedTickMs + p.durationMs > cutoff,
+    );
+  }
   // Spawn.
   if (world.waveActive && world.enemiesToSpawn > 0) {
     world.spawnCooldownMs -= dtMs;
@@ -293,6 +385,21 @@ export function tickWorld(world: World, dt: number): void {
       }
     }
     if (!target) continue;
+    const targetPos = enemyPos(world, target);
+    if (targetPos) {
+      const kind = TOWER_PROJECTILE_KIND[t.type];
+      world.projectiles.push({
+        id: world.nextEntityId++,
+        fromX: t.x + 0.5,
+        fromY: t.y + 0.5,
+        toX: targetPos.x,
+        toY: targetPos.y,
+        spawnedTickMs: world.worldTimeMs,
+        durationMs: PROJECTILE_DURATIONS[kind],
+        kind,
+        colour: PROJECTILE_COLOURS[kind],
+      });
+    }
     target.hp -= spec.damage;
     if (spec.slowFactor !== undefined && spec.slowDurationMs !== undefined) {
       target.slowUntil = nowMs + spec.slowDurationMs;
@@ -323,11 +430,58 @@ export function tickWorld(world: World, dt: number): void {
   }
 }
 
-export function enemyPositions(world: World): Array<{ id: number; x: number; y: number; hp: number; maxHp: number }> {
+export interface EnemyView {
+  id: number;
+  kind: EnemyClass;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  size: number;
+}
+
+export function enemyPositions(world: World): EnemyView[] {
   return world.enemies
     .map((e) => {
       const pos = enemyPos(world, e);
-      return pos ? { id: e.id, x: pos.x, y: pos.y, hp: e.hp, maxHp: e.maxHp } : null;
+      return pos
+        ? { id: e.id, kind: e.kind, x: pos.x, y: pos.y, hp: e.hp, maxHp: e.maxHp, size: e.size }
+        : null;
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+    .filter((x): x is EnemyView => x !== null);
+}
+
+/**
+ * Snapshot live projectiles for the renderer along with `progress`
+ * (0..1 from spawn to landing) so the React layer can lerp between
+ * the start + end coordinates without re-implementing timing.
+ */
+export interface ProjectileView {
+  id: number;
+  kind: Projectile['kind'];
+  colour: string;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  progress: number;
+}
+
+export function projectileViews(world: World): ProjectileView[] {
+  const out: ProjectileView[] = [];
+  for (const p of world.projectiles) {
+    const elapsed = world.worldTimeMs - p.spawnedTickMs;
+    const progress = Math.min(1, Math.max(0, elapsed / p.durationMs));
+    out.push({
+      id: p.id,
+      kind: p.kind,
+      colour: p.colour,
+      fromX: p.fromX,
+      fromY: p.fromY,
+      toX: p.toX,
+      toY: p.toY,
+      progress,
+    });
+  }
+  return out;
 }

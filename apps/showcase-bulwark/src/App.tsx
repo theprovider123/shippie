@@ -13,10 +13,13 @@ import {
   createWorld,
   enemyPositions,
   placeTower,
+  projectileViews,
   sellTower,
   startWave,
   tickWorld,
   upgradeTower,
+  type EnemyClass,
+  type ProjectileView,
   type TowerType,
   type World,
 } from './td';
@@ -62,6 +65,13 @@ const TOWER_COLOR: Record<TowerType, string> = {
   slow: '#4FA487',
   emp: '#F4B860',
   sniper: '#C97B2D',
+};
+
+const ENEMY_COLOR: Record<EnemyClass, string> = {
+  grunt: '#E84A2D',
+  runner: '#3F8AA8',
+  tank: '#F4B860',
+  boss: '#7E5B96',
 };
 
 export function App() {
@@ -357,21 +367,27 @@ export function App() {
                 />
               );
             })()}
-            {enemies.map((e) => (
-              <span
-                key={e.id}
-                className="enemy"
-                style={{
-                  left: `${(e.x / GRID_W) * 100}%`,
-                  top: `${(e.y / GRID_H) * 100}%`,
-                  width: `${(1 / GRID_W) * 100}%`,
-                  height: `${(1 / GRID_H) * 100}%`,
-                }}
-              >
-                <span className="enemy-body" />
-                {e.hp < e.maxHp ? <span className="hp" style={{ width: `${(e.hp / e.maxHp) * 100}%` }} /> : null}
-              </span>
-            ))}
+            {enemies.map((e) => {
+              const sizePct = e.size * 110;
+              return (
+                <span
+                  key={e.id}
+                  className={`enemy enemy-${e.kind}`}
+                  style={{
+                    left: `${(e.x / GRID_W) * 100}%`,
+                    top: `${(e.y / GRID_H) * 100}%`,
+                    width: `${(1 / GRID_W) * 100}%`,
+                    height: `${(1 / GRID_H) * 100}%`,
+                  }}
+                >
+                  <span className="enemy-body" style={{ width: `${sizePct}%`, height: `${sizePct}%` }}>
+                    <EnemySprite kind={e.kind} />
+                  </span>
+                  {e.hp < e.maxHp ? <span className="hp" style={{ width: `${(e.hp / e.maxHp) * 100}%` }} /> : null}
+                </span>
+              );
+            })}
+            <ProjectileLayer projectiles={projectileViews(world)} />
             {waveBanner ? <div key={waveBanner.id} className="wave-banner">{waveBanner.text}</div> : null}
           </div>
         </div>
@@ -431,6 +447,170 @@ export function App() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+function EnemySprite({ kind }: { kind: EnemyClass }) {
+  switch (kind) {
+    case 'grunt':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
+          <polygon points="12,3 22,21 2,21" fill={ENEMY_COLOR.grunt} stroke="#5a1a0c" strokeWidth="1.2" strokeLinejoin="round" />
+          <circle cx="9" cy="15" r="1.6" fill="#fff" />
+          <circle cx="15" cy="15" r="1.6" fill="#fff" />
+        </svg>
+      );
+    case 'runner':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
+          <ellipse cx="12" cy="12" rx="10" ry="8" fill={ENEMY_COLOR.runner} stroke="#1d4860" strokeWidth="1.2" />
+          <path d="M3 12 Q1 12 3 14" stroke="#1d4860" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <circle cx="16" cy="11" r="1.7" fill="#fff" />
+          <circle cx="16" cy="11" r="0.9" fill="#1d4860" />
+        </svg>
+      );
+    case 'tank':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
+          <rect x="3" y="6" width="18" height="14" rx="2" fill={ENEMY_COLOR.tank} stroke="#7a5a1a" strokeWidth="1.4" />
+          <rect x="6" y="9" width="12" height="3" fill="#7a5a1a" opacity="0.6" />
+          <rect x="6" y="14" width="12" height="3" fill="#7a5a1a" opacity="0.6" />
+          <circle cx="8" cy="20" r="2" fill="#3b2c0d" />
+          <circle cx="16" cy="20" r="2" fill="#3b2c0d" />
+        </svg>
+      );
+    case 'boss':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
+          <polygon
+            points="12,2 19,7 22,15 17,22 7,22 2,15 5,7"
+            fill={ENEMY_COLOR.boss}
+            stroke="#3a2349"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+          <circle cx="9" cy="11" r="1.8" fill="#fff" />
+          <circle cx="15" cy="11" r="1.8" fill="#fff" />
+          <circle cx="9" cy="11" r="0.9" fill="#3a2349" />
+          <circle cx="15" cy="11" r="0.9" fill="#3a2349" />
+          <path d="M8 17 Q12 19 16 17" stroke="#3a2349" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+        </svg>
+      );
+  }
+}
+
+/**
+ * Animated projectile overlay. Renders one SVG per live projectile,
+ * positioned via lerp(from→to, progress). Different kinds get
+ * different visual treatments — bullets streak, shells arc upward,
+ * missiles trail, frost expands, EMP rings out, sniper instant-line.
+ */
+function ProjectileLayer({ projectiles }: { projectiles: ProjectileView[] }) {
+  if (projectiles.length === 0) return null;
+  return (
+    <svg
+      className="projectile-layer"
+      viewBox={`0 0 ${GRID_W} ${GRID_H}`}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      {projectiles.map((p) => {
+        const t = p.progress;
+        const x = p.fromX + (p.toX - p.fromX) * t;
+        const y = p.fromY + (p.toY - p.fromY) * t;
+        const fade = 1 - Math.max(0, (t - 0.7) / 0.3);
+        switch (p.kind) {
+          case 'bullet': {
+            // Tracer line from origin to current head.
+            return (
+              <line
+                key={p.id}
+                x1={p.fromX}
+                y1={p.fromY}
+                x2={x}
+                y2={y}
+                stroke={p.colour}
+                strokeWidth={0.08}
+                opacity={fade}
+                strokeLinecap="round"
+              />
+            );
+          }
+          case 'shell': {
+            // Parabolic arc — bias y upward at midpoint.
+            const lift = Math.sin(t * Math.PI) * 0.7;
+            return (
+              <circle
+                key={p.id}
+                cx={x}
+                cy={y - lift}
+                r={0.18}
+                fill={p.colour}
+                stroke="#3a2400"
+                strokeWidth={0.04}
+                opacity={fade}
+              />
+            );
+          }
+          case 'missile': {
+            // Missile + smoke trail.
+            const angle = (Math.atan2(p.toY - p.fromY, p.toX - p.fromX) * 180) / Math.PI;
+            const tailX = x - (p.toX - p.fromX) * 0.08;
+            const tailY = y - (p.toY - p.fromY) * 0.08;
+            return (
+              <g key={p.id} opacity={fade}>
+                <line x1={p.fromX} y1={p.fromY} x2={tailX} y2={tailY} stroke="#ffffff80" strokeWidth={0.12} strokeLinecap="round" />
+                <g transform={`translate(${x} ${y}) rotate(${angle})`}>
+                  <polygon points="0.18,0 -0.12,-0.08 -0.12,0.08" fill={p.colour} />
+                </g>
+              </g>
+            );
+          }
+          case 'frost': {
+            // Expanding ring at target.
+            const r = 0.08 + t * 0.6;
+            return (
+              <circle
+                key={p.id}
+                cx={p.toX}
+                cy={p.toY}
+                r={r}
+                fill="none"
+                stroke={p.colour}
+                strokeWidth={0.08}
+                opacity={(1 - t) * 0.9}
+              />
+            );
+          }
+          case 'emp': {
+            // Concentric rings at target.
+            const r = 0.1 + t * 0.9;
+            return (
+              <g key={p.id} opacity={(1 - t) * 0.8}>
+                <circle cx={p.toX} cy={p.toY} r={r} fill="none" stroke={p.colour} strokeWidth={0.06} />
+                <circle cx={p.toX} cy={p.toY} r={r * 0.6} fill="none" stroke={p.colour} strokeWidth={0.04} />
+              </g>
+            );
+          }
+          case 'laser': {
+            // Instant beam from tower to target, fades fast.
+            return (
+              <line
+                key={p.id}
+                x1={p.fromX}
+                y1={p.fromY}
+                x2={p.toX}
+                y2={p.toY}
+                stroke={p.colour}
+                strokeWidth={0.06}
+                opacity={(1 - t) * 0.9}
+                strokeLinecap="round"
+              />
+            );
+          }
+        }
+      })}
+    </svg>
   );
 }
 

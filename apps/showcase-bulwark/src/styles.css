@@ -179,30 +179,49 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
 .enemy {
   position: absolute;
   pointer-events: none;
-  transform: translate(0, 0);
+  transform: translate(-50%, -50%);
   transition: left 0.05s linear, top 0.05s linear;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  padding: 1px;
+  justify-content: center;
+  padding: 0;
   z-index: 4;
 }
 .enemy-body {
-  width: 78%;
-  height: 78%;
-  background: radial-gradient(circle at 35% 30%, #ff8a73 0%, var(--enemy) 60%, #a82514 100%);
-  border-radius: 999px;
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+  animation: enemy-bob 1.4s ease-in-out infinite;
+}
+.enemy-runner .enemy-body { animation-duration: 0.8s; }
+.enemy-tank   .enemy-body { animation-duration: 2.2s; }
+.enemy-boss   .enemy-body { animation-duration: 1.8s; filter: drop-shadow(0 2px 3px rgba(126, 91, 150, 0.6)); }
+@keyframes enemy-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1px); }
 }
 .enemy .hp {
   position: absolute;
-  bottom: -4px;
-  left: 10%;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
   height: 3px;
+  width: 100%;
   background: #fff;
   border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.4);
+  max-width: 80%;
+}
+
+.projectile-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
 }
 
 .wave-banner {

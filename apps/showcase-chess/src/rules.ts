@@ -397,3 +397,64 @@ export function moveToSan(p: Position, m: Move): string {
   const promo = m.promotion ? `=${m.promotion.toUpperCase()}` : '';
   return `${piece}${cap}${dest}${promo}`;
 }
+
+/**
+ * Serialise a Position to FEN (Forsyth-Edwards Notation). Used to
+ * hand the current position to UCI engines like Stockfish.
+ */
+export function positionToFen(p: Position): string {
+  const ranks: string[] = [];
+  for (let r = 7; r >= 0; r--) {
+    let row = '';
+    let empty = 0;
+    for (let f = 0; f < 8; f++) {
+      const piece = p.board[f]?.[r];
+      if (!piece) {
+        empty++;
+        continue;
+      }
+      if (empty > 0) {
+        row += String(empty);
+        empty = 0;
+      }
+      const letter = piece.type === 'k' ? 'k' : piece.type;
+      row += piece.color === 'w' ? letter.toUpperCase() : letter;
+    }
+    if (empty > 0) row += String(empty);
+    ranks.push(row);
+  }
+  const board = ranks.join('/');
+  const turn = p.turn;
+  let castling = '';
+  if (p.castling.wk) castling += 'K';
+  if (p.castling.wq) castling += 'Q';
+  if (p.castling.bk) castling += 'k';
+  if (p.castling.bq) castling += 'q';
+  if (castling === '') castling = '-';
+  const ep = p.enPassant ? squareToAlg(p.enPassant) : '-';
+  return `${board} ${turn} ${castling} ${ep} ${p.halfMoveClock} ${p.fullMoveNumber}`;
+}
+
+/**
+ * Convert a UCI move string (e.g. "e2e4", "e7e8q") to a `Move`
+ * object by matching against the position's legal moves. Returns
+ * null if no legal match — the engine handed us a move the rules
+ * engine doesn't recognise (typically because positions diverged).
+ */
+export function moveFromUci(p: Position, uci: string): Move | null {
+  if (uci.length < 4) return null;
+  const fromFile = uci.charCodeAt(0) - 97;
+  const fromRank = parseInt(uci[1]!, 10) - 1;
+  const toFile = uci.charCodeAt(2) - 97;
+  const toRank = parseInt(uci[3]!, 10) - 1;
+  const promo = uci[4] as 'q' | 'r' | 'b' | 'n' | undefined;
+  const moves = legalMoves(p, [fromFile, fromRank]);
+  return (
+    moves.find(
+      (m) =>
+        m.to[0] === toFile &&
+        m.to[1] === toRank &&
+        (promo ? m.promotion === promo : !m.promotion),
+    ) ?? null
+  );
+}
