@@ -4,6 +4,7 @@
 
 export const SHOWCASE_SLUGS = [
   "atlas",
+  "block-drop",
   "body-metrics",
   "breath",
   "bulwark",
@@ -22,6 +23,7 @@ export const SHOWCASE_SLUGS = [
   "five-letter",
   "habit-tracker",
   "hearth",
+  "invaders",
   "journal",
   "ledger",
   "lift",
@@ -35,6 +37,7 @@ export const SHOWCASE_SLUGS = [
   "pantry-scanner",
   "photo-a-day",
   "pitch-forge",
+  "quartet",
   "quiet",
   "reaction",
   "read-later",
