@@ -18,6 +18,27 @@ interface Result {
   duration_ms: number;
 }
 
+function computeStreak(results: Record<string, Result>): number {
+  // Walk backwards from today; count consecutive solved dates.
+  const dates = new Set(Object.values(results).map((r) => r.date));
+  const d = new Date();
+  let streak = 0;
+  // Allow skipping today if not yet solved (so streak shows yesterday's
+  // active streak before play).
+  if (!dates.has(formatDate(d))) d.setDate(d.getDate() - 1);
+  while (true) {
+    const k = formatDate(d);
+    if (!dates.has(k)) break;
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const STORAGE_KEY = 'shippie:daily-puzzle:v1';
 
 const sdk = createShippieIframeSdk({ appId: 'app_daily_puzzle' });
@@ -125,7 +146,10 @@ export function App() {
       <header className="head">
         <div>
           <h1>Daily Puzzle</h1>
-          <p className="muted small">Tap 1 to {TARGET} in order. {puzzle.date}</p>
+          <p className="muted small">
+            Tap 1 to {TARGET} in order. {puzzle.date}
+            {(() => { const s = computeStreak(results); return s > 0 ? <span className="streak"> · 🔥 {s}</span> : null; })()}
+          </p>
         </div>
         <div className="timer" aria-live="polite">
           {startedAt ? `${seconds}s` : 'Tap 1 to start'}

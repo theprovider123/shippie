@@ -30,9 +30,17 @@ interface PersonalBest {
   at: string;
 }
 
-const SYMBOLS = ['◯', '△', '☐', '✦', '✕', '◇', '✚', '◐'];
 const PAIR_COUNTS = [4, 6, 8] as const;
 type PairCount = typeof PAIR_COUNTS[number];
+
+type Pack = 'shapes' | 'animals' | 'food' | 'space';
+const PACKS: Record<Pack, string[]> = {
+  shapes:  ['◯', '△', '☐', '✦', '✕', '◇', '✚', '◐'],
+  animals: ['🐱', '🐶', '🦊', '🐼', '🦁', '🐢', '🐙', '🦋'],
+  food:    ['🍎', '🍕', '🥑', '🍣', '🍩', '🍓', '🥕', '🍇'],
+  space:   ['🚀', '🛰', '🪐', '☄', '🌑', '🌟', '🛸', '👽'],
+};
+const PACK_LABELS: Record<Pack, string> = { shapes: 'Shapes', animals: 'Animals', food: 'Food', space: 'Space' };
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
@@ -46,8 +54,8 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
-function newDeck(pairs: PairCount): Card[] {
-  const symbols = SYMBOLS.slice(0, pairs);
+function newDeck(pairs: PairCount, pack: Pack = 'shapes'): Card[] {
+  const symbols = PACKS[pack].slice(0, pairs);
   const all = [...symbols, ...symbols];
   return shuffle(all).map((symbol, idx) => ({
     id: idx,
@@ -68,11 +76,31 @@ function saveBests(rows: Record<number, PersonalBest>) {
 
 export function App() {
   const [pairs, setPairs] = useState<PairCount>(4);
-  const [deck, setDeck] = useState<Card[]>(() => newDeck(4));
+  const [pack, setPack] = useState<Pack>(() => {
+    if (typeof localStorage === 'undefined') return 'shapes';
+    const v = localStorage.getItem('shippie:memory-grid:pack:v1');
+    return v === 'animals' || v === 'food' || v === 'space' ? v : 'shapes';
+  });
+  const [deck, setDeck] = useState<Card[]>(() => newDeck(4, 'shapes'));
   const [moves, setMoves] = useState(0);
   const [bests, setBests] = useState<Record<number, PersonalBest>>(() => loadBests());
+  const [tick, setTick] = useState(0); // drives live timer
   const startedRef = useRef<number | null>(null);
   const lockRef = useRef(false);
+
+  useEffect(() => {
+    try { localStorage.setItem('shippie:memory-grid:pack:v1', pack); } catch {/**/}
+  }, [pack]);
+
+  // Live timer tick at 5Hz while a round is in progress.
+  useEffect(() => {
+    if (startedRef.current === null) return;
+    const id = window.setInterval(() => setTick((n) => n + 1), 200);
+    return () => window.clearInterval(id);
+  }, [moves, deck]);
+
+  const elapsedMs = startedRef.current === null ? 0 : Math.round(performance.now() - startedRef.current);
+  void tick;
 
   const allMatched = useMemo(() => deck.every((c) => c.matched), [deck]);
   const flippedNotMatched = deck.filter((c) => c.flipped && !c.matched);
@@ -129,9 +157,10 @@ export function App() {
     if (flippedNotMatched.length < 2) setMoves((m) => m + 1);
   }
 
-  function newRound(p: PairCount) {
+  function newRound(p: PairCount, nextPack: Pack = pack) {
     setPairs(p);
-    setDeck(newDeck(p));
+    setPack(nextPack);
+    setDeck(newDeck(p, nextPack));
     setMoves(0);
     startedRef.current = null;
     lockRef.current = false;
@@ -146,9 +175,11 @@ export function App() {
       <header className="head">
         <div>
           <h1>Memory Grid</h1>
-          <p className="muted small">Find every pair. Fewer moves is better.</p>
+          <p className="muted small">
+            Find every pair. {bests[pairs] ? `Best ${pairs}p: ${bests[pairs]!.moves}m / ${(bests[pairs]!.ms / 1000).toFixed(1)}s` : 'Set a best.'}
+          </p>
         </div>
-        <div className="moves">{moves} moves</div>
+        <div className="moves">{moves} moves · {(elapsedMs / 1000).toFixed(1)}s</div>
       </header>
 
       <section className="size-row">
@@ -160,6 +191,19 @@ export function App() {
             onClick={() => newRound(p)}
           >
             {p} pairs{bests[p] ? ` · best ${bests[p]!.moves}` : ''}
+          </button>
+        ))}
+      </section>
+
+      <section className="size-row">
+        {(Object.keys(PACKS) as Pack[]).map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={p === pack ? 'tab active' : 'tab'}
+            onClick={() => newRound(pairs, p)}
+          >
+            {PACK_LABELS[p]}
           </button>
         ))}
       </section>

@@ -18,6 +18,8 @@ interface DayBest {
   date: string;
   bestMs: number;
   attempts: number;
+  /** Last 5 trials of the day, most-recent-first; drives the median chip. */
+  recent?: number[];
 }
 
 const STORAGE_KEY = 'shippie:reaction:v1';
@@ -47,6 +49,23 @@ export function App() {
   const timerRef = useRef<number | null>(null);
   const today = todayKey();
   const todayBest = history[today]?.bestMs ?? null;
+  const recentTrials = history[today]?.recent ?? [];
+  const median = recentTrials.length === 0 ? null : (() => {
+    const sorted = [...recentTrials].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)] ?? null;
+  })();
+  // Rough percentile vs. a normal-distribution prior (μ=300, σ=60).
+  // Pure UI flavour — better than nothing for a single-player app.
+  function percentileFor(ms: number | null): string {
+    if (ms === null) return '';
+    const mu = 300;
+    const sigma = 60;
+    // Lower ms = better. Compute z = (mu - ms) / sigma; convert to ~ percentile.
+    const z = (mu - ms) / sigma;
+    // Approximate normal CDF via tanh for monotonic non-fancy UI.
+    const pct = Math.round(50 + 50 * Math.tanh(z));
+    return ` · faster than ${Math.max(1, Math.min(99, pct))}% of players`;
+  }
 
   useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
 
@@ -87,10 +106,12 @@ export function App() {
       haptic('tap');
       const prevBest = history[today]?.bestMs;
       const nextBest = prevBest === undefined ? ms : Math.min(prevBest, ms);
+      const recent = [ms, ...(history[today]?.recent ?? [])].slice(0, 5);
       const next: DayBest = {
         date: today,
         bestMs: nextBest,
         attempts: (history[today]?.attempts ?? 0) + 1,
+        recent,
       };
       const updated = { ...history, [today]: next };
       setHistory(updated);
@@ -148,7 +169,10 @@ export function App() {
         {phase === 'result' && lastMs !== null && (
           <>
             <p className="ms">{lastMs}<span className="unit">ms</span></p>
-            <p className="muted small">Tap again</p>
+            <p className="muted small">{`Tap again${percentileFor(lastMs)}`}</p>
+            {median !== null && recentTrials.length >= 3 ? (
+              <p className="muted small">5-trial median: <strong>{median}ms</strong></p>
+            ) : null}
           </>
         )}
         {phase === 'too-early' && (
