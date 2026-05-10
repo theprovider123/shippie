@@ -75,6 +75,7 @@ type AttemptMap = Record<string, PersistedAttempt>;
 
 interface Settings {
   lang: Lang;
+  hardMode: boolean;
 }
 
 function loadAttempts(): AttemptMap {
@@ -91,14 +92,14 @@ function saveAttempts(map: AttemptMap) {
   } catch {/**/}
 }
 function loadSettings(): Settings {
-  if (typeof localStorage === 'undefined') return { lang: 'en' };
+  if (typeof localStorage === 'undefined') return { lang: 'en', hardMode: false };
   try {
     const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}');
     if (raw && (raw.lang === 'en' || raw.lang === 'es' || raw.lang === 'fr')) {
-      return { lang: raw.lang };
+      return { lang: raw.lang, hardMode: raw.hardMode === true };
     }
   } catch {/**/}
-  return { lang: 'en' };
+  return { lang: 'en', hardMode: false };
 }
 function saveSettings(s: Settings) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {/**/}
@@ -120,7 +121,11 @@ export function App() {
   const [currentGuess, setCurrentGuess] = useState('');
   const [shake, setShake] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
-  const [activeMode, setActiveMode] = useState<'daily' | 'practice'>('daily');
+  const [activeMode, setActiveMode] = useState<'daily' | 'practice' | 'archive'>('daily');
+  const [archiveDate, setArchiveDate] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  const [hardModeError, setHardModeError] = useState<string | null>(null);
   // Tracks the last-submitted guess for tile-flip animation. Index N
   // becomes "revealed" at FLIP_STAGGER_MS × N + FLIP_DURATION_MS, so
   // the row reveals letter-by-letter (Wordle-cadence).
@@ -153,7 +158,16 @@ export function App() {
     return puzzleForDate(today, lang, words);
   }, [today, lang, words]);
 
-  const activePuzzle = activeMode === 'practice' ? practicePuzzle : dailyPuzzle;
+  const archivePuzzle = useMemo<DailyPuzzle | null>(() => {
+    if (!words || !archiveDate) return null;
+    return puzzleForDate(archiveDate, lang, words);
+  }, [archiveDate, lang, words]);
+
+  const activePuzzle = activeMode === 'practice'
+    ? practicePuzzle
+    : activeMode === 'archive'
+      ? archivePuzzle
+      : dailyPuzzle;
   const activeAttempt = activePuzzle ? attempts[activePuzzle.puzzle_id] : undefined;
 
   const rows: RowEntry[] = useMemo(() => {
@@ -201,6 +215,42 @@ export function App() {
       return;
     }
     const guess = currentGuess.toLowerCase();
+    // Hard mode: must reuse all revealed greens (in same position)
+    // and yellows (somewhere). Block submit + flash a hint message.
+    if (settings.hardMode && rows.length > 0) {
+      const required: { letter: string; position: number | null }[] = [];
+      for (const r of rows) {
+        for (let i = 0; i < r.guess.length; i++) {
+          const ch = r.guess[i]!;
+          const st = r.states[i]!;
+          if (st === 'correct') required.push({ letter: ch, position: i });
+          else if (st === 'present' && !required.some((q) => q.letter === ch)) required.push({ letter: ch, position: null });
+        }
+      }
+      for (const req of required) {
+        if (req.position !== null) {
+          if (guess[req.position] !== req.letter) {
+            setHardModeError(`Hard mode: ${req.letter.toUpperCase()} must be in slot ${req.position + 1}`);
+            window.setTimeout(() => setHardModeError(null), 2200);
+            haptic('error');
+            sfx.play('fail');
+            setShake(true);
+            window.setTimeout(() => setShake(false), 300);
+            return;
+          }
+        } else {
+          if (!guess.includes(req.letter)) {
+            setHardModeError(`Hard mode: must use ${req.letter.toUpperCase()}`);
+            window.setTimeout(() => setHardModeError(null), 2200);
+            haptic('error');
+            sfx.play('fail');
+            setShake(true);
+            window.setTimeout(() => setShake(false), 300);
+            return;
+          }
+        }
+      }
+    }
     haptic('tap');
     sfx.play('tap');
     const states = scoreGuess(activePuzzle.answer, guess);
@@ -250,7 +300,7 @@ export function App() {
         });
       }
     }, totalRevealMs);
-  }, [activePuzzle, activeAttempt, currentGuess, finished, wordSet]);
+  }, [activePuzzle, activeAttempt, currentGuess, finished, wordSet, settings.hardMode, rows]);
 
   const onKey = useCallback(
     (key: string) => {
@@ -343,17 +393,57 @@ export function App() {
 
   const goDaily = () => {
     setActiveMode('daily');
+    setArchiveDate(null);
     setCurrentGuess('');
   };
+
+  const playArchiveDate = (date: string) => {
+    setArchiveDate(date);
+    setActiveMode('archive');
+    setCurrentGuess('');
+    setShowArchive(false);
+  };
+
+  // Build last-30-days archive list.
+  const archiveDates = useMemo(() => {
+    const dates: string[] = [];
+    const d = new Date();
+    for (let i = 1; i <= 30; i++) {
+      const cur = new Date(d);
+      cur.setDate(d.getDate() - i);
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, '0');
+      const day = String(cur.getDate()).padStart(2, '0');
+      dates.push(`${y}-${m}-${day}`);
+    }
+    return dates;
+  }, []);
 
   return (
     <main className="app">
       <header className="head">
         <div>
           <h1>Five Letter</h1>
-          <p className="muted small">{activeMode === 'daily' ? `Daily · ${today}` : 'Practice mode'}</p>
+          <p className="muted small">
+            {activeMode === 'daily' ? `Daily · ${today}` : activeMode === 'archive' ? `Archive · ${archiveDate ?? today}` : 'Practice mode'}
+            {settings.hardMode ? <span className="hardmode-chip">HARD</span> : null}
+          </p>
         </div>
         <div className="head-actions">
+          <button
+            type="button"
+            className="lang"
+            onClick={() => setShowArchive(true)}
+            aria-label="Archive"
+            title="Archive"
+          >📅</button>
+          <button
+            type="button"
+            className="lang"
+            onClick={() => setShowSettings(true)}
+            aria-label="Settings"
+            title="Settings"
+          >⚙</button>
           <button
             type="button"
             className="lang"
@@ -369,7 +459,7 @@ export function App() {
                 key={l.code}
                 type="button"
                 className={l.code === lang ? 'lang active' : 'lang'}
-                onClick={() => setSettings({ lang: l.code })}
+                onClick={() => setSettings({ ...settings, lang: l.code })}
                 aria-pressed={l.code === lang}
                 title={l.label}
               >
@@ -456,7 +546,61 @@ export function App() {
             ))}
           </section>
 
+          {hardModeError ? <div className="hardmode-error" aria-live="polite">{hardModeError}</div> : null}
+
           <Confetti trigger={confettiTrigger} />
+
+          {showSettings ? (
+            <div className="modal-backdrop" role="dialog" onClick={() => setShowSettings(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Settings</h3>
+                <label className="setting-row">
+                  <input
+                    type="checkbox"
+                    checked={settings.hardMode}
+                    onChange={(e) => {
+                      // Block enabling mid-game (rule integrity).
+                      if (rows.length > 0 && !settings.hardMode) {
+                        setHardModeError('Enable hard mode before your first guess');
+                        window.setTimeout(() => setHardModeError(null), 2400);
+                        return;
+                      }
+                      setSettings({ ...settings, hardMode: e.target.checked });
+                    }}
+                  />
+                  <span>
+                    <strong>Hard mode</strong>
+                    <span className="muted small"> — revealed letters must be reused in subsequent guesses</span>
+                  </span>
+                </label>
+                <p className="muted small">Streak counts both modes equally; hard mode shows in your stats only after a hard-mode win.</p>
+                <button type="button" className="primary" onClick={() => setShowSettings(false)}>Done</button>
+              </div>
+            </div>
+          ) : null}
+
+          {showArchive ? (
+            <div className="modal-backdrop" role="dialog" onClick={() => setShowArchive(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Archive · last 30 days</h3>
+                <p className="muted small">Replay any past day. Doesn't affect your daily streak.</p>
+                <div className="archive-grid">
+                  {archiveDates.map((d) => {
+                    const id = `fl-${d}-${lang}-${BANK_VERSION}`;
+                    const a = attempts[id];
+                    const cls = a?.won ? 'archive-day won' : a?.finished ? 'archive-day lost' : 'archive-day';
+                    return (
+                      <button key={d} type="button" className={cls} onClick={() => playArchiveDate(d)} title={d}>
+                        {d.slice(5)}
+                        {a?.won ? <span> ✓</span> : a?.finished ? <span> ✗</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button type="button" className="ghost" onClick={() => setShowArchive(false)}>Close</button>
+              </div>
+            </div>
+          ) : null}
 
           {finished ? (
             <section className="finish" aria-live="polite">
