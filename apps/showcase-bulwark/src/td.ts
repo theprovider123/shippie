@@ -114,6 +114,8 @@ export interface Projectile {
   colour: string;
 }
 
+export type SpecialAbility = 'carpet' | 'freeze' | 'reinforce';
+
 export interface World {
   tick: number; // monotonic
   path: { x: number; y: number }[]; // cells along the enemy path
@@ -132,6 +134,10 @@ export interface World {
   won: boolean;
   /** Monotonic ms accumulator from tickWorld(dt) — drives projectile fade. */
   worldTimeMs: number;
+  /** Special-ability cooldown end timestamps (worldTimeMs). 0 = ready. */
+  specialReadyAt: Record<SpecialAbility, number>;
+  /** Sandbox mode: infinite money, no death. */
+  sandbox: boolean;
 }
 
 /** Produce a fixed S-curve path across the grid. */
@@ -154,15 +160,15 @@ export function makePath(): { x: number; y: number }[] {
   return path;
 }
 
-export function createWorld(): World {
+export function createWorld(opts: { sandbox?: boolean } = {}): World {
   return {
     tick: 0,
     path: makePath(),
     towers: [],
     enemies: [],
     projectiles: [],
-    bank: 200,
-    lives: 20,
+    bank: opts.sandbox ? 99999 : 200,
+    lives: opts.sandbox ? 999 : 20,
     wave: 0,
     waveActive: false,
     enemiesToSpawn: 0,
@@ -172,7 +178,44 @@ export function createWorld(): World {
     over: false,
     won: false,
     worldTimeMs: 0,
+    specialReadyAt: { carpet: 0, freeze: 0, reinforce: 0 },
+    sandbox: opts.sandbox === true,
   };
+}
+
+/** Special-ability cooldown durations in ms. */
+export const SPECIAL_COOLDOWNS: Record<SpecialAbility, number> = {
+  carpet: 60_000,
+  freeze: 90_000,
+  reinforce: 120_000,
+};
+
+/**
+ * Trigger a player-activated special ability if its cooldown has
+ * elapsed. Returns true on success, false if still on cooldown.
+ *
+ *   - carpet:    ~50% damage to every alive enemy on the screen.
+ *   - freeze:    slow all enemies to 30% speed for 6 seconds.
+ *   - reinforce: refund 100 to bank + restore 5 lives.
+ */
+export function triggerSpecial(world: World, kind: SpecialAbility): boolean {
+  if (world.over || world.won) return false;
+  if (world.worldTimeMs < world.specialReadyAt[kind]) return false;
+  world.specialReadyAt[kind] = world.worldTimeMs + SPECIAL_COOLDOWNS[kind];
+  if (kind === 'carpet') {
+    for (const e of world.enemies) {
+      if (e.hp > 0) e.hp -= e.maxHp * 0.5;
+    }
+  } else if (kind === 'freeze') {
+    for (const e of world.enemies) {
+      e.slowUntil = world.worldTimeMs + 6000;
+      e.slowFactor = 0.3;
+    }
+  } else if (kind === 'reinforce') {
+    world.bank += 100;
+    world.lives = Math.min(20, world.lives + 5);
+  }
+  return true;
 }
 
 export function startWave(world: World): void {
@@ -347,13 +390,15 @@ export function tickWorld(world: World, dt: number): void {
       world.score += e.reward;
       continue;
     }
-    const slowed = e.slowUntil > world.tick * dtMs ? e.slowFactor : 1;
+    const slowed = e.slowUntil > world.worldTimeMs ? e.slowFactor : 1;
     e.dist += e.baseSpeed * slowed * dt;
     if (e.dist >= world.path.length - 1) {
-      world.lives--;
-      if (world.lives <= 0) {
-        world.over = true;
-        return;
+      if (!world.sandbox) {
+        world.lives--;
+        if (world.lives <= 0) {
+          world.over = true;
+          return;
+        }
       }
       continue;
     }

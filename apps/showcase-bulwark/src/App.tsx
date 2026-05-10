@@ -8,6 +8,7 @@ import { useTutorial } from '@shippie/juice/react';
 import {
   GRID_W,
   GRID_H,
+  SPECIAL_COOLDOWNS,
   TOWER_SPECS,
   TOWER_TYPES,
   createWorld,
@@ -17,12 +18,27 @@ import {
   sellTower,
   startWave,
   tickWorld,
+  triggerSpecial,
   upgradeTower,
   type EnemyClass,
   type ProjectileView,
+  type SpecialAbility,
   type TowerType,
   type World,
 } from './td';
+
+const BOSS_NAMES: Record<number, string> = {
+  5:  'Iron Helm',
+  10: 'Stormbringer',
+  15: 'The Swarm Lord',
+  20: 'Voidcaller',
+};
+
+const SPECIAL_LABELS: Record<SpecialAbility, { glyph: string; name: string; desc: string }> = {
+  carpet:    { glyph: '☄', name: 'Carpet Bomb', desc: '50% HP off every enemy on screen' },
+  freeze:    { glyph: '❄', name: 'Freeze Wave', desc: 'Slow all enemies to 30% for 6s' },
+  reinforce: { glyph: '✚', name: 'Reinforce',   desc: '+100 gold, +5 lives' },
+};
 import { exitFullscreen, isFullscreen, requestFullscreen } from './fullscreen';
 
 const sfx = createSoundBank({
@@ -131,9 +147,10 @@ export function App() {
     if (world.wave > lastWaveRef.current && world.wave > 0) {
       lastWaveRef.current = world.wave;
       const id = ++bannerIdRef.current;
-      setWaveBanner({ id, text: `Wave ${world.wave}` });
-      sfx.play('warn', { pitch: 1.2 });
-      window.setTimeout(() => setWaveBanner((b) => (b?.id === id ? null : b)), 1400);
+      const bossName = BOSS_NAMES[world.wave];
+      setWaveBanner({ id, text: bossName ? `Wave ${world.wave} — ${bossName}` : `Wave ${world.wave}` });
+      sfx.play(bossName ? 'fail' : 'warn', { pitch: bossName ? 0.7 : 1.2 });
+      window.setTimeout(() => setWaveBanner((b) => (b?.id === id ? null : b)), 1800);
     }
   }, [world.wave]);
 
@@ -247,12 +264,23 @@ export function App() {
     }
   };
 
-  const restart = () => {
-    setWorld(createWorld());
+  const restart = (sandbox = false) => {
+    setWorld(createWorld({ sandbox }));
     setSelectedType(null);
     setSelectedTowerId(null);
     endRef.current = false;
     setPaused(false);
+  };
+
+  const useSpecial = (kind: SpecialAbility) => {
+    if (triggerSpecial(world, kind)) {
+      sfx.play(kind === 'carpet' ? 'fail' : kind === 'freeze' ? 'warn' : 'bing', { pitch: 1.2 });
+      haptic('success');
+      forceRender((n) => n + 1);
+    } else {
+      sfx.play('fail', { volume: 0.4 });
+      haptic('error');
+    }
   };
 
   const toggleFullscreen = () => {
@@ -419,6 +447,29 @@ export function App() {
         </aside>
       </div>
 
+      <section className="specials" aria-label="Special abilities">
+        {(['carpet', 'freeze', 'reinforce'] as SpecialAbility[]).map((s) => {
+          const remaining = Math.max(0, world.specialReadyAt[s] - world.worldTimeMs);
+          const ready = remaining === 0;
+          const cdSec = Math.ceil(remaining / 1000);
+          const def = SPECIAL_LABELS[s];
+          return (
+            <button
+              key={s}
+              type="button"
+              className={`special-btn${ready ? ' ready' : ''}`}
+              onClick={() => useSpecial(s)}
+              disabled={!ready || world.over || world.won}
+              title={`${def.name} — ${def.desc}`}
+            >
+              <span className="special-glyph">{def.glyph}</span>
+              <span className="special-name">{def.name}</span>
+              {ready ? null : <span className="special-cd">{cdSec}s</span>}
+            </button>
+          );
+        })}
+      </section>
+
       <section className="controls">
         {!world.waveActive && !world.over && !world.won ? (
           <button type="button" className="primary" onClick={begin}>{world.wave === 0 ? 'Start' : `Wave ${world.wave + 1}`}</button>
@@ -426,9 +477,15 @@ export function App() {
         {world.over || world.won ? (
           <>
             <p className="finish-line">{world.won ? `🏆 Defended! ${world.score} pts` : `Base fell on wave ${world.wave}`}</p>
-            <button type="button" className="primary" onClick={restart}>Play again</button>
+            <div className="row-actions">
+              <button type="button" className="primary" onClick={() => restart(false)}>Play again</button>
+              <button type="button" className="ghost" onClick={() => restart(true)}>Sandbox</button>
+            </div>
           </>
+        ) : !world.waveActive && !world.sandbox && world.wave === 0 ? (
+          <button type="button" className="ghost small" onClick={() => restart(true)}>Try sandbox (∞ gold)</button>
         ) : null}
+        {world.sandbox ? <p className="muted small">Sandbox · infinite gold + lives</p> : null}
       </section>
 
       {tutorial.active && tutorial.step ? (
