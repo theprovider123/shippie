@@ -46,11 +46,11 @@ function marketplaceCategory(category: string | undefined): string {
 }
 
 function fallbackApps() {
-  // Marketplace home only shows `surface: 'featured'` apps. Archived
-  // (e.g. live-room → matchday) and arcade / labs entries surface in
-  // their own routes. Apps without a curation entry default to
-  // `featured` (see curatedApps in container/state.ts).
-  return curatedAppsBySurface('featured').map((app) => ({
+  // Marketplace home shows featured + arcade together so "games" sits
+  // alongside "tools" / "social" as a normal category chip. Archived
+  // (e.g. live-room → matchday) and labs entries still live on their
+  // own routes.
+  return [...curatedAppsBySurface('featured'), ...curatedAppsBySurface('arcade')].map((app) => ({
     id: app.id,
     slug: app.slug,
     name: app.name,

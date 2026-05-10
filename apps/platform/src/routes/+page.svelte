@@ -5,7 +5,9 @@
   import InstallNudge from '$lib/components/marketplace/InstallNudge.svelte';
   import LauncherCard from '$lib/components/marketplace/LauncherCard.svelte';
   import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
-  import Randomiser from '$lib/components/randomiser/Randomiser.svelte';
+  // Randomiser hero retired from the home page — too prominent + the
+  // wheel mostly read empty for first-visit users. Lives at /today
+  // (or wherever a "your other apps" surface lands later) instead.
   import { ensureAppOffline, refreshCachedSlugs } from '$lib/stores/cached-slugs';
   import {
     hydrateLauncherMemory,
@@ -166,16 +168,6 @@
                 </a>
               </li>
             {/each}
-            <!--
-              Arcade lives on its own surface (`/arcade`) so games don't
-              double-list inside the topical /apps grid. We surface a
-              dedicated chip here as a wayfinding shortcut — clicking it
-              navigates rather than filtering, which is why it's styled
-              the same but uses `cat-chip-link` for a distinct hover.
-            -->
-            <li>
-              <a class="cat-chip cat-chip-link" href="/arcade">Browse all games →</a>
-            </li>
           </ul>
         {/if}
       </div>
@@ -190,12 +182,6 @@
         <p class="hero-hint">↓ Tap one below.</p>
       </div>
     </section>
-  {/if}
-
-  {#if !filtered && !isFirstVisit}
-    <div class="wrap-wide">
-      <Randomiser />
-    </div>
   {/if}
 
   <section class="results wrap-wide">
