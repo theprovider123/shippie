@@ -116,6 +116,18 @@ export function dailySeedForDate(date: string): number {
 }
 
 /**
+ * Endless mode: a fresh procedural level rolled per "stage" (every
+ * time the frog reaches the goal we generate a new layout). Difficulty
+ * scales with stage number, capped so very long runs stay playable.
+ */
+export function generateEndless(stage: number, worldSalt = 0): Level {
+  // Cap difficulty growth at stage 25 so endless runs can go forever
+  // without becoming impossible.
+  const effective = Math.min(25, stage);
+  return generateLevel(effective + 1, worldSalt + stage * 17);
+}
+
+/**
  * Compute obstacle slots for a lane at a given time. For each lane we
  * tile the world horizontally with period = (length + gap), and offset
  * each tile by `t * speed`. Whether a tile renders an obstacle is
