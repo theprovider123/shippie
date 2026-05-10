@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Invaders",
+  "slug": "invaders",
+  "description": "Fixed-shooter arcade. 11x5 alien formation, eroding bunkers, boss every 5 waves, 3 ship types, synthwave skin.",
+  "icon": "/icon.png",
+  "theme_color": "#15131F",
+  "background_color": "#15131F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games"
+  }
+}
