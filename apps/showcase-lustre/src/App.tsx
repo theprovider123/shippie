@@ -104,6 +104,8 @@ export function App() {
   const [muted, setMutedState] = useState(() => isMuted());
   const [scoreFloats, setScoreFloats] = useState<ScoreFloat[]>([]);
   const [comboBanner, setComboBanner] = useState<{ id: number; n: number } | null>(null);
+  const [announce, setAnnounce] = useState<{ id: number; text: string } | null>(null);
+  const [shakeKey, setShakeKey] = useState(0);
   const cascadeDepthRef = useRef(0);
   const floatIdRef = useRef(0);
   const particlesRef = useRef<Particles | null>(null);
@@ -227,6 +229,12 @@ export function App() {
           setComboBanner(banner);
           window.setTimeout(() => setComboBanner((b) => (b?.id === banner.id ? null : b)), 1000);
         }
+        // Cascade announcer + screen-shake on big chains.
+        if (depth === 2) setAnnounce({ id: ++floatIdRef.current, text: 'Sweet!' });
+        else if (depth === 3) setAnnounce({ id: ++floatIdRef.current, text: 'Delicious!' });
+        else if (depth === 4) setAnnounce({ id: ++floatIdRef.current, text: 'Tasty!' });
+        else if (depth >= 5) setAnnounce({ id: ++floatIdRef.current, text: depth >= 7 ? 'Divine!' : 'Outstanding!' });
+        if (depth >= 3) setShakeKey((n) => n + 1);
         const promotionSet = new Set(promotions.map((p) => `${p.r},${p.c}`));
         const toClear: Array<{ r: number; c: number }> = [];
         for (const g of matches) {
@@ -346,7 +354,7 @@ export function App() {
         ))}
       </section>
 
-      <div className="grid-wrap">
+      <div className={`grid-wrap${shakeKey ? ' shake-once' : ''}`} key={`shake-${shakeKey}`}>
         <canvas ref={fxCanvasRef} className="fx-canvas" aria-hidden />
         <section className="grid" aria-label="Match-3 grid" ref={gridRef}>
           {board.map((row, r) =>
@@ -386,6 +394,9 @@ export function App() {
           <div key={comboBanner.id} className="combo-banner" aria-live="polite">
             Combo ×{comboBanner.n}!
           </div>
+        ) : null}
+        {announce ? (
+          <div key={announce.id} className="cascade-announce" aria-live="polite">{announce.text}</div>
         ) : null}
       </div>
 
