@@ -16,7 +16,18 @@
  * Level 0..20 (Stockfish's range). Skill 0 is intentionally weak.
  */
 
-const WORKER_URL = '/stockfish/stockfish.js#stockfish.wasm,worker';
+/**
+ * Build the Worker URL relative to the app's mount base. The chess
+ * showcase serves at `/__shippie-run/chess/` (production) or `/`
+ * (dev), and Vite injects the correct prefix as
+ * `import.meta.env.BASE_URL`. The hash carries the wasm filename so
+ * Stockfish's loader knows where to fetch the binary from inside the
+ * worker context.
+ */
+function buildWorkerUrl(): string {
+  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+  return `${base}/stockfish/stockfish.js#stockfish.wasm,worker`;
+}
 
 export interface StockfishDriver {
   /** Block until Stockfish has finished UCI handshake. */
@@ -37,7 +48,7 @@ export function createStockfish(): StockfishDriver | null {
   if (typeof WebAssembly === 'undefined') return null;
   let worker: Worker;
   try {
-    worker = new Worker(WORKER_URL);
+    worker = new Worker(buildWorkerUrl());
   } catch {
     return null;
   }
