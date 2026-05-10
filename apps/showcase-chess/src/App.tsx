@@ -50,16 +50,78 @@ interface Settings {
   mode: Mode;
   skill: number;
   flipped: boolean;
+  theme: 'classic' | 'walnut' | 'cobalt';
+  showCoords: boolean;
 }
 
 function loadSettings(): Settings {
-  if (typeof localStorage === 'undefined') return { mode: 'vsComputer', skill: 3, flipped: false };
+  const fallback: Settings = { mode: 'vsComputer', skill: 3, flipped: false, theme: 'classic', showCoords: true };
+  if (typeof localStorage === 'undefined') return fallback;
   try {
-    return { mode: 'vsComputer', skill: 3, flipped: false, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') };
+    return { ...fallback, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') };
   } catch {
-    return { mode: 'vsComputer', skill: 3, flipped: false };
+    return fallback;
   }
 }
+
+/**
+ * Tiny opening-book lookup. Keyed by colon-joined SAN ply prefix
+ * (e.g. "e4:c5" → Sicilian Defence). 30 of the most-played openings
+ * cover ~80% of casual games. Falls through to "Unknown opening"
+ * after the book runs out of moves.
+ */
+const OPENING_BOOK: Array<{ key: string; name: string }> = [
+  { key: 'e4:e5:Nf3:Nc6:Bb5', name: 'Ruy Lopez (Spanish)' },
+  { key: 'e4:e5:Nf3:Nc6:Bc4', name: 'Italian Game' },
+  { key: 'e4:e5:Nf3:Nc6:Bc4:Bc5', name: 'Italian: Giuoco Piano' },
+  { key: 'e4:e5:Nf3:Nc6:Nc3', name: 'Four Knights' },
+  { key: 'e4:e5:Nf3:Nf6', name: 'Petrov Defence' },
+  { key: 'e4:e5:f4', name: "King's Gambit" },
+  { key: 'e4:e5', name: 'Open Game' },
+  { key: 'e4:c5', name: 'Sicilian Defence' },
+  { key: 'e4:c5:Nf3:d6', name: 'Sicilian: Najdorf prep' },
+  { key: 'e4:c6', name: 'Caro-Kann' },
+  { key: 'e4:e6', name: 'French Defence' },
+  { key: 'e4:d5', name: 'Scandinavian Defence' },
+  { key: 'e4:d6', name: 'Pirc Defence' },
+  { key: 'e4:Nf6', name: 'Alekhine Defence' },
+  { key: 'd4:d5:c4', name: "Queen's Gambit" },
+  { key: 'd4:d5:c4:e6', name: "Queen's Gambit Declined" },
+  { key: 'd4:d5:c4:c6', name: 'Slav Defence' },
+  { key: 'd4:d5:c4:dxc4', name: "Queen's Gambit Accepted" },
+  { key: 'd4:Nf6:c4:g6', name: "King's Indian Defence" },
+  { key: 'd4:Nf6:c4:e6', name: 'Indian Defence' },
+  { key: 'd4:Nf6:c4:e6:Nf3:b6', name: 'Queen\'s Indian' },
+  { key: 'd4:Nf6:c4:e6:Nc3:Bb4', name: 'Nimzo-Indian' },
+  { key: 'd4:f5', name: 'Dutch Defence' },
+  { key: 'd4:Nf6', name: 'Indian Defence (general)' },
+  { key: 'c4', name: 'English Opening' },
+  { key: 'Nf3', name: 'Réti Opening' },
+  { key: 'b3', name: 'Larsen\'s Opening' },
+  { key: 'g3', name: "King's Fianchetto" },
+  { key: 'e4', name: "King's Pawn" },
+  { key: 'd4', name: "Queen's Pawn" },
+];
+
+function lookupOpening(sanPlies: string[]): string {
+  const key = sanPlies.join(':');
+  // Match longest prefix.
+  let bestName = sanPlies.length === 0 ? '' : 'Unknown';
+  let bestLen = 0;
+  for (const entry of OPENING_BOOK) {
+    if (key.startsWith(entry.key) && entry.key.length > bestLen) {
+      bestLen = entry.key.length;
+      bestName = entry.name;
+    }
+  }
+  return bestName;
+}
+
+const BOARD_THEMES: Record<Settings['theme'], { light: string; dark: string; lightHi: string; darkHi: string }> = {
+  classic: { light: '#EFE6CF', dark: '#A88766', lightHi: '#F4E098', darkHi: '#C7A468' },
+  walnut:  { light: '#E8D7B5', dark: '#7A4E2E', lightHi: '#F2C66E', darkHi: '#A57040' },
+  cobalt:  { light: '#E0E7F2', dark: '#3B6494', lightHi: '#A8C8FF', darkHi: '#5A8FCC' },
+};
 
 const PIECE_GLYPH: Record<string, string> = {
   wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙',
@@ -82,6 +144,31 @@ export function App() {
   const position = history[history.length - 1]!;
   const gameStatus = useMemo(() => status(position), [position]);
   const inCheck = useMemo(() => isCheck(position), [position]);
+
+  // Captured-piece tally derived from move history. Tray on each side
+  // shows what that side has eliminated.
+  const captures = useMemo(() => {
+    const w: string[] = []; // pieces white has captured (i.e. black pieces eaten)
+    const b: string[] = [];
+    for (const m of moves) {
+      if (m.capture) {
+        if (m.color === 'w') w.push(m.capture);
+        else b.push(m.capture);
+      }
+    }
+    // Order descending value for readable rendering.
+    const order = ['q', 'r', 'b', 'n', 'p'];
+    const sortFn = (a: string, b: string) => order.indexOf(a) - order.indexOf(b);
+    return { w: w.sort(sortFn), b: b.sort(sortFn) };
+  }, [moves]);
+
+  const openingName = useMemo(() => {
+    if (moves.length === 0) return '';
+    const sanPlies = moves.map((m, i) => moveToSan(history[i]!, m));
+    return lookupOpening(sanPlies);
+  }, [moves, history]);
+
+  const theme = BOARD_THEMES[settings.theme];
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch {/**/}
@@ -263,6 +350,20 @@ export function App() {
         <div className="head-actions">
           <button type="button" className="ghost" onClick={() => setMutedState(toggleMuted())} aria-label={muted ? 'Unmute' : 'Mute'}>{muted ? '🔇' : '🔊'}</button>
           <button type="button" className="ghost" onClick={() => setSettings({ ...settings, flipped: !settings.flipped })} aria-label="Flip board">⇅</button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setSettings({ ...settings, theme: settings.theme === 'classic' ? 'walnut' : settings.theme === 'walnut' ? 'cobalt' : 'classic' })}
+            aria-label="Theme"
+            title={`Theme: ${settings.theme}`}
+          >◐</button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setSettings({ ...settings, showCoords: !settings.showCoords })}
+            aria-label="Coords"
+            title={`Coords ${settings.showCoords ? 'on' : 'off'}`}
+          >a1</button>
           <button type="button" className="ghost" onClick={toggleFullscreen} aria-label="Toggle fullscreen">{fullscreen ? '⤡' : '⛶'}</button>
         </div>
       </header>
@@ -283,7 +384,15 @@ export function App() {
         ) : null}
       </section>
 
-      <section className="board" aria-label="Chess board">
+      {openingName ? <p className="opening-name">{openingName}</p> : null}
+
+      <CapturedTray which="b" pieces={captures.b} />
+
+      <section
+        className={`board theme-${settings.theme}${settings.flipped ? ' flipped' : ''}`}
+        aria-label="Chess board"
+        style={{ ['--sq-light' as string]: theme.light, ['--sq-dark' as string]: theme.dark, ['--sq-light-hi' as string]: theme.lightHi, ['--sq-dark-hi' as string]: theme.darkHi }}
+      >
         {ranks.map((r) =>
           files.map((f) => {
             const piece = position.board[f]![r];
@@ -313,13 +422,15 @@ export function App() {
                 aria-label={`${squareToAlg([f, r])}${piece ? ` ${piece.color}${piece.type}` : ''}`}
               >
                 {piece ? PIECE_GLYPH[`${piece.color}${piece.type.toUpperCase()}`] : ''}
-                {f === (settings.flipped ? 7 : 0) ? <span className="rank-label">{r + 1}</span> : null}
-                {r === (settings.flipped ? 7 : 0) ? <span className="file-label">{['a','b','c','d','e','f','g','h'][f]}</span> : null}
+                {settings.showCoords && f === (settings.flipped ? 7 : 0) ? <span className="rank-label">{r + 1}</span> : null}
+                {settings.showCoords && r === (settings.flipped ? 7 : 0) ? <span className="file-label">{['a','b','c','d','e','f','g','h'][f]}</span> : null}
               </button>
             );
           }),
         )}
       </section>
+
+      <CapturedTray which="w" pieces={captures.w} />
 
       <section className="row-actions">
         <button type="button" className="ghost" onClick={newGame}>New game</button>
@@ -374,5 +485,26 @@ export function App() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+function CapturedTray({ which, pieces }: { which: 'w' | 'b'; pieces: string[] }) {
+  // Material differential — only show net advantage by cancelling
+  // pairs (so the tray reads as "what's been won" not "tally").
+  const counts = pieces.reduce<Record<string, number>>((acc, p) => {
+    acc[p] = (acc[p] ?? 0) + 1;
+    return acc;
+  }, {});
+  return (
+    <div className={`tray tray-${which}`} aria-label={`${which === 'w' ? 'White' : 'Black'} captures`}>
+      {(['q', 'r', 'b', 'n', 'p'] as const).flatMap((kind) => {
+        const n = counts[kind] ?? 0;
+        return Array.from({ length: n }, (_, i) => (
+          <span key={`${kind}-${i}`} className="tray-piece">
+            {PIECE_GLYPH[`${which === 'w' ? 'b' : 'w'}${kind.toUpperCase()}`]}
+          </span>
+        ));
+      })}
+    </div>
   );
 }
