@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Quartet",
+  "slug": "quartet",
+  "description": "Group 16 words into 4 themed sets of 4. Daily puzzle, 30-day archive, share your solve as an emoji grid.",
+  "icon": "/icon.png",
+  "theme_color": "#2A1F16",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games"
+  }
+}
