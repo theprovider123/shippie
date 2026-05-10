@@ -166,6 +166,16 @@
                 </a>
               </li>
             {/each}
+            <!--
+              Arcade lives on its own surface (`/arcade`) so games don't
+              double-list inside the topical /apps grid. We surface a
+              dedicated chip here as a wayfinding shortcut — clicking it
+              navigates rather than filtering, which is why it's styled
+              the same but uses `cat-chip-link` for a distinct hover.
+            -->
+            <li>
+              <a class="cat-chip cat-chip-link" href="/arcade">Browse all games →</a>
+            </li>
           </ul>
         {/if}
       </div>
@@ -473,6 +483,14 @@
     background: var(--text);
     border-color: var(--text);
   }
+  .cats .cat-chip-link {
+    /* Wayfinding chip — same shape as the topical chips so it sits
+       comfortably in the row, but coloured with the accent border to
+       signal "this navigates" rather than "this filters". */
+    color: var(--sunset);
+    border-color: var(--sunset);
+  }
+  .cats .cat-chip-link:hover { background: var(--sunset); color: var(--bg-pure); }
   .results { padding-top: var(--space-lg); }
   .launcher-section {
     display: grid;

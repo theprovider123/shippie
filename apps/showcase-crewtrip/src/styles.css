@@ -166,8 +166,13 @@ button, input, select, textarea {
   color: inherit;
 }
 
+input, select, textarea {
+  font-size: 16px;
+}
+
 button {
   cursor: pointer;
+  touch-action: manipulation;
   transition: transform 160ms ease, background-color 200ms ease, border-color 200ms ease, color 200ms ease;
 }
 
@@ -694,8 +699,13 @@ p { margin: 0; }
 
 .day-toggle button.active {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--paper);
   color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.day-toggle button.active strong {
+  color: var(--accent);
 }
 
 .day-toggle button strong {
@@ -710,7 +720,7 @@ p { margin: 0; }
   font-size: 0.66rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
 }
 
 /* ========== Trip "now" card ========== */
@@ -2695,6 +2705,7 @@ p { margin: 0; }
   background: var(--paper);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-soft);
+  overflow-anchor: none;
 }
 
 .control-panel h3 {
@@ -2777,9 +2788,11 @@ p { margin: 0; }
 
 .plan-day-picker button.active {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
+
+.plan-day-picker button.active strong { color: var(--accent); }
 
 .plan-day-picker strong {
   font-family: var(--font-display);
@@ -2804,6 +2817,54 @@ p { margin: 0; }
 .plan-date-controls label {
   display: grid;
   gap: 6px;
+}
+
+.date-add-button {
+  align-self: end;
+}
+
+.plan-edit-list {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-edit-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.plan-edit-list article:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.plan-edit-list article.active {
+  color: var(--accent);
+}
+
+.plan-edit-list span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.plan-edit-list strong,
+.plan-edit-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-edit-list small {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .branding-preview {
@@ -2959,6 +3020,7 @@ p { margin: 0; }
 .host-disclosure {
   padding: 0;
   border-radius: var(--radius-lg);
+  overflow-anchor: none;
 }
 
 .host-disclosure summary {
@@ -3015,6 +3077,7 @@ p { margin: 0; }
   display: grid;
   gap: 10px;
   padding: 14px 18px 18px;
+  overflow-anchor: none;
 }
 
 .team-editor-list, .move-crew-list { display: grid; gap: 10px; }
@@ -3287,11 +3350,70 @@ p { margin: 0; }
   background: #fff;
 }
 
+.qr-frame.private-qr {
+  border: 2px solid var(--accent);
+}
+
 .qr-frame svg {
   width: 100%;
   max-width: 200px;
   height: auto;
   display: block;
+}
+
+.handoff-grid {
+  display: grid;
+  grid-template-columns: minmax(132px, 190px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.handoff-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.handoff-copy h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.handoff-copy p {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.handoff-copy button {
+  min-height: 44px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: 10px 14px;
+}
+
+.device-handoff .handoff-grid {
+  padding-top: 12px;
+}
+
+@media (max-width: 560px) {
+  .handoff-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .handoff-grid .qr-frame {
+    justify-self: start;
+    width: min(178px, 100%);
+  }
+
+  .handoff-grid .qr-frame svg {
+    max-width: 154px;
+  }
 }
 
 /* ========== Crew requests, chat, messages ========== */

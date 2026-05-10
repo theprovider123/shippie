@@ -137,6 +137,15 @@ export interface AppPackageManifest {
   maker: PackageMaker;
   domains: PackageDomains;
   runtime: PackageRuntimeTargets;
+  /**
+   * Marketplace surface for the app. Carried through the package
+   * manifest so a third-party app deployed via `pipeline.ts:deployStatic`
+   * keeps its surface designation when re-installed via the package
+   * import path. Allowed: featured | arcade | labs | archived.
+   * Optional for back-compat with manifests built before slate v4
+   * (those default to 'featured').
+   */
+  surface?: 'featured' | 'arcade' | 'labs' | 'archived';
 }
 
 export interface AppVersionRecord {

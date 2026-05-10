@@ -69,7 +69,7 @@ export function manifestToContainerApp(
   manifest: AppPackageManifest,
   permissions?: AppPermissions,
 ): ContainerApp {
-  return {
+  const app: ContainerApp = {
     id: manifest.id,
     slug: manifest.slug,
     name: manifest.name,
@@ -87,6 +87,13 @@ export function manifestToContainerApp(
     owned: true,
     permissions: permissions ?? localPermissions(manifest.slug),
   };
+  // Carry surface through so the bridge's arcade-aware capability
+  // gates fire for third-party arcade apps too. Manifests built before
+  // slate v4 don't have `surface`; treat those as the default
+  // (`featured`) by leaving the field undefined — the bridge denies
+  // analytics.track only on explicit `'arcade'`.
+  if (manifest.surface) app.surface = manifest.surface;
+  return app;
 }
 
 /**

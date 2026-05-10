@@ -9,6 +9,7 @@
  * The BaaS scanner is inlined here as a Worker-friendly module — no
  * dependency on apps/web/lib/trust.
  */
+import { parseMakerCuration, type MakerCuration } from '$lib/curation/schema';
 
 export interface ShippieJsonLite {
   version?: number;
@@ -94,6 +95,17 @@ export interface ShippieJsonLite {
   template_id?: string;
   parent_app_id?: string;
   parent_version?: string;
+  /**
+   * Maker-uploadable curation block. Validated by
+   * `MakerCuration` (see `lib/curation/schema.ts`); the `successor`
+   * field is intentionally NOT exposed to maker uploads (curator-side
+   * concern only) and is stripped defence-in-depth at parse time.
+   *
+   * If absent, the surface resolver in `pipeline.ts:deployStatic`
+   * falls back to: form override → existing D1 row's surface →
+   * 'featured'.
+   */
+  curation?: MakerCuration;
 }
 
 export interface DeriveManifestInput {
@@ -151,6 +163,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         template_id: typeof m.template_id === 'string' ? m.template_id : undefined,
         parent_app_id: typeof m.parent_app_id === 'string' ? m.parent_app_id : undefined,
         parent_version: typeof m.parent_version === 'string' ? m.parent_version : undefined,
+        curation: parseCurationFromMaker(m.curation),
       };
       return {
         manifest,
@@ -207,6 +220,20 @@ function defaultManifest(slug: string): ShippieJsonLite {
  * errors here MUST NOT block a deploy — the wrapper enforces destructive
  * blocks at runtime regardless.
  */
+/**
+ * Read maker-supplied `curation` block. Returns the validated subset
+ * (`MakerCuration`) on success or `undefined` if absent / invalid.
+ * Invalid values do NOT block the deploy here — the surface resolver
+ * downstream falls through to the next priority. Arcade-purity gating
+ * is enforced separately in `deployStatic` after the surface is
+ * resolved (so we know whether to enforce arcade rules).
+ */
+export function parseCurationFromMaker(raw: unknown): MakerCuration | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const result = parseMakerCuration(raw);
+  return result.ok ? result.value : undefined;
+}
+
 export function parseMigrations(raw: unknown): ShippieJsonLite['migrations'] {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const obj = raw as Record<string, unknown>;

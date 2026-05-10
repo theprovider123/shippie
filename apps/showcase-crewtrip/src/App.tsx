@@ -28,6 +28,8 @@ import type {
   ThemeKey,
   SoundtrackSlot,
   TripDay,
+  StopStatus,
+  ItineraryStop,
 } from './types';
 import { translations } from './data/translations';
 import { themePalettes, paletteFor } from './data/themes';
@@ -56,6 +58,7 @@ import {
   buildGameHighlights,
   buildCrewAwards,
   buildWrapHighlights,
+  buildCrewReturnUrl,
   buildShareUrl,
   canSeeChallenge,
   createFreshCrewtripState,
@@ -95,6 +98,7 @@ import {
   type TripPhase,
 } from './utils/state';
 import { useCrewtripSync } from './utils/sync';
+import { useFocusedFieldStability } from './utils/useFocusedFieldStability';
 import { useViewportDock } from './utils/useViewportDock';
 
 import {
@@ -381,6 +385,7 @@ export function App() {
   const [state, setState] = usePersistentState();
   const deviceId = useMemo(getDeviceId, []);
   const dock = useViewportDock();
+  useFocusedFieldStability();
   const [role, setRole] = useState<Role | null>(() => initialRole(state.eventCode));
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(() => readLocalPlayerId(state.eventCode));
   const sync = useCrewtripSync(state, setState, deviceId, Boolean(role));
@@ -407,7 +412,8 @@ export function App() {
   const [draftCrewTeam, setDraftCrewTeam] = useState('all');
   const [selectedDayId, setSelectedDayId] = useState('day-1');
   const [hostSection, setHostSection] = useState<HostSection>('manage');
-  const [draftStop, setDraftStop] = useState({ dayId: 'day-1', date: '', groupId: 'all', time: '', title: '', place: '' });
+  const [editingStopId, setEditingStopId] = useState<string | null>(null);
+  const [draftStop, setDraftStop] = useState({ dayId: 'day-1', date: '', groupId: 'all', time: '', title: '', place: '', status: 'later' as StopStatus });
   const [draftDay, setDraftDay] = useState({ label: '', date: '' });
   const [draftGroup, setDraftGroup] = useState('');
   const [draftMessage, setDraftMessage] = useState('');
@@ -428,16 +434,31 @@ export function App() {
   const [backupNotice, setBackupNotice] = useState<string | null>(null);
   const [backupRevision, setBackupRevision] = useState(0);
   const [qrMarkup, setQrMarkup] = useState<string | null>(null);
+  const [hostHandoffQrMarkup, setHostHandoffQrMarkup] = useState<string | null>(null);
+  const [crewReturnQrMarkup, setCrewReturnQrMarkup] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [minuteTick, setMinuteTick] = useState(0);
+  const [handoffCopied, setHandoffCopied] = useState<'host' | 'crew' | null>(null);
 
   const shareUrl = useMemo(() => buildShareUrl(state.eventCode, 'crew'), [state.eventCode]);
-  const hostReturnUrl = useMemo(() => buildShareUrl(state.eventCode, 'join-host'), [state.eventCode]);
+  const hostReturnUrl = useMemo(() => buildShareUrl(state.eventCode, 'join-host', state.hostAccessToken), [state.eventCode, state.hostAccessToken]);
+  const hostReturnToken = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('host') ?? '';
+  }, []);
+  const crewReturnPlayerId = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('player') ?? '';
+  }, []);
   const hostPlayer = state.players.find((player) => player.id === 'host') ?? state.players[0]!;
   const localPlayer = localPlayerId ? state.players.find((player) => player.id === localPlayerId) : undefined;
   const crewNeedsProfile = role === 'eventee' && (!localPlayer || localPlayer.id === 'host');
+  const crewReturnUrl = useMemo(() => {
+    if (!localPlayer || localPlayer.id === 'host') return '';
+    return buildCrewReturnUrl(state.eventCode, localPlayer.id);
+  }, [localPlayer?.id, state.eventCode]);
   const activePlayer = role === 'host'
     ? hostPlayer
     : (localPlayer && localPlayer.id !== 'host' ? localPlayer : state.players.find((player) => player.id !== 'host') ?? hostPlayer);
@@ -658,6 +679,24 @@ export function App() {
   }, [localPlayerId, role, state.eventCode]);
 
   useEffect(() => {
+    if (role === 'host') return;
+    if (!hostReturnToken || hostReturnToken !== state.hostAccessToken) return;
+    writeLocalHostClaim(state.eventCode);
+    writeLocalPlayerId(state.eventCode, 'host');
+    setLocalPlayerId('host');
+    setRole('host');
+    setBackupNotice('Host access restored on this device.');
+  }, [hostReturnToken, role, state.eventCode, state.hostAccessToken]);
+
+  useEffect(() => {
+    if (!crewReturnPlayerId || crewReturnPlayerId === 'host') return;
+    if (!state.players.some((player) => player.id === crewReturnPlayerId)) return;
+    writeLocalPlayerId(state.eventCode, crewReturnPlayerId);
+    setLocalPlayerId(crewReturnPlayerId);
+    setRole('eventee');
+  }, [crewReturnPlayerId, state.eventCode, state.players]);
+
+  useEffect(() => {
     if (role) return;
     if (!localPlayerId || localPlayerId === 'host') return;
     if (!state.players.some((player) => player.id === localPlayerId)) return;
@@ -751,6 +790,38 @@ export function App() {
       cancelled = true;
     };
   }, [shareUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void qrSvg(hostReturnUrl, { ecc: 'M', size: 210, brand: 'none', fg: '#14120F', bg: '#F5EFE4' })
+      .then((svg) => {
+        if (!cancelled) setHostHandoffQrMarkup(svg);
+      })
+      .catch(() => {
+        if (!cancelled) setHostHandoffQrMarkup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hostReturnUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!crewReturnUrl) {
+      setCrewReturnQrMarkup(null);
+      return;
+    }
+    void qrSvg(crewReturnUrl, { ecc: 'M', size: 210, brand: 'none', fg: '#14120F', bg: '#F5EFE4' })
+      .then((svg) => {
+        if (!cancelled) setCrewReturnQrMarkup(svg);
+      })
+      .catch(() => {
+        if (!cancelled) setCrewReturnQrMarkup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [crewReturnUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1040,7 +1111,40 @@ export function App() {
       time: '',
       title: '',
       place: '',
+      status: 'later',
     });
+    setEditingStopId(null);
+  }
+
+  function startEditingStop(stop: ItineraryStop) {
+    const dayId = stop.dayId ?? activeDayId;
+    const day = days.find((item) => item.id === dayId);
+    setEditingStopId(stop.id);
+    setSelectedDayId(dayId);
+    setDraftStop({
+      dayId,
+      date: tripDayDateInputValue(day?.date),
+      groupId: stop.groupId ?? 'all',
+      time: stop.time,
+      title: stop.title,
+      place: stop.place,
+      status: stop.status,
+    });
+    setHostSection('manage');
+    goToTab('host');
+  }
+
+  function resolveDraftStopDay() {
+    const date = draftStop.date.trim();
+    const currentDays = days.length ? days : initialState.days;
+    const existingDateDay = findDayByInputDate(currentDays, date);
+    const newDateDay = date && !existingDateDay
+      ? { id: newId('day'), label: nextTripDayLabel(currentDays), date }
+      : null;
+    const stopDayId = existingDateDay?.id
+      ?? newDateDay?.id
+      ?? (currentDays.some((day) => day.id === draftStop.dayId) ? draftStop.dayId : activeDayId);
+    return { date, existingDateDay, newDateDay, stopDayId };
   }
 
   function selectDraftStopDay(dayId: string) {
@@ -1077,6 +1181,28 @@ export function App() {
     setSelectedDayId(day.id);
     setDraftStop((current) => ({ ...current, dayId: day.id, date }));
     setDraftDay({ label: '', date: '' });
+  }
+
+  function addDraftStopDate(dateValue = draftStop.date) {
+    const date = dateValue.trim();
+    if (!date) return null;
+    const currentDays = days.length ? days : initialState.days;
+    const existingDay = findDayByInputDate(currentDays, date);
+    if (existingDay) {
+      setSelectedDayId(existingDay.id);
+      setDraftStop((current) => ({ ...current, dayId: existingDay.id, date }));
+      return existingDay;
+    }
+    const day = { id: newId('day'), label: nextTripDayLabel(currentDays), date };
+    update((current) => ({
+      ...current,
+      days: findDayByInputDate(current.days ?? initialState.days, date)
+        ? current.days
+        : [...(current.days ?? initialState.days), day],
+    }));
+    setSelectedDayId(day.id);
+    setDraftStop((current) => ({ ...current, dayId: day.id, date }));
+    return day;
   }
 
   function addGroup() {
@@ -1302,15 +1428,7 @@ export function App() {
   function addStop() {
     const title = draftStop.title.trim();
     if (!title) return;
-    const date = draftStop.date.trim();
-    const currentDays = days.length ? days : initialState.days;
-    const existingDateDay = findDayByInputDate(currentDays, date);
-    const newDateDay = date && !existingDateDay
-      ? { id: newId('day'), label: nextTripDayLabel(currentDays), date }
-      : null;
-    const stopDayId = existingDateDay?.id
-      ?? newDateDay?.id
-      ?? (currentDays.some((day) => day.id === draftStop.dayId) ? draftStop.dayId : activeDayId);
+    const { date, existingDateDay, newDateDay, stopDayId } = resolveDraftStopDay();
     update((current) => ({
       ...current,
       days: newDateDay && !findDayByInputDate(current.days ?? initialState.days, date)
@@ -1325,12 +1443,52 @@ export function App() {
           time: draftStop.time.trim() || 'TBC',
           title,
           place: draftStop.place.trim() || 'Host drop',
-          status: 'later' as const,
+          status: draftStop.status,
         },
       ],
     }));
     setSelectedDayId(stopDayId);
     resetDraftStop(stopDayId, newDateDay?.date ?? existingDateDay?.date ?? '');
+  }
+
+  function saveStopEdit() {
+    if (!editingStopId) {
+      addStop();
+      return;
+    }
+    const title = draftStop.title.trim();
+    if (!title) return;
+    const { date, existingDateDay, newDateDay, stopDayId } = resolveDraftStopDay();
+    update((current) => ({
+      ...current,
+      days: newDateDay && !findDayByInputDate(current.days ?? initialState.days, date)
+        ? [...(current.days ?? initialState.days), newDateDay]
+        : current.days,
+      stops: current.stops.map((stop) => stop.id === editingStopId
+        ? {
+            ...stop,
+            dayId: stopDayId,
+            groupId: draftStop.groupId === 'all' ? undefined : draftStop.groupId,
+            time: draftStop.time.trim() || 'TBC',
+            title,
+            place: draftStop.place.trim() || 'Host drop',
+            status: draftStop.status,
+          }
+        : stop),
+      broadcasts: [{ id: newId('b'), text: `Host updated the plan: ${title}`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
+    }));
+    setSelectedDayId(stopDayId);
+    resetDraftStop(stopDayId, newDateDay?.date ?? existingDateDay?.date ?? '');
+    sdk.feel.texture('confirm');
+  }
+
+  function submitStopDraft() {
+    if (editingStopId) {
+      saveStopEdit();
+      return;
+    }
+    addStop();
+    sdk.feel.texture('confirm');
   }
 
   function renderPlanDateControls(prefix: string) {
@@ -1364,6 +1522,11 @@ export function App() {
               onChange={(event) => selectDraftStopDate(event.target.value)}
             />
           </label>
+          {newDateSelected ? (
+            <button type="button" className="ghost date-add-button" onClick={() => addDraftStopDate()}>
+              Add {formatTripDayDate(draftStop.date)}
+            </button>
+          ) : null}
           <label>
             <span>Group</span>
             <select name={`${prefix}-group`} value={draftStop.groupId} onChange={(event) => setDraftStop((current) => ({ ...current, groupId: event.target.value }))}>
@@ -1593,10 +1756,24 @@ export function App() {
   async function copyHostReturnLink() {
     try {
       await navigator.clipboard?.writeText(hostReturnUrl);
-      setBackupNotice('Host return link copied. Bookmark it on this browser before closing.');
+      setHandoffCopied('host');
+      window.setTimeout(() => setHandoffCopied((current) => (current === 'host' ? null : current)), 1600);
+      setBackupNotice('Host handoff link copied. Open it on your other device while this trip is open.');
       sdk.feel.texture('confirm');
     } catch {
       setBackupNotice('Could not copy the host return link here. Use the recovery pack as a backup.');
+    }
+  }
+
+  async function copyCrewReturnLink() {
+    if (!crewReturnUrl) return;
+    try {
+      await navigator.clipboard?.writeText(crewReturnUrl);
+      setHandoffCopied('crew');
+      window.setTimeout(() => setHandoffCopied((current) => (current === 'crew' ? null : current)), 1600);
+      sdk.feel.texture('confirm');
+    } catch {
+      setHandoffCopied(null);
     }
   }
 
@@ -1660,6 +1837,13 @@ export function App() {
   }
 
   function onTimelineSelect(item: TripTimelineItem) {
+    if (item.stopId && role === 'host') {
+      const stop = state.stops.find((entry) => entry.id === item.stopId);
+      if (stop) {
+        startEditingStop(stop);
+        return;
+      }
+    }
     if (item.tournamentEventId) {
       setGameComposerMode('structured');
       setSelectedTournamentEventId(item.tournamentEventId);
@@ -1956,6 +2140,23 @@ export function App() {
               <button onClick={addCrewMember}>{copy.addMe}</button>
             </div>
           </details>
+
+          {crewReturnUrl && role !== 'host' ? (
+            <details className="simple-drawer device-handoff">
+              <summary>
+                <span>Switch device</span>
+                <small>Open your crew profile elsewhere</small>
+              </summary>
+              <div className="handoff-grid">
+                {crewReturnQrMarkup ? <div className="qr-frame" dangerouslySetInnerHTML={{ __html: crewReturnQrMarkup }} /> : <code>{crewReturnUrl}</code>}
+                <div className="handoff-copy">
+                  <h3>Scan from your other device</h3>
+                  <p>Keep this trip open here while your other device joins. It will reopen as {localPlayer?.name ?? 'you'}.</p>
+                  <button type="button" onClick={() => void copyCrewReturnLink()}>{handoffCopied === 'crew' ? 'Copied' : 'Copy switch link'}</button>
+                </div>
+              </div>
+            </details>
+          ) : null}
 
           {features.scores ? (
             <details className="simple-drawer">
@@ -2415,14 +2616,43 @@ export function App() {
                   </ControlPanel>
                 ) : null}
                 {features.plan ? (
-                  <HostDisclosure title="Plan item" hint="Pick or add a date">
+                  <HostDisclosure title={editingStopId ? 'Edit plan item' : 'Plan item'} hint={editingStopId ? 'Changes sync to crew' : 'Pick or add a date'}>
                     {renderPlanDateControls('host-stop')}
                     <input name="host-stop-time" value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00 or TBC)" />
                     <input name="host-stop-title" value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value }))} placeholder="Plan title" />
                     <input name="host-stop-place" value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
-                    <button onClick={addStop}>Add plan</button>
+                    {editingStopId ? (
+                      <select name="host-stop-status" value={draftStop.status} onChange={(event) => setDraftStop((current) => ({ ...current, status: event.target.value as StopStatus }))}>
+                        <option value="now">Now</option>
+                        <option value="next">Next</option>
+                        <option value="later">Later</option>
+                      </select>
+                    ) : null}
+                    <button onClick={submitStopDraft}>{editingStopId ? 'Save changes' : 'Add plan'}</button>
+                    {editingStopId ? <button className="ghost" onClick={() => resetDraftStop()}>Cancel edit</button> : null}
                     <button className="ghost" onClick={advancePlan}>Advance now</button>
                   </HostDisclosure>
+                ) : null}
+                {features.plan ? (
+                  <ControlPanel title="Posted plan" tone="recessed">
+                    {state.stops.length ? (
+                      <div className="plan-edit-list">
+                        {state.stops.map((stop) => {
+                          const day = days.find((item) => item.id === stop.dayId) ?? days[0]!;
+                          const group = stop.groupId ? groups.find((item) => item.id === stop.groupId) : null;
+                          return (
+                            <article key={stop.id} className={editingStopId === stop.id ? 'active' : ''}>
+                              <span>
+                                <strong>{stop.title}</strong>
+                                <small>{day.label} / {formatTripDayDate(day.date)} / {stop.time} / {stop.status}{group ? ` / ${group.name}` : ''}</small>
+                              </span>
+                              <button type="button" className="ghost" onClick={() => startEditingStop(stop)}>{editingStopId === stop.id ? 'Editing' : 'Edit'}</button>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    ) : <p className="empty-note">No plan items yet.</p>}
+                  </ControlPanel>
                 ) : null}
                 {features.polls ? (
                   <HostDisclosure title="Vote status" hint="Open or close existing votes">
@@ -2557,11 +2787,25 @@ export function App() {
                   <p className="sync-note">This name, cover, and trip feeling are shared with host and crew views.</p>
                 </ControlPanel>
                 <ControlPanel title={copy.share} tone="primary">
-                  {qrMarkup ? <div className="qr-frame" dangerouslySetInnerHTML={{ __html: qrMarkup }} /> : <code>{shareUrl}</code>}
-                  <p className="sync-note">{syncLabel(sync, language)} Host controls stay on this device.</p>
-                  <button onClick={copyShareLink}>{shareCopied ? copy.copied : copy.copyJoinLink}</button>
-                  <button type="button" className="ghost" onClick={() => void copyHostReturnLink()}>Copy host return link</button>
-                  <p className="sync-note">Bookmark the host return link on this browser. Crew should only get the join link or QR.</p>
+                  <div className="handoff-grid">
+                    {qrMarkup ? <div className="qr-frame" dangerouslySetInnerHTML={{ __html: qrMarkup }} /> : <code>{shareUrl}</code>}
+                    <div className="handoff-copy">
+                      <h3>Crew invite</h3>
+                      <p>{syncLabel(sync, language)} Crew can vote, request, chat, and add moments. Host controls stay private.</p>
+                      <button onClick={copyShareLink}>{shareCopied ? copy.copied : copy.copyJoinLink}</button>
+                    </div>
+                  </div>
+                </ControlPanel>
+                <ControlPanel title="Host handoff" tone="recessed">
+                  <div className="handoff-grid">
+                    {hostHandoffQrMarkup ? <div className="qr-frame private-qr" dangerouslySetInnerHTML={{ __html: hostHandoffQrMarkup }} /> : <code>{hostReturnUrl}</code>}
+                    <div className="handoff-copy">
+                      <h3>Move host controls to your phone</h3>
+                      <p>Scan this yourself only. Keep this host view open while the other device opens the handoff link.</p>
+                      <button type="button" onClick={() => void copyHostReturnLink()}>{handoffCopied === 'host' ? 'Copied' : 'Copy host handoff link'}</button>
+                    </div>
+                  </div>
+                  <p className="sync-note">This is different from the crew invite. Anyone with this private link can reopen host controls.</p>
                 </ControlPanel>
                 <HostDisclosure title="Trip feeling" hint={`${palette.name} palette`}>
                   <div className="theme-grid">
@@ -2972,7 +3216,7 @@ export function App() {
                 <input name="quick-stop-time" value={draftStop.time} onChange={(event) => setDraftStop((current) => ({ ...current, time: event.target.value }))} placeholder="Time (e.g. 14:00)" />
                 <input name="quick-stop-title" value={draftStop.title} onChange={(event) => setDraftStop((current) => ({ ...current, title: event.target.value }))} placeholder="Plan title" />
                 <input name="quick-stop-place" value={draftStop.place} onChange={(event) => setDraftStop((current) => ({ ...current, place: event.target.value }))} placeholder="Place or note" />
-                <button onClick={() => { addStop(); setActionSheetOpen(false); }}>Add plan</button>
+                <button onClick={() => { submitStopDraft(); setActionSheetOpen(false); }}>{editingStopId ? 'Save changes' : 'Add plan'}</button>
               </HostDisclosure>
             ) : null}
             {features.polls ? (

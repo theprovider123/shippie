@@ -97,6 +97,7 @@ export interface SoundtrackSlot {
 
 export interface TripTimelineItem {
   id: string;
+  stopId?: string;
   time: string;
   kind: 'plan' | 'host' | 'poll' | 'game' | 'tournament' | 'memory' | 'soundtrack';
   title: string;
@@ -291,6 +292,7 @@ export interface CrewtripState {
   eventName: string;
   location: string;
   eventCode: string;
+  hostAccessToken: string;
   description: string;
   hostNote: string;
   coverImagePath?: string;

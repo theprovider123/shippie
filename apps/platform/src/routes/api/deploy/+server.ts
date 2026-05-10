@@ -16,10 +16,12 @@ import { deployStatic } from '$server/deploy/pipeline';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { remixEligibilityForSlug } from '$server/remix/eligibility';
+import { VALID_SURFACES, type Surface } from '$lib/curation/schema';
 
 const VISIBILITY_SCOPES = ['public', 'unlisted', 'private', 'team'] as const;
 type DeployVisibilityScope = (typeof VISIBILITY_SCOPES)[number];
 const TEAM_DEPLOY_ROLES = new Set(['admin', 'deployer']);
+const SURFACE_SET = new Set<string>(VALID_SURFACES);
 
 export const POST: RequestHandler = async (event) => {
   const env = event.platform?.env;
@@ -42,6 +44,18 @@ export const POST: RequestHandler = async (event) => {
   const remixFrom = String(form.get('remix_from') ?? '').trim();
   const visibility = parseVisibilityScope(form.get('visibility') ?? form.get('visibility_scope'));
   const organization = String(form.get('organization') ?? form.get('organization_id') ?? '').trim();
+  // Optional `surface` form field — only present when the upload form
+  // picker chose something other than "Auto" (or a CLI client opted
+  // in). Loses to the manifest's `curation.surface` at the resolver;
+  // wins over the existing D1 row's surface when set.
+  const surfaceRaw = form.get('surface');
+  let surfaceOverride: Surface | undefined;
+  if (typeof surfaceRaw === 'string' && surfaceRaw.length > 0) {
+    if (!SURFACE_SET.has(surfaceRaw)) {
+      return json({ error: 'invalid_surface', allowed: VALID_SURFACES }, { status: 400 });
+    }
+    surfaceOverride = surfaceRaw as Surface;
+  }
 
   if (!slug) return json({ error: 'missing slug' }, { status: 400 });
   if (!(zip instanceof File)) {
@@ -78,6 +92,7 @@ export const POST: RequestHandler = async (event) => {
       zipBuffer,
       visibilityScope: visibility,
       organizationId,
+      surfaceOverride,
       lineage: remixApp
         ? {
             parentAppId: remixApp.id,

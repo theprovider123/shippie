@@ -14,6 +14,7 @@
  */
 import type { RequestHandler } from './$types';
 import { SHOWCASE_PRECACHE } from '$lib/_generated/precache-list';
+import { RUNTIME_PRECACHE } from '$lib/_generated/runtime-precache';
 import { AI_RUNTIME_URLS } from '$lib/container/ai-runtime';
 
 const SW_BODY = `// shippie-marketplace SW
@@ -110,11 +111,24 @@ async function warmAiRuntime(urls = AI_RUNTIME_URLS) {
 // SHOWCASE_PRECACHE constant. Caching is best-effort per entry; a network,
 // 404, or wrong content-type on one slug never blocks install.
 const SHOWCASE_PRECACHE = __SHOWCASE_PRECACHE__;
+// Heavy bundled runtimes (Stockfish.wasm, word banks, puzzle PGNs).
+// Empty unless an arcade showcase declares shippie.json#runtime_assets.
+// Precached at install time — NOT lazy on first fetch — so the
+// "100% offline" arcade gate holds up. A first-visit airplane-mode
+// open of e.g. Chess will find Stockfish in the cache.
+const RUNTIME_PRECACHE = __RUNTIME_PRECACHE__;
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cacheAddAll(cache, SHOWCASE_PRECACHE, () => {});
+    if (RUNTIME_PRECACHE.length > 0) {
+      // Same best-effort path as SHOWCASE_PRECACHE — failures land in
+      // the failed[] return value but don't block install. Heavy
+      // assets that miss precache will still warm on first request
+      // via the existing stale-while-revalidate fetch handler.
+      await cacheAddAll(cache, RUNTIME_PRECACHE, () => {});
+    }
     await warmAiRuntime();
     self.skipWaiting();
   })());
@@ -522,7 +536,8 @@ export const GET: RequestHandler = async ({ platform }) => {
   const body = SW_BODY
     .replace(/__SHIPPIE_BUILD__/g, buildId)
     .replace('__AI_RUNTIME_URLS__', JSON.stringify(AI_RUNTIME_URLS))
-    .replace('__SHOWCASE_PRECACHE__', JSON.stringify(SHOWCASE_PRECACHE));
+    .replace('__SHOWCASE_PRECACHE__', JSON.stringify(SHOWCASE_PRECACHE))
+    .replace('__RUNTIME_PRECACHE__', JSON.stringify(RUNTIME_PRECACHE));
   return new Response(body, {
     status: 200,
     headers: {

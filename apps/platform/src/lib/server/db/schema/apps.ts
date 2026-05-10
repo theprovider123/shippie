@@ -59,6 +59,15 @@ export const apps = sqliteTable(
     }),
     visibilityScope: text('visibility_scope').default('public').notNull(),
     isArchived: integer('is_archived', { mode: 'boolean' }).default(false).notNull(),
+
+    /**
+     * Marketplace surface — controls which route the app appears under.
+     * Allowed: 'featured' (default, /apps), 'arcade' (/arcade), 'labs'
+     * (/labs), 'archived' (hidden from listings, direct URL still works).
+     * Validation lives in `lib/curation/schema.ts` so the values stay
+     * extensible without a migration.
+     */
+    surface: text('surface').default('featured').notNull(),
     takedownReason: text('takedown_reason'),
 
     /** Cached deploy pointers — maintained in app code post-port. */

@@ -74,6 +74,12 @@ import {
   type DeployEventEmitter,
 } from './deploy-events';
 import { detectStaticBundlePwaReadiness } from './pwa-readiness';
+import { resolveSurface } from './surface-resolver';
+import type { Surface } from '$lib/curation/schema';
+import {
+  checkArcadePurity,
+  checkArcadeConnectDomains,
+} from './arcade-purity-check';
 
 const IMMERSIVE_BASE_STYLE = `<style data-shippie-immersive-base>
 :root{--shippie-safe-top:env(safe-area-inset-top,0px);--shippie-safe-right:env(safe-area-inset-right,0px);--shippie-safe-bottom:env(safe-area-inset-bottom,0px);--shippie-safe-left:env(safe-area-inset-left,0px)}
@@ -95,6 +101,14 @@ export interface DeployStaticInput {
   visibilityScope?: 'public' | 'unlisted' | 'private' | 'team';
   organizationId?: string | null;
   lineage?: DeployLineageOverride;
+  /**
+   * Explicit surface chosen via the upload form picker. Only set when
+   * the maker picked App / Game / Experiment in `/new` (i.e. omitted
+   * when they left the default "Auto"). Loses to `manifest.curation
+   * .surface`; wins over the existing D1 row's surface. See
+   * `surface-resolver.ts` for the full priority chain.
+   */
+  surfaceOverride?: Surface;
   reservedSlugs: ReadonlySet<string>;
   /** Bindings — pulled from event.platform.env in the route. */
   db: D1Database;
@@ -215,6 +229,49 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     };
   }
 
+  // 3b. Arcade purity gate. Run BEFORE we touch D1 / R2 so a dirty
+  // upload bounces with no side effects. We need the resolved surface
+  // to know whether to enforce — peek the existing apps row up front
+  // so the resolver can preserve-on-redeploy correctly. (The full
+  // upsert below uses the same resolved value, so this is one D1
+  // round-trip we'd otherwise pay later anyway.)
+  const _earlyDb = getDrizzleClient(input.db);
+  const _existingForGate = await _earlyDb.query.apps.findFirst({
+    where: eq(schema.apps.slug, input.slug),
+    columns: { id: true, surface: true, makerId: true },
+  });
+  const _gateSurface = resolveSurface({
+    manifestSurface: manifest.curation?.surface,
+    formOverride: input.surfaceOverride,
+    existingSurface: _existingForGate?.surface,
+  });
+  if (_gateSurface.surface === 'arcade') {
+    const purity = checkArcadePurity(files);
+    const connectCheck = checkArcadeConnectDomains(manifest.allowed_connect_domains);
+    if (!purity.ok || !connectCheck.ok) {
+      const lines: string[] = [];
+      if (!purity.ok) {
+        for (const o of purity.offences.slice(0, 10)) {
+          lines.push(`${o.file}${o.line ? `:${o.line}` : ''} — ${o.kind}: ${o.pattern}`);
+        }
+        if (purity.offences.length > 10) {
+          lines.push(`(${purity.offences.length - 10} more)`);
+        }
+      }
+      if (!connectCheck.ok) {
+        lines.push(
+          `allowed_connect_domains contains non-Shippie hosts: ${connectCheck.offences.join(', ')}`,
+        );
+      }
+      const reason =
+        `Arcade purity check failed. Arcade games may not bundle ad/tracker/IAP code or call out to external hosts. ` +
+        `Either remove the offending code OR change curation.surface to "labs" (Labs runs the same scanner in report-only mode).\n\n` +
+        lines.join('\n');
+      emitter.emit({ type: 'deploy_failed', reason: 'arcade_purity', step: 'purity' });
+      return failReport(input.slug, reason);
+    }
+  }
+
   const securityReport = runSecurityScan(files, null);
   emitSecurityScanEvents(emitter, securityReport, files.size);
   if (securityReport.blocks > 0) {
@@ -237,6 +294,18 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     where: eq(schema.apps.slug, input.slug),
   });
 
+  // Resolve marketplace surface BEFORE the insert/update so it lands
+  // in D1 atomically with the rest of the row. Resolution priority is
+  // documented in `surface-resolver.ts`: manifest > form > existing >
+  // 'featured'. Crucially, when neither manifest nor form sets a
+  // surface, the existing row's value is preserved — a redeploy never
+  // silently demotes an arcade game back to featured.
+  const resolvedSurface = resolveSurface({
+    manifestSurface: manifest.curation?.surface,
+    formOverride: input.surfaceOverride,
+    existingSurface: appRow?.surface,
+  });
+
   if (!appRow) {
     const [inserted] = await db
       .insert(schema.apps)
@@ -247,6 +316,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
         description: manifest.description ?? null,
         type: manifest.type,
         category: manifest.category,
+        surface: resolvedSurface.surface,
         themeColor: manifest.theme_color ?? '#14120F',
         backgroundColor: manifest.background_color ?? '#ffffff',
         sourceType: 'zip',
@@ -262,6 +332,20 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     appRow = inserted;
   } else if (appRow.makerId !== input.makerId) {
     return failReport(input.slug, `Slug '${input.slug}' is already claimed by another maker.`);
+  } else if (
+    resolvedSurface.source === 'manifest' ||
+    resolvedSurface.source === 'form'
+  ) {
+    // Maker explicitly changed surface (manifest declared, OR form
+    // override). Mutate D1. When `source === 'existing'` we leave the
+    // row alone — that's the preserve-on-redeploy path.
+    if (appRow.surface !== resolvedSurface.surface) {
+      await db
+        .update(schema.apps)
+        .set({ surface: resolvedSurface.surface })
+        .where(eq(schema.apps.id, appRow.id));
+      appRow = { ...appRow, surface: resolvedSurface.surface };
+    }
   }
 
   const [existingLineage] = await db

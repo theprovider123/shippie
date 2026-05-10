@@ -65,7 +65,8 @@
         data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"
-        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
+        allowfullscreen
         src={runtimeSrc}
         onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
         onerror={() => onError(app.id)}
@@ -76,7 +77,8 @@
         data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
-        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
+        allowfullscreen
         src={packageFrameSrc}
         onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
         onerror={() => onError(app.id)}
@@ -87,7 +89,8 @@
         data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
-        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
+        allowfullscreen
         {srcdoc}
         onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
         onerror={() => onError(app.id)}

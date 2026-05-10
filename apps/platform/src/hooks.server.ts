@@ -26,6 +26,8 @@ import {
   containerSlugForRequest,
   isFirstPartyShowcase,
 } from '$lib/showcase-slugs';
+import { curationFor } from '$lib/_generated/first-party-curation';
+import { buildArcadeCsp } from '$lib/curation/arcade-csp';
 
 const PLATFORM_HOSTS = new Set([
   'next.shippie.app',
@@ -188,11 +190,12 @@ async function runtimeAssetTarget(event: Parameters<Handle>[0]['event']): Promis
   if (event.request.method !== 'GET' && event.request.method !== 'HEAD') return null;
   const match = /^\/__shippie-run\/([^/]+)(?:\/(.*))?$/.exec(event.url.pathname);
   if (!match) return null;
+  const slug = match[1]!;
   if (LOCAL_PLATFORM_HOSTS.has(event.url.hostname)) {
     const localAssetPath = match[2] ?? '';
     if (localAssetPath.includes('.')) return null;
     const fallbackUrl = new URL(event.url);
-    fallbackUrl.pathname = `/__shippie-run/${match[1]}/index.html`;
+    fallbackUrl.pathname = `/__shippie-run/${slug}/index.html`;
     return event.fetch(fallbackUrl);
   }
   const assetPath = match[2] ?? '';
@@ -201,9 +204,39 @@ async function runtimeAssetTarget(event: Parameters<Handle>[0]['event']): Promis
   if (!assets) return null;
 
   const response = await assets.fetch(event.url);
-  if (response.status !== 404 || assetPath.includes('.')) return response;
+  if (response.status === 404 && !assetPath.includes('.')) {
+    const fallbackUrl = new URL(event.url);
+    fallbackUrl.pathname = `/__shippie-run/${slug}/index.html`;
+    return withArcadeCspIfArcade(slug, await assets.fetch(fallbackUrl));
+  }
+  return withArcadeCspIfArcade(slug, response);
+}
 
-  const fallbackUrl = new URL(event.url);
-  fallbackUrl.pathname = `/__shippie-run/${match[1]}/index.html`;
-  return assets.fetch(fallbackUrl);
+/**
+ * Wrap an `assets.fetch()` response with the arcade CSP header when
+ * the slug is a first-party arcade showcase. Preserves status, all
+ * existing headers (incl. cache-control / etag / content-type /
+ * content-encoding), and the body stream — never re-encodes or
+ * buffers. Defence-in-depth alongside the bake-time `<meta>` tag.
+ *
+ * Non-arcade slugs return the original response unchanged.
+ */
+function withArcadeCspIfArcade(slug: string, response: Response): Response {
+  const entry = curationFor(slug);
+  if (entry?.surface !== 'arcade') return response;
+  // Don't inject on error responses — those are usually 404 HTML the
+  // SvelteKit error template renders, and a stale CSP would attach
+  // to the wrong origin context.
+  if (!response.ok) return response;
+  const headers = new Headers(response.headers);
+  // If a CSP is already present (defence-in-depth from the meta tag
+  // can't set this header; only this code path does), don't double-set.
+  if (!headers.has('content-security-policy')) {
+    headers.set('content-security-policy', buildArcadeCsp());
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }

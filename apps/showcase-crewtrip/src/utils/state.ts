@@ -96,6 +96,7 @@ export const initialState: CrewtripState = {
   eventName: 'Crewtrip',
   location: 'Trip HQ',
   eventCode: newEventCode(),
+  hostAccessToken: newId('host'),
   description: 'The trip is what you make of it. Plans, votes, playlists, games, the moments worth keeping.',
   hostNote: 'Set the vibe. Invite the crew. The day is whatever you make of it together.',
   energy: 64,
@@ -199,6 +200,7 @@ export function createFreshCrewtripState(options: { eventCode?: string; language
     eventName: 'Crewtrip',
     location: 'Trip HQ',
     eventCode,
+    hostAccessToken: newId('host'),
     description: 'A shared trip hub for plans, votes, games, playlists, requests, and memories.',
     hostNote: 'Set the vibe, invite the crew, then let everyone help shape the day.',
     energy: 50,
@@ -245,6 +247,7 @@ export function normalizeCrewtripState(state: CrewtripState): CrewtripState {
   return {
     ...initialState,
     ...state,
+    hostAccessToken: state.hostAccessToken ?? newId('host'),
     days,
     groups,
     features: { ...initialState.features, ...(state.features ?? {}) },
@@ -454,7 +457,7 @@ export function clearPollVote(poll: Poll, playerId: string): Poll {
   };
 }
 
-export function buildShareUrl(eventCode: string, role: 'crew' | 'join-host' = 'crew'): string {
+export function buildShareUrl(eventCode: string, role: 'crew' | 'join-host' = 'crew', hostAccessToken?: string): string {
   if (typeof window === 'undefined') return '';
   const current = new URL(window.location.href);
   const isLocal = ['127.0.0.1', 'localhost', '::1'].includes(current.hostname);
@@ -464,6 +467,19 @@ export function buildShareUrl(eventCode: string, role: 'crew' | 'join-host' = 'c
   }
   url.searchParams.set('role', role);
   url.searchParams.set('event', normalizeEventCode(eventCode) || eventCode);
+  if (role === 'join-host' && hostAccessToken) {
+    url.searchParams.set('host', hostAccessToken);
+  } else {
+    url.searchParams.delete('host');
+  }
+  return url.toString();
+}
+
+export function buildCrewReturnUrl(eventCode: string, playerId: string): string {
+  const href = buildShareUrl(eventCode, 'crew');
+  if (!href || !playerId || playerId === 'host') return href;
+  const url = new URL(href);
+  url.searchParams.set('player', playerId);
   return url.toString();
 }
 
@@ -535,8 +551,10 @@ export function initialRole(currentEventCode?: string): Role | null {
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
   const eventCode = params.get('event') ?? currentEventCode ?? '';
+  if (role === 'crew') return 'eventee';
+  if (role === 'join-host') return eventCode && readLocalHostClaim(eventCode) ? 'host' : 'eventee';
+  if (params.has('event')) return 'eventee';
   if (eventCode && readLocalHostClaim(eventCode)) return 'host';
-  if (role === 'crew' || params.has('event')) return 'eventee';
   return null;
 }
 
@@ -882,6 +900,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
     .filter((stop) => (stop.dayId ?? days[0]?.id) === activeDayId)
     .map((stop) => ({
       id: `stop-${stop.id}`,
+      stopId: stop.id,
       time: stop.time || 'TBC',
       kind: 'plan',
       title: role !== 'host' && stop.title === 'Start planning' ? 'Host plan pending' : stop.title,

@@ -8,6 +8,9 @@ import { App, mergeCrewtripState } from './App.tsx';
 import {
   BACKUP_KEY,
   STORAGE_KEY,
+  buildCrewReturnUrl,
+  buildShareUrl,
+  buildTripTimelineItems,
   clearPollVote,
   createRecoveryPack,
   initialRole,
@@ -182,7 +185,7 @@ describe('App', () => {
     expect(moved.options.map((option) => option.votes)).toEqual([0, 1]);
   });
 
-  test('treats invite links as crew unless this device owns the host claim', () => {
+  test('keeps crew invite links crew-scoped even on a host device', () => {
     withWindow('https://shippie.app/run/crewtrip/?event=CREW-TEST&role=crew', {}, () => {
       expect(initialRole('CREW-TEST')).toBe('eventee');
     });
@@ -197,7 +200,7 @@ describe('App', () => {
     withWindow('https://shippie.app/run/crewtrip/?event=CREW-TEST&role=crew', {
       'shippie-crewtrip-host-v1:CREW-TEST': '1',
     }, () => {
-      expect(initialRole('CREW-TEST')).toBe('host');
+      expect(initialRole('CREW-TEST')).toBe('eventee');
     });
     withWindow('https://shippie.app/run/crewtrip/', {
       'shippie-crewtrip-host-v1:CREW-TEST': '1',
@@ -212,6 +215,37 @@ describe('App', () => {
     withWindow('https://shippie.app/run/crewtrip/?event=olive%20porch%2007&role=crew', {}, () => {
       expect(initialRole('OLIVE-PORCH-07')).toBe('eventee');
     });
+  });
+
+  test('keeps host return links as separate bearer links', () => {
+    withWindow('https://shippie.app/run/crewtrip/', {}, () => {
+      const hostLink = new URL(buildShareUrl('CREW-TEST', 'join-host', 'host-token-test'));
+      expect(hostLink.searchParams.get('role')).toBe('join-host');
+      expect(hostLink.searchParams.get('event')).toBe('CREW-TEST');
+      expect(hostLink.searchParams.get('host')).toBe('host-token-test');
+
+      const crewLink = new URL(buildShareUrl('CREW-TEST', 'crew', 'host-token-test'));
+      expect(crewLink.searchParams.get('role')).toBe('crew');
+      expect(crewLink.searchParams.has('host')).toBe(false);
+    });
+  });
+
+  test('builds crew device switch links without leaking host access', () => {
+    withWindow('https://shippie.app/run/crewtrip/', {}, () => {
+      const crewLink = new URL(buildCrewReturnUrl('CREW-TEST', 'crew-123'));
+      expect(crewLink.searchParams.get('role')).toBe('crew');
+      expect(crewLink.searchParams.get('event')).toBe('CREW-TEST');
+      expect(crewLink.searchParams.get('player')).toBe('crew-123');
+      expect(crewLink.searchParams.has('host')).toBe(false);
+    });
+  });
+
+  test('exposes plan stop ids so hosts can edit posted plan items', () => {
+    const state = makeState();
+    const items = buildTripTimelineItems(state, 'day-1', state.days, state.groups, 'host', state.players[0]!);
+    const planItem = items.find((item) => item.kind === 'plan');
+
+    expect(planItem?.stopId).toBe('s1');
   });
 
   test('restores the joined event from a local backup when active storage was replaced', () => {
@@ -284,6 +318,7 @@ function makeState(): CrewtripState {
     eventName: 'Crewtrip',
     location: 'Trip HQ',
     eventCode: 'CREW-TEST',
+    hostAccessToken: 'host-token-test',
     description: 'Test trip',
     hostNote: 'Host note',
     energy: 50,

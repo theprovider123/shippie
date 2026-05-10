@@ -114,7 +114,8 @@ export interface AnalyticsTrackResult {
     | 'invalid_event'
     | 'network_error'
     | 'unknown_app'
-    | 'rate_limited';
+    | 'rate_limited'
+    | 'arcade_no_tracking';
   ingested?: number;
 }
 
@@ -300,15 +301,32 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
       appId,
       received: payload,
     }),
-    'analytics.track': ({ payload }) =>
-      ctx.trackAnalytics
+    'analytics.track': ({ payload }) => {
+      // Arcade purity: games published to /arcade promise the user
+      // "no tracking". Reject analytics.track regardless of whether
+      // the host has wired a trackAnalytics handler — defence-in-depth
+      // against a maker who ships through analytics SDKs the static
+      // scanner happened to miss. First-party arcade games inherit
+      // their surface from `_generated/first-party-curation.ts` via
+      // `state.ts`; third-party arcade apps inherit it from the D1
+      // `apps.surface` column when their ContainerApp is constructed.
+      if (app.surface === 'arcade') {
+        return {
+          accepted: false,
+          mode: 'aggregate-only' as const,
+          persisted: false,
+          reason: 'arcade_no_tracking' as const,
+        };
+      }
+      return ctx.trackAnalytics
         ? ctx.trackAnalytics(appId, payload)
         : {
             accepted: false,
             mode: 'aggregate-only' as const,
             persisted: false,
             reason: 'analytics_unavailable' as const,
-          },
+          };
+    },
     // Phase A2 — cross-app intents.
     //
     // intent.consume — caller asks "give me data for intent X". The

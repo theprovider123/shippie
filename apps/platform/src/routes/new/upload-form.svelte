@@ -41,6 +41,12 @@
   let file = $state<File | null>(null);
   let result = $state<Result>({ kind: 'idle' });
   let visibility = $state<'public' | 'unlisted' | 'private'>('public');
+  // Surface picker. **Default is "auto"** — never "featured" — so a
+  // redeploy that doesn't touch surface preserves an existing arcade
+  // app's row instead of silently demoting it. The submit handler
+  // appends the form field only when the user picks a non-auto
+  // option, leaving the resolver to apply manifest > existing.
+  let surfaceChoice = $state<'auto' | 'featured' | 'arcade' | 'labs'>('auto');
   let copied = $state(false);
   let liveQrMarkup = $state<string | null>(null);
 
@@ -61,6 +67,11 @@
     if (!trialMode) fd.append('slug', slug);
     if (remixFrom) fd.append('remix_from', remixFrom);
     fd.append('zip', file);
+    // Only send surface when the user explicitly picked one. The
+    // server-side resolver order is: manifest > form > existing >
+    // 'featured'; sending nothing here lets manifest + existing-row
+    // win first.
+    if (surfaceChoice !== 'auto') fd.append('surface', surfaceChoice);
 
     try {
       const res = await fetch(trialMode ? '/api/deploy/trial' : '/api/deploy', {
@@ -173,6 +184,19 @@
   <label>
     <span class="label">Zip (built output)</span>
     <input type="file" accept=".zip,application/zip" onchange={handleFile} required class="file-input" />
+  </label>
+
+  <label>
+    <span class="label">Where it lives</span>
+    <select bind:value={surfaceChoice} class="surface-select">
+      <option value="auto">Auto (use shippie.json or existing setting)</option>
+      <option value="featured">App — appears on /apps</option>
+      <option value="arcade">Game — appears on /arcade (no ads / tracking / IAP)</option>
+      <option value="labs">Experiment — appears on /labs</option>
+    </select>
+    <span class="hint">
+      Auto is best: your shippie.json's <code>curation.surface</code> wins, falling back to the existing app row's surface, then "featured".
+    </span>
   </label>
 
   <button
@@ -311,6 +335,28 @@
     border-radius: 0 8px 8px 0;
   }
   .file-input { margin-top: 0.25rem; }
+  .surface-select {
+    margin-top: 0.25rem;
+    height: 44px;
+    width: 100%;
+    padding: 0 0.75rem;
+    border: 1px solid #C9C2B1;
+    background: transparent;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    color: inherit;
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  .surface-select:focus { border-color: #E8603C; outline: none; }
+  .hint {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 12px;
+    color: #6F675E;
+    line-height: 1.4;
+  }
+  .hint code { font-family: ui-monospace, monospace; font-size: 11px; }
   .trial-note {
     border-left: 2px solid #E8603C;
     padding-left: 0.75rem;

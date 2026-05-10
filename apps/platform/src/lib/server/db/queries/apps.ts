@@ -39,6 +39,21 @@ const PUBLIC_FILTERS = and(
   eq(apps.isArchived, false),
 );
 
+/**
+ * Marketplace surface filter. Pass through to public listing queries so
+ * `/apps` shows only `surface='featured'`, `/arcade` shows only
+ * `surface='arcade'`, and `/labs` shows only `surface='labs'`.
+ *
+ * Default: `'featured'` for all callers that don't pass an explicit
+ * value — the marketplace home should never accidentally surface
+ * arcade or labs entries (and vice versa).
+ */
+export type SurfaceFilter = 'featured' | 'arcade' | 'labs' | 'archived';
+
+function surfaceCondition(surface: SurfaceFilter | undefined) {
+  return eq(apps.surface, surface ?? 'featured');
+}
+
 const FEATURED_COLUMNS = {
   id: apps.id,
   slug: apps.slug,
@@ -56,11 +71,15 @@ const FEATURED_COLUMNS = {
   currentPublicKindStatus: apps.currentPublicKindStatus,
 };
 
-export async function findFeatured(db: ShippieDb, limit = 6): Promise<FeaturedApp[]> {
+export async function findFeatured(
+  db: ShippieDb,
+  limit = 6,
+  surface: SurfaceFilter = 'featured',
+): Promise<FeaturedApp[]> {
   const rows = await db
     .select(FEATURED_COLUMNS)
     .from(apps)
-    .where(PUBLIC_FILTERS)
+    .where(and(PUBLIC_FILTERS, surfaceCondition(surface)))
     .orderBy(desc(apps.upvoteCount), desc(apps.installCount))
     .limit(limit);
   return rows;
@@ -125,6 +144,13 @@ export interface SearchOptions {
   offset?: number;
   kind?: KindFilter | null;
   category?: string | null;
+  /**
+   * Marketplace surface filter. Default: `'featured'`. `/apps` calls
+   * with default; `/arcade` passes `'arcade'`; `/labs` passes
+   * `'labs'`. Without this filter the marketplace would surface
+   * arcade games under tools and vice versa.
+   */
+  surface?: SurfaceFilter;
 }
 
 export async function searchPublic(
@@ -136,6 +162,7 @@ export async function searchPublic(
   const offset = opts.offset ?? 0;
   const kind = opts.kind ?? null;
   const ftsQuery = buildFtsQuery(query);
+  const surface: SurfaceFilter = opts.surface ?? 'featured';
   if (!ftsQuery) return browsePublic(db, opts);
 
   // Join FTS results to apps before LIMIT/OFFSET so kind/category filters
@@ -163,6 +190,7 @@ export async function searchPublic(
     WHERE apps_fts MATCH ${ftsQuery}
       AND a.visibility_scope = 'public'
       AND a.is_archived = 0
+      AND a.surface = ${surface}
       ${kind ? sql`AND a.current_detected_kind = ${kind}` : sql``}
       ${opts.category ? sql`AND a.category = ${opts.category}` : sql``}
     ORDER BY rank
@@ -177,7 +205,7 @@ export async function browsePublic(
   const limit = opts.limit ?? 60;
   const offset = opts.offset ?? 0;
   const kind = opts.kind ?? null;
-  const conds = [PUBLIC_FILTERS];
+  const conds = [PUBLIC_FILTERS, surfaceCondition(opts.surface)];
   if (kind) conds.push(eq(apps.currentDetectedKind, kind));
   if (opts.category) conds.push(eq(apps.category, opts.category));
   return db
@@ -193,19 +221,27 @@ export async function findByCategory(
   db: ShippieDb,
   category: string,
   limit = 12,
+  surface: SurfaceFilter = 'featured',
 ): Promise<FeaturedApp[]> {
   return db
     .select(FEATURED_COLUMNS)
     .from(apps)
-    .where(and(eq(apps.category, category), PUBLIC_FILTERS))
+    .where(and(eq(apps.category, category), PUBLIC_FILTERS, surfaceCondition(surface)))
     .orderBy(desc(apps.upvoteCount), desc(apps.installCount))
     .limit(limit);
 }
 
-export async function listCategories(db: ShippieDb): Promise<string[]> {
+export async function listCategories(
+  db: ShippieDb,
+  surface: SurfaceFilter = 'featured',
+): Promise<string[]> {
+  // Surface-aware so the chip rail on /apps does NOT auto-derive a
+  // "games" chip from arcade entries (which are excluded from /apps
+  // by the surface filter on browsePublic). Without this, the chip
+  // would appear empty when clicked.
   const rows = await db
     .selectDistinct({ category: apps.category })
     .from(apps)
-    .where(PUBLIC_FILTERS);
+    .where(and(PUBLIC_FILTERS, surfaceCondition(surface)));
   return rows.map((r) => r.category).filter((c): c is string => !!c);
 }

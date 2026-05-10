@@ -8,8 +8,10 @@ export function useViewportDock() {
     if (typeof window === 'undefined') return undefined;
     const viewport = window.visualViewport;
     let settleTimer = 0;
+    let frame = 0;
 
     const updateInset = () => {
+      frame = 0;
       const activeElement = document.activeElement;
       const keyboardLikelyOpen = activeElement instanceof HTMLElement
         && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)
@@ -18,25 +20,36 @@ export function useViewportDock() {
       const nextInset = keyboardLikelyOpen && viewport
         ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
         : 0;
-      setBottomInset(Math.round(nextInset));
+      setBottomInset((current) => {
+        const rounded = Math.round(nextInset);
+        return current === rounded ? current : rounded;
+      });
     };
 
-    const updateScroll = () => {
+    const scheduleUpdate = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(updateInset);
+    };
+
+    const settleUpdate = () => {
       window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(updateInset, 120);
+      settleTimer = window.setTimeout(scheduleUpdate, 80);
     };
 
     updateInset();
-    window.addEventListener('scroll', updateScroll, { passive: true });
-    window.addEventListener('resize', updateInset);
-    viewport?.addEventListener('resize', updateInset);
-    viewport?.addEventListener('scroll', updateInset);
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('focusin', settleUpdate);
+    window.addEventListener('focusout', settleUpdate);
+    viewport?.addEventListener('resize', scheduleUpdate);
+    viewport?.addEventListener('scroll', scheduleUpdate);
     return () => {
       window.clearTimeout(settleTimer);
-      window.removeEventListener('scroll', updateScroll);
-      window.removeEventListener('resize', updateInset);
-      viewport?.removeEventListener('resize', updateInset);
-      viewport?.removeEventListener('scroll', updateInset);
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('focusin', settleUpdate);
+      window.removeEventListener('focusout', settleUpdate);
+      viewport?.removeEventListener('resize', scheduleUpdate);
+      viewport?.removeEventListener('scroll', scheduleUpdate);
     };
   }, []);
 
