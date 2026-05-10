@@ -8,9 +8,7 @@ import {
   applyMove,
   isCheck,
   legalMoves,
-  moveFromUci,
   moveToSan,
-  positionToFen,
   squareToAlg,
   startingPosition,
   status,
@@ -19,7 +17,6 @@ import {
   type Square,
 } from './rules';
 import { pickBotMove } from './bot';
-import { createStockfish, type StockfishDriver } from './stockfish';
 import { exitFullscreen, isFullscreen, requestFullscreen } from './fullscreen';
 
 const sfx = createSoundBank({
@@ -90,89 +87,31 @@ export function App() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch {/**/}
   }, [settings]);
 
-  // Stockfish driver — created lazily on first vs-computer entry,
-  // reused across moves, terminated on unmount. Falls back to local
-  // bot if init fails (e.g. unsupported runtime).
-  const stockfishRef = useRef<StockfishDriver | null>(null);
-  useEffect(() => {
-    if (settings.mode !== 'vsComputer') return;
-    if (stockfishRef.current) return;
-    const sf = createStockfish();
-    if (sf) stockfishRef.current = sf;
-    return () => {
-      // Only dispose on full unmount, not on settings flips. The
-      // returned cleanup runs whenever this effect re-runs; we
-      // re-run on `settings.mode` flip — but the next render
-      // reattaches if we're back in vsComputer. Leave the engine
-      // alive across mode flips; dispose on App unmount instead.
-    };
-  }, [settings.mode]);
-
-  useEffect(() => {
-    return () => {
-      stockfishRef.current?.dispose();
-      stockfishRef.current = null;
-    };
-  }, []);
-
-  // Bot's turn.
+  // Bot's turn — local minimax with iterative move-ordering. Skill
+  // 6 hits depth 4 + quiescence; engine compiles at module load so
+  // first-move latency is just the search itself.
   useEffect(() => {
     if (gameStatus.kind !== 'playing') return;
     if (settings.mode !== 'vsComputer') return;
     if (position.turn === 'w') return;
     setThinking(true);
-    let cancelled = false;
-    // Stockfish movetime scales with skill — give it more time at
-    // higher skill so it actually plays at near-full strength.
-    const movetime = 200 + settings.skill * 120;
-    const t0 = performance.now();
-
-    const playBotMove = (move: Move | null) => {
-      if (cancelled) return;
-      // Minimum visible "thinking" delay so moves don't feel
-      // teleported when Stockfish replies in <50ms.
-      const elapsed = performance.now() - t0;
-      const wait = Math.max(0, 200 - elapsed);
-      window.setTimeout(() => {
-        if (cancelled) return;
-        if (move) {
-          const next = applyMove(position, move);
-          setHistory((h) => [...h, next]);
-          setMoves((m) => [...m, move]);
-          haptic('tap');
-          sfx.play(move.capture ? 'pop' : 'tap', { volume: move.capture ? 0.7 : 0.5 });
-          if (move.isCastle) sfx.play('levelUp', { volume: 0.5 });
-          if (isCheck(next)) {
-            haptic('warn');
-            sfx.play('warn');
-          }
+    const id = window.setTimeout(() => {
+      const move = pickBotMove(position, settings.skill);
+      if (move) {
+        const next = applyMove(position, move);
+        setHistory((h) => [...h, next]);
+        setMoves((m) => [...m, move]);
+        haptic('tap');
+        sfx.play(move.capture ? 'pop' : 'tap', { volume: move.capture ? 0.7 : 0.5 });
+        if (move.isCastle) sfx.play('levelUp', { volume: 0.5 });
+        if (isCheck(next)) {
+          haptic('warn');
+          sfx.play('warn');
         }
-        setThinking(false);
-      }, wait);
-    };
-
-    const sf = stockfishRef.current;
-    if (sf) {
-      const fen = positionToFen(position);
-      sf.pickMove(fen, settings.skill, movetime).then((uci) => {
-        if (cancelled) return;
-        const move = uci ? moveFromUci(position, uci) : null;
-        if (move) {
-          playBotMove(move);
-        } else {
-          // Fall back to local bot if Stockfish gave an unparseable
-          // move (e.g. position diverged) or returned null.
-          playBotMove(pickBotMove(position, settings.skill));
-        }
-      });
-    } else {
-      // No Stockfish — local minimax fallback.
-      playBotMove(pickBotMove(position, settings.skill));
-    }
-
-    return () => {
-      cancelled = true;
-    };
+      }
+      setThinking(false);
+    }, 200);
+    return () => window.clearTimeout(id);
   }, [position, settings.mode, settings.skill, gameStatus.kind]);
 
   // Game-end emit.
