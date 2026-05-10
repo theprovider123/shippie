@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Lustre",
+  "slug": "lustre",
+  "description": "Match-3 with cascade physics. 60-level campaign, daily challenge, special gems.",
+  "icon": "/icon.png",
+  "theme_color": "#2A1F16",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Bulwark",
+  "slug": "bulwark",
+  "description": "Tower defence. 6 tower types, 18-node upgrade tree, 20-wave campaign. Solo + co-op.",
+  "icon": "/icon.png",
+  "theme_color": "#2A1F16",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games"
+  }
+}

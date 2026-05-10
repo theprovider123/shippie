@@ -88,6 +88,33 @@ export interface PlaceSnapped {
   at: string;
 }
 
+/**
+ * Daily/seeded puzzle clear. Used by Five Letter, Lustre, etc. — any
+ * arcade game with a deterministic-from-date or seeded puzzle. The
+ * `puzzle_id` field is the same versioned-bank id baked into the
+ * game's persisted attempts, so a Randomiser pick can deep-link back
+ * to the exact puzzle.
+ */
+export interface PuzzleCleared {
+  kind: 'puzzle.cleared';
+  game: string;          // game slug, e.g. 'five-letter', 'lustre'
+  puzzle_id: string;     // versioned id, e.g. 'fl-2026-05-10-en-v1'
+  result: number | string;
+  at: string;
+}
+
+/**
+ * Tower-defence wave clear. Bulwark emits one of these per wave so
+ * Randomiser can surface "your last big defence". Wave-level grain
+ * (rather than once-per-game) lets a long campaign show progress.
+ */
+export interface WaveCleared {
+  kind: 'wave.cleared';
+  game: string;          // 'bulwark'
+  wave: number;
+  at: string;
+}
+
 export type Observation =
   | MoodColorPicked
   | PhotoLabelled
@@ -96,7 +123,9 @@ export type Observation =
   | GameCompleted
   | PreferenceChoice
   | VoiceRecorded
-  | PlaceSnapped;
+  | PlaceSnapped
+  | PuzzleCleared
+  | WaveCleared;
 
 export type ObservationKind = Observation['kind'];
 

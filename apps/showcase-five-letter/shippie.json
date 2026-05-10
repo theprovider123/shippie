@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Five Letter",
+  "slug": "five-letter",
+  "description": "Daily 5-letter word puzzle. Six guesses, three languages. Share-grid emoji to brag about your streak.",
+  "icon": "/icon.png",
+  "theme_color": "#2A1F16",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games"
+  }
+}

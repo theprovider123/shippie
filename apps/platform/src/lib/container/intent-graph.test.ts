@@ -141,6 +141,11 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   'game.completed',
   'photo.labelled',
   'place.snapped',
+  // Arcade v2 — Five Letter, Lustre, Bulwark emit additional
+  // observation kinds. Same shape (the home Randomiser surface
+  // listens at the shell level).
+  'puzzle.cleared',
+  'wave.cleared',
 ]);
 
 /**
