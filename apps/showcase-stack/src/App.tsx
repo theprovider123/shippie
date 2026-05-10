@@ -136,6 +136,22 @@ export function App() {
   // the per-frame gravity timestamp, so the piece visibly slides
   // between rows instead of snapping. Reset to 0 on hard-drop / lock.
   const [fallProgress, setFallProgress] = useState(0);
+  // Wow-pass additions: theme picker, level-up flash trigger,
+  // line-clear flash overlay (rows that just cleared).
+  const [theme, setTheme] = useState<'cosmic' | 'forest' | 'clean'>(() => {
+    if (typeof localStorage === 'undefined') return 'cosmic';
+    const t = localStorage.getItem('shippie:stack:theme:v1');
+    return t === 'forest' || t === 'clean' ? t : 'cosmic';
+  });
+  const [levelFlashKey, setLevelFlashKey] = useState(0);
+  const [clearedRowsFlash, setClearedRowsFlash] = useState<{ rows: number[]; until: number } | null>(null);
+  const [tspinBanner, setTspinBanner] = useState<{ key: number; text: string } | null>(null);
+  const tspinKeyRef = useRef(0);
+
+  useEffect(() => {
+    try { localStorage.setItem('shippie:stack:theme:v1', theme); } catch {/**/}
+    document.body.dataset.theme = theme;
+  }, [theme]);
 
   useEffect(() => { saveRecords(records); }, [records]);
 
@@ -207,12 +223,21 @@ export function App() {
               applyScoring(game, cleared, tspin);
               // Audio + toast reactions to the clear quality.
               if (cleared > 0) {
+                // Capture the now-cleared row indices for the flash
+                // overlay. lockPiece already cleared them in-place;
+                // we approximate by flashing the bottom-most `cleared`
+                // rows of the previous board state. Visual-only.
+                setClearedRowsFlash({ rows: Array.from({ length: cleared }, (_, i) => HEIGHT - 1 - i), until: performance.now() + 240 });
                 if (cleared === 4) {
                   sfx.play('bing');
                   pushToast(beforeB2B && game.b2b ? 'B2B Tetris!' : 'Tetris!', 'tetris');
                 } else if (tspin) {
                   sfx.play('bing');
                   pushToast(beforeB2B && game.b2b ? `B2B T-Spin ${labelForCleared(cleared)}!` : `T-Spin ${labelForCleared(cleared)}!`, 'tspin');
+                  // Big T-spin banner overlay (separate from toast).
+                  tspinKeyRef.current++;
+                  setTspinBanner({ key: tspinKeyRef.current, text: `T-Spin ${labelForCleared(cleared)}` });
+                  window.setTimeout(() => setTspinBanner((b) => (b?.key === tspinKeyRef.current ? null : b)), 1100);
                 } else {
                   sfx.play('whoosh', { volume: 0.8 });
                   if (cleared >= 2) pushToast(labelForCleared(cleared), 'b2b');
@@ -223,6 +248,7 @@ export function App() {
                 if (game.level !== beforeLevel) {
                   sfx.play('levelUp');
                   pushToast(`Level ${game.level}`, 'b2b');
+                  setLevelFlashKey((k) => k + 1);
                 }
               }
               const ok = spawnNext(game);
@@ -376,6 +402,15 @@ export function App() {
           <button type="button" className="ghost" onClick={togglePause} aria-label="Pause">
             {paused ? '▶' : '⏸'}
           </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setTheme((t) => t === 'cosmic' ? 'forest' : t === 'forest' ? 'clean' : 'cosmic')}
+            aria-label="Theme"
+            title={`Theme: ${theme}`}
+          >
+            {theme === 'cosmic' ? '◐' : theme === 'forest' ? '◑' : '◯'}
+          </button>
           <button type="button" className="ghost" onClick={() => setMutedState(toggleMuted())} aria-label={muted ? 'Unmute' : 'Mute'}>
             {muted ? '🔇' : '🔊'}
           </button>
@@ -417,7 +452,7 @@ export function App() {
 
         <aside className="side">
           <p className="muted small">Next</p>
-          {game.next.slice(0, 3).map((t, i) => (
+          {game.next.slice(0, 5).map((t, i) => (
             <PieceMini key={i} type={t} />
           ))}
         </aside>
@@ -443,6 +478,14 @@ export function App() {
           <button type="button" className="primary" onClick={() => start(mode)}>Start {mode}</button>
           <p className="muted small">Best {mode}: {records[mode].bestScore} pts · {records[mode].runs} runs</p>
         </section>
+      ) : null}
+
+      {/* Wow-pass overlays. Level-flash fires once per level-up,
+          T-spin banner shows briefly on T-spin clears. Both keyed
+          so React re-mounts re-fires the keyframe. */}
+      <span key={`level-flash-${levelFlashKey}`} className="level-flash" aria-hidden />
+      {tspinBanner ? (
+        <span key={`tspin-${tspinBanner.key}`} className="tspin-banner" aria-hidden>{tspinBanner.text}</span>
       ) : null}
     </main>
   );
