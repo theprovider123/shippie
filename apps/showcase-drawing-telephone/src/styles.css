@@ -197,3 +197,54 @@ input[type="text"] {
   height: 200px;
   border: 1px solid var(--line);
 }
+
+.prompt-packs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.pack-tabs {
+  display: flex;
+  gap: 6px;
+}
+.pack-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pack-chip {
+  padding: 4px 10px;
+  border: 1px solid rgba(42, 31, 22, 0.16);
+  background: #fff;
+  cursor: pointer;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.pack-chip:hover { background: rgba(79, 164, 135, 0.18); }
+
+.caption-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.caption-row input { flex: 1; }
+.voice-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(42, 31, 22, 0.16);
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+}
+.voice-btn.listening {
+  background: #E84A2D;
+  color: #fff;
+  border-color: #E84A2D;
+  animation: voice-pulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes voice-pulse {
+  from { box-shadow: 0 0 0 0 rgba(232, 74, 45, 0.6); }
+  to   { box-shadow: 0 0 0 8px rgba(232, 74, 45, 0); }
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createGroup, joinGroup, EventLog, type Group } from '@shippie/proximity';
 import { renderQrSvg } from '@shippie/sdk/wrapper';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
@@ -281,6 +281,7 @@ function TurnView(props: {
           value={props.seedText}
           onChange={(e) => props.setSeedText(e.target.value)}
         />
+        <PromptPackPicker onPick={(s) => props.setSeedText(s)} />
         <button type="button" className="primary" onClick={() => props.onText(props.seedText, 'prompt')}>Send prompt</button>
       </section>
     );
@@ -300,15 +301,99 @@ function TurnView(props: {
     <section className="turn">
       <p className="prompt-line">What is this a drawing of?</p>
       {url ? <img src={url} alt="drawing to caption" className="thumb" /> : null}
-      <input
-        type="text"
-        maxLength={60}
-        placeholder="Write a caption"
-        value={props.captionText}
-        onChange={(e) => props.setCaptionText(e.target.value)}
-      />
+      <div className="caption-row">
+        <input
+          type="text"
+          maxLength={60}
+          placeholder="Write a caption"
+          value={props.captionText}
+          onChange={(e) => props.setCaptionText(e.target.value)}
+        />
+        <VoiceCaptionButton onCapture={(s) => props.setCaptionText(s)} />
+      </div>
       <button type="button" className="primary" onClick={() => props.onText(props.captionText, 'caption')}>Send caption</button>
     </section>
+  );
+}
+
+const PROMPT_PACKS: Record<string, string[]> = {
+  food:   ['A goldfish in a teacup', 'Spaghetti volcano', 'Cake with too many candles', 'A grumpy avocado', 'Sushi pirate', 'Donut planet'],
+  movies: ['Titanic, but it floats', 'Mona Lisa with sunglasses', 'Moonwalking robot', 'Time-travelling toaster', 'Underwater cinema', 'Cowboy ninja'],
+  jokes:  ['Bear in a tutu', 'Penguin lawyer', 'Octopus drum kit', 'Shark on a unicycle', 'Pigeon mafia', 'Squirrel CEO'],
+};
+
+function PromptPackPicker({ onPick }: { onPick: (s: string) => void }) {
+  const [pack, setPack] = useState<keyof typeof PROMPT_PACKS>('food');
+  const items = PROMPT_PACKS[pack]!;
+  return (
+    <div className="prompt-packs">
+      <div className="pack-tabs">
+        {(Object.keys(PROMPT_PACKS) as Array<keyof typeof PROMPT_PACKS>).map((p) => (
+          <button key={p} type="button" className={p === pack ? 'tab active' : 'tab'} onClick={() => setPack(p)}>{p}</button>
+        ))}
+      </div>
+      <div className="pack-items">
+        {items.map((item) => (
+          <button key={item} type="button" className="pack-chip" onClick={() => onPick(item)}>{item}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onresult: ((e: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+}
+
+function VoiceCaptionButton({ onCapture }: { onCapture: (s: string) => void }) {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  function toggle() {
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) return; // browser doesn't support it
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const rec = new Ctor();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+    rec.onresult = (e) => {
+      const transcript = e.results[0]?.[0]?.transcript ?? '';
+      if (transcript) onCapture(transcript);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+    recognitionRef.current = rec;
+    setListening(true);
+  }
+
+  // Render only if API is available.
+  const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+  const supported = !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
+  if (!supported) return null;
+  return (
+    <button
+      type="button"
+      className={`voice-btn${listening ? ' listening' : ''}`}
+      onClick={toggle}
+      aria-label={listening ? 'Stop listening' : 'Voice caption'}
+      title={listening ? 'Listening…' : 'Voice caption'}
+    >🎤</button>
   );
 }
 
