@@ -72,6 +72,7 @@ const TUTORIAL_STEPS = [
  */
 
 const sdk = createShippieIframeSdk({ appId: 'app_bulwark' });
+sdk.safeEdges.declareInputRegion('bottom');
 const observations = createObservationClient(sdk);
 
 const TOWER_COLOR: Record<TowerType, string> = {

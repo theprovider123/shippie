@@ -39,6 +39,7 @@ const sfx = createSoundBank({
 });
 
 const sdk = createShippieIframeSdk({ appId: 'app_invaders' });
+sdk.safeEdges.declareInputRegion('bottom');
 const observations = createObservationClient(sdk);
 
 const STORAGE_KEY = 'shippie:invaders:v1';

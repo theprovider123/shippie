@@ -223,3 +223,11 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   .shake-once, .toast { animation: none !important; }
   .cell { transition: none; }
 }
+
+/* Safe-edges CSS fallback. Keeps controls clear of iOS home-indicator
+   + container chrome even if the postMessage contract is delayed. */
+.app {
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}

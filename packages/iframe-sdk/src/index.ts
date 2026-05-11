@@ -58,6 +58,26 @@ export interface AiRunResult {
   backend?: 'webnn' | 'webgpu' | 'wasm';
 }
 
+/**
+ * Where the game holds its primary input area. The host adjusts its
+ * own chrome based on this so navigation gestures don't bleed into
+ * gameplay touch zones.
+ *
+ *   - `'none'`   — default; container chrome behaves normally
+ *   - `'bottom'` — game owns the bottom ~30% (touch-controls row etc.)
+ *   - `'all'`    — game owns the entire viewport; host shrinks its
+ *                  chrome buttons to a slim edge-only hit zone
+ */
+export type InputRegionOwns = 'none' | 'bottom' | 'all';
+
+export interface HostInsets {
+  /** CSS px the game should leave clear at each edge. */
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
 export interface AppsListEntry {
   slug: string;
   name: string;
@@ -225,6 +245,25 @@ export interface ShippieIframeSdk {
     error(error: unknown): void;
     navigation(input?: { canGoBack?: boolean; navDepth?: number }): void;
     heartbeat(): void;
+  };
+  safeEdges: {
+    /**
+     * Tell the host which part of the viewport this app's touch
+     * input occupies. The host uses this to size down its own chrome
+     * (drawer pills, edge grabbers) so a tap meant for the game
+     * doesn't accidentally open container UI.
+     *
+     * Safe to call repeatedly — only the latest value is honoured.
+     * Calls outside the container are no-ops.
+     */
+    declareInputRegion(owns: InputRegionOwns): void;
+    /**
+     * Subscribe to host-side gesture-geometry changes. The host emits
+     * `shippie:host-insets` whenever its chrome moves (orientation
+     * rotate, drawer state change, canGoBack toggle). Returns an
+     * unsubscribe function. Outside the container this is a no-op.
+     */
+    onHostInsets(handler: (insets: HostInsets) => void): () => void;
   };
   /**
    * Open the best available Your Data surface:
@@ -427,6 +466,32 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
   const incomingCommitHandlers = new Set<(event: IncomingTransferCommit) => void>();
   let transferListenerInstalled = false;
 
+  // Safe-edges inbound channel: host posts `shippie:host-insets` with
+  // the current `{ left, right, top, bottom }` gesture geometry. Games
+  // subscribe via `safeEdges.onHostInsets`.
+  const hostInsetsHandlers = new Set<(insets: HostInsets) => void>();
+  let hostInsetsListenerInstalled = false;
+
+  function ensureHostInsetsListener(): void {
+    if (hostInsetsListenerInstalled || !w) return;
+    hostInsetsListenerInstalled = true;
+    w.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as
+        | { type?: string; insets?: { left?: unknown; right?: unknown; top?: unknown; bottom?: unknown } }
+        | null;
+      if (!data || data.type !== 'shippie:host-insets') return;
+      const raw = data.insets;
+      if (!raw || typeof raw !== 'object') return;
+      const insets: HostInsets = {
+        left: numberOrZero(raw.left),
+        right: numberOrZero(raw.right),
+        top: numberOrZero(raw.top),
+        bottom: numberOrZero(raw.bottom),
+      };
+      for (const h of hostInsetsHandlers) h(insets);
+    });
+  }
+
   function ensureTransferListener(): void {
     if (transferListenerInstalled || !w) return;
     transferListenerInstalled = true;
@@ -572,6 +637,19 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
         postLifecycle('heartbeat');
       },
     },
+    safeEdges: {
+      declareInputRegion(owns) {
+        if (owns !== 'none' && owns !== 'bottom' && owns !== 'all') return;
+        send('safe-edges', 'declareInputRegion', { owns });
+      },
+      onHostInsets(handler) {
+        ensureHostInsetsListener();
+        hostInsetsHandlers.add(handler);
+        return () => {
+          hostInsetsHandlers.delete(handler);
+        };
+      },
+    },
     openYourData,
     requestIntent(intent) {
       send('intent.consume', 'consume', { intent });
@@ -586,6 +664,10 @@ export function isTextureName(value: string): value is TextureName {
 
 export function listBuiltinTextureNames(): readonly TextureName[] {
   return BUILTIN_TEXTURES;
+}
+
+function numberOrZero(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
 function collectLifecycleTiming(): Record<string, number> | undefined {

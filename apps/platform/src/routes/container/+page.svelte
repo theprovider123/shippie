@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { readShippiePackageArchive } from '@shippie/app-package-builder';
@@ -140,6 +140,11 @@
 
   let { data }: { data: PageData } = $props();
 
+  const initialFocusedApp = untrack(() => (
+    data.focused
+      ? findRequestedApp(pickBaseApps(data.packages), data.requestedAppSlug)
+      : null
+  ));
   const baseApps = $derived(pickBaseApps(data.packages));
 
   let importedApps = $state<ContainerApp[]>([]);
@@ -157,18 +162,32 @@
   const packageObjectUrls: PackageFrameSourceCache = new Map();
 
   let section = $state<ContainerSection>('home');
-  let activeAppId = $state<string | null>(null);
-  let openAppIds = $state<string[]>([]);
+  let activeAppId = $state<string | null>(initialFocusedApp?.id ?? null);
+  let openAppIds = $state<string[]>(initialFocusedApp ? [initialFocusedApp.id] : []);
   // Focused-mode app-switcher drawer open state. Only meaningful when
   // `data.focused === true`; ignored in dashboard mode.
   let focusedDrawerOpen = $state(false);
+  let focusedToolOptionsOpen = $state(false);
+  let focusedShareFeedback = $state('');
+  let focusedQrMarkup = $state<string | null>(null);
+  // Safe-edges contract: each iframe-mounted app can declare which
+  // part of the viewport its own touch input owns via the
+  // @shippie/iframe-sdk safe-edges API. Host honours this by shrinking
+  // its own chrome (focused-chrome-tools + focused-chrome-options
+  // buttons) so a tap meant for a game doesn't open container UI.
+  // 'none' keeps the chrome at full size; 'bottom' is a placeholder
+  // for future bottom-grabber suppression; 'all' shrinks the chrome
+  // to a 12px edge sliver that's still tappable but stops bleeding
+  // into game touch targets.
+  type InputRegionOwns = 'none' | 'bottom' | 'all';
+  let inputRegionByAppId = $state<Record<string, InputRegionOwns>>({});
   // Set when /run/<slug>/ resolved a slug we don't have. Used to render
   // an EmptyState in focused mode instead of silently swapping the user
   // onto a different app.
   let notFoundSlug = $state<string | null>(null);
   // True on a user's first-ever entry into focused mode. Drives a one-
-  // shot pulse on the focused-exit-pill (Shippie mark) so first-run users
-  // discover that the mark opens the tool switcher. Gated by localStorage.
+  // shot pulse on the Shippie mark so first-run users discover that it
+  // opens the tool switcher. Gated by localStorage.
   let firstRunHint = $state(false);
   // Viewport width for drawer-edge selection. ≤640px → drawer rises from
   // the bottom (matches the mark's top-right placement on mobile via the
@@ -176,7 +195,9 @@
   // mark's top-left placement on desktop.
   let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
   const focusedDrawerEdge = $derived<'left' | 'bottom'>(viewportWidth <= 640 ? 'bottom' : 'left');
-  let receiptsByApp = $state<Record<string, AppReceipt>>({});
+  let receiptsByApp = $state<Record<string, AppReceipt>>(
+    initialFocusedApp ? { [initialFocusedApp.id]: createReceiptFor(initialFocusedApp) } : {},
+  );
   let receiptExport = $state('');
   let backupPassphrase = $state('');
   let backupExport = $state('');
@@ -506,6 +527,30 @@
   }
 
   const activeApp = $derived(activeAppId ? appById.get(activeAppId) : null);
+  const activeToolUrl = $derived.by(() => {
+    if (!activeApp || typeof window === 'undefined') return '';
+    return new URL(`/run/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
+  });
+  $effect(() => {
+    if (!focusedToolOptionsOpen || !activeToolUrl || typeof window === 'undefined') {
+      focusedQrMarkup = null;
+      return;
+    }
+    let cancelled = false;
+    const url = activeToolUrl;
+    focusedQrMarkup = null;
+    void import('@shippie/qr')
+      .then(({ qrSvg }) => qrSvg(url, { ecc: 'M', size: 132 }))
+      .then((svg) => {
+        if (!cancelled && activeToolUrl === url) focusedQrMarkup = svg;
+      })
+      .catch(() => {
+        if (!cancelled) focusedQrMarkup = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
   const activeFrameCanGoBack = $derived(Boolean(activeAppId && frameCanGoBackByApp[activeAppId]));
   const installedApps = $derived(apps.filter((app) => openAppIds.includes(app.id)));
 
@@ -643,8 +688,9 @@
   function switchFocusedApp(app: ContainerApp) {
     openApp(app.id);
     focusedDrawerOpen = false;
+    focusedToolOptionsOpen = false;
     if (data.focused && typeof window !== 'undefined') {
-      const href = `/run/${encodeURIComponent(app.slug)}/`;
+      const href = `/run/${encodeURIComponent(app.slug)}`;
       void goto(href, { replaceState: true, noScroll: true, keepFocus: true });
     }
   }
@@ -652,10 +698,72 @@
   function exitFocusedMode(targetSection: ContainerSection = 'home') {
     dismissTransientPrompts();
     focusedDrawerOpen = false;
+    focusedToolOptionsOpen = false;
     activeAppId = null;
     section = targetSection;
     const href = targetSection === 'home' ? '/' : `/container?section=${targetSection}`;
     void goto(href, { noScroll: true, keepFocus: true });
+  }
+
+  function toggleFocusedDrawer() {
+    focusedToolOptionsOpen = false;
+    focusedDrawerOpen = !focusedDrawerOpen;
+  }
+
+  function toggleFocusedToolOptions() {
+    focusedDrawerOpen = false;
+    focusedToolOptionsOpen = !focusedToolOptionsOpen;
+  }
+
+  function closeFocusedToolOptions() {
+    focusedToolOptionsOpen = false;
+  }
+
+  function handleFocusedChromeKeydown(event: KeyboardEvent) {
+    if (!data.focused || event.key !== 'Escape') return;
+    if (focusedToolOptionsOpen) {
+      event.preventDefault();
+      focusedToolOptionsOpen = false;
+    }
+  }
+
+  async function copyActiveToolLink() {
+    if (!activeToolUrl) return;
+    try {
+      await navigator.clipboard?.writeText(activeToolUrl);
+      focusedShareFeedback = 'Copied';
+    } catch {
+      focusedShareFeedback = 'Copy failed';
+    }
+    window.setTimeout(() => {
+      focusedShareFeedback = '';
+    }, 1600);
+  }
+
+  async function shareActiveTool() {
+    if (!activeApp || !activeToolUrl) return;
+    const shareData = {
+      title: `${activeApp.name} on Shippie`,
+      text: activeApp.description || `Open ${activeApp.name} in Shippie.`,
+      url: activeToolUrl,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        focusedShareFeedback = 'Shared';
+      } else {
+        await copyActiveToolLink();
+        return;
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') {
+        await copyActiveToolLink();
+        return;
+      }
+    }
+    window.setTimeout(() => {
+      focusedShareFeedback = '';
+    }, 1600);
   }
 
   function dismissTransientPrompts() {
@@ -1047,6 +1155,7 @@
 
   function openFocusedDrawerAsBackFallback() {
     if (!data.focused) return;
+    focusedToolOptionsOpen = false;
     focusedDrawerOpen = true;
     restoreFocusedHistorySentinel();
   }
@@ -1879,13 +1988,46 @@
     window.addEventListener('message', recordAppLifecycle);
     window.addEventListener('message', recordFrameNavigation);
     window.addEventListener('message', recordFrameNavigationBackResult);
+    window.addEventListener('message', recordSafeEdgesDeclaration);
     return () => {
       window.removeEventListener('message', recordFromEvent);
       window.removeEventListener('message', recordAppLifecycle);
       window.removeEventListener('message', recordFrameNavigation);
       window.removeEventListener('message', recordFrameNavigationBackResult);
+      window.removeEventListener('message', recordSafeEdgesDeclaration);
     };
   });
+
+  /**
+   * Receive `safe-edges.declareInputRegion` from an iframe and store
+   * the declared ownership. The message must come from one of our
+   * mounted iframes (origin-validated by matching event.source against
+   * the frame map). Unknown sources are silently dropped — we don't
+   * trust the message at face value because a malicious wrapped app
+   * could try to suppress container chrome.
+   */
+  function recordSafeEdgesDeclaration(event: MessageEvent): void {
+    const data = event.data as
+      | { protocol?: string; appId?: string; capability?: string; method?: string; payload?: { owns?: unknown } }
+      | null;
+    if (!data || data.protocol !== 'shippie.bridge.v1') return;
+    if (data.capability !== 'safe-edges' || data.method !== 'declareInputRegion') return;
+    if (typeof data.appId !== 'string') return;
+    const owns = data.payload?.owns;
+    if (owns !== 'none' && owns !== 'bottom' && owns !== 'all') return;
+    // Source validation: event.source should be the iframe's window.
+    // We trust the appId only after confirming the source matches one
+    // of our hosted frames.
+    const knownAppIds = new Set(apps.map((a) => a.id));
+    if (!knownAppIds.has(data.appId)) return;
+    inputRegionByAppId = { ...inputRegionByAppId, [data.appId]: owns };
+  }
+
+  // Active app's declared region, used by the focused-shell template
+  // to pick the right CSS class on the chrome buttons.
+  const activeInputRegion: InputRegionOwns = $derived(
+    activeAppId ? (inputRegionByAppId[activeAppId] ?? 'none') : 'none',
+  );
 
   // Refresh the cross-app intent registry whenever the installed-apps
   // list changes. The registry owns provider/consumer indexing; the
@@ -1969,6 +2111,7 @@
     }
 
     focusedDrawerOpen = false;
+    focusedToolOptionsOpen = false;
     notFoundSlug = null;
     if (requestedSection === 'home' || requestedSection === 'create' || requestedSection === 'data') {
       section = requestedSection;
@@ -2010,6 +2153,10 @@
       activeAppId = defaultAppId;
     }
     if (requestedApp) {
+      if (activeAppId === requestedApp.id) {
+        rememberAppLaunch(requestedApp);
+        void trackAppOpen(requestedApp.id);
+      }
       openApp(requestedApp.id);
     } else if (data.requestedAppSlug && data.focused) {
       // Slug was requested via /run/<slug>/ but it's not in our installed
@@ -2140,6 +2287,11 @@
 
   function handleFocusedPopstate() {
     if (!data.focused) return;
+    if (focusedToolOptionsOpen) {
+      focusedToolOptionsOpen = false;
+      restoreFocusedHistorySentinel();
+      return;
+    }
     if (focusedDrawerOpen) {
       focusedDrawerOpen = false;
       restoreFocusedHistorySentinel();
@@ -2172,13 +2324,12 @@
   }
 
   function runtimeSrcFor(app: ContainerApp): string | null {
-    if (typeof window === 'undefined') return null;
-    const currentUrl = new URL(window.location.href);
+    const currentUrl = typeof window === 'undefined' ? $page.url : new URL(window.location.href);
     const preferDevUrl = currentUrl.searchParams.get('dev_apps') === '1';
     const forwardedParams = data.focused && data.requestedAppSlug === app.slug
       ? focusedRuntimeParams(currentUrl.searchParams)
       : undefined;
-    return resolveRuntimeSrc(app, window.location.hostname, { preferDevUrl, searchParams: forwardedParams });
+    return resolveRuntimeSrc(app, currentUrl.hostname, { preferDevUrl, searchParams: forwardedParams });
   }
 
   function focusedRuntimeParams(params: URLSearchParams): URLSearchParams {
@@ -2200,7 +2351,7 @@
   />
 </svelte:head>
 
-<svelte:window onresize={() => (viewportWidth = window.innerWidth)} />
+<svelte:window onresize={() => (viewportWidth = window.innerWidth)} onkeydown={handleFocusedChromeKeydown} />
 
 <IntentPromptModal
   prompt={pendingIntentBatch}
@@ -2229,21 +2380,36 @@
   <section class="focused-shell">
     <button
       type="button"
-      class="focused-exit-pill"
+      class="focused-chrome-button focused-chrome-tools"
       class:first-run={firstRunHint}
-      aria-label="Open tool switcher"
+      class:input-region-bottom={activeInputRegion === 'bottom'}
+      class:input-region-all={activeInputRegion === 'all'}
+      aria-label="Open Shippie tools and data"
       aria-expanded={focusedDrawerOpen}
-      onclick={() => (focusedDrawerOpen = !focusedDrawerOpen)}
+      onclick={toggleFocusedDrawer}
     >
       <img
         src="/__shippie-pwa/icon.svg"
         alt=""
-        width="20"
-        height="20"
+        width="22"
+        height="22"
         aria-hidden="true"
       />
-      <span>Shippie</span>
+      <span class="sr-only">Shippie tools</span>
     </button>
+    {#if activeApp}
+      <button
+        type="button"
+        class="focused-chrome-button focused-chrome-options"
+        class:input-region-all={activeInputRegion === 'all'}
+        aria-label={`Share and options for ${activeApp.name}`}
+        aria-expanded={focusedToolOptionsOpen}
+        onclick={toggleFocusedToolOptions}
+      >
+        <span aria-hidden="true">↗</span>
+        <span class="sr-only">Share and options</span>
+      </button>
+    {/if}
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -2282,6 +2448,7 @@
       edge={focusedDrawerEdge}
       canGoBack={activeFrameCanGoBack}
       onBack={goBackInActiveFrame}
+      gestureEnabled={false}
     >
       <div class="focused-drawer">
         <div class="focused-drawer-grip" aria-hidden="true"></div>
@@ -2380,6 +2547,51 @@
         {/if}
       </div>
     </AppSwitcherGesture>
+    {#if focusedToolOptionsOpen && activeApp}
+      <button
+        type="button"
+        class="focused-options-backdrop"
+        aria-label="Close tool options"
+        onclick={closeFocusedToolOptions}
+      ></button>
+      <aside class="focused-options-panel" aria-label={`${activeApp.name} sharing and options`}>
+        <div class="focused-drawer-grip" aria-hidden="true"></div>
+        <header class="focused-options-head">
+          <p class="focused-options-kicker">Current tool</p>
+          <h2>{activeApp.name}</h2>
+          {#if activeApp.description}
+            <p>{activeApp.description}</p>
+          {/if}
+        </header>
+        {#if focusedQrMarkup}
+          <div class="focused-share-qr" aria-label={`QR code for ${activeApp.name}`}>
+            <div class="focused-share-qr-code">{@html focusedQrMarkup}</div>
+            <p>Scan to open</p>
+          </div>
+        {/if}
+        <div class="focused-options-list">
+          <button type="button" class="focused-option-row primary" onclick={shareActiveTool}>
+            <span>Share tool</span>
+            <small>{focusedShareFeedback || 'System share sheet'}</small>
+          </button>
+          <button type="button" class="focused-option-row" onclick={copyActiveToolLink}>
+            <span>Copy quicklink</span>
+            <small>{focusedShareFeedback || activeToolUrl.replace(/^https?:\/\//, '')}</small>
+          </button>
+          <button
+            type="button"
+            class="focused-option-row"
+            onclick={() => {
+              if (activeAppId) reloadFrame(activeAppId);
+              closeFocusedToolOptions();
+            }}
+          >
+            <span>Reload tool</span>
+            <small>Fresh frame, same local data</small>
+          </button>
+        </div>
+      </aside>
+    {/if}
   </section>
 {:else}
 <section class="shell">
@@ -3360,15 +3572,23 @@
     padding: clamp(1.5rem, 4vw, 3rem);
   }
 
-  /* Persistent drawer affordance — fixed to the right rail, always
-     visible in focused mode. It is deliberately not a header-corner
-     badge: app builders should own their top bars without having to
-     reserve space for Shippie chrome. */
-  .focused-exit-pill {
+  .sr-only {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* Thin focused-mode chrome. Shippie owns two small marks only:
+     tools/data on the left, current-tool share/options on the right.
+     No hidden hit-zones are active in focused mode, so app builders
+     keep their own headers, nav, inputs, swipes, and edge targets. */
+  .focused-chrome-button {
     position: fixed;
     top: 50%;
-    right: calc(env(safe-area-inset-right, 0px) - 18px);
-    z-index: 60;
+    z-index: 62;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3377,19 +3597,19 @@
     padding: 0;
     background: rgba(20, 18, 15, 0.65);
     border: 1px solid rgba(168, 196, 145, 0.35);
-    border-right: 0;
-    border-radius: 16px 0 0 16px;
     color: var(--text);
-    font-family: var(--font-heading);
+    font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 0.95rem;
-    letter-spacing: -0.015em;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: 0;
     text-decoration: none;
     cursor: pointer;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     opacity: 0.42;
     transform: translateY(-50%);
+    box-shadow: 0 8px 28px rgba(20, 18, 15, 0.16);
     transition:
       opacity 0.18s ease,
       background 0.18s ease,
@@ -3397,54 +3617,242 @@
       box-shadow 0.18s ease,
       transform 0.18s ease;
   }
-  .focused-exit-pill.first-run {
-    /* One-shot pulse on the very first focused-mode visit. Telegraphs
-       that the mark is interactive without a toast or modal. Gated by
-       localStorage so it never repeats. */
+  .focused-chrome-tools {
+    left: calc(env(safe-area-inset-left, 0px) - 18px);
+    border-left: 0;
+    border-radius: 0 16px 16px 0;
+  }
+  .focused-chrome-options {
+    right: calc(env(safe-area-inset-right, 0px) - 18px);
+    border-right: 0;
+    border-radius: 16px 0 0 16px;
+  }
+  /* Safe-edges contract: when the active app declares it owns the
+     bottom or the entire viewport via @shippie/iframe-sdk
+     `safeEdges.declareInputRegion()`, shrink the chrome buttons so
+     their hit area stops bleeding into game controls. The visible
+     pill still renders as a thin sliver (12px wide) so the user can
+     find their way back to the launcher, but accidental taps from a
+     game button next to the edge no longer trigger the drawer.
+
+     'bottom' suppresses just the left tools pill (the one that
+     overlaps Stack's leftmost touch button). 'all' shrinks both. */
+  .focused-chrome-button.input-region-bottom.focused-chrome-tools,
+  .focused-chrome-button.input-region-all {
+    width: 12px;
+    opacity: 0.18;
+  }
+  .focused-chrome-button.input-region-bottom.focused-chrome-tools:hover,
+  .focused-chrome-button.input-region-bottom.focused-chrome-tools:focus-visible,
+  .focused-chrome-button.input-region-all:hover,
+  .focused-chrome-button.input-region-all:focus-visible {
+    width: 42px;
+    opacity: 1;
+  }
+
+  .focused-chrome-button.first-run {
     animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
   }
   @keyframes shippie-mark-pulse {
-    0%   { transform: translateY(-50%) translateX(0) scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.42; }
-    35%  { transform: translateY(-50%) translateX(-18px) scale(1.06); box-shadow: 0 0 0 6px rgba(232, 96, 60, 0.30); opacity: 1; }
-    70%  { transform: translateY(-50%) translateX(-18px) scale(1.0);  box-shadow: 0 0 0 14px rgba(232, 96, 60, 0); opacity: 1; }
-    100% { transform: translateY(-50%) translateX(0) scale(1);    box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.42; }
+    0%   { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.42; }
+    35%  { box-shadow: 0 0 0 6px rgba(232, 96, 60, 0.30); opacity: 1; }
+    70%  { box-shadow: 0 0 0 14px rgba(232, 96, 60, 0); opacity: 1; }
+    100% { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.42; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .focused-exit-pill.first-run { animation: none; }
+    .focused-chrome-button.first-run { animation: none; }
   }
   /* Keyboard open inside the running tool — hide the chrome so it
      doesn't float over the keyboard area. The :global selector matches
      the data attribute set on <html> by handleToolKeyboardMessage. */
-  :global(html[data-keyboard-open="true"]) .focused-exit-pill {
+  :global(html[data-keyboard-open="true"]) .focused-chrome-button {
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-50%) translateX(100%);
     transition: opacity 0.18s ease, transform 0.18s ease;
   }
-  .focused-exit-pill:hover,
-  .focused-exit-pill:focus-visible {
+  :global(html[data-keyboard-open="true"]) .focused-chrome-tools {
+    transform: translateY(-50%) translateX(-100%);
+  }
+  :global(html[data-keyboard-open="true"]) .focused-chrome-options {
+    transform: translateY(-50%) translateX(100%);
+  }
+  .focused-chrome-button:hover,
+  .focused-chrome-button:focus-visible,
+  .focused-chrome-button[aria-expanded='true'] {
     opacity: 1;
     background: rgba(20, 18, 15, 0.85);
     border-color: var(--sage-leaf);
+  }
+  .focused-chrome-tools:hover,
+  .focused-chrome-tools:focus-visible,
+  .focused-chrome-tools[aria-expanded='true'] {
+    transform: translateY(-50%) translateX(18px);
+  }
+  .focused-chrome-options:hover,
+  .focused-chrome-options:focus-visible,
+  .focused-chrome-options[aria-expanded='true'] {
     transform: translateY(-50%) translateX(-18px);
   }
-  .focused-exit-pill img {
+  .focused-chrome-button img {
     display: block;
     flex-shrink: 0;
-  }
-  .focused-exit-pill span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    transform: scale(2.8);
   }
   @media (max-width: 640px) {
-    .focused-exit-pill {
+    .focused-chrome-button {
       width: 40px;
       height: 48px;
+    }
+    .focused-chrome-tools {
+      left: calc(env(safe-area-inset-left, 0px) - 16px);
+      border-radius: 0 18px 18px 0;
+    }
+    .focused-chrome-options {
+      right: calc(env(safe-area-inset-right, 0px) - 16px);
       border-radius: 18px 0 0 18px;
+    }
+  }
+
+  .focused-options-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 58;
+    padding: 0;
+    border: 0;
+    background: rgba(20, 18, 15, 0.28);
+    cursor: default;
+  }
+  .focused-options-panel {
+    position: fixed;
+    top: 50%;
+    right: calc(env(safe-area-inset-right, 0px) + 48px);
+    z-index: 64;
+    width: min(340px, calc(100vw - 24px));
+    max-height: min(80dvh, 620px);
+    overflow-y: auto;
+    padding: 16px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: var(--cream-bg, #faf7ef);
+    color: var(--cream-text, #14120f);
+    box-shadow: 0 18px 54px rgba(20, 18, 15, 0.24);
+    transform: translateY(-50%);
+  }
+  .focused-options-head {
+    display: grid;
+    gap: 6px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+  }
+  .focused-options-kicker,
+  .focused-options-head p,
+  .focused-option-row small {
+    margin: 0;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+  }
+  .focused-options-kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .focused-options-head h2 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 28px;
+    line-height: 1;
+  }
+  .focused-options-head p {
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  .focused-options-list {
+    display: grid;
+    gap: 8px;
+    padding-top: 12px;
+  }
+  .focused-share-qr {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0 0;
+  }
+  .focused-share-qr-code {
+    width: 88px;
+    height: 88px;
+    padding: 6px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: #faf7ef;
+  }
+  .focused-share-qr-code :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .focused-share-qr p {
+    margin: 0;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+  .focused-option-row {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: rgba(20, 18, 15, 0.025);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+  }
+  .focused-option-row:hover,
+  .focused-option-row:focus-visible {
+    border-color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.07);
+    transform: translateX(-2px);
+  }
+  .focused-option-row.primary {
+    border-color: rgba(232, 96, 60, 0.34);
+    background: rgba(232, 96, 60, 0.09);
+  }
+  .focused-option-row span {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    line-height: 1.05;
+  }
+  .focused-option-row small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+  }
+  @media (max-width: 640px) {
+    .focused-options-panel {
+      top: auto;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: auto;
+      max-height: 72dvh;
+      padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+      border-right: 0;
+      border-bottom: 0;
+      border-left: 0;
+      transform: none;
     }
   }
 

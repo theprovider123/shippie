@@ -29,6 +29,7 @@ const sfx = createSoundBank({
 });
 
 const sdk = createShippieIframeSdk({ appId: 'app_block_drop' });
+sdk.safeEdges.declareInputRegion('bottom');
 const observations = createObservationClient(sdk);
 
 const STORAGE_KEY = 'shippie:block-drop:v1';

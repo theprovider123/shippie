@@ -48,6 +48,10 @@ const SPRINT_TARGET_LINES = 40;
 const ULTRA_DURATION_MS = 120_000;
 
 const sdk = createShippieIframeSdk({ appId: 'app_stack' });
+// Tell the container the bottom touch-controls row owns the bottom
+// of the viewport. Host shrinks its left chrome pill so it stops
+// overlapping the left-arrow touch button.
+sdk.safeEdges.declareInputRegion('bottom');
 const observations = createObservationClient(sdk);
 const sfx = createSoundBank({
   tap: ARCADE_SAMPLES.tap,

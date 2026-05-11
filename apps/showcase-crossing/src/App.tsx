@@ -31,6 +31,10 @@ const sfx = createSoundBank({
 });
 
 const sdk = createShippieIframeSdk({ appId: 'app_crossing' });
+// Frog occupies the whole playfield + D-pad overlay; suppress both
+// chrome pills to slim slivers so accidental edge taps don't open
+// the drawer mid-hop.
+sdk.safeEdges.declareInputRegion('all');
 const observations = createObservationClient(sdk);
 
 const STORAGE_KEY = 'shippie:crossing:v2';

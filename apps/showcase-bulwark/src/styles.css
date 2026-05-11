@@ -348,3 +348,11 @@ button.primary {
 }
 .row-actions { display: flex; gap: 8px; }
 .ghost.small { font-size: 12px; padding: 4px 8px; height: auto; width: auto; }
+
+/* Safe-edges CSS fallback. Keeps controls clear of iOS home-indicator
+   + container chrome even if the postMessage contract is delayed. */
+.app {
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
