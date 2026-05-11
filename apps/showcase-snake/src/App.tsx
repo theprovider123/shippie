@@ -190,25 +190,6 @@ export function App() {
   const dpadVisible = hopCount < DPAD_FADE_AFTER_HOPS;
   const speedPct = Math.round(((BASE_STEP_MS - stepIntervalMs(world)) / BASE_STEP_MS) * 100);
 
-  // Segments rendered as absolute-positioned overlays — each
-  // interpolates its prev → cur cell via stepProgress for smooth
-  // gliding instead of cell-to-cell teleporting.
-  const segmentNodes = world.snake.map((_, i) => {
-    const vp = visualPosition(world, i);
-    return (
-      <span
-        key={`seg-${i}-${world.snake.length}`}
-        className={`seg${i === 0 ? ' seg-head' : ''}`}
-        style={{
-          left: `${(vp.c / SIZE) * 100}%`,
-          top: `${(vp.r / SIZE) * 100}%`,
-          width: `${100 / SIZE}%`,
-          height: `${100 / SIZE}%`,
-        }}
-      />
-    );
-  });
-
   return (
     <main className="app">
       <header className="head">
@@ -241,33 +222,42 @@ export function App() {
         onPointerUp={onPointerUp}
         role="application"
       >
-        <div className="grid">
-          {/* Snake segments + apple + pellet rendered as absolute
-              overlays so their visual positions can lerp smoothly
-              instead of teleporting between grid cells. */}
-          {segmentNodes}
-          <span
-            className="apple"
-            style={{
-              left: `${(world.apple.c / SIZE) * 100}%`,
-              top: `${(world.apple.r / SIZE) * 100}%`,
-              width: `${100 / SIZE}%`,
-              height: `${100 / SIZE}%`,
-            }}
-            aria-hidden
-          />
-          {world.pellet ? (
-            <span
-              className="pellet"
-              style={{
-                left: `${(world.pellet.cell.c / SIZE) * 100}%`,
-                top: `${(world.pellet.cell.r / SIZE) * 100}%`,
-                width: `${100 / SIZE}%`,
-                height: `${100 / SIZE}%`,
-              }}
-              aria-hidden
-            />
-          ) : null}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}
+        >
+          {/* Discrete cell layer for reliable layout — paints the
+              snake bodies, apple, pellet at integer cells. */}
+          {Array.from({ length: SIZE * SIZE }, (_, idx) => {
+            const c = idx % SIZE;
+            const r = Math.floor(idx / SIZE);
+            const isApple = c === world.apple.c && r === world.apple.r;
+            const isPellet = !!world.pellet && c === world.pellet.cell.c && r === world.pellet.cell.r;
+            const onSnake = world.snake.some((s, si) => si > 0 && s.c === c && s.r === r);
+            const cls = isApple ? 'cell cell-apple'
+              : isPellet ? 'cell cell-pellet'
+              : onSnake ? 'cell cell-body'
+              : 'cell';
+            return <span key={idx} className={cls} aria-hidden />;
+          })}
+          {/* Smoothly-lerped head overlay — sits on top, glides
+              between cells via stepProgress so the snake doesn't
+              look like it teleports. */}
+          {(() => {
+            const vp = visualPosition(world, 0);
+            return (
+              <span
+                className="head-overlay"
+                style={{
+                  left: `${(vp.c / SIZE) * 100}%`,
+                  top: `${(vp.r / SIZE) * 100}%`,
+                  width: `${100 / SIZE}%`,
+                  height: `${100 / SIZE}%`,
+                }}
+                aria-hidden
+              />
+            );
+          })()}
         </div>
       </div>
 

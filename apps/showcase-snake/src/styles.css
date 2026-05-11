@@ -84,51 +84,48 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
 }
 .grid {
   position: relative;
-  background:
-    linear-gradient(rgba(42, 31, 22, 0.06) 1px, transparent 1px) 0 0 / calc(100% / 20) calc(100% / 20),
-    linear-gradient(90deg, rgba(42, 31, 22, 0.06) 1px, transparent 1px) 0 0 / calc(100% / 20) calc(100% / 20),
-    #fffaf0;
-  border: 1px solid rgba(42, 31, 22, 0.18);
+  display: grid;
+  gap: 1px;
+  background: rgba(42, 31, 22, 0.12);
+  padding: 1px;
   aspect-ratio: 1 / 1;
   width: 100%;
-  overflow: hidden;
 }
-
-/* Snake segments rendered as absolute overlays that lerp their
-   position between cells. The CSS transition smooths any
-   render-frame jitter without conflicting with the engine's own
-   step-progress interpolation (which already places left/top at
-   the correct fractional cell). */
-.seg {
-  position: absolute;
+.cell {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 1px;
+}
+.cell-body {
   background: var(--snake);
-  border-radius: 22%;
-  transition: left 60ms linear, top 60ms linear;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.18);
 }
-.seg-head {
-  background: var(--snake-head);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
-  z-index: 2;
-}
-
-.apple {
-  position: absolute;
+.cell-apple {
   background: radial-gradient(circle at 35% 30%, #ff8a73 0%, var(--apple) 60%, #a82514 100%);
   border-radius: 50%;
   box-shadow: 0 0 6px rgba(232, 74, 45, 0.55);
-  z-index: 1;
 }
-.pellet {
-  position: absolute;
+.cell-pellet {
   background: radial-gradient(circle at 35% 30%, #fff0c8 0%, var(--pellet) 60%, #b27420 100%);
   border-radius: 50%;
   box-shadow: 0 0 12px rgba(244, 184, 96, 0.85);
   animation: pellet-pulse 0.8s ease-in-out infinite alternate;
-  z-index: 1;
 }
 @keyframes pellet-pulse {
   from { transform: scale(0.85); }
   to { transform: scale(1.05); }
+}
+
+/* Head overlay — absolute-positioned on top of the grid. Lerps its
+   left/top via engine.stepProgress so the head visibly glides
+   between cells. CSS transition smooths sub-frame jitter without
+   fighting the per-frame React updates. */
+.head-overlay {
+  position: absolute;
+  background: var(--snake-head);
+  border-radius: 22%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  z-index: 4;
+  pointer-events: none;
 }
 
 /* D-pad row — lives BELOW the grid, never overlapping play area.
