@@ -41,8 +41,23 @@ export const VALID_CATEGORIES = [
 ] as const;
 export type Category = (typeof VALID_CATEGORIES)[number];
 
+/**
+ * Shelf grouping inside the `/arcade` landing surface. Optional —
+ * apps with `surface: 'arcade'` but no subcategory land in the
+ * uncategorised tail of the page. Used by the prepare-showcases.mjs
+ * script to emit the `SHELVES` constant.
+ */
+export const VALID_SUBCATEGORIES = [
+  'daily-brain',
+  'arcade-cabinet',
+  'room',
+  'strategy',
+] as const;
+export type Subcategory = (typeof VALID_SUBCATEGORIES)[number];
+
 const SURFACE_SET = new Set<string>(VALID_SURFACES);
 const CATEGORY_SET = new Set<string>(VALID_CATEGORIES);
+const SUBCATEGORY_SET = new Set<string>(VALID_SUBCATEGORIES);
 
 // ---------------------------------------------------------------------
 // First-party shape (full)
@@ -51,6 +66,8 @@ const CATEGORY_SET = new Set<string>(VALID_CATEGORIES);
 export interface FirstPartyCurationEntry {
   surface: Surface;
   category: Category;
+  /** Optional arcade-shelf grouping (Daily Brain / Arcade Cabinet / Room / Strategy). */
+  subcategory?: Subcategory;
   /** Successor slug for redirect chains (alias from this slug → that). */
   successor?: string;
 }
@@ -62,6 +79,7 @@ export interface FirstPartyCurationEntry {
 export interface MakerCuration {
   surface: Surface;
   category: Category;
+  subcategory?: Subcategory;
 }
 
 // ---------------------------------------------------------------------
@@ -79,11 +97,13 @@ function isObject(v: unknown): v is Record<string, unknown> {
 function checkSurfaceCategory(
   raw: Record<string, unknown>,
   errors: string[],
-): { surface: Surface | null; category: Category | null } {
+): { surface: Surface | null; category: Category | null; subcategory: Subcategory | null } {
   const surface = raw.surface;
   const category = raw.category;
+  const subcategory = raw.subcategory;
   let resolvedSurface: Surface | null = null;
   let resolvedCategory: Category | null = null;
+  let resolvedSubcategory: Subcategory | null = null;
   if (typeof surface !== 'string' || !SURFACE_SET.has(surface)) {
     errors.push(
       `curation.surface=${JSON.stringify(surface)} (must be one of ${VALID_SURFACES.join(', ')})`,
@@ -98,7 +118,17 @@ function checkSurfaceCategory(
   } else {
     resolvedCategory = category as Category;
   }
-  return { surface: resolvedSurface, category: resolvedCategory };
+  // Subcategory is optional — only validate if present.
+  if (subcategory !== undefined && subcategory !== null) {
+    if (typeof subcategory !== 'string' || !SUBCATEGORY_SET.has(subcategory)) {
+      errors.push(
+        `curation.subcategory=${JSON.stringify(subcategory)} (must be one of ${VALID_SUBCATEGORIES.join(', ')} or omitted)`,
+      );
+    } else {
+      resolvedSubcategory = subcategory as Subcategory;
+    }
+  }
+  return { surface: resolvedSurface, category: resolvedCategory, subcategory: resolvedSubcategory };
 }
 
 /**
@@ -113,13 +143,15 @@ export function parseMakerCuration(raw: unknown): ValidationResult<MakerCuration
     return { ok: false, errors: ["curation block missing or not an object"] };
   }
   const errors: string[] = [];
-  const { surface, category } = checkSurfaceCategory(raw, errors);
+  const { surface, category, subcategory } = checkSurfaceCategory(raw, errors);
   // Maker uploads MUST NOT carry successor; ignored if present (the
   // pipeline scrubs it before any persistence).
   if (errors.length > 0 || !surface || !category) {
     return { ok: false, errors };
   }
-  return { ok: true, value: { surface, category } };
+  const value: MakerCuration = { surface, category };
+  if (subcategory) value.subcategory = subcategory;
+  return { ok: true, value };
 }
 
 /**
@@ -136,7 +168,7 @@ export function parseFirstPartyCurationEntry(
     return { ok: false, errors: ["curation block missing or not an object"] };
   }
   const errors: string[] = [];
-  const { surface, category } = checkSurfaceCategory(raw, errors);
+  const { surface, category, subcategory } = checkSurfaceCategory(raw, errors);
   let successor: string | undefined;
   if (raw.successor !== undefined && raw.successor !== null) {
     if (typeof raw.successor !== 'string') {
@@ -153,10 +185,11 @@ export function parseFirstPartyCurationEntry(
     return { ok: false, errors };
   }
   const value: FirstPartyCurationEntry = { surface, category };
+  if (subcategory) value.subcategory = subcategory;
   if (successor !== undefined) value.successor = successor;
   return { ok: true, value };
 }
 
 // Re-exports for the prepare-showcases.mjs script which still uses the
 // raw Sets in some places — keep them stable so behaviour matches.
-export { SURFACE_SET, CATEGORY_SET };
+export { SURFACE_SET, CATEGORY_SET, SUBCATEGORY_SET };

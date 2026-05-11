@@ -9,11 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["preference.choice"],
+    "provides": [
+      "preference.choice"
+    ],
     "consumes": []
   },
   "curation": {
-    "surface": "featured",
-    "category": "social"
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "room"
   }
 }

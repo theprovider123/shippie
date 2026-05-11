@@ -13,7 +13,8 @@
   },
   "data_schemas": {},
   "curation": {
-    "surface": "featured",
-    "category": "creative"
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "room"
   }
 }

@@ -165,13 +165,53 @@ function Room({ group, onLeave }: { group: Group; onLeave: () => void }) {
     return () => clearInterval(id);
   }, [group, me]);
 
+  /**
+   * Build a join URL anchored at the PUBLIC origin (shippie.app), not
+   * `window.location.href` which inside the platform iframe resolves
+   * to `__shippie-run/drawing-telephone/?j=CODE` — an internal URL
+   * that fails when scanned by an external iOS Camera app.
+   *
+   * Localhost / dev origins are kept as-is so dev QR codes still
+   * scan to localhost. Anywhere else the origin is rewritten to
+   * `https://shippie.app` and the path to `/run/drawing-telephone/`.
+   */
   const joinUrl = useMemo(() => {
-    const u = new URL(window.location.href);
-    u.searchParams.set('j', group.joinCode);
-    return u.toString();
+    const cur = new URL(window.location.href);
+    const isDev = cur.hostname === 'localhost' || cur.hostname === '127.0.0.1';
+    const target = isDev ? cur : new URL('https://shippie.app/run/drawing-telephone/');
+    target.searchParams.set('j', group.joinCode);
+    return target.toString();
   }, [group.joinCode]);
 
   const qrSvg = useMemo(() => renderQrSvg(joinUrl, { size: 192 }), [joinUrl]);
+
+  /**
+   * Try the native share sheet first (best on mobile — pulls in
+   * contacts, AirDrop, Messages). Falls back to clipboard copy if
+   * `navigator.share` is missing or the user dismisses the picker.
+   */
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const shareJoinLink = async () => {
+    const text = `Join my Drawing Telephone game on Shippie — code ${group.joinCode}`;
+    try {
+      const nav = navigator as Navigator & { share?: (data: { text: string; url: string }) => Promise<void> };
+      if (typeof nav.share === 'function') {
+        await nav.share({ text, url: joinUrl });
+        setShareNote('Shared');
+      } else {
+        await navigator.clipboard.writeText(joinUrl);
+        setShareNote('Link copied');
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(joinUrl);
+        setShareNote('Link copied');
+      } catch {
+        setShareNote('Share unavailable');
+      }
+    }
+    window.setTimeout(() => setShareNote(null), 2500);
+  };
 
   const turn = useMemo(() => {
     if (members.length === 0) return null;
@@ -228,6 +268,13 @@ function Room({ group, onLeave }: { group: Group; onLeave: () => void }) {
           <p>Have someone scan this to join.</p>
           <div className="qr" dangerouslySetInnerHTML={{ __html: qrSvg }} />
           <p className="muted small">Or enter code <strong>{group.joinCode}</strong></p>
+          <div className="row-actions">
+            <button type="button" className="primary" onClick={shareJoinLink}>Share invite</button>
+          </div>
+          {shareNote ? <p className="muted small" aria-live="polite">{shareNote}</p> : null}
+          <p className="muted small live-count" aria-live="polite">
+            {members.length === 1 ? 'Waiting for players…' : `${members.length} player${members.length === 1 ? '' : 's'} joined`}
+          </p>
         </section>
       ) : null}
 

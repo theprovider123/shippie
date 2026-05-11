@@ -9,11 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["game.completed"],
+    "provides": [
+      "game.completed"
+    ],
     "consumes": []
   },
   "curation": {
     "surface": "arcade",
-    "category": "games"
+    "category": "games",
+    "subcategory": "arcade-cabinet"
   }
 }

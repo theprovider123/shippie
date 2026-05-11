@@ -14,6 +14,7 @@
   },
   "curation": {
     "surface": "arcade",
-    "category": "games"
+    "category": "games",
+    "subcategory": "strategy"
   }
 }
