@@ -22,12 +22,6 @@ export interface Cell {
 
 export interface World {
   snake: Cell[]; // [head, body, tail]
-  /**
-   * Snake positions BEFORE the most recent step. Renderers lerp each
-   * segment from prevSnake[i] → snake[i] using `stepProgress` so the
-   * snake glides smoothly between cells instead of teleporting.
-   */
-  prevSnake: Cell[];
   dir: Direction;
   /** Next direction queued by user input; applied on next step. */
   queuedDir: Direction | null;
@@ -39,10 +33,6 @@ export interface World {
   score: number;
   /** Total ms since spawn, drives step cadence + pellet expiry. */
   worldTimeMs: number;
-  /** Visual progress 0..1 between the last and next step. */
-  stepProgress: number;
-  /** ms accumulator since the last committed step. */
-  msSinceStep: number;
   /** Tick (step) counter for engine determinism. */
   step: number;
   /** Game state. */
@@ -116,7 +106,6 @@ export function createWorld(mode: Mode, seed?: number): World {
   ];
   const world: World = {
     snake,
-    prevSnake: snake.map((c) => ({ ...c })),
     dir: 'E',
     queuedDir: null,
     apple: { c: 0, r: 0 }, // placeholder, fixed below
@@ -125,8 +114,6 @@ export function createWorld(mode: Mode, seed?: number): World {
     pelletsEaten: 0,
     score: 0,
     worldTimeMs: 0,
-    stepProgress: 0,
-    msSinceStep: 0,
     step: 0,
     state: 'playing',
     rngState: rng.readState(),
@@ -159,23 +146,20 @@ function pickFreeCell(world: World, rng: { next: () => number }): Cell {
 
 export function queueDirection(world: World, dir: Direction): void {
   if (world.state !== 'playing') return;
-  // Can't reverse into yourself in one step.
-  if (OPPOSITE[dir] === world.dir) return;
+  // Can't reverse into yourself in one step. Check against the most
+  // recently committed direction OR a pending queuedDir (so two rapid
+  // taps that would reverse don't sneak through).
+  const against = world.queuedDir ?? world.dir;
+  if (OPPOSITE[dir] === against) return;
   world.queuedDir = dir;
 }
 
 /**
- * Advance the snake one cell. Returns whether the step happened (false
- * means the world is no longer playing).
+ * Advance the snake one cell. Returns true if a step committed, false
+ * if the world is no longer playing or the move killed the snake.
  */
 export function stepWorld(world: World): boolean {
   if (world.state !== 'playing') return false;
-  // Snapshot the current snake positions so the renderer can lerp
-  // each segment from its previous cell to its new cell over the
-  // next step interval.
-  world.prevSnake = world.snake.map((c) => ({ ...c }));
-  world.stepProgress = 0;
-  world.msSinceStep = 0;
   if (world.queuedDir) {
     world.dir = world.queuedDir;
     world.queuedDir = null;
@@ -198,11 +182,12 @@ export function stepWorld(world: World): boolean {
       return false;
     }
   }
+
+  const willEat = nc === world.apple.c && nr === world.apple.r;
+  const willEatPellet = world.pellet && nc === world.pellet.cell.c && nr === world.pellet.cell.r;
   // Self-collision: bite kills (head moving into any non-tail cell).
   // We allow entering the current tail cell because it'll move out
   // this step UNLESS we're about to grow.
-  const willEat = nc === world.apple.c && nr === world.apple.r;
-  const willEatPellet = world.pellet && nc === world.pellet.cell.c && nr === world.pellet.cell.r;
   const cellsToAvoid = willEat ? world.snake : world.snake.slice(0, -1);
   for (const seg of cellsToAvoid) {
     if (seg.c === nc && seg.r === nr) {
@@ -252,45 +237,11 @@ export function stepWorld(world: World): boolean {
   return true;
 }
 
-/**
- * Advance time and the visual step progress. Commits a step when the
- * accumulator crosses one step interval. Returns the number of
- * committed steps (usually 0 or 1; >1 only if the dtMs frame is
- * unusually long).
- */
-export function tickWorld(world: World, dtMs: number): number {
-  if (world.state !== 'playing') return 0;
+export function tickWorld(world: World, dtMs: number): void {
+  if (world.state !== 'playing') return;
   world.worldTimeMs += dtMs;
-  world.msSinceStep += dtMs;
-  let steps = 0;
-  // Loop in case a long frame contains multiple steps.
-  while (world.state === 'playing' && world.msSinceStep >= stepIntervalMs(world)) {
-    const interval = stepIntervalMs(world);
-    world.msSinceStep -= interval;
-    stepWorld(world);
-    steps += 1;
-  }
-  // Update fractional progress for the renderer.
-  const interval = stepIntervalMs(world);
-  world.stepProgress = Math.min(1, Math.max(0, world.msSinceStep / interval));
-  return steps;
 }
 
 export function isOver(world: World): boolean {
   return world.state === 'over';
-}
-
-/** Visual position of segment i as a fractional (col, row). */
-export function visualPosition(world: World, i: number): { c: number; r: number } {
-  const cur = world.snake[i];
-  if (!cur) return { c: 0, r: 0 };
-  const prev = world.prevSnake[i] ?? cur;
-  // Wrap-aware lerp: if the cell changed by more than one in either
-  // axis, the snake crossed a wall in loop mode. Snap directly so
-  // we don't draw a long sliding line across the field.
-  const dc = cur.c - prev.c;
-  const dr = cur.r - prev.r;
-  if (Math.abs(dc) > 1 || Math.abs(dr) > 1) return { c: cur.c, r: cur.r };
-  const t = world.stepProgress;
-  return { c: prev.c + dc * t, r: prev.r + dr * t };
 }

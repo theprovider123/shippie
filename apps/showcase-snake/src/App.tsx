@@ -11,9 +11,9 @@ import {
   dailySeed,
   queueDirection,
   stepIntervalMs,
+  stepWorld,
   tickWorld,
   todayKey,
-  visualPosition,
   type Direction,
   type Mode,
   type World,
@@ -74,7 +74,9 @@ export function App() {
   const [, force] = useState(0);
   const [hopCount, setHopCount] = useState(0);
   const [resultRecorded, setResultRecorded] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
   const lastFrameRef = useRef(performance.now());
+  const lastStepAtRef = useRef(0);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => { saveStored(stored); }, [stored]);
@@ -83,6 +85,7 @@ export function App() {
     setMode(nextMode);
     setWorld(createWorld(nextMode));
     lastFrameRef.current = performance.now();
+    lastStepAtRef.current = 0;
     setHopCount(0);
     setResultRecorded(false);
   }, []);
@@ -123,18 +126,24 @@ export function App() {
     setHopCount((n) => n + 1);
   }, [world]);
 
-  // Game loop. tickWorld now owns step cadence + visual progress so
-  // the render path can lerp segments smoothly between cells.
+  // Game loop. tickWorld advances time; we commit a step whenever
+  // worldTimeMs has crossed one step interval since the last step.
+  // This is the classic Nokia-Snake pacing — cell-by-cell with no
+  // sub-cell interpolation, which keeps the render path dead simple
+  // and predictable across viewports.
   useEffect(() => {
     if (world.state !== 'playing') return;
     let raf = 0;
     const loop = (now: number) => {
       const dtMs = Math.min(60, now - lastFrameRef.current);
       lastFrameRef.current = now;
-      const prevApples = world.applesEaten;
-      const prevPellets = world.pelletsEaten;
-      const steps = tickWorld(world, dtMs);
-      if (steps > 0) {
+      tickWorld(world, dtMs);
+      const interval = stepIntervalMs(world);
+      if (world.worldTimeMs - lastStepAtRef.current >= interval) {
+        lastStepAtRef.current = world.worldTimeMs;
+        const prevApples = world.applesEaten;
+        const prevPellets = world.pelletsEaten;
+        stepWorld(world);
         if (world.applesEaten > prevApples) {
           sfx.play('pop', { pitch: 0.95 + Math.random() * 0.3 });
           haptic('success');
@@ -190,6 +199,35 @@ export function App() {
   const dpadVisible = hopCount < DPAD_FADE_AFTER_HOPS;
   const speedPct = Math.round(((BASE_STEP_MS - stepIntervalMs(world)) / BASE_STEP_MS) * 100);
 
+  const shareResult = async () => {
+    const best = mode === 'classic' ? stored.bestClassic : mode === 'loop' ? stored.bestLoop : stored.bestDaily;
+    const text = [
+      `Snake ${mode}: ${world.score} pts`,
+      `${world.applesEaten} apples · best ${best} pts`,
+      mode === 'daily' ? `Daily ${todayKey()}` : '',
+      'https://shippie.app/run/snake',
+    ].filter(Boolean).join('\n');
+    const nav = navigator as Navigator & { share?: (data: { text: string }) => Promise<void> };
+    try {
+      if (typeof nav.share === 'function') {
+        await nav.share({ text });
+        setShareNote('Shared');
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShareNote('Copied');
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name === 'AbortError') return;
+      try {
+        await navigator.clipboard.writeText(text);
+        setShareNote('Copied');
+      } catch {
+        setShareNote('Share unavailable');
+      }
+    }
+    window.setTimeout(() => setShareNote(null), 2200);
+  };
+
   return (
     <main className="app">
       <header className="head">
@@ -226,38 +264,20 @@ export function App() {
           className="grid"
           style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}
         >
-          {/* Discrete cell layer for reliable layout — paints the
-              snake bodies, apple, pellet at integer cells. */}
           {Array.from({ length: SIZE * SIZE }, (_, idx) => {
             const c = idx % SIZE;
             const r = Math.floor(idx / SIZE);
             const isApple = c === world.apple.c && r === world.apple.r;
             const isPellet = !!world.pellet && c === world.pellet.cell.c && r === world.pellet.cell.r;
-            const onSnake = world.snake.some((s, si) => si > 0 && s.c === c && s.r === r);
+            const isHead = world.snake[0] && world.snake[0].c === c && world.snake[0].r === r;
+            const isBody = !isHead && world.snake.some((s, si) => si > 0 && s.c === c && s.r === r);
             const cls = isApple ? 'cell cell-apple'
               : isPellet ? 'cell cell-pellet'
-              : onSnake ? 'cell cell-body'
+              : isHead ? 'cell cell-head'
+              : isBody ? 'cell cell-body'
               : 'cell';
             return <span key={idx} className={cls} aria-hidden />;
           })}
-          {/* Smoothly-lerped head overlay — sits on top, glides
-              between cells via stepProgress so the snake doesn't
-              look like it teleports. */}
-          {(() => {
-            const vp = visualPosition(world, 0);
-            return (
-              <span
-                className="head-overlay"
-                style={{
-                  left: `${(vp.c / SIZE) * 100}%`,
-                  top: `${(vp.r / SIZE) * 100}%`,
-                  width: `${100 / SIZE}%`,
-                  height: `${100 / SIZE}%`,
-                }}
-                aria-hidden
-              />
-            );
-          })()}
         </div>
       </div>
 
@@ -286,7 +306,11 @@ export function App() {
           <p className="muted small">
             Best {mode}: {mode === 'classic' ? stored.bestClassic : mode === 'loop' ? stored.bestLoop : stored.bestDaily} pts
           </p>
-          <button type="button" className="primary" onClick={() => startGame(mode)}>Play again</button>
+          <div className="overlay-actions">
+            <button type="button" className="primary" onClick={() => startGame(mode)}>Play again</button>
+            <button type="button" className="ghost share-score" onClick={shareResult}>Share</button>
+          </div>
+          {shareNote ? <p className="muted small">{shareNote}</p> : null}
         </section>
       ) : null}
     </main>

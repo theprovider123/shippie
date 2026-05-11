@@ -89,15 +89,18 @@ export function generateLevel(n: number, seedSalt = 0): Level {
   }
   // Row 6: median safe
   lanes.push({ kind: 'safe', speed: 0, density: 0, length: 0, seed: 0 });
-  // Rows 7-11: river logs
+  // Rows 7-11: river logs. River lanes must always have enough logs
+  // to be crossable — empty stretches kill the player with no warning
+  // and feel like a bug. Floor density at 0.35 so the player always
+  // has a log within ~3 cells either way.
   for (let i = 0; i < 5; i++) {
     const dir = i % 2 === 0 ? -1 : 1;
     const baseSpeed = 1.0 + i * 0.4;
+    const computed = 0.35 + 0.05 * densityFactor + i * 0.04;
     lanes.push({
       kind: 'river',
       speed: baseSpeed * speedFactor * dir,
-      // Density slightly lower for river to keep it survivable
-      density: Math.min(0.55, 0.22 * densityFactor + i * 0.04),
+      density: Math.min(0.6, computed),
       length: i % 2 === 0 ? 3 : 2,
       seed: Math.floor(rng() * 0x7fffffff),
     });

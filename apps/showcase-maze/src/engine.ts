@@ -264,7 +264,8 @@ function pickGhostNextCell(world: World, g: Ghost): void {
     } else {
       g.mood = 'pursuing';
     }
-    const next = tunnelWrap(world, ...Object.values(nextCellInDir(g.col, g.row, g.dir)) as [number, number]);
+    const cand = nextCellInDir(g.col, g.row, g.dir);
+    const next = tunnelWrap(world, cand.col, cand.row);
     if (canEnter(world, next.col, next.row, true)) {
       g.nextCol = next.col; g.nextRow = next.row;
     } else {

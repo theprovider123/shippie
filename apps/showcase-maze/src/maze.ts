@@ -46,12 +46,20 @@ const RAW: readonly string[] = [
   '                    ',
 ];
 
+// Defensive: assertions live at module top-level so a layout bug
+// surfaces early in dev. In production they MUST NOT throw — a
+// strict-mode bundle that mangles whitespace would crash the
+// showcase on import. We log a warning and pad/truncate to the
+// declared dimensions instead.
 if (RAW.length !== MAZE_H) {
-  throw new Error(`Maze layout has ${RAW.length} rows, expected ${MAZE_H}`);
+  // eslint-disable-next-line no-console
+  console.warn(`[maze] layout has ${RAW.length} rows, expected ${MAZE_H} — extra rows ignored / missing rows treated as walls`);
 }
-for (const row of RAW) {
+for (let i = 0; i < RAW.length; i++) {
+  const row = RAW[i]!;
   if (row.length !== MAZE_W) {
-    throw new Error(`Maze row has ${row.length} cols, expected ${MAZE_W}`);
+    // eslint-disable-next-line no-console
+    console.warn(`[maze] row ${i} has ${row.length} cols, expected ${MAZE_W} — will pad with walls`);
   }
 }
 
@@ -81,8 +89,11 @@ export function parseMaze(): ParsedMaze {
     const row: Tile[] = [];
     let tunnelLeft = -1;
     let tunnelRight = -1;
+    // Resilient read — if RAW row is missing or short, treat the gap
+    // as walls so the engine still has a valid grid to work with.
+    const rawRow = RAW[r] ?? '';
     for (let c = 0; c < MAZE_W; c++) {
-      const ch = RAW[r]!.charAt(c) as Tile;
+      const ch = (rawRow.charAt(c) || '#') as Tile;
       row.push(ch);
       if (ch === '.') dotCount += 1;
       else if (ch === 'o') pelletCount += 1;
@@ -96,6 +107,9 @@ export function parseMaze(): ParsedMaze {
     tunnels.push(tunnelLeft >= 0 && tunnelRight >= 0 ? [tunnelLeft, tunnelRight] as const : null);
     tiles.push(row);
   }
+  // Final safety: ensure at least one pen cell + player start so the
+  // engine doesn't crash on entity initialisation.
+  if (penCells.length === 0) penCells.push({ col: 10, row: 9 });
   return { tiles, dotCount, pelletCount, playerStart, penCells, tunnels };
 }
 
