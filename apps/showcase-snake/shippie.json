@@ -1,0 +1,20 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Snake",
+  "slug": "snake",
+  "description": "Classic Snake. Eat apples, grow, don't bite yourself. Loop walls, daily seed, power-pellet variant.",
+  "icon": "/icon.png",
+  "theme_color": "#4FA487",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["game.completed"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "arcade-cabinet"
+  }
+}
