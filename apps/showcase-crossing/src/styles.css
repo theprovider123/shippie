@@ -141,7 +141,7 @@ h1 {
   -webkit-user-select: none;
   touch-action: none;
   aspect-ratio: 1 / 1;
-  max-height: calc(100vh - 200px);
+  max-height: clamp(300px, 56vh, 70vh);
   margin: 0 auto;
   width: 100%;
   position: relative;
@@ -193,13 +193,13 @@ h1 {
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  transition: left 90ms cubic-bezier(0.34, 1.56, 0.64, 1), top 90ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: left 110ms cubic-bezier(0.4, 0, 0.2, 1), top 110ms cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 3;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
 }
 .frog svg { width: 100%; height: 100%; display: block; }
 .frog.hopping {
-  animation: frog-squash 90ms ease-in-out;
+  animation: frog-squash 110ms ease-in-out;
 }
 .frog.no-motion, .frog.no-motion.hopping {
   animation: none;
@@ -305,20 +305,23 @@ h1 {
   pointer-events: auto;
 }
 .dpad button {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(42, 31, 22, 0.3);
   background: rgba(255, 255, 255, 0.85);
   color: var(--fg);
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.dpad button:active { background: rgba(79, 164, 135, 0.35); }
+.dpad button:active { background: rgba(79, 164, 135, 0.35); transform: scale(0.93); }
 .dpad-up    { grid-area: up; }
 .dpad-down  { grid-area: down; }
 .dpad-left  { grid-area: left; }

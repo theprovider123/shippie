@@ -116,6 +116,9 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   transition: transform 120ms ease, background 120ms ease;
   word-break: break-word;
   min-height: 56px;
+  /* Aspect-ratio so 4 columns of tiles size predictably without
+     stretching tall on narrow phones. */
+  aspect-ratio: 1.4 / 1;
 }
 .tile:active { transform: scale(0.97); }
 .tile.selected {

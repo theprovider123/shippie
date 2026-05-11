@@ -23,12 +23,17 @@ button { font: inherit; }
 
 .app {
   min-height: 100%;
-  padding: 16px 20px 80px;
+  padding: clamp(8px, 2vw, 16px) clamp(12px, 3vw, 20px) 16px;
   max-width: 480px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  /* Tighten keyboard rows on phones — 48px keys keep the grid +
+     keyboard inside an iPhone SE viewport. */
+  .key { height: 48px; }
 }
 
 h1, h2 { margin: 0; font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.01em; }

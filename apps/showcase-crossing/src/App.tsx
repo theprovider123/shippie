@@ -35,7 +35,7 @@ const observations = createObservationClient(sdk);
 
 const STORAGE_KEY = 'shippie:crossing:v2';
 const STARTING_LIVES = 3;
-const HOP_DURATION_MS = 90;
+const HOP_DURATION_MS = 110;
 const EDGE_NO_INPUT_PX = 16;
 const EAGLE_WARN_MS = 4000;
 const EAGLE_SWOOP_MS = 5500;
@@ -410,6 +410,10 @@ export function App() {
     const s = swipeRef.current;
     swipeRef.current = null;
     if (!s) return;
+    // Safety net: if the pointer is over (or releases over) the D-pad
+    // or any other button inside the playfield, the button's
+    // onPointerDown already fired the hop. Don't fire again.
+    if ((e.target as HTMLElement | null)?.closest('button')) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
     if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
@@ -473,12 +477,14 @@ export function App() {
         frogRef.current = { col: to.col, row: to.row, drift: 0 };
         hopRef.current = null;
         if (to.row > prevRow) setScore((s) => s + 10 * multiplier);
-        // Apply buffered input next frame.
+        // Apply buffered input on the NEXT animation frame so the
+        // visual has a real frame to settle before the queued hop
+        // fires. setTimeout(0) ran in the same microtask cycle and
+        // produced visible double-jumps on mobile.
         if (bufferedHopRef.current) {
           const b = bufferedHopRef.current;
           bufferedHopRef.current = null;
-          // Defer 1 frame so the React state can settle.
-          window.setTimeout(() => hop(b.dx, b.dy), 0);
+          requestAnimationFrame(() => hop(b.dx, b.dy));
         }
         // Pickup pickup-collision check.
         setPickups((existing) => {
@@ -690,10 +696,26 @@ export function App() {
         {/* On-screen D-pad — fades after a few hops once the player groks it */}
         {phase === 'playing' && dpadVisible ? (
           <div className="dpad" aria-hidden>
-            <button type="button" onClick={() => hop(0, 1)} className="dpad-up">▲</button>
-            <button type="button" onClick={() => hop(-1, 0)} className="dpad-left">◀</button>
-            <button type="button" onClick={() => hop(1, 0)} className="dpad-right">▶</button>
-            <button type="button" onClick={() => hop(0, -1)} className="dpad-down">▼</button>
+            <button
+              type="button"
+              className="dpad-up"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, 1); }}
+            >▲</button>
+            <button
+              type="button"
+              className="dpad-left"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(-1, 0); }}
+            >◀</button>
+            <button
+              type="button"
+              className="dpad-right"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(1, 0); }}
+            >▶</button>
+            <button
+              type="button"
+              className="dpad-down"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, -1); }}
+            >▼</button>
           </div>
         ) : null}
       </div>

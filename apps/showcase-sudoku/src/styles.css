@@ -70,6 +70,12 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 28px; font-weight: 60
   background: var(--thick);
   padding: 1px;
   gap: 1px;
+  /* Force one explicit dimension so the 9x9 fits on tall AND short
+     phones without overflowing the keypad below. */
+  width: min(100%, calc(100vw - 24px), 65vh);
+  max-width: 480px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
 }
 
 .cell {
