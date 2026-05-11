@@ -965,6 +965,18 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     port: 5245,
     intents: { provides: ['game.completed'] },
   },
+  {
+    slug: 'bricks',
+    name: 'Bricks',
+    shortName: 'Bricks',
+    description: 'Breakout-style brick smasher. Paddle bounces ball with angle, power-ups drop, 20 levels + endless.',
+    appKind: 'local',
+    icon: 'BR',
+    accent: '#E84A2D',
+    category: 'games',
+    port: 5246,
+    intents: { provides: ['game.completed'] },
+  },
 ];
 
 // Build the curated app list, then enrich each entry with its
