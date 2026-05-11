@@ -989,6 +989,18 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     port: 5247,
     intents: { provides: ['game.completed'] },
   },
+  {
+    slug: 'maze',
+    name: 'Maze',
+    shortName: 'Maze',
+    description: 'Maze chase. Eat all the dots before the ghosts catch you. 4 distinct ghost AIs, power pellets, daily seed.',
+    appKind: 'local',
+    icon: 'MZ',
+    accent: '#FFD66B',
+    category: 'games',
+    port: 5248,
+    intents: { provides: ['game.completed'] },
+  },
 ];
 
 // Build the curated app list, then enrich each entry with its
