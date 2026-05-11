@@ -1,0 +1,20 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Drift",
+  "slug": "drift",
+  "description": "Vector-style asteroid shooter. Rotate, thrust, fire, hyperspace. Daily-seed waves, synthwave skin.",
+  "icon": "/icon.png",
+  "theme_color": "#15131F",
+  "background_color": "#15131F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["game.completed"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "arcade-cabinet"
+  }
+}

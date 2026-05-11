@@ -977,6 +977,18 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     port: 5246,
     intents: { provides: ['game.completed'] },
   },
+  {
+    slug: 'drift',
+    name: 'Drift',
+    shortName: 'Drift',
+    description: 'Vector-style asteroid shooter. Rotate, thrust, fire, hyperspace. Daily-seed waves, synthwave skin.',
+    appKind: 'local',
+    icon: 'DR',
+    accent: '#3CC44B',
+    category: 'games',
+    port: 5247,
+    intents: { provides: ['game.completed'] },
+  },
 ];
 
 // Build the curated app list, then enrich each entry with its
