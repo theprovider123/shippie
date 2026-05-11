@@ -83,73 +83,98 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   touch-action: none;
 }
 .grid {
-  display: grid;
-  gap: 1px;
-  background: rgba(42, 31, 22, 0.12);
-  padding: 1px;
+  position: relative;
+  background:
+    linear-gradient(rgba(42, 31, 22, 0.06) 1px, transparent 1px) 0 0 / calc(100% / 20) calc(100% / 20),
+    linear-gradient(90deg, rgba(42, 31, 22, 0.06) 1px, transparent 1px) 0 0 / calc(100% / 20) calc(100% / 20),
+    #fffaf0;
+  border: 1px solid rgba(42, 31, 22, 0.18);
   aspect-ratio: 1 / 1;
   width: 100%;
+  overflow: hidden;
 }
-.cell {
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 1px;
-  transition: background 100ms ease;
+
+/* Snake segments rendered as absolute overlays that lerp their
+   position between cells. The CSS transition smooths any
+   render-frame jitter without conflicting with the engine's own
+   step-progress interpolation (which already places left/top at
+   the correct fractional cell). */
+.seg {
+  position: absolute;
+  background: var(--snake);
+  border-radius: 22%;
+  transition: left 60ms linear, top 60ms linear;
 }
-.cell-body { background: var(--snake); }
-.cell-head { background: var(--snake-head); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25); }
-.cell-apple {
+.seg-head {
+  background: var(--snake-head);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+.apple {
+  position: absolute;
   background: radial-gradient(circle at 35% 30%, #ff8a73 0%, var(--apple) 60%, #a82514 100%);
   border-radius: 50%;
   box-shadow: 0 0 6px rgba(232, 74, 45, 0.55);
+  z-index: 1;
 }
-.cell-pellet {
+.pellet {
+  position: absolute;
   background: radial-gradient(circle at 35% 30%, #fff0c8 0%, var(--pellet) 60%, #b27420 100%);
   border-radius: 50%;
   box-shadow: 0 0 12px rgba(244, 184, 96, 0.85);
   animation: pellet-pulse 0.8s ease-in-out infinite alternate;
+  z-index: 1;
 }
 @keyframes pellet-pulse {
   from { transform: scale(0.85); }
   to { transform: scale(1.05); }
 }
 
-.dpad {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  display: grid;
-  grid-template-areas:
-    ". up ."
-    "left . right"
-    ". down .";
-  grid-gap: 4px;
-  z-index: 8;
-  opacity: 0.55;
-  transition: opacity 600ms ease;
-  pointer-events: auto;
+/* D-pad row — lives BELOW the grid, never overlapping play area.
+   Three buttons wide on a sensible row layout. Auto-hides via the
+   `hopCount < DPAD_FADE_AFTER_HOPS` gate in App.tsx. */
+.dpad-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 320px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.dpad button {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid rgba(42, 31, 22, 0.3);
-  background: rgba(255, 255, 255, 0.85);
+.dpad-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dpad-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid rgba(42, 31, 22, 0.25);
+  background: rgba(255, 255, 255, 0.92);
   color: var(--fg);
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
 }
-.dpad button:active { background: rgba(79, 164, 135, 0.35); transform: scale(0.93); }
-.dpad-up    { grid-area: up; }
-.dpad-down  { grid-area: down; }
-.dpad-left  { grid-area: left; }
-.dpad-right { grid-area: right; }
+.dpad-stack .dpad-btn { height: 44px; }
+.dpad-btn:active {
+  background: rgba(79, 164, 135, 0.35);
+  transform: scale(0.95);
+}
+@media (min-width: 720px) {
+  /* Hide on desktop where keyboard is the primary input. */
+  .dpad-row { display: none; }
+}
 
 .overlay {
   position: absolute;

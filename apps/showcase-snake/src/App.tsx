@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createObservationClient } from '@shippie/observations';
 import { haptic } from '@shippie/sdk/wrapper';
@@ -11,9 +11,9 @@ import {
   dailySeed,
   queueDirection,
   stepIntervalMs,
-  stepWorld,
   tickWorld,
   todayKey,
+  visualPosition,
   type Direction,
   type Mode,
   type World,
@@ -75,7 +75,6 @@ export function App() {
   const [hopCount, setHopCount] = useState(0);
   const [resultRecorded, setResultRecorded] = useState(false);
   const lastFrameRef = useRef(performance.now());
-  const lastStepAtRef = useRef(0);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => { saveStored(stored); }, [stored]);
@@ -84,7 +83,6 @@ export function App() {
     setMode(nextMode);
     setWorld(createWorld(nextMode));
     lastFrameRef.current = performance.now();
-    lastStepAtRef.current = 0;
     setHopCount(0);
     setResultRecorded(false);
   }, []);
@@ -125,30 +123,25 @@ export function App() {
     setHopCount((n) => n + 1);
   }, [world]);
 
-  // Game loop.
+  // Game loop. tickWorld now owns step cadence + visual progress so
+  // the render path can lerp segments smoothly between cells.
   useEffect(() => {
     if (world.state !== 'playing') return;
     let raf = 0;
     const loop = (now: number) => {
       const dtMs = Math.min(60, now - lastFrameRef.current);
       lastFrameRef.current = now;
-      tickWorld(world, dtMs);
-
-      const interval = stepIntervalMs(world);
-      if (world.worldTimeMs - lastStepAtRef.current >= interval) {
-        lastStepAtRef.current = world.worldTimeMs;
-        const prevApples = world.applesEaten;
-        const prevPellets = world.pelletsEaten;
-        const moved = stepWorld(world);
-        if (moved) {
-          if (world.applesEaten > prevApples) {
-            sfx.play('pop', { pitch: 0.95 + Math.random() * 0.3 });
-            haptic('success');
-          }
-          if (world.pelletsEaten > prevPellets) {
-            sfx.play('bing');
-            haptic('success');
-          }
+      const prevApples = world.applesEaten;
+      const prevPellets = world.pelletsEaten;
+      const steps = tickWorld(world, dtMs);
+      if (steps > 0) {
+        if (world.applesEaten > prevApples) {
+          sfx.play('pop', { pitch: 0.95 + Math.random() * 0.3 });
+          haptic('success');
+        }
+        if (world.pelletsEaten > prevPellets) {
+          sfx.play('bing');
+          haptic('success');
         }
       }
       force((n) => n + 1);
@@ -194,20 +187,27 @@ export function App() {
     else hopOrSetDir(dy > 0 ? 'S' : 'N');
   };
 
-  // Snake/apple/pellet rendering as a grid of coloured cells.
-  const cells = useMemo(() => {
-    const out = new Map<string, 'head' | 'body' | 'apple' | 'pellet'>();
-    for (let i = 0; i < world.snake.length; i++) {
-      const s = world.snake[i]!;
-      out.set(`${s.c},${s.r}`, i === 0 ? 'head' : 'body');
-    }
-    out.set(`${world.apple.c},${world.apple.r}`, 'apple');
-    if (world.pellet) out.set(`${world.pellet.cell.c},${world.pellet.cell.r}`, 'pellet');
-    return out;
-  }, [world]);
-
   const dpadVisible = hopCount < DPAD_FADE_AFTER_HOPS;
   const speedPct = Math.round(((BASE_STEP_MS - stepIntervalMs(world)) / BASE_STEP_MS) * 100);
+
+  // Segments rendered as absolute-positioned overlays — each
+  // interpolates its prev → cur cell via stepProgress for smooth
+  // gliding instead of cell-to-cell teleporting.
+  const segmentNodes = world.snake.map((_, i) => {
+    const vp = visualPosition(world, i);
+    return (
+      <span
+        key={`seg-${i}-${world.snake.length}`}
+        className={`seg${i === 0 ? ' seg-head' : ''}`}
+        style={{
+          left: `${(vp.c / SIZE) * 100}%`,
+          top: `${(vp.r / SIZE) * 100}%`,
+          width: `${100 / SIZE}%`,
+          height: `${100 / SIZE}%`,
+        }}
+      />
+    );
+  });
 
   return (
     <main className="app">
@@ -241,30 +241,54 @@ export function App() {
         onPointerUp={onPointerUp}
         role="application"
       >
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}>
-          {Array.from({ length: SIZE * SIZE }, (_, idx) => {
-            const c = idx % SIZE;
-            const r = Math.floor(idx / SIZE);
-            const kind = cells.get(`${c},${r}`);
-            return (
-              <span
-                key={idx}
-                className={`cell${kind ? ` cell-${kind}` : ''}`}
-                aria-hidden
-              />
-            );
-          })}
+        <div className="grid">
+          {/* Snake segments + apple + pellet rendered as absolute
+              overlays so their visual positions can lerp smoothly
+              instead of teleporting between grid cells. */}
+          {segmentNodes}
+          <span
+            className="apple"
+            style={{
+              left: `${(world.apple.c / SIZE) * 100}%`,
+              top: `${(world.apple.r / SIZE) * 100}%`,
+              width: `${100 / SIZE}%`,
+              height: `${100 / SIZE}%`,
+            }}
+            aria-hidden
+          />
+          {world.pellet ? (
+            <span
+              className="pellet"
+              style={{
+                left: `${(world.pellet.cell.c / SIZE) * 100}%`,
+                top: `${(world.pellet.cell.r / SIZE) * 100}%`,
+                width: `${100 / SIZE}%`,
+                height: `${100 / SIZE}%`,
+              }}
+              aria-hidden
+            />
+          ) : null}
         </div>
-
-        {dpadVisible ? (
-          <div className="dpad" aria-hidden>
-            <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('N'); }} className="dpad-up">▲</button>
-            <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('W'); }} className="dpad-left">◀</button>
-            <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('E'); }} className="dpad-right">▶</button>
-            <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('S'); }} className="dpad-down">▼</button>
-          </div>
-        ) : null}
       </div>
+
+      {dpadVisible ? (
+        <section className="dpad-row" aria-hidden>
+          <button type="button" className="dpad-btn"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('W'); }}
+          >◀</button>
+          <div className="dpad-stack">
+            <button type="button" className="dpad-btn"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('N'); }}
+            >▲</button>
+            <button type="button" className="dpad-btn"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('S'); }}
+            >▼</button>
+          </div>
+          <button type="button" className="dpad-btn"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('E'); }}
+          >▶</button>
+        </section>
+      ) : null}
 
       {world.state === 'over' ? (
         <section className="overlay" aria-live="polite">

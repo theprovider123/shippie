@@ -227,14 +227,24 @@ export function App() {
         role="application"
       >
         <canvas ref={canvasRef} width={MAZE_W * 24} height={MAZE_H * 24} className="field" />
-
-        <div className="dpad" aria-hidden>
-          <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('N'); }} className="dpad-up">▲</button>
-          <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('W'); }} className="dpad-left">◀</button>
-          <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('E'); }} className="dpad-right">▶</button>
-          <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('S'); }} className="dpad-down">▼</button>
-        </div>
       </div>
+
+      <section className="dpad-row" aria-hidden>
+        <button type="button" className="dpad-btn"
+          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('W'); }}
+        >◀</button>
+        <div className="dpad-stack">
+          <button type="button" className="dpad-btn"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('N'); }}
+          >▲</button>
+          <button type="button" className="dpad-btn"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('S'); }}
+          >▼</button>
+        </div>
+        <button type="button" className="dpad-btn"
+          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); issueDirection('E'); }}
+        >▶</button>
+      </section>
 
       {world.state !== 'playing' ? (
         <section className="overlay" aria-live="polite">

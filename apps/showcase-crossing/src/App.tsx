@@ -205,6 +205,7 @@ export function App() {
   const tickRef = useRef(0);
   const lastFrameRef = useRef(performance.now());
   const lastHopAtRef = useRef(performance.now());
+  const holdRepeatRef = useRef<number | null>(null);
   const frogRef = useRef<Frog>({ col: Math.floor(COLS / 2), row: 0, drift: 0 });
   const hopRef = useRef<{ from: { col: number; row: number }; to: { col: number; row: number }; until: number } | null>(null);
   const bufferedHopRef = useRef<{ dx: number; dy: number } | null>(null);
@@ -355,6 +356,38 @@ export function App() {
     setShields((n) => n); // shields persist between stages
   }, [stage, lives, mode, score, multiplier]);
 
+  /**
+   * Begin a repeating hop in (dx, dy). Fires the first hop now, then
+   * every 140ms while the pointer stays down (longer than
+   * HOP_DURATION_MS so each new hop starts cleanly after the previous
+   * one lands). The interval clears on `stopRepeat`.
+   */
+  const startRepeat = useCallback((dx: number, dy: number) => {
+    if (holdRepeatRef.current !== null) {
+      window.clearInterval(holdRepeatRef.current);
+      holdRepeatRef.current = null;
+    }
+    holdRepeatRef.current = window.setInterval(() => {
+      hopRepeatFire(dx, dy);
+    }, 140);
+  }, []);
+
+  const stopRepeat = useCallback(() => {
+    if (holdRepeatRef.current !== null) {
+      window.clearInterval(holdRepeatRef.current);
+      holdRepeatRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => stopRepeat(), [stopRepeat]);
+
+  // Helper used by the repeat interval — doesn't capture `hop`
+  // because that callback recreates on every phase change.
+  function hopRepeatFire(dx: number, dy: number): void {
+    hopFnRef.current?.(dx, dy);
+  }
+  const hopFnRef = useRef<((dx: number, dy: number) => void) | null>(null);
+
   const hop = useCallback((dx: number, dy: number) => {
     if (phase !== 'playing') return;
     if (hopRef.current) {
@@ -384,6 +417,10 @@ export function App() {
       setMultiplier(1);
     }
   }, [phase]);
+
+  // Keep hopFnRef pointing at the latest hop callback so the
+  // hold-repeat interval can call into it without restarting.
+  useEffect(() => { hopFnRef.current = hop; }, [hop]);
 
   // Keyboard input.
   useEffect(() => {
@@ -697,28 +734,42 @@ export function App() {
           </span>
         ) : null}
 
-        {/* On-screen D-pad — fades after a few hops once the player groks it */}
+        {/* On-screen D-pad — fades after a few hops once the player
+            groks it. Each button: tap = single hop, hold = repeat at
+            140ms cadence so the frog moves continuously while held. */}
         {phase === 'playing' && dpadVisible ? (
           <div className="dpad" aria-hidden>
             <button
               type="button"
               className="dpad-up"
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, 1); }}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, 1); startRepeat(0, 1); }}
+              onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
+              onPointerCancel={() => stopRepeat()}
+              onPointerLeave={() => stopRepeat()}
             >▲</button>
             <button
               type="button"
               className="dpad-left"
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(-1, 0); }}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(-1, 0); startRepeat(-1, 0); }}
+              onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
+              onPointerCancel={() => stopRepeat()}
+              onPointerLeave={() => stopRepeat()}
             >◀</button>
             <button
               type="button"
               className="dpad-right"
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(1, 0); }}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(1, 0); startRepeat(1, 0); }}
+              onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
+              onPointerCancel={() => stopRepeat()}
+              onPointerLeave={() => stopRepeat()}
             >▶</button>
             <button
               type="button"
               className="dpad-down"
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, -1); }}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, -1); startRepeat(0, -1); }}
+              onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
+              onPointerCancel={() => stopRepeat()}
+              onPointerLeave={() => stopRepeat()}
             >▼</button>
           </div>
         ) : null}
