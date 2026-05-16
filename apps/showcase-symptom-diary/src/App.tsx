@@ -12,7 +12,7 @@
  * The app records what the user types. It doesn't interpret.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { createLocalNavigation, migrateLocalDbTablesToDocument } from '@shippie/sdk/wrapper';
 import { Today } from './pages/Today.tsx';
 import { History } from './pages/History.tsx';
 import { Symptoms } from './pages/Symptoms.tsx';
@@ -35,6 +35,16 @@ import {
 } from './db/queries.ts';
 import { seedIfEmpty } from './db/seed.ts';
 import type { Medication, Symptom, SymptomScale } from './db/schema.ts';
+import {
+  ENTRIES_TABLE,
+  MEDICATIONS_TABLE,
+  MED_DOSES_TABLE,
+  SYMPTOMS_TABLE,
+  entriesSchema,
+  medDosesSchema,
+  medicationsSchema,
+  symptomsSchema,
+} from './db/schema.ts';
 import { createShippieIframeSdk, type IntentBroadcast } from '@shippie/iframe-sdk';
 
 type Tab = 'today' | 'history' | 'symptoms' | 'medications' | 'print';
@@ -70,6 +80,15 @@ export function App() {
     (async () => {
       try {
         await seedIfEmpty(db);
+        await migrateLocalDbTablesToDocument(db, {
+          appSlug: 'symptom-diary',
+          tables: [
+            { name: SYMPTOMS_TABLE, schema: symptomsSchema },
+            { name: ENTRIES_TABLE, schema: entriesSchema },
+            { name: MEDICATIONS_TABLE, schema: medicationsSchema },
+            { name: MED_DOSES_TABLE, schema: medDosesSchema },
+          ],
+        });
       } catch (err) {
         // Empty DB is the recoverable state; seed failure shouldn't block.
         console.warn('[symptom-diary] seed failed', err);

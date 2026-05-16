@@ -29,7 +29,7 @@ import {
   notePersonalDataLeak,
 } from './kind-emitter.ts';
 import { installAppLifecycleReporter } from './lifecycle.ts';
-import { openYourData } from './your-data-panel.ts';
+import { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
 
 interface AppMetaPayload {
   slug: string;
@@ -42,6 +42,12 @@ interface AppMetaPayload {
   backend_url?: string | null;
   workflow_probes?: string[];
   allowed_connect_domains?: string[];
+  data?: {
+    localStorage?: {
+      keys?: readonly string[];
+      prefixes?: readonly string[];
+    };
+  };
 }
 
 type BeforeInstallPromptEvent = Event & {
@@ -108,6 +114,12 @@ async function loadMeta(): Promise<AppMetaPayload | null> {
     if (!r.ok) return null;
     const data = (await r.json()) as AppMetaPayload;
     appMeta = data;
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __shippie_meta?: { appSlug?: string } & AppMetaPayload }).__shippie_meta = {
+        ...data,
+        appSlug: data.slug,
+      };
+    }
     return data;
   } catch {
     return null;
@@ -162,7 +174,11 @@ const shippie = {
   // Mounts the Shadow-DOM "Your Data" panel so makers can drop a
   // `<button onClick={() => shippie.openYourData()}>` anywhere and
   // users see backup / export / receipts in one place.
-  openYourData: () => openYourData(),
+  openYourData: (options?: YourDataPanelOptions) => openYourData({
+    ...options,
+    appSlug: options?.appSlug ?? appMeta?.slug,
+    inheritedStorage: options?.inheritedStorage ?? appMeta?.data?.localStorage,
+  }),
   // Phase 2+ surfaces — keep the API shape stable for maker code,
   // forward to dev-stub warnings until the real wiring lands.
   auth: {

@@ -26,6 +26,7 @@ import type {
   Tournament,
   TournamentEvent,
   TournamentMatch,
+  Broadcast,
 } from '../types';
 import { newId, newEventCode, timeNow, timeRank } from './ids';
 import { paletteFor } from '../data/themes';
@@ -121,6 +122,7 @@ export const initialState: CrewtripState = {
   polls: [
     {
       id: 'p1',
+      dayId: 'day-1',
       question: 'What should the crew choose first?',
       closes: 'Open',
       open: true,
@@ -254,7 +256,6 @@ export function normalizeCrewtripState(state: CrewtripState): CrewtripState {
     messages: state.messages ?? initialState.messages,
     pulses: state.pulses ?? initialState.pulses,
     surprises: state.surprises ?? initialState.surprises,
-    soundtracks: state.soundtracks ?? initialState.soundtracks,
     tournaments: (state.tournaments ?? []).map((tournament) => ({
       ...tournament,
       status: tournament.status ?? 'setup',
@@ -276,15 +277,18 @@ export function normalizeCrewtripState(state: CrewtripState): CrewtripState {
     stops: state.stops.map((stop, index) => ({ ...stop, dayId: stop.dayId ?? days[Math.min(index, days.length - 1)]?.id ?? days[0]!.id })),
     polls: state.polls.map((poll) => ({
       ...poll,
+      dayId: poll.dayId ?? days[0]!.id,
       options: poll.options.map((option) => ({ ...option, voterIds: option.voterIds ?? legacyVoteIds(option) })),
     })),
     challenges: state.challenges.map((challenge) => ({
       ...challenge,
+      dayId: challenge.dayId ?? days[0]!.id,
       status: challenge.status ?? 'open',
       doneBy: challenge.doneBy ?? [],
       submissions: (challenge.submissions ?? []).map((submission) => ({ ...submission, cheers: submission.cheers ?? [] })),
     })),
     memories: state.memories.map((memory) => ({ ...memory, dayId: memory.dayId ?? days[0]!.id, at: memory.at ?? 'Now' })),
+    soundtracks: (state.soundtracks ?? initialState.soundtracks).map((slot) => ({ ...slot, dayId: slot.dayId ?? days[0]!.id })),
   };
 }
 
@@ -633,6 +637,25 @@ export function playlistProviderLabel(raw?: string): string {
   return 'Open playlist';
 }
 
+const GENERATED_BROADCAST_PATTERNS = [
+  /^Host updated the plan:/i,
+  /^Crew request (?:shared|added to plan|is now a vote|became a game):/i,
+  /^Host scheduled a surprise:/i,
+  /^.+ template applied\.$/i,
+  /^.+ joined the crew\.$/i,
+  /^.+ voted\.$/i,
+  /^.+ added proof for .+\.$/i,
+  /^.+ saved a memory\.$/i,
+  /^.+ uploaded (?:a video|a photo)\.$/i,
+  /^.+ added .+ to the soundtrack\.$/i,
+  /^[^:]{1,80}: (?:Hype|Ready|Hungry|Lost|Vote|Moment)$/i,
+];
+
+export function isMeaningfulBroadcast(broadcast: Broadcast): boolean {
+  if (/^tour-/.test(broadcast.id)) return false;
+  return !GENERATED_BROADCAST_PATTERNS.some((pattern) => pattern.test(broadcast.text));
+}
+
 function newestRank(items: Array<{ at?: string }>): number {
   const newest = Math.min(...items.map((item) => timeRank(item.at)));
   const now = timeRank(timeNow());
@@ -683,7 +706,7 @@ export function buildLiveActivities(state: CrewtripState, sync: SyncState, group
       at: pulse.at,
       kind: 'pulse' as const,
     })),
-    ...state.broadcasts.slice(0, 5).map((broadcast) => ({ id: `broadcast-${broadcast.id}`, text: broadcast.text, at: broadcast.at, kind: 'host' as const })),
+    ...state.broadcasts.filter(isMeaningfulBroadcast).slice(0, 5).map((broadcast) => ({ id: `broadcast-${broadcast.id}`, text: broadcast.text, at: broadcast.at, kind: 'host' as const })),
     ...state.memories.slice(0, 4).map((memory) => ({ id: `memory-${memory.id}`, text: `${memory.author} added ${memory.kind === 'text' ? 'a memory' : memory.kind}`, at: memory.at ?? 'Now', kind: 'memory' as const })),
     ...state.challenges.flatMap((challenge) => (challenge.submissions ?? []).slice(0, 2).map((submission) => ({ id: `entry-${challenge.id}-${submission.id}`, text: `${submission.playerName} submitted proof`, at: submission.at, kind: 'game' as const }))),
     ...tournamentActivities,
@@ -895,9 +918,9 @@ export function buildWrapHighlights(state: CrewtripState, awards: CrewAward[], g
 }
 
 export function buildTripTimelineItems(state: CrewtripState, activeDayId: string, days: TripDay[], groups: CrewGroup[], role: Role | null, activePlayer: Player): TripTimelineItem[] {
-  const dayLabel = days.find((day) => day.id === activeDayId)?.label ?? 'Day';
+  const fallbackDayId = days[0]?.id ?? activeDayId;
   const stopItems: TripTimelineItem[] = state.stops
-    .filter((stop) => (stop.dayId ?? days[0]?.id) === activeDayId)
+    .filter((stop) => (stop.dayId ?? fallbackDayId) === activeDayId)
     .map((stop) => ({
       id: `stop-${stop.id}`,
       stopId: stop.id,
@@ -909,16 +932,8 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
         : stop.groupId ? `${stop.place} / ${groups.find((group) => group.id === stop.groupId)?.name ?? 'Group'}` : stop.place,
       status: stop.status,
     }));
-  const broadcastItems: TripTimelineItem[] = state.broadcasts.slice(0, 3).map((broadcast) => ({
-    id: `broadcast-${broadcast.id}`,
-    time: broadcast.at || 'TBC',
-    kind: 'host',
-    title: broadcast.text,
-    detail: dayLabel,
-    tab: 'host',
-  }));
   const pollItems: TripTimelineItem[] = state.polls
-    .filter((poll) => poll.open)
+    .filter((poll) => poll.open && (poll.dayId ?? fallbackDayId) === activeDayId)
     .slice(0, 2)
     .map((poll) => ({
       id: `poll-${poll.id}`,
@@ -929,7 +944,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       tab: 'vote',
     }));
   const gameItems: TripTimelineItem[] = state.challenges
-    .filter((challenge) => (challenge.dayId ?? activeDayId) === activeDayId && canSeeChallenge(challenge, role, activePlayer))
+    .filter((challenge) => (challenge.dayId ?? fallbackDayId) === activeDayId && canSeeChallenge(challenge, role, activePlayer))
     .map((challenge) => ({
       id: `game-${challenge.id}`,
       time: challenge.deadline ?? 'TBC',
@@ -941,7 +956,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       challengeId: challenge.id,
     }));
   const soundtrackItems: TripTimelineItem[] = (state.soundtracks ?? [])
-    .filter((slot) => (slot.dayId ?? activeDayId) === activeDayId)
+    .filter((slot) => (slot.dayId ?? fallbackDayId) === activeDayId)
     .map((slot) => ({
       id: `soundtrack-${slot.id}`,
       time: slot.time || 'TBC',
@@ -952,7 +967,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
     }));
   const tournamentItems: TripTimelineItem[] = (state.tournamentEvents ?? [])
     .filter(() => state.features?.tournaments || role === 'host')
-    .filter((event) => (event.unlockDayId ?? activeDayId) === activeDayId)
+    .filter((event) => (event.unlockDayId ?? fallbackDayId) === activeDayId)
     .map((event) => {
       const tournament = state.tournaments.find((item) => item.id === event.tournamentId);
       const eventMatches = (state.tournamentMatches ?? [])
@@ -993,7 +1008,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       };
     });
   const memoryItems: TripTimelineItem[] = state.memories
-    .filter((memory) => (memory.dayId ?? days[0]?.id) === activeDayId)
+    .filter((memory) => (memory.dayId ?? fallbackDayId) === activeDayId)
     .slice(0, 4)
     .map((memory) => ({
       id: `memory-${memory.id}`,
@@ -1003,7 +1018,7 @@ export function buildTripTimelineItems(state: CrewtripState, activeDayId: string
       detail: memory.author,
       tab: 'memories',
     }));
-  return [...stopItems, ...broadcastItems, ...pollItems, ...gameItems, ...tournamentItems, ...soundtrackItems, ...memoryItems]
+  return [...stopItems, ...pollItems, ...gameItems, ...tournamentItems, ...soundtrackItems, ...memoryItems]
     .sort((a, b) => timeRank(a.time) - timeRank(b.time));
 }
 

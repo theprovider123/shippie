@@ -139,6 +139,7 @@
   } from '$lib/container/local-package-store';
 
   let { data }: { data: PageData } = $props();
+  type PrivateJoinData = NonNullable<PageData['privateJoin']>;
 
   const initialFocusedApp = untrack(() => (
     data.focused
@@ -205,6 +206,7 @@
   let restorePassphrase = $state('');
   let restorePayload = $state('');
   let restoreStatus = $state('');
+  let dataRecoveryStatus = $state('');
   let packageImportPayload = $state('');
   let packageImportStatus = $state('');
   let packageDropActive = $state(false);
@@ -215,6 +217,9 @@
   let collectionStatus = $state('');
   let activeCollection = $state<AppCollectionManifest | null>(null);
   let installingPackageHash = $state<string | null>(null);
+  let privateJoinAttempted = $state(false);
+  let privateJoinStatus = $state('');
+  let privateJoinState = $state<'loading' | 'ready' | 'error'>('loading');
   let rowsByApp = $state<Record<string, LocalRow[]>>({});
   let logs = $state<BridgeLog[]>([]);
   let bridgeStatus = $state<'waiting' | 'ready'>('waiting');
@@ -1612,6 +1617,81 @@
     persistContainerState(nextRowsByApp);
   }
 
+  function showPrivateRecoveryStatus(action: 'add-device' | 'move-phone' | 'recovery-card' | 'restore') {
+    const messages = {
+      'add-device': 'Add another device will use a one-time sealed handover. No raw keys get uploaded.',
+      'move-phone': 'Move to new phone will copy your sealed access bundle, then let you choose whether to keep this phone active.',
+      'recovery-card': 'Recovery cards are the paper fallback for browser storage wipes. Keep the card private: it can restore access.',
+      restore: 'Restore accepts a transfer link, QR scan, or recovery card. Shippie relays sealed copies but cannot open them.',
+    } satisfies Record<typeof action, string>;
+    dataRecoveryStatus = messages[action];
+  }
+
+  async function openContainerYourData(
+    action: 'add-device' | 'move-phone' | 'recovery-card' | 'restore',
+    transferId?: string | null,
+  ) {
+    showPrivateRecoveryStatus(action);
+    if (action === 'restore' && transferId) {
+      setIncomingJoinTransferId(transferId);
+    }
+    const activeApp = activeAppId ? appById.get(activeAppId) : null;
+    const appSlug = activeApp?.slug ?? 'container';
+    try {
+      const { openYourData } = await import('@shippie/sdk/wrapper');
+      openYourData({
+        appSlug,
+        transferRelayOrigin: window.location.origin,
+      });
+      if (action === 'restore' && !transferId && !readIncomingJoinTransferId()) {
+        dataRecoveryStatus = 'Choose Restore data in the panel to paste a transfer link, scan a QR, or use a recovery card.';
+      }
+    } catch (err) {
+      console.info('shippie:container Your Data overlay unavailable', err);
+      dataRecoveryStatus = 'Your Data is available from each app’s Shippie menu. This container could not open the overlay.';
+    }
+  }
+
+  function readIncomingJoinTransferId(): string | null {
+    if (typeof window === 'undefined') return null;
+    const url = new URL(window.location.href);
+    const hash = url.hash.replace(/^#/, '');
+    const hashParams = new URLSearchParams(hash);
+    return transferIdFromJoinValue(
+      hashParams.get('shippie-restore') ??
+        url.searchParams.get('shippie-restore') ??
+        url.searchParams.get('transfer') ??
+        url.searchParams.get('code'),
+    );
+  }
+
+  function transferIdFromJoinValue(value: string | null | undefined): string | null {
+    const raw = value?.trim();
+    if (!raw) return null;
+    try {
+      const url = new URL(raw);
+      const hash = url.hash.replace(/^#/, '');
+      const hashParams = new URLSearchParams(hash);
+      const fromUrl =
+        hashParams.get('shippie-restore') ??
+        url.searchParams.get('shippie-restore') ??
+        url.searchParams.get('transfer') ??
+        url.searchParams.get('code');
+      if (fromUrl) return transferIdFromJoinValue(fromUrl);
+    } catch {
+      // Raw transfer codes are expected.
+    }
+    const match = raw.match(/\btransfer_[A-Za-z0-9_-]{8,}\b/);
+    return match ? (match[0] ?? null) : null;
+  }
+
+  function setIncomingJoinTransferId(transferId: string) {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.hash = `shippie-restore=${encodeURIComponent(transferId)}`;
+    window.history.replaceState(window.history.state, '', url);
+  }
+
   function uninstallApp(appId: string) {
     hosts.get(appId)?.dispose();
     hosts.delete(appId);
@@ -1830,8 +1910,13 @@
     }
   }
 
-  async function cacheBuiltPackage(built: Awaited<ReturnType<typeof readShippiePackageArchive>>): Promise<ContainerApp> {
-    const { app, packageFiles } = installBuiltPackage(built);
+  async function cacheBuiltPackage(
+    built: Awaited<ReturnType<typeof readShippiePackageArchive>>,
+    registryApp?: ContainerApp | null,
+  ): Promise<ContainerApp> {
+    const installed = installBuiltPackage(built);
+    const app = registryApp ? mergeInstalledPackageApp(installed.app, registryApp) : installed.app;
+    const packageFiles = installed.packageFiles;
     importedApps = [...importedApps.filter((existing) => existing.id !== app.id), app];
     packageFilesByApp = {
       ...packageFilesByApp,
@@ -1840,6 +1925,69 @@
     void saveImportedPackage(app.id, packageFiles);
     openApp(app.id);
     return app;
+  }
+
+  function mergeInstalledPackageApp(installed: ContainerApp, registryApp: ContainerApp): ContainerApp {
+    return {
+      ...installed,
+      description: registryApp.description || installed.description,
+      labelKind: registryApp.labelKind,
+      icon: registryApp.icon,
+      accent: registryApp.accent,
+      version: registryApp.version,
+      standaloneUrl: registryApp.standaloneUrl,
+      visibility: registryApp.visibility,
+      owned: registryApp.owned,
+      permissions: registryApp.permissions,
+      trust: registryApp.trust,
+      category: registryApp.category ?? installed.category,
+      surface: registryApp.surface ?? installed.surface,
+      devUrl: registryApp.devUrl ?? installed.devUrl,
+    };
+  }
+
+  async function installPrivateJoinPackage(join: PrivateJoinData) {
+    const registryApp = findRequestedApp(baseApps, join.appSlug);
+    const appName = registryApp?.name ?? join.appName;
+    privateJoinState = 'loading';
+    privateJoinStatus = `Joining ${appName}...`;
+
+    try {
+      if (registryApp && packageFilesByApp[registryApp.id]) {
+        openApp(registryApp.id);
+        privateJoinState = 'ready';
+        privateJoinStatus = `${registryApp.name} is ready on this device.`;
+        await maybeOpenPrivateJoinRestore(join);
+        return;
+      }
+
+      const response = await fetch(join.packageUrl, {
+        headers: { Accept: 'application/vnd.shippie.package+json' },
+      });
+      if (!response.ok) {
+        throw new Error(`Private package returned ${response.status}.`);
+      }
+      const built = await readShippiePackageArchive(new Uint8Array(await response.arrayBuffer()));
+      if (built.packageHash !== join.packageHash) {
+        throw new Error('Downloaded package hash does not match the invite.');
+      }
+      const app = await cacheBuiltPackage(built, registryApp);
+      privateJoinState = 'ready';
+      privateJoinStatus = `${app.name} is installed and ready on this device.`;
+      await maybeOpenPrivateJoinRestore(join);
+    } catch (err) {
+      if (registryApp) openApp(registryApp.id);
+      privateJoinState = 'error';
+      privateJoinStatus = err instanceof Error ? err.message : `Could not install ${appName}.`;
+    }
+  }
+
+  async function maybeOpenPrivateJoinRestore(join: PrivateJoinData) {
+    const transferId = join.transferId ?? readIncomingJoinTransferId();
+    if (!transferId) return;
+    setIncomingJoinTransferId(transferId);
+    privateJoinStatus = 'Private tool ready. Waiting for sealed data access...';
+    await openContainerYourData('restore', transferId);
   }
 
   async function loadCollection() {
@@ -2075,6 +2223,12 @@
   $effect(() => {
     if (!storageReady) return;
     persistContainerState(rowsByApp);
+  });
+
+  $effect(() => {
+    if (!storageReady || privateJoinAttempted || !data.privateJoin) return;
+    privateJoinAttempted = true;
+    void installPrivateJoinPackage(data.privateJoin);
   });
 
   $effect(() => {
@@ -2326,6 +2480,7 @@
   function runtimeSrcFor(app: ContainerApp): string | null {
     const currentUrl = typeof window === 'undefined' ? $page.url : new URL(window.location.href);
     const preferDevUrl = currentUrl.searchParams.get('dev_apps') === '1';
+    if (!preferDevUrl && packageFilesByApp[app.id]) return null;
     const forwardedParams = data.focused && data.requestedAppSlug === app.slug
       ? focusedRuntimeParams(currentUrl.searchParams)
       : undefined;
@@ -2335,7 +2490,16 @@
   function focusedRuntimeParams(params: URLSearchParams): URLSearchParams {
     const forwarded = new URLSearchParams();
     params.forEach((value, key) => {
-      if (key === 'dev_apps' || key === 'focused' || key === 'app' || key === 'shippie_embed') return;
+      if (
+        key === 'dev_apps' ||
+        key === 'focused' ||
+        key === 'app' ||
+        key === 'shippie_embed' ||
+        key === 'join' ||
+        key === 'transfer' ||
+        key === 'code' ||
+        key === 'shippie-restore'
+      ) return;
       forwarded.append(key, value);
     });
     return forwarded;
@@ -2442,6 +2606,11 @@
         {/each}
       {/if}
     </div>
+    {#if privateJoinStatus}
+      <div class="private-join-toast" data-state={privateJoinState} role="status">
+        {privateJoinStatus}
+      </div>
+    {/if}
     <AppSwitcherGesture
       open={focusedDrawerOpen}
       onOpenChange={(value) => (focusedDrawerOpen = value)}
@@ -2753,7 +2922,7 @@
         {:else}
           <div class="section-head">
             <h2>Your Data</h2>
-            <p>Each tool keeps its data on this device. Export your installs and local records without an account.</p>
+            <p>Each tool keeps its data private by default. Apps using Private Sync add sealed recovery copies that Shippie can store but cannot open.</p>
           </div>
           {#if yourDataOpenForApp && appById.get(yourDataOpenForApp)}
             <div class="data-trigger" role="status">
@@ -2761,6 +2930,30 @@
               <button onclick={() => yourDataHost.close()}>Dismiss</button>
             </div>
           {/if}
+          <div class="sealed-data-panel" role="status">
+            <div>
+              <p class="mini-label">Private Sync</p>
+              <h3>Sealed copies, ready for every app</h3>
+              <p>
+                Current and future Shippie apps inherit the same recovery surface: add a device,
+                move phones, restore, and keep safe copies without giving Shippie the contents.
+              </p>
+            </div>
+            <div class="sealed-copy-stack" aria-label="Safe copy status">
+              <span><strong>{installedApps.length}</strong> installed tools covered by Your Data</span>
+              <span><strong>{totalRows}</strong> local rows on this device</span>
+              <span><strong>0</strong> readable rows in Shippie's sealed store</span>
+            </div>
+            <div class="sealed-actions">
+              <button onclick={() => openContainerYourData('add-device')}>Add another device</button>
+              <button onclick={() => openContainerYourData('move-phone')}>Move to new phone</button>
+              <button onclick={() => openContainerYourData('recovery-card')}>Show recovery card</button>
+              <button onclick={() => openContainerYourData('restore')}>Restore data</button>
+            </div>
+            {#if dataRecoveryStatus}
+              <p class="sealed-status">{dataRecoveryStatus}</p>
+            {/if}
+          </div>
           <div class="ai-readiness" role="status">
             <div>
               <p class="mini-label">On-device AI</p>
@@ -3252,6 +3445,52 @@
     font-family: var(--font-mono);
     font-size: var(--caption-size);
   }
+  .sealed-data-panel {
+    padding: var(--space-md);
+    display: grid;
+    gap: var(--space-sm);
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    background: var(--bg-pure);
+  }
+  .sealed-data-panel h3,
+  .sealed-data-panel p {
+    margin: 0;
+  }
+  .sealed-data-panel p:not(.mini-label),
+  .sealed-status {
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+  .sealed-copy-stack {
+    display: grid;
+    gap: 6px;
+    padding: var(--space-sm) 0;
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .sealed-copy-stack span {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+  }
+  .sealed-copy-stack strong {
+    color: var(--text);
+  }
+  .sealed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sealed-actions button {
+    padding: 0.55rem 0.75rem;
+  }
+  .sealed-status {
+    padding-top: var(--space-xs);
+    font-size: var(--small-size);
+  }
   .observation-flows {
     border: 1px solid var(--border-light);
     background: var(--surface);
@@ -3571,6 +3810,31 @@
     place-items: center;
     padding: clamp(1.5rem, 4vw, 3rem);
   }
+  .private-join-toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 1015;
+    max-width: min(520px, calc(100vw - 28px));
+    padding: 10px 14px;
+    border: 1px solid rgba(20, 18, 15, 0.14);
+    background: rgba(255, 253, 247, 0.94);
+    color: #14120F;
+    box-shadow: 0 14px 34px rgba(20, 18, 15, 0.16);
+    font-size: 13px;
+    line-height: 1.35;
+    text-align: center;
+    overflow-wrap: anywhere;
+    backdrop-filter: blur(10px);
+  }
+  .private-join-toast[data-state='ready'] {
+    border-color: rgba(62, 125, 77, 0.32);
+  }
+  .private-join-toast[data-state='error'] {
+    border-color: rgba(178, 58, 43, 0.34);
+    color: #7A2118;
+  }
 
   .sr-only {
     position: fixed;
@@ -3631,7 +3895,7 @@
      bottom or the entire viewport via @shippie/iframe-sdk
      `safeEdges.declareInputRegion()`, shrink the chrome buttons so
      their hit area stops bleeding into game controls. The visible
-     pill still renders as a thin sliver (12px wide) so the user can
+     pill still renders as a thin sliver so the user can
      find their way back to the launcher, but accidental taps from a
      game button next to the edge no longer trigger the drawer.
 
@@ -3639,8 +3903,15 @@
      overlaps Stack's leftmost touch button). 'all' shrinks both. */
   .focused-chrome-button.input-region-bottom.focused-chrome-tools,
   .focused-chrome-button.input-region-all {
-    width: 12px;
-    opacity: 0.18;
+    width: 24px;
+    opacity: 0.52;
+  }
+  .focused-chrome-tools.input-region-bottom,
+  .focused-chrome-tools.input-region-all {
+    left: env(safe-area-inset-left, 0px);
+  }
+  .focused-chrome-options.input-region-all {
+    right: env(safe-area-inset-right, 0px);
   }
   .focused-chrome-button.input-region-bottom.focused-chrome-tools:hover,
   .focused-chrome-button.input-region-bottom.focused-chrome-tools:focus-visible,
@@ -3713,6 +3984,13 @@
     .focused-chrome-options {
       right: calc(env(safe-area-inset-right, 0px) - 16px);
       border-radius: 18px 0 0 18px;
+    }
+    .focused-chrome-tools.input-region-bottom,
+    .focused-chrome-tools.input-region-all {
+      left: env(safe-area-inset-left, 0px);
+    }
+    .focused-chrome-options.input-region-all {
+      right: env(safe-area-inset-right, 0px);
     }
   }
 

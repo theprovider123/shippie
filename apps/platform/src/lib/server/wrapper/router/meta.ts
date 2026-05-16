@@ -16,6 +16,20 @@ interface AppMetaPayload {
   backend_url?: string | null;
   allowed_connect_domains?: string[];
   workflow_probes?: string[];
+  data?: {
+    mode: string;
+    documents: string[];
+    attachments: boolean;
+    recovery: string;
+    migrations: string;
+    snapshots: string;
+    media: string;
+    realtime: string;
+    localStorage?: {
+      keys?: string[];
+      prefixes?: string[];
+    };
+  };
   permissions?: {
     auth: boolean;
     storage: 'none' | 'r' | 'rw';
@@ -49,6 +63,17 @@ export async function handleMeta(ctx: WrapperContext): Promise<Response> {
       backend_url: null,
       allowed_connect_domains: [],
       workflow_probes: [],
+      data: {
+        mode: 'shippie-documents',
+        documents: ['main'],
+        attachments: false,
+        recovery: 'inherited',
+        migrations: 'snapshot-v0',
+        snapshots: 'inherited',
+        media: 'none',
+        realtime: 'inherited',
+        localStorage: { keys: [], prefixes: [] }
+      },
       permissions: {
         auth: false,
         storage: 'none',

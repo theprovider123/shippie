@@ -14,8 +14,10 @@ import {
   clearPollVote,
   createRecoveryPack,
   initialRole,
+  isMeaningfulBroadcast,
   latestLocalBackupForEvent,
   normalizeEventCode,
+  normalizeCrewtripState,
   normalizePlaylistUrl,
   playlistProviderLabel,
   pollSelectionForPlayer,
@@ -246,6 +248,98 @@ describe('App', () => {
     const planItem = items.find((item) => item.kind === 'plan');
 
     expect(planItem?.stopId).toBe('s1');
+  });
+
+  test('keeps generic host broadcasts out of day timelines', () => {
+    const state: CrewtripState = {
+      ...makeState(),
+      days: [
+        { id: 'day-1', label: 'Day 1', date: 'Fri' },
+        { id: 'day-2', label: 'Day 2', date: 'Sat' },
+      ],
+      stops: [
+        { id: 's1', dayId: 'day-1', time: '10:00', title: 'Breakfast', place: 'Cafe', status: 'now' },
+        { id: 's2', dayId: 'day-2', time: '12:00', title: 'Beach', place: 'Pier', status: 'later' },
+      ],
+      broadcasts: [{ id: 'b1', text: 'Host updated the plan: Breakfast', at: '11:00' }],
+    };
+
+    const dayOne = buildTripTimelineItems(state, 'day-1', state.days, state.groups, 'eventee', state.players[0]!);
+    const dayTwo = buildTripTimelineItems(state, 'day-2', state.days, state.groups, 'eventee', state.players[0]!);
+
+    expect(dayOne.some((item) => item.kind === 'host')).toBe(false);
+    expect(dayTwo.some((item) => item.kind === 'host')).toBe(false);
+    expect(dayOne.some((item) => item.stopId === 's1')).toBe(true);
+    expect(dayOne.some((item) => item.stopId === 's2')).toBe(false);
+    expect(dayTwo.some((item) => item.stopId === 's2')).toBe(true);
+    expect(dayTwo.some((item) => item.stopId === 's1')).toBe(false);
+  });
+
+  test('keeps legacy dayless timeline items on the first trip day only', () => {
+    const state: CrewtripState = {
+      ...makeState(),
+      days: [
+        { id: 'day-1', label: 'Day 1', date: 'Fri' },
+        { id: 'day-2', label: 'Day 2', date: 'Sat' },
+      ],
+      stops: [],
+      polls: [{ id: 'p-legacy', question: 'Legacy poll', closes: 'Open', open: true, options: [{ id: 'o1', label: 'Yes', votes: 0 }] }],
+      challenges: [{ id: 'c-legacy', kind: 'mission', title: 'Legacy challenge', points: 5, doneBy: [] }],
+      soundtracks: [{ id: 'dj-legacy', time: '20:00', title: 'Legacy set', dj: 'Host', status: 'later' }],
+      tournaments: [{
+        id: 'tour-legacy',
+        name: 'Legacy tournament',
+        hostId: 'host',
+        createdAt: 1,
+        status: 'setup',
+        leaderboardView: 'points',
+        updatedAt: 1,
+        updatedBy: 'seed',
+      }],
+      tournamentEvents: [{
+        id: 'event-legacy',
+        tournamentId: 'tour-legacy',
+        name: 'Legacy event',
+        format: 'bracket',
+        mode: 'individual',
+        participantIds: ['alex'],
+        status: 'setup',
+        scoringMode: 'placement',
+        order: 1,
+        updatedAt: 1,
+        updatedBy: 'seed',
+      }],
+    };
+
+    const dayOne = buildTripTimelineItems(state, 'day-1', state.days, state.groups, 'host', state.players[0]!);
+    const dayTwo = buildTripTimelineItems(state, 'day-2', state.days, state.groups, 'host', state.players[0]!);
+
+    expect(new Set(dayOne.map((item) => item.id))).toEqual(new Set([
+      'poll-p-legacy',
+      'tournament-event-legacy',
+      'game-c-legacy',
+      'soundtrack-dj-legacy',
+    ]));
+    expect(dayTwo).toEqual([]);
+  });
+
+  test('normalizes legacy dayless trip records onto the first day', () => {
+    const normalized = normalizeCrewtripState({
+      ...makeState(),
+      polls: [{ id: 'p-legacy', question: 'Legacy poll', closes: 'Open', open: true, options: [{ id: 'o1', label: 'Yes', votes: 0 }] }],
+      challenges: [{ id: 'c-legacy', title: 'Legacy challenge', points: 5, doneBy: [] }],
+      soundtracks: [{ id: 'dj-legacy', time: '20:00', title: 'Legacy set', dj: 'Host', status: 'later' }],
+    });
+
+    expect(normalized.polls[0]?.dayId).toBe('day-1');
+    expect(normalized.challenges[0]?.dayId).toBe('day-1');
+    expect(normalized.soundtracks[0]?.dayId).toBe('day-1');
+  });
+
+  test('filters generated broadcast noise from pinned update surfaces', () => {
+    expect(isMeaningfulBroadcast({ id: 'b1', text: 'Host updated the plan: Breakfast', at: '11:00' })).toBe(false);
+    expect(isMeaningfulBroadcast({ id: 'b2', text: 'Alex voted.', at: '11:01' })).toBe(false);
+    expect(isMeaningfulBroadcast({ id: 'b3', text: 'Dinner moved to 19:30. Meet outside.', at: '11:02' })).toBe(true);
   });
 
   test('restores the joined event from a local backup when active storage was replaced', () => {

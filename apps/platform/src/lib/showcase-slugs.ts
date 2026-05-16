@@ -27,13 +27,14 @@ const SLUG_ALIASES: Record<string, string> = {
   // apps. No aliases needed.
 
   // Slate v4 Phase 0 consolidations. Each successor app is a current
-  // first-party showcase (matchday, co-pilot, therapy-notes, lift) so
+  // first-party showcase (match-room, co-pilot, therapy-notes, lift) so
   // the alias is safe to ship now. The retired apps' bundles continue
   // to be baked — their shippie.json declares
   // `curation.surface: 'archived'` so the marketplace hides them, but
   // old direct URLs hit the alias and resolve to the canonical
   // successor via the explicit 302 in /run/[slug]/+page.server.ts.
-  'live-room': 'matchday',
+  'live-room': 'match-room',
+  matchday: 'match-room',
   'care-log': 'co-pilot',
   journal: 'therapy-notes',
   move: 'lift',
@@ -61,6 +62,6 @@ export function containerSlugForRequest(slug: string): string {
 export function canonicalAppUrl(slug: string): string {
   const canonical = canonicalShowcaseSlug(slug);
   return isFirstPartyShowcase(canonical)
-    ? `/run/${encodeURIComponent(canonical)}/`
+    ? `/run/${encodeURIComponent(canonical)}`
     : `https://${slug}.shippie.app/`;
 }

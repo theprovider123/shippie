@@ -131,6 +131,8 @@ describe('dispatchMakerSubdomain', () => {
     expect(res!.headers.get('Content-Type')).toContain('text/html');
     const html = await res!.text();
     expect(html).toContain('Your Data');
+    expect(html).toContain('Shippie stores sealed copies');
+    expect(html).toContain("we can't open");
   });
 
   test('/__shippie/signal/{room} without binding → 503', async () => {

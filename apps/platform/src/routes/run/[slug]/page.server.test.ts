@@ -2,8 +2,8 @@
  * Coverage for /run/[slug]/+page.server.ts.
  *
  * Subdomain redirects live in hooks.server.ts (covered separately).
- * This file proves the bare `/run/<old>/` URL path also 302s to the
- * canonical `/run/<successor>/`, matching the subdomain behaviour. The
+ * This file proves the bare `/run/<old>` URL path also 302s to the
+ * canonical `/run/<successor>`, matching the subdomain behaviour. The
  * v4 plan calls this out explicitly: without an explicit redirect at
  * this layer the URL would silently render the canonical app under the
  * old URL — dishonest URL state and a confusing share story.
@@ -33,12 +33,13 @@ function callLoad({ slug, search = '' }: FakeArgs): unknown {
 
 describe('/run/[slug]/+page.server load', () => {
   for (const [oldSlug, canonical] of [
-    ['live-room', 'matchday'],
+    ['live-room', 'match-room'],
+    ['matchday', 'match-room'],
     ['care-log', 'co-pilot'],
     ['journal', 'therapy-notes'],
     ['move', 'lift'],
   ] as const) {
-    test(`/run/${oldSlug}/ throws redirect(302) to /run/${canonical}/`, () => {
+    test(`/run/${oldSlug} throws redirect(302) to /run/${canonical}`, () => {
       try {
         callLoad({ slug: oldSlug });
         throw new Error('expected redirect to be thrown');
@@ -46,12 +47,12 @@ describe('/run/[slug]/+page.server load', () => {
         // SvelteKit's `redirect()` throws an object with status + location.
         const r = err as { status?: number; location?: string };
         expect(r.status).toBe(302);
-        expect(r.location).toBe(`/run/${canonical}/`);
+        expect(r.location).toBe(`/run/${canonical}`);
       }
     });
   }
 
-  test('canonical /run/recipe/ does NOT redirect (proceeds to load container data)', () => {
+  test('canonical /run/recipe does NOT redirect (proceeds to load container data)', () => {
     // Canonical slug → no redirect thrown. Without platform bindings
     // the load will fail differently (calling loadContainerPageData
     // with platform=undefined), but it should NOT throw a 302 first.
@@ -72,7 +73,7 @@ describe('/run/[slug]/+page.server load', () => {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
       // search string includes the leading '?'
-      expect(r.location).toBe('/run/matchday/?invite=abc');
+      expect(r.location).toBe('/run/match-room?invite=abc');
     }
   });
 });

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Shippie Match Room",
+  "short_name": "Match Room",
+  "slug": "match-room",
+  "description": "Predictions, trivia, sweepstakes, votes, and matchday banter for the 2026 football tournament. No ads, no account.",
+  "icon": "/icon.svg",
+  "start_url": "/run/match-room/",
+  "scope": "/run/match-room/",
+  "theme_color": "#0E5C3A",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "groups": {
+    "enabled": true
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["room-archive"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": ["match-room-theme"],
+      "prefixes": ["shippie.matchRoom."]
+    }
+  },
+  "intents": {
+    "provides": [
+      "matchday-prediction-stats",
+      "tournament-leaderboard",
+      "tournament-fixtures-2026",
+      "city-of-the-day",
+      "live-match-status"
+    ],
+    "consumes": ["user-display-name"]
+  },
+  "data_schemas": {},
+  "curation": {
+    "surface": "featured",
+    "category": "social"
+  }
+}

@@ -131,7 +131,7 @@
   <title>Shippie — small tools that work on your device</title>
   <meta name="description" content="Tap a tool to use it. They run on your device, work offline, and share local signals when it helps. No signup, no install, no subscription." />
   {#each (data.topFourSlugs ?? []) as slug}
-    <link rel="prefetch" href="/run/{slug}/" as="document" />
+    <link rel="prefetch" href="/run/{slug}" as="document" />
     <link rel="prefetch" href="/__shippie-run/{slug}/?shippie_embed=1" as="document" />
   {/each}
 </svelte:head>

@@ -29,6 +29,8 @@ export interface WrapperEnv {
   SIGNAL_ROOM?: DurableObjectNamespace;
   SHIPPIE_ENV: string;
   PUBLIC_ORIGIN: string;
+  SEALED_DOCS_ENABLED?: string;
+  SEALED_DOC_CHANGE_STREAM_ENABLED?: string;
   // Phase 3 secrets — still relevant for some wrapper paths.
   AUTH_SECRET?: string;
   // Invite-cookie HMAC secret (private apps).

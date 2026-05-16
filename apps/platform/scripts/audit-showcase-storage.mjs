@@ -12,6 +12,7 @@ const STATIC_RUN_DIR = join(PLATFORM_DIR, 'static', '__shippie-run');
 const GENERATED_CATALOG = join(PLATFORM_DIR, 'src', 'lib', '_generated', 'showcase-catalog.ts');
 const SOURCE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.svelte']);
 const IGNORED_DIRS = new Set(['.svelte-kit', 'dist', 'node_modules', 'coverage']);
+const DATA_INHERITANCE_SKIP = new Set(['crewtrip']);
 
 const storagePatterns = {
   localDb: /\bshippie\s*\.\s*local\s*\.\s*db\b|\blocal\s*\.\s*db\b|window\.shippie\?\.\s*local\?\.\s*db/,
@@ -64,6 +65,29 @@ function sourceSlug(appDir) {
   }
 
   return appDir.split('/').at(-1)?.replace(/^showcase-/, '') ?? '';
+}
+
+function readManifest(appDir) {
+  const manifestPath = join(appDir, 'shippie.json');
+  if (!existsSync(manifestPath)) return null;
+  try {
+    return JSON.parse(readText(manifestPath));
+  } catch {
+    return null;
+  }
+}
+
+function dataPolicyState(app) {
+  if (DATA_INHERITANCE_SKIP.has(app.slug)) return { ok: true, detail: 'skipped for now' };
+  const data = app.manifest && typeof app.manifest.data === 'object' && app.manifest.data !== null
+    ? app.manifest.data
+    : null;
+  if (!data) return { ok: true, detail: 'inherits default sealed copies' };
+  if (data.mode !== 'shippie-documents') return { ok: false, detail: `data.mode is ${String(data.mode)}` };
+  if (data.recovery !== 'inherited') return { ok: false, detail: 'data.recovery must be inherited' };
+  if (data.realtime !== 'inherited') return { ok: false, detail: 'data.realtime must be inherited' };
+  if (!Array.isArray(data.documents) || data.documents.length === 0) return { ok: false, detail: 'data.documents is empty' };
+  return { ok: true, detail: 'declared sealed copies' };
 }
 
 function generatedSlugs() {
@@ -136,6 +160,7 @@ const sourceApps = listDirs(APPS_DIR)
     return {
       dir,
       slug,
+      manifest: readManifest(dir),
       relativeDir: relative(REPO_ROOT, dir),
       storage: classifySource(dir)
     };
@@ -151,6 +176,7 @@ const warnings = [];
 const dbBackedHosted = [];
 const dbBackedSourceOnly = [];
 const directBrowserStorage = [];
+const dataInherited = [];
 
 for (const slug of hosted) {
   const bridge = bridgeState(slug);
@@ -169,6 +195,10 @@ for (const slug of hosted) {
 }
 
 for (const app of sourceApps) {
+  const dataPolicy = dataPolicyState(app);
+  if (!dataPolicy.ok) failures.push(`${app.slug}: app-data inheritance not enabled (${dataPolicy.detail})`);
+  else dataInherited.push(`${app.slug} (${dataPolicy.detail})`);
+
   const isHosted = hostedSet.has(app.slug);
   if (app.storage.usesLocalDb) {
     if (isHosted) {
@@ -190,6 +220,7 @@ console.log(`[storage-audit] source showcase apps: ${sourceApps.length}`);
 console.log(`[storage-audit] hosted runtimes: ${hosted.length}`);
 console.log(`[storage-audit] DB-backed hosted apps: ${formatList(dbBackedHosted)}`);
 console.log(`[storage-audit] direct browser-storage apps: ${formatList(directBrowserStorage)}`);
+console.log(`[storage-audit] app-data inheritance: ${dataInherited.length} app(s) covered`);
 
 if (dbBackedSourceOnly.length) {
   console.log(`[storage-audit] DB-backed source-only apps: ${formatList(dbBackedSourceOnly)}`);

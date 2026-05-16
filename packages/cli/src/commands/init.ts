@@ -44,6 +44,16 @@ export async function initCommand() {
       haptics: true,
       sound: false,
       ambient: false,
+      data: {
+        mode: 'shippie-documents',
+        documents: ['main'],
+        attachments: false,
+        recovery: 'inherited',
+        migrations: 'snapshot-v0',
+        snapshots: 'inherited',
+        media: 'none',
+        realtime: 'inherited',
+      },
       local: {
         database: false,
         files: false,

@@ -58,7 +58,7 @@
 
   const blurb = $derived(app.tagline ?? app.description ?? `${app.name} on Shippie`);
   const typeLabel = $derived(app.type.toLowerCase() === 'app' ? 'tool' : app.type);
-  const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}/`);
+  const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
   const proofCount = $derived((app.badges ?? []).filter((badge) => badge.proven).length);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');

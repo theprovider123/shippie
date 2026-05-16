@@ -12,6 +12,8 @@ import { ImportCard } from './share/ImportCard.tsx';
 import { checkJournalImport, type JournalImportCheck } from './share/journal-share.ts';
 import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { resolveLocalDb } from './db/runtime.ts';
+import { migrateJournalEntriesToDocument } from './db/document.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_journal' });
 
@@ -42,6 +44,20 @@ export function App() {
   useEffect(() => {
     return () => localNavigation.destroy();
   }, [localNavigation]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await migrateJournalEntriesToDocument(resolveLocalDb());
+      } catch (err) {
+        if (!cancelled) console.info('shippie:journal sealed migration postponed', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     // The SQLCipher status is reported by the runtime via `shippie.local.db.usage()` —

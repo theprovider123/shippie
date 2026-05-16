@@ -19,6 +19,10 @@
     "./wrapper": {
       "types": "./dist/wrapper/index.d.ts",
       "import": "./dist/wrapper/index.js"
+    },
+    "./data-standard": {
+      "types": "./dist/data-standard.d.ts",
+      "import": "./dist/data-standard.js"
     }
   },
   "files": [
@@ -62,6 +66,7 @@
   "dependencies": {
     "@shippie/ambient": "workspace:*",
     "@shippie/backup-providers": "workspace:*",
+    "@shippie/doc": "workspace:*",
     "@shippie/intelligence": "workspace:*",
     "@shippie/proximity": "workspace:*"
   },

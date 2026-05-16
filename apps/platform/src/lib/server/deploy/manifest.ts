@@ -85,6 +85,16 @@ export interface ShippieJsonLite {
     transform?: Record<string, { to: string; copy?: boolean }>;
   };
   /**
+   * Shippie app-data inheritance contract.
+   *
+   * Every app gets the platform Your Data / sealed-copy experience by
+   * default. Makers may explicitly opt out for stateless apps, but
+   * durable app data should flow through Shippie Documents so users can
+   * add devices, move phones, recover from Safari storage wipes, and
+   * keep sealed copies that Shippie can store but cannot open.
+   */
+  data?: ShippieDataPolicy;
+  /**
    * Container commons ownership metadata. These are optional so existing
    * vibe-coded apps still deploy, but when present they travel into the
    * package/source metadata and marketplace ownership surfaces.
@@ -108,6 +118,30 @@ export interface ShippieJsonLite {
   curation?: MakerCuration;
 }
 
+export type ShippieDataMode = 'shippie-documents' | 'local-only' | 'none';
+export type ShippieDataRecovery = 'inherited' | 'none';
+export type ShippieDataMigration = 'snapshot-v0' | 'custom' | 'none';
+export type ShippieDataSnapshots = 'inherited' | 'none';
+export type ShippieDataMedia = 'encrypted-chunked' | 'none';
+export type ShippieDataRealtime = 'inherited' | 'none';
+
+export interface ShippieDataStorageScope {
+  keys: string[];
+  prefixes: string[];
+}
+
+export interface ShippieDataPolicy {
+  mode: ShippieDataMode;
+  documents: string[];
+  attachments: boolean;
+  recovery: ShippieDataRecovery;
+  migrations: ShippieDataMigration;
+  snapshots: ShippieDataSnapshots;
+  media: ShippieDataMedia;
+  realtime: ShippieDataRealtime;
+  localStorage: ShippieDataStorageScope;
+}
+
 export interface DeriveManifestInput {
   slug: string;
   shippieJson?: ShippieJsonLite;
@@ -123,7 +157,16 @@ export interface DerivedManifest {
 export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
   // Maker-provided manifest always wins
   if (input.shippieJson) {
-    return { manifest: { ...input.shippieJson, slug: input.slug }, notes: [] };
+    return {
+      manifest: {
+        ...input.shippieJson,
+        slug: input.slug,
+        data: hasObjectDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
+          ? parseDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
+          : undefined,
+      },
+      notes: [],
+    };
   }
 
   const provided = readShippieJson(input.files);
@@ -156,6 +199,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
           ? (m.workflow_probes.filter((x) => typeof x === 'string') as string[])
           : undefined,
         migrations: parseMigrations(m.migrations),
+        data: hasObjectDataPolicy(m.data) ? parseDataPolicy(m.data) : undefined,
         intents: parseIntents(m.intents),
         source_repo: typeof m.source_repo === 'string' ? m.source_repo : undefined,
         license: typeof m.license === 'string' ? m.license : undefined,
@@ -211,7 +255,132 @@ function defaultManifest(slug: string): ShippieJsonLite {
     category: 'tools',
     theme_color: '#E8603C',
     background_color: '#ffffff',
+    data: defaultDataPolicy(slug),
   };
+}
+
+export function defaultDataPolicy(slug = ''): ShippieDataPolicy {
+  if (slug === 'crewtrip') {
+    return {
+      mode: 'local-only',
+      documents: [],
+      attachments: false,
+      recovery: 'none',
+      migrations: 'none',
+      snapshots: 'none',
+      media: 'none',
+      realtime: 'none',
+      localStorage: { keys: [], prefixes: [] },
+    };
+  }
+  return {
+    mode: 'shippie-documents',
+    documents: ['main'],
+    attachments: false,
+    recovery: 'inherited',
+    migrations: 'snapshot-v0',
+    snapshots: 'inherited',
+    media: 'none',
+    realtime: 'inherited',
+    localStorage: { keys: [], prefixes: [] },
+  };
+}
+
+const DOCUMENT_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
+
+export function parseDataPolicy(raw: unknown): ShippieDataPolicy {
+  const fallback = defaultDataPolicy();
+  if (typeof raw !== 'object' || raw === null) return fallback;
+
+  const obj = raw as Record<string, unknown>;
+  const mode: ShippieDataMode =
+    obj.mode === 'local-only' || obj.mode === 'none' || obj.mode === 'shippie-documents'
+      ? obj.mode
+      : fallback.mode;
+
+  const declaredDocuments = Array.isArray(obj.documents)
+    ? unique(
+        obj.documents.filter(
+          (value): value is string => typeof value === 'string' && DOCUMENT_ID_RE.test(value),
+        ),
+      )
+    : [];
+
+  const documents =
+    declaredDocuments.length > 0
+      ? declaredDocuments
+      : mode === 'shippie-documents'
+        ? fallback.documents
+        : [];
+
+  const recovery: ShippieDataRecovery =
+    obj.recovery === 'inherited' || obj.recovery === 'none'
+      ? obj.recovery
+      : mode === 'shippie-documents'
+        ? 'inherited'
+        : 'none';
+
+  const migrations: ShippieDataMigration =
+    obj.migrations === 'snapshot-v0' || obj.migrations === 'custom' || obj.migrations === 'none'
+      ? obj.migrations
+      : mode === 'shippie-documents'
+        ? 'snapshot-v0'
+        : 'none';
+
+  const snapshots: ShippieDataSnapshots =
+    obj.snapshots === 'inherited' || obj.snapshots === 'none'
+      ? obj.snapshots
+      : mode === 'shippie-documents'
+        ? 'inherited'
+        : 'none';
+
+  const attachments = typeof obj.attachments === 'boolean' ? obj.attachments : false;
+  const media: ShippieDataMedia =
+    obj.media === 'encrypted-chunked' || obj.media === 'none'
+      ? obj.media
+      : mode === 'shippie-documents' && attachments
+        ? 'encrypted-chunked'
+        : 'none';
+
+  const realtime: ShippieDataRealtime =
+    obj.realtime === 'inherited' || obj.realtime === 'none'
+      ? obj.realtime
+      : mode === 'shippie-documents'
+        ? 'inherited'
+        : 'none';
+
+  return {
+    mode,
+    documents,
+    attachments,
+    recovery,
+    migrations,
+    snapshots,
+    media,
+    realtime,
+    localStorage: parseDataStorageScope(obj.localStorage),
+  };
+}
+
+function parseDataStorageScope(raw: unknown): ShippieDataStorageScope {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { keys: [], prefixes: [] };
+  const obj = raw as Record<string, unknown>;
+  return {
+    keys: Array.isArray(obj.keys) ? unique(obj.keys.filter(isSafeStoragePattern)) : [],
+    prefixes: Array.isArray(obj.prefixes) ? unique(obj.prefixes.filter(isSafeStoragePattern)) : [],
+  };
+}
+
+function isSafeStoragePattern(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 160 && !value.startsWith('shippie.inherited-data.v0');
+}
+
+function hasObjectDataPolicy(raw: unknown): boolean {
+  return typeof raw === 'object' && raw !== null && !Array.isArray(raw);
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
 }
 
 /**

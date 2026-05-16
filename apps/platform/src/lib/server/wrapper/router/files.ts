@@ -49,7 +49,7 @@ export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
     }
 
     // Auto-bridge: a maker hasn't published via the deploy pipeline, but a
-    // statically-baked /run/<slug>/ shell exists in Workers Assets. Redirect
+    // statically-baked /run/<slug> shell exists in Workers Assets. Redirect
     // to the canonical static URL so first-party showcases (and seeded apps
     // like mevrouw) work without the maker clicking Ship-Now. Building wins
     // over this — that's why this branch sits below the building check.
@@ -181,7 +181,7 @@ async function tryStaticBridge(
 
   const incoming = new URL(ctx.request.url);
   // Strip leading slash so we don't double up — pathname always starts with /.
-  const targetPath = incoming.pathname === '/' ? '/' : incoming.pathname;
+  const targetPath = incoming.pathname === '/' ? '' : incoming.pathname;
   const target = `https://shippie.app/run/${encodeURIComponent(slug)}${targetPath}${incoming.search}`;
   return new Response(null, {
     status: 302,

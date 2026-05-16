@@ -170,3 +170,37 @@ describe('runHealthCheck — installability meta', () => {
     expect(report.items.find((i) => i.id === 'installable_meta')?.severity).toBe('ok');
   });
 });
+
+describe('runHealthCheck — inherited Your Data', () => {
+  test('passes when the wrapper can inject Your Data', () => {
+    const files = new Map([['index.html', file('<html><head></head><body></body></html>')]]);
+    const report = runHealthCheck(files);
+    const item = report.items.find((i) => i.id === 'your_data_inherited');
+    expect(item?.severity).toBe('ok');
+    expect(item?.title).toContain('Your Data');
+  });
+
+  test('fails when the app disables the wrapper', () => {
+    const files = new Map([['index.html', file('<html><body data-shippie-no-wrapper></body></html>')]]);
+    const report = runHealthCheck(files);
+    const item = report.items.find((i) => i.id === 'your_data_inherited');
+    expect(item?.severity).toBe('fail');
+    expect(report.passed).toBe(false);
+  });
+
+  test('fails when CSP blocks all scripts', () => {
+    const html = `<html><head><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'"></head></html>`;
+    const files = new Map([['index.html', file(html)]]);
+    const report = runHealthCheck(files);
+    const item = report.items.find((i) => i.id === 'your_data_inherited');
+    expect(item?.severity).toBe('fail');
+    expect(report.passed).toBe(false);
+  });
+
+  test('warns when CSP omits same-origin scripts', () => {
+    const html = `<html><head><meta http-equiv="Content-Security-Policy" content="script-src https://cdn.example.com"></head></html>`;
+    const files = new Map([['index.html', file(html)]]);
+    const report = runHealthCheck(files);
+    expect(report.items.find((i) => i.id === 'your_data_inherited')?.severity).toBe('warn');
+  });
+});

@@ -6,6 +6,7 @@ import {
   type SentimentLabel,
   type Topic,
 } from './schema.ts';
+import { rememberJournalEntryDelete, rememberJournalEntryUpsert } from './document.ts';
 
 // Local-DB rows use an `unknown` index signature; our typed entries satisfy
 // the underlying SQL shape but TypeScript doesn't see them as assignable.
@@ -74,6 +75,7 @@ export async function createEntry(db: ShippieLocalDb, input: CreateEntryInput): 
     updated_at: now,
   };
   await db.insert(ENTRIES_TABLE, asRow(row));
+  void rememberJournalEntryUpsert(row);
   return row;
 }
 
@@ -84,11 +86,14 @@ export async function updateEntry(
 ): Promise<void> {
   await ensureSchema(db);
   await db.update<RowOf<JournalEntry>>(ENTRIES_TABLE, id, asRow({ ...patch, updated_at: new Date().toISOString() }));
+  const updated = await getEntry(db, id);
+  if (updated) void rememberJournalEntryUpsert(updated);
 }
 
 export async function deleteEntry(db: ShippieLocalDb, id: string): Promise<void> {
   await ensureSchema(db);
   await db.delete(ENTRIES_TABLE, id);
+  void rememberJournalEntryDelete(id);
 }
 
 export async function searchByVector(

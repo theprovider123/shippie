@@ -134,14 +134,15 @@ describe('hooks.server first-party showcase routing', () => {
   });
 
   // Slate v4 Phase 0 alias coverage. Each consolidation pair has an
-  // entry in SLUG_ALIASES (live-room→matchday, care-log→co-pilot,
+  // entry in SLUG_ALIASES (live-room→match-room, care-log→co-pilot,
   // journal→therapy-notes, move→lift). A request to the OLD slug's
   // subdomain must 302 to the CANONICAL `/run/<successor>/` so old
   // shortcuts visibly migrate. The bare `/run/<old>/` 302 lives in
   // routes/run/[slug]/+page.server.ts (covered by its own test); this
   // covers the subdomain-edge path.
   for (const [oldSlug, canonical] of [
-    ['live-room', 'matchday'],
+    ['live-room', 'match-room'],
+    ['matchday', 'match-room'],
     ['care-log', 'co-pilot'],
     ['journal', 'therapy-notes'],
     ['move', 'lift'],

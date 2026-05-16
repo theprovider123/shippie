@@ -375,7 +375,7 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     icon: 'MR',
     accent: '#0E5C3A',
     category: 'social',
-    port: 5245,
+    port: 5249,
   },
   {
     slug: 'quiet',

@@ -51,7 +51,7 @@ export const load: PageServerLoad = async ({ platform, setHeaders }) => {
           slug: r.slug,
           name: r.name,
           description: r.description ?? r.tagline ?? null,
-          standaloneUrl: `/run/${encodeURIComponent(r.slug)}/`,
+          standaloneUrl: `/run/${encodeURIComponent(r.slug)}`,
           source: 'third-party',
           upvoteCount: r.upvoteCount,
         }));

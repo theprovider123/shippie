@@ -49,7 +49,7 @@
 
   function appHref(appId: string): string | null {
     const slug = appId.replace(/^app_/, '').replace(/_/g, '-');
-    return knownSlugs.has(slug) ? `/run/${slug}/` : null;
+    return knownSlugs.has(slug) ? `/run/${slug}` : null;
   }
 
   function fmtRelative(ts: number): string {

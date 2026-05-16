@@ -14,7 +14,8 @@ import {
 import { readImportFragment } from '@shippie/share';
 import { ImportCard } from './share/ImportCard.tsx';
 import { checkRecipeImport, type RecipeImportCheck } from './share/recipe-import.ts';
-import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { createLocalNavigation, migrateLocalDbTablesToDocument } from '@shippie/sdk/wrapper';
+import { INGREDIENTS_TABLE, RECIPES_TABLE, ingredientsSchema, recipesSchema } from './db/schema.ts';
 
 type Route =
   | { kind: 'list' }
@@ -59,6 +60,13 @@ export function App() {
           setSeedNote(`Seeded ${result.count} example recipes — swipe to delete any of them.`);
           window.setTimeout(() => !cancelled && setSeedNote(null), 6000);
         }
+        await migrateLocalDbTablesToDocument(db, {
+          appSlug: 'recipe',
+          tables: [
+            { name: RECIPES_TABLE, schema: recipesSchema },
+            { name: INGREDIENTS_TABLE, schema: ingredientsSchema },
+          ],
+        });
         // Force RecipeList to re-fetch. Without this, the list mounts and
         // queries the DB before seedIfEmpty resolves, so the seeded rows
         // appear blank until the user navigates away and back. Bumping

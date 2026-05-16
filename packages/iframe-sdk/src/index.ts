@@ -385,9 +385,9 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
       return;
     }
 
-    const root = (w as unknown as { shippie?: { openYourData?: () => void } }).shippie;
+    const root = (w as unknown as { shippie?: { openYourData?: (options?: OpenYourDataOptions) => void } }).shippie;
     if (typeof root?.openYourData === 'function') {
-      root.openYourData();
+      root.openYourData(options);
       return;
     }
 

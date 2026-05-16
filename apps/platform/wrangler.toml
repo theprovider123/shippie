@@ -26,6 +26,10 @@ bucket_name = "shippie-apps-prod"
 binding = "PLATFORM_ASSETS"
 bucket_name = "shippie-assets"
 
+[[r2_buckets]]
+binding = "DOCUMENTS"
+bucket_name = "shippie-documents-prod"
+
 # SvelteKit static-content (CSS, JS, images) — served by Workers Assets.
 # Binding name `ASSETS` is reserved by adapter-cloudflare; keep the R2
 # bucket bound as PLATFORM_ASSETS to avoid the collision.
@@ -87,6 +91,16 @@ class_name = "SignalRoom"
 SHIPPIE_ENV = "production"
 PUBLIC_ORIGIN = "https://shippie.app"
 AUTH_EMAIL_FROM = "Shippie <login@shippie.app>"
+SEALED_DOCS_ENABLED = "true"
+SEALED_DOC_CHANGE_STREAM_ENABLED = "true"
+SEALED_DOC_DAILY_EVENT_LIMIT = "20000"
+SEALED_DOC_DAILY_BYTE_LIMIT = "104857600"
+SEALED_DOC_IP_DAILY_EVENT_LIMIT = "50000"
+SEALED_DOC_DEVICE_DAILY_EVENT_LIMIT = "10000"
+SEALED_DOC_DEVICE_DAILY_BYTE_LIMIT = "262144000"
+SEALED_DOC_MAX_ATTACHMENT_BYTES = "26214400"
+SEALED_DOC_DAILY_ATTACHMENT_BYTE_LIMIT = "1073741824"
+SEALED_DOC_DEVICE_DAILY_ATTACHMENT_BYTE_LIMIT = "536870912"
 
 # Cloudflare populates env.CF_VERSION_METADATA.id with the deployment
 # version ID. The marketplace SW reads it to stamp the cache name so

@@ -36,6 +36,7 @@ import { localizePlanCommand } from './commands/localize-plan.js';
 import { appsCommand } from './commands/apps.js';
 import { logsCommand } from './commands/logs.js';
 import { configCommand } from './commands/config.js';
+import { dataDoctorCommand } from './commands/data.js';
 import { templatesCommand } from './commands/templates.js';
 import { workspaceCommand } from './commands/workspace.js';
 import { promoteCommand, visibilityCommand } from './commands/visibility.js';
@@ -106,6 +107,16 @@ program
   .option('--reset', 'Clear the override and return to deploy defaults')
   .option('--json', 'Emit JSON instead of human-readable output')
   .action(configCommand);
+
+const dataProgram = program
+  .command('data')
+  .description('Inspect Shippie app data inheritance, sealed-copy recovery, and handover readiness');
+
+dataProgram
+  .command('doctor [path]')
+  .description('Validate shippie.json against the Shippie Your Data inheritance contract')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(dataDoctorCommand);
 
 program
   .command('templates [id]')

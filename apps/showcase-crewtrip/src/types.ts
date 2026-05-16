@@ -41,6 +41,7 @@ export interface PollOption {
 
 export interface Poll {
   id: string;
+  dayId?: string;
   question: string;
   closes: string;
   open: boolean;

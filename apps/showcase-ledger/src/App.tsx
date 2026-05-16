@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
-import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { createLocalNavigation, migrateLocalDbTablesToDocument } from '@shippie/sdk/wrapper';
 import { resolveLocalDb } from './db/runtime.ts';
 import {
   formatCents,
@@ -10,6 +10,16 @@ import {
   seedDefaultCategories,
 } from './db/queries.ts';
 import type { Category, Entry } from './db/schema.ts';
+import {
+  CATEGORIES_TABLE,
+  ENTRIES_TABLE,
+  RECURRING_TABLE,
+  SETTINGS_TABLE,
+  categoriesSchema,
+  entriesSchema,
+  recurringSchema,
+  settingsSchema,
+} from './db/schema.ts';
 import { EntryList } from './pages/EntryList.tsx';
 import { MonthView } from './pages/MonthView.tsx';
 import { Categories } from './pages/Categories.tsx';
@@ -62,6 +72,15 @@ export function App() {
     (async () => {
       try {
         await seedDefaultCategories(db);
+        await migrateLocalDbTablesToDocument(db, {
+          appSlug: 'ledger',
+          tables: [
+            { name: ENTRIES_TABLE, schema: entriesSchema },
+            { name: CATEGORIES_TABLE, schema: categoriesSchema },
+            { name: RECURRING_TABLE, schema: recurringSchema },
+            { name: SETTINGS_TABLE, schema: settingsSchema },
+          ],
+        });
         const [cats, cur] = await Promise.all([listCategories(db), getCurrency(db)]);
         if (cancelled) return;
         setCategories(cats);

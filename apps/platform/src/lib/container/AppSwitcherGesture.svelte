@@ -50,6 +50,8 @@
     edgeSwipeMaxAngle?: number;
     /** Width in CSS px of the touch zone along the left edge. */
     edgeGrabberWidth?: number;
+    /** Whether invisible edge gestures should be active. */
+    gestureEnabled?: boolean;
     /** Whether the parent has a meaningful in-tool back action. */
     canGoBack?: boolean;
     /** Triggered by a right-edge swipe when `canGoBack` is true. */
@@ -64,6 +66,7 @@
     edgeSwipeThreshold = 20,
     edgeSwipeMaxAngle = 30,
     edgeGrabberWidth = 24,
+    gestureEnabled = true,
     canGoBack = false,
     onBack = () => {},
   }: Props = $props();
@@ -232,7 +235,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-{#if !open}
+{#if gestureEnabled && !open}
   <div
     class="edge-grabber"
     class:left-edge={edge === 'left'}
@@ -246,7 +249,7 @@
   ></div>
 {/if}
 
-{#if !open && canGoBack}
+{#if gestureEnabled && !open && canGoBack}
   <div
     class="edge-grabber back-edge"
     style:--edge-grabber-width={`${edgeGrabberWidth}px`}

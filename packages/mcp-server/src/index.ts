@@ -11,6 +11,8 @@
  *   templates — list blessed starter templates
  *   remix_info — get source, license, fork URL, and redeploy commands
  *   deploy_workspace — deploy several connected apps from shippie-workspace.json
+ *   data_standard_doc — explain the inherited Your Data / sealed-copy contract
+ *   data_doctor — inspect shippie.json for the app data inheritance contract
  *
  * Note on uploads: `AdmZip` builds the archive in memory (no temp file on
  * disk) and FormData wraps the Buffer into a Blob that Node's undici fetch
@@ -27,7 +29,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import {
   classifyKind,
   computeGraduation,
@@ -61,7 +63,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         '≥44px (Apple HIG) / ≥48dp (Android), and call useKeyboard() from @shippie/sdk if the app ' +
         'has text inputs so the host chrome adapts when the iOS keyboard opens. The deploy pipeline ' +
         'injects an immersive baseline (viewport, sharp-corners, touch-action, iOS standalone metas) ' +
-        'idempotently — but writing in this style means local previews behave like production.',
+        'idempotently — but writing in this style means local previews behave like production. ' +
+        'Apps that store private data inherit Shippie Your Data by declaring data.mode="shippie-documents" ' +
+        'in shippie.json. Shippie stores sealed copies only; raw keys and readable user data must never be uploaded.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -107,7 +111,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         'The HTML must use 100dvh / 100svh (NOT 100vh), env(safe-area-inset-*) for fixed positioning, ' +
         'touch targets ≥44px, and inputs sized ≥16px font-size to prevent iOS zoom-on-focus. ' +
         'Sharp corners (no border-radius) match the Shippie brand. The deploy pipeline injects ' +
-        'viewport + iOS standalone metas idempotently, so the maker only needs to focus on layout.',
+        'viewport + iOS standalone metas idempotently, so the maker only needs to focus on layout. ' +
+        'If the tool stores private data, include shippie.json with data.mode="shippie-documents" ' +
+        'when deploying a directory; single-file HTML tools are treated as sealed-data capable by default.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -310,6 +316,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'data_standard_doc',
+      description:
+        'Return the Shippie app data inheritance contract for AI-built and uploaded apps: shippie.json data block, Your Data recovery, sealed-copy rules, and the raw-key invariant.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
+    },
+    {
+      name: 'data_doctor',
+      description:
+        'Inspect a local app directory for the Shippie Your Data inheritance contract. Use before deploy when an app stores private data or needs cross-device handover.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          directory: {
+            type: 'string',
+            description: 'Absolute path to an app directory, or a path to shippie.json.',
+          },
+        },
+        required: ['directory'],
+      },
+    },
+    {
       name: 'stream',
       description:
         'Replay the Phase 3 deploy event stream for a given deploy_id. Returns a chronological ' +
@@ -428,6 +458,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === 'app_kinds_doc') {
     return handleAppKindsDoc();
+  }
+
+  if (name === 'data_standard_doc') {
+    return handleDataStandardDoc();
+  }
+
+  if (name === 'data_doctor') {
+    return handleDataDoctor(args as { directory: string });
   }
 
   if (name === 'stream') {
@@ -1085,6 +1123,212 @@ function handleAppKindsDoc() {
     'Authoritative reference: docs/app-kinds.md in the Shippie repo.',
   ].join('\n');
   return { content: [{ type: 'text', text }] };
+}
+
+function handleDataStandardDoc() {
+  const text = [
+    'Shippie App Data Inheritance v0',
+    '',
+    'Every Shippie app that stores private data should inherit the same Your Data layer.',
+    'The app does not create its own login, key upload, or cloud account. The wrapper handles',
+    'Add another device, Move to new phone, recovery cards, sealed copies, and replica health.',
+    '',
+    'Required shippie.json block:',
+    JSON.stringify(
+      {
+        data: {
+          mode: 'shippie-documents',
+          documents: ['main'],
+          attachments: false,
+          recovery: 'inherited',
+          migrations: 'snapshot-v0',
+          snapshots: 'inherited',
+          media: 'none',
+          realtime: 'inherited',
+        },
+      },
+      null,
+      2,
+    ),
+    '',
+    'Modes:',
+    '- shippie-documents: private app state becomes encrypted Document events and inherits Your Data.',
+    '- local-only: app intentionally stays on this device; export can still work, sealed copies do not.',
+    '- none: app is stateless or stores no durable private data.',
+    '',
+    'Hard invariant: raw document keys are never uploaded. Only wrapped access bundles and sealed',
+    'encrypted blobs may be relayed by Shippie. Shippie can store copies but cannot open user data.',
+    'Snapshots are inherited so restores can start from sealed checkpoints. Apps with files should',
+    'use encrypted-chunked media so images/audio/PDFs never cross the boundary as raw bytes.',
+    'Realtime sealed sync is inherited so apps do not own polling, retry queues, or handover freshness.',
+    '',
+    'SDK/CLI/MCP:',
+    '- SDK: import { createShippieDataPolicy } from "@shippie/sdk/data-standard".',
+    '- CLI: run `shippie data doctor` before deploy.',
+    '- MCP: call data_doctor before deploying AI-built apps that store private data.',
+  ].join('\n');
+  return { content: [{ type: 'text', text }] };
+}
+
+function handleDataDoctor(args: { directory: string }) {
+  const report = inspectMcpDataPolicy(args.directory);
+  const lines = [`Shippie data doctor: ${report.manifestPath}`];
+  for (const finding of report.findings) {
+    lines.push(`${finding.severity.toUpperCase()} ${finding.message}`);
+  }
+  if (!report.ok) {
+    lines.push('', 'Recommended block:', JSON.stringify({ data: recommendedMcpDataPolicy() }, null, 2));
+  }
+  return {
+    content: [{ type: 'text', text: lines.join('\n') }],
+    isError: !report.ok,
+  };
+}
+
+interface McpDataFinding {
+  severity: 'pass' | 'warn' | 'fail';
+  message: string;
+}
+
+const MCP_DOCUMENT_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
+
+function inspectMcpDataPolicy(pathArg: string): {
+  ok: boolean;
+  manifestPath: string;
+  findings: McpDataFinding[];
+} {
+  const absolute = resolve(pathArg);
+  const manifestPath = absolute.endsWith('shippie.json') ? absolute : join(absolute, 'shippie.json');
+
+  if (!existsSync(manifestPath)) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [{ severity: 'fail', message: 'No shippie.json found.' }],
+    };
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown;
+  } catch (err) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [{ severity: 'fail', message: `Invalid JSON: ${(err as Error).message}` }],
+    };
+  }
+
+  if (typeof raw !== 'object' || raw === null) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [{ severity: 'fail', message: 'shippie.json must be an object.' }],
+    };
+  }
+
+  const data = (raw as Record<string, unknown>).data;
+  if (typeof data !== 'object' || data === null) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [
+        {
+          severity: 'fail',
+          message: 'Missing data block. Durable apps should inherit Your Data sealed copies.',
+        },
+      ],
+    };
+  }
+
+  const obj = data as Record<string, unknown>;
+  if (obj.mode === 'none') {
+    return {
+      ok: true,
+      manifestPath,
+      findings: [{ severity: 'pass', message: 'App declares no durable private data.' }],
+    };
+  }
+  if (obj.mode === 'local-only') {
+    return {
+      ok: true,
+      manifestPath,
+      findings: [{ severity: 'pass', message: 'App is explicitly local-only.' }],
+    };
+  }
+
+  const findings: McpDataFinding[] = [];
+  if (obj.mode !== 'shippie-documents') {
+    findings.push({ severity: 'fail', message: 'data.mode must be "shippie-documents", "local-only", or "none".' });
+  }
+
+  const documents = Array.isArray(obj.documents)
+    ? obj.documents.filter((value): value is string => typeof value === 'string')
+    : [];
+  if (documents.length === 0) {
+    findings.push({ severity: 'fail', message: 'data.documents must include at least one id, usually "main".' });
+  } else {
+    const invalid = documents.filter((id) => !MCP_DOCUMENT_ID_RE.test(id));
+    if (invalid.length > 0) {
+      findings.push({ severity: 'fail', message: `Invalid document id(s): ${invalid.join(', ')}.` });
+    } else {
+      findings.push({ severity: 'pass', message: `Document ids declared: ${documents.join(', ')}.` });
+    }
+  }
+
+  if (obj.recovery !== 'inherited') {
+    findings.push({ severity: 'fail', message: 'data.recovery must be "inherited".' });
+  } else {
+    findings.push({ severity: 'pass', message: 'Your Data recovery is inherited.' });
+  }
+
+  if (typeof obj.attachments !== 'boolean') {
+    findings.push({ severity: 'warn', message: 'data.attachments should be true or false.' });
+  }
+
+  if (obj.snapshots !== 'inherited') {
+    findings.push({
+      severity: 'warn',
+      message: 'data.snapshots should be "inherited" for fast sealed restore checkpoints.',
+    });
+  } else {
+    findings.push({ severity: 'pass', message: 'Sealed snapshots are inherited.' });
+  }
+
+  if (obj.realtime !== 'inherited') {
+    findings.push({
+      severity: 'fail',
+      message: 'data.realtime must be "inherited" so sealed cloud transfer, retry, and cross-device freshness are SDK-owned.',
+    });
+  } else {
+    findings.push({ severity: 'pass', message: 'Realtime sealed sync is inherited.' });
+  }
+
+  if (obj.attachments === true && obj.media !== 'encrypted-chunked') {
+    findings.push({
+      severity: 'warn',
+      message: 'Apps with attachments should set data.media="encrypted-chunked".',
+    });
+  }
+
+  return {
+    ok: findings.every((finding) => finding.severity !== 'fail'),
+    manifestPath,
+    findings,
+  };
+}
+
+function recommendedMcpDataPolicy() {
+  return {
+    mode: 'shippie-documents',
+    documents: ['main'],
+    attachments: false,
+    recovery: 'inherited',
+    migrations: 'snapshot-v0',
+    snapshots: 'inherited',
+    media: 'none',
+    realtime: 'inherited',
+  };
 }
 
 async function main() {

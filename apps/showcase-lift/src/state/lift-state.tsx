@@ -13,7 +13,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { createLocalNavigation, migrateLocalDbTablesToDocument } from '@shippie/sdk/wrapper';
 import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
 import { resolveLocalDb } from '../db/runtime.ts';
 import {
@@ -39,6 +39,28 @@ import type {
   Variant,
   Workout,
   WorkoutStep,
+} from '../db/schema.ts';
+import {
+  EXERCISES_TABLE,
+  LINEAGES_TABLE,
+  PLATE_INVENTORIES_TABLE,
+  PRS_TABLE,
+  SETS_TABLE,
+  STEPS_TABLE,
+  TEMPLATES_TABLE,
+  TEMPLATE_STEPS_TABLE,
+  VARIANTS_TABLE,
+  WORKOUTS_TABLE,
+  exercisesSchema,
+  lineagesSchema,
+  plateInventoriesSchema,
+  prsSchema,
+  setsSchema,
+  stepsSchema,
+  templatesSchema,
+  templateStepsSchema,
+  variantsSchema,
+  workoutsSchema,
 } from '../db/schema.ts';
 
 export type ThemeName = 'iron' | 'chalk' | 'clay' | 'signal';
@@ -178,6 +200,21 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
     (async () => {
       await ensureSchema(db);
       await seedIfEmpty(db);
+      await migrateLocalDbTablesToDocument(db, {
+        appSlug: 'lift',
+        tables: [
+          { name: LINEAGES_TABLE, schema: lineagesSchema },
+          { name: VARIANTS_TABLE, schema: variantsSchema },
+          { name: EXERCISES_TABLE, schema: exercisesSchema },
+          { name: WORKOUTS_TABLE, schema: workoutsSchema },
+          { name: STEPS_TABLE, schema: stepsSchema },
+          { name: SETS_TABLE, schema: setsSchema },
+          { name: TEMPLATES_TABLE, schema: templatesSchema },
+          { name: TEMPLATE_STEPS_TABLE, schema: templateStepsSchema },
+          { name: PRS_TABLE, schema: prsSchema },
+          { name: PLATE_INVENTORIES_TABLE, schema: plateInventoriesSchema },
+        ],
+      });
       if (cancelled) return;
       await refresh();
       try {

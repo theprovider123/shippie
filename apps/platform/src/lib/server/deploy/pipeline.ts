@@ -530,6 +530,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       notifications: false,
       analytics: true,
     },
+    data: manifest.data,
     allowed_connect_domains: manifest.allowed_connect_domains ?? [],
     workflow_probes: manifest.workflow_probes ?? [],
     routing: { mode: routing.mode },

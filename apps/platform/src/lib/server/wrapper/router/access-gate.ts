@@ -45,7 +45,7 @@ export async function runAccessGate(
     return null;
   }
 
-  const secret = ctx.env.INVITE_SECRET;
+  const secret = ctx.env.INVITE_SECRET ?? ctx.env.AUTH_SECRET;
   if (!secret) {
     return new Response(renderMisconfigured(), {
       status: 500,

@@ -21,7 +21,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
-import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { createLocalNavigation, migrateLocalDbTablesToDocument } from '@shippie/sdk/wrapper';
 import { Home } from './pages/Home.tsx';
 import { NewNote } from './pages/NewNote.tsx';
 import { Checkin } from './pages/Checkin.tsx';
@@ -29,6 +29,15 @@ import { WeeklySummary } from './pages/WeeklySummary.tsx';
 import { PrepForSession } from './pages/PrepForSession.tsx';
 import { PrintView } from './pages/PrintView.tsx';
 import { Settings } from './pages/Settings.tsx';
+import { resolveLocalDb } from './db/runtime.ts';
+import {
+  CHECKINS_TABLE,
+  NOTES_TABLE,
+  PREP_LISTS_TABLE,
+  checkinsSchema,
+  notesSchema,
+  prepListsSchema,
+} from './db/schema.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_therapy_notes' });
 
@@ -79,6 +88,27 @@ export function App() {
   useEffect(() => {
     return () => localNavigation.destroy();
   }, [localNavigation]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await migrateLocalDbTablesToDocument(resolveLocalDb(), {
+          appSlug: 'therapy-notes',
+          tables: [
+            { name: NOTES_TABLE, schema: notesSchema },
+            { name: CHECKINS_TABLE, schema: checkinsSchema },
+            { name: PREP_LISTS_TABLE, schema: prepListsSchema },
+          ],
+        });
+      } catch (err) {
+        if (!cancelled) console.info('shippie:therapy sealed migration postponed', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let alreadyShownToday = false;

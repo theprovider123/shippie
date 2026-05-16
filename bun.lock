@@ -23,6 +23,7 @@
         "@shippie/backup-providers": "workspace:*",
         "@shippie/container-bridge": "workspace:*",
         "@shippie/design-tokens": "workspace:*",
+        "@shippie/doc": "workspace:*",
         "@shippie/local-ai": "workspace:*",
         "@shippie/local-runtime-contract": "workspace:*",
         "@shippie/proximity": "workspace:*",
@@ -569,6 +570,7 @@
       "dependencies": {
         "@shippie/ambient": "workspace:*",
         "@shippie/design-tokens": "workspace:*",
+        "@shippie/doc": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/local-db": "workspace:*",
         "@shippie/local-runtime-contract": "workspace:*",
@@ -677,6 +679,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@shippie/design-tokens": "workspace:*",
+        "@shippie/doc": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "@shippie/qr": "workspace:*",
         "react": "^19.2.5",
@@ -1494,6 +1497,15 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/doc": {
+      "name": "@shippie/doc",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "^1.3.12",
+        "@types/node": "^22.10.0",
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/iframe-sdk": {
       "name": "@shippie/iframe-sdk",
       "version": "0.0.0",
@@ -1685,6 +1697,7 @@
       "dependencies": {
         "@shippie/ambient": "workspace:*",
         "@shippie/backup-providers": "workspace:*",
+        "@shippie/doc": "workspace:*",
         "@shippie/intelligence": "workspace:*",
         "@shippie/proximity": "workspace:*",
       },
@@ -2247,6 +2260,8 @@
     "@shippie/design-tokens": ["@shippie/design-tokens@workspace:packages/design-tokens"],
 
     "@shippie/dev-storage": ["@shippie/dev-storage@workspace:packages/dev-storage"],
+
+    "@shippie/doc": ["@shippie/doc@workspace:packages/doc"],
 
     "@shippie/hub": ["@shippie/hub@workspace:services/hub"],
 

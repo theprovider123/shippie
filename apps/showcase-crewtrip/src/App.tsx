@@ -68,6 +68,7 @@ import {
   getDeviceId,
   initialRole,
   initialState,
+  isMeaningfulBroadcast,
   isSurpriseUnlocked,
   markLocalUpdate,
   nextTripDayLabel,
@@ -247,16 +248,11 @@ function participantNoticeName(id: string, state: CrewtripState): string {
 function appendTournamentSystemNotices(current: CrewtripState, now: number): CrewtripState {
   if (!current.features?.tournaments) return current;
   const existingMessageIds = new Set(current.messages.map((message) => message.id));
-  const existingBroadcastIds = new Set(current.broadcasts.map((broadcast) => broadcast.id));
   const messages: CrewtripState['messages'] = [];
-  const broadcasts: CrewtripState['broadcasts'] = [];
 
   const pushNotice = (id: string, text: string) => {
     if (!existingMessageIds.has(id)) {
       messages.push({ id, authorId: 'system', authorName: 'Crewtrip', scope: 'all', text, at: timeNow() });
-    }
-    if (!existingBroadcastIds.has(id)) {
-      broadcasts.push({ id, text, at: timeNow() });
     }
   };
 
@@ -287,11 +283,10 @@ function appendTournamentSystemNotices(current: CrewtripState, now: number): Cre
     }
   });
 
-  if (!messages.length && !broadcasts.length) return current;
+  if (!messages.length) return current;
   return {
     ...current,
     messages: [...messages, ...current.messages].slice(0, 72),
-    broadcasts: [...broadcasts, ...current.broadcasts].slice(0, 24),
   };
 }
 
@@ -350,6 +345,10 @@ function tabLabel(tab: Tab, role: Role | null, copy: ReturnType<typeof getCopy>)
 
 function getCopy(language: Language) {
   return translations[language];
+}
+
+function hasPatchChanges<T extends object>(target: T, patch: Partial<T>): boolean {
+  return (Object.keys(patch) as Array<keyof T>).some((key) => target[key] !== patch[key]);
 }
 
 function filterMemories(memories: CrewtripState['memories'], filter: MemoryFilter, activeName: string): CrewtripState['memories'] {
@@ -482,6 +481,7 @@ export function App() {
     .sort((a, b) => b.at - a.at), [backupRevision, minuteTick, state.eventCode, state.updatedAt]);
   const hostedBackups = useMemo(() => readHostedLocalBackups(), [backupRevision, minuteTick, state.eventCode, state.updatedAt]);
   const activeDayId = days.some((day) => day.id === selectedDayId) ? selectedDayId : days[0]!.id;
+  const fallbackDayId = days[0]!.id;
   const activeDay = days.find((day) => day.id === activeDayId) ?? days[0]!;
   const draftStopDay = days.find((day) => day.id === draftStop.dayId) ?? activeDay;
   const draftStopDateValue = draftStop.date || tripDayDateInputValue(draftStopDay.date);
@@ -491,12 +491,13 @@ export function App() {
   const nextStop = dayStops.find((stop) => stop.status === 'next');
   const filteredMemories = state.memories.filter((memory) => (memory.dayId ?? days[0]!.id) === activeDayId);
   const visibleMemories = filterMemories(filteredMemories, memoryFilter, activePlayer.name);
-  const dayChallenges = state.challenges.filter((challenge) => (challenge.dayId ?? activeDayId) === activeDayId && canSeeChallenge(challenge, role, activePlayer));
+  const dayChallenges = state.challenges.filter((challenge) => (challenge.dayId ?? fallbackDayId) === activeDayId && canSeeChallenge(challenge, role, activePlayer));
   const selectedChallenge = selectedChallengeId ? state.challenges.find((challenge) => challenge.id === selectedChallengeId) : null;
   const latestMemory = filteredMemories[0] ?? state.memories[0];
-  const latestBroadcast = state.broadcasts[0] ?? null;
-  const activeSoundtrack = (state.soundtracks ?? []).find((slot) => (slot.dayId ?? activeDayId) === activeDayId && slot.status === 'now')
-    ?? (state.soundtracks ?? []).find((slot) => (slot.dayId ?? activeDayId) === activeDayId)
+  const visibleBroadcasts = useMemo(() => state.broadcasts.filter(isMeaningfulBroadcast), [state.broadcasts]);
+  const latestBroadcast = visibleBroadcasts[0] ?? null;
+  const activeSoundtrack = (state.soundtracks ?? []).find((slot) => (slot.dayId ?? fallbackDayId) === activeDayId && slot.status === 'now')
+    ?? (state.soundtracks ?? []).find((slot) => (slot.dayId ?? fallbackDayId) === activeDayId)
     ?? state.soundtracks?.[0];
   const unlockedSurprises = useMemo(() => state.surprises.filter((drop) => isSurpriseUnlocked(drop, state)), [minuteTick, state]);
   const lockedSurpriseCount = Math.max(0, state.surprises.length - unlockedSurprises.length);
@@ -551,7 +552,7 @@ export function App() {
           groupId: message.groupId,
         };
       });
-    const broadcastItems = state.broadcasts
+    const broadcastItems = visibleBroadcasts
       .filter((broadcast) => !messageIds.has(broadcast.id))
       .map((broadcast, index): InboxItem => ({
         id: `broadcast-${broadcast.id}`,
@@ -576,12 +577,12 @@ export function App() {
       scope: 'system',
     }));
     return [...messageItems, ...broadcastItems, ...requestItems].sort((a, b) => b.rank - a.rank);
-  }, [activePlayer.groupId, activePlayer.id, groups, messages, role, state.broadcasts, visibleInboxRequests]);
+  }, [activePlayer.groupId, activePlayer.id, groups, messages, role, visibleBroadcasts, visibleInboxRequests]);
   const visibleChatTimelineItems = inboxItems;
   const openOwnRequests = state.requests.filter((request) => request.authorId === activePlayer.id && request.status !== 'done');
   const headerInboxCount = (inboxEnabled ? inboxMessages.length : 0)
     + (features.requests ? (role === 'host' ? pendingRequests.length : openOwnRequests.length) : 0)
-    + (inboxEnabled ? state.broadcasts.filter((broadcast) => !messages.some((message) => message.id === broadcast.id)).length : 0);
+    + (inboxEnabled ? visibleBroadcasts.filter((broadcast) => !messages.some((message) => message.id === broadcast.id)).length : 0);
   const headerInboxIcon: IconName = features.requests && (pendingRequests.length > 0 || !features.chat) ? 'requests' : 'chat';
   const wrapMemories = state.memories.slice(0, 10);
   const memoryStats = useMemo(() => ({
@@ -859,7 +860,10 @@ export function App() {
   }, [state]);
 
   function update(updater: (current: CrewtripState) => CrewtripState) {
-    setState((current) => markLocalUpdate(updater(current), deviceId));
+    setState((current) => {
+      const next = updater(current);
+      return next === current ? current : markLocalUpdate(next, deviceId);
+    });
   }
 
   function chooseLocalPlayer(playerId: string) {
@@ -875,21 +879,26 @@ export function App() {
   }
 
   function vote(pollId: string, optionId: string) {
-    update((current) => ({
-      ...current,
-      polls: current.polls.map((poll) => (poll.id === pollId ? setPollVote(poll, optionId, activePlayer.id) : poll)),
-      broadcasts: current.polls.find((poll) => poll.id === pollId && pollSelectionForPlayer(poll, activePlayer.id) !== optionId)
-        ? [{ id: newId('b'), text: `${activePlayer.name} voted.`, at: timeNow() }, ...current.broadcasts].slice(0, 18)
-        : current.broadcasts,
-    }));
+    update((current) => {
+      const poll = current.polls.find((item) => item.id === pollId);
+      if (!poll || pollSelectionForPlayer(poll, activePlayer.id) === optionId) return current;
+      return {
+        ...current,
+        polls: current.polls.map((item) => (item.id === pollId ? setPollVote(item, optionId, activePlayer.id) : item)),
+      };
+    });
     sdk.feel.texture('confirm');
   }
 
   function changeVote(pollId: string) {
-    update((current) => ({
-      ...current,
-      polls: current.polls.map((poll) => (poll.id === pollId ? clearPollVote(poll, activePlayer.id) : poll)),
-    }));
+    update((current) => {
+      const poll = current.polls.find((item) => item.id === pollId);
+      if (!poll || !pollSelectionForPlayer(poll, activePlayer.id)) return current;
+      return {
+        ...current,
+        polls: current.polls.map((item) => (item.id === pollId ? clearPollVote(item, activePlayer.id) : item)),
+      };
+    });
   }
 
   function addCrewMember() {
@@ -909,7 +918,6 @@ export function App() {
       ...current,
       activePlayerId: role === 'host' ? current.activePlayerId : id,
       players: [...current.players, nextPlayer],
-      broadcasts: [{ id: newId('b'), text: `${name} joined the crew.`, at: timeNow() }, ...current.broadcasts],
     }));
     chooseLocalPlayer(id);
     setDraftCrewName('');
@@ -918,10 +926,14 @@ export function App() {
   }
 
   function updatePlayer(playerId: string, patch: Partial<Player>) {
-    update((current) => ({
-      ...current,
-      players: current.players.map((player) => (player.id === playerId ? { ...player, ...patch } : player)),
-    }));
+    update((current) => {
+      const player = current.players.find((item) => item.id === playerId);
+      if (!player || !hasPatchChanges(player, patch)) return current;
+      return {
+        ...current,
+        players: current.players.map((item) => (item.id === playerId ? { ...item, ...patch } : item)),
+      };
+    });
   }
 
   async function addPlayerImage(event: ChangeEvent<HTMLInputElement>, playerId: string) {
@@ -972,7 +984,6 @@ export function App() {
         : current.players.map((player) =>
             player.id === activePlayer.id ? { ...player, score: player.score + challenge.points } : player,
           ),
-      broadcasts: [{ id: newId('b'), text: `${activePlayer.name} added proof for ${challenge.title}.`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
     }));
     setDraftGameEntry('');
     sdk.feel.texture('complete');
@@ -1042,7 +1053,6 @@ export function App() {
         },
         ...current.memories,
       ],
-      broadcasts: [{ id: newId('b'), text: `${activePlayer.name} saved a memory.`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
     }));
     setDraftMemory('');
     sdk.feel.texture('confirm');
@@ -1082,7 +1092,6 @@ export function App() {
         },
         ...current.memories,
       ],
-      broadcasts: [{ id: newId('b'), text: `${activePlayer.name} uploaded ${kind === 'video' ? 'a video' : 'a photo'}.`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
     }));
     setDraftMemory('');
     sdk.feel.texture('confirm');
@@ -1117,7 +1126,7 @@ export function App() {
   }
 
   function startEditingStop(stop: ItineraryStop) {
-    const dayId = stop.dayId ?? activeDayId;
+    const dayId = stop.dayId ?? fallbackDayId;
     const day = days.find((item) => item.id === dayId);
     setEditingStopId(stop.id);
     setSelectedDayId(dayId);
@@ -1219,10 +1228,14 @@ export function App() {
   }
 
   function updateGroup(groupId: string, patch: Partial<CrewGroup>) {
-    update((current) => ({
-      ...current,
-      groups: current.groups.map((group) => (group.id === groupId ? { ...group, ...patch } : group)),
-    }));
+    update((current) => {
+      const group = current.groups.find((item) => item.id === groupId);
+      if (!group || !hasPatchChanges(group, patch)) return current;
+      return {
+        ...current,
+        groups: current.groups.map((item) => (item.id === groupId ? { ...item, ...patch } : item)),
+      };
+    });
   }
 
   async function addGroupImage(event: ChangeEvent<HTMLInputElement>, groupId: string) {
@@ -1236,12 +1249,16 @@ export function App() {
 
   function assignPlayerGroup(playerId: string, groupId: string) {
     const group = groups.find((item) => item.id === groupId);
-    update((current) => ({
-      ...current,
-      players: current.players.map((player) =>
-        player.id === playerId ? { ...player, groupId, team: group?.name ?? player.team } : player,
-      ),
-    }));
+    update((current) => {
+      const player = current.players.find((item) => item.id === playerId);
+      if (!player || (player.groupId === groupId && player.team === (group?.name ?? player.team))) return current;
+      return {
+        ...current,
+        players: current.players.map((item) =>
+          item.id === playerId ? { ...item, groupId, team: group?.name ?? item.team } : item,
+        ),
+      };
+    });
   }
 
   function addMessage() {
@@ -1280,15 +1297,14 @@ export function App() {
   }
 
   function updateRequest(id: string, status: RequestStatus) {
-    const request = state.requests.find((item) => item.id === id);
-    update((current) => ({
-      ...current,
-      requests: current.requests.map((item) => (item.id === id ? { ...item, status } : item)),
-      broadcasts:
-        status === 'shared' && request
-          ? [{ id: newId('b'), text: `Crew request shared: ${request.text}`, at: timeNow() }, ...current.broadcasts]
-          : current.broadcasts,
-    }));
+    update((current) => {
+      const request = current.requests.find((item) => item.id === id);
+      if (!request || request.status === status) return current;
+      return {
+        ...current,
+        requests: current.requests.map((item) => (item.id === id ? { ...item, status } : item)),
+      };
+    });
   }
 
   function transformRequest(requestId: string, target: 'plan' | 'poll' | 'game') {
@@ -1297,38 +1313,48 @@ export function App() {
       if (!request) return current;
       const sharedRequests = current.requests.map((item) => (item.id === request.id ? { ...item, status: 'shared' as const } : item));
       if (target === 'plan') {
+        const alreadyAdded = current.stops.some((stop) => stop.title === request.text && stop.place === `Requested by ${request.authorName}`);
+        if (alreadyAdded && request.status === 'shared') return current;
         return {
           ...current,
           requests: sharedRequests,
-          stops: [
-            ...current.stops,
-            { id: newId('s'), dayId: activeDayId, time: 'TBC', title: request.text, place: `Requested by ${request.authorName}`, status: 'later' as const },
-          ],
-          broadcasts: [{ id: newId('b'), text: `Crew request added to plan: ${request.text}`, at: timeNow() }, ...current.broadcasts],
+          stops: alreadyAdded
+            ? current.stops
+            : [
+                ...current.stops,
+                { id: newId('s'), dayId: activeDayId, time: 'TBC', title: request.text, place: `Requested by ${request.authorName}`, status: 'later' as const },
+              ],
         };
       }
       if (target === 'poll') {
+        const alreadyAdded = current.polls.some((poll) => poll.question === request.text);
+        if (alreadyAdded && request.status === 'shared') return current;
         return {
           ...current,
           requests: sharedRequests,
-          polls: [
-            {
-              id: newId('p'),
-              question: request.text,
-              closes: 'Open',
-              open: true,
-              options: ['Yes', 'No', 'Maybe'].map((label) => ({ id: newId('o'), label, votes: 0 })),
-            },
-            ...current.polls,
-          ],
-          broadcasts: [{ id: newId('b'), text: `Crew request is now a vote: ${request.text}`, at: timeNow() }, ...current.broadcasts],
+          polls: alreadyAdded
+            ? current.polls
+            : [
+                {
+                  id: newId('p'),
+                  dayId: activeDayId,
+                  question: request.text,
+                  closes: 'Open',
+                  open: true,
+                  options: ['Yes', 'No', 'Maybe'].map((label) => ({ id: newId('o'), label, votes: 0 })),
+                },
+                ...current.polls,
+              ],
         };
       }
+      const alreadyAdded = current.challenges.some((challenge) => challenge.title === request.text);
+      if (alreadyAdded && request.status === 'shared') return current;
       return {
         ...current,
         requests: sharedRequests,
-        challenges: [{ id: newId('c'), kind: 'mission' as GameKind, dayId: activeDayId, status: 'open' as const, title: request.text, points: 8, doneBy: [], submissions: [] }, ...current.challenges],
-        broadcasts: [{ id: newId('b'), text: `Crew request became a game: ${request.text}`, at: timeNow() }, ...current.broadcasts],
+        challenges: alreadyAdded
+          ? current.challenges
+          : [{ id: newId('c'), kind: 'mission' as GameKind, dayId: activeDayId, status: 'open' as const, title: request.text, points: 8, doneBy: [], submissions: [] }, ...current.challenges],
       };
     });
     sdk.feel.texture('confirm');
@@ -1364,7 +1390,6 @@ export function App() {
         },
         ...(current.pulses ?? []),
       ].slice(0, 36),
-      broadcasts: [{ id: newId('b'), text: `${activePlayer.name}: ${pulse.label}`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
     }));
     sdk.feel.texture(kind === 'lost' ? 'toggle' : 'confirm');
   }
@@ -1387,7 +1412,6 @@ export function App() {
         },
         ...(current.surprises ?? []),
       ],
-      broadcasts: [{ id: newId('b'), text: `Host scheduled a surprise: ${title}`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
     }));
     setDraftSurprise({ title: '', message: '', unlockType: 'time', unlockValue: '21:00' });
     sdk.feel.texture('confirm');
@@ -1410,7 +1434,6 @@ export function App() {
     update((current) => ({
       ...current,
       soundtracks: [slot, ...(current.soundtracks ?? [])],
-      broadcasts: [{ id: newId('b'), text: `${dj} added ${title} to the soundtrack.`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
     }));
     setDraftSoundtrack({ time: '21:00', title: '', dj: '', link: '', note: '' });
     sdk.feel.texture('confirm');
@@ -1459,24 +1482,35 @@ export function App() {
     const title = draftStop.title.trim();
     if (!title) return;
     const { date, existingDateDay, newDateDay, stopDayId } = resolveDraftStopDay();
-    update((current) => ({
-      ...current,
-      days: newDateDay && !findDayByInputDate(current.days ?? initialState.days, date)
+    update((current) => {
+      const existing = current.stops.find((stop) => stop.id === editingStopId);
+      if (!existing) return current;
+      const nextStop = {
+        ...existing,
+        dayId: stopDayId,
+        groupId: draftStop.groupId === 'all' ? undefined : draftStop.groupId,
+        time: draftStop.time.trim() || 'TBC',
+        title,
+        place: draftStop.place.trim() || 'Host drop',
+        status: draftStop.status,
+      };
+      const nextDays = newDateDay && !findDayByInputDate(current.days ?? initialState.days, date)
         ? [...(current.days ?? initialState.days), newDateDay]
-        : current.days,
-      stops: current.stops.map((stop) => stop.id === editingStopId
-        ? {
-            ...stop,
-            dayId: stopDayId,
-            groupId: draftStop.groupId === 'all' ? undefined : draftStop.groupId,
-            time: draftStop.time.trim() || 'TBC',
-            title,
-            place: draftStop.place.trim() || 'Host drop',
-            status: draftStop.status,
-          }
-        : stop),
-      broadcasts: [{ id: newId('b'), text: `Host updated the plan: ${title}`, at: timeNow() }, ...current.broadcasts].slice(0, 18),
-    }));
+        : current.days;
+      const stopChanged = existing.dayId !== nextStop.dayId
+        || existing.groupId !== nextStop.groupId
+        || existing.time !== nextStop.time
+        || existing.title !== nextStop.title
+        || existing.place !== nextStop.place
+        || existing.status !== nextStop.status;
+      const dayChanged = nextDays !== current.days;
+      if (!stopChanged && !dayChanged) return current;
+      return {
+        ...current,
+        days: nextDays,
+        stops: current.stops.map((stop) => (stop.id === editingStopId ? nextStop : stop)),
+      };
+    });
     setSelectedDayId(stopDayId);
     resetDraftStop(stopDayId, newDateDay?.date ?? existingDateDay?.date ?? '');
     sdk.feel.texture('confirm');
@@ -1547,6 +1581,7 @@ export function App() {
       polls: [
         {
           id: newId('p'),
+          dayId: activeDayId,
           question,
           closes: draftPoll.closes.trim() || 'Open',
           open: true,
@@ -1708,32 +1743,34 @@ export function App() {
   }
 
   function applyTemplate(template: EventTemplate) {
+    const templateDayId = fallbackDayId;
     update((current) => ({
       ...current,
       eventName: template.name,
       location: template.location,
       description: template.description,
       hostNote: template.hostNote,
-      stops: template.stops.map((stop) => ({ ...stop, id: newId('s') })),
-      soundtracks: (template.soundtracks ?? current.soundtracks ?? []).map((slot) => ({ ...slot, id: newId('dj') })),
+      stops: template.stops.map((stop) => ({ ...stop, id: newId('s'), dayId: stop.dayId ?? templateDayId })),
+      soundtracks: (template.soundtracks ?? current.soundtracks ?? []).map((slot) => ({ ...slot, id: newId('dj'), dayId: slot.dayId ?? templateDayId })),
       polls: template.polls.map((poll) => ({
         ...poll,
         id: newId('p'),
+        dayId: poll.dayId ?? templateDayId,
         options: poll.options.map((option) => ({ ...option, id: newId('o'), votes: 0 })),
       })),
-      challenges: template.challenges.map((challenge) => ({ ...challenge, id: newId('c'), doneBy: [], submissions: [] })),
-      broadcasts: [{ id: newId('b'), text: `${template.name} template applied.`, at: timeNow() }, ...current.broadcasts],
+      challenges: template.challenges.map((challenge) => ({ ...challenge, id: newId('c'), dayId: challenge.dayId ?? templateDayId, doneBy: [], submissions: [] })),
     }));
   }
 
   function advancePlan() {
     update((current) => {
-      const nowIndex = current.stops.findIndex((stop) => (stop.dayId ?? activeDayId) === activeDayId && stop.status === 'now');
-      const nextIndex = current.stops.findIndex((stop) => (stop.dayId ?? activeDayId) === activeDayId && stop.status === 'next');
+      const nowIndex = current.stops.findIndex((stop) => (stop.dayId ?? fallbackDayId) === activeDayId && stop.status === 'now');
+      const nextIndex = current.stops.findIndex((stop) => (stop.dayId ?? fallbackDayId) === activeDayId && stop.status === 'next');
+      if (nextIndex === -1) return current;
       return {
         ...current,
         stops: current.stops.map((stop, index) => {
-          if ((stop.dayId ?? activeDayId) !== activeDayId) return stop;
+          if ((stop.dayId ?? fallbackDayId) !== activeDayId) return stop;
           if (index === nowIndex) return { ...stop, status: 'later' as const };
           if (index === nextIndex) return { ...stop, status: 'now' as const };
           if (index === nextIndex + 1) return { ...stop, status: 'next' as const };

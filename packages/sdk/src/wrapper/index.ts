@@ -194,6 +194,26 @@ export {
 } from './textures/index.ts';
 export { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
 export {
+  migrateLocalDbTablesToDocument,
+  reduceLocalDbSnapshot,
+  type LocalDbDocumentMigrationOptions,
+  type LocalDbDocumentTable,
+  type LocalDbLike,
+  type LocalDbSnapshotState,
+} from './local-db-document.ts';
+export {
+  SHIPPIE_DATA_STANDARD_VERSION,
+  createShippieDataPolicy,
+  defaultShippieDataPolicy,
+  type ShippieDataMigration,
+  type ShippieDataMode,
+  type ShippieDataPolicy,
+  type ShippieDataRecovery,
+  type ShippieDataRealtime,
+  type ShippieDataSnapshots,
+  type ShippieDataMedia,
+} from '../data-standard.ts';
+export {
   openGroupModerationPanel,
   type OpenGroupModerationPanelOptions,
   type GroupModerationPanelHandle,
