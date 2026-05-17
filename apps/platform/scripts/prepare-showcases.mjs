@@ -100,6 +100,36 @@ function slugFor(showcaseDir) {
   return showcaseDir.replace(/^showcase-/, '');
 }
 
+function validateShowcaseLifecycleBoot(showcases) {
+  const offenders = [];
+  for (const showcaseDir of showcases) {
+    const dir = join(APPS_DIR, showcaseDir);
+    const mainPath = join(dir, 'src', 'main.tsx');
+    if (!existsSync(mainPath)) continue;
+
+    const manifestPath = join(dir, 'shippie.json');
+    let manualLifecycle = false;
+    if (existsSync(manifestPath)) {
+      try {
+        const cfg = JSON.parse(readFileSync(manifestPath, 'utf8'));
+        manualLifecycle = cfg.lifecycle === 'manual';
+      } catch {
+        /* invalid manifests are surfaced by the build/audit path */
+      }
+    }
+
+    if (manualLifecycle) continue;
+    const source = readFileSync(mainPath, 'utf8');
+    if (!source.includes("@shippie/showcase-kit/boot")) offenders.push(showcaseDir);
+  }
+
+  if (offenders.length > 0) {
+    throw new Error(
+      `showcase lifecycle boot guard failed; import @shippie/showcase-kit/boot or set shippie.json lifecycle=\"manual\": ${offenders.join(', ')}`,
+    );
+  }
+}
+
 function buildOne(showcaseDir, slug) {
   const dir = join(APPS_DIR, showcaseDir);
   console.log(`[prepare-showcases] building ${showcaseDir} with base=${RUNTIME_BASE_PATH}/${slug}/…`);
@@ -526,6 +556,7 @@ function main() {
     if (!generatedOnly) writeShellAssets([]);
     return;
   }
+  validateShowcaseLifecycleBoot(showcases);
   if (generatedOnly) {
     const slugs = showcases.map((showcase) => slugFor(showcase));
     writeShowcaseCatalog(slugs);

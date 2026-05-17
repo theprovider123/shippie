@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Restaurant Memory \u2014 generated showcase. Replace this once the app does something.",
+  "description": "Restaurant Memory — generated showcase. Replace this once the app does something.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -19,6 +19,7 @@
     "@shippie/observations": "workspace:*",
     "@shippie/qr": "workspace:*",
     "@shippie/share": "workspace:*",
+    "@shippie/showcase-kit": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
