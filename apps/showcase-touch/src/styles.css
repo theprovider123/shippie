@@ -282,7 +282,8 @@ label {
 }
 .task-row.done .body { text-decoration: line-through; color: #9A938E; }
 
-/* Bottom sheet */
+/* Bottom sheet — desktop. On phone, expands to full height so the
+   keyboard doesn't crop the textarea (audit Phase 4 fix). */
 .sheet-backdrop {
   position: fixed; inset: 0;
   background: rgba(42, 37, 34, 0.45);
@@ -299,6 +300,22 @@ label {
   flex-direction: column;
   gap: 12px;
   border-top: 4px solid #A86060;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+@media (max-width: 480px) {
+  .sheet-backdrop {
+    align-items: stretch;
+    background: rgba(42, 37, 34, 0.65);
+  }
+  .sheet {
+    max-height: 100%;
+    height: 100%;
+    max-width: none;
+    padding-top: calc(20px + env(safe-area-inset-top, 0));
+    border-top: none;
+    border-left: 4px solid #A86060;
+  }
 }
 .sheet h3 {
   font-family: var(--font-heading, serif);
