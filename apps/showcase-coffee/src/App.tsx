@@ -41,7 +41,6 @@ export function App() {
   const [selectedBeanId, setSelectedBeanId] = useState<string | null>(initial.beans[0]?.id ?? null);
   // When set, render BeanPage instead of the active tab.
   const [openBeanId, setOpenBeanId] = useState<string | null>(null);
-  const [toolsOpen, setToolsOpen] = useState(false);
   const localNavigation = useMemo(
     () =>
       createLocalNavigation<Screen>(
@@ -65,7 +64,6 @@ export function App() {
     setTab(next);
     setOpenBeanId(null);
     void localNavigation.navigate({ tab: next, beanId: null }, { kind: 'crossfade' });
-    setToolsOpen(false);
   }
 
   function openBeanById(id: string): void {
@@ -159,18 +157,7 @@ export function App() {
           <h1>Coffee</h1>
           <p className="subtitle">brew the usual</p>
         </div>
-        {!openBean ? (
-          <button type="button" className="ghost app-header-action" onClick={() => setToolsOpen(true)}>
-            Tools
-          </button>
-        ) : null}
       </header>
-
-      {!openBean && tab !== 'brew' ? (
-        <button type="button" className="ghost back-to-brew" onClick={() => navigateTab('brew')}>
-          Back to brew
-        </button>
-      ) : null}
 
       {openBean ? (
         <BeanPage
@@ -211,45 +198,21 @@ export function App() {
         <HistoryPage brews={brews} />
       )}
 
-      {!openBean && toolsOpen ? (
-        <div className="sheet-backdrop" role="presentation" onClick={() => setToolsOpen(false)}>
-          <section
-            className="bottom-sheet"
-            role="dialog"
-            aria-label="Coffee tools"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="sheet-grip" aria-hidden="true" />
-            <header className="sheet-head">
-              <div>
-                <p className="eyebrow">Coffee tools</p>
-                <h2>Setup, beans, history</h2>
-              </div>
-              <button type="button" className="ghost" onClick={() => setToolsOpen(false)}>
-                Close
-              </button>
-            </header>
-            <div className="sheet-actions">
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={t.id === tab ? 'active' : ''}
-                  onClick={() => navigateTab(t.id)}
-                >
-                  <span>{t.label}</span>
-                  <small>
-                    {t.id === 'brew'
-                      ? 'Return to timer and brew setup'
-                      : t.id === 'beans'
-                        ? `${beans.length} saved beans`
-                        : `${brews.length} logged brews`}
-                  </small>
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
+      {!openBean ? (
+        <nav className="bottom-tabs" role="tablist" aria-label="Coffee sections">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`tab ${tab === t.id ? 'tab-active' : ''}`}
+              onClick={() => navigateTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
       ) : null}
 
     </div>

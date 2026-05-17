@@ -297,6 +297,39 @@ export function App() {
         </button>
       ) : null}
 
+      {/* Bottom nav visible only on the hub routes — full-flow pages
+          (recipe / bake / new-recipe) keep their own back affordance. */}
+      {route.kind === 'home' || route.kind === 'active' || route.kind === 'history' ? (
+        <nav className="bottom-tabs" role="tablist" aria-label="Sections">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={route.kind === 'home'}
+            className={`tab ${route.kind === 'home' ? 'tab-active' : ''}`}
+            onClick={() => navigate({ kind: 'home' })}
+          >
+            Home
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={route.kind === 'active'}
+            className={`tab ${route.kind === 'active' ? 'tab-active' : ''}`}
+            onClick={() => navigate({ kind: 'active' })}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={route.kind === 'history'}
+            className={`tab ${route.kind === 'history' ? 'tab-active' : ''}`}
+            onClick={() => navigate({ kind: 'history' })}
+          >
+            History
+          </button>
+        </nav>
+      ) : null}
     </>
   );
 }
