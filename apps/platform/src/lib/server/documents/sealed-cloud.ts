@@ -95,6 +95,21 @@ export interface SealedDocumentEnv {
   SEALED_DOC_DEVICE_DAILY_ATTACHMENT_BYTE_LIMIT?: string;
 }
 
+type BackgroundTaskScheduler = (promise: Promise<unknown>) => void;
+
+interface SealedWriteOptions {
+  request?: Request;
+  now?: Date;
+  eventCount?: number;
+  waitUntil?: BackgroundTaskScheduler;
+}
+
+interface SealedStoreOptions {
+  request?: Request;
+  now?: Date;
+  waitUntil?: BackgroundTaskScheduler;
+}
+
 export interface StoreSealedEventResult {
   key: string;
   cursor: string;
@@ -340,7 +355,7 @@ export async function storeSealedEvent(
   env: SealedDocumentEnv,
   documentId: string,
   event: EncryptedDocumentEventEnvelope,
-  opts: { request?: Request; now?: Date } = {},
+  opts: SealedStoreOptions = {},
 ): Promise<StoreSealedEventResult> {
   assertDocumentId(documentId);
   if (event.documentId !== documentId) throw new Error('document id mismatch');
@@ -361,11 +376,11 @@ export async function storeSealedEvent(
         createdAt: event.createdAt,
       },
     });
-    await env.CACHE?.put(
+    await maybeRunInBackground(opts.waitUntil, env.CACHE?.put(
       healthKey(documentId),
       JSON.stringify({ documentId, lastEventId: event.eventId, lastSyncedAt: new Date().toISOString() }),
       { expirationTtl: 60 * 60 * 24 * 30 },
-    );
+    ));
     await updateDocumentManifest(env, documentId, {
       eventCountDelta: 1,
       latestEventId: event.eventId,
@@ -379,7 +394,7 @@ export async function storeSealedEventBatch(
   env: SealedDocumentEnv,
   documentId: string,
   events: readonly EncryptedDocumentEventEnvelope[],
-  opts: { request?: Request; now?: Date } = {},
+  opts: SealedStoreOptions = {},
 ): Promise<StoreSealedEventBatchResult> {
   assertDocumentId(documentId);
   const bucket = documentBucket(env);
@@ -417,23 +432,21 @@ export async function storeSealedEventBatch(
       ),
     );
     const last = fresh.at(-1)!.event;
-    await Promise.all([
-      env.CACHE?.put(
-        healthKey(documentId),
-        JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
-        { expirationTtl: 60 * 60 * 24 * 30 },
-      ),
-      updateDocumentManifest(
-        env,
-        documentId,
-        {
-          eventCountDelta: fresh.length,
-          latestEventId: last.eventId,
-          latestEventCursor: fresh.at(-1)!.key,
-        },
-        { current: currentManifest },
-      ),
-    ]);
+    await maybeRunInBackground(opts.waitUntil, env.CACHE?.put(
+      healthKey(documentId),
+      JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
+      { expirationTtl: 60 * 60 * 24 * 30 },
+    ));
+    await updateDocumentManifest(
+      env,
+      documentId,
+      {
+        eventCountDelta: fresh.length,
+        latestEventId: last.eventId,
+        latestEventCursor: fresh.at(-1)!.key,
+      },
+      { current: currentManifest },
+    );
   }
 
   const results = candidates.map((candidate, index) => ({
@@ -452,7 +465,7 @@ export async function storeSealedSnapshot(
   env: SealedDocumentEnv,
   documentId: string,
   snapshot: EncryptedDocumentSnapshotEnvelope,
-  opts: { request?: Request; now?: Date } = {},
+  opts: SealedStoreOptions = {},
 ): Promise<StoreSealedSnapshotResult> {
   assertDocumentId(documentId);
   if (snapshot.documentId !== documentId) throw new Error('document id mismatch');
@@ -553,7 +566,7 @@ export async function enforceSealedWriteBudget(
   env: SealedDocumentEnv,
   documentId: string,
   eventBytes: number,
-  opts: { request?: Request; now?: Date; eventCount?: number } = {},
+  opts: SealedWriteOptions = {},
 ): Promise<void> {
   if (!env.CACHE) return;
   const now = opts.now ?? new Date();
@@ -593,7 +606,7 @@ export async function enforceSealedWriteBudget(
     throw new Error('sealed sync write budget exceeded');
   }
 
-  await Promise.all([
+  const commit = Promise.all([
     writeBudget(env.CACHE, documentKey, {
       events: documentBudget.events + eventCount,
       bytes: documentBudget.bytes + eventBytes,
@@ -606,7 +619,8 @@ export async function enforceSealedWriteBudget(
       events: deviceBudget.events + eventCount,
       bytes: deviceBudget.bytes + eventBytes,
     }),
-  ]);
+  ]).then(() => undefined);
+  await maybeRunInBackground(opts.waitUntil, commit);
 }
 
 export async function enforceSealedAttachmentBudget(
@@ -994,6 +1008,20 @@ async function readBudget(kv: KVNamespace, key: string): Promise<BudgetCounter> 
 
 async function writeBudget(kv: KVNamespace, key: string, value: BudgetCounter): Promise<void> {
   await kv.put(key, JSON.stringify(value), { expirationTtl: 60 * 60 * 48 });
+}
+
+async function maybeRunInBackground(
+  waitUntil: BackgroundTaskScheduler | undefined,
+  task: Promise<unknown> | undefined,
+): Promise<void> {
+  if (!task) return;
+  if (!waitUntil) {
+    await task;
+    return;
+  }
+  waitUntil(task.catch((err) => {
+    console.warn('[sealed-cloud] background task failed', err);
+  }));
 }
 
 function budgetGauge(used: number, limit: number): SealedDocumentBudgetGauge {

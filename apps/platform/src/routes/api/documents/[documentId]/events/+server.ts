@@ -28,7 +28,10 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
   const documentId = requireDocumentId(params.documentId);
   try {
     const { events, batch } = await parseSealedEventBatchRequest(request);
-    const result = await storeSealedEventBatch(platform.env, documentId, events, { request });
+    const result = await storeSealedEventBatch(platform.env, documentId, events, {
+      request,
+      waitUntil: platform.ctx.waitUntil.bind(platform.ctx),
+    });
     return json(batch ? result : result.events[0], {
       status: result.stored > 0 ? 201 : 200,
       headers: {

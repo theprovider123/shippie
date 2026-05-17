@@ -29,7 +29,10 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
   const documentId = requireDocumentId(params.documentId);
   try {
     const snapshot = await parseSealedSnapshotRequest(request);
-    const result = await storeSealedSnapshot(platform.env, documentId, snapshot, { request });
+    const result = await storeSealedSnapshot(platform.env, documentId, snapshot, {
+      request,
+      waitUntil: platform.ctx.waitUntil.bind(platform.ctx),
+    });
     return json(result, {
       status: result.stored ? 201 : 200,
       headers: {
