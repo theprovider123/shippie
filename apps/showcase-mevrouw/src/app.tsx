@@ -225,8 +225,18 @@ function Bound({
         )}
       </main>
 
-      <PulseInbox doc={doc} myDeviceId={pairing.deviceId} />
-      <PulseFab doc={doc} myDeviceId={pairing.deviceId} />
+      {/* Floating overlay consolidation (Phase 7 IA restructure):
+          PulseInbox restricted to Home (where "what's new" makes sense
+          as a header surface); PulseFab contextual to Memories +
+          Schedule (the surfaces where "add a thing" is the obvious
+          intent). InstallNudge stays for now but is a one-shot
+          versioned banner — see InstallNudge for the flag. */}
+      {route === 'home' ? (
+        <PulseInbox doc={doc} myDeviceId={pairing.deviceId} />
+      ) : null}
+      {route === 'memories' || route === 'schedule' ? (
+        <PulseFab doc={doc} myDeviceId={pairing.deviceId} />
+      ) : null}
       <InstallNudge />
 
       <TabNav

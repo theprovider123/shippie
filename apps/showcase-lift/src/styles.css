@@ -1589,3 +1589,17 @@ html, body {
     transition: none;
   }
 }
+
+/* Phase 3 — utility-icon nav slot for Settings (was floating cog). */
+.lift-bottom-nav__btn--utility {
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted, rgba(0,0,0,0.55));
+  min-width: 44px;
+  min-height: 44px;
+}
+.lift-bottom-nav__btn--utility:hover {
+  color: var(--fg, inherit);
+}

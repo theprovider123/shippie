@@ -4690,3 +4690,21 @@ p {
     flex-direction: column;
   }
 }
+
+/* Phase 6 — visual fold between hero CTAs and secondary panels. The
+   hero (PrivateSpaceHero + start-actions + JoinForm + LandingRoutes)
+   stays above the fold; tournament-stats / engagement-loop /
+   viral-moments / city-preview / board-switcher reach below it. */
+.start-panel .hero-secondary {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle, rgba(0,0,0,0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+@media (max-width: 480px) {
+  .start-panel .hero-secondary {
+    margin-top: 56px;
+  }
+}

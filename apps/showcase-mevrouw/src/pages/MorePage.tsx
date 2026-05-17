@@ -172,9 +172,12 @@ export function MorePage({ doc, myDeviceId, pairing, relay, onNavigate, onUnpair
         <ul className="grid grid-cols-2 gap-2">
           {(
             [
+              // Journal + Surprises demoted from primary nav into More
+              // per Phase 7 IA restructure (4-tab primary nav).
+              ['journal', 'Journal'],
+              ['surprises', 'Surprises'],
               ['gifts', 'Gift letters'],
               ['todos', 'Things to do'],
-              ['memories', 'Memories'],
               ['glimpses', 'Glimpses'],
               ['games', 'Games'],
             ] as const

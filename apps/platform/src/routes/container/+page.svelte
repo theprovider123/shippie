@@ -68,6 +68,8 @@
     type TransferGrants,
   } from '$lib/container/transfer-registry';
   import { createYourDataHost } from '$lib/container/your-data-host';
+  import AccessPane from '$lib/container/your-data/AccessPane.svelte';
+  import YourDataTab from '$lib/container/your-data/YourDataTab.svelte';
   import { createTextureRouter, type TextureName } from '$lib/container/texture-router';
   import {
     createMeshStatusStore,
@@ -1688,6 +1690,8 @@
       openYourData({
         appSlug,
         transferRelayOrigin: window.location.origin,
+        initialTransferAction: action,
+        accessTransferId: transferId ?? undefined,
       });
       if (action === 'restore' && !transferId && !readIncomingJoinTransferId()) {
         dataRecoveryStatus = 'Choose Restore data in the panel to paste a transfer link, scan a QR, or use a recovery card.';
@@ -2370,11 +2374,16 @@
     }
     // Honour `?section=` so the focused-mode "Your Data" link from
     // inside an app routes the user to the right dashboard tab on
-    // the way out. Valid values: 'home' | 'create' | 'data'.
+    // the way out. Valid values: 'home' | 'create' | 'data' | 'access'.
     if (!data.focused) {
       const url = new URL(window.location.href);
       const requestedSection = url.searchParams.get('section');
-      if (requestedSection === 'home' || requestedSection === 'create' || requestedSection === 'data') {
+      if (
+        requestedSection === 'home' ||
+        requestedSection === 'create' ||
+        requestedSection === 'data' ||
+        requestedSection === 'access'
+      ) {
         section = requestedSection;
         if (requestedSection !== 'home') activeAppId = null;
       }
@@ -2867,6 +2876,7 @@
       <button class:active={section === 'home'} onclick={() => showSection('home')}>Home</button>
       <button class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
       <button class:active={section === 'data'} onclick={() => showSection('data')}>Your Data</button>
+      <button class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
     </nav>
   </aside>
 
@@ -3002,192 +3012,42 @@
               <p>{packageImportStatus}</p>
             {/if}
           </div>
+        {:else if section === 'access'}
+          <AccessPane
+            flows={observationFlows}
+            onRevoke={(consumerId, intent) => {
+              intentGrants = revokeIntent(intentGrants, consumerId, intent);
+            }}
+          />
         {:else}
-          <div class="section-head">
-            <h2>Your Data</h2>
-            <p>Each tool keeps its data private by default. Apps using Private Sync add sealed recovery copies that Shippie can store but cannot open.</p>
-          </div>
-          {#if yourDataOpenForApp && appById.get(yourDataOpenForApp)}
-            <div class="data-trigger" role="status">
-              <span><strong>{appById.get(yourDataOpenForApp)?.name}</strong> opened this panel.</span>
-              <button onclick={() => yourDataHost.close()}>Dismiss</button>
-            </div>
-          {/if}
-          <div class="sealed-data-panel" role="status">
-            <div>
-              <p class="mini-label">Private Sync</p>
-              <h3>Sealed copies, ready for every app</h3>
-              <p>
-                Current and future Shippie apps inherit the same recovery surface: add a device,
-                move phones, restore, and keep safe copies without giving Shippie the contents.
-              </p>
-            </div>
-            <div class="sealed-copy-stack" aria-label="Safe copy status">
-              <span><strong>{installedApps.length}</strong> installed tools covered by Your Data</span>
-              <span><strong>{totalRows}</strong> local rows on this device</span>
-              <span><strong>0</strong> readable rows in Shippie's sealed store</span>
-            </div>
-            <div class="sealed-actions">
-              <button onclick={() => openContainerYourData('add-device')}>Add another device</button>
-              <button onclick={() => openContainerYourData('move-phone')}>Move to new phone</button>
-              <button onclick={() => openContainerYourData('recovery-card')}>Show recovery card</button>
-              <button onclick={() => openContainerYourData('restore')}>Restore data</button>
-            </div>
-            {#if dataRecoveryStatus}
-              <p class="sealed-status">{dataRecoveryStatus}</p>
-            {/if}
-          </div>
-          <div class="ai-readiness" role="status">
-            <div>
-              <p class="mini-label">On-device AI</p>
-              <h3>{aiReadinessLabel}</h3>
-              <p>{aiReadinessBody}</p>
-            </div>
-            <div class="ai-readiness-meta">
-              <span>{aiReadiness.backend.toUpperCase()}</span>
-              <span>{aiReadiness.runtimeCached ? 'Runtime cached' : 'Runtime not cached'}</span>
-              <span>{aiReadiness.modelCount} model cache entries</span>
-              <button onclick={refreshAiReadiness}>Check again</button>
-            </div>
-          </div>
-
-          <!--
-            Slate v4 Phase 0 — Cross-tool observation flows.
-            Lists every installed provider's declared `crossAppIntents.provides`
-            and, for each intent, the consumers with an active grant. Revoking
-            here disables the consumer's `intent.subscribe` for that intent on
-            the next cross-app prompt.
-          -->
-          <div class="data-section observation-flows">
-            <div class="section-head">
-              <h3>Cross-tool flows</h3>
-              <p>What each tool can broadcast, and which other tools have access.</p>
-            </div>
-            {#if observationFlows.length === 0}
-              <p class="muted">No cross-tool intents declared by installed apps yet.</p>
-            {:else}
-              <ul class="flow-list">
-                {#each observationFlows as flow (flow.provider.id + ':' + flow.intent)}
-                  <li class="flow-row">
-                    <div class="flow-meta">
-                      <strong>{flow.provider.name}</strong>
-                      <code class="flow-intent">{flow.intent}</code>
-                    </div>
-                    {#if flow.consumers.length === 0}
-                      <p class="muted small">No subscribers yet.</p>
-                    {:else}
-                      <ul class="flow-consumers">
-                        {#each flow.consumers as consumer (consumer.id)}
-                          <li>
-                            <span>{consumer.name}</span>
-                            <button
-                              class="revoke-button"
-                              onclick={() => {
-                                intentGrants = revokeIntent(intentGrants, consumer.id, flow.intent);
-                              }}
-                              aria-label={`Revoke ${consumer.name}'s access to ${flow.intent}`}
-                            >Revoke</button>
-                          </li>
-                        {/each}
-                      </ul>
-                    {/if}
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-          </div>
-
-          <div class="data-list">
-            {#each installedApps as app (app.id)}
-              <article>
-                <div>
-                  <h3>{app.name}</h3>
-                  <p>
-                    v{receiptsByApp[app.id]?.version}
-                    · {(rowsByApp[app.id]?.length ?? 0)} local rows
-                    · {app.packageHash.slice(0, 18)}...
-                  </p>
-                  <p class="data-trust">{dataTrustLine(app)}</p>
-                </div>
-                <div class="row-actions">
-                  <button onclick={() => openApp(app.id)}>Open</button>
-                  <button onclick={() => clearAppData(app.id)}>Clear data</button>
-                  <button onclick={() => uninstallApp(app.id)}>Uninstall</button>
-                </div>
-              </article>
-            {/each}
-          </div>
-          {#if recoveredReceipts.length > 0}
-            <div class="recovered-receipts">
-              <h3>Saved Installs Waiting For Packages</h3>
-              <p>
-                These came back from a backup, but the matching tool is not installed here yet.
-                The install record stays local until you import the matching .shippie archive.
-              </p>
-              <div class="data-list">
-                {#each recoveredReceipts as item (item.appId)}
-                  <article>
-                    <div>
-                      <h3>{item.receipt.name ?? item.appId}</h3>
-                      <p>
-                        v{item.receipt.version}
-                        · {item.receipt.packageHash.slice(0, 18)}...
-                        · {(rowsByApp[item.appId]?.length ?? 0)} restored rows
-                      </p>
-                    </div>
-                    <div class="row-actions">
-                      <button onclick={() => importPackageForReceipt(item.appId)}>Import package</button>
-                      <button onclick={() => forgetRecoveredReceipt(item.appId)}>Forget record</button>
-                    </div>
-                  </article>
-                {/each}
-              </div>
-            </div>
-          {/if}
-          <button class="export-button" onclick={exportReceipts}>Export install records</button>
-          {#if receiptExport}
-            <pre class="receipt-export">{receiptExport}</pre>
-          {/if}
-          <div class="backup-box">
-            <div>
-              <h3>Encrypted Backup</h3>
-              <p>Bundles saved installs and local tool records into one passphrase-encrypted export.</p>
-            </div>
-            <input
-              type="password"
-              bind:value={backupPassphrase}
-              placeholder="Backup key"
-              autocomplete="new-password"
-            />
-            <button class="export-button" onclick={createEncryptedBackup}>Create encrypted backup</button>
-            {#if backupError}
-              <p class="error-text">{backupError}</p>
-            {/if}
-            {#if backupExport}
-              <pre class="receipt-export">{backupExport}</pre>
-            {/if}
-          </div>
-          <div class="backup-box">
-            <div>
-              <h3>Restore Backup</h3>
-              <p>Restores saved installs and local records. Unknown tools wait locally until their package is imported.</p>
-            </div>
-            <textarea
-              bind:value={restorePayload}
-              placeholder="Paste encrypted backup JSON"
-              spellcheck="false"
-            ></textarea>
-            <input
-              type="password"
-              bind:value={restorePassphrase}
-              placeholder="Backup key"
-              autocomplete="current-password"
-            />
-            <button class="export-button" onclick={restoreEncryptedBackup}>Restore locally</button>
-            {#if restoreStatus}
-              <p>{restoreStatus}</p>
-            {/if}
-          </div>
+          <YourDataTab
+            installedAppsCount={installedApps.length}
+            {totalRows}
+            triggerAppName={yourDataOpenForApp ? (appById.get(yourDataOpenForApp)?.name ?? null) : null}
+            onDismissTrigger={() => yourDataHost.close()}
+            onRecoveryAction={(action) => openContainerYourData(action)}
+            recoveryStatus={dataRecoveryStatus}
+            {installedApps}
+            {receiptsByApp}
+            {rowsByApp}
+            {recoveredReceipts}
+            onOpenApp={openApp}
+            onClearData={clearAppData}
+            onUninstall={uninstallApp}
+            onImportPackageForReceipt={importPackageForReceipt}
+            onForgetRecoveredReceipt={forgetRecoveredReceipt}
+            onExportReceipts={exportReceipts}
+            {receiptExport}
+            {dataTrustLine}
+            bind:backupPassphrase
+            {backupError}
+            {backupExport}
+            onCreateBackup={createEncryptedBackup}
+            bind:restorePayload
+            bind:restorePassphrase
+            {restoreStatus}
+            onRestore={restoreEncryptedBackup}
+          />
         {/if}
       </section>
     {/if}
@@ -3495,230 +3355,6 @@
   .export-button {
     padding: 0.55rem 0.75rem;
   }
-  .ai-readiness {
-    padding: var(--space-md);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-md);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--bg-pure);
-  }
-  .ai-readiness h3,
-  .ai-readiness p {
-    margin: 0;
-  }
-  .ai-readiness p:not(.mini-label) {
-    color: var(--text-secondary);
-  }
-  .ai-readiness-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-  .ai-readiness-meta span,
-  .ai-readiness-meta button {
-    padding: 0.45rem 0.6rem;
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--surface);
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-  }
-  .sealed-data-panel {
-    padding: var(--space-md);
-    display: grid;
-    gap: var(--space-sm);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--bg-pure);
-  }
-  .sealed-data-panel h3,
-  .sealed-data-panel p {
-    margin: 0;
-  }
-  .sealed-data-panel p:not(.mini-label),
-  .sealed-status {
-    color: var(--text-secondary);
-    line-height: 1.55;
-  }
-  .sealed-copy-stack {
-    display: grid;
-    gap: 6px;
-    padding: var(--space-sm) 0;
-    border-top: 1px solid var(--border-light);
-    border-bottom: 1px solid var(--border-light);
-  }
-  .sealed-copy-stack span {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-sm);
-    color: var(--text-secondary);
-    font-size: var(--small-size);
-  }
-  .sealed-copy-stack strong {
-    color: var(--text);
-  }
-  .sealed-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .sealed-actions button {
-    padding: 0.55rem 0.75rem;
-  }
-  .sealed-status {
-    padding-top: var(--space-xs);
-    font-size: var(--small-size);
-  }
-  .observation-flows {
-    border: 1px solid var(--border-light);
-    background: var(--surface);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .observation-flows .section-head h3 {
-    margin: 0 0 4px;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .observation-flows .section-head p {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 14px;
-  }
-  .flow-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .flow-row {
-    border-top: 1px solid var(--border-light);
-    padding-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .flow-row:first-child {
-    border-top: 0;
-    padding-top: 0;
-  }
-  .flow-meta {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .flow-meta strong {
-    font-weight: 600;
-  }
-  .flow-intent {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text-secondary);
-    padding: 2px 6px;
-    background: var(--bg);
-    border: 1px solid var(--border-light);
-  }
-  .flow-consumers {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .flow-consumers li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 4px 0;
-    font-size: 14px;
-  }
-  .revoke-button {
-    padding: 4px 10px;
-    border: 1px solid var(--border-light);
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 12px;
-  }
-  .revoke-button:hover {
-    border-color: var(--text);
-    color: var(--text);
-  }
-  .small {
-    font-size: 13px;
-  }
-  .row-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-  .receipt-export {
-    margin: 0;
-    padding: var(--space-md);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--bg-pure);
-    color: var(--text);
-    overflow: auto;
-    max-height: 280px;
-    font-size: var(--caption-size);
-  }
-  .backup-box {
-    padding: var(--space-md);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--bg-pure);
-    display: grid;
-    gap: var(--space-sm);
-  }
-  .recovered-receipts {
-    padding: var(--space-md);
-    border: 1px dashed var(--border);
-    border-radius: 0;
-    background: var(--surface);
-    display: grid;
-    gap: var(--space-sm);
-  }
-  .recovered-receipts > p {
-    margin: 0;
-    color: var(--text-secondary);
-  }
-  .backup-box input {
-    min-height: 42px;
-    padding: 0 0.75rem;
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-  }
-  .backup-box textarea {
-    min-height: 120px;
-    padding: 0.75rem;
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-    resize: vertical;
-  }
-  .error-text {
-    color: #B6472D;
-  }
   .viewport-area {
     min-height: 500px;
     border: 1px solid var(--border);
@@ -3776,13 +3412,6 @@
       align-items: flex-start;
       flex-direction: column;
     }
-    .ai-readiness {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-    .ai-readiness-meta {
-      justify-content: flex-start;
-    }
   }
 
   /* Phase B2 — mesh status badge in topbar */
@@ -3827,31 +3456,6 @@
     border-color: var(--sunset, #E8603C);
     color: var(--bg-pure, #fff);
     font-weight: 600;
-  }
-
-  /* Phase A5 — banner shown when an iframe app triggered Your Data */
-  .data-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 12px 0 16px;
-    padding: 10px 14px;
-    border-radius: 0;
-    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
-    background: rgba(232, 96, 60, 0.06);
-    font-size: 13px;
-    color: var(--text);
-  }
-  .data-trigger button {
-    height: 28px;
-    padding: 0 10px;
-    border-radius: 0;
-    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
-    background: transparent;
-    color: var(--text);
-    font-size: 12px;
-    cursor: pointer;
   }
 
   /* Unification plan — focused mode. /run/<slug>/ and /container?app=

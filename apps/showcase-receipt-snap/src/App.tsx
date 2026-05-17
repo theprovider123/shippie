@@ -24,6 +24,7 @@ const shippie = createShippieIframeSdk({ appId: 'app_receipt_snap' });
 const observations = createObservationClient(shippie);
 
 const MODEL_WARM_KEY = 'shippie.receipt-snap.model-warm.v1';
+const HEADER_SUBTITLE_SEEN_KEY = 'receiptSnap:onboarding:headerSubtitle:v1';
 
 type Tab = 'capture' | 'history' | 'settings';
 type Screen = { kind: 'tab' } | { kind: 'review'; rawText: string; imageDataUrl: string };
@@ -76,6 +77,13 @@ export function App() {
       return false;
     }
   });
+  const [showHeaderSubtitle, setShowHeaderSubtitle] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(HEADER_SUBTITLE_SEEN_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     save({ receipts });
@@ -99,6 +107,10 @@ export function App() {
 
   function onExtracted(rawText: string, imageDataUrl: string) {
     setExtracted(parseReceipt(rawText));
+    if (showHeaderSubtitle) {
+      setShowHeaderSubtitle(false);
+      try { localStorage.setItem(HEADER_SUBTITLE_SEEN_KEY, '1'); } catch { /* ignore */ }
+    }
     void localNavigation.navigate(
       { tab, screen: { kind: 'review', rawText, imageDataUrl } },
       { kind: 'rise' },
@@ -194,7 +206,9 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <h1>Receipt Snap</h1>
-        <p className="subtitle">snap · review · save</p>
+        {showHeaderSubtitle ? (
+          <p className="subtitle">snap · review · save</p>
+        ) : null}
       </header>
 
       {screen.kind === 'tab' ? (

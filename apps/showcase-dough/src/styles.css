@@ -735,3 +735,33 @@ button, input, textarea, select { font: inherit; }
   cursor: pointer;
   border-radius: 0;
 }
+
+/* Phase 3 — bottom tab nav for hub routes */
+.bottom-tabs {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg, #fff);
+  border-top: 1px solid var(--border, rgba(0,0,0,0.08));
+  padding: 8px max(8px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
+  gap: 4px;
+  z-index: 5;
+}
+.bottom-tabs .tab {
+  flex: 1;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--fg, inherit);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px;
+  cursor: pointer;
+}
+.bottom-tabs .tab.tab-active {
+  background: var(--accent-subtle, rgba(0,0,0,0.06));
+  color: var(--accent, inherit);
+}

@@ -7,11 +7,12 @@ interface Tab {
   icon: string; // emoji glyph for now; SVG icons later
 }
 
+// 4 primary tabs per bottom-nav rulebook (max 4). Memories promoted
+// from the More sheet; Journal + Surprises now live inside More.
 const TABS: readonly Tab[] = [
   { key: 'home', label: 'Home', icon: '⌂' },
   { key: 'schedule', label: 'Schedule', icon: '◫' },
-  { key: 'journal', label: 'Journal', icon: '✎' },
-  { key: 'surprises', label: 'Surprises', icon: '✦' },
+  { key: 'memories', label: 'Memories', icon: '✤' },
   { key: 'more', label: 'More', icon: '⋯' },
 ];
 
@@ -31,7 +32,9 @@ export function TabNav({ current, onChange, unreadCount = 0 }: Props) {
       <ul className="flex justify-between max-w-md mx-auto px-2">
         {TABS.map((tab) => {
           const active = current === tab.key;
-          const showBadge = tab.key === 'surprises' && unreadCount > 0;
+          // Surprises moved into the More sheet — bubble the unread count
+          // up to the More tab so the affordance is still discoverable.
+          const showBadge = tab.key === 'more' && unreadCount > 0;
           return (
             <li key={tab.key} className="flex-1">
               <button

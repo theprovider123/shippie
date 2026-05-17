@@ -1644,6 +1644,26 @@ const SHELL_HTML = `
   }
   details.private-details summary { cursor: pointer; color: #4E473B; font-weight: 600; }
   details.private-details p { margin: 8px 0 0; }
+  @media (max-width: 640px) {
+    .panel {
+      top: auto; left: 0; right: 0; bottom: 0;
+      transform: none;
+      width: 100%;
+      max-width: 100%;
+      max-height: 92vh;
+      padding: 16px 18px calc(18px + env(safe-area-inset-bottom));
+      border-radius: 18px 18px 0 0;
+      border-bottom: 0;
+      animation: shippie-sheet-rise 200ms ease-out;
+    }
+    @keyframes shippie-sheet-rise {
+      from { transform: translateY(24px); opacity: 0.6; }
+      to   { transform: translateY(0);    opacity: 1;   }
+    }
+    .close { top: 10px; right: 12px; }
+    h1 { font-size: 20px; }
+    button { min-height: 44px; }
+  }
 </style>
 <div class="scrim"></div>
 <div class="panel" role="dialog" aria-labelledby="shippie-data-title" data-shippie-data-body>

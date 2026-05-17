@@ -169,6 +169,7 @@ function Room(props: { group: Group; showAndTellMode: boolean; onLeave: () => vo
   // because the Yjs strokesArray is already the chronological record.
   const [replayActive, setReplayActive] = useState(false);
   const [replayIndex, setReplayIndex] = useState(0);
+  const [overflowOpen, setOverflowOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -418,19 +419,71 @@ function Room(props: { group: Group; showAndTellMode: boolean; onLeave: () => vo
           onChange={(e) => setWidth(Number(e.target.value))}
           style={{ width: 80 }}
         />
-        <button onClick={handleClear} style={ghostBtnStyle}>Clear</button>
-        <button onClick={handleExport} style={ghostBtnStyle}>Export</button>
-        <button
-          onClick={handleReplayToggle}
-          style={{
-            ...ghostBtnStyle,
-            ...(replayActive ? { borderColor: '#FAF7EF', color: '#FAF7EF' } : {}),
-          }}
-          disabled={totalStrokes === 0}
-        >
-          {replayActive ? 'Stop replay' : 'Replay'}
-        </button>
-        <button onClick={props.onLeave} style={ghostBtnStyle}>Leave</button>
+        {/* Drawing essentials stay inline (color + width); management
+            tools (Clear/Export/Replay/Leave) move into an overflow menu
+            so the header doesn't compete with the canvas. */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setOverflowOpen((v) => !v)}
+            style={ghostBtnStyle}
+            aria-label="More tools"
+            aria-expanded={overflowOpen}
+            aria-haspopup="menu"
+          >
+            ⋯
+          </button>
+          {overflowOpen ? (
+            <div
+              role="menu"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 4px)',
+                background: '#1B1813',
+                border: '1px solid #2A2520',
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 140,
+                zIndex: 10,
+              }}
+            >
+              <button
+                role="menuitem"
+                onClick={() => { setOverflowOpen(false); handleClear(); }}
+                style={{ ...ghostBtnStyle, border: 'none', justifyContent: 'flex-start' }}
+              >
+                Clear
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => { setOverflowOpen(false); handleExport(); }}
+                style={{ ...ghostBtnStyle, border: 'none', justifyContent: 'flex-start' }}
+              >
+                Export
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => { setOverflowOpen(false); handleReplayToggle(); }}
+                disabled={totalStrokes === 0}
+                style={{
+                  ...ghostBtnStyle,
+                  border: 'none',
+                  justifyContent: 'flex-start',
+                  ...(replayActive ? { color: '#FAF7EF' } : {}),
+                }}
+              >
+                {replayActive ? 'Stop replay' : 'Replay'}
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => { setOverflowOpen(false); props.onLeave(); }}
+                style={{ ...ghostBtnStyle, border: 'none', justifyContent: 'flex-start' }}
+              >
+                Leave
+              </button>
+            </div>
+          ) : null}
+        </div>
       </header>
       {replayActive && (
         <div

@@ -22,7 +22,7 @@ import {
   type TrustReport,
 } from '@shippie/app-package-contract';
 
-export type ContainerSection = 'home' | 'create' | 'data';
+export type ContainerSection = 'home' | 'create' | 'data' | 'access';
 export type ContainerVisibility = 'public' | 'unlisted' | 'private' | 'team' | 'local';
 
 export type AppSpaceContext = {
@@ -1067,6 +1067,7 @@ export function readPayloadTable(payload: unknown): string {
 export function sectionTitle(section: ContainerSection): string {
   if (section === 'home') return 'Home';
   if (section === 'create') return 'Create';
+  if (section === 'access') return 'Access';
   return 'Your Data';
 }
 

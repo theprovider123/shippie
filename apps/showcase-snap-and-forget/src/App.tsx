@@ -22,6 +22,8 @@ import { blobToThumb, deleteSnap, listSnaps, newId, saveSnap, updateLabels, type
 const sdk = createShippieIframeSdk({ appId: 'app_snap_and_forget' });
 const observations = createObservationClient(sdk);
 
+const HERO_SUBTITLE_SEEN_KEY = 'snapAndForget:onboarding:heroSubtitle:v1';
+
 export function App() {
   const [snaps, setSnaps] = useState<Snap[]>([]);
   const [busy, setBusy] = useState(false);
@@ -29,6 +31,13 @@ export function App() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const [showHeroSubtitle, setShowHeroSubtitle] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(HERO_SUBTITLE_SEEN_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => { void refresh(); }, []);
 
@@ -46,6 +55,10 @@ export function App() {
     e.target.value = '';
     setBusy(true);
     setError(null);
+    if (showHeroSubtitle) {
+      setShowHeroSubtitle(false);
+      try { localStorage.setItem(HERO_SUBTITLE_SEEN_KEY, '1'); } catch { /* ignore */ }
+    }
     try {
       haptic('success');
       const id = newId();
@@ -102,7 +115,9 @@ export function App() {
     <main className="app">
       <header>
         <h1>Snap and Forget</h1>
-        <p className="muted">Photograph anything. Search by what was in it.</p>
+        {showHeroSubtitle ? (
+          <p className="muted">Photograph anything. Search by what was in it.</p>
+        ) : null}
       </header>
 
       <section className="capture-row">

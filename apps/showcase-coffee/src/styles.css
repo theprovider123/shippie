@@ -898,3 +898,32 @@ button, input, textarea, select { font: inherit; }
   font-size: 12px;
   text-align: right;
 }
+
+/* Phase 3 — bottom tab nav (replaces Tools modal) */
+.bottom-tabs {
+  display: flex;
+  position: sticky;
+  bottom: 0;
+  background: var(--bg, #fffbf2);
+  border-top: 1px solid var(--border, rgba(0,0,0,0.08));
+  padding: 8px max(8px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
+  gap: 4px;
+  z-index: 5;
+}
+.bottom-tabs .tab {
+  flex: 1;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--fg, #2a1f16);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.bottom-tabs .tab.tab-active {
+  background: var(--accent-subtle, rgba(168, 96, 96, 0.12));
+  color: var(--accent, #a86060);
+}
