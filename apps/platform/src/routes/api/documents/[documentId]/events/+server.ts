@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
     const { events, batch } = await parseSealedEventBatchRequest(request);
     const result = await storeSealedEventBatch(platform.env, documentId, events, {
       request,
-      waitUntil: platform.ctx.waitUntil.bind(platform.ctx),
+      waitUntil: requestWaitUntil(platform),
     });
     return json(batch ? result : result.events[0], {
       status: result.stored > 0 ? 201 : 200,
@@ -58,4 +58,13 @@ function messageFor(err: unknown): string {
 function requireDocumentId(value: string | undefined): string {
   if (!value) throw error(400, 'missing document id');
   return value;
+}
+
+function requestWaitUntil(platform: App.Platform | undefined): ((promise: Promise<unknown>) => void) | undefined {
+  const workerPlatform = platform as (App.Platform & {
+    context?: ExecutionContext;
+    ctx?: ExecutionContext;
+  }) | undefined;
+  const context = workerPlatform?.ctx ?? workerPlatform?.context;
+  return context?.waitUntil?.bind(context);
 }
