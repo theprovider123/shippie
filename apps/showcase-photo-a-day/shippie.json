@@ -13,7 +13,8 @@
     "consumes": []
   },
   "curation": {
-    "surface": "featured",
-    "category": "creative"
+    "surface": "archived",
+    "category": "creative",
+    "successor": "snap-and-forget"
   }
 }

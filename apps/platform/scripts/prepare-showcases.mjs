@@ -516,16 +516,28 @@ function writePrecacheList() {
 }
 
 function main() {
-  mkdirSync(STATIC_RUNTIME_DIR, { recursive: true });
+  const generatedOnly = process.argv.includes('--generated-only');
   const showcases = listShowcases();
   if (showcases.length === 0) {
     console.log('[prepare-showcases] no showcase-* apps found.');
     writeShowcaseCatalog([]);
     writePrecacheList();
     writeRuntimePrecache([]);
-    writeShellAssets([]);
+    if (!generatedOnly) writeShellAssets([]);
     return;
   }
+  if (generatedOnly) {
+    const slugs = showcases.map((showcase) => slugFor(showcase));
+    writeShowcaseCatalog(slugs);
+    writeFirstPartyCuration(slugs);
+    writeRuntimePrecache(slugs);
+    writePrecacheList();
+    console.log(
+      `[prepare-showcases] generated manifests only for ${slugs.length} showcase(s).`,
+    );
+    return;
+  }
+  mkdirSync(STATIC_RUNTIME_DIR, { recursive: true });
   const failures = [];
   const built = [];
   for (const showcase of showcases) {

@@ -28,8 +28,8 @@ const SLUG_ALIASES: Record<string, string> = {
   // daily-briefing demoted to platform-side `/today` surface; until
   // that's fully discoverable, alias to recipe so links don't 404.
   'daily-briefing': 'recipe',
-  // NOTE: coffee / cooking / dough remain best-in-class standalone
-  // apps. No aliases needed.
+  // Recipe absorbed the standalone temperature helper for launch.
+  cooking: 'recipe',
 
   // Slate v4 Phase 0 consolidations. Each successor app is a current
   // first-party showcase (match-room, co-pilot, therapy-notes, lift) so
@@ -62,6 +62,7 @@ const SLUG_ALIASES: Record<string, string> = {
   'shopping-list': 'recipe',
   'meal-planner': 'recipe',
   'pantry-scanner': 'recipe',
+  'photo-a-day': 'snap-and-forget',
 };
 
 const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
@@ -74,6 +75,8 @@ const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
   'shopping-list': { tab: 'shopping', from: 'shopping-list' },
   'meal-planner': { tab: 'meal-plan', from: 'meal-planner' },
   'pantry-scanner': { tab: 'pantry', from: 'pantry-scanner' },
+  cooking: { tab: 'recipes', from: 'cooking' },
+  'photo-a-day': { from: 'photo-a-day' },
 };
 
 export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>(SHOWCASE_SLUGS);

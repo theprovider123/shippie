@@ -37,7 +37,8 @@
     }
   },
   "curation": {
-    "surface": "featured",
-    "category": "food-drink"
+    "surface": "archived",
+    "category": "food-drink",
+    "successor": "recipe"
   }
 }
