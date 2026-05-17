@@ -12,6 +12,7 @@
     themeColor: string;
     upvoteCount?: number;
     installCount?: number;
+    firstPartySigned?: boolean;
   }
 
   interface Props {

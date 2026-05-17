@@ -131,6 +131,9 @@
           {#if isRemix}
             <span class="remix-badge">{remixLabel}</span>
           {/if}
+          {#if data.signingTrust}
+            <span class="signed-badge" title={data.signingTrust.summary}>{data.signingTrust.label}</span>
+          {/if}
         </div>
         {#if data.capabilityBadges.length > 0}
           <div class="badges">
@@ -163,6 +166,26 @@
 </header>
 
 <div class="body wrap">
+  {#if data.signingTrust}
+    <section class="section signed-card" aria-labelledby="signed-card-title">
+      <div>
+        <span>Trust signal</span>
+        <h2 id="signed-card-title">{data.signingTrust.label}</h2>
+        <p>{data.signingTrust.summary}</p>
+      </div>
+      <div>
+        <span>Package</span>
+        <p>
+          {#if data.signingTrust.packageHash}
+            v{data.signingTrust.version ?? 'current'} · {data.signingTrust.packageHash.slice(0, 26)}...
+          {:else}
+            First-party bundle
+          {/if}
+        </p>
+      </div>
+    </section>
+  {/if}
+
   {#if data.trustCard}
     <section class="section trust-card" aria-labelledby="trust-card-title">
       <div class="section-intro">
@@ -499,6 +522,19 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
+  .signed-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 0.6rem;
+    border: 1px solid rgba(237, 228, 211, 0.72);
+    background: rgba(237, 228, 211, 0.16);
+    color: #EDE4D3;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
   .badges { margin-top: 1rem; }
   .cta-row {
     margin-top: var(--space-lg);
@@ -559,6 +595,34 @@
   .trust-card {
     display: grid;
     gap: var(--space-md);
+  }
+  .signed-card {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    border: 1px solid color-mix(in srgb, var(--sage-leaf) 42%, var(--border-light));
+    background: var(--surface);
+    padding: var(--space-lg);
+  }
+  .signed-card > div {
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .signed-card span {
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .signed-card h2,
+  .signed-card p {
+    margin: 0;
+  }
+  .signed-card p {
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
   }
   .trust-grid {
     display: grid;
@@ -793,6 +857,9 @@
     }
     .trust-detail {
       grid-template-columns: 1fr;
+    }
+    .signed-card {
+      flex-direction: column;
     }
   }
   @media (max-width: 520px) {

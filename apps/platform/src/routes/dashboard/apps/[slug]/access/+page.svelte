@@ -35,6 +35,28 @@
 
 <section class="block">
   <h2>Private spaces</h2>
+  <div class="metrics" aria-label="Private space activity">
+    <article>
+      <span>Spaces</span>
+      <strong>{data.privateSpaceMetrics.totalSpaces}</strong>
+      <p>{data.privateSpaceMetrics.activeSpaces} active · {data.privateSpaceMetrics.archivedSpaces} archived</p>
+    </article>
+    <article>
+      <span>Join links</span>
+      <strong>{data.privateSpaceMetrics.activeJoinLinks}</strong>
+      <p>{data.privateSpaceMetrics.totalJoinLinks} created</p>
+    </article>
+    <article>
+      <span>Claims</span>
+      <strong>{data.privateSpaceMetrics.totalClaims}</strong>
+      <p>aggregate only</p>
+    </article>
+    <article>
+      <span>Invite uses</span>
+      <strong>{data.privateSpaceMetrics.totalInviteUses}</strong>
+      <p>no member content exposed</p>
+    </article>
+  </div>
   {#if data.privateSpaces.length === 0}
     <p class="muted">No private spaces yet. Create an invite to start one.</p>
   {:else}
@@ -49,6 +71,7 @@
                 · latest {space.latestToken.role}
                 · {space.latestToken.inviteUsedCount}{#if space.latestToken.inviteMaxUses != null}/{space.latestToken.inviteMaxUses}{/if} used
               {/if}
+              · {space.totalClaimCount} claim{space.totalClaimCount === 1 ? '' : 's'}
             </p>
           </div>
           <div class="space-actions">
@@ -115,6 +138,37 @@
   .block { margin-bottom: 2.5rem; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 0 0 0.75rem 0; }
   .muted { color: #8B847A; }
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .metrics article {
+    min-width: 0;
+    border: 1px solid #E5DDC8;
+    padding: 0.875rem;
+    background: rgba(250, 247, 239, 0.52);
+  }
+  .metrics span {
+    display: block;
+    color: #8B847A;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .metrics strong {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 1.45rem;
+    line-height: 1;
+  }
+  .metrics p {
+    margin: 0.35rem 0 0;
+    color: #8B847A;
+    font-size: 12px;
+  }
   .invite-list { display: flex; flex-direction: column; gap: 0.5rem; }
   .space-list { display: flex; flex-direction: column; gap: 0.75rem; }
   .space-row {
@@ -144,7 +198,14 @@
   @media (prefers-color-scheme: dark) {
     ul li { border-color: rgba(255,255,255,0.05); }
     .space-row { border-color: #2A251E; }
+    .metrics article { border-color: #2A251E; background: rgba(42, 37, 30, 0.48); }
     .space-actions a,
     .space-actions button { border-color: #3A352D; }
+  }
+  @media (max-width: 760px) {
+    .metrics { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 520px) {
+    .metrics { grid-template-columns: 1fr; }
   }
 </style>

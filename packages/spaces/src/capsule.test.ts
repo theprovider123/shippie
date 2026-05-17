@@ -2,9 +2,12 @@ import { describe, expect, test } from 'bun:test';
 import {
   archiveSpace,
   buildSpaceUrl,
+  appendSpaceCapsuleToUrl,
   createJoinToken,
+  createPortableSpaceCapsule,
   createSpace,
   createSpaceCapsule,
+  describeSpaceCapsule,
   decodeSpaceCapsule,
   encodeSpaceCapsule,
   isJoinTokenClaimable,
@@ -36,7 +39,7 @@ describe('space capsules', () => {
     expect(created.inviteToken.maxClaims).toBe(20);
   });
 
-  test('encodes app, space, role, token, and package hash into a browser-safe URL', () => {
+  test('encodes app, space, role, token, labels, and package hash into a browser-safe URL', () => {
     const token = createJoinToken({
       spaceId: 'space_crown',
       role: 'member',
@@ -51,6 +54,8 @@ describe('space capsules', () => {
       maxClaims: token.maxClaims,
       expiresAt: token.expiresAt,
       appSlug: 'match-room',
+      appName: 'Match Room',
+      spaceName: 'The Crown FC',
       packageHash: 'sha256:abc',
       routes: [{ kind: 'hub', url: 'http://hub.local' }, { kind: 'cloud', url: 'https://shippie.app' }],
     });
@@ -75,6 +80,32 @@ describe('space capsules', () => {
     expect(params.role).toBe('member');
     expect(params.secret).toBe('secret');
     expect(params.capsule?.packageHash).toBe('sha256:abc');
+    expect(params.capsule?.appName).toBe('Match Room');
+    expect(params.capsule?.spaceName).toBe('The Crown FC');
+  });
+
+  test('portable capsules can carry a room secret instead of a join token', () => {
+    const capsule = createPortableSpaceCapsule({
+      spaceId: 'match-room_pub',
+      role: 'host',
+      secret: 'room-secret',
+      appSlug: 'match-room',
+      appName: 'Match Room',
+      spaceName: 'Pub board',
+      purpose: 'host-space',
+      routes: [{ kind: 'cloud', url: 'https://shippie.app/__shippie/signal' }],
+    });
+    const url = appendSpaceCapsuleToUrl('https://shippie.app/run/match-room/?room=match-room_pub', capsule);
+    const params = readSpaceParams(url);
+    expect(params.spaceId).toBe('match-room_pub');
+    expect(params.role).toBe('host');
+    expect(params.secret).toBe('room-secret');
+    expect(params.capsule?.joinToken).toBeUndefined();
+    expect(describeSpaceCapsule(capsule).action).toBe('Open host view');
+  });
+
+  test('rejects capsules without a join token or secret', () => {
+    expect(() => createSpaceCapsule({ spaceId: 'space_1', role: 'member' })).toThrow('join token or room secret');
   });
 
   test('rotates join tokens without changing the space id or role', () => {

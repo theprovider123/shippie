@@ -32,6 +32,7 @@
     badges?: PublicCapabilityBadge[];
     kind?: AppKind | null;
     kindStatus?: PublicKindStatus | null;
+    firstPartySigned?: boolean;
   }
 
   interface Props {
@@ -192,6 +193,9 @@
         {/if}
         {#if proofCount > 0}
           <span class="signal">{proofCount} proof{proofCount === 1 ? '' : 's'}</span>
+        {/if}
+        {#if app.firstPartySigned}
+          <span class="signal signed">Shippie-signed</span>
         {/if}
         {#if offlineLabel}
           <span
@@ -389,6 +393,11 @@
   }
   .signal.offline {
     color: var(--text-light);
+  }
+  .signal.signed {
+    color: var(--sage-leaf);
+    border-color: rgba(122, 154, 110, 0.45);
+    background: rgba(122, 154, 110, 0.08);
   }
   .signal.offline-saved {
     color: var(--sage-leaf);

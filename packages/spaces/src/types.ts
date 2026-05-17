@@ -2,6 +2,7 @@ import type { GossipMessage, GossipNode, GossipPeer } from '@shippie/proximity';
 
 export type SpaceStatus = 'active' | 'archived';
 export type SpaceRouteKind = 'cloud' | 'hub' | 'peer';
+export type SpaceCapsulePurpose = 'join-space' | 'add-device' | 'host-space' | 'open-space';
 
 export interface Space {
   id: string;
@@ -43,11 +44,16 @@ export interface SpaceRoute {
 export interface SpaceCapsuleV0 {
   schema: 'shippie.space.capsule.v0';
   spaceId: string;
-  joinToken: string;
+  joinToken?: string;
+  secret?: string;
   appSlug?: string;
+  appName?: string;
+  spaceName?: string;
   packageHash?: string;
   role: string;
+  purpose?: SpaceCapsulePurpose;
   maxClaims?: number;
+  createdAt?: string;
   expiresAt?: string;
   routes?: SpaceRoute[];
 }
@@ -104,4 +110,3 @@ export interface EventQueue<TPayload = unknown> {
 }
 
 export type EncryptedGossipMessage<TPayload> = GossipMessage<TPayload>;
-

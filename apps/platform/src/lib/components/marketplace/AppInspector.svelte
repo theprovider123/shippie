@@ -28,6 +28,7 @@
     badges?: PublicCapabilityBadge[];
     kind?: AppKind | null;
     kindStatus?: PublicKindStatus | null;
+    firstPartySigned?: boolean;
   }
 
   interface Props {
@@ -179,6 +180,10 @@
       <div>
         <dt>Proof</dt>
         <dd>{proofBadges.length} earned</dd>
+      </div>
+      <div>
+        <dt>Signed</dt>
+        <dd>{app.firstPartySigned ? 'Shippie first-party' : 'Not first-party signed'}</dd>
       </div>
     </dl>
 

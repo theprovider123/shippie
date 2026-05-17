@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { readSpaceParams } from '@shippie/spaces';
 import { matchRoomUrl, signalUrlFor } from './signal-config.ts';
 
 describe('match-room signal config', () => {
@@ -16,7 +17,15 @@ describe('match-room signal config', () => {
     });
     try {
       const url = matchRoomUrl({ role: 'display', roomId: 'room-1', roomKey: 'secret' });
-      expect(url).toBe('http://hub.local/run/match-room/?space=room-1&role=display&room=room-1#k=secret');
+      const parsed = new URL(url);
+      const params = readSpaceParams(url);
+      expect(`${parsed.origin}${parsed.pathname}`).toBe('http://hub.local/run/match-room/');
+      expect(parsed.searchParams.get('space')).toBe('room-1');
+      expect(parsed.searchParams.get('role')).toBe('display');
+      expect(parsed.searchParams.get('room')).toBe('room-1');
+      expect(new URLSearchParams(parsed.hash.replace(/^#/, '')).get('k')).toBe('secret');
+      expect(params.capsule?.purpose).toBe('open-space');
+      expect(params.secret).toBe('secret');
     } finally {
       Object.defineProperty(globalThis, 'location', { configurable: true, value: previous });
     }
@@ -36,7 +45,15 @@ describe('match-room signal config', () => {
         locale: 'es',
         timeZone: 'America/Mexico_City',
       });
-      expect(url).toBe('http://hub.local/run/match-room/?space=room-1&role=play&room=room-1&lang=es&tz=America%2FMexico_City#k=secret');
+      const parsed = new URL(url);
+      const params = readSpaceParams(url);
+      expect(`${parsed.origin}${parsed.pathname}`).toBe('http://hub.local/run/match-room/');
+      expect(parsed.searchParams.get('space')).toBe('room-1');
+      expect(parsed.searchParams.get('role')).toBe('play');
+      expect(parsed.searchParams.get('lang')).toBe('es');
+      expect(parsed.searchParams.get('tz')).toBe('America/Mexico_City');
+      expect(params.capsule?.purpose).toBe('join-space');
+      expect(params.capsule?.appName).toBe('Match Room');
     } finally {
       Object.defineProperty(globalThis, 'location', { configurable: true, value: previous });
     }

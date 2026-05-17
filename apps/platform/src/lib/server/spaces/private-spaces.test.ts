@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { summariseSpaceRows, type SpaceListRow } from './private-spaces';
+import { summariseSpaceMetrics, summariseSpaceRows, type SpaceListRow } from './private-spaces';
 
 const baseRow: SpaceListRow = {
   spaceId: 'space_pub',
@@ -43,6 +43,7 @@ describe('private space summaries', () => {
         joinTokenId: 'join_old',
         role: 'viewer',
         inviteId: 'invite-1',
+        claimCount: 1,
         tokenRevokedAt: '2026-05-18T09:00:00.000Z',
         tokenCreatedAt: '2026-05-17T10:00:00.000Z',
         inviteToken: 'tok-old',
@@ -54,6 +55,8 @@ describe('private space summaries', () => {
     expect(space?.id).toBe('space_pub');
     expect(space?.tokenCount).toBe(2);
     expect(space?.activeTokenCount).toBe(1);
+    expect(space?.totalClaimCount).toBe(4);
+    expect(space?.totalInviteUsedCount).toBe(4);
     expect(space?.latestToken?.id).toBe('join_new');
     expect(space?.latestToken?.inviteUsedCount).toBe(3);
   });
@@ -63,5 +66,49 @@ describe('private space summaries', () => {
     expect(space?.id).toBe('space_pub');
     expect(space?.latestToken).toBeNull();
     expect(space?.tokenCount).toBe(0);
+    expect(space?.totalClaimCount).toBe(0);
+  });
+
+  test('summarises aggregate-only private space metrics', () => {
+    const active = summariseSpaceRows([
+      {
+        ...baseRow,
+        joinTokenId: 'join_active',
+        role: 'member',
+        inviteId: 'invite-active',
+        claimCount: 3,
+        tokenExpiresAt: '2026-06-01T00:00:00.000Z',
+        tokenCreatedAt: '2026-05-18T10:00:00.000Z',
+        inviteToken: 'tok-active',
+        inviteUsedCount: 4,
+      },
+    ], Date.parse('2026-05-19T00:00:00.000Z'));
+    const archived = summariseSpaceRows([
+      {
+        ...baseRow,
+        spaceId: 'space_old',
+        name: 'Old room',
+        status: 'archived',
+        archivedAt: '2026-05-20T00:00:00.000Z',
+        joinTokenId: 'join_old',
+        role: 'viewer',
+        inviteId: 'invite-old',
+        claimCount: 1,
+        tokenRevokedAt: '2026-05-20T00:00:00.000Z',
+        tokenCreatedAt: '2026-05-17T10:00:00.000Z',
+        inviteToken: 'tok-old',
+        inviteUsedCount: 1,
+      },
+    ], Date.parse('2026-05-21T00:00:00.000Z'));
+
+    expect(summariseSpaceMetrics([...active, ...archived])).toEqual({
+      totalSpaces: 2,
+      activeSpaces: 1,
+      archivedSpaces: 1,
+      totalJoinLinks: 2,
+      activeJoinLinks: 1,
+      totalClaims: 4,
+      totalInviteUses: 5,
+    });
   });
 });

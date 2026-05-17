@@ -20,6 +20,7 @@
     badges?: PublicCapabilityBadge[];
     kind?: AppKind | null;
     kindStatus?: PublicKindStatus | null;
+    firstPartySigned?: boolean;
     /** True when the app has earned the Shippie Seal — top-trust marker. */
     sealed?: boolean;
   }
@@ -38,6 +39,7 @@
     badges = [],
     kind = null,
     kindStatus = null,
+    firstPartySigned = false,
     sealed = false,
   }: Props = $props();
 
@@ -72,6 +74,13 @@
         {#if kind}
           <div class="kind-row">
             <KindBadge {kind} status={kindStatus} compact />
+            {#if firstPartySigned}
+              <span class="signed-mini">Shippie-signed</span>
+            {/if}
+          </div>
+        {:else if firstPartySigned}
+          <div class="kind-row">
+            <span class="signed-mini">Shippie-signed</span>
           </div>
         {/if}
         {#if badges.length > 0}
@@ -173,7 +182,23 @@
     overflow: hidden;
   }
   .badges { margin-top: 0.625rem; }
-  .kind-row { margin-top: 0.5rem; }
+  .kind-row {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .signed-mini {
+    border: 1px solid rgba(122, 154, 110, 0.45);
+    color: var(--sage-leaf);
+    background: rgba(122, 154, 110, 0.08);
+    padding: 2px 7px;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
   .counts {
     margin-top: 0.625rem;
     display: flex;

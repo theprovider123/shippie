@@ -284,7 +284,8 @@ function darken(hex: string): string {
 function PrivateSpaceHero(props: { onCreate: (template?: RoomTemplate, title?: string) => void }) {
   const steps = [
     { title: 'Create', text: 'Start one private room for friends, family, work, or a pub table.' },
-    { title: 'Invite', text: 'People join from a link or QR. No account, no global profile.' },
+    { title: 'Invite', text: 'A link or QR carries the room, role, route, and encrypted room key.' },
+    { title: 'Play', text: 'Phones vote, predict, and react together without sharing a global account.' },
     { title: 'Archive', text: 'When the tournament ends, the room becomes a private memory.' },
   ];
 
@@ -296,6 +297,9 @@ function PrivateSpaceHero(props: { onCreate: (template?: RoomTemplate, title?: s
         <p>
           Match Room is the proof: a tiny app can create a shared space between phones,
           keep roles local to the room, and sync the experience without becoming another account system.
+        </p>
+        <p className="space-quiet-proof">
+          Shippie can help move the invite and relay encrypted messages. It cannot read the room.
         </p>
       </div>
       <div className="space-step-grid">

@@ -7,6 +7,7 @@ export type {
   Space,
   SpaceApp,
   SpaceCapsuleV0,
+  SpaceCapsulePurpose,
   SpaceManifestDeclaration,
   SpaceMember,
   SpaceParams,
@@ -37,11 +38,14 @@ export {
 
 export {
   SPACE_CAPSULE_SCHEMA,
+  appendSpaceCapsuleToUrl,
   archiveSpace,
   createSpace,
   buildSpaceUrl,
   createJoinToken,
+  createPortableSpaceCapsule,
   createSpaceCapsule,
+  describeSpaceCapsule,
   decodeSpaceCapsule,
   encodeSpaceCapsule,
   isJoinTokenClaimable,

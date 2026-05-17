@@ -31,6 +31,7 @@
         "@shippie/sdk": "workspace:*",
         "@shippie/share": "workspace:*",
         "@shippie/shared": "workspace:*",
+        "@shippie/spaces": "workspace:*",
         "@shippie/templates": "workspace:*",
         "arctic": "^2.0.0",
         "drizzle-orm": "^0.38.0",
