@@ -27,14 +27,22 @@ import { Recurring } from './pages/Recurring.tsx';
 import { Export } from './pages/Export.tsx';
 import { Settings } from './pages/Settings.tsx';
 
-type Tab = 'entries' | 'month' | 'recurring' | 'categories' | 'export' | 'settings';
+type Tab = 'entries' | 'month' | 'recurring' | 'categories' | 'export' | 'settings' | 'more';
 
-const TABS: Array<{ id: Tab; label: string }> = [
+// Bottom-nav rulebook: 4 primary tabs visible, everything else in More.
+// "Cats" expanded to "Categories" (clarity over brevity once we have
+// the breathing room). CSV + Settings demoted — settings only belongs
+// primary if the app is settings-heavy (Ledger isn't).
+const PRIMARY_TABS: Array<{ id: Tab; label: string }> = [
   { id: 'entries', label: 'Entries' },
   { id: 'month', label: 'Month' },
   { id: 'recurring', label: 'Recurring' },
-  { id: 'categories', label: 'Cats' },
-  { id: 'export', label: 'CSV' },
+  { id: 'more', label: 'More' },
+];
+const MORE_TABS: Array<{ id: Tab; label: string; subtitle: string }> = [
+  { id: 'categories', label: 'Categories', subtitle: 'Manage spending categories' },
+  { id: 'export', label: 'Export', subtitle: 'Download a CSV of your entries' },
+  { id: 'settings', label: 'Settings', subtitle: 'Currency and preferences' },
 ];
 
 const shippie = createShippieIframeSdk({ appId: 'app_ledger' });
@@ -301,21 +309,44 @@ export function App() {
             onCurrencyChange={handleCurrencyChange}
           />
         ) : null}
+        {tab === 'more' ? (
+          <section className="more-sheet" aria-label="More tools">
+            <h2 className="more-sheet-title">More</h2>
+            <ul className="more-sheet-list">
+              {MORE_TABS.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => void localNavigation.navigate(t.id, { kind: 'crossfade' })}
+                  >
+                    <span className="more-label">{t.label}</span>
+                    <span className="more-subtitle">{t.subtitle}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </main>
 
       <nav className="bottom-tabs" role="tablist" aria-label="Sections">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`tab ${tab === t.id ? 'tab-active' : ''}`}
-            onClick={() => void localNavigation.navigate(t.id, { kind: 'crossfade' })}
-          >
-            {t.label}
-          </button>
-        ))}
+        {PRIMARY_TABS.map((t) => {
+          const isMoreTab = t.id === 'more';
+          const moreTabActive = isMoreTab && (tab === 'more' || MORE_TABS.some((m) => m.id === tab));
+          const active = isMoreTab ? moreTabActive : tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`tab ${active ? 'tab-active' : ''}`}
+              onClick={() => void localNavigation.navigate(t.id, { kind: 'crossfade' })}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Single bottom alert slot — priority high→low: prompt (action) > toast (status). */}
