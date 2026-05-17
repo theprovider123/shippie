@@ -397,6 +397,7 @@ export async function storeSealedEventBatch(
   const fresh = candidates.filter((_, index) => !existing[index]);
 
   if (fresh.length > 0) {
+    const currentManifest = env.CACHE ? readSealedDocumentManifest(env, documentId) : undefined;
     const totalBytes = fresh.reduce((sum, candidate) => sum + serialisedByteLength(candidate.serialised), 0);
     await enforceSealedWriteBudget(env, documentId, totalBytes, {
       ...opts,
@@ -416,16 +417,23 @@ export async function storeSealedEventBatch(
       ),
     );
     const last = fresh.at(-1)!.event;
-    await env.CACHE?.put(
-      healthKey(documentId),
-      JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
-      { expirationTtl: 60 * 60 * 24 * 30 },
-    );
-    await updateDocumentManifest(env, documentId, {
-      eventCountDelta: fresh.length,
-      latestEventId: last.eventId,
-      latestEventCursor: fresh.at(-1)!.key,
-    });
+    await Promise.all([
+      env.CACHE?.put(
+        healthKey(documentId),
+        JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
+        { expirationTtl: 60 * 60 * 24 * 30 },
+      ),
+      updateDocumentManifest(
+        env,
+        documentId,
+        {
+          eventCountDelta: fresh.length,
+          latestEventId: last.eventId,
+          latestEventCursor: fresh.at(-1)!.key,
+        },
+        { current: currentManifest },
+      ),
+    ]);
   }
 
   const results = candidates.map((candidate, index) => ({
@@ -558,21 +566,29 @@ export async function enforceSealedWriteBudget(
   const deviceByteLimit = numberFromEnv(env.SEALED_DOC_DEVICE_DAILY_BYTE_LIMIT, DEFAULT_DEVICE_DAILY_BYTE_LIMIT);
 
   const documentKey = budgetKey('document', `${documentId}:${day}`);
-  const documentBudget = await readBudget(env.CACHE, documentKey);
+  const documentBudgetPromise = readBudget(env.CACHE, documentKey);
+  const ip = clientAddress(opts.request);
+  const ipHashPromise = sha256Base64Url(ip);
+  const deviceKey = budgetKey('device', `${hashableDeviceId(opts.request)}:${day}`);
+  const deviceBudgetPromise = readBudget(env.CACHE, deviceKey);
+  let ipKey = '';
+  const ipBudgetPromise = ipHashPromise.then((ipHash) => {
+    ipKey = budgetKey('ip', `${ipHash}:${day}`);
+    return readBudget(env.CACHE!, ipKey);
+  });
+  const [documentBudget, ipBudget, deviceBudget] = await Promise.all([
+    documentBudgetPromise,
+    ipBudgetPromise,
+    deviceBudgetPromise,
+  ]);
   if (documentBudget.events + eventCount > documentLimit || documentBudget.bytes + eventBytes > byteLimit) {
     throw new Error('sealed sync write budget exceeded');
   }
 
-  const ip = clientAddress(opts.request);
-  const ipHash = await sha256Base64Url(ip);
-  const ipKey = budgetKey('ip', `${ipHash}:${day}`);
-  const ipBudget = await readBudget(env.CACHE, ipKey);
   if (ipBudget.events + eventCount > ipLimit) {
     throw new Error('sealed sync write budget exceeded');
   }
 
-  const deviceKey = budgetKey('device', `${hashableDeviceId(opts.request)}:${day}`);
-  const deviceBudget = await readBudget(env.CACHE, deviceKey);
   if (deviceBudget.events + eventCount > deviceEventLimit || deviceBudget.bytes + eventBytes > deviceByteLimit) {
     throw new Error('sealed sync write budget exceeded');
   }
@@ -900,9 +916,10 @@ async function updateDocumentManifest(
     latestSnapshotCursor?: string;
     lastAttachmentId?: string;
   },
+  opts: { current?: SealedDocumentManifest | Promise<SealedDocumentManifest> } = {},
 ): Promise<void> {
   if (!env.CACHE) return;
-  const current = await readSealedDocumentManifest(env, documentId);
+  const current = opts.current ? await opts.current : await readSealedDocumentManifest(env, documentId);
   const next: SealedDocumentManifest = {
     ...current,
     eventCount: current.eventCount + Math.max(0, Math.floor(patch.eventCountDelta ?? 0)),
