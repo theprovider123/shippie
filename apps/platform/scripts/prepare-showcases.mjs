@@ -69,6 +69,12 @@ const AI_RUNTIME_ASSETS = ['https://esm.sh/@huggingface/transformers@3.0.0'];
 
 const SKIP = new Set(['platform', 'shippie-ai']);
 
+function buildSdkRuntime() {
+  const sdkDir = join(REPO_ROOT, 'packages', 'sdk');
+  console.log('[prepare-showcases] building @shippie/sdk runtime exports...');
+  execSync('bun run build', { cwd: sdkDir, stdio: 'inherit' });
+}
+
 function listShowcases() {
   return readdirSync(APPS_DIR).filter((name) => {
     if (!name.startsWith('showcase-')) return false;
@@ -568,6 +574,7 @@ function main() {
     );
     return;
   }
+  buildSdkRuntime();
   mkdirSync(STATIC_RUNTIME_DIR, { recursive: true });
   const failures = [];
   const built = [];

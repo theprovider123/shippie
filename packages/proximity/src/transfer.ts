@@ -436,6 +436,7 @@ export async function receiveTransfer(opts: ReceiveTransferOptions): Promise<Rec
   return new Promise<ReceiveTransferResult>((resolve) => {
     let settled = false;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let processing = Promise.resolve();
 
     const settle = (result: ReceiveTransferResult) => {
       if (settled) return;
@@ -462,72 +463,76 @@ export async function receiveTransfer(opts: ReceiveTransferOptions): Promise<Rec
     };
     opts.signal?.addEventListener('abort', onAbort, { once: true });
 
+    const processBytes = async (bytes: Uint8Array) => {
+      if (settled) return;
+
+      let frame: TransferFrame;
+      try {
+        frame = await decryptFrame(key, bytes);
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        emit({ type: 'error', error });
+        settle({ ok: false, bytesReceived, error });
+        return;
+      }
+      try {
+        if (frame.t === 'manifest') {
+          manifest = frame;
+          emit({ type: 'manifest', manifest });
+        } else if (frame.t === 'rows') {
+          emit({ type: 'row-batch', table: frame.table, rows: frame.rows.length });
+        } else if (frame.t === 'file-meta') {
+          emit({
+            type: 'file-start',
+            fileId: frame.fileId,
+            name: frame.name,
+            size: frame.size,
+            mime: frame.mime,
+          });
+        } else if (frame.t === 'file-chunk') {
+          emit({
+            type: 'file-chunk',
+            fileId: frame.fileId,
+            bytes: base64ByteLength(frame.bytesB64),
+          });
+          if (frame.last) emit({ type: 'file-end', fileId: frame.fileId });
+        } else if (frame.t === 'cancel') {
+          cancelled = true;
+          await opts.apply(frame);
+          emit({ type: 'cancelled', reason: frame.reason });
+          settle({ ok: false, bytesReceived, cancelled: true });
+          return;
+        }
+
+        await opts.apply(frame);
+
+        if (manifest) {
+          emit({
+            type: 'progress',
+            sent: bytesReceived,
+            total: manifest.totalBytes,
+            pct: manifest.totalBytes > 0
+              ? Math.min(100, Math.round((bytesReceived / manifest.totalBytes) * 100))
+              : 0,
+          });
+        }
+
+        if (frame.t === 'done') {
+          emit({ type: 'done' });
+          settle({ ok: true, bytesReceived });
+        }
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        emit({ type: 'error', error });
+        settle({ ok: false, bytesReceived, error });
+      }
+    };
+
     const unsubscribe = opts.group.onBinary(TRANSFER_CHANNEL, (bytes) => {
       if (settled) return;
       bytesReceived += bytes.byteLength;
       resetIdle();
-      void (async () => {
-        let frame: TransferFrame;
-        try {
-          frame = await decryptFrame(key, bytes);
-        } catch (err) {
-          const error = err instanceof Error ? err.message : String(err);
-          emit({ type: 'error', error });
-          settle({ ok: false, bytesReceived, error });
-          return;
-        }
-        try {
-          if (frame.t === 'manifest') {
-            manifest = frame;
-            emit({ type: 'manifest', manifest });
-          } else if (frame.t === 'rows') {
-            emit({ type: 'row-batch', table: frame.table, rows: frame.rows.length });
-          } else if (frame.t === 'file-meta') {
-            emit({
-              type: 'file-start',
-              fileId: frame.fileId,
-              name: frame.name,
-              size: frame.size,
-              mime: frame.mime,
-            });
-          } else if (frame.t === 'file-chunk') {
-            emit({
-              type: 'file-chunk',
-              fileId: frame.fileId,
-              bytes: base64ByteLength(frame.bytesB64),
-            });
-            if (frame.last) emit({ type: 'file-end', fileId: frame.fileId });
-          } else if (frame.t === 'cancel') {
-            cancelled = true;
-            await opts.apply(frame);
-            emit({ type: 'cancelled', reason: frame.reason });
-            settle({ ok: false, bytesReceived, cancelled: true });
-            return;
-          }
-
-          await opts.apply(frame);
-
-          if (manifest) {
-            emit({
-              type: 'progress',
-              sent: bytesReceived,
-              total: manifest.totalBytes,
-              pct: manifest.totalBytes > 0
-                ? Math.min(100, Math.round((bytesReceived / manifest.totalBytes) * 100))
-                : 0,
-            });
-          }
-
-          if (frame.t === 'done') {
-            emit({ type: 'done' });
-            settle({ ok: true, bytesReceived });
-          }
-        } catch (err) {
-          const error = err instanceof Error ? err.message : String(err);
-          emit({ type: 'error', error });
-          settle({ ok: false, bytesReceived, error });
-        }
-      })();
+      processing = processing.then(() => processBytes(bytes));
     });
 
     resetIdle();
