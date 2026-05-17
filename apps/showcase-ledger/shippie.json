@@ -1,0 +1,34 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Ledger",
+  "slug": "ledger",
+  "description": "Private expense tracking without bank scraping or aggregators.",
+  "icon": "/icon.svg",
+  "theme_color": "#17694D",
+  "background_color": "#151A17",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "expense-logged",
+      "budget-limit"
+    ],
+    "consumes": [
+      "dined-out",
+      "shopping-list"
+    ]
+  },
+  "data_schemas": {
+    "expenses": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "amount": "real",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools"
+  }
+}

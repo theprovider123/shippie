@@ -1,0 +1,180 @@
+import { describe, expect, it } from 'bun:test';
+import { MemoryLocalDb } from './runtime.ts';
+import {
+  addDays,
+  cycleDayFor,
+  daysBetween,
+  getActiveCycle,
+  getDayByDate,
+  isoDate,
+  listCycles,
+  listDays,
+  loadPrefs,
+  logDay,
+  parseSymptoms,
+  recomputeLengths,
+  savePrefs,
+  startCycle,
+  summariseCycle,
+} from './queries.ts';
+
+describe('date helpers', () => {
+  it('isoDate produces yyyy-MM-dd', () => {
+    expect(isoDate(new Date(2025, 4, 1))).toBe('2025-05-01');
+  });
+
+  it('daysBetween counts inclusive of from', () => {
+    expect(daysBetween('2025-05-01', '2025-05-08')).toBe(7);
+  });
+
+  it('addDays handles month rollover', () => {
+    expect(addDays('2025-05-30', 5)).toBe('2025-06-04');
+  });
+});
+
+describe('cycles', () => {
+  it('starts a cycle and lists it', async () => {
+    const db = new MemoryLocalDb();
+    const c = await startCycle(db, '2025-04-10');
+    expect(c.id).toBeTruthy();
+    expect(c.started_on).toBe('2025-04-10');
+    const all = await listCycles(db);
+    expect(all).toHaveLength(1);
+    expect(all[0]!.length_days).toBeNull(); // open
+  });
+
+  it('recomputeLengths backfills length_days for closed cycles', async () => {
+    const db = new MemoryLocalDb();
+    await startCycle(db, '2025-01-01');
+    await startCycle(db, '2025-01-30'); // 29-day cycle for the first
+    await startCycle(db, '2025-02-28'); // 29-day cycle for the second
+    await recomputeLengths(db);
+    const all = await listCycles(db); // newest first
+    expect(all[0]!.length_days).toBeNull(); // most recent is open
+    expect(all[1]!.length_days).toBe(29);
+    expect(all[2]!.length_days).toBe(29);
+  });
+
+  it('getActiveCycle returns the most-recent cycle', async () => {
+    const db = new MemoryLocalDb();
+    await startCycle(db, '2025-01-01');
+    await startCycle(db, '2025-02-04');
+    const active = await getActiveCycle(db);
+    expect(active?.started_on).toBe('2025-02-04');
+  });
+});
+
+describe('days', () => {
+  it('logs a day and reads it back', async () => {
+    const db = new MemoryLocalDb();
+    const c = await startCycle(db, '2025-04-10');
+    await logDay(db, {
+      cycle_id: c.id,
+      date: '2025-04-12',
+      flow: 2,
+      symptoms: ['cramps', 'mood'],
+      note: 'felt better after walking',
+    });
+    const got = await getDayByDate(db, '2025-04-12');
+    expect(got).not.toBeNull();
+    expect(got!.flow).toBe(2);
+    expect(parseSymptoms(got!.symptoms_json ?? null)).toEqual(['cramps', 'mood']);
+  });
+
+  it('logDay upserts on the same date', async () => {
+    const db = new MemoryLocalDb();
+    const c = await startCycle(db, '2025-04-10');
+    await logDay(db, { cycle_id: c.id, date: '2025-04-10', flow: 3 });
+    await logDay(db, { cycle_id: c.id, date: '2025-04-10', flow: 1, symptoms: ['fatigue'] });
+    const all = await listDays(db, c.id);
+    expect(all).toHaveLength(1);
+    expect(all[0]!.flow).toBe(1);
+    expect(parseSymptoms(all[0]!.symptoms_json ?? null)).toEqual(['fatigue']);
+  });
+});
+
+describe('summariseCycle', () => {
+  it('aggregates symptoms and finds flow peak', async () => {
+    const db = new MemoryLocalDb();
+    const c = await startCycle(db, '2025-04-10');
+    await logDay(db, { cycle_id: c.id, date: '2025-04-10', flow: 2, symptoms: ['cramps'] });
+    await logDay(db, { cycle_id: c.id, date: '2025-04-11', flow: 3, symptoms: ['cramps', 'fatigue'] });
+    await logDay(db, { cycle_id: c.id, date: '2025-04-12', flow: 1, symptoms: ['mood'] });
+    const summary = await summariseCycle(db, c.id);
+    expect(summary).not.toBeNull();
+    expect(summary!.dayCount).toBe(3);
+    expect(summary!.symptomFrequency.cramps).toBe(2);
+    expect(summary!.symptomFrequency.fatigue).toBe(1);
+    expect(summary!.flowPeak).toBe(3);
+  });
+});
+
+describe('cycleDayFor', () => {
+  it('returns 1-indexed day in current cycle', async () => {
+    const db = new MemoryLocalDb();
+    await startCycle(db, '2025-04-10');
+    expect(await cycleDayFor(db, '2025-04-10')).toBe(1);
+    expect(await cycleDayFor(db, '2025-04-13')).toBe(4);
+  });
+
+  it('returns null when no active cycle', async () => {
+    const db = new MemoryLocalDb();
+    expect(await cycleDayFor(db, '2025-04-13')).toBeNull();
+  });
+});
+
+describe('prefs', () => {
+  it('returns sensible defaults when nothing is persisted', async () => {
+    const db = new MemoryLocalDb();
+    const prefs = await loadPrefs(db);
+    expect(prefs.share_with_partner).toBe(false);
+    expect(prefs.partner_pair_code).toBeNull();
+    expect(prefs.partner_seen_fields.cycle_day).toBe(true);
+    expect(prefs.partner_seen_fields.fertile_window).toBe(false);
+  });
+
+  it('round-trips share state and partner code', async () => {
+    const db = new MemoryLocalDb();
+    await savePrefs(db, {
+      share_with_partner: true,
+      partner_pair_code: 'TENDER-CRANE-3849',
+      partner_seen_fields: {
+        cycle_day: true,
+        fertile_window: true,
+        predicted_period: false,
+        flow_today: false,
+      },
+    });
+    const back = await loadPrefs(db);
+    expect(back.share_with_partner).toBe(true);
+    expect(back.partner_pair_code).toBe('TENDER-CRANE-3849');
+    expect(back.partner_seen_fields.fertile_window).toBe(true);
+    expect(back.partner_seen_fields.predicted_period).toBe(false);
+  });
+
+  it('updates rather than duplicates the singleton on save', async () => {
+    const db = new MemoryLocalDb();
+    await savePrefs(db, {
+      share_with_partner: false,
+      partner_pair_code: null,
+      partner_seen_fields: {
+        cycle_day: true,
+        fertile_window: false,
+        predicted_period: false,
+        flow_today: false,
+      },
+    });
+    await savePrefs(db, {
+      share_with_partner: true,
+      partner_pair_code: 'GOLDEN-WILLOW-1111',
+      partner_seen_fields: {
+        cycle_day: true,
+        fertile_window: false,
+        predicted_period: false,
+        flow_today: false,
+      },
+    });
+    const rows = await db.query('prefs');
+    expect(rows).toHaveLength(1);
+  });
+});

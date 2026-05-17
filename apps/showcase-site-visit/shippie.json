@@ -1,0 +1,66 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Site Visit",
+  "slug": "site-visit",
+  "description": "Offline inspection reports for tradespeople. Photos, signatures, PDF export — works underground and at site.",
+  "icon": "/icon.svg",
+  "theme_color": "#5E7B5C",
+  "background_color": "#F5EFE4",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "visit-completed",
+      "incident-flagged"
+    ]
+  },
+  "data_schemas": {
+    "sites": {
+      "id": "text primary key",
+      "name": "text not null",
+      "address": "text",
+      "contact_name": "text",
+      "contact_phone": "text",
+      "lat": "real",
+      "lng": "real",
+      "created_at": "datetime"
+    },
+    "visits": {
+      "id": "text primary key",
+      "site_id": "text not null",
+      "template_id": "text",
+      "inspector_name": "text",
+      "weather": "text",
+      "started_at": "datetime",
+      "ended_at": "datetime",
+      "status": "text",
+      "signature_svg": "text"
+    },
+    "checks": {
+      "id": "text primary key",
+      "visit_id": "text not null",
+      "label": "text not null",
+      "status": "text",
+      "notes": "text",
+      "photo_paths": "text"
+    },
+    "incidents": {
+      "id": "text primary key",
+      "visit_id": "text not null",
+      "severity": "text",
+      "description": "text",
+      "photo_path": "text",
+      "follow_up": "integer",
+      "created_at": "datetime"
+    },
+    "templates": {
+      "id": "text primary key",
+      "name": "text not null",
+      "checks_json": "text"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools"
+  }
+}

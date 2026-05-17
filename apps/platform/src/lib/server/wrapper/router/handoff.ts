@@ -1,9 +1,8 @@
 /**
  * /__shippie/handoff — desktop→mobile handoff intent.
  *
- * Phase 6 status: persistence + email-send are still stubbed (handoff
- * email path goes through Resend; the platform-side sender lives in
- * apps/platform/src/lib/server/auth/email.ts and is wired separately).
+ * Phase 6 status: persistence is live; email-send remains deferred. The
+ * platform-side magic-link sender lives in apps/platform/src/lib/server/auth/email.ts.
  *
  * What we DO persist: an analytics_events row with event_name='handoff_request'
  * so the dashboard can see funnel data even before the email pipe is live.
@@ -65,7 +64,6 @@ export async function handleHandoff(ctx: WrapperContext): Promise<Response> {
     }
   }
 
-  // Email send still deferred — the Resend client wiring on the Worker
-  // path is a separate scope. Caller sees ok:true + a hint.
+  // Email send remains deferred. Caller sees ok:true + a hint.
   return Response.json({ ok: true, mode: body.mode, queued: false });
 }

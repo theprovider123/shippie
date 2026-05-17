@@ -63,10 +63,14 @@ export class WaSqliteEngine implements SqliteEngine {
       return { usedBytes: 0 };
     }
     const estimate = await navigator.storage.estimate();
+    const persisted =
+      typeof navigator.storage.persisted === 'function'
+        ? await navigator.storage.persisted().catch(() => undefined)
+        : undefined;
     return {
       usedBytes: estimate.usage ?? 0,
       quotaBytes: estimate.quota,
-      persisted: undefined,
+      persisted,
     };
   }
 

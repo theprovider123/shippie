@@ -49,7 +49,7 @@ export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
     }
 
     // Auto-bridge: a maker hasn't published via the deploy pipeline, but a
-    // statically-baked /run/<slug>/ shell exists in Workers Assets. Redirect
+    // statically-baked /run/<slug> shell exists in Workers Assets. Redirect
     // to the canonical static URL so first-party showcases (and seeded apps
     // like mevrouw) work without the maker clicking Ship-Now. Building wins
     // over this — that's why this branch sits below the building check.
@@ -161,10 +161,10 @@ async function tryStaticBridge(
   const assets = ctx.env.ASSETS;
   if (!assets) return null;
 
-  // Probe the canonical static shell. Workers Assets matches by pathname,
+  // Probe the internal static runtime. Workers Assets matches by pathname,
   // so the host on the probe URL is irrelevant — but use shippie.app to
   // keep the redirect target self-consistent.
-  const probeUrl = `https://shippie.app/run/${encodeURIComponent(slug)}/index.html`;
+  const probeUrl = `https://shippie.app/__shippie-run/${encodeURIComponent(slug)}/index.html`;
   let probe: Response;
   try {
     probe = await assets.fetch(new Request(probeUrl, { method: 'GET' }));
@@ -181,7 +181,7 @@ async function tryStaticBridge(
 
   const incoming = new URL(ctx.request.url);
   // Strip leading slash so we don't double up — pathname always starts with /.
-  const targetPath = incoming.pathname === '/' ? '/' : incoming.pathname;
+  const targetPath = incoming.pathname === '/' ? '' : incoming.pathname;
   const target = `https://shippie.app/run/${encodeURIComponent(slug)}${targetPath}${incoming.search}`;
   return new Response(null, {
     status: 302,

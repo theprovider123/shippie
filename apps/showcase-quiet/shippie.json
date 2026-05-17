@@ -1,0 +1,47 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Quiet",
+  "slug": "quiet",
+  "description": "Breath, focus, and mood in one local ritual surface.",
+  "icon": "/icon.svg",
+  "theme_color": "#5E7B5C",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "permissions": [
+    "wake-lock"
+  ],
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      }
+    }
+  },
+  "intents": {
+    "provides": [
+      "mindful-session",
+      "focus-session",
+      "mood-logged"
+    ],
+    "consumes": [
+      "caffeine-logged",
+      "workout-completed",
+      "sleep-logged"
+    ]
+  },
+  "data_schemas": {
+    "sessions": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "score": "integer",
+      "duration_seconds": "integer",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness"
+  }
+}

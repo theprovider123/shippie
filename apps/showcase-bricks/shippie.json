@@ -1,0 +1,20 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Bricks",
+  "slug": "bricks",
+  "description": "Breakout-style brick smasher. Paddle bounces ball with angle, power-ups drop, 20 levels plus endless.",
+  "icon": "/icon.png",
+  "theme_color": "#E84A2D",
+  "background_color": "#15131F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["game.completed"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "arcade-cabinet"
+  }
+}

@@ -55,10 +55,25 @@ export function RecipeList({ onOpen, onNew, onCookingMode, refreshKey, onChanged
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState<RecipeWithIngredients | null>(null);
+  const [sendStatus, setSendStatus] = useState<Record<string, string>>({});
 
   async function openShareSheet(id: string) {
     const full = await getRecipe(resolveLocalDb(), id);
     if (full) setSharing(full);
+  }
+
+  async function handlePlan(id: string, event: React.MouseEvent) {
+    event.stopPropagation();
+    setSendStatus((prev) => ({ ...prev, [id]: 'Sending…' }));
+    const status = await sendRecipeToPlanner(id);
+    if (!status) return;
+    setSendStatus((prev) => ({ ...prev, [id]: status }));
+    window.setTimeout(() => {
+      setSendStatus((prev) => {
+        const { [id]: _drop, ...rest } = prev;
+        return rest;
+      });
+    }, 4000);
   }
 
   useEffect(() => {
@@ -88,12 +103,20 @@ export function RecipeList({ onOpen, onNew, onCookingMode, refreshKey, onChanged
     onChanged();
   };
 
+  const totalCount = recipes.length;
+  const countLabel = query.trim()
+    ? `${totalCount} match${totalCount === 1 ? '' : 'es'}`
+    : `${totalCount} recipe${totalCount === 1 ? '' : 's'}`;
+
   return (
     <div className="page">
       <header className="page-header">
-        <h1>Recipes</h1>
+        <div className="page-header-titles">
+          <h1>Recipes</h1>
+          <p className="page-header-count">{loading ? 'Loading…' : countLabel}</p>
+        </div>
         <button type="button" className="primary" onClick={onNew}>
-          New
+          + New
         </button>
       </header>
       <input
@@ -107,18 +130,30 @@ export function RecipeList({ onOpen, onNew, onCookingMode, refreshKey, onChanged
       {loading ? (
         <p className="muted">Loading…</p>
       ) : recipes.length === 0 ? (
-        <p className="muted">
-          {query ? 'No recipes match.' : "Nothing here yet — tap New to add your first."}
-        </p>
+        <div className="recipe-empty" role="status">
+          {query ? (
+            <>
+              <h2>No matches</h2>
+              <p>Try a different word, or clear the search.</p>
+            </>
+          ) : (
+            <>
+              <h2>Nothing here yet</h2>
+              <p>Tap “+ New” to add your first recipe. Everything stays on this device.</p>
+            </>
+          )}
+        </div>
       ) : (
         <ul data-shippie-list className="recipe-list" aria-label="Recipes">
           {recipes.map((r) => (
-            <RecipeCardWithCookButton
+            <RecipeCard
               key={r.id}
               recipe={r}
-              count={counts[r.id] ?? 0}
+              ingredientCount={counts[r.id] ?? 0}
+              sendStatus={sendStatus[r.id] ?? null}
               onOpen={() => onOpen(r.id)}
-              onCookingMode={() => onCookingMode(r.id)}
+              onCook={() => onCookingMode(r.id)}
+              onPlan={(event) => void handlePlan(r.id, event)}
               onShare={() => void openShareSheet(r.id)}
               onDelete={() => void handleDelete(r.id)}
             />
@@ -128,66 +163,6 @@ export function RecipeList({ onOpen, onNew, onCookingMode, refreshKey, onChanged
       {sharing ? (
         <ShareSheet recipe={sharing} onClose={() => setSharing(null)} />
       ) : null}
-    </div>
-  );
-}
-
-interface RowProps {
-  recipe: Recipe;
-  count: number;
-  onOpen: () => void;
-  onCookingMode: () => void;
-  onShare: () => void;
-  onDelete: () => void;
-}
-
-function RecipeCardWithCookButton({ recipe, count, onOpen, onCookingMode, onShare, onDelete }: RowProps) {
-  const [sendStatus, setSendStatus] = useState<string | null>(null);
-
-  async function handleSend(e: React.MouseEvent) {
-    e.stopPropagation();
-    setSendStatus('Sending…');
-    const status = await sendRecipeToPlanner(recipe.id);
-    setSendStatus(status);
-    window.setTimeout(() => setSendStatus(null), 4000);
-  }
-
-  return (
-    <div className="recipe-row">
-      <RecipeCard recipe={recipe} ingredientCount={count} onOpen={onOpen} onDelete={onDelete} />
-      <div className="recipe-actions">
-        <button
-          type="button"
-          className="cook-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCookingMode();
-          }}
-          aria-label={`Cook ${recipe.title}`}
-        >
-          Cook
-        </button>
-        <button
-          type="button"
-          className="send-button"
-          onClick={handleSend}
-          aria-label={`Send ${recipe.title} to Meal Planner`}
-        >
-          → Plan
-        </button>
-        <button
-          type="button"
-          className="share-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onShare();
-          }}
-          aria-label={`Share ${recipe.title}`}
-        >
-          ↗ Share
-        </button>
-      </div>
-      {sendStatus && <p className="send-status">{sendStatus}</p>}
     </div>
   );
 }

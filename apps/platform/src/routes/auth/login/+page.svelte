@@ -64,7 +64,6 @@
           required
           autocomplete="email"
           placeholder="you@example.com"
-          autofocus
         />
       </label>
       <button type="submit" class="btn-primary" disabled={submitting}>

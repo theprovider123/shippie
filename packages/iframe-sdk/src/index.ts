@@ -24,6 +24,8 @@
 
 const PROTOCOL = 'shippie.bridge.v1' as const;
 const DEFAULT_RPC_TIMEOUT_MS = 5_000;
+const LIFECYCLE_EVENT = 'shippie:app-lifecycle' as const;
+const LIFECYCLE_VERSION = 1 as const;
 
 export type AiTask =
   | 'classify'
@@ -54,6 +56,26 @@ export interface AiRunResult {
   source: 'local' | 'edge' | 'unavailable';
   /** Backend the worker actually ran on, when `source === 'local'`. */
   backend?: 'webnn' | 'webgpu' | 'wasm';
+}
+
+/**
+ * Where the game holds its primary input area. The host adjusts its
+ * own chrome based on this so navigation gestures don't bleed into
+ * gameplay touch zones.
+ *
+ *   - `'none'`   — default; container chrome behaves normally
+ *   - `'bottom'` — game owns the bottom ~30% (touch-controls row etc.)
+ *   - `'all'`    — game owns the entire viewport; host shrinks its
+ *                  chrome buttons to a slim edge-only hit zone
+ */
+export type InputRegionOwns = 'none' | 'bottom' | 'all';
+
+export interface HostInsets {
+  /** CSS px the game should leave clear at each edge. */
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
 }
 
 export interface AppsListEntry {
@@ -218,6 +240,31 @@ export interface ShippieIframeSdk {
      */
     onIncomingCommit(handler: (event: IncomingTransferCommit) => void): () => void;
   };
+  lifecycle: {
+    ready(): void;
+    error(error: unknown): void;
+    navigation(input?: { canGoBack?: boolean; navDepth?: number }): void;
+    heartbeat(): void;
+  };
+  safeEdges: {
+    /**
+     * Tell the host which part of the viewport this app's touch
+     * input occupies. The host uses this to size down its own chrome
+     * (drawer pills, edge grabbers) so a tap meant for the game
+     * doesn't accidentally open container UI.
+     *
+     * Safe to call repeatedly — only the latest value is honoured.
+     * Calls outside the container are no-ops.
+     */
+    declareInputRegion(owns: InputRegionOwns): void;
+    /**
+     * Subscribe to host-side gesture-geometry changes. The host emits
+     * `shippie:host-insets` whenever its chrome moves (orientation
+     * rotate, drawer state change, canGoBack toggle). Returns an
+     * unsubscribe function. Outside the container this is a no-op.
+     */
+    onHostInsets(handler: (insets: HostInsets) => void): () => void;
+  };
   /**
    * Open the best available Your Data surface:
    *   1. container bridge overlay when iframe-loaded,
@@ -235,6 +282,7 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
   const { appId } = opts;
   const w = typeof window === 'undefined' ? null : window;
   const inContainer = Boolean(w && w.parent && w.parent !== w);
+  installLifecycleReporter();
 
   // RPC correlation table — request id → resolver. The container's
   // ContainerBridgeHost responds with `{ protocol, id, ok, result|error }`
@@ -275,6 +323,61 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
     );
   }
 
+  function postLifecycle(
+    event: 'booting' | 'ready' | 'error' | 'navigation' | 'heartbeat',
+    extra: { error?: unknown; canGoBack?: boolean; navDepth?: number } = {},
+  ): void {
+    if (!inContainer || !w) return;
+    try {
+      w.parent.postMessage(
+        {
+          type: LIFECYCLE_EVENT,
+          version: LIFECYCLE_VERSION,
+          event,
+          source: 'iframe-sdk',
+          appId,
+          at: typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now(),
+          href: typeof location !== 'undefined' ? location.href : undefined,
+          path: typeof location !== 'undefined' ? `${location.pathname}${location.search}${location.hash}` : undefined,
+          title: typeof document !== 'undefined' ? document.title : undefined,
+          canGoBack: extra.canGoBack,
+          navDepth: extra.navDepth,
+          timing: collectLifecycleTiming(),
+          error: extra.error === undefined ? undefined : normalizeLifecycleError(extra.error),
+        },
+        '*',
+      );
+    } catch {
+      /* parent may be unavailable */
+    }
+  }
+
+  function installLifecycleReporter(): void {
+    if (!inContainer || !w || typeof document === 'undefined') return;
+    const key = `__shippie_iframe_lifecycle_${appId}`;
+    const flags = w as unknown as Record<string, unknown>;
+    if (flags[key]) return;
+    flags[key] = true;
+    postLifecycle('booting');
+    const ready = () => {
+      void waitForPaintableDom(2_000).then(() => postLifecycle('ready'));
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready, { once: true });
+    else ready();
+    w.addEventListener('error', (event) => {
+      const target = event.target as HTMLScriptElement | HTMLLinkElement | null;
+      if (target && ('src' in target || 'href' in target)) {
+        const url = 'src' in target ? target.src : target.href;
+        postLifecycle('error', { error: new Error(`asset failed to load: ${url}`) });
+        return;
+      }
+      postLifecycle('error', { error: event.error ?? event.message });
+    }, true);
+    w.addEventListener('unhandledrejection', (event) => {
+      postLifecycle('error', { error: event.reason });
+    });
+  }
+
   function openYourData(options: OpenYourDataOptions = {}): void {
     if (!w) return;
     if (inContainer) {
@@ -282,16 +385,22 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
       return;
     }
 
-    const root = (w as unknown as { shippie?: { openYourData?: () => void } }).shippie;
+    const root = (w as unknown as { shippie?: { openYourData?: (options?: OpenYourDataOptions) => void } }).shippie;
     if (typeof root?.openYourData === 'function') {
-      root.openYourData();
+      root.openYourData(options);
       return;
     }
 
-    const target = new URL('/container', w.location.origin);
+    const platformOrigin =
+      w.location.hostname === 'localhost' || w.location.hostname === '127.0.0.1'
+        ? `${w.location.protocol}//${w.location.hostname}:4101`
+        : w.location.origin;
+    const target = new URL('/container', platformOrigin);
     target.searchParams.set('section', 'data');
     if (options.appSlug) target.searchParams.set('app', options.appSlug);
-    w.location.assign(`${target.pathname}${target.search}`);
+    w.location.assign(
+      target.origin === w.location.origin ? `${target.pathname}${target.search}` : target.href,
+    );
   }
 
   /**
@@ -356,6 +465,32 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
   const incomingStartHandlers = new Set<(event: IncomingTransferStart) => void>();
   const incomingCommitHandlers = new Set<(event: IncomingTransferCommit) => void>();
   let transferListenerInstalled = false;
+
+  // Safe-edges inbound channel: host posts `shippie:host-insets` with
+  // the current `{ left, right, top, bottom }` gesture geometry. Games
+  // subscribe via `safeEdges.onHostInsets`.
+  const hostInsetsHandlers = new Set<(insets: HostInsets) => void>();
+  let hostInsetsListenerInstalled = false;
+
+  function ensureHostInsetsListener(): void {
+    if (hostInsetsListenerInstalled || !w) return;
+    hostInsetsListenerInstalled = true;
+    w.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as
+        | { type?: string; insets?: { left?: unknown; right?: unknown; top?: unknown; bottom?: unknown } }
+        | null;
+      if (!data || data.type !== 'shippie:host-insets') return;
+      const raw = data.insets;
+      if (!raw || typeof raw !== 'object') return;
+      const insets: HostInsets = {
+        left: numberOrZero(raw.left),
+        right: numberOrZero(raw.right),
+        top: numberOrZero(raw.top),
+        bottom: numberOrZero(raw.bottom),
+      };
+      for (const h of hostInsetsHandlers) h(insets);
+    });
+  }
 
   function ensureTransferListener(): void {
     if (transferListenerInstalled || !w) return;
@@ -488,6 +623,33 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
         };
       },
     },
+    lifecycle: {
+      ready() {
+        postLifecycle('ready');
+      },
+      error(error) {
+        postLifecycle('error', { error });
+      },
+      navigation(input = {}) {
+        postLifecycle('navigation', input);
+      },
+      heartbeat() {
+        postLifecycle('heartbeat');
+      },
+    },
+    safeEdges: {
+      declareInputRegion(owns) {
+        if (owns !== 'none' && owns !== 'bottom' && owns !== 'all') return;
+        send('safe-edges', 'declareInputRegion', { owns });
+      },
+      onHostInsets(handler) {
+        ensureHostInsetsListener();
+        hostInsetsHandlers.add(handler);
+        return () => {
+          hostInsetsHandlers.delete(handler);
+        };
+      },
+    },
     openYourData,
     requestIntent(intent) {
       send('intent.consume', 'consume', { intent });
@@ -502,4 +664,79 @@ export function isTextureName(value: string): value is TextureName {
 
 export function listBuiltinTextureNames(): readonly TextureName[] {
   return BUILTIN_TEXTURES;
+}
+
+function numberOrZero(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function collectLifecycleTiming(): Record<string, number> | undefined {
+  if (typeof performance === 'undefined') return undefined;
+  const timing: Record<string, number> = {
+    sinceNavigationStartMs: Math.round(
+      typeof performance.now === 'function' ? performance.now() : Date.now(),
+    ),
+  };
+  try {
+    const nav = performance.getEntriesByType?.('navigation')?.[0] as PerformanceNavigationTiming | undefined;
+    if (nav) {
+      if (nav.domContentLoadedEventEnd > 0) timing.domContentLoadedMs = Math.round(nav.domContentLoadedEventEnd);
+      if (nav.loadEventEnd > 0) timing.loadMs = Math.round(nav.loadEventEnd);
+    }
+    for (const paint of performance.getEntriesByType?.('paint') ?? []) {
+      if (paint.name === 'first-paint') timing.firstPaintMs = Math.round(paint.startTime);
+      if (paint.name === 'first-contentful-paint') timing.firstContentfulPaintMs = Math.round(paint.startTime);
+    }
+  } catch {
+    /* timing is advisory */
+  }
+  return timing;
+}
+
+function normalizeLifecycleError(error: unknown): { name?: string; message: string; stack?: string } {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message || 'Unknown app error', stack: error.stack };
+  }
+  if (typeof error === 'string') return { message: error };
+  if (error && typeof error === 'object' && 'message' in error) {
+    return { message: String((error as { message?: unknown }).message ?? 'Unknown app error') };
+  }
+  return { message: 'Unknown app error' };
+}
+
+function waitForPaintableDom(timeoutMs: number): Promise<void> {
+  if (typeof document === 'undefined') return Promise.resolve();
+  if (domLooksPaintable()) return afterAnimationFrame();
+  return new Promise((resolve) => {
+    const finish = () => {
+      observer?.disconnect();
+      clearTimeout(timer);
+      void afterAnimationFrame().then(resolve);
+    };
+    const observer =
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver(() => {
+            if (domLooksPaintable()) finish();
+          });
+    observer?.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+    const timer = setTimeout(finish, timeoutMs);
+    if (domLooksPaintable()) finish();
+  });
+}
+
+function domLooksPaintable(): boolean {
+  if (typeof document === 'undefined') return true;
+  const body = document.body;
+  if (!body) return false;
+  const text = (body.innerText || body.textContent || '').trim();
+  if (text.length > 0) return true;
+  return Boolean(body.querySelector('canvas, svg, img, video, button, input, textarea, select, [role="button"], [role="main"], main, #root > *, #app > *'));
+}
+
+function afterAnimationFrame(): Promise<void> {
+  if (typeof requestAnimationFrame !== 'function') return Promise.resolve();
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
 }

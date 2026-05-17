@@ -24,13 +24,20 @@ export interface AppMeta {
   background_color: string;
   version: number;
   visibility_scope: string;
+  organization_id?: string;
   permissions?: ShippieJsonLite['permissions'];
+  data?: ShippieJsonLite['data'];
   backend_type?: string | null;
   backend_url?: string | null;
   allowed_connect_domains?: string[];
   workflow_probes?: string[];
   routing?: {
     mode: RouteMode;
+  };
+  pwa_readiness?: {
+    status: string;
+    reasons: string[];
+    checked_at: number;
   };
 }
 

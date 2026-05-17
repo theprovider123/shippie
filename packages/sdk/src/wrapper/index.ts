@@ -63,12 +63,35 @@ export {
 } from './install-runtime.ts';
 
 export {
+  createLocalNavigation,
   wrapNavigation,
   supportsViewTransitions,
   installViewTransitionStyles,
+  type LocalNavigateOptions,
+  type LocalNavigationController,
+  type LocalNavigationOptions,
   type ViewTransitionKind,
   type ViewTransitionOptions,
 } from './view-transitions.ts';
+
+export {
+  SHIPPIE_APP_LIFECYCLE_EVENT,
+  SHIPPIE_APP_LIFECYCLE_VERSION,
+  createAppLifecyclePayload,
+  installAppLifecycleReporter,
+  postAppLifecycle,
+  reportAppError,
+  reportAppHeartbeat,
+  reportAppNavigation,
+  reportAppReady,
+  type AppLifecycleError,
+  type AppLifecycleEventName,
+  type AppLifecycleInput,
+  type AppLifecyclePayload,
+  type AppLifecycleSource,
+  type AppLifecycleTiming,
+  type InstallAppLifecycleOptions,
+} from './lifecycle.ts';
 
 export {
   attachBackSwipe,
@@ -170,6 +193,26 @@ export {
   type VisualRecipe,
 } from './textures/index.ts';
 export { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
+export {
+  migrateLocalDbTablesToDocument,
+  reduceLocalDbSnapshot,
+  type LocalDbDocumentMigrationOptions,
+  type LocalDbDocumentTable,
+  type LocalDbLike,
+  type LocalDbSnapshotState,
+} from './local-db-document.ts';
+export {
+  SHIPPIE_DATA_STANDARD_VERSION,
+  createShippieDataPolicy,
+  defaultShippieDataPolicy,
+  type ShippieDataMigration,
+  type ShippieDataMode,
+  type ShippieDataPolicy,
+  type ShippieDataRecovery,
+  type ShippieDataRealtime,
+  type ShippieDataSnapshots,
+  type ShippieDataMedia,
+} from '../data-standard.ts';
 export {
   openGroupModerationPanel,
   type OpenGroupModerationPanelOptions,

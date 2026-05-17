@@ -1,0 +1,41 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Drawing Telephone",
+  "slug": "drawing-telephone",
+  "description": "Pictionary meets Chinese Whispers. Join via QR. Draw, guess, draw, watch the chain unravel.",
+  "icon": "/icon.png",
+  "theme_color": "#7E5B96",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "game.completed"
+    ],
+    "consumes": []
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["drawing-telephone-game"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "shippie:wyr:v1",
+        "drawing-telephone.wyr.answers.v1"
+      ],
+      "prefixes": [
+        "drawing-telephone.wyr."
+      ]
+    }
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "room"
+  }
+}

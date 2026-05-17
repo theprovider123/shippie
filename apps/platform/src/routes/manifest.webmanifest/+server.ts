@@ -30,9 +30,9 @@ export const GET: RequestHandler = async ({ url }) => {
   const manifest = {
     name: 'Shippie',
     short_name: 'Shippie',
-    description: 'Open marketplace for installable web apps. No app store. Just the web, installed.',
-    id: '/container',
-    start_url: '/container',
+    description: 'Small tools that work on your device. No app store. Just the web, installed.',
+    id: '/',
+    start_url: '/',
     scope: '/',
     display: 'standalone',
     display_override: ['standalone', 'minimal-ui'],
@@ -48,8 +48,8 @@ export const GET: RequestHandler = async ({ url }) => {
       { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
-      { name: 'Open Shippie', url: '/container', short_name: 'Home' },
-      { name: 'Explore apps', url: '/apps', short_name: 'Explore' },
+      { name: 'Open tools', url: '/', short_name: 'Tools' },
+      { name: 'Saved data', url: '/container?section=data', short_name: 'Data' },
       { name: 'Deploy an app', url: '/new', short_name: 'Deploy' },
     ],
     file_handlers: [

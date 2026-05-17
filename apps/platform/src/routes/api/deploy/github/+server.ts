@@ -5,7 +5,7 @@
  * the maker's repo to R2. Honest expected runtime: 2-5 minutes.
  *
  * Body (JSON or form):
- *   { repo_url, slug, branch?, installation_id?, repo_full_name? }
+ *   { repo_url, slug, branch?, installation_id?, repo_full_name?, remix_from? }
  *
  * Flow:
  *   1. Authenticate the caller via session OR CLI bearer token.
@@ -30,6 +30,7 @@ import { getDrizzleClient, schema } from '$server/db/client';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { getInstallationToken, generateAppJwt } from '$server/github/app';
 import type { GithubInstallation } from '$server/db/schema/github-installations';
+import { remixEligibilityForSlug } from '$server/remix/eligibility';
 
 const SHIPPIE_REPO_OWNER = 'shippie-app'; // adjust at deploy time via env if needed
 const SHIPPIE_REPO_NAME = 'platform';
@@ -41,6 +42,7 @@ interface DispatchInput {
   branch: string;
   installation_id: number | null;
   repo_full_name: string | null;
+  remix_from: string | null;
 }
 
 function parseInput(raw: Record<string, unknown>): DispatchInput | { error: string } {
@@ -50,6 +52,10 @@ function parseInput(raw: Record<string, unknown>): DispatchInput | { error: stri
   const repoFullName =
     typeof raw.repo_full_name === 'string' && raw.repo_full_name.trim().length > 0
       ? raw.repo_full_name.trim()
+      : null;
+  const remixFrom =
+    typeof raw.remix_from === 'string' && raw.remix_from.trim().length > 0
+      ? raw.remix_from.trim()
       : null;
   const rawId = raw.installation_id;
   let installationId: number | null = null;
@@ -69,7 +75,7 @@ function parseInput(raw: Record<string, unknown>): DispatchInput | { error: stri
     return { error: 'invalid_branch' };
   }
 
-  return { repo_url: repoUrl, slug, branch, installation_id: installationId, repo_full_name: repoFullName };
+  return { repo_url: repoUrl, slug, branch, installation_id: installationId, repo_full_name: repoFullName, remix_from: remixFrom };
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -96,6 +102,11 @@ export const POST: RequestHandler = async (event) => {
   if ('error' in parsed) return json({ error: parsed.error }, { status: 400 });
 
   const db = getDrizzleClient(env.DB);
+  const remix = parsed.remix_from ? await remixEligibilityForSlug(db, parsed.remix_from) : null;
+  if (remix?.ok === false) {
+    return json({ error: 'remix_unavailable', reason: remix.reason }, { status: 400 });
+  }
+  const remixApp = remix?.ok ? remix.app : null;
 
   // 1. Resolve the maker's GitHub App installation.
   //
@@ -183,6 +194,32 @@ export const POST: RequestHandler = async (event) => {
         updatedAt: new Date().toISOString(),
       })
       .where(eq(schema.apps.id, app.id));
+  }
+
+  if (remixApp) {
+    const completedAt = new Date().toISOString();
+    await db
+      .insert(schema.appLineage)
+      .values({
+        appId: app.id,
+        parentAppId: remixApp.id,
+        parentVersion: remixApp.latestVersion,
+        sourceRepo: parsed.repo_url,
+        license: remixApp.license,
+        remixAllowed: false,
+        updatedAt: completedAt,
+      })
+      .onConflictDoUpdate({
+        target: schema.appLineage.appId,
+        set: {
+          parentAppId: remixApp.id,
+          parentVersion: remixApp.latestVersion,
+          sourceRepo: parsed.repo_url,
+          license: remixApp.license,
+          remixAllowed: false,
+          updatedAt: completedAt,
+        },
+      });
   }
 
   const latest = await db

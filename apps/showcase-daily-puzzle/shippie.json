@@ -1,0 +1,39 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Daily Puzzle",
+  "slug": "daily-puzzle",
+  "description": "A daily brain-game umbrella: Number Trail, Sudoku, Memory Grid, and Reaction with one simple streak surface.",
+  "icon": "/icon.png",
+  "theme_color": "#4FA487",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["game.completed"],
+    "consumes": []
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["daily-puzzle-progress"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "shippie:daily-puzzle:v1",
+        "shippie:daily-puzzle:v2",
+        "shippie:reaction:v1",
+        "shippie:memory-grid:v1",
+        "shippie:memory-grid:pack:v1"
+      ]
+    }
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "daily-brain"
+  }
+}

@@ -25,17 +25,63 @@ export function isValidBarcode(code: string): boolean {
 }
 
 /**
- * Tiny offline catalogue for the demo. Real apps would fall back to the
- * Open Food Facts API; the showcase keeps it local so the privacy story
- * stays clean.
+ * Tiny offline catalogue for the demo. Real apps fall back to Open Food
+ * Facts via `lib/off.ts` and cache the result. The local catalogue is
+ * the offline-floor: even on a plane the demo barcodes resolve cleanly.
+ *
+ * Entries are pantry-staples on purpose — pasta, oil, beans, oats —
+ * because that's what the recipe-suggestion engine wants to match
+ * against out of the box.
  */
-const KNOWN: Record<string, { name: string; defaultUnit: string }> = {
-  '5012345678900': { name: 'Pasta — penne', defaultUnit: 'g' },
-  '0123456789012': { name: 'Olive oil', defaultUnit: 'ml' },
-  '4006381333931': { name: 'Espresso beans', defaultUnit: 'g' },
+export interface KnownProduct {
+  name: string;
+  defaultUnit: string;
+  /** Default location guess. Helps pre-fill the location chip. */
+  defaultLocation: 'fridge' | 'pantry' | 'freezer' | 'spice-rack';
+  /** Days from purchase to use-by, when there's a typical shelf life. */
+  shelfLifeDays?: number;
+}
+
+const KNOWN: Record<string, KnownProduct> = {
+  '5012345678900': {
+    name: 'Pasta — penne',
+    defaultUnit: 'g',
+    defaultLocation: 'pantry',
+    shelfLifeDays: 720,
+  },
+  '0123456789014': {
+    name: 'Olive oil',
+    defaultUnit: 'ml',
+    defaultLocation: 'pantry',
+    shelfLifeDays: 540,
+  },
+  '4006381333937': {
+    name: 'Espresso beans',
+    defaultUnit: 'g',
+    defaultLocation: 'pantry',
+    shelfLifeDays: 60,
+  },
+  '5000147018936': {
+    name: 'Tin tomatoes',
+    defaultUnit: 'g',
+    defaultLocation: 'pantry',
+    shelfLifeDays: 720,
+  },
+  '8901058851650': {
+    name: 'Rolled oats',
+    defaultUnit: 'g',
+    defaultLocation: 'pantry',
+    shelfLifeDays: 365,
+  },
+  '5057545178957': {
+    name: 'Greek yoghurt',
+    defaultUnit: 'g',
+    defaultLocation: 'fridge',
+    shelfLifeDays: 14,
+  },
 };
 
-export function lookupByBarcode(code: string): { name: string; defaultUnit: string } | null {
+export function lookupByBarcode(code: string): KnownProduct | null {
   return KNOWN[code] ?? null;
 }
 

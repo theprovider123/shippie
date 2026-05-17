@@ -20,6 +20,7 @@ import { handleHealth } from './router/health';
 import { handleMeta } from './router/meta';
 import { handleManifest } from './router/manifest';
 import { handleSw } from './router/sw';
+import { handleAssetsManifest } from './router/assets';
 import { handleSdk } from './router/sdk';
 import { handleIcon } from './router/icons';
 import { handleSplash } from './router/splash';
@@ -104,6 +105,9 @@ export async function dispatchMakerSubdomain(
   // System routes are always platform-owned, never the maker's.
   if (path.startsWith('/__shippie/')) {
     const res = await dispatchWrapperSystemRoute(ctx, path);
+    // WebSocket upgrade responses carry a runtime-only webSocket handle.
+    // Cloning them through finalizeWrapperResponse would drop that handle.
+    if (res?.status === 101) return res;
     if (res) return finalizeWrapperResponse(res, ctx);
     return finalizeWrapperResponse(
       Response.json(
@@ -147,6 +151,8 @@ export async function dispatchWrapperSystemRoute(
       return handleManifest(ctx);
     case '/__shippie/sw.js':
       return handleSw(ctx);
+    case '/__shippie/assets.json':
+      return handleAssetsManifest(ctx);
     case '/__shippie/sdk.js':
       return handleSdk(ctx);
     case '/__shippie/local.js':
@@ -197,15 +203,40 @@ export async function dispatchWrapperSystemRoute(
   const modMatch = path.match(/^\/__shippie\/group\/([^/]+)\/moderate$/);
   if (modMatch) return handleGroupModerate(ctx, modMatch[1]!);
 
-  // /__shippie/signal/{roomId} — Phase 6 (DO).
-  if (path.startsWith('/__shippie/signal/')) {
-    return new Response(
-      'Proximity signalling is wired up in Phase 6 (Durable Objects).',
-      { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } }
-    );
+  // /__shippie/signal/{roomId}
+  const signalMatch = path.match(/^\/__shippie\/signal\/([^/]+)$/);
+  if (signalMatch) {
+    return handleSignal(ctx, signalMatch[1]!);
   }
 
   return null;
+}
+
+async function handleSignal(ctx: WrapperContext, encodedRoomId: string): Promise<Response> {
+  if (ctx.request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
+    return Response.json({ error: 'expected_websocket_upgrade' }, { status: 400 });
+  }
+
+  let roomId = '';
+  try {
+    roomId = decodeURIComponent(encodedRoomId);
+  } catch {
+    return Response.json({ error: 'invalid_room_id' }, { status: 400 });
+  }
+  if (!roomId || roomId.length > 256) {
+    return Response.json({ error: 'invalid_room_id' }, { status: 400 });
+  }
+
+  const signalRoom = ctx.env.SIGNAL_ROOM;
+  if (!signalRoom) {
+    return Response.json({ error: 'signal_room_unavailable' }, { status: 503 });
+  }
+
+  const id = signalRoom.idFromName(roomId);
+  // workers-types Request/Response collide with DOM types here.
+  // Runtime call is fine; the cast escapes the type collision.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (signalRoom.get(id) as any).fetch(ctx.request) as Response;
 }
 
 /**

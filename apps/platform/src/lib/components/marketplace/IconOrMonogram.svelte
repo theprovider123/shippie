@@ -28,6 +28,8 @@
     src={iconUrl}
     alt=""
     class="shippie-icon"
+    width={size}
+    height={size}
     style="width: {size}px; height: {size}px; object-fit: cover;"
     aria-hidden="true"
     loading="lazy"

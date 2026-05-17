@@ -1,91 +1,103 @@
+/**
+ * Cooking — top-level shell. Tab nav: Home / Active / History / Temps.
+ * Method-specific guides live one level down from Home.
+ *
+ * State invariants:
+ *   - One source of truth for cooks (localStorage via db.ts).
+ *   - The "currently composed cook" (cut + method) is derived UI state,
+ *     not persisted.
+ *   - Active cooks are persisted records with finished_at = null.
+ */
+
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
-import {
-  CUTS,
-  DONENESS_LABEL,
-  DONENESS_TEMP_C,
-  METHOD_LABEL,
-  computeCookMinutes,
-  formatDuration,
-  type Cut,
-  type Doneness,
-  type Method,
-} from './data.ts';
-import { load, newId, save, type Cook } from './db.ts';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { CUTS, METHOD_LABEL, type Cut, type Doneness, type Method } from './data.ts';
+import { load, newId, save, isActive, type Cook } from './db.ts';
+import { Home } from './pages/Home.tsx';
+import { MethodPage } from './pages/Method.tsx';
+import { ActiveCooks } from './pages/ActiveCooks.tsx';
+import { History } from './pages/History.tsx';
+import { InternalTemps } from './pages/InternalTemps.tsx';
+import { CookTimer } from './components/CookTimer.tsx';
+import { DoneRatingForm } from './components/DoneRatingForm.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_cooking' });
 
-const DONENESS_ORDER: Doneness[] = [
-  'rare',
-  'med-rare',
-  'medium',
-  'med-well',
-  'well-done',
+type Tab = 'home' | 'method' | 'active' | 'history' | 'temps';
+
+const TABS: ReadonlyArray<{ id: Tab; label: string; activeOnly?: boolean }> = [
+  { id: 'home', label: 'Cook' },
+  { id: 'active', label: 'Active' },
+  { id: 'history', label: 'History' },
+  { id: 'temps', label: 'Temps' },
 ];
 
 export function App() {
   const initial = load();
   const [cooks, setCooks] = useState<Cook[]>(initial.cooks);
-  const [cutId, setCutId] = useState<string>(CUTS[0]?.id ?? '');
-  const [method, setMethod] = useState<Method>(CUTS[0]?.methods[0] ?? 'pan');
-  const [doneness, setDoneness] = useState<Doneness>(
-    CUTS[0]?.defaultDoneness ?? 'med-rare',
+  const [tab, setTab] = useState<Tab>('home');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('home', setTab),
+    [],
   );
-  const [weightKg, setWeightKg] = useState<number>(1);
-  const [activeCookId, setActiveCookId] = useState<string | null>(null);
+
+  // The "currently composed cook" — drives Home + Method page.
+  const [cutId, setCutId] = useState<string>(CUTS[0]!.id);
+  const [method, setMethod] = useState<Method>(CUTS[0]!.methods[0]!);
+
+  // The cook the timer is tracking. When the user lands on /method from
+  // Active, the timer for that cook surfaces above the guide.
+  const [trackedCookId, setTrackedCookId] = useState<string | null>(null);
+  // Pending rating form after marking cooked.
+  const [pendingRatingFor, setPendingRatingFor] = useState<Cook | null>(null);
 
   useEffect(() => {
     save({ cooks });
   }, [cooks]);
 
-  const cut = CUTS.find((c) => c.id === cutId) ?? CUTS[0]!;
-  const supportedMethods = cut.methods;
-  const effectiveMethod: Method = supportedMethods.includes(method)
-    ? method
-    : supportedMethods[0]!;
-  const timing = cut.timing[effectiveMethod];
-  const usesWeight = !!timing?.minutes_per_kg;
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
-  const targetTempC = useMemo(() => {
-    // Cut+method override > doneness > undefined
-    if (timing?.target_temp_c) return timing.target_temp_c;
-    if (cut.donenessApplies) return DONENESS_TEMP_C[doneness];
-    return null;
-  }, [cut, timing, doneness]);
-
-  const cookMinutes = useMemo(
-    () => computeCookMinutes(cut, effectiveMethod, usesWeight ? weightKg : null),
-    [cut, effectiveMethod, usesWeight, weightKg],
+  const cut = useMemo<Cut>(
+    () => CUTS.find((c) => c.id === cutId) ?? CUTS[0]!,
+    [cutId],
   );
+  const effectiveMethod: Method = cut.methods.includes(method)
+    ? method
+    : cut.methods[0]!;
 
-  const restMinutes = timing?.rest_minutes ?? 0;
-  const totalMinutes = (cookMinutes ?? 0) + restMinutes;
-
-  const activeCook = cooks.find((c) => c.id === activeCookId) ?? null;
+  const activeCooks = useMemo(() => cooks.filter(isActive), [cooks]);
+  const trackedCook = trackedCookId
+    ? cooks.find((c) => c.id === trackedCookId) ?? null
+    : null;
 
   function pickCut(c: Cut) {
     setCutId(c.id);
-    setMethod(c.methods[0]!);
-    if (c.donenessApplies && c.defaultDoneness) setDoneness(c.defaultDoneness);
+    if (!c.methods.includes(method)) setMethod(c.methods[0]!);
   }
 
-  function startCook() {
-    if (!cookMinutes || !targetTempC) return;
+  function pickMethod(m: Method) {
+    setMethod(m);
+  }
+
+  function startCook(args: { target_c: number; minutes: number; weight_kg: number | null; doneness: Doneness | null }) {
     const cook: Cook = {
       id: newId(),
       cut_id: cut.id,
       cut_name: cut.name,
       method: effectiveMethod,
-      doneness: cut.donenessApplies ? doneness : null,
-      weight_kg: usesWeight ? weightKg : null,
-      target_temp_c: targetTempC,
-      cook_minutes: cookMinutes,
-      rest_minutes: restMinutes,
+      doneness: args.doneness,
+      weight_kg: args.weight_kg,
+      target_temp_c: args.target_c,
+      cook_minutes: args.minutes,
+      rest_minutes: cut.timing[effectiveMethod]?.rest_minutes ?? 0,
       started_at: new Date().toISOString(),
       finished_at: null,
+      rating: null,
+      note: null,
     };
-    setCooks((prev) => [cook, ...prev].slice(0, 100));
-    setActiveCookId(cook.id);
+    setCooks((prev) => [cook, ...prev].slice(0, 200));
+    setTrackedCookId(cook.id);
     shippie.feel.texture('confirm');
     shippie.intent.broadcast('cooking-now', [
       {
@@ -101,34 +113,71 @@ export function App() {
     ]);
   }
 
-  function markCooked() {
-    if (!activeCook) return;
+  function markCooked(cookId: string) {
+    const cook = cooks.find((c) => c.id === cookId);
+    if (!cook) return;
     const finishedAt = new Date().toISOString();
     setCooks((prev) =>
+      prev.map((c) => (c.id === cookId ? { ...c, finished_at: finishedAt } : c)),
+    );
+    if (trackedCookId === cookId) setTrackedCookId(null);
+    shippie.feel.texture('milestone');
+    setPendingRatingFor({ ...cook, finished_at: finishedAt });
+  }
+
+  function saveRating(rating: number, note: string) {
+    if (!pendingRatingFor) return;
+    const id = pendingRatingFor.id;
+    const finishedAt = pendingRatingFor.finished_at ?? new Date().toISOString();
+    const intentPayload: Cook['intent_payload'] = {
+      cut: pendingRatingFor.cut_name,
+      method: pendingRatingFor.method,
+      cookedAt: finishedAt,
+      rating: rating || null,
+    };
+    setCooks((prev) =>
       prev.map((c) =>
-        c.id === activeCook.id ? { ...c, finished_at: finishedAt } : c,
+        c.id === id
+          ? {
+              ...c,
+              rating: rating || null,
+              note: note || null,
+              intent_payload: intentPayload,
+            }
+          : c,
       ),
     );
-    setActiveCookId(null);
-    shippie.feel.texture('milestone');
-    shippie.intent.broadcast('cooked-meal', [
-      {
-        cut: activeCook.cut_name,
-        method: activeCook.method,
-        cookedAt: finishedAt,
-      },
-    ]);
+    shippie.intent.broadcast('cooked-meal', [intentPayload]);
+    setPendingRatingFor(null);
   }
 
-  function cancelCook() {
-    setActiveCookId(null);
-    if (activeCook) {
-      setCooks((prev) => prev.filter((c) => c.id !== activeCook.id));
-    }
+  function skipRating() {
+    if (!pendingRatingFor) return;
+    const intentPayload: Cook['intent_payload'] = {
+      cut: pendingRatingFor.cut_name,
+      method: pendingRatingFor.method,
+      cookedAt: pendingRatingFor.finished_at ?? new Date().toISOString(),
+      rating: null,
+    };
+    setCooks((prev) =>
+      prev.map((c) =>
+        c.id === pendingRatingFor.id ? { ...c, intent_payload: intentPayload } : c,
+      ),
+    );
+    shippie.intent.broadcast('cooked-meal', [intentPayload]);
+    setPendingRatingFor(null);
   }
 
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'cooking' });
+  function cancelCook(cookId: string) {
+    setCooks((prev) => prev.filter((c) => c.id !== cookId));
+    if (trackedCookId === cookId) setTrackedCookId(null);
+  }
+
+  function selectActive(c: Cook) {
+    setCutId(c.cut_id);
+    setMethod(c.method);
+    setTrackedCookId(c.id);
+    void localNavigation.navigate('method', { kind: 'rise' });
   }
 
   return (
@@ -138,171 +187,74 @@ export function App() {
         <p className="subtitle">method · cut · target temp</p>
       </header>
 
-      {/* Cut picker */}
-      <section className="cut-grid">
-        {CUTS.map((c) => (
+      <nav className="tabs" aria-label="Sections">
+        {TABS.map((t) => (
           <button
-            key={c.id}
+            key={t.id}
             type="button"
-            className={`cut-chip ${c.id === cut.id ? 'active' : ''}`}
-            onClick={() => pickCut(c)}
+            className={`tab ${tab === t.id ? 'tab--active' : ''}`}
+            onClick={() => void localNavigation.navigate(t.id, { kind: 'crossfade' })}
           >
-            {c.name}
+            {t.label}
+            {t.id === 'active' && activeCooks.length > 0 ? (
+              <span className="tab-pill">{activeCooks.length}</span>
+            ) : null}
           </button>
         ))}
-      </section>
+      </nav>
 
-      {/* Method picker */}
-      <section className="method-row">
-        {supportedMethods.map((m) => (
+      {/* Pending rating overlay — shown on top of any tab. */}
+      {pendingRatingFor ? (
+        <DoneRatingForm
+          cutName={pendingRatingFor.cut_name}
+          onSubmit={saveRating}
+          onSkip={skipRating}
+        />
+      ) : null}
+
+      {tab === 'home' ? (
+        <Home
+          cut={cut}
+          method={effectiveMethod}
+          onPickCut={pickCut}
+          onPickMethod={pickMethod}
+          onOpenGuide={() => void localNavigation.navigate('method', { kind: 'rise' })}
+        />
+      ) : null}
+
+      {tab === 'method' ? (
+        <div className="page page--method">
           <button
-            key={m}
             type="button"
-            className={`method-chip ${m === effectiveMethod ? 'active' : ''}`}
-            onClick={() => setMethod(m)}
+            className="back-link"
+            onClick={() => void localNavigation.backOrReplace('home', { kind: 'crossfade' })}
           >
-            {METHOD_LABEL[m]}
+            ← back
           </button>
-        ))}
-      </section>
-
-      {/* Doneness picker */}
-      {cut.donenessApplies ? (
-        <section className="doneness-row">
-          {DONENESS_ORDER.map((d) => (
-            <button
-              key={d}
-              type="button"
-              className={`done-chip ${d === doneness ? 'active' : ''}`}
-              onClick={() => setDoneness(d)}
-            >
-              {DONENESS_LABEL[d]}
-              <span className="muted small">{DONENESS_TEMP_C[d]}°C</span>
-            </button>
-          ))}
-        </section>
+          <p className="method-breadcrumb muted small">
+            {cut.name} · {METHOD_LABEL[effectiveMethod]}
+          </p>
+          {trackedCook ? (
+            <CookTimer
+              cook={trackedCook}
+              onMarkCooked={() => markCooked(trackedCook.id)}
+              onCancel={() => cancelCook(trackedCook.id)}
+            />
+          ) : null}
+          {!trackedCook ? (
+            <MethodPage cut={cut} method={effectiveMethod} onStart={startCook} />
+          ) : null}
+        </div>
       ) : null}
 
-      {/* Weight (only when method uses minutes_per_kg) */}
-      {usesWeight ? (
-        <label className="field">
-          <span>weight (kg)</span>
-          <input
-            type="number"
-            min={0.2}
-            max={10}
-            step={0.1}
-            value={weightKg}
-            onChange={(e) => setWeightKg(Number(e.target.value) || 0)}
-          />
-        </label>
+      {tab === 'active' ? (
+        <ActiveCooks cooks={activeCooks} onSelect={selectActive} />
       ) : null}
 
-      {/* Result card */}
-      <section className="result">
-        <div className="result-row">
-          <p className="eyebrow">internal target</p>
-          <p className="big">
-            {targetTempC ? `${targetTempC}°C` : '—'}
-          </p>
-        </div>
-        {timing?.pit_temp_c ? (
-          <div className="result-row">
-            <p className="eyebrow">{effectiveMethod === 'roast' ? 'oven' : 'pit'}</p>
-            <p className="big">{timing.pit_temp_c}°C</p>
-          </div>
-        ) : null}
-        <div className="result-row">
-          <p className="eyebrow">cook</p>
-          <p className="big">{cookMinutes ? formatDuration(cookMinutes) : '—'}</p>
-        </div>
-        {restMinutes > 0 ? (
-          <div className="result-row">
-            <p className="eyebrow">rest</p>
-            <p className="big">{formatDuration(restMinutes)}</p>
-          </div>
-        ) : null}
-        <div className="result-row total">
-          <p className="eyebrow">total</p>
-          <p className="big">{totalMinutes ? formatDuration(totalMinutes) : '—'}</p>
-        </div>
-        {timing?.note ? (
-          <p className="note">
-            <span className="eyebrow">note</span>
-            {' '}
-            {timing.note}
-          </p>
-        ) : null}
-      </section>
+      {tab === 'history' ? <History cooks={cooks} /> : null}
 
-      {/* Active cook controls */}
-      {activeCook ? (
-        <section className="active">
-          <p className="eyebrow">cooking now</p>
-          <p className="active-line">
-            <strong>{activeCook.cut_name}</strong>
-            {' '}· {METHOD_LABEL[activeCook.method]}
-            {activeCook.doneness ? ` · ${activeCook.doneness}` : ''}
-          </p>
-          <p className="muted small">
-            target {activeCook.target_temp_c}°C ·{' '}
-            est. ready{' '}
-            {new Date(
-              new Date(activeCook.started_at).getTime() +
-                (activeCook.cook_minutes + activeCook.rest_minutes) * 60_000,
-            ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </p>
-          <div className="active-actions">
-            <button type="button" className="primary" onClick={markCooked}>
-              Mark cooked
-            </button>
-            <button type="button" className="ghost" onClick={cancelCook}>
-              Cancel
-            </button>
-          </div>
-        </section>
-      ) : (
-        <button
-          type="button"
-          className="primary start-cook"
-          onClick={startCook}
-          disabled={!cookMinutes || !targetTempC}
-        >
-          Start cook
-        </button>
-      )}
+      {tab === 'temps' ? <InternalTemps /> : null}
 
-      {/* Recent cooks */}
-      {cooks.length > 0 ? (
-        <section className="log">
-          <p className="eyebrow">recent</p>
-          <ul>
-            {cooks
-              .filter((c) => c.id !== activeCookId)
-              .slice(0, 6)
-              .map((c) => (
-                <li key={c.id}>
-                  <div className="log-line">
-                    <strong>{c.cut_name}</strong>
-                    <span className="muted small">
-                      {METHOD_LABEL[c.method]}
-                      {c.doneness ? ` · ${c.doneness}` : ''}
-                    </span>
-                  </div>
-                  <p className="muted small">
-                    {c.finished_at
-                      ? `finished ${new Date(c.finished_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                      : 'in progress'}
-                  </p>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </main>
   );
 }

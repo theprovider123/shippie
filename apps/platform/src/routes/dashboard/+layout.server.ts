@@ -9,6 +9,7 @@ import { redirect } from '@sveltejs/kit';
 import { desc, eq } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
+import { claimTrialAppForMaker } from '$server/deploy/trial-claim';
 
 export const load: LayoutServerLoad = async ({ locals, platform, url }) => {
   if (!locals.user) {
@@ -19,6 +20,16 @@ export const load: LayoutServerLoad = async ({ locals, platform, url }) => {
   }
 
   const db = getDrizzleClient(platform.env.DB);
+  const claimTrialSlug = url.searchParams.get('claim_trial')?.trim();
+  if (claimTrialSlug) {
+    const claim = await claimTrialAppForMaker({
+      db,
+      slug: claimTrialSlug,
+      makerId: locals.user.id,
+    });
+    if (claim.claimed) throw redirect(303, `/dashboard/apps/${encodeURIComponent(claim.slug)}`);
+  }
+
   const myApps = await db
     .select({
       id: schema.apps.id,

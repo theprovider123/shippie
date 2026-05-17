@@ -1,7 +1,7 @@
 {
-  "name": "Recipe Saver",
-  "short_name": "Recipes",
-  "description": "A local-first recipe saver. Your recipes never leave your device.",
+  "name": "Recipe",
+  "short_name": "Recipe",
+  "description": "A local-first kitchen app for recipes, meal planning, shopping, and pantry notes.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FAF7EF",

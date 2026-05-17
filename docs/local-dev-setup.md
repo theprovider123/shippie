@@ -79,9 +79,8 @@ cd packages/db && bun run db:push
 
 | Port | Service |
 |------|---------|
-| 5432 | Postgres (Homebrew default) |
-| 4100 | Next.js dev server (`shippie.app` control plane) |
-| Future | `services/worker` wrangler dev — will use a different port |
+| 4101 | SvelteKit dev server with Cloudflare platform proxy |
+| 8787 | Wrangler preview when needed |
 
 ## What's stubbed vs live
 
@@ -89,12 +88,12 @@ All external integrations are intentionally stubbed in dev:
 
 | Service | Dev | Live |
 |---------|-----|------|
-| Database | Homebrew Postgres | Hetzner + PgBouncer + Cloudflare Tunnel |
-| Email | Magic link prints to terminal | Resend (set `RESEND_API_KEY`) |
-| Storage | — (not wired yet) | Cloudflare R2 |
-| Build runner | — (not wired yet) | Vercel Sandbox |
-| Functions runtime | — (not wired yet) | Cloudflare Workers for Platforms |
-| GitHub integration | — (not wired yet) | GitHub App |
+| Database | Local D1 via platform proxy/migrations | Cloudflare D1 |
+| Email | Magic link prints to terminal | Cloudflare Email binding |
+| Storage | Local proxy binding | Cloudflare R2 |
+| Build runner | Local zip/build flow | GitHub Actions for repo-based deploys |
+| Runtime | Local Worker preview | Cloudflare Workers |
+| GitHub integration | OAuth test app or disabled | GitHub App |
 | Billing | — (not wired yet) | Stripe |
 | OpenAI (auto-packaging) | — (not wired yet) | OpenAI API |
 | Observability | — (not wired yet) | Sentry |

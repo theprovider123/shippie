@@ -26,9 +26,11 @@ import {
   runPrivacyAudit,
   computeSecurityScore,
   computePrivacyGrade,
+  extractRemixSpec,
   localize,
   type SecurityScanReport,
   type LocalizeTransform,
+  type RemixSpec,
 } from '@shippie/analyse';
 import { buildShippiePackage, createShippiePackageArchive } from '@shippie/app-package-builder';
 import {
@@ -71,6 +73,13 @@ import {
   deployEventsKey,
   type DeployEventEmitter,
 } from './deploy-events';
+import { detectStaticBundlePwaReadiness } from './pwa-readiness';
+import { resolveSurface } from './surface-resolver';
+import type { Surface } from '$lib/curation/schema';
+import {
+  checkArcadePurity,
+  checkArcadeConnectDomains,
+} from './arcade-purity-check';
 
 const IMMERSIVE_BASE_STYLE = `<style data-shippie-immersive-base>
 :root{--shippie-safe-top:env(safe-area-inset-top,0px);--shippie-safe-right:env(safe-area-inset-right,0px);--shippie-safe-bottom:env(safe-area-inset-bottom,0px);--shippie-safe-left:env(safe-area-inset-left,0px)}
@@ -78,13 +87,28 @@ html{min-height:100%;touch-action:manipulation;-webkit-tap-highlight-color:trans
 body{min-height:100svh;min-height:100dvh;overscroll-behavior-y:contain}
 button,a[role="button"],[role="button"],nav,header,[data-shippie-ui],.card,.tile{-webkit-user-select:none;user-select:none;touch-action:manipulation}
 input,textarea,select,[contenteditable="true"],article,main,p,li{-webkit-user-select:text;user-select:text}
+@media (max-width:640px){input,textarea,select,[contenteditable="true"]{font-size:16px!important}}
 </style>`;
+
+const IMMERSIVE_VIEWPORT =
+  'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content';
 
 export interface DeployStaticInput {
   slug: string;
   makerId: string;
   zipBuffer: Uint8Array;
   shippieJson?: ShippieJsonLite;
+  visibilityScope?: 'public' | 'unlisted' | 'private' | 'team';
+  organizationId?: string | null;
+  lineage?: DeployLineageOverride;
+  /**
+   * Explicit surface chosen via the upload form picker. Only set when
+   * the maker picked App / Game / Experiment in `/new` (i.e. omitted
+   * when they left the default "Auto"). Loses to `manifest.curation
+   * .surface`; wins over the existing D1 row's surface. See
+   * `surface-resolver.ts` for the full priority chain.
+   */
+  surfaceOverride?: Surface;
   reservedSlugs: ReadonlySet<string>;
   /** Bindings — pulled from event.platform.env in the route. */
   db: D1Database;
@@ -94,6 +118,15 @@ export interface DeployStaticInput {
   publicOrigin: string;
 }
 
+export interface DeployLineageOverride {
+  templateId?: string | null;
+  parentAppId?: string | null;
+  parentVersion?: string | null;
+  sourceRepo?: string | null;
+  license?: string | null;
+  remixAllowed?: boolean;
+}
+
 export interface DeployStaticResult {
   success: boolean;
   version: number;
@@ -101,6 +134,7 @@ export interface DeployStaticResult {
   totalBytes: number;
   preflight: PreflightReport;
   liveUrl: string;
+  visibilityScope?: 'public' | 'unlisted' | 'private' | 'team';
   reason?: string;
   appId?: string;
   deployId?: string;
@@ -119,6 +153,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   }
   let files = extracted.files;
   let totalBytes = extracted.totalBytes;
+  const remixSpec = extractRemixSpec({ files });
   emitter.emit({
     type: 'deploy_received',
     slug: input.slug,
@@ -158,6 +193,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     return failReport(input.slug, `Invalid shippie.json: ${manifestResult.error}`);
   }
   const manifest = manifestResult.manifest;
+  const pwaReadiness = detectStaticBundlePwaReadiness({ files, manifest });
 
   const assetRecovery = recoverAssetReferences(files);
   files = assetRecovery.files;
@@ -193,6 +229,49 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     };
   }
 
+  // 3b. Arcade purity gate. Run BEFORE we touch D1 / R2 so a dirty
+  // upload bounces with no side effects. We need the resolved surface
+  // to know whether to enforce — peek the existing apps row up front
+  // so the resolver can preserve-on-redeploy correctly. (The full
+  // upsert below uses the same resolved value, so this is one D1
+  // round-trip we'd otherwise pay later anyway.)
+  const _earlyDb = getDrizzleClient(input.db);
+  const _existingForGate = await _earlyDb.query.apps.findFirst({
+    where: eq(schema.apps.slug, input.slug),
+    columns: { id: true, surface: true, makerId: true },
+  });
+  const _gateSurface = resolveSurface({
+    manifestSurface: manifest.curation?.surface,
+    formOverride: input.surfaceOverride,
+    existingSurface: _existingForGate?.surface,
+  });
+  if (_gateSurface.surface === 'arcade') {
+    const purity = checkArcadePurity(files);
+    const connectCheck = checkArcadeConnectDomains(manifest.allowed_connect_domains);
+    if (!purity.ok || !connectCheck.ok) {
+      const lines: string[] = [];
+      if (!purity.ok) {
+        for (const o of purity.offences.slice(0, 10)) {
+          lines.push(`${o.file}${o.line ? `:${o.line}` : ''} — ${o.kind}: ${o.pattern}`);
+        }
+        if (purity.offences.length > 10) {
+          lines.push(`(${purity.offences.length - 10} more)`);
+        }
+      }
+      if (!connectCheck.ok) {
+        lines.push(
+          `allowed_connect_domains contains non-Shippie hosts: ${connectCheck.offences.join(', ')}`,
+        );
+      }
+      const reason =
+        `Arcade purity check failed. Arcade games may not bundle ad/tracker/IAP code or call out to external hosts. ` +
+        `Either remove the offending code OR change curation.surface to "labs" (Labs runs the same scanner in report-only mode).\n\n` +
+        lines.join('\n');
+      emitter.emit({ type: 'deploy_failed', reason: 'arcade_purity', step: 'purity' });
+      return failReport(input.slug, reason);
+    }
+  }
+
   const securityReport = runSecurityScan(files, null);
   emitSecurityScanEvents(emitter, securityReport, files.size);
   if (securityReport.blocks > 0) {
@@ -215,6 +294,18 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     where: eq(schema.apps.slug, input.slug),
   });
 
+  // Resolve marketplace surface BEFORE the insert/update so it lands
+  // in D1 atomically with the rest of the row. Resolution priority is
+  // documented in `surface-resolver.ts`: manifest > form > existing >
+  // 'featured'. Crucially, when neither manifest nor form sets a
+  // surface, the existing row's value is preserved — a redeploy never
+  // silently demotes an arcade game back to featured.
+  const resolvedSurface = resolveSurface({
+    manifestSurface: manifest.curation?.surface,
+    formOverride: input.surfaceOverride,
+    existingSurface: appRow?.surface,
+  });
+
   if (!appRow) {
     const [inserted] = await db
       .insert(schema.apps)
@@ -225,17 +316,50 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
         description: manifest.description ?? null,
         type: manifest.type,
         category: manifest.category,
+        surface: resolvedSurface.surface,
         themeColor: manifest.theme_color ?? '#14120F',
         backgroundColor: manifest.background_color ?? '#ffffff',
         sourceType: 'zip',
         makerId: input.makerId,
+        organizationId: input.organizationId ?? null,
+        visibilityScope: input.visibilityScope ?? 'public',
+        currentPwaReadiness: pwaReadiness.status,
+        currentPwaReadinessReasons: pwaReadiness.reasons,
+        currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
       })
       .returning();
     if (!inserted) return failReport(input.slug, 'Failed to create app row');
     appRow = inserted;
   } else if (appRow.makerId !== input.makerId) {
     return failReport(input.slug, `Slug '${input.slug}' is already claimed by another maker.`);
+  } else if (
+    resolvedSurface.source === 'manifest' ||
+    resolvedSurface.source === 'form'
+  ) {
+    // Maker explicitly changed surface (manifest declared, OR form
+    // override). Mutate D1. When `source === 'existing'` we leave the
+    // row alone — that's the preserve-on-redeploy path.
+    if (appRow.surface !== resolvedSurface.surface) {
+      await db
+        .update(schema.apps)
+        .set({ surface: resolvedSurface.surface })
+        .where(eq(schema.apps.id, appRow.id));
+      appRow = { ...appRow, surface: resolvedSurface.surface };
+    }
   }
+
+  const [existingLineage] = await db
+    .select()
+    .from(schema.appLineage)
+    .where(eq(schema.appLineage.appId, appRow.id))
+    .limit(1);
+  const resolvedLineage = resolveLineageValues(
+    manifest,
+    input.lineage,
+    existingLineage ?? null,
+    appRow.githubRepo,
+  );
+  const sourceMetadata = sourceMetadataFromLineage(resolvedLineage);
 
   // Determine next version
   const latest = await db
@@ -265,7 +389,17 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   injectIntoHtmlFiles(files, csp.metaTag, manifest, version);
   emitter.emit({
     type: 'essentials_injected',
-    injected: ['csp', 'viewport', 'charset', 'lang', 'og_tags', 'theme_color', 'favicon'],
+    injected: [
+      'csp',
+      'viewport',
+      'charset',
+      'lang',
+      'og_tags',
+      'theme_color',
+      'favicon',
+      'apple_mobile_web_app',
+      'mobile_web_app',
+    ],
   });
 
   // 7. Upload to R2
@@ -316,11 +450,31 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       activeDeployId: deployRow.id,
       latestDeployId: deployRow.id,
       latestDeployStatus: 'success',
+      visibilityScope: input.visibilityScope ?? appRow.visibilityScope,
+      organizationId: input.organizationId ?? appRow.organizationId,
       lastDeployedAt: completedAt,
       firstPublishedAt: appRow.firstPublishedAt ?? completedAt,
+      currentPwaReadiness: pwaReadiness.status,
+      currentPwaReadinessReasons: pwaReadiness.reasons,
+      currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
       updatedAt: completedAt,
     })
     .where(eq(schema.apps.id, appRow.id));
+
+  await db.insert(schema.auditLog).values({
+    organizationId: input.organizationId ?? appRow.organizationId ?? null,
+    actorUserId: input.makerId,
+    action: 'deployed',
+    targetType: 'app',
+    targetId: appRow.id,
+    metadata: {
+      slug: input.slug,
+      deployId: deployRow.id,
+      version,
+      visibilityScope: input.visibilityScope ?? appRow.visibilityScope,
+      sourceType: 'zip',
+    },
+  });
 
   // Upsert app_permissions
   const permValues = {
@@ -342,12 +496,12 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     });
 
   const lineageValues = {
-    templateId: manifest.template_id ?? null,
-    parentAppId: manifest.parent_app_id ?? null,
-    parentVersion: manifest.parent_version ?? null,
-    sourceRepo: manifest.source_repo ?? appRow.githubRepo ?? null,
-    license: manifest.license ?? null,
-    remixAllowed: manifest.remix_allowed ?? false,
+    templateId: resolvedLineage.templateId,
+    parentAppId: resolvedLineage.parentAppId,
+    parentVersion: resolvedLineage.parentVersion,
+    sourceRepo: resolvedLineage.sourceRepo,
+    license: resolvedLineage.license,
+    remixAllowed: resolvedLineage.remixAllowed,
     updatedAt: completedAt,
   };
   await db
@@ -367,7 +521,8 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     theme_color: manifest.theme_color ?? '#E8603C',
     background_color: manifest.background_color ?? '#ffffff',
     version,
-    visibility_scope: appRow.visibilityScope,
+    visibility_scope: input.visibilityScope ?? appRow.visibilityScope,
+    organization_id: input.organizationId ?? appRow.organizationId ?? undefined,
     permissions: manifest.permissions ?? {
       auth: false,
       storage: 'none',
@@ -375,9 +530,15 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       notifications: false,
       analytics: true,
     },
+    data: manifest.data,
     allowed_connect_domains: manifest.allowed_connect_domains ?? [],
     workflow_probes: manifest.workflow_probes ?? [],
     routing: { mode: routing.mode },
+    pwa_readiness: {
+      status: pwaReadiness.status,
+      reasons: pwaReadiness.reasons,
+      checked_at: pwaReadiness.checkedAt,
+    },
   });
   await writeCspHeader(input.kv, input.slug, csp.header);
 
@@ -447,6 +608,8 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       routing,
       kindProfile: kindProfileForReport,
       manifest,
+      remixSpec,
+      sourceMetadata,
       durationMs: Date.now() - startedAt,
       totalBytes: upload.totalBytes,
       preflight,
@@ -477,6 +640,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     totalBytes: upload.totalBytes,
     preflight,
     liveUrl,
+    visibilityScope: input.visibilityScope ?? normalizeVisibilityScope(appRow.visibilityScope),
     appId: appRow.id,
     deployId: deployRow.id,
     notes: manifestResult.notes.length > 0 ? manifestResult.notes : undefined,
@@ -515,6 +679,10 @@ function failReport(slug: string, reason: string): DeployStaticResult {
     liveUrl: '',
     reason,
   };
+}
+
+function normalizeVisibilityScope(value: string): NonNullable<DeployStaticResult['visibilityScope']> {
+  return value === 'private' || value === 'unlisted' || value === 'team' ? value : 'public';
 }
 
 function emitSecurityScanEvents(
@@ -635,11 +803,18 @@ export function injectEssentials(
     out = out.replace(/<head([^>]*)>/i, `<head$1>\n  <meta charset="utf-8">`);
   }
 
-  // 3. Viewport — inject if missing. Without this, mobile renders desktop-zoom.
+  // 3. Viewport — inject/normalize. Without this, mobile renders
+  // desktop-zoom; without max-scale/user-scalable, iOS zooms into
+  // small form controls and leaves the PWA feeling like a web page.
   if (!/<meta\s+[^>]*name\s*=\s*["']viewport["']/i.test(out)) {
     out = out.replace(
       /<head([^>]*)>/i,
-      `<head$1>\n  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">`,
+      `<head$1>\n  <meta name="viewport" content="${IMMERSIVE_VIEWPORT}">`,
+    );
+  } else {
+    out = out.replace(
+      /<meta\s+([^>]*name\s*=\s*["']viewport["'][^>]*)>/i,
+      (tag) => tag.replace(/content\s*=\s*["'][^"']*["']/i, `content="${IMMERSIVE_VIEWPORT}"`),
     );
   }
 
@@ -675,6 +850,36 @@ export function injectEssentials(
     out = out.replace(
       /<head([^>]*)>/i,
       '<head$1>\n  <link rel="icon" href="/__shippie/icons/32.png" sizes="32x32">\n  <link rel="apple-touch-icon" href="/__shippie/icons/180.png">',
+    );
+  }
+
+  // 8. iOS / Android standalone metas — make Add-to-Home-Screen launch in
+  //    standalone mode (no browser chrome). Each tag is idempotent so a
+  //    maker's existing tag wins. Title falls back to slug when manifest
+  //    name is missing.
+  if (!/<meta\s+[^>]*name\s*=\s*["']apple-mobile-web-app-capable["']/i.test(out)) {
+    out = out.replace(
+      /<head([^>]*)>/i,
+      '<head$1>\n  <meta name="apple-mobile-web-app-capable" content="yes">',
+    );
+  }
+  if (!/<meta\s+[^>]*name\s*=\s*["']apple-mobile-web-app-status-bar-style["']/i.test(out)) {
+    out = out.replace(
+      /<head([^>]*)>/i,
+      '<head$1>\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
+    );
+  }
+  if (!/<meta\s+[^>]*name\s*=\s*["']apple-mobile-web-app-title["']/i.test(out)) {
+    const title = manifest.name ?? manifest.slug ?? 'Shippie';
+    out = out.replace(
+      /<head([^>]*)>/i,
+      `<head$1>\n  <meta name="apple-mobile-web-app-title" content="${escapeAttr(title)}">`,
+    );
+  }
+  if (!/<meta\s+[^>]*name\s*=\s*["']mobile-web-app-capable["']/i.test(out)) {
+    out = out.replace(
+      /<head([^>]*)>/i,
+      '<head$1>\n  <meta name="mobile-web-app-capable" content="yes">',
     );
   }
 
@@ -727,6 +932,8 @@ interface WriteDeployReportInput {
   routing: RouteModeDecision;
   kindProfile: ReturnType<typeof profileFromDetection> | null;
   manifest: ShippieJsonLite;
+  remixSpec: RemixSpec;
+  sourceMetadata: SourceMetadata;
   durationMs: number;
   totalBytes: number;
   preflight: PreflightReport;
@@ -740,6 +947,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   report.files = input.files.size;
   report.totalBytes = input.totalBytes;
   report.routing = input.routing;
+  report.remixSpec = input.remixSpec;
 
   const steps: DeployStep[] = [];
   steps.push({
@@ -933,6 +1141,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
           hub: true,
           minimumSdk: '1.0.0',
         },
+        spaces: input.manifest.spaces,
       },
       appFiles: input.files,
       version: {
@@ -950,7 +1159,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
         },
       },
       permissions: packagePermissions,
-      source: sourceMetadataFromManifest(input.manifest),
+      source: input.sourceMetadata,
       trustReport: packageTrustReport,
       deployReport: report,
       migrations: input.manifest.migrations ?? { operations: [] },
@@ -1185,14 +1394,39 @@ export function containerEligibilityFromDeployReport(
   return 'standalone_only';
 }
 
-function sourceMetadataFromManifest(manifest: ShippieJsonLite): SourceMetadata {
-  const license = manifest.license ?? 'UNLICENSED';
-  const sourceAvailable = Boolean(manifest.source_repo);
-  const remixAllowed = Boolean(manifest.remix_allowed && sourceAvailable && manifest.license);
+interface ResolvedLineageValues {
+  templateId: string | null;
+  parentAppId: string | null;
+  parentVersion: string | null;
+  sourceRepo: string | null;
+  license: string | null;
+  remixAllowed: boolean;
+}
+
+function resolveLineageValues(
+  manifest: ShippieJsonLite,
+  override: DeployLineageOverride | undefined,
+  existing: ResolvedLineageValues | null,
+  githubRepo: string | null,
+): ResolvedLineageValues {
+  return {
+    templateId: manifest.template_id ?? override?.templateId ?? existing?.templateId ?? null,
+    parentAppId: manifest.parent_app_id ?? override?.parentAppId ?? existing?.parentAppId ?? null,
+    parentVersion: manifest.parent_version ?? override?.parentVersion ?? existing?.parentVersion ?? null,
+    sourceRepo: manifest.source_repo ?? override?.sourceRepo ?? existing?.sourceRepo ?? githubRepo ?? null,
+    license: manifest.license ?? override?.license ?? existing?.license ?? null,
+    remixAllowed: manifest.remix_allowed ?? override?.remixAllowed ?? existing?.remixAllowed ?? false,
+  };
+}
+
+function sourceMetadataFromLineage(lineage: ResolvedLineageValues): SourceMetadata {
+  const license = lineage.license ?? 'UNLICENSED';
+  const sourceAvailable = Boolean(lineage.sourceRepo);
+  const remixAllowed = Boolean(lineage.remixAllowed && sourceAvailable && lineage.license);
 
   return {
     license,
-    repo: manifest.source_repo,
+    repo: lineage.sourceRepo ?? undefined,
     sourceAvailable,
     remix: {
       allowed: remixAllowed,
@@ -1200,9 +1434,9 @@ function sourceMetadataFromManifest(manifest: ShippieJsonLite): SourceMetadata {
       attributionRequired: true,
     },
     lineage: {
-      template: manifest.template_id,
-      parentAppId: manifest.parent_app_id,
-      forkedFromVersion: manifest.parent_version,
+      template: lineage.templateId ?? undefined,
+      parentAppId: lineage.parentAppId,
+      forkedFromVersion: lineage.parentVersion,
     },
   };
 }

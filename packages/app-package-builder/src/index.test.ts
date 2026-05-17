@@ -94,6 +94,15 @@ function buildFixture() {
       maker: { id: 'maker_devante', name: 'Devante' },
       domains: { canonical: 'https://recipe-saver.shippie.app' },
       runtime: { standalone: true, container: true, hub: true, minimumSdk: '1.0.0' },
+      spaces: {
+        enabled: true,
+        roles: [
+          { id: 'owner', permissions: ['read', 'write', 'invite'] },
+          { id: 'viewer', permissions: ['read'] },
+        ],
+        syncMode: 'gossip',
+        archivable: true,
+      },
     },
     appFiles: {
       'index.html': '<!doctype html><title>Recipe Saver</title>',
@@ -117,6 +126,7 @@ describe('@shippie/app-package-builder', () => {
     expect(first.files.has('app/index.html')).toBe(true);
     expect(first.files.has('permissions.json')).toBe(true);
     expect(first.manifest.packageHash).toBe(first.packageHash);
+    expect(first.manifest.spaces?.roles.map((role) => role.id)).toEqual(['owner', 'viewer']);
 
     const versionFile = JSON.parse(new TextDecoder().decode(first.files.get('version.json')));
     expect(versionFile.code.packageHash).toBe(first.packageHash);

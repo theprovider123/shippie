@@ -3,20 +3,34 @@
   import WrapForm from './wrap-form.svelte';
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
+  const remixApp = $derived(data.remix?.ok ? data.remix.app : null);
+  const remixSlug = $derived(remixApp ? `${remixApp.slug}-remix` : 'recipes');
+  const forkUrl = $derived(
+    remixApp?.sourceRepo.includes('github.com/') ? `${remixApp.sourceRepo.replace(/\/$/, '')}/fork` : null,
+  );
 
   const checks = [
     'Detects framework output and app kind',
     'Blocks hard security failures before publish',
-    'Writes a portable deploy report artifact',
+    'Writes an App Flight Recorder export',
+    'Checks declared App Policy when present',
     'Keeps URL ownership and container eligibility separate',
   ];
 
-  const paths = [
-    { label: 'I have a built folder', action: 'Zip it and upload here', time: 'about 60s' },
-    { label: 'It is already hosted', action: 'Wrap the URL', time: 'about 60s' },
+  const paths = $derived([
+    {
+      label: 'I have a built folder',
+      action: data.user ? 'Zip it and upload here' : 'Drop a zip, no sign-in',
+      time: 'about 60s',
+    },
+    {
+      label: 'It is already hosted',
+      action: data.user ? 'Wrap the URL' : 'Sign in to wrap a URL',
+      time: 'about 60s',
+    },
     { label: 'I am in my editor', action: 'Use CLI or MCP', time: 'about 60s' },
     { label: 'I want repo deploys', action: 'Connect GitHub after first ship', time: '2-5min' },
-  ];
+  ]);
 </script>
 
 <svelte:head><title>Ship a new app · Shippie</title></svelte:head>
@@ -34,10 +48,15 @@
           aria-hidden="true"
         />
         <p class="eyebrow">Maker console</p>
-        <h1>Ship your first app in under a minute.</h1>
+        <h1>{remixApp ? `Remix ${remixApp.name}.` : 'Ship your first app in under a minute.'}</h1>
         <p class="lede">
-          Upload a build, wrap a live URL, or let CLI/MCP send it from your editor.
-          Shippie checks the app, explains what happened, and gives you a link people can install.
+          {#if remixApp}
+            Fork the source with GitHub, or upload your improved build directly. Shippie keeps the parent app,
+            version, license, and attribution attached to your remix.
+          {:else}
+            Upload a build, wrap a live URL, or let CLI/MCP send it from your editor.
+            Shippie checks the app, gives you a phone QR, and records what happened without seeing user data.
+          {/if}
         </p>
       </div>
       <div class="hero-status" aria-label="Deploy checks">
@@ -49,6 +68,34 @@
         </ul>
       </div>
     </header>
+
+    {#if data.remix && !data.remix.ok}
+      <section class="remix-panel unavailable" aria-label="Remix unavailable">
+        <div>
+          <p class="eyebrow">Remix unavailable</p>
+          <h2>{data.remix.reason}</h2>
+        </div>
+        <a href="/apps">Browse remixable apps</a>
+      </section>
+    {:else if remixApp}
+      <section class="remix-panel" aria-label="Remix source">
+        <div>
+          <p class="eyebrow">Source app</p>
+          <h2>{remixApp.name}</h2>
+          {#if remixApp.tagline}<p>{remixApp.tagline}</p>{/if}
+          <p class="meta-line">
+            {remixApp.license}
+            {#if remixApp.latestVersion} · v{remixApp.latestVersion}{/if}
+          </p>
+        </div>
+        <div class="remix-actions">
+          <a href={remixApp.sourceRepo} target="_blank" rel="noopener">Open source</a>
+          {#if forkUrl}
+            <a href={forkUrl} target="_blank" rel="noopener">Fork on GitHub</a>
+          {/if}
+        </div>
+      </section>
+    {/if}
 
     <section class="path-chooser" aria-labelledby="choose-path">
       <div>
@@ -68,29 +115,51 @@
 
     <section class="primary-flow" aria-labelledby="quick-ship">
       <div class="section-head">
-        <p class="eyebrow">Fastest path</p>
-        <h2 id="quick-ship">Upload a zip</h2>
+        <p class="eyebrow">{data.user ? 'Fastest path' : 'No-signup trial'}</p>
+        <h2 id="quick-ship">{data.user ? 'Upload a zip' : 'Drop a zip. Get a link.'}</h2>
         <p>
-          Drop a zip of your built output or project export. Common roots like
-          <code>dist/</code>, <code>build/</code>, and <code>out/</code> are normalized automatically.
+          {#if data.user}
+            {#if remixApp}
+              Upload your improved build. GitHub is optional here; use it when you want fork history
+              and repo deploys.
+            {:else}
+              Drop a zip of your built output or project export. Common roots like
+              <code>dist/</code>, <code>build/</code>, and <code>out/</code> are normalized automatically.
+            {/if}
+          {:else}
+            Your first upload creates a 24-hour unlisted trial app. Sign in only
+            when you want to claim it, keep it, or open the dashboard.
+          {/if}
         </p>
       </div>
       <div class="form-surface">
-        <UploadForm />
+        <UploadForm trialMode={!data.user} initialSlug={remixSlug} remixFrom={remixApp?.slug ?? null} />
       </div>
     </section>
 
     <section class="secondary-flow" aria-labelledby="wrap-url">
       <div class="section-head">
-        <p class="eyebrow">Already online</p>
+        <p class="eyebrow">{data.user ? 'Already online' : 'Maker account'}</p>
         <h2 id="wrap-url">Wrap a hosted URL</h2>
         <p>
-          Keep your current hosting. Shippie gives it a maker subdomain, PWA install,
-          proof surfaces, ratings, and a path into the container when it earns trust.
+          {#if data.user}
+            Keep your current hosting. Shippie gives it a maker subdomain, PWA install,
+            proof surfaces, ratings, and a path into the container when it earns trust.
+          {:else}
+            URL wrapping touches ownership, redirects, and dashboard settings, so it starts
+            after a magic-link sign-in. The zip trial above stays open.
+          {/if}
         </p>
       </div>
       <div class="form-surface">
-        <WrapForm />
+        {#if data.user}
+          <WrapForm />
+        {:else}
+          <div class="signin-panel">
+            <p>Already hosted somewhere else?</p>
+            <a href="/auth/login?return_to=/new">Sign in to wrap a URL</a>
+          </div>
+        {/if}
       </div>
     </section>
 
@@ -120,13 +189,19 @@ shippie deploy ./dist</code></pre>
       </div>
       <ol>
         <li>Live at <code>{'<slug>'}.shippie.app</code> with install support and the wrapper runtime.</li>
-        <li>The deploy report shows detected kind, blocked risks, fixed essentials, and health checks.</li>
+        <li>The App Flight Recorder shows detected kind, blocked risks, fixed essentials, App Policy checks, and health checks.</li>
         <li>The dashboard tracks enhancements and runtime proof as real devices use the app.</li>
         <li>Share the URL, keep your custom domain story, and let the container become the richer home.</li>
       </ol>
     </aside>
 
-    <p class="footer">Signed in as {data.user.email}</p>
+    <p class="footer">
+      {#if data.user}
+        Signed in as {data.user.email}
+      {:else}
+        Anonymous trial deploys expire after 24 hours.
+      {/if}
+    </p>
   </div>
 </main>
 
@@ -173,6 +248,51 @@ shippie deploy ./dist</code></pre>
   .hero-status ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.65rem; color: #6F675E; font-size: 14px; line-height: 1.35; }
   .hero-status li::before { content: "✓"; color: #2E7D5B; margin-right: 0.5rem; }
 
+  .remix-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.5rem;
+    align-items: center;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid #E5DDC8;
+  }
+  .remix-panel h2 { font-size: 1.8rem; }
+  .remix-panel p {
+    margin: 0.55rem 0 0;
+    color: #6F675E;
+    line-height: 1.45;
+  }
+  .remix-panel .meta-line {
+    color: #8B847A;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .remix-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    justify-content: flex-end;
+  }
+  .remix-actions a,
+  .remix-panel.unavailable > a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    padding: 0 1rem;
+    border: 1px solid #14120F;
+    color: #14120F;
+    text-decoration: none;
+    font-weight: 700;
+  }
+  .remix-actions a:first-child {
+    background: #14120F;
+    color: #EDE4D3;
+  }
+  .remix-panel.unavailable {
+    border-left: 2px solid #E8603C;
+    padding-left: 1rem;
+  }
+
   .path-chooser {
     display: grid;
     grid-template-columns: 260px minmax(0, 1fr);
@@ -203,6 +323,24 @@ shippie deploy ./dist</code></pre>
   }
   .section-head p { color: #6F675E; font-size: 14px; margin: 0.8rem 0 0; line-height: 1.55; }
   .form-surface { min-width: 0; }
+  .signin-panel {
+    border-left: 2px solid #E8603C;
+    padding: 1rem 0 1rem 1rem;
+  }
+  .signin-panel p {
+    margin: 0 0 0.75rem;
+    color: #6F675E;
+    font-size: 14px;
+  }
+  .signin-panel a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    padding: 0 1rem;
+    background: #14120F;
+    color: #EDE4D3;
+    font-weight: 700;
+  }
 
   .toolbelt {
     display: grid;
@@ -243,17 +381,29 @@ shippie deploy ./dist</code></pre>
   .footer { color: #8B847A; font-size: 13px; }
   code { font-family: ui-monospace, monospace; font-size: 0.9em; }
   @media (max-width: 860px) {
-    .hero, .path-chooser, .primary-flow, .secondary-flow, .next { grid-template-columns: 1fr; }
+    .hero, .remix-panel, .path-chooser, .primary-flow, .secondary-flow, .next { grid-template-columns: 1fr; }
     .path-chooser ol, .toolbelt { grid-template-columns: 1fr; }
     .path-chooser li, .toolbelt article { border-right: 0; border-bottom: 1px solid #E5DDC8; }
     .path-chooser li:last-child, .toolbelt article:last-child { border-bottom: 0; }
     .hero-status { border-left: 0; padding-left: 0; border-top: 1px solid #E5DDC8; padding-top: 1rem; }
+    .remix-actions { justify-content: flex-start; }
   }
   @media (prefers-color-scheme: dark) {
     .page { background: #14120F; color: #EDE4D3; }
-    .hero, .path-chooser ol, .path-chooser li, .primary-flow, .secondary-flow, .toolbelt, .toolbelt article, .next { border-color: #2A251E; }
+    .hero, .remix-panel, .path-chooser ol, .path-chooser li, .primary-flow, .secondary-flow, .toolbelt, .toolbelt article, .next { border-color: #2A251E; }
     pre { background: #0D0B09; }
     .next { background: rgba(232, 96, 60, 0.06); }
-    .lede, .section-head p, .toolbelt p, .hero-status ul, .next ol { color: #AFA693; }
+    .lede, .remix-panel p, .section-head p, .toolbelt p, .hero-status ul, .next ol { color: #AFA693; }
+    .signin-panel p { color: #AFA693; }
+    .signin-panel a { background: #EDE4D3; color: #14120F; }
+    .remix-actions a,
+    .remix-panel.unavailable > a {
+      border-color: #EDE4D3;
+      color: #EDE4D3;
+    }
+    .remix-actions a:first-child {
+      background: #EDE4D3;
+      color: #14120F;
+    }
   }
 </style>

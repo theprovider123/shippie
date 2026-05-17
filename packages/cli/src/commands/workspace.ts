@@ -37,7 +37,8 @@ export async function workspaceCommand(path: string | undefined, opts: Workspace
       console.log(`Plan file: ${result.plan.file}`);
       for (const app of result.apps) {
         const role = app.role ? ` (${app.role})` : '';
-        console.log(`- ${app.slug}${role}: ${app.absoluteDirectory}`);
+        const remix = app.remixFrom ? ` remixing ${app.remixFrom}` : '';
+        console.log(`- ${app.slug}${role}: ${app.absoluteDirectory}${remix}`);
       }
       console.log('');
       return;
@@ -49,6 +50,7 @@ export async function workspaceCommand(path: string | undefined, opts: Workspace
         console.log(`- ${app.slug}${role}: live`);
         if (app.result.liveUrl) console.log(`  ${app.result.liveUrl}`);
         if (app.result.deployId) console.log(`  deploy: ${app.result.deployId}`);
+        if (app.remixFrom) console.log(`  remix of: ${app.remixFrom}`);
       } else {
         console.log(`- ${app.slug}${role}: failed`);
         console.log(`  ${app.result?.error ?? 'unknown_error'}`);

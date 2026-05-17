@@ -42,6 +42,7 @@
   }: Props = $props();
 
   const blurb = $derived(tagline ?? description ?? `${name} on Shippie`);
+  const typeLabel = $derived(type.toLowerCase() === 'app' ? 'tool' : type);
   // Heuristic seal — earned when at least three proven capability badges land
   // (offline, local-AI, privacy A+ class); the official scoring lives upstream
   // and overrides this via the explicit `sealed` prop.
@@ -59,14 +60,14 @@
           {#if showSeal}
             <span
               class="seal"
-              title="Shippie Seal — top-trust app. Privacy A+, security ≥ 95, fully offline."
+              title="Shippie Seal — top-trust tool. Privacy A+, security >= 95, fully offline."
               aria-label="Shippie Seal"
             >
               <img src="/__shippie-pwa/icon.svg" alt="" width="12" height="12" />
             </span>
           {/if}
         </h2>
-        <p class="kind">{type} · {category}</p>
+        <p class="kind">{typeLabel} · {category}</p>
         <p class="blurb">{blurb}</p>
         {#if kind}
           <div class="kind-row">

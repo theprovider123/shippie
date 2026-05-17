@@ -26,7 +26,15 @@ import { wsHandlerFor, extractRoomId } from './signal.ts';
 import { ModelCache } from './model-cache.ts';
 import { serveAppFile, extractSlugFromHost, listCachedApps } from './static.ts';
 import { renderDashboard } from './dashboard.ts';
-import { ingestPackageArchive, serveLocalCollection, servePackageArchive, withCors } from './packages.ts';
+import { buildAmbientDiscovery } from './ambient.ts';
+import {
+  ingestPackageArchive,
+  readHubToolRegistry,
+  serveLocalCollection,
+  servePackageArchive,
+  updateHubToolGroup,
+  withCors,
+} from './packages.ts';
 
 interface WsData {
   roomId: string;
@@ -160,6 +168,36 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
         return serveLocalCollection(config.cacheRoot, hubOrigin(req, actualPort));
       }
 
+      if (url.pathname === '/api/hub/tools') {
+        return withCors(Response.json(await readHubToolRegistry(config.cacheRoot)));
+      }
+
+      if (url.pathname === '/api/hub/ambient') {
+        const registry = await readHubToolRegistry(config.cacheRoot);
+        return withCors(Response.json(buildAmbientDiscovery({
+          hubName: config.mdnsName,
+          origin: hubOrigin(req, actualPort),
+          state,
+          registry,
+        })));
+      }
+
+      const toolGroupMatch = /^\/api\/hub\/tools\/([a-z0-9][a-z0-9-]*)\/group$/.exec(url.pathname);
+      if (toolGroupMatch && req.method === 'POST') {
+        let body: unknown;
+        try {
+          body = await req.json();
+        } catch {
+          return withCors(Response.json({ error: 'invalid_json' }, { status: 400 }));
+        }
+        const group = typeof (body as { group?: unknown }).group === 'string'
+          ? (body as { group: string }).group
+          : '';
+        const updated = await updateHubToolGroup(config.cacheRoot, toolGroupMatch[1]!, group);
+        if (!updated) return withCors(Response.json({ error: 'not_found' }, { status: 404 }));
+        return withCors(Response.json({ ok: true, tool: updated }));
+      }
+
       // 6b) Phase 9.2 — local marketplace listing.
       if (url.pathname === '/api/hub/marketplace') {
         const apps = await listCachedApps(config.cacheRoot);
@@ -244,7 +282,7 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
             name: config.mdnsName,
             type: 'http',
             port: actualPort,
-            txt: { service: 'shippie-hub' },
+            txt: { service: 'shippie-hub', ambient: '/api/hub/ambient' },
           });
           mdnsStop = async () => {
             await new Promise<void>((res) => bonjour.unpublishAll(() => res()));

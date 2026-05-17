@@ -18,7 +18,7 @@
     if (b.status === 'pass') {
       return 'Detected — the autopackager saw this in the deploy.';
     }
-    return 'Declared by app — not independently verified.';
+    return 'Declared by tool — not independently verified.';
   }
 </script>
 

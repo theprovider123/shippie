@@ -17,7 +17,7 @@ describe('workspace', () => {
       JSON.stringify({
         workspace: 'matchday',
         apps: [
-          { slug: 'matchday-fan', directory: 'fan', role: 'fan' },
+          { slug: 'matchday-fan', directory: 'fan', role: 'fan', remixFrom: 'scoreboard' },
           { slug: 'matchday-display', directory: 'display', role: 'display' },
         ],
         shared: { groupCode: 'auto' },
@@ -37,6 +37,7 @@ describe('workspace', () => {
     expect(plan.shared.groupCode).toBe('auto');
     expect(plan.apps.map((app) => app.slug)).toEqual(['matchday-fan', 'matchday-display']);
     expect(plan.apps[0]?.absoluteDirectory).toBe(join(TMP, 'fan'));
+    expect(plan.apps[0]?.remixFrom).toBe('scoreboard');
   });
 
   test('dry-run deploy returns the plan without uploading', async () => {

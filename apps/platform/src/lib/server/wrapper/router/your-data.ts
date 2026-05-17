@@ -31,7 +31,7 @@ function renderHtml(slug: string): string {
                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
     main { max-width: 640px; margin: 0 auto; padding: 24px 20px 64px; }
     h1 { font-size: 28px; margin: 0 0 4px; font-weight: 600; letter-spacing: -0.01em; }
-    p.subtitle { margin: 0 0 28px; color: var(--muted); font-size: 15px; }
+    p.subtitle { margin: 0 0 24px; color: var(--muted); font-size: 15px; line-height: 1.5; }
     h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
          color: var(--muted); margin: 28px 0 10px; }
     section { padding: 16px 0; border-top: 1px solid var(--line); }
@@ -43,6 +43,17 @@ function renderHtml(slug: string): string {
     button.danger { color: var(--danger); border-color: var(--danger); }
     pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
           font-size: 13px; color: var(--muted); margin: 0; white-space: pre-wrap; }
+    .sealed {
+      margin: 0 0 20px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--line) 22%, transparent);
+    }
+    .sealed h2 { margin-top: 0; }
+    .sealed p { margin: 0 0 12px; color: var(--muted); line-height: 1.5; }
+    .copy-list { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .copy-list li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    .copy-dot { width: 8px; height: 8px; border-radius: 99px; background: #3E7D4D; box-shadow: 0 0 0 3px rgba(62,125,77,0.16); }
     .footer { margin-top: 40px; font-size: 12px; color: var(--muted); line-height: 1.6; }
     .tag { display: inline-block; padding: 2px 8px; border-radius: 4px;
            background: var(--line); color: var(--muted); font-size: 11px;
@@ -52,7 +63,22 @@ function renderHtml(slug: string): string {
 <body>
   <main>
     <h1>Your Data <span class="tag">${escapeHtml(slug)}</span></h1>
-    <p class="subtitle">Everything on this device, only on this device. This page works even if the app is broken.</p>
+    <p class="subtitle">Saved privately, easy to move, recoverable when browsers forget. This page works even if the app is broken.</p>
+
+    <section class="sealed">
+      <h2>Private recovery</h2>
+      <p>Shippie stores sealed copies for apps that use Private Sync. We can move and recover those copies, but we can't open what is inside.</p>
+      <div class="row">
+        <button class="primary" id="add-device">Add another device</button>
+        <button id="move-phone">Move to new phone</button>
+        <button id="recovery-card">Show recovery card</button>
+        <button id="restore-data">Restore data</button>
+      </div>
+      <ul class="copy-list">
+        <li><span class="copy-dot"></span><span>This device is the local copy for ${escapeHtml(slug)}.</span></li>
+        <li><span class="copy-dot"></span><span>Device handover uses wrapped access only. Raw keys are not uploaded.</span></li>
+      </ul>
+    </section>
 
     <section>
       <h2>Storage</h2>
@@ -75,20 +101,22 @@ function renderHtml(slug: string): string {
     </section>
 
     <p class="footer">
-      Shippie's promise: your data lives on this device, encrypted, under your control.
-      The developer of this app can't see it. Shippie can't see it.
-      Backups go to your own Drive — never ours.
+      Shippie stores sealed copies. We can help recover them, but we can't open them.
+      Technical sync details like size and timing may still be visible.
     </p>
   </main>
+  <script src="/__shippie/sdk.js"></script>
   <script>
-${CLIENT_SCRIPT}
+${clientScript(slug)}
   </script>
 </body>
 </html>`;
 }
 
-const CLIENT_SCRIPT = `
+function clientScript(slug: string): string {
+  return `
 (async function() {
+  const appSlug = ${JSON.stringify(slug)};
   const fmt = (n) => {
     if (n < 1024) return n + ' B';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
@@ -135,13 +163,50 @@ const CLIENT_SCRIPT = `
   document.getElementById('import').addEventListener('click', () => {
     alert('Restore wires up alongside the backup providers — coming soon.');
   });
+  document.getElementById('add-device').addEventListener('click', () => {
+    openInheritedPanel('add-device');
+  });
+  document.getElementById('move-phone').addEventListener('click', () => {
+    openInheritedPanel('move-phone');
+  });
+  document.getElementById('recovery-card').addEventListener('click', () => {
+    openInheritedPanel('recovery-card');
+  });
+  document.getElementById('restore-data').addEventListener('click', () => {
+    openInheritedPanel('restore');
+  });
   document.getElementById('wipe').addEventListener('click', () => {
     void wipe();
   });
 
   await refreshStats();
+
+  function openInheritedPanel(action) {
+    const api = window.shippie;
+    if (api && typeof api.openYourData === 'function') {
+      api.openYourData({
+        appSlug,
+        privateSync: {
+          enabled: false,
+          headline: 'Private sync is available.',
+          detail: 'Open the app when you need app-specific sealed keys. This fallback still gives you the inherited recovery surface.',
+          safeCopies: [{ label: 'This device', detail: 'Fallback data surface', status: 'ready' }],
+          sealedCloud: 'setting-up',
+        },
+      });
+      return;
+    }
+    const messages = {
+      'add-device': 'Open the app, then Your Data, to start sealed device handover.',
+      'move-phone': 'Open the app on the old phone, then Restore data on the new phone.',
+      'recovery-card': 'Open the app to generate the app-specific recovery card.',
+      restore: 'Open the app so this device can unwrap restored access locally.',
+    };
+    alert(messages[action] || 'Open the app to continue.');
+  }
 })();
 `;
+}
 
 function escapeHtml(s: string): string {
   return s

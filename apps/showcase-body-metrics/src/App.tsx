@@ -1,116 +1,117 @@
+/**
+ * Shippie Body Metrics — root container.
+ *
+ * Five tabs: Today (entry + recent), Photos (timeline + compare),
+ * Trend (chart + smoothing), Goal (target + projection), Settings
+ * (privacy + export + wipe).
+ *
+ * Architecture invariants preserved from the previous version:
+ *
+ *   - Photos NEVER leave the device. There is no fetch path that
+ *     uploads them. The privacy banner makes that contract visible.
+ *   - The `body-metrics-logged` intent broadcast still fires on
+ *     every Log so Journal's quick-entry prompts and Habit Tracker
+ *     auto-checks can react. Body fat % stays out of the payload —
+ *     it's a more sensitive number.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
-import { computeTrend, type Measurement } from './trend.ts';
-import { deletePhoto, loadPhoto, savePhoto } from './photo-store.ts';
-import { TimeLapse, type TimeLapseEntry } from './TimeLapse.tsx';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { Today } from './pages/Today.tsx';
+import { Photos } from './pages/Photos.tsx';
+import { TrendPage } from './pages/Trend.tsx';
+import { GoalPage } from './pages/GoalPage.tsx';
+import { Settings } from './pages/Settings.tsx';
+import {
+  loadEntries,
+  loadGoal,
+  saveEntries,
+  saveGoal,
+  type Entry,
+  type Goal,
+} from './lib/store.ts';
+import { deletePhoto, savePhoto } from './photo-store.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_body_metrics' });
 
-interface Entry extends Measurement {
-  id: string;
-  bodyFatPct?: number;
-  photoLocalId?: string;
-}
+type Tab = 'today' | 'photos' | 'trend' | 'goal' | 'settings';
 
-const STORAGE_KEY = 'shippie.body-metrics.v1';
-
-function load(): Entry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Entry[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'today', label: 'Today' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'trend', label: 'Trend' },
+  { id: 'goal', label: 'Goal' },
+  { id: 'settings', label: 'Settings' },
+];
 
 export function App() {
-  const [entries, setEntries] = useState<Entry[]>(() => load());
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [weight, setWeight] = useState<string>('');
-  const [bodyFat, setBodyFat] = useState<string>('');
-  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
-  const [showTimeLapse, setShowTimeLapse] = useState(false);
+  const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
+  const [goal, setGoalState] = useState<Goal | null>(() => loadGoal());
+  const [tab, setTab] = useState<Tab>('today');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('today', setTab),
+    [],
+  );
 
-  const photoEntries = useMemo<TimeLapseEntry[]>(
-    () =>
-      entries
-        .filter((e): e is Entry & { photoLocalId: string } => Boolean(e.photoLocalId))
-        .map((e) => ({
-          date: e.date,
-          weightKg: e.weightKg,
-          photoLocalId: e.photoLocalId,
-        })),
+  // Persistence — debounce-free; entries volume stays well under
+  // localStorage's 5 MB ceiling because photo bytes live elsewhere.
+  useEffect(() => {
+    saveEntries(entries);
+  }, [entries]);
+
+  useEffect(() => {
+    saveGoal(goal);
+  }, [goal]);
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  const photoCount = useMemo(
+    () => entries.filter((e) => e.photoLocalId).length,
     [entries],
   );
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  }, [entries]);
-
-  // Lazy-load photo blobs into object URLs for visible entries.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const urls: Record<string, string> = {};
-      for (const e of entries.slice(0, 5)) {
-        if (!e.photoLocalId) continue;
-        const blob = await loadPhoto(e.photoLocalId).catch(() => null);
-        if (blob) urls[e.photoLocalId] = URL.createObjectURL(blob);
-      }
-      if (!cancelled) setPhotoUrls(urls);
-    })();
-    return () => {
-      cancelled = true;
-      for (const url of Object.values(photoUrls)) URL.revokeObjectURL(url);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries]);
-
-  const trend = computeTrend(entries);
-
-  async function logEntry(e: React.FormEvent) {
-    e.preventDefault();
-    const weightKg = parseFloat(weight);
-    if (!Number.isFinite(weightKg) || weightKg <= 0) return;
+  async function logEntry({
+    entry,
+    photoFile,
+  }: {
+    entry: Omit<Entry, 'id'>;
+    photoFile: File | null;
+  }) {
     const id = `e_${Date.now()}`;
-    const fileInput = document.getElementById('photo') as HTMLInputElement | null;
-    let photoLocalId: string | undefined;
-    if (fileInput?.files?.[0]) {
+    let photoLocalId: string | undefined = entry.photoLocalId;
+    if (photoFile) {
       photoLocalId = `p_${Date.now()}`;
-      await savePhoto(photoLocalId, fileInput.files[0]);
+      await savePhoto(photoLocalId, photoFile);
     }
-    const entry: Entry = {
-      id,
-      date,
-      weightKg,
-      bodyFatPct: bodyFat ? parseFloat(bodyFat) : undefined,
-      photoLocalId,
-    };
-    setEntries((prev) => [entry, ...prev.filter((x) => x.date !== date)]);
-    setWeight('');
-    setBodyFat('');
-    if (fileInput) fileInput.value = '';
-    // P3 — broadcast `body-metrics-logged` so Journal's quick-entry
+    const full: Entry = { ...entry, id, photoLocalId };
+    setEntries((prev) => [full, ...prev.filter((x) => x.date !== entry.date)]);
+    // Broadcast `body-metrics-logged` so Journal's quick-entry
     // prompts and Habit Tracker auto-checks can react. The payload
-    // carries date + weightKg only — body fat % stays local because
-    // it's a more sensitive number, and body photos NEVER leave.
+    // carries date + weightKg only — body fat % stays local.
     shippie.intent.broadcast('body-metrics-logged', [
       {
-        date,
-        weightKg,
+        date: entry.date,
+        weightKg: entry.weightKg,
         loggedAt: new Date().toISOString(),
         kind: 'weight',
-        title: `${weightKg.toFixed(1)} kg`,
+        title: `${entry.weightKg.toFixed(1)} kg`,
       },
     ]);
     shippie.feel.texture('confirm');
   }
 
-  async function remove(entry: Entry) {
+  async function removeEntry(entry: Entry) {
     if (entry.photoLocalId) await deletePhoto(entry.photoLocalId).catch(() => undefined);
     setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+    shippie.feel.texture('delete');
+  }
+
+  async function wipeAll() {
+    for (const e of entries) {
+      if (e.photoLocalId) await deletePhoto(e.photoLocalId).catch(() => undefined);
+    }
+    setEntries([]);
+    setGoalState(null);
     shippie.feel.texture('delete');
   }
 
@@ -133,93 +134,39 @@ export function App() {
 
       <header>
         <h1>Body</h1>
-        <p>{entries.length} entr{entries.length === 1 ? 'y' : 'ies'} on this device</p>
-        {photoEntries.length >= 2 && (
+        <p>
+          {entries.length} entr{entries.length === 1 ? 'y' : 'ies'} ·{' '}
+          {photoCount} photo{photoCount === 1 ? '' : 's'} on this device
+        </p>
+      </header>
+
+      <nav className="tabs" role="tablist" aria-label="Body Metrics sections">
+        {TABS.map((t) => (
           <button
+            key={t.id}
+            role="tab"
             type="button"
-            className="time-lapse-button"
+            aria-selected={tab === t.id}
+            className={`tab${tab === t.id ? ' is-active' : ''}`}
             onClick={() => {
-              setShowTimeLapse(true);
+              void localNavigation.navigate(t.id, { kind: 'crossfade' });
               shippie.feel.texture('navigate');
             }}
           >
-            Time lapse ({photoEntries.length})
+            {t.label}
           </button>
-        )}
-      </header>
+        ))}
+      </nav>
 
-      {showTimeLapse && (
-        <TimeLapse
-          entries={photoEntries}
-          onClose={() => setShowTimeLapse(false)}
-        />
+      {tab === 'today' && (
+        <Today entries={entries} onLog={logEntry} onRemove={removeEntry} />
       )}
-
-      {trend && (
-        <section className="trend" data-trend={trend.trend}>
-          <strong>Trend:</strong> {trend.trend}
-          <span className="rate">{trend.slope > 0 ? '+' : ''}{(trend.slope * 7).toFixed(2)} kg / week</span>
-        </section>
+      {tab === 'photos' && <Photos entries={entries} />}
+      {tab === 'trend' && <TrendPage entries={entries} goal={goal} />}
+      {tab === 'goal' && (
+        <GoalPage entries={entries} goal={goal} onSave={setGoalState} />
       )}
-
-      <form onSubmit={logEntry}>
-        <div className="row">
-          <label>
-            <span>Date</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </label>
-          <label>
-            <span>Weight (kg)</span>
-            <input
-              type="number"
-              step="0.1"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder="74.0"
-            />
-          </label>
-          <label>
-            <span>Body fat % (optional)</span>
-            <input
-              type="number"
-              step="0.1"
-              value={bodyFat}
-              onChange={(e) => setBodyFat(e.target.value)}
-              placeholder="18.5"
-            />
-          </label>
-        </div>
-        <label>
-          <span>Photo (stays on device)</span>
-          <input id="photo" type="file" accept="image/*" capture="user" />
-        </label>
-        <button type="submit" disabled={!weight}>Log</button>
-      </form>
-
-      <section>
-        <h2>Recent</h2>
-        {entries.length === 0 ? (
-          <p className="empty">Log a measurement above. After 7 entries we'll show the trend.</p>
-        ) : (
-          <ul>
-            {entries.slice(0, 12).map((e) => (
-              <li key={e.id}>
-                <div className="meta">
-                  <strong>{e.date}</strong>
-                  <small>
-                    {e.weightKg.toFixed(1)} kg
-                    {e.bodyFatPct ? ` · ${e.bodyFatPct.toFixed(1)}% bf` : ''}
-                  </small>
-                </div>
-                {e.photoLocalId && photoUrls[e.photoLocalId] && (
-                  <img src={photoUrls[e.photoLocalId]} alt={`Body photo ${e.date}`} />
-                )}
-                <button onClick={() => remove(e)} aria-label={`Remove ${e.date}`}>×</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {tab === 'settings' && <Settings entries={entries} onWipe={wipeAll} />}
     </main>
   );
 }

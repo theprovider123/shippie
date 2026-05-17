@@ -1,6 +1,6 @@
 -- Drop Phase 1 stub tables before recreating with the full schema.
 -- Both tables were empty smoke-test placeholders (verified before applying).
--- The mirror script repopulates these from Neon.
+-- The mirror script repopulates these from D1.
 DROP TABLE IF EXISTS `sessions`;--> statement-breakpoint
 DROP TABLE IF EXISTS `users`;--> statement-breakpoint
 CREATE TABLE `users` (

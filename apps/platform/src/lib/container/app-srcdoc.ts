@@ -11,24 +11,30 @@
  * Pure function. Keeps heredoc HTML out of the Svelte file.
  */
 
-import type { ContainerApp, PackageFileCache } from './state';
+import type { AppSpaceContext, ContainerApp, PackageFileCache } from './state';
 
 export function appPackageSrcdoc(
   app: ContainerApp,
   packageFiles: Record<string, PackageFileCache> | undefined,
+  opts: { spaceContext?: AppSpaceContext | null } = {},
 ): string {
   const packageEntryHtml = packageFiles?.[app.entry]?.text;
-  if (packageEntryHtml) return inlinePackageAssets(packageEntryHtml, app.entry, packageFiles ?? {});
+  if (packageEntryHtml) {
+    return inlinePackageAssets(packageEntryHtml, app.entry, packageFiles ?? {}, {
+      spaceContext: opts.spaceContext,
+    });
+  }
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  ${spaceContextScript(opts.spaceContext)}
   <style>
     :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; }
     body { margin: 0; background: #fffaf2; color: #211d18; }
-    main { min-height: 100vh; padding: 24px; display: grid; align-content: center; justify-items: start; gap: 12px; }
+    main { min-height: 100svh; min-height: 100dvh; padding: 24px; display: grid; align-content: center; justify-items: start; gap: 12px; }
     h1 { margin: 0; font-size: 22px; }
     p { margin: 0; color: #5f554a; line-height: 1.5; max-width: 38ch; }
     button { border: 1px solid #211d18; background: transparent; color: #211d18; border-radius: 999px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
@@ -78,10 +84,11 @@ export function inlinePackageAssets(
   html: string,
   entryPath: string,
   packageFiles: Record<string, PackageFileCache>,
+  opts: { spaceContext?: AppSpaceContext | null } = {},
 ): string {
   const baseDir = entryPath.includes('/') ? entryPath.slice(0, entryPath.lastIndexOf('/') + 1) : '';
   return rewritePackageAssetReferences(
-    html
+    injectSpaceContext(html, opts.spaceContext)
     .replace(
       /<link\b([^>]*?)\bhref=["']([^"']+)["']([^>]*?)>/gi,
       (tag, before: string, href: string, after: string) => {
@@ -106,6 +113,18 @@ export function inlinePackageAssets(
     entryPath,
     (path) => packageFiles[path]?.dataUrl,
   );
+}
+
+function injectSpaceContext(html: string, context: AppSpaceContext | null | undefined): string {
+  const script = spaceContextScript(context);
+  if (!script) return html;
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${script}\n</head>`);
+  return `${script}\n${html}`;
+}
+
+function spaceContextScript(context: AppSpaceContext | null | undefined): string {
+  if (!context) return '';
+  return `<script>window.__SHIPPIE_SPACE__=${JSON.stringify(context).replaceAll('<', '\\u003c')};${'</scr' + 'ipt>'}`;
 }
 
 export function rewritePackageAssetReferences(

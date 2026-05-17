@@ -12,12 +12,18 @@
     slug: string;
     initialCount: number;
     initiallyUpvoted?: boolean;
+    label?: string;
   }
 
-  let { slug, initialCount, initiallyUpvoted = false }: Props = $props();
-  let count = $state(initialCount);
-  let isUpvoted = $state(initiallyUpvoted);
+  let { slug, initialCount, initiallyUpvoted = false, label = '' }: Props = $props();
+  let count = $state(0);
+  let isUpvoted = $state(false);
   let pending = $state(false);
+
+  $effect(() => {
+    count = initialCount;
+    isUpvoted = initiallyUpvoted;
+  });
 
   async function toggle() {
     if (pending) return;
@@ -49,6 +55,9 @@
   disabled={pending}
 >
   <span class="heart" aria-hidden="true">{isUpvoted ? '♥' : '♡'}</span>
+  {#if label}
+    <span>{label}</span>
+  {/if}
   <span class="count">{count}</span>
 </button>
 

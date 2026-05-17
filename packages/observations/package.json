@@ -1,0 +1,24 @@
+{
+  "name": "@shippie/observations",
+  "version": "0.0.1",
+  "description": "Typed cross-tool observation vocabulary for Shippie showcases. Wraps the iframe-sdk intent.broadcast/subscribe bridge with a typed event vocabulary; never bypasses the bridge gate.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.12",
+    "typescript": "^5.7.0"
+  },
+  "peerDependencies": {
+    "@shippie/iframe-sdk": "workspace:*"
+  }
+}

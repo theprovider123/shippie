@@ -264,11 +264,11 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     expect(text).toContain("hasn't shipped yet");
   });
 
-  test('auto-bridge: KV active null + ASSETS hit → 302 to /run/<slug>/', async () => {
+  test('auto-bridge: KV active null + ASSETS hit → 302 to /run/<slug>', async () => {
     const env = envWith(
       fakeKv({}),
       fakeR2({}),
-      fakeAssets(new Set(['/run/mevrouw/index.html']))
+      fakeAssets(new Set(['/__shippie-run/mevrouw/index.html']))
     );
     const res = await serveFromR2({
       request: new Request('https://mevrouw.shippie.app/some/path?ref=share', {
@@ -286,11 +286,11 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     expect(res.headers.get('cache-control')).toContain('max-age=300');
   });
 
-  test('auto-bridge: KV active null + ASSETS hit + root path → /run/<slug>/', async () => {
+  test('auto-bridge: KV active null + ASSETS hit + root path → /run/<slug>', async () => {
     const env = envWith(
       fakeKv({}),
       fakeR2({}),
-      fakeAssets(new Set(['/run/mevrouw/index.html']))
+      fakeAssets(new Set(['/__shippie-run/mevrouw/index.html']))
     );
     const res = await serveFromR2({
       request: new Request('https://mevrouw.shippie.app/', {
@@ -301,7 +301,7 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
       traceId: 't'
     });
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://shippie.app/run/mevrouw/');
+    expect(res.headers.get('location')).toBe('https://shippie.app/run/mevrouw');
   });
 
   test('auto-bridge: KV active null + ASSETS miss → unpublished page', async () => {
@@ -332,7 +332,7 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     const env = envWith(
       kv,
       fakeR2({}),
-      fakeAssets(new Set(['/run/mevrouw/index.html']))
+      fakeAssets(new Set(['/__shippie-run/mevrouw/index.html']))
     );
     const res = await serveFromR2({
       request: new Request('https://mevrouw.shippie.app/', {

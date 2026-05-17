@@ -64,7 +64,7 @@ Verified by reading source files (not memory). Weeks 1–9 of v2 are shipped in 
 
 - 60 dirty files in tree, 0 commits this session — user owns commit decisions.
 - Pre-existing rate-route mock-pollution (6 fail in full suite, 0 in isolation). Don't touch.
-- `apps/shippie-ai/` deploys as separate Cloudflare Pages project — not the maker zip pipeline. Stack is Cloudflare-only; no Vercel.
+- `apps/shippie-ai/` deploys as separate Cloudflare Pages project — not the maker zip pipeline. Stack is Cloudflare-only; no Cloudflare.
 - `bun install` needed at root before shippie-ai can `vite dev` (transformers.js + React + vite-plugin-pwa not in current lock).
 - All operational claims must be verified against HEAD before being repeated (memory: `feedback_verify_operational_claims.md`).
 

@@ -21,5 +21,6 @@ export const GET: RequestHandler = async ({ platform, params, url }) => {
   if (!token) throw error(404, 'Not found');
 
   const dest = new URL(`/invite/${token}`, url.origin);
+  dest.search = url.search;
   throw redirect(302, dest.toString());
 };

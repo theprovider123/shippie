@@ -10,6 +10,7 @@ import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { getDrizzleClient, schema } from '../db/client';
 import { writeWrapMeta, writeAppMeta } from './kv-write';
 import { resolveLiveUrl } from './pipeline';
+import { probeWrappedUrlPwaReadiness } from './pwa-readiness';
 
 export interface CreateWrappedAppInput {
   slug: string;
@@ -21,7 +22,8 @@ export interface CreateWrappedAppInput {
   category: string;
   cspMode?: 'lenient' | 'strict';
   themeColor?: string;
-  visibilityScope?: 'public' | 'unlisted' | 'private';
+  visibilityScope?: 'public' | 'unlisted' | 'private' | 'team';
+  organizationId?: string | null;
   reservedSlugs: ReadonlySet<string>;
   db: D1Database;
   kv: KVNamespace;
@@ -57,6 +59,8 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
     return { success: false, reason: 'slug_taken' };
   }
 
+  const pwaReadiness = await probeWrappedUrlPwaReadiness(input.upstreamUrl);
+
   const [appRow] = await db
     .insert(schema.apps)
     .values({
@@ -66,12 +70,16 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
       type: input.type,
       category: input.category,
       makerId: input.makerId,
+      organizationId: input.organizationId ?? null,
       sourceType: 'zip',
       sourceKind: 'wrapped_url',
       upstreamUrl: input.upstreamUrl,
       upstreamConfig: { cspMode: input.cspMode ?? 'lenient' },
       themeColor: input.themeColor ?? '#E8603C',
       visibilityScope: input.visibilityScope ?? 'public',
+      currentPwaReadiness: pwaReadiness.status,
+      currentPwaReadinessReasons: pwaReadiness.reasons,
+      currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
     })
     .onConflictDoUpdate({
       target: schema.apps.slug,
@@ -79,6 +87,11 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
         sourceKind: 'wrapped_url',
         upstreamUrl: input.upstreamUrl,
         upstreamConfig: { cspMode: input.cspMode ?? 'lenient' },
+        organizationId: input.organizationId ?? null,
+        visibilityScope: input.visibilityScope ?? 'public',
+        currentPwaReadiness: pwaReadiness.status,
+        currentPwaReadinessReasons: pwaReadiness.reasons,
+        currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
         updatedAt: new Date().toISOString(),
       },
     })
@@ -112,6 +125,21 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
     })
     .where(eq(schema.apps.id, appRow.id));
 
+  await db.insert(schema.auditLog).values({
+    organizationId: input.organizationId ?? null,
+    actorUserId: input.makerId,
+    action: 'deployed',
+    targetType: 'app',
+    targetId: appRow.id,
+    metadata: {
+      slug: input.slug,
+      deployId: deployRow.id,
+      version: 1,
+      visibilityScope: input.visibilityScope ?? 'public',
+      sourceType: 'wrapped_url',
+    },
+  });
+
   // KV writes — must land before we return so the first request to the
   // subdomain sees the wrap config rather than falling through to 404.
   await writeWrapMeta(input.kv, input.slug, {
@@ -124,8 +152,14 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
     type: input.type,
     theme_color: input.themeColor ?? '#E8603C',
     background_color: '#ffffff',
-    version: 1,
-    visibility_scope: input.visibilityScope ?? 'public',
+      version: 1,
+      visibility_scope: input.visibilityScope ?? 'public',
+      organization_id: input.organizationId ?? undefined,
+    pwa_readiness: {
+      status: pwaReadiness.status,
+      reasons: pwaReadiness.reasons,
+      checked_at: pwaReadiness.checkedAt,
+    },
   });
 
   const liveUrl = resolveLiveUrl(input.publicOrigin, input.slug);

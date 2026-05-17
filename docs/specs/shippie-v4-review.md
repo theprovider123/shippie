@@ -228,7 +228,7 @@ Readiness Gate: show score + what's missing
 Build Pipeline (extends v4 deploy):
   - Generate Capacitor project from PWA
   - Inject Native Bridge plugins per declared capabilities
-  - Build iOS .xcarchive (on macOS runner — Vercel Sandbox Mac or partner service)
+  - Build iOS .xcarchive (on macOS runner — GitHub Actions build workflow Mac or partner service)
   - Build Android .aab (any linux runner, fastlane)
   - Sign both
   - Store signed artifacts in R2 under submissions/{app_id}/
@@ -245,7 +245,7 @@ After maker confirms / review passes:
 
 ### iOS macOS Build Runner Reality
 
-Vercel Sandbox does not ship a macOS runner. For the iOS build you have three paths:
+GitHub Actions build workflow does not ship a macOS runner. For the iOS build you have three paths:
 
 1. **Partner runner** (Codemagic, Bitrise, Ionic Appflow, Expo EAS) — cleanest Phase-1 path, integrate via API, ~$0.05–$0.20/build
 2. **Self-hosted MacStadium / MacMini Colocation** — expensive, high ops, only worth it at scale
@@ -257,7 +257,7 @@ Vercel Sandbox does not ship a macOS runner. For the iOS build you have three pa
 
 Android can be fully automated at launch:
 - Bubblewrap for TWAs (Trusted Web Activity) — simplest path, works for most `app`-type projects
-- OR Capacitor Android via Gradle in a Linux build runner (Vercel Sandbox can do this)
+- OR Capacitor Android via Gradle in a Linux build runner (GitHub Actions build workflow can do this)
 - Signing key managed by Shippie or uploaded by maker
 - Upload via Play Console API to internal track
 - Maker clicks "promote" when ready
@@ -497,7 +497,7 @@ Billing, metering, invoicing, DPA, subprocessor list, SOC2 roadmap, incident res
 
 ## 13. Positioning
 
-**Vercel** helps code go live.
+**Cloudflare** helps code go live.
 **The App Store** distributes finished native apps.
 **Shippie** is the shipping system that turns code into launched, installed, used, iterated-on software — and gets it store-ready along the way.
 
@@ -506,7 +506,7 @@ Shippie is the only place where "I built a thing last night" becomes:
 2. "people are on Play Store this week" (Android automated)
 3. "ready for App Store next month" (iOS prep kit → partner runner → direct integration)
 
-You're not competing with Vercel (they're a backend primitive you use). You're not competing with the App Store (you're the funnel into it). You're the **shipping layer** between code and distribution — the thing neither Vercel nor the App Store provides: **end-to-end shipping, installability, feedback, iteration, and store-readiness in one flow, with one SDK, for one maker, on one codebase**.
+You're not competing with Cloudflare (they're a backend primitive you use). You're not competing with the App Store (you're the funnel into it). You're the **shipping layer** between code and distribution — the thing neither Cloudflare nor the App Store provides: **end-to-end shipping, installability, feedback, iteration, and store-readiness in one flow, with one SDK, for one maker, on one codebase**.
 
 The moat isn't hosting. It's the integrated loop:
 > repo → live origin → phone install → feedback → iteration → store-ready → submitted → launched

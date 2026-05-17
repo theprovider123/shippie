@@ -1,0 +1,20 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Maze",
+  "slug": "maze",
+  "description": "Maze chase. Eat all the dots before the ghosts catch you. 4 distinct ghost AIs, power pellets, daily seed.",
+  "icon": "/icon.png",
+  "theme_color": "#0A0E27",
+  "background_color": "#0A0E27",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["game.completed"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "games",
+    "subcategory": "arcade-cabinet"
+  }
+}

@@ -4,22 +4,32 @@ import {
   type AgentInsight,
   type AppsListEntry,
 } from '@shippie/iframe-sdk';
-import { habitsToAutoCheck } from './intent-matcher.ts';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import { cuesToFire, habitsToAutoCheck } from './intent-matcher.ts';
+import type { CheckStatus, Habit, HabitCheck, PersistedState } from './types.ts';
+import { load, save } from './store.ts';
+import { dayKey } from './lib/streak-math.ts';
+import { isoWeekLabel, weekStatsForHabits } from './lib/review-prompt.ts';
+import { Today } from './pages/Today.tsx';
+import { HabitDetail } from './pages/HabitDetail.tsx';
+import { Archive } from './pages/Archive.tsx';
+import { WeeklyReviewCard } from './components/WeeklyReviewCard.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_habit_tracker' });
 
 /**
- * P3 — Habit Tracker cross-cap surface.
+ * Habit Tracker — best-in-class polish.
  *
- * Every other intent the user already has installed gets a dim
- * "suggested habit" tile that taps into the existing add-habit flow.
- * Suggestions come from `apps.list` (P1A.1) — the container scopes
- * the result to apps whose intents overlap with us, so we never
- * fingerprint apps we have no business addressing.
+ * Architecture: thin orchestration here, real surfaces under
+ * `pages/`, derivations under `lib/`. The component owns:
+ *  - persisted state (habits + checks + lastReviewedWeek)
+ *  - container RPC (apps.list, agent.insights, intent broadcasts)
+ *  - the "should we show the weekly review now?" gate
  *
- * The agent insight strip uses `agent.insights` (P1A.2) and respects
- * the source-data invariant the container enforces. We just render
- * what the host gives us.
+ * Voice-doc invariant: this file never contains the words "broke",
+ * "failed", "crush", or frames a missed day as bad. The metrics layer
+ * exposes both continuous streak and return rate; the UI shows the
+ * pair, never the chain alone.
  */
 
 const SUGGESTION_INTENT_LABELS: Record<string, string> = {
@@ -30,81 +40,58 @@ const SUGGESTION_INTENT_LABELS: Record<string, string> = {
   'shopping-list': 'Did groceries',
   'body-metrics-logged': 'Logged weight',
   'pantry-inventory': 'Restocked pantry',
+  'hydration-logged': 'Drank water',
+  'coffee-brewed': 'Brewed coffee',
+  'meal-logged': 'Logged a meal',
+  'mood-logged': 'Logged mood',
 };
 
-interface Habit {
-  id: string;
-  name: string;
-  /** When set, this habit auto-checks on a matching cross-app intent. */
-  intent?: string;
-  createdAt: string;
-}
+type Route =
+  | { kind: 'today' }
+  | { kind: 'habit'; habitId: string }
+  | { kind: 'archive' };
 
-interface HabitCheck {
-  id: string;
-  habitId: string;
-  checkedAt: string;
-  source: 'manual' | 'cross-app';
-}
-
-const STORAGE_KEY = 'shippie.habit-tracker.v1';
-
-interface PersistedState {
-  habits: Habit[];
-  checks: HabitCheck[];
-}
-
-const seedHabits: Habit[] = [
-  { id: 'h_cooked', name: 'Cooked dinner', intent: 'cooked-meal', createdAt: new Date().toISOString() },
-  { id: 'h_exercise', name: 'Exercised', intent: 'workout-completed', createdAt: new Date().toISOString() },
-  { id: 'h_journal', name: 'Wrote in journal', createdAt: new Date().toISOString() },
-];
-
-function load(): PersistedState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { habits: seedHabits, checks: [] };
-    const parsed = JSON.parse(raw) as PersistedState;
-    return {
-      habits: Array.isArray(parsed.habits) && parsed.habits.length > 0 ? parsed.habits : seedHabits,
-      checks: Array.isArray(parsed.checks) ? parsed.checks : [],
-    };
-  } catch {
-    return { habits: seedHabits, checks: [] };
-  }
-}
-
-function save(state: PersistedState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    /* no-op — quota errors are non-fatal */
-  }
-}
-
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function checkedToday(habitId: string, checks: HabitCheck[]): HabitCheck | undefined {
-  const today = todayKey();
-  return checks.find((c) => c.habitId === habitId && c.checkedAt.slice(0, 10) === today);
+function sameRoute(a: Route, b: Route): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'habit' && b.kind === 'habit') return a.habitId === b.habitId;
+  return true;
 }
 
 export function App() {
-  const [habits, setHabits] = useState<Habit[]>(() => load().habits);
-  const [checks, setChecks] = useState<HabitCheck[]>(() => load().checks);
+  const [{ habits, checks, lastReviewedWeek }, setState] = useState<PersistedState>(() => load());
   const [draft, setDraft] = useState('');
+  const [route, setRoute] = useState<Route>({ kind: 'today' });
+  const localNavigation = useMemo(
+    () =>
+      createLocalNavigation<Route>(
+        { kind: 'today' },
+        setRoute,
+        { isEqual: sameRoute },
+      ),
+    [],
+  );
   const [overlappingApps, setOverlappingApps] = useState<AppsListEntry[]>([]);
   const [insights, setInsights] = useState<AgentInsight[]>([]);
+  const [pendingCues, setPendingCues] = useState<Map<string, string>>(new Map());
+  const [reviewDismissedThisSession, setReviewDismissedThisSession] = useState(false);
 
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Route, kind: 'crossfade' | 'rise' = 'crossfade'): void {
+    void localNavigation.navigate(next, { kind });
+  }
+
+  function closeTo(fallback: Route): void {
+    void localNavigation.backOrReplace(fallback, { kind: 'crossfade' });
+  }
+
+  // Persist on every change. The store handles legacy migration on load.
   useEffect(() => {
-    save({ habits, checks });
-  }, [habits, checks]);
+    save({ habits, checks, lastReviewedWeek });
+  }, [habits, checks, lastReviewedWeek]);
 
-  // P1A.1 — pull the overlap-scoped app list once on mount. The
-  // container filters to apps that share at least one intent with
-  // this app, so the suggestion surface stays narrow.
+  // Container overlap-scoped app list — for the cue-anchor picker AND
+  // the "suggested habits" surface.
   useEffect(() => {
     let cancelled = false;
     shippie.apps
@@ -113,15 +100,13 @@ export function App() {
         if (!cancelled) setOverlappingApps(apps);
       })
       .catch(() => {
-        // Outside the container or RPC-disabled — empty list is fine.
+        /* offline / standalone is fine */
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // P1A.2 — pull insights derived from data we can already see. The
-  // host enforces the source-data invariant; we just render.
   useEffect(() => {
     let cancelled = false;
     function refresh() {
@@ -131,7 +116,7 @@ export function App() {
           if (!cancelled) setInsights(next);
         })
         .catch(() => {
-          /* offline / standalone / RPC-disabled */
+          /* offline */
         });
     }
     refresh();
@@ -142,143 +127,247 @@ export function App() {
     };
   }, []);
 
-  const suggestedHabits = useMemo(() => {
-    const existing = new Set(
-      habits.map((h) => h.intent).filter((i): i is string => Boolean(i)),
-    );
-    const fromApps = new Set<string>();
-    for (const app of overlappingApps) {
-      for (const intent of app.provides) fromApps.add(intent);
+  // Build the union of intents we care about for granting + subscription.
+  const watchedIntents = useMemo(() => {
+    const out = new Set<string>();
+    for (const h of habits) {
+      if (h.archivedAt) continue;
+      const i = h.cue?.intent;
+      if (i) out.add(i);
     }
-    return [...fromApps]
-      .filter((intent) => !existing.has(intent) && SUGGESTION_INTENT_LABELS[intent])
-      .map((intent) => ({ intent, label: SUGGESTION_INTENT_LABELS[intent]! }));
-  }, [habits, overlappingApps]);
+    return Array.from(out);
+  }, [habits]);
 
-  // First-mount: ask the container to grant each declared consume
-  // intent. The user approves once per intent and subsequent broadcasts
-  // arrive automatically.
+  // Request consume permission for every watched intent. Keep this
+  // dependent on `watchedIntents` so a fresh cue triggers the prompt.
   useEffect(() => {
-    const wanted = Array.from(
-      new Set(
-        habits
-          .map((h) => h.intent)
-          .filter((i): i is NonNullable<Habit['intent']> => Boolean(i)),
-      ),
-    );
-    for (const intent of wanted) shippie.requestIntent(intent);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    for (const intent of watchedIntents) shippie.requestIntent(intent);
+  }, [watchedIntents]);
 
-  // Subscribe to forwarded broadcasts. The container wraps
-  // `intent.provide` payloads as `shippie.intent.broadcast` postMessages
-  // and dispatches them to every granted consumer iframe.
+  // Subscribe to forwarded broadcasts. The matcher distinguishes:
+  //  - auto-check eligible (cue.autoCheck=true) → record a `done` check
+  //  - reminder-only (cue.autoCheck=false) → enqueue a cue prompt the
+  //    user can confirm or dismiss
   useEffect(() => {
-    function applyIntent(intent: string) {
-      setChecks((prev) => {
-        const ids = habitsToAutoCheck(intent, habits, prev, todayKey());
-        if (ids.length === 0) return prev;
+    function handle(intent: string) {
+      const today = dayKey(new Date());
+      const autoIds = habitsToAutoCheck(intent, habits, checks, today);
+      if (autoIds.length > 0) {
         const stamp = Date.now();
-        return [
-          ...prev,
-          ...ids.map((habitId, i) => ({
-            id: `${habitId}_${stamp}_${i}`,
-            habitId,
-            checkedAt: new Date().toISOString(),
-            source: 'cross-app' as const,
-          })),
-        ];
-      });
+        const next: HabitCheck[] = autoIds.map((habitId, i) => ({
+          id: `${habitId}_${stamp}_${i}`,
+          habitId,
+          checkedAt: new Date().toISOString(),
+          status: 'done',
+          source: 'cross-app',
+        }));
+        setState((s) => ({ ...s, checks: [...s.checks, ...next] }));
+      }
+      const promptIds = cuesToFire(intent, habits, checks, today);
+      if (promptIds.length > 0) {
+        setPendingCues((prev) => {
+          const m = new Map(prev);
+          for (const id of promptIds) m.set(id, intent);
+          return m;
+        });
+      }
     }
-    const offs = Array.from(
-      new Set(
-        habits
-          .map((h) => h.intent)
-          .filter((i): i is NonNullable<Habit['intent']> => Boolean(i)),
-      ),
-    ).map((intent) => shippie.intent.subscribe(intent, ({ intent }) => applyIntent(intent)));
+
+    const offs = watchedIntents.map((intent) =>
+      shippie.intent.subscribe(intent, ({ intent: i }) => handle(i)),
+    );
     return () => {
       for (const off of offs) off();
     };
-  }, [habits]);
+  }, [watchedIntents, habits, checks]);
 
-  const today = useMemo(() => todayKey(), []);
-  const completedToday = checks.filter((c) => c.checkedAt.slice(0, 10) === today).length;
+  // Eligible cue-anchor intents: every intent provided by the user's
+  // overlapping apps, labelled where we have a copy entry. The picker
+  // also receives the unlabelled ones — better to show "coffee-brewed"
+  // than to hide it.
+  const eligibleIntents = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Array<{ intent: string; label: string }> = [];
+    for (const app of overlappingApps) {
+      for (const intent of app.provides) {
+        if (seen.has(intent)) continue;
+        seen.add(intent);
+        out.push({ intent, label: SUGGESTION_INTENT_LABELS[intent] ?? intent });
+      }
+    }
+    out.sort((a, b) => a.label.localeCompare(b.label));
+    return out;
+  }, [overlappingApps]);
 
-  function addHabit() {
-    const name = draft.trim();
-    if (!name) return;
-    setHabits((prev) => [
-      ...prev,
-      { id: `h_${Date.now()}`, name, createdAt: new Date().toISOString() },
-    ]);
-    setDraft('');
-    shippie.feel.texture('confirm');
-  }
+  // Suggested habits: intents the user's overlapping apps provide that
+  // aren't already wired to one of our habits.
+  const suggestedHabits = useMemo(() => {
+    const existing = new Set(
+      habits
+        .filter((h) => !h.archivedAt)
+        .map((h) => h.cue?.intent)
+        .filter((i): i is string => Boolean(i)),
+    );
+    return eligibleIntents.filter(
+      ({ intent }) => !existing.has(intent) && SUGGESTION_INTENT_LABELS[intent],
+    );
+  }, [eligibleIntents, habits]);
 
-  function addSuggestedHabit(intent: string, label: string) {
-    setHabits((prev) => [
-      ...prev,
-      { id: `h_${Date.now()}_${intent}`, name: label, intent, createdAt: new Date().toISOString() },
-    ]);
-    shippie.requestIntent(intent);
+  // Weekly review gate — show on Sunday/Monday once per ISO week.
+  const today = useMemo(() => dayKey(new Date()), []);
+  const currentWeek = useMemo(() => isoWeekLabel(today), [today]);
+  const showWeeklyReview =
+    !reviewDismissedThisSession &&
+    lastReviewedWeek !== currentWeek &&
+    habits.some((h) => !h.archivedAt) &&
+    checks.length > 0;
+  const weekStats = useMemo(
+    () => (showWeeklyReview ? weekStatsForHabits(habits, today, checks) : []),
+    [showWeeklyReview, habits, today, checks],
+  );
+
+  const cuePromptList = useMemo(() => {
+    const out: Array<{ habit: Habit; firedIntent: string }> = [];
+    for (const [habitId, firedIntent] of pendingCues) {
+      const h = habits.find((x) => x.id === habitId);
+      if (h && !h.archivedAt) out.push({ habit: h, firedIntent });
+    }
+    return out;
+  }, [pendingCues, habits]);
+
+  // Commands ----------------------------------------------------------
+
+  function addHabit(name: string, opts: Partial<Habit> = {}) {
+    const id = `h_${Date.now()}`;
+    const habit: Habit = {
+      id,
+      name,
+      difficulty: 'easy',
+      createdAt: new Date().toISOString(),
+      ...opts,
+    };
+    setState((s) => ({ ...s, habits: [...s.habits, habit] }));
+    if (habit.cue?.intent) shippie.requestIntent(habit.cue.intent);
     shippie.feel.texture('install');
   }
 
+  function recordCheck(habit: Habit, status: CheckStatus, source: HabitCheck['source'] = 'manual') {
+    const today = dayKey(new Date());
+    setState((s) => {
+      // Replace today's check rather than stack — the user's latest
+      // call is the truth for that day.
+      const others = s.checks.filter(
+        (c) => !(c.habitId === habit.id && c.checkedAt.slice(0, 10) === today),
+      );
+      const next: HabitCheck = {
+        id: `${habit.id}_${Date.now()}`,
+        habitId: habit.id,
+        checkedAt: new Date().toISOString(),
+        status,
+        source,
+      };
+      return { ...s, checks: [...others, next] };
+    });
+    setPendingCues((prev) => {
+      if (!prev.has(habit.id)) return prev;
+      const m = new Map(prev);
+      m.delete(habit.id);
+      return m;
+    });
+    shippie.feel.texture(status === 'done' ? 'confirm' : 'toggle');
+  }
+
   function toggleHabit(habit: Habit) {
-    const existing = checkedToday(habit.id, checks);
-    if (existing) {
-      setChecks((prev) => prev.filter((c) => c.id !== existing.id));
+    const today = dayKey(new Date());
+    const existing = checks.find(
+      (c) => c.habitId === habit.id && c.checkedAt.slice(0, 10) === today,
+    );
+    if (existing && existing.status !== 'missed') {
+      // untick — remove today's check
+      setState((s) => ({
+        ...s,
+        checks: s.checks.filter((c) => c.id !== existing.id),
+      }));
       shippie.feel.texture('toggle');
     } else {
-      const nextChecks = [
-        ...checks,
-        {
-          id: `${habit.id}_${Date.now()}`,
-          habitId: habit.id,
-          checkedAt: new Date().toISOString(),
-          source: 'manual' as const,
-        },
-      ];
-      setChecks(nextChecks);
-      const completedNow = nextChecks.filter(
-        (c) => c.checkedAt.slice(0, 10) === todayKey(),
-      ).length;
-      // `complete` for the "all done" milestone; `confirm` for any
-      // other check. Keeps the haptic vocabulary distinct so users
-      // physically feel the difference between progress and completion.
-      shippie.feel.texture(completedNow === habits.length ? 'complete' : 'confirm');
+      recordCheck(habit, 'done');
     }
   }
 
-  return (
-    <main>
-      <header>
-        <h1>Habits</h1>
-        <p>{completedToday} of {habits.length} done today</p>
-      </header>
+  function partialHabit(habit: Habit) {
+    recordCheck(habit, 'partial');
+  }
 
-      {insights.length > 0 && (
+  function updateHabit(next: Habit) {
+    setState((s) => ({
+      ...s,
+      habits: s.habits.map((h) => (h.id === next.id ? next : h)),
+    }));
+    if (next.cue?.intent) shippie.requestIntent(next.cue.intent);
+  }
+
+  function archiveHabit(habit: Habit) {
+    updateHabit({ ...habit, archivedAt: new Date().toISOString() });
+    void localNavigation.replace({ kind: 'today' }, { kind: 'crossfade' });
+    shippie.feel.texture('toggle');
+  }
+
+  function reactivateHabit(habit: Habit) {
+    const { archivedAt, ...rest } = habit;
+    void archivedAt;
+    updateHabit(rest as Habit);
+  }
+
+  function dismissCue(habitId: string) {
+    setPendingCues((prev) => {
+      const m = new Map(prev);
+      m.delete(habitId);
+      return m;
+    });
+  }
+
+  function acknowledgeReview() {
+    setState((s) => ({ ...s, lastReviewedWeek: currentWeek }));
+    setReviewDismissedThisSession(true);
+    shippie.feel.texture('confirm');
+  }
+
+  function dismissReview() {
+    setReviewDismissedThisSession(true);
+  }
+
+  // Render ------------------------------------------------------------
+
+  const activeHabit = route.kind === 'habit' ? habits.find((h) => h.id === route.habitId) : null;
+
+  return (
+    <div className="app">
+      {insights.length > 0 && route.kind === 'today' ? (
         <section className="insights" aria-label="Insights from the local agent">
-          {insights.slice(0, 3).map((insight) => (
+          {insights.slice(0, 2).map((insight) => (
             <article key={insight.id} className={`insight insight-${insight.urgency}`}>
               <h2>{insight.title}</h2>
               {insight.body && <p>{insight.body}</p>}
             </article>
           ))}
         </section>
-      )}
+      ) : null}
 
-      {suggestedHabits.length > 0 && (
+      {route.kind === 'today' && suggestedHabits.length > 0 ? (
         <section className="suggestions" aria-label="Suggested habits from your other apps">
-          <h2>Suggestions</h2>
+          <h2>From your other apps</h2>
           <div className="chips">
             {suggestedHabits.map(({ intent, label }) => (
               <button
                 key={intent}
                 type="button"
                 className="chip"
-                onClick={() => addSuggestedHabit(intent, label)}
+                onClick={() =>
+                  addHabit(label, {
+                    cue: { intent, autoCheck: true },
+                    difficulty: 'easy',
+                  })
+                }
                 title={`Auto-checks when an app fires ${intent}`}
               >
                 + {label}
@@ -286,50 +375,76 @@ export function App() {
             ))}
           </div>
         </section>
-      )}
+      ) : null}
 
-      <ul data-shippie-list>
-        {habits.map((habit) => {
-          const check = checkedToday(habit.id, checks);
-          const checked = Boolean(check);
-          return (
-            <li key={habit.id} className={checked ? 'done' : ''}>
-              <button
-                onClick={() => toggleHabit(habit)}
-                aria-pressed={checked}
-                aria-label={`${checked ? 'Uncheck' : 'Check'} ${habit.name}`}
-              >
-                <span className="box" aria-hidden="true">{checked ? '✓' : ''}</span>
-                <span className="name">{habit.name}</span>
-                {habit.intent && (
-                  <span className="intent" title={`Auto-checks on ${habit.intent}`}>
-                    ↗ {habit.intent}
-                  </span>
-                )}
-                {check?.source === 'cross-app' && (
-                  <span className="auto" aria-label="Auto-checked from another app">auto</span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          addHabit();
-        }}
-      >
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a habit"
-          aria-label="New habit name"
+      {route.kind === 'today' && showWeeklyReview ? (
+        <WeeklyReviewCard
+          stats={weekStats}
+          habits={habits}
+          onAcknowledge={acknowledgeReview}
+          onDismiss={dismissReview}
         />
-        <button type="submit">Add</button>
-      </form>
-    </main>
+      ) : null}
+
+      {route.kind === 'today' ? (
+        <Today
+          habits={habits}
+          checks={checks}
+          draft={draft}
+          onDraftChange={setDraft}
+          onAddHabit={() => {
+            const name = draft.trim();
+            if (!name) return;
+            addHabit(name);
+            setDraft('');
+          }}
+          onTick={toggleHabit}
+          onPartial={partialHabit}
+          onOpen={(habit) => navigate({ kind: 'habit', habitId: habit.id }, 'rise')}
+          cuePrompts={cuePromptList}
+          onDismissCue={dismissCue}
+        />
+      ) : null}
+
+      {route.kind === 'habit' && activeHabit ? (
+        <HabitDetail
+          habit={activeHabit}
+          checks={checks}
+          eligibleIntents={eligibleIntents}
+          onUpdate={updateHabit}
+          onArchive={() => archiveHabit(activeHabit)}
+          onBack={() => closeTo({ kind: 'today' })}
+        />
+      ) : null}
+
+      {route.kind === 'archive' ? (
+        <Archive
+          habits={habits}
+          onReactivate={reactivateHabit}
+          onBack={() => closeTo({ kind: 'today' })}
+        />
+      ) : null}
+
+      <nav className="bottom-tabs" role="tablist" aria-label="Sections">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={route.kind === 'today'}
+          className={`tab ${route.kind === 'today' ? 'tab-active' : ''}`}
+          onClick={() => navigate({ kind: 'today' })}
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={route.kind === 'archive'}
+          className={`tab ${route.kind === 'archive' ? 'tab-active' : ''}`}
+          onClick={() => navigate({ kind: 'archive' })}
+        >
+          Archive
+        </button>
+      </nav>
+    </div>
   );
 }

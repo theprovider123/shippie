@@ -7,8 +7,12 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-167.png" sizes="167x167" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-152.png" sizes="152x152" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#14120F" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Shippie" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta property="og:title" content="Shippie — Ship local." />
     <meta property="og:description" content="Open marketplace for installable web apps. No app store. Just the web, installed." />
     <meta property="og:image" content="/og-image.png" />
@@ -29,7 +33,7 @@
         display: grid; place-items: center;
         background: #14120F;
         opacity: 1; transition: opacity 200ms ease-out;
-        pointer-events: auto;
+        pointer-events: none;
       }
       #boot-loader svg {
         width: 96px; height: 96px;
@@ -47,6 +51,67 @@
     </style>
     %sveltekit.head%
     <script>
+      // Self-healing PWA shell. If an installed PWA resumes with a stale
+      // SvelteKit document, modulepreload/dynamic imports can fail before
+      // the app has a chance to render anything useful. Clear only Shippie
+      // shell caches and reload once; the fresh service worker will rebuild
+      // the cache with the current deploy.
+      (function () {
+        var RECOVERY_KEY = 'shippie:shell-recovered-once';
+        var RECOVERY_PARAM = 'shippie_recover';
+        function isAssetUrl(value) {
+          return typeof value === 'string' &&
+            (value.indexOf('/_app/immutable/') !== -1 || value.indexOf('/__shippie-run/') !== -1);
+        }
+        function looksLikeShellAssetFailure(reason) {
+          var message = '';
+          if (typeof reason === 'string') message = reason;
+          else if (reason && typeof reason.message === 'string') message = reason.message;
+          return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Load failed|Loading chunk|module script/i.test(message);
+        }
+        function clearShippieCaches() {
+          if (!('caches' in window)) return Promise.resolve();
+          return caches.keys().then(function (names) {
+            return Promise.all(names
+              .filter(function (name) {
+                return name.indexOf('shippie-marketplace-') === 0 || name === 'shippie.models.v1';
+              })
+              .map(function (name) { return caches.delete(name); }));
+          }).catch(function () {});
+        }
+        function recover() {
+          try {
+            var url = new URL(location.href);
+            if (url.searchParams.has(RECOVERY_PARAM)) return;
+            if (sessionStorage.getItem(RECOVERY_KEY) === '1') return;
+            sessionStorage.setItem(RECOVERY_KEY, '1');
+            url.searchParams.set(RECOVERY_PARAM, String(Date.now()));
+            clearShippieCaches().then(function () {
+              location.replace(url.toString());
+            });
+          } catch (_) {
+            location.reload();
+          }
+        }
+        window.__shippieRepairShell = function () {
+          try { sessionStorage.removeItem(RECOVERY_KEY); } catch (_) {}
+          clearShippieCaches().then(function () {
+            location.replace('/');
+          });
+        };
+        window.addEventListener('error', function (event) {
+          var target = event && event.target;
+          if (target && (isAssetUrl(target.src) || isAssetUrl(target.href))) {
+            recover();
+            return;
+          }
+          if (looksLikeShellAssetFailure(event.error || event.message)) recover();
+        }, true);
+        window.addEventListener('unhandledrejection', function (event) {
+          if (looksLikeShellAssetFailure(event.reason)) recover();
+        });
+      })();
+
       // Phase 9.1 — register the marketplace service worker on the
       // root platform host only. Maker subdomains have their own SW
       // served by the wrapper at /__shippie/sw.js.
@@ -91,6 +156,10 @@
             // Reload once when control flips to the new worker.
             var refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', function () {
+              if (window.__shippieSuppressNextControllerReload) {
+                window.__shippieSuppressNextControllerReload = false;
+                return;
+              }
               if (refreshing) return;
               refreshing = true;
               location.reload();
@@ -130,6 +199,25 @@
         </g>
       </svg>
     </div>
+    <script>
+      // The loader is cosmetic only. The Svelte root also marks the app
+      // ready, but installed PWAs can briefly boot from a stale shell; this
+      // fallback prevents the first screen from trapping taps if hydration is
+      // delayed by the service worker or a cold mobile resume.
+      (function () {
+        function markReady() {
+          document.body.dataset.appReady = 'true';
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            requestAnimationFrame(markReady);
+          }, { once: true });
+        } else {
+          requestAnimationFrame(markReady);
+        }
+        setTimeout(markReady, 1200);
+      })();
+    </script>
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>

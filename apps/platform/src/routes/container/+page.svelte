@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { readShippiePackageArchive } from '@shippie/app-package-builder';
   import { ContainerBridgeHost, createWindowBridgeTransport } from '@shippie/container-bridge';
   import {
@@ -14,6 +15,7 @@
   } from '@shippie/app-package-contract';
   import type { PageData } from './$types';
   import {
+    type AppSpaceContext,
     type BridgeLog,
     type ContainerApp,
     type ContainerSection,
@@ -31,17 +33,22 @@
     sectionTitle,
     STORAGE_KEY,
   } from '$lib/container/state';
+  import { recordIntents } from '$lib/intent-store/store';
   import {
     findRequestedApp,
     manifestToContainerApp,
     mergeApps,
     pickBaseApps,
+    visibleContainerApps,
   } from '$lib/container/app-registry';
   import {
     buildLocalRow,
     computeStorageUsage,
     createAppHandlers,
+    deleteLocalDbRow,
     filterRowsByTable,
+    queryLocalDbRows,
+    updateLocalDbRow,
     type IntentRequestResult,
     type TransferAcceptor,
     type TransferCommitResult,
@@ -90,6 +97,12 @@
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import {
+    hydrateLauncherMemory,
+    launcherMemory,
+    recordAppLaunch,
+    togglePinnedApp,
+  } from '$lib/stores/launcher-memory';
+  import {
     consumeEviction,
     focusApp,
     queueEviction,
@@ -111,18 +124,36 @@
     type PackageFrameSourceCache,
   } from '$lib/container/frame-runtime';
   import {
+    appLifecycleErrorMessage,
+    parseAppLifecycleMessage,
+    type AppLifecycleMessage,
+  } from '$lib/container/app-lifecycle';
+  import {
+    buildSingleHtmlPackage,
     installBuiltPackage,
     recoveredReceiptsFor,
     uninstallContainerAppState,
   } from '$lib/container/package-runtime';
+  import {
+    deleteImportedPackage,
+    loadImportedPackage,
+    saveImportedPackage,
+  } from '$lib/container/local-package-store';
 
   let { data }: { data: PageData } = $props();
+  type PrivateJoinData = NonNullable<PageData['privateJoin']>;
 
+  const initialFocusedApp = untrack(() => (
+    data.focused
+      ? findRequestedApp(pickBaseApps(data.packages), data.requestedAppSlug)
+      : null
+  ));
   const baseApps = $derived(pickBaseApps(data.packages));
 
   let importedApps = $state<ContainerApp[]>([]);
   const merged = $derived(mergeApps(baseApps, importedApps));
   const apps = $derived(merged.apps);
+  const launchVisibleApps = $derived(visibleContainerApps(apps));
   const appById = $derived(merged.appById);
   const defaultAppId = $derived(merged.defaultAppId);
   const hosts = new Map<string, ContainerBridgeHost>();
@@ -135,20 +166,42 @@
   const packageObjectUrls: PackageFrameSourceCache = new Map();
 
   let section = $state<ContainerSection>('home');
-  let activeAppId = $state<string | null>(null);
-  let openAppIds = $state<string[]>([]);
+  let activeAppId = $state<string | null>(initialFocusedApp?.id ?? null);
+  let openAppIds = $state<string[]>(initialFocusedApp ? [initialFocusedApp.id] : []);
   // Focused-mode app-switcher drawer open state. Only meaningful when
   // `data.focused === true`; ignored in dashboard mode.
   let focusedDrawerOpen = $state(false);
+  let focusedToolOptionsOpen = $state(false);
+  let focusedShareFeedback = $state('');
+  let focusedQrMarkup = $state<string | null>(null);
+  // Safe-edges contract: each iframe-mounted app can declare which
+  // part of the viewport its own touch input owns via the
+  // @shippie/iframe-sdk safe-edges API. Host honours this by shrinking
+  // its own chrome (focused-chrome-tools + focused-chrome-options
+  // buttons) so a tap meant for a game doesn't open container UI.
+  // 'none' keeps the chrome at full size; 'bottom' is a placeholder
+  // for future bottom-grabber suppression; 'all' shrinks the chrome
+  // to a 12px edge sliver that's still tappable but stops bleeding
+  // into game touch targets.
+  type InputRegionOwns = 'none' | 'bottom' | 'all';
+  let inputRegionByAppId = $state<Record<string, InputRegionOwns>>({});
   // Set when /run/<slug>/ resolved a slug we don't have. Used to render
   // an EmptyState in focused mode instead of silently swapping the user
   // onto a different app.
   let notFoundSlug = $state<string | null>(null);
   // True on a user's first-ever entry into focused mode. Drives a one-
-  // shot pulse on the bottom-pill so first-run users learn the gesture.
-  // Gated by localStorage so the hint never repeats on the same device.
+  // shot pulse on the Shippie mark so first-run users discover that it
+  // opens the tool switcher. Gated by localStorage.
   let firstRunHint = $state(false);
-  let receiptsByApp = $state<Record<string, AppReceipt>>({});
+  // Viewport width for drawer-edge selection. ≤640px → drawer rises from
+  // the bottom (matches the mark's top-right placement on mobile via the
+  // existing media query); larger → slides in from the left next to the
+  // mark's top-left placement on desktop.
+  let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
+  const focusedDrawerEdge = $derived<'left' | 'bottom'>(viewportWidth <= 640 ? 'bottom' : 'left');
+  let receiptsByApp = $state<Record<string, AppReceipt>>(
+    initialFocusedApp ? { [initialFocusedApp.id]: createReceiptFor(initialFocusedApp) } : {},
+  );
   let receiptExport = $state('');
   let backupPassphrase = $state('');
   let backupExport = $state('');
@@ -156,8 +209,10 @@
   let restorePassphrase = $state('');
   let restorePayload = $state('');
   let restoreStatus = $state('');
+  let dataRecoveryStatus = $state('');
   let packageImportPayload = $state('');
   let packageImportStatus = $state('');
+  let packageDropActive = $state(false);
   let packageFilesByApp = $state<Record<string, Record<string, PackageFileCache>>>({});
   let frameStates = $state<FrameStates>({});
   let frameReloadNonce = $state<FrameReloadNonces>({});
@@ -165,10 +220,16 @@
   let collectionStatus = $state('');
   let activeCollection = $state<AppCollectionManifest | null>(null);
   let installingPackageHash = $state<string | null>(null);
+  let privateJoinAttempted = $state(false);
+  let privateJoinStatus = $state('');
+  let privateJoinState = $state<'loading' | 'ready' | 'error'>('loading');
   let rowsByApp = $state<Record<string, LocalRow[]>>({});
   let logs = $state<BridgeLog[]>([]);
   let bridgeStatus = $state<'waiting' | 'ready'>('waiting');
   let frameCanGoBackByApp = $state<Record<string, boolean>>({});
+  let frameLifecycleByApp = $state<Record<string, AppLifecycleMessage>>({});
+  let pendingFocusedBackAppId: string | null = null;
+  let pendingFocusedBackFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   let storageReady = $state(false);
   let intentGrants = $state<IntentGrants>({});
   type PendingPrompt = {
@@ -181,6 +242,16 @@
   const pendingIntentPrompt = $derived<PendingPrompt | null>(
     pendingIntentQueue.length > 0 ? pendingIntentQueue[0]! : null,
   );
+  const pendingIntentBatch = $derived.by(() => {
+    const first = pendingIntentQueue[0];
+    if (!first) return null;
+    const items = pendingIntentQueue.filter((p) => p.consumerId === first.consumerId);
+    return {
+      consumerId: first.consumerId,
+      consumerName: first.consumerName,
+      intents: items.map((p) => p.intent),
+    };
+  });
   const intentRegistry = createIntentRegistry();
   // P1A.3 — transfer drop state. `transferGrants` is per (sourceId,
   // targetId) pair; `pendingTransferQueue` mirrors the intent prompt
@@ -205,8 +276,12 @@
     onChange: (next) => {
       yourDataOpenForApp = next.appId;
       if (next.open) {
-        section = 'data';
-        activeAppId = null;
+        if (data.focused) {
+          exitFocusedMode('data');
+        } else {
+          section = 'data';
+          activeAppId = null;
+        }
       }
     },
   });
@@ -267,6 +342,13 @@
       meshError = err instanceof Error ? err.message : 'Could not start a room.';
       meshStore.set({ state: 'error', message: meshError });
     }
+  }
+
+  function dataTrustLine(app: ContainerApp): string {
+    const grade = app.trust?.privacy.grade ?? 'ungraded';
+    const domains = app.trust?.privacy.externalDomains.length ?? 0;
+    const score = app.trust?.security.score;
+    return `Privacy ${grade} · ${domains} external domain${domains === 1 ? '' : 's'} · security ${score ?? 'unscored'}`;
   }
   async function joinMeshRoom() {
     meshError = '';
@@ -444,8 +526,112 @@
     dismissedInsightIds = { ...dismissedInsightIds, [insight.id]: Date.now() };
   }
 
+  function tierLabel(app: ContainerApp): string {
+    if (app.visibility === 'private') return 'Private';
+    if (app.visibility === 'team') return 'Team';
+    if (app.visibility === 'local') return 'On device';
+    if (app.visibility === 'unlisted') return 'Unlisted';
+    return '';
+  }
+
   const activeApp = $derived(activeAppId ? appById.get(activeAppId) : null);
+  const activeToolUrl = $derived.by(() => {
+    if (!activeApp || typeof window === 'undefined') return '';
+    return new URL(`/run/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
+  });
+  $effect(() => {
+    if (!focusedToolOptionsOpen || !activeToolUrl || typeof window === 'undefined') {
+      focusedQrMarkup = null;
+      return;
+    }
+    let cancelled = false;
+    const url = activeToolUrl;
+    focusedQrMarkup = null;
+    void import('@shippie/qr')
+      .then(({ qrSvg }) => qrSvg(url, { ecc: 'M', size: 132 }))
+      .then((svg) => {
+        if (!cancelled && activeToolUrl === url) focusedQrMarkup = svg;
+      })
+      .catch(() => {
+        if (!cancelled) focusedQrMarkup = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
+  const activeFrameCanGoBack = $derived(Boolean(activeAppId && frameCanGoBackByApp[activeAppId]));
   const installedApps = $derived(apps.filter((app) => openAppIds.includes(app.id)));
+
+  /**
+   * Cross-tool observation flows for the Your Data panel.
+   *
+   * Walks every installed provider's declared
+   * `crossAppIntents.provides` and, for each declared intent, lists
+   * the consumers that have an active grant in `intentGrants`. Powers
+   * the "Cross-tool flows" section: per provider → per intent →
+   * granted consumers + revoke control.
+   *
+   * Note on emit-counts: this derives from declarations + grants, not
+   * from runtime broadcasts. Tracking historical emit counts requires
+   * a separate per-app log (deferred to a later phase).
+   */
+  const observationFlows = $derived.by(() => {
+    type Flow = {
+      provider: ContainerApp;
+      intent: string;
+      consumers: ContainerApp[];
+    };
+    const flows: Flow[] = [];
+    for (const provider of installedApps) {
+      const provides = provider.permissions.capabilities.crossAppIntents?.provides ?? [];
+      for (const intent of provides) {
+        const consumers = installedApps.filter(
+          (consumer) =>
+            consumer.id !== provider.id && isIntentGranted(intentGrants, consumer.id, intent),
+        );
+        flows.push({ provider, intent, consumers });
+      }
+    }
+    return flows;
+  });
+  const appBySlug = $derived(new Map(apps.map((app) => [app.slug, app])));
+  const launchVisibleAppBySlug = $derived(new Map(launchVisibleApps.map((app) => [app.slug, app])));
+  const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
+  const drawerPinnedApps = $derived.by(() => {
+    const seen = new Set<string>();
+    return $launcherMemory.pinned
+      .map((slug) => launchVisibleAppBySlug.get(slug))
+      .filter((app): app is ContainerApp => Boolean(app))
+      .filter((app) => {
+        if (seen.has(app.id)) return false;
+        seen.add(app.id);
+        return true;
+      });
+  });
+  const drawerRecentApps = $derived.by(() => {
+    const pinned = new Set($launcherMemory.pinned);
+    const seen = new Set<string>();
+    return $launcherMemory.recents
+      .map((recent) => launchVisibleAppBySlug.get(recent.slug))
+      .filter((app): app is ContainerApp => {
+        if (!app) return false;
+        return !pinned.has(app.slug);
+      })
+      .filter((app) => {
+        if (seen.has(app.id)) return false;
+        seen.add(app.id);
+        return true;
+      });
+  });
+  const drawerPersonalized = $derived(drawerPinnedApps.length > 0 || drawerRecentApps.length > 0);
+  const drawerRemainingApps = $derived.by(() => {
+    if (!drawerPersonalized) return launchVisibleApps;
+    const shown = new Set([
+      ...drawerPinnedApps.map((app) => app.id),
+      ...drawerRecentApps.map((app) => app.id),
+    ]);
+    return launchVisibleApps.filter((app) => !shown.has(app.id));
+  });
   const recoveredReceipts = $derived(recoveredReceiptsFor(receiptsByApp, appById));
   const totalRows = $derived(Object.values(rowsByApp).reduce((sum, rows) => sum + rows.length, 0));
   const updateCards = $derived(
@@ -455,6 +641,26 @@
   );
 
   function openApp(appId: string) {
+    const wasAlreadyFocused = activeAppId === appId && section === 'home';
+    const app = appById.get(appId);
+
+    if (data.focused) {
+      openAppIds = [appId];
+      if (app && !receiptsByApp[appId]) {
+        receiptsByApp = {
+          ...receiptsByApp,
+          [appId]: createReceiptFor(app),
+        };
+      }
+      activeAppId = appId;
+      section = 'home';
+      if (!wasAlreadyFocused) {
+        rememberAppLaunch(app);
+        void trackAppOpen(appId);
+      }
+      return;
+    }
+
     // LRU mount cap — keep at most 8 apps live. Re-focusing an
     // already-open app moves it to the head; opening a new one past
     // the cap evicts the oldest. Eviction is deferred until the new
@@ -474,7 +680,6 @@
         disposeApp(queued.superseded);
       }
     }
-    const app = appById.get(appId);
     if (app && !receiptsByApp[appId]) {
       receiptsByApp = {
         ...receiptsByApp,
@@ -483,6 +688,162 @@
     }
     activeAppId = appId;
     section = 'home';
+    if (!wasAlreadyFocused) {
+      rememberAppLaunch(app);
+      void trackAppOpen(appId);
+    }
+  }
+
+  function switchFocusedApp(app: ContainerApp) {
+    openApp(app.id);
+    focusedDrawerOpen = false;
+    focusedToolOptionsOpen = false;
+    if (data.focused && typeof window !== 'undefined') {
+      const href = `/run/${encodeURIComponent(app.slug)}`;
+      void goto(href, { replaceState: true, noScroll: true, keepFocus: true });
+    }
+  }
+
+  function exitFocusedMode(targetSection: ContainerSection = 'home') {
+    dismissTransientPrompts();
+    focusedDrawerOpen = false;
+    focusedToolOptionsOpen = false;
+    activeAppId = null;
+    section = targetSection;
+    const href = targetSection === 'home' ? '/' : `/container?section=${targetSection}`;
+    void goto(href, { noScroll: true, keepFocus: true });
+  }
+
+  function toggleFocusedDrawer() {
+    focusedToolOptionsOpen = false;
+    focusedDrawerOpen = !focusedDrawerOpen;
+  }
+
+  function toggleFocusedToolOptions() {
+    focusedDrawerOpen = false;
+    focusedToolOptionsOpen = !focusedToolOptionsOpen;
+  }
+
+  function closeFocusedToolOptions() {
+    focusedToolOptionsOpen = false;
+  }
+
+  function handleFocusedChromeKeydown(event: KeyboardEvent) {
+    if (!data.focused || event.key !== 'Escape') return;
+    if (focusedToolOptionsOpen) {
+      event.preventDefault();
+      focusedToolOptionsOpen = false;
+    }
+  }
+
+  async function copyActiveToolLink() {
+    if (!activeToolUrl) return;
+    try {
+      await navigator.clipboard?.writeText(activeToolUrl);
+      focusedShareFeedback = 'Copied';
+    } catch {
+      focusedShareFeedback = 'Copy failed';
+    }
+    window.setTimeout(() => {
+      focusedShareFeedback = '';
+    }, 1600);
+  }
+
+  async function shareActiveTool() {
+    if (!activeApp || !activeToolUrl) return;
+    const shareData = {
+      title: `${activeApp.name} on Shippie`,
+      text: activeApp.description || `Open ${activeApp.name} in Shippie.`,
+      url: activeToolUrl,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        focusedShareFeedback = 'Shared';
+      } else {
+        await copyActiveToolLink();
+        return;
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') {
+        await copyActiveToolLink();
+        return;
+      }
+    }
+    window.setTimeout(() => {
+      focusedShareFeedback = '';
+    }, 1600);
+  }
+
+  function dismissTransientPrompts() {
+    if (pendingIntentQueue.length > 0) {
+      for (const prompt of pendingIntentQueue) {
+        prompt.resolve({ provider: null, rows: [], reason: 'permission_denied' });
+      }
+      pendingIntentQueue = [];
+    }
+    if (pendingTransferQueue.length > 0) {
+      for (const prompt of pendingTransferQueue) {
+        prompt.resolve({ delivered: false, target: null, reason: 'permission_denied' });
+      }
+      pendingTransferQueue = [];
+    }
+  }
+
+  function toggleDrawerPin(app: ContainerApp) {
+    togglePinnedApp(app.slug);
+  }
+
+  function rememberAppLaunch(app: ContainerApp | undefined) {
+    if (!app) return;
+    const recent = $launcherMemory.recents.find((item) => item.slug === app.slug);
+    const lastOpened = recent ? Date.parse(recent.lastOpened) : 0;
+    if (Number.isFinite(lastOpened) && Date.now() - lastOpened < 5_000) return;
+    recordAppLaunch(app.slug);
+  }
+
+  function trackAppOpen(appId: string) {
+    const app = appById.get(appId);
+    if (!app) return;
+    if (!claimAppOpenEvent(appId)) return;
+    void trackAnalytics(appId, {
+      event: 'app_open',
+      session_id: analyticsSessionId(),
+      props: {
+        source: 'container',
+        focused: data.focused,
+        app_kind: app.appKind,
+        category: app.category ?? null,
+      },
+      ts: Date.now(),
+    });
+  }
+
+  function claimAppOpenEvent(appId: string, now = Date.now()): boolean {
+    const key = `shippie:analytics-open:${appId}`;
+    try {
+      const previous = Number(sessionStorage.getItem(key) ?? '0');
+      if (Number.isFinite(previous) && now - previous < 10_000) return false;
+      sessionStorage.setItem(key, String(now));
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  function analyticsSessionId(): string {
+    const key = 'shippie:analytics-session:v1';
+    try {
+      const existing = sessionStorage.getItem(key);
+      if (existing) return existing;
+      const id = `anon_${typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`}`;
+      sessionStorage.setItem(key, id);
+      return id;
+    } catch {
+      return `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+    }
   }
 
   function disposeApp(appId: string) {
@@ -491,7 +852,37 @@
     frames.delete(appId);
     const { [appId]: _removed, ...rest } = frameCanGoBackByApp;
     frameCanGoBackByApp = rest;
+    const { [appId]: _removedLifecycle, ...restLifecycle } = frameLifecycleByApp;
+    frameLifecycleByApp = restLifecycle;
     revokePackageFrameSource(appId, packageObjectUrls);
+  }
+
+  const prewarmedRuntimeHrefs = new Set<string>();
+
+  function prewarmRuntime(app: ContainerApp | null | undefined) {
+    if (!app || typeof document === 'undefined') return;
+    const href = runtimeSrcFor(app);
+    if (!href || prewarmedRuntimeHrefs.has(href)) return;
+    prewarmedRuntimeHrefs.add(href);
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.as = 'document';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  function prewarmLikelyNextApps() {
+    const seen = new Set<string>();
+    const candidates = [
+      ...drawerPinnedApps,
+      ...drawerRecentApps,
+      ...installedApps,
+    ].filter((app) => {
+      if (!app || app.id === activeAppId || seen.has(app.id)) return false;
+      seen.add(app.id);
+      return true;
+    });
+    for (const app of candidates.slice(0, 4)) prewarmRuntime(app);
   }
 
   function commitPendingEviction(settledAppId: string) {
@@ -536,13 +927,46 @@
     frameStates = markFrameBootingState(frameStates, appId);
   }
 
-  function markFrameReady(appId: string) {
+  function markFrameReady(appId: string, frame?: HTMLIFrameElement) {
+    const app = appById.get(appId);
+    if (frame && app && isInspectableRuntimeFrame(frame, app)) {
+      window.requestAnimationFrame(() => {
+        if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+        if (frameLooksPainted(frame)) {
+          markFrameReady(appId);
+          return;
+        }
+        window.setTimeout(() => {
+          if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+          if (frameLooksPainted(frame)) {
+            markFrameReady(appId);
+            return;
+          }
+          // Apps that speak the lifecycle contract get a slightly longer
+          // grace period because their SDK waits for a meaningful DOM paint
+          // before reporting ready. Older apps still fall back quickly.
+          const lifecycleAware = Boolean(frameLifecycleByApp[appId]);
+          const fallbackDelay = lifecycleAware ? 3_200 : 1_600;
+          window.setTimeout(() => {
+            if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+            if (frameLooksPainted(frame)) {
+              markFrameReady(appId);
+              return;
+            }
+            markFrameError(
+              appId,
+              `${app.name} loaded but did not paint. This is usually a stale app bundle or a script crash; reload it once.`,
+            );
+          }, fallbackDelay);
+        }, 0);
+      });
+      return;
+    }
     frameStates = markFrameReadyState(frameStates, appId);
     commitPendingEviction(appId);
     // Emit a window-level event so PushOptInToast can offer notifications
     // after a successful first open. Keeps the container untangled from
     // the notification subsystem.
-    const app = appById.get(appId);
     if (app && typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('shippie:app-opened', {
@@ -550,6 +974,35 @@
         }),
       );
     }
+  }
+
+  function isInspectableRuntimeFrame(frame: HTMLIFrameElement, app: ContainerApp): boolean {
+    const src = frame.getAttribute('src') ?? runtimeSrcFor(app);
+    if (!src) return false;
+    try {
+      const url = new URL(src, window.location.href);
+      return url.origin === window.location.origin && url.pathname.startsWith('/__shippie-run/');
+    } catch {
+      return false;
+    }
+  }
+
+  function frameLooksPainted(frame: HTMLIFrameElement): boolean {
+    let doc: Document | null = null;
+    try {
+      doc = frame.contentDocument;
+    } catch {
+      return true;
+    }
+    if (!doc?.body) return true;
+    const bodyText = (doc.body.innerText || doc.body.textContent || '').trim();
+    if (/something went wrong|application error|failed to load|not found|404|500/i.test(bodyText)) return false;
+    if (bodyText.length > 0) return true;
+    if (doc.querySelector('canvas, svg, img, video, button, input, textarea, select, [role="button"], [role="main"]')) {
+      return true;
+    }
+    const root = doc.querySelector('#root, #app, main');
+    return Boolean(root && root.children.length > 0);
   }
 
   function markFrameError(appId: string, message = 'This app could not open in the container.') {
@@ -570,8 +1023,10 @@
     const app = appById.get(appId);
     if (!app || hosts.has(appId)) return;
 
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    if (!frame.contentWindow) return;
+    if (!frame.contentWindow) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      if (!frame.contentWindow) return;
+    }
 
     hosts.set(
       appId,
@@ -584,11 +1039,18 @@
           ...frameBridgeOrigins(runtimeSrcFor(app), window.location.href),
         }),
         maxPayloadBytes: 32 * 1024,
-        rateLimit: { maxRequests: 80, windowMs: 10_000 },
+        // Local-first apps can legitimately burst during first-run seeding.
+        // Keep a bounded bridge limit, but don't make builders batch around
+        // infrastructure just to persist starter data.
+        rateLimit: { maxRequests: 500, windowMs: 10_000 },
         handlers: createAppHandlers({
           appId,
           app,
+          spaceContext: currentSpaceContextFor(app),
           insertRow,
+          createTable,
+          updateRow,
+          deleteRow,
           queryRows,
           storageUsage,
           consumeIntent,
@@ -602,6 +1064,11 @@
           runAi,
           broadcastIntent: (providerAppId, intent, rows) =>
             broadcastIntentToConsumers(providerAppId, intent, rows),
+          recordIntentForToday: (providerAppId, intent, rows) => {
+            // IndexedDB write — fire-and-forget. The /today summary
+            // is observability, not consistency-critical.
+            void recordIntents(providerAppId, intent, rows).catch(() => {});
+          },
           listOverlappingApps: (callerId) => listAppsOverlappingCaller(callerId),
           insightsForApp: (callerId) => insightsForCaller(callerId),
           startTransferDrop: (sourceId, kind, preview) =>
@@ -645,9 +1112,83 @@
     frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: canGoBack };
   }
 
-  function requestActiveFrameBack(): boolean {
+  function recordAppLifecycle(event: MessageEvent) {
+    const payload = parseAppLifecycleMessage(event.data);
+    if (!payload) return;
+    const appId = appIdForMessageSource(event.source);
+    if (!appId) return;
+
+    frameLifecycleByApp = { ...frameLifecycleByApp, [appId]: payload };
+
+    if (typeof payload.canGoBack === 'boolean' && frameCanGoBackByApp[appId] !== payload.canGoBack) {
+      frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: payload.canGoBack };
+    }
+
+    if (payload.event === 'ready' || payload.event === 'heartbeat') {
+      if (frameStates[appId]?.status !== 'ready') markFrameReady(appId);
+      return;
+    }
+
+    if (payload.event === 'error') {
+      markFrameError(appId, appLifecycleErrorMessage(payload));
+    }
+  }
+
+  function recordFrameNavigationBackResult(event: MessageEvent) {
+    const payload = event.data as { type?: string; handled?: unknown } | null;
+    if (!payload || payload.type !== 'shippie:navigation-back-result') return;
+    const appId = appIdForMessageSource(event.source);
+    if (!appId || appId !== pendingFocusedBackAppId) return;
+    clearPendingFocusedBackFallback();
+    if (payload.handled === false) {
+      frameCanGoBackByApp = { ...frameCanGoBackByApp, [appId]: false };
+      openFocusedDrawerAsBackFallback();
+    }
+  }
+
+  function clearPendingFocusedBackFallback() {
+    pendingFocusedBackAppId = null;
+    if (pendingFocusedBackFallbackTimer) {
+      clearTimeout(pendingFocusedBackFallbackTimer);
+      pendingFocusedBackFallbackTimer = null;
+    }
+  }
+
+  function restoreFocusedHistorySentinel() {
+    if (!data.focused || typeof window === 'undefined') return;
+    try {
+      history.pushState({ shippieFocused: true }, '');
+    } catch {
+      /* history API may be blocked */
+    }
+  }
+
+  function openFocusedDrawerAsBackFallback() {
+    if (!data.focused) return;
+    focusedToolOptionsOpen = false;
+    focusedDrawerOpen = true;
+    restoreFocusedHistorySentinel();
+  }
+
+  function requestActiveFrameBack(opts: { fallbackToDrawer?: boolean } = {}): boolean {
     if (!activeAppId || frameCanGoBackByApp[activeAppId] !== true) return false;
-    return postToAppFrame(activeAppId, { type: 'shippie:navigation-back' });
+    const posted = postToAppFrame(activeAppId, { type: 'shippie:navigation-back' });
+    if (!posted || !opts.fallbackToDrawer) return posted;
+    clearPendingFocusedBackFallback();
+    pendingFocusedBackAppId = activeAppId;
+    pendingFocusedBackFallbackTimer = setTimeout(() => {
+      if (pendingFocusedBackAppId === activeAppId) {
+        clearPendingFocusedBackFallback();
+        openFocusedDrawerAsBackFallback();
+      }
+    }, 900);
+    return true;
+  }
+
+  function goBackInActiveFrame() {
+    if (requestActiveFrameBack({ fallbackToDrawer: true })) {
+      restoreFocusedHistorySentinel();
+    }
   }
 
   async function consumeIntent(
@@ -703,20 +1244,29 @@
 
   function approveIntentPrompt() {
     if (!pendingIntentPrompt) return;
-    const { consumerId, intent, resolve } = pendingIntentPrompt;
-    intentGrants = grantIntent(intentGrants, consumerId, intent);
-    resolve(collectRowsForIntent(intent));
-    pendingIntentQueue = pendingIntentQueue.slice(1);
+    const consumerId = pendingIntentPrompt.consumerId;
+    const batch = pendingIntentQueue.filter((p) => p.consumerId === consumerId);
+    let nextGrants = intentGrants;
+    for (const prompt of batch) {
+      nextGrants = grantIntent(nextGrants, prompt.consumerId, prompt.intent);
+      prompt.resolve(collectRowsForIntent(prompt.intent));
+    }
+    intentGrants = nextGrants;
+    pendingIntentQueue = pendingIntentQueue.filter((p) => p.consumerId !== consumerId);
   }
 
   function denyIntentPrompt() {
     if (!pendingIntentPrompt) return;
-    pendingIntentPrompt.resolve({
-      provider: null,
-      rows: [],
-      reason: 'permission_denied',
-    });
-    pendingIntentQueue = pendingIntentQueue.slice(1);
+    const consumerId = pendingIntentPrompt.consumerId;
+    const batch = pendingIntentQueue.filter((p) => p.consumerId === consumerId);
+    for (const prompt of batch) {
+      prompt.resolve({
+        provider: null,
+        rows: [],
+        reason: 'permission_denied',
+      });
+    }
+    pendingIntentQueue = pendingIntentQueue.filter((p) => p.consumerId !== consumerId);
   }
 
   function revokeIntentGrant(consumerId: string, intent: string) {
@@ -997,15 +1547,66 @@
     const slug = appById.get(appId)?.slug ?? 'app';
     const existing = rowsByApp[appId] ?? [];
     const row = buildLocalRow(appId, slug, payload, existing.length);
-    rowsByApp = {
+    const nextRowsByApp = {
       ...rowsByApp,
       [appId]: [row, ...existing],
     };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
     return row;
   }
 
   function queryRows(appId: string, payload: unknown) {
-    return { rows: filterRowsByTable(rowsByApp[appId] ?? [], payload) };
+    return { rows: queryLocalDbRows(rowsByApp[appId] ?? [], payload).map(plainLocalRow) };
+  }
+
+  function plainLocalRow(row: LocalRow): LocalRow {
+    return {
+      id: row.id,
+      table: row.table,
+      payload: plainBridgeValue(row.payload),
+      createdAt: row.createdAt,
+    };
+  }
+
+  function plainBridgeValue(value: unknown): unknown {
+    try {
+      return structuredClone(value);
+    } catch {
+      try {
+        return JSON.parse(JSON.stringify(value ?? null));
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  function createTable(_appId: string, payload: unknown) {
+    return { created: true as const, table: typeof payload === 'object' && payload !== null && 'table' in payload
+      ? String((payload as Record<string, unknown>).table)
+      : 'items' };
+  }
+
+  function updateRow(appId: string, payload: unknown) {
+    const result = updateLocalDbRow(rowsByApp[appId] ?? [], payload);
+    const nextRowsByApp = {
+      ...rowsByApp,
+      [appId]: result.rows,
+    };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
+    return { updated: result.updated };
+  }
+
+  function deleteRow(appId: string, payload: unknown) {
+    const result = deleteLocalDbRow(rowsByApp[appId] ?? [], payload);
+    const nextRowsByApp = {
+      ...rowsByApp,
+      [appId]: result.rows,
+    };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
+    return { deleted: result.deleted };
   }
 
   function storageUsage(appId: string) {
@@ -1013,10 +1614,87 @@
   }
 
   function clearAppData(appId: string) {
-    rowsByApp = {
+    const nextRowsByApp = {
       ...rowsByApp,
       [appId]: [],
     };
+    rowsByApp = nextRowsByApp;
+    persistContainerState(nextRowsByApp);
+  }
+
+  function showPrivateRecoveryStatus(action: 'add-device' | 'move-phone' | 'recovery-card' | 'restore') {
+    const messages = {
+      'add-device': 'Add another device will use a one-time sealed handover. No raw keys get uploaded.',
+      'move-phone': 'Move to new phone will copy your sealed access bundle, then let you choose whether to keep this phone active.',
+      'recovery-card': 'Recovery cards are the paper fallback for browser storage wipes. Keep the card private: it can restore access.',
+      restore: 'Restore accepts a transfer link, QR scan, or recovery card. Shippie relays sealed copies but cannot open them.',
+    } satisfies Record<typeof action, string>;
+    dataRecoveryStatus = messages[action];
+  }
+
+  async function openContainerYourData(
+    action: 'add-device' | 'move-phone' | 'recovery-card' | 'restore',
+    transferId?: string | null,
+  ) {
+    showPrivateRecoveryStatus(action);
+    if (action === 'restore' && transferId) {
+      setIncomingJoinTransferId(transferId);
+    }
+    const activeApp = activeAppId ? appById.get(activeAppId) : null;
+    const appSlug = activeApp?.slug ?? 'container';
+    try {
+      const { openYourData } = await import('@shippie/sdk/wrapper');
+      openYourData({
+        appSlug,
+        transferRelayOrigin: window.location.origin,
+      });
+      if (action === 'restore' && !transferId && !readIncomingJoinTransferId()) {
+        dataRecoveryStatus = 'Choose Restore data in the panel to paste a transfer link, scan a QR, or use a recovery card.';
+      }
+    } catch (err) {
+      console.info('shippie:container Your Data overlay unavailable', err);
+      dataRecoveryStatus = 'Your Data is available from each app’s Shippie menu. This container could not open the overlay.';
+    }
+  }
+
+  function readIncomingJoinTransferId(): string | null {
+    if (typeof window === 'undefined') return null;
+    const url = new URL(window.location.href);
+    const hash = url.hash.replace(/^#/, '');
+    const hashParams = new URLSearchParams(hash);
+    return transferIdFromJoinValue(
+      hashParams.get('shippie-restore') ??
+        url.searchParams.get('shippie-restore') ??
+        url.searchParams.get('transfer') ??
+        url.searchParams.get('code'),
+    );
+  }
+
+  function transferIdFromJoinValue(value: string | null | undefined): string | null {
+    const raw = value?.trim();
+    if (!raw) return null;
+    try {
+      const url = new URL(raw);
+      const hash = url.hash.replace(/^#/, '');
+      const hashParams = new URLSearchParams(hash);
+      const fromUrl =
+        hashParams.get('shippie-restore') ??
+        url.searchParams.get('shippie-restore') ??
+        url.searchParams.get('transfer') ??
+        url.searchParams.get('code');
+      if (fromUrl) return transferIdFromJoinValue(fromUrl);
+    } catch {
+      // Raw transfer codes are expected.
+    }
+    const match = raw.match(/\btransfer_[A-Za-z0-9_-]{8,}\b/);
+    return match ? (match[0] ?? null) : null;
+  }
+
+  function setIncomingJoinTransferId(transferId: string) {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.hash = `shippie-restore=${encodeURIComponent(transferId)}`;
+    window.history.replaceState(window.history.state, '', url);
   }
 
   function uninstallApp(appId: string) {
@@ -1046,6 +1724,8 @@
     intentGrants = next.intentGrants;
     transferGrants = next.transferGrants;
     activeAppId = next.activeAppId;
+    void deleteImportedPackage(appId);
+    persistContainerState(next.rowsByApp);
     if (!activeAppId) section = 'home';
   }
 
@@ -1174,6 +1854,38 @@
     }
   }
 
+  async function importPackageFile(file: File) {
+    packageImportStatus = '';
+    try {
+      if (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
+        const built = await buildSingleHtmlPackage(file);
+        const app = await cacheBuiltPackage(built);
+        packageImportStatus = `Imported ${app.name} on this device. Deploy with shippie deploy --private to use it elsewhere.`;
+        return;
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const built = await readShippiePackageArchive(bytes);
+      const app = await cacheBuiltPackage(built);
+      packageImportStatus = `Imported and cached ${app.name} from ${file.name}.`;
+    } catch (err) {
+      packageImportStatus = err instanceof Error ? err.message : `Could not import ${file.name}.`;
+    }
+  }
+
+  async function importSelectedFiles(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) await importPackageFile(file);
+    input.value = '';
+  }
+
+  async function dropImportFile(event: DragEvent) {
+    event.preventDefault();
+    packageDropActive = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) await importPackageFile(file);
+  }
+
   function importPackageManifest(parsed: unknown) {
     packageImportStatus = '';
     try {
@@ -1196,22 +1908,91 @@
     packageImportStatus = '';
     try {
       const built = await readShippiePackageArchive(packageImportPayload);
-      const app = cacheBuiltPackage(built);
+      const app = await cacheBuiltPackage(built);
       packageImportStatus = `Imported and cached ${app.name} from a verified .shippie archive.`;
     } catch (err) {
       packageImportStatus = err instanceof Error ? err.message : 'Could not import package archive.';
     }
   }
 
-  function cacheBuiltPackage(built: Awaited<ReturnType<typeof readShippiePackageArchive>>): ContainerApp {
-    const { app, packageFiles } = installBuiltPackage(built);
+  async function cacheBuiltPackage(
+    built: Awaited<ReturnType<typeof readShippiePackageArchive>>,
+    registryApp?: ContainerApp | null,
+  ): Promise<ContainerApp> {
+    const installed = installBuiltPackage(built);
+    const app = registryApp ? mergeInstalledPackageApp(installed.app, registryApp) : installed.app;
+    const packageFiles = installed.packageFiles;
     importedApps = [...importedApps.filter((existing) => existing.id !== app.id), app];
     packageFilesByApp = {
       ...packageFilesByApp,
       [app.id]: packageFiles,
     };
+    void saveImportedPackage(app.id, packageFiles);
     openApp(app.id);
     return app;
+  }
+
+  function mergeInstalledPackageApp(installed: ContainerApp, registryApp: ContainerApp): ContainerApp {
+    return {
+      ...installed,
+      description: registryApp.description || installed.description,
+      labelKind: registryApp.labelKind,
+      icon: registryApp.icon,
+      accent: registryApp.accent,
+      version: registryApp.version,
+      standaloneUrl: registryApp.standaloneUrl,
+      visibility: registryApp.visibility,
+      owned: registryApp.owned,
+      permissions: registryApp.permissions,
+      trust: registryApp.trust,
+      category: registryApp.category ?? installed.category,
+      surface: registryApp.surface ?? installed.surface,
+      devUrl: registryApp.devUrl ?? installed.devUrl,
+    };
+  }
+
+  async function installPrivateJoinPackage(join: PrivateJoinData) {
+    const registryApp = findRequestedApp(baseApps, join.appSlug);
+    const appName = registryApp?.name ?? join.appName;
+    privateJoinState = 'loading';
+    privateJoinStatus = `Joining ${appName}...`;
+
+    try {
+      if (registryApp && packageFilesByApp[registryApp.id]) {
+        openApp(registryApp.id);
+        privateJoinState = 'ready';
+        privateJoinStatus = `${registryApp.name} is ready on this device.`;
+        await maybeOpenPrivateJoinRestore(join);
+        return;
+      }
+
+      const response = await fetch(join.packageUrl, {
+        headers: { Accept: 'application/vnd.shippie.package+json' },
+      });
+      if (!response.ok) {
+        throw new Error(`Private package returned ${response.status}.`);
+      }
+      const built = await readShippiePackageArchive(new Uint8Array(await response.arrayBuffer()));
+      if (built.packageHash !== join.packageHash) {
+        throw new Error('Downloaded package hash does not match the invite.');
+      }
+      const app = await cacheBuiltPackage(built, registryApp);
+      privateJoinState = 'ready';
+      privateJoinStatus = `${app.name} is installed and ready on this device.`;
+      await maybeOpenPrivateJoinRestore(join);
+    } catch (err) {
+      if (registryApp) openApp(registryApp.id);
+      privateJoinState = 'error';
+      privateJoinStatus = err instanceof Error ? err.message : `Could not install ${appName}.`;
+    }
+  }
+
+  async function maybeOpenPrivateJoinRestore(join: PrivateJoinData) {
+    const transferId = join.transferId ?? readIncomingJoinTransferId();
+    if (!transferId) return;
+    setIncomingJoinTransferId(transferId);
+    privateJoinStatus = 'Private tool ready. Waiting for sealed data access...';
+    await openContainerYourData('restore', transferId);
   }
 
   async function loadCollection() {
@@ -1249,7 +2030,7 @@
       if (built.packageHash !== entry.packageHash) {
         throw new Error('Downloaded package hash does not match the collection entry.');
       }
-      const app = cacheBuiltPackage(built);
+      const app = await cacheBuiltPackage(built);
       collectionStatus = `Installed ${app.name} from ${activeCollection?.name ?? 'collection'}.`;
     } catch (err) {
       collectionStatus = err instanceof Error ? err.message : `Could not install ${entry.name}.`;
@@ -1333,7 +2114,12 @@
   }
 
   function normalizeAnalyticsEvent(payload: unknown):
-    | { event: string; props?: Record<string, unknown>; ts: number }
+    | {
+        event: string;
+        props?: Record<string, unknown>;
+        ts: number;
+        session_id?: string;
+      }
     | null {
     if (!payload || typeof payload !== 'object') return null;
     const record = payload as Record<string, unknown>;
@@ -1346,17 +2132,55 @@
         ? (props as Record<string, unknown>)
         : undefined,
       ts: typeof record.ts === 'number' ? record.ts : Date.now(),
+      session_id: typeof record.session_id === 'string' ? record.session_id : undefined,
     };
   }
 
   $effect(() => {
     window.addEventListener('message', recordFromEvent);
+    window.addEventListener('message', recordAppLifecycle);
     window.addEventListener('message', recordFrameNavigation);
+    window.addEventListener('message', recordFrameNavigationBackResult);
+    window.addEventListener('message', recordSafeEdgesDeclaration);
     return () => {
       window.removeEventListener('message', recordFromEvent);
+      window.removeEventListener('message', recordAppLifecycle);
       window.removeEventListener('message', recordFrameNavigation);
+      window.removeEventListener('message', recordFrameNavigationBackResult);
+      window.removeEventListener('message', recordSafeEdgesDeclaration);
     };
   });
+
+  /**
+   * Receive `safe-edges.declareInputRegion` from an iframe and store
+   * the declared ownership. The message must come from one of our
+   * mounted iframes (origin-validated by matching event.source against
+   * the frame map). Unknown sources are silently dropped — we don't
+   * trust the message at face value because a malicious wrapped app
+   * could try to suppress container chrome.
+   */
+  function recordSafeEdgesDeclaration(event: MessageEvent): void {
+    const data = event.data as
+      | { protocol?: string; appId?: string; capability?: string; method?: string; payload?: { owns?: unknown } }
+      | null;
+    if (!data || data.protocol !== 'shippie.bridge.v1') return;
+    if (data.capability !== 'safe-edges' || data.method !== 'declareInputRegion') return;
+    if (typeof data.appId !== 'string') return;
+    const owns = data.payload?.owns;
+    if (owns !== 'none' && owns !== 'bottom' && owns !== 'all') return;
+    // Source validation: event.source should be the iframe's window.
+    // We trust the appId only after confirming the source matches one
+    // of our hosted frames.
+    const knownAppIds = new Set(apps.map((a) => a.id));
+    if (!knownAppIds.has(data.appId)) return;
+    inputRegionByAppId = { ...inputRegionByAppId, [data.appId]: owns };
+  }
+
+  // Active app's declared region, used by the focused-shell template
+  // to pick the right CSS class on the chrome buttons.
+  const activeInputRegion: InputRegionOwns = $derived(
+    activeAppId ? (inputRegionByAppId[activeAppId] ?? 'none') : 'none',
+  );
 
   // Refresh the cross-app intent registry whenever the installed-apps
   // list changes. The registry owns provider/consumer indexing; the
@@ -1366,14 +2190,14 @@
     transferRegistry.refresh(apps);
   });
 
-  $effect(() => {
+  function persistContainerState(nextRowsByApp: Record<string, LocalRow[]> = rowsByApp) {
     if (!storageReady) return;
     const state: ContainerState = {
       openAppIds,
       importedApps,
       packageFilesByApp,
       receiptsByApp,
-      rowsByApp,
+      rowsByApp: nextRowsByApp,
       intentGrants,
       transferGrants,
       dismissedInsightIds,
@@ -1385,16 +2209,94 @@
       // browsing, or quota exceeded). Persistence fails silently;
       // session state continues in memory until the user reloads.
     }
+  }
+
+  async function hydrateImportedPackageFiles(appsToHydrate: readonly ContainerApp[]) {
+    const missing = appsToHydrate.filter((app) => !packageFilesByApp[app.id]);
+    if (missing.length === 0) return;
+    const loadedEntries = await Promise.all(
+      missing.map(async (app) => [app.id, await loadImportedPackage(app.id)] as const),
+    );
+    const loaded = Object.fromEntries(
+      loadedEntries.filter((entry): entry is readonly [string, Record<string, PackageFileCache>] => Boolean(entry[1])),
+    );
+    if (Object.keys(loaded).length === 0) return;
+    packageFilesByApp = { ...packageFilesByApp, ...loaded };
+    persistContainerState(rowsByApp);
+  }
+
+  $effect(() => {
+    if (!storageReady) return;
+    persistContainerState(rowsByApp);
   });
 
+  $effect(() => {
+    if (!storageReady || privateJoinAttempted || !data.privateJoin) return;
+    privateJoinAttempted = true;
+    void installPrivateJoinPackage(data.privateJoin);
+  });
+
+  $effect(() => {
+    if (!storageReady) return;
+    const requestedSection = $page.url.searchParams.get('section');
+    const routeKey = `${data.focused ? 'focused' : 'dashboard'}:${data.requestedAppSlug ?? ''}:${requestedSection ?? ''}`;
+    applyRouteState(routeKey, requestedSection);
+  });
+
+  $effect(() => {
+    if (data.focused || section !== 'data') return;
+    if (pendingIntentQueue.length > 0 || pendingTransferQueue.length > 0) {
+      dismissTransientPrompts();
+    }
+  });
+
+  let lastAppliedRouteKey = $state('');
+
+  function applyRouteState(routeKey: string, requestedSection: string | null) {
+    if (routeKey === lastAppliedRouteKey) return;
+    lastAppliedRouteKey = routeKey;
+
+    if (data.focused) {
+      const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
+      if (requestedApp) {
+        notFoundSlug = null;
+        if (activeAppId !== requestedApp.id) {
+          openApp(requestedApp.id);
+        }
+      } else if (data.requestedAppSlug) {
+        notFoundSlug = data.requestedAppSlug;
+      }
+      return;
+    }
+
+    focusedDrawerOpen = false;
+    focusedToolOptionsOpen = false;
+    notFoundSlug = null;
+    if (requestedSection === 'home' || requestedSection === 'create' || requestedSection === 'data') {
+      section = requestedSection;
+      if (requestedSection !== 'home') {
+        activeAppId = null;
+      } else if (!activeAppId || !appById.has(activeAppId)) {
+        activeAppId = openAppIds[0] ?? null;
+      }
+    } else if (!activeAppId || !appById.has(activeAppId)) {
+      activeAppId = openAppIds[0] ?? null;
+    }
+  }
+
   onMount(() => {
+    hydrateLauncherMemory();
+    const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
     const saved = loadContainerState(localStorage);
     if (saved) {
       importedApps = saved.importedApps ?? [];
       packageFilesByApp = saved.packageFilesByApp ?? {};
+      void hydrateImportedPackageFiles(importedApps);
       const knownAppIds = new Set(apps.map((app) => app.id));
       const savedOpenApps = saved.openAppIds.filter((appId) => knownAppIds.has(appId));
-      openAppIds = savedOpenApps.length > 0 ? savedOpenApps : defaultAppId ? [defaultAppId] : [];
+      openAppIds = data.focused
+        ? (requestedApp ? [requestedApp.id] : [])
+        : savedOpenApps.length > 0 ? savedOpenApps : defaultAppId ? [defaultAppId] : [];
       receiptsByApp = {
         ...Object.fromEntries(openAppIds.map((appId) => [appId, createReceiptFor(appById.get(appId)!)])),
         ...saved.receiptsByApp,
@@ -1409,8 +2311,11 @@
       receiptsByApp = defaultApp ? { [defaultAppId]: createReceiptFor(defaultApp) } : {};
       activeAppId = defaultAppId;
     }
-    const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
     if (requestedApp) {
+      if (activeAppId === requestedApp.id) {
+        rememberAppLaunch(requestedApp);
+        void trackAppOpen(requestedApp.id);
+      }
       openApp(requestedApp.id);
     } else if (data.requestedAppSlug && data.focused) {
       // Slug was requested via /run/<slug>/ but it's not in our installed
@@ -1434,6 +2339,7 @@
       }
     }
     storageReady = true;
+    prewarmLikelyNextApps();
     void refreshAiReadiness();
     // First-run pill hint: pulse the bottom-pill once when this device
     // enters focused mode for the first time, so users discover the
@@ -1456,39 +2362,105 @@
       // whatever was before /run/<slug>/ — usually the marketplace,
       // sometimes a cold tab with no history at all.
       try {
-        history.pushState({ shippieFocused: true }, '');
+        restoreFocusedHistorySentinel();
         window.addEventListener('popstate', handleFocusedPopstate);
       } catch {
         // history API blocked — leave the user with the pill exits.
       }
+
+      // Origin-safe keyboard contract: child tools that include the SDK's
+      // useKeyboard() helper post `shippie:tool-keyboard-open/close` when
+      // their on-screen keyboard rises/falls. We adapt the focused chrome
+      // (push the exit-pill out of the way) by setting CSS variables on
+      // the root. 4-step validation per the plan:
+      //   1. message type matches our namespace
+      //   2. event.source matches the active app's iframe contentWindow
+      //   3. event.origin matches the expected origin for the active app
+      //   4. payload shape sanity
+      // Without all four, drop the message silently.
+      window.addEventListener('message', handleToolKeyboardMessage);
     }
     void loadCollection();
   });
 
+  function expectedOriginForActiveApp(): string | null {
+    const app = activeAppId ? appById.get(activeAppId) : null;
+    if (!app) return null;
+    // First-party showcases render under the platform origin via /run/<slug>/.
+    // Maker subdomains have their own origin — derive from app.standaloneUrl
+    // if present, else fall back to the current origin.
+    if (app.standaloneUrl) {
+      try {
+        return new URL(app.standaloneUrl).origin;
+      } catch {
+        // fall through
+      }
+    }
+    return window.location.origin;
+  }
+
+  function handleToolKeyboardMessage(event: MessageEvent) {
+    const data = event.data as { type?: string; height?: number } | null;
+    const type = data?.type;
+    if (type !== 'shippie:tool-keyboard-open' && type !== 'shippie:tool-keyboard-close') return;
+
+    // Resolve the active iframe's contentWindow. The container hosts iframes
+    // via AppFrameHost; we don't have a direct map here, so we resolve via
+    // the rendered DOM by app id.
+    if (!activeAppId) return;
+    const iframe = document.querySelector<HTMLIFrameElement>(
+      `iframe[data-shippie-app-id="${activeAppId}"]`,
+    );
+    if (!iframe || event.source !== iframe.contentWindow) return;
+
+    const expectedOrigin = expectedOriginForActiveApp();
+    if (!expectedOrigin || event.origin !== expectedOrigin) return;
+
+    const root = document.documentElement;
+    if (type === 'shippie:tool-keyboard-open') {
+      const height = typeof data?.height === 'number' && data.height >= 0 ? data.height : 0;
+      root.style.setProperty('--keyboard-offset', `${height}px`);
+      root.dataset.keyboardOpen = 'true';
+      // One telemetry per (slug, session) so we don't spam on every focus.
+      const slug = activeApp?.slug;
+      try {
+        const key = `shippie:track:kb:${slug ?? 'unknown'}`;
+        if (slug && !sessionStorage.getItem(key)) {
+          void import('$lib/util/track').then(({ track }) => track('keyboard_open_in_tool', { slug }));
+          sessionStorage.setItem(key, '1');
+        }
+      } catch {
+        // sessionStorage blocked — skip the telemetry to avoid spamming.
+      }
+    } else {
+      root.style.removeProperty('--keyboard-offset');
+      delete root.dataset.keyboardOpen;
+    }
+  }
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('message', handleToolKeyboardMessage);
+    }
+  });
+
   function handleFocusedPopstate() {
     if (!data.focused) return;
+    if (focusedToolOptionsOpen) {
+      focusedToolOptionsOpen = false;
+      restoreFocusedHistorySentinel();
+      return;
+    }
     if (focusedDrawerOpen) {
       focusedDrawerOpen = false;
-      try {
-        history.pushState({ shippieFocused: true }, '');
-      } catch {
-        /* ignore */
-      }
+      restoreFocusedHistorySentinel();
       return;
     }
-    if (requestActiveFrameBack()) {
-      try {
-        history.pushState({ shippieFocused: true }, '');
-      } catch {
-        /* ignore */
-      }
+    if (requestActiveFrameBack({ fallbackToDrawer: true })) {
+      restoreFocusedHistorySentinel();
       return;
     }
-    // popstate fires after the browser already moved one entry back.
-    // We're now at the entry we want to leave from; goto() replaces
-    // it with /container so refreshes don't bounce back into focused
-    // mode.
-    goto('/container', { replaceState: true });
+    openFocusedDrawerAsBackFallback();
   }
 
   onDestroy(() => {
@@ -1496,13 +2468,16 @@
     hosts.clear();
     revokeAllPackageFrameSources(packageObjectUrls);
     aiClient.dispose();
+    clearPendingFocusedBackFallback();
     if (typeof window !== 'undefined') {
       window.removeEventListener('popstate', handleFocusedPopstate);
     }
   });
 
   function srcdocFor(app: ContainerApp): string {
-    return appPackageSrcdoc(app, packageFilesByApp[app.id]);
+    return appPackageSrcdoc(app, packageFilesByApp[app.id], {
+      spaceContext: currentSpaceContextFor(app),
+    });
   }
 
   function frameSrcFor(app: ContainerApp): string | null {
@@ -1510,22 +2485,81 @@
   }
 
   function runtimeSrcFor(app: ContainerApp): string | null {
-    if (typeof window === 'undefined') return null;
-    return resolveRuntimeSrc(app, window.location.hostname);
+    const currentUrl = typeof window === 'undefined' ? $page.url : new URL(window.location.href);
+    const preferDevUrl = currentUrl.searchParams.get('dev_apps') === '1';
+    if (!preferDevUrl && packageFilesByApp[app.id]) return null;
+    const forwardedParams = data.focused && data.requestedAppSlug === app.slug
+      ? focusedRuntimeParams(currentUrl.searchParams)
+      : undefined;
+    return resolveRuntimeSrc(app, currentUrl.hostname, { preferDevUrl, searchParams: forwardedParams });
+  }
+
+  function focusedRuntimeParams(params: URLSearchParams): URLSearchParams {
+    const forwarded = new URLSearchParams();
+    params.forEach((value, key) => {
+      if (
+        key === 'dev_apps' ||
+        key === 'focused' ||
+        key === 'app' ||
+        key === 'shippie_embed' ||
+        key === 'join' ||
+        key === 'transfer' ||
+        key === 'code' ||
+        key === 'shippie-restore'
+      ) return;
+      forwarded.append(key, value);
+    });
+    return forwarded;
+  }
+
+  function currentSpaceContextFor(app: ContainerApp): AppSpaceContext | null {
+    const currentUrl = typeof window === 'undefined' ? $page.url : new URL(window.location.href);
+    if (!data.focused || data.requestedAppSlug !== app.slug) return null;
+
+    const fromSearch = spaceContextFromParams(currentUrl.searchParams, data.privateJoin ? 'private-join' : 'url');
+    if (fromSearch) return fromSearch;
+
+    if (
+      data.privateJoin?.appSlug === app.slug &&
+      (data.privateJoin.spaceId || data.privateJoin.role || data.privateJoin.joinToken)
+    ) {
+      return {
+        spaceId: data.privateJoin.spaceId ?? `${app.slug}:${data.privateJoin.packageHash}`,
+        role: data.privateJoin.role,
+        joinToken: data.privateJoin.joinToken,
+        source: 'private-join',
+      };
+    }
+    return null;
+  }
+
+  function spaceContextFromParams(params: URLSearchParams, source: AppSpaceContext['source']): AppSpaceContext | null {
+    const spaceId = params.get('space') ?? params.get('room');
+    const role = params.get('role') ?? params.get('space_role');
+    const joinToken = params.get('space_join') ?? params.get('join_token');
+    if (!spaceId || !/^[A-Za-z0-9_-]{3,80}$/.test(spaceId)) return null;
+    return {
+      spaceId,
+      role: role && /^[a-z][a-z0-9_-]{0,63}$/.test(role) ? role : null,
+      joinToken: joinToken && /^[A-Za-z0-9_-]{3,120}$/.test(joinToken) ? joinToken : null,
+      source,
+    };
   }
 
 </script>
 
 <svelte:head>
-  <title>Shippie Container</title>
+  <title>Shippie</title>
   <meta
     name="description"
-    content="The Shippie container runtime: one installed app for local-first apps, receipts, and portable packages."
+    content="Open your saved tools, manage local data, and keep Shippie apps ready on this device."
   />
 </svelte:head>
 
+<svelte:window onresize={() => (viewportWidth = window.innerWidth)} onkeydown={handleFocusedChromeKeydown} />
+
 <IntentPromptModal
-  prompt={pendingIntentPrompt}
+  prompt={pendingIntentBatch}
   onApprove={approveIntentPrompt}
   onDeny={denyIntentPrompt}
 />
@@ -1538,7 +2572,7 @@
 
 {#if data.focused}
   <!--
-    Focused mode — entered via /run/<slug>/ → /container?app=&focused=1.
+    Focused mode — entered directly via /run/<slug>/ or via /container?app=&focused=1.
     Render the requested app full-bleed, no sidebar / topbar / tabs.
     The app-switcher gesture component sits as a fixed overlay; the
     drawer (when open) shows a compact app grid for instant switching.
@@ -1549,20 +2583,39 @@
     branch, not a behaviour branch.
   -->
   <section class="focused-shell">
-    <a
-      class="focused-exit-pill"
-      href="/container"
-      aria-label="Leave this app and return to Shippie"
+    <button
+      type="button"
+      class="focused-chrome-button focused-chrome-tools"
+      class:first-run={firstRunHint}
+      class:input-region-bottom={activeInputRegion === 'bottom'}
+      class:input-region-all={activeInputRegion === 'all'}
+      aria-label="Open Shippie tools and data"
+      aria-expanded={focusedDrawerOpen}
+      onclick={toggleFocusedDrawer}
     >
       <img
         src="/__shippie-pwa/icon.svg"
         alt=""
-        width="20"
-        height="20"
+        width="22"
+        height="22"
         aria-hidden="true"
       />
-      <span>Shippie</span>
-    </a>
+      <span class="focused-mark-letter" aria-hidden="true">S</span>
+      <span class="sr-only">Shippie tools</span>
+    </button>
+    {#if activeApp}
+      <button
+        type="button"
+        class="focused-chrome-button focused-chrome-options"
+        class:input-region-all={activeInputRegion === 'all'}
+        aria-label={`Share and options for ${activeApp.name}`}
+        aria-expanded={focusedToolOptionsOpen}
+        onclick={toggleFocusedToolOptions}
+      >
+        <span aria-hidden="true">↗</span>
+        <span class="sr-only">Share and options</span>
+      </button>
+    {/if}
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -1595,40 +2648,101 @@
         {/each}
       {/if}
     </div>
+    {#if privateJoinStatus}
+      <div class="private-join-toast" data-state={privateJoinState} role="status">
+        {privateJoinStatus}
+      </div>
+    {/if}
     <AppSwitcherGesture
       open={focusedDrawerOpen}
       onOpenChange={(value) => (focusedDrawerOpen = value)}
-      edge="left"
-      firstRun={firstRunHint}
+      edge={focusedDrawerEdge}
+      canGoBack={activeFrameCanGoBack}
+      onBack={goBackInActiveFrame}
+      gestureEnabled={false}
     >
       <div class="focused-drawer">
+        <div class="focused-drawer-grip" aria-hidden="true"></div>
         <header class="focused-drawer-head">
-          <a class="focused-home" href="/container" aria-label="Shippie home">
-            <span class="focused-rocket" aria-hidden="true">🚀</span>
-            <span>Shippie</span>
+          <a class="focused-home" href="/" aria-label="Shippie tools">
+            <span class="focused-brand-copy">
+              <strong>Shippie</strong>
+              <small>Local tools, one home.</small>
+            </span>
           </a>
-          <a class="focused-data" href="/container?section=data" aria-label="Your Data">
-            Your Data
-          </a>
+          <nav class="focused-drawer-actions" aria-label="Drawer actions">
+            <button class="focused-action" type="button" onclick={() => exitFocusedMode('home')}>Tools</button>
+            <button class="focused-action focused-action-data" type="button" onclick={() => exitFocusedMode('data')}>Data</button>
+          </nav>
         </header>
-        <h2>Switch app</h2>
-        <div class="focused-grid">
-          {#each apps as app (app.id)}
+        {#snippet focusedToolTile(app: ContainerApp)}
+          <div
+            class="focused-tile"
+            class:active={activeAppId === app.id}
+            style:--accent={app.accent}
+          >
             <button
-              class="focused-tile"
-              class:active={activeAppId === app.id}
-              style:--accent={app.accent}
-              onclick={() => {
-                openApp(app.id);
-                focusedDrawerOpen = false;
-              }}
+              class="focused-open-tool"
+              type="button"
+              onclick={() => switchFocusedApp(app)}
+              aria-label={`Open ${app.name}`}
             >
               <span class="focused-dot" aria-hidden="true">{app.icon}</span>
               <strong>{app.name}</strong>
-              <small>{openAppIds.includes(app.id) ? 'Live' : 'Open'}</small>
+              <small>{tierLabel(app) || (activeAppId === app.id ? 'Current' : openAppIds.includes(app.id) ? 'Live' : 'Open')}</small>
             </button>
-          {/each}
-        </div>
+            <button
+              class="focused-pin"
+              class:active={drawerPinnedSet.has(app.slug)}
+              type="button"
+              aria-label={drawerPinnedSet.has(app.slug) ? `Unpin ${app.name}` : `Pin ${app.name}`}
+              aria-pressed={drawerPinnedSet.has(app.slug)}
+              title={drawerPinnedSet.has(app.slug) ? 'Unpin' : 'Pin'}
+              onclick={(event) => {
+                event.stopPropagation();
+                toggleDrawerPin(app);
+              }}
+            >
+              {drawerPinnedSet.has(app.slug) ? '★' : '☆'}
+            </button>
+          </div>
+        {/snippet}
+
+        {#if drawerPinnedApps.length > 0}
+          <div class="focused-section-head">
+            <h2>Pinned</h2>
+            <span>{drawerPinnedApps.length}</span>
+          </div>
+          <div class="focused-grid">
+            {#each drawerPinnedApps as app (app.id)}
+              {@render focusedToolTile(app)}
+            {/each}
+          </div>
+        {/if}
+
+        {#if drawerRecentApps.length > 0}
+          <div class="focused-section-head">
+            <h2>Recent</h2>
+            <span>{drawerRecentApps.length}</span>
+          </div>
+          <div class="focused-grid">
+            {#each drawerRecentApps as app (app.id)}
+              {@render focusedToolTile(app)}
+            {/each}
+          </div>
+        {/if}
+
+        {#if drawerRemainingApps.length > 0}
+          <div class="focused-section-head">
+            <h2>{drawerPersonalized ? 'All tools' : 'Tools'}</h2>
+            <span>{drawerRemainingApps.length} ready</span>
+          </div>
+          <div class="focused-grid">
+            {#each drawerRemainingApps as app (app.id)}
+              {@render focusedToolTile(app)}
+            {/each}
+          </div>
+        {/if}
         {#if agentInsights.length > 0}
           <h2 class="focused-insights-heading">Insights</h2>
           <ul class="focused-insights">
@@ -1644,26 +2758,71 @@
         {/if}
       </div>
     </AppSwitcherGesture>
+    {#if focusedToolOptionsOpen && activeApp}
+      <button
+        type="button"
+        class="focused-options-backdrop"
+        aria-label="Close tool options"
+        onclick={closeFocusedToolOptions}
+      ></button>
+      <aside class="focused-options-panel" aria-label={`${activeApp.name} sharing and options`}>
+        <div class="focused-drawer-grip" aria-hidden="true"></div>
+        <header class="focused-options-head">
+          <p class="focused-options-kicker">Current tool</p>
+          <h2>{activeApp.name}</h2>
+          {#if activeApp.description}
+            <p>{activeApp.description}</p>
+          {/if}
+        </header>
+        {#if focusedQrMarkup}
+          <div class="focused-share-qr" aria-label={`QR code for ${activeApp.name}`}>
+            <div class="focused-share-qr-code">{@html focusedQrMarkup}</div>
+            <p>Scan to open</p>
+          </div>
+        {/if}
+        <div class="focused-options-list">
+          <button type="button" class="focused-option-row primary" onclick={shareActiveTool}>
+            <span>Share tool</span>
+            <small>{focusedShareFeedback || 'System share sheet'}</small>
+          </button>
+          <button type="button" class="focused-option-row" onclick={copyActiveToolLink}>
+            <span>Copy quicklink</span>
+            <small>{focusedShareFeedback || activeToolUrl.replace(/^https?:\/\//, '')}</small>
+          </button>
+          <button
+            type="button"
+            class="focused-option-row"
+            onclick={() => {
+              if (activeAppId) reloadFrame(activeAppId);
+              closeFocusedToolOptions();
+            }}
+          >
+            <span>Reload tool</span>
+            <small>Fresh frame, same local data</small>
+          </button>
+        </div>
+      </aside>
+    {/if}
   </section>
 {:else}
 <section class="shell">
   <aside class="sidebar">
     <div>
-      <p class="eyebrow">Shippie Container</p>
-      <h1>One Shippie. Every app. Your data stays here.</h1>
+      <p class="eyebrow">Shippie</p>
+      <h1>Your tools, ready where you left them.</h1>
       <p class="lede">
-        A package-aware shell for local-first apps. URLs still exist, but the
-        installed Shippie app becomes the user's quiet home.
+        Open tools, keep them available offline, and manage the data they store
+        on this device.
       </p>
     </div>
 
     <div class="status-panel">
       <span class="status" class:ready={bridgeStatus === 'ready'}>{bridgeStatus}</span>
-      <p>{installedApps.length} installed apps · {totalRows} local rows</p>
-      <p>{Object.keys(receiptsByApp).length} local receipts · sandboxed capability bridge.</p>
+      <p>{installedApps.length} saved tools · {totalRows} local records</p>
+      <p>{Object.keys(receiptsByApp).length} saved installs · local data controls ready.</p>
     </div>
 
-    <nav class="tabs" aria-label="Container sections">
+    <nav class="tabs" aria-label="Shippie sections">
       <button class:active={section === 'home'} onclick={() => showSection('home')}>Home</button>
       <button class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
       <button class:active={section === 'data'} onclick={() => showSection('data')}>Your Data</button>
@@ -1674,7 +2833,7 @@
     <div class="topbar">
       <button class="home-button" onclick={goHome}>Home</button>
       <div>
-        <p class="mini-label">Running in Shippie</p>
+        <p class="mini-label">Open in Shippie</p>
         <h2>{activeApp?.name ?? sectionTitle(section)}</h2>
       </div>
       {#if meshBadgeLabel(meshStatus)}
@@ -1689,7 +2848,7 @@
       {/if}
       {#if activeApp}
         {@const standaloneHref = runtimeSrcFor(activeApp) ?? activeApp.standaloneUrl}
-        <a href={standaloneHref} target="_blank" rel="noopener" class="open-link" data-sveltekit-preload-data="off">Open standalone</a>
+        <a href={standaloneHref} target="_blank" rel="noopener" class="open-link" data-sveltekit-preload-data="off">Open in new tab</a>
       {/if}
     </div>
 
@@ -1698,7 +2857,7 @@
         {#if section === 'home'}
           <DashboardHome
             insights={agentInsights}
-            {apps}
+            apps={launchVisibleApps}
             {openAppIds}
             {updateCards}
             {meshStatus}
@@ -1766,8 +2925,8 @@
           </div>
           <hr />
           <div class="section-head">
-            <h2>Build your own</h2>
-            <p>Entry points for MCP deploys, Remix, Fork, and package import.</p>
+            <h2>Deploy a tool</h2>
+            <p>Deploy from an upload, import a package, or connect a builder workflow.</p>
           </div>
           <div class="action-grid">
             <a href="/new">Deploy app</a>
@@ -1776,9 +2935,22 @@
           </div>
           <div class="backup-box">
             <div>
-              <h3>Import Package</h3>
-              <p>Paste a portable .shippie archive to cache an app locally, or a manifest to add its receipt.</p>
+              <h3>Import a tool</h3>
+              <p>Drop an HTML file or portable .shippie archive to keep a tool available locally.</p>
             </div>
+            <label
+              class="dropzone"
+              class:active={packageDropActive}
+              ondragover={(event) => {
+                event.preventDefault();
+                packageDropActive = true;
+              }}
+              ondragleave={() => (packageDropActive = false)}
+              ondrop={dropImportFile}
+            >
+              <input type="file" accept=".html,.htm,.shippie,application/json" onchange={importSelectedFiles} />
+              <span>Choose or drop HTML / .shippie</span>
+            </label>
             <textarea
               bind:value={packageImportPayload}
               placeholder="Paste a .shippie archive JSON or manifest.json"
@@ -1792,7 +2964,7 @@
         {:else}
           <div class="section-head">
             <h2>Your Data</h2>
-            <p>Receipts and local storage are user-owned. Export proves what is installed without needing an account.</p>
+            <p>Each tool keeps its data private by default. Apps using Private Sync add sealed recovery copies that Shippie can store but cannot open.</p>
           </div>
           {#if yourDataOpenForApp && appById.get(yourDataOpenForApp)}
             <div class="data-trigger" role="status">
@@ -1800,6 +2972,30 @@
               <button onclick={() => yourDataHost.close()}>Dismiss</button>
             </div>
           {/if}
+          <div class="sealed-data-panel" role="status">
+            <div>
+              <p class="mini-label">Private Sync</p>
+              <h3>Sealed copies, ready for every app</h3>
+              <p>
+                Current and future Shippie apps inherit the same recovery surface: add a device,
+                move phones, restore, and keep safe copies without giving Shippie the contents.
+              </p>
+            </div>
+            <div class="sealed-copy-stack" aria-label="Safe copy status">
+              <span><strong>{installedApps.length}</strong> installed tools covered by Your Data</span>
+              <span><strong>{totalRows}</strong> local rows on this device</span>
+              <span><strong>0</strong> readable rows in Shippie's sealed store</span>
+            </div>
+            <div class="sealed-actions">
+              <button onclick={() => openContainerYourData('add-device')}>Add another device</button>
+              <button onclick={() => openContainerYourData('move-phone')}>Move to new phone</button>
+              <button onclick={() => openContainerYourData('recovery-card')}>Show recovery card</button>
+              <button onclick={() => openContainerYourData('restore')}>Restore data</button>
+            </div>
+            {#if dataRecoveryStatus}
+              <p class="sealed-status">{dataRecoveryStatus}</p>
+            {/if}
+          </div>
           <div class="ai-readiness" role="status">
             <div>
               <p class="mini-label">On-device AI</p>
@@ -1813,6 +3009,53 @@
               <button onclick={refreshAiReadiness}>Check again</button>
             </div>
           </div>
+
+          <!--
+            Slate v4 Phase 0 — Cross-tool observation flows.
+            Lists every installed provider's declared `crossAppIntents.provides`
+            and, for each intent, the consumers with an active grant. Revoking
+            here disables the consumer's `intent.subscribe` for that intent on
+            the next cross-app prompt.
+          -->
+          <div class="data-section observation-flows">
+            <div class="section-head">
+              <h3>Cross-tool flows</h3>
+              <p>What each tool can broadcast, and which other tools have access.</p>
+            </div>
+            {#if observationFlows.length === 0}
+              <p class="muted">No cross-tool intents declared by installed apps yet.</p>
+            {:else}
+              <ul class="flow-list">
+                {#each observationFlows as flow (flow.provider.id + ':' + flow.intent)}
+                  <li class="flow-row">
+                    <div class="flow-meta">
+                      <strong>{flow.provider.name}</strong>
+                      <code class="flow-intent">{flow.intent}</code>
+                    </div>
+                    {#if flow.consumers.length === 0}
+                      <p class="muted small">No subscribers yet.</p>
+                    {:else}
+                      <ul class="flow-consumers">
+                        {#each flow.consumers as consumer (consumer.id)}
+                          <li>
+                            <span>{consumer.name}</span>
+                            <button
+                              class="revoke-button"
+                              onclick={() => {
+                                intentGrants = revokeIntent(intentGrants, consumer.id, flow.intent);
+                              }}
+                              aria-label={`Revoke ${consumer.name}'s access to ${flow.intent}`}
+                            >Revoke</button>
+                          </li>
+                        {/each}
+                      </ul>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+
           <div class="data-list">
             {#each installedApps as app (app.id)}
               <article>
@@ -1823,6 +3066,7 @@
                     · {(rowsByApp[app.id]?.length ?? 0)} local rows
                     · {app.packageHash.slice(0, 18)}...
                   </p>
+                  <p class="data-trust">{dataTrustLine(app)}</p>
                 </div>
                 <div class="row-actions">
                   <button onclick={() => openApp(app.id)}>Open</button>
@@ -1834,10 +3078,10 @@
           </div>
           {#if recoveredReceipts.length > 0}
             <div class="recovered-receipts">
-              <h3>Receipts Waiting For Packages</h3>
+              <h3>Saved Installs Waiting For Packages</h3>
               <p>
-                These came back from a backup, but their app package is not installed here yet.
-                Your receipt stays local until you import the matching .shippie archive.
+                These came back from a backup, but the matching tool is not installed here yet.
+                The install record stays local until you import the matching .shippie archive.
               </p>
               <div class="data-list">
                 {#each recoveredReceipts as item (item.appId)}
@@ -1852,21 +3096,21 @@
                     </div>
                     <div class="row-actions">
                       <button onclick={() => importPackageForReceipt(item.appId)}>Import package</button>
-                      <button onclick={() => forgetRecoveredReceipt(item.appId)}>Forget receipt</button>
+                      <button onclick={() => forgetRecoveredReceipt(item.appId)}>Forget record</button>
                     </div>
                   </article>
                 {/each}
               </div>
             </div>
           {/if}
-          <button class="export-button" onclick={exportReceipts}>Export receipts</button>
+          <button class="export-button" onclick={exportReceipts}>Export install records</button>
           {#if receiptExport}
             <pre class="receipt-export">{receiptExport}</pre>
           {/if}
           <div class="backup-box">
             <div>
               <h3>Encrypted Backup</h3>
-              <p>Bundles receipts and local namespace rows into one passphrase-encrypted export.</p>
+              <p>Bundles saved installs and local tool records into one passphrase-encrypted export.</p>
             </div>
             <input
               type="password"
@@ -1885,7 +3129,7 @@
           <div class="backup-box">
             <div>
               <h3>Restore Backup</h3>
-              <p>Rehydrates receipts and rows locally. Unknown apps stay as receipts until package import exists.</p>
+              <p>Restores saved installs and local records. Unknown tools wait locally until their package is imported.</p>
             </div>
             <textarea
               bind:value={restorePayload}
@@ -1931,16 +3175,16 @@
 
     <div class="inspector">
       <section>
-        <h3>Local Namespaces</h3>
+        <h3>Tool Data</h3>
         {#each installedApps as app (app.id)}
           <p><code>{app.slug}</code> {rowsByApp[app.id]?.length ?? 0} rows</p>
         {/each}
       </section>
 
       <section>
-        <h3>Bridge Calls</h3>
+        <h3>Activity</h3>
         {#if logs.length === 0}
-          <p>No bridge calls yet.</p>
+          <p>No activity yet.</p>
         {:else}
           <ul>
             {#each logs as log (log.id)}
@@ -1961,7 +3205,9 @@
 
 <style>
   .shell {
-    min-height: calc(100vh - var(--nav-height));
+    /* dvh cascade — see +layout.svelte for rationale. */
+    min-height: calc(100svh - var(--nav-height));
+    min-height: calc(100dvh - var(--nav-height));
     display: grid;
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
     background: var(--bg);
@@ -2130,6 +3376,30 @@
     display: grid;
     gap: 8px;
   }
+  .dropzone {
+    min-height: 92px;
+    border: 1px dashed var(--border);
+    background: var(--surface);
+    display: grid;
+    place-items: center;
+    padding: var(--space-md);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--small-size);
+    cursor: pointer;
+  }
+  .dropzone.active,
+  .dropzone:hover {
+    border-color: var(--sunset);
+    color: var(--text);
+  }
+  .dropzone input {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
   .collection-list article,
   .data-list article {
     padding: var(--space-md);
@@ -2216,6 +3486,138 @@
     color: var(--text);
     font-family: var(--font-mono);
     font-size: var(--caption-size);
+  }
+  .sealed-data-panel {
+    padding: var(--space-md);
+    display: grid;
+    gap: var(--space-sm);
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    background: var(--bg-pure);
+  }
+  .sealed-data-panel h3,
+  .sealed-data-panel p {
+    margin: 0;
+  }
+  .sealed-data-panel p:not(.mini-label),
+  .sealed-status {
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+  .sealed-copy-stack {
+    display: grid;
+    gap: 6px;
+    padding: var(--space-sm) 0;
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .sealed-copy-stack span {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+  }
+  .sealed-copy-stack strong {
+    color: var(--text);
+  }
+  .sealed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sealed-actions button {
+    padding: 0.55rem 0.75rem;
+  }
+  .sealed-status {
+    padding-top: var(--space-xs);
+    font-size: var(--small-size);
+  }
+  .observation-flows {
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .observation-flows .section-head h3 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .observation-flows .section-head p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .flow-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .flow-row {
+    border-top: 1px solid var(--border-light);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .flow-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .flow-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .flow-meta strong {
+    font-weight: 600;
+  }
+  .flow-intent {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+  }
+  .flow-consumers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .flow-consumers li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .revoke-button {
+    padding: 4px 10px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .revoke-button:hover {
+    border-color: var(--text);
+    color: var(--text);
+  }
+  .small {
+    font-size: 13px;
   }
   .row-actions {
     display: flex;
@@ -2411,22 +3813,29 @@
     cursor: pointer;
   }
 
-  /* Unification plan — focused mode. /run/<slug>/ → /container?app=
-     &focused=1 lands here. Full-bleed app + invisible chrome. The
+  /* Unification plan — focused mode. /run/<slug>/ and /container?app=
+     &focused=1 land here. Full-bleed app + invisible chrome. The
      AppSwitcherGesture component owns its own overlays; this just
      sets up the iframe stage. */
   .focused-shell {
     position: fixed;
     inset: 0;
+    z-index: 1000;
     background: var(--bg-pure, #fff);
   }
   .focused-frame {
     position: fixed;
     inset: 0;
+    /* Stop pull-to-refresh inside a running tool from reloading the
+       Shippie shell. Containment also prevents iOS rubber-band-bounce
+       from exposing the cream drawer behind the running iframe. */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
   .focused-frame :global(.frame-stage) {
     position: fixed;
     inset: 0;
+    overscroll-behavior: contain;
   }
   .focused-frame :global(.frame-stage iframe) {
     width: 100%;
@@ -2443,91 +3852,447 @@
     place-items: center;
     padding: clamp(1.5rem, 4vw, 3rem);
   }
-
-  /* Persistent exit affordance — fixed top-left, always visible in
-     focused mode. Distinct from the drawer-internal .focused-home
-     (which is gated behind opening the drawer). Sits above the iframe;
-     never obscures the corner of the underlying app's content beyond
-     a small badge. Respects iOS safe-area-inset-top. */
-  .focused-exit-pill {
+  .private-join-toast {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--space-md));
-    left: calc(env(safe-area-inset-left, 0px) + var(--space-md));
-    z-index: 60;
+    left: 50%;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 1015;
+    max-width: min(520px, calc(100vw - 28px));
+    padding: 10px 14px;
+    border: 1px solid rgba(20, 18, 15, 0.14);
+    background: rgba(255, 253, 247, 0.94);
+    color: #14120F;
+    box-shadow: 0 14px 34px rgba(20, 18, 15, 0.16);
+    font-size: 13px;
+    line-height: 1.35;
+    text-align: center;
+    overflow-wrap: anywhere;
+    backdrop-filter: blur(10px);
+  }
+  .private-join-toast[data-state='ready'] {
+    border-color: rgba(62, 125, 77, 0.32);
+  }
+  .private-join-toast[data-state='error'] {
+    border-color: rgba(178, 58, 43, 0.34);
+    color: #7A2118;
+  }
+
+  .sr-only {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* Thin focused-mode chrome. Shippie owns two small marks only:
+     tools/data on the left, current-tool share/options on the right.
+     No hidden hit-zones are active in focused mode, so app builders
+     keep their own headers, nav, inputs, swipes, and edge targets. */
+  .focused-chrome-button {
+    position: fixed;
+    top: 50%;
+    z-index: 62;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.65rem 0.4rem 0.45rem;
+    justify-content: center;
+    width: 42px;
+    height: 46px;
+    padding: 0;
     background: rgba(20, 18, 15, 0.65);
     border: 1px solid rgba(168, 196, 145, 0.35);
     color: var(--text);
-    font-family: var(--font-heading);
+    font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 0.95rem;
-    letter-spacing: -0.015em;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: 0;
     text-decoration: none;
+    cursor: pointer;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    opacity: 0.7;
-    transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    opacity: 0.42;
+    transform: translateY(-50%);
+    box-shadow: 0 8px 28px rgba(20, 18, 15, 0.16);
+    transition:
+      opacity 0.18s ease,
+      background 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
   }
-  .focused-exit-pill:hover,
-  .focused-exit-pill:focus-visible {
+  .focused-chrome-tools {
+    left: calc(env(safe-area-inset-left, 0px) - 18px);
+    border-left: 0;
+    border-radius: 0 16px 16px 0;
+  }
+  .focused-chrome-options {
+    right: calc(env(safe-area-inset-right, 0px) - 18px);
+    border-right: 0;
+    border-radius: 16px 0 0 16px;
+  }
+  /* Safe-edges contract: when the active app declares it owns the
+     bottom or the entire viewport via @shippie/iframe-sdk
+     `safeEdges.declareInputRegion()`, compact the chrome buttons so
+     their hit area stays at the edge of game controls. Keep them
+     visibly identifiable, though: a too-thin sliver reads as "missing"
+     in launch games like Snake and prevents people finding share/data.
+
+     'bottom' suppresses just the left tools pill (the one that
+     overlaps Stack's leftmost touch button). 'all' shrinks both. */
+  .focused-chrome-button.input-region-bottom.focused-chrome-tools,
+  .focused-chrome-button.input-region-all {
+    width: 36px;
+    opacity: 0.82;
+    background: rgba(20, 18, 15, 0.74);
+  }
+  .focused-chrome-tools.input-region-bottom,
+  .focused-chrome-tools.input-region-all {
+    left: calc(env(safe-area-inset-left, 0px) - 2px);
+  }
+  .focused-chrome-options.input-region-all {
+    right: calc(env(safe-area-inset-right, 0px) - 2px);
+  }
+  .focused-chrome-button.input-region-bottom.focused-chrome-tools:hover,
+  .focused-chrome-button.input-region-bottom.focused-chrome-tools:focus-visible,
+  .focused-chrome-button.input-region-all:hover,
+  .focused-chrome-button.input-region-all:focus-visible {
+    width: 42px;
+    opacity: 1;
+  }
+
+  .focused-chrome-button.first-run {
+    animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
+  }
+  @keyframes shippie-mark-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.42; }
+    35%  { box-shadow: 0 0 0 6px rgba(232, 96, 60, 0.30); opacity: 1; }
+    70%  { box-shadow: 0 0 0 14px rgba(232, 96, 60, 0); opacity: 1; }
+    100% { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.42; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .focused-chrome-button.first-run { animation: none; }
+  }
+  /* Keyboard open inside the running tool — hide the chrome so it
+     doesn't float over the keyboard area. The :global selector matches
+     the data attribute set on <html> by handleToolKeyboardMessage. */
+  :global(html[data-keyboard-open="true"]) .focused-chrome-button {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  :global(html[data-keyboard-open="true"]) .focused-chrome-tools {
+    transform: translateY(-50%) translateX(-100%);
+  }
+  :global(html[data-keyboard-open="true"]) .focused-chrome-options {
+    transform: translateY(-50%) translateX(100%);
+  }
+  .focused-chrome-button:hover,
+  .focused-chrome-button:focus-visible,
+  .focused-chrome-button[aria-expanded='true'] {
     opacity: 1;
     background: rgba(20, 18, 15, 0.85);
     border-color: var(--sage-leaf);
   }
-  .focused-exit-pill img {
+  .focused-chrome-tools:hover,
+  .focused-chrome-tools:focus-visible,
+  .focused-chrome-tools[aria-expanded='true'] {
+    transform: translateY(-50%) translateX(18px);
+  }
+  .focused-chrome-options:hover,
+  .focused-chrome-options:focus-visible,
+  .focused-chrome-options[aria-expanded='true'] {
+    transform: translateY(-50%) translateX(-18px);
+  }
+  .focused-chrome-button img {
     display: block;
     flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+  .focused-mark-letter {
+    display: none;
+    color: #FAF7EF;
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .focused-chrome-tools.input-region-bottom img,
+  .focused-chrome-tools.input-region-all img {
+    display: none;
+  }
+  .focused-chrome-tools.input-region-bottom .focused-mark-letter,
+  .focused-chrome-tools.input-region-all .focused-mark-letter {
+    display: block;
+  }
+  @media (max-width: 640px) {
+    .focused-chrome-button {
+      width: 40px;
+      height: 48px;
+    }
+    .focused-chrome-tools {
+      left: calc(env(safe-area-inset-left, 0px) - 16px);
+      border-radius: 0 18px 18px 0;
+    }
+    .focused-chrome-options {
+      right: calc(env(safe-area-inset-right, 0px) - 16px);
+      border-radius: 18px 0 0 18px;
+    }
+    .focused-chrome-tools.input-region-bottom,
+    .focused-chrome-tools.input-region-all {
+      left: calc(env(safe-area-inset-left, 0px) - 2px);
+    }
+    .focused-chrome-options.input-region-all {
+      right: calc(env(safe-area-inset-right, 0px) - 2px);
+    }
+  }
+
+  .focused-options-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 58;
+    padding: 0;
+    border: 0;
+    background: rgba(20, 18, 15, 0.28);
+    cursor: default;
+  }
+  .focused-options-panel {
+    position: fixed;
+    top: 50%;
+    right: calc(env(safe-area-inset-right, 0px) + 48px);
+    z-index: 64;
+    width: min(340px, calc(100vw - 24px));
+    max-height: min(80dvh, 620px);
+    overflow-y: auto;
+    padding: 16px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: var(--cream-bg, #faf7ef);
+    color: var(--cream-text, #14120f);
+    box-shadow: 0 18px 54px rgba(20, 18, 15, 0.24);
+    transform: translateY(-50%);
+  }
+  .focused-options-head {
+    display: grid;
+    gap: 6px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+  }
+  .focused-options-kicker,
+  .focused-options-head p,
+  .focused-option-row small {
+    margin: 0;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+  }
+  .focused-options-kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .focused-options-head h2 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 28px;
+    line-height: 1;
+  }
+  .focused-options-head p {
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  .focused-options-list {
+    display: grid;
+    gap: 8px;
+    padding-top: 12px;
+  }
+  .focused-share-qr {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0 0;
+  }
+  .focused-share-qr-code {
+    width: 88px;
+    height: 88px;
+    padding: 6px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: #faf7ef;
+  }
+  .focused-share-qr-code :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .focused-share-qr p {
+    margin: 0;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+  .focused-option-row {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: rgba(20, 18, 15, 0.025);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+  }
+  .focused-option-row:hover,
+  .focused-option-row:focus-visible {
+    border-color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.07);
+    transform: translateX(-2px);
+  }
+  .focused-option-row.primary {
+    border-color: rgba(232, 96, 60, 0.34);
+    background: rgba(232, 96, 60, 0.09);
+  }
+  .focused-option-row span {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    line-height: 1.05;
+  }
+  .focused-option-row small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+  }
+  @media (max-width: 640px) {
+    .focused-options-panel {
+      top: auto;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: auto;
+      max-height: 72dvh;
+      padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+      border-right: 0;
+      border-bottom: 0;
+      border-left: 0;
+      transform: none;
+    }
   }
 
   .focused-drawer {
-    padding: env(safe-area-inset-top, 24px) 20px env(safe-area-inset-bottom, 24px);
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    color: var(--text, #14120f);
+    gap: 14px;
+    color: var(--cream-text, #14120f);
+  }
+  .focused-drawer-grip {
+    display: none;
+    align-self: center;
+    width: 44px;
+    height: 3px;
+    background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
   .focused-drawer-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
   }
   .focused-home {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    min-width: 0;
+    gap: 10px;
     color: inherit;
     text-decoration: none;
-    font-weight: 600;
-    font-size: 18px;
   }
-  .focused-rocket {
-    font-size: 20px;
+  .focused-brand-copy {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+  }
+  .focused-brand-copy strong {
+    font-family: var(--font-heading);
+    font-size: 22px;
     line-height: 1;
   }
-  .focused-data {
-    color: var(--sunset, #e8603c);
-    font-size: 13px;
+  .focused-brand-copy small {
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    font-size: 12px;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+  .focused-drawer-actions {
+    display: inline-flex;
+    flex-shrink: 0;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+  }
+  .focused-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 11px;
+    border: 0;
+    background: transparent;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.58));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
     text-decoration: none;
-    padding: 6px 12px;
-    border: 1px solid rgba(232, 96, 60, 0.4);
-    border-radius: 999px;
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease;
   }
-  .focused-data:hover {
-    background: rgba(232, 96, 60, 0.08);
+  .focused-action + .focused-action {
+    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
   }
+  .focused-action:hover,
+  .focused-action:focus-visible {
+    color: var(--cream-text, #14120f);
+    background: rgba(20, 18, 15, 0.04);
+  }
+  .focused-action-data {
+    color: var(--sunset, #e8603c);
+  }
+  .focused-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .focused-section-head h2,
   .focused-drawer h2 {
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.14em;
+    font-family: var(--font-mono);
+  }
+  .focused-section-head span {
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.45));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
   .focused-insights-heading {
     margin-top: 8px;
@@ -2541,8 +4306,8 @@
     gap: 6px;
   }
   .focused-insight {
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: var(--cream-bg, rgba(255, 255, 255, 0.85));
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
     border-radius: 12px;
     padding: 12px 14px;
   }
@@ -2552,7 +4317,7 @@
   }
   .focused-insight p {
     margin: 4px 0 0;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
     font-size: 13px;
   }
   .focused-insight-high {
@@ -2565,43 +4330,115 @@
   }
   .focused-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
   .focused-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    padding: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background: rgba(255, 255, 255, 0.85);
-    cursor: pointer;
-    text-align: left;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px;
+    align-items: center;
+    min-height: 48px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: transparent;
     color: inherit;
-    font: inherit;
+    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+  }
+  .focused-tile:hover {
+    border-color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.07);
+    transform: translateX(2px);
   }
   .focused-tile.active {
-    border-color: var(--accent);
-    background: #fff;
-    box-shadow: 0 0 0 2px var(--accent);
+    border-color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.1);
+    box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
-  .focused-tile strong {
-    font-size: 14px;
+  .focused-open-tool {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 7px 9px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
   }
-  .focused-tile small {
-    color: rgba(0, 0, 0, 0.55);
-    font-size: 12px;
+  .focused-open-tool strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-heading);
+    font-size: 15px;
+    line-height: 1.1;
+  }
+  .focused-open-tool small {
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .focused-pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    min-width: 34px;
+    border: 0;
+    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: transparent;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .focused-pin:hover,
+  .focused-pin:focus-visible,
+  .focused-pin.active {
+    color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.08);
   }
   .focused-dot {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     background: var(--accent);
     color: #fff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-family: var(--font-heading);
     font-weight: 700;
-    margin-bottom: 4px;
+    font-size: 15px;
+  }
+  @media (max-width: 640px) {
+    .focused-drawer {
+      padding-top: 10px;
+      gap: 12px;
+    }
+    .focused-drawer-grip {
+      display: block;
+    }
+    .focused-drawer-head {
+      padding-bottom: 12px;
+    }
+    .focused-brand-copy strong {
+      font-size: 20px;
+    }
+    .focused-brand-copy small {
+      font-size: 11px;
+    }
+    .focused-action {
+      min-height: 32px;
+      padding: 0 9px;
+      font-size: 10px;
+    }
   }
 </style>

@@ -64,7 +64,7 @@
   <form onsubmit={onSubmit} class="form">
     <label>
       <span>Upstream URL</span>
-      <input name="upstream_url" type="url" placeholder="https://mevrouw.vercel.app" required />
+      <input name="upstream_url" type="url" placeholder="https://mevrouw.example.com" required />
     </label>
     <label>
       <span>Slug</span>

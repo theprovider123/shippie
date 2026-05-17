@@ -8,9 +8,28 @@
   "background_color": "#0E0E11",
   "display": "standalone",
   "orientation": "portrait",
-  "ai": ["sentiment", "embed", "classify"],
+  "ai": [
+    "sentiment",
+    "embed",
+    "classify"
+  ],
   "intents": {
-    "consumes": ["shopping-list", "cooked-meal", "workout-completed", "body-metrics-logged"]
+    "consumes": [
+      "shopping-list",
+      "cooked-meal",
+      "workout-completed",
+      "body-metrics-logged"
+    ]
+  },
+  "spaces": {
+    "enabled": true,
+    "roles": [
+      { "id": "owner", "permissions": ["read", "write", "invite", "moderate"] },
+      { "id": "editor", "permissions": ["read", "write"] },
+      { "id": "viewer", "permissions": ["read"] }
+    ],
+    "syncMode": "sealed-cloud",
+    "archivable": true
   },
   "privacy": {
     "local_only": true,
@@ -29,5 +48,15 @@
       "updated_at": "datetime"
     }
   },
-  "topics": ["work", "relationships", "health", "hobbies"]
+  "topics": [
+    "work",
+    "relationships",
+    "health",
+    "hobbies"
+  ],
+  "curation": {
+    "surface": "archived",
+    "category": "tools",
+    "successor": "therapy-notes"
+  }
 }

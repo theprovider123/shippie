@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { WriteEntry } from './pages/WriteEntry.tsx';
 import { QuickEntry } from './pages/QuickEntry.tsx';
 import { Browse } from './pages/Browse.tsx';
@@ -10,8 +10,10 @@ import { isLocalAiAvailable } from './ai/runtime.ts';
 import { readImportFragment } from '@shippie/share';
 import { ImportCard } from './share/ImportCard.tsx';
 import { checkJournalImport, type JournalImportCheck } from './share/journal-share.ts';
-import { wrapNavigation } from '@shippie/sdk/wrapper';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { resolveLocalDb } from './db/runtime.ts';
+import { migrateJournalEntriesToDocument } from './db/document.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_journal' });
 
@@ -29,11 +31,33 @@ const TABS: Array<{ id: Tab; label: string }> = [
 
 export function App() {
   const [tab, setTab] = useState<Tab>('quick');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Tab>('quick', setTab),
+    [],
+  );
   const [refreshKey, setRefreshKey] = useState(0);
   const [encryptionNotice, setEncryptionNotice] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<
     Extract<JournalImportCheck, { ok: true }> | null
   >(null);
+
+  useEffect(() => {
+    return () => localNavigation.destroy();
+  }, [localNavigation]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await migrateJournalEntriesToDocument(resolveLocalDb());
+      } catch (err) {
+        if (!cancelled) console.info('shippie:journal sealed migration postponed', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     // The SQLCipher status is reported by the runtime via `shippie.local.db.usage()` —
@@ -64,11 +88,8 @@ export function App() {
   }, []);
 
   const navigate = (next: Tab) => {
-    void wrapNavigation(() => setTab(next), { kind: 'crossfade' });
-  };
-
-  const openYourData = () => {
-    shippie.openYourData({ appSlug: 'journal' });
+    if (next === tab) return;
+    void localNavigation.navigate(next, { kind: 'crossfade' });
   };
 
   return (
@@ -103,10 +124,6 @@ export function App() {
           </button>
         ))}
       </nav>
-
-      <button type="button" className="your-data-button" onClick={openYourData} aria-label="Your data">
-        Your Data
-      </button>
 
       {pendingImport ? (
         <ImportCard

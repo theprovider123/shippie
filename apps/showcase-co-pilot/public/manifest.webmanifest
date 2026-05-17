@@ -1,0 +1,11 @@
+{
+  "name": "Co-Pilot",
+  "short_name": "CoPilot",
+  "description": "Separated co-parent schedules, meds, and handover notes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#EDF3F1",
+  "theme_color": "#4E7C9A",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

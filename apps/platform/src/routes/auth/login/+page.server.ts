@@ -2,7 +2,7 @@
  * /auth/login — page load + form actions.
  *
  * Actions:
- *   ?/email   → mint a magic-link token, send via Resend or print to console
+ *   ?/email   → mint a magic-link token, send through Cloudflare Email or print to console
  *   ?/github  → kick off OAuth (handled in +server.ts via redirect)
  *
  * GitHub starts via a separate redirect endpoint at /auth/login (POST → action),
@@ -16,6 +16,7 @@ import { isGoogleConfigured } from '$server/auth/google';
 import { mintVerificationToken } from '$server/auth/verification-tokens';
 import { sendMagicLink } from '$server/auth/email';
 import { getAuthSecret } from '$server/auth/env';
+import { checkMagicLinkRateLimit } from '$server/auth/rate-limit';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
   // Already signed in? Bounce to the return target or home.
@@ -42,6 +43,20 @@ export const actions: Actions = {
     if (!platform?.env.DB) {
       return fail(500, { error: 'Database unavailable.' });
     }
+    const rateLimit = await checkMagicLinkRateLimit({
+      db: platform.env.DB,
+      request,
+      email,
+    }).catch((err) => {
+      console.error('[auth] checkMagicLinkRateLimit failed', err);
+      return { ok: false as const, remaining: 0, retryAfterMs: 60_000 };
+    });
+    if (!rateLimit.ok) {
+      return fail(429, {
+        error: 'Too many sign-in attempts. Please try again in a few minutes.',
+        retryAfterMs: rateLimit.retryAfterMs,
+      });
+    }
 
     let mint;
     try {
@@ -56,7 +71,13 @@ export const actions: Actions = {
     }
 
     const origin = platform.env.PUBLIC_ORIGIN ?? url.origin;
-    const link = `${origin.replace(/\/$/, '')}/auth/email-link/${encodeURIComponent(mint.token)}`;
+    const returnTo = url.searchParams.get('return_to');
+    const linkUrl = new URL(
+      `/auth/email-link/${encodeURIComponent(mint.token)}`,
+      origin.replace(/\/$/, ''),
+    );
+    if (returnTo) linkUrl.searchParams.set('return_to', returnTo);
+    const link = linkUrl.toString();
 
     try {
       await sendMagicLink({ to: email, url: link, env: platform.env });

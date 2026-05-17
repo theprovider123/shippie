@@ -85,7 +85,17 @@ export const SEED_RECIPES: SeedRecipe[] = [
   },
 ];
 
+const seedLocks = new WeakMap<ShippieLocalDb, Promise<{ seeded: boolean; count: number }>>();
+
 export async function seedIfEmpty(db: ShippieLocalDb): Promise<{ seeded: boolean; count: number }> {
+  const pending = seedLocks.get(db);
+  if (pending) return pending;
+  const next = seedIfEmptyOnce(db).finally(() => seedLocks.delete(db));
+  seedLocks.set(db, next);
+  return next;
+}
+
+async function seedIfEmptyOnce(db: ShippieLocalDb): Promise<{ seeded: boolean; count: number }> {
   await ensureSchema(db);
   const existing = await listRecipes(db);
   if (existing.length > 0) return { seeded: false, count: existing.length };

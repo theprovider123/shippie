@@ -124,6 +124,18 @@ export interface PackageRuntimeTargets {
   minimumSdk: string;
 }
 
+export interface PackageSpaceRole {
+  id: string;
+  permissions: readonly string[];
+}
+
+export interface PackageSpaces {
+  enabled: boolean;
+  roles: readonly PackageSpaceRole[];
+  syncMode: 'gossip' | 'sealed-cloud' | 'hub' | 'inherited';
+  archivable: boolean;
+}
+
 export interface AppPackageManifest {
   schema: typeof SHIPPIE_PACKAGE_SCHEMA;
   id: string;
@@ -137,6 +149,22 @@ export interface AppPackageManifest {
   maker: PackageMaker;
   domains: PackageDomains;
   runtime: PackageRuntimeTargets;
+  /**
+   * Marketplace surface for the app. Carried through the package
+   * manifest so a third-party app deployed via `pipeline.ts:deployStatic`
+   * keeps its surface designation when re-installed via the package
+   * import path. Allowed: featured | arcade | labs | archived.
+   * Optional for back-compat with manifests built before slate v4
+   * (those default to 'featured').
+   */
+  surface?: 'featured' | 'arcade' | 'labs' | 'archived';
+  /**
+   * Private Spaces declaration copied from shippie.json. This is metadata,
+   * not access control: invite grants and app code still enforce joins.
+   * Carrying it in the portable package lets the container and Hubs show
+   * the right "join a space" affordances after install.
+   */
+  spaces?: PackageSpaces;
 }
 
 export interface AppVersionRecord {
@@ -399,6 +427,37 @@ export function assertValidPackageManifest(manifest: AppPackageManifest): void {
     throw new AppPackageContractError('Canonical domain must be an HTTPS or local URL.', 'invalid_canonical_domain', {
       canonical: manifest.domains.canonical,
     });
+  }
+
+  if (manifest.spaces) assertValidPackageSpaces(manifest.spaces);
+}
+
+function assertValidPackageSpaces(spaces: PackageSpaces): void {
+  if (spaces.enabled !== true) {
+    throw new AppPackageContractError('Package spaces must be enabled when present.', 'invalid_spaces');
+  }
+  if (!Array.isArray(spaces.roles) || spaces.roles.length === 0) {
+    throw new AppPackageContractError('Package spaces require at least one role.', 'invalid_space_roles');
+  }
+  if (!['gossip', 'sealed-cloud', 'hub', 'inherited'].includes(spaces.syncMode)) {
+    throw new AppPackageContractError('Package space sync mode is invalid.', 'invalid_space_sync_mode', {
+      syncMode: spaces.syncMode,
+    });
+  }
+  if (typeof spaces.archivable !== 'boolean') {
+    throw new AppPackageContractError('Package spaces archivable must be boolean.', 'invalid_space_archive_mode');
+  }
+  for (const role of spaces.roles) {
+    if (!/^[a-z][a-z0-9_-]{0,63}$/.test(role.id)) {
+      throw new AppPackageContractError('Package space role id is invalid.', 'invalid_space_role', {
+        role: role.id,
+      });
+    }
+    if (!Array.isArray(role.permissions)) {
+      throw new AppPackageContractError('Package space role permissions must be an array.', 'invalid_space_permissions', {
+        role: role.id,
+      });
+    }
   }
 }
 

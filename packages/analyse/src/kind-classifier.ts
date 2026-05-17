@@ -47,8 +47,6 @@ const CLOUD_PROVIDERS: ProviderRule[] = [
   { pattern: /firebase\/storage/, provider: 'firebase-storage' },
   { pattern: /(?:^|[^a-z])next-auth/, provider: 'next-auth', transform: 'authjs-to-local-identity' },
   { pattern: /@auth\/(?:core|sveltekit|nextjs)/, provider: 'authjs', transform: 'authjs-to-local-identity' },
-  { pattern: /@vercel\/postgres/, provider: 'vercel-postgres', blocker: 'vercel-postgres' },
-  { pattern: /@neondatabase\/serverless/, provider: 'neon', blocker: 'neon-serverless' },
   { pattern: /@planetscale\/database/, provider: 'planetscale', blocker: 'planetscale' },
 ];
 
@@ -88,6 +86,7 @@ interface ShippieConnectedRule {
 }
 
 const SHIPPIE_CONNECTED_RULES: ShippieConnectedRule[] = [
+  { pattern: /@shippie\/spaces/, signal: 'shippie-spaces' },
   { pattern: /@shippie\/proximity/, signal: 'shippie-proximity' },
   { pattern: /\bcreateGroup\s*\(/, signal: 'shippie-create-group' },
   { pattern: /\bjoinGroup\s*\(/, signal: 'shippie-join-group' },
@@ -138,15 +137,6 @@ export function classifyKind(files: ReadonlyMap<string, Uint8Array>): AppKindDet
   let combined = '';
   let scannedBytes = 0;
   let totalBytes = 0;
-
-  for (const [path, bytes] of files) {
-    totalBytes += bytes.byteLength;
-    if (shouldScanFile(path)) {
-      combined += decoder.decode(bytes) + '\n';
-      scannedBytes += bytes.byteLength;
-    }
-  }
-
   const reasons: string[] = [];
   const backendProviders = new Set<string>();
   const blockers = new Set<string>();
@@ -154,6 +144,16 @@ export function classifyKind(files: ReadonlyMap<string, Uint8Array>): AppKindDet
   const localSignals = new Set<string>();
   const externalDomains = new Set<string>();
   const shippieConnectedSignals = new Set<string>();
+
+  for (const [path, bytes] of files) {
+    totalBytes += bytes.byteLength;
+    if (shouldScanFile(path)) {
+      combined += decoder.decode(bytes) + '\n';
+      scannedBytes += bytes.byteLength;
+    }
+    const spaceSignal = readSpacesSignal(path, bytes);
+    if (spaceSignal) shippieConnectedSignals.add(spaceSignal);
+  }
 
   for (const rule of CLOUD_PROVIDERS) {
     if (rule.pattern.test(combined)) {
@@ -247,4 +247,18 @@ export function classifyKind(files: ReadonlyMap<string, Uint8Array>): AppKindDet
       supportedTransforms: [...transforms].sort(),
     },
   };
+}
+
+function readSpacesSignal(path: string, bytes: Uint8Array): string | null {
+  if (!/(^|\/)shippie\.json$/i.test(path)) return null;
+  try {
+    const parsed = JSON.parse(decoder.decode(bytes)) as {
+      spaces?: { enabled?: unknown; syncMode?: unknown };
+    };
+    if (parsed.spaces?.enabled !== true) return null;
+    const syncMode = typeof parsed.spaces.syncMode === 'string' ? parsed.spaces.syncMode : 'declared';
+    return `shippie-spaces-${syncMode}`;
+  } catch {
+    return null;
+  }
 }

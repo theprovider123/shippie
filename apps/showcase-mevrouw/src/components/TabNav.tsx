@@ -25,8 +25,7 @@ interface Props {
 export function TabNav({ current, onChange, unreadCount = 0 }: Props) {
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 border-t border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-md z-30"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="mevrouw-dock fixed border border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-md z-30"
       aria-label="Primary"
     >
       <ul className="flex justify-between max-w-md mx-auto px-2">

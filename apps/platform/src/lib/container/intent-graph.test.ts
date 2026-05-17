@@ -10,7 +10,7 @@
  *   2. Every provider has at least one declared consumer OR is on
  *      the allowed-orphan list (intents some apps may listen to in
  *      future without yet having a producer in-tree).
- *   3. The cross-cluster acceptance pair (Recipe Saver →
+ *   3. The cross-cluster acceptance pair (Recipe Saver ->
  *      Habit Tracker on `cooked-meal`) resolves through the
  *      registry exactly the way the design pass requires.
  *   4. Heavy-hitting intents (cooked-meal, workout-completed,
@@ -29,14 +29,123 @@ import { curatedApps } from './state';
  * dined-out, walked) will gain consumers in P7+ as more apps land.
  */
 const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
+  // Field Kitchen — fermentation has no current consumer (was Bake's
+  // outbound signal for a future "fermentation tracker" sibling).
+  'dough-ferment-started',
+  // Hearth — household-internal events. The cross-app graph might
+  // surface these via /today but no other app subscribes by design
+  // (housemates' chore rota isn't another app's business).
+  'chore-done',
+  'fridge-added',
+  'dinner-eaten',
+  // Co-Pilot — separated co-parents domain; no app consumes by
+  // design (kid-side data is deliberately out of scope).
+  'coparent-handover-noted',
+  'coparent-med-given',
+  'coparent-day-changed',
+  // Cycle — predicted-window publishes for body-metrics / mood
+  // correlation surfaces that aren't curated yet.
+  'cycle-window-predicted',
+  // Story Studio — creation-only; share signals don't have curated
+  // consumers (the recipient's grandparent device is the consumer).
+  'story-made',
+  'story-shared',
+  // Atlas — trip lifecycle has no curated consumer in-tree (an
+  // analytics surface might land later).
+  'trip-started',
+  'stop-pinned',
+  'trip-ended',
+  // Symptom Diary — med-taken is provided alongside symptom-logged;
+  // no curated cross-app consumer for med-taken specifically.
+  'med-taken',
+  // Therapy Notes — journal-entry is captured for future surfacing.
+  'journal-entry',
+  // Ledger — expense-logged provides the cross-app finance signal;
+  // no curated consumer beyond /today.
+  'expense-logged',
+  // Field Kitchen — daily-briefing was the previous consumer of these
+  // (it aggregated across the kitchen-rituals); /today now plays that
+  // role but reads from the IndexedDB intent store directly, not
+  // through the in-tree registry.
+  'coffee-brewed',
   'cooking-now',
-  'shopping-list',
-  'needs-restocking',
-  'symptom-logged',
-  'walked',
-  'focus-session',
-  'dined-out',
+  'dough-ready',
   'hydration-logged',
+  // Cycle — single-user journal-shape; no curated consumer.
+  'cycle-logged',
+  // Hearth — household-internal events; no curated cross-app consumer
+  // by design.
+  'household-note',
+  'dinner-planned',
+  // Story Studio — share signals don't have curated consumers (the
+  // grandparent device IS the consumer, off-platform).
+  'story-draft',
+  // Therapy Notes — local journaling surface for /today; no in-tree
+  // consumer subscribes to therapy-checkin.
+  'therapy-checkin',
+  // Atlas — trip-note + place-pinned are consumed by Crewtrip.
+  // (No whitelist needed — actually consumed.)
+  // Quiet — focus-session was previously aggregated by daily-briefing;
+  // /today picks it up via the IndexedDB store now.
+  'focus-session',
+  // Move — run-planned was previously a Pace→Workout-Logger handshake;
+  // both retired, so the intent is provider-only now.
+  'run-planned',
+  // Symptom Diary — both provided AND in ALLOWED_ORPHAN_CONSUMERS
+  // (it's published locally, no curated consumer in-tree).
+  'symptom-logged',
+  // Voice Memo — provides memo-recorded for future surfacing
+  // (Read Later or Journal could pick it up). No curated consumer
+  // in-tree at the moment.
+  'memo-recorded',
+  // Tab — bill-splitter publishes per-item and settlement events for
+  // optional cross-app logging (Ledger could subscribe later); no
+  // curated consumer in-tree today.
+  'tab-item-added',
+  'tab-settled',
+  // Pitch Forge — drafted/sent are surfaced in /today and (eventually)
+  // a maker dashboard, but no in-tree app currently consumes them.
+  'pitch-drafted',
+  'pitch-sent',
+  // Touch — touch-logged is broadcast for optional cross-app surfacing
+  // (Journal could weave touches into daily summaries later); no
+  // curated consumer in-tree today.
+  'touch-logged',
+  // Care Log — caregiver tooling for someone else's data. Symptom
+  // Diary is for tracking your own; Care Log is for tracking another
+  // person's. Streams don't share consumers in-tree by design.
+  'care-dose-given',
+  'care-symptom-noted',
+  'care-handover-noted',
+  // Site Visit — field inspection events for /today + future analytics
+  // dashboards. No in-tree consumer at the moment.
+  'visit-completed',
+  'incident-flagged',
+  // Lift — strength-training events for /today + /glance summaries.
+  // No in-tree consumer for the per-set / per-PR streams; Body Metrics
+  // could subscribe to workout-completed eventually but doesn't today.
+  'workout-completed',
+  'pr-broken',
+  'set-logged',
+  // Steep — ritual events are useful for future wellness summaries,
+  // but no curated consumer ships in-tree yet.
+  'brewed-tea',
+  'wellness-ritual',
+  // Slate v4 Phase 1 — observation-vocabulary intents emitted by the
+  // new mirror + arcade apps. The Randomiser home capstone consumes
+  // them at the platform-shell level (not via an in-tree iframe app),
+  // so they look orphan from the cross-app registry's POV.
+  'counter.tapped',
+  'mood.color_picked',
+  'preference.choice',
+  'game.completed',
+  'photo.labelled',
+  'place.snapped',
+  // Arcade v2 — Five Letter, Lustre, Bulwark emit additional
+  // observation kinds. Same shape (the home Randomiser surface
+  // listens at the shell level).
+  'puzzle.cleared',
+  'wave.cleared',
 ]);
 
 /**
@@ -46,6 +155,7 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
  */
 const ALLOWED_ORPHAN_CONSUMERS = new Set<string>([
   'budget-limit',
+  'symptom-logged',
 ]);
 
 describe('intent graph — registry resolves all curated intents', () => {
@@ -78,7 +188,7 @@ describe('intent graph — registry resolves all curated intents', () => {
   test('cross-cluster acceptance: Recipe Saver provides cooked-meal to Habit Tracker', () => {
     const providers = registry.providersFor('cooked-meal');
     const consumers = registry.consumersFor('cooked-meal');
-    expect(providers.map((p) => p.appSlug)).toContain('recipe-saver');
+    expect(providers.map((p) => p.appSlug)).toContain('recipe');
     expect(consumers.map((c) => c.appSlug)).toContain('habit-tracker');
   });
 

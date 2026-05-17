@@ -74,11 +74,11 @@
     </p>
     <h3>Wrap an already-hosted app</h3>
     <p>
-      App already on Vercel, Netlify, Render, or your own server? Don't move it. Shippie adds a
+      App already hosted somewhere else? Don't move it. Shippie adds a
       marketplace entry, a PWA shell, and an install funnel via edge reverse-proxy at
       <code>{'{slug}'}.shippie.app</code>. Your backend stays where it runs best.
     </p>
-    <pre class="code">shippie wrap https://your-app.vercel.app --slug your-app
+    <pre class="code">shippie wrap https://your-app.example.com --slug your-app
 
 # → live at https://your-app.shippie.app/</pre>
     <h3>Drop a zip in the browser</h3>

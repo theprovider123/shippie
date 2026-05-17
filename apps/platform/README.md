@@ -1,6 +1,6 @@
 # @shippie/platform
 
-SvelteKit on Cloudflare Workers — the v2 platform app. Replaces `apps/web` (Next.js on Vercel) at cutover (Phase 8).
+SvelteKit on Cloudflare Workers — the production platform app.
 
 ## Status
 
@@ -23,6 +23,7 @@ bunx wrangler d1 create shippie-platform-d1
 
 bunx wrangler r2 bucket create shippie-apps-prod
 bunx wrangler r2 bucket create shippie-assets
+bunx wrangler r2 bucket create shippie-documents-prod
 
 bunx wrangler kv namespace create shippie-platform-cache
 # → paste the `id` into wrangler.toml line ~40
@@ -32,8 +33,36 @@ bunx wrangler d1 migrations apply shippie-platform-d1 --remote
 
 # Deploy
 bunx wrangler deploy
-# → outputs the workers.dev hostname; add `next.shippie.app` CNAME to it in CF DNS
+# → outputs the workers.dev hostname; route shippie.app through Cloudflare DNS
 ```
+
+## Sealed cloud checks
+
+The `DOCUMENTS` R2 binding stores opaque `@shippie/doc` events, attachments, and temporary wrapped access bundles. Shippie can relay and retain these sealed copies, but cannot decrypt user data without the user's document key.
+
+After `wrangler dev` or a preview deploy is running:
+
+```bash
+bun run check:sealed-cloud http://127.0.0.1:8788
+```
+
+For production:
+
+```bash
+SHIPPIE_SEALED_CLOUD_ORIGIN=https://shippie.app bun run check:sealed-cloud
+```
+
+The check writes a disposable encrypted document, attachment, and wrapped transfer bundle, then verifies they can be pulled back by a holder of the generated key.
+
+Abuse controls are intentionally invisible to normal users but protect the payer account:
+
+- per-document event and byte budgets
+- per-IP daily event budget
+- per-device daily event and byte budgets via `x-shippie-device-id`
+- per-document and per-device attachment byte budgets
+- single attachment size limit
+
+The production defaults live in `wrangler.toml` under `SEALED_DOC_*`. They keep the product free for ordinary usage while making bulk blob abuse expensive to perform and easy to throttle.
 
 ## Local dev
 

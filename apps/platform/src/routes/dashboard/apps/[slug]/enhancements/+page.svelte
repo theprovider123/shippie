@@ -5,9 +5,13 @@
   let { data, form }: PageProps = $props();
 
   // Local editor state, seeded from the loader's serialized JSON.
-  let text = $state(data.initialJsonText);
+  let text = $state('');
   let saving = $state(false);
   let resetting = $state(false);
+
+  $effect(() => {
+    text = data.initialJsonText;
+  });
 
   // Friendly labels for the auto-detected enhance rules.
   const RULE_LABEL: Record<string, string> = {

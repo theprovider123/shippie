@@ -4,6 +4,15 @@
   function retry() {
     location.reload();
   }
+
+  function repairShell() {
+    const repair = (window as unknown as { __shippieRepairShell?: () => void }).__shippieRepairShell;
+    if (repair) {
+      repair();
+      return;
+    }
+    location.href = '/';
+  }
 </script>
 
 <svelte:head>
@@ -40,6 +49,7 @@
 
     <div class="actions">
       <button class="primary" onclick={retry}>Retry</button>
+      <button class="ghost" onclick={repairShell}>Repair Shippie</button>
       <a class="ghost" href="/">Go home</a>
     </div>
   </div>
@@ -49,7 +59,8 @@
   /* Self-contained — this page may render without the +layout.svelte
      (e.g. when a layout-server-load throws). All styling lives here. */
   .page {
-    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
     background: #14120F;
     color: #EDE4D3;
     display: grid;

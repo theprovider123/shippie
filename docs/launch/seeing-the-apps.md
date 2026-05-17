@@ -18,6 +18,7 @@ Use `dev:apps` (not `dev`) — it skips the library packages whose `dev` script 
 | `apps/showcase-recipe` | http://localhost:5180 |
 | `apps/showcase-journal` | http://localhost:5181 |
 | `apps/showcase-whiteboard` | http://localhost:5182 |
+| `apps/showcase-live-room` | http://localhost:5183 |
 | `apps/showcase-habit-tracker` | http://localhost:5184 |
 | `apps/showcase-workout-logger` | http://localhost:5185 |
 | `apps/showcase-pantry-scanner` | http://localhost:5186 |
@@ -25,10 +26,39 @@ Use `dev:apps` (not `dev`) — it skips the library packages whose `dev` script 
 | `apps/showcase-shopping-list` | http://localhost:5188 |
 | `apps/showcase-sleep-logger` | http://localhost:5189 |
 | `apps/showcase-body-metrics` | http://localhost:5190 |
+| `apps/showcase-mevrouw` | http://localhost:5191 |
+| `apps/showcase-breath` | http://localhost:5192 |
+| `apps/showcase-mood-pulse` | http://localhost:5193 |
+| `apps/showcase-pomodoro` | http://localhost:5194 |
+| `apps/showcase-read-later` | http://localhost:5195 |
+| `apps/showcase-daily-briefing` | http://localhost:5196 |
+| `apps/showcase-restaurant-memory` | http://localhost:5197 |
+| `apps/showcase-show-and-tell` | http://localhost:5198 |
+| `apps/showcase-sip-log` | http://localhost:5199 |
+| `apps/showcase-coffee` | http://localhost:5200 |
+| `apps/showcase-cooking` | http://localhost:5201 |
+| `apps/showcase-dough` | http://localhost:5202 |
+| `apps/showcase-pace` | http://localhost:5203 |
+| `apps/showcase-matchday` | http://localhost:5204 |
+| `apps/showcase-quiet` | http://localhost:5205 |
+| `apps/showcase-move` | http://localhost:5206 |
+| `apps/showcase-hearth` | http://localhost:5207 |
+| `apps/showcase-co-pilot` | http://localhost:5208 |
+| `apps/showcase-story-studio` | http://localhost:5209 |
+| `apps/showcase-therapy-notes` | http://localhost:5210 |
+| `apps/showcase-cycle` | http://localhost:5211 |
+| `apps/showcase-symptom-diary` | http://localhost:5212 |
+| `apps/showcase-atlas` | http://localhost:5213 |
+| `apps/showcase-ledger` | http://localhost:5214 |
 
 Open `http://localhost:4101/container` and the curated apps render the actual React apps inside the iframe (because each `ContainerApp` carries a `devUrl` that the +page.svelte iframe prefers over the synthesised `srcdoc`).
 
 The "Open standalone" link in the container topbar opens the same Vite dev URL in a new tab when one is configured.
+
+The kitchen tools deliberately stay separate in this slate: Coffee
+(`5200`), Cooking / food temps (`5201`), and Dough (`5202`) are each
+their own tactile utility while consolidation work happens around Daily,
+Quiet, and Move.
 
 ## One-shot — see only the showcase apps
 

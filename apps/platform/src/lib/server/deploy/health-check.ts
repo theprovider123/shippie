@@ -14,6 +14,7 @@
  *   - All <script src=> and <link href=> references inside index.html
  *     point at files that actually shipped
  *   - Basic installability sanity: theme-color, viewport, manifest link
+ *   - The app does not block Shippie's inherited Your Data wrapper
  *
  * Returns a structured report. Pure — no I/O.
  */
@@ -33,7 +34,8 @@ export type HealthCheckId =
   | 'manifest_valid'
   | 'sw_registration'
   | 'asset_resolution'
-  | 'installable_meta';
+  | 'installable_meta'
+  | 'your_data_inherited';
 
 export interface HealthCheckReport {
   /** True iff every check is `ok` or `warn`. A `fail` result blocks the
@@ -232,6 +234,8 @@ export function runHealthCheck(files: ReadonlyMap<string, Uint8Array>): HealthCh
         : 'Installability hints present',
   });
 
+  items.push(checkYourDataInheritance(indexHtml));
+
   const passed = !items.some((i) => i.severity === 'fail');
   return { passed, items };
 }
@@ -241,6 +245,77 @@ function findManifestPath(files: ReadonlyMap<string, Uint8Array>): string | null
   const candidates = ['manifest.json', 'manifest.webmanifest', 'site.webmanifest'];
   for (const c of candidates) {
     if (files.has(c)) return c;
+  }
+  return null;
+}
+
+function checkYourDataInheritance(indexHtml: string): HealthCheckItem {
+  if (/data-shippie-no-wrapper|__shippie_disable_wrapper|__shippie_disable_wrapper/i.test(indexHtml)) {
+    return {
+      id: 'your_data_inherited',
+      severity: 'fail',
+      title: 'Your Data wrapper is disabled',
+      detail:
+        'Every Shippie app inherits sealed-copy and restore controls. Remove wrapper-disabling flags before upload.',
+    };
+  }
+
+  const cspMatch = indexHtml.match(
+    /<meta\b[^>]*http-equiv\s*=\s*["']content-security-policy["'][^>]*content\s*=\s*"([^"]+)"[^>]*>/i,
+  ) ?? indexHtml.match(
+    /<meta\b[^>]*http-equiv\s*=\s*["']content-security-policy["'][^>]*content\s*=\s*'([^']+)'[^>]*>/i,
+  ) ?? indexHtml.match(
+    /<meta\b[^>]*content\s*=\s*"([^"]+)"[^>]*http-equiv\s*=\s*["']content-security-policy["'][^>]*>/i,
+  ) ?? indexHtml.match(
+    /<meta\b[^>]*content\s*=\s*'([^']+)'[^>]*http-equiv\s*=\s*["']content-security-policy["'][^>]*>/i,
+  );
+  const csp = cspMatch?.[1]?.toLowerCase();
+  if (!csp) {
+    return {
+      id: 'your_data_inherited',
+      severity: 'ok',
+      title: 'Your Data inherited by Shippie wrapper',
+      detail: 'Sealed-copy and restore controls are supplied outside the maker bundle.',
+    };
+  }
+
+  const scriptPolicy = readCspDirective(csp, 'script-src') ?? readCspDirective(csp, 'default-src');
+  if (!scriptPolicy) {
+    return {
+      id: 'your_data_inherited',
+      severity: 'ok',
+      title: 'Your Data wrapper allowed by CSP',
+    };
+  }
+  if (scriptPolicy.includes("'none'")) {
+    return {
+      id: 'your_data_inherited',
+      severity: 'fail',
+      title: 'Content Security Policy blocks Your Data',
+      detail:
+        "script-src 'none' prevents Shippie's inherited data controls from loading. Allow same-origin scripts or remove the meta CSP.",
+    };
+  }
+  if (scriptPolicy.includes("'self'") || scriptPolicy.includes('*') || scriptPolicy.includes('/__shippie')) {
+    return {
+      id: 'your_data_inherited',
+      severity: 'ok',
+      title: 'Your Data wrapper allowed by CSP',
+    };
+  }
+  return {
+    id: 'your_data_inherited',
+    severity: 'warn',
+    title: 'Content Security Policy may block Your Data',
+    detail:
+      "Shippie's data controls load from the app's own /__shippie path. Add 'self' to script-src or remove the meta CSP.",
+  };
+}
+
+function readCspDirective(csp: string, name: string): string | null {
+  for (const directive of csp.split(';')) {
+    const trimmed = directive.trim();
+    if (trimmed.startsWith(`${name} `)) return trimmed;
   }
   return null;
 }

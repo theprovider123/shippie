@@ -1,0 +1,32 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Care Log",
+  "slug": "care-log",
+  "description": "Track meds and symptoms for someone you care for. Optional co-caregiver mesh. Records stay on the paired devices.",
+  "icon": "/icon.svg",
+  "theme_color": "#74A57F",
+  "background_color": "#F5EFE4",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "care-dose-given",
+      "care-symptom-noted",
+      "care-handover-noted"
+    ],
+    "consumes": []
+  },
+  "data_schemas": {
+    "entries": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness",
+    "successor": "co-pilot"
+  }
+}

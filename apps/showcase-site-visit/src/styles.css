@@ -1,0 +1,165 @@
+/* Canonical Shippie tokens. Site Visit uses sage-leaf — the on-site
+   pragmatic-pro accent. Sharp corners; generous spacing; dark text on
+   warm cream so it reads in daylight. */
+@import "@shippie/design-tokens/tokens.css";
+
+:root {
+  color-scheme: light;
+  --bg: #F5EFE4;
+  --bg-pure: #EDE4D3;
+  --surface: #FBF5E8;
+  --surface-alt: #E8DEC6;
+  --surface-elevated: #FFFEF7;
+  --text: #1F2A24;
+  --text-secondary: #4D5A4F;
+  --text-light: #7A8478;
+  --border: #D8C9A5;
+  --border-light: #E8DEC6;
+  --accent: #5E7B5C;
+  --accent-dim: #4A6049;
+  --pass: #5EA777;
+  --fail: #C45252;
+  --attention: #D9A658;
+  --na: #8A9789;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; cursor: pointer; }
+a { color: var(--text); }
+input, textarea, select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 0;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.sv-app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 88px;
+}
+.sv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+.sv-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.sv-page-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+.sv-section-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin: 24px 0 12px;
+}
+.sv-section { margin-bottom: 24px; }
+.sv-empty { color: var(--text-light); }
+.sv-foot-note { color: var(--text-light); font-size: 0.875rem; }
+
+.sv-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 16px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+.sv-btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sv-btn-ghost { border-color: transparent; }
+.sv-btn-block { width: 100%; }
+.sv-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.sv-tabnav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  background: var(--surface-elevated);
+  border-top: 1px solid var(--border);
+}
+.sv-tabnav button {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  padding: 12px 8px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.sv-tabnav button[data-active='true'] {
+  color: var(--text);
+  background: var(--surface-alt);
+}
+
+.sv-list { list-style: none; padding: 0; margin: 0; }
+.sv-list li { padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+
+.sv-checklist-item {
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.sv-status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sv-status-pill[data-status='pass'] { background: var(--pass); color: white; }
+.sv-status-pill[data-status='fail'] { background: var(--fail); color: white; }
+.sv-status-pill[data-status='attention'] { background: var(--attention); color: var(--text); }
+.sv-status-pill[data-status='na'] { background: var(--na); color: white; }
+
+.sv-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  margin-right: 8px;
+}
+.sv-signature-pad {
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  width: 100%;
+  height: 160px;
+  touch-action: none;
+}
+
+.sv-sync-status {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sv-sync-status[data-mode='offline-saved'] { color: var(--accent); }
+
+@media print {
+  .sv-tabnav, .sv-btn, button { display: none !important; }
+  .sv-app { max-width: none; padding: 0; }
+  body { background: white; color: black; }
+  @page { margin: 16mm; size: A4 portrait; }
+}

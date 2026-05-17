@@ -147,6 +147,7 @@ export function compilePublicShippieJson(
     sdk: {
       auto_inject: true,
     },
+    data: publicDataPolicy(publicConfig),
     feedback: {
       enabled: true,
     },
@@ -171,6 +172,44 @@ export function compilePublicShippieJson(
   }
 
   return internal;
+}
+
+function publicDataPolicy(publicConfig: PublicShippieJson): ShippieJson['data'] {
+  const hasDurableLocalData = publicConfig.local.database || publicConfig.local.files || publicConfig.local.sync;
+  if (!hasDurableLocalData) {
+    return {
+      mode: 'none',
+      documents: [],
+      attachments: false,
+      recovery: 'none',
+      migrations: 'none',
+      snapshots: 'none',
+      media: 'none',
+      realtime: 'none',
+    };
+  }
+  if (!publicConfig.local.sync) {
+    return {
+      mode: 'local-only',
+      documents: [],
+      attachments: publicConfig.local.files,
+      recovery: 'none',
+      migrations: 'none',
+      snapshots: 'none',
+      media: 'none',
+      realtime: 'none',
+    };
+  }
+  return {
+    mode: 'shippie-documents',
+    documents: ['main'],
+    attachments: publicConfig.local.files,
+    recovery: 'inherited',
+    migrations: 'snapshot-v0',
+    snapshots: 'inherited',
+    media: publicConfig.local.files ? 'encrypted-chunked' : 'none',
+    realtime: 'inherited',
+  };
 }
 
 export function normalizeShippieJson(

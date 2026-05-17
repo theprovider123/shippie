@@ -10,7 +10,7 @@ Underneath the public story, the platform is composed of nine engineering compon
 
 ## Stack
 
-The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`). Pre-cutover services (`apps/web`, `services/worker`, `packages/cf-storage`, `vercel.json`) are removed. Treat anything referencing them as historical.
+The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`). The active production architecture is Cloudflare-first: Workers, D1, R2, KV, Durable Objects, Workers Assets, scheduled triggers, and Cloudflare Email.
 
 | Concern | Technology |
 |---|---|

@@ -36,6 +36,22 @@ describe('inlinePackageAssets', () => {
     expect(out).toContain('srcset="data:image/png;base64,AAA= 1x, data:image/png;base64,BBB= 2x"');
     expect(out).toContain('background: url("data:image/png;base64,AAA=")');
   });
+
+  test('injects focused space context before packaged app scripts run', () => {
+    const html = `<!doctype html><html><head><title>Room</title></head><body></body></html>`;
+    const out = inlinePackageAssets(html, 'app/index.html', {}, {
+      spaceContext: {
+        spaceId: 'space_pub_final',
+        role: 'viewer',
+        joinToken: 'join_abcdef123',
+        source: 'private-join',
+      },
+    });
+
+    expect(out).toContain('window.__SHIPPIE_SPACE__=');
+    expect(out).toContain('"spaceId":"space_pub_final"');
+    expect(out.indexOf('window.__SHIPPIE_SPACE__')).toBeLessThan(out.indexOf('</head>'));
+  });
 });
 
 function textFile(mimeType: string, text: string) {

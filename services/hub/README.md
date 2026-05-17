@@ -27,6 +27,14 @@ docker run --rm -p 80:80 -v shippie-hub-data:/var/lib/shippie-hub \
 5. Models cache lazily: the first time a device asks the AI app for a
    model, the Hub pulls it from `ai.shippie.app` and serves it to
    every subsequent device on the LAN.
+6. Venue shells can poll `http://hub.local/api/hub/ambient` to show
+   "visible here" rooms/tools without auto-joining anyone. This is the
+   safe first step before phone-to-phone LAN seeding.
+
+If an installed `.shippie` package declares `spaces` metadata, the Hub keeps it
+in the local tool registry and returns it from ambient discovery. A phone or
+venue screen can therefore show "private room available here" even when the
+public platform is unreachable.
 
 ## Privacy
 
@@ -72,9 +80,11 @@ deployment is week 11+ once a partner is identified.
 GET  /__shippie/health                 → {ok:true, service:"shippie-hub"}
 GET  /                                 → dashboard HTML
 GET  /api/rooms                        → JSON room stats
+GET  /api/hub/ambient                  → visible rooms + cached tools
 POST /api/packages                     → ingest verified .shippie archive
 GET  /packages/<hash>.shippie          → local package mirror
 GET  /collections/local-mirror.json    → local collection manifest
+GET  /api/hub/tools                    → cached tool registry, including spaces metadata
 WS   /__shippie/signal/<roomId>        → WebRTC signalling (client.ts)
 GET  /models/<rest>                    → read-through model cache
 GET  /apps/<slug>/<rest>               → static app cache

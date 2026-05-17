@@ -2,59 +2,20 @@
   import VisibilityPicker from '$components/dashboard/VisibilityPicker.svelte';
   import CreateInviteForm from '$components/dashboard/CreateInviteForm.svelte';
   import InviteRow from '$components/dashboard/InviteRow.svelte';
-  import { qrSvg } from '@shippie/qr';
-  import { toast } from '$lib/stores/toast';
+  import PrivateSpaceShareComposer from '$components/dashboard/PrivateSpaceShareComposer.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
-  const activeInvites = $derived(data.invites.filter((i) => i.revokedAt == null));
-  const latest = $derived(activeInvites.length > 0 ? activeInvites[activeInvites.length - 1]! : null);
+  const activeInvites = $derived(data.invites.filter(isInviteActive));
+  const hostRole = $derived(
+    data.spaces?.roles.find((role) => role.permissions.includes('invite'))?.id ?? 'host',
+  );
 
-  let latestUrl = $state<string | null>(null);
-  let qrMarkup = $state<string | null>(null);
-
-  $effect(() => {
-    if (typeof window === 'undefined' || !latest) {
-      latestUrl = null;
-      qrMarkup = null;
-      return;
-    }
-    const url = `${window.location.origin}/invite/${latest.token}`;
-    latestUrl = url;
-    void qrSvg(url, { ecc: 'M', size: 224 })
-      .then((svg) => {
-        qrMarkup = svg;
-      })
-      .catch(() => {
-        qrMarkup = null;
-      });
-  });
-
-  async function copyLatest() {
-    if (!latestUrl) return;
-    try {
-      await navigator.clipboard.writeText(latestUrl);
-      toast.push({ kind: 'success', message: 'Link copied to clipboard.' });
-    } catch {
-      toast.push({ kind: 'error', message: 'Could not copy. Long-press to copy manually.' });
-    }
-  }
-
-  async function shareLatest() {
-    if (!latestUrl) return;
-    if ('share' in navigator) {
-      try {
-        await navigator.share({
-          title: `Join me on ${data.app.name}`,
-          text: 'A private invite link.',
-          url: latestUrl,
-        });
-        return;
-      } catch {
-        // User cancelled — fall through.
-      }
-    }
-    void copyLatest();
+  function isInviteActive(invite: (typeof data.invites)[number]): boolean {
+    if (invite.revokedAt != null) return false;
+    if (invite.maxUses != null && invite.usedCount >= invite.maxUses) return false;
+    if (invite.expiresAt && Date.parse(invite.expiresAt) <= Date.now()) return false;
+    return true;
   }
 </script>
 
@@ -62,45 +23,60 @@
 
 {#if data.app.visibilityScope === 'private'}
   <section class="block share">
-    <h2>Share this link</h2>
-    {#if latest && latestUrl}
-      <div class="share-card">
-        <div class="share-text">
-          <p class="share-url">{latestUrl}</p>
-          <p class="muted">
-            {#if latest.maxUses}
-              {latest.usedCount} / {latest.maxUses} uses
-            {:else}
-              {latest.usedCount} use{latest.usedCount === 1 ? '' : 's'}
-            {/if}
-            {#if latest.expiresAt}
-              · expires {new Date(latest.expiresAt).toLocaleDateString()}
-            {/if}
-          </p>
-          <div class="share-actions">
-            <button type="button" class="primary" onclick={shareLatest}>Share</button>
-            <button type="button" class="ghost" onclick={copyLatest}>Copy link</button>
-          </div>
-        </div>
-        {#if qrMarkup}
-          <div class="qr">{@html qrMarkup}</div>
-        {/if}
-      </div>
-    {:else}
-      <p class="muted">Create an invite link below to get a QR you can scan or share.</p>
-    {/if}
+    <h2>Share private space</h2>
+    <PrivateSpaceShareComposer
+      slug={data.app.slug}
+      appName={data.app.name}
+      spaces={data.spaces}
+      existingSpaces={data.privateSpaces}
+    />
   </section>
 {/if}
+
+<section class="block">
+  <h2>Private spaces</h2>
+  {#if data.privateSpaces.length === 0}
+    <p class="muted">No private spaces yet. Create an invite to start one.</p>
+  {:else}
+    <div class="space-list">
+      {#each data.privateSpaces as space (space.id)}
+        <article class:archived={space.status === 'archived'} class="space-row">
+          <div>
+            <strong>{space.name}</strong>
+            <p class="muted mono">
+              {space.id} · {space.status}
+              {#if space.latestToken}
+                · latest {space.latestToken.role}
+                · {space.latestToken.inviteUsedCount}{#if space.latestToken.inviteMaxUses != null}/{space.latestToken.inviteMaxUses}{/if} used
+              {/if}
+            </p>
+          </div>
+          <div class="space-actions">
+            <a href={`/container?app=${encodeURIComponent(data.app.slug)}&focused=1&space=${encodeURIComponent(space.id)}&role=${encodeURIComponent(hostRole)}`}>Host</a>
+            {#if space.status !== 'archived'}
+              <form method="POST" action="?/archiveSpace">
+                <input type="hidden" name="spaceId" value={space.id} />
+                <button type="submit">Archive</button>
+              </form>
+            {/if}
+          </div>
+        </article>
+      {/each}
+    </div>
+  {/if}
+</section>
 
 <section class="block">
   <h2>Visibility</h2>
   <VisibilityPicker slug={data.app.slug} initial={data.app.visibilityScope as 'public' | 'unlisted' | 'private'} />
 </section>
 
-<section class="block">
-  <h2>Create invite link</h2>
-  <CreateInviteForm slug={data.app.slug} />
-</section>
+{#if data.app.visibilityScope !== 'private'}
+  <section class="block">
+    <h2>Create invite link</h2>
+    <CreateInviteForm slug={data.app.slug} />
+  </section>
+{/if}
 
 <section class="block">
   <h2>Active invites</h2>
@@ -139,63 +115,36 @@
   .block { margin-bottom: 2.5rem; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 0 0 0.75rem 0; }
   .muted { color: #8B847A; }
-  .share-card {
+  .invite-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .space-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .space-row {
     display: flex;
-    gap: 1.5rem;
-    align-items: flex-start;
-    padding: 1.25rem;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
     border: 1px solid #E5DDC8;
-    border-left: 3px solid #E8603C;
+    padding: 0.75rem;
   }
-  .share-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-  .share-url {
-    font-family: ui-monospace, monospace;
-    font-size: 13px;
-    color: #E8603C;
-    margin: 0;
-    word-break: break-all;
-  }
-  .share-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-  .share-actions .primary {
-    height: 36px;
-    background: #E8603C;
-    color: white;
-    border: none;
-    padding: 0 1.25rem;
-    border-radius: 0;
-    font-family: ui-monospace, monospace;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .share-actions .ghost {
-    height: 36px;
+  .space-row.archived { opacity: 0.62; }
+  .space-row strong { display: block; margin-bottom: 0.25rem; }
+  .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+  .space-actions { display: flex; gap: 0.5rem; align-items: center; }
+  .space-actions a,
+  .space-actions button {
+    border: 1px solid #C9C2B1;
     background: transparent;
     color: inherit;
-    border: 1px solid currentColor;
-    padding: 0 1.25rem;
-    font-family: ui-monospace, monospace;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 500;
+    padding: 4px 12px;
+    font-size: 12px;
+    text-decoration: none;
     cursor: pointer;
   }
-  .share-actions .ghost:hover { background: rgba(232, 96, 60, 0.08); }
-  .qr { width: 224px; height: 224px; flex-shrink: 0; background: #FAF7EF; padding: 8px; box-sizing: content-box; }
-  .qr :global(svg) { width: 100%; height: 100%; display: block; }
-  @media (max-width: 600px) {
-    .share-card { flex-direction: column; }
-  }
-  @media (prefers-color-scheme: dark) {
-    .share-card { border-color: #2A251E; }
-  }
-  .invite-list { display: flex; flex-direction: column; gap: 0.5rem; }
   ul { list-style: none; padding: 0; margin: 0; }
   ul li { padding: 0.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-family: ui-monospace, monospace; font-size: 13px; color: #8B847A; }
   @media (prefers-color-scheme: dark) {
     ul li { border-color: rgba(255,255,255,0.05); }
+    .space-row { border-color: #2A251E; }
+    .space-actions a,
+    .space-actions button { border-color: #3A352D; }
   }
 </style>

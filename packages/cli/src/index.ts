@@ -10,6 +10,7 @@
  *     --trial            Post to /api/deploy/trial — no signup, 24h TTL
  *     --watch            Replay the deploy intelligence stream after upload
  *   init                 Scaffold a shippie.json
+ *   remix <slug>         Show source, license, fork URL, and redeploy commands
  *   status <deploy-id>   Check deploy status (use --watch to follow)
  *
  * MIT license.
@@ -23,6 +24,7 @@ import { graduateScaffold } from './commands/graduate.js';
 import { initCommand } from './commands/init.js';
 import { loginCommand } from './commands/login.js';
 import { rollbackCommand } from './commands/rollback.js';
+import { remixCommand } from './commands/remix.js';
 import { statusCommand } from './commands/status.js';
 import { whoamiCommand } from './commands/whoami.js';
 import { wrapCommand } from './commands/wrap.js';
@@ -34,8 +36,10 @@ import { localizePlanCommand } from './commands/localize-plan.js';
 import { appsCommand } from './commands/apps.js';
 import { logsCommand } from './commands/logs.js';
 import { configCommand } from './commands/config.js';
+import { dataDoctorCommand } from './commands/data.js';
 import { templatesCommand } from './commands/templates.js';
 import { workspaceCommand } from './commands/workspace.js';
+import { promoteCommand, visibilityCommand } from './commands/visibility.js';
 
 function deriveSlug(url: string): string {
   try {
@@ -104,11 +108,28 @@ program
   .option('--json', 'Emit JSON instead of human-readable output')
   .action(configCommand);
 
+const dataProgram = program
+  .command('data')
+  .description('Inspect Shippie app data inheritance, sealed-copy recovery, and handover readiness');
+
+dataProgram
+  .command('doctor [path]')
+  .description('Validate shippie.json against the Shippie Your Data inheritance contract')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(dataDoctorCommand);
+
 program
   .command('templates [id]')
   .description('List Shippie starter templates and the capability each proves')
   .option('--json', 'Emit JSON instead of human-readable output')
   .action(templatesCommand);
+
+program
+  .command('remix <slug>')
+  .description('Show source, license, fork URL, and redeploy commands for a remixable app')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .option('--json', 'Emit JSON instead of human-readable output')
+  .action(remixCommand);
 
 program
   .command('workspace [path]')
@@ -120,14 +141,36 @@ program
   .action(workspaceCommand);
 
 program
-  .command('deploy [dir]')
-  .description('Deploy a directory to Shippie')
-  .option('-s, --slug <slug>', 'App slug (defaults to directory name)')
+  .command('deploy [path]')
+  .description('Deploy a directory, .zip, or single .html file to Shippie')
+  .option('-s, --slug <slug>', 'App slug (defaults to path name)')
+  .option('--remix <slug>', 'Deploy as a remix of an existing public app slug')
   .option('--skip-build', 'Skip install + build, deploy as-is')
   .option('--trial', 'Deploy as a 24-hour no-signup trial (no auth required)')
+  .option('--visibility <scope>', 'Visibility: public, unlisted, private, or team')
+  .option('--org <org>', 'Organization id or slug for --visibility team / --team')
+  .option('--private', 'Deploy as a hosted private app')
+  .option('--unlisted', 'Deploy as an unlisted app')
+  .option('--public', 'Deploy as a listed public app')
+  .option('--team', 'Deploy as a team app for --org')
   .option('-w, --watch', 'Replay the deploy intelligence stream after upload')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(deployCommand);
+
+program
+  .command('visibility <slug> <scope>')
+  .description('Change app visibility: public, unlisted, private, or team')
+  .option('--org <org>', 'Organization id or slug when scope is team')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(visibilityCommand);
+
+program
+  .command('promote <slug>')
+  .description('Promote an app to a broader visibility tier')
+  .option('--to <scope>', 'Target visibility: public or team', 'public')
+  .option('--org <org>', 'Organization id or slug when promoting to team')
+  .option('--api <url>', 'Platform API URL', 'https://shippie.app')
+  .action(promoteCommand);
 
 program
   .command('init')
@@ -219,17 +262,33 @@ program
   .description('Create a link invite for a private app')
   .option('--max-uses <n>', 'Hard cap on claims', (v) => Number(v))
   .option('--expires <days>', 'Expire after this many days', (v) => Number(v))
+  .option('--space-invite', 'Append generated private-space context to the invite URL')
+  .option('--space <id>', 'Use an existing private space id')
+  .option('--role <role>', 'Role hint for the person claiming this invite')
+  .option('--join-token <token>', 'Use a specific space join token')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(
     async (
       slug: string,
-      opts: { maxUses?: number; expires?: number; api?: string },
+      opts: {
+        maxUses?: number;
+        expires?: number;
+        spaceInvite?: boolean;
+        space?: string;
+        role?: string;
+        joinToken?: string;
+        api?: string;
+      },
     ) => {
       await inviteCreate({
         slug,
         apiUrl: opts.api ?? 'https://shippie.app',
         maxUses: opts.maxUses,
         expiresDays: opts.expires,
+        spaceInvite: opts.spaceInvite,
+        spaceId: opts.space,
+        role: opts.role,
+        joinToken: opts.joinToken,
       });
     },
   );

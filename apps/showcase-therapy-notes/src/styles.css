@@ -1,0 +1,796 @@
+/* Therapy Notes — quiet visual. Generous whitespace, restrained colour,
+   serif headings (Fraunces), sharp corners. The visual goal: the least
+   shouty thing on the user's phone. */
+@import "@shippie/design-tokens/tokens.css";
+
+:root {
+  --tn-bg: var(--bg);
+  --tn-surface: var(--surface);
+  --tn-surface-alt: var(--surface-alt);
+  --tn-fg: var(--text);
+  --tn-fg-soft: var(--text-secondary);
+  --tn-muted: var(--text-light);
+  --tn-line: var(--border-light);
+  --tn-line-strong: var(--border);
+  --tn-accent: var(--sage-moss);
+  --tn-accent-soft: rgba(94, 123, 92, 0.18);
+  --tn-warn: var(--marigold);
+  --tn-safe-top: env(safe-area-inset-top, 0);
+  --tn-safe-bottom: env(safe-area-inset-bottom, 0);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--tn-bg);
+  color: var(--tn-fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ── App shell ─────────────────────────────────────────────────── */
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--tn-safe-top);
+  padding-bottom: calc(72px + var(--tn-safe-bottom));
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+}
+
+.app-title {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-align: center;
+  padding: 18px 16px 8px;
+  color: var(--tn-fg-soft);
+}
+
+/* ── Bottom tabs — kept calm, no badges ──────────────────────── */
+
+.bottom-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--tn-surface);
+  border-top: 1px solid var(--tn-line);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 8px calc(8px + var(--tn-safe-bottom));
+  z-index: 5;
+}
+
+.tab {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--tn-muted);
+  font-size: 13px;
+  height: 44px;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--tn-fg);
+  font-weight: 500;
+}
+
+/* ── Pages ─────────────────────────────────────────────────────── */
+
+.page {
+  padding: 16px 22px 36px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.page-header h1 {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.page-header p {
+  margin: 0;
+}
+
+.page-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.muted {
+  color: var(--tn-muted);
+}
+
+.small {
+  font-size: 13px;
+}
+
+.error-line {
+  margin: 0;
+  color: var(--tn-warn);
+  font-size: 14px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────── */
+
+button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 0;
+  border: 1px solid var(--tn-line-strong);
+  background: transparent;
+  color: var(--tn-fg);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+button.primary {
+  background: var(--tn-accent);
+  border-color: var(--tn-accent);
+  color: #fff;
+}
+
+button.primary:hover {
+  filter: brightness(1.06);
+}
+
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--tn-line);
+  color: var(--tn-fg-soft);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Inputs ────────────────────────────────────────────────────── */
+
+.text-input,
+.textarea-input {
+  background: var(--tn-surface);
+  border: 1px solid var(--tn-line);
+  border-radius: 0;
+  color: var(--tn-fg);
+  padding: 12px 14px;
+  width: 100%;
+  font-size: 16px;
+}
+
+.text-input:focus,
+.textarea-input:focus {
+  outline: 2px solid var(--tn-accent-soft);
+  outline-offset: 0;
+  border-color: var(--tn-accent);
+}
+
+.title-input {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.textarea-input {
+  resize: vertical;
+  min-height: 200px;
+  line-height: 1.6;
+  font-family: var(--font-body);
+}
+
+.textarea-input.free-body {
+  min-height: 320px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-prompt {
+  font-size: 13px;
+  color: var(--tn-fg-soft);
+  letter-spacing: 0.02em;
+}
+
+.field-hint {
+  margin: -4px 0 4px;
+  color: var(--tn-muted);
+  font-size: 13px;
+}
+
+/* ── Home ──────────────────────────────────────────────────────── */
+
+.home-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nudge {
+  background: var(--tn-surface-alt);
+  border-left: 2px solid var(--tn-accent);
+  padding: 10px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--tn-fg-soft);
+}
+
+.nudge-dismiss {
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--tn-muted);
+  font-size: 20px;
+  line-height: 1;
+  margin-left: auto;
+  cursor: pointer;
+}
+
+/* ── Note list ─────────────────────────────────────────────────── */
+
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note-card {
+  background: var(--tn-surface);
+  border: 1px solid var(--tn-line);
+  padding: 0;
+}
+
+.note-card-button {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: auto;
+  cursor: pointer;
+}
+
+.note-card-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tn-muted);
+}
+
+.note-card-kind {
+  color: var(--tn-accent);
+}
+
+.note-card-title {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.note-card-preview {
+  margin: 0;
+  color: var(--tn-fg-soft);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.note-list-empty {
+  border: 1px dashed var(--tn-line);
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  color: var(--tn-fg-soft);
+}
+
+.note-list-empty p {
+  margin: 0;
+}
+
+/* ── Picker ────────────────────────────────────────────────────── */
+
+.picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.picker-card {
+  width: 100%;
+  background: var(--tn-surface);
+  border: 1px solid var(--tn-line);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  cursor: pointer;
+  height: auto;
+}
+
+.picker-card:hover {
+  border-color: var(--tn-accent);
+}
+
+.picker-card-title {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--tn-fg);
+}
+
+.picker-card-sub {
+  font-size: 13px;
+  color: var(--tn-fg-soft);
+}
+
+/* ── Worksheet ─────────────────────────────────────────────────── */
+
+.worksheet {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.worksheet-header h1 {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.worksheet-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.rating-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.rating-row input[type='range'] {
+  flex: 1;
+  accent-color: var(--tn-accent);
+}
+
+.rating-readout {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--tn-fg-soft);
+  min-width: 56px;
+  text-align: right;
+}
+
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--tn-line);
+  background: var(--tn-surface);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--tn-fg-soft);
+}
+
+.check-item input {
+  accent-color: var(--tn-accent);
+}
+
+.check-item-on {
+  border-color: var(--tn-accent);
+  color: var(--tn-fg);
+}
+
+/* ── Check-in ──────────────────────────────────────────────────── */
+
+.checkin-field {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkin-field legend {
+  font-size: 13px;
+  color: var(--tn-fg-soft);
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.scale-row {
+  display: flex;
+  gap: 8px;
+}
+
+.scale-button {
+  flex: 1;
+  height: 48px;
+  background: var(--tn-surface);
+  border: 1px solid var(--tn-line);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--tn-fg-soft);
+  cursor: pointer;
+}
+
+.scale-button-on {
+  background: var(--tn-accent);
+  border-color: var(--tn-accent);
+  color: #fff;
+}
+
+/* ── Weekly summary chart ──────────────────────────────────────── */
+
+.summary-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.checkin-chart {
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--tn-surface);
+  border: 1px solid var(--tn-line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkin-chart-caption {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tn-muted);
+}
+
+.checkin-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkin-bar-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 32px;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkin-bar-day {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--tn-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.checkin-bar-track {
+  height: 12px;
+  background: var(--tn-surface-alt);
+  border: 1px solid var(--tn-line);
+  position: relative;
+}
+
+.checkin-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--tn-accent);
+  transition: width 200ms ease-out;
+}
+
+.checkin-bar-fill[data-empty='true'] {
+  background: transparent;
+}
+
+.checkin-bar-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--tn-fg-soft);
+  text-align: right;
+}
+
+.summary-notes h2 {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 500;
+  margin: 12px 0 8px;
+}
+
+/* ── Prep + chip row ───────────────────────────────────────────── */
+
+.prep-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: -4px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  height: auto;
+  padding: 6px 12px;
+  border: 1px dashed var(--tn-line);
+  background: transparent;
+  color: var(--tn-fg-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--tn-accent);
+  color: var(--tn-fg);
+}
+
+.save-state {
+  margin-right: auto;
+  min-height: 18px;
+}
+
+/* ── Settings ──────────────────────────────────────────────────── */
+
+.privacy-banner,
+.privacy-detail {
+  background: var(--tn-surface);
+  border: 1px solid var(--tn-line);
+  padding: 18px 20px;
+}
+
+.privacy-banner h2,
+.privacy-detail h2 {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+
+.privacy-banner p,
+.privacy-detail p {
+  margin: 0;
+  color: var(--tn-fg-soft);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.privacy-detail ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--tn-fg-soft);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Print ─────────────────────────────────────────────────────── */
+
+.print-toolbar {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.print-doc {
+  background: var(--tn-surface);
+  color: var(--tn-fg);
+  padding: 28px 32px;
+  border: 1px solid var(--tn-line);
+}
+
+.print-header h1 {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.print-range {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--tn-muted);
+}
+
+.print-section {
+  margin-top: 22px;
+}
+
+.print-section h2 {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 10px;
+  border-bottom: 1px solid var(--tn-line);
+  padding-bottom: 6px;
+}
+
+.print-label {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--tn-fg-soft);
+}
+
+.print-body {
+  font-family: var(--font-body);
+  white-space: pre-wrap;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--tn-fg);
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.print-table th,
+.print-table td {
+  border: 1px solid var(--tn-line);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.print-table th {
+  background: var(--tn-surface-alt);
+  font-weight: 500;
+  color: var(--tn-fg-soft);
+}
+
+.print-note {
+  border-top: 1px solid var(--tn-line);
+  padding: 12px 0;
+}
+
+.print-note:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.print-note h3 {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.print-note-date {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--tn-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.print-muted {
+  color: var(--tn-muted);
+  font-style: italic;
+}
+
+.print-footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--tn-line);
+  font-size: 12px;
+  color: var(--tn-muted);
+}
+
+@media print {
+  /* When printing, drop the dark theme — the therapist wants paper-readable. */
+  :root {
+    --tn-bg: #ffffff;
+    --tn-surface: #ffffff;
+    --tn-surface-alt: #f6f4ee;
+    --tn-fg: #14110d;
+    --tn-fg-soft: #2a241d;
+    --tn-muted: #5b5246;
+    --tn-line: #c8bfae;
+    --tn-line-strong: #8a7e6a;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .no-print,
+  .bottom-tabs,
+  .app-title,
+  .nudge {
+    display: none !important;
+  }
+  .app {
+    padding: 0;
+  }
+  .page {
+    padding: 0;
+    max-width: none;
+  }
+  .print-doc {
+    border: 0;
+    padding: 0;
+  }
+}

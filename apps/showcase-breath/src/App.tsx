@@ -105,16 +105,12 @@ export function App() {
     setRounds(p.defaultRounds);
   }
 
-  function openYourData() {
-    shippie.openYourData({ appSlug: 'breath' });
-  }
-
   const remainingSec = Math.max(0, Math.ceil(target - elapsed));
   const remainMin = Math.floor(remainingSec / 60);
   const remainSec = remainingSec % 60;
 
   return (
-    <main className="app">
+    <main className="app" {...(running ? { 'data-shippie-wakelock': true } : {})}>
       <header className="app-header">
         <h1>Breath</h1>
         <p className="subtitle">box · 4-7-8 · wim hof</p>
@@ -215,9 +211,6 @@ export function App() {
         </section>
       ) : null}
 
-      <button type="button" className="your-data" onClick={openYourData}>
-        Your Data
-      </button>
     </main>
   );
 }

@@ -8,18 +8,24 @@
     placeholder?: string;
   }
 
-  let { initial = '', placeholder = 'Search apps...' }: Props = $props();
-  let q = $state(initial);
+  let { initial = '', placeholder = 'Search tools...' }: Props = $props();
+  let q = $state('');
+
+  $effect(() => {
+    q = initial;
+  });
 </script>
 
-<form action="/apps" method="get" class="search-form" role="search">
+<form action="/" method="get" class="search-form" role="search">
   <input
     type="search"
     name="q"
     bind:value={q}
     {placeholder}
-    aria-label="Search apps"
+    aria-label="Search tools"
     class="search-input"
+    enterkeyhint="search"
+    autocomplete="off"
   />
   <button type="submit" class="search-btn" aria-label="Search">→</button>
 </form>

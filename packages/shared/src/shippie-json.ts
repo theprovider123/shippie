@@ -14,6 +14,35 @@ import type { DeployMode, VisibilityScope } from './deploy-states.ts';
 
 export type StoragePermission = 'none' | 'r' | 'rw';
 export type SigningMode = 'automatic' | 'manual';
+export type ShippieDataMode = 'shippie-documents' | 'local-only' | 'none';
+export type ShippieDataRecovery = 'inherited' | 'none';
+export type ShippieDataMigration = 'snapshot-v0' | 'custom' | 'none';
+export type ShippieDataSnapshots = 'inherited' | 'none';
+export type ShippieDataMedia = 'encrypted-chunked' | 'none';
+export type ShippieDataRealtime = 'inherited' | 'none';
+
+export interface ShippieJsonDataPolicy {
+  mode: ShippieDataMode;
+  documents: readonly string[];
+  attachments: boolean;
+  recovery: ShippieDataRecovery;
+  migrations: ShippieDataMigration;
+  snapshots?: ShippieDataSnapshots;
+  media?: ShippieDataMedia;
+  realtime?: ShippieDataRealtime;
+}
+
+export interface ShippieJsonSpaceRole {
+  id: string;
+  permissions?: readonly string[];
+}
+
+export interface ShippieJsonSpaces {
+  enabled: boolean;
+  roles?: readonly ShippieJsonSpaceRole[];
+  syncMode?: 'gossip' | 'sealed-cloud' | 'hub' | 'inherited';
+  archivable?: boolean;
+}
 
 export interface ShippieJsonBuild {
   command: string;
@@ -198,6 +227,8 @@ export interface ShippieJson {
   pwa?: ShippieJsonPwa;
   sdk?: ShippieJsonSdk;
   permissions?: ShippieJsonPermissions;
+  data?: ShippieJsonDataPolicy;
+  spaces?: ShippieJsonSpaces;
   allowed_connect_domains?: readonly string[];
   functions?: ShippieJsonFunctions;
   listing?: ShippieJsonListing;

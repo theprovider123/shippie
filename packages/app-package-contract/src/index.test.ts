@@ -43,6 +43,15 @@ describe('@shippie/app-package-contract', () => {
         maker: { id: 'maker_devante', name: 'Devante' },
         domains: { canonical: 'https://recipe-saver.shippie.app' },
         runtime: { standalone: true, container: true, hub: true, minimumSdk: '1.0.0' },
+        spaces: {
+          enabled: true,
+          roles: [
+            { id: 'owner', permissions: ['read', 'write', 'invite'] },
+            { id: 'viewer', permissions: ['read'] },
+          ],
+          syncMode: 'gossip',
+          archivable: true,
+        },
       }),
     ).not.toThrow();
   });

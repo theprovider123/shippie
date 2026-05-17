@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { createMirrorCollection, preparePackageInstall } from '@shippie/core';
-import type { AppCollectionEntry, AppCollectionManifest } from '@shippie/app-package-contract';
+import type { AppCollectionEntry, AppCollectionManifest, PackageSpaces } from '@shippie/app-package-contract';
 
 export interface IngestedPackage {
   slug: string;
@@ -11,6 +11,25 @@ export interface IngestedPackage {
   packageHash: string;
   appUrl: string;
   collectionPath: string;
+}
+
+export interface HubToolRegistryEntry {
+  slug: string;
+  name: string;
+  version: string;
+  packageHash: string;
+  packageUrl: string;
+  appUrl: string;
+  spaces?: PackageSpaces;
+  group?: string;
+  deployedAt: string;
+  deployedBy?: string;
+}
+
+export interface HubToolRegistry {
+  schema: 'shippie.hub.tools.v1';
+  updatedAt: string;
+  tools: HubToolRegistryEntry[];
 }
 
 export async function ingestPackageArchive(input: {
@@ -31,6 +50,7 @@ export async function ingestPackageArchive(input: {
   const packageFile = join(input.cacheRoot, 'packages', `${prepared.package.packageHash}.shippie`);
   const receiptFile = join(input.cacheRoot, 'receipts', `${manifest.slug}.json`);
   const collectionFile = join(input.cacheRoot, 'collections', 'local-mirror.json');
+  const packageUrl = `${input.origin.replace(/\/+$/, '')}/packages/${prepared.package.packageHash}.shippie`;
 
   await writeSafeFile(packageFile, prepared.archiveBytes);
   await writeSafeFile(receiptFile, new TextEncoder().encode(`${JSON.stringify(prepared.receipt, null, 2)}\n`));
@@ -39,7 +59,7 @@ export async function ingestPackageArchive(input: {
   const prior = await readCollection(collectionFile);
   const entry = {
     ...prepared.entry,
-    packageUrl: `${input.origin.replace(/\/+$/, '')}/packages/${prepared.package.packageHash}.shippie`,
+    packageUrl,
   };
   const collection = createMirrorCollection({
     origin: input.origin,
@@ -47,6 +67,16 @@ export async function ingestPackageArchive(input: {
     now: new Date().toISOString(),
   });
   await writeSafeFile(collectionFile, new TextEncoder().encode(`${JSON.stringify(collection, null, 2)}\n`));
+  await writeHubToolRegistry(input.cacheRoot, {
+    slug: manifest.slug,
+    name: manifest.name,
+    version,
+    packageHash: prepared.package.packageHash,
+    packageUrl,
+    appUrl: `http://${manifest.slug}.hub.local/`,
+    spaces: manifest.spaces,
+    deployedAt: new Date().toISOString(),
+  });
 
   return {
     slug: manifest.slug,
@@ -56,6 +86,96 @@ export async function ingestPackageArchive(input: {
     appUrl: `http://${manifest.slug}.hub.local/`,
     collectionPath: '/collections/local-mirror.json',
   };
+}
+
+export async function readHubToolRegistry(cacheRoot: string): Promise<HubToolRegistry> {
+  const path = join(cacheRoot, 'tools.json');
+  if (!existsSync(path)) {
+    return { schema: 'shippie.hub.tools.v1', updatedAt: new Date(0).toISOString(), tools: [] };
+  }
+  try {
+    const parsed = JSON.parse(await readFile(path, 'utf8')) as Partial<HubToolRegistry>;
+    return {
+      schema: 'shippie.hub.tools.v1',
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date(0).toISOString(),
+      tools: Array.isArray(parsed.tools) ? parsed.tools.filter(isHubToolRegistryEntry) : [],
+    };
+  } catch {
+    return { schema: 'shippie.hub.tools.v1', updatedAt: new Date(0).toISOString(), tools: [] };
+  }
+}
+
+export async function updateHubToolGroup(
+  cacheRoot: string,
+  slug: string,
+  group: string,
+): Promise<HubToolRegistryEntry | null> {
+  const prior = await readHubToolRegistry(cacheRoot);
+  const index = prior.tools.findIndex((tool) => tool.slug === slug);
+  if (index === -1) return null;
+  const nextTools = [...prior.tools];
+  nextTools[index] = { ...nextTools[index]!, group: group.trim() || undefined };
+  const next: HubToolRegistry = {
+    schema: 'shippie.hub.tools.v1',
+    updatedAt: new Date().toISOString(),
+    tools: nextTools,
+  };
+  await writeSafeFile(join(cacheRoot, 'tools.json'), new TextEncoder().encode(`${JSON.stringify(next, null, 2)}\n`));
+  return nextTools[index]!;
+}
+
+async function writeHubToolRegistry(
+  cacheRoot: string,
+  entry: HubToolRegistryEntry,
+): Promise<void> {
+  const prior = await readHubToolRegistry(cacheRoot);
+  const updatedAt = new Date().toISOString();
+  const next: HubToolRegistry = {
+    schema: 'shippie.hub.tools.v1',
+    updatedAt,
+    tools: [
+      ...prior.tools.filter((tool) => tool.slug !== entry.slug),
+      {
+        ...entry,
+        group: entry.group ?? prior.tools.find((tool) => tool.slug === entry.slug)?.group,
+        spaces: entry.spaces ?? prior.tools.find((tool) => tool.slug === entry.slug)?.spaces,
+      },
+    ].sort((a, b) => a.name.localeCompare(b.name)),
+  };
+  await writeSafeFile(join(cacheRoot, 'tools.json'), new TextEncoder().encode(`${JSON.stringify(next, null, 2)}\n`));
+}
+
+function isHubToolRegistryEntry(value: unknown): value is HubToolRegistryEntry {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as Partial<HubToolRegistryEntry>;
+  return (
+    typeof entry.slug === 'string' &&
+    typeof entry.name === 'string' &&
+    typeof entry.version === 'string' &&
+    typeof entry.packageHash === 'string' &&
+    typeof entry.packageUrl === 'string' &&
+    typeof entry.appUrl === 'string' &&
+    typeof entry.deployedAt === 'string' &&
+    (entry.spaces === undefined || isPackageSpaces(entry.spaces))
+  );
+}
+
+function isPackageSpaces(value: unknown): value is PackageSpaces {
+  if (!value || typeof value !== 'object') return false;
+  const spaces = value as Partial<PackageSpaces>;
+  return (
+    typeof spaces.enabled === 'boolean' &&
+    Array.isArray(spaces.roles) &&
+    spaces.roles.every((role) =>
+      Boolean(role) &&
+      typeof role === 'object' &&
+      typeof (role as { id?: unknown }).id === 'string' &&
+      Array.isArray((role as { permissions?: unknown }).permissions) &&
+      ((role as { permissions: unknown[] }).permissions).every((permission) => typeof permission === 'string'),
+    ) &&
+    (spaces.syncMode === 'gossip' || spaces.syncMode === 'sealed-cloud' || spaces.syncMode === 'hub' || spaces.syncMode === 'inherited') &&
+    typeof spaces.archivable === 'boolean'
+  );
 }
 
 export async function servePackageArchive(cacheRoot: string, fileName: string): Promise<Response> {

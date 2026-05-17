@@ -19,13 +19,21 @@ export interface ToastInput {
   message: string;
   /** Auto-dismiss after this many ms. 0 = sticky. Default 4000. */
   durationMs?: number;
-  /** Optional inline action button. */
+  /** Optional inline action button (primary, e.g. "Refresh"). */
   action?: { label: string; run: () => void } | undefined;
+  /**
+   * Optional secondary action button (e.g. "Skip this version" alongside
+   * "Refresh"). Rendered after the primary action; closes the toast on
+   * tap. Used by the SW update flow so users can suppress per-version
+   * without losing future updates.
+   */
+  secondaryAction?: { label: string; run: () => void } | undefined;
 }
 
-export interface Toast extends Required<Omit<ToastInput, 'action'>> {
+export interface Toast extends Required<Omit<ToastInput, 'action' | 'secondaryAction'>> {
   id: string;
   action: { label: string; run: () => void } | null;
+  secondaryAction: { label: string; run: () => void } | null;
   createdAt: number;
 }
 
@@ -62,6 +70,7 @@ function createToastStore(): ToastApi {
       message: input.message,
       durationMs,
       action: input.action ?? null,
+      secondaryAction: input.secondaryAction ?? null,
       createdAt: Date.now()
     };
     inner.update((list) => [...list, toast]);

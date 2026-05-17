@@ -1,0 +1,67 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Touch",
+  "slug": "touch",
+  "description": "A follow-up tracker for the 30 people who matter. No sales CRM gravity. Your Rolodex stays yours.",
+  "icon": "/icon.svg",
+  "theme_color": "#A86060",
+  "background_color": "#F5EFE4",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "touch-logged"
+    ],
+    "consumes": [
+      "coffee-brewed",
+      "dined-out"
+    ]
+  },
+  "data_schemas": {
+    "people": {
+      "id": "text primary key",
+      "name": "text not null",
+      "role": "text",
+      "company": "text",
+      "email": "text",
+      "phone": "text",
+      "notes_md": "text",
+      "cadence_days": "integer",
+      "last_touch_at": "datetime",
+      "next_touch_at": "datetime",
+      "photo_url": "text",
+      "archived": "integer",
+      "created_at": "datetime"
+    },
+    "touches": {
+      "id": "text primary key",
+      "person_id": "text not null",
+      "kind": "text not null",
+      "happened_at": "datetime",
+      "summary": "text",
+      "link_url": "text",
+      "sentiment": "text"
+    },
+    "tags": {
+      "id": "text primary key",
+      "label": "text not null"
+    },
+    "person_tags": {
+      "id": "text primary key",
+      "person_id": "text not null",
+      "tag_id": "text not null"
+    },
+    "tasks": {
+      "id": "text primary key",
+      "person_id": "text not null",
+      "body": "text not null",
+      "due_at": "datetime",
+      "done_at": "datetime",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "social"
+  }
+}

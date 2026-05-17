@@ -1,10 +1,16 @@
 <script lang="ts">
   import type { PageProps } from './$types';
+  import { page } from '$app/stores';
   import Button from '$lib/components/ui/Button.svelte';
   import { enhance } from '$app/forms';
 
   let { data, form }: PageProps = $props();
   let submitting = $state(false);
+
+  function claimAction(): string {
+    const query = $page.url.searchParams.toString();
+    return query ? `?/claim&${query}` : '?/claim';
+  }
 </script>
 
 <svelte:head>
@@ -27,7 +33,7 @@
       {/if}
       <form
         method="POST"
-        action="?/claim"
+        action={claimAction()}
         use:enhance={() => {
           submitting = true;
           return async ({ update }) => {
@@ -37,14 +43,14 @@
         }}
       >
         <Button variant="primary" size="lg" type="submit" disabled={submitting}>
-          {submitting ? 'Claiming…' : 'Accept invite →'}
+          {submitting ? 'Joining…' : 'Join private space'}
         </Button>
       </form>
       {#if form?.error}
         <p class="error">{form.error}</p>
       {/if}
       <p class="fineprint">
-        This invite gives you access for 30 days. Sign in to make it permanent.
+        Shippie will add this private tool to your device. Sign in to make access permanent.
       </p>
     {/if}
   </div>

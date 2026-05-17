@@ -1,0 +1,35 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Symptom Diary",
+  "slug": "symptom-diary",
+  "description": "Chronic illness symptoms, triggers, medications, and exportable history.",
+  "icon": "/icon.svg",
+  "theme_color": "#74A57F",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "symptom-logged",
+      "med-taken"
+    ],
+    "consumes": [
+      "sleep-logged",
+      "mood-logged",
+      "cooked-meal",
+      "body-metrics-logged"
+    ]
+  },
+  "data_schemas": {
+    "symptoms": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
+  }
+}

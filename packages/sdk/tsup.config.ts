@@ -16,6 +16,7 @@ export default defineConfig([
   {
     entry: {
       index: 'src/index.ts',
+      'data-standard': 'src/data-standard.ts',
       'native/index': 'src/native/index.ts',
       'wrapper/index': 'src/wrapper/index.ts',
     },

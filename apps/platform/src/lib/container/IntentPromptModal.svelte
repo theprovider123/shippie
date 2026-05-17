@@ -12,7 +12,7 @@
   export interface PendingIntentPrompt {
     consumerId: string;
     consumerName: string;
-    intent: string;
+    intents: string[];
   }
 
   interface Props {
@@ -28,10 +28,21 @@
   <div class="intent-prompt-backdrop" role="presentation">
     <div class="intent-prompt" role="dialog" aria-labelledby="intent-prompt-title">
       <h3 id="intent-prompt-title">Cross-app permission</h3>
-      <p>
-        <strong>{prompt.consumerName}</strong> wants to receive
-        <code>{prompt.intent}</code> events from any installed app.
-      </p>
+      {#if prompt.intents.length === 1}
+        <p>
+          <strong>{prompt.consumerName}</strong> wants to receive
+          <code>{prompt.intents[0]}</code> events from any installed app.
+        </p>
+      {:else}
+        <p>
+          <strong>{prompt.consumerName}</strong> wants to receive these events from installed apps.
+        </p>
+        <div class="intent-list" aria-label="Requested events">
+          {#each prompt.intents as intent (intent)}
+            <code>{intent}</code>
+          {/each}
+        </div>
+      {/if}
       <p class="hint">
         Both apps stay sandboxed. Only the matching event rows are shared — never any other data.
         New apps that fire this event later won't ask again. You can revoke later in Your Data.
@@ -52,7 +63,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 1300;
     padding: var(--space-md);
   }
   .intent-prompt {
@@ -78,6 +89,12 @@
     padding: 0.1rem 0.3rem;
     border-radius: 0;
     font-size: 0.85rem;
+  }
+  .intent-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 0.75rem;
   }
   .intent-prompt .hint {
     color: var(--text-light);

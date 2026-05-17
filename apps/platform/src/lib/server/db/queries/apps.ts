@@ -11,7 +11,7 @@
  * (it needs the request cookies for invite-grant verification) — keep
  * this module pure read-only over the D1 binding.
  */
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { ShippieDb } from '../client';
 import { apps, appPermissions, deploys } from '../schema';
 import type { App } from '../schema/apps';
@@ -39,6 +39,26 @@ const PUBLIC_FILTERS = and(
   eq(apps.isArchived, false),
 );
 
+/**
+ * Marketplace surface filter. Pass through to public listing queries so
+ * `/arcade` shows only `surface='arcade'`, `/labs` shows only
+ * `surface='labs'`. The marketplace home (`/apps`) shows
+ * featured + arcade together so "games" can sit alongside "tools" /
+ * "social" as a normal category chip — pass an array there.
+ *
+ * Default: `['featured', 'arcade']` for callers that don't pass a
+ * value (so the home grid shows both, and the chip rail derives a
+ * `games` chip naturally from arcade entries' `category`).
+ */
+export type SurfaceFilter = 'featured' | 'arcade' | 'labs' | 'archived';
+export type SurfaceSelector = SurfaceFilter | readonly SurfaceFilter[];
+
+function surfaceCondition(selector: SurfaceSelector | undefined) {
+  if (!selector) return inArray(apps.surface, ['featured', 'arcade']);
+  if (Array.isArray(selector)) return inArray(apps.surface, [...selector]);
+  return eq(apps.surface, selector as SurfaceFilter);
+}
+
 const FEATURED_COLUMNS = {
   id: apps.id,
   slug: apps.slug,
@@ -56,11 +76,15 @@ const FEATURED_COLUMNS = {
   currentPublicKindStatus: apps.currentPublicKindStatus,
 };
 
-export async function findFeatured(db: ShippieDb, limit = 6): Promise<FeaturedApp[]> {
+export async function findFeatured(
+  db: ShippieDb,
+  limit = 6,
+  surface?: SurfaceSelector,
+): Promise<FeaturedApp[]> {
   const rows = await db
     .select(FEATURED_COLUMNS)
     .from(apps)
-    .where(PUBLIC_FILTERS)
+    .where(and(PUBLIC_FILTERS, surfaceCondition(surface)))
     .orderBy(desc(apps.upvoteCount), desc(apps.installCount))
     .limit(limit);
   return rows;
@@ -125,6 +149,13 @@ export interface SearchOptions {
   offset?: number;
   kind?: KindFilter | null;
   category?: string | null;
+  /**
+   * Marketplace surface filter. Default: `['featured', 'arcade']` so the
+   * home grid shows games alongside tools as a regular category. `/arcade`
+   * passes `'arcade'`; `/labs` passes `'labs'`. Pass an explicit single
+   * surface for the focused routes.
+   */
+  surface?: SurfaceSelector;
 }
 
 export async function searchPublic(
@@ -136,12 +167,20 @@ export async function searchPublic(
   const offset = opts.offset ?? 0;
   const kind = opts.kind ?? null;
   const ftsQuery = buildFtsQuery(query);
+  // Default to featured + arcade so search hits games as well as tools.
+  const surfaces: SurfaceFilter[] = !opts.surface
+    ? ['featured', 'arcade']
+    : Array.isArray(opts.surface)
+      ? [...opts.surface]
+      : [opts.surface as SurfaceFilter];
   if (!ftsQuery) return browsePublic(db, opts);
 
   // Join FTS results to apps before LIMIT/OFFSET so kind/category filters
   // paginate the filtered result set instead of "first page of any app,
   // then filter in memory". This is load-bearing for /apps?kind=local&q=...
   // where matching Local apps may rank behind Connected/Cloud results.
+  // sql.raw is safe here because `surfaces` is a closed enum.
+  const surfaceList = surfaces.map((s) => `'${s}'`).join(',');
   return db.all<FeaturedApp>(sql`
     SELECT
       a.id AS id,
@@ -163,6 +202,7 @@ export async function searchPublic(
     WHERE apps_fts MATCH ${ftsQuery}
       AND a.visibility_scope = 'public'
       AND a.is_archived = 0
+      AND a.surface IN (${sql.raw(surfaceList)})
       ${kind ? sql`AND a.current_detected_kind = ${kind}` : sql``}
       ${opts.category ? sql`AND a.category = ${opts.category}` : sql``}
     ORDER BY rank
@@ -177,7 +217,7 @@ export async function browsePublic(
   const limit = opts.limit ?? 60;
   const offset = opts.offset ?? 0;
   const kind = opts.kind ?? null;
-  const conds = [PUBLIC_FILTERS];
+  const conds = [PUBLIC_FILTERS, surfaceCondition(opts.surface)];
   if (kind) conds.push(eq(apps.currentDetectedKind, kind));
   if (opts.category) conds.push(eq(apps.category, opts.category));
   return db
@@ -193,19 +233,26 @@ export async function findByCategory(
   db: ShippieDb,
   category: string,
   limit = 12,
+  surface?: SurfaceSelector,
 ): Promise<FeaturedApp[]> {
   return db
     .select(FEATURED_COLUMNS)
     .from(apps)
-    .where(and(eq(apps.category, category), PUBLIC_FILTERS))
+    .where(and(eq(apps.category, category), PUBLIC_FILTERS, surfaceCondition(surface)))
     .orderBy(desc(apps.upvoteCount), desc(apps.installCount))
     .limit(limit);
 }
 
-export async function listCategories(db: ShippieDb): Promise<string[]> {
+export async function listCategories(
+  db: ShippieDb,
+  surface?: SurfaceSelector,
+): Promise<string[]> {
+  // Default selector is featured + arcade so the chip rail derives a
+  // `games` chip from arcade entries' `category`. /arcade and /labs
+  // pass their explicit single surface.
   const rows = await db
     .selectDistinct({ category: apps.category })
     .from(apps)
-    .where(PUBLIC_FILTERS);
+    .where(and(PUBLIC_FILTERS, surfaceCondition(surface)));
   return rows.map((r) => r.category).filter((c): c is string => !!c);
 }

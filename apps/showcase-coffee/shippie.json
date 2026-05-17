@@ -9,7 +9,10 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["coffee-brewed", "caffeine-logged"]
+    "provides": [
+      "coffee-brewed",
+      "caffeine-logged"
+    ]
   },
   "data_schemas": {
     "beans": {
@@ -33,5 +36,9 @@
       "taste_rating": "integer",
       "brewed_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "food-drink"
   }
 }

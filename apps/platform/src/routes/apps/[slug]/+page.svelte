@@ -1,13 +1,17 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import type { PageProps } from './$types';
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
   import RatingsSummary from '$lib/components/marketplace/RatingsSummary.svelte';
   import CapabilityBadges from '$lib/components/marketplace/CapabilityBadges.svelte';
+  import LocalAppActions from '$lib/components/marketplace/LocalAppActions.svelte';
   import UpvoteButton from '$lib/components/marketplace/UpvoteButton.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import { pwaSurfaceLabel } from '$lib/types/pwa-readiness';
   import { toast } from '$lib/stores/toast';
 
-  let { data }: PageProps = $props();
+  let { data, form }: PageProps = $props();
+  let savingProfile = $state(false);
 
   // Subdomain for direct install. `shippie.app` post-cutover; the canary
   // form was `next.shippie.app` which still works since the wildcard
@@ -67,7 +71,7 @@
   }
 
   function eligibilityLabel(value: string): string {
-    if (value === 'first_party') return 'First-party container app';
+    if (value === 'first_party') return 'First-party container tool';
     if (value === 'curated') return 'Curated for Shippie';
     if (value === 'compatible') return 'Container compatible';
     if (value === 'standalone_only') return 'Standalone only';
@@ -78,6 +82,29 @@
   function securityLabel(score: number | null): string {
     return score === null ? 'Unscored' : `${score}/100`;
   }
+
+  const pwaLabel = $derived(
+    pwaSurfaceLabel(data.app.pwaReadiness.status, data.app.pwaReadiness.reasons),
+  );
+  const surfaceLabel = $derived(
+    pwaLabel === 'App'
+      ? 'Installable'
+      : pwaLabel === 'App — verifying'
+        ? 'Installable — verifying'
+        : pwaLabel === 'Web App'
+          ? 'Web tool'
+          : pwaLabel,
+  );
+  const typeLabel = $derived(data.app.type.toLowerCase() === 'app' ? 'tool' : data.app.type);
+  const isRemix = $derived(Boolean(data.ownership.lineage.parentAppId));
+  const remixLabel = $derived(
+    data.ownership.lineage.parentApp
+      ? `Remix of ${data.ownership.lineage.parentApp.name}`
+      : data.ownership.lineage.parentAppId
+        ? 'Remix'
+        : '',
+  );
+  const slugPattern = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
 </script>
 
 <svelte:head>
@@ -87,7 +114,7 @@
 
 <header class="hero" style="background: {data.app.themeColor};">
   <div class="hero-wrap">
-    <a href="/apps" class="back">← All apps</a>
+    <a href="/apps" class="back">← All tools</a>
     <div class="hero-row">
       <IconOrMonogram
         name={data.app.name}
@@ -99,7 +126,12 @@
       <div class="hero-meta">
         <h1 class="title">{data.app.name}</h1>
         <p class="tagline">{data.app.tagline ?? data.app.description ?? ''}</p>
-        <p class="kind">{data.app.type} · {data.app.category}</p>
+        <div class="hero-tags">
+          <p class="kind">{surfaceLabel} · {typeLabel} · {data.app.category}</p>
+          {#if isRemix}
+            <span class="remix-badge">{remixLabel}</span>
+          {/if}
+        </div>
         {#if data.capabilityBadges.length > 0}
           <div class="badges">
             <CapabilityBadges badges={data.capabilityBadges} max={5} />
@@ -113,12 +145,18 @@
             type="button"
             class="share-btn"
             onclick={shareApp}
-            aria-label="Share this app"
+            aria-label="Share this tool"
           >
             Share
           </button>
-          <UpvoteButton slug={data.app.slug} initialCount={data.app.upvoteCount} />
+          <UpvoteButton slug={data.app.slug} initialCount={data.app.upvoteCount} label="Favorite" />
         </div>
+        <LocalAppActions
+          slug={data.app.slug}
+          name={data.app.name}
+          appUrl={data.ownership.standaloneUrl}
+          showFavorite={false}
+        />
       </div>
     </div>
   </div>
@@ -129,7 +167,7 @@
     <section class="section trust-card" aria-labelledby="trust-card-title">
       <div class="section-intro">
         <h2 id="trust-card-title">Trust Card</h2>
-        <p>What Shippie could verify before you open this app.</p>
+        <p>What Shippie could verify before you open this tool.</p>
       </div>
       <div class="trust-grid">
         <article>
@@ -158,6 +196,17 @@
             {data.trustCard.proofBadges.length > 0
               ? data.trustCard.proofBadges.join(' · ')
               : 'No runtime proof badges earned yet.'}
+          </p>
+        </article>
+        <article>
+          <span>PWA readiness</span>
+          <strong>{surfaceLabel}</strong>
+          <p>
+            {data.app.pwaReadiness.status === 'confirmed'
+              ? 'Confirmed by runtime proof from a real device.'
+              : data.app.pwaReadiness.reasons.includes('manifest-found')
+                ? 'Detected from deploy-time signals; awaiting runtime proof.'
+                : 'Wrapped as a web tool while PWA signals are missing.'}
           </p>
         </article>
       </div>
@@ -191,7 +240,7 @@
 
   {#if data.grantedPermissions.length > 0}
     <section class="section">
-      <h2>What this app can do</h2>
+      <h2>What this tool can do</h2>
       <ul class="perms">
         {#each data.grantedPermissions as perm (perm)}
           <li>
@@ -266,7 +315,75 @@
           · {data.ownership.remixAllowed ? 'Remix allowed' : 'Remix closed'}
         </p>
       </article>
+      {#if isRemix}
+        <article class="remix-lineage">
+          <span>Remix lineage</span>
+          {#if data.ownership.lineage.parentApp}
+            <a href={`/apps/${data.ownership.lineage.parentApp.slug}`}>
+              Remix of {data.ownership.lineage.parentApp.name}
+            </a>
+          {:else}
+            <p>Remix of another Shippie tool</p>
+          {/if}
+          {#if data.ownership.lineage.parentVersion}
+            <p class="muted">Parent version {data.ownership.lineage.parentVersion}</p>
+          {/if}
+        </article>
+      {/if}
     </div>
+    {#if data.isMaker}
+      <details class="owner-edit">
+        <summary>Edit listing</summary>
+        {#if form?.profileOk}<p class="ok">Saved.</p>{/if}
+        {#if form?.profileError}<p class="err">{form.profileError}</p>{/if}
+        <form
+          method="POST"
+          action="?/saveProfile"
+          use:enhance={() => {
+            savingProfile = true;
+            return async ({ update, result }) => {
+              await update();
+              savingProfile = false;
+              if (result.type === 'success') {
+                toast.push({ kind: 'success', message: 'Listing saved.' });
+              }
+            };
+          }}
+        >
+          <label>
+            Slug
+            <input name="slug" value={data.app.slug} maxlength="63" required pattern={slugPattern} />
+          </label>
+          <label>
+            Name
+            <input name="name" value={data.app.name} maxlength="80" required />
+          </label>
+          <label>
+            Tagline
+            <input name="tagline" value={data.app.tagline ?? ''} maxlength="160" />
+          </label>
+          <label>
+            Category
+            <input name="category" value={data.app.category} maxlength="48" required />
+          </label>
+          <label>
+            Source repo
+            <input name="sourceRepo" value={data.ownership.sourceRepo ?? ''} inputmode="url" />
+          </label>
+          <label>
+            License
+            <input name="license" value={data.ownership.license ?? ''} placeholder="MIT, AGPL-3.0, Apache-2.0" />
+          </label>
+          <label class="check-row">
+            <input name="remixAllowed" type="checkbox" checked={data.ownership.remixAllowed} />
+            Allow remixing when source and license are present
+          </label>
+          <button type="submit" disabled={savingProfile}>
+            {savingProfile ? 'Saving' : 'Save listing'}
+          </button>
+        </form>
+      </details>
+    {/if}
     {#if data.ownership.versions.length > 0}
       <div class="version-strip" aria-label="Recent versions">
         {#each data.ownership.versions as version (version.packageHash)}
@@ -282,8 +399,8 @@
       {#if data.ownership.sourceRepo}
         <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
       {/if}
-      {#if data.ownership.remixAllowed}
-        <a href={`/new?remix=${data.app.slug}`}>Remix this app</a>
+      {#if data.ownership.remixAvailable}
+        <a href={`/new?remix=${data.app.slug}`}>Remix this tool</a>
       {:else}
         <span>Remix unavailable until the maker publishes source + license</span>
       {/if}
@@ -360,7 +477,27 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     opacity: 0.75;
+    margin: 0;
+  }
+  .hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem;
     margin-top: 0.625rem;
+  }
+  .remix-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 0.6rem;
+    border: 1px solid rgba(237, 228, 211, 0.72);
+    background: rgba(20, 18, 15, 0.2);
+    color: #EDE4D3;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   .badges { margin-top: 1rem; }
   .cta-row {
@@ -548,6 +685,70 @@
     color: var(--sunset);
     overflow-wrap: anywhere;
   }
+  .remix-lineage {
+    border-color: color-mix(in srgb, var(--sunset) 42%, var(--border-light)) !important;
+  }
+  .owner-edit {
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-md);
+  }
+  .owner-edit summary {
+    cursor: pointer;
+    color: var(--sunset);
+    font-weight: 700;
+  }
+  .owner-edit form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin-top: var(--space-md);
+  }
+  .owner-edit label {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    font-weight: 700;
+  }
+  .owner-edit input {
+    min-width: 0;
+    border: 1px solid var(--border-light);
+    background: var(--bg-pure);
+    color: var(--text);
+    padding: 0.7rem;
+    font: inherit;
+  }
+  .owner-edit .check-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+  }
+  .owner-edit .check-row input {
+    width: auto;
+  }
+  .owner-edit button {
+    justify-self: start;
+    border: 0;
+    background: var(--sunset);
+    color: white;
+    padding: 0.75rem 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .owner-edit button:disabled {
+    opacity: 0.65;
+    cursor: progress;
+  }
+  .ok {
+    color: var(--sage-leaf) !important;
+    margin-top: var(--space-sm) !important;
+  }
+  .err {
+    color: var(--sunset) !important;
+    margin-top: var(--space-sm) !important;
+  }
   .domain-list {
     display: grid;
     gap: 4px;
@@ -582,6 +783,9 @@
   }
   @media (max-width: 640px) {
     .ownership-grid {
+      grid-template-columns: 1fr;
+    }
+    .owner-edit form {
       grid-template-columns: 1fr;
     }
     .trust-grid {

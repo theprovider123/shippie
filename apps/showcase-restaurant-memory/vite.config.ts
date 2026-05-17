@@ -9,6 +9,6 @@ export default defineConfig({
     sourcemap: false,
   },
   server: {
-    port: 5199,
+    port: 5197,
   },
 });

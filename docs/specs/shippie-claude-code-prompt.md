@@ -42,7 +42,7 @@ A micro-tool is a small, focused, single-purpose web app that solves one problem
 
 ## The Core Thesis
 
-1. **Millions of people are building micro-tools with AI and have nowhere to put them.** They deploy to Vercel with zero discoverability, or share screenshots on Twitter. The gap between "I built a thing" and "people are using my thing" is massive.
+1. **Millions of people are building micro-tools with AI and have nowhere to put them.** They deploy to Cloudflare with zero discoverability, or share screenshots on Twitter. The gap between "I built a thing" and "people are using my thing" is massive.
 
 2. **The App Store is wrong for this category.** Review queues, provisioning profiles, metadata requirements — all designed for major apps, absurd for a tip calculator. Micro-tools need a home that matches how fast they're built.
 
@@ -154,7 +154,7 @@ The hippie ethos: the door is always open, nobody gets locked out. Free at the c
 ## MVP Scope (Phase 1)
 
 The MVP proves two things:
-1. Will makers deploy here instead of bare Vercel?
+1. Will makers deploy here instead of bare Cloudflare?
 2. Will users give useful feedback that makes makers come back and iterate?
 
 ### What's IN the MVP:
@@ -162,7 +162,7 @@ The MVP proves two things:
 **Deploy flow:**
 - Sign in with GitHub
 - Pick a repo or upload a zip
-- Auto-detect framework (React, Vue, Next, static HTML) via Nixpacks
+- Auto-detect framework (React, Vue, Next, static HTML) via GitHub Actions
 - Build and deploy to `appname.shippie.app`
 - Target: live in under 60 seconds for static, 2-3 min for framework apps
 - GitHub webhook integration for auto-redeploy on push
@@ -222,9 +222,9 @@ The MVP proves two things:
 
 | Layer | Tool | Why |
 |-------|------|-----|
-| **Server** | Hetzner dedicated/cloud | Best cost-to-performance, ~€40-50/mo to start |
-| **Deploy engine** | Coolify (self-hosted) | Open-source Vercel/Netlify alt, handles builds, SSL, subdomain routing |
-| **Build system** | Nixpacks | Open-source, auto-detects frameworks, generates containers. Used by Railway |
+| **Server** | Cloudflare dedicated/cloud | Best cost-to-performance, ~€40-50/mo to start |
+| **Deploy engine** | Cloudflare Workers + R2 | Edge runtime, static package serving, SSL, subdomain routing |
+| **Build system** | GitHub Actions + local zip flow | Repo builds and direct uploads land in the same Shippie package format |
 | **CDN** | Cloudflare free tier | Wildcard DNS, global caching for `*.shippie.app` subdomains |
 | **Platform database** | PocketBase | Single Go binary — DB, auth, real-time API. MVP-appropriate |
 | **Object storage** | MinIO (self-hosted) | S3-compatible, stores build artifacts, screenshots, avatars |
@@ -233,8 +233,8 @@ The MVP proves two things:
 | **Analytics** | Umami (self-hosted) | Privacy-focused, open-source. Per-app tracking |
 | **CI/CD** | GitHub webhooks | Repo connected → webhook on push → trigger build → deploy |
 
-### Day 1 infrastructure (single Hetzner server):
-- Coolify (deploy engine + container management)
+### Day 1 infrastructure (single Cloudflare server):
+- Cloudflare Workers (deploy engine + container management)
 - PocketBase (platform DB + auth)
 - MinIO (file storage)
 - Meilisearch (search)
@@ -249,9 +249,9 @@ Separate concerns across multiple VPS instances when needed. Same components, mo
 ```
 Maker signs in with GitHub
   → Picks a repo OR uploads a zip
-  → Platform detects framework (Nixpacks)
+  → Platform detects framework (GitHub Actions)
   → Builds container
-  → Deploys to appname.shippie.app via Coolify
+  → Deploys to appname.shippie.app via Cloudflare Workers
   → Listing auto-generates from README or maker fills short form
   → App appears in storefront feed
   → Subsequent git pushes trigger auto-rebuild via webhook
@@ -348,14 +348,14 @@ Next.js app with:
 - PocketBase SDK for data
 - Meilisearch client for search
 - GitHub OAuth for auth
-- Deployed on Coolify alongside the micro-tools it hosts
+- Deployed on Cloudflare Workers alongside the micro-tools it hosts
 
 ## Key Questions for Claude Code
 
 Before writing code, challenge this plan and ask me questions. Specifically:
 
-1. **Is Coolify the right deploy engine?** Does it support subdomain-per-app with Nixpacks builds triggered via API? Or do I need a custom pipeline?
-2. **Wildcard subdomain routing** — exact Cloudflare + Coolify config for `*.shippie.app`? SSL cert gotchas?
+1. **Is Cloudflare Workers the right deploy engine?** Does it support subdomain-per-app with GitHub Actions builds triggered via API? Or do I need a custom pipeline?
+2. **Wildcard subdomain routing** — exact Cloudflare + Cloudflare Workers config for `*.shippie.app`? SSL cert gotchas?
 3. **PocketBase limits** — robust enough for MVP? When does it break? Migration path?
 4. **Build isolation and security** — makers upload arbitrary code. How to sandbox? How to prevent malicious apps from affecting the platform?
 5. **Iframe vs subdomain** — should apps run embedded in the platform UI or on their own subdomain? Trade-offs?

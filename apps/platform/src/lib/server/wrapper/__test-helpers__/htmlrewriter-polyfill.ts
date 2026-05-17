@@ -2,9 +2,10 @@
  * Minimal HTMLRewriter polyfill for vitest (Node) environment.
  *
  * The Cloudflare Workers / Bun runtime provides `HTMLRewriter` as a global
- * with a streaming, selector-driven API. Vitest runs in plain Node where
- * this global doesn't exist, which causes `rewriter.test.ts` and any test
- * that exercises `injectPwaTags` (e.g. files.test.ts SPA fallback) to fail.
+ * with a streaming, selector-driven API. Vitest may run with no global, or
+ * with Bun's native global in a Node-style stream path that can throw
+ * ERR_STREAM_CANNOT_PIPE. Wrapper unit tests use this deterministic polyfill
+ * either way.
  *
  * This polyfill implements only the surface area used by
  * `apps/platform/src/lib/server/wrapper/rewriter.ts`:
@@ -12,6 +13,7 @@
  *   new HTMLRewriter()
  *     .on('link[rel="manifest"]', { element() {} })
  *     .on('script[src="/__shippie/sdk.js"]', { element() {} })
+ *     .on('script[data-shippie-recovery]', { element() {} })
  *     .on('head', { element(el) { el.onEndTag(endTag => endTag.before(...)) } })
  *     .on('body', { element(el) { el.prepend(...) } })
  *     .transform(response): Response
@@ -149,6 +151,13 @@ class HTMLRewriterPolyfill {
           const el = makeElementProxy({});
           handler.element(el);
         }
+      } else if (/^script\[data-shippie-recovery\]$/.test(selector)) {
+        const re = /<script\b[^>]*\bdata-shippie-recovery(?:\s*=\s*["'][^"']*["'])?[^>]*>/gi;
+        let m;
+        while ((m = re.exec(working)) !== null) {
+          const el = makeElementProxy({});
+          handler.element(el);
+        }
       }
     }
 
@@ -175,8 +184,6 @@ let installed = false;
 export function installHTMLRewriterPolyfill(): void {
   if (installed) return;
   const g = globalThis as { HTMLRewriter?: unknown };
-  if (typeof g.HTMLRewriter === 'undefined') {
-    g.HTMLRewriter = HTMLRewriterPolyfill;
-    installed = true;
-  }
+  g.HTMLRewriter = HTMLRewriterPolyfill;
+  installed = true;
 }

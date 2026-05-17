@@ -14,26 +14,27 @@ bun run dev          # starts all dev servers via turbo
 ### Prerequisites
 
 - **Bun** 1.3+ (package manager + runtime)
-- **Postgres 16** (local dev — `brew install postgresql@16` on macOS)
-- **Node.js 20+** (for Next.js dev server)
+- **Wrangler** authenticated for Cloudflare preview/deploy flows
 
-### Database setup
+### Local setup
 
 ```bash
-createdb shippie_dev
-cd packages/db && DATABASE_URL=postgresql://localhost/shippie_dev bun run db:push
+cd apps/platform
+bun run db:migrate:local
+bun run dev
 ```
 
 ## Project structure
 
 ```
 shippie/
-  apps/web/          Next.js platform (AGPL)
+  apps/platform/     SvelteKit + Cloudflare platform (AGPL)
+  apps/shippie-ai/   Local AI iframe surface (AGPL)
   packages/sdk/      Client SDK (MIT)
   packages/cli/      CLI tool (MIT)
-  packages/db/       Drizzle schema + migrations
+  packages/db/       Shared schema helpers
   packages/pwa-injector/  PWA generation
-  services/worker/   Cloudflare Worker runtime (AGPL)
+  services/hub/      Venue/local-network hub (AGPL)
 ```
 
 ## Development workflow
@@ -47,7 +48,7 @@ shippie/
 ## Code style
 
 - TypeScript everywhere
-- No default exports (except Next.js pages)
+- No default exports unless a local framework convention requires it
 - Prefer `const` over `let`
 - No semicolons (enforced by tooling)
 - Tabs for indentation in config files, spaces in source

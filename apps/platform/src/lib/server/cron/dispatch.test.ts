@@ -14,6 +14,8 @@ interface CallCounts {
   rollups: number;
   retention: number;
   capabilityBadges: number;
+  kindRollup: number;
+  opsMaintenance: number;
 }
 
 function makeHandlers(counts: CallCounts): CronHandlers {
@@ -38,11 +40,33 @@ function makeHandlers(counts: CallCounts): CronHandlers {
       counts.capabilityBadges += 1;
       return { appsScanned: 0, badgesAwarded: 0, badgesRevoked: 0 };
     },
+    kindRollup: async () => {
+      counts.kindRollup += 1;
+      return { appsScanned: 0, confirmed: 0, demoted: 0 };
+    },
+    opsMaintenance: async () => {
+      counts.opsMaintenance += 1;
+      return {
+        expiredVerificationTokens: 0,
+        expiredSessions: 0,
+        staleRateLimits: 0,
+        staleCronRuns: 0,
+        markedCronRunsFailed: 0,
+      };
+    },
   };
 }
 
 function makeCounts(): CallCounts {
-  return { reconcileKv: 0, reapTrials: 0, rollups: 0, retention: 0, capabilityBadges: 0 };
+  return {
+    reconcileKv: 0,
+    reapTrials: 0,
+    rollups: 0,
+    retention: 0,
+    capabilityBadges: 0,
+    kindRollup: 0,
+    opsMaintenance: 0,
+  };
 }
 
 function controller(cron: string): ScheduledController {
@@ -70,11 +94,13 @@ describe('handleScheduled', () => {
     expect(counts.retention).toBe(0);
   });
 
-  test('dispatches daily 4am cron to BOTH retention and capabilityBadges', async () => {
+  test('dispatches daily 4am cron to retention, rollups, and ops maintenance', async () => {
     const counts = makeCounts();
     await handleScheduled(controller('0 4 * * *'), env, makeHandlers(counts));
     expect(counts.retention).toBe(1);
     expect(counts.capabilityBadges).toBe(1);
+    expect(counts.kindRollup).toBe(1);
+    expect(counts.opsMaintenance).toBe(1);
     expect(counts.reconcileKv).toBe(0);
     expect(counts.reapTrials).toBe(0);
     expect(counts.rollups).toBe(0);

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Memory Grid",
+  "slug": "memory-grid",
+  "description": "Card-flip pair-match. Grid grows with skill. Cognitive sharpness as a game.",
+  "icon": "/icon.png",
+  "theme_color": "#5C5BA3",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "game.completed"
+    ],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "games",
+    "subcategory": "room",
+    "successor": "daily-puzzle"
+  }
+}

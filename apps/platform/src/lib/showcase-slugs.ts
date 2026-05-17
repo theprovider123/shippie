@@ -5,36 +5,105 @@
  *
  * The unification plan's "Open" button uses this list to decide
  * whether an app's canonical URL can use the `/run/<slug>/` focused
- * shell route. Runtime iframes still load the underlying static bundle
- * with `?shippie_embed=1`.
+ * shell route. Runtime iframes load the underlying static bundle from
+ * `/__shippie-run/<slug>/` with `?shippie_embed=1`.
  */
 import { SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
 
+export interface CanonicalShowcaseTarget {
+  slug: string;
+  searchParams?: Record<string, string>;
+}
+
 const SLUG_ALIASES: Record<string, string> = {
   'recipe-saver': 'recipe',
+  // Phase 2 cleanup — Move + Quiet absorbed several single-screen
+  // wellness apps. Move now itself aliases to lift, so route the
+  // grandchildren straight to lift to avoid two-hop redirects.
+  pace: 'lift',
+  'sleep-logger': 'lift',
+  'workout-logger': 'lift',
+  pomodoro: 'quiet',
+  'mood-pulse': 'quiet',
+  // daily-briefing demoted to platform-side `/today` surface; until
+  // that's fully discoverable, alias to recipe so links don't 404.
+  'daily-briefing': 'recipe',
+  // Recipe absorbed the standalone temperature helper for launch.
+  cooking: 'recipe',
+
+  // Slate v4 Phase 0 consolidations. Each successor app is a current
+  // first-party showcase (match-room, co-pilot, therapy-notes, lift) so
+  // the alias is safe to ship now. The retired apps' bundles continue
+  // to be baked — their shippie.json declares
+  // `curation.surface: 'archived'` so the marketplace hides them, but
+  // old direct URLs hit the alias and resolve to the canonical
+  // successor via the explicit 302 in /run/[slug]/+page.server.ts.
+  'live-room': 'match-room',
+  'show-and-tell': 'whiteboard',
+  'would-you-rather': 'drawing-telephone',
+  matchday: 'match-room',
+  'care-log': 'co-pilot',
+  journal: 'therapy-notes',
+  move: 'lift',
+
+  // Slate v4 Phase 1 — Tap Counter shipped, so retire sip-log to it.
+  // sip-log was a single-purpose hydration tracker; Tap Counter is
+  // the general-purpose physical-input mirror that replaces it.
+  'sip-log': 'tap-counter',
+  // Launch slate Phase 2 — standalone brain games now open as modes
+  // inside Daily Puzzle. The target search params below preserve which
+  // retired app the person intended to launch.
+  sudoku: 'daily-puzzle',
+  'memory-grid': 'daily-puzzle',
+  reaction: 'daily-puzzle',
+
+  // Launch slate Phase 4 — food utilities now live as tabs inside
+  // Recipe so the cooking workflow has one mobile home.
+  'shopping-list': 'recipe',
+  'meal-planner': 'recipe',
+  'pantry-scanner': 'recipe',
+  'photo-a-day': 'snap-and-forget',
+};
+
+const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
+  'live-room': { from: 'live-room' },
+  'show-and-tell': { mode: 'show-and-tell', from: 'show-and-tell' },
+  'would-you-rather': { pack: 'would-you-rather', from: 'would-you-rather' },
+  sudoku: { mode: 'sudoku', from: 'sudoku' },
+  'memory-grid': { mode: 'memory-grid', from: 'memory-grid' },
+  reaction: { mode: 'reaction', from: 'reaction' },
+  'shopping-list': { tab: 'shopping', from: 'shopping-list' },
+  'meal-planner': { tab: 'meal-plan', from: 'meal-planner' },
+  'pantry-scanner': { tab: 'pantry', from: 'pantry-scanner' },
+  cooking: { tab: 'recipes', from: 'cooking' },
+  'photo-a-day': { from: 'photo-a-day' },
 };
 
 export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>(SHOWCASE_SLUGS);
 
 export function isFirstPartyShowcase(slug: string): boolean {
-  return FIRST_PARTY_SHOWCASE_SLUGS.has(canonicalShowcaseSlug(slug));
+  return FIRST_PARTY_SHOWCASE_SLUGS.has(canonicalShowcaseTarget(slug).slug);
 }
 
 export function canonicalShowcaseSlug(slug: string): string {
-  return SLUG_ALIASES[slug] ?? slug;
+  return canonicalShowcaseTarget(slug).slug;
+}
+
+export function canonicalShowcaseTarget(slug: string): CanonicalShowcaseTarget {
+  return {
+    slug: SLUG_ALIASES[slug] ?? slug,
+    searchParams: SLUG_ALIAS_SEARCH_PARAMS[slug],
+  };
 }
 
 export function containerSlugForRequest(slug: string): string {
-  // The curated container still uses recipe-saver as the app id/slug
-  // because existing intent tests and permissions refer to that app.
-  // /run/recipe remains the public runtime slug.
-  if (slug === 'recipe') return 'recipe-saver';
-  return slug;
+  return canonicalShowcaseSlug(slug);
 }
 
 export function canonicalAppUrl(slug: string): string {
-  const canonical = canonicalShowcaseSlug(slug);
-  return isFirstPartyShowcase(canonical)
-    ? `/run/${encodeURIComponent(canonical)}/`
+  const canonical = canonicalShowcaseTarget(slug);
+  const search = canonical.searchParams ? `?${new URLSearchParams(canonical.searchParams)}` : '';
+  return isFirstPartyShowcase(canonical.slug)
+    ? `/run/${encodeURIComponent(canonical.slug)}${search}`
     : `https://${slug}.shippie.app/`;
 }

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Whiteboard">
+  <rect width="128" height="128" fill="#4E7C9A"/>
+  <rect x="24" y="28" width="80" height="64" rx="4" fill="#FAF7EF"/>
+  <path d="M42 66c8-18 20-18 28 0s18 16 24-2" fill="none" stroke="#E8603C" stroke-width="8" stroke-linecap="round"/>
+  <path d="M34 104h60" stroke="#1F2A24" stroke-width="8" stroke-linecap="round"/>
+</svg>

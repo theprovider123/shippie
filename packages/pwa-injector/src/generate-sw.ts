@@ -3,8 +3,8 @@
  *
  * Cache strategy (spec v6 §9.3):
  *   - /__shippie/*  never cached (always fresh)
- *   - HTML          network-first with cache fallback
- *   - other GETs    cache-first with background revalidation
+ *   - HTML          network-first with typed cache fallback
+ *   - other GETs    cache-first with typed background revalidation
  *
  * The `version` parameter goes into the cache name so HMR + rollouts
  * invalidate cleanly.
@@ -13,6 +13,20 @@ export function generateServiceWorker(slug: string, version: number): string {
   return `/* shippie-sw v1 — auto-generated for ${slug} v${version} */
 const CACHE = '${slug}-v${version}';
 const SYSTEM_PREFIX = '/__shippie/';
+
+function expectedResponse(req, res) {
+  if (!res || !res.ok) return false;
+  const url = new URL(req.url);
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  if (url.pathname.endsWith('/') || url.pathname.endsWith('/index.html')) return type.includes('text/html');
+  if (url.pathname.endsWith('.html')) return type.includes('text/html');
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.mjs')) return type.includes('javascript') || type.includes('ecmascript');
+  if (url.pathname.endsWith('.css')) return type.includes('text/css');
+  if (url.pathname.endsWith('.wasm')) return type.includes('application/wasm');
+  if (url.pathname.endsWith('.json')) return type.includes('json');
+  if (url.pathname.endsWith('.svg')) return type.includes('image/svg');
+  return !type.includes('text/html');
+}
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -41,7 +55,7 @@ self.addEventListener('fetch', (event) => {
       try {
         const res = await fetch(req);
         const cache = await caches.open(CACHE);
-        cache.put(req, res.clone());
+        if (expectedResponse(req, res)) cache.put(req, res.clone());
         return res;
       } catch {
         const cache = await caches.open(CACHE);
@@ -58,7 +72,7 @@ self.addEventListener('fetch', (event) => {
     const cached = await cache.match(req);
     if (cached) return cached;
     const res = await fetch(req);
-    if (res.ok) cache.put(req, res.clone());
+    if (expectedResponse(req, res)) cache.put(req, res.clone());
     return res;
   })());
 });

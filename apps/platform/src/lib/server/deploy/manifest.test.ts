@@ -7,7 +7,8 @@
  *   - default manifest auto-drafts BaaS hostnames into allowed_connect_domains
  */
 import { describe, it, expect } from 'vitest';
-import { deriveManifest, scanForBaas } from './manifest';
+import { readFileSync } from 'node:fs';
+import { defaultDataPolicy, deriveManifest, scanForBaas } from './manifest';
 
 const enc = (s: string) => new TextEncoder().encode(s);
 
@@ -26,7 +27,39 @@ describe('deriveManifest', () => {
     });
     expect(result.manifest.name).toBe('Whiteboard');
     expect(result.manifest.theme_color).toBe('#123456');
+    expect(result.manifest.data).toBeUndefined();
     expect(result.error).toBeUndefined();
+  });
+
+  it('normalizes explicit data policy in maker-provided manifest', () => {
+    const result = deriveManifest({
+      slug: 'whiteboard',
+      shippieJson: {
+        slug: 'whiteboard',
+        type: 'app',
+        name: 'Whiteboard',
+        category: 'tools',
+        theme_color: '#123456',
+        data: {
+          mode: 'shippie-documents',
+          documents: ['main'],
+          attachments: false,
+          recovery: 'inherited',
+          migrations: 'snapshot-v0',
+          snapshots: 'inherited',
+          media: 'none',
+          realtime: 'inherited',
+          localStorage: {
+            keys: [],
+            prefixes: ['whiteboard:'],
+          },
+        },
+      },
+      files: new Map(),
+    });
+    expect(result.manifest.data?.mode).toBe('shippie-documents');
+    expect(result.manifest.data?.recovery).toBe('inherited');
+    expect(result.manifest.data?.localStorage.prefixes).toEqual(['whiteboard:']);
   });
 
   it('parses shippie.json from zip when no maker manifest provided', () => {
@@ -36,12 +69,59 @@ describe('deriveManifest', () => {
       name: 'From Zip',
       category: 'games',
       theme_color: '#abcdef',
+      data: {
+        mode: 'shippie-documents',
+        documents: ['league', 'lineups', 'bad id'],
+        attachments: true,
+        recovery: 'inherited',
+        migrations: 'custom',
+        snapshots: 'inherited',
+        media: 'encrypted-chunked',
+        realtime: 'inherited',
+        localStorage: {
+          keys: ['match-room-theme'],
+          prefixes: ['shippie.matchRoom.'],
+        },
+      },
+      spaces: {
+        enabled: true,
+        roles: [
+          { id: 'host', permissions: ['read', 'write', 'invite'] },
+          { id: 'bad role', permissions: ['write'] },
+          { id: 'viewer', permissions: ['read', 'bad permission!'] },
+        ],
+        syncMode: 'gossip',
+        archivable: true,
+      },
     });
     const files = new Map([['shippie.json', enc(json)]]);
     const r = deriveManifest({ slug: 'whiteboard', files });
     expect(r.manifest.name).toBe('From Zip');
     expect(r.manifest.slug).toBe('whiteboard'); // Force-overrides slug from URL
     expect(r.manifest.theme_color).toBe('#abcdef');
+    expect(r.manifest.data).toEqual({
+      mode: 'shippie-documents',
+      documents: ['league', 'lineups'],
+      attachments: true,
+      recovery: 'inherited',
+      migrations: 'custom',
+      snapshots: 'inherited',
+      media: 'encrypted-chunked',
+      realtime: 'inherited',
+      localStorage: {
+        keys: ['match-room-theme'],
+        prefixes: ['shippie.matchRoom.'],
+      },
+    });
+    expect(r.manifest.spaces).toEqual({
+      enabled: true,
+      roles: [
+        { id: 'host', permissions: ['read', 'write', 'invite'] },
+        { id: 'viewer', permissions: ['read'] },
+      ],
+      syncMode: 'gossip',
+      archivable: true,
+    });
   });
 
   it('auto-drafts a default manifest when nothing is provided', () => {
@@ -50,6 +130,94 @@ describe('deriveManifest', () => {
     expect(r.manifest.name).toBe('Recipe Saver'); // Title-cased
     expect(r.manifest.type).toBe('app');
     expect(r.manifest.category).toBe('tools');
+    expect(r.manifest.data).toEqual({
+      mode: 'shippie-documents',
+      documents: ['main'],
+      attachments: false,
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      media: 'none',
+      realtime: 'inherited',
+      localStorage: {
+        keys: [],
+        prefixes: [],
+      },
+    });
+  });
+
+  it('keeps Crewtrip on inherited Shippie Documents by default', () => {
+    expect(defaultDataPolicy('crewtrip')).toEqual({
+      mode: 'shippie-documents',
+      documents: ['main'],
+      attachments: false,
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      media: 'none',
+      realtime: 'inherited',
+      localStorage: {
+        keys: [],
+        prefixes: [],
+      },
+    });
+  });
+
+  it('parses Crewtrip shippie.json with inherited recovery and encrypted media', () => {
+    const raw = readFileSync(
+      new URL('../../../../../showcase-crewtrip/shippie.json', import.meta.url),
+      'utf8',
+    );
+    const r = deriveManifest({ slug: 'crewtrip', files: new Map([['shippie.json', enc(raw)]]) });
+
+    expect(r.manifest.data).toEqual({
+      mode: 'shippie-documents',
+      documents: ['trip-archive'],
+      attachments: true,
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      media: 'encrypted-chunked',
+      realtime: 'inherited',
+      localStorage: {
+        keys: [
+          'shippie-crewtrip-v3',
+          'shippie-crewtrip-v3-backups',
+          'shippie-crewtrip-device-id',
+        ],
+        prefixes: [
+          'shippie-crewtrip-host-v1:',
+          'shippie-crewtrip-player-v1:',
+        ],
+      },
+    });
+  });
+
+  it('preserves explicit local-only data policy', () => {
+    const json = JSON.stringify({
+      name: 'Scratchpad',
+      data: {
+        mode: 'local-only',
+        recovery: 'none',
+        migrations: 'none',
+      },
+    });
+    const files = new Map([['shippie.json', enc(json)]]);
+    const r = deriveManifest({ slug: 'scratchpad', files });
+    expect(r.manifest.data).toEqual({
+      mode: 'local-only',
+      documents: [],
+      attachments: false,
+      recovery: 'none',
+      migrations: 'none',
+      snapshots: 'none',
+      media: 'none',
+      realtime: 'none',
+      localStorage: {
+        keys: [],
+        prefixes: [],
+      },
+    });
   });
 
   it('auto-detects Supabase BaaS in default draft', () => {

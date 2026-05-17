@@ -2,8 +2,9 @@
  * App shell — pairing → main app with bottom tab nav.
  * Routes are state-driven (no URL routing yet).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type * as Y from 'yjs';
+import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { PairingScreen } from './PairingScreen.tsx';
 import { TabNav } from '@/components/TabNav.tsx';
 import { PulseFab } from '@/components/PulseFab.tsx';
@@ -47,6 +48,7 @@ import {
 import { useYjs } from '@/sync/useYjs.ts';
 import type { Route } from '@/router.ts';
 import { TOP_LEVEL_ROUTES } from '@/router.ts';
+import { useViewportDock } from '@/lib/useViewportDock.ts';
 
 export function App() {
   const [pairing, setPairingState] = useState<Pairing | null>(() => loadPairing());
@@ -54,6 +56,16 @@ export function App() {
   const [relay, setRelay] = useState<RelayProvider | null>(null);
   const [synced, setSynced] = useState(false);
   const [route, setRoute] = useState<Route>('home');
+  const localNavigation = useMemo(
+    () => createLocalNavigation<Route>('home', setRoute),
+    [],
+  );
+
+  useEffect(() => () => localNavigation.destroy(), [localNavigation]);
+
+  function navigate(next: Route): void {
+    void localNavigation.navigate(next, { kind: 'crossfade' });
+  }
 
   useEffect(() => {
     if (!pairing) {
@@ -99,7 +111,7 @@ export function App() {
       doc={doc}
       relay={relay}
       route={route}
-      onRoute={setRoute}
+      onRoute={navigate}
       onUnpair={() => setPairingState(null)}
     />
   );
@@ -122,6 +134,7 @@ function Bound({
 }) {
   // Heartbeat presence — pings every 5s while visible.
   usePresenceHeartbeat(doc, pairing.deviceId);
+  const dock = useViewportDock();
 
   // Detect a #shippie-import=… fragment carrying a single memory shared
   // from outside this couple-doc. Verifies the signature, previews the
@@ -178,12 +191,12 @@ function Bound({
   const tabActive: Route = TOP_LEVEL_ROUTES.includes(route) ? route : 'more';
 
   return (
-    <div className="min-h-dvh flex flex-col pb-24">
+    <div className={`min-h-dvh flex flex-col ${dock.className}`} style={dock.style}>
       <PullToRefresh
         onRefresh={() => relay?.resync()}
         disabled={!relay}
       />
-      <main className="flex-1 mx-auto w-full max-w-md">
+      <main className="flex-1 mx-auto w-full max-w-md pb-[var(--dock-reserve)]">
         {route === 'home' && (
           <HomePage doc={doc} myDeviceId={pairing.deviceId} onNavigate={onRoute} />
         )}

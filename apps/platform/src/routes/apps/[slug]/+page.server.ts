@@ -13,8 +13,8 @@
  * supports the cookie-only path; the user-grant lookup against
  * `app_access` lands in Phase 4b alongside the access dashboard.
  */
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error, fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import { verifyInviteGrant, inviteCookieName } from '@shippie/access/invite-cookie';
 import { getDrizzleClient, schema } from '$server/db/client';
 import {
@@ -29,8 +29,11 @@ import { readAppProfile } from '$server/deploy/kv-write';
 import { canonicalAppUrl } from '$lib/showcase-slugs';
 import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
-import type { R2Bucket } from '@cloudflare/workers-types';
+import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
+import type { KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 import type { TrustReport } from '@shippie/app-package-contract';
+
+const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 export const load: PageServerLoad = async ({ platform, params, cookies, locals, url }) => {
   if (!platform?.env.DB) throw error(503, 'Database binding unavailable');
@@ -147,6 +150,15 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       : null;
   const maker = makerRows[0] ?? null;
   const lineage = lineageRows[0] ?? null;
+  const parentApp =
+    lineage?.parentAppId
+      ? await db.query.apps.findFirst({
+          where: eq(schema.apps.id, lineage.parentAppId),
+          columns: { id: true, slug: true, name: true },
+        })
+      : null;
+  const sourceRepo = lineage?.sourceRepo ?? app.githubRepo ?? null;
+  const remixAvailable = Boolean(sourceRepo && lineage?.license && lineage?.remixAllowed);
   const verifiedDomains = domainRows
     .filter((domain) => domain.verifiedAt)
     .map((domain) => ({
@@ -170,6 +182,11 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
         | 'public'
         | 'unlisted'
         | 'private',
+      pwaReadiness: {
+        status: app.currentPwaReadiness,
+        reasons: app.currentPwaReadinessReasons ?? [],
+        checkedAt: app.currentPwaReadinessCheckedAt,
+      },
     },
     ownership: {
       maker: {
@@ -177,13 +194,20 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
         username: maker?.username ?? null,
         verified: maker?.verifiedMaker ?? false,
       },
-      sourceRepo: lineage?.sourceRepo ?? app.githubRepo ?? null,
+      sourceRepo,
       license: lineage?.license ?? null,
       remixAllowed: lineage?.remixAllowed ?? false,
+      remixAvailable,
       lineage: {
         templateId: lineage?.templateId ?? null,
         parentAppId: lineage?.parentAppId ?? null,
         parentVersion: lineage?.parentVersion ?? null,
+        parentApp: parentApp
+          ? {
+              slug: parentApp.slug,
+              name: parentApp.name,
+            }
+          : null,
       },
       customDomains: verifiedDomains,
       versions: packageRows.map((pkg) => ({
@@ -196,8 +220,8 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       })),
       // Single canonical URL — the unification plan collapsed the
       // dual "Open" + "Open in Shippie" buttons into one. First-party
-      // showcases land at /run/<slug>/ (the static run/ tree, soon
-      // the focused-mode shell route). Maker apps still resolve via
+      // showcases land at /run/<slug>/, the focused-mode shell route
+      // that embeds the static run tree. Maker apps still resolve via
       // their own subdomain; once the /run/[slug]/ shell route is in
       // and proxies maker R2 bundles, this branch collapses.
       standaloneUrl: canonicalAppUrl(app.slug),
@@ -222,6 +246,99 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
   };
 };
 
+export const actions: Actions = {
+  saveProfile: async ({ request, locals, params, platform, url }) => {
+    if (!platform?.env.DB) return fail(503, { profileError: 'Database binding unavailable.' });
+    if (!locals.user) {
+      throw redirect(303, `/auth/login?return_to=${encodeURIComponent(url.pathname)}`);
+    }
+
+    const db = getDrizzleClient(platform.env.DB);
+    const app = await findBySlug(db, params.slug);
+    if (!app) throw error(404, 'Not found');
+    if (app.makerId !== locals.user.id) throw error(403, 'Forbidden');
+
+    const form = await request.formData();
+    const nextSlug = cleanSlug(form.get('slug'));
+    const name = clean(form.get('name'), 80);
+    const tagline = clean(form.get('tagline'), 160);
+    const category = clean(form.get('category'), 48);
+    const sourceRepo = cleanUrl(form.get('sourceRepo'));
+    const license = clean(form.get('license'), 80);
+    const remixAllowed = Boolean(sourceRepo && license && form.get('remixAllowed') === 'on');
+
+    if (!nextSlug || !name || !category) {
+      return fail(400, { profileError: 'Slug, name, and category are required.' });
+    }
+
+    const slugChanged = nextSlug !== app.slug;
+    if (slugChanged) {
+      const reservedSlugs = await loadReservedSlugs(platform.env.DB);
+      if (reservedSlugs.has(nextSlug)) {
+        return fail(400, { profileError: `Slug '${nextSlug}' is reserved.` });
+      }
+      const existing = await findBySlug(db, nextSlug);
+      if (existing && existing.id !== app.id) {
+        return fail(409, { profileError: `Slug '${nextSlug}' is already taken.` });
+      }
+      if (app.activeDeployId && (!platform.env.CACHE || !platform.env.APPS)) {
+        return fail(503, { profileError: 'Slug rename needs runtime storage bindings.' });
+      }
+    }
+
+    const updatedAt = new Date().toISOString();
+
+    if (slugChanged && platform.env.CACHE && platform.env.APPS) {
+      await migrateRuntimeSlug({
+        kv: platform.env.CACHE,
+        r2: platform.env.APPS,
+        db,
+        appId: app.id,
+        from: app.slug,
+        to: nextSlug,
+        name,
+      });
+    }
+
+    await db
+      .update(schema.apps)
+      .set({
+        slug: nextSlug,
+        name,
+        tagline,
+        category,
+        githubRepo: sourceRepo,
+        updatedAt,
+      })
+      .where(eq(schema.apps.id, app.id));
+
+    await db
+      .insert(schema.appLineage)
+      .values({
+        appId: app.id,
+        sourceRepo,
+        license,
+        remixAllowed,
+        updatedAt,
+      })
+      .onConflictDoUpdate({
+        target: schema.appLineage.appId,
+        set: {
+          sourceRepo,
+          license,
+          remixAllowed,
+          updatedAt,
+        },
+      });
+
+    if (slugChanged) {
+      throw redirect(303, `/apps/${encodeURIComponent(nextSlug)}`);
+    }
+
+    return { profileOk: true };
+  },
+};
+
 async function readJson<T>(bucket: R2Bucket, key: string): Promise<T | null> {
   try {
     const obj = await bucket.get(key);
@@ -229,5 +346,108 @@ async function readJson<T>(bucket: R2Bucket, key: string): Promise<T | null> {
     return JSON.parse(await obj.text()) as T;
   } catch {
     return null;
+  }
+}
+
+function clean(value: FormDataEntryValue | null, max: number): string | null {
+  const text = typeof value === 'string' ? value.trim().slice(0, max) : '';
+  return text || null;
+}
+
+function cleanSlug(value: FormDataEntryValue | null): string | null {
+  const slug = clean(value, 63)?.toLowerCase() ?? null;
+  return slug && SLUG_RE.test(slug) ? slug : null;
+}
+
+function cleanUrl(value: FormDataEntryValue | null): string | null {
+  const text = clean(value, 500);
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function migrateRuntimeSlug(input: {
+  kv: KVNamespace;
+  r2: R2Bucket;
+  db: ReturnType<typeof getDrizzleClient>;
+  appId: string;
+  from: string;
+  to: string;
+  name: string;
+}): Promise<void> {
+  await copyR2Prefix(input.r2, `apps/${input.from}/`, `apps/${input.to}/`);
+  await copyKvRuntimeKeys(input.kv, input.from, input.to, input.name);
+
+  const domains = await input.db
+    .select({
+      domain: schema.customDomains.domain,
+      isCanonical: schema.customDomains.isCanonical,
+      verifiedAt: schema.customDomains.verifiedAt,
+    })
+    .from(schema.customDomains)
+    .where(eq(schema.customDomains.appId, input.appId));
+
+  for (const domain of domains) {
+    if (!domain.verifiedAt) continue;
+    await input.kv.put(
+      `custom-domains:${domain.domain.toLowerCase()}`,
+      JSON.stringify({
+        slug: input.to,
+        is_canonical: domain.isCanonical,
+        canonical_domain: domains.find((row) => row.isCanonical)?.domain ?? domain.domain,
+      }),
+    );
+  }
+}
+
+async function copyR2Prefix(r2: R2Bucket, fromPrefix: string, toPrefix: string): Promise<void> {
+  let cursor: string | undefined;
+  do {
+    const listed = await r2.list({ prefix: fromPrefix, cursor });
+    for (const item of listed.objects) {
+      const source = await r2.get(item.key);
+      if (!source) continue;
+      const destination = toPrefix + item.key.slice(fromPrefix.length);
+      await r2.put(destination, source.body, {
+        httpMetadata: source.httpMetadata,
+        customMetadata: source.customMetadata,
+      });
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+}
+
+async function copyKvRuntimeKeys(
+  kv: KVNamespace,
+  fromSlug: string,
+  toSlug: string,
+  name: string,
+): Promise<void> {
+  const keys = ['active', 'csp', 'wrap', 'profile', 'kind-profile', 'shippie-json', 'building'];
+  for (const suffix of keys) {
+    const fromKey = `apps:${fromSlug}:${suffix}`;
+    const value = await kv.get(fromKey);
+    if (!value) continue;
+    await kv.put(`apps:${toSlug}:${suffix}`, value);
+    await kv.delete(fromKey);
+  }
+
+  const metaKey = `apps:${fromSlug}:meta`;
+  const meta = await kv.get(metaKey);
+  if (meta) {
+    try {
+      await kv.put(
+        `apps:${toSlug}:meta`,
+        JSON.stringify({ ...(JSON.parse(meta) as Record<string, unknown>), slug: toSlug, name }),
+      );
+    } catch {
+      await kv.put(`apps:${toSlug}:meta`, meta);
+    }
+    await kv.delete(metaKey);
   }
 }

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Co-Pilot",
+  "slug": "co-pilot",
+  "description": "Separated co-parent schedules, meds, and handover notes.",
+  "icon": "/icon.svg",
+  "theme_color": "#4E7C9A",
+  "background_color": "#EDF3F1",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "custody-event",
+      "meds-logged",
+      "handover-note"
+    ],
+    "consumes": []
+  },
+  "data_schemas": {
+    "entries": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
+  }
+}

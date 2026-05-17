@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@shippie/qr": "workspace:*",
+    "@shippie/sdk": "workspace:*",
     "@shippie/share": "workspace:*",
     "@tailwindcss/vite": "^4.2.4",
     "clsx": "^2.1.1",

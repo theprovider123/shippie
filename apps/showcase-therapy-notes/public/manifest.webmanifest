@@ -1,0 +1,11 @@
+{
+  "name": "Therapy Notes",
+  "short_name": "Therapy",
+  "description": "Local CBT worksheets, check-ins, and therapist handoff exports.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#151A17",
+  "theme_color": "#5E7B5C",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

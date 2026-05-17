@@ -21,7 +21,14 @@ import {
   finalizeWrapperResponse,
 } from '$server/wrapper/dispatcher';
 import type { WrapperContext } from '$server/wrapper/env';
-import { FIRST_PARTY_SHOWCASE_SLUGS, containerSlugForRequest } from '$lib/showcase-slugs';
+import {
+  canonicalShowcaseSlug,
+  canonicalShowcaseTarget,
+  containerSlugForRequest,
+  isFirstPartyShowcase,
+} from '$lib/showcase-slugs';
+import { curationFor } from '$lib/_generated/first-party-curation';
+import { buildArcadeCsp } from '$lib/curation/arcade-csp';
 
 const PLATFORM_HOSTS = new Set([
   'next.shippie.app',
@@ -33,11 +40,13 @@ const PLATFORM_HOSTS = new Set([
   '[::1]',
 ]);
 
-// First-party showcase apps bundled into apps/platform/static/run/ at
-// build time by scripts/prepare-showcases.mjs. Hitting
-// <slug>.shippie.app rewrites to /run/<slug>/* so the Cloudflare
-// adapter serves their dist directly. Maker apps (everything else
-// under *.shippie.app) still flow through the wrapper dispatcher.
+const LOCAL_PLATFORM_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+// First-party showcase apps are bundled into apps/platform/static/__shippie-run/
+// at build time by scripts/prepare-showcases.mjs. Hitting
+// <slug>.shippie.app rewrites to the apex /run/<slug>/ focused shell; the
+// shell iframes internal /__shippie-run/<slug>/ runtime assets. Maker apps
+// (everything else under *.shippie.app) still flow through the wrapper dispatcher.
 //
 // First-party showcase slug list lives in `$lib/showcase-slugs` so
 // the marketplace server load can read the same source of truth.
@@ -52,10 +61,10 @@ export const handle: Handle = async ({ event, resolve }) => {
     hostname !== 'ai.shippie.app'
   ) {
     // First-party showcase: <slug>.shippie.app/* redirects to the
-    // canonical /run/<slug>/* on the apex host. System routes stay on
-    // the subdomain and use the same wrapper route handlers as maker
-    // apps, so /__shippie/data, /__shippie/analytics, /__shippie/install,
-    // and friends work before/after the apex redirect.
+    // canonical apex /run/<slug>/ surface. System routes stay on the
+    // subdomain and use the same wrapper route handlers as maker apps,
+    // so /__shippie/data, /__shippie/analytics, /__shippie/install,
+    // and friends work before/after the apex handoff.
     //
     // We tried serving app assets via
     // ASSETS.fetch from the subdomain context, but the binding refuses
@@ -64,7 +73,9 @@ export const handle: Handle = async ({ event, resolve }) => {
     // to shippie.app/run/<slug>/. Subdomain hygiene is acceptable;
     // 522s aren't.
     const subdomain = hostname.slice(0, -'.shippie.app'.length);
-    if (FIRST_PARTY_SHOWCASE_SLUGS.has(subdomain)) {
+    if (isFirstPartyShowcase(subdomain)) {
+      const showcaseTarget = canonicalShowcaseTarget(subdomain);
+      const showcaseSlug = showcaseTarget.slug;
       if (event.url.pathname.startsWith('/__shippie/')) {
         if (!event.platform?.env) {
           return new Response('Platform bindings unavailable.', {
@@ -93,7 +104,12 @@ export const handle: Handle = async ({ event, resolve }) => {
         );
       }
       const targetPath = event.url.pathname === '/' ? '/' : event.url.pathname;
-      const target = `https://shippie.app/run/${subdomain}${targetPath}${event.url.search}`;
+      const search = new URLSearchParams(event.url.search);
+      for (const [key, value] of Object.entries(showcaseTarget.searchParams ?? {})) {
+        search.set(key, value);
+      }
+      const query = search.toString();
+      const target = `https://shippie.app/run/${showcaseSlug}${targetPath}${query ? `?${query}` : ''}`;
       return new Response(null, {
         status: 302,
         headers: { location: target, 'cache-control': 'public, max-age=300' },
@@ -115,8 +131,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     // resolveHostFull returns null for). Should be a 404 page.
   }
 
-  const focusedRunRedirect = focusedRunTarget(event);
-  if (focusedRunRedirect) return focusedRunRedirect;
+  const runtimeAssetResponse = await runtimeAssetTarget(event);
+  if (runtimeAssetResponse) return runtimeAssetResponse;
 
   // Platform host — wire Lucia.
   event.locals.user = null;
@@ -129,33 +145,42 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     const sessionId = event.cookies.get(lucia.sessionCookieName) ?? null;
     if (sessionId) {
-      const { session, user } = await lucia.validateSession(sessionId);
-      if (session && session.fresh) {
-        const cookie = lucia.createSessionCookie(session.id);
-        event.cookies.set(cookie.name, cookie.value, {
-          path: '.',
-          ...cookie.attributes
-        });
-      }
-      if (!session) {
+      try {
+        const { session, user } = await lucia.validateSession(sessionId);
+        if (session && session.fresh) {
+          const cookie = lucia.createSessionCookie(session.id);
+          event.cookies.set(cookie.name, cookie.value, {
+            path: '.',
+            ...cookie.attributes
+          });
+        }
+        if (!session) {
+          const blank = lucia.createBlankSessionCookie();
+          event.cookies.set(blank.name, blank.value, {
+            path: '.',
+            ...blank.attributes
+          });
+        }
+        if (user) {
+          // Populate locals.user with our app shape (id from row PK + attrs).
+          event.locals.user = {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+            isAdmin: user.isAdmin
+          };
+        }
+        event.locals.session = session;
+      } catch (err) {
+        console.error('[auth] session validation failed; continuing anonymous', err);
         const blank = lucia.createBlankSessionCookie();
         event.cookies.set(blank.name, blank.value, {
           path: '.',
           ...blank.attributes
         });
       }
-      if (user) {
-        // Populate locals.user with our app shape (id from row PK + attrs).
-        event.locals.user = {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          isAdmin: user.isAdmin
-        };
-      }
-      event.locals.session = session;
     }
   }
 
@@ -168,25 +193,57 @@ function firstPartyTraceId(request: Request): string {
   return crypto.randomUUID();
 }
 
-function focusedRunTarget(event: Parameters<Handle>[0]['event']): Response | null {
-  const match = /^\/run\/([^/]+)\/?$/.exec(event.url.pathname);
+async function runtimeAssetTarget(event: Parameters<Handle>[0]['event']): Promise<Response | null> {
+  if (event.request.method !== 'GET' && event.request.method !== 'HEAD') return null;
+  const match = /^\/__shippie-run\/([^/]+)(?:\/(.*))?$/.exec(event.url.pathname);
   if (!match) return null;
-  if (event.url.searchParams.get('shippie_embed') === '1') return null;
-
-  // Only redirect the human top-level document. Runtime iframes and
-  // offline cache warms still need the real static /run/<slug>/ bundle.
-  const destination = event.request.headers.get('sec-fetch-dest');
-  if (destination !== 'document') return null;
-
-  const target = new URL('/container', event.url);
-  target.searchParams.set('app', containerSlugForRequest(decodeURIComponent(match[1]!)));
-  target.searchParams.set('focused', '1');
-  for (const [key, value] of event.url.searchParams.entries()) {
-    if (key === 'app' || key === 'focused' || key === 'shippie_embed') continue;
-    target.searchParams.set(key, value);
+  const slug = match[1]!;
+  if (LOCAL_PLATFORM_HOSTS.has(event.url.hostname)) {
+    const localAssetPath = match[2] ?? '';
+    if (localAssetPath.includes('.')) return null;
+    const fallbackUrl = new URL(event.url);
+    fallbackUrl.pathname = `/__shippie-run/${slug}/index.html`;
+    return event.fetch(fallbackUrl);
   }
-  return new Response(null, {
-    status: 302,
-    headers: { location: target.pathname + target.search, 'cache-control': 'no-store' },
+  const assetPath = match[2] ?? '';
+
+  const assets = event.platform?.env.ASSETS;
+  if (!assets) return null;
+
+  const response = await assets.fetch(event.url);
+  if (response.status === 404 && !assetPath.includes('.')) {
+    const fallbackUrl = new URL(event.url);
+    fallbackUrl.pathname = `/__shippie-run/${slug}/index.html`;
+    return withArcadeCspIfArcade(slug, await assets.fetch(fallbackUrl));
+  }
+  return withArcadeCspIfArcade(slug, response);
+}
+
+/**
+ * Wrap an `assets.fetch()` response with the arcade CSP header when
+ * the slug is a first-party arcade showcase. Preserves status, all
+ * existing headers (incl. cache-control / etag / content-type /
+ * content-encoding), and the body stream — never re-encodes or
+ * buffers. Defence-in-depth alongside the bake-time `<meta>` tag.
+ *
+ * Non-arcade slugs return the original response unchanged.
+ */
+function withArcadeCspIfArcade(slug: string, response: Response): Response {
+  const entry = curationFor(slug);
+  if (entry?.surface !== 'arcade') return response;
+  // Don't inject on error responses — those are usually 404 HTML the
+  // SvelteKit error template renders, and a stale CSP would attach
+  // to the wrong origin context.
+  if (!response.ok) return response;
+  const headers = new Headers(response.headers);
+  // If a CSP is already present (defence-in-depth from the meta tag
+  // can't set this header; only this code path does), don't double-set.
+  if (!headers.has('content-security-policy')) {
+    headers.set('content-security-policy', buildArcadeCsp());
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }

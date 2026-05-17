@@ -7,7 +7,7 @@
 #   If WRANGLER_SECRET_NAME is omitted, defaults to ENV_VAR_NAME.
 #
 # Examples:
-#   bash scripts/set-secret-from-env.sh RESEND_API_KEY
+#   bash scripts/set-secret-from-env.sh AUTH_SECRET
 #   bash scripts/set-secret-from-env.sh GITHUB_APP_PRIVATE_KEY GITHUB_PRIVATE_KEY
 
 set -euo pipefail

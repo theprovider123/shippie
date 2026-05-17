@@ -1,16 +1,17 @@
 #!/usr/bin/env bun
 /**
  * Build every showcase app under apps/showcase-* and copy its dist
- * into apps/platform/static/run/<slug>/ so the SvelteKit Cloudflare
- * adapter serves them at https://shippie.app/run/<slug>/.
+ * into apps/platform/static/__shippie-run/<slug>/ so the focused shell can
+ * embed them from https://shippie.app/__shippie-run/<slug>/index.html.
  *
  * Wired into apps/platform's `build` script so production deploys
  * auto-include the showcases.
  *
  * Why /run/<slug>/ and not /apps/<slug>/: /apps/<slug> is the
  * marketplace detail page (a SvelteKit dynamic route showing install
- * count, capability badges, etc). /run/<slug>/ is the runtime
- * surface — the actual app HTML/JS/CSS the container iframes load.
+ * count, capability badges, etc). /run/<slug>/ is the focused shell
+ * users launch; /__shippie-run/<slug>/ is the internal runtime HTML/JS/CSS
+ * the container iframes load.
  *
  * Skip behaviour: a showcase whose package.json is missing a build
  * script, or whose vite.config.ts won't compile, is logged and
@@ -32,15 +33,34 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Shared, pure-module schema. Bun resolves .ts directly; no $lib alias
+// or transitive runtime dep is involved (validators are plain TS).
+import {
+  parseFirstPartyCurationEntry,
+  VALID_SURFACES as SHARED_VALID_SURFACES,
+  VALID_CATEGORIES as SHARED_VALID_CATEGORIES,
+} from '../src/lib/curation/schema.ts';
+import {
+  buildArcadeCspMetaTag,
+  ARCADE_CSP_INJECTION_MARKER,
+} from '../src/lib/curation/arcade-csp.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLATFORM_DIR = resolve(__dirname, '..');
 const REPO_ROOT = resolve(PLATFORM_DIR, '..', '..');
 const APPS_DIR = resolve(REPO_ROOT, 'apps');
-const STATIC_RUN_DIR = resolve(PLATFORM_DIR, 'static', 'run');
+const RUNTIME_BASE_PATH = '/__shippie-run';
+const STATIC_RUNTIME_DIR = resolve(PLATFORM_DIR, 'static', '__shippie-run');
 const CATALOG_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'showcase-catalog.ts');
 const PRECACHE_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'precache-list.ts');
+const CURATION_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'first-party-curation.ts');
+const RUNTIME_PRECACHE_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'runtime-precache.ts');
 const SHELL_ASSETS_OUT = resolve(PLATFORM_DIR, 'static', '__shippie-pwa', 'shell-assets.json');
+
+// Re-derived from the shared schema so this file stays a single
+// source of truth — change values in src/lib/curation/schema.ts.
+const VALID_SURFACES = new Set(SHARED_VALID_SURFACES);
+const VALID_CATEGORIES = new Set(SHARED_VALID_CATEGORIES);
 const WASM_DIR = resolve(PLATFORM_DIR, 'static', '__shippie', 'wasm');
 // Keep this in sync with src/lib/container/ai-runtime.ts. Today the
 // pinned esm.sh runtime is the working, cacheable source; mirroring it
@@ -82,11 +102,11 @@ function slugFor(showcaseDir) {
 
 function buildOne(showcaseDir, slug) {
   const dir = join(APPS_DIR, showcaseDir);
-  console.log(`[prepare-showcases] building ${showcaseDir} with base=/run/${slug}/…`);
+  console.log(`[prepare-showcases] building ${showcaseDir} with base=${RUNTIME_BASE_PATH}/${slug}/…`);
   // --base rewrites every root-relative asset path (script src, link href,
-  // img src…) so the built dist works when served from /run/<slug>/.
+  // img src…) so the built dist works when served from /__shippie-run/<slug>/.
   // Dev mode (vite dev) ignores this — devUrl on localhost stays at root.
-  execSync(`bunx vite build --base=/run/${slug}/`, { cwd: dir, stdio: 'inherit' });
+  execSync(`bunx vite build --base=${RUNTIME_BASE_PATH}/${slug}/`, { cwd: dir, stdio: 'inherit' });
   const distDir = join(dir, 'dist');
   if (!existsSync(distDir) || !statSync(distDir).isDirectory()) {
     throw new Error(`${showcaseDir}: build finished but dist/ not found`);
@@ -95,7 +115,7 @@ function buildOne(showcaseDir, slug) {
 }
 
 function copyDist(distDir, slug) {
-  const target = join(STATIC_RUN_DIR, slug);
+  const target = join(STATIC_RUNTIME_DIR, slug);
   rmSync(target, { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
   cpSync(distDir, target, { recursive: true });
@@ -109,9 +129,17 @@ function copyDist(distDir, slug) {
   const stripped = stripWaSqliteAssets(target);
   if (stripped > 0) {
     console.log(
-      `[prepare-showcases] stripped ${stripped} wa-sqlite asset(s) from static/run/${slug}/assets — served from /__shippie/wasm/wa-sqlite/`,
+      `[prepare-showcases] stripped ${stripped} wa-sqlite asset(s) from static/__shippie-run/${slug}/assets — served from /__shippie/wasm/wa-sqlite/`,
     );
   }
+  injectContainerLocalDbBridge(target, slug);
+  // Arcade-purity: enforce the same CSP at bake time as the runtime
+  // hooks.server.ts header sets. This is defence-in-depth so the
+  // browser still applies the policy when the bundle is opened
+  // offline / via direct file:// / in dev. The injection is keyed off
+  // the per-showcase shippie.json#curation.surface so non-arcade
+  // bakes are untouched.
+  injectArcadeCspIfArcade(target, slug);
   // Emit __shippie-assets.json — the per-showcase asset manifest the
   // marketplace SW reads when the user taps "Save for offline." Walks
   // the post-strip tree so wa-sqlite WASM is correctly excluded; the
@@ -119,7 +147,61 @@ function copyDist(distDir, slug) {
   // on first download). buildId is a stable hash of the asset list +
   // sizes so future deploys can detect "your saved app is out of date."
   writeAssetManifest(target, slug);
-  console.log(`[prepare-showcases] copied ${slug} → static/run/${slug}/`);
+  console.log(`[prepare-showcases] copied ${slug} → static/__shippie-run/${slug}/`);
+}
+
+function readShowcaseSurface(slug) {
+  // Look for the source shippie.json for this slug — we walk the apps
+  // dir because the showcase's source dir name doesn't always match
+  // the slug exactly. Returns the curation.surface or null.
+  for (const dir of readdirSync(APPS_DIR)) {
+    if (!dir.startsWith('showcase-')) continue;
+    const path = join(APPS_DIR, dir, 'shippie.json');
+    if (!existsSync(path)) continue;
+    try {
+      const cfg = JSON.parse(readFileSync(path, 'utf8'));
+      if ((cfg.slug ?? dir.replace(/^showcase-/, '')) === slug) {
+        return cfg?.curation?.surface ?? null;
+      }
+    } catch {
+      /* ignore malformed and try next */
+    }
+  }
+  return null;
+}
+
+function injectArcadeCspIfArcade(targetDir, slug) {
+  const surface = readShowcaseSurface(slug);
+  if (surface !== 'arcade') return;
+  const indexPath = join(targetDir, 'index.html');
+  if (!existsSync(indexPath)) return;
+  const html = readFileSync(indexPath, 'utf8');
+  if (html.includes(ARCADE_CSP_INJECTION_MARKER)) return; // idempotent
+  const meta = `${ARCADE_CSP_INJECTION_MARKER}${buildArcadeCspMetaTag()}`;
+  // Inject as the FIRST element in <head> so the browser sees the CSP
+  // before any script tag (CSP applies to the entire document, but
+  // putting it first matches every reference example out there and
+  // sidesteps Safari edge cases with mid-head policy mutations).
+  const next = /<head[\s>]/i.test(html)
+    ? html.replace(/<head([^>]*)>/i, `<head$1>${meta}`)
+    : `${meta}${html}`;
+  writeFileSync(indexPath, next);
+}
+
+function injectContainerLocalDbBridge(targetDir, slug) {
+  const indexPath = join(targetDir, 'index.html');
+  if (!existsSync(indexPath)) return;
+  const html = readFileSync(indexPath, 'utf8');
+  if (html.includes('data-shippie-container-local-db')) return;
+  const script = runtimeLocalBridgeScript(`app_${slug.replace(/-/g, '_')}`);
+  const nextHtml = /<head[\s>]/i.test(html)
+    ? html.replace(/<head([^>]*)>/i, `<head$1>${script}`)
+    : html.replace(/<script/i, `${script}<script`);
+  writeFileSync(indexPath, nextHtml);
+}
+
+function runtimeLocalBridgeScript(appId) {
+  return `<script data-shippie-container-local-db>(function(){var appId=${JSON.stringify(appId)};var protocol='shippie.bridge.v1';var seq=0;var pending=new Map();function request(capability,method,payload){var id='local_db_'+(++seq);return new Promise(function(resolve,reject){var timer=setTimeout(function(){pending.delete(id);reject(new Error('Shippie local DB request timed out.'));},5000);pending.set(id,{resolve:resolve,reject:reject,timer:timer});window.parent.postMessage({protocol:protocol,id:id,appId:appId,capability:capability,method:method,payload:payload},window.location.origin);});}window.addEventListener('message',function(event){if(event.origin!==window.location.origin)return;var data=event.data;if(!data||data.protocol!==protocol||!pending.has(data.id))return;var entry=pending.get(data.id);pending.delete(data.id);clearTimeout(entry.timer);if(data.ok){entry.resolve(data.result);return;}entry.reject(new Error(data.error&&data.error.message?data.error.message:'Shippie local DB request failed.'));});function rows(result){var list=result&&Array.isArray(result.rows)?result.rows:[];return list.map(function(row){return row&&row.payload&&typeof row.payload==='object'?row.payload:row;});}var shippie=window.shippie||{};var local=shippie.local||{};local.db={create:function(table,schema){return request('db.insert','create',{table:table,schema:schema}).then(function(){});},insert:function(table,value){return request('db.insert','insert',{table:table,value:value}).then(function(){});},query:function(table,opts){return request('db.query','query',Object.assign({table:table},opts||{})).then(rows);},search:function(table,query,opts){return request('db.query','search',Object.assign({table:table,query:query},opts||{})).then(rows);},vectorSearch:function(table,vector,opts){var v=Array.prototype.slice.call(vector||[]);return request('db.query','vectorSearch',{table:table,vector:v,opts:opts||{}}).then(function(result){return rows(result).map(function(row,index){var source=result&&result.rows&&result.rows[index];return Object.assign({},row,{score:source&&typeof source.score==='number'?source.score:0});});});},update:function(table,id,patch){return request('db.insert','update',{table:table,id:id,patch:patch}).then(function(){});},delete:function(table,id){return request('db.insert','delete',{table:table,id:id}).then(function(){});},count:function(table,opts){return request('db.query','count',Object.assign({table:table},opts||{})).then(function(result){return result&&typeof result.count==='number'?result.count:0;});},export:function(table,opts){return request('db.query','export',Object.assign({table:table},opts||{})).then(function(result){return new Blob([JSON.stringify(result)],{type:'application/json'});});},restore:function(){return Promise.resolve({createdAt:new Date().toISOString(),appId:appId,schemaVersion:1,encrypted:false});},lastBackup:function(){return request('db.query','lastBackup',{});},usage:function(){return request('storage.getUsage','usage',{}).then(function(result){return {usedBytes:result&&typeof result.bytes==='number'?result.bytes:0,warningLevel:'none',persisted:true};});},requestPersistence:function(){return Promise.resolve(true);}};shippie.local=local;window.shippie=shippie;})();</script>`;
 }
 
 function listAssetsRecursive(dir, prefix = '') {
@@ -152,7 +234,11 @@ function writeAssetManifest(targetDir, slug) {
     slug,
     buildId,
     totalBytes,
-    assets: files.map((f) => `/run/${slug}/${f.rel}`),
+    assets: files.map((f) =>
+      f.rel === 'index.html'
+        ? `${RUNTIME_BASE_PATH}/${slug}/?shippie_embed=1`
+        : `${RUNTIME_BASE_PATH}/${slug}/${f.rel}`,
+    ),
   };
   writeFileSync(join(targetDir, MANIFEST_NAME), JSON.stringify(manifest, null, 2) + '\n');
 }
@@ -170,25 +256,83 @@ function stripWaSqliteAssets(targetDir) {
   return count;
 }
 
-function pruneStaticRun(allowedSlugs) {
+function pruneStaticRuntime(allowedSlugs) {
   const allowed = new Set(allowedSlugs);
-  if (!existsSync(STATIC_RUN_DIR)) return;
+  if (!existsSync(STATIC_RUNTIME_DIR)) return;
   let pruned = 0;
-  for (const entry of readdirSync(STATIC_RUN_DIR, { withFileTypes: true })) {
+  for (const entry of readdirSync(STATIC_RUNTIME_DIR, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     if (allowed.has(entry.name)) continue;
-    rmSync(join(STATIC_RUN_DIR, entry.name), { recursive: true, force: true });
+    rmSync(join(STATIC_RUNTIME_DIR, entry.name), { recursive: true, force: true });
     pruned += 1;
   }
   if (pruned > 0) {
-    console.log(`[prepare-showcases] pruned ${pruned} stale static/run app(s)`);
+    console.log(`[prepare-showcases] pruned ${pruned} stale static/__shippie-run app(s)`);
   }
 }
 
-function writeShellAssets() {
+function collectRuntimeAssets(slugs) {
+  // Read each showcase's optional `shippie.json#runtime_assets` array.
+  // Heavy assets (Stockfish.wasm, word banks, puzzle PGNs) live here
+  // so the platform PWA service worker can precache them on install.
+  // Without this, an arcade game that needs a chunky runtime would
+  // require an online first visit before working offline — failing the
+  // "solo path 100% offline" arcade quality gate.
+  //
+  // Returns a per-slug map for the JSON manifest + a flat list for
+  // the SW install batch. Both are stable-sorted so re-bake output is
+  // byte-deterministic.
+  const perSlug = {};
+  const flat = [];
+  for (const slug of [...slugs].sort()) {
+    for (const dir of readdirSync(APPS_DIR)) {
+      if (!dir.startsWith('showcase-')) continue;
+      const path = join(APPS_DIR, dir, 'shippie.json');
+      if (!existsSync(path)) continue;
+      try {
+        const cfg = JSON.parse(readFileSync(path, 'utf8'));
+        if ((cfg.slug ?? dir.replace(/^showcase-/, '')) !== slug) continue;
+        const declared = Array.isArray(cfg.runtime_assets) ? cfg.runtime_assets : [];
+        const urls = declared
+          .filter((u) => typeof u === 'string' && u.length > 0)
+          .map((u) => (u.startsWith('/') ? u : `${RUNTIME_BASE_PATH}/${slug}/${u}`));
+        if (urls.length > 0) {
+          perSlug[slug] = urls.slice().sort();
+          for (const u of perSlug[slug]) flat.push(u);
+        }
+        break;
+      } catch {
+        /* malformed shippie.json — skip */
+      }
+    }
+  }
+  flat.sort();
+  return { perSlug, flat };
+}
+
+function writeRuntimePrecache(slugs) {
+  // Generated module the SW imports for its install-time precache batch.
+  // Empty by default — a slug appears here only when its shippie.json
+  // declares `runtime_assets`. Keeps the SW install fast for showcases
+  // that don't need heavy precache.
+  const { flat } = collectRuntimeAssets(slugs);
+  mkdirSync(dirname(RUNTIME_PRECACHE_OUT), { recursive: true });
+  const body =
+    `// Generated by scripts/prepare-showcases.mjs. Do not edit by hand.\n` +
+    `//\n` +
+    `// Heavy runtime assets to precache during the platform PWA service\n` +
+    `// worker install. Sourced from each showcase's\n` +
+    `// shippie.json#runtime_assets array. Empty unless at least one\n` +
+    `// showcase declares heavy assets (Stockfish, word banks, etc.).\n\n` +
+    `export const RUNTIME_PRECACHE: readonly string[] = ${JSON.stringify(flat, null, 2)};\n`;
+  writeFileSync(RUNTIME_PRECACHE_OUT, body);
+  console.log(`[prepare-showcases] wrote ${RUNTIME_PRECACHE_OUT} (${flat.length} runtime asset(s))`);
+}
+
+function writeShellAssets(slugs) {
   // Emit the shared-platform asset manifest the marketplace SW reads
   // when it warms the platform shell on the user's first DOWNLOAD_APP
-  // tap. Two parts:
+  // tap. Three parts:
   //   - wasm: shared /__shippie/wasm/* binaries (currently wa-sqlite),
   //     warmed once and cached durably across deploys (the SW's
   //     migration allowlist whitelists /__shippie/wasm/).
@@ -197,6 +341,11 @@ function writeShellAssets() {
   //     reference the current deploy's hashed chunks. Listed here so
   //     the SW knows what to cache.add() proactively rather than
   //     waiting for the user to visit each route online.
+  //   - runtimes: per-arcade-game heavy bundled assets (Stockfish,
+  //     word banks, puzzle PGNs). Source: each showcase's
+  //     shippie.json#runtime_assets array. The SW install handler
+  //     precaches these at install time (NOT lazy on first visit) so
+  //     "100% offline" claims hold up.
   const wasmAssets = [];
   let totalWasmBytes = 0;
   if (existsSync(WASM_DIR)) {
@@ -207,10 +356,12 @@ function writeShellAssets() {
       totalWasmBytes += f.size;
     }
   }
+  const runtimeAssets = collectRuntimeAssets(slugs);
   const manifest = {
     wasm: wasmAssets,
     aiRuntime: AI_RUNTIME_ASSETS,
     routes: ['/', '/apps'],
+    runtimes: runtimeAssets.perSlug,
     totalWasmBytes,
   };
   mkdirSync(dirname(SHELL_ASSETS_OUT), { recursive: true });
@@ -232,12 +383,124 @@ function writeShowcaseCatalog(slugs) {
     `// Re-run \`bun scripts/prepare-showcases.mjs\` (or \`bun run build\`)\n` +
     `// to refresh from the showcase set under apps/showcase-*.\n\n` +
     `export const SHOWCASE_SLUGS = ${JSON.stringify([...slugs].sort(), null, 2)} as const;\n\n` +
-    `export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.flatMap((slug) => [\n` +
-    `  \`/run/\${slug}/\`,\n` +
-    `  \`/run/\${slug}/index.html\`,\n` +
-    `]);\n`;
+    `export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.map((slug) => \`${RUNTIME_BASE_PATH}/\${slug}/?shippie_embed=1\`);\n`;
   writeFileSync(CATALOG_OUT, body);
   console.log(`[prepare-showcases] wrote ${CATALOG_OUT} (${slugs.length} slugs)`);
+}
+
+/**
+ * Read each successfully-built showcase's shippie.json `curation` block,
+ * validate it, and emit the typed first-party curation manifest.
+ *
+ * Validation rules (fail the build on violation — orphan aliases or
+ * unknown surfaces would silently break the marketplace later):
+ *   - `surface` must be one of VALID_SURFACES
+ *   - `category` must be one of VALID_CATEGORIES
+ *   - `successor`, when set, must reference a slug in the built set
+ *     (so we never alias to a target that doesn't exist in the bake)
+ */
+function writeFirstPartyCuration(slugs) {
+  const built = new Set(slugs);
+  const entries = [];
+  const errors = [];
+
+  for (const slug of [...slugs].sort()) {
+    let cfg = null;
+    for (const dir of readdirSync(APPS_DIR)) {
+      if (!dir.startsWith('showcase-')) continue;
+      const path = join(APPS_DIR, dir, 'shippie.json');
+      if (!existsSync(path)) continue;
+      try {
+        const candidate = JSON.parse(readFileSync(path, 'utf8'));
+        if ((candidate.slug ?? dir.replace(/^showcase-/, '')) === slug) {
+          cfg = candidate;
+          break;
+        }
+      } catch {
+        /* skip malformed */
+      }
+    }
+    if (!cfg) {
+      errors.push(`${slug}: shippie.json not found (built but unsourced)`);
+      continue;
+    }
+    const curation = cfg.curation;
+    if (!curation || typeof curation !== 'object') {
+      errors.push(`${slug}: missing 'curation' block in shippie.json`);
+      continue;
+    }
+    const parsed = parseFirstPartyCurationEntry(curation, {
+      successorMustExist: (target) => built.has(target),
+    });
+    if (!parsed.ok) {
+      for (const e of parsed.errors) errors.push(`${slug}: ${e}`);
+      continue;
+    }
+    entries.push({ slug, ...parsed.value });
+  }
+
+  if (errors.length > 0) {
+    console.error(`[prepare-showcases] curation validation failed:\n  - ${errors.join('\n  - ')}`);
+    throw new Error(`first-party-curation validation failed (${errors.length} error${errors.length === 1 ? '' : 's'})`);
+  }
+
+  mkdirSync(dirname(CURATION_OUT), { recursive: true });
+  // Group arcade entries by subcategory for the SHELVES manifest used
+  // by /arcade/+page.svelte. Entries without subcategory land in the
+  // 'other' bucket so the landing surface still has a place for them.
+  const SHELF_ORDER = ['daily-brain', 'arcade-cabinet', 'room', 'strategy'];
+  const SHELF_LABELS = {
+    'daily-brain': { title: 'Daily Brain', subtitle: 'One puzzle a day. Beat your streak.' },
+    'arcade-cabinet': { title: 'Arcade Cabinet', subtitle: 'Quarters-on-the-machine. Reflexes + flow.' },
+    'room': { title: 'Room Games', subtitle: 'Two-plus phones in the same room.' },
+    'strategy': { title: 'Strategy', subtitle: 'Long-form. Think it through.' },
+  };
+  const shelves = SHELF_ORDER.map((key) => ({
+    key,
+    title: SHELF_LABELS[key].title,
+    subtitle: SHELF_LABELS[key].subtitle,
+    slugs: entries
+      .filter((e) => e.surface === 'arcade' && e.subcategory === key)
+      .map((e) => e.slug)
+      .sort(),
+  }));
+
+  const body =
+    `// Generated by scripts/prepare-showcases.mjs. Do not edit by hand.\n` +
+    `// Re-run \`bun scripts/prepare-showcases.mjs\` to refresh from each\n` +
+    `// showcase's shippie.json#curation block.\n` +
+    `//\n` +
+    `// surface: 'featured' | 'arcade' | 'labs' | 'archived'\n` +
+    `// category: 'food-drink' | 'health-fitness' | 'social' | 'games' | 'tools' | 'creative'\n` +
+    `// subcategory: 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy' (optional)\n` +
+    `// successor: alias target — only set when the named slug is in the current bake\n\n` +
+    `export type CurationSurface = 'featured' | 'arcade' | 'labs' | 'archived';\n` +
+    `export type CurationCategory = 'food-drink' | 'health-fitness' | 'social' | 'games' | 'tools' | 'creative';\n` +
+    `export type CurationSubcategory = 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy';\n\n` +
+    `export interface CurationEntry {\n` +
+    `  slug: string;\n` +
+    `  surface: CurationSurface;\n` +
+    `  category: CurationCategory;\n` +
+    `  subcategory?: CurationSubcategory;\n` +
+    `  successor?: string;\n` +
+    `}\n\n` +
+    `export interface ArcadeShelf {\n` +
+    `  key: CurationSubcategory;\n` +
+    `  title: string;\n` +
+    `  subtitle: string;\n` +
+    `  slugs: readonly string[];\n` +
+    `}\n\n` +
+    `export const FIRST_PARTY_CURATION: readonly CurationEntry[] = ${JSON.stringify(entries, null, 2)} as const;\n\n` +
+    `export const SHELVES: readonly ArcadeShelf[] = ${JSON.stringify(shelves, null, 2)} as const;\n\n` +
+    `const BY_SLUG = new Map(FIRST_PARTY_CURATION.map((e) => [e.slug, e]));\n\n` +
+    `export function curationFor(slug: string): CurationEntry | undefined {\n` +
+    `  return BY_SLUG.get(slug);\n` +
+    `}\n\n` +
+    `export function showcasesBySurface(surface: CurationSurface): readonly CurationEntry[] {\n` +
+    `  return FIRST_PARTY_CURATION.filter((e) => e.surface === surface);\n` +
+    `}\n`;
+  writeFileSync(CURATION_OUT, body);
+  console.log(`[prepare-showcases] wrote ${CURATION_OUT} (${entries.length} entries)`);
 }
 
 function writePrecacheList() {
@@ -253,15 +516,28 @@ function writePrecacheList() {
 }
 
 function main() {
-  mkdirSync(STATIC_RUN_DIR, { recursive: true });
+  const generatedOnly = process.argv.includes('--generated-only');
   const showcases = listShowcases();
   if (showcases.length === 0) {
     console.log('[prepare-showcases] no showcase-* apps found.');
     writeShowcaseCatalog([]);
     writePrecacheList();
-    writeShellAssets();
+    writeRuntimePrecache([]);
+    if (!generatedOnly) writeShellAssets([]);
     return;
   }
+  if (generatedOnly) {
+    const slugs = showcases.map((showcase) => slugFor(showcase));
+    writeShowcaseCatalog(slugs);
+    writeFirstPartyCuration(slugs);
+    writeRuntimePrecache(slugs);
+    writePrecacheList();
+    console.log(
+      `[prepare-showcases] generated manifests only for ${slugs.length} showcase(s).`,
+    );
+    return;
+  }
+  mkdirSync(STATIC_RUNTIME_DIR, { recursive: true });
   const failures = [];
   const built = [];
   for (const showcase of showcases) {
@@ -275,12 +551,14 @@ function main() {
       failures.push(showcase);
     }
   }
-  pruneStaticRun(built);
+  pruneStaticRuntime(built);
   writeShowcaseCatalog(built);
+  writeFirstPartyCuration(built);
+  writeRuntimePrecache(built);
   writePrecacheList();
-  writeShellAssets();
+  writeShellAssets(built);
   console.log(
-    `[prepare-showcases] done. ${showcases.length - failures.length}/${showcases.length} showcases hosted at /run/<slug>/.`,
+    `[prepare-showcases] done. ${showcases.length - failures.length}/${showcases.length} showcases hosted under ${RUNTIME_BASE_PATH}/<slug>/index.html.`,
   );
   if (failures.length > 0) {
     console.warn(`[prepare-showcases] failed: ${failures.join(', ')}`);

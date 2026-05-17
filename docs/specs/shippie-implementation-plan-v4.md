@@ -80,7 +80,7 @@ export default async function handler(ctx: ShippieFunctionContext) {
   "functions": {
     "enabled": true,
     "directory": "functions",
-    "runtime": "workers",                  // future: "vercel" for migration path
+    "runtime": "workers",                  // future: "cloudflare" for migration path
     "env": {
       "STRIPE_KEY":   { "required": true,  "secret": true },
       "OPENAI_KEY":   { "required": false, "secret": true }
@@ -306,7 +306,7 @@ This is where Shippie differentiates. Missing icon, screenshots, description, ch
 | **OG social card** | Auto-rendered from icon + name + tagline + theme_color | — |
 
 ### Screenshot Capture Job
-After a successful deploy, platform fires a background job (Vercel Cron + Sandbox or dedicated worker):
+After a successful deploy, platform fires a background job (Cloudflare scheduled triggers + Sandbox or dedicated worker):
 1. Spin up headless Chrome against the new `{slug}.shippie.app` URL
 2. Capture 3 viewports: mobile portrait (390×844), mobile landscape (844×390), desktop (1280×800)
 3. Also capture a "hero" shot at 1200×630 for OG cards
@@ -442,7 +442,7 @@ create index audit_log_org_created_idx on audit_log (organization_id, created_at
 - Function secrets only injected if `permissions.functions = true`
 
 **Malware + file scanning**
-- Upload pipeline runs ClamAV (via Vercel Sandbox utility) on the extracted build output
+- Upload pipeline runs ClamAV (via GitHub Actions build workflow utility) on the extracted build output
 - Static analysis for known patterns: obfuscated JS, crypto miners, dynamic `eval`/`Function()`, suspicious network calls, known IoC domains
 - Known-bad hashes block deploy outright
 - Suspicious patterns surface as warnings; 2+ warnings require maker acknowledgment before publish
@@ -527,7 +527,7 @@ PREFLIGHT
   {blockers}? → FAIL, surface errors, end
   {warnings}?  → continue, carry warnings to listing
   ↓
-BUILD (Vercel Sandbox; skipped for pre-built static)
+BUILD (GitHub Actions build workflow; skipped for pre-built static)
   - install with detected package manager, --ignore-scripts
   - execute build command with detected framework preset
   - stream logs via SSE
@@ -698,7 +698,7 @@ alter table deploys
 ```
 shippie/
 ├── apps/
-│   └── web/                              # Next.js 16 — control plane on Vercel
+│   └── web/                              # Next.js 16 — control plane on Cloudflare
 │       ├── app/
 │       │   ├── (marketing)/
 │       │   ├── (storefront)/
@@ -776,7 +776,7 @@ shippie/
 │       │   ├── github/
 │       │   ├── ranking/
 │       │   └── orgs/                     # NEW: role checks
-│       └── vercel.ts
+│       └── cloudflare.ts
 │
 ├── packages/
 │   ├── sdk/                              # @shippie/sdk
@@ -815,7 +815,7 @@ shippie/
 │       └── wrangler.toml
 │
 ├── infra/
-│   ├── hetzner/
+│   ├── cloudflare/
 │   ├── cloudflare/
 │   │   ├── dns-notes.md
 │   │   ├── tunnel-setup.md
@@ -842,7 +842,7 @@ Up from 10 to 12 weeks to absorb Functions + auto-packaging + org foundations.
 
 ### Week 1 — Foundation
 - Monorepo: Next.js 16 + Drizzle + Auth.js v6 + Turborepo
-- Vercel + Hetzner (Postgres + PgBouncer) + Cloudflare Tunnel
+- Cloudflare + Cloudflare (Postgres + PgBouncer) + Cloudflare Tunnel
 - Migrations: users, apps (+ new columns), organizations, org_members, audit_log, oauth_*, app_sessions (opaque), app_data w/ RLS, reserved_slugs
 - Auth.js sign-in, platform layout, DNS + SSL
 
@@ -880,7 +880,7 @@ Up from 10 to 12 weeks to absorb Functions + auto-packaging + org foundations.
 - 3–4 stateful apps deployed (recipe, habit, workout, mood journal)
 - SDK published to npm, CDN, and same-origin proxy
 
-### Week 6 — GitHub App + Vercel Sandbox Builds
+### Week 6 — GitHub App + GitHub Actions build workflow Builds
 - GitHub App registration + webhook handlers
 - Build flow: clone + install (detected PM) + build + extract
 - Live build log streaming
@@ -979,7 +979,7 @@ All 35 v3 cases stand. New v4 additions:
 1. **Shippie Functions security** (HIGH) — untrusted code running on our infra. Mitigated by CFW4P V8 isolation + outbound allowlist + rate limits. Week 7 + Week 9 are spent hardening.
 2. **Auto-packaging quality** (MEDIUM) — bad auto-generated icons and copy make the marketplace feel sloppy. Feature-flag AI generation; human review queue for featured apps.
 3. **Quick Ship false-pass** (MEDIUM) — publishing a broken app immediately is bad UX. Auto-rollback on runtime error spike + first-launch health checks.
-4. **Vercel Sandbox regional limits** (MEDIUM) — US-East only. Accept for MVP; document for EU makers.
+4. **GitHub Actions build workflow regional limits** (MEDIUM) — US-East only. Accept for MVP; document for EU makers.
 5. **Preflight completeness** (HIGH still) — missing a check ships a hole. Treat preflight as a tested system with >50 cases (now ~58).
 6. **CFW4P subscription cost** (LOW) — $25/mo flat. Worth it.
 7. **Org primitives without UI** (LOW) — schema is cheap; UI ships Week 11.
@@ -991,14 +991,14 @@ All 35 v3 cases stand. New v4 additions:
 
 | Line | Cost/mo |
 |------|---------|
-| Vercel Pro (platform + Sandbox credits) | $20 |
-| Hetzner CCX23 (Postgres only) | €15 |
+| Cloudflare Pro (platform + Sandbox credits) | $20 |
+| Cloudflare CCX23 (Postgres only) | €15 |
 | Cloudflare Workers Paid | $5 |
 | **Cloudflare Workers for Platforms** (Functions) | **$25** |
 | Cloudflare Advanced Certificate Manager | $10 |
 | Cloudflare R2 | $0 (MVP tier) |
-| Vercel Sandbox overage | $0–$12 |
-| Resend | $20 |
+| GitHub Actions build workflow overage | $0–$12 |
+| Cloudflare Email | $20 |
 | Sentry | $0–$26 |
 | AI generation (OpenAI / image model, capped) | $0–$20 |
 | Domain + misc | $5 |
@@ -1008,8 +1008,8 @@ All 35 v3 cases stand. New v4 additions:
 
 ## 17. Decisions Locked In (v4)
 
-1. **Build runner**: Vercel Sandbox
-2. **Platform hosting**: Vercel (Next.js) + Hetzner (Postgres only) via Cloudflare Tunnel
+1. **Build runner**: GitHub Actions build workflow
+2. **Platform hosting**: Cloudflare (Next.js) + Cloudflare (Postgres only) via Cloudflare Tunnel
 3. **GitHub**: GitHub App
 4. **SDK distribution**: @shippie/sdk on npm + cdn.shippie.app + same-origin /__shippie/sdk.js
 5. **Auth**: OAuth 2.0 + PKCE establishing **opaque-handle app-origin sessions**; server-side claims in `app_sessions`
@@ -1022,7 +1022,7 @@ All 35 v3 cases stand. New v4 additions:
 12. **Business foundations**: orgs, roles, invites, audit log, private-org distribution, verified business tier — **schema from day 1, UI Week 11**
 13. **Trust**: enforced (domain scan, malware scan, CSP, permission-to-runtime) — not just presentational
 14. **Feedback**: unified `feedback_items` typed system
-15. **Email**: Resend
+15. **Email**: Cloudflare Email
 16. **Search**: Postgres FTS + pg_trgm
 17. **Ranking**: hourly cron, weighted per type, burst-flagged
 

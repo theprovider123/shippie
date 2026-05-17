@@ -122,3 +122,33 @@
   aspect-ratio: 1;
   flex-shrink: 0;
 }
+
+/* ── Global focus ring ───────────────────────────────────────────
+   Mirror of the platform tokens. Sharp corners (no border-radius);
+   per-component overrides use box-shadow where outline would clip. */
+:focus-visible {
+  outline: 2px solid var(--sunset);
+  outline-offset: 2px;
+}
+
+/* ── Skip-to-content link ─────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  padding: var(--space-md, 1rem);
+  background: var(--sunset);
+  color: var(--bg-pure, #14120F);
+  font-family: var(--font-body);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-100%);
+  transition: transform 100ms ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--text);
+  outline-offset: -4px;
+}

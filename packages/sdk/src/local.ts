@@ -399,5 +399,15 @@ export async function capabilities(opts: LoadLocalRuntimeOptions = {}): Promise<
 function currentLocalRuntime(): ShippieLocalRuntimeGlobal | null {
   if (typeof window === 'undefined') return null;
   const runtime = (window as unknown as { shippie?: { local?: ShippieLocalRuntimeGlobal } }).shippie?.local;
+  // When the full SDK is attached to window, `window.shippie.local` is this
+  // facade object, not a loaded runtime. Treating it as a runtime makes the
+  // `ai` getter read itself forever.
+  if (
+    runtime &&
+    typeof (runtime as { load?: unknown }).load === 'function' &&
+    typeof (runtime as { intelligence?: unknown }).intelligence === 'object'
+  ) {
+    return null;
+  }
   return runtime ?? null;
 }

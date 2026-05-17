@@ -8,9 +8,13 @@
   "background_color": "#FAF7EF",
   "display": "standalone",
   "orientation": "portrait",
-  "permissions": ["camera"],
+  "permissions": [
+    "camera"
+  ],
   "intents": {
-    "provides": ["body-metrics-logged"]
+    "provides": [
+      "body-metrics-logged"
+    ]
   },
   "data_schemas": {
     "measurements": {
@@ -21,5 +25,9 @@
       "photo_local_id": "text",
       "created_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness"
   }
 }

@@ -35,7 +35,7 @@
     /** Generated fallback srcdoc — last-resort src. */
     srcdoc: string;
     onRegister: (node: HTMLIFrameElement, appId: string) => void;
-    onReady: (appId: string) => void;
+    onReady: (appId: string, node: HTMLIFrameElement) => void;
     onError: (appId: string, message?: string) => void;
     onReload: (appId: string) => void;
     onGoHome: () => void;
@@ -62,31 +62,37 @@
     {#if runtimeSrc}
       <iframe
         use:onRegister={app.id}
+        data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"
-        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
+        allowfullscreen
         src={runtimeSrc}
-        onload={() => onReady(app.id)}
+        onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
         onerror={() => onError(app.id)}
       ></iframe>
     {:else if packageFrameSrc}
       <iframe
         use:onRegister={app.id}
+        data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
-        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
+        allowfullscreen
         src={packageFrameSrc}
-        onload={() => onReady(app.id)}
+        onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
         onerror={() => onError(app.id)}
       ></iframe>
     {:else}
       <iframe
         use:onRegister={app.id}
+        data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
-        allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
+        allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
+        allowfullscreen
         {srcdoc}
-        onload={() => onReady(app.id)}
+        onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
         onerror={() => onError(app.id)}
       ></iframe>
     {/if}

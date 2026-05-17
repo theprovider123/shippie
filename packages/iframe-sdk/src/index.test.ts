@@ -151,6 +151,29 @@ describe('createShippieIframeSdk — wire format + helpers', () => {
     delete (globalThis as any).window;
   });
 
+  test('openYourData targets the platform dev server from standalone showcase dev ports', () => {
+    let assigned = '';
+    const win: any = {
+      addEventListener() {},
+      removeEventListener() {},
+      location: {
+        protocol: 'http:',
+        hostname: '127.0.0.1',
+        origin: 'http://127.0.0.1:5196',
+        assign(value: string) {
+          assigned = value;
+        },
+      },
+    };
+    win.parent = win;
+    win.self = win;
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    sdk.openYourData({ appSlug: 'daily-briefing' });
+    expect(assigned).toBe('http://127.0.0.1:4101/container?section=data&app=daily-briefing');
+    delete (globalThis as any).window;
+  });
+
   test('all calls no-op outside a container (parent === window)', () => {
     const win: any = {
       addEventListener() {},

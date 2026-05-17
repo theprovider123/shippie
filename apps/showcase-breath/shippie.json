@@ -8,8 +8,20 @@
   "background_color": "#14120F",
   "display": "standalone",
   "orientation": "portrait",
+  "permissions": [
+    "wake-lock"
+  ],
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      }
+    }
+  },
   "intents": {
-    "provides": ["mindful-session"]
+    "provides": [
+      "mindful-session"
+    ]
   },
   "data_schemas": {
     "sessions": {
@@ -19,5 +31,9 @@
       "duration_seconds": "integer",
       "completed_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
   }
 }

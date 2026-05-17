@@ -4,6 +4,8 @@
   import Nav from '$lib/components/layout/Nav.svelte';
   import Footer from '$lib/components/layout/Footer.svelte';
   import Toast from '$lib/components/ui/Toast.svelte';
+  import { matchesStandalone } from '$lib/util/standalone';
+  import { track } from '$lib/util/track';
   import type { LayoutData } from './$types';
 
   interface Props {
@@ -15,15 +17,29 @@
 
   onMount(() => {
     document.body.dataset.appReady = 'true';
+
+    // Per-session telemetry. Gated by sessionStorage so each event
+    // fires once per tab/PWA session.
+    try {
+      if (!sessionStorage.getItem('shippie:track:viewport_mode')) {
+        const w = window.innerWidth;
+        const mode = w < 768 ? 'mobile' : w < 1280 ? 'tablet' : 'desktop';
+        track('viewport_mode', { mode, width: w });
+        sessionStorage.setItem('shippie:track:viewport_mode', '1');
+      }
+      if (matchesStandalone() && !sessionStorage.getItem('shippie:track:standalone')) {
+        track('pwa_standalone_launch');
+        sessionStorage.setItem('shippie:track:standalone', '1');
+      }
+    } catch {
+      // sessionStorage blocked (private browsing) — fire on every load,
+      // accept the slight over-count rather than lose the signal.
+    }
   });
 </script>
 
 <svelte:head>
   <title>Shippie — No app store. Just the web, installed.</title>
-  <meta
-    name="description"
-    content="Build it with AI. On your phone. In 60 seconds. Open marketplace for installable web apps."
-  />
   <meta name="theme-color" content="#14120F" />
   <link
     rel="preconnect"
@@ -40,6 +56,7 @@
   />
 </svelte:head>
 
+<a href="#main" class="skip-link">Skip to main content</a>
 <Nav user={data.user} />
 <main id="main">
   {@render children()}
@@ -49,6 +66,11 @@
 
 <style>
   main {
-    min-height: calc(100vh - var(--nav-height) - var(--safe-top));
+    /* Cascade — 100svh on browsers without dvh (the smaller of static
+       short/long viewport units), then 100dvh on browsers that support
+       it (the dynamic viewport that grows/shrinks with the URL bar so
+       the layout doesn't jump on scroll). */
+    min-height: calc(100svh - var(--nav-height) - var(--safe-top));
+    min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
   }
 </style>

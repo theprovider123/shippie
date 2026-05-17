@@ -20,6 +20,7 @@ import type {
   SecurityScore,
   PrivacyGradeResult,
   LocalizePatch,
+  RemixSpec,
 } from '@shippie/analyse';
 import type { AppKindProfile } from '$lib/types/app-kind';
 import type { RouteModeDecision } from './route-mode';
@@ -89,6 +90,13 @@ export interface DeployReport {
    * Today this is preview-only.
    */
   localizeOffers?: LocalizeOfferSummary[];
+
+  /**
+   * Remix intent capture. When makers upload project source instead of only a
+   * built folder, this summarizes routes, data entities, forms, APIs, and open
+   * questions for rebuilding or improving the app.
+   */
+  remixSpec?: RemixSpec;
 
   /**
    * Container commons package metadata. The app assets already live under

@@ -9,7 +9,10 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "consumes": ["cooked-meal", "workout-completed"]
+    "consumes": [
+      "cooked-meal",
+      "workout-completed"
+    ]
   },
   "data_schemas": {
     "habits": {
@@ -24,5 +27,9 @@
       "checked_at": "datetime",
       "source": "text"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness"
   }
 }

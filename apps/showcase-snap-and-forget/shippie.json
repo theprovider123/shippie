@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Snap and Forget",
+  "slug": "snap-and-forget",
+  "description": "Photograph anything to remember later. AI labels it. Search by what you saw.",
+  "icon": "/icon.png",
+  "theme_color": "#4FA487",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["place.snapped"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "tools"
+  }
+}

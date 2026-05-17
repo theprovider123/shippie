@@ -9,9 +9,14 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["pantry-inventory", "pantry-low"]
+    "provides": [
+      "pantry-inventory",
+      "pantry-low"
+    ]
   },
-  "permissions": ["camera"],
+  "permissions": [
+    "camera"
+  ],
   "data_schemas": {
     "items": {
       "id": "text primary key",
@@ -21,5 +26,10 @@
       "unit": "text",
       "added_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools",
+    "successor": "recipe"
   }
 }

@@ -31,7 +31,7 @@ describe('shippie wrap', () => {
   test('success path prints slug, live URL, redirect URI', async () => {
     const out: string[] = [];
     await wrapCommand({
-      upstreamUrl: 'https://mevrouw.vercel.app',
+      upstreamUrl: 'https://mevrouw.example.com',
       slug: 'mevrouw',
       apiUrl: 'https://shippie.app',
       name: 'Mevrouw',

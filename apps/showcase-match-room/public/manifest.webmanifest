@@ -1,0 +1,38 @@
+{
+  "name": "Shippie Match Room",
+  "short_name": "Match Room",
+  "description": "Predictions, trivia, sweepstakes, votes, and matchday banter for the 2026 football tournament.",
+  "id": "/run/match-room/",
+  "start_url": "/run/match-room/",
+  "scope": "/run/match-room/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "orientation": "portrait",
+  "theme_color": "#061C14",
+  "background_color": "#061C14",
+  "categories": ["sports", "social", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Today",
+      "short_name": "Today",
+      "description": "Open the current match room view.",
+      "url": "/run/match-room/?tab=today",
+      "icons": [{ "src": "/icon.svg", "sizes": "128x128", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Tournament",
+      "short_name": "Tournament",
+      "description": "Open teams, cities, wall chart, and fantasy.",
+      "url": "/run/match-room/?tab=tournament",
+      "icons": [{ "src": "/icon.svg", "sizes": "128x128", "type": "image/svg+xml" }]
+    }
+  ]
+}

@@ -43,7 +43,6 @@
           autocomplete="off"
           autocapitalize="characters"
           spellcheck="false"
-          autofocus
           maxlength="20"
           value={data.prefilledCode ?? ''}
           placeholder="BCDF-GHJK"

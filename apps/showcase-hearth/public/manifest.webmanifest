@@ -1,0 +1,11 @@
+{
+  "name": "Hearth",
+  "short_name": "Hearth",
+  "description": "Household chores, fridge notes, and dinner plans over the local mesh.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EF",
+  "theme_color": "#5EA777",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

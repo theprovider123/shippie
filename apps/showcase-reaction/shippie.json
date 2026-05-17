@@ -1,0 +1,23 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Reaction",
+  "slug": "reaction",
+  "description": "Screen turns green, tap as fast as you can. Three-second hook. ms over time.",
+  "icon": "/icon.png",
+  "theme_color": "#2EAD64",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "game.completed"
+    ],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "games",
+    "subcategory": "arcade-cabinet",
+    "successor": "daily-puzzle"
+  }
+}

@@ -5,7 +5,7 @@
 **Ships in:** Phase B (link invites) + Phase C (email invites)
 
 > Sibling spec: `2026-04-23-url-wrap-mode-design.md`. Together they unlock
-> the mevrouw end state: wrap the Vercel-hosted PWA privately and share
+> the mevrouw end state: wrap the Cloudflare-hosted PWA privately and share
 > access only with specific people via invite link.
 
 ## 1. Goal

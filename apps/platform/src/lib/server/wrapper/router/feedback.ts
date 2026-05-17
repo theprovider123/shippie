@@ -15,6 +15,7 @@ import type { WrapperContext } from '../env';
 import { checkRateLimit, clientKey } from '../rate-limit';
 import { getDrizzleClient, schema } from '../../db/client';
 import { and, eq, sql } from 'drizzle-orm';
+import { moderateFeedback } from '../../moderation/feedback';
 
 function extractBearer(request: Request): string | null {
   const header = request.headers.get('authorization');
@@ -66,6 +67,12 @@ export async function handleFeedback(ctx: WrapperContext): Promise<Response> {
   }
   const title = typeof body.title === 'string' ? body.title.slice(0, 280) : null;
   const text = typeof body.body === 'string' ? body.body.slice(0, MAX_BODY_LEN) : null;
+  const moderation = moderateFeedback({
+    type: body.type,
+    title,
+    body: text,
+    rating: body.rating ?? null,
+  });
 
   const db = getDrizzleClient(ctx.env.DB);
   const app = await db.query.apps.findFirst({
@@ -82,12 +89,13 @@ export async function handleFeedback(ctx: WrapperContext): Promise<Response> {
         appId: app.id,
         userId: null,
         type: body.type,
+        status: moderation.status,
         title,
         body: text,
         rating: body.rating ?? null,
         externalUserId: body.external_user_id ?? null,
         externalUserDisplay: body.external_user_display ?? null,
-        metadata: { source: 'wrapper', has_bearer: !!token },
+        metadata: { source: 'wrapper', has_bearer: !!token, moderation_flags: moderation.flags },
       })
       .returning({ id: schema.feedbackItems.id });
     if (!row) throw new Error('no row returned');

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Recipe Saver — DOM enhancement + trust + feel showcase. Ships to recipe.shippie.app.",
+  "description": "Recipe — local-first kitchen showcase. Ships to recipe.shippie.app.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

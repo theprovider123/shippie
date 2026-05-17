@@ -1,0 +1,34 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Hearth",
+  "slug": "hearth",
+  "description": "Household chores, fridge notes, and dinner plans over the local mesh.",
+  "icon": "/icon.svg",
+  "theme_color": "#5EA777",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "household-note",
+      "chore-done",
+      "dinner-planned"
+    ],
+    "consumes": [
+      "needs-restocking",
+      "cooked-meal"
+    ]
+  },
+  "data_schemas": {
+    "entries": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools"
+  }
+}

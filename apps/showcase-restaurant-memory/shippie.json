@@ -8,10 +8,18 @@
   "background_color": "#FAF7EF",
   "display": "standalone",
   "orientation": "portrait",
-  "permissions": ["camera", "geolocation"],
+  "permissions": [
+    "camera",
+    "geolocation"
+  ],
   "intents": {
-    "provides": ["dined-out"],
-    "consumes": ["cooked-meal"]
+    "provides": [
+      "dined-out",
+      "place.snapped"
+    ],
+    "consumes": [
+      "cooked-meal"
+    ]
   },
   "data_schemas": {
     "visits": {
@@ -24,5 +32,9 @@
       "photo_local_id": "text",
       "visited_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "food-drink"
   }
 }

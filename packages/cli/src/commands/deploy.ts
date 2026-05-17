@@ -1,15 +1,15 @@
 /**
- * shippie deploy [dir]
+ * shippie deploy [path]
  *
- * Zips the target directory and POSTs to the platform.
+ * Zips the target directory/file and POSTs to the platform.
  *
  * By default posts to /api/deploy (requires a ~/.shippie/token).
  * With --trial, posts to /api/deploy/trial — no signup needed,
  * 24-hour TTL, 50MB limit. Useful for testing the B2 trial backend.
  */
-import { existsSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
-import { createClient, type DeployResult } from '@shippie/core';
+import { existsSync, statSync } from 'node:fs';
+import { resolve, basename, extname } from 'node:path';
+import { createClient, type DeployResult, type DeployVisibility } from '@shippie/core';
 import { streamCommand } from './stream.js';
 
 const OUTPUT_DIRS = ['dist', 'build', 'out', '.output/public', 'public', '_site'];
@@ -23,36 +23,60 @@ function findOutputDir(base: string): string {
 
 export async function deployCommand(
   dir: string | undefined,
-  opts: { slug?: string; skipBuild?: boolean; api?: string; trial?: boolean; watch?: boolean },
+  opts: {
+    slug?: string;
+    remix?: string;
+    skipBuild?: boolean;
+    api?: string;
+    trial?: boolean;
+    watch?: boolean;
+    visibility?: string;
+    org?: string;
+    private?: boolean;
+    unlisted?: boolean;
+    public?: boolean;
+    team?: boolean;
+  },
 ) {
-  const targetDir = resolve(dir ?? '.');
+  const target = resolve(dir ?? '.');
   const apiUrl = opts.api ?? 'https://shippie.app';
 
-  if (!existsSync(targetDir)) {
-    console.error(`Directory not found: ${targetDir}`);
+  if (!existsSync(target)) {
+    console.error(`Path not found: ${target}`);
+    process.exit(1);
+  }
+
+  const isFile = statSync(target).isFile();
+  const visibility = resolveVisibility(opts);
+  if (visibility === 'team' && !opts.org) {
+    console.error('Team deploys require --org <org-id-or-slug>.');
     process.exit(1);
   }
 
   // If skip-build, find the output dir and zip it
-  const outputDir = opts.skipBuild ? findOutputDir(targetDir) : '.';
-  const deployDir = resolve(targetDir, outputDir);
+  const outputDir = opts.skipBuild && !isFile ? findOutputDir(target) : '.';
+  const deployPath = isFile ? target : resolve(target, outputDir);
 
   if (opts.trial) {
-    console.log(`Packaging ${deployDir} as a trial deploy...`);
+    console.log(`Packaging ${deployPath} as a trial deploy${opts.remix ? ` remixing ${opts.remix}` : ''}...`);
   } else {
-    const slug = opts.slug ?? basename(targetDir).toLowerCase().replace(/[^a-z0-9-]/g, '-');
-    console.log(`Packaging ${deployDir} as "${slug}"...`);
+    const slug = opts.slug ?? slugFromPath(target, isFile);
+    const visibilityLabel = visibility ? ` (${visibility})` : isFile ? ' (unlisted)' : '';
+    console.log(`Packaging ${deployPath} as "${slug}"${visibilityLabel}${opts.remix ? ` remixing ${opts.remix}` : ''}...`);
   }
 
   console.log('Uploading...');
 
   try {
-    const slug = opts.slug ?? basename(targetDir).toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const slug = opts.slug ?? slugFromPath(target, isFile);
     const client = createClient({ apiUrl });
     const result = await client.deploy({
-      directory: deployDir,
+      directory: deployPath,
       slug: opts.trial ? undefined : slug,
       trial: opts.trial,
+      remixFrom: opts.remix,
+      visibility,
+      organization: opts.org,
     });
 
     if (!result.ok) {
@@ -71,10 +95,12 @@ export async function deployCommand(
     } else {
       console.log(`Live at: ${result.liveUrl}`);
       if (result.version != null) console.log(`Version: v${result.version}`);
+      if (result.visibility) console.log(`Visibility: ${result.visibility}`);
     }
     if (result.files != null) console.log(`Files:   ${result.files}`);
     if (result.totalBytes != null) console.log(`Bytes:   ${result.totalBytes}`);
     if (result.deployId) console.log(`Deploy:  ${result.deployId}`);
+    if (opts.remix) console.log(`Remix:   ${opts.remix}`);
     console.log('');
 
     if (opts.watch && result.deployId) {
@@ -84,6 +110,43 @@ export async function deployCommand(
     console.error('Network error:', (err as Error).message);
     process.exit(1);
   }
+}
+
+function resolveVisibility(opts: {
+  visibility?: string;
+  private?: boolean;
+  unlisted?: boolean;
+  public?: boolean;
+  team?: boolean;
+}): DeployVisibility | undefined {
+  if (
+    opts.visibility &&
+    opts.visibility !== 'public' &&
+    opts.visibility !== 'unlisted' &&
+    opts.visibility !== 'private' &&
+    opts.visibility !== 'team'
+  ) {
+    console.error('Invalid visibility. Use one of: public, unlisted, private, team.');
+    process.exit(1);
+  }
+  const aliases = [
+    opts.private ? 'private' : null,
+    opts.unlisted ? 'unlisted' : null,
+    opts.public ? 'public' : null,
+    opts.team ? 'team' : null,
+  ].filter((value): value is DeployVisibility => value !== null);
+  const requested = opts.visibility ? [opts.visibility as DeployVisibility, ...aliases] : aliases;
+  const distinct = new Set(requested);
+  if (distinct.size > 1) {
+    console.error('Choose only one visibility: --private, --unlisted, --public, or --visibility.');
+    process.exit(1);
+  }
+  return requested[0];
+}
+
+function slugFromPath(path: string, isFile: boolean): string {
+  const name = basename(path, isFile ? extname(path) : undefined);
+  return name.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'tool';
 }
 
 function printDeployError(result: DeployResult): void {

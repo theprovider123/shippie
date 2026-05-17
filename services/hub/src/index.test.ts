@@ -72,6 +72,18 @@ describe('startHub', () => {
     }, freshCache('dash'));
   });
 
+  test('serves ambient discovery for nearby phones', async () => {
+    await withHub(async (port) => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/hub/ambient`);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { schema: string; hub: { name: string }; rooms: unknown[]; tools: unknown[] };
+      expect(json.schema).toBe('shippie.hub.ambient.v1');
+      expect(json.hub.name).toBe('hub-test');
+      expect(json.rooms).toEqual([]);
+      expect(json.tools).toEqual([]);
+    }, freshCache('ambient'));
+  });
+
   test('serves cached app via Host: <slug>.hub.local', async () => {
     const root = freshCache('app');
     mkdirSync(join(root, 'apps', 'recipe', 'v1'), { recursive: true });
@@ -131,6 +143,28 @@ describe('startHub', () => {
       const pkg = await fetch(`http://127.0.0.1:${port}/packages/${installed.packageHash}.shippie`);
       expect(pkg.status).toBe(200);
       expect(pkg.headers.get('content-type')).toContain('application/vnd.shippie.package+json');
+
+      const ambient = await fetch(`http://127.0.0.1:${port}/api/hub/ambient`);
+      const ambientJson = (await ambient.json()) as {
+        tools: Array<{
+          slug: string;
+          spaces?: {
+            enabled: boolean;
+            roles: Array<{ id: string; permissions: string[] }>;
+            syncMode: string;
+            archivable: boolean;
+          };
+        }>;
+      };
+      expect(ambientJson.tools.find((tool) => tool.slug === 'hub-quiz')?.spaces).toEqual({
+        enabled: true,
+        roles: [
+          { id: 'host', permissions: ['read', 'write', 'invite'] },
+          { id: 'player', permissions: ['read', 'write'] },
+        ],
+        syncMode: 'hub',
+        archivable: true,
+      });
     }, root);
   });
 });
@@ -147,6 +181,15 @@ async function fixtureArchive(): Promise<Uint8Array> {
       maker: { id: 'maker_teacher', name: 'Teacher' },
       domains: { canonical: 'https://hub-quiz.shippie.app' },
       runtime: { standalone: true, container: true, hub: true, minimumSdk: '1.0.0' },
+      spaces: {
+        enabled: true,
+        roles: [
+          { id: 'host', permissions: ['read', 'write', 'invite'] },
+          { id: 'player', permissions: ['read', 'write'] },
+        ],
+        syncMode: 'hub',
+        archivable: true,
+      },
     },
     appFiles: {
       'index.html': '<!doctype html><html><body><h1>Hub Quiz</h1></body></html>',

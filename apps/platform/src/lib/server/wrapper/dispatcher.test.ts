@@ -131,18 +131,53 @@ describe('dispatchMakerSubdomain', () => {
     expect(res!.headers.get('Content-Type')).toContain('text/html');
     const html = await res!.text();
     expect(html).toContain('Your Data');
+    expect(html).toContain('Shippie stores sealed copies');
+    expect(html).toContain("we can't open");
   });
 
-  test('/__shippie/signal/{room} → 503 (Phase 6)', async () => {
+  test('/__shippie/signal/{room} without binding → 503', async () => {
     const env = envWith(fakeKv({}));
     const res = await dispatchMakerSubdomain({
       request: new Request(
         'https://x.shippie.app/__shippie/signal/abc123def456',
-        { headers: { host: 'x.shippie.app' } }
+        { headers: { host: 'x.shippie.app', Upgrade: 'websocket' } }
       ),
       env
     });
     expect(res!.status).toBe(503);
+  });
+
+  test('/__shippie/signal/{room} forwards websocket upgrades to SignalRoom', async () => {
+    const env = envWith(fakeKv({}));
+    let roomName = '';
+    let forwarded = false;
+    env.SIGNAL_ROOM = {
+      idFromName(name: string) {
+        roomName = name;
+        return { toString: () => `room:${name}` };
+      },
+      get() {
+        return {
+          fetch: async () => {
+            forwarded = true;
+            return new Response('forwarded', { status: 200 });
+          }
+        } as never;
+      }
+    } as never;
+
+    const res = await dispatchMakerSubdomain({
+      request: new Request(
+        'https://x.shippie.app/__shippie/signal/abc123def456',
+        { headers: { host: 'x.shippie.app', Upgrade: 'websocket' } }
+      ),
+      env
+    });
+
+    expect(res!.status).toBe(200);
+    expect(await res!.text()).toBe('forwarded');
+    expect(roomName).toBe('abc123def456');
+    expect(forwarded).toBe(true);
   });
 
   test('finalizeResponse echoes trace id', async () => {

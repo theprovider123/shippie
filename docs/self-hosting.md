@@ -9,7 +9,7 @@ This guide covers two scenarios:
 
 These are independent. You can run a Hub without running the full platform; you can run the full platform without ever deploying a Hub.
 
-The active Cloudflare-only deploy steps for the public platform live in [`docs/superpowers/plans/2026-04-26-prod-deploy-runbook.md`](./superpowers/plans/2026-04-26-prod-deploy-runbook.md). Anything in earlier specs that references `apps/web`, `services/worker`, or Vercel is pre-cutover and should not be followed.
+The active Cloudflare deploy steps for the public platform live in [`docs/superpowers/plans/2026-04-26-prod-deploy-runbook.md`](./superpowers/plans/2026-04-26-prod-deploy-runbook.md). Treat older architecture sketches as superseded by the current Workers, D1, R2, KV, Durable Objects, Workers Assets, scheduled triggers, and Cloudflare Email setup.
 
 ---
 
@@ -140,12 +140,47 @@ docker build -t shippie-hub .
 docker run -d \
   --name shippie-hub \
   --network host \
-  -e HUB_NAME="My Venue" \
-  -e DATA_FEEDS='[]' \
+  -v shippie-hub-data:/var/lib/shippie-hub \
+  -e HUB_MDNS_NAME="hub" \
   shippie-hub
 ```
 
-The Hub advertises itself on the LAN via mDNS as `shippie-hub.local`. Devices running Shippie apps discover it automatically when they're on the same network.
+The Hub advertises itself on the LAN via mDNS as `hub.local`. Devices running Shippie apps discover it automatically when they're on the same network.
+
+### Install a portable app package
+
+Makers can install a `.shippie` archive onto the Hub. The Hub verifies the
+archive, stores the package, unpacks the static app files, and publishes a local
+collection manifest.
+
+```bash
+curl -X POST \
+  --data-binary @match-room.shippie \
+  -H "content-type: application/vnd.shippie.package+json" \
+  http://hub.local/api/packages
+```
+
+The app is then available on the local network at:
+
+```text
+http://match-room.hub.local/
+http://hub.local/collections/local-mirror.json
+```
+
+If the package declares `spaces` metadata, the Hub keeps that metadata in
+`/api/hub/ambient` so phones and venue screens can show "private room available
+here" without calling the public platform.
+
+### Discover visible rooms and tools
+
+```bash
+curl http://hub.local/api/hub/ambient
+```
+
+The response includes the Hub name, active local rooms, cached tools, group
+labels, package URLs, and private-space metadata when present. Treat ambient
+discovery as visibility only; users still need to choose a link or QR before
+they join a space.
 
 ### Optional — bridge live data
 

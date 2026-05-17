@@ -21,8 +21,7 @@ export function buildHandoffUrl(currentUrl: string): string {
 }
 
 // Minimal, deliberately-strict email check. Good enough for
-// client-side validation before POST; server-side Resend/SES
-// validation is the real gate.
+// client-side validation before POST; server-side validation is the real gate.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateEmail(input: string): boolean {

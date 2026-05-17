@@ -1,0 +1,50 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Cycle",
+  "slug": "cycle",
+  "description": "Local menstrual and fertility tracking with optional partner mesh.",
+  "icon": "/icon.svg",
+  "theme_color": "#3D3530",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "cycle-logged",
+      "cycle-window-predicted"
+    ],
+    "consumes": [
+      "body-metrics-logged",
+      "mood-logged"
+    ]
+  },
+  "data_schemas": {
+    "cycles": {
+      "id": "text primary key",
+      "started_on": "text not null",
+      "ended_on": "text",
+      "length_days": "integer",
+      "notes": "text",
+      "created_at": "datetime"
+    },
+    "days": {
+      "id": "text primary key",
+      "cycle_id": "text not null",
+      "date": "text not null",
+      "flow": "integer",
+      "symptoms_json": "text",
+      "note": "text",
+      "created_at": "datetime"
+    },
+    "prefs": {
+      "id": "text primary key",
+      "share_with_partner": "integer",
+      "partner_pair_code": "text",
+      "partner_seen_fields_json": "text"
+    }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
+  }
+}

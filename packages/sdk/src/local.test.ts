@@ -56,6 +56,11 @@ describe('shippie.local loader', () => {
   test('local.ai returns the iframe-backed default when no runtime ai is attached', () => {
     expect(local.ai).toBeInstanceOf(LocalAI);
   });
+
+  test('local.ai does not recurse when window.shippie.local is the SDK facade', () => {
+    (win as any).shippie = { local };
+    expect(local.ai).toBeInstanceOf(LocalAI);
+  });
 });
 
 // ---------------------------------------------------------------------------

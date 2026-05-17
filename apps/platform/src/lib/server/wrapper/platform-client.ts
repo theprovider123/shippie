@@ -76,7 +76,8 @@ export function bustWrapCache(slug: string): void {
 
 export interface AppMetaRuntime {
   slug: string;
-  visibility_scope: 'public' | 'unlisted' | 'private';
+  visibility_scope: 'public' | 'unlisted' | 'private' | 'team';
+  organization_id?: string;
 }
 
 interface CachedAppMeta {
@@ -97,14 +98,20 @@ export async function loadAppMeta(
   const raw = await kvReadJson(kv, `apps:${slug}:meta`);
   let value: AppMetaRuntime | null = null;
   if (raw && typeof raw === 'object') {
-    const r = raw as { visibility_scope?: string };
+    const r = raw as { visibility_scope?: string; organization_id?: string };
     const scope =
-      r.visibility_scope === 'private'
+      r.visibility_scope === 'team'
+        ? 'team'
+        : r.visibility_scope === 'private'
         ? 'private'
         : r.visibility_scope === 'unlisted'
           ? 'unlisted'
           : 'public';
-    value = { slug, visibility_scope: scope };
+    value = {
+      slug,
+      visibility_scope: scope,
+      organization_id: typeof r.organization_id === 'string' ? r.organization_id : undefined,
+    };
   }
   appMetaCache.set(slug, { value, expires: now + WRAP_TTL_MS });
   return value;

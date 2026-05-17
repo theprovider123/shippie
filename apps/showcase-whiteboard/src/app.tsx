@@ -23,6 +23,10 @@ export function App() {
   const [group, setGroup] = useState<Group | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState('');
+  const showAndTellMode =
+    typeof window !== 'undefined' &&
+    (new URLSearchParams(window.location.search).get('mode') === 'show-and-tell' ||
+      new URLSearchParams(window.location.search).get('from') === 'show-and-tell');
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -90,10 +94,11 @@ export function App() {
         onJoin={handleJoin}
         busy={phase === 'creating'}
         error={error}
+        showAndTellMode={showAndTellMode}
       />
     );
   }
-  return <Room group={group!} onLeave={() => { group?.leave(); setGroup(null); setPhase('lobby'); }} />;
+  return <Room group={group!} showAndTellMode={showAndTellMode} onLeave={() => { group?.leave(); setGroup(null); setPhase('lobby'); }} />;
 }
 
 function Lobby(props: {
@@ -103,6 +108,7 @@ function Lobby(props: {
   onJoin: () => void;
   busy: boolean;
   error: string | null;
+  showAndTellMode: boolean;
 }) {
   return (
     <div style={{
@@ -113,10 +119,13 @@ function Lobby(props: {
       padding: 24,
     }}>
       <div style={{ maxWidth: 360, width: '100%' }}>
-        <h1 style={{ fontSize: 28, marginBottom: 4 }}>Shippie Whiteboard</h1>
+        <h1 style={{ fontSize: 28, marginBottom: 4 }}>
+          {props.showAndTellMode ? 'Show and Tell' : 'Shippie Whiteboard'}
+        </h1>
         <p style={{ color: '#9C9385', marginTop: 0 }}>
-          Local-network drawing. Pair via QR. Local strokes paint instantly,
-          remote strokes appear in under 30ms on a shared WiFi.
+          {props.showAndTellMode
+            ? 'Show and Tell now lives inside Whiteboard. Start a room, drop sketches or notes, and keep the same temporary same-room feel.'
+            : 'Local-network drawing. Pair via QR. Local strokes paint instantly, remote strokes appear in under 30ms on a shared WiFi.'}
         </p>
         <button
           disabled={props.busy}
@@ -148,7 +157,7 @@ function Lobby(props: {
   );
 }
 
-function Room(props: { group: Group; onLeave: () => void }) {
+function Room(props: { group: Group; showAndTellMode: boolean; onLeave: () => void }) {
   const { group } = props;
   const [color, setColor] = useState<string>(PALETTE[1]!);
   const [width, setWidth] = useState(3);
@@ -380,7 +389,7 @@ function Room(props: { group: Group; onLeave: () => void }) {
         borderBottom: '1px solid #2A2520',
         background: '#1B1813',
       }}>
-        <strong style={{ marginRight: 8 }}>Whiteboard</strong>
+        <strong style={{ marginRight: 8 }}>{props.showAndTellMode ? 'Show and Tell' : 'Whiteboard'}</strong>
         <button onClick={() => setShowShare((v) => !v)} style={chipStyle}>
           {group.joinCode}
         </button>

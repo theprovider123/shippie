@@ -1,6 +1,8 @@
 import adapter from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
+const isTestRuntime = process.env.CI === 'true' || process.env.VITEST === 'true';
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   preprocess: vitePreprocess(),
@@ -11,7 +13,8 @@ const config = {
       // Cloudflare account when running `vite dev`.
       platformProxy: {
         configPath: 'wrangler.toml',
-        persist: '.wrangler/state'
+        persist: '.wrangler/state',
+        remoteBindings: !isTestRuntime
       }
     }),
 

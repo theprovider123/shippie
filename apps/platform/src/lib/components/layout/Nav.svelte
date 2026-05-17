@@ -27,7 +27,10 @@
     </div>
 
     <div class="nav-center">
-      <a href="/apps" class="nav-link">Explore</a>
+      <a href="/" class="nav-link">Tools</a>
+      <a href="/arcade" class="nav-link">Arcade</a>
+      <a href="/build" class="nav-link">Build</a>
+      <a href="/glance" class="nav-link">Glance</a>
       <a href="/leaderboards" class="nav-link">Leaderboards</a>
       <a href="/why" class="nav-link">Why</a>
       <a href="/docs" class="nav-link">Docs</a>
@@ -66,7 +69,10 @@
 
   {#if mobileOpen}
     <div id="mobile-menu" class="mobile-menu">
-      <a href="/apps" onclick={() => (mobileOpen = false)}>Explore</a>
+      <a href="/" onclick={() => (mobileOpen = false)}>Tools</a>
+      <a href="/arcade" onclick={() => (mobileOpen = false)}>Arcade</a>
+      <a href="/build" onclick={() => (mobileOpen = false)}>Build</a>
+      <a href="/glance" onclick={() => (mobileOpen = false)}>Glance</a>
       <a href="/leaderboards" onclick={() => (mobileOpen = false)}>Leaderboards</a>
       <a href="/why" onclick={() => (mobileOpen = false)}>Why</a>
       <a href="/docs" onclick={() => (mobileOpen = false)}>Docs</a>

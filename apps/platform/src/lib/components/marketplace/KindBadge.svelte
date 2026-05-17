@@ -32,7 +32,7 @@
     if (resolvedKind === 'connected') {
       return 'Your data stays on this device. Connects for live information.';
     }
-    return 'Needs internet. Data is stored by the app maker or third-party services.';
+    return 'Needs internet. Data is stored by the tool maker or third-party services.';
   });
 </script>
 
@@ -76,10 +76,10 @@
     color: var(--sage-leaf);
     border-color: rgba(122, 154, 110, 0.5);
   }
-  /* Connected — marigold (in-between energy). */
+  /* Connected — sunset orange. It reads better than marigold at compact sizes. */
   .kind-connected {
-    color: var(--marigold);
-    border-color: rgba(232, 197, 71, 0.5);
+    color: var(--sunset);
+    border-color: rgba(232, 96, 60, 0.55);
   }
   /* Cloud — neutral. We don't penalise; we describe. */
   .kind-cloud {
@@ -96,9 +96,9 @@
     border-color: var(--sage-moss);
   }
   .kind-connected.status-confirmed {
-    background: var(--marigold);
-    border-color: var(--marigold);
-    color: var(--text);
+    background: var(--sunset);
+    border-color: var(--sunset);
+    color: var(--bg-pure);
   }
   .kind-cloud.status-confirmed {
     background: var(--text-light);

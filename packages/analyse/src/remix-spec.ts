@@ -161,7 +161,6 @@ export function extractRemixSpec(req: RemixSpecRequest): RemixSpec {
     if (text.includes('next-auth') || text.includes('@auth/')) detectedStack.add('authjs');
     if (text.includes('@supabase/supabase-js')) detectedStack.add('supabase');
     if (text.includes('firebase/firestore')) detectedStack.add('firebase');
-    if (text.includes('@vercel/postgres')) detectedStack.add('vercel-postgres');
     if (text.includes('@shippie/sdk')) detectedStack.add('shippie-sdk');
     if (text.includes('drizzle-orm')) detectedStack.add('drizzle');
     if (text.includes('prisma')) detectedStack.add('prisma');

@@ -8,8 +8,21 @@
   "background_color": "#14120F",
   "display": "standalone",
   "orientation": "portrait",
+  "permissions": [
+    "wake-lock"
+  ],
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      }
+    }
+  },
   "intents": {
-    "provides": ["cooking-now", "cooked-meal"]
+    "provides": [
+      "cooking-now",
+      "cooked-meal"
+    ]
   },
   "data_schemas": {
     "cooks": {
@@ -22,5 +35,10 @@
       "started_at": "datetime",
       "finished_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "food-drink",
+    "successor": "recipe"
   }
 }

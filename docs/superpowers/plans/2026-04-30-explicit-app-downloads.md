@@ -129,7 +129,7 @@ Today's `prepare-showcases.mjs` builds each showcase and copies `dist/` to `stat
 
 Note: wa-sqlite WASM files are NOT in this manifest. The just-landed strip in `prepare-showcases.mjs` removes them from each showcase's `assets/` and the runtime `locateFile` hook redirects to the canonical shared `/__shippie/wasm/wa-sqlite/*` path. The shared WASM is listed in `static/__shippie-pwa/shell-assets.json` and warmed once on the first DOWNLOAD_APP — see "Platform shell coverage" above.
 
-**Filename:** `__shippie-assets.json` — not a dotfile. Some deploy/static tooling treats dotfiles specially (Vercel-style `.well-known` exceptions, R2 signed-URL handling, build-step ignores). The `__shippie-` prefix matches the existing `__shippie-pwa/` convention used elsewhere in the platform's static tree, so the same allowlist patterns cover it.
+**Filename:** `__shippie-assets.json` — not a dotfile. Some deploy/static tooling treats dotfiles specially (Cloudflare-style `.well-known` exceptions, R2 signed-URL handling, build-step ignores). The `__shippie-` prefix matches the existing `__shippie-pwa/` convention used elsewhere in the platform's static tree, so the same allowlist patterns cover it.
 
 Generate by walking the showcase's `dist/` directory after build. The `buildId` is a SHA-256 of the sorted asset filenames + sizes — stable across reproducible builds, changes when any asset changes. Used for "update available" detection in Phase 3.
 

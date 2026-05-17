@@ -10,9 +10,10 @@
  * active SW with port2 attached, and consumes progress + done events
  * on port1.
  *
- * If no SW is active yet (page just loaded, controller is null), every
- * function throws with NO_SW_ERROR. Callers should treat that as
- * "reload Shippie online once" — there's no useful fallback.
+ * If no SW is active yet (page just loaded, controller is null), we fall
+ * back to the ready registration's active worker where possible. Download
+ * requests also ask the browser for the newest SW first so old controlled
+ * tabs do not keep using stale cache-manifest paths after a deploy.
  */
 
 export type AppDownloadState = 'idle' | 'downloading' | 'partial' | 'saved' | 'error';
@@ -29,13 +30,54 @@ export interface AppDownloadProgress {
 const NO_SW_ERROR =
   'Service worker is not active yet. Reload Shippie online once and try again.';
 
-function getActiveSw(): ServiceWorker {
+declare global {
+  interface Window {
+    __shippieSuppressNextControllerReload?: boolean;
+  }
+}
+
+async function getActiveSw(options: { ensureLatest?: boolean } = {}): Promise<ServiceWorker> {
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) {
     throw new Error(NO_SW_ERROR);
   }
-  const sw = navigator.serviceWorker.controller;
+  const registration = await navigator.serviceWorker.ready;
+  if (options.ensureLatest) {
+    await refreshMarketplaceSw(registration);
+  }
+  const sw = navigator.serviceWorker.controller ?? registration.active;
   if (!sw) throw new Error(NO_SW_ERROR);
   return sw;
+}
+
+async function refreshMarketplaceSw(registration: ServiceWorkerRegistration): Promise<void> {
+  let nextRegistration = registration;
+  try {
+    nextRegistration = await registration.update();
+  } catch {
+    /* best effort — the current active worker can still handle the request */
+  }
+
+  const waiting = nextRegistration.waiting;
+  if (!waiting) return;
+
+  // app.html normally reloads on controllerchange so users pick up fresh
+  // chunks. For an explicit Save action we want the new worker to claim this
+  // page and then continue the MessageChannel request in place.
+  window.__shippieSuppressNextControllerReload = true;
+  const claimed = new Promise<void>((resolve) => {
+    const timeout = window.setTimeout(() => {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      resolve();
+    }, 4000);
+    function onControllerChange() {
+      window.clearTimeout(timeout);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      resolve();
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+  });
+  waiting.postMessage('SKIP_WAITING');
+  await claimed;
 }
 
 interface SwProgressMessage {
@@ -70,7 +112,7 @@ export async function downloadApp(
   slug: string,
   onProgress?: (p: AppDownloadProgress) => void,
 ): Promise<AppDownloadProgress> {
-  const sw = getActiveSw();
+  const sw = await getActiveSw({ ensureLatest: true });
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     let last: AppDownloadProgress = { slug, state: 'downloading', done: 0, total: 0 };
@@ -120,7 +162,7 @@ export async function downloadApp(
 }
 
 export async function removeApp(slug: string): Promise<{ count: number }> {
-  const sw = getActiveSw();
+  const sw = await getActiveSw();
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     channel.port1.onmessage = (event) => {
@@ -137,7 +179,7 @@ export async function removeApp(slug: string): Promise<{ count: number }> {
 }
 
 export async function getAppStatus(slug: string): Promise<AppDownloadProgress> {
-  const sw = getActiveSw();
+  const sw = await getActiveSw();
   return new Promise((resolve) => {
     const channel = new MessageChannel();
     channel.port1.onmessage = (event) => {
@@ -155,7 +197,7 @@ export async function getAppStatus(slug: string): Promise<AppDownloadProgress> {
 }
 
 export async function clearOfflineApps(): Promise<{ count: number }> {
-  const sw = getActiveSw();
+  const sw = await getActiveSw();
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     channel.port1.onmessage = (event) => {

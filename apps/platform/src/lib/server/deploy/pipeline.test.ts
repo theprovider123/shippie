@@ -31,6 +31,8 @@ describe('injectEssentials', () => {
     const out = injectEssentials('<html><head></head><body></body></html>', CSP_META, manifest);
     expect(out).toContain('name="viewport"');
     expect(out).toContain('width=device-width');
+    expect(out).toContain('maximum-scale=1');
+    expect(out).toContain('user-scalable=no');
     expect(out).toContain('interactive-widget=resizes-content');
   });
 
@@ -40,6 +42,8 @@ describe('injectEssentials', () => {
     const out = injectEssentials(html, CSP_META, manifest);
     const matches = out.match(/name="viewport"/g);
     expect(matches?.length).toBe(1);
+    expect(out).toContain('maximum-scale=1');
+    expect(out).toContain('user-scalable=no');
   });
 
   test('adds immersive mobile baseline styles once', () => {
@@ -47,6 +51,7 @@ describe('injectEssentials', () => {
     expect(out).toContain('data-shippie-immersive-base');
     expect(out).toContain('overscroll-behavior-y:contain');
     expect(out).toContain('touch-action:manipulation');
+    expect(out).toContain('font-size:16px!important');
 
     const second = injectEssentials(out, CSP_META, manifest);
     const matches = second.match(/data-shippie-immersive-base/g);
@@ -92,7 +97,9 @@ describe('injectEssentials', () => {
     const out = injectEssentials(html, CSP_META, manifest);
     const matches = out.match(/property="og:title"/g);
     expect(matches?.length).toBe(1);
-    expect(out).not.toContain('Recipe Saver');
+    // Maker's OG title survives — the manifest name doesn't reach OG context.
+    expect(out).toContain('property="og:title" content="My App"');
+    expect(out).not.toContain('property="og:title" content="Recipe Saver"');
   });
 
   test('adds theme-color when missing', () => {
@@ -125,6 +132,58 @@ describe('injectEssentials', () => {
     expect(out).toContain('&quot;App&quot;');
     expect(out).toContain('&amp;');
     expect(out).toContain('&lt;Co&gt;');
+  });
+
+  test('adds iOS standalone metas when missing', () => {
+    const out = injectEssentials('<html><head></head></html>', CSP_META, manifest);
+    expect(out).toContain('name="apple-mobile-web-app-capable"');
+    expect(out).toContain('content="yes"');
+    expect(out).toContain('name="apple-mobile-web-app-status-bar-style"');
+    expect(out).toContain('content="black-translucent"');
+    expect(out).toContain('name="apple-mobile-web-app-title"');
+    expect(out).toContain('content="Recipe Saver"');
+    expect(out).toContain('name="mobile-web-app-capable"');
+  });
+
+  test('does not duplicate iOS standalone metas when maker provided them', () => {
+    const html =
+      '<html><head>' +
+      '<meta name="apple-mobile-web-app-capable" content="yes">' +
+      '<meta name="apple-mobile-web-app-status-bar-style" content="default">' +
+      '<meta name="apple-mobile-web-app-title" content="Maker Choice">' +
+      '<meta name="mobile-web-app-capable" content="yes">' +
+      '</head></html>';
+    const out = injectEssentials(html, CSP_META, manifest);
+    expect(out.match(/name="apple-mobile-web-app-capable"/g)?.length).toBe(1);
+    expect(out.match(/name="apple-mobile-web-app-status-bar-style"/g)?.length).toBe(1);
+    expect(out.match(/name="apple-mobile-web-app-title"/g)?.length).toBe(1);
+    expect(out.match(/name="mobile-web-app-capable"/g)?.length).toBe(1);
+    // Maker's status-bar-style choice survives, not ours
+    expect(out).toContain('content="default"');
+    // Maker's title survives, not the manifest's
+    expect(out).toContain('apple-mobile-web-app-title" content="Maker Choice"');
+    expect(out).not.toContain('apple-mobile-web-app-title" content="Recipe Saver"');
+  });
+
+  test('escapes manifest name in apple-mobile-web-app-title', () => {
+    const dangerous = {
+      ...manifest,
+      name: 'Tools "& Co"',
+    } as unknown as ShippieJsonLite;
+    const out = injectEssentials('<html><head></head></html>', CSP_META, dangerous);
+    expect(out).toContain('name="apple-mobile-web-app-title"');
+    expect(out).toContain('content="Tools &quot;&amp; Co&quot;"');
+  });
+
+  test('falls back to slug then literal "Shippie" when manifest name absent', () => {
+    const noName = {
+      slug: 'my-tool',
+      type: 'app',
+      category: 'cooking',
+    } as unknown as ShippieJsonLite;
+    const out = injectEssentials('<html><head></head></html>', CSP_META, noName);
+    expect(out).toContain('name="apple-mobile-web-app-title"');
+    expect(out).toContain('content="my-tool"');
   });
 });
 

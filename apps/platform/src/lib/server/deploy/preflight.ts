@@ -9,17 +9,19 @@
  *   - output-size              (warn @ 100MB, block @ 200MB)
  *   - server-code              (HARD BLOCK on SSR detection)
  *   - slug-validation          (HARD BLOCK on bad slug or reserved)
+ *   - app-data-standard        (warn/block for Shippie sealed data contract)
  *
  * Skipped vs apps/web:
  *   - shippie-json-present (auto-draft is handled in manifest.ts; the
  *     rule only emits an info-level finding)
  */
+import type { ShippieDataPolicy } from './manifest';
 
 const RESERVED_PATH_PREFIX = '__shippie/';
 
 export interface PreflightInput {
   slug: string;
-  manifest: { type: string; name: string };
+  manifest: { type: string; name: string; data?: ShippieDataPolicy };
   files: Map<string, Uint8Array>;
   totalBytes: number;
   reservedSlugs: ReadonlySet<string>;
@@ -51,11 +53,9 @@ const ROOT_SW_EXACT = new Set([
 ]);
 
 const SERVER_DIR_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
-  { pattern: /(^|\/)\.vercel\/output\//, label: '.vercel/output/' },
   { pattern: /(^|\/)pages\/api\//, label: 'pages/api/' },
   { pattern: /(^|\/)app\/api\//, label: 'app/api/' },
   { pattern: /(^|\/)server\//, label: 'server/' },
-  { pattern: /(^|\/)netlify\/functions\//, label: 'netlify/functions/' },
   { pattern: /(^|\/)functions\//, label: 'functions/' },
   { pattern: /(^|\/)\.output\/server\//, label: '.output/server/' },
 ];
@@ -177,6 +177,8 @@ export function runPreflight(input: PreflightInput): PreflightReport {
     findings.push({ rule: 'server-code', severity: 'pass', title: 'No server-side code detected' });
   }
 
+  findings.push(...checkAppDataStandard(input.manifest.data));
+
   const warnings = findings.filter((f) => f.severity === 'warn');
   const blockers = findings.filter((f) => f.severity === 'block');
   return {
@@ -192,6 +194,106 @@ function isRootServiceWorker(path: string): boolean {
   const clean = path.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
   if (ROOT_SW_EXACT.has(clean)) return true;
   return /^workbox-[a-z0-9._-]+\.js$/.test(clean);
+}
+
+function checkAppDataStandard(data: ShippieDataPolicy | undefined): PreflightFinding[] {
+  if (!data) {
+    return [
+      {
+        rule: 'app-data-standard',
+        severity: 'block',
+        title: 'No app data policy declared',
+        detail:
+          'Add data.mode="shippie-documents" to inherit Your Data sealed copies, or data.mode="none" for stateless apps.',
+      },
+    ];
+  }
+
+  if (data.mode === 'none') {
+    return [
+      {
+        rule: 'app-data-standard',
+        severity: 'pass',
+        title: 'App declares no durable private data',
+      },
+    ];
+  }
+
+  if (data.mode === 'local-only') {
+    return [
+      {
+        rule: 'app-data-standard',
+        severity: 'pass',
+        title: 'App data is explicitly local-only',
+        detail:
+          'Users can still export from Your Data, but sealed copies and cross-device handover are disabled for this app.',
+      },
+    ];
+  }
+
+  const findings: PreflightFinding[] = [];
+  if (data.recovery !== 'inherited') {
+    findings.push({
+      rule: 'app-data-standard',
+      severity: 'block',
+      title: 'Shippie Document apps must inherit Your Data recovery',
+      detail:
+        'Use data.recovery="inherited" so Add another device, Move to new phone, and sealed-copy recovery stay consistent across apps.',
+    });
+  }
+
+  if (data.realtime !== 'inherited') {
+    findings.push({
+      rule: 'app-data-standard',
+      severity: 'block',
+      title: 'Shippie Document apps must inherit realtime sealed sync',
+      detail:
+        'Use data.realtime="inherited" so private cloud transfer, retries, and cross-device freshness are handled by the Shippie SDK.',
+    });
+  }
+
+  if (data.documents.length === 0) {
+    findings.push({
+      rule: 'app-data-standard',
+      severity: 'block',
+      title: 'Shippie Document apps need at least one document id',
+      detail: 'Use data.documents=["main"] unless the app has a clearer document split.',
+    });
+  }
+
+  if (data.snapshots !== 'inherited') {
+    findings.push({
+      rule: 'app-data-standard',
+      severity: 'warn',
+      title: 'Sealed snapshots are not inherited',
+      detail:
+        'Use data.snapshots="inherited" so restores can start from sealed checkpoints instead of replaying long histories.',
+    });
+  }
+
+  if (data.attachments && data.media !== 'encrypted-chunked') {
+    findings.push({
+      rule: 'app-data-standard',
+      severity: 'warn',
+      title: 'Attachments should use encrypted chunked media',
+      detail:
+        'Use data.media="encrypted-chunked" so file/image apps get encrypted chunk upload, retry, and safer large-media defaults.',
+    });
+  }
+
+  if (findings.some((finding) => finding.severity === 'block')) return findings;
+
+  return [
+    ...findings,
+    {
+      rule: 'app-data-standard',
+      severity: 'pass',
+      title: 'App data inherits Your Data sealed recovery',
+      detail: data.attachments
+        ? 'Encrypted events, sealed snapshots, realtime sync, and encrypted chunked attachments can be synced without Shippie seeing their contents.'
+        : 'Encrypted events, sealed snapshots, and realtime sync can be synced without Shippie seeing their contents.',
+    },
+  ];
 }
 
 function formatBytes(n: number): string {

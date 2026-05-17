@@ -1,0 +1,20 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Chess",
+  "slug": "chess",
+  "description": "Chess. Play against the computer or two-player on one device. PGN export.",
+  "icon": "/icon.png",
+  "theme_color": "#2A1F16",
+  "background_color": "#F8F1E0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games",
+    "subcategory": "strategy"
+  }
+}

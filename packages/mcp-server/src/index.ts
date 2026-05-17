@@ -9,7 +9,10 @@
  *   logs     — read privacy-preserving feedback / usage / function logs
  *   config   — read/write maker shippie.json overrides
  *   templates — list blessed starter templates
+ *   remix_info — get source, license, fork URL, and redeploy commands
  *   deploy_workspace — deploy several connected apps from shippie-workspace.json
+ *   data_standard_doc — explain the inherited Your Data / sealed-copy contract
+ *   data_doctor — inspect shippie.json for the app data inheritance contract
  *
  * Note on uploads: `AdmZip` builds the archive in memory (no temp file on
  * disk) and FormData wraps the Buffer into a Blob that Node's undici fetch
@@ -24,8 +27,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative, resolve } from 'node:path';
 import {
   classifyKind,
   computeGraduation,
@@ -53,7 +57,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: 'deploy',
       description:
         'Deploy a directory to Shippie. Returns the live URL, deploy_id, and deploy intelligence transcript. ' +
-        'Pass trial=true for a no-signup 24-hour trial deploy (no authentication required).',
+        'Pass trial=true for a no-signup 24-hour trial deploy (no authentication required). ' +
+        'Generated apps must feel like a real app inside Shippie — use 100dvh / 100svh (NOT 100vh) ' +
+        'for full-height layouts, env(safe-area-inset-*) for any fixed positioning, touch targets ' +
+        '≥44px (Apple HIG) / ≥48dp (Android), and call useKeyboard() from @shippie/sdk if the app ' +
+        'has text inputs so the host chrome adapts when the iOS keyboard opens. The deploy pipeline ' +
+        'injects an immersive baseline (viewport, sharp-corners, touch-action, iOS standalone metas) ' +
+        'idempotently — but writing in this style means local previews behave like production. ' +
+        'Apps that store private data inherit Shippie Your Data by declaring data.mode="shippie-documents" ' +
+        'in shippie.json. Shippie stores sealed copies only; raw keys and readable user data must never be uploaded.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -74,8 +86,50 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
               'Good for first-run demos and E2E testing the B2 trial backend.',
             default: false,
           },
+          remix_from: {
+            type: 'string',
+            description:
+              'Existing public app slug to remix. Shippie validates source/license/remix terms and records parent lineage on the new deploy.',
+          },
+          visibility: {
+            type: 'string',
+            enum: ['public', 'unlisted', 'private', 'team'],
+            description: 'Visibility for hosted deploys. Defaults to unlisted for single-file HTML deploys.',
+          },
+          organization: {
+            type: 'string',
+            description: 'Organization id or slug when visibility=team.',
+          },
         },
         required: ['directory'],
+      },
+    },
+    {
+      name: 'deploy_html',
+      description:
+        'Deploy a single generated HTML tool to Shippie. Use this for throwaway interactive HTML tools from Claude Code. Defaults to unlisted. ' +
+        'The HTML must use 100dvh / 100svh (NOT 100vh), env(safe-area-inset-*) for fixed positioning, ' +
+        'touch targets ≥44px, and inputs sized ≥16px font-size to prevent iOS zoom-on-focus. ' +
+        'Sharp corners (no border-radius) match the Shippie brand. The deploy pipeline injects ' +
+        'viewport + iOS standalone metas idempotently, so the maker only needs to focus on layout. ' +
+        'If the tool stores private data, include shippie.json with data.mode="shippie-documents" ' +
+        'when deploying a directory; single-file HTML tools are treated as sealed-data capable by default.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          html_content: { type: 'string', description: 'Complete HTML document to deploy.' },
+          slug: { type: 'string', description: 'Optional app slug.' },
+          visibility: {
+            type: 'string',
+            enum: ['public', 'unlisted', 'private', 'team'],
+            default: 'unlisted',
+          },
+          organization: {
+            type: 'string',
+            description: 'Organization id or slug when visibility=team.',
+          },
+        },
+        required: ['html_content'],
       },
     },
     {
@@ -165,9 +219,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'remix_info',
+      description:
+        'Fetch the public remix handoff for an app slug: source repo, license, GitHub fork URL when available, and exact CLI/MCP/workspace redeploy commands. Use before copying or improving another app.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          slug: {
+            type: 'string',
+            description: 'Public app slug to remix.',
+          },
+        },
+        required: ['slug'],
+      },
+    },
+    {
       name: 'deploy_workspace',
       description:
-        'Deploy every app declared in a shippie-workspace.json file. Use this for multi-app products such as fan/control/display venue workspaces.',
+        'Deploy every app declared in a shippie-workspace.json file. Use this for multi-app products such as fan/control/display venue workspaces. ' +
+        'Each app entry may include remixFrom or remix_from to preserve remix lineage.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -246,6 +316,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'data_standard_doc',
+      description:
+        'Return the Shippie app data inheritance contract for AI-built and uploaded apps: shippie.json data block, Your Data recovery, sealed-copy rules, and the raw-key invariant.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
+    },
+    {
+      name: 'data_doctor',
+      description:
+        'Inspect a local app directory for the Shippie Your Data inheritance contract. Use before deploy when an app stores private data or needs cross-device handover.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          directory: {
+            type: 'string',
+            description: 'Absolute path to an app directory, or a path to shippie.json.',
+          },
+        },
+        required: ['directory'],
+      },
+    },
+    {
       name: 'stream',
       description:
         'Replay the Phase 3 deploy event stream for a given deploy_id. Returns a chronological ' +
@@ -319,7 +413,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   if (name === 'deploy') {
-    return await handleDeploy(args as { directory: string; slug?: string; trial?: boolean });
+    return await handleDeploy(args as { directory: string; slug?: string; trial?: boolean; remix_from?: string; visibility?: string; organization?: string });
+  }
+
+  if (name === 'deploy_html') {
+    return await handleDeployHtml(args as { html_content: string; slug?: string; visibility?: string; organization?: string });
   }
 
   if (name === 'status') {
@@ -342,6 +440,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return handleTemplates(args as { id?: string });
   }
 
+  if (name === 'remix_info') {
+    return await handleRemixInfo(args as { slug: string });
+  }
+
   if (name === 'deploy_workspace') {
     return await handleDeployWorkspace(args as { path?: string; trial?: boolean; dry_run?: boolean });
   }
@@ -356,6 +458,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === 'app_kinds_doc') {
     return handleAppKindsDoc();
+  }
+
+  if (name === 'data_standard_doc') {
+    return handleDataStandardDoc();
+  }
+
+  if (name === 'data_doctor') {
+    return handleDataDoctor(args as { directory: string });
   }
 
   if (name === 'stream') {
@@ -418,6 +528,33 @@ function privacyGradeOrNull(value: unknown): DeploySignals['privacyGrade'] {
   return null;
 }
 
+async function handleRemixInfo(args: { slug: string }) {
+  try {
+    const remix = await client.remix(args.slug);
+    const lines = [
+      `Remix: ${remix.name} (${remix.slug})`,
+      remix.tagline ? remix.tagline : null,
+      `Source:  ${remix.sourceRepo}`,
+      `License: ${remix.license}`,
+      remix.latestVersion ? `Version: ${remix.latestVersion}` : null,
+      remix.forkUrl ? `Fork:    ${remix.forkUrl}` : null,
+      '',
+      'After editing, redeploy with lineage:',
+      `CLI: ${remix.deploy.cli}`,
+      `MCP: deploy(directory="${remix.deploy.mcp.arguments.directory}", slug="${remix.deploy.mcp.arguments.slug}", remix_from="${remix.deploy.mcp.arguments.remix_from}")`,
+      'Workspace app entry:',
+      JSON.stringify(remix.deploy.workspace, null, 2),
+    ].filter((line): line is string => line !== null);
+
+    return { content: [{ type: 'text', text: lines.join('\n') }] };
+  } catch (err) {
+    return {
+      content: [{ type: 'text', text: `Remix lookup failed: ${(err as Error).message}` }],
+      isError: true,
+    };
+  }
+}
+
 async function handleStream(args: { deploy_id: string }) {
   // Replay-mode stream — no delay because Claude Code reads the full
   // tool output at once.
@@ -440,13 +577,16 @@ async function handleStream(args: { deploy_id: string }) {
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
-async function handleDeploy(args: { directory: string; slug?: string; trial?: boolean }) {
+async function handleDeploy(args: { directory: string; slug?: string; trial?: boolean; remix_from?: string; visibility?: string; organization?: string }) {
   // All deploy logic now in @shippie/core. MCP just adapts the result to
   // the MCP tool-response shape. CLI will use the same core call.
   const result = await client.deploy({
     directory: args.directory,
     slug: args.slug,
     trial: args.trial,
+    remixFrom: args.remix_from,
+    visibility: parseVisibility(args.visibility),
+    organization: args.organization,
   });
 
   if (!result.ok) {
@@ -506,6 +646,7 @@ async function handleDeploy(args: { directory: string; slug?: string; trial?: bo
   if (result.totalBytes != null) lines.push(`Bytes:     ${result.totalBytes}`);
   if (result.expiresAt)       lines.push(`Expires:   ${result.expiresAt} (sign in to claim)`);
   if (result.claimUrl)        lines.push(`Claim:     ${client.apiUrl}${result.claimUrl}`);
+  if (args.remix_from)        lines.push(`Remix of:  ${args.remix_from}`);
   lines.push('');
   if (result.deployId) {
     lines.push('Deploy intelligence:');
@@ -518,6 +659,28 @@ async function handleDeploy(args: { directory: string; slug?: string; trial?: bo
   }
 
   return { content: [{ type: 'text', text: lines.join('\n') }] };
+}
+
+async function handleDeployHtml(args: { html_content: string; slug?: string; visibility?: string; organization?: string }) {
+  const dir = mkdtempSync(join(tmpdir(), 'shippie-html-'));
+  const file = join(dir, `${args.slug ?? 'tool'}.html`);
+  try {
+    writeFileSync(file, args.html_content);
+    return await handleDeploy({
+      directory: file,
+      slug: args.slug,
+      visibility: args.visibility ?? 'unlisted',
+      organization: args.organization,
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function parseVisibility(input: string | undefined): 'public' | 'unlisted' | 'private' | 'team' | undefined {
+  return input === 'public' || input === 'unlisted' || input === 'private' || input === 'team'
+    ? input
+    : undefined;
 }
 
 async function collectDeployStream(deployId: string): Promise<string[]> {
@@ -738,7 +901,8 @@ async function handleDeployWorkspace(args: { path?: string; trial?: boolean; dry
       lines.push('Apps:');
       for (const app of result.apps) {
         const role = app.role ? ` (${app.role})` : '';
-        lines.push(`- ${app.slug}${role}: ${app.absoluteDirectory}`);
+        const remix = app.remixFrom ? ` remixing ${app.remixFrom}` : '';
+        lines.push(`- ${app.slug}${role}: ${app.absoluteDirectory}${remix}`);
       }
       return { content: [{ type: 'text', text: lines.join('\n') }] };
     }
@@ -749,6 +913,7 @@ async function handleDeployWorkspace(args: { path?: string; trial?: boolean; dry
         lines.push(`- ${app.slug}${role}: live`);
         if (app.result.liveUrl) lines.push(`  ${app.result.liveUrl}`);
         if (app.result.deployId) lines.push(`  deploy: ${app.result.deployId}`);
+        if (app.remixFrom) lines.push(`  remix of: ${app.remixFrom}`);
       } else {
         lines.push(`- ${app.slug}${role}: failed`);
         lines.push(`  ${app.result?.error ?? 'unknown_error'}`);
@@ -958,6 +1123,212 @@ function handleAppKindsDoc() {
     'Authoritative reference: docs/app-kinds.md in the Shippie repo.',
   ].join('\n');
   return { content: [{ type: 'text', text }] };
+}
+
+function handleDataStandardDoc() {
+  const text = [
+    'Shippie App Data Inheritance v0',
+    '',
+    'Every Shippie app that stores private data should inherit the same Your Data layer.',
+    'The app does not create its own login, key upload, or cloud account. The wrapper handles',
+    'Add another device, Move to new phone, recovery cards, sealed copies, and replica health.',
+    '',
+    'Required shippie.json block:',
+    JSON.stringify(
+      {
+        data: {
+          mode: 'shippie-documents',
+          documents: ['main'],
+          attachments: false,
+          recovery: 'inherited',
+          migrations: 'snapshot-v0',
+          snapshots: 'inherited',
+          media: 'none',
+          realtime: 'inherited',
+        },
+      },
+      null,
+      2,
+    ),
+    '',
+    'Modes:',
+    '- shippie-documents: private app state becomes encrypted Document events and inherits Your Data.',
+    '- local-only: app intentionally stays on this device; export can still work, sealed copies do not.',
+    '- none: app is stateless or stores no durable private data.',
+    '',
+    'Hard invariant: raw document keys are never uploaded. Only wrapped access bundles and sealed',
+    'encrypted blobs may be relayed by Shippie. Shippie can store copies but cannot open user data.',
+    'Snapshots are inherited so restores can start from sealed checkpoints. Apps with files should',
+    'use encrypted-chunked media so images/audio/PDFs never cross the boundary as raw bytes.',
+    'Realtime sealed sync is inherited so apps do not own polling, retry queues, or handover freshness.',
+    '',
+    'SDK/CLI/MCP:',
+    '- SDK: import { createShippieDataPolicy } from "@shippie/sdk/data-standard".',
+    '- CLI: run `shippie data doctor` before deploy.',
+    '- MCP: call data_doctor before deploying AI-built apps that store private data.',
+  ].join('\n');
+  return { content: [{ type: 'text', text }] };
+}
+
+function handleDataDoctor(args: { directory: string }) {
+  const report = inspectMcpDataPolicy(args.directory);
+  const lines = [`Shippie data doctor: ${report.manifestPath}`];
+  for (const finding of report.findings) {
+    lines.push(`${finding.severity.toUpperCase()} ${finding.message}`);
+  }
+  if (!report.ok) {
+    lines.push('', 'Recommended block:', JSON.stringify({ data: recommendedMcpDataPolicy() }, null, 2));
+  }
+  return {
+    content: [{ type: 'text', text: lines.join('\n') }],
+    isError: !report.ok,
+  };
+}
+
+interface McpDataFinding {
+  severity: 'pass' | 'warn' | 'fail';
+  message: string;
+}
+
+const MCP_DOCUMENT_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
+
+function inspectMcpDataPolicy(pathArg: string): {
+  ok: boolean;
+  manifestPath: string;
+  findings: McpDataFinding[];
+} {
+  const absolute = resolve(pathArg);
+  const manifestPath = absolute.endsWith('shippie.json') ? absolute : join(absolute, 'shippie.json');
+
+  if (!existsSync(manifestPath)) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [{ severity: 'fail', message: 'No shippie.json found.' }],
+    };
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown;
+  } catch (err) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [{ severity: 'fail', message: `Invalid JSON: ${(err as Error).message}` }],
+    };
+  }
+
+  if (typeof raw !== 'object' || raw === null) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [{ severity: 'fail', message: 'shippie.json must be an object.' }],
+    };
+  }
+
+  const data = (raw as Record<string, unknown>).data;
+  if (typeof data !== 'object' || data === null) {
+    return {
+      ok: false,
+      manifestPath,
+      findings: [
+        {
+          severity: 'fail',
+          message: 'Missing data block. Durable apps should inherit Your Data sealed copies.',
+        },
+      ],
+    };
+  }
+
+  const obj = data as Record<string, unknown>;
+  if (obj.mode === 'none') {
+    return {
+      ok: true,
+      manifestPath,
+      findings: [{ severity: 'pass', message: 'App declares no durable private data.' }],
+    };
+  }
+  if (obj.mode === 'local-only') {
+    return {
+      ok: true,
+      manifestPath,
+      findings: [{ severity: 'pass', message: 'App is explicitly local-only.' }],
+    };
+  }
+
+  const findings: McpDataFinding[] = [];
+  if (obj.mode !== 'shippie-documents') {
+    findings.push({ severity: 'fail', message: 'data.mode must be "shippie-documents", "local-only", or "none".' });
+  }
+
+  const documents = Array.isArray(obj.documents)
+    ? obj.documents.filter((value): value is string => typeof value === 'string')
+    : [];
+  if (documents.length === 0) {
+    findings.push({ severity: 'fail', message: 'data.documents must include at least one id, usually "main".' });
+  } else {
+    const invalid = documents.filter((id) => !MCP_DOCUMENT_ID_RE.test(id));
+    if (invalid.length > 0) {
+      findings.push({ severity: 'fail', message: `Invalid document id(s): ${invalid.join(', ')}.` });
+    } else {
+      findings.push({ severity: 'pass', message: `Document ids declared: ${documents.join(', ')}.` });
+    }
+  }
+
+  if (obj.recovery !== 'inherited') {
+    findings.push({ severity: 'fail', message: 'data.recovery must be "inherited".' });
+  } else {
+    findings.push({ severity: 'pass', message: 'Your Data recovery is inherited.' });
+  }
+
+  if (typeof obj.attachments !== 'boolean') {
+    findings.push({ severity: 'warn', message: 'data.attachments should be true or false.' });
+  }
+
+  if (obj.snapshots !== 'inherited') {
+    findings.push({
+      severity: 'warn',
+      message: 'data.snapshots should be "inherited" for fast sealed restore checkpoints.',
+    });
+  } else {
+    findings.push({ severity: 'pass', message: 'Sealed snapshots are inherited.' });
+  }
+
+  if (obj.realtime !== 'inherited') {
+    findings.push({
+      severity: 'fail',
+      message: 'data.realtime must be "inherited" so sealed cloud transfer, retry, and cross-device freshness are SDK-owned.',
+    });
+  } else {
+    findings.push({ severity: 'pass', message: 'Realtime sealed sync is inherited.' });
+  }
+
+  if (obj.attachments === true && obj.media !== 'encrypted-chunked') {
+    findings.push({
+      severity: 'warn',
+      message: 'Apps with attachments should set data.media="encrypted-chunked".',
+    });
+  }
+
+  return {
+    ok: findings.every((finding) => finding.severity !== 'fail'),
+    manifestPath,
+    findings,
+  };
+}
+
+function recommendedMcpDataPolicy() {
+  return {
+    mode: 'shippie-documents',
+    documents: ['main'],
+    attachments: false,
+    recovery: 'inherited',
+    migrations: 'snapshot-v0',
+    snapshots: 'inherited',
+    media: 'none',
+    realtime: 'inherited',
+  };
 }
 
 async function main() {

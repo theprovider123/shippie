@@ -9,8 +9,13 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["needs-restocking"],
-    "consumes": ["shopping-list", "pantry-low"]
+    "provides": [
+      "needs-restocking"
+    ],
+    "consumes": [
+      "shopping-list",
+      "pantry-low"
+    ]
   },
   "data_schemas": {
     "items": {
@@ -20,5 +25,10 @@
       "source": "text",
       "added_at": "datetime"
     }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools",
+    "successor": "recipe"
   }
 }

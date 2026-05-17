@@ -10,6 +10,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HubState } from './state.ts';
+import { readHubToolRegistry } from './packages.ts';
 
 export interface DashboardOptions {
   cacheRoot: string;
@@ -19,6 +20,7 @@ export interface DashboardOptions {
 export async function renderDashboard(opts: DashboardOptions): Promise<string> {
   const apps = await listCachedApps(opts.cacheRoot);
   const models = await listCachedModels(opts.cacheRoot);
+  const registry = await readHubToolRegistry(opts.cacheRoot);
   const rooms = opts.state.stats();
   const totalApps = apps.reduce((n, a) => n + a.bytes, 0);
   const totalModels = models.reduce((n, a) => n + a.bytes, 0);
@@ -69,6 +71,20 @@ export async function renderDashboard(opts: DashboardOptions): Promise<string> {
         )
         .join('') ||
       '<tr><td colspan="3" class="muted">No apps cached yet.</td></tr>'
+    }
+  </table>
+
+  <h2>Team tools (${registry.tools.length})</h2>
+  <table>
+    <tr><th>Tool</th><th>Group</th><th>Space</th><th>Version</th></tr>
+    ${
+      registry.tools
+        .map(
+          (tool) =>
+            `<tr><td><code>${escapeHtml(tool.slug)}</code><br><span class="muted">${escapeHtml(tool.name)}</span></td><td>${escapeHtml(tool.group ?? 'All staff')}</td><td>${escapeHtml(spaceLabel(tool.spaces))}</td><td>${escapeHtml(tool.version)}</td></tr>`,
+        )
+        .join('') ||
+      '<tr><td colspan="4" class="muted">No team tools registered yet.</td></tr>'
     }
   </table>
 
@@ -197,6 +213,12 @@ function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function spaceLabel(spaces: { enabled: boolean; roles: readonly { id: string }[]; syncMode: string } | undefined): string {
+  if (!spaces?.enabled) return 'Solo';
+  const roleList = spaces.roles.map((role) => role.id).slice(0, 3).join('/');
+  return `${spaces.syncMode} · ${roleList || 'roles'}`;
 }
 
 function escapeHtml(s: string): string {

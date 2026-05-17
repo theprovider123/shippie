@@ -21,7 +21,7 @@
       </div>
       <div>
         <p class="footer-heading">Product</p>
-        <a href="/apps" class="footer-link">Explore</a>
+        <a href="/" class="footer-link">Tools</a>
         <a href="/leaderboards" class="footer-link">Leaderboards</a>
         <a href="/new" class="footer-link">Deploy</a>
         <a href="/why" class="footer-link">Why Shippie</a>

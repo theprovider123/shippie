@@ -6,6 +6,7 @@
     AppKindProfile,
     PublicKindStatus,
   } from '$lib/types/app-kind';
+  import { pwaChecklist, pwaSurfaceLabel } from '$lib/types/pwa-readiness';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -17,6 +18,9 @@
     profile && declared && declared !== detected ? { declared, detected } : null,
   );
   const probesText = $derived((data.workflowProbes ?? []).join('\n'));
+  const pwaReasons = $derived(data.app.currentPwaReadinessReasons ?? []);
+  const pwaLabel = $derived(pwaSurfaceLabel(data.app.currentPwaReadiness, pwaReasons));
+  const pwaItems = $derived(pwaChecklist(pwaReasons));
 </script>
 
 <svelte:head><title>{data.app.name} · Dashboard</title></svelte:head>
@@ -114,8 +118,34 @@
   </div>
 
   <div class="card">
+    <h2>PWA Readiness</h2>
+    <p><span class="vis">{pwaLabel}</span></p>
+    <ul class="checklist">
+      {#each pwaItems as item (item.id)}
+        <li class:itemOk={item.ok}>
+          <span>{item.ok ? '✓' : '×'}</span>
+          <div>
+            <strong>{item.label}</strong>
+            <p>{item.detail}</p>
+          </div>
+        </li>
+      {/each}
+    </ul>
+    {#if data.app.currentPwaReadiness !== 'confirmed'}
+      <details class="actions">
+        <summary>Upgrade checklist snippets</summary>
+        <p class="hint">Add a manifest link, app icons, theme color, and a service worker. Redeploy, then open on a real device to confirm runtime proof.</p>
+        <pre>{`<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#14120F">
+navigator.serviceWorker?.register('/sw.js')`}</pre>
+      </details>
+    {/if}
+  </div>
+
+  <div class="card">
     <h2>Visibility</h2>
     <p><span class="vis vis-{data.app.visibilityScope}">{data.app.visibilityScope}</span></p>
+    <a href={`/dashboard/apps/${data.app.slug}/profile`}>Edit profile →</a>
     <a href={`/dashboard/apps/${data.app.slug}/access`}>Manage access →</a>
   </div>
 
@@ -206,4 +236,25 @@
   .hint { font-size: 12px; color: #8B847A; margin: 0.25rem 0; }
   .success { color: #2E7D5B; font-size: 12px; margin-left: 0.5rem; }
   .error { color: #B43F2A; font-size: 12px; margin-left: 0.5rem; }
+  .checklist { gap: 0.65rem; margin-top: 0.75rem; }
+  .checklist li {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    border-top: 1px solid #E5DDC8;
+    padding-top: 0.65rem;
+  }
+  .checklist span {
+    font-family: ui-monospace, monospace;
+    color: #B43F2A;
+  }
+  .checklist .itemOk span { color: #2E7D5B; }
+  .checklist strong { display: block; font-size: 13px; }
+  .checklist p { margin: 0.15rem 0 0; color: #8B847A; font-size: 12px; }
+  pre {
+    white-space: pre-wrap;
+    background: rgba(0,0,0,0.05);
+    padding: 0.75rem;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+  }
 </style>

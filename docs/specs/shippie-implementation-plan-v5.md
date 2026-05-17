@@ -97,7 +97,7 @@ t=42s   Maker clicks Ship it
 
 t=50s   Live progress (SSE):
         ✓ Preflight passed
-        ⚡ Building in Vercel Sandbox... 45s
+        ⚡ Building in GitHub Actions build workflow... 45s
         🎨 Packaging (icon, screenshots, manifest, SDK)... 10s
         📦 Publishing to R2 + KV... 3s
         ✅ Live at recipes.shippie.app
@@ -299,7 +299,7 @@ Generate Capacitor or TWA project:
   ↓
 Inject plugins for declared Native Bridge features
   ↓
-Build .aab via Gradle in Vercel Sandbox (Linux)
+Build .aab via Gradle in GitHub Actions build workflow (Linux)
   ↓
 Sign with maker's keystore OR Shippie-managed keystore
   ↓
@@ -394,7 +394,7 @@ Maker reviews the auto-generated form in dashboard, edits if needed, approves fo
 `__shippie/fn/_account_delete` is a system-reserved function route. When maker enables `compliance.account_deletion.enabled = true` in `shippie.json`, Shippie exposes this route automatically. It handles:
 
 1. User triggers delete from inside the app via `shippie.auth.deleteAccount()` or `/__shippie/fn/_account_delete`
-2. Email confirmation sent (Resend)
+2. Email confirmation sent (Cloudflare Email)
 3. 14-day grace period recorded in `account_deletion_requests`
 4. Daily cron checks for expired grace periods → wipes all `app_data`, `app_files`, `app_sessions`, `analytics_events`, `feedback_items` for that (user, app) pair
 5. Notifies user of completion
@@ -516,9 +516,9 @@ create table invoices (
 ### Subprocessor List (public)
 Published at `shippie.app/trust/subprocessors`:
 - Cloudflare (Workers, R2, DNS, CFW4P)
-- Vercel (platform host + Sandbox build runner)
-- Hetzner (Postgres)
-- Resend (email)
+- Cloudflare (platform host + Sandbox build runner)
+- Cloudflare (Postgres)
+- Cloudflare Email (email)
 - Stripe (billing)
 - OpenAI (auto-package AI generation — opt-out available for EU orgs)
 - Sentry (error monitoring — opt-out available)
@@ -1022,7 +1022,7 @@ services/
 ## 15. 14-Week Build Plan
 
 ### Week 1 — Foundation
-As in v4: monorepo, Vercel, Hetzner Postgres + PgBouncer + CF Tunnel, initial migrations including v5 billing/stores/compliance tables, Auth.js, reserved_slugs seed.
+As in v4: monorepo, Cloudflare, Cloudflare Postgres + PgBouncer + CF Tunnel, initial migrations including v5 billing/stores/compliance tables, Auth.js, reserved_slugs seed.
 
 ### Week 2 — Worker Runtime + Onboarding Flow (NEW)
 v4 Week 2 content + new first-time maker onboarding flow:
@@ -1102,7 +1102,7 @@ v4 Week 11 + business ops (launch-grade):
 - Android pipeline:
   - Capacitor project generation
   - Bubblewrap for TWA path
-  - Gradle build in Vercel Sandbox
+  - Gradle build in GitHub Actions build workflow
   - Play Console API integration
   - Internal track submission live
 - iOS Prep Kit:
@@ -1172,14 +1172,14 @@ v4 Week 11 + business ops (launch-grade):
 
 | Line | Cost/mo |
 |------|---------|
-| Vercel Pro (platform + Sandbox credits) | $20 |
-| Hetzner CCX23 (Postgres only) | €15 |
+| Cloudflare Pro (platform + Sandbox credits) | $20 |
+| Cloudflare CCX23 (Postgres only) | €15 |
 | Cloudflare Workers Paid | $5 |
 | Cloudflare Workers for Platforms (Functions) | $25 |
 | Cloudflare Advanced Certificate Manager | $10 |
 | Cloudflare R2 | $0 |
-| Vercel Sandbox overage | $0–$12 |
-| Resend | $20 |
+| GitHub Actions build workflow overage | $0–$12 |
+| Cloudflare Email | $20 |
 | Sentry | $0–$26 |
 | AI generation (OpenAI / image model, capped) | $10–$30 |
 | Stripe fees (0%, per-tx) | — |
@@ -1191,7 +1191,7 @@ v4 Week 11 + business ops (launch-grade):
 
 ## 19. Positioning
 
-**Vercel** helps code go live.
+**Cloudflare** helps code go live.
 **The App Store** distributes finished native apps.
 **Shippie** is the shipping system that turns code into launched, installed, used, iterated-on software — and gets it store-ready along the way.
 
@@ -1200,7 +1200,7 @@ Shippie is the only place where "I built a thing last night" becomes:
 2. **This week**: it's on Google Play (Android automated)
 3. **This month**: it's ready for App Store submission (iOS Prep Kit → partner runner → direct integration)
 
-You're not competing with Vercel — they're a backend primitive you use.
+You're not competing with Cloudflare — they're a backend primitive you use.
 You're not competing with the App Store — you're the funnel into it.
 You're the **shipping layer** between code and distribution.
 

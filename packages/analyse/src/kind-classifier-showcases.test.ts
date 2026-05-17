@@ -9,6 +9,7 @@
  *   - showcase-journal    → local
  *   - showcase-whiteboard → connected (multi-peer via SignalRoom DO)
  *   - showcase-live-room  → connected (guest/host quiz via SignalRoom DO)
+ *   - showcase-match-room → connected (private space via @shippie/spaces)
  */
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -86,6 +87,17 @@ describe('kind-classifier showcase smoke', () => {
     expect(result.backendProviders).toEqual([]);
     expect(
       result.reasons.some((r) => r.startsWith('multi-peer via Shippie')),
+    ).toBe(true);
+  });
+
+  test('showcase-match-room classifies as Connected (private space)', () => {
+    const files = loadSrcFiles(join(REPO_ROOT, 'apps', 'showcase-match-room'));
+    expect(files.size).toBeGreaterThan(0);
+    const result = classifyKind(files);
+    expect(result.detectedKind).toBe('connected');
+    expect(result.backendProviders).toEqual([]);
+    expect(
+      result.reasons.some((r) => r.includes('shippie-spaces')),
     ).toBe(true);
   });
 });

@@ -27,14 +27,14 @@ Everything else in this plan flows from this one decision.
 
 ## Two Planes
 
-### Control Plane — `shippie.app` (Next.js on Vercel)
+### Control Plane — `shippie.app` (Next.js on Cloudflare)
 - Marketing site, storefront, discovery, search, leaderboards
 - Maker sign-in, dashboard, deploy UI
 - OAuth authorization server (`/oauth/authorize`, `/oauth/token`)
 - Admin / moderation
 - Platform API (`/api/internal/*`) — only reachable via signed requests from the Worker
 - GitHub App webhook receivers
-- Build orchestration (Vercel Sandbox)
+- Build orchestration (GitHub Actions build workflow)
 
 ### Runtime Plane — `*.shippie.app` (Cloudflare Worker + R2)
 - Serves maker files from R2 (via version pointer)
@@ -425,7 +425,7 @@ Preflight runs → results shown to maker
 If source is pre-built static (uploaded dist/ or type=website):
   skip to Validate Output
 Else:
-  Vercel Sandbox is provisioned
+  GitHub Actions build workflow is provisioned
   Sandbox clones source into /workspace
   Runs: (install_command) && (build_command)
   Streams logs via SSE → dashboard
@@ -459,7 +459,7 @@ Done. Live at {slug}.shippie.app
 
 Webhook-driven deploys go to `preview` by default; maker chooses "publish" to flip `active`. Optional auto-publish on main branch (opt-in per app).
 
-### Build Runner: Vercel Sandbox
+### Build Runner: GitHub Actions build workflow
 - `npm ci --ignore-scripts` (postinstall blocked)
 - Network allowlisted to npm registry only during install; full network OK during build (needed for Next.js, etc.)
 - Memory 4GB, CPU 4 vCPU, timeout 10 min
@@ -898,7 +898,7 @@ create table reserved_slugs (
 ```
 shippie/
 ├── apps/
-│   └── web/                              # Next.js 16 on Vercel — control plane
+│   └── web/                              # Next.js 16 on Cloudflare — control plane
 │       ├── app/
 │       │   ├── (marketing)/
 │       │   ├── (storefront)/             # Browse, search, leaderboards per type
@@ -929,14 +929,14 @@ shippie/
 │       │   ├── auth/                     # Auth.js config
 │       │   ├── oauth/                    # Consent, code + token issuance
 │       │   ├── session-crypto/           # AES-GCM + HMAC for Worker cookies
-│       │   ├── sandbox/                  # Vercel Sandbox client
+│       │   ├── sandbox/                  # GitHub Actions build workflow client
 │       │   ├── r2/                       # R2 client + version pointer helpers
 │       │   ├── preflight/                # Deploy preflight checks
 │       │   ├── pwa-injector/             # htmlparser2 + icon resizing
 │       │   ├── github/                   # GitHub App client
 │       │   └── ranking/                  # Leaderboard score calculation
 │       ├── components/
-│       └── vercel.ts
+│       └── cloudflare.ts
 │
 ├── packages/
 │   ├── sdk/                              # @shippie/sdk (same-origin client)
@@ -993,13 +993,13 @@ shippie/
 │       └── package.json
 │
 ├── infra/
-│   ├── hetzner/
+│   ├── cloudflare/
 │   │   ├── setup.sh                      # Postgres + PgBouncer install
 │   │   ├── postgres.conf
 │   │   └── pgbouncer.ini
 │   ├── cloudflare/
 │   │   ├── dns-notes.md                  # wildcard DNS setup
-│   │   └── tunnel-setup.md               # Cloudflare Tunnel Vercel→Hetzner
+│   │   └── tunnel-setup.md               # Cloudflare Tunnel Cloudflare→Cloudflare
 │   └── github-app/
 │       └── manifest.json                 # GitHub App permissions
 │
@@ -1022,8 +1022,8 @@ Expanded from 8 to 10 weeks because of the runtime-plane scope.
 
 ### Week 1 — Foundation
 - Monorepo: Next.js 16 + Drizzle + Auth.js v6 + Turborepo
-- Vercel project, preview URL setup
-- Hetzner VPS: Postgres 16 + PgBouncer + Cloudflare Tunnel to Vercel
+- Cloudflare project, preview URL setup
+- Cloudflare VPS: Postgres 16 + PgBouncer + Cloudflare Tunnel to Cloudflare
 - Write initial migrations (users, apps, deploys, app_permissions, oauth_*, app_sessions, app_data with RLS WITH CHECK)
 - Auth.js with GitHub + Google + Apple providers, sign in/out
 - Platform layout shell + marketing landing
@@ -1075,11 +1075,11 @@ Expanded from 8 to 10 weeks because of the runtime-plane scope.
 - Publish `@shippie/sdk` to npm v1.0.0
 - Host SDK bundle at `cdn.shippie.app/sdk/v1.latest.js` + pinned versions
 
-### Week 6 — GitHub App + Vercel Sandbox Builds
+### Week 6 — GitHub App + GitHub Actions build workflow Builds
 - GitHub App registration (webhooks, install flow, permissions)
 - Repo connection UI in maker dashboard
 - Webhook handlers for push, installation, installation_repositories
-- Vercel Sandbox integration: clone, install (ignore-scripts), build, extract
+- GitHub Actions build workflow integration: clone, install (ignore-scripts), build, extract
 - Live build log streaming via SSE from API → UI
 - Build cache (node_modules tarball keyed by lockfile hash)
 - Preflight integration for GitHub sources
@@ -1156,7 +1156,7 @@ Expanded from 8 to 10 weeks because of the runtime-plane scope.
 | 18 | Desktop → mobile handoff | QR code on every install surface; platform OAuth works identically on phone |
 | 19 | Refresh token reuse attack | Refresh token rotation + reuse detection → revoke all sessions for user+app |
 | 20 | CSP violation from maker code | CSP set by Worker; allowed domains declared in shippie.json; violations logged |
-| 21 | Preflight false negative (malicious postinstall) | `npm ci --ignore-scripts` + 72h quarantine + Vercel Sandbox hardware isolation |
+| 21 | Preflight false negative (malicious postinstall) | `npm ci --ignore-scripts` + 72h quarantine + GitHub Actions build workflow hardware isolation |
 | 22 | Build timeout (infinite loop) | 10min hard timeout + CPU/RAM limits |
 | 23 | Quota exhaustion (storage abuse) | 429 with clear error; maker dashboard shows quota; upgrade path |
 | 24 | Concurrent writes to same app_data key | Partial unique indexes; UPSERT; last-write-wins with `updated_at` |
@@ -1178,7 +1178,7 @@ Expanded from 8 to 10 weeks because of the runtime-plane scope.
 
 1. **Worker + cookie session crypto correctness** (HIGH) — get AES-GCM, HMAC, key rotation right from day 1 or we re-platform auth. Shared `session-crypto` package + exhaustive tests. Budget Week 1 + Week 4.
 2. **Preflight completeness** (HIGH) — missing a check ships a security hole. Treat preflight as its own test suite with 50+ cases.
-3. **Vercel Sandbox regional limits** (MEDIUM) — US-East only at GA. Acceptable for MVP; EU makers see slower builds.
+3. **GitHub Actions build workflow regional limits** (MEDIUM) — US-East only at GA. Acceptable for MVP; EU makers see slower builds.
 4. **Wildcard SSL via Advanced Certificate Manager** (MEDIUM) — $10/mo dependency on Cloudflare; fallback is Let's Encrypt DNS-01 automation.
 5. **Ranking formula gaming** (MEDIUM) — launch with conservative weights, adjust after 30d of real data. Maker actions discounted.
 6. **Cold-start marketplace** (MEDIUM) — ship 15+ apps yourself before invites go out. Wave 2 is targeted recruiting.
@@ -1191,13 +1191,13 @@ Expanded from 8 to 10 weeks because of the runtime-plane scope.
 
 | Line | Cost/mo |
 |------|---------|
-| Vercel Pro (platform + Sandbox credits) | $20 |
-| Hetzner CCX23 (Postgres only) | €15 |
+| Cloudflare Pro (platform + Sandbox credits) | $20 |
+| Cloudflare CCX23 (Postgres only) | €15 |
 | Cloudflare Workers Paid (wildcard routes, Worker compute) | $5 |
 | Cloudflare Advanced Certificate Manager | $10 |
 | Cloudflare R2 (free tier at MVP) | $0 |
-| Vercel Sandbox overage (~100 builds/day) | $0–$12 |
-| Resend (email) | $20 |
+| GitHub Actions build workflow overage (~100 builds/day) | $0–$12 |
+| Cloudflare Email (email) | $20 |
 | Sentry (error monitoring) | $0–$26 |
 | Domain + misc | $5 |
 | **Total** | **~$75–$113** |
@@ -1231,8 +1231,8 @@ Expanded from 8 to 10 weeks because of the runtime-plane scope.
 
 ## Decisions Locked In
 
-1. **Build runner**: Vercel Sandbox (Firecracker microVMs)
-2. **Platform hosting**: Vercel for Next.js; Hetzner for Postgres only; Cloudflare Tunnel between them
+1. **Build runner**: GitHub Actions build workflow (Firecracker microVMs)
+2. **Platform hosting**: Cloudflare for Next.js; Cloudflare for Postgres only; Cloudflare Tunnel between them
 3. **GitHub integration**: GitHub App (not OAuth App)
 4. **SDK distribution**: Both `@shippie/sdk` on npm and hosted at `cdn.shippie.app/sdk/v1.latest.js` + `/__shippie/sdk.js` same-origin proxy
 5. **Auth architecture**: Worker-managed app-origin sessions via OAuth 2.0 + PKCE, encrypted httpOnly cookies, same-origin `__shippie/*` routes for all SDK traffic
@@ -1240,6 +1240,6 @@ Expanded from 8 to 10 weeks because of the runtime-plane scope.
 7. **Declarative config**: `shippie.json` required (auto-drafted if missing)
 8. **Version model**: atomic pointer swap in KV for zero-downtime deploy + instant rollback
 9. **Feedback model**: unified `feedback_items` typed system (comment, bug, request, rating, praise)
-10. **Email**: Resend
+10. **Email**: Cloudflare Email
 11. **Search**: Postgres FTS + pg_trgm
 12. **Ranking**: weighted per-type formulas, hourly cron, maker actions discounted

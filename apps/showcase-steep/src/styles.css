@@ -1,0 +1,1170 @@
+/* Steep — forest + amber overlay on top of @shippie/design-tokens.
+   Recipe-saver pattern: import the token base, then map the cream-mode
+   token family to Steep's palette so the existing brand-shell utilities
+   keep working without a global rename. */
+@import "@shippie/design-tokens/tokens.css";
+
+:root {
+  color-scheme: light;
+  /* Forest + amber palette. Deep herbal greens for primary, warm amber
+     for accent, cream paper for surface, ink-brown for text. */
+  --steep-bg: #F8F1E0;       /* cream paper */
+  --steep-fg: #2A1F16;       /* ink-brown */
+  --steep-muted: #6B5C4A;
+  --steep-line: rgba(47, 74, 58, 0.18);
+  --steep-forest: #2F4A3A;   /* deep green — primary */
+  --steep-forest-soft: rgba(47, 74, 58, 0.1);
+  --steep-amber: #C97B2D;    /* warm amber — accent */
+  --steep-amber-soft: rgba(201, 123, 45, 0.14);
+  --steep-danger: #B23A2B;
+
+  /* Compatibility aliases — every utility downstream still reads
+     --bg/--fg/--accent. Map them through. */
+  --bg: var(--steep-bg);
+  --fg: var(--steep-fg);
+  --muted: var(--steep-muted);
+  --line: var(--steep-line);
+  --accent: var(--steep-forest);
+  --danger: var(--steep-danger);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app {
+  min-height: 100%;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  padding: 16px 20px 80px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.page-header > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.page-header h1 {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--steep-forest);
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+button {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 0;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button.primary {
+  background: var(--steep-forest);
+  border-color: var(--steep-forest);
+  color: var(--bg);
+}
+
+button.ghost {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.banner {
+  background: var(--steep-forest);
+  color: var(--bg);
+  padding: 10px 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.backup-banner,
+.install-nudge-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.install-nudge-banner {
+  background: var(--steep-amber);
+}
+
+.backup-banner button,
+.install-nudge-banner button {
+  height: 30px;
+  border-color: var(--bg);
+  color: var(--bg);
+  background: transparent;
+}
+
+.backup-banner button:first-of-type,
+.install-nudge-banner button:first-of-type {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* ── Install help sheet ──────────────────────────────────────── */
+
+.install-help-backdrop,
+.disclaimer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 6, 0.4);
+  display: grid;
+  place-items: center;
+  z-index: 90;
+  padding: 16px;
+}
+
+.install-help,
+.disclaimer-sheet {
+  width: min(420px, 100%);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px 20px;
+  box-shadow: 0 16px 48px rgba(20, 12, 6, 0.18);
+}
+
+.install-help header,
+.disclaimer-sheet header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.install-help h2,
+.disclaimer-sheet h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--steep-forest);
+}
+
+.install-help ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.install-help-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.disclaimer-sheet p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.disclaimer-sheet p:last-of-type {
+  margin-bottom: 16px;
+}
+
+.disclaimer-sheet button.primary {
+  width: 100%;
+  height: 42px;
+  font-weight: 600;
+}
+
+.footer-disclaimer-link {
+  align-self: center;
+  margin-top: auto;
+  margin-bottom: 12px;
+  height: auto;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Data panel ──────────────────────────────────────────────── */
+
+.data-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 6, 0.5);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.data-panel {
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 24px 60px rgba(20, 12, 6, 0.22);
+}
+
+.data-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.data-panel-header h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 22px;
+  color: var(--steep-forest);
+}
+
+.data-panel-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.data-warning {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.ios-eviction-warning {
+  background: rgba(178, 58, 43, 0.06);
+}
+
+.data-status-tile {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.data-status-tile .data-status-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.data-status-tile .data-status-detail {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.data-status-safe {
+  border-color: rgba(47, 74, 58, 0.45);
+  background: var(--steep-forest-soft);
+}
+
+.data-status-safe .data-status-label {
+  color: var(--steep-forest);
+}
+
+.data-status-protected-locally {
+  border-color: rgba(201, 123, 45, 0.45);
+  background: var(--steep-amber-soft);
+}
+
+.data-status-protected-locally .data-status-label {
+  color: var(--steep-amber);
+}
+
+.data-status-only-on-this-device {
+  border-color: var(--line);
+}
+
+.data-status-only-on-this-device .data-status-label {
+  color: var(--muted);
+}
+
+.data-status-at-risk {
+  border-color: var(--danger);
+  background: rgba(178, 58, 43, 0.06);
+}
+
+.data-status-at-risk .data-status-label {
+  color: var(--danger);
+}
+
+.data-health-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.data-health-grid div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.data-health-grid dt {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 3px;
+}
+
+.data-health-grid dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.data-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.data-passphrase {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.data-passphrase span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.data-passphrase input {
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+  padding: 0 12px;
+  font-size: 15px;
+  color: var(--fg);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.data-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 40px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+}
+
+.empty-state h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--steep-forest);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+  max-width: 340px;
+}
+
+/* ── Search input ───────────────────────────────────────────── */
+
+.search-input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+  padding: 0 14px;
+  font-size: 15px;
+  color: var(--fg);
+}
+
+/* ── Field shell ────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.field span,
+.field legend {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 0;
+  font-weight: 500;
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+  padding: 8px 12px;
+  font-size: 15px;
+  color: var(--fg);
+  font-family: inherit;
+}
+
+.field textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+/* ── Intent chips ───────────────────────────────────────────── */
+
+.intent-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.intent-chip {
+  display: inline-flex;
+  align-items: center;
+  height: auto;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.intent-chip-sm {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+button.intent-chip {
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+button.intent-chip:hover:not(:disabled) {
+  border-color: var(--steep-forest);
+}
+
+.intent-chip.active {
+  background: var(--steep-forest);
+  border-color: var(--steep-forest);
+  color: var(--bg);
+}
+
+/* ── Blend cards on home ────────────────────────────────────── */
+
+.blend-card {
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  border-radius: 0;
+}
+
+.blend-card h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--steep-forest);
+}
+
+.blend-card-tags {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--steep-amber);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Starter shelf header ───────────────────────────────────── */
+
+.starter-shelf {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.starter-shelf h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--steep-forest);
+}
+
+/* ── Recipe list (shared shape) ─────────────────────────────── */
+
+.recipe-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recipe-card-wrapper {
+  list-style: none;
+}
+
+.recipe-card {
+  /* `height: auto` overrides the global `button { height: 38px }` rule
+     because the home + library pages render cards as <button> elements
+     for tap targets. Without it, every card collapses to 38px and the
+     description text bleeds onto the next card. */
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-weight: 400;
+  color: var(--fg);
+}
+
+/* ── Parts list (blend ingredients) ─────────────────────────── */
+
+.parts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.parts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.parts-name {
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--fg);
+  min-width: 0;
+  flex: 1;
+}
+
+.parts-amount {
+  font-family: var(--font-mono, monospace);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steep-amber);
+  white-space: nowrap;
+}
+
+.parts-total {
+  margin: 6px 0 0;
+  text-align: right;
+  font-size: 12px;
+}
+
+.parts-row-editable .parts-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.parts-stepper,
+.parts-remove {
+  height: 30px;
+  width: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 0;
+}
+
+.parts-remove {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ── Brew mode ─────────────────────────────────────────────── */
+
+.brew-mode .page-header h1 {
+  font-size: 22px;
+}
+
+.brew-batch-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.brew-batch-option {
+  height: auto;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 0;
+}
+
+.brew-batch-option.active {
+  background: var(--steep-forest);
+  border-color: var(--steep-forest);
+  color: var(--bg);
+}
+
+.brew-batch-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.brew-batch-grams {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.brew-recipe h2,
+.blend-detail-section h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--steep-forest);
+}
+
+.brew-recipe-list {
+  margin-bottom: 10px;
+}
+
+/* ── Brew timer ─────────────────────────────────────────────── */
+
+.brew-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 16px;
+  border: 1px solid var(--line);
+  background: var(--steep-forest-soft);
+}
+
+.brew-timer-label {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.brew-timer-readout {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 56px;
+  font-weight: 600;
+  color: var(--steep-forest);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.brew-timer-done .brew-timer-readout {
+  color: var(--steep-amber);
+}
+
+.brew-timer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Blend detail sections ──────────────────────────────────── */
+
+.blend-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Brew config grid (builder) ─────────────────────────────── */
+
+.brew-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.brew-config-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Library + herb cards ───────────────────────────────────── */
+
+.library-filters {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.library-filters + .library-filters {
+  margin-top: -4px;
+}
+
+.herb-card h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--steep-forest);
+}
+
+.herb-card-tags {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--steep-amber);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.herb-tradition {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg);
+}
+
+/* ── Herb picker modal ─────────────────────────────────────── */
+
+.herb-picker {
+  max-height: 80vh;
+}
+
+.herb-picker-search {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+  padding: 0 12px;
+  font-size: 15px;
+}
+
+.herb-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: 50vh;
+}
+
+.herb-picker-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 0;
+  height: auto;
+}
+
+.herb-picker-row:hover {
+  border-color: var(--steep-forest);
+}
+
+.herb-picker-name {
+  grid-column: 1;
+  grid-row: 1;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--fg);
+}
+
+.herb-picker-latin {
+  grid-column: 2;
+  grid-row: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.herb-picker-tags {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: 12px;
+  color: var(--steep-amber);
+  text-transform: lowercase;
+}
+
+.herb-picker-empty {
+  padding: 16px 12px;
+  text-align: center;
+}
+
+/* ── Inventory ──────────────────────────────────────────────── */
+
+.inventory-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inventory-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.inventory-row-main h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--steep-forest);
+}
+
+.inventory-row-main p {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+.inventory-row-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inventory-grams {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--steep-amber);
+  white-space: nowrap;
+}
+
+.inventory-grams.low {
+  color: var(--danger);
+}
+
+.inventory-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--danger);
+}
+
+/* ── Journal ────────────────────────────────────────────────── */
+
+.journal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journal-entry {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.journal-entry header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.journal-entry-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--steep-forest);
+}
+
+.journal-entry-time {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.journal-entry-batch {
+  margin: 0;
+  font-size: 12px;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.journal-entry-note {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* ── Share sheet ────────────────────────────────────────────── */
+
+.share-sheet {
+  align-items: stretch;
+}
+
+.share-qr {
+  align-self: center;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+}
+
+.share-qr svg {
+  display: block;
+  max-width: 240px;
+  height: auto;
+}
+
+.share-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.share-link {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-attribution {
+  margin: 0;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Floating More menu ─────────────────────────────────────── */
+
+.floating-actions {
+  position: fixed;
+  bottom: calc(20px + var(--safe-bottom));
+  right: 20px;
+  z-index: 40;
+  display: flex;
+  /* Column-reverse so the menu pops *above* the trigger button rather
+     than below it (which would slide off-screen on a bottom-anchored
+     popover). */
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.floating-button {
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 0;
+  background: var(--steep-forest);
+  border-color: var(--steep-forest);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.more-menu {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+  box-shadow: 0 16px 48px rgba(20, 12, 6, 0.18);
+}
+
+.more-menu li {
+  list-style: none;
+}
+
+.more-menu button {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  text-align: left;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.more-menu button:hover:not(:disabled) {
+  background: var(--steep-forest-soft);
+}
