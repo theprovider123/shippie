@@ -125,6 +125,7 @@ export function App() {
   const [archiveDate, setArchiveDate] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [hardModeError, setHardModeError] = useState<string | null>(null);
   // Tracks the last-submitted guess for tile-flip animation. Index N
   // becomes "revealed" at FLIP_STAGGER_MS × N + FLIP_DURATION_MS, so
@@ -202,6 +203,12 @@ export function App() {
 
   const finished = activeAttempt?.finished ?? false;
   const won = activeAttempt?.won ?? false;
+
+  // Auto-open stats overlay when the day's puzzle just finished — same
+  // moment the player is most curious about their patterns.
+  useEffect(() => {
+    if (finished && activeMode === 'daily') setShowStats(true);
+  }, [finished, activeMode]);
 
   const submitGuess = useCallback(() => {
     if (!activePuzzle) return;
@@ -433,6 +440,13 @@ export function App() {
           <button
             type="button"
             className="lang"
+            onClick={() => setShowStats(true)}
+            aria-label="Stats"
+            title="Stats"
+          >📊</button>
+          <button
+            type="button"
+            className="lang"
             onClick={() => setShowArchive(true)}
             aria-label="Archive"
             title="Archive"
@@ -625,29 +639,34 @@ export function App() {
             </section>
           ) : null}
 
-          <section className="stats">
-            <h2>Your patterns</h2>
-            <p className="muted small">
-              {stats.plays} played · {stats.wins ? Math.round((stats.wins / stats.plays) * 100) : 0}% won · streak {stats.streak} (best {stats.bestStreak})
-            </p>
-            {stats.wins > 0 ? (
-              <div className="dist">
-                {[1, 2, 3, 4, 5, 6].map((n) => {
-                  const count = stats.dist[n] ?? 0;
-                  const max = Math.max(1, ...Object.values(stats.dist));
-                  const pct = (count / max) * 100;
-                  return (
-                    <div key={n} className="dist-row">
-                      <span className="dist-label">{n}</span>
-                      <div className="dist-bar">
-                        <div className="dist-fill" style={{ width: `${pct}%` }}>{count > 0 ? count : ''}</div>
-                      </div>
-                    </div>
-                  );
-                })}
+          {showStats ? (
+            <div className="modal-backdrop" role="dialog" onClick={() => setShowStats(false)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="modal-title">Your patterns</h3>
+                <p className="muted small">
+                  {stats.plays} played · {stats.wins ? Math.round((stats.wins / stats.plays) * 100) : 0}% won · streak {stats.streak} (best {stats.bestStreak})
+                </p>
+                {stats.wins > 0 ? (
+                  <div className="dist">
+                    {[1, 2, 3, 4, 5, 6].map((n) => {
+                      const count = stats.dist[n] ?? 0;
+                      const max = Math.max(1, ...Object.values(stats.dist));
+                      const pct = (count / max) * 100;
+                      return (
+                        <div key={n} className="dist-row">
+                          <span className="dist-label">{n}</span>
+                          <div className="dist-bar">
+                            <div className="dist-fill" style={{ width: `${pct}%` }}>{count > 0 ? count : ''}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                <button type="button" className="primary" onClick={() => setShowStats(false)}>Close</button>
               </div>
-            ) : null}
-          </section>
+            </div>
+          ) : null}
         </>
       )}
     </main>
