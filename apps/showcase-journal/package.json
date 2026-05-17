@@ -23,6 +23,7 @@
     "@shippie/qr": "workspace:*",
     "@shippie/sdk": "workspace:*",
     "@shippie/share": "workspace:*",
+    "@shippie/showcase-kit": "workspace:*",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },

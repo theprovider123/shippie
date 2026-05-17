@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Shopping List \u2014 consumes meal-plan; demonstrates mesh sharing.",
+  "description": "Shopping List — consumes meal-plan; demonstrates mesh sharing.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -17,6 +17,7 @@
     "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "@shippie/proximity": "workspace:*",
+    "@shippie/showcase-kit": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

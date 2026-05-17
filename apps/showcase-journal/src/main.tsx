@@ -1,16 +1,10 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { mountShowcase } from '@shippie/showcase-kit/boot';
+import manifest from '../shippie.json';
 import { App } from './App.tsx';
 import { bootAmbientForJournal } from './ambient/init.ts';
 import './styles.css';
 
-const container = document.getElementById('root');
-if (!container) throw new Error('Missing #root');
-createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+mountShowcase(<App />, { manifest });
 
 // Plan E Task 9: kick off ambient analysis on app open. Fire-and-forget.
 // The wrapper's observe-init.ts will surface any insights this produces

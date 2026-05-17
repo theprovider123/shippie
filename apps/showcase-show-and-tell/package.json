@@ -17,6 +17,7 @@
     "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "@shippie/proximity": "workspace:*",
+    "@shippie/showcase-kit": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

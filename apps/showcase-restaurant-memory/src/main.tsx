@@ -1,12 +1,6 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { mountShowcase } from '@shippie/showcase-kit/boot';
+import manifest from '../shippie.json';
 import { App } from './App.tsx';
 import './styles.css';
 
-const container = document.getElementById('root');
-if (!container) throw new Error('Missing #root');
-createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+mountShowcase(<App />, { manifest });

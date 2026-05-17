@@ -452,8 +452,8 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
       const broadcast: IntentBroadcast = {
         intent: data.intent,
         rows: Array.isArray(data.rows) ? (data.rows as unknown[]) : [],
-        providerAppId: typeof data.providerAppId === 'string' ? data.providerAppId : undefined,
       };
+      if (typeof data.providerAppId === 'string') broadcast.providerAppId = data.providerAppId;
       for (const h of set) h(broadcast);
     });
   }
@@ -695,7 +695,9 @@ function collectLifecycleTiming(): Record<string, number> | undefined {
 
 function normalizeLifecycleError(error: unknown): { name?: string; message: string; stack?: string } {
   if (error instanceof Error) {
-    return { name: error.name, message: error.message || 'Unknown app error', stack: error.stack };
+    const normalized = { name: error.name, message: error.message || 'Unknown app error' };
+    if (typeof error.stack === 'string') return { ...normalized, stack: error.stack };
+    return normalized;
   }
   if (typeof error === 'string') return { message: error };
   if (error && typeof error === 'object' && 'message' in error) {

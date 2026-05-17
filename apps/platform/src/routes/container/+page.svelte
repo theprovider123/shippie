@@ -95,6 +95,7 @@
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
+  import { toast } from '$lib/stores/toast';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import {
     hydrateLauncherMemory,
@@ -216,6 +217,7 @@
   let packageFilesByApp = $state<Record<string, Record<string, PackageFileCache>>>({});
   let frameStates = $state<FrameStates>({});
   let frameReloadNonce = $state<FrameReloadNonces>({});
+  let framePaintMissRetries = $state<Record<string, number>>({});
   let collectionUrl = $state('/api/collections/official');
   let collectionStatus = $state('');
   let activeCollection = $state<AppCollectionManifest | null>(null);
@@ -925,6 +927,9 @@
 
   function markFrameBooting(appId: string) {
     frameStates = markFrameBootingState(frameStates, appId);
+    const remainingLifecycle = { ...frameLifecycleByApp };
+    delete remainingLifecycle[appId];
+    frameLifecycleByApp = remainingLifecycle;
   }
 
   function markFrameReady(appId: string, frame?: HTMLIFrameElement) {
@@ -932,12 +937,20 @@
     if (frame && app && isInspectableRuntimeFrame(frame, app)) {
       window.requestAnimationFrame(() => {
         if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+        if (frameLifecycleByApp[appId]?.event === 'ready' || frameLifecycleByApp[appId]?.event === 'heartbeat') {
+          markFrameReady(appId);
+          return;
+        }
         if (frameLooksPainted(frame)) {
           markFrameReady(appId);
           return;
         }
         window.setTimeout(() => {
           if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+          if (frameLifecycleByApp[appId]?.event === 'ready' || frameLifecycleByApp[appId]?.event === 'heartbeat') {
+            markFrameReady(appId);
+            return;
+          }
           if (frameLooksPainted(frame)) {
             markFrameReady(appId);
             return;
@@ -949,6 +962,10 @@
           const fallbackDelay = lifecycleAware ? 3_200 : 1_600;
           window.setTimeout(() => {
             if (frames.get(appId) !== frame || frameStates[appId]?.status !== 'booting') return;
+            if (frameLifecycleByApp[appId]?.event === 'ready' || frameLifecycleByApp[appId]?.event === 'heartbeat') {
+              markFrameReady(appId);
+              return;
+            }
             if (frameLooksPainted(frame)) {
               markFrameReady(appId);
               return;
@@ -956,6 +973,7 @@
             markFrameError(
               appId,
               `${app.name} loaded but did not paint. This is usually a stale app bundle or a script crash; reload it once.`,
+              { retryablePaintMiss: true },
             );
           }, fallbackDelay);
         }, 0);
@@ -963,6 +981,9 @@
       return;
     }
     frameStates = markFrameReadyState(frameStates, appId);
+    const remainingRetries = { ...framePaintMissRetries };
+    delete remainingRetries[appId];
+    framePaintMissRetries = remainingRetries;
     commitPendingEviction(appId);
     // Emit a window-level event so PushOptInToast can offer notifications
     // after a successful first open. Keeps the container untangled from
@@ -1005,7 +1026,22 @@
     return Boolean(root && root.children.length > 0);
   }
 
-  function markFrameError(appId: string, message = 'This app could not open in the container.') {
+  function markFrameError(
+    appId: string,
+    message = 'This app could not open in the container.',
+    options: { retryablePaintMiss?: boolean } = {},
+  ) {
+    if (options.retryablePaintMiss && (framePaintMissRetries[appId] ?? 0) === 0) {
+      const app = appById.get(appId);
+      framePaintMissRetries = { ...framePaintMissRetries, [appId]: 1 };
+      toast.push({
+        kind: 'info',
+        message: `Reloading ${app?.name ?? 'tool'}…`,
+        durationMs: 2500,
+      });
+      reloadFrame(appId, { resetPaintMissRetry: false });
+      return;
+    }
     frameStates = markFrameErrorState(frameStates, appId, message);
     // Also commit the queued eviction even on error — there's no point
     // holding the old app's resources hostage when the new one isn't
@@ -1013,7 +1049,12 @@
     commitPendingEviction(appId);
   }
 
-  function reloadFrame(appId: string) {
+  function reloadFrame(appId: string, options: { resetPaintMissRetry?: boolean } = {}) {
+    if (options.resetPaintMissRetry !== false) {
+      const remainingRetries = { ...framePaintMissRetries };
+      delete remainingRetries[appId];
+      framePaintMissRetries = remainingRetries;
+    }
     markFrameBooting(appId);
     revokePackageFrameSource(appId, packageObjectUrls);
     frameReloadNonce = nextFrameReloadNonces(frameReloadNonce, appId);
