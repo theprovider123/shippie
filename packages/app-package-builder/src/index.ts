@@ -22,6 +22,7 @@ export interface PackageAppIdentity {
   maker: AppPackageManifest['maker'];
   domains: AppPackageManifest['domains'];
   runtime: AppPackageManifest['runtime'];
+  spaces?: AppPackageManifest['spaces'];
 }
 
 export interface BuildShippiePackageInput {
@@ -84,6 +85,7 @@ export async function buildShippiePackage(input: BuildShippiePackageInput): Prom
     maker: input.app.maker,
     domains: input.app.domains,
     runtime: input.app.runtime,
+    spaces: input.app.spaces,
   };
 
   const versionWithoutHash: AppVersionRecord = {

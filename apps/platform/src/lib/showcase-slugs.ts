@@ -10,6 +10,11 @@
  */
 import { SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
 
+export interface CanonicalShowcaseTarget {
+  slug: string;
+  searchParams?: Record<string, string>;
+}
+
 const SLUG_ALIASES: Record<string, string> = {
   'recipe-saver': 'recipe',
   // Phase 2 cleanup — Move + Quiet absorbed several single-screen
@@ -34,6 +39,8 @@ const SLUG_ALIASES: Record<string, string> = {
   // old direct URLs hit the alias and resolve to the canonical
   // successor via the explicit 302 in /run/[slug]/+page.server.ts.
   'live-room': 'match-room',
+  'show-and-tell': 'whiteboard',
+  'would-you-rather': 'drawing-telephone',
   matchday: 'match-room',
   'care-log': 'co-pilot',
   journal: 'therapy-notes',
@@ -43,16 +50,47 @@ const SLUG_ALIASES: Record<string, string> = {
   // sip-log was a single-purpose hydration tracker; Tap Counter is
   // the general-purpose physical-input mirror that replaces it.
   'sip-log': 'tap-counter',
+  // Launch slate Phase 2 — standalone brain games now open as modes
+  // inside Daily Puzzle. The target search params below preserve which
+  // retired app the person intended to launch.
+  sudoku: 'daily-puzzle',
+  'memory-grid': 'daily-puzzle',
+  reaction: 'daily-puzzle',
+
+  // Launch slate Phase 4 — food utilities now live as tabs inside
+  // Recipe so the cooking workflow has one mobile home.
+  'shopping-list': 'recipe',
+  'meal-planner': 'recipe',
+  'pantry-scanner': 'recipe',
+};
+
+const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
+  'live-room': { from: 'live-room' },
+  'show-and-tell': { mode: 'show-and-tell', from: 'show-and-tell' },
+  'would-you-rather': { pack: 'would-you-rather', from: 'would-you-rather' },
+  sudoku: { mode: 'sudoku', from: 'sudoku' },
+  'memory-grid': { mode: 'memory-grid', from: 'memory-grid' },
+  reaction: { mode: 'reaction', from: 'reaction' },
+  'shopping-list': { tab: 'shopping', from: 'shopping-list' },
+  'meal-planner': { tab: 'meal-plan', from: 'meal-planner' },
+  'pantry-scanner': { tab: 'pantry', from: 'pantry-scanner' },
 };
 
 export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>(SHOWCASE_SLUGS);
 
 export function isFirstPartyShowcase(slug: string): boolean {
-  return FIRST_PARTY_SHOWCASE_SLUGS.has(canonicalShowcaseSlug(slug));
+  return FIRST_PARTY_SHOWCASE_SLUGS.has(canonicalShowcaseTarget(slug).slug);
 }
 
 export function canonicalShowcaseSlug(slug: string): string {
-  return SLUG_ALIASES[slug] ?? slug;
+  return canonicalShowcaseTarget(slug).slug;
+}
+
+export function canonicalShowcaseTarget(slug: string): CanonicalShowcaseTarget {
+  return {
+    slug: SLUG_ALIASES[slug] ?? slug,
+    searchParams: SLUG_ALIAS_SEARCH_PARAMS[slug],
+  };
 }
 
 export function containerSlugForRequest(slug: string): string {
@@ -60,8 +98,9 @@ export function containerSlugForRequest(slug: string): string {
 }
 
 export function canonicalAppUrl(slug: string): string {
-  const canonical = canonicalShowcaseSlug(slug);
-  return isFirstPartyShowcase(canonical)
-    ? `/run/${encodeURIComponent(canonical)}`
+  const canonical = canonicalShowcaseTarget(slug);
+  const search = canonical.searchParams ? `?${new URLSearchParams(canonical.searchParams)}` : '';
+  return isFirstPartyShowcase(canonical.slug)
+    ? `/run/${encodeURIComponent(canonical.slug)}${search}`
     : `https://${slug}.shippie.app/`;
 }

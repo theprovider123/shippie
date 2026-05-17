@@ -26,6 +26,7 @@ import { wsHandlerFor, extractRoomId } from './signal.ts';
 import { ModelCache } from './model-cache.ts';
 import { serveAppFile, extractSlugFromHost, listCachedApps } from './static.ts';
 import { renderDashboard } from './dashboard.ts';
+import { buildAmbientDiscovery } from './ambient.ts';
 import {
   ingestPackageArchive,
   readHubToolRegistry,
@@ -171,6 +172,16 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
         return withCors(Response.json(await readHubToolRegistry(config.cacheRoot)));
       }
 
+      if (url.pathname === '/api/hub/ambient') {
+        const registry = await readHubToolRegistry(config.cacheRoot);
+        return withCors(Response.json(buildAmbientDiscovery({
+          hubName: config.mdnsName,
+          origin: hubOrigin(req, actualPort),
+          state,
+          registry,
+        })));
+      }
+
       const toolGroupMatch = /^\/api\/hub\/tools\/([a-z0-9][a-z0-9-]*)\/group$/.exec(url.pathname);
       if (toolGroupMatch && req.method === 'POST') {
         let body: unknown;
@@ -271,7 +282,7 @@ export async function startHub(config: HubConfig): Promise<HubHandle> {
             name: config.mdnsName,
             type: 'http',
             port: actualPort,
-            txt: { service: 'shippie-hub' },
+            txt: { service: 'shippie-hub', ambient: '/api/hub/ambient' },
           });
           mdnsStop = async () => {
             await new Promise<void>((res) => bonjour.unpublishAll(() => res()));

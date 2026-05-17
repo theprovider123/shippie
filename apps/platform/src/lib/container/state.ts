@@ -16,6 +16,7 @@ import {
   SHIPPIE_PERMISSIONS_SCHEMA,
   createAppReceipt,
   type AppKind,
+  type AppPackageManifest,
   type AppPermissions,
   type AppReceipt,
   type TrustReport,
@@ -23,6 +24,13 @@ import {
 
 export type ContainerSection = 'home' | 'create' | 'data';
 export type ContainerVisibility = 'public' | 'unlisted' | 'private' | 'team' | 'local';
+
+export type AppSpaceContext = {
+  spaceId: string;
+  role: string | null;
+  joinToken: string | null;
+  source: 'url' | 'private-join';
+};
 
 export type ContainerApp = {
   id: string;
@@ -60,6 +68,7 @@ export type ContainerApp = {
    * fixture page via `appSrcdoc`. Leave undefined in production.
    */
   devUrl?: string;
+  spaces?: AppPackageManifest['spaces'];
 };
 
 export type BridgeLog = {

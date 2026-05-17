@@ -15,8 +15,9 @@
     "consumes": []
   },
   "curation": {
-    "surface": "arcade",
+    "surface": "archived",
     "category": "games",
-    "subcategory": "room"
+    "subcategory": "room",
+    "successor": "daily-puzzle"
   }
 }

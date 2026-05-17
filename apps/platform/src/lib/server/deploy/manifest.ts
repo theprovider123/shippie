@@ -94,6 +94,7 @@ export interface ShippieJsonLite {
    * keep sealed copies that Shippie can store but cannot open.
    */
   data?: ShippieDataPolicy;
+  spaces?: ShippieSpacesPolicy;
   /**
    * Container commons ownership metadata. These are optional so existing
    * vibe-coded apps still deploy, but when present they travel into the
@@ -142,6 +143,18 @@ export interface ShippieDataPolicy {
   localStorage: ShippieDataStorageScope;
 }
 
+export interface ShippieSpaceRole {
+  id: string;
+  permissions: string[];
+}
+
+export interface ShippieSpacesPolicy {
+  enabled: boolean;
+  roles: ShippieSpaceRole[];
+  syncMode: 'gossip' | 'sealed-cloud' | 'hub' | 'inherited';
+  archivable: boolean;
+}
+
 export interface DeriveManifestInput {
   slug: string;
   shippieJson?: ShippieJsonLite;
@@ -164,6 +177,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         data: hasObjectDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
           ? parseDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
           : undefined,
+        spaces: parseSpaces((input.shippieJson as unknown as Record<string, unknown>).spaces),
       },
       notes: [],
     };
@@ -200,6 +214,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
           : undefined,
         migrations: parseMigrations(m.migrations),
         data: hasObjectDataPolicy(m.data) ? parseDataPolicy(m.data) : undefined,
+        spaces: parseSpaces(m.spaces),
         intents: parseIntents(m.intents),
         source_repo: typeof m.source_repo === 'string' ? m.source_repo : undefined,
         license: typeof m.license === 'string' ? m.license : undefined,
@@ -260,19 +275,6 @@ function defaultManifest(slug: string): ShippieJsonLite {
 }
 
 export function defaultDataPolicy(slug = ''): ShippieDataPolicy {
-  if (slug === 'crewtrip') {
-    return {
-      mode: 'local-only',
-      documents: [],
-      attachments: false,
-      recovery: 'none',
-      migrations: 'none',
-      snapshots: 'none',
-      media: 'none',
-      realtime: 'none',
-      localStorage: { keys: [], prefixes: [] },
-    };
-  }
   return {
     mode: 'shippie-documents',
     documents: ['main'],
@@ -359,6 +361,42 @@ export function parseDataPolicy(raw: unknown): ShippieDataPolicy {
     media,
     realtime,
     localStorage: parseDataStorageScope(obj.localStorage),
+  };
+}
+
+const SPACE_ROLE_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
+const SPACE_PERMISSION_RE = /^[a-z][a-z0-9_:.-]{0,63}$/;
+
+export function parseSpaces(raw: unknown): ShippieJsonLite['spaces'] {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
+  const obj = raw as Record<string, unknown>;
+  if (obj.enabled !== true) return undefined;
+  const roles: ShippieSpaceRole[] = [];
+  if (Array.isArray(obj.roles)) {
+    for (const item of obj.roles) {
+      if (typeof item !== 'object' || item === null || Array.isArray(item)) continue;
+      const role = item as Record<string, unknown>;
+      if (typeof role.id !== 'string' || !SPACE_ROLE_ID_RE.test(role.id)) continue;
+      roles.push({
+        id: role.id,
+        permissions: Array.isArray(role.permissions)
+          ? unique(role.permissions.filter((value): value is string => typeof value === 'string' && SPACE_PERMISSION_RE.test(value)))
+          : [],
+      });
+    }
+  }
+  const syncMode =
+    obj.syncMode === 'gossip' ||
+    obj.syncMode === 'sealed-cloud' ||
+    obj.syncMode === 'hub' ||
+    obj.syncMode === 'inherited'
+      ? obj.syncMode
+      : 'inherited';
+  return {
+    enabled: true,
+    roles,
+    syncMode,
+    archivable: obj.archivable === true,
   };
 }
 

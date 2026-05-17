@@ -1,4 +1,9 @@
-import { buildSignalUrl } from '@shippie/proximity';
+import {
+  buildSpaceUrl,
+  defaultSignalBaseForRuntime as defaultSpaceSignalBaseForRuntime,
+  readSpaceParams,
+  signalUrlFor as spaceSignalUrlFor,
+} from '@shippie/spaces';
 import { normaliseLocale, type Locale } from '../i18n.ts';
 import { supportedTimeZone } from '../lib/time-zone.ts';
 import type { RoomParams, Role, RoomTemplate } from './types.ts';
@@ -12,10 +17,11 @@ export function readRoomParams(): RoomParams {
     return { role: null, roomId: null, signalBase: defaultSignalBase, roomKey: null, template: DEFAULT_TEMPLATE, locale: null, timeZone: null };
   }
   const url = new URL(window.location.href);
-  const role = readRole(url);
-  const roomId = url.searchParams.get('room');
+  const space = readSpaceParams(url.toString());
+  const role = readRole(url) ?? readRoleValue(space.role);
+  const roomId = url.searchParams.get('room') ?? space.spaceId;
   const signalBase = url.searchParams.get('signal') || defaultSignalBase;
-  const roomKey = new URLSearchParams(url.hash.replace(/^#/, '')).get('k');
+  const roomKey = new URLSearchParams(url.hash.replace(/^#/, '')).get('k') ?? space.secret;
   return {
     role,
     roomId,
@@ -28,11 +34,7 @@ export function readRoomParams(): RoomParams {
 }
 
 export function signalUrlFor(signalBase: string, roomId: string): string {
-  if (signalBase.includes('{room}')) {
-    const resolved = signalBase.replace('{room}', encodeURIComponent(roomId));
-    return resolved.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
-  }
-  return buildSignalUrl(signalBase, roomId);
+  return spaceSignalUrlFor(signalBase, roomId);
 }
 
 export function matchRoomUrl(input: {
@@ -44,35 +46,30 @@ export function matchRoomUrl(input: {
   locale?: Locale;
   timeZone?: string;
 }): string {
-  const url = new URL(typeof location === 'undefined' ? 'https://shippie.app/run/match-room/' : location.href);
-  url.pathname = url.pathname.replace('/run/matchday/', '/run/match-room/');
-  url.pathname = url.pathname.replace(/\/(host|play|display)\/?$/, '/');
-  url.search = '';
-  url.hash = '';
-  url.searchParams.set('role', input.role);
-  url.searchParams.set('room', input.roomId);
-  if (input.template && input.template !== DEFAULT_TEMPLATE) {
-    url.searchParams.set('template', input.template);
-  }
-  if (input.locale) {
-    url.searchParams.set('lang', input.locale);
-  }
-  if (input.timeZone) {
-    url.searchParams.set('tz', input.timeZone);
-  }
+  const current = new URL(typeof location === 'undefined' ? 'https://shippie.app/run/match-room/' : location.href);
+  current.pathname = current.pathname.replace('/run/matchday/', '/run/match-room/');
+  current.pathname = current.pathname.replace(/\/(host|play|display)\/?$/, '/');
   const defaultSignalBase = defaultSignalBaseForRuntime();
-  if (input.signalBase && input.signalBase !== defaultSignalBase) {
-    url.searchParams.set('signal', input.signalBase);
-  }
-  url.hash = `k=${encodeURIComponent(input.roomKey)}`;
-  return url.toString();
+  return buildSpaceUrl({
+    baseUrl: current.origin + current.pathname,
+    appSlug: 'match-room',
+    spaceId: input.roomId,
+    role: input.role,
+    secret: input.roomKey,
+    extraSearch: {
+      room: input.roomId,
+      template: input.template && input.template !== DEFAULT_TEMPLATE ? input.template : undefined,
+      lang: input.locale,
+      tz: input.timeZone,
+      signal: input.signalBase && input.signalBase !== defaultSignalBase ? input.signalBase : undefined,
+    },
+  });
 }
 
 export const matchdayUrl = matchRoomUrl;
 
 export function defaultSignalBaseForRuntime(): string {
-  if (typeof location === 'undefined') return PUBLIC_SIGNAL_BASE;
-  return `${location.protocol}//${location.host}/__shippie/signal`;
+  return defaultSpaceSignalBaseForRuntime('/__shippie/signal') || PUBLIC_SIGNAL_BASE;
 }
 
 function readTemplate(url: URL): RoomTemplate | null {
@@ -97,8 +94,13 @@ function readTimeZone(url: URL): string | null {
 
 function readRole(url: URL): Role | null {
   const queryRole = url.searchParams.get('role');
-  if (queryRole === 'host' || queryRole === 'play' || queryRole === 'display') return queryRole;
+  const role = readRoleValue(queryRole);
+  if (role) return role;
   const path = url.pathname.replace(/\/$/, '').split('/').at(-1);
-  if (path === 'host' || path === 'play' || path === 'display') return path;
+  return readRoleValue(path);
+}
+
+function readRoleValue(value: string | null | undefined): Role | null {
+  if (value === 'host' || value === 'play' || value === 'display') return value;
   return null;
 }

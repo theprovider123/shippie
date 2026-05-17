@@ -38,7 +38,7 @@
  */
 
 import type { BridgeHandler } from '@shippie/container-bridge';
-import { readPayloadTable, type ContainerApp, type LocalRow } from './state';
+import { readPayloadTable, type AppSpaceContext, type ContainerApp, type LocalRow } from './state';
 import type { IntentRegistration } from './intent-registry';
 import type { AiRunRequest, AiRunResult, AiTask } from './ai-worker-client';
 import type { Insight } from '@shippie/agent';
@@ -122,6 +122,7 @@ export interface AnalyticsTrackResult {
 export interface AppHandlerContext {
   appId: string;
   app: ContainerApp;
+  spaceContext?: AppSpaceContext | null;
   /**
    * Insert a row into the app's local namespace. Returns the row that
    * was written (with id + createdAt). The Svelte component supplies
@@ -271,6 +272,7 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
       name: app.name,
       mode: 'container' as const,
       standaloneUrl: app.standaloneUrl,
+      space: ctx.spaceContext ?? undefined,
     }),
     'db.insert': ({ payload, method }) => {
       if (method === 'create') {

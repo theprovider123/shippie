@@ -93,7 +93,20 @@ export async function wrapNavigation(
     .catch(() => {
       /* swallow */
     });
-  const vt = (document as DocumentWithViewTransition).startViewTransition!(update);
+  const runUpdateAndSettle = async () => {
+    await update();
+    // React state updates scheduled inside the transition callback may commit
+    // just after the callback returns. Waiting one frame keeps local app
+    // navigation visible instead of capturing and finishing on the old screen.
+    await new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(resolve, 0);
+    });
+  };
+  const vt = (document as DocumentWithViewTransition).startViewTransition!(runUpdateAndSettle);
   try {
     await vt.finished;
   } finally {

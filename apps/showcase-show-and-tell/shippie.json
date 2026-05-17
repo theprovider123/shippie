@@ -10,8 +10,9 @@
   "orientation": "portrait",
   "data_schemas": {},
   "curation": {
-    "surface": "arcade",
+    "surface": "archived",
     "category": "games",
-    "subcategory": "room"
+    "subcategory": "room",
+    "successor": "whiteboard"
   }
 }

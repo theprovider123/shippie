@@ -1141,6 +1141,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
           hub: true,
           minimumSdk: '1.0.0',
         },
+        spaces: input.manifest.spaces,
       },
       appFiles: input.files,
       version: {

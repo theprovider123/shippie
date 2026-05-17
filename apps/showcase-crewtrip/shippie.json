@@ -20,6 +20,37 @@
       "dined-out"
     ]
   },
+  "spaces": {
+    "enabled": true,
+    "roles": [
+      { "id": "host", "permissions": ["read", "write", "invite", "moderate"] },
+      { "id": "crew", "permissions": ["read", "write"] },
+      { "id": "viewer", "permissions": ["read"] }
+    ],
+    "syncMode": "inherited",
+    "archivable": true
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["trip-archive"],
+    "attachments": true,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "encrypted-chunked",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "shippie-crewtrip-v3",
+        "shippie-crewtrip-v3-backups",
+        "shippie-crewtrip-device-id"
+      ],
+      "prefixes": [
+        "shippie-crewtrip-host-v1:",
+        "shippie-crewtrip-player-v1:"
+      ]
+    }
+  },
   "data_schemas": {
     "events": {
       "id": "text primary key",

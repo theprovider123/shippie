@@ -16,14 +16,41 @@ import { ImportCard } from './share/ImportCard.tsx';
 import { checkRecipeImport, type RecipeImportCheck } from './share/recipe-import.ts';
 import { createLocalNavigation, migrateLocalDbTablesToDocument } from '@shippie/sdk/wrapper';
 import { INGREDIENTS_TABLE, RECIPES_TABLE, ingredientsSchema, recipesSchema } from './db/schema.ts';
+import { MealPlanTab, PantryTab, ShoppingTab } from './IntegratedTabs.tsx';
 
 type Route =
   | { kind: 'list' }
   | { kind: 'edit'; recipeId: string | null }
   | { kind: 'cook'; recipeId: string };
 
+type RecipeTab = 'recipes' | 'shopping' | 'meal-plan' | 'pantry';
+
+const RECIPE_TABS: Array<{ id: RecipeTab; label: string }> = [
+  { id: 'recipes', label: 'Recipes' },
+  { id: 'shopping', label: 'Shopping' },
+  { id: 'meal-plan', label: 'Meal Plan' },
+  { id: 'pantry', label: 'Pantry' },
+];
+
+const FOLDED_FROM: Record<string, { tab: RecipeTab; label: string }> = {
+  'shopping-list': { tab: 'shopping', label: 'Shopping List' },
+  'meal-planner': { tab: 'meal-plan', label: 'Meal Planner' },
+  'pantry-scanner': { tab: 'pantry', label: 'Pantry Scanner' },
+};
+
+function tabFromLocation(): RecipeTab {
+  if (typeof window === 'undefined') return 'recipes';
+  const tab = new URL(window.location.href).searchParams.get('tab');
+  return RECIPE_TABS.some((candidate) => candidate.id === tab) ? (tab as RecipeTab) : 'recipes';
+}
+
 export function App() {
   const [route, setRoute] = useState<Route>({ kind: 'list' });
+  const [activeTab, setActiveTab] = useState<RecipeTab>(() => tabFromLocation());
+  const [foldedFrom] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    return new URL(window.location.href).searchParams.get('from');
+  });
   const localNavigation = useMemo(
     () =>
       createLocalNavigation<Route>(
@@ -119,11 +146,25 @@ export function App() {
   }, []);
 
   const navigate = (next: Route) => {
+    setActiveTab('recipes');
+    setRoute(next);
     void localNavigation.navigate(next, { kind: next.kind === 'list' ? 'crossfade' : 'rise' });
   };
 
   const closeToList = () => {
+    setRoute({ kind: 'list' });
     void localNavigation.backOrReplace({ kind: 'list' }, { kind: 'crossfade' });
+  };
+
+  const selectTab = (tab: RecipeTab) => {
+    setActiveTab(tab);
+    setRoute({ kind: 'list' });
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tab === 'recipes') url.searchParams.delete('tab');
+      else url.searchParams.set('tab', tab);
+      window.history.replaceState(window.history.state, '', url);
+    }
   };
 
   const handleSaved = () => {
@@ -141,6 +182,7 @@ export function App() {
     setRefreshKey((n) => n + 1);
     closeToList();
   };
+  const foldedNotice = foldedFrom ? FOLDED_FROM[foldedFrom] : undefined;
 
   return (
     <div className="app">
@@ -194,7 +236,12 @@ export function App() {
           </section>
         </div>
       ) : null}
-      {route.kind === 'list' ? (
+      {route.kind === 'list' && foldedNotice?.tab === activeTab ? (
+        <div className="banner folded-banner" role="status">
+          {foldedNotice.label} now lives inside Recipe.
+        </div>
+      ) : null}
+      {route.kind === 'list' && activeTab === 'recipes' ? (
         <RecipeList
           onOpen={(id) => navigate({ kind: 'edit', recipeId: id })}
           onNew={() => navigate({ kind: 'edit', recipeId: null })}
@@ -212,6 +259,23 @@ export function App() {
       ) : null}
       {route.kind === 'cook' ? (
         <CookingMode recipeId={route.recipeId} onClose={closeToList} />
+      ) : null}
+      {route.kind === 'list' && activeTab === 'shopping' ? <ShoppingTab /> : null}
+      {route.kind === 'list' && activeTab === 'meal-plan' ? <MealPlanTab /> : null}
+      {route.kind === 'list' && activeTab === 'pantry' ? <PantryTab /> : null}
+      {route.kind === 'list' ? (
+        <nav className="recipe-tabs" aria-label="Recipe tools">
+          {RECIPE_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+              onClick={() => selectTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       ) : null}
 
       {pendingImport ? (

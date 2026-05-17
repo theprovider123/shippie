@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { canonicalShowcaseSlug, containerSlugForRequest } from '$lib/showcase-slugs';
+import { canonicalShowcaseTarget, containerSlugForRequest } from '$lib/showcase-slugs';
 import { loadContainerPageData } from '$server/container-page-data';
 
 export const load: PageServerLoad = ({ platform, params, url, setHeaders }) => {
@@ -11,9 +11,14 @@ export const load: PageServerLoad = ({ platform, params, url, setHeaders }) => {
   // 302s to shippie.app/run/<canonical>. Without this, old slugs
   // would silently render the canonical app under the old URL —
   // dishonest URL state and a confusing share story.
-  const canonical = canonicalShowcaseSlug(params.slug);
-  if (canonical !== params.slug) {
-    const target = `/run/${encodeURIComponent(canonical)}${url.search}`;
+  const canonical = canonicalShowcaseTarget(params.slug);
+  if (canonical.slug !== params.slug) {
+    const search = new URLSearchParams(url.search);
+    for (const [key, value] of Object.entries(canonical.searchParams ?? {})) {
+      search.set(key, value);
+    }
+    const query = search.toString();
+    const target = `/run/${encodeURIComponent(canonical.slug)}${query ? `?${query}` : ''}`;
     throw redirect(302, target);
   }
 
@@ -23,7 +28,7 @@ export const load: PageServerLoad = ({ platform, params, url, setHeaders }) => {
   return loadContainerPageData({
     platform,
     url,
-    requestedAppSlug: containerSlugForRequest(canonical),
+    requestedAppSlug: containerSlugForRequest(canonical.slug),
     focused: true,
   });
 };

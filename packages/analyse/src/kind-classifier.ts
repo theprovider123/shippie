@@ -86,6 +86,7 @@ interface ShippieConnectedRule {
 }
 
 const SHIPPIE_CONNECTED_RULES: ShippieConnectedRule[] = [
+  { pattern: /@shippie\/spaces/, signal: 'shippie-spaces' },
   { pattern: /@shippie\/proximity/, signal: 'shippie-proximity' },
   { pattern: /\bcreateGroup\s*\(/, signal: 'shippie-create-group' },
   { pattern: /\bjoinGroup\s*\(/, signal: 'shippie-join-group' },

@@ -1160,7 +1160,6 @@ interface InheritedSnapshotState {
 function withInheritedDataDefaults(opts: YourDataPanelOptions): YourDataPanelOptions {
   const appSlug = opts.appSlug ?? readShippieMetaSlug();
   if (!appSlug) return opts;
-  if (isSkippedInheritedDataApp(appSlug)) return opts;
   const storageScope = inheritedStorageScope(appSlug, opts.inheritedStorage);
   return {
     ...opts,
@@ -1168,10 +1167,6 @@ function withInheritedDataDefaults(opts: YourDataPanelOptions): YourDataPanelOpt
     buildAccessBundle: opts.buildAccessBundle ?? (() => buildInheritedAccessBundle(appSlug, storageScope)),
     onAccessBundleReceived: opts.onAccessBundleReceived ?? ((bundle) => receiveInheritedAccessBundle(appSlug, bundle, storageScope)),
   };
-}
-
-function isSkippedInheritedDataApp(appSlug: string): boolean {
-  return appSlug === 'crewtrip' || appSlug === 'showcase-crewtrip' || appSlug === 'app_crewtrip';
 }
 
 async function inheritedPrivateSync(appSlug: string, storageScope: InheritedStorageScope): Promise<PrivateSyncPanelState> {

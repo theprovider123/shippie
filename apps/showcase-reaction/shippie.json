@@ -15,8 +15,9 @@
     "consumes": []
   },
   "curation": {
-    "surface": "arcade",
+    "surface": "archived",
     "category": "games",
-    "subcategory": "arcade-cabinet"
+    "subcategory": "arcade-cabinet",
+    "successor": "daily-puzzle"
   }
 }

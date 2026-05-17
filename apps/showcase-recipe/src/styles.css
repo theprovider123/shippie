@@ -998,6 +998,187 @@ button:disabled {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.folded-banner {
+  text-transform: capitalize;
+}
+
+.recipe-tabs {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  max-width: 720px;
+  margin: auto auto 0;
+  padding: 8px 10px calc(8px + var(--safe-bottom));
+  background: color-mix(in oklab, var(--bg) 94%, transparent);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+}
+
+.recipe-tabs button {
+  height: 44px;
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.1;
+  color: var(--muted);
+}
+
+.recipe-tabs button:last-child {
+  border-right: 0;
+}
+
+.recipe-tabs button[aria-current="page"] {
+  color: var(--fg);
+  background: rgba(232, 96, 60, 0.1);
+}
+
+.integrated-page {
+  padding: 16px 20px 96px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.inline-add,
+.pantry-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.pantry-add {
+  grid-template-columns: minmax(0, 1.8fr) minmax(54px, 0.6fr) minmax(54px, 0.6fr);
+}
+
+.pantry-add select,
+.pantry-add button {
+  grid-column: span 1;
+}
+
+.inline-add input,
+.pantry-add input,
+.pantry-add select,
+.meal-slot input {
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+  color: var(--fg);
+  padding: 0 12px;
+}
+
+.meal-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.meal-day {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.52);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.meal-day h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 18px;
+}
+
+.meal-slot {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.simple-list,
+.pantry-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.simple-list li button {
+  width: 100%;
+  min-height: 48px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  background: #fff;
+  border-color: var(--line);
+}
+
+.simple-list li.complete button {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.checkmark {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.pantry-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 12px;
+}
+
+.pantry-list div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pantry-list strong {
+  overflow-wrap: anywhere;
+}
+
+.pantry-list span,
+.empty-inline,
+.camera-status,
+.tab-actions p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #14120F;
@@ -1010,7 +1191,20 @@ button:disabled {
   .field textarea,
   .autocomplete input,
   .autocomplete-list,
-  .search-input {
+  .search-input,
+  .inline-add input,
+  .pantry-add input,
+  .pantry-add select,
+  .meal-slot input,
+  .simple-list li button,
+  .meal-day,
+  .pantry-list li {
     background: #1F1B16;
+  }
+}
+
+@media (min-width: 720px) {
+  .meal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

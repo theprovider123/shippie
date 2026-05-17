@@ -26,6 +26,7 @@ export type ContainerPackageSummary = {
   trust: Pick<TrustReport, 'containerEligibility' | 'privacy' | 'security'>;
   visibility: 'public' | 'unlisted' | 'private' | 'team';
   owned: boolean;
+  spaces?: AppPackageManifest['spaces'];
 };
 
 export type ContainerPrivateJoin = {
@@ -36,6 +37,9 @@ export type ContainerPrivateJoin = {
   packageHash: string;
   packageUrl: string;
   transferId: string | null;
+  spaceId: string | null;
+  role: string | null;
+  joinToken: string | null;
   source: 'invite' | 'grant';
 };
 
@@ -175,6 +179,7 @@ export async function loadContainerPageData({
         },
         visibility: normalizeVisibility(row.visibilityScope),
         owned: Boolean(userId && row.makerId === userId),
+        spaces: manifest.spaces,
       } satisfies ContainerPackageSummary;
     }),
   );
@@ -214,8 +219,26 @@ export function resolvePrivateJoinState(input: {
     packageHash: pkg.packageHash,
     packageUrl: pkg.packageUrl,
     transferId: privateJoinTransferIdFromUrl(input.url),
+    spaceId: spaceIdFromUrl(input.url),
+    role: roleFromUrl(input.url),
+    joinToken: joinTokenFromUrl(input.url),
     source: input.inviteGrantForRequestedApp ? 'invite' : 'grant',
   };
+}
+
+function spaceIdFromUrl(url: URL): string | null {
+  const value = url.searchParams.get('space') ?? url.searchParams.get('room');
+  return value && /^[A-Za-z0-9_-]{3,80}$/.test(value) ? value : null;
+}
+
+function roleFromUrl(url: URL): string | null {
+  const value = url.searchParams.get('role') ?? url.searchParams.get('space_role');
+  return value && /^[a-z][a-z0-9_-]{0,63}$/.test(value) ? value : null;
+}
+
+function joinTokenFromUrl(url: URL): string | null {
+  const value = url.searchParams.get('space_join') ?? url.searchParams.get('join_token');
+  return value && /^[A-Za-z0-9_-]{3,120}$/.test(value) ? value : null;
 }
 
 function normalizeVisibility(value: string): ContainerPackageSummary['visibility'] {

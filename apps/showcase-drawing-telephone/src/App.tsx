@@ -20,6 +20,8 @@ import { strokesToDataUrl, type SketchStroke } from './sketch';
  */
 
 const APP_SLUG = 'drawing-telephone';
+const WYR_LEGACY_KEY = 'shippie:wyr:v1';
+const WYR_IMPORTED_KEY = 'drawing-telephone.wyr.answers.v1';
 const sdk = createShippieIframeSdk({ appId: 'app_drawing_telephone' });
 const observations = createObservationClient(sdk);
 
@@ -367,10 +369,24 @@ const PROMPT_PACKS: Record<string, string[]> = {
   food:   ['A goldfish in a teacup', 'Spaghetti volcano', 'Cake with too many candles', 'A grumpy avocado', 'Sushi pirate', 'Donut planet'],
   movies: ['Titanic, but it floats', 'Mona Lisa with sunglasses', 'Moonwalking robot', 'Time-travelling toaster', 'Underwater cinema', 'Cowboy ninja'],
   jokes:  ['Bear in a tutu', 'Penguin lawyer', 'Octopus drum kit', 'Shark on a unicycle', 'Pigeon mafia', 'Squirrel CEO'],
+  'would-you-rather': [
+    'Would you rather always be early or always be late?',
+    'Would you rather read minds or be invisible?',
+    'Would you rather live by the sea or by a river?',
+    'Would you rather pause time or rewind ten seconds?',
+    'Would you rather cook for twelve or cook for one?',
+    'Would you rather take a solo road trip or a group hike?',
+  ],
 };
 
 function PromptPackPicker({ onPick }: { onPick: (s: string) => void }) {
-  const [pack, setPack] = useState<keyof typeof PROMPT_PACKS>('food');
+  const [pack, setPack] = useState<keyof typeof PROMPT_PACKS>(() => {
+    if (typeof window === 'undefined') return 'food';
+    return new URLSearchParams(window.location.search).get('pack') === 'would-you-rather'
+      ? 'would-you-rather'
+      : 'food';
+  });
+  const wyrAnswers = useMemo(() => importWyrAnswers(), []);
   const items = PROMPT_PACKS[pack]!;
   return (
     <div className="prompt-packs">
@@ -384,8 +400,50 @@ function PromptPackPicker({ onPick }: { onPick: (s: string) => void }) {
           <button key={item} type="button" className="pack-chip" onClick={() => onPick(item)}>{item}</button>
         ))}
       </div>
+      {pack === 'would-you-rather' ? (
+        <details className="wyr-history">
+          <summary>Your past answers · {wyrAnswers.length}</summary>
+          {wyrAnswers.length > 0 ? (
+            <ul>
+              {wyrAnswers.slice(0, 12).map((answer) => (
+                <li key={answer.question_id}>
+                  <span>{answer.date}</span>
+                  <strong>{answer.choice.toUpperCase()}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted small">No Would You Rather answers on this device yet.</p>
+          )}
+        </details>
+      ) : null}
     </div>
   );
+}
+
+interface WyrAnswer {
+  question_id: string;
+  date: string;
+  choice: 'a' | 'b';
+}
+
+function importWyrAnswers(): WyrAnswer[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const imported = localStorage.getItem(WYR_IMPORTED_KEY);
+    if (imported) return sortWyr(JSON.parse(imported) as Record<string, WyrAnswer>);
+    const legacy = localStorage.getItem(WYR_LEGACY_KEY);
+    if (!legacy) return [];
+    const parsed = JSON.parse(legacy) as Record<string, WyrAnswer>;
+    localStorage.setItem(WYR_IMPORTED_KEY, JSON.stringify(parsed));
+    return sortWyr(parsed);
+  } catch {
+    return [];
+  }
+}
+
+function sortWyr(rows: Record<string, WyrAnswer>): WyrAnswer[] {
+  return Object.values(rows).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 interface SpeechRecognitionLike {

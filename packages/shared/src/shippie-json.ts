@@ -32,6 +32,18 @@ export interface ShippieJsonDataPolicy {
   realtime?: ShippieDataRealtime;
 }
 
+export interface ShippieJsonSpaceRole {
+  id: string;
+  permissions?: readonly string[];
+}
+
+export interface ShippieJsonSpaces {
+  enabled: boolean;
+  roles?: readonly ShippieJsonSpaceRole[];
+  syncMode?: 'gossip' | 'sealed-cloud' | 'hub' | 'inherited';
+  archivable?: boolean;
+}
+
 export interface ShippieJsonBuild {
   command: string;
   output: string;
@@ -216,6 +228,7 @@ export interface ShippieJson {
   sdk?: ShippieJsonSdk;
   permissions?: ShippieJsonPermissions;
   data?: ShippieJsonDataPolicy;
+  spaces?: ShippieJsonSpaces;
   allowed_connect_domains?: readonly string[];
   functions?: ShippieJsonFunctions;
   listing?: ShippieJsonListing;

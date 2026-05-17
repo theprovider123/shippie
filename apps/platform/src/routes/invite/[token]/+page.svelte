@@ -1,10 +1,16 @@
 <script lang="ts">
   import type { PageProps } from './$types';
+  import { page } from '$app/stores';
   import Button from '$lib/components/ui/Button.svelte';
   import { enhance } from '$app/forms';
 
   let { data, form }: PageProps = $props();
   let submitting = $state(false);
+
+  function claimAction(): string {
+    const query = $page.url.searchParams.toString();
+    return query ? `?/claim&${query}` : '?/claim';
+  }
 </script>
 
 <svelte:head>
@@ -27,7 +33,7 @@
       {/if}
       <form
         method="POST"
-        action="?/claim"
+        action={claimAction()}
         use:enhance={() => {
           submitting = true;
           return async ({ update }) => {

@@ -262,17 +262,33 @@ program
   .description('Create a link invite for a private app')
   .option('--max-uses <n>', 'Hard cap on claims', (v) => Number(v))
   .option('--expires <days>', 'Expire after this many days', (v) => Number(v))
+  .option('--space-invite', 'Append generated private-space context to the invite URL')
+  .option('--space <id>', 'Use an existing private space id')
+  .option('--role <role>', 'Role hint for the person claiming this invite')
+  .option('--join-token <token>', 'Use a specific space join token')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(
     async (
       slug: string,
-      opts: { maxUses?: number; expires?: number; api?: string },
+      opts: {
+        maxUses?: number;
+        expires?: number;
+        spaceInvite?: boolean;
+        space?: string;
+        role?: string;
+        joinToken?: string;
+        api?: string;
+      },
     ) => {
       await inviteCreate({
         slug,
         apiUrl: opts.api ?? 'https://shippie.app',
         maxUses: opts.maxUses,
         expiresDays: opts.expires,
+        spaceInvite: opts.spaceInvite,
+        spaceId: opts.space,
+        role: opts.role,
+        joinToken: opts.joinToken,
       });
     },
   );

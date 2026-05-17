@@ -21,6 +21,16 @@
       "body-metrics-logged"
     ]
   },
+  "spaces": {
+    "enabled": true,
+    "roles": [
+      { "id": "owner", "permissions": ["read", "write", "invite", "moderate"] },
+      { "id": "editor", "permissions": ["read", "write"] },
+      { "id": "viewer", "permissions": ["read"] }
+    ],
+    "syncMode": "sealed-cloud",
+    "archivable": true
+  },
   "privacy": {
     "local_only": true,
     "encrypted_at_rest": true

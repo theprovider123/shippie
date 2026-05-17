@@ -16,7 +16,7 @@ describe('match-room signal config', () => {
     });
     try {
       const url = matchRoomUrl({ role: 'display', roomId: 'room-1', roomKey: 'secret' });
-      expect(url).toBe('http://hub.local/run/match-room/?role=display&room=room-1#k=secret');
+      expect(url).toBe('http://hub.local/run/match-room/?space=room-1&role=display&room=room-1#k=secret');
     } finally {
       Object.defineProperty(globalThis, 'location', { configurable: true, value: previous });
     }
@@ -36,7 +36,7 @@ describe('match-room signal config', () => {
         locale: 'es',
         timeZone: 'America/Mexico_City',
       });
-      expect(url).toBe('http://hub.local/run/match-room/?role=play&room=room-1&lang=es&tz=America%2FMexico_City#k=secret');
+      expect(url).toBe('http://hub.local/run/match-room/?space=room-1&role=play&room=room-1&lang=es&tz=America%2FMexico_City#k=secret');
     } finally {
       Object.defineProperty(globalThis, 'location', { configurable: true, value: previous });
     }

@@ -31,6 +31,7 @@ interface PackageSummary {
   owned?: boolean;
   permissions: ContainerApp['permissions'];
   trust?: Pick<TrustReport, 'containerEligibility' | 'privacy' | 'security'>;
+  spaces?: AppPackageManifest['spaces'];
 }
 
 /**
@@ -57,6 +58,7 @@ export function packageToContainerApp(pkg: PackageSummary): ContainerApp {
     owned: pkg.owned,
     permissions: pkg.permissions,
     trust: pkg.trust,
+    spaces: pkg.spaces,
   };
 }
 
@@ -86,6 +88,7 @@ export function manifestToContainerApp(
     visibility: 'local',
     owned: true,
     permissions: permissions ?? localPermissions(manifest.slug),
+    spaces: manifest.spaces,
   };
   // Carry surface through so the bridge's arcade-aware capability
   // gates fire for third-party arcade apps too. Manifests built before

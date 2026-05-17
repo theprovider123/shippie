@@ -29,6 +29,7 @@
   },
   "curation": {
     "surface": "archived",
-    "category": "tools"
+    "category": "tools",
+    "successor": "recipe"
   }
 }

@@ -63,7 +63,19 @@ describe('container private join data', () => {
       packageHash: pkg.packageHash,
       packageUrl: pkg.packageUrl,
       transferId: 'transfer_abcdefghijkl',
+      spaceId: null,
+      role: null,
+      joinToken: null,
       source: 'invite',
     });
+  });
+
+  test('carries private space role hints into the package handoff', () => {
+    expect(resolvePrivateJoinState({
+      url: new URL('https://shippie.test/container?app=private-room&join=private-space&space=space_pub_final&role=viewer&space_join=join_abc123'),
+      requestedAppSlug: 'private-room',
+      packages: [pkg],
+      inviteGrantForRequestedApp: true,
+    })?.role).toBe('viewer');
   });
 });

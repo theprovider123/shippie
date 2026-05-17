@@ -63,10 +63,12 @@ export function App() {
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   function navigate(next: Route, kind: 'crossfade' | 'rise' = 'crossfade'): void {
+    setRoute(next);
     void localNavigation.navigate(next, { kind });
   }
 
   function closeHome(): void {
+    setRoute({ kind: 'home' });
     void localNavigation.backOrReplace({ kind: 'home' }, { kind: 'crossfade' });
   }
 
@@ -189,6 +191,7 @@ export function App() {
   function deleteCustomRecipe(id: string) {
     if (!confirm('Delete this recipe from your library?')) return;
     setCustomRecipes((prev) => prev.filter((r) => r.id !== id));
+    setRoute({ kind: 'home' });
     void localNavigation.replace({ kind: 'home' }, { kind: 'crossfade' });
   }
 
@@ -205,6 +208,7 @@ export function App() {
           bakes={bakes}
           customRecipes={customRecipes}
           onPickRecipe={(r) => navigate({ kind: 'recipe', recipeId: r.id }, 'rise')}
+          onQuickStart={startBake}
           onNewRecipe={() => navigate({ kind: 'new-recipe' }, 'rise')}
           onOpenBake={(id) => navigate({ kind: 'bake', bakeId: id }, 'rise')}
           onOpenActive={() => navigate({ kind: 'active' })}
@@ -219,7 +223,9 @@ export function App() {
             setCustomRecipes((prev) => [recipe, ...prev]);
             setPrefs((prev) => ({ ...prev, lastMode: modeForLeaven(recipe.leaven) }));
             shippie.feel.texture('confirm');
-            void localNavigation.replace({ kind: 'recipe', recipeId: recipe.id }, { kind: 'crossfade' });
+            const next: Route = { kind: 'recipe', recipeId: recipe.id };
+            setRoute(next);
+            void localNavigation.replace(next, { kind: 'crossfade' });
           }}
           onCancel={closeHome}
         />

@@ -15,6 +15,7 @@
   } from '@shippie/app-package-contract';
   import type { PageData } from './$types';
   import {
+    type AppSpaceContext,
     type BridgeLog,
     type ContainerApp,
     type ContainerSection,
@@ -1042,6 +1043,7 @@
         handlers: createAppHandlers({
           appId,
           app,
+          spaceContext: currentSpaceContextFor(app),
           insertRow,
           createTable,
           updateRow,
@@ -2470,7 +2472,9 @@
   });
 
   function srcdocFor(app: ContainerApp): string {
-    return appPackageSrcdoc(app, packageFilesByApp[app.id]);
+    return appPackageSrcdoc(app, packageFilesByApp[app.id], {
+      spaceContext: currentSpaceContextFor(app),
+    });
   }
 
   function frameSrcFor(app: ContainerApp): string | null {
@@ -2503,6 +2507,40 @@
       forwarded.append(key, value);
     });
     return forwarded;
+  }
+
+  function currentSpaceContextFor(app: ContainerApp): AppSpaceContext | null {
+    const currentUrl = typeof window === 'undefined' ? $page.url : new URL(window.location.href);
+    if (!data.focused || data.requestedAppSlug !== app.slug) return null;
+
+    const fromSearch = spaceContextFromParams(currentUrl.searchParams, data.privateJoin ? 'private-join' : 'url');
+    if (fromSearch) return fromSearch;
+
+    if (
+      data.privateJoin?.appSlug === app.slug &&
+      (data.privateJoin.spaceId || data.privateJoin.role || data.privateJoin.joinToken)
+    ) {
+      return {
+        spaceId: data.privateJoin.spaceId ?? `${app.slug}:${data.privateJoin.packageHash}`,
+        role: data.privateJoin.role,
+        joinToken: data.privateJoin.joinToken,
+        source: 'private-join',
+      };
+    }
+    return null;
+  }
+
+  function spaceContextFromParams(params: URLSearchParams, source: AppSpaceContext['source']): AppSpaceContext | null {
+    const spaceId = params.get('space') ?? params.get('room');
+    const role = params.get('role') ?? params.get('space_role');
+    const joinToken = params.get('space_join') ?? params.get('join_token');
+    if (!spaceId || !/^[A-Za-z0-9_-]{3,80}$/.test(spaceId)) return null;
+    return {
+      spaceId,
+      role: role && /^[a-z][a-z0-9_-]{0,63}$/.test(role) ? role : null,
+      joinToken: joinToken && /^[A-Za-z0-9_-]{3,120}$/.test(joinToken) ? joinToken : null,
+      source,
+    };
   }
 
 </script>

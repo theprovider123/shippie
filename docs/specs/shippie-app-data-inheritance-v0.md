@@ -151,8 +151,7 @@ The harness checks:
 The first v0 app is Match Room plus Tournament Fantasy.
 
 The generic inheritance baseline applies to every app opened through the Shippie
-wrapper except Crewtrip, which is intentionally paused for a later bespoke
-migration. The generic baseline captures browser-local state into a private app
+wrapper. The generic baseline captures browser-local state into a private app
 safety document for sealed handover. App-specific reducers, conflict handling,
 and richer schema migrations still happen app-by-app.
 

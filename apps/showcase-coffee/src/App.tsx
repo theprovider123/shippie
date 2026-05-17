@@ -41,6 +41,7 @@ export function App() {
   const [selectedBeanId, setSelectedBeanId] = useState<string | null>(initial.beans[0]?.id ?? null);
   // When set, render BeanPage instead of the active tab.
   const [openBeanId, setOpenBeanId] = useState<string | null>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const localNavigation = useMemo(
     () =>
       createLocalNavigation<Screen>(
@@ -61,14 +62,19 @@ export function App() {
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
   function navigateTab(next: Tab): void {
+    setTab(next);
+    setOpenBeanId(null);
     void localNavigation.navigate({ tab: next, beanId: null }, { kind: 'crossfade' });
+    setToolsOpen(false);
   }
 
   function openBeanById(id: string): void {
+    setOpenBeanId(id);
     void localNavigation.navigate({ tab, beanId: id }, { kind: 'rise' });
   }
 
   function closeBean(): void {
+    setOpenBeanId(null);
     void localNavigation.backOrReplace({ tab, beanId: null }, { kind: 'crossfade' });
   }
 
@@ -133,6 +139,7 @@ export function App() {
       setSelectedBeanId(next?.id ?? null);
     }
     if (openBeanId === id) {
+      setOpenBeanId(null);
       void localNavigation.replace({ tab, beanId: null }, { kind: 'crossfade' });
     }
     setTastingNotes((prev) => prev.filter((n) => n.bean_id !== id));
@@ -148,25 +155,21 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Coffee</h1>
-        <p className="subtitle">ratio · grind · brew</p>
+        <div>
+          <h1>Coffee</h1>
+          <p className="subtitle">brew the usual</p>
+        </div>
+        {!openBean ? (
+          <button type="button" className="ghost app-header-action" onClick={() => setToolsOpen(true)}>
+            Tools
+          </button>
+        ) : null}
       </header>
 
-      {!openBean ? (
-        <nav className="tabs" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              type="button"
-              aria-selected={t.id === tab}
-              className={`tab ${t.id === tab ? 'active' : ''}`}
-              onClick={() => navigateTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
+      {!openBean && tab !== 'brew' ? (
+        <button type="button" className="ghost back-to-brew" onClick={() => navigateTab('brew')}>
+          Back to brew
+        </button>
       ) : null}
 
       {openBean ? (
@@ -182,6 +185,8 @@ export function App() {
           onBack={closeBean}
           onBrewWithThis={() => {
             setSelectedBeanId(openBean.id);
+            setTab('brew');
+            setOpenBeanId(null);
             void localNavigation.navigate({ tab: 'brew', beanId: null }, { kind: 'crossfade' });
           }}
         />
@@ -205,6 +210,47 @@ export function App() {
       ) : (
         <HistoryPage brews={brews} />
       )}
+
+      {!openBean && toolsOpen ? (
+        <div className="sheet-backdrop" role="presentation" onClick={() => setToolsOpen(false)}>
+          <section
+            className="bottom-sheet"
+            role="dialog"
+            aria-label="Coffee tools"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sheet-grip" aria-hidden="true" />
+            <header className="sheet-head">
+              <div>
+                <p className="eyebrow">Coffee tools</p>
+                <h2>Setup, beans, history</h2>
+              </div>
+              <button type="button" className="ghost" onClick={() => setToolsOpen(false)}>
+                Close
+              </button>
+            </header>
+            <div className="sheet-actions">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={t.id === tab ? 'active' : ''}
+                  onClick={() => navigateTab(t.id)}
+                >
+                  <span>{t.label}</span>
+                  <small>
+                    {t.id === 'brew'
+                      ? 'Return to timer and brew setup'
+                      : t.id === 'beans'
+                        ? `${beans.length} saved beans`
+                        : `${brews.length} logged brews`}
+                  </small>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
     </div>
   );

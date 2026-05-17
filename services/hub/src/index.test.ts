@@ -72,6 +72,18 @@ describe('startHub', () => {
     }, freshCache('dash'));
   });
 
+  test('serves ambient discovery for nearby phones', async () => {
+    await withHub(async (port) => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/hub/ambient`);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { schema: string; hub: { name: string }; rooms: unknown[]; tools: unknown[] };
+      expect(json.schema).toBe('shippie.hub.ambient.v1');
+      expect(json.hub.name).toBe('hub-test');
+      expect(json.rooms).toEqual([]);
+      expect(json.tools).toEqual([]);
+    }, freshCache('ambient'));
+  });
+
   test('serves cached app via Host: <slug>.hub.local', async () => {
     const root = freshCache('app');
     mkdirSync(join(root, 'apps', 'recipe', 'v1'), { recursive: true });

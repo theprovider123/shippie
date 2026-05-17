@@ -8,6 +8,7 @@ import {
   type DocumentAccessBundle,
   type DocumentHandle,
 } from '@shippie/doc';
+import { sha256Base64Url } from '@shippie/spaces';
 import { emptyArchiveState, reduceMatchRoomArchive } from './matchday-state.ts';
 import {
   readCommentaryPosts,
@@ -210,14 +211,6 @@ function sortValue(value: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(record).sort()) out[key] = sortValue(record[key]);
   return out;
-}
-
-async function sha256Base64Url(value: string): Promise<string> {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  let bin = '';
-  for (const byte of new Uint8Array(digest)) bin += String.fromCharCode(byte);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function safeLocalStorage(): Storage | null {

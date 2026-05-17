@@ -533,6 +533,17 @@ p {
   color: var(--ink-muted);
 }
 
+.moved-notice {
+  margin: 0;
+  max-width: 62ch;
+  border: 1px solid rgba(14, 92, 58, 0.22);
+  background: rgba(14, 92, 58, 0.08);
+  color: var(--ink);
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 .start-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

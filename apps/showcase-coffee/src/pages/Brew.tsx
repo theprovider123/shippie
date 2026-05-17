@@ -61,6 +61,7 @@ export function BrewPage({
   const [brewing, setBrewing] = useState<boolean>(false);
   const [seconds, setSeconds] = useState<number>(0);
   const [justBrewed, setJustBrewed] = useState<JustBrewed | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -123,49 +124,21 @@ export function BrewPage({
 
   return (
     <main className="page page-brew">
-      {/* Bean strip */}
-      <section className="strip" aria-label="Saved beans">
-        {beans.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            className={`bean-chip ${b.id === selectedBeanId ? 'active' : ''}`}
-            onClick={() => onSelectBean(b.id)}
-            title={b.notes ?? ''}
-          >
-            <span className="bean-name">{b.name}</span>
-            <span className="bean-meta">
-              {METHOD_LABEL[b.method]} · 1:{b.ratio}
-            </span>
-          </button>
-        ))}
-      </section>
-
-      {/* Selected bean freshness */}
       {selectedBean ? (
-        <div className="active-bean-line">
-          <span className="active-bean-name">{selectedBean.name}</span>
-          {fresh ? (
-            <span className={`freshness-tag tag-${fresh.band}`}>
-              {fresh.daysSinceRoast}d · {fresh.label}
-            </span>
-          ) : null}
+        <div className="brew-primary-line">
+          <div>
+            <p className="eyebrow">using</p>
+            <span className="active-bean-name">{selectedBean.name}</span>
+          </div>
+          <button type="button" className="ghost" onClick={() => setSetupOpen(true)}>
+            Setup
+          </button>
         </div>
-      ) : null}
-
-      <RatioDial
-        method={method}
-        weightG={weightG}
-        ratio={ratio}
-        onChangeMethod={handleMethodChange}
-        onChangeWeight={setWeightG}
-        onChangeRatio={setRatio}
-      />
-
-      <p className="grind-hint muted small">
-        suggested grind: <strong>{grindHint}</strong>
-        {selectedBean?.grind ? ` · saved: ${selectedBean.grind}` : ''}
-      </p>
+      ) : (
+        <button type="button" className="ghost setup-wide" onClick={() => setSetupOpen(true)}>
+          Choose bean and brew setup
+        </button>
+      )}
 
       <section className="timer">
         <p className={`time ${overTime ? 'time-over' : ''}`}>
@@ -202,6 +175,68 @@ export function BrewPage({
           }}
           onSkip={() => setJustBrewed(null)}
         />
+      ) : null}
+
+      {setupOpen ? (
+        <div className="sheet-backdrop" role="presentation" onClick={() => setSetupOpen(false)}>
+          <section
+            className="bottom-sheet"
+            role="dialog"
+            aria-label="Brew setup"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sheet-grip" aria-hidden="true" />
+            <header className="sheet-head">
+              <div>
+                <p className="eyebrow">Brew setup</p>
+                <h2>Bean, ratio, grind</h2>
+              </div>
+              <button type="button" className="ghost" onClick={() => setSetupOpen(false)}>
+                Done
+              </button>
+            </header>
+
+            <section className="strip" aria-label="Saved beans">
+              {beans.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  className={`bean-chip ${b.id === selectedBeanId ? 'active' : ''}`}
+                  onClick={() => onSelectBean(b.id)}
+                  title={b.notes ?? ''}
+                >
+                  <span className="bean-name">{b.name}</span>
+                  <span className="bean-meta">
+                    {METHOD_LABEL[b.method]} · 1:{b.ratio}
+                  </span>
+                </button>
+              ))}
+            </section>
+
+            {selectedBean && fresh ? (
+              <div className="active-bean-line">
+                <span className="active-bean-name">{selectedBean.name}</span>
+                <span className={`freshness-tag tag-${fresh.band}`}>
+                  {fresh.daysSinceRoast}d · {fresh.label}
+                </span>
+              </div>
+            ) : null}
+
+            <RatioDial
+              method={method}
+              weightG={weightG}
+              ratio={ratio}
+              onChangeMethod={handleMethodChange}
+              onChangeWeight={setWeightG}
+              onChangeRatio={setRatio}
+            />
+
+            <p className="grind-hint muted small">
+              suggested grind: <strong>{grindHint}</strong>
+              {selectedBean?.grind ? ` · saved: ${selectedBean.grind}` : ''}
+            </p>
+          </section>
+        </div>
       ) : null}
     </main>
   );

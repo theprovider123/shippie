@@ -14,6 +14,16 @@
   "groups": {
     "enabled": true
   },
+  "spaces": {
+    "enabled": true,
+    "roles": [
+      { "id": "host", "permissions": ["read", "write", "invite", "moderate", "archive"] },
+      { "id": "play", "permissions": ["read", "write"] },
+      { "id": "display", "permissions": ["read"] }
+    ],
+    "syncMode": "gossip",
+    "archivable": true
+  },
   "data": {
     "mode": "shippie-documents",
     "documents": ["room-archive"],

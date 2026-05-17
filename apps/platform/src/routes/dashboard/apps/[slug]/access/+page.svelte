@@ -6,7 +6,17 @@
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
-  const activeInvites = $derived(data.invites.filter((i) => i.revokedAt == null));
+  const activeInvites = $derived(data.invites.filter(isInviteActive));
+  const hostRole = $derived(
+    data.spaces?.roles.find((role) => role.permissions.includes('invite'))?.id ?? 'host',
+  );
+
+  function isInviteActive(invite: (typeof data.invites)[number]): boolean {
+    if (invite.revokedAt != null) return false;
+    if (invite.maxUses != null && invite.usedCount >= invite.maxUses) return false;
+    if (invite.expiresAt && Date.parse(invite.expiresAt) <= Date.now()) return false;
+    return true;
+  }
 </script>
 
 <svelte:head><title>Access · {data.app.name}</title></svelte:head>
@@ -14,9 +24,47 @@
 {#if data.app.visibilityScope === 'private'}
   <section class="block share">
     <h2>Share private space</h2>
-    <PrivateSpaceShareComposer slug={data.app.slug} appName={data.app.name} />
+    <PrivateSpaceShareComposer
+      slug={data.app.slug}
+      appName={data.app.name}
+      spaces={data.spaces}
+      existingSpaces={data.privateSpaces}
+    />
   </section>
 {/if}
+
+<section class="block">
+  <h2>Private spaces</h2>
+  {#if data.privateSpaces.length === 0}
+    <p class="muted">No private spaces yet. Create an invite to start one.</p>
+  {:else}
+    <div class="space-list">
+      {#each data.privateSpaces as space (space.id)}
+        <article class:archived={space.status === 'archived'} class="space-row">
+          <div>
+            <strong>{space.name}</strong>
+            <p class="muted mono">
+              {space.id} · {space.status}
+              {#if space.latestToken}
+                · latest {space.latestToken.role}
+                · {space.latestToken.inviteUsedCount}{#if space.latestToken.inviteMaxUses != null}/{space.latestToken.inviteMaxUses}{/if} used
+              {/if}
+            </p>
+          </div>
+          <div class="space-actions">
+            <a href={`/container?app=${encodeURIComponent(data.app.slug)}&focused=1&space=${encodeURIComponent(space.id)}&role=${encodeURIComponent(hostRole)}`}>Host</a>
+            {#if space.status !== 'archived'}
+              <form method="POST" action="?/archiveSpace">
+                <input type="hidden" name="spaceId" value={space.id} />
+                <button type="submit">Archive</button>
+              </form>
+            {/if}
+          </div>
+        </article>
+      {/each}
+    </div>
+  {/if}
+</section>
 
 <section class="block">
   <h2>Visibility</h2>
@@ -68,9 +116,35 @@
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 0 0 0.75rem 0; }
   .muted { color: #8B847A; }
   .invite-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .space-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .space-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    border: 1px solid #E5DDC8;
+    padding: 0.75rem;
+  }
+  .space-row.archived { opacity: 0.62; }
+  .space-row strong { display: block; margin-bottom: 0.25rem; }
+  .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+  .space-actions { display: flex; gap: 0.5rem; align-items: center; }
+  .space-actions a,
+  .space-actions button {
+    border: 1px solid #C9C2B1;
+    background: transparent;
+    color: inherit;
+    padding: 4px 12px;
+    font-size: 12px;
+    text-decoration: none;
+    cursor: pointer;
+  }
   ul { list-style: none; padding: 0; margin: 0; }
   ul li { padding: 0.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-family: ui-monospace, monospace; font-size: 13px; color: #8B847A; }
   @media (prefers-color-scheme: dark) {
     ul li { border-color: rgba(255,255,255,0.05); }
+    .space-row { border-color: #2A251E; }
+    .space-actions a,
+    .space-actions button { border-color: #3A352D; }
   }
 </style>

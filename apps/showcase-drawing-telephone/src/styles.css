@@ -222,6 +222,31 @@ input[type="text"] {
   font-size: 12px;
 }
 .pack-chip:hover { background: rgba(79, 164, 135, 0.18); }
+.wyr-history {
+  border: 1px solid rgba(42, 31, 22, 0.16);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.wyr-history summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.wyr-history ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.wyr-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wyr-history strong {
+  color: var(--accent);
+}
 
 .caption-row {
   display: flex;

@@ -682,6 +682,7 @@
         "@shippie/doc": "workspace:*",
         "@shippie/proximity": "workspace:*",
         "@shippie/qr": "workspace:*",
+        "@shippie/spaces": "workspace:*",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
       },
@@ -1767,6 +1768,18 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/spaces": {
+      "name": "@shippie/spaces",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shippie/proximity": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.12",
+        "@types/node": "^22.10.0",
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/templates": {
       "name": "@shippie/templates",
       "version": "0.0.0",
@@ -2432,6 +2445,8 @@
     "@shippie/showcase-whiteboard": ["@shippie/showcase-whiteboard@workspace:apps/showcase-whiteboard"],
 
     "@shippie/showcase-would-you-rather": ["@shippie/showcase-would-you-rather@workspace:apps/showcase-would-you-rather"],
+
+    "@shippie/spaces": ["@shippie/spaces@workspace:packages/spaces"],
 
     "@shippie/templates": ["@shippie/templates@workspace:packages/templates"],
 

@@ -7,7 +7,7 @@
  * Port of `apps/web/app/invite/[token]/page.tsx` + the claim API route.
  */
 import { error, fail, redirect } from '@sveltejs/kit';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import {
   signInviteGrant,
@@ -16,9 +16,19 @@ import {
 import { getDrizzleClient } from '$server/db/client';
 import { appAccess, appInvites, apps } from '$server/db/schema';
 import {
+  privateJoinJoinTokenFromUrl,
+  privateJoinRoleFromUrl,
+  privateJoinSpaceIdFromUrl,
   privateJoinTransferIdFromUrl,
   privateJoinUrlForApp,
 } from '$server/invites/private-join';
+import {
+  hasPrivateSpaceCapabilityParams,
+  PRIVATE_SPACE_SIGNATURE_PARAM,
+  privateSpaceCapabilityFromUrl,
+  verifyPrivateSpaceCapability,
+} from '$server/invites/private-space-capability';
+import { incrementSpaceJoinTokenClaim } from '$server/spaces/private-spaces';
 
 const COOKIE_TTL_DAYS = 30;
 
@@ -96,6 +106,43 @@ export const actions: Actions = {
       return fail(410, { error: 'Invite maxed out' });
     }
 
+    const spaceCapability = privateSpaceCapabilityFromUrl(url, {
+      appSlug: inv.appSlug,
+      inviteToken: params.token,
+    });
+    if (hasPrivateSpaceCapabilityParams(url)) {
+      if (!spaceCapability) return fail(400, { error: 'Invalid private space invite' });
+      const ok = await verifyPrivateSpaceCapability(
+        secret,
+        spaceCapability,
+        url.searchParams.get(PRIVATE_SPACE_SIGNATURE_PARAM),
+      );
+      if (!ok) return fail(400, { error: 'Private space invite was changed or is no longer valid' });
+    }
+
+    const [claimed] = await db
+      .update(appInvites)
+      .set({ usedCount: sql`${appInvites.usedCount} + 1` })
+      .where(
+        and(
+          eq(appInvites.id, inv.id),
+          isNull(appInvites.revokedAt),
+          or(isNull(appInvites.maxUses), lt(appInvites.usedCount, appInvites.maxUses)),
+        ),
+      )
+      .returning({ id: appInvites.id });
+    if (!claimed) return fail(410, { error: 'Invite maxed out' });
+    if (spaceCapability) {
+      await incrementSpaceJoinTokenClaim({
+        db: platform.env.DB,
+        spaceId: spaceCapability.spaceId,
+        joinToken: spaceCapability.joinToken,
+        inviteId: inv.id,
+        appId: inv.appId,
+        actorId: locals.user?.id ?? null,
+      });
+    }
+
     // Sign the grant cookie. `sub` is the user id if signed in, else
     // an anonymous id we generate (and the cookie embeds).
     const sub = locals.user?.id ?? `anon_${crypto.randomUUID()}`;
@@ -137,12 +184,11 @@ export const actions: Actions = {
       }
     }
 
-    // Phase 4b will increment `usedCount` here. Skipped in 4a — the
-    // schema accepts the uncounted claim, and the public-data flow
-    // already gates on revocation/expiry above.
-
     throw redirect(303, privateJoinUrlForApp(inv.appSlug, {
-      transferId: privateJoinTransferIdFromUrl(url),
+      transferId: spaceCapability?.transferId ?? privateJoinTransferIdFromUrl(url),
+      spaceId: spaceCapability?.spaceId ?? privateJoinSpaceIdFromUrl(url),
+      role: spaceCapability?.role ?? privateJoinRoleFromUrl(url),
+      joinToken: spaceCapability?.joinToken ?? privateJoinJoinTokenFromUrl(url),
     }));
   },
 };

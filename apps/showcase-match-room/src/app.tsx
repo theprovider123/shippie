@@ -44,6 +44,9 @@ export function App() {
   const copy = useMemo(() => copyFor(locale), [locale]);
   const hasIdentity = Boolean(profile.updatedAt || profile.displayName);
   const latestRoom = savedRooms[0] ?? null;
+  const movedFromLiveRoom =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('from') === 'live-room';
 
   const updateProfile = (next: Partial<Omit<UserProfile, 'updatedAt'>>) => {
     const saved = saveUserProfile(next);
@@ -118,6 +121,11 @@ export function App() {
           <p className="eyebrow">{copy.startEyebrow}</p>
           <h1>{copy.startHeadline}</h1>
           <p className="start-support">{copy.startSupport}</p>
+          {movedFromLiveRoom ? (
+            <p className="moved-notice">
+              Live Room is now Match Room. It keeps the same-room play idea, but uses persistent rooms, share links, and sealed archives instead of temporary mesh-only sessions.
+            </p>
+          ) : null}
           {hasIdentity ? (
             <LandingPassport
               profile={profile}

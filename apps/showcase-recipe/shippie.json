@@ -13,11 +13,33 @@
     "provides": [
       "cooked-meal",
       "cooking-now",
-      "shopping-list"
+      "shopping-list",
+      "needs-restocking",
+      "pantry-inventory",
+      "pantry-low"
     ],
     "consumes": [
-      "pantry-inventory"
+      "pantry-inventory",
+      "shopping-list",
+      "pantry-low",
+      "budget-limit",
+      "cooked-meal"
     ]
+  },
+  "acceptsTransfer": {
+    "kinds": [
+      "recipe"
+    ]
+  },
+  "spaces": {
+    "enabled": true,
+    "roles": [
+      { "id": "owner", "permissions": ["read", "write", "invite"] },
+      { "id": "editor", "permissions": ["read", "write"] },
+      { "id": "viewer", "permissions": ["read"] }
+    ],
+    "syncMode": "sealed-cloud",
+    "archivable": true
   },
   "enhance": {
     "rules": {
@@ -38,6 +60,31 @@
     "camera",
     "wake-lock"
   ],
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["recipe-book"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "shippie:recipe-saver:backup-meta:v1",
+        "shippie:recipe-saver:safety-prompts:v1",
+        "shippie:recipe-saver:persistence:v1",
+        "shippie.meal-planner.v2",
+        "shippie.shopping-list.v1",
+        "shippie.pantry-scanner.v1",
+        "shippie.pantry-scanner.consumption.v1",
+        "shippie.pantry-scanner.off-cache.v1"
+      ],
+      "prefixes": [
+        "shippie.shopping-list."
+      ]
+    }
+  },
   "data_schemas": {
     "recipes": {
       "id": "text primary key",

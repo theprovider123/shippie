@@ -7,7 +7,8 @@
  *   - default manifest auto-drafts BaaS hostnames into allowed_connect_domains
  */
 import { describe, it, expect } from 'vitest';
-import { deriveManifest, scanForBaas } from './manifest';
+import { readFileSync } from 'node:fs';
+import { defaultDataPolicy, deriveManifest, scanForBaas } from './manifest';
 
 const enc = (s: string) => new TextEncoder().encode(s);
 
@@ -82,6 +83,16 @@ describe('deriveManifest', () => {
           prefixes: ['shippie.matchRoom.'],
         },
       },
+      spaces: {
+        enabled: true,
+        roles: [
+          { id: 'host', permissions: ['read', 'write', 'invite'] },
+          { id: 'bad role', permissions: ['write'] },
+          { id: 'viewer', permissions: ['read', 'bad permission!'] },
+        ],
+        syncMode: 'gossip',
+        archivable: true,
+      },
     });
     const files = new Map([['shippie.json', enc(json)]]);
     const r = deriveManifest({ slug: 'whiteboard', files });
@@ -101,6 +112,15 @@ describe('deriveManifest', () => {
         keys: ['match-room-theme'],
         prefixes: ['shippie.matchRoom.'],
       },
+    });
+    expect(r.manifest.spaces).toEqual({
+      enabled: true,
+      roles: [
+        { id: 'host', permissions: ['read', 'write', 'invite'] },
+        { id: 'viewer', permissions: ['read'] },
+      ],
+      syncMode: 'gossip',
+      archivable: true,
     });
   });
 
@@ -122,6 +142,53 @@ describe('deriveManifest', () => {
       localStorage: {
         keys: [],
         prefixes: [],
+      },
+    });
+  });
+
+  it('keeps Crewtrip on inherited Shippie Documents by default', () => {
+    expect(defaultDataPolicy('crewtrip')).toEqual({
+      mode: 'shippie-documents',
+      documents: ['main'],
+      attachments: false,
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      media: 'none',
+      realtime: 'inherited',
+      localStorage: {
+        keys: [],
+        prefixes: [],
+      },
+    });
+  });
+
+  it('parses Crewtrip shippie.json with inherited recovery and encrypted media', () => {
+    const raw = readFileSync(
+      new URL('../../../../../showcase-crewtrip/shippie.json', import.meta.url),
+      'utf8',
+    );
+    const r = deriveManifest({ slug: 'crewtrip', files: new Map([['shippie.json', enc(raw)]]) });
+
+    expect(r.manifest.data).toEqual({
+      mode: 'shippie-documents',
+      documents: ['trip-archive'],
+      attachments: true,
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      media: 'encrypted-chunked',
+      realtime: 'inherited',
+      localStorage: {
+        keys: [
+          'shippie-crewtrip-v3',
+          'shippie-crewtrip-v3-backups',
+          'shippie-crewtrip-device-id',
+        ],
+        prefixes: [
+          'shippie-crewtrip-host-v1:',
+          'shippie-crewtrip-player-v1:',
+        ],
       },
     });
   });

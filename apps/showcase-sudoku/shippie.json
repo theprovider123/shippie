@@ -13,8 +13,9 @@
     "consumes": []
   },
   "curation": {
-    "surface": "arcade",
+    "surface": "archived",
     "category": "games",
-    "subcategory": "daily-brain"
+    "subcategory": "daily-brain",
+    "successor": "daily-puzzle"
   }
 }

@@ -23,6 +23,7 @@ import {
 import type { WrapperContext } from '$server/wrapper/env';
 import {
   canonicalShowcaseSlug,
+  canonicalShowcaseTarget,
   containerSlugForRequest,
   isFirstPartyShowcase,
 } from '$lib/showcase-slugs';
@@ -73,7 +74,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     // 522s aren't.
     const subdomain = hostname.slice(0, -'.shippie.app'.length);
     if (isFirstPartyShowcase(subdomain)) {
-      const showcaseSlug = canonicalShowcaseSlug(subdomain);
+      const showcaseTarget = canonicalShowcaseTarget(subdomain);
+      const showcaseSlug = showcaseTarget.slug;
       if (event.url.pathname.startsWith('/__shippie/')) {
         if (!event.platform?.env) {
           return new Response('Platform bindings unavailable.', {
@@ -102,7 +104,12 @@ export const handle: Handle = async ({ event, resolve }) => {
         );
       }
       const targetPath = event.url.pathname === '/' ? '/' : event.url.pathname;
-      const target = `https://shippie.app/run/${showcaseSlug}${targetPath}${event.url.search}`;
+      const search = new URLSearchParams(event.url.search);
+      for (const [key, value] of Object.entries(showcaseTarget.searchParams ?? {})) {
+        search.set(key, value);
+      }
+      const query = search.toString();
+      const target = `https://shippie.app/run/${showcaseSlug}${targetPath}${query ? `?${query}` : ''}`;
       return new Response(null, {
         status: 302,
         headers: { location: target, 'cache-control': 'public, max-age=300' },

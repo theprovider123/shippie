@@ -15,6 +15,16 @@
       "set-logged"
     ]
   },
+  "spaces": {
+    "enabled": true,
+    "roles": [
+      { "id": "athlete", "permissions": ["read", "write", "invite"] },
+      { "id": "coach", "permissions": ["read"] },
+      { "id": "viewer", "permissions": ["read"] }
+    ],
+    "syncMode": "sealed-cloud",
+    "archivable": true
+  },
   "curation": {
     "surface": "featured",
     "category": "health-fitness"

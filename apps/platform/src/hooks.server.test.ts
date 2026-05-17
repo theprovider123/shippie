@@ -140,14 +140,19 @@ describe('hooks.server first-party showcase routing', () => {
   // shortcuts visibly migrate. The bare `/run/<old>/` 302 lives in
   // routes/run/[slug]/+page.server.ts (covered by its own test); this
   // covers the subdomain-edge path.
-  for (const [oldSlug, canonical] of [
-    ['live-room', 'match-room'],
+  for (const [oldSlug, location] of [
+    ['live-room', 'https://shippie.app/run/match-room/?from=live-room'],
+    ['show-and-tell', 'https://shippie.app/run/whiteboard/?mode=show-and-tell&from=show-and-tell'],
+    ['would-you-rather', 'https://shippie.app/run/drawing-telephone/?pack=would-you-rather&from=would-you-rather'],
     ['matchday', 'match-room'],
     ['care-log', 'co-pilot'],
     ['journal', 'therapy-notes'],
     ['move', 'lift'],
+    ['shopping-list', 'https://shippie.app/run/recipe/?tab=shopping&from=shopping-list'],
+    ['meal-planner', 'https://shippie.app/run/recipe/?tab=meal-plan&from=meal-planner'],
+    ['pantry-scanner', 'https://shippie.app/run/recipe/?tab=pantry&from=pantry-scanner'],
   ] as const) {
-    test(`subdomain ${oldSlug}.shippie.app/ 302s to /run/${canonical}/`, async () => {
+    test(`subdomain ${oldSlug}.shippie.app/ 302s to canonical successor`, async () => {
       const resolve = vi.fn(async () => new Response('fallthrough'));
       const res = await handle({
         event: eventFor(`https://${oldSlug}.shippie.app/`) as never,
@@ -155,8 +160,31 @@ describe('hooks.server first-party showcase routing', () => {
       });
 
       expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe(`https://shippie.app/run/${canonical}/`);
+      expect(res.headers.get('location')).toBe(
+        location.startsWith('https://') ? location : `https://shippie.app/run/${location}/`,
+      );
       expect(resolve).not.toHaveBeenCalled();
     });
   }
+
+  for (const [oldSlug, mode] of [
+    ['sudoku', 'sudoku'],
+    ['memory-grid', 'memory-grid'],
+    ['reaction', 'reaction'],
+  ] as const) {
+    test(`subdomain ${oldSlug}.shippie.app/ 302s to Daily Puzzle mode`, async () => {
+      const resolve = vi.fn(async () => new Response('fallthrough'));
+      const res = await handle({
+        event: eventFor(`https://${oldSlug}.shippie.app/?invite=abc`) as never,
+        resolve,
+      });
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe(
+        `https://shippie.app/run/daily-puzzle/?invite=abc&mode=${mode}&from=${oldSlug}`,
+      );
+      expect(resolve).not.toHaveBeenCalled();
+    });
+  }
+
 });
