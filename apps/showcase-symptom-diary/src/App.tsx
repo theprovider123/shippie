@@ -295,7 +295,7 @@ export function App() {
         ) : null}
       </main>
 
-      {tab !== 'print' ? (
+      {tab === 'print' ? (
         <p className="privacy-note" role="note">
           Symptom Diary stays on this phone. The PDF you generate is yours to share — or not.
         </p>

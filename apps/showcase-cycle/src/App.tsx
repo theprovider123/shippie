@@ -145,6 +145,9 @@ export function App() {
         setMoodHint(
           `Mood read low ${lows.length === 1 ? 'once' : `${lows.length} times`} recently — predicted period in about ${days} ${days === 1 ? 'day' : 'days'}.`,
         );
+        // Auto-fade after 8s — long enough to read, gone before it becomes
+        // permanent first-screen weight. Plan key: cycle:onboarding:moodHint:v1.
+        window.setTimeout(() => setMoodHint(null), 8000);
       }
     });
     return () => offMood();
