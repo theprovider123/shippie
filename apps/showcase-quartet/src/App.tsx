@@ -277,22 +277,36 @@ export function App() {
           </p>
         </div>
         <div className="head-actions">
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setMode(mode === 'daily' ? 'archive' : 'daily')}
+            aria-label={mode === 'daily' ? 'Open archive' : 'Back to daily'}
+            title={mode === 'daily' ? 'Archive' : 'Daily'}
+          >
+            {mode === 'daily' ? '📅' : '🗓️'}
+          </button>
           <button type="button" className="ghost" onClick={() => setMutedState(toggleMuted())} aria-label={muted ? 'Unmute' : 'Mute'}>
             {muted ? '🔇' : '🔊'}
           </button>
         </div>
       </header>
 
-      <section className="mode-row">
-        <button type="button" className={mode === 'daily' ? 'tab active' : 'tab'} onClick={() => setMode('daily')}>Daily</button>
-        <button type="button" className={mode === 'archive' ? 'tab active' : 'tab'} onClick={() => setMode('archive')}>Archive</button>
-        {mode === 'archive' ? (
-          <span className="archive-nav">
-            <button type="button" className="ghost" onClick={() => setArchiveIndex((i) => Math.max(0, i - 1))}>‹</button>
-            <button type="button" className="ghost" onClick={() => setArchiveIndex((i) => Math.min(PUZZLES.length - 1, i + 1))}>›</button>
-          </span>
-        ) : null}
-      </section>
+      {/* Mode-row only appears once you're in archive (for prev/next) or
+          post-game (for switching back) — keeps the puzzle dominant on
+          first paint. */}
+      {mode === 'archive' || status !== 'playing' ? (
+        <section className="mode-row">
+          <button type="button" className={mode === 'daily' ? 'tab active' : 'tab'} onClick={() => setMode('daily')}>Daily</button>
+          <button type="button" className={mode === 'archive' ? 'tab active' : 'tab'} onClick={() => setMode('archive')}>Archive</button>
+          {mode === 'archive' ? (
+            <span className="archive-nav">
+              <button type="button" className="ghost" onClick={() => setArchiveIndex((i) => Math.max(0, i - 1))}>‹</button>
+              <button type="button" className="ghost" onClick={() => setArchiveIndex((i) => Math.min(PUZZLES.length - 1, i + 1))}>›</button>
+            </span>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className={`board${shake ? ' shake-once' : ''}`} key={`shake-${shake}`}>
         {/* Solved-group bands stack at the top */}
@@ -361,9 +375,13 @@ export function App() {
         </section>
       ) : null}
 
-      <footer className="footer">
-        <span className="muted small">Group themes: {BAND_ORDER.map((b) => `${BAND_EMOJI[b]} ${bandLabel(b)}`).join(' · ')}</span>
-      </footer>
+      {/* Group-themes reference shows only after the puzzle is solved or lost
+          — keeps the puzzle the dominant first-paint surface. */}
+      {status !== 'playing' ? (
+        <footer className="footer">
+          <span className="muted small">Group themes: {BAND_ORDER.map((b) => `${BAND_EMOJI[b]} ${bandLabel(b)}`).join(' · ')}</span>
+        </footer>
+      ) : null}
 
       <Confetti trigger={confettiTrigger} />
     </main>
