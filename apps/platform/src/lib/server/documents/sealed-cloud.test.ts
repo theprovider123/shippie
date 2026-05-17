@@ -104,9 +104,36 @@ describe('sealed document cloud storage', () => {
     const stored = await storeSealedEventBatch(env, 'doc_abcdef', [first, second]);
     expect(stored.stored).toBe(2);
     expect(stored.events.map((item) => item.stored)).toEqual([true, true]);
+    expect(stored.events.map((item) => item.key)).toEqual([stored.events[0]!.key, stored.events[0]!.key]);
+    expect(stored.events[0]!.cursor).toContain('.batch.json#0');
+    expect(stored.cursor).toContain('.batch.json#1');
 
     const listed = await listSealedEvents(env, 'doc_abcdef');
     expect(listed.events.map((item) => item.eventId)).toEqual(['evt_batch_a', 'evt_batch_b']);
+  });
+
+  it('paginates through event batch objects using event-level cursors', async () => {
+    const env = fakeEnv();
+    const first = event({ eventId: 'evt_page_a', createdAt: '2026-05-11T12:00:00.000Z' });
+    const second = event({ eventId: 'evt_page_b', createdAt: '2026-05-11T12:00:01.000Z' });
+    const third = event({ eventId: 'evt_page_c', createdAt: '2026-05-11T12:00:02.000Z' });
+
+    await storeSealedEventBatch(env, 'doc_abcdef', [first, second, third]);
+
+    const firstPage = await listSealedEvents(env, 'doc_abcdef', { limit: 1 });
+    expect(firstPage.events.map((item) => item.eventId)).toEqual(['evt_page_a']);
+    expect(firstPage.cursor).toContain('#0');
+    expect(firstPage.truncated).toBe(true);
+
+    const secondPage = await listSealedEvents(env, 'doc_abcdef', { cursor: firstPage.cursor, limit: 1 });
+    expect(secondPage.events.map((item) => item.eventId)).toEqual(['evt_page_b']);
+    expect(secondPage.cursor).toContain('#1');
+    expect(secondPage.truncated).toBe(true);
+
+    const thirdPage = await listSealedEvents(env, 'doc_abcdef', { cursor: secondPage.cursor, limit: 1 });
+    expect(thirdPage.events.map((item) => item.eventId)).toEqual(['evt_page_c']);
+    expect(thirdPage.cursor).toContain('#2');
+    expect(thirdPage.truncated).toBe(false);
   });
 
   it('keeps batched sealed events immutable when the same batch is retried', async () => {

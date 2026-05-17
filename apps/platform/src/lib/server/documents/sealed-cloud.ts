@@ -1,6 +1,7 @@
 import type { KVNamespace, R2Bucket, R2PutOptions } from '@cloudflare/workers-types';
 
 export const SEALED_DOCUMENT_EVENT_SCHEMA = 'shippie.document.encrypted-event.v1';
+const SEALED_DOCUMENT_EVENT_BATCH_SCHEMA = 'shippie.document.encrypted-event-batch.v1';
 export const SEALED_DOCUMENT_SNAPSHOT_SCHEMA = 'shippie.document.encrypted-snapshot.v1';
 
 export interface EncryptedDocumentEventEnvelope {
@@ -15,6 +16,12 @@ export interface EncryptedDocumentEventEnvelope {
   signatureAlg: string;
   nonce: string;
   ciphertext: string;
+}
+
+interface EncryptedDocumentEventBatchEnvelope {
+  schema: typeof SEALED_DOCUMENT_EVENT_BATCH_SCHEMA;
+  documentId: string;
+  events: EncryptedDocumentEventEnvelope[];
 }
 
 export interface EncryptedDocumentSnapshotEnvelope {
@@ -407,33 +414,54 @@ export async function storeSealedEventBatch(
       key: eventKey(event),
       serialised: JSON.stringify(event),
     };
-  });
+  }).sort((a, b) => a.key.localeCompare(b.key));
   if (candidates.length > 0) {
     const currentManifest = env.CACHE ? readSealedDocumentManifest(env, documentId) : undefined;
-    const totalBytes = candidates.reduce((sum, candidate) => sum + serialisedByteLength(candidate.serialised), 0);
+    const batch = candidates.length > 1 ? createSealedEventBatch(documentId, candidates.map((candidate) => candidate.event)) : null;
+    const batchKey = batch ? eventBatchKey(documentId, candidates) : null;
+    const batchSerialised = batch ? JSON.stringify(batch) : null;
+    const totalBytes = batchSerialised
+      ? serialisedByteLength(batchSerialised)
+      : candidates.reduce((sum, candidate) => sum + serialisedByteLength(candidate.serialised), 0);
     await enforceSealedWriteBudget(env, documentId, totalBytes, {
       ...opts,
       eventCount: candidates.length,
     });
-    const stored = await Promise.all(
-      candidates.map((candidate) => putSealedObjectIfAbsent(
-        bucket,
-        candidate.key,
-        candidate.serialised,
-        {
-          httpMetadata: { contentType: 'application/json; charset=utf-8' },
-          customMetadata: {
-            documentId,
-            eventId: candidate.event.eventId,
-            authorDeviceId: candidate.event.authorDeviceId,
-            createdAt: candidate.event.createdAt,
+    const stored = batch && batchKey && batchSerialised
+      ? candidates.map(() => false)
+      : await Promise.all(
+        candidates.map((candidate) => putSealedObjectIfAbsent(
+          bucket,
+          candidate.key,
+          candidate.serialised,
+          {
+            httpMetadata: { contentType: 'application/json; charset=utf-8' },
+            customMetadata: {
+              documentId,
+              eventId: candidate.event.eventId,
+              authorDeviceId: candidate.event.authorDeviceId,
+              createdAt: candidate.event.createdAt,
+            },
           },
+        )),
+      );
+    if (batch && batchKey && batchSerialised) {
+      const storedBatch = await putSealedObjectIfAbsent(bucket, batchKey, batchSerialised, {
+        httpMetadata: { contentType: 'application/json; charset=utf-8' },
+        customMetadata: {
+          documentId,
+          eventCount: String(candidates.length),
+          firstEventId: candidates.at(0)!.event.eventId,
+          lastEventId: candidates.at(-1)!.event.eventId,
+          createdAt: candidates.at(0)!.event.createdAt,
         },
-      )),
-    );
+      });
+      for (let index = 0; index < stored.length; index += 1) stored[index] = storedBatch;
+    }
     const fresh = candidates.filter((_, index) => stored[index]);
     if (fresh.length > 0) {
       const last = fresh.at(-1)!.event;
+      const latestCursor = batchKey ? eventObjectCursor(batchKey, fresh.length - 1) : fresh.at(-1)!.key;
       await maybeRunInBackground(
         opts.waitUntil,
         Promise.all([
@@ -448,7 +476,7 @@ export async function storeSealedEventBatch(
             {
               eventCountDelta: fresh.length,
               latestEventId: last.eventId,
-              latestEventCursor: fresh.at(-1)!.key,
+              latestEventCursor: latestCursor,
             },
             { current: currentManifest },
           ),
@@ -457,8 +485,8 @@ export async function storeSealedEventBatch(
     }
 
     const results = candidates.map((candidate, index) => ({
-      key: candidate.key,
-      cursor: candidate.key,
+      key: batchKey ?? candidate.key,
+      cursor: batchKey ? eventObjectCursor(batchKey, index) : candidate.key,
       stored: Boolean(stored[index]),
     }));
     return {
@@ -693,24 +721,28 @@ export async function listSealedEvents(
   if (!bucket) throw new Error('document storage unavailable');
   const limit = Math.max(1, Math.min(MAX_LIST_LIMIT, opts.limit ?? 50));
   const prefix = eventPrefix(documentId);
-  const listed = await listObjectKeysAfter(bucket, prefix, opts.cursor ?? null, limit);
-  const keys = listed.keys;
-  const events = await Promise.all(
-    keys.map(async (key) => {
-      const object = await bucket.get(key);
-      const text = await object?.text();
-      if (!text) return null;
-      try {
-        return validateSealedEvent(JSON.parse(text));
-      } catch {
-        return null;
-      }
-    }),
-  );
+  const cursor = parseEventObjectCursor(prefix, opts.cursor ?? null);
+  const listed = await listObjectKeysAtOrAfter(bucket, prefix, cursor?.key ?? null, limit + 1, Boolean(cursor?.hasIndex));
+  const collected: Array<{ event: EncryptedDocumentEventEnvelope; cursor: string }> = [];
+
+  for (const key of listed.keys) {
+    const objectEvents = await readSealedEventObject(bucket, key);
+    const startIndex = cursor?.key === key ? cursor.index + 1 : 0;
+    for (let index = Math.max(0, startIndex); index < objectEvents.length; index += 1) {
+      collected.push({
+        event: objectEvents[index]!,
+        cursor: objectEvents.length > 1 ? eventObjectCursor(key, index) : key,
+      });
+      if (collected.length > limit) break;
+    }
+    if (collected.length > limit) break;
+  }
+
+  const page = collected.slice(0, limit);
   return {
-    events: events.filter((event): event is EncryptedDocumentEventEnvelope => event !== null),
-    cursor: listed.cursor,
-    truncated: listed.truncated,
+    events: page.map((item) => item.event),
+    cursor: page.at(-1)?.cursor ?? opts.cursor ?? null,
+    truncated: collected.length > limit || listed.truncated,
   };
 }
 
@@ -778,6 +810,51 @@ async function listObjectKeysAfter(
 
 function normaliseObjectKeyCursor(prefix: string, cursor: string | null): string | null {
   return typeof cursor === 'string' && cursor.startsWith(prefix) ? cursor : null;
+}
+
+async function listObjectKeysAtOrAfter(
+  bucket: R2Bucket,
+  prefix: string,
+  startKey: string | null,
+  limit: number,
+  includeStartKey: boolean,
+): Promise<{ keys: string[]; truncated: boolean }> {
+  const selected: string[] = [];
+  let r2Cursor: string | undefined;
+  let truncated = false;
+
+  do {
+    const page = await bucket.list({ prefix, cursor: r2Cursor, limit: R2_LIST_PAGE_LIMIT });
+    const pageKeys = page.objects.map((object) => object.key).sort();
+    for (const key of pageKeys) {
+      if (startKey && (includeStartKey ? key < startKey : key <= startKey)) continue;
+      selected.push(key);
+      if (selected.length > limit) break;
+    }
+    r2Cursor = page.truncated ? page.cursor : undefined;
+    truncated = selected.length > limit || Boolean(r2Cursor);
+  } while (r2Cursor && selected.length <= limit);
+
+  return {
+    keys: selected.slice(0, limit),
+    truncated,
+  };
+}
+
+async function readSealedEventObject(
+  bucket: R2Bucket,
+  key: string,
+): Promise<EncryptedDocumentEventEnvelope[]> {
+  const object = await bucket.get(key);
+  const text = await object?.text();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text);
+    if (isSealedEventBatch(parsed)) return validateSealedEventBatch(parsed).events;
+    return [validateSealedEvent(parsed)];
+  } catch {
+    return [];
+  }
 }
 
 export async function readSealedDocumentHealth(env: SealedDocumentEnv, documentId: string): Promise<unknown | null> {
@@ -905,6 +982,69 @@ function eventPrefix(documentId: string): string {
 function eventKey(event: EncryptedDocumentEventEnvelope): string {
   const created = event.createdAt.replace(/[^0-9A-Za-z_-]/g, '-');
   return `${eventPrefix(event.documentId)}${created}_${event.eventId}.json`;
+}
+
+function createSealedEventBatch(
+  documentId: string,
+  events: readonly EncryptedDocumentEventEnvelope[],
+): EncryptedDocumentEventBatchEnvelope {
+  return {
+    schema: SEALED_DOCUMENT_EVENT_BATCH_SCHEMA,
+    documentId,
+    events: [...events].sort((a, b) => eventKey(a).localeCompare(eventKey(b))),
+  };
+}
+
+function eventBatchKey(
+  documentId: string,
+  candidates: ReadonlyArray<{ event: EncryptedDocumentEventEnvelope; key: string }>,
+): string {
+  const sorted = [...candidates].sort((a, b) => a.key.localeCompare(b.key));
+  const first = sorted.at(0)!;
+  const last = sorted.at(-1)!;
+  const firstCreated = first.event.createdAt.replace(/[^0-9A-Za-z_-]/g, '-');
+  const lastCreated = last.event.createdAt.replace(/[^0-9A-Za-z_-]/g, '-');
+  return `${eventPrefix(documentId)}${firstCreated}_${first.event.eventId}--${lastCreated}_${last.event.eventId}.batch.json`;
+}
+
+function isSealedEventBatch(value: unknown): value is Partial<EncryptedDocumentEventBatchEnvelope> {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    (value as Partial<EncryptedDocumentEventBatchEnvelope>).schema === SEALED_DOCUMENT_EVENT_BATCH_SCHEMA,
+  );
+}
+
+function validateSealedEventBatch(value: unknown): EncryptedDocumentEventBatchEnvelope {
+  if (!isSealedEventBatch(value)) throw new Error('unsupported event batch schema');
+  const batch = value as Partial<EncryptedDocumentEventBatchEnvelope>;
+  if (typeof batch.documentId !== 'string') throw new Error('missing document id');
+  assertDocumentId(batch.documentId);
+  if (!Array.isArray(batch.events) || batch.events.length < 1 || batch.events.length > MAX_EVENT_BATCH_COUNT) {
+    throw new Error('invalid event batch');
+  }
+  const events = batch.events.map(validateSealedEvent);
+  if (events.some((event) => event.documentId !== batch.documentId)) throw new Error('event batch document mismatch');
+  return createSealedEventBatch(batch.documentId, events);
+}
+
+function eventObjectCursor(key: string, index: number): string {
+  return `${key}#${Math.max(0, Math.floor(index))}`;
+}
+
+function parseEventObjectCursor(
+  prefix: string,
+  cursor: string | null,
+): { key: string; index: number; hasIndex: boolean } | null {
+  if (typeof cursor !== 'string' || !cursor.startsWith(prefix)) return null;
+  const hashIndex = cursor.lastIndexOf('#');
+  if (hashIndex === -1) return { key: cursor, index: -1, hasIndex: false };
+  const key = cursor.slice(0, hashIndex);
+  const index = Number(cursor.slice(hashIndex + 1));
+  if (!key.startsWith(prefix) || !Number.isFinite(index) || index < 0) {
+    return { key: cursor, index: -1, hasIndex: false };
+  }
+  return { key, index: Math.floor(index), hasIndex: true };
 }
 
 function snapshotPrefix(documentId: string): string {
