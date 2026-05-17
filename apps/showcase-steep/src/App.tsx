@@ -122,8 +122,7 @@ export function App() {
 
   return (
     <div className="app">
-      {seedNote ? <div className="banner" role="status">{seedNote}</div> : null}
-
+      {/* Single alert slot — priority high→low: installNudge > backupPrompt > seedNote */}
       {installNudge ? (
         <div className="banner install-nudge-banner" role="status">
           <span>Install Steep on your Home Screen so iPhone doesn’t clear your blends.</span>
@@ -142,9 +141,7 @@ export function App() {
             ×
           </button>
         </div>
-      ) : null}
-
-      {backupPrompt ? (
+      ) : backupPrompt ? (
         <div className="banner backup-banner" role="status">
           <span>{promptText(backupPrompt)}</span>
           <button type="button" onClick={() => setDataPanelOpen(true)}>
@@ -159,6 +156,8 @@ export function App() {
             ×
           </button>
         </div>
+      ) : seedNote ? (
+        <div className="banner" role="status">{seedNote}</div>
       ) : null}
 
       {route.kind === 'list' ? (

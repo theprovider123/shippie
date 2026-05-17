@@ -183,11 +183,16 @@ export function App() {
     closeToList();
   };
   const foldedNotice = foldedFrom ? FOLDED_FROM[foldedFrom] : undefined;
+  // Single alert slot — priority high→low: foldedNotice > installNudge > seedNote
+  const showFoldedAlert = route.kind === 'list' && foldedNotice?.tab === activeTab;
 
   return (
     <div className="app">
-      {seedNote ? <div className="banner" role="status">{seedNote}</div> : null}
-      {installNudge ? (
+      {showFoldedAlert ? (
+        <div className="banner folded-banner" role="status">
+          {foldedNotice!.label} now lives inside Recipe.
+        </div>
+      ) : installNudge ? (
         <div className="banner install-nudge-banner" role="status">
           <span>Install on your Home Screen so iPhone doesn’t clear your recipes.</span>
           <button type="button" onClick={() => setInstallHelpOpen(true)}>
@@ -205,6 +210,8 @@ export function App() {
             ×
           </button>
         </div>
+      ) : seedNote ? (
+        <div className="banner" role="status">{seedNote}</div>
       ) : null}
       {installHelpOpen ? (
         <div className="install-help-backdrop" role="presentation" onClick={() => setInstallHelpOpen(false)}>
@@ -234,11 +241,6 @@ export function App() {
               Installed apps stay even when iPhone clears website data after inactivity.
             </p>
           </section>
-        </div>
-      ) : null}
-      {route.kind === 'list' && foldedNotice?.tab === activeTab ? (
-        <div className="banner folded-banner" role="status">
-          {foldedNotice.label} now lives inside Recipe.
         </div>
       ) : null}
       {route.kind === 'list' && activeTab === 'recipes' ? (
