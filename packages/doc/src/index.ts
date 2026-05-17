@@ -2304,35 +2304,25 @@ class RuntimeDocument<TState, TPayload = unknown> implements DocumentHandle<TSta
         await this.store.clearSnapshotPending(this.documentId, snapshotId);
       }
 
-      if ((pushedCursor || pushedSnapshotCursor) && this.opts.sync.getChangeHint) {
-        const nextEventCursor = pushedCursor ?? this.syncCursor;
-        const nextSnapshotCursor = pushedSnapshotCursor ?? this.syncSnapshotCursor;
-        const hint = await this.opts.sync.getChangeHint(this.documentId, {
-          eventCursor: nextEventCursor,
-          snapshotCursor: nextSnapshotCursor,
-          eventCount: this.encryptedEnvelopes.length,
-          snapshotCount: this.encryptedSnapshots.length,
+      if (pushedCursor || pushedSnapshotCursor) {
+        if (pushedCursor) await this.store.setCursor(this.documentId, pushedCursor);
+        if (pushedSnapshotCursor) await this.store.setSnapshotCursor(this.documentId, pushedSnapshotCursor);
+        await this.refresh();
+        this.syncAttempt = 0;
+        this.setSyncStatus({
+          state: 'idle',
+          pendingEvents: this.pendingIds.length,
+          pendingSnapshots: this.pendingSnapshotIdsValue.length,
+          lastSyncedAt: new Date(this.realtime?.clock.now() ?? Date.now()).toISOString(),
+          lastError: null,
+          nextSyncAt: null,
+          attempt: this.syncAttempt,
+          reason,
         });
-        if (!hint.changed) {
-          if (pushedCursor) await this.store.setCursor(this.documentId, pushedCursor);
-          if (pushedSnapshotCursor) await this.store.setSnapshotCursor(this.documentId, pushedSnapshotCursor);
-          await this.refresh();
-          this.syncAttempt = 0;
-          this.setSyncStatus({
-            state: 'idle',
-            pendingEvents: this.pendingIds.length,
-            pendingSnapshots: this.pendingSnapshotIdsValue.length,
-            lastSyncedAt: new Date(this.realtime?.clock.now() ?? Date.now()).toISOString(),
-            lastError: null,
-            nextSyncAt: null,
-            attempt: this.syncAttempt,
-            reason,
-          });
-          this.coordinator?.announceSynced(this.syncStatus());
-          this.schedulePull();
-          this.startChangeStream();
-          return { pushed, pulled: 0, cursor: this.syncCursor };
-        }
+        this.coordinator?.announceSynced(this.syncStatus());
+        this.schedulePull();
+        this.startChangeStream();
+        return { pushed, pulled: 0, cursor: this.syncCursor };
       }
 
       if (

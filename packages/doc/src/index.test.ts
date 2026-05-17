@@ -615,7 +615,7 @@ describe('@shippie/doc runtime document', () => {
     expect(doc.state()).toEqual({ count: 3 });
   });
 
-  test('fast-forwards after pushing when sealed change hints match local state', async () => {
+  test('fast-forwards after pushing when the server returns sealed cursors', async () => {
     const documentKey = generateDocumentKey();
     const signing = await generateDeviceSigningKeyPair();
     const store = createMemoryDocumentStore();
@@ -636,26 +636,8 @@ describe('@shippie/doc runtime document', () => {
         calls.push('pullEvents');
         return { events: [], cursor: null, truncated: false };
       },
-      async getChangeHint(documentId, opts) {
-        calls.push('getChangeHint');
-        expect(opts).toMatchObject({
-          eventCursor: 'cursor:evt_fast_2',
-          eventCount: 2,
-          snapshotCount: 0,
-        });
-        return {
-          schema: 'shippie.document.change-hint.v1',
-          documentId,
-          eventCount: 2,
-          snapshotCount: 0,
-          attachmentCount: 0,
-          latestEventId: 'evt_fast_2',
-          latestEventCursor: 'cursor:evt_fast_2',
-          latestSnapshotId: null,
-          latestSnapshotCursor: null,
-          updatedAt: '2026-05-11T12:00:00.000Z',
-          changed: false,
-        };
+      async getChangeHint() {
+        throw new Error('freshly accepted pushes should not need an immediate hint request');
       },
       async pushAttachment() {
         return { key: 'attachment', stored: true, byteLength: 0 };
@@ -670,7 +652,7 @@ describe('@shippie/doc runtime document', () => {
 
     const result = await doc.sync();
     expect(result).toMatchObject({ pushed: 2, pulled: 0, cursor: 'cursor:evt_fast_2' });
-    expect(calls).toEqual(['pushEvents', 'getChangeHint']);
+    expect(calls).toEqual(['pushEvents']);
     expect(doc.cursor()).toBe('cursor:evt_fast_2');
     expect(doc.pendingEventIds()).toEqual([]);
   });
@@ -692,27 +674,8 @@ describe('@shippie/doc runtime document', () => {
         calls.push('pushSnapshot');
         return { key: `key:${snapshot.snapshotId}`, cursor: `cursor:${snapshot.snapshotId}`, stored: true };
       },
-      async getChangeHint(documentId, opts) {
-        calls.push('getChangeHint');
-        expect(opts).toMatchObject({
-          eventCursor: null,
-          snapshotCursor: 'cursor:snap_fast',
-          eventCount: 0,
-          snapshotCount: 1,
-        });
-        return {
-          schema: 'shippie.document.change-hint.v1',
-          documentId,
-          eventCount: 0,
-          snapshotCount: 1,
-          attachmentCount: 0,
-          latestEventId: null,
-          latestEventCursor: null,
-          latestSnapshotId: 'snap_fast',
-          latestSnapshotCursor: 'cursor:snap_fast',
-          updatedAt: '2026-05-11T12:00:00.000Z',
-          changed: false,
-        };
+      async getChangeHint() {
+        throw new Error('freshly accepted snapshots should not need an immediate hint request');
       },
       async pushAttachment() {
         return { key: 'attachment', stored: true, byteLength: 0 };
@@ -726,7 +689,7 @@ describe('@shippie/doc runtime document', () => {
 
     const result = await doc.sync();
     expect(result).toMatchObject({ pushed: 0, pulled: 0, cursor: null });
-    expect(calls).toEqual(['pushSnapshot', 'getChangeHint']);
+    expect(calls).toEqual(['pushSnapshot']);
     expect(doc.snapshotCursor()).toBe('cursor:snap_fast');
     expect(doc.pendingSnapshotIds()).toEqual([]);
   });
