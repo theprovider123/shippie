@@ -1,4 +1,4 @@
-import type { KVNamespace, R2Bucket } from '@cloudflare/workers-types';
+import type { KVNamespace, R2Bucket, R2PutOptions } from '@cloudflare/workers-types';
 
 export const SEALED_DOCUMENT_EVENT_SCHEMA = 'shippie.document.encrypted-event.v1';
 export const SEALED_DOCUMENT_SNAPSHOT_SCHEMA = 'shippie.document.encrypted-snapshot.v1';
@@ -408,19 +408,19 @@ export async function storeSealedEventBatch(
       serialised: JSON.stringify(event),
     };
   });
-  const existing = await Promise.all(candidates.map((candidate) => bucket.head(candidate.key)));
-  const fresh = candidates.filter((_, index) => !existing[index]);
-
-  if (fresh.length > 0) {
+  if (candidates.length > 0) {
     const currentManifest = env.CACHE ? readSealedDocumentManifest(env, documentId) : undefined;
-    const totalBytes = fresh.reduce((sum, candidate) => sum + serialisedByteLength(candidate.serialised), 0);
+    const totalBytes = candidates.reduce((sum, candidate) => sum + serialisedByteLength(candidate.serialised), 0);
     await enforceSealedWriteBudget(env, documentId, totalBytes, {
       ...opts,
-      eventCount: fresh.length,
+      eventCount: candidates.length,
     });
-    await Promise.all(
-      fresh.map((candidate) =>
-        bucket.put(candidate.key, candidate.serialised, {
+    const stored = await Promise.all(
+      candidates.map((candidate) => putSealedObjectIfAbsent(
+        bucket,
+        candidate.key,
+        candidate.serialised,
+        {
           httpMetadata: { contentType: 'application/json; charset=utf-8' },
           customMetadata: {
             documentId,
@@ -428,31 +428,45 @@ export async function storeSealedEventBatch(
             authorDeviceId: candidate.event.authorDeviceId,
             createdAt: candidate.event.createdAt,
           },
-        }),
-      ),
+        },
+      )),
     );
-    const last = fresh.at(-1)!.event;
-    await maybeRunInBackground(opts.waitUntil, env.CACHE?.put(
-      healthKey(documentId),
-      JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
-      { expirationTtl: 60 * 60 * 24 * 30 },
-    ));
-    await updateDocumentManifest(
-      env,
-      documentId,
-      {
-        eventCountDelta: fresh.length,
-        latestEventId: last.eventId,
-        latestEventCursor: fresh.at(-1)!.key,
-      },
-      { current: currentManifest },
-    );
+    const fresh = candidates.filter((_, index) => stored[index]);
+    if (fresh.length > 0) {
+      const last = fresh.at(-1)!.event;
+      await maybeRunInBackground(opts.waitUntil, env.CACHE?.put(
+        healthKey(documentId),
+        JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
+        { expirationTtl: 60 * 60 * 24 * 30 },
+      ));
+      await updateDocumentManifest(
+        env,
+        documentId,
+        {
+          eventCountDelta: fresh.length,
+          latestEventId: last.eventId,
+          latestEventCursor: fresh.at(-1)!.key,
+        },
+        { current: currentManifest },
+      );
+    }
+
+    const results = candidates.map((candidate, index) => ({
+      key: candidate.key,
+      cursor: candidate.key,
+      stored: Boolean(stored[index]),
+    }));
+    return {
+      events: results,
+      stored: results.filter((result) => result.stored).length,
+      cursor: results.at(-1)?.cursor ?? null,
+    };
   }
 
-  const results = candidates.map((candidate, index) => ({
+  const results = candidates.map((candidate) => ({
     key: candidate.key,
     cursor: candidate.key,
-    stored: !existing[index],
+    stored: false,
   }));
   return {
     events: results,
@@ -1008,6 +1022,19 @@ async function readBudget(kv: KVNamespace, key: string): Promise<BudgetCounter> 
 
 async function writeBudget(kv: KVNamespace, key: string, value: BudgetCounter): Promise<void> {
   await kv.put(key, JSON.stringify(value), { expirationTtl: 60 * 60 * 48 });
+}
+
+async function putSealedObjectIfAbsent(
+  bucket: R2Bucket,
+  key: string,
+  value: string,
+  opts: Omit<R2PutOptions, 'onlyIf'> = {},
+): Promise<boolean> {
+  const result = await bucket.put(key, value, {
+    ...opts,
+    onlyIf: { etagDoesNotMatch: '*' },
+  });
+  return result !== null;
 }
 
 async function maybeRunInBackground(

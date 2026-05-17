@@ -109,6 +109,23 @@ describe('sealed document cloud storage', () => {
     expect(listed.events.map((item) => item.eventId)).toEqual(['evt_batch_a', 'evt_batch_b']);
   });
 
+  it('keeps batched sealed events immutable when the same batch is retried', async () => {
+    const env = fakeEnv();
+    const first = event({ eventId: 'evt_retry_a', createdAt: '2026-05-11T12:00:00.000Z' });
+    const second = event({ eventId: 'evt_retry_b', createdAt: '2026-05-11T12:00:01.000Z' });
+
+    await expect(storeSealedEventBatch(env, 'doc_abcdef', [first, second])).resolves.toMatchObject({ stored: 2 });
+    const retried = await storeSealedEventBatch(env, 'doc_abcdef', [
+      { ...first, ciphertext: 'changedciphertext' },
+      { ...second, ciphertext: 'changedciphertext' },
+    ]);
+
+    expect(retried.stored).toBe(0);
+    expect(retried.events.map((item) => item.stored)).toEqual([false, false]);
+    const listed = await listSealedEvents(env, 'doc_abcdef');
+    expect(listed.events.map((item) => item.ciphertext)).toEqual([first.ciphertext, second.ciphertext]);
+  });
+
   it('stores sealed snapshots and exposes a safe manifest for fast restore', async () => {
     const env = fakeEnv();
     const first = event({ eventId: 'evt_snapshot_base', createdAt: '2026-05-11T12:00:00.000Z' });
@@ -389,7 +406,12 @@ function fakeEnv(extra: Record<string, string> = {}) {
       async head(key: string) {
         return r2.has(key) ? ({ key } as never) : null;
       },
-      async put(key: string, value: string | Uint8Array, opts?: { httpMetadata?: { contentType?: string } }) {
+      async put(
+        key: string,
+        value: string | Uint8Array,
+        opts?: { httpMetadata?: { contentType?: string }; onlyIf?: { etagDoesNotMatch?: string } },
+      ) {
+        if (opts?.onlyIf?.etagDoesNotMatch === '*' && r2.has(key)) return null;
         r2.set(key, { value, contentType: opts?.httpMetadata?.contentType });
         return {} as never;
       },
