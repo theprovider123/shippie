@@ -434,20 +434,25 @@ export async function storeSealedEventBatch(
     const fresh = candidates.filter((_, index) => stored[index]);
     if (fresh.length > 0) {
       const last = fresh.at(-1)!.event;
-      await maybeRunInBackground(opts.waitUntil, env.CACHE?.put(
-        healthKey(documentId),
-        JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
-        { expirationTtl: 60 * 60 * 24 * 30 },
-      ));
-      await updateDocumentManifest(
-        env,
-        documentId,
-        {
-          eventCountDelta: fresh.length,
-          latestEventId: last.eventId,
-          latestEventCursor: fresh.at(-1)!.key,
-        },
-        { current: currentManifest },
+      await maybeRunInBackground(
+        opts.waitUntil,
+        Promise.all([
+          env.CACHE?.put(
+            healthKey(documentId),
+            JSON.stringify({ documentId, lastEventId: last.eventId, lastSyncedAt: new Date().toISOString() }),
+            { expirationTtl: 60 * 60 * 24 * 30 },
+          ),
+          updateDocumentManifest(
+            env,
+            documentId,
+            {
+              eventCountDelta: fresh.length,
+              latestEventId: last.eventId,
+              latestEventCursor: fresh.at(-1)!.key,
+            },
+            { current: currentManifest },
+          ),
+        ]).then(() => undefined),
       );
     }
 
