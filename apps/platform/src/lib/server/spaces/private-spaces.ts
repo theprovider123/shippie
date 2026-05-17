@@ -24,6 +24,18 @@ export interface AppSpaceSummary {
   } | null;
   tokenCount: number;
   activeTokenCount: number;
+  totalClaimCount: number;
+  totalInviteUsedCount: number;
+}
+
+export interface AppSpaceMetrics {
+  totalSpaces: number;
+  activeSpaces: number;
+  archivedSpaces: number;
+  totalJoinLinks: number;
+  activeJoinLinks: number;
+  totalClaims: number;
+  totalInviteUses: number;
 }
 
 export interface SpaceListRow {
@@ -230,11 +242,15 @@ export function summariseSpaceRows(rows: SpaceListRow[], nowMs = Date.now()): Ap
         latestToken: null,
         tokenCount: 0,
         activeTokenCount: 0,
+        totalClaimCount: 0,
+        totalInviteUsedCount: 0,
       };
       bySpace.set(row.spaceId, summary);
     }
     if (!row.joinTokenId) continue;
     summary.tokenCount += 1;
+    summary.totalClaimCount += row.claimCount ?? 0;
+    summary.totalInviteUsedCount += row.inviteUsedCount ?? 0;
     const active =
       row.tokenRevokedAt == null &&
       row.inviteRevokedAt == null &&
@@ -257,6 +273,30 @@ export function summariseSpaceRows(rows: SpaceListRow[], nowMs = Date.now()): Ap
     }
   }
   return Array.from(bySpace.values());
+}
+
+export function summariseSpaceMetrics(spaces: AppSpaceSummary[]): AppSpaceMetrics {
+  return spaces.reduce<AppSpaceMetrics>(
+    (metrics, space) => {
+      metrics.totalSpaces += 1;
+      if (space.status === 'archived') metrics.archivedSpaces += 1;
+      else metrics.activeSpaces += 1;
+      metrics.totalJoinLinks += space.tokenCount;
+      metrics.activeJoinLinks += space.activeTokenCount;
+      metrics.totalClaims += space.totalClaimCount;
+      metrics.totalInviteUses += space.totalInviteUsedCount;
+      return metrics;
+    },
+    {
+      totalSpaces: 0,
+      activeSpaces: 0,
+      archivedSpaces: 0,
+      totalJoinLinks: 0,
+      activeJoinLinks: 0,
+      totalClaims: 0,
+      totalInviteUses: 0,
+    },
+  );
 }
 
 export async function archiveSpaceForApp(input: {

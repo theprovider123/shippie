@@ -14,6 +14,7 @@
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
 import { curatedAppsBySurface } from '$lib/container/state';
+import { isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
@@ -68,6 +69,7 @@ function fallbackApps() {
     badges: [],
     kind: app.appKind,
     kindStatus: 'confirmed' as PublicKindStatus,
+    firstPartySigned: true,
   }));
 }
 
@@ -214,6 +216,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
     badges: provenBadgesFromAwards(byApp.get(a.id ?? '') ?? []),
     kind: isAppKind(a.currentDetectedKind) ? a.currentDetectedKind : null,
     kindStatus: (a.currentPublicKindStatus ?? null) as PublicKindStatus | null,
+    firstPartySigned: isFirstPartyShowcase(a.slug),
   }));
 
   const hasMore = appRows.length > PER_PAGE;

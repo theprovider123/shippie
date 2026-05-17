@@ -1,5 +1,6 @@
 import {
   buildSpaceUrl,
+  createPortableSpaceCapsule,
   defaultSignalBaseForRuntime as defaultSpaceSignalBaseForRuntime,
   readSpaceParams,
   signalUrlFor as spaceSignalUrlFor,
@@ -50,18 +51,30 @@ export function matchRoomUrl(input: {
   current.pathname = current.pathname.replace('/run/matchday/', '/run/match-room/');
   current.pathname = current.pathname.replace(/\/(host|play|display)\/?$/, '/');
   const defaultSignalBase = defaultSignalBaseForRuntime();
+  const signalBase = input.signalBase && input.signalBase !== defaultSignalBase ? input.signalBase : undefined;
+  const capsule = createPortableSpaceCapsule({
+    spaceId: input.roomId,
+    role: input.role,
+    secret: input.roomKey,
+    appSlug: 'match-room',
+    appName: 'Match Room',
+    spaceName: roomNameForTemplate(input.template ?? DEFAULT_TEMPLATE),
+    purpose: input.role === 'host' ? 'host-space' : input.role === 'display' ? 'open-space' : 'join-space',
+    routes: [{ kind: 'cloud', url: signalBase ?? defaultSignalBase }],
+  });
   return buildSpaceUrl({
     baseUrl: current.origin + current.pathname,
     appSlug: 'match-room',
     spaceId: input.roomId,
     role: input.role,
     secret: input.roomKey,
+    capsule,
     extraSearch: {
       room: input.roomId,
       template: input.template && input.template !== DEFAULT_TEMPLATE ? input.template : undefined,
       lang: input.locale,
       tz: input.timeZone,
-      signal: input.signalBase && input.signalBase !== defaultSignalBase ? input.signalBase : undefined,
+      signal: signalBase,
     },
   });
 }
@@ -103,4 +116,21 @@ function readRole(url: URL): Role | null {
 function readRoleValue(value: string | null | undefined): Role | null {
   if (value === 'host' || value === 'play' || value === 'display') return value;
   return null;
+}
+
+function roomNameForTemplate(template: RoomTemplate): string {
+  switch (template) {
+    case 'family':
+      return 'Family board';
+    case 'office':
+      return 'Company board';
+    case 'hardcore':
+      return 'Personal board';
+    case 'pub':
+      return 'Pub board';
+    case 'watch-party':
+      return 'Watch party board';
+    case 'friends':
+      return 'Friends board';
+  }
 }

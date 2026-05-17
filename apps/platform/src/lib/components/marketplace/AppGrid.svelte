@@ -19,6 +19,7 @@
     badges?: PublicCapabilityBadge[];
     kind?: AppKind | null;
     kindStatus?: PublicKindStatus | null;
+    firstPartySigned?: boolean;
   }
 
   interface Props {

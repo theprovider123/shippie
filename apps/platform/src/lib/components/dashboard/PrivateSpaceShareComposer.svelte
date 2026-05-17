@@ -68,6 +68,7 @@
   let qrMarkup = $state<string | null>(null);
   let selectedExistingSpace = $state('__new');
   let status = $state('');
+  let capsuleHint = $state<string | null>(null);
   let error = $state<string | null>(null);
   let busy = $state(false);
   let initialised = $state(false);
@@ -92,6 +93,7 @@
     qrMarkup = null;
     shareUrl = null;
     hostUrl = null;
+    capsuleHint = null;
     busy = true;
     status = 'Creating private space invite...';
 
@@ -133,7 +135,26 @@
         throw new Error(json.error ?? `Invite returned ${res.status}.`);
       }
 
-      const nextShareUrl = json.short_url ?? json.url;
+      let nextShareUrl = json.short_url ?? json.url;
+      try {
+        const spacesPkg = await import('@shippie/spaces');
+        const capsule = spacesPkg.createPortableSpaceCapsule({
+          spaceId: activeSpaceId,
+          joinToken,
+          role: selectedRole,
+          appSlug: slug,
+          appName,
+          spaceName: activeSpaceName,
+          purpose: uses === 1 ? 'add-device' : 'join-space',
+          maxClaims: Number.isInteger(uses) && uses > 0 ? uses : undefined,
+          expiresAt: typeof body.expires_at === 'string' ? body.expires_at : undefined,
+          routes: [{ kind: spaces?.syncMode === 'hub' ? 'hub' : 'cloud', url: window.location.origin }],
+        });
+        nextShareUrl = spacesPkg.appendSpaceCapsuleToUrl(nextShareUrl, capsule);
+        capsuleHint = spacesPkg.describeSpaceCapsule(capsule).body;
+      } catch {
+        capsuleHint = null;
+      }
       const nextHostUrl = buildHostUrl({
         role: roleOptions.find((role) => role.permissions.includes('invite'))?.id ?? roleOptions[0]?.id ?? 'host',
         spaceId: activeSpaceId,
@@ -188,6 +209,7 @@
     shareUrl = null;
     hostUrl = null;
     qrMarkup = null;
+    capsuleHint = null;
     status = 'New space ready. Choose who this link is for.';
   }
 
@@ -201,6 +223,7 @@
       shareUrl = null;
       hostUrl = null;
       qrMarkup = null;
+      capsuleHint = null;
       status = 'Existing space selected. Create an invite to rotate a fresh join link.';
     }
   }
@@ -336,6 +359,9 @@
       <div class="result-text">
         <p class="result-title">Private link ready</p>
         <p class="url">{shareUrl}</p>
+        {#if capsuleHint}
+          <p class="capsule-hint">{capsuleHint}</p>
+        {/if}
         {#if hostUrl}
           <p class="host-url">Host link: <a href={hostUrl}>{hostUrl}</a></p>
         {/if}
@@ -496,12 +522,18 @@
     word-break: break-all;
   }
   .host-url,
+  .capsule-hint,
   .meta {
     font-family: ui-monospace, monospace;
     font-size: 12px;
     color: #8B847A;
     margin: 0;
     word-break: break-all;
+  }
+  .capsule-hint {
+    max-width: 56ch;
+    word-break: normal;
+    line-height: 1.45;
   }
   .host-url a {
     color: #5C5751;

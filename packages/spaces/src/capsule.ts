@@ -1,5 +1,5 @@
 import { base64UrlToString, randomId, stringToBase64Url } from './crypto.ts';
-import type { JoinToken, Space, SpaceCapsuleV0, SpaceParams, SpaceRoute } from './types.ts';
+import type { JoinToken, Space, SpaceCapsulePurpose, SpaceCapsuleV0, SpaceParams, SpaceRoute } from './types.ts';
 
 export const SPACE_CAPSULE_SCHEMA = 'shippie.space.capsule.v0' as const;
 
@@ -70,24 +70,45 @@ export function archiveSpace<T extends { status: string; archivedAt?: string }>(
 
 export function createSpaceCapsule(input: {
   spaceId: string;
-  joinToken: string;
+  joinToken?: string;
+  secret?: string;
   role: string;
   appSlug?: string;
+  appName?: string;
+  spaceName?: string;
   packageHash?: string;
+  purpose?: SpaceCapsulePurpose;
   maxClaims?: number;
+  createdAt?: string | Date;
   expiresAt?: string | Date;
   routes?: SpaceRoute[];
 }): SpaceCapsuleV0 {
+  if (!input.joinToken && !input.secret) {
+    throw new Error('space capsule requires a join token or room secret');
+  }
   return stripUndefined({
     schema: SPACE_CAPSULE_SCHEMA,
     spaceId: input.spaceId,
     joinToken: input.joinToken,
+    secret: input.secret,
     appSlug: input.appSlug,
+    appName: input.appName,
+    spaceName: input.spaceName,
     packageHash: input.packageHash,
     role: input.role,
+    purpose: input.purpose,
     maxClaims: input.maxClaims,
+    createdAt: input.createdAt ? dateString(input.createdAt) : undefined,
     expiresAt: input.expiresAt ? dateString(input.expiresAt) : undefined,
     routes: input.routes?.filter((route) => route.kind === 'cloud' || route.kind === 'hub' || route.kind === 'peer'),
+  });
+}
+
+export function createPortableSpaceCapsule(input: Parameters<typeof createSpaceCapsule>[0]): SpaceCapsuleV0 {
+  return createSpaceCapsule({
+    ...input,
+    purpose: input.purpose ?? (input.maxClaims === 1 ? 'add-device' : 'join-space'),
+    createdAt: input.createdAt ?? new Date(),
   });
 }
 
@@ -128,6 +149,14 @@ export function buildSpaceUrl(input: {
   return url.toString();
 }
 
+export function appendSpaceCapsuleToUrl(rawUrl: string, capsule: SpaceCapsuleV0): string {
+  const url = new URL(rawUrl);
+  const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
+  hash.set('c', encodeSpaceCapsule(capsule));
+  url.hash = hash.toString();
+  return url.toString();
+}
+
 export function readSpaceParams(rawUrl: string): SpaceParams {
   const url = new URL(rawUrl);
   const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
@@ -144,10 +173,47 @@ export function readSpaceParams(rawUrl: string): SpaceParams {
     spaceId: capsule?.spaceId ?? url.searchParams.get('space') ?? url.searchParams.get('room'),
     joinToken: capsule?.joinToken ?? url.searchParams.get('join'),
     role: capsule?.role ?? url.searchParams.get('role'),
-    secret: hash.get('k'),
+    secret: capsule?.secret ?? hash.get('k'),
     appSlug: capsule?.appSlug ?? appSlugFromPath(url.pathname),
     capsule,
   };
+}
+
+export function describeSpaceCapsule(capsule: SpaceCapsuleV0): {
+  title: string;
+  body: string;
+  action: string;
+} {
+  const app = capsule.appName ?? capsule.appSlug ?? 'this app';
+  const space = capsule.spaceName ?? capsule.spaceId;
+  const role = capsule.role;
+  switch (capsule.purpose) {
+    case 'add-device':
+      return {
+        title: `Add a device to ${space}`,
+        body: `${app} will open this private space with the ${role} role. Shippie only handles the signed join capability; private content stays outside its view.`,
+        action: 'Add device',
+      };
+    case 'host-space':
+      return {
+        title: `Host ${space}`,
+        body: `${app} will open host controls for this private space.`,
+        action: 'Open host view',
+      };
+    case 'open-space':
+      return {
+        title: `Open ${space}`,
+        body: `${app} will open this private space with the ${role} role.`,
+        action: 'Open space',
+      };
+    case 'join-space':
+    default:
+      return {
+        title: `Join ${space}`,
+        body: `${app} will open this private space with the ${role} role. No global account or shared password is required.`,
+        action: 'Join space',
+      };
+  }
 }
 
 export function isJoinTokenClaimable(token: JoinToken, now: string | Date = new Date()): boolean {
@@ -162,8 +228,8 @@ function isSpaceCapsule(value: unknown): value is SpaceCapsuleV0 {
   return (
     record.schema === SPACE_CAPSULE_SCHEMA &&
     typeof record.spaceId === 'string' &&
-    typeof record.joinToken === 'string' &&
-    typeof record.role === 'string'
+    typeof record.role === 'string' &&
+    (typeof record.joinToken === 'string' || typeof record.secret === 'string')
   );
 }
 

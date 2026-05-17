@@ -26,7 +26,7 @@ import { summaryForApp, recentReviews } from '$server/db/queries/ratings';
 import { describeGrantedPermissions } from '$server/marketplace/honesty';
 import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability-badges';
 import { readAppProfile } from '$server/deploy/kv-write';
-import { canonicalAppUrl } from '$lib/showcase-slugs';
+import { canonicalAppUrl, isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
@@ -226,6 +226,15 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       // and proxies maker R2 bundles, this branch collapses.
       standaloneUrl: canonicalAppUrl(app.slug),
     },
+    signingTrust: isFirstPartyShowcase(app.slug)
+      ? {
+          label: 'Shippie-signed',
+          scope: 'first-party',
+          summary: 'Built, packaged, and shipped by Shippie as part of the first-party showcase slate.',
+          packageHash: packageRows[0]?.packageHash ?? null,
+          version: packageRows[0]?.version ?? null,
+        }
+      : null,
     trustCard: latestTrust
       ? {
           privacyGrade: latestTrust.privacy.grade,

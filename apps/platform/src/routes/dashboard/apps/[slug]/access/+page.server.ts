@@ -6,12 +6,20 @@ import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { parseSpaces } from '$server/deploy/manifest';
-import { archiveSpaceForApp, listSpacesForApp } from '$server/spaces/private-spaces';
+import { archiveSpaceForApp, listSpacesForApp, summariseSpaceMetrics } from '$server/spaces/private-spaces';
 import type { App as AppRow } from '$server/db/schema/apps';
 
 export const load: PageServerLoad = async ({ parent, platform }) => {
   const layout = await parent();
-  if (!platform?.env.DB) return { ...layout, invites: [], access: [], privateSpaces: [] };
+  if (!platform?.env.DB) {
+    return {
+      ...layout,
+      invites: [],
+      access: [],
+      privateSpaces: [],
+      privateSpaceMetrics: summariseSpaceMetrics([]),
+    };
+  }
 
   const db = getDrizzleClient(platform.env.DB);
   const invites = await db
@@ -34,8 +42,9 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     : [];
   const spaces = parseSpaces((deploy?.shippieJson as Record<string, unknown> | undefined)?.spaces) ?? null;
   const privateSpaces = await listSpacesForApp(layout.app.id, platform.env.DB);
+  const privateSpaceMetrics = summariseSpaceMetrics(privateSpaces);
 
-  return { ...layout, invites, access, spaces, privateSpaces };
+  return { ...layout, invites, access, spaces, privateSpaces, privateSpaceMetrics };
 };
 
 export const actions: Actions = {
