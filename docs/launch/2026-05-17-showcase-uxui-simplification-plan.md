@@ -346,6 +346,42 @@ the actual route tree at HEAD.
 2. No route classified as "?" — every route has a decided home
 3. User has approved the mapping
 
+### IA spike output (verified at HEAD)
+
+**Current state.** `apps/showcase-mevrouw/src/router.ts` declares 12
+routes. `TOP_LEVEL_ROUTES` exposes 5 of them in the bottom nav
+(`home / schedule / journal / surprises / more`), with the other 7
+reached through the `more` sheet (`MorePage.tsx`). Three floating
+overlays render simultaneously in `App.tsx`: `PulseInbox`, `PulseFab`,
+`InstallNudge`.
+
+**Mapping.**
+
+| Current route | Today's home | After-restructure home | Notes |
+|---|---|---|---|
+| `home` | Top tab (1/5) | Top tab (1/4) | Stays primary |
+| `schedule` | Top tab (2/5) | Top tab (2/4) | Stays primary |
+| `journal` | Top tab (3/5) | More-sheet | Demote — less daily than memories/schedule |
+| `surprises` | Top tab (4/5) | More-sheet | Demote — content surface, not daily IA |
+| `more` | Top tab (5/5) → sheet | Top tab (4/4) → sheet | Stays as the overflow tab |
+| `memories` | Inside More sheet | **Top tab (3/4) — promote** | Couples-memory hub is the emotional heart; promote into primary IA |
+| `gifts` | Inside More sheet | More-sheet | Stays |
+| `todos` | Inside More sheet | More-sheet | Stays |
+| `glimpses` | Inside More sheet | More-sheet | Stays |
+| `games` | Inside More sheet | More-sheet | Stays |
+| `after-hours` | Inside More sheet | More-sheet | Stays |
+| `settings` | Inside More sheet (sub) | More-sheet | Stays |
+
+**Floating-overlay consolidation (Option B — locked).** PulseInbox
+lives in the Home tab header only (not floating globally). PulseFab
+becomes contextual to Memories + Schedule tabs (the surfaces where
+"add a thing" is the obvious intent). InstallNudge becomes a one-shot
+banner on first launch, dismissed forever after via a versioned flag
+(`mevrouw:onboarding:installNudge:v1`).
+
+No route ends up classified as "?" — every route has a decided home.
+Ready for Phase 7 implementation.
+
 ---
 
 ## Phase 7 — Mevrouw full IA restructure (4 days)
