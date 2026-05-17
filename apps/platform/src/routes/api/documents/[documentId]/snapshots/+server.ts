@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
     const snapshot = await parseSealedSnapshotRequest(request);
     const result = await storeSealedSnapshot(platform.env, documentId, snapshot, {
       request,
-      waitUntil: platform.ctx.waitUntil.bind(platform.ctx),
+      waitUntil: requestWaitUntil(platform),
     });
     return json(result, {
       status: result.stored ? 201 : 200,
@@ -59,4 +59,13 @@ function messageFor(err: unknown): string {
 function requireDocumentId(value: string | undefined): string {
   if (!value) throw error(400, 'missing document id');
   return value;
+}
+
+function requestWaitUntil(platform: App.Platform | undefined): ((promise: Promise<unknown>) => void) | undefined {
+  const workerPlatform = platform as (App.Platform & {
+    context?: ExecutionContext;
+    ctx?: ExecutionContext;
+  }) | undefined;
+  const context = workerPlatform?.ctx ?? workerPlatform?.context;
+  return context?.waitUntil?.bind(context);
 }
