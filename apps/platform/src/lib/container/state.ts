@@ -198,9 +198,9 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
 const curatedAppSpecs: CuratedAppSpec[] = [
   {
     slug: 'recipe',
-    name: 'Recipe Saver',
+    name: 'Recipe',
     shortName: 'Recipe',
-    description: 'Save recipes, read them offline, and keep cooking notes on this device.',
+    description: 'Recipes, meal planning, shopping, and pantry notes in one local-first kitchen app.',
     appKind: 'connected',
     icon: 'RS',
     accent: '#E8603C',

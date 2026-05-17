@@ -126,6 +126,7 @@ export function App() {
               Live Room is now Match Room. It keeps the same-room play idea, but uses persistent rooms, share links, and sealed archives instead of temporary mesh-only sessions.
             </p>
           ) : null}
+          <PrivateSpaceHero onCreate={startHost} />
           {hasIdentity ? (
             <LandingPassport
               profile={profile}
@@ -278,6 +279,43 @@ function darken(hex: string): string {
   if (value.length !== 6) return hex;
   const parts = [0, 2, 4].map((index) => Math.max(0, Math.round(parseInt(value.slice(index, index + 2), 16) * 0.68)));
   return `#${parts.map((part) => part.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function PrivateSpaceHero(props: { onCreate: (template?: RoomTemplate, title?: string) => void }) {
+  const steps = [
+    { title: 'Create', text: 'Start one private room for friends, family, work, or a pub table.' },
+    { title: 'Invite', text: 'People join from a link or QR. No account, no global profile.' },
+    { title: 'Archive', text: 'When the tournament ends, the room becomes a private memory.' },
+  ];
+
+  return (
+    <section className="private-space-hero" aria-label="Private space demo">
+      <div>
+        <span>Shippie Spaces demo</span>
+        <h2>Make a private World Cup room in seconds.</h2>
+        <p>
+          Match Room is the proof: a tiny app can create a shared space between phones,
+          keep roles local to the room, and sync the experience without becoming another account system.
+        </p>
+      </div>
+      <div className="space-step-grid">
+        {steps.map((step) => (
+          <article key={step.title}>
+            <strong>{step.title}</strong>
+            <p>{step.text}</p>
+          </article>
+        ))}
+      </div>
+      <div className="space-hero-actions">
+        <button className="primary-action" type="button" onClick={() => props.onCreate('pub', 'Pub board')}>
+          Create pub room
+        </button>
+        <button type="button" onClick={() => props.onCreate('friends', 'Friends board')}>
+          Create friends room
+        </button>
+      </div>
+    </section>
+  );
 }
 
 function LandingPassport(props: {

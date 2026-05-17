@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { createMirrorCollection, preparePackageInstall } from '@shippie/core';
-import type { AppCollectionEntry, AppCollectionManifest } from '@shippie/app-package-contract';
+import type { AppCollectionEntry, AppCollectionManifest, PackageSpaces } from '@shippie/app-package-contract';
 
 export interface IngestedPackage {
   slug: string;
@@ -20,6 +20,7 @@ export interface HubToolRegistryEntry {
   packageHash: string;
   packageUrl: string;
   appUrl: string;
+  spaces?: PackageSpaces;
   group?: string;
   deployedAt: string;
   deployedBy?: string;
@@ -73,6 +74,7 @@ export async function ingestPackageArchive(input: {
     packageHash: prepared.package.packageHash,
     packageUrl,
     appUrl: `http://${manifest.slug}.hub.local/`,
+    spaces: manifest.spaces,
     deployedAt: new Date().toISOString(),
   });
 
@@ -133,7 +135,11 @@ async function writeHubToolRegistry(
     updatedAt,
     tools: [
       ...prior.tools.filter((tool) => tool.slug !== entry.slug),
-      { ...entry, group: entry.group ?? prior.tools.find((tool) => tool.slug === entry.slug)?.group },
+      {
+        ...entry,
+        group: entry.group ?? prior.tools.find((tool) => tool.slug === entry.slug)?.group,
+        spaces: entry.spaces ?? prior.tools.find((tool) => tool.slug === entry.slug)?.spaces,
+      },
     ].sort((a, b) => a.name.localeCompare(b.name)),
   };
   await writeSafeFile(join(cacheRoot, 'tools.json'), new TextEncoder().encode(`${JSON.stringify(next, null, 2)}\n`));
@@ -149,7 +155,26 @@ function isHubToolRegistryEntry(value: unknown): value is HubToolRegistryEntry {
     typeof entry.packageHash === 'string' &&
     typeof entry.packageUrl === 'string' &&
     typeof entry.appUrl === 'string' &&
-    typeof entry.deployedAt === 'string'
+    typeof entry.deployedAt === 'string' &&
+    (entry.spaces === undefined || isPackageSpaces(entry.spaces))
+  );
+}
+
+function isPackageSpaces(value: unknown): value is PackageSpaces {
+  if (!value || typeof value !== 'object') return false;
+  const spaces = value as Partial<PackageSpaces>;
+  return (
+    typeof spaces.enabled === 'boolean' &&
+    Array.isArray(spaces.roles) &&
+    spaces.roles.every((role) =>
+      Boolean(role) &&
+      typeof role === 'object' &&
+      typeof (role as { id?: unknown }).id === 'string' &&
+      Array.isArray((role as { permissions?: unknown }).permissions) &&
+      ((role as { permissions: unknown[] }).permissions).every((permission) => typeof permission === 'string'),
+    ) &&
+    (spaces.syncMode === 'gossip' || spaces.syncMode === 'sealed-cloud' || spaces.syncMode === 'hub' || spaces.syncMode === 'inherited') &&
+    typeof spaces.archivable === 'boolean'
   );
 }
 

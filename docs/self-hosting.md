@@ -140,12 +140,47 @@ docker build -t shippie-hub .
 docker run -d \
   --name shippie-hub \
   --network host \
-  -e HUB_NAME="My Venue" \
-  -e DATA_FEEDS='[]' \
+  -v shippie-hub-data:/var/lib/shippie-hub \
+  -e HUB_MDNS_NAME="hub" \
   shippie-hub
 ```
 
-The Hub advertises itself on the LAN via mDNS as `shippie-hub.local`. Devices running Shippie apps discover it automatically when they're on the same network.
+The Hub advertises itself on the LAN via mDNS as `hub.local`. Devices running Shippie apps discover it automatically when they're on the same network.
+
+### Install a portable app package
+
+Makers can install a `.shippie` archive onto the Hub. The Hub verifies the
+archive, stores the package, unpacks the static app files, and publishes a local
+collection manifest.
+
+```bash
+curl -X POST \
+  --data-binary @match-room.shippie \
+  -H "content-type: application/vnd.shippie.package+json" \
+  http://hub.local/api/packages
+```
+
+The app is then available on the local network at:
+
+```text
+http://match-room.hub.local/
+http://hub.local/collections/local-mirror.json
+```
+
+If the package declares `spaces` metadata, the Hub keeps that metadata in
+`/api/hub/ambient` so phones and venue screens can show "private room available
+here" without calling the public platform.
+
+### Discover visible rooms and tools
+
+```bash
+curl http://hub.local/api/hub/ambient
+```
+
+The response includes the Hub name, active local rooms, cached tools, group
+labels, package URLs, and private-space metadata when present. Treat ambient
+discovery as visibility only; users still need to choose a link or QR before
+they join a space.
 
 ### Optional — bridge live data
 

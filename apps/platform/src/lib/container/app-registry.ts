@@ -127,7 +127,20 @@ export function findRequestedApp(
 ): ContainerApp | null {
   if (!requestedSlug) return null;
   const normalized = containerSlugForRequest(requestedSlug);
-  return apps.find((app) => app.slug === normalized || app.slug === requestedSlug) ?? null;
+  return (
+    apps.find((app) => app.slug === normalized) ??
+    apps.find((app) => app.slug === requestedSlug) ??
+    null
+  );
+}
+
+/**
+ * Apps shown in launcher/drawer surfaces. Archived first-party apps
+ * remain resolvable for direct URLs and legacy redirects, but they
+ * should not appear as choices in the current launch slate.
+ */
+export function visibleContainerApps(apps: readonly ContainerApp[]): ContainerApp[] {
+  return apps.filter((app) => (app.surface ?? 'featured') !== 'archived');
 }
 
 /**

@@ -162,10 +162,21 @@ local route.
   still receive `space`, `role`, and `space_join` query parameters.
 - The Hub exposes `/api/hub/ambient` as a local discovery endpoint for phones or
   venue screens to see which rooms/tools are visible on this LAN.
+- Hub package ingest preserves portable package `spaces` metadata in the local
+  tool registry, so ambient discovery can show which cached tools support
+  private spaces even when the public platform is unreachable.
+- The app-kind classifier treats either `@shippie/spaces` imports or
+  `shippie.json` `spaces.enabled` metadata as Shippie-mediated connectivity, so
+  marketplace labels do not regress when apps inherit Spaces without custom
+  networking code.
 - Social recovery is modelled as owner/member re-issue: any active member whose
   role has `invite` permission can issue a fresh one-use join token for a
   stranded member. This keeps recovery inside the private space rather than
   adding an email/password reset surface.
+- Production can be smoke-tested with
+  `cd apps/platform && bun run smoke:private-spaces`. The script creates a
+  scratch private app, issues a signed role-bound invite, verifies the claim
+  counters, archives the scratch space, and cleans the remote D1 rows.
 
 ## Archive Mode
 
@@ -186,3 +197,9 @@ Current Match Room concepts map directly:
 
 The first migration should preserve existing URLs while routing the mechanics
 through `@shippie/spaces`.
+
+## Builder Guide
+
+See [`docs/private-spaces-builder.md`](../private-spaces-builder.md) for the
+practical builder workflow: `shippie.json`, role design, dashboard invites,
+Hub discovery, and privacy/legal boundaries.

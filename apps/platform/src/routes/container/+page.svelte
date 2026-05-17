@@ -39,6 +39,7 @@
     manifestToContainerApp,
     mergeApps,
     pickBaseApps,
+    visibleContainerApps,
   } from '$lib/container/app-registry';
   import {
     buildLocalRow,
@@ -152,6 +153,7 @@
   let importedApps = $state<ContainerApp[]>([]);
   const merged = $derived(mergeApps(baseApps, importedApps));
   const apps = $derived(merged.apps);
+  const launchVisibleApps = $derived(visibleContainerApps(apps));
   const appById = $derived(merged.appById);
   const defaultAppId = $derived(merged.defaultAppId);
   const hosts = new Map<string, ContainerBridgeHost>();
@@ -593,11 +595,12 @@
     return flows;
   });
   const appBySlug = $derived(new Map(apps.map((app) => [app.slug, app])));
+  const launchVisibleAppBySlug = $derived(new Map(launchVisibleApps.map((app) => [app.slug, app])));
   const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
   const drawerPinnedApps = $derived.by(() => {
     const seen = new Set<string>();
     return $launcherMemory.pinned
-      .map((slug) => appBySlug.get(slug))
+      .map((slug) => launchVisibleAppBySlug.get(slug))
       .filter((app): app is ContainerApp => Boolean(app))
       .filter((app) => {
         if (seen.has(app.id)) return false;
@@ -609,7 +612,7 @@
     const pinned = new Set($launcherMemory.pinned);
     const seen = new Set<string>();
     return $launcherMemory.recents
-      .map((recent) => appBySlug.get(recent.slug))
+      .map((recent) => launchVisibleAppBySlug.get(recent.slug))
       .filter((app): app is ContainerApp => {
         if (!app) return false;
         return !pinned.has(app.slug);
@@ -622,12 +625,12 @@
   });
   const drawerPersonalized = $derived(drawerPinnedApps.length > 0 || drawerRecentApps.length > 0);
   const drawerRemainingApps = $derived.by(() => {
-    if (!drawerPersonalized) return apps;
+    if (!drawerPersonalized) return launchVisibleApps;
     const shown = new Set([
       ...drawerPinnedApps.map((app) => app.id),
       ...drawerRecentApps.map((app) => app.id),
     ]);
-    return apps.filter((app) => !shown.has(app.id));
+    return launchVisibleApps.filter((app) => !shown.has(app.id));
   });
   const recoveredReceipts = $derived(recoveredReceiptsFor(receiptsByApp, appById));
   const totalRows = $derived(Object.values(rowsByApp).reduce((sum, rows) => sum + rows.length, 0));
@@ -2597,6 +2600,7 @@
         height="22"
         aria-hidden="true"
       />
+      <span class="focused-mark-letter" aria-hidden="true">S</span>
       <span class="sr-only">Shippie tools</span>
     </button>
     {#if activeApp}
@@ -2853,7 +2857,7 @@
         {#if section === 'home'}
           <DashboardHome
             insights={agentInsights}
-            {apps}
+            apps={launchVisibleApps}
             {openAppIds}
             {updateCards}
             {meshStatus}
@@ -3931,25 +3935,25 @@
   }
   /* Safe-edges contract: when the active app declares it owns the
      bottom or the entire viewport via @shippie/iframe-sdk
-     `safeEdges.declareInputRegion()`, shrink the chrome buttons so
-     their hit area stops bleeding into game controls. The visible
-     pill still renders as a thin sliver so the user can
-     find their way back to the launcher, but accidental taps from a
-     game button next to the edge no longer trigger the drawer.
+     `safeEdges.declareInputRegion()`, compact the chrome buttons so
+     their hit area stays at the edge of game controls. Keep them
+     visibly identifiable, though: a too-thin sliver reads as "missing"
+     in launch games like Snake and prevents people finding share/data.
 
      'bottom' suppresses just the left tools pill (the one that
      overlaps Stack's leftmost touch button). 'all' shrinks both. */
   .focused-chrome-button.input-region-bottom.focused-chrome-tools,
   .focused-chrome-button.input-region-all {
-    width: 24px;
-    opacity: 0.52;
+    width: 36px;
+    opacity: 0.82;
+    background: rgba(20, 18, 15, 0.74);
   }
   .focused-chrome-tools.input-region-bottom,
   .focused-chrome-tools.input-region-all {
-    left: env(safe-area-inset-left, 0px);
+    left: calc(env(safe-area-inset-left, 0px) - 2px);
   }
   .focused-chrome-options.input-region-all {
-    right: env(safe-area-inset-right, 0px);
+    right: calc(env(safe-area-inset-right, 0px) - 2px);
   }
   .focused-chrome-button.input-region-bottom.focused-chrome-tools:hover,
   .focused-chrome-button.input-region-bottom.focused-chrome-tools:focus-visible,
@@ -4005,10 +4009,25 @@
   .focused-chrome-button img {
     display: block;
     flex-shrink: 0;
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     object-fit: contain;
-    transform: scale(2.8);
+  }
+  .focused-mark-letter {
+    display: none;
+    color: #FAF7EF;
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .focused-chrome-tools.input-region-bottom img,
+  .focused-chrome-tools.input-region-all img {
+    display: none;
+  }
+  .focused-chrome-tools.input-region-bottom .focused-mark-letter,
+  .focused-chrome-tools.input-region-all .focused-mark-letter {
+    display: block;
   }
   @media (max-width: 640px) {
     .focused-chrome-button {
@@ -4025,10 +4044,10 @@
     }
     .focused-chrome-tools.input-region-bottom,
     .focused-chrome-tools.input-region-all {
-      left: env(safe-area-inset-left, 0px);
+      left: calc(env(safe-area-inset-left, 0px) - 2px);
     }
     .focused-chrome-options.input-region-all {
-      right: env(safe-area-inset-right, 0px);
+      right: calc(env(safe-area-inset-right, 0px) - 2px);
     }
   }
 

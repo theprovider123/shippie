@@ -75,7 +75,7 @@ export function ShareSheet({ recipe, onClose }: ShareSheetProps) {
       try {
         await navigator.share({
           title: `${recipe.title} — a recipe from Shippie`,
-          text: `${recipe.title}: open in Recipe Saver to import.`,
+          text: `${recipe.title}: open in Recipe to import.`,
           url,
         });
         return;
@@ -89,7 +89,7 @@ export function ShareSheet({ recipe, onClose }: ShareSheetProps) {
   // Pin to a 90-day public link via /api/c. Useful when you want to
   // text the recipe to someone who doesn't have Shippie installed —
   // the URL renders a static read-only preview at shippie.app/c/<hash>
-  // with an "Open in Recipe Saver" deep-link. The blob still travels
+  // with an "Open in Recipe" deep-link. The blob still travels
   // signed; the server just stores the bytes by their hash.
   async function pinPublicLink() {
     if (!blob) return;

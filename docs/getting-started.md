@@ -118,6 +118,31 @@ await shippie.db.set('notes', 'abc', { title: 'Hello' })
 
 Shippie never touches your users' data.
 
+## Create private spaces
+
+If your app is more useful with a small group, add a `spaces` block to
+`shippie.json`. Shippie then gives the deployed app invite links, QR codes,
+roles, join-token rotation, archive mode, and Hub discovery without making you
+build accounts or a backend.
+
+```json
+{
+  "spaces": {
+    "enabled": true,
+    "roles": [
+      { "id": "host", "permissions": ["read", "write", "invite", "archive"] },
+      { "id": "member", "permissions": ["read", "write"] },
+      { "id": "viewer", "permissions": ["read"] }
+    ],
+    "syncMode": "gossip",
+    "archivable": true
+  }
+}
+```
+
+Use this for rooms, classes, trips, household tools, watch parties, fantasy
+leagues, and venue experiences. Full guide: [`docs/private-spaces-builder.md`](./private-spaces-builder.md).
+
 ## Make it feel like an app
 
 Shippie is one installable PWA. Inside Shippie, your app runs as an iframe. To feel right whether the user is in installed-PWA Shippie, mobile-web Shippie, or desktop-web Shippie, follow this baseline:

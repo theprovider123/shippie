@@ -12,6 +12,7 @@
     "preview": "wrangler dev",
     "deploy": "bun run build && bun scripts/upload-sdk-bundle.mjs && wrangler deploy",
     "deploy:verified": "bun run build && bun scripts/upload-sdk-bundle.mjs && wrangler deploy && bun scripts/prove-sealed-cloud.mjs --origin https://shippie.app --profiles quick",
+    "smoke:private-spaces": "bun scripts/smoke-private-spaces.mjs",
     "check:sealed-cloud": "bun scripts/check-sealed-cloud.mjs",
     "bench:sealed-cloud": "bun scripts/bench-sealed-cloud.mjs",
     "torture:sealed-cloud": "bun scripts/torture-sealed-cloud.mjs",

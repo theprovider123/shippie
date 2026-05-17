@@ -31,6 +31,11 @@ docker run --rm -p 80:80 -v shippie-hub-data:/var/lib/shippie-hub \
    "visible here" rooms/tools without auto-joining anyone. This is the
    safe first step before phone-to-phone LAN seeding.
 
+If an installed `.shippie` package declares `spaces` metadata, the Hub keeps it
+in the local tool registry and returns it from ambient discovery. A phone or
+venue screen can therefore show "private room available here" even when the
+public platform is unreachable.
+
 ## Privacy
 
 The Hub stores **nothing about user data**. Specifically:
@@ -79,6 +84,7 @@ GET  /api/hub/ambient                  → visible rooms + cached tools
 POST /api/packages                     → ingest verified .shippie archive
 GET  /packages/<hash>.shippie          → local package mirror
 GET  /collections/local-mirror.json    → local collection manifest
+GET  /api/hub/tools                    → cached tool registry, including spaces metadata
 WS   /__shippie/signal/<roomId>        → WebRTC signalling (client.ts)
 GET  /models/<rest>                    → read-through model cache
 GET  /apps/<slug>/<rest>               → static app cache

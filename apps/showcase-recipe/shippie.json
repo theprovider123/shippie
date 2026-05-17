@@ -1,8 +1,8 @@
 {
   "$schema": "https://shippie.app/schemas/app.json",
-  "name": "Recipe Saver",
+  "name": "Recipe",
   "slug": "recipe",
-  "description": "A local-first recipe saver. Your recipes never leave your device.",
+  "description": "A local-first kitchen app for recipes, meal planning, shopping, and pantry notes.",
   "icon": "/icon.png",
   "theme_color": "#E8603C",
   "background_color": "#FAF7EF",

@@ -46,7 +46,7 @@ export interface DocumentSnapshot<TState = unknown> {
   snapshotId: string;
   authorDeviceId: string;
   createdAt: string;
-  reducerVersion?: string;
+  reducerVersion?: string | undefined;
   lastEventId: string | null;
   lastEventCreatedAt: string | null;
   eventCount: number;
@@ -67,7 +67,7 @@ export interface EncryptedDocumentSnapshot {
   authorDeviceId: string;
   authorPublicKey: string;
   createdAt: string;
-  reducerVersion?: string;
+  reducerVersion?: string | undefined;
   lastEventId: string | null;
   lastEventCreatedAt: string | null;
   eventCount: number;
@@ -83,7 +83,7 @@ export interface EncryptedAttachmentPayload {
   nonce: string;
   ciphertext: string;
   byteLength: number;
-  contentType?: string;
+  contentType?: string | undefined;
   createdAt: string;
 }
 
@@ -92,12 +92,12 @@ export interface EncryptedAttachmentManifest {
   attachmentId: string;
   createdAt: string;
   totalByteLength: number;
-  contentType?: string;
-  sha256?: string;
+  contentType?: string | undefined;
+  sha256?: string | undefined;
   chunks: Array<{
     attachmentId: string;
     byteLength: number;
-    sha256?: string;
+    sha256?: string | undefined;
   }>;
 }
 
@@ -120,10 +120,10 @@ export interface DocumentAccessBundle {
   documents: Array<{
     documentId: string;
     documentKey: string;
-    cursor?: string | null;
-    role?: string;
+    cursor?: string | null | undefined;
+    role?: string | undefined;
   }>;
-  deviceLabel?: string;
+  deviceLabel?: string | undefined;
 }
 
 export interface WrappedAccessBundle {
@@ -138,7 +138,7 @@ export interface AccessTransferRequest {
   schema: 'shippie.document.access-transfer-request.v1';
   recipientPublicKey: string;
   createdAt: string;
-  deviceLabel?: string;
+  deviceLabel?: string | undefined;
 }
 
 export interface EncryptDocumentEventInput<TPayload = unknown> {
@@ -147,9 +147,9 @@ export interface EncryptDocumentEventInput<TPayload = unknown> {
   signing: DeviceSigningKeyPair;
   kind: string;
   payload: TPayload;
-  parentIds?: readonly string[];
-  createdAt?: string;
-  eventId?: string;
+  parentIds?: readonly string[] | undefined;
+  createdAt?: string | undefined;
+  eventId?: string | undefined;
 }
 
 export interface WrapAccessBundleInput {
@@ -172,12 +172,12 @@ export interface EncryptDocumentSnapshotInput<TState = unknown> {
   documentKey: string | CryptoKey;
   signing: DeviceSigningKeyPair;
   state: TState;
-  lastEventId?: string | null;
-  lastEventCreatedAt?: string | null;
+  lastEventId?: string | null | undefined;
+  lastEventCreatedAt?: string | null | undefined;
   eventCount: number;
-  reducerVersion?: string;
-  createdAt?: string;
-  snapshotId?: string;
+  reducerVersion?: string | undefined;
+  createdAt?: string | undefined;
+  snapshotId?: string | undefined;
 }
 
 export interface DecryptDocumentSnapshotInput {
@@ -188,8 +188,8 @@ export interface DecryptDocumentSnapshotInput {
 export interface EncryptAttachmentInput {
   documentKey: string | CryptoKey;
   bytes: Blob | Uint8Array | ArrayBuffer;
-  contentType?: string;
-  createdAt?: string;
+  contentType?: string | undefined;
+  createdAt?: string | undefined;
 }
 
 export interface DecryptAttachmentInput {
@@ -204,9 +204,9 @@ export interface SealedSyncClientOptions {
    * Origin/base URL for the Shippie sealed cloud. Omit for same-origin
    * browser use inside the wrapped app.
    */
-  origin?: string;
+  origin?: string | undefined;
   fetchImpl?: SealedSyncFetch;
-  headers?: HeadersInit;
+  headers?: HeadersInit | undefined;
 }
 
 export interface SealedEventPage {
@@ -408,7 +408,7 @@ export interface OpenDocumentOptions<TState, TPayload = unknown> {
   signing: DeviceSigningKeyPair;
   initialState: TState;
   reducer: (state: TState, event: DocumentEvent<TPayload>) => TState;
-  reducerVersion?: string;
+  reducerVersion?: string | undefined;
   store?: DocumentStore;
   sync?: SealedSyncClient;
   realtime?: boolean | RealtimeSyncOptions;
@@ -417,9 +417,9 @@ export interface OpenDocumentOptions<TState, TPayload = unknown> {
 export interface AppendDocumentEventInput<TPayload = unknown> {
   kind: string;
   payload: TPayload;
-  parentIds?: readonly string[];
-  createdAt?: string;
-  eventId?: string;
+  parentIds?: readonly string[] | undefined;
+  createdAt?: string | undefined;
+  eventId?: string | undefined;
 }
 
 export interface DocumentHandle<TState, TPayload = unknown> {
@@ -434,7 +434,7 @@ export interface DocumentHandle<TState, TPayload = unknown> {
   snapshotCursor(): string | null;
   latestSnapshot(): DocumentSnapshot<TState> | null;
   append(input: AppendDocumentEventInput<TPayload>): Promise<DocumentEvent<TPayload>>;
-  createSnapshot(input?: { snapshotId?: string; createdAt?: string }): Promise<EncryptedDocumentSnapshot>;
+  createSnapshot(input?: { snapshotId?: string | undefined; createdAt?: string | undefined }): Promise<EncryptedDocumentSnapshot>;
   sync(): Promise<{ pushed: number; pulled: number; cursor: string | null }>;
   syncStatus(): DocumentSyncStatus;
   requestSync(reason?: RealtimeSyncReason): void;
@@ -1227,7 +1227,7 @@ export function createSealedSyncClient(opts: SealedSyncClientOptions = {}): Seal
       const query = params.toString();
       const response = await fetchImpl(
         urlFor(opts.origin, `/api/documents/${encodeURIComponent(documentId)}/events${query ? `?${query}` : ''}`),
-        { method: 'GET', headers: opts.headers },
+        requestInit('GET', opts.headers),
       );
       await assertOk(response);
       return validateSealedEventPage(await response.json());
@@ -1250,7 +1250,7 @@ export function createSealedSyncClient(opts: SealedSyncClientOptions = {}): Seal
       const query = params.toString();
       const response = await fetchImpl(
         urlFor(opts.origin, `/api/documents/${encodeURIComponent(documentId)}/snapshots${query ? `?${query}` : ''}`),
-        { method: 'GET', headers: opts.headers },
+        requestInit('GET', opts.headers),
       );
       await assertOk(response);
       return validateSealedSnapshotPage(await response.json());
@@ -1259,7 +1259,7 @@ export function createSealedSyncClient(opts: SealedSyncClientOptions = {}): Seal
     async pullLatestSnapshot(documentId) {
       const response = await fetchImpl(
         urlFor(opts.origin, `/api/documents/${encodeURIComponent(documentId)}/snapshots?latest=1&limit=1`),
-        { method: 'GET', headers: opts.headers },
+        requestInit('GET', opts.headers),
       );
       await assertOk(response);
       const page = validateSealedSnapshotPage(await response.json());
@@ -1269,7 +1269,7 @@ export function createSealedSyncClient(opts: SealedSyncClientOptions = {}): Seal
     async getManifest(documentId) {
       const response = await fetchImpl(
         urlFor(opts.origin, `/api/documents/${encodeURIComponent(documentId)}/manifest`),
-        { method: 'GET', headers: opts.headers },
+        requestInit('GET', opts.headers),
       );
       await assertOk(response);
       return normaliseSealedDocumentManifest(await response.json());
@@ -1284,7 +1284,7 @@ export function createSealedSyncClient(opts: SealedSyncClientOptions = {}): Seal
       const query = params.toString();
       const response = await fetchImpl(
         urlFor(opts.origin, `/api/documents/${encodeURIComponent(documentId)}/hint${query ? `?${query}` : ''}`),
-        { method: 'GET', headers: opts.headers },
+        requestInit('GET', opts.headers),
       );
       await assertOk(response);
       return normaliseSealedDocumentChangeHint(documentId, await response.json());
@@ -1350,7 +1350,7 @@ export function createSealedSyncClient(opts: SealedSyncClientOptions = {}): Seal
           opts.origin,
           `/api/documents/${encodeURIComponent(documentId)}/attachments/${encodeURIComponent(attachmentId)}`,
         ),
-        { method: 'GET', headers: opts.headers },
+        requestInit('GET', opts.headers),
       );
       await assertOk(response);
       return response.blob();
@@ -1376,7 +1376,7 @@ export function createAccessTransferRelayClient(opts: SealedSyncClientOptions = 
     async getRequest(transferId) {
       const response = await fetchImpl(urlFor(opts.origin, `/api/documents/transfer/${encodeURIComponent(transferId)}/request`), {
         method: 'GET',
-        headers: opts.headers,
+        ...(opts.headers ? { headers: opts.headers } : {}),
       });
       if (response.status === 404) return null;
       await assertOk(response);
@@ -1396,7 +1396,7 @@ export function createAccessTransferRelayClient(opts: SealedSyncClientOptions = 
     async getBundle(transferId) {
       const response = await fetchImpl(urlFor(opts.origin, `/api/documents/transfer/${encodeURIComponent(transferId)}`), {
         method: 'GET',
-        headers: opts.headers,
+        ...(opts.headers ? { headers: opts.headers } : {}),
       });
       if (response.status === 404) return null;
       await assertOk(response);
@@ -1558,6 +1558,10 @@ async function assertOk(response: Response): Promise<void> {
 function urlFor(origin: string | undefined, path: string): string {
   if (!origin) return path;
   return new URL(path, origin.endsWith('/') ? origin : `${origin}/`).toString();
+}
+
+function requestInit(method: string, headers: HeadersInit | undefined): RequestInit {
+  return headers ? { method, headers } : { method };
 }
 
 function mergeHeaders(base: HeadersInit | undefined, extra: Record<string, string>): Headers {

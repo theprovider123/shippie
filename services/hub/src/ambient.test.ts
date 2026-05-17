@@ -22,6 +22,12 @@ describe('Hub ambient discovery', () => {
             packageHash: `sha256:${'a'.repeat(64)}`,
             packageUrl: `http://hub.local/packages/sha256:${'a'.repeat(64)}.shippie`,
             appUrl: 'http://match-room.hub.local/',
+            spaces: {
+              enabled: true,
+              roles: [{ id: 'host', permissions: ['read', 'write', 'invite'] }],
+              syncMode: 'hub',
+              archivable: true,
+            },
             group: 'Block 5',
             deployedAt: now.toISOString(),
           },
@@ -33,6 +39,7 @@ describe('Hub ambient discovery', () => {
     expect(discovery.schema).toBe('shippie.hub.ambient.v1');
     expect(discovery.hub).toEqual({ name: 'emirates', origin: 'http://hub.local' });
     expect(discovery.tools[0]?.slug).toBe('match-room');
+    expect(discovery.tools[0]?.spaces?.enabled).toBe(true);
     expect(discovery.rooms).toEqual([]);
   });
 });

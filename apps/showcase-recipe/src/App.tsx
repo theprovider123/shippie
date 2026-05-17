@@ -215,7 +215,7 @@ export function App() {
             onClick={(event) => event.stopPropagation()}
           >
             <header>
-              <h2 id="install-help-title">Install Recipe Saver</h2>
+              <h2 id="install-help-title">Install Recipe</h2>
               <button
                 type="button"
                 className="ghost"

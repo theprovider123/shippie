@@ -34,12 +34,35 @@
     { id: 'member', permissions: ['read', 'write'] },
     { id: 'viewer', permissions: ['read'] },
   ];
-  const roleOptions = $derived(spaces?.enabled && spaces.roles.length > 0 ? spaces.roles : fallbackRoles);
-
+  const invitePresets = [
+    {
+      id: 'friend',
+      label: 'One friend',
+      description: 'A single-use link for one person or one extra device.',
+      maxUses: '1',
+      expiresDays: '30',
+    },
+    {
+      id: 'room',
+      label: 'Room QR',
+      description: 'Reusable during a live room, class, pub table, or match day.',
+      maxUses: '20',
+      expiresDays: '1',
+    },
+    {
+      id: 'team',
+      label: 'Team',
+      description: 'A longer-lived link for a trusted group.',
+      maxUses: '50',
+      expiresDays: '14',
+    },
+  ] as const;
   let selectedRole = $state('member');
   let spaceId = $state('');
+  let spaceName = $state('');
   let maxUses = $state('1');
   let expiresDays = $state('30');
+  let selectedPreset = $state<(typeof invitePresets)[number]['id']>('friend');
   let shareUrl = $state<string | null>(null);
   let hostUrl = $state<string | null>(null);
   let qrMarkup = $state<string | null>(null);
@@ -48,12 +71,15 @@
   let error = $state<string | null>(null);
   let busy = $state(false);
   let initialised = $state(false);
+  const roleOptions = $derived(spaces?.enabled && spaces.roles.length > 0 ? spaces.roles : fallbackRoles);
+  const selectedRoleDetails = $derived(roleOptions.find((role) => role.id === selectedRole));
 
   $effect(() => {
     if (!initialised) {
       selectedRole = roleOptions[0]?.id ?? 'member';
       spaceId = generateSpaceId(slug);
-      maxUses = spaces?.enabled ? '20' : '1';
+      spaceName = `${appName} private space`;
+      applyPreset(spaces?.enabled ? 'room' : 'friend');
       initialised = true;
     }
     if (!roleOptions.some((role) => role.id === selectedRole)) {
@@ -76,9 +102,12 @@
       const joinToken = generateJoinToken();
       const activeSpaceId = spaceId || generateSpaceId(slug);
       if (!spaceId) spaceId = activeSpaceId;
+      const activeSpaceName =
+        existingSpaces.find((space) => space.id === activeSpaceId)?.name ??
+        (spaceName.trim() || `${appName} private space`);
       body.transfer_id = transferId;
       body.space_id = activeSpaceId;
-      body.space_name = existingSpaces.find((space) => space.id === activeSpaceId)?.name ?? `${appName} private space`;
+      body.space_name = activeSpaceName;
       body.space_role = selectedRole;
       body.space_join = joinToken;
       const uses = Number(maxUses);
@@ -111,7 +140,9 @@
       });
       shareUrl = nextShareUrl;
       hostUrl = nextHostUrl;
-      status = 'Invite ready. Keep this tab open until the other device joins.';
+      status = existingSpaces.some((space) => space.id === activeSpaceId)
+        ? 'Fresh join link ready. Current members stay in the space.'
+        : 'Private space ready. Share the link or QR to let people join.';
       try {
         qrMarkup = await qrSvg(nextShareUrl, { ecc: 'M', size: 224 });
       } catch {
@@ -153,10 +184,11 @@
   function rotateSpace() {
     selectedExistingSpace = '__new';
     spaceId = generateSpaceId(slug);
+    spaceName = `${appName} private space`;
     shareUrl = null;
     hostUrl = null;
     qrMarkup = null;
-    status = 'New space ready. Create an invite when you are happy with the role.';
+    status = 'New space ready. Choose who this link is for.';
   }
 
   function chooseSpace(value: string) {
@@ -165,11 +197,19 @@
       rotateSpace();
     } else {
       spaceId = value;
+      spaceName = existingSpaces.find((space) => space.id === value)?.name ?? spaceName;
       shareUrl = null;
       hostUrl = null;
       qrMarkup = null;
       status = 'Existing space selected. Create an invite to rotate a fresh join link.';
     }
+  }
+
+  function applyPreset(id: (typeof invitePresets)[number]['id']) {
+    const preset = invitePresets.find((item) => item.id === id) ?? invitePresets[0];
+    selectedPreset = preset.id;
+    maxUses = preset.maxUses;
+    expiresDays = preset.expiresDays;
   }
 
   function generateSpaceId(prefix: string): string {
@@ -217,11 +257,23 @@
 
 <div class="composer">
   <div class="composer-copy">
-    <p class="muted">Create one role-bound space link that grants access, installs the private package, and starts sealed data handoff.</p>
+    <p class="lede">Create a private space for this app. People join from a link or QR, get only the role you choose, and Shippie cannot read the room.</p>
+    <div class="presets" aria-label="Invite type">
+      {#each invitePresets as preset (preset.id)}
+        <button
+          type="button"
+          class:active={selectedPreset === preset.id}
+          onclick={() => applyPreset(preset.id)}
+        >
+          <strong>{preset.label}</strong>
+          <span>{preset.description}</span>
+        </button>
+      {/each}
+    </div>
     <div class="fields">
       {#if existingSpaces.some((space) => space.status === 'active')}
         <label class="wide">
-          <span>Use</span>
+          <span>Space</span>
           <select value={selectedExistingSpace} onchange={(event) => chooseSpace(event.currentTarget.value)}>
             <option value="__new">New private space</option>
             {#each existingSpaces.filter((space) => space.status === 'active') as space (space.id)}
@@ -231,11 +283,8 @@
         </label>
       {/if}
       <label class="wide">
-        <span>Space</span>
-        <div class="inline-field">
-          <input bind:value={spaceId} placeholder="space id" />
-          <button type="button" class="ghost compact" onclick={rotateSpace}>New</button>
-        </div>
+        <span>Space name</span>
+        <input bind:value={spaceName} placeholder={`${appName} private space`} />
       </label>
       <label>
         <span>Role</span>
@@ -246,17 +295,29 @@
         </select>
       </label>
       <label>
-        <span>Max uses</span>
+        <span>Uses</span>
         <input bind:value={maxUses} inputmode="numeric" placeholder="1" />
       </label>
       <label>
-        <span>Expires in days</span>
+        <span>Days</span>
         <input bind:value={expiresDays} inputmode="numeric" placeholder="30" />
       </label>
       <button type="button" class="primary" onclick={startShare} disabled={busy}>
-        {busy ? 'Creating...' : 'Create invite'}
+        {busy ? 'Creating...' : 'Create private link'}
       </button>
     </div>
+    {#if selectedRoleDetails}
+      <p class="meta">Role <strong>{selectedRoleDetails.id}</strong> grants {selectedRoleDetails.permissions.join(', ')}.</p>
+    {/if}
+    <details>
+      <summary>Advanced space id</summary>
+      <div class="advanced-row">
+        <div class="inline-field">
+          <input bind:value={spaceId} placeholder="space id" />
+          <button type="button" class="ghost compact" onclick={rotateSpace}>New</button>
+        </div>
+      </div>
+    </details>
     {#if spaces?.enabled}
       <p class="meta">This app declares private spaces · {spaces.syncMode} sync · {spaces.archivable ? 'archive ready' : 'live only'}</p>
     {:else}
@@ -273,6 +334,7 @@
   {#if shareUrl}
     <div class="result">
       <div class="result-text">
+        <p class="result-title">Private link ready</p>
         <p class="url">{shareUrl}</p>
         {#if hostUrl}
           <p class="host-url">Host link: <a href={hostUrl}>{hostUrl}</a></p>
@@ -301,10 +363,43 @@
     display: grid;
     gap: 0.75rem;
   }
-  .muted,
+  .lede {
+    max-width: 68ch;
+    color: #5C5751;
+    margin: 0;
+  }
   .status {
     color: #8B847A;
     margin: 0;
+  }
+  .presets {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .presets button {
+    height: auto;
+    min-height: 76px;
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    text-align: left;
+    padding: 0.75rem;
+    border: 1px solid #E5DDC8;
+    background: transparent;
+    color: inherit;
+  }
+  .presets button.active {
+    border-color: #E8603C;
+    background: rgba(232, 96, 60, 0.08);
+  }
+  .presets strong {
+    font-size: 13px;
+  }
+  .presets span {
+    font-size: 12px;
+    line-height: 1.35;
+    color: #8B847A;
   }
   .fields {
     display: flex;
@@ -342,6 +437,21 @@
   label.wide input {
     width: 100%;
   }
+  details {
+    width: fit-content;
+  }
+  summary {
+    cursor: pointer;
+    color: #8B847A;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .advanced-row {
+    margin-top: 0.5rem;
+  }
+  .advanced-row input {
+    width: min(360px, 70vw);
+  }
   .inline-field {
     display: flex;
     gap: 0.5rem;
@@ -373,6 +483,10 @@
     min-width: 0;
     display: grid;
     gap: 0.5rem;
+  }
+  .result-title {
+    margin: 0;
+    font-weight: 700;
   }
   .url {
     font-family: ui-monospace, monospace;
@@ -434,12 +548,21 @@
     margin: 0;
   }
   @media (max-width: 640px) {
+    .presets {
+      grid-template-columns: 1fr;
+    }
     .result {
       flex-direction: column;
     }
   }
   @media (prefers-color-scheme: dark) {
     .composer {
+      border-color: #2A251E;
+    }
+    .lede {
+      color: #CFC3AF;
+    }
+    .presets button {
       border-color: #2A251E;
     }
     input,

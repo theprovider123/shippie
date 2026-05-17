@@ -88,7 +88,7 @@ export function FantasyLeaguePanel(props: {
           </p>
         </div>
         <div className="sealed-mini">
-          <span>Your Data</span>
+          <span>Local save</span>
           <strong>{props.archive.documentId ? 'Sealed copy on' : 'Saved here'}</strong>
           <small>{formatArchiveStatus(props.archive)}</small>
         </div>
