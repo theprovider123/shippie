@@ -318,6 +318,7 @@ export function App() {
         ))}
       </nav>
 
+      {/* Single bottom alert slot — priority high→low: prompt (action) > toast (status). */}
       {prompt ? (
         <div className="consume-prompt" role="dialog" aria-label="Log this as an expense?">
           <span className="summary">
@@ -338,9 +339,7 @@ export function App() {
             </button>
           </div>
         </div>
-      ) : null}
-
-      {toast ? (
+      ) : toast ? (
         <div className="toast" role="status" aria-live="polite">
           {toast}
         </div>
