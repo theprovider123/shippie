@@ -25,7 +25,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply shippie-platform-d1 --remote",
     "db:migrate:local": "wrangler d1 migrations apply shippie-platform-d1 --local",
-    "test": "vitest run"
+    "test": "bun run prepare:generated && vitest run"
   },
   "dependencies": {
     "@lucia-auth/adapter-sqlite": "^3.0.0",
