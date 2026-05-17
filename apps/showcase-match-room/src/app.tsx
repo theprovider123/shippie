@@ -177,16 +177,21 @@ export function App() {
             </details>
           ) : null}
           {hasIdentity ? null : <InstallPanel />}
-          <div className="tournament-stats" aria-label="Tournament scale">
-            <strong>{TEAMS.length}<span>nations</span></strong>
-            <strong>{ALL_FIXTURES.length}<span>matches</span></strong>
-            <strong>{HOST_CITIES.length}<span>host cities</span></strong>
-          </div>
           <LandingRoutes onCreate={startHost} />
-          {hasIdentity ? <ForYouStrip profile={profile} locale={locale} timeZone={timeZone} /> : <EngagementLoopPanel />}
-          {hasIdentity ? null : <ViralMomentsPanel />}
-          <LandingCityPreview />
-          <BoardSwitcher rooms={savedRooms} onChange={setSavedRooms} />
+          {/* Secondary surfaces below the hero fold. Keep them reachable
+              via scroll, but don't let them compete with the Create /
+              Join / Room-types primary actions on first paint. */}
+          <section className="hero-secondary" aria-label="More about the tournament">
+            <div className="tournament-stats" aria-label="Tournament scale">
+              <strong>{TEAMS.length}<span>nations</span></strong>
+              <strong>{ALL_FIXTURES.length}<span>matches</span></strong>
+              <strong>{HOST_CITIES.length}<span>host cities</span></strong>
+            </div>
+            {hasIdentity ? <ForYouStrip profile={profile} locale={locale} timeZone={timeZone} /> : <EngagementLoopPanel />}
+            {hasIdentity ? null : <ViralMomentsPanel />}
+            <LandingCityPreview />
+            <BoardSwitcher rooms={savedRooms} onChange={setSavedRooms} />
+          </section>
         </section>
       </main>
     );
