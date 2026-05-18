@@ -88,6 +88,7 @@
     const totalLaunches = Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, n) => sum + n, 0);
     return totalLaunches === 0;
   });
+  const hasLauncherHistory = $derived(!isFirstVisit || pinnedApps.length > 0 || recentApps.length > 0);
 
   onMount(() => {
     hydrateLauncherMemory();
@@ -181,10 +182,20 @@
 <svelte:window onkeydown={onKeydown} />
 
 <div class="page">
-  <header class="head wrap">
+  <header class="head wrap" class:compact={hasLauncherHistory}>
     <div class="head-grid">
       <div class="head-copy">
-        <p class="eyebrow">Tool launcher</p>
+        <p class="eyebrow hero-eyebrow">
+          <img
+            src="/__shippie-pwa/icon.svg"
+            alt=""
+            width="18"
+            height="18"
+            class="hero-mark"
+            aria-hidden="true"
+          />
+          <span>Tool launcher</span>
+        </p>
         <h1 class="title">Shippie</h1>
         <p class="lede">
           Tap a tool to use it. They run on your device, work offline, and share local signals when it helps.
@@ -469,6 +480,16 @@
     color: var(--text-light);
     margin: 0 0 0.55rem;
   }
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .hero-mark {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+  }
   .head-copy {
     max-width: 36rem;
   }
@@ -623,11 +644,43 @@
       grid-template-columns: 1fr;
     }
     .page {
-      padding-top: var(--space-lg);
+      padding-top: var(--space-md);
+    }
+    .head {
+      padding-bottom: var(--space-md);
+    }
+    .head-grid {
+      gap: var(--space-md);
+    }
+    .head-tools {
+      gap: 0.75rem;
+    }
+    .hero-eyebrow {
+      margin-bottom: 0.4rem;
+    }
+    .lede {
+      margin-top: 0.75rem;
+      font-size: 1rem;
+      line-height: 1.45;
     }
     .title {
       font-size: clamp(2.2rem, 12vw, 2.8rem);
       line-height: 1;
+    }
+    .head.compact .lede {
+      display: none;
+    }
+    .head.compact .title {
+      font-size: clamp(1.9rem, 9vw, 2.35rem);
+    }
+    .head.compact {
+      padding-bottom: 0.85rem;
+    }
+    .head.compact .head-grid {
+      gap: 0.85rem;
+    }
+    .results {
+      padding-top: var(--space-md);
     }
     .cats {
       flex-wrap: nowrap;

@@ -33,6 +33,11 @@
     ].some((prefix) => pathname === prefix || pathname.startsWith(prefix));
   }
 
+  $effect(() => {
+    const mobileDockChrome = showBottomDock($page.url.pathname);
+    document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
+  });
+
   onMount(() => {
     document.body.dataset.appReady = 'true';
 
@@ -75,7 +80,9 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-<Nav user={data.user} />
+<div class="nav-shell" class:with-mobile-dock={showBottomDock($page.url.pathname)}>
+  <Nav user={data.user} />
+</div>
 <main id="main" class:with-bottom-dock={showBottomDock($page.url.pathname)}>
   {@render children()}
 </main>
@@ -96,8 +103,19 @@
   }
 
   @media (max-width: 640px), (display-mode: standalone) {
+    .nav-shell.with-mobile-dock {
+      display: none;
+    }
+
+    :global(body[data-mobile-dock-chrome='true']) {
+      padding-top: var(--safe-top);
+    }
+
     main.with-bottom-dock {
-      padding-bottom: calc(86px + var(--safe-bottom));
+      min-height: 100svh;
+      min-height: 100dvh;
+      padding-bottom: calc(108px + var(--safe-bottom));
+      scroll-padding-bottom: calc(108px + var(--safe-bottom));
     }
   }
 </style>
