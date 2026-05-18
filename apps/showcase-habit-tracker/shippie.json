@@ -3,7 +3,7 @@
   "name": "Habit Tracker",
   "slug": "habit-tracker",
   "description": "Daily habits that auto-check when you complete activities in other Shippie apps.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#5EA777",
   "background_color": "#FAF7EF",
   "display": "standalone",

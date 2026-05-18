@@ -3,7 +3,7 @@
   "name": "Meal Planner",
   "slug": "meal-planner",
   "description": "Plan a week of meals from saved recipes and pantry contents.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#E8603C",
   "background_color": "#FAF7EF",
   "display": "standalone",

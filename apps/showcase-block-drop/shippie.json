@@ -3,7 +3,7 @@
   "name": "Block Drop",
   "slug": "block-drop",
   "description": "8x8 grid puzzle. Drop 3 random shapes per round, clear lines and 3x3 squares. Daily seed.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#2A1F16",
   "background_color": "#F8F1E0",
   "display": "standalone",

@@ -3,7 +3,7 @@
   "name": "Tap Counter",
   "slug": "tap-counter",
   "description": "Tap to count anything. Coffees, reps, people in a room. Big number. Satisfying haptic. Zero typing.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#C97B2D",
   "background_color": "#F8F1E0",
   "display": "standalone",

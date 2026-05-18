@@ -3,7 +3,7 @@
   "name": "Drawing Telephone",
   "slug": "drawing-telephone",
   "description": "Pictionary meets Chinese Whispers. Join via QR. Draw, guess, draw, watch the chain unravel.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#7E5B96",
   "background_color": "#F8F1E0",
   "display": "standalone",

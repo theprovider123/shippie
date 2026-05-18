@@ -3,7 +3,7 @@
   "name": "Body Metrics",
   "slug": "body-metrics",
   "description": "Weight + body photos. Photos never leave the device.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#74A57F",
   "background_color": "#FAF7EF",
   "display": "standalone",

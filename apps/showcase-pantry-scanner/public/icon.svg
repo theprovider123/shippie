@@ -1,9 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#74A57F"/>
-  <g stroke="#FAF7EF" stroke-width="32" stroke-linecap="round" fill="none">
-    <line x1="148" y1="160" x2="148" y2="352"/>
-    <line x1="220" y1="160" x2="220" y2="352"/>
-    <line x1="292" y1="160" x2="292" y2="352"/>
-    <line x1="364" y1="160" x2="364" y2="352"/>
-  </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#74A57F"/>
+  <text
+    x="256" y="256"
+    fill="#EDE4D3"
+    font-family="Fraunces, Georgia, 'Times New Roman', serif"
+    font-size="280"
+    font-weight="600"
+    text-anchor="middle"
+    dominant-baseline="central"
+    letter-spacing="-2"
+  >P</text>
 </svg>

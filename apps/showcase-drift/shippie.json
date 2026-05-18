@@ -3,7 +3,7 @@
   "name": "Drift",
   "slug": "drift",
   "description": "Vector-style asteroid shooter. Rotate, thrust, fire, hyperspace. Daily-seed waves, synthwave skin.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#15131F",
   "background_color": "#15131F",
   "display": "standalone",

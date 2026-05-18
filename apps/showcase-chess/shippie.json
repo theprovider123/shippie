@@ -3,7 +3,7 @@
   "name": "Chess",
   "slug": "chess",
   "description": "Chess. Play against the computer or two-player on one device. PGN export.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#2A1F16",
   "background_color": "#F8F1E0",
   "display": "standalone",

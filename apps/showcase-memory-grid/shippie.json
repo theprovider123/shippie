@@ -3,7 +3,7 @@
   "name": "Memory Grid",
   "slug": "memory-grid",
   "description": "Card-flip pair-match. Grid grows with skill. Cognitive sharpness as a game.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#5C5BA3",
   "background_color": "#F8F1E0",
   "display": "standalone",

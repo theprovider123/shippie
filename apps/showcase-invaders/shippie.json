@@ -3,7 +3,7 @@
   "name": "Invaders",
   "slug": "invaders",
   "description": "Fixed-shooter arcade. 11x5 alien formation, eroding bunkers, boss every 5 waves, 3 ship types, synthwave skin.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#15131F",
   "background_color": "#15131F",
   "display": "standalone",

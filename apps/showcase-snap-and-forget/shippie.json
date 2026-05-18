@@ -3,7 +3,7 @@
   "name": "Snap and Forget",
   "slug": "snap-and-forget",
   "description": "Photograph anything to remember later. AI labels it. Search by what you saw.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#4FA487",
   "background_color": "#F8F1E0",
   "display": "standalone",

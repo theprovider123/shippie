@@ -3,7 +3,7 @@
   "name": "Stack",
   "slug": "stack",
   "description": "Modern Tetris guideline. Marathon, sprint, ultra. Mesh-duel 1v1 over QR. Desktop keyboard-first.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#2A1F16",
   "background_color": "#F8F1E0",
   "display": "standalone",

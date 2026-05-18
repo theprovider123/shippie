@@ -3,7 +3,7 @@
   "name": "Sudoku",
   "slug": "sudoku",
   "description": "Algorithmic Sudoku. Infinite content. Satisfying haptics. No ads. No nags. Ever.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#3F8AA8",
   "background_color": "#F8F1E0",
   "display": "standalone",

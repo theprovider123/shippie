@@ -3,7 +3,7 @@
   "name": "Pantry Scanner",
   "slug": "pantry-scanner",
   "description": "Scan barcodes and identify pantry items with on-device vision.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#74A57F",
   "background_color": "#FAF7EF",
   "display": "standalone",

@@ -3,7 +3,7 @@
   "name": "Shopping List",
   "slug": "shopping-list",
   "description": "Live shopping list. Pulls from meal plan; shares over local mesh.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#4E7C9A",
   "background_color": "#FAF7EF",
   "display": "standalone",

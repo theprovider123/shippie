@@ -1,5 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#74A57F"/>
-  <circle cx="256" cy="180" r="48" fill="#FAF7EF"/>
-  <path d="M256 232 c-56 0 -100 36 -108 92 c-2 16 8 28 24 28 h168 c16 0 26 -12 24 -28 c-8 -56 -52 -92 -108 -92z" fill="#FAF7EF"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#74A57F"/>
+  <text
+    x="256" y="256"
+    fill="#EDE4D3"
+    font-family="Fraunces, Georgia, 'Times New Roman', serif"
+    font-size="280"
+    font-weight="600"
+    text-anchor="middle"
+    dominant-baseline="central"
+    letter-spacing="-2"
+  >B</text>
 </svg>

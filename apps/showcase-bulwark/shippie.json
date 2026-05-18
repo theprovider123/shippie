@@ -3,7 +3,7 @@
   "name": "Bulwark",
   "slug": "bulwark",
   "description": "Tower defence. 6 tower types, 18-node upgrade tree, 20-wave campaign. Solo + co-op.",
-  "icon": "/icon.png",
+  "icon": "/icon.svg",
   "theme_color": "#2A1F16",
   "background_color": "#F8F1E0",
   "display": "standalone",
