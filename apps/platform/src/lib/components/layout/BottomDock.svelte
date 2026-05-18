@@ -10,6 +10,7 @@
 
   function isHome(pathname: string): boolean {
     return pathname === '/'
+      || pathname === '/container'
       || pathname.startsWith('/apps')
       || pathname === '/arcade'
       || pathname === '/leaderboards'

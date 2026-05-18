@@ -2346,7 +2346,12 @@
     focusedDrawerOpen = false;
     focusedToolOptionsOpen = false;
     notFoundSlug = null;
-    if (requestedSection === 'home' || requestedSection === 'create' || requestedSection === 'data') {
+    if (
+      requestedSection === 'home' ||
+      requestedSection === 'create' ||
+      requestedSection === 'data' ||
+      requestedSection === 'access'
+    ) {
       section = requestedSection;
       if (requestedSection !== 'home') {
         activeAppId = null;
@@ -2886,7 +2891,7 @@
 {:else}
 <section class="shell">
   <aside class="sidebar">
-    <div>
+    <div class="sidebar-intro">
       <p class="eyebrow">Shippie</p>
       <h1>Your tools, ready where you left them.</h1>
       <p class="lede">
@@ -2904,13 +2909,16 @@
     <nav class="tabs" aria-label="Shippie sections">
       <button class:active={section === 'home'} onclick={() => showSection('home')}>Home</button>
       <button class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
-      <button class:active={section === 'data'} onclick={() => showSection('data')}>Your Data</button>
+      <button class:active={section === 'data'} onclick={() => showSection('data')}>
+        <span class="desktop-label">Your Data</span>
+        <span class="mobile-label">Data</span>
+      </button>
       <button class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
     </nav>
   </aside>
 
   <main class="workspace">
-    <div class="topbar">
+    <div class="topbar" class:section-mode={!activeApp}>
       <button class="home-button" onclick={goHome}>Home</button>
       <div>
         <p class="mini-label">Open in Shippie</p>
@@ -2956,15 +2964,15 @@
         {:else if section === 'create'}
           <div class="collection-panel">
             <div>
-              <h3>Collections</h3>
-              <p>Collections are portable app indexes. Official Shippie, Hub, school, venue, and community nodes all speak the same manifest.</p>
+              <h3>Add tools</h3>
+              <p>Load a collection, import a package, or ship something new.</p>
             </div>
             <div class="collection-actions">
               <input
                 id="collection-url"
                 name="collection-url"
                 bind:value={collectionUrl}
-                placeholder="/api/collections/official or http://hub.local/collections/local-mirror.json"
+                placeholder="/api/collections/official"
                 spellcheck="false"
                 autocapitalize="off"
               />
@@ -3005,8 +3013,8 @@
           </div>
           <hr />
           <div class="section-head">
-            <h2>Deploy a tool</h2>
-            <p>Deploy from an upload, import a package, or connect a builder workflow.</p>
+            <h2>Ship</h2>
+            <p>Start from a deploy, a remix, or a builder workflow.</p>
           </div>
           <div class="action-grid">
             <a href="/new">Deploy app</a>
@@ -3015,8 +3023,8 @@
           </div>
           <div class="backup-box">
             <div>
-              <h3>Import a tool</h3>
-              <p>Drop an HTML file or portable .shippie archive to keep a tool available locally.</p>
+              <h3>Import package</h3>
+              <p>Drop HTML or a portable .shippie archive to keep it on this device.</p>
             </div>
             <label
               class="dropzone"
@@ -3214,6 +3222,9 @@
   .tabs {
     display: grid;
     gap: 8px;
+  }
+  .mobile-label {
+    display: none;
   }
   button,
   .action-grid a {
@@ -3425,7 +3436,7 @@
     color: var(--text);
     font-size: var(--caption-size);
   }
-  @media (max-width: 900px) {
+  @media (max-width: 1024px) {
     .shell {
       grid-template-columns: 1fr;
     }
@@ -3440,6 +3451,121 @@
     .topbar {
       align-items: flex-start;
       flex-direction: column;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .shell {
+      min-height: 100svh;
+      min-height: 100dvh;
+      display: block;
+      border-top: 0;
+      padding-bottom: calc(96px + var(--safe-bottom));
+    }
+    .sidebar {
+      position: sticky;
+      top: var(--safe-top);
+      z-index: 20;
+      padding: 8px calc(12px + var(--safe-right)) 8px calc(12px + var(--safe-left));
+      border-right: 0;
+      border-bottom: 1px solid rgba(237, 228, 211, 0.12);
+      background: rgba(20, 18, 15, 0.9);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .sidebar-intro,
+    .status-panel {
+      display: none;
+    }
+    .tabs {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      border: 1px solid var(--border-light);
+      background: var(--border-light);
+    }
+    .tabs button {
+      min-height: var(--touch-min);
+      padding: 0 6px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: var(--bg);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .tabs button.active {
+      background: var(--text);
+      color: var(--bg-pure);
+      border-color: var(--text);
+    }
+    .desktop-label {
+      display: none;
+    }
+    .mobile-label {
+      display: inline;
+    }
+    .workspace {
+      padding: var(--space-md) calc(18px + var(--safe-right)) var(--space-md) calc(18px + var(--safe-left));
+      gap: var(--space-md);
+    }
+    .topbar.section-mode {
+      display: none;
+    }
+    .topbar {
+      min-height: var(--touch-min);
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar .mini-label,
+    .home-button {
+      display: none;
+    }
+    .topbar h2 {
+      font-size: 1.15rem;
+    }
+    .open-link,
+    .mesh-badge {
+      min-height: var(--touch-min);
+    }
+    .panel {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      gap: var(--space-lg);
+    }
+    .collection-panel,
+    .backup-box {
+      padding: var(--space-md);
+      background: var(--surface);
+    }
+    .collection-actions {
+      grid-template-columns: 1fr;
+    }
+    .collection-actions input,
+    .collection-list button,
+    .export-button {
+      min-height: var(--touch-min);
+      font-size: var(--type-body-mobile);
+    }
+    .action-grid {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .action-grid a,
+    .action-grid button {
+      min-height: var(--touch-min);
+      align-content: center;
+    }
+    .viewport-area {
+      min-height: calc(100svh - 156px);
+      min-height: calc(100dvh - 156px);
+    }
+    .inspector {
+      display: none;
     }
   }
 

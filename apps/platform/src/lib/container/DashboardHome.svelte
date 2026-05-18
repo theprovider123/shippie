@@ -71,7 +71,7 @@
 <InsightStrip {insights} onOpen={onOpenInsight} onDismiss={onDismissInsight} />
 <div class="section-head">
   <div class="section-title-row">
-    <h2>Your Apps</h2>
+    <h2>Tools</h2>
     <button
       class="mine-toggle"
       class:active={showMineOnly}
@@ -82,7 +82,7 @@
       My tools
     </button>
   </div>
-  <p>Open apps stay warm in their sandbox. Switch away and return without a reload.</p>
+  <p>Open tools stay warm. Switch away and come back without a reload.</p>
 </div>
 <div class="updates">
   <h3>Updates</h3>
@@ -240,6 +240,10 @@
     cursor: pointer;
     text-align: left;
   }
+  .app-tile:hover {
+    border-color: var(--sunset);
+    background: var(--surface);
+  }
   .app-tile.installable {
     border-style: dashed;
   }
@@ -328,5 +332,74 @@
     color: var(--danger, #b6472d);
     font-size: 0.85rem;
     margin: 0.5rem 0 0;
+  }
+  @media (max-width: 640px) {
+    .section-head {
+      margin: 0 0 var(--space-sm);
+    }
+    .section-title-row h2 {
+      font-size: clamp(2rem, 10vw, 3rem);
+      line-height: 0.96;
+    }
+    .section-head p {
+      font-size: 1rem;
+      line-height: 1.45;
+    }
+    .mine-toggle {
+      min-height: var(--touch-min);
+    }
+    .updates {
+      margin-bottom: var(--space-sm);
+    }
+    .updates h3 {
+      font-size: 11px;
+    }
+    .updates article {
+      align-items: stretch;
+      flex-direction: column;
+      padding: var(--space-md);
+      background: var(--surface);
+    }
+    .row-actions {
+      flex-direction: row;
+    }
+    .row-actions button {
+      min-height: var(--touch-min);
+      flex: 1;
+    }
+    .app-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .app-tile {
+      min-height: 116px;
+      padding: 12px;
+      background: var(--surface);
+    }
+    .app-tile strong {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      line-height: 1.15;
+    }
+    .nearby-panel {
+      padding: var(--space-md);
+    }
+    .mesh-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+    .mesh-actions span {
+      display: none;
+    }
+    .mesh-code-input,
+    .mesh-create,
+    .mesh-join,
+    .mesh-leave {
+      min-height: var(--touch-min);
+      font-size: var(--type-body-mobile);
+    }
   }
 </style>

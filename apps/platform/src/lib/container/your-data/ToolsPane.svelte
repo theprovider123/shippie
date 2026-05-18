@@ -55,7 +55,10 @@
 
 <section class="card" aria-labelledby="tools-heading">
   <header>
-    <h3 id="tools-heading">Installed tools ({installedApps.length})</h3>
+    <div>
+      <p class="mini-label">Tools</p>
+      <h3 id="tools-heading">On this device</h3>
+    </div>
     <input
       type="search"
       bind:value={query}
@@ -137,13 +140,22 @@
 
 <style>
   h3,
+  .mini-label,
   p {
     margin: 0;
+  }
+  .mini-label {
+    margin-bottom: 4px;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-light);
   }
   .card {
     padding: var(--space-lg);
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     display: grid;
     gap: var(--space-md);
   }
@@ -156,17 +168,19 @@
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.15rem;
+    font-size: 1.35rem;
+    line-height: 1.1;
   }
   input[type='search'] {
     flex: 1;
     min-width: 180px;
-    min-height: 40px;
+    min-height: var(--touch-min);
     padding: 0 0.75rem;
     border: 1px solid var(--border-light);
-    background: var(--surface);
+    background: var(--bg);
     color: var(--text);
     font: inherit;
+    font-size: var(--type-body-mobile);
   }
   .empty {
     color: var(--text-secondary);
@@ -181,14 +195,14 @@
   }
   .row {
     width: 100%;
-    min-height: 56px;
+    min-height: 68px;
     padding: 10px 12px;
     display: grid;
-    grid-template-columns: 36px 1fr auto auto;
+    grid-template-columns: var(--touch-min) 1fr auto auto;
     align-items: center;
     gap: 12px;
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--bg);
     color: var(--text);
     cursor: pointer;
     font: inherit;
@@ -198,8 +212,8 @@
     background: var(--surface);
   }
   .icon {
-    width: 36px;
-    height: 36px;
+    width: var(--touch-min);
+    height: var(--touch-min);
     display: grid;
     place-items: center;
     border: 1px solid var(--border-light);
@@ -218,7 +232,10 @@
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
   .count {
     color: var(--text-secondary);
@@ -307,8 +324,12 @@
     .card {
       padding: var(--space-md);
     }
+    .card header {
+      display: grid;
+      align-items: stretch;
+    }
     .row {
-      grid-template-columns: 36px 1fr auto;
+      grid-template-columns: var(--touch-min) 1fr auto;
     }
     .row :global(.kind-badge) {
       display: none;

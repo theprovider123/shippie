@@ -17,7 +17,10 @@
 
   let { data, children }: Props = $props();
 
-  function showBottomDock(pathname: string): boolean {
+  function showBottomDock(url: URL): boolean {
+    const pathname = url.pathname;
+    if (pathname === '/container' && url.searchParams.get('focused') !== '1') return true;
+
     return ![
       '/admin',
       '/api',
@@ -33,8 +36,14 @@
     ].some((prefix) => pathname === prefix || pathname.startsWith(prefix));
   }
 
+  function hideNavOnMobile(url: URL): boolean {
+    return showBottomDock(url)
+      || url.pathname.startsWith('/run')
+      || (url.pathname === '/container' && url.searchParams.get('focused') === '1');
+  }
+
   $effect(() => {
-    const mobileDockChrome = showBottomDock($page.url.pathname);
+    const mobileDockChrome = showBottomDock($page.url);
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
   });
 
@@ -80,13 +89,13 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-<div class="nav-shell" class:with-mobile-dock={showBottomDock($page.url.pathname)}>
+<div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
   <Nav user={data.user} />
 </div>
-<main id="main" class:with-bottom-dock={showBottomDock($page.url.pathname)}>
+<main id="main" class:with-bottom-dock={showBottomDock($page.url)}>
   {@render children()}
 </main>
-{#if showBottomDock($page.url.pathname)}
+{#if showBottomDock($page.url)}
   <BottomDock user={data.user} />
 {/if}
 <Footer />
@@ -103,7 +112,7 @@
   }
 
   @media (max-width: 640px), (display-mode: standalone) {
-    .nav-shell.with-mobile-dock {
+    .nav-shell.mobile-app-chrome {
       display: none;
     }
 

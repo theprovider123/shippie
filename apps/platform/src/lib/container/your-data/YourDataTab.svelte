@@ -69,6 +69,8 @@
   }: Props = $props();
 
   let pane = $state<Pane>('devices');
+  const readableRows = 0;
+  const backupState = $derived(backupExport ? 'Ready' : 'Local');
 
   onMount(() => {
     if (typeof window === 'undefined') return;
@@ -90,9 +92,29 @@
 
 <div class="your-data-tab">
   <header class="head">
-    <h2>Your Data</h2>
-    <p>Each tool keeps its data private by default. Apps using Private Sync add sealed recovery copies that Shippie can store but cannot open.</p>
+    <p class="eyebrow">Data</p>
+    <h2>Your data</h2>
+    <p>Local tools, sealed recovery, and what this device is holding now.</p>
   </header>
+
+  <section class="data-summary" aria-label="Your data summary">
+    <div>
+      <span>Tools</span>
+      <strong>{installedAppsCount}</strong>
+    </div>
+    <div>
+      <span>Records</span>
+      <strong>{totalRows}</strong>
+    </div>
+    <div>
+      <span>Readable</span>
+      <strong>{readableRows}</strong>
+    </div>
+    <div>
+      <span>Backup</span>
+      <strong>{backupState}</strong>
+    </div>
+  </section>
 
   <div class="segmented" role="tablist" aria-label="Your data sections">
     <button
@@ -158,23 +180,60 @@
 <style>
   .your-data-tab {
     display: grid;
-    gap: var(--space-lg);
+    gap: var(--space-md);
     padding-bottom: env(safe-area-inset-bottom);
   }
   .head {
     display: grid;
-    gap: 0.35rem;
+    gap: 0.4rem;
+  }
+  .eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-light);
   }
   h2 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: clamp(1.4rem, 2.5vw, 1.9rem);
-    line-height: 1.1;
+    font-size: clamp(2rem, 8vw, 3.25rem);
+    line-height: 0.96;
   }
   p {
     margin: 0;
     color: var(--text-secondary);
     line-height: 1.55;
+  }
+  .data-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    border: 1px solid var(--border-light);
+    background: var(--border-light);
+  }
+  .data-summary div {
+    min-height: 88px;
+    padding: 12px;
+    display: grid;
+    align-content: space-between;
+    background: var(--surface);
+  }
+  .data-summary span {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-light);
+  }
+  .data-summary strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-heading);
+    font-size: clamp(1.8rem, 6vw, 2.7rem);
+    font-weight: 600;
+    line-height: 0.95;
+    color: var(--text);
   }
   .segmented {
     position: sticky;
@@ -217,9 +276,26 @@
     display: grid;
     gap: var(--space-md);
   }
-  @media (min-width: 1100px) {
+  @media (min-width: 1025px) {
     h2 {
-      font-size: 1.9rem;
+      font-size: 2.6rem;
+    }
+  }
+  @media (max-width: 640px) {
+    .your-data-tab {
+      gap: var(--space-md);
+    }
+    .head p:not(.eyebrow) {
+      font-size: 1rem;
+    }
+    .data-summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .data-summary div {
+      min-height: 76px;
+    }
+    .segmented {
+      top: calc(var(--safe-top) + 62px);
     }
   }
 </style>

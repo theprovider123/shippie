@@ -37,11 +37,10 @@
 {/if}
 
 <section class="card" aria-labelledby="devices-heading">
-  <p class="mini-label">Devices</p>
-  <h3 id="devices-heading">This device, and any others you bring in.</h3>
+  <p class="mini-label">Private by default</p>
+  <h3 id="devices-heading">This device</h3>
   <p class="lede">
-    Apps stay private on each device. Move or recover lets you bring them somewhere else
-    without giving Shippie the contents.
+    Move saved tools to another phone, restore from a backup, or keep everything local.
   </p>
 
   <button class="primary" onclick={() => (sheetOpen = true)}>
@@ -50,15 +49,15 @@
 
   <dl class="stats">
     <div>
-      <dt>Tools covered</dt>
+      <dt>Tools</dt>
       <dd>{installedAppsCount}</dd>
     </div>
     <div>
-      <dt>Local rows on this device</dt>
+      <dt>Local rows</dt>
       <dd>{totalRows}</dd>
     </div>
     <div>
-      <dt>Readable rows in Shippie's store</dt>
+      <dt>Readable by Shippie</dt>
       <dd>0</dd>
     </div>
   </dl>
@@ -99,14 +98,16 @@
     justify-content: space-between;
     gap: 12px;
     margin-bottom: var(--space-md);
-    padding: 10px 14px;
+    padding: 12px 14px;
     border: 1px solid var(--border-light);
-    background: rgba(232, 96, 60, 0.06);
+    background: rgba(232, 96, 60, 0.08);
     font-size: 13px;
   }
   .dismiss {
-    min-height: 32px;
+    min-height: var(--touch-min);
     padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
     border: 1px solid var(--border-light);
     background: transparent;
     color: var(--text);
@@ -117,7 +118,7 @@
   .card {
     padding: var(--space-lg);
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     display: grid;
     gap: var(--space-md);
   }
@@ -140,14 +141,19 @@
   }
   .stats {
     display: grid;
-    gap: 6px;
+    gap: 1px;
     padding-top: var(--space-sm);
     border-top: 1px solid var(--border-light);
+    background: var(--border-light);
   }
   .stats div {
+    min-height: 46px;
+    padding: 0 12px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: var(--space-sm);
+    background: var(--bg);
     font-size: var(--small-size);
   }
   dt {
@@ -167,7 +173,14 @@
       padding: var(--space-md);
     }
     h3 {
-      font-size: 1.15rem;
+      font-size: 1.35rem;
+    }
+    .data-trigger {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .dismiss {
+      justify-content: center;
     }
   }
 </style>

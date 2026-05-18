@@ -52,8 +52,9 @@
 
 <section class="card" aria-labelledby="backup-heading">
   <header>
-    <h3 id="backup-heading">Encrypted backup</h3>
-    <p>One file, one passphrase. Stays with you — Shippie never sees the contents.</p>
+    <p class="mini-label">Backup</p>
+    <h3 id="backup-heading">Encrypted copy</h3>
+    <p>One file, one passphrase. Shippie stores none of the readable contents.</p>
   </header>
 
   <div class="segmented" role="tablist" aria-label="Backup mode">
@@ -126,13 +127,21 @@
 
 <style>
   h3,
+  .mini-label,
   p {
     margin: 0;
+  }
+  .mini-label {
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-light);
   }
   .card {
     padding: var(--space-lg);
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     display: grid;
     gap: var(--space-md);
   }
@@ -142,7 +151,8 @@
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.15rem;
+    font-size: 1.35rem;
+    line-height: 1.1;
   }
   header p {
     color: var(--text-secondary);
@@ -177,12 +187,13 @@
   }
   input[type='password'],
   input[type='file'] {
-    min-height: 44px;
+    min-height: var(--touch-min);
     padding: 0 0.75rem;
     border: 1px solid var(--border-light);
-    background: var(--surface);
+    background: var(--bg);
     color: var(--text);
     font: inherit;
+    font-size: var(--type-body-mobile);
   }
   input[type='file'] {
     padding: 0.5rem 0.75rem;
@@ -192,9 +203,10 @@
     min-height: 110px;
     padding: 0.75rem;
     border: 1px solid var(--border-light);
-    background: var(--surface);
+    background: var(--bg);
     color: var(--text);
     font: inherit;
+    font-size: var(--type-body-mobile);
     resize: vertical;
   }
   details {
@@ -261,6 +273,9 @@
   @media (max-width: 640px) {
     .card {
       padding: var(--space-md);
+    }
+    h3 {
+      font-size: 1.35rem;
     }
   }
 </style>
