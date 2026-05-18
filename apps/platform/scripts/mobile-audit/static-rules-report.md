@@ -1,6 +1,6 @@
 # Mobile-audit — static rules report
 
-_Generated 2026-05-18T08:10:50.184Z_
+_Generated 2026-05-18T10:49:37.833Z_
 
 Allowed shell breakpoints: max-width 640/1024, min-width 641/1025.
 Allowed density (grid-column) breakpoints: min-width 1280/1536/1920.
@@ -25,13 +25,13 @@ Findings: 17 breakpoint drift, 0 tap-target.
   - L225: `max-width: 680px`
 - `apps/platform/src/routes/apps/[slug]/+page.svelte`
   - L685: `max-width: 480px`
-  - L865: `max-width: 520px`
+  - L903: `max-width: 520px`
 - `apps/platform/src/routes/arcade/+page.svelte`
   - L99: `max-width: 720px`
 - `apps/platform/src/routes/build/+page.svelte`
   - L180: `min-width: 1024px`
 - `apps/platform/src/routes/container/+page.svelte`
-  - L3399: `max-width: 900px`
+  - L3400: `max-width: 900px`
 - `apps/platform/src/routes/dashboard/+layout.svelte`
   - L27: `max-width: 720px`
 - `apps/platform/src/routes/dashboard/apps/[slug]/profile/+page.svelte`
