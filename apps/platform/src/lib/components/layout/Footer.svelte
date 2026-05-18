@@ -35,7 +35,11 @@
     </div>
     <div class="footer-bottom">
       <span>&copy; 2026 Shippie · AGPL-3.0 · Made with sage and sunset</span>
-      <span>Privacy · Terms · Security</span>
+      <span class="legal-links">
+        <a href="/docs/privacy">Privacy</a>
+        <a href="/docs/terms">Terms</a>
+        <a href="/docs/security">Security</a>
+      </span>
     </div>
   </div>
 </footer>
@@ -101,5 +105,17 @@
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
+  }
+  .legal-links {
+    display: inline-flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .legal-links a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .legal-links a:hover {
+    color: var(--text-secondary);
   }
 </style>

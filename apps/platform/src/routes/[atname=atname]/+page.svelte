@@ -21,7 +21,6 @@
 
 <main class="profile">
   <header class="hero">
-    <a class="brand" href="/">shippie</a>
     <div class="identity">
       <div class="avatar">
         {#if data.maker.avatarUrl}
@@ -91,6 +90,7 @@
 <style>
   .profile {
     min-height: 100dvh;
+    padding-top: calc(var(--nav-height) + var(--safe-top));
     background: var(--bg, #14120F);
     color: var(--text, #EDE4D3);
   }
@@ -100,7 +100,6 @@
     margin: 0 auto;
     padding: clamp(2rem, 5vw, 4rem) clamp(1.25rem, 4vw, 3rem);
   }
-  .brand,
   .eyebrow,
   .handle,
   .meta {
@@ -109,13 +108,12 @@
     letter-spacing: 0.12em;
     font-size: 0.75rem;
   }
-  .brand { color: var(--sunset, #E8603C); text-decoration: none; }
   .eyebrow { color: var(--sunset, #E8603C); margin: 0 0 0.4rem; }
   .identity {
     display: flex;
     gap: 1.25rem;
     align-items: center;
-    margin-top: 2rem;
+    margin-top: 0;
   }
   .avatar,
   .icon {

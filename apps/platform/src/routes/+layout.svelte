@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
   import '$lib/styles/tokens.css';
   import Nav from '$lib/components/layout/Nav.svelte';
+  import BottomDock from '$lib/components/layout/BottomDock.svelte';
   import Footer from '$lib/components/layout/Footer.svelte';
   import Toast from '$lib/components/ui/Toast.svelte';
   import { matchesStandalone } from '$lib/util/standalone';
@@ -14,6 +16,22 @@
   }
 
   let { data, children }: Props = $props();
+
+  function showBottomDock(pathname: string): boolean {
+    return ![
+      '/admin',
+      '/api',
+      '/auth',
+      '/c/',
+      '/container',
+      '/dashboard',
+      '/dev',
+      '/invite',
+      '/manifest.webmanifest',
+      '/run',
+      '/trust-preview',
+    ].some((prefix) => pathname === prefix || pathname.startsWith(prefix));
+  }
 
   onMount(() => {
     document.body.dataset.appReady = 'true';
@@ -58,9 +76,12 @@
 
 <a href="#main" class="skip-link">Skip to main content</a>
 <Nav user={data.user} />
-<main id="main">
+<main id="main" class:with-bottom-dock={showBottomDock($page.url.pathname)}>
   {@render children()}
 </main>
+{#if showBottomDock($page.url.pathname)}
+  <BottomDock user={data.user} />
+{/if}
 <Footer />
 <Toast />
 
@@ -72,5 +93,11 @@
        the layout doesn't jump on scroll). */
     min-height: calc(100svh - var(--nav-height) - var(--safe-top));
     min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
+  }
+
+  @media (max-width: 640px), (display-mode: standalone) {
+    main.with-bottom-dock {
+      padding-bottom: calc(86px + var(--safe-bottom));
+    }
   }
 </style>
