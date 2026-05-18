@@ -7,6 +7,7 @@
  */
 
 import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
+import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
 
 type LauncherLabApp = {
   slug: string;
@@ -19,7 +20,7 @@ type LauncherLabApp = {
   themeColor: string;
   upvoteCount?: number;
   installCount?: number;
-  badges?: Array<{ id: string; label: string; proven: boolean }>;
+  badges?: PublicCapabilityBadge[];
   kind?: AppKind | null;
   kindStatus?: PublicKindStatus | null;
   firstPartySigned?: boolean;
