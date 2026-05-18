@@ -218,11 +218,11 @@
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
   .handle { font-family: var(--font-mono, ui-monospace, monospace); }
-  @media (max-width: 980px) {
+  @media (max-width: 1024px) {
     .layout { grid-template-columns: 1fr; }
     .preview { position: static; }
   }
-  @media (max-width: 680px) {
+  @media (max-width: 640px) {
     .grid { grid-template-columns: 1fr; }
   }
 </style>

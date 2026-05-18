@@ -10,7 +10,9 @@ node_modules
 
 # Build outputs
 dist
-build
+/build
+**/build/
+!**/routes/build/
 .turbo
 out
 .output

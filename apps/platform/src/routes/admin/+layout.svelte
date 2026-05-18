@@ -93,7 +93,7 @@
   }
   .back:hover { color: var(--sunset, #E8603C); }
 
-  @media (max-width: 720px) {
+  @media (max-width: 640px) {
     .admin-shell { grid-template-columns: 1fr; }
     main { padding: 1.5rem; }
   }

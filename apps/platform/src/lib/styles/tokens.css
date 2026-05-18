@@ -99,9 +99,9 @@
 
 /* Wide-viewport type scale — bumps the upper bounds of the display
    clamps so headlines breathe on 27" iMac / ultrawide. Doesn't change
-   behavior at <1440px (those viewports already top out below the new
+   behavior at <1536px (those viewports already top out below the new
    ceilings via the base clamps). */
-@media (min-width: 1440px) {
+@media (min-width: 1536px) {
   :root {
     --hero-size: clamp(2.8rem, 6.5vw + 0.8rem, 6.4rem);
     --h1-size:   clamp(2.5rem, 5vw, 5rem);
@@ -213,7 +213,7 @@ select {
   padding-left: clamp(1.5rem, 4vw, 3rem);
   padding-right: clamp(1.5rem, 4vw, 3rem);
 }
-@media (min-width: 1440px) { .wrap-wide { max-width: 1600px; } }
+@media (min-width: 1536px) { .wrap-wide { max-width: 1600px; } }
 @media (min-width: 1920px) { .wrap-wide { max-width: 1840px; } }
 
 .section { padding: var(--section-pad) 0; }

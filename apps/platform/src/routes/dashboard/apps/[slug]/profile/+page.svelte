@@ -91,7 +91,7 @@
   label.check { flex-direction: row; align-items: center; grid-column: 1 / -1; font-weight: 500; }
   input, textarea { border: 1px solid #D8CFBA; background: transparent; padding: 0.7rem; font: inherit; color: inherit; }
   button { align-self: flex-start; border: 0; background: #E8603C; color: white; padding: 0.75rem 1rem; cursor: pointer; }
-  @media (max-width: 720px) {
+  @media (max-width: 640px) {
     section { grid-template-columns: 1fr; }
   }
 </style>

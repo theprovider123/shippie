@@ -24,7 +24,7 @@
     padding: 2.5rem 3rem;
     overflow-x: auto;
   }
-  @media (max-width: 720px) {
+  @media (max-width: 640px) {
     .dashboard-shell { grid-template-columns: 1fr; }
     .dashboard-main { padding: 1.5rem; }
   }

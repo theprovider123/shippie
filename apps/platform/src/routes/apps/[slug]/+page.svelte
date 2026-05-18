@@ -705,7 +705,7 @@
     gap: 8px 24px;
     font-size: var(--small-size);
   }
-  @media (max-width: 480px) {
+  @media (max-width: 640px) {
     .perms { grid-template-columns: 1fr; }
   }
   .perms li {
@@ -923,7 +923,7 @@
       flex-direction: column;
     }
   }
-  @media (max-width: 520px) {
+  @media (max-width: 640px) {
     .trust-grid {
       grid-template-columns: 1fr;
     }
