@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-05-18T08:10:50.132Z",
+  "generatedAt": "2026-05-18T10:49:37.781Z",
   "counts": {
-    "total": 38,
-    "public": 15,
+    "total": 39,
+    "public": 16,
     "priority_P0": 3,
     "container": 1,
     "dashboard": 11,
     "priority_P1": 8,
     "auth": 2,
     "onboarding": 2,
-    "priority_P2": 21,
+    "priority_P2": 22,
     "showcase-wrapper": 1,
     "admin": 5,
     "priority_P3": 6,
@@ -165,6 +165,12 @@
       "shell": "public",
       "priority": "P2",
       "pageFile": "apps/platform/src/routes/docs/+page.svelte"
+    },
+    {
+      "urlPath": "/docs/[slug]",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/docs/[slug]/+page.svelte"
     },
     {
       "urlPath": "/labs",

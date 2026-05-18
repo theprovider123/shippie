@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ url }) => {
     display_override: ['standalone', 'minimal-ui'],
     orientation: 'portrait',
     theme_color: '#14120F',
-    background_color: '#F5EFE4',
+    background_color: '#14120F',
     launch_handler: { client_mode: ['navigate-existing', 'auto'] },
     categories: ['productivity'],
     icons: [

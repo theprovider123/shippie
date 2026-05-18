@@ -12,6 +12,41 @@ Set up:
 
 ---
 
+## Platform launch IA + PWA install gate
+
+1. **Home in mobile Safari and Android Chrome.**
+   - [ ] Open `https://shippie.app/` on both phones.
+   - [ ] Top chrome has only the Shippie brand; no 7-link public nav.
+   - [ ] Bottom dock shows exactly four targets: Home / Docs / Ship / You.
+   - [ ] Tap Home / Docs / Ship / You. Each target is reachable with a thumb, has a 44px+ tap area, and never causes horizontal scroll.
+2. **Docs and legal links are real.**
+   - [ ] Open `https://shippie.app/docs/install` and find iPhone install instructions in one screenful.
+   - [ ] Footer links land on `https://shippie.app/docs/privacy`, `/docs/terms`, and `/docs/security`; none 404.
+   - [ ] Open `https://shippie.app/docs/what-is-local` and confirm Local / Connected / Cloud are explained in plain English.
+3. **Retired public routes remain compatible.**
+   - [ ] `/arcade?utm=phone` redirects to `/?category=games&utm=phone`.
+   - [ ] `/leaderboards?utm=phone` redirects to `/?sort=trending&utm=phone`.
+   - [ ] `/build?utm=phone` redirects to `/docs/build?utm=phone`.
+   - [ ] `/why?utm=phone` redirects to `/docs/why?utm=phone`.
+   - [ ] `/professionals?utm=phone` redirects to `/docs/pro?utm=phone`.
+   - [ ] `/labs?utm=phone` redirects to `/docs/labs?utm=phone`.
+   - [ ] `/glance?utm=phone` and `/today?utm=phone` redirect to `/container?section=home&utm=phone`.
+4. **Manifest / splash color.**
+   - [ ] Android install splash does not flash cream before the dark launcher.
+   - [ ] Installed PWA starts at `/`, in standalone display mode, with dark status/splash treatment matching the launcher.
+   - [ ] Opening `https://shippie.app/manifest.webmanifest` shows `theme_color` and `background_color` both aligned to the dark launch theme.
+5. **App detail mobile CTA.**
+   - [ ] Open at least one public listing, e.g. `/apps/recipe`, on a phone.
+   - [ ] Capability/trust badges remain above the fold.
+   - [ ] The primary Open button is sticky above the dock while scrolling.
+   - [ ] Share remains available but secondary; Favorite does not crowd the primary mobile action row.
+6. **Container gesture + iframe LRU validation.**
+   - [ ] Open `/run/coffee`, `/run/recipe`, `/run/crewtrip`, `/run/daily-puzzle`, `/run/snake`, `/run/whiteboard`, `/run/tab`, `/run/receipt-snap`, and `/run/breath` in sequence from the container.
+   - [ ] After 9 opens, switching remains responsive on iPhone Safari and Android Chrome.
+   - [ ] Edge-swipe opens the app switcher without hijacking vertical scroll.
+   - [ ] Bottom pill respects the home indicator and never overlaps core app controls.
+   - [ ] No "loaded but did not paint" overlay appears during the sequence.
+
 ## Showcase 1 — Live Room (Phase 1 wedge)
 
 1. **Install on phone A** at `https://live-room.shippie.app/` (or the showcase URL once seeded).
@@ -199,15 +234,15 @@ Acceptance for Live Room:
 
 ---
 
-## Platform surface — /glance + /today
+## Platform surface — retired /glance + /today compatibility
 
 1. **After running 3+ of the above showcases, open `https://shippie.app/glance` on phone A.**
-   - [ ] One-sentence headline reflects today's activity ("Today: 1 receipt, 1 voice memo, and a site visit").
-   - [ ] 7-day sparklines render for each app that's seen activity.
-   - [ ] "Gone quiet" panel shows apps not used in ≥7 days (will be empty on first visit).
+   - [ ] It redirects to `/container?section=home`.
+   - [ ] Container Home still shows recent/open tools and local insight surfaces without a public-site shell mismatch.
 2. **Open `https://shippie.app/today`.**
-   - [ ] Same data, log-shape per-app cards with drilldowns.
-3. **Verify privacy.** DevTools Network on `/glance` load — only platform asset requests, NO outbound POST to anything that looks like analytics. The aggregator runs on-device against IndexedDB.
+   - [ ] It redirects to `/container?section=home`.
+   - [ ] No user data is lost; this is a navigation consolidation only.
+3. **Verify privacy.** DevTools Network on container Home load — only platform asset requests and intended Shippie endpoints; no unexpected third-party analytics.
 
 ---
 

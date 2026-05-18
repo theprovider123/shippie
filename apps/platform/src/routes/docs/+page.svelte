@@ -9,6 +9,18 @@
       blurb: 'Ship something in 60 seconds — pick the surface that matches where your code is.',
     },
     {
+      id: 'install',
+      title: 'Install',
+      href: '/docs/install',
+      blurb: 'Add Shippie to iPhone, Android, or desktop as a standalone app.',
+    },
+    {
+      id: 'what-is-local',
+      title: 'What local means',
+      href: '/docs/what-is-local',
+      blurb: 'Plain-English labels for Local, Connected, and Cloud tools.',
+    },
+    {
       id: 'sdk',
       title: 'SDK',
       blurb: '@shippie/sdk/wrapper — runtime exports for PWA installs, push, ratings, offline, and analytics.',
@@ -38,6 +50,24 @@
       title: 'GitHub auto-deploys',
       blurb: 'Connect a repo — we clone and build on every push. Honestly slower than zip uploads.',
     },
+    {
+      id: 'privacy',
+      title: 'Privacy',
+      href: '/docs/privacy',
+      blurb: 'How accounts, maker metadata, telemetry, and device-local tool data are handled.',
+    },
+    {
+      id: 'terms',
+      title: 'Terms',
+      href: '/docs/terms',
+      blurb: 'The practical rules for using Shippie and shipping apps.',
+    },
+    {
+      id: 'security',
+      title: 'Security',
+      href: '/docs/security',
+      blurb: 'Isolation, package checks, trust surfaces, and responsible disclosure.',
+    },
   ];
 </script>
 
@@ -65,7 +95,7 @@
 
   <nav class="nav-cards" aria-label="Docs sections">
     {#each sections as s (s.id)}
-      <a href={`#${s.id}`} class="nav-card">
+      <a href={s.href ?? `#${s.id}`} class="nav-card">
         <p class="card-eyebrow">{s.title}</p>
         <p class="card-blurb">{s.blurb}</p>
       </a>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/stores';
   import type { AppUser } from '$server/auth/lucia';
 
   interface Props {
@@ -8,6 +9,22 @@
   let { user }: Props = $props();
 
   let mobileOpen = $state(false);
+
+  const docsPaths = new Set(['/docs', '/build', '/why', '/professionals', '/labs']);
+
+  function isHomePath(pathname: string): boolean {
+    return pathname === '/'
+      || pathname.startsWith('/apps')
+      || pathname === '/arcade'
+      || pathname === '/leaderboards'
+      || pathname === '/glance'
+      || pathname === '/today'
+      || pathname === '/whitepaper';
+  }
+
+  function isDocsPath(pathname: string): boolean {
+    return docsPaths.has(pathname) || pathname.startsWith('/docs/');
+  }
 </script>
 
 <nav class="navbar" aria-label="Primary">
@@ -27,21 +44,13 @@
     </div>
 
     <div class="nav-center">
-      <a href="/" class="nav-link">Tools</a>
-      <a href="/arcade" class="nav-link">Arcade</a>
-      <a href="/build" class="nav-link">Build</a>
-      <a href="/glance" class="nav-link">Glance</a>
-      <a href="/leaderboards" class="nav-link">Leaderboards</a>
-      <a href="/why" class="nav-link">Why</a>
-      <a href="/docs" class="nav-link">Docs</a>
+      <a href="/" class="nav-link" class:active={isHomePath($page.url.pathname)} aria-current={isHomePath($page.url.pathname) ? 'page' : undefined}>Home</a>
+      <a href="/docs" class="nav-link" class:active={isDocsPath($page.url.pathname)} aria-current={isDocsPath($page.url.pathname) ? 'page' : undefined}>Docs</a>
     </div>
 
     <div class="nav-right">
-      {#if user?.isAdmin}
-        <a href="/admin" class="nav-admin" title="Admin">Admin</a>
-      {/if}
       {#if user}
-        <a href="/dashboard" class="nav-user">
+        <a href="/dashboard" class="nav-user" aria-label="Open your Shippie dashboard">
           {#if user.avatarUrl}
             <img src={user.avatarUrl} alt="" width="28" height="28" />
           {:else}
@@ -53,7 +62,7 @@
       {:else}
         <a href="/auth/login" class="nav-signin">Sign in</a>
       {/if}
-      <a href="/new" class="nav-cta">Deploy an app</a>
+      <a href="/new" class="nav-cta">Ship</a>
       <button
         type="button"
         class="nav-toggle"
@@ -69,12 +78,7 @@
 
   {#if mobileOpen}
     <div id="mobile-menu" class="mobile-menu">
-      <a href="/" onclick={() => (mobileOpen = false)}>Tools</a>
-      <a href="/arcade" onclick={() => (mobileOpen = false)}>Arcade</a>
-      <a href="/build" onclick={() => (mobileOpen = false)}>Build</a>
-      <a href="/glance" onclick={() => (mobileOpen = false)}>Glance</a>
-      <a href="/leaderboards" onclick={() => (mobileOpen = false)}>Leaderboards</a>
-      <a href="/why" onclick={() => (mobileOpen = false)}>Why</a>
+      <a href="/" onclick={() => (mobileOpen = false)}>Home</a>
       <a href="/docs" onclick={() => (mobileOpen = false)}>Docs</a>
       {#if user}
         <a href="/dashboard" onclick={() => (mobileOpen = false)}>Dashboard</a>
@@ -84,7 +88,7 @@
       {:else}
         <a href="/auth/login" onclick={() => (mobileOpen = false)}>Sign in</a>
       {/if}
-      <a href="/new" class="mobile-cta" onclick={() => (mobileOpen = false)}>Deploy an app</a>
+      <a href="/new" class="mobile-cta" onclick={() => (mobileOpen = false)}>Ship an app</a>
     </div>
   {/if}
 </nav>
@@ -148,22 +152,21 @@
     transition: color 0.2s;
     white-space: nowrap;
   }
-  .nav-link:hover { color: var(--text); }
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--text);
+  }
+  .nav-link.active {
+    text-decoration: underline;
+    text-decoration-color: var(--sunset);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+  }
   .nav-signin {
     font-size: var(--small-size);
     color: var(--text-light);
   }
   .nav-signin:hover { color: var(--text-secondary); }
-  .nav-admin {
-    font-size: var(--small-size);
-    font-weight: 500;
-    color: var(--marigold, #E8A547);
-    padding: 0.25rem 0.625rem;
-    border: 1px solid var(--marigold, #E8A547);
-    border-radius: 0;
-    transition: opacity 0.2s;
-  }
-  .nav-admin:hover { opacity: 0.85; }
   .nav-cta {
     display: none;
     padding: 0.5rem 1.125rem;
@@ -248,5 +251,26 @@
     .nav-cta { display: inline-flex; }
     .nav-toggle { display: none; }
     .mobile-menu { display: none; }
+  }
+
+  @media (max-width: 640px), (display-mode: standalone) {
+    .nav-inner {
+      grid-template-columns: auto 1fr;
+      gap: 1rem;
+      padding-left: calc(1rem + var(--safe-left));
+      padding-right: calc(1rem + var(--safe-right));
+    }
+    .nav-center,
+    .nav-cta,
+    .nav-toggle,
+    .nav-signin {
+      display: none;
+    }
+    .nav-right {
+      gap: 0;
+    }
+    .mobile-menu {
+      display: none;
+    }
   }
 </style>

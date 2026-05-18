@@ -846,6 +846,44 @@
     color: var(--sunset);
   }
   @media (max-width: 640px) {
+    .hero {
+      padding-bottom: calc(var(--space-2xl) + 74px);
+    }
+    .cta-row {
+      position: fixed;
+      left: calc(12px + var(--safe-left));
+      right: calc(12px + var(--safe-right));
+      bottom: calc(84px + var(--safe-bottom));
+      z-index: 115;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 0;
+      padding: 8px;
+      border: 1px solid rgba(237, 228, 211, 0.16);
+      background: rgba(20, 18, 15, 0.92);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .install-btn,
+    .share-btn {
+      justify-content: center;
+      min-width: 0;
+      height: 48px;
+      padding: 0 1rem;
+    }
+    .install-btn {
+      width: 100%;
+      background: var(--sunset);
+      color: var(--bg-pure);
+    }
+    .share-btn {
+      color: var(--text-secondary);
+    }
+    .cta-row :global(.upvote) {
+      display: none;
+    }
     .ownership-grid {
       grid-template-columns: 1fr;
     }

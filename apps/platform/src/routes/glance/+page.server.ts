@@ -2,6 +2,6 @@ import type { PageServerLoad } from './$types';
 import { redirectRetiredRoute } from '$lib/server/launch-redirects';
 
 export const load: PageServerLoad = ({ url }) => {
-  redirectRetiredRoute(url, '/leaderboards');
-  return { trending: [], rising: [], rated: [] };
+  redirectRetiredRoute(url, '/glance');
+  return {};
 };

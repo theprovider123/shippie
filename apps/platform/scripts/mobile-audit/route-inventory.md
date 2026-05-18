@@ -25,6 +25,7 @@
 | `/dashboard/apps/[slug]/proof` | dashboard | P2 | · | · | · | · | · |  |
 | `/dashboard/feedback` | dashboard | P2 | · | · | · | · | · |  |
 | `/docs` | public | P2 | · | · | · | · | · |  |
+| `/docs/[slug]` | public | P2 | · | · | · | · | · |  |
 | `/labs` | public | P2 | · | · | · | · | · |  |
 | `/leaderboards` | public | P2 | · | · | · | · | · |  |
 | `/professionals` | public | P2 | · | · | · | · | · |  |
