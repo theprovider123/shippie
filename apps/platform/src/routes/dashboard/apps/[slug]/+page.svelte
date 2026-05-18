@@ -23,7 +23,86 @@
   const pwaItems = $derived(pwaChecklist(pwaReasons));
 </script>
 
+<script lang="ts" module>
+  function buildSdkSnippet(slug: string): string {
+    return `import { shippie } from '@shippie/sdk';
+
+shippie.feedback.submit({
+  type: 'idea',
+  body: 'I would love…',
+});`;
+  }
+  function buildHtmlSnippet(slug: string): string {
+    return `<button id="shippie-feedback">Share feedback</button>
+<script type="module">
+  import { shippie } from 'https://cdn.shippie.app/sdk/v1.latest.js';
+  document.getElementById('shippie-feedback')?.addEventListener('click', () => {
+    shippie.feedback.open('idea');
+  });
+</` + `script>`;
+  }
+</script>
+
 <svelte:head><title>{data.app.name} · Dashboard</title></svelte:head>
+
+<section class="launchpad">
+  <header class="launchpad-head">
+    <div>
+      <p class="eyebrow"><a href="/dashboard">Dashboard</a> · {data.app.name}</p>
+      <h1>{data.app.name}</h1>
+      <p class="lede">{data.app.tagline ?? `Live at ${data.app.slug}.shippie.app`}</p>
+    </div>
+    <div class="launchpad-actions">
+      <a class="primary" href={`https://${data.app.slug}.shippie.app/`} target="_blank" rel="noreferrer">Open</a>
+      <a class="ghost" href={`/apps/${data.app.slug}`}>Public page →</a>
+    </div>
+  </header>
+
+  <div class="launchpad-stripe" aria-label="Status at a glance">
+    <span class="vis vis-{data.app.visibilityScope}">{data.app.visibilityScope}</span>
+    <span class="stat">{data.app.installCount ?? 0} installs</span>
+    <span class="stat">{data.app.upvoteCount ?? 0} favorites</span>
+    <span class="stat">{data.app.feedbackOpenCount ?? 0} feedback</span>
+  </div>
+
+  <div class="launchpad-quick">
+    <a class="quick" href={`/dashboard/apps/${data.app.slug}/analytics`}>
+      <strong>Analytics</strong>
+      <span>Opens, installs, latest event</span>
+    </a>
+    <a class="quick" href={`/dashboard/apps/${data.app.slug}/feedback`}>
+      <strong>Feedback</strong>
+      <span>Bugs, ideas, ratings</span>
+    </a>
+    <a class="quick" href={`/dashboard/apps/${data.app.slug}/profile`}>
+      <strong>Profile</strong>
+      <span>Source, license, remix</span>
+    </a>
+    <a class="quick" href={`/apps/${data.app.slug}`}>
+      <strong>Trust card</strong>
+      <span>What users see before install</span>
+    </a>
+  </div>
+
+  <details class="snippet-card">
+    <summary>Turn on feedback in your app</summary>
+    <p class="hint">
+      Drop one of these into your app. Submissions land in your inbox at
+      <a href={`/dashboard/apps/${data.app.slug}/feedback`}>Feedback</a>. Private by
+      default — only you see them unless you choose to publish.
+    </p>
+    <div class="snippet-tabs">
+      <details open>
+        <summary>SDK (npm)</summary>
+        <pre>{buildSdkSnippet(data.app.slug)}</pre>
+      </details>
+      <details>
+        <summary>Plain HTML</summary>
+        <pre>{buildHtmlSnippet(data.app.slug)}</pre>
+      </details>
+    </div>
+  </details>
+</section>
 
 <section class="grid">
   <div class="card">
@@ -169,6 +248,48 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
 </section>
 
 <style>
+  .launchpad { display: grid; gap: 1rem; margin-bottom: 1.5rem; }
+  .launchpad-head { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; }
+  @media (max-width: 640px) {
+    .launchpad-head { grid-template-columns: 1fr; }
+  }
+  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #E8603C; margin: 0; }
+  .eyebrow a { color: inherit; text-decoration: none; }
+  .launchpad-head h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.2rem; margin: 0.25rem 0 0.15rem; letter-spacing: -0.02em; }
+  .lede { color: #8B847A; margin: 0; }
+  .launchpad-actions { display: flex; gap: 0.5rem; align-items: center; }
+  .launchpad-actions .primary {
+    background: #1a1a1a; color: #FAF5E9; padding: 0.6rem 1.1rem; font-family: ui-monospace, monospace; font-size: 13px;
+    text-transform: uppercase; letter-spacing: 0.06em; min-height: var(--touch-min, 44px); display: inline-flex; align-items: center;
+    text-decoration: none;
+  }
+  .launchpad-actions .ghost {
+    background: transparent; color: inherit; padding: 0.6rem 1rem; font-family: ui-monospace, monospace; font-size: 13px;
+    border: 1px solid currentColor; min-height: var(--touch-min, 44px); display: inline-flex; align-items: center;
+    text-decoration: none;
+  }
+  .launchpad-stripe { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .launchpad-stripe .stat { font-family: ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #5C5751; padding: 4px 10px; border: 1px solid #E5DDC8; }
+  .launchpad-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+  .quick {
+    display: grid; gap: 0.2rem; padding: 0.9rem 1rem;
+    background: rgba(232, 96, 60, 0.04); border: 1px solid rgba(232, 96, 60, 0.18);
+    color: inherit; text-decoration: none;
+    min-height: var(--touch-min, 44px);
+  }
+  .quick:hover { background: rgba(232, 96, 60, 0.08); border-color: #E8603C; }
+  .quick strong { font-size: 14px; }
+  .quick span { font-size: 12px; color: #8B847A; }
+  .snippet-card { padding: 1rem 1.25rem; border: 1px dashed #C9C2B1; }
+  .snippet-card > summary { cursor: pointer; font-weight: 600; color: #E8603C; min-height: var(--touch-min, 44px); display: flex; align-items: center; }
+  .snippet-tabs { display: grid; gap: 0.6rem; margin-top: 0.6rem; }
+  .snippet-tabs > details { padding: 0; }
+  .snippet-tabs > details > summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 12px; text-transform: uppercase; padding: 0.3rem 0; }
+  @media (prefers-color-scheme: dark) {
+    .launchpad-stripe .stat, .snippet-card { border-color: #2A251E; }
+    .quick { background: rgba(232, 96, 60, 0.06); border-color: rgba(232, 96, 60, 0.22); }
+    .lede, .quick span { color: #B8A88F; }
+  }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
   .card { padding: 1.5rem; border: 1px solid #E5DDC8; border-radius: 0; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 0 0 0.5rem 0; }

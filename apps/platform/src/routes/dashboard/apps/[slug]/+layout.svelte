@@ -13,10 +13,13 @@
     <h1>{data.app.name}</h1>
   </div>
   <p class="lede">{data.app.tagline ?? data.app.slug + '.shippie.app'}</p>
-  <nav class="tabs">
+  <nav class="tabs" aria-label="App sections">
     <a href={`/dashboard/apps/${data.app.slug}`} class:active={$page.url.pathname === `/dashboard/apps/${data.app.slug}`}>Overview</a>
-    <a href={`/dashboard/apps/${data.app.slug}/access`} class:active={$page.url.pathname.endsWith('/access')}>Access</a>
+    <a href={`/dashboard/apps/${data.app.slug}/feedback`} class:active={$page.url.pathname.endsWith('/feedback')}>Feedback</a>
     <a href={`/dashboard/apps/${data.app.slug}/analytics`} class:active={$page.url.pathname.endsWith('/analytics')}>Analytics</a>
+    <a href={`/dashboard/apps/${data.app.slug}/access`} class:active={$page.url.pathname.endsWith('/access')}>Access</a>
+    <a href={`/dashboard/apps/${data.app.slug}/profile`} class:active={$page.url.pathname.endsWith('/profile')}>Profile</a>
+    <a href={`/dashboard/apps/${data.app.slug}/proof`} class:active={$page.url.pathname.endsWith('/proof')}>Proof</a>
   </nav>
 </header>
 
@@ -31,7 +34,8 @@
   .swatch { width: 24px; height: 24px; border-radius: 0; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0; letter-spacing: -0.02em; }
   .lede { color: #8B847A; margin: 0.25rem 0 0 0; }
-  .tabs { display: flex; gap: 1rem; border-bottom: 1px solid #E5DDC8; margin-top: 1.5rem; }
+  .tabs { display: flex; gap: 1rem; border-bottom: 1px solid #E5DDC8; margin-top: 1.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { height: 0; }
   .tabs a {
     padding: 0.625rem 0.25rem;
     color: #8B847A;

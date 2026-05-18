@@ -90,6 +90,38 @@
     </div>
   </header>
 
+  <aside class="trust-band wrap" aria-labelledby="trust-band-title">
+    <p id="trust-band-title" class="trust-band-title">Your data on Shippie</p>
+    <ul class="trust-band-list">
+      <li><span aria-hidden="true">✓</span> Tools run on your device, offline by default.</li>
+      <li><span aria-hidden="true">✓</span> Saved tools, recents, and app data stay on this device unless you back them up.</li>
+      <li><span aria-hidden="true">✓</span> Backups are encrypted; only you have the key.</li>
+      <li><span aria-hidden="true">✖</span> Shippie has no copy of your app data.</li>
+      <li><span aria-hidden="true">✖</span> Shippie doesn't track you across apps.</li>
+    </ul>
+    <details class="trust-band-more">
+      <summary>What gets recorded vs. what doesn't</summary>
+      <div class="trust-band-grid">
+        <article>
+          <strong>Recorded (aggregate)</strong>
+          <ul>
+            <li>Which tools you opened (count only)</li>
+            <li>App slug + version for compatibility</li>
+            <li>Failed-deploy / error signals so makers can fix things</li>
+          </ul>
+        </article>
+        <article>
+          <strong>Not recorded</strong>
+          <ul>
+            <li>Form contents, photos, voice memos, or anything you typed inside an app</li>
+            <li>Your identity across different tools</li>
+            <li>IP address, browser fingerprint, or third-party tracking IDs</li>
+          </ul>
+        </article>
+      </div>
+    </details>
+  </aside>
+
   <section class="summary wrap" aria-label="Local Shippie summary">
     <div class="stat">
       <span>Saved</span>
@@ -285,6 +317,42 @@
     color: var(--sunset);
     border-color: var(--sunset);
   }
+
+  .trust-band {
+    margin-top: var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(46, 125, 91, 0.05);
+    border-left: 3px solid #2E7D5B;
+  }
+  .trust-band-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-heading, 'Fraunces', Georgia, serif);
+    font-size: 1.05rem;
+  }
+  .trust-band-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.95rem;
+  }
+  .trust-band-list li { display: grid; grid-template-columns: 1.2rem 1fr; gap: 0.4rem; align-items: baseline; }
+  .trust-band-list li span { font-family: ui-monospace, monospace; }
+  .trust-band-more { margin-top: 0.6rem; }
+  .trust-band-more summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #2E7D5B; min-height: var(--touch-min, 44px); display: flex; align-items: center; }
+  .trust-band-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-top: 0.6rem;
+  }
+  @media (max-width: 640px) {
+    .trust-band-grid { grid-template-columns: 1fr; }
+  }
+  .trust-band-grid article { padding: 0.6rem; background: rgba(255, 255, 255, 0.5); }
+  .trust-band-grid strong { display: block; margin-bottom: 0.3rem; font-size: 0.92rem; }
+  .trust-band-grid ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; font-size: 0.9rem; color: #3F3A33; }
 
   .summary {
     display: grid;

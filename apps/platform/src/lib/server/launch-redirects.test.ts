@@ -59,6 +59,7 @@ describe('launch retired-route redirects', () => {
       '/c/[hash]',
       '/docs',
       '/docs/[slug]',
+      '/leaderboards',
       '/run/[slug]',
       '/trust-preview',
       '/whitepaper',

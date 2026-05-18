@@ -100,6 +100,37 @@
       </section>
     {/if}
 
+    <section class="starter-row" aria-labelledby="starter-row-title">
+      <p class="eyebrow">Start from</p>
+      <h2 id="starter-row-title">Pick a starting point.</h2>
+      <ul class="starter-list" role="list">
+        <li>
+          <a href="#quick-ship">
+            <strong>Blank tool</strong>
+            <span>Upload a zip from anywhere.</span>
+          </a>
+        </li>
+        <li>
+          <a href="/apps/recipe">
+            <strong>Remix an existing tool</strong>
+            <span>Fork Recipe Saver, Coffee, Lift…</span>
+          </a>
+        </li>
+        <li>
+          <a href="/docs/cli">
+            <strong>From your CLI / MCP</strong>
+            <span>Push from VS Code, Cursor, the terminal.</span>
+          </a>
+        </li>
+        <li>
+          <a href="#wrap-url">
+            <strong>Wrap an existing URL</strong>
+            <span>Make a hosted site installable.</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
     <section class="path-chooser" aria-labelledby="choose-path">
       <div>
         <p class="eyebrow">Choose a path</p>
@@ -300,6 +331,34 @@ shippie deploy ./dist</code></pre>
   .remix-panel.unavailable {
     border-left: 2px solid #E8603C;
     padding-left: 1rem;
+  }
+
+  .starter-row { display: grid; gap: 0.6rem; margin-bottom: 1.5rem; }
+  .starter-row h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0; letter-spacing: -0.01em; }
+  .starter-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.6rem;
+  }
+  .starter-list a {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.85rem 1rem;
+    background: rgba(232, 96, 60, 0.04);
+    border: 1px solid rgba(232, 96, 60, 0.18);
+    color: inherit;
+    text-decoration: none;
+    min-height: var(--touch-min, 44px);
+  }
+  .starter-list a:hover { background: rgba(232, 96, 60, 0.08); border-color: #E8603C; }
+  .starter-list strong { font-size: 14px; }
+  .starter-list span { font-size: 12px; color: #8B847A; }
+  @media (prefers-color-scheme: dark) {
+    .starter-list a { background: rgba(232, 96, 60, 0.06); border-color: rgba(232, 96, 60, 0.22); }
+    .starter-list span { color: #B8A88F; }
   }
 
   .path-chooser {
