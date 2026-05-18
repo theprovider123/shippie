@@ -886,8 +886,11 @@ function renderTransferDialog(root: ShadowRoot, title = 'Add another device'): H
     <p data-shippie-transfer-status style="margin:0.5rem 0 0;font-size:0.85rem;color:#5C5751"></p>
   `;
   const recoveryActions = root.querySelector('[data-shippie-recovery-actions]');
-  if (recoveryActions) recoveryActions.after(dialog);
-  else body.appendChild(dialog);
+  if (recoveryActions?.parentNode) {
+    recoveryActions.parentNode.insertBefore(dialog, recoveryActions.nextSibling);
+  } else {
+    body.appendChild(dialog);
+  }
   return dialog;
 }
 

@@ -93,7 +93,8 @@ export function mountInstallBanner(props: BannerProps): void {
     ? 'Open faster from your home screen.'
     : installHintFor(props.method);
   detail.setAttribute('style', 'color:#B8A88F;font-size:12px;line-height:1.35');
-  copy.append(label, detail);
+  copy.appendChild(label);
+  copy.appendChild(detail);
 
   const installBtn = document.createElement('button');
   installBtn.setAttribute('data-shippie-install', '');
@@ -128,7 +129,9 @@ export function mountInstallBanner(props: BannerProps): void {
   ].join(';'));
   dismissBtn.addEventListener('click', () => props.onDismiss());
 
-  host.append(copy, installBtn, dismissBtn);
+  host.appendChild(copy);
+  host.appendChild(installBtn);
+  host.appendChild(dismissBtn);
 }
 
 function mountInstallGuide(host: HTMLElement, props: BannerProps): void {
@@ -179,8 +182,10 @@ function mountInstallGuide(host: HTMLElement, props: BannerProps): void {
   const sub = document.createElement('p');
   sub.textContent = 'Open instantly, keep it close, and use saved apps offline.';
   sub.setAttribute('style', 'margin:4px 0 0;color:#B8A88F;font-size:13px;line-height:1.4');
-  titleWrap.append(title, sub);
-  head.append(mark, titleWrap);
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(sub);
+  head.appendChild(mark);
+  head.appendChild(titleWrap);
 
   const steps = document.createElement('ol');
   steps.setAttribute('data-shippie-install-steps', '');
@@ -217,8 +222,9 @@ function mountInstallGuide(host: HTMLElement, props: BannerProps): void {
     const text = document.createElement('span');
     text.textContent = step;
     text.setAttribute('style', 'font-size:14px;color:#EDE4D3');
-    li.append(n, text);
-    steps.append(li);
+    li.appendChild(n);
+    li.appendChild(text);
+    steps.appendChild(li);
   }
 
   const actions = document.createElement('div');
@@ -256,9 +262,12 @@ function mountInstallGuide(host: HTMLElement, props: BannerProps): void {
   ].join(';'));
   dismissBtn.addEventListener('click', () => props.onDismiss());
 
-  actions.append(installBtn, dismissBtn);
-  card.append(head, steps, actions);
-  host.append(card);
+  actions.appendChild(installBtn);
+  actions.appendChild(dismissBtn);
+  card.appendChild(head);
+  card.appendChild(steps);
+  card.appendChild(actions);
+  host.appendChild(card);
 }
 
 function installHintFor(method: InstallMethod | undefined): string {
@@ -367,8 +376,11 @@ export function mountBounceSheet(props: BounceSheetProps): void {
   ].join(';'));
   copyBtn.addEventListener('click', () => props.onCopyLink());
 
-  card.append(title, reason, cta, copyBtn);
-  host.append(card);
+  card.appendChild(title);
+  card.appendChild(reason);
+  card.appendChild(cta);
+  card.appendChild(copyBtn);
+  host.appendChild(card);
 }
 
 export function unmountAll(): void {

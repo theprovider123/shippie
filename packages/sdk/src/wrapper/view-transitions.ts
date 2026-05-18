@@ -67,7 +67,7 @@ export function installViewTransitionStyles(opts: ViewTransitionOptions = {}): H
   const style = document.createElement('style');
   style.dataset.shippieViewTransitions = 'true';
   style.textContent = viewTransitionCss(opts.durationMs ?? 150);
-  document.head.append(style);
+  document.head.appendChild(style);
   return style;
 }
 

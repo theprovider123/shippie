@@ -123,9 +123,13 @@ export function mountHandoffSheet(props: HandoffSheetProps): void {
     if (!validateEmail(email.value)) return;
     void props.onSendEmail(email.value.trim());
   });
-  emailWrap.append(email, emailCta);
+  emailWrap.appendChild(email);
+  emailWrap.appendChild(emailCta);
 
-  card.append(title, sub, qrBox, emailWrap);
+  card.appendChild(title);
+  card.appendChild(sub);
+  card.appendChild(qrBox);
+  card.appendChild(emailWrap);
 
   if (props.canPush) {
     const push = document.createElement('button');
@@ -145,7 +149,7 @@ export function mountHandoffSheet(props: HandoffSheetProps): void {
     push.addEventListener('click', () => {
       void props.onSendPush();
     });
-    card.append(push);
+    card.appendChild(push);
   }
 
   if (props.onClose) {
@@ -164,10 +168,10 @@ export function mountHandoffSheet(props: HandoffSheetProps): void {
       'font-size:11px',
     ].join(';'));
     close.addEventListener('click', () => props.onClose?.());
-    card.append(close);
+    card.appendChild(close);
   }
 
-  host.append(card);
+  host.appendChild(card);
   document.body.appendChild(host);
 }
 

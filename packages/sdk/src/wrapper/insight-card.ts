@@ -64,7 +64,7 @@ export function mountInsightCards(opts: MountInsightCardsOptions = {}): () => vo
     const insight = insights[i];
     if (!insight) continue;
     const card = buildCard(insight, opts.onDismiss);
-    container.prepend(card.el);
+    container.insertBefore(card.el, container.firstChild);
     mounted.push(card);
   }
 
@@ -105,14 +105,15 @@ function buildCard(
   body.textContent = insight.summary;
   body.setAttribute('style', bodyStyle());
 
-  aside.append(heading, body);
+  aside.appendChild(heading);
+  aside.appendChild(body);
 
   if (insight.href) {
     const link = document.createElement('a');
     link.href = insight.href;
     link.textContent = 'Open';
     link.setAttribute('style', linkStyle());
-    aside.append(link);
+    aside.appendChild(link);
   }
 
   const dismiss = document.createElement('button');
@@ -131,7 +132,7 @@ function buildCard(
   };
   dismiss.addEventListener('click', handleDismiss);
 
-  aside.append(dismiss);
+  aside.appendChild(dismiss);
 
   const cleanup = () => {
     dismiss.removeEventListener('click', handleDismiss);

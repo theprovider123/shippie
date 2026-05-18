@@ -232,5 +232,5 @@ function installPressFeedbackStyle(): void {
   }
 }
 `;
-  document.head.append(style);
+  document.head.appendChild(style);
 }
