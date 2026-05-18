@@ -27,6 +27,7 @@ import { describeGrantedPermissions } from '$server/marketplace/honesty';
 import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability-badges';
 import { readAppProfile } from '$server/deploy/kv-write';
 import { canonicalAppUrl, isFirstPartyShowcase } from '$lib/showcase-slugs';
+import { publicRemixInfoForSlug } from '$server/remix/eligibility';
 import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
@@ -157,8 +158,14 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
           columns: { id: true, slug: true, name: true },
         })
       : null;
-  const sourceRepo = lineage?.sourceRepo ?? app.githubRepo ?? null;
-  const remixAvailable = Boolean(sourceRepo && lineage?.license && lineage?.remixAllowed);
+  // Source/license/remix-availability come from the same helper the
+  // `/api/apps/[slug]/remix` endpoint uses, so the public page and the
+  // CLI/MCP path can't disagree. For first-party showcases the helper
+  // returns the monorepo path + AGPL-3.0-or-later; for user apps it
+  // returns what the maker declared in their lineage row.
+  const remixInfo = await publicRemixInfoForSlug(db, app.slug);
+  const sourceRepo = remixInfo.sourceRepo;
+  const remixAvailable = remixInfo.remixAvailable;
   const verifiedDomains = domainRows
     .filter((domain) => domain.verifiedAt)
     .map((domain) => ({
@@ -195,9 +202,10 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
         verified: maker?.verifiedMaker ?? false,
       },
       sourceRepo,
-      license: lineage?.license ?? null,
+      license: remixInfo.license ?? lineage?.license ?? null,
       remixAllowed: lineage?.remixAllowed ?? false,
       remixAvailable,
+      remixVia: remixInfo.remixVia,
       lineage: {
         templateId: lineage?.templateId ?? null,
         parentAppId: lineage?.parentAppId ?? null,

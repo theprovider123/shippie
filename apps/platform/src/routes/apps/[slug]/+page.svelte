@@ -153,6 +153,11 @@
             Share
           </button>
           <UpvoteButton slug={data.app.slug} initialCount={data.app.upvoteCount} label="Favorite" />
+          {#if data.ownership.remixAvailable}
+            <a class="remix-btn" href={`/new?remix=${data.app.slug}`} aria-label="Remix this tool">
+              Remix →
+            </a>
+          {/if}
         </div>
         <LocalAppActions
           slug={data.app.slug}
@@ -335,7 +340,7 @@
         <span>License &amp; remix</span>
         <p>
           {data.ownership.license ?? 'Unlicensed'}
-          · {data.ownership.remixAllowed ? 'Remix allowed' : 'Remix closed'}
+          · {data.ownership.remixAvailable ? 'Remix allowed' : 'Remix closed'}
         </p>
       </article>
       {#if isRemix}
@@ -571,6 +576,24 @@
     transition: background 0.2s;
   }
   .share-btn:hover { background: rgba(232, 96, 60, 0.08); }
+  .remix-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 1.25rem;
+    background: transparent;
+    color: inherit;
+    border: 1px solid currentColor;
+    border-radius: 0;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: var(--small-size);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .remix-btn:hover { background: rgba(232, 96, 60, 0.08); }
 
   .body {
     padding: var(--space-2xl) 0 var(--space-3xl);

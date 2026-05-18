@@ -1,18 +1,23 @@
 import { desc, eq } from 'drizzle-orm';
 import { schema, type ShippieDb } from '$server/db/client';
+import { curationFor } from '$lib/_generated/first-party-curation';
+import { canonicalShowcaseSlug, isFirstPartyShowcase } from '$lib/showcase-slugs';
+
+export interface RemixableApp {
+  id: string | null;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  templateId?: string | null;
+  sourceRepo: string;
+  license: string;
+  latestVersion: string | null;
+}
 
 export type RemixEligibility =
   | {
       ok: true;
-      app: {
-        id: string;
-        slug: string;
-        name: string;
-        tagline: string | null;
-        sourceRepo: string;
-        license: string;
-        latestVersion: string | null;
-      };
+      app: RemixableApp;
     }
   | { ok: false; reason: string };
 
@@ -38,8 +43,37 @@ export async function remixEligibilityForSlug(
     .where(eq(schema.apps.slug, slug))
     .limit(1);
 
-  if (!row || row.isArchived || row.visibilityScope !== 'public') {
+  if (!row) {
+    const firstParty = firstPartyCatalogRemix(slug);
+    if (firstParty) return { ok: true, app: firstParty };
     return { ok: false, reason: 'This app is not publicly remixable.' };
+  }
+  if (row.isArchived || row.visibilityScope !== 'public') {
+    return { ok: false, reason: 'This app is not publicly remixable.' };
+  }
+
+  // First-party showcases live in the public Shippie monorepo under
+  // AGPL-3.0-or-later. The maker-controlled lineage row can't override
+  // that — source/license are properties of the monorepo, not the
+  // claimed app row. Always prefer first-party defaults when the slug
+  // is in the first-party catalog and isn't archived.
+  if (isFirstPartyShowcase(row.slug)) {
+    const curation = curationFor(row.slug);
+    if (curation?.surface !== 'archived') {
+      return {
+        ok: true,
+        app: {
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          tagline: row.tagline,
+          templateId: firstPartyTemplateId(row.slug),
+          sourceRepo: firstPartySourceRepo(row.slug),
+          license: 'AGPL-3.0-or-later',
+          latestVersion: null,
+        },
+      };
+    }
   }
 
   const sourceRepo = row.sourceRepo ?? row.githubRepo;
@@ -66,4 +100,77 @@ export async function remixEligibilityForSlug(
       latestVersion: pkg?.version ?? null,
     },
   };
+}
+
+/**
+ * Public-page-facing wrapper over `remixEligibilityForSlug`. Returns
+ * the shape the `/apps/[slug]` page needs to render the source link,
+ * license badge, and "Remix this app" CTA. Single source of truth so
+ * the public page and the `/api/apps/[slug]/remix` endpoint can't
+ * disagree on whether an app is remixable.
+ *
+ * `remixVia` hints how the CTA should resolve: `'cli'` for first-party
+ * showcases (whose source lives in the monorepo and is cloned via
+ * `npx @shippie/cli remix <slug>`), `'web'` for everything else (the
+ * `/new?remix=<slug>` flow).
+ */
+export interface PublicRemixInfo {
+  sourceRepo: string | null;
+  license: string | null;
+  remixAvailable: boolean;
+  remixVia: 'cli' | 'web';
+}
+
+export async function publicRemixInfoForSlug(
+  db: ShippieDb,
+  slug: string,
+): Promise<PublicRemixInfo> {
+  const eligibility = await remixEligibilityForSlug(db, slug);
+  const firstParty = isFirstPartyShowcase(slug);
+  if (!eligibility.ok) {
+    return {
+      sourceRepo: null,
+      license: null,
+      remixAvailable: false,
+      remixVia: firstParty ? 'cli' : 'web',
+    };
+  }
+  return {
+    sourceRepo: eligibility.app.sourceRepo,
+    license: eligibility.app.license,
+    remixAvailable: true,
+    remixVia: firstParty ? 'cli' : 'web',
+  };
+}
+
+function firstPartyCatalogRemix(slug: string): RemixableApp | null {
+  if (!isFirstPartyShowcase(slug)) return null;
+  const canonical = canonicalShowcaseSlug(slug);
+  const curation = curationFor(canonical);
+  if (curation?.surface === 'archived') return null;
+  return {
+    id: null,
+    slug: canonical,
+    name: titleFromSlug(canonical),
+    tagline: null,
+    templateId: firstPartyTemplateId(canonical),
+    sourceRepo: firstPartySourceRepo(canonical),
+    license: 'AGPL-3.0-or-later',
+    latestVersion: null,
+  };
+}
+
+function firstPartyTemplateId(slug: string): string {
+  return `showcase:${canonicalShowcaseSlug(slug)}`;
+}
+
+function firstPartySourceRepo(slug: string): string {
+  return `https://github.com/theprovider123/shippie/tree/main/apps/showcase-${canonicalShowcaseSlug(slug)}`;
+}
+
+function titleFromSlug(slug: string): string {
+  return slug
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
