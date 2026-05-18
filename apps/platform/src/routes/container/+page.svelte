@@ -3110,33 +3110,6 @@
         {/if}
       {/each}
     </section>
-
-    <div class="inspector">
-      <section>
-        <h3>Tool Data</h3>
-        {#each installedApps as app (app.id)}
-          <p><code>{app.slug}</code> {rowsByApp[app.id]?.length ?? 0} rows</p>
-        {/each}
-      </section>
-
-      <section>
-        <h3>Activity</h3>
-        {#if logs.length === 0}
-          <p>No activity yet.</p>
-        {:else}
-          <ul>
-            {#each logs as log (log.id)}
-              <li>
-                <time>{log.at}</time>
-                <code>{appById.get(log.appId)?.slug ?? log.appId}</code>
-                <code>{log.capability}</code>
-                <span>{log.summary}</span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </section>
-    </div>
   </main>
 </section>
 {/if}
@@ -3185,16 +3158,12 @@
   }
   .lede,
   .status-panel p,
-  .section-head p,
-  .inspector p,
-  .inspector li,
-  .data-list p {
+  .section-head p {
     color: var(--text-secondary);
     line-height: 1.55;
   }
   .status-panel,
-  .panel,
-  .inspector section {
+  .panel {
     border: 1px solid var(--border-light);
     background: var(--surface);
     border-radius: 0;
@@ -3312,8 +3281,7 @@
     font-weight: 800;
     font-size: 0.85rem;
   }
-  .collection-list,
-  .data-list {
+  .collection-list {
     display: grid;
     gap: 8px;
   }
@@ -3341,8 +3309,7 @@
     opacity: 0;
     pointer-events: none;
   }
-  .collection-list article,
-  .data-list article {
+  .collection-list article {
     padding: var(--space-md);
     display: flex;
     align-items: center;
@@ -3352,8 +3319,7 @@
     border-radius: 0;
     background: var(--bg-pure);
   }
-  .collection-list article > div,
-  .data-list article > div {
+  .collection-list article > div {
     min-width: 0;
     flex: 1;
   }
@@ -3391,7 +3357,6 @@
     align-items: baseline;
   }
   .collection-list button,
-  .data-list button,
   .export-button {
     padding: 0.55rem 0.75rem;
   }
@@ -3405,37 +3370,6 @@
   .viewport-area.hidden {
     display: none;
   }
-  .inspector {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-md);
-  }
-  .inspector section {
-    min-width: 0;
-    padding: var(--space-md);
-    display: grid;
-    gap: 8px;
-  }
-  .inspector ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 8px;
-  }
-  .inspector li {
-    overflow-wrap: anywhere;
-    font-size: var(--small-size);
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  code,
-  time {
-    font-family: var(--font-mono);
-    color: var(--text);
-    font-size: var(--caption-size);
-  }
   @media (max-width: 1024px) {
     .shell {
       grid-template-columns: 1fr;
@@ -3444,9 +3378,6 @@
       border-right: 0;
       border-bottom: 1px solid var(--border-light);
       padding: var(--space-xl);
-    }
-    .inspector {
-      grid-template-columns: 1fr;
     }
     .topbar {
       align-items: flex-start;

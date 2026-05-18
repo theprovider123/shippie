@@ -68,15 +68,28 @@
     onRestore,
   }: Props = $props();
 
-  let pane = $state<Pane>('devices');
-  const readableRows = 0;
-  const backupState = $derived(backupExport ? 'Ready' : 'Local');
+  let pane = $state<Pane>('tools');
+  const appWord = $derived(installedAppsCount === 1 ? 'app' : 'apps');
+  const itemSummary = $derived(
+    totalRows === 0
+      ? 'No app data has been saved yet.'
+      : `${totalRows} local item${totalRows === 1 ? '' : 's'} saved across your apps.`,
+  );
+  const privacySummary = $derived(
+    backupExport
+      ? 'Shippie can count it, not read it. Your encrypted backup is ready.'
+      : 'Shippie can count it, not read it. Backups are optional.',
+  );
 
   onMount(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     const requested = url.searchParams.get('pane');
-    if (requested === 'devices' || requested === 'tools' || requested === 'backup') {
+    if (requested === 'apps') {
+      pane = 'tools';
+    } else if (requested === 'move') {
+      pane = 'devices';
+    } else if (requested === 'devices' || requested === 'tools' || requested === 'backup') {
       pane = requested;
     }
   });
@@ -92,43 +105,42 @@
 
 <div class="your-data-tab">
   <header class="head">
-    <p class="eyebrow">Data</p>
-    <h2>Your data</h2>
-    <p>Local tools, sealed recovery, and what this device is holding now.</p>
+    <p class="eyebrow">Local data</p>
+    <h2>What your apps keep</h2>
+    <p>Each app keeps its own data on this device. You can review it, clear it, or make a backup without turning sign-in into a requirement.</p>
   </header>
 
-  <section class="data-summary" aria-label="Your data summary">
-    <div>
-      <span>Tools</span>
+  <section class="plain-summary" aria-label="Your data summary">
+    <div class="summary-count">
       <strong>{installedAppsCount}</strong>
+      <span>{appWord} saved here</span>
     </div>
-    <div>
-      <span>Records</span>
-      <strong>{totalRows}</strong>
-    </div>
-    <div>
-      <span>Readable</span>
-      <strong>{readableRows}</strong>
-    </div>
-    <div>
-      <span>Backup</span>
-      <strong>{backupState}</strong>
+    <div class="summary-copy">
+      <p>{itemSummary}</p>
+      <p class="privacy-note">{privacySummary}</p>
     </div>
   </section>
 
+  {#if triggerAppName}
+    <div class="data-trigger" role="status">
+      <span><strong>{triggerAppName}</strong> opened this view. Review its local data from Apps below.</span>
+      <button class="dismiss" onclick={onDismissTrigger}>Close</button>
+    </div>
+  {/if}
+
   <div class="segmented" role="tablist" aria-label="Your data sections">
-    <button
-      role="tab"
-      aria-selected={pane === 'devices'}
-      class:active={pane === 'devices'}
-      onclick={() => pickPane('devices')}
-    >Devices</button>
     <button
       role="tab"
       aria-selected={pane === 'tools'}
       class:active={pane === 'tools'}
       onclick={() => pickPane('tools')}
-    >Tools <span class="count">{installedAppsCount}</span></button>
+    >Apps <span class="count">{installedAppsCount}</span></button>
+    <button
+      role="tab"
+      aria-selected={pane === 'devices'}
+      class:active={pane === 'devices'}
+      onclick={() => pickPane('devices')}
+    >Move</button>
     <button
       role="tab"
       aria-selected={pane === 'backup'}
@@ -138,16 +150,7 @@
   </div>
 
   <div class="pane">
-    {#if pane === 'devices'}
-      <DevicesPane
-        {installedAppsCount}
-        {totalRows}
-        {triggerAppName}
-        {onDismissTrigger}
-        {onRecoveryAction}
-        {recoveryStatus}
-      />
-    {:else if pane === 'tools'}
+    {#if pane === 'tools'}
       <ToolsPane
         {installedApps}
         {receiptsByApp}
@@ -158,9 +161,14 @@
         {onUninstall}
         {onImportPackageForReceipt}
         {onForgetRecoveredReceipt}
-        {onExportReceipts}
-        {receiptExport}
         {dataTrustLine}
+      />
+    {:else if pane === 'devices'}
+      <DevicesPane
+        {installedAppsCount}
+        {totalRows}
+        {onRecoveryAction}
+        {recoveryStatus}
       />
     {:else}
       <BackupPane
@@ -172,6 +180,8 @@
         bind:restorePassphrase
         {restoreStatus}
         {onRestore}
+        {onExportReceipts}
+        {receiptExport}
       />
     {/if}
   </div>
@@ -206,34 +216,75 @@
     color: var(--text-secondary);
     line-height: 1.55;
   }
-  .data-summary {
+  .plain-summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: auto 1fr;
+    align-items: stretch;
     gap: 1px;
     border: 1px solid var(--border-light);
     background: var(--border-light);
   }
-  .data-summary div {
-    min-height: 88px;
-    padding: 12px;
-    display: grid;
-    align-content: space-between;
+  .summary-count,
+  .summary-copy {
     background: var(--surface);
   }
-  .data-summary span {
+  .summary-count {
+    min-width: 132px;
+    padding: 14px 16px;
+    display: grid;
+    align-content: center;
+    gap: 0.25rem;
+  }
+  .summary-count span {
     font-family: var(--font-mono);
     font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--text-light);
   }
-  .data-summary strong {
+  .summary-count strong {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     font-family: var(--font-heading);
-    font-size: clamp(1.8rem, 6vw, 2.7rem);
+    font-size: clamp(2rem, 8vw, 2.8rem);
     font-weight: 600;
     line-height: 0.95;
     color: var(--text);
+  }
+  .summary-copy {
+    padding: 14px 16px;
+    display: grid;
+    align-content: center;
+    gap: 0.35rem;
+  }
+  .summary-copy p:first-child {
+    color: var(--text);
+  }
+  .privacy-note {
+    font-size: var(--small-size);
+  }
+  .data-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(232, 96, 60, 0.34);
+    background: rgba(232, 96, 60, 0.08);
+    font-size: 13px;
+  }
+  .dismiss {
+    min-height: var(--touch-min);
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border-light);
+    background: var(--bg-pure);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
   }
   .segmented {
     position: sticky;
@@ -288,11 +339,26 @@
     .head p:not(.eyebrow) {
       font-size: 1rem;
     }
-    .data-summary {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .plain-summary {
+      grid-template-columns: 1fr;
     }
-    .data-summary div {
+    .summary-count {
+      min-width: 0;
       min-height: 76px;
+      grid-template-columns: auto 1fr;
+      align-items: baseline;
+      align-content: center;
+      column-gap: 0.7rem;
+    }
+    .summary-copy {
+      padding: 12px 14px;
+    }
+    .data-trigger {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .dismiss {
+      justify-content: center;
     }
     .segmented {
       top: calc(var(--safe-top) + 62px);

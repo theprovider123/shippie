@@ -6,8 +6,6 @@
   interface Props {
     installedAppsCount: number;
     totalRows: number;
-    triggerAppName: string | null;
-    onDismissTrigger: () => void;
     onRecoveryAction: (action: RecoveryAction) => void;
     recoveryStatus: string;
   }
@@ -15,8 +13,6 @@
   const {
     installedAppsCount,
     totalRows,
-    triggerAppName,
-    onDismissTrigger,
     onRecoveryAction,
     recoveryStatus,
   }: Props = $props();
@@ -27,40 +23,39 @@
     sheetOpen = false;
     onRecoveryAction(action);
   }
+
+  const deviceSummary = $derived(
+    `This device has ${installedAppsCount} app${installedAppsCount === 1 ? '' : 's'} and ${totalRows} local item${totalRows === 1 ? '' : 's'}. Shippie can count them, not read them.`,
+  );
 </script>
 
-{#if triggerAppName}
-  <div class="data-trigger" role="status">
-    <span><strong>{triggerAppName}</strong> opened this panel.</span>
-    <button class="dismiss" onclick={onDismissTrigger}>Dismiss</button>
-  </div>
-{/if}
-
 <section class="card" aria-labelledby="devices-heading">
-  <p class="mini-label">Private by default</p>
-  <h3 id="devices-heading">This device</h3>
+  <p class="mini-label">Move</p>
+  <h3 id="devices-heading">Move to another device</h3>
   <p class="lede">
-    Move saved tools to another phone, restore from a backup, or keep everything local.
+    Use this when you get a new phone, set up another device, or restore a backup.
   </p>
 
   <button class="primary" onclick={() => (sheetOpen = true)}>
-    Move or recover data <span aria-hidden="true">→</span>
+    Move or recover <span aria-hidden="true">→</span>
   </button>
 
-  <dl class="stats">
-    <div>
-      <dt>Tools</dt>
-      <dd>{installedAppsCount}</dd>
-    </div>
-    <div>
-      <dt>Local rows</dt>
-      <dd>{totalRows}</dd>
-    </div>
-    <div>
-      <dt>Readable by Shippie</dt>
-      <dd>0</dd>
-    </div>
-  </dl>
+  <ul class="move-list" aria-label="Move and recovery options">
+    <li>
+      <strong>Move phone</strong>
+      <span>Create a handoff for another device.</span>
+    </li>
+    <li>
+      <strong>Restore backup</strong>
+      <span>Bring back an encrypted copy you saved.</span>
+    </li>
+    <li>
+      <strong>Recovery card</strong>
+      <span>Keep a paper fallback for later.</span>
+    </li>
+  </ul>
+
+  <p class="device-summary">{deviceSummary}</p>
 
   {#if recoveryStatus}
     <p class="status" role="status">{recoveryStatus}</p>
@@ -72,9 +67,7 @@
 <style>
   h3,
   p,
-  dl,
-  dt,
-  dd {
+  ul {
     margin: 0;
   }
   .mini-label {
@@ -91,29 +84,6 @@
   .lede {
     color: var(--text-secondary);
     line-height: 1.55;
-  }
-  .data-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: var(--space-md);
-    padding: 12px 14px;
-    border: 1px solid var(--border-light);
-    background: rgba(232, 96, 60, 0.08);
-    font-size: 13px;
-  }
-  .dismiss {
-    min-height: var(--touch-min);
-    padding: 0 10px;
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid var(--border-light);
-    background: transparent;
-    color: var(--text);
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
   }
   .card {
     padding: var(--space-lg);
@@ -139,29 +109,32 @@
   .primary:hover {
     opacity: 0.92;
   }
-  .stats {
+  .move-list {
+    list-style: none;
+    padding: 0;
     display: grid;
     gap: 1px;
-    padding-top: var(--space-sm);
-    border-top: 1px solid var(--border-light);
+    border: 1px solid var(--border-light);
     background: var(--border-light);
   }
-  .stats div {
-    min-height: 46px;
-    padding: 0 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  .move-list li {
+    min-height: 58px;
+    padding: 10px 12px;
+    display: grid;
     gap: var(--space-sm);
     background: var(--bg);
     font-size: var(--small-size);
   }
-  dt {
+  .move-list strong {
+    color: var(--text);
+  }
+  .move-list span {
     color: var(--text-secondary);
   }
-  dd {
-    color: var(--text);
-    font-weight: 500;
+  .device-summary {
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.55;
   }
   .status {
     color: var(--text-secondary);
@@ -174,13 +147,6 @@
     }
     h3 {
       font-size: 1.35rem;
-    }
-    .data-trigger {
-      align-items: stretch;
-      flex-direction: column;
-    }
-    .dismiss {
-      justify-content: center;
     }
   }
 </style>

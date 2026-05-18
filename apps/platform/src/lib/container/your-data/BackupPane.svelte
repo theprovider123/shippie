@@ -8,6 +8,8 @@
     restorePassphrase: string;
     restoreStatus: string;
     onRestore: () => void;
+    onExportReceipts: () => void;
+    receiptExport: string;
   }
 
   let {
@@ -19,10 +21,13 @@
     restorePassphrase = $bindable(),
     restoreStatus,
     onRestore,
+    onExportReceipts,
+    receiptExport,
   }: Props = $props();
 
   let mode = $state<'create' | 'restore'>('create');
   let showRawExport = $state(false);
+  let showInstallRecords = $state(false);
 
   function downloadBackup() {
     if (!backupExport) return;
@@ -123,6 +128,15 @@
       <p class="status">{restoreStatus}</p>
     {/if}
   {/if}
+
+  <details class="install-records" bind:open={showInstallRecords}>
+    <summary>Install records (advanced)</summary>
+    <p>For support or migration tools. Most people do not need this.</p>
+    <button class="secondary" onclick={onExportReceipts}>Generate install record JSON</button>
+    {#if receiptExport}
+      <pre>{receiptExport}</pre>
+    {/if}
+  </details>
 </section>
 
 <style>
@@ -226,6 +240,12 @@
   details[open] summary {
     margin-bottom: 8px;
   }
+  .install-records p {
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.55;
+  }
   pre {
     margin: 8px 0 0;
     padding: var(--space-sm);
@@ -248,6 +268,15 @@
   .primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  .secondary {
+    min-height: var(--touch-min);
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border-light);
+    background: var(--bg-pure);
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
   }
   .result {
     display: grid;
