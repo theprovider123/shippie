@@ -27,6 +27,10 @@ export type BridgeCapability =
   | 'db.insert'
   | 'files.write'
   | 'files.url'
+  // Universal local-only AI capability. The iframe can only submit data
+  // it already has, inference runs in the container's device-local model
+  // worker, and unavailable devices return a controlled no-op result.
+  // Network/edge AI remains a separate future permission surface.
   | 'ai.run'
   | 'feedback.open'
   | 'analytics.track'
@@ -621,8 +625,7 @@ export function assertCapabilityAllowed(
       if (permissions.capabilities.localFiles?.enabled) return;
       break;
     case 'ai.run':
-      if (permissions.capabilities.localAi?.tasks.length) return;
-      break;
+      return;
     case 'feedback.open':
       if (permissions.capabilities.feedback?.enabled) return;
       break;

@@ -63,6 +63,8 @@ export interface InstallAppLifecycleOptions {
 }
 
 const INSTALLED_FLAG = '__shippie_lifecycle_installed';
+const VIEW_TRANSITION_ERROR_RE = /view transition|transition/i;
+const RECOVERABLE_TRANSITION_ERROR_RE = /timed out|timeout|skipped|aborted|interrupted/i;
 
 export function createAppLifecyclePayload(input: AppLifecycleInput): AppLifecyclePayload {
   const href = typeof location !== 'undefined' ? location.href : undefined;
@@ -139,10 +141,12 @@ export function installAppLifecycleReporter(options: InstallAppLifecycleOptions 
       reportAppError(new Error(`asset failed to load: ${url}`), base);
       return;
     }
+    if (isRecoverableViewTransitionError(event.error ?? event.message)) return;
     reportAppError(event.error ?? event.message, base);
   }, true);
 
   window.addEventListener('unhandledrejection', (event) => {
+    if (isRecoverableViewTransitionError(event.reason)) return;
     reportAppError(event.reason, base);
   });
 }
@@ -223,4 +227,12 @@ function afterAnimationFrame(): Promise<void> {
   return new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
+}
+
+function isRecoverableViewTransitionError(error: unknown): boolean {
+  const record = error as { name?: unknown; message?: unknown } | null;
+  const message = typeof record?.message === 'string' ? record.message : String(error ?? '');
+  const name = typeof record?.name === 'string' ? record.name : '';
+  const text = `${name} ${message}`;
+  return VIEW_TRANSITION_ERROR_RE.test(text) && RECOVERABLE_TRANSITION_ERROR_RE.test(text);
 }

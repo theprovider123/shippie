@@ -4,8 +4,8 @@
  *   import { toast } from '$lib/stores/toast';
  *   toast.push({ kind: 'success', message: 'Visibility set to public' });
  *   toast.push({ kind: 'error',   message: 'Could not save', durationMs: 6000 });
- *   toast.push({ kind: 'info',    message: 'New version available · Tap to refresh',
- *                action: { label: 'Refresh', run: () => location.reload() },
+ *   toast.push({ kind: 'info',    message: 'Restored safe copy',
+ *                action: { label: 'Review', run: () => openReview() },
  *                durationMs: 0 }); // 0 = sticky until tapped or dismissed
  *
  * Render once at the root with `<Toast />` from `$lib/components/ui/Toast.svelte`.
@@ -22,10 +22,8 @@ export interface ToastInput {
   /** Optional inline action button (primary, e.g. "Refresh"). */
   action?: { label: string; run: () => void } | undefined;
   /**
-   * Optional secondary action button (e.g. "Skip this version" alongside
-   * "Refresh"). Rendered after the primary action; closes the toast on
-   * tap. Used by the SW update flow so users can suppress per-version
-   * without losing future updates.
+   * Optional secondary action button. Rendered after the primary action;
+   * closes the toast on tap.
    */
   secondaryAction?: { label: string; run: () => void } | undefined;
 }

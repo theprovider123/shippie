@@ -216,7 +216,7 @@ export function openYourData(opts: YourDataPanelOptions = {}): PanelHandle {
     if (opts.onConfigureBackup) {
       opts.onConfigureBackup();
     } else {
-      void defaultConfigureBackup(opts);
+      void defaultConfigureBackup(opts, root);
     }
   });
   root.getElementById('shippie-data-transfer')?.addEventListener('click', () => {
@@ -379,15 +379,27 @@ function formatRelativeTime(value: string): string {
   return new Date(ts).toLocaleDateString();
 }
 
-async function doExport(_root: ShadowRoot): Promise<void> {
+function setPanelStatus(
+  root: ShadowRoot,
+  message: string,
+  state: 'info' | 'success' | 'error' | 'warning' = 'info',
+): void {
+  const el = root.getElementById('shippie-data-status');
+  if (!el) return;
+  el.textContent = message;
+  el.setAttribute('data-state', state);
+  el.removeAttribute('hidden');
+}
+
+async function doExport(root: ShadowRoot): Promise<void> {
   // Delegated to @shippie/local-db backup primitives — they already
   // exist; wiring them into a download Blob happens in the
   // backup-providers package (week 8). For week 1 this is a stub.
-  alert('Encrypted export — wires up in week 8 alongside backup providers.');
+  setPanelStatus(root, 'Encrypted file export is not wired in this build yet.', 'info');
 }
 
-async function doImport(_root: ShadowRoot): Promise<void> {
-  alert('Restore from .shippie-backup — wires up in week 8.');
+async function doImport(root: ShadowRoot): Promise<void> {
+  setPanelStatus(root, 'Restore from a .shippie-backup file is not wired in this build yet.', 'info');
 }
 
 /**
@@ -403,11 +415,11 @@ async function doImport(_root: ShadowRoot): Promise<void> {
  * `@shippie/backup-providers` into the wrapper bundle when nobody
  * presses the button.
  */
-async function defaultConfigureBackup(opts: YourDataPanelOptions): Promise<void> {
+async function defaultConfigureBackup(opts: YourDataPanelOptions, root: ShadowRoot): Promise<void> {
   if (typeof window === 'undefined') return;
   const slug = opts.appSlug ?? readShippieMetaSlug();
   if (!slug) {
-    alert('Backup setup is unavailable: app slug missing.');
+    setPanelStatus(root, 'Backup setup is unavailable because this app has no slug.', 'error');
     return;
   }
   const coordinatorOrigin = opts.coordinatorOrigin ?? 'https://shippie.app';
@@ -416,9 +428,10 @@ async function defaultConfigureBackup(opts: YourDataPanelOptions): Promise<void>
     mod = await import('@shippie/backup-providers');
   } catch (err) {
     console.error('shippie:your-data-panel: failed to load backup-providers', err);
-    alert('Backup setup is unavailable in this build.');
+    setPanelStatus(root, 'Backup setup is unavailable in this build.', 'error');
     return;
   }
+  setPanelStatus(root, 'Opening secure backup setup...', 'info');
   const verifier = mod.generateCodeVerifier();
   const challenge = await mod.deriveCodeChallenge(verifier);
   // Note: the coordinator-secret HMAC happens on the server side. For
@@ -439,15 +452,16 @@ async function defaultConfigureBackup(opts: YourDataPanelOptions): Promise<void>
     if (!data || data.kind !== 'shippie-oauth') return;
     window.removeEventListener('message', handler);
     if (!data.ok) {
-      alert('Sign-in failed.');
+      setPanelStatus(root, 'Sign-in did not complete. Try backup setup again.', 'error');
       return;
     }
     if (opts.onBackupToken) {
       opts.onBackupToken({ provider: data.provider ?? 'google-drive', token: data.token });
+      setPanelStatus(root, 'Backup is configured for this app.', 'success');
     } else {
       // Token stays out of localStorage; we just acknowledge.
       console.info('shippie:backup token received (provider=%s)', data.provider);
-      alert('Backup is now configured. Your data will sync nightly.');
+      setPanelStatus(root, 'Backup is configured. Your data will sync nightly.', 'success');
     }
   };
   window.addEventListener('message', handler);
@@ -732,7 +746,7 @@ async function defaultStartTransfer(
 ): Promise<void> {
   const slug = opts.appSlug ?? readShippieMetaSlug();
   if (!slug) {
-    alert('Transfer is unavailable: app slug missing.');
+    setPanelStatus(root, 'Transfer is unavailable because this app has no slug.', 'error');
     return;
   }
   const dialogRoot = renderTransferDialog(root);
@@ -1006,7 +1020,10 @@ function base64UrlDecodeUtf8(value: string): string {
 
 async function requestRestoreSource(dialog: HTMLDivElement): Promise<string | null> {
   const qrSlot = dialog.querySelector('[data-shippie-transfer-qr]') as HTMLDivElement | null;
-  if (!qrSlot) return prompt('Paste a transfer code, restore link, or recovery card');
+  if (!qrSlot) {
+    setTransferStatus(dialog, 'Restore is unavailable in this view. Open Your Data and try again.');
+    return null;
+  }
 
   setTransferStatus(dialog, 'Paste a transfer code, scan a QR, or paste a recovery card.');
   qrSlot.innerHTML = `
@@ -1544,8 +1561,29 @@ async function sha256Base64Url(value: string): Promise<string> {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function doDelete(_root: ShadowRoot, refresh: () => Promise<void>): Promise<void> {
-  if (!confirm("Delete ALL data this app has stored on this device? You can't undo this.")) return;
+async function doDelete(root: ShadowRoot, refresh: () => Promise<void>): Promise<void> {
+  const button = root.getElementById('shippie-data-delete') as HTMLButtonElement | null;
+  const pending = Number(button?.dataset.confirmDeleteAt ?? 0);
+  const now = Date.now();
+  if (!pending || now - pending > 8_000) {
+    if (button) {
+      button.dataset.confirmDeleteAt = String(now);
+      button.textContent = 'Tap again to delete';
+    }
+    setPanelStatus(root, "Tap delete again within 8 seconds. This can't be undone.", 'warning');
+    window.setTimeout(() => {
+      if (!button || button.dataset.confirmDeleteAt !== String(now)) return;
+      delete button.dataset.confirmDeleteAt;
+      button.textContent = 'Delete everything from this device';
+    }, 8_000);
+    return;
+  }
+  if (button) {
+    delete button.dataset.confirmDeleteAt;
+    button.disabled = true;
+    button.textContent = 'Deleting...';
+  }
+  setPanelStatus(root, 'Deleting local app data...', 'warning');
   // Best-effort: tell the runtime to wipe known stores.
   try {
     const dbs = await indexedDB.databases?.();
@@ -1564,7 +1602,8 @@ async function doDelete(_root: ShadowRoot, refresh: () => Promise<void>): Promis
     // best-effort
   }
   await refresh();
-  alert('Done. Reload the app to start fresh.');
+  setPanelStatus(root, 'Local data deleted. Restarting this app...', 'success');
+  window.setTimeout(() => window.location.reload(), 600);
 }
 
 const SHELL_HTML = `
@@ -1595,8 +1634,23 @@ const SHELL_HTML = `
   button.primary { background: #E8603C; color: #14120F; border-color: #E8603C; }
   button.soft { border-color: #D7C8B1; background: #FFFDF7; }
   button.danger { color: #B23A2B; border-color: #B23A2B; }
+  button:disabled { opacity: 0.58; cursor: wait; }
   button:hover { opacity: 0.85; }
   .stats { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #5C5751; font-size: 13px; }
+  .status {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border: 1px solid #D7C8B1;
+    border-radius: 10px;
+    background: #FFFDF7;
+    color: #4E473B;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .status[hidden] { display: none; }
+  .status[data-state="success"] { border-color: #A8C8A0; background: #EFF8EC; color: #214A2F; }
+  .status[data-state="error"] { border-color: #E0A094; background: #FFF4F1; color: #8B2F24; }
+  .status[data-state="warning"] { border-color: #E0B15C; background: #FFF8E8; color: #654413; }
   .footer { margin-top: 24px; font-size: 12px; color: #7A6B58; line-height: 1.5; }
   .close { position: absolute; top: 16px; right: 16px; background: transparent; border: 0; font-size: 22px; cursor: pointer; color: #5C5751; }
   .sync-card {
@@ -1717,6 +1771,7 @@ const SHELL_HTML = `
   <div class="row">
     <button class="danger" id="shippie-data-delete">Delete everything from this device</button>
   </div>
+  <p class="status" id="shippie-data-status" role="status" aria-live="polite" hidden></p>
 
   <p class="footer">
     Shippie stores sealed copies. We can help recover them, but we can't open them.

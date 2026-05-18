@@ -79,6 +79,8 @@
   import {
     createAiWorkerClient,
     createMemoryAiTransport,
+    createWorkerTransport,
+    type AiWorkerClient,
     type AiRunRequest,
     type AiRunResult,
   } from '$lib/container/ai-worker-client';
@@ -97,7 +99,6 @@
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
-  import { toast } from '$lib/stores/toast';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import {
     hydrateLauncherMemory,
@@ -128,6 +129,8 @@
   } from '$lib/container/frame-runtime';
   import {
     appLifecycleErrorMessage,
+    isRecoverableAppLifecycleError,
+    isRetryableAppLifecycleError,
     parseAppLifecycleMessage,
     type AppLifecycleMessage,
   } from '$lib/container/app-lifecycle';
@@ -397,12 +400,12 @@
     meshJoinCodeInput = '';
     meshStore.set({ state: 'idle' });
   }
-  // Phase B1 — AI worker. The actual Web Worker is spawned lazily on
-  // first ai.run; until then the container holds a placeholder client
-  // backed by a memory transport that reports "unavailable" → the edge
-  // fallback handles the request. When the Worker spawns successfully,
-  // the placeholder is replaced and subsequent calls go local.
-  function buildPlaceholderAiClient() {
+  // Phase B1 — AI worker. Spawn the actual model worker lazily on the
+  // first ai.run so the launcher stays light, but make the fallback
+  // path look like a normal "unavailable" result instead of an app
+  // error. Apps can call AI opportunistically and hide bonus features
+  // without showing users setup prompts.
+  function buildUnavailableAiClient(): AiWorkerClient {
     return createAiWorkerClient({
       transport: createMemoryAiTransport((req) => ({
         kind: 'shippie.ai.response',
@@ -410,12 +413,34 @@
         ok: true,
         result: { task: req.request.task, output: null, source: 'unavailable' },
       })),
-      // No edge fallback wired yet — the Worker will report unavailable
-      // until B1 ships its actual model loader. Iframe apps see a
-      // controlled "unavailable" surface rather than a crash.
     });
   }
-  let aiClient = buildPlaceholderAiClient();
+
+  function buildRealAiClient(): AiWorkerClient | null {
+    if (typeof Worker === 'undefined') return null;
+    try {
+      const worker = new Worker(new URL('../../lib/container/ai-worker.ts', import.meta.url), {
+        type: 'module',
+      });
+      return createAiWorkerClient({
+        transport: createWorkerTransport(worker),
+      });
+    } catch (err) {
+      console.warn('[container] AI worker unavailable', err);
+      return null;
+    }
+  }
+
+  let aiClient = buildUnavailableAiClient();
+  let aiWorkerStarted = false;
+  function ensureAiWorkerStarted(): void {
+    if (aiWorkerStarted) return;
+    aiWorkerStarted = true;
+    const nextClient = buildRealAiClient();
+    if (!nextClient) return;
+    aiClient.dispose();
+    aiClient = nextClient;
+  }
   type AiReadiness = {
     backend: AiBackend;
     runtimeCached: boolean;
@@ -430,7 +455,11 @@
   });
   async function runAi(req: AiRunRequest): Promise<AiRunResult> {
     try {
+      ensureAiWorkerStarted();
       return await aiClient.run(req);
+    } catch (err) {
+      console.warn('[container] AI request unavailable', err);
+      return { task: req.task, output: null, source: 'unavailable' };
     } finally {
       void refreshAiReadiness();
     }
@@ -1031,16 +1060,10 @@
   function markFrameError(
     appId: string,
     message = 'This app could not open in the container.',
-    options: { retryablePaintMiss?: boolean } = {},
+    options: { retryable?: boolean; retryablePaintMiss?: boolean } = {},
   ) {
-    if (options.retryablePaintMiss && (framePaintMissRetries[appId] ?? 0) === 0) {
-      const app = appById.get(appId);
+    if ((options.retryable || options.retryablePaintMiss) && (framePaintMissRetries[appId] ?? 0) === 0) {
       framePaintMissRetries = { ...framePaintMissRetries, [appId]: 1 };
-      toast.push({
-        kind: 'info',
-        message: `Reloading ${app?.name ?? 'tool'}…`,
-        durationMs: 2500,
-      });
       reloadFrame(appId, { resetPaintMissRetry: false });
       return;
     }
@@ -1173,7 +1196,13 @@
     }
 
     if (payload.event === 'error') {
-      markFrameError(appId, appLifecycleErrorMessage(payload));
+      if (isRecoverableAppLifecycleError(payload)) {
+        if (frameStates[appId]?.status !== 'ready') markFrameReady(appId);
+        return;
+      }
+      markFrameError(appId, appLifecycleErrorMessage(payload), {
+        retryable: isRetryableAppLifecycleError(payload),
+      });
     }
   }
 
@@ -3435,7 +3464,7 @@
     padding: 0 10px;
     border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.15));
-    font-size: 13px;
+    font-size: var(--type-body-mobile);
     text-transform: uppercase;
     width: 180px;
   }

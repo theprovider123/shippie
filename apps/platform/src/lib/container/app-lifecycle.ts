@@ -18,6 +18,11 @@ export interface AppLifecycleMessage {
   error?: { message?: string; name?: string; stack?: string };
 }
 
+const VIEW_TRANSITION_ERROR_RE = /view transition|transition/i;
+const RECOVERABLE_TRANSITION_ERROR_RE = /timed out|timeout|skipped|aborted|interrupted/i;
+const RETRYABLE_LOAD_ERROR_RE =
+  /asset failed to load|failed to fetch dynamically imported module|importing a module script failed|error loading dynamically imported module|loading chunk|module script|load failed/i;
+
 export function parseAppLifecycleMessage(value: unknown): AppLifecycleMessage | null {
   const message = value as Partial<AppLifecycleMessage> | null;
   if (!message || message.type !== SHIPPIE_APP_LIFECYCLE_EVENT) return null;
@@ -43,6 +48,18 @@ export function parseAppLifecycleMessage(value: unknown): AppLifecycleMessage | 
 export function appLifecycleErrorMessage(message: AppLifecycleMessage): string {
   const error = message.error?.message?.trim();
   return error || 'The app reported a startup error.';
+}
+
+export function isRecoverableAppLifecycleError(message: AppLifecycleMessage): boolean {
+  const error = message.error;
+  const text = `${error?.name ?? ''} ${error?.message ?? ''}`;
+  return VIEW_TRANSITION_ERROR_RE.test(text) && RECOVERABLE_TRANSITION_ERROR_RE.test(text);
+}
+
+export function isRetryableAppLifecycleError(message: AppLifecycleMessage): boolean {
+  const error = message.error;
+  const text = `${error?.name ?? ''} ${error?.message ?? ''}`;
+  return RETRYABLE_LOAD_ERROR_RE.test(text);
 }
 
 function isLifecycleEvent(value: unknown): value is AppLifecycleEventName {

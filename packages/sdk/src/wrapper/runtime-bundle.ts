@@ -57,6 +57,8 @@ type BeforeInstallPromptEvent = Event & {
 
 let bipEvent: BeforeInstallPromptEvent | null = null;
 let appMeta: AppMetaPayload | null = null;
+let controllerReloadInstalled = false;
+let updatePollingInstalled = false;
 
 const warn = (name: string) => () => {
   console.warn(`[shippie] ${name}() not wired yet — Phase 2+ of the rollout`);
@@ -79,9 +81,16 @@ function captureBeforeInstallPrompt(): void {
 function registerServiceWorker(): void {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
   if (typeof window === 'undefined') return;
+  installControllerReload();
   const register = () => {
     navigator.serviceWorker
       .register('/__shippie/sw.js', { scope: '/' })
+      .then((reg) => {
+        activateWaitingWorker(reg);
+        watchInstallingWorker(reg.installing);
+        reg.addEventListener('updatefound', () => watchInstallingWorker(reg.installing));
+        installUpdatePolling(reg);
+      })
       .catch((err) => console.warn('[shippie] sw register failed', err));
   };
   if (document.readyState === 'complete') {
@@ -89,6 +98,53 @@ function registerServiceWorker(): void {
   } else {
     window.addEventListener('load', register);
   }
+}
+
+function activateWaitingWorker(reg: ServiceWorkerRegistration): void {
+  if (!navigator.serviceWorker.controller || !reg.waiting) return;
+  try {
+    reg.waiting.postMessage('SKIP_WAITING');
+  } catch {
+    /* activation is best-effort */
+  }
+}
+
+function watchInstallingWorker(worker: ServiceWorker | null): void {
+  if (!worker) return;
+  worker.addEventListener('statechange', () => {
+    if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+      try {
+        worker.postMessage('SKIP_WAITING');
+      } catch {
+        /* activation is best-effort */
+      }
+    }
+  });
+}
+
+function installControllerReload(): void {
+  if (controllerReloadInstalled) return;
+  controllerReloadInstalled = true;
+  let refreshing = false;
+  let hadController = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) {
+      hadController = true;
+      return;
+    }
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
+function installUpdatePolling(reg: ServiceWorkerRegistration): void {
+  if (updatePollingInstalled) return;
+  updatePollingInstalled = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    reg.update().then(activateWaitingWorker).catch(() => {});
+  });
 }
 
 function installStatus(): 'installed' | 'installable' | 'not-yet-available' | 'unsupported' {

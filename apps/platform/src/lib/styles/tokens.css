@@ -187,6 +187,15 @@ textarea,
   user-select: text;
 }
 
+/* iOS Safari zooms the viewport when a text input has a computed
+   font-size below 16px. Floor every form control globally so no
+   surface accidentally triggers the zoom-on-focus jolt. */
+input,
+textarea,
+select {
+  font-size: max(var(--type-body-mobile), 1em);
+}
+
 /* ── Layout primitives ────────────────────────────────────────── */
 .wrap {
   max-width: 1280px;

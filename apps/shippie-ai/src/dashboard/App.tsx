@@ -48,6 +48,7 @@ export function App() {
   const [storage, setStorage] = useState<StorageBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resetArmed, setResetArmed] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -67,11 +68,21 @@ export function App() {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!resetArmed) return;
+    const timer = window.setTimeout(() => setResetArmed(false), 3500);
+    return () => window.clearTimeout(timer);
+  }, [resetArmed]);
+
   const onResetUsage = useCallback(async () => {
-    if (!confirm('Reset usage log? Inference will keep working — only the per-app counts are cleared.')) return;
+    if (!resetArmed) {
+      setResetArmed(true);
+      return;
+    }
+    setResetArmed(false);
     await clearUsage();
     await refresh();
-  }, [refresh]);
+  }, [refresh, resetArmed]);
 
   const rollup = useMemo<UsageRollup[]>(() => rollupByOrigin(usage), [usage]);
   const backendRollup = useMemo<BackendRollup[]>(() => rollupByBackend(usage), [usage]);
@@ -194,10 +205,18 @@ export function App() {
         <button type="button" onClick={() => void refresh()}>
           Refresh
         </button>
-        <button type="button" onClick={() => void onResetUsage()}>
-          Reset usage
+        <button
+          type="button"
+          className={resetArmed ? 'danger' : undefined}
+          onClick={() => void onResetUsage()}
+          aria-describedby="reset-usage-status"
+        >
+          {resetArmed ? 'Tap again to reset' : 'Reset usage'}
         </button>
       </div>
+      <p id="reset-usage-status" className="action-status" aria-live="polite">
+        {resetArmed ? 'Only local usage counts will be cleared. Inference keeps working.' : ''}
+      </p>
     </main>
   );
 }

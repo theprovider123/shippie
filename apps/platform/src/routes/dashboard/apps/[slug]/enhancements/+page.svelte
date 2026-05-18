@@ -8,6 +8,8 @@
   let text = $state('');
   let saving = $state(false);
   let resetting = $state(false);
+  let resetArmed = $state(false);
+  let resetTimer: number | undefined;
 
   $effect(() => {
     text = data.initialJsonText;
@@ -19,6 +21,34 @@
     wakelock: 'Keep screen awake during use',
     'share-target': 'Receive shared content from other apps'
   };
+
+  function clearResetIntent() {
+    resetArmed = false;
+    if (resetTimer) {
+      window.clearTimeout(resetTimer);
+      resetTimer = undefined;
+    }
+  }
+
+  function handleResetClick(e: MouseEvent) {
+    if (!resetArmed) {
+      e.preventDefault();
+      resetArmed = true;
+      if (resetTimer) window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(() => {
+        resetArmed = false;
+        resetTimer = undefined;
+      }, 8000);
+      return;
+    }
+
+    clearResetIntent();
+    resetting = true;
+    // After the form submit, reset the local state so the textarea
+    // clears too; SvelteKit re-runs the loader so data.initialJsonText
+    // updates on the next render.
+    text = '{}';
+  }
 </script>
 
 <svelte:head>
@@ -90,9 +120,11 @@
     action="?/save"
     use:enhance={() => {
       saving = true;
+      if (resetArmed) clearResetIntent();
       return async ({ update }) => {
         await update({ reset: false });
         saving = false;
+        resetting = false;
       };
     }}
   >
@@ -121,21 +153,15 @@
         formaction="?/reset"
         class="btn secondary"
         disabled={saving || resetting}
-        onclick={(e) => {
-          if (!confirm('Reset to auto-detected enhancements? This clears your shippie.json overrides.')) {
-            e.preventDefault();
-            return;
-          }
-          resetting = true;
-          // After the form submit, reset the local state so the textarea
-          // clears too; SvelteKit re-runs the loader so data.initialJsonText
-          // updates on the next render.
-          text = '{}';
-        }}
+        aria-pressed={resetArmed}
+        onclick={handleResetClick}
       >
-        Reset to auto
+        {resetting ? 'Resetting…' : resetArmed ? 'Tap again to reset' : 'Reset to auto'}
       </button>
     </div>
+    {#if resetArmed}
+      <p class="warn" role="status">This clears your shippie.json overrides and returns to auto-detected enhancements.</p>
+    {/if}
   </form>
 </section>
 
@@ -260,6 +286,11 @@
   }
   .ok {
     color: var(--sage-leaf);
+    font-size: var(--small-size);
+    margin: 8px 0 0;
+  }
+  .warn {
+    color: #B43F2A;
     font-size: var(--small-size);
     margin: 8px 0 0;
   }

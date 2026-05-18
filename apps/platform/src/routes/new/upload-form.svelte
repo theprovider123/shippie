@@ -316,7 +316,7 @@
     border: 1px solid #C9C2B1;
     background: transparent;
     font-family: ui-monospace, monospace;
-    font-size: 14px;
+    font-size: var(--type-body-mobile);
     color: inherit;
     border-radius: 0;
     box-sizing: border-box;
@@ -343,7 +343,7 @@
     border: 1px solid #C9C2B1;
     background: transparent;
     font-family: ui-monospace, monospace;
-    font-size: 14px;
+    font-size: var(--type-body-mobile);
     color: inherit;
     border-radius: 0;
     box-sizing: border-box;
@@ -410,7 +410,7 @@
     border: 1px solid rgba(46,125,91,0.35);
     background: rgba(255,255,255,0.52);
     text-decoration: none;
-    font-size: 12px;
+    font-size: var(--type-body-mobile);
     font-weight: 700;
   }
   .qr-panel {
@@ -461,7 +461,7 @@
     height: 36px;
     padding: 0 0.625rem;
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--type-body-mobile);
     background: white;
     border: 1px solid #C9C2B1;
     border-radius: 0;

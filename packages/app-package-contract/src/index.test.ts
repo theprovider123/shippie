@@ -202,6 +202,7 @@ describe('@shippie/app-package-contract', () => {
         intent: 'shopping-list.write',
       }),
     ).not.toThrow();
+    expect(() => assertCapabilityAllowed(permissions, 'ai.run')).not.toThrow();
     expect(() => assertCapabilityAllowed(permissions, 'files.write')).toThrow(/Capability is not granted/);
     expect(() =>
       assertCapabilityAllowed(permissions, 'network.fetch', {

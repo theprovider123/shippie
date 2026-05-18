@@ -26,6 +26,8 @@ const PROTOCOL = 'shippie.bridge.v1' as const;
 const DEFAULT_RPC_TIMEOUT_MS = 5_000;
 const LIFECYCLE_EVENT = 'shippie:app-lifecycle' as const;
 const LIFECYCLE_VERSION = 1 as const;
+const VIEW_TRANSITION_ERROR_RE = /view transition|transition/i;
+const RECOVERABLE_TRANSITION_ERROR_RE = /timed out|timeout|skipped|aborted|interrupted/i;
 
 export type AiTask =
   | 'classify'
@@ -371,9 +373,11 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
         postLifecycle('error', { error: new Error(`asset failed to load: ${url}`) });
         return;
       }
+      if (isRecoverableViewTransitionError(event.error ?? event.message)) return;
       postLifecycle('error', { error: event.error ?? event.message });
     }, true);
     w.addEventListener('unhandledrejection', (event) => {
+      if (isRecoverableViewTransitionError(event.reason)) return;
       postLifecycle('error', { error: event.reason });
     });
   }
@@ -582,13 +586,18 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
         // Bigger timeout — model downloads can run 10s+ on a cold
         // first invocation. After the first call the backend cache
         // makes subsequent calls instant.
-        return call<AiRunResult>(
-          'ai.run',
-          'run',
-          { task: req.task, input: req.input, options: req.options },
-          { task: req.task, output: null, source: 'unavailable' },
-          60_000,
-        );
+        const fallback: AiRunResult = { task: req.task, output: null, source: 'unavailable' };
+        try {
+          return await call<AiRunResult>(
+            'ai.run',
+            'run',
+            { task: req.task, input: req.input, options: req.options },
+            fallback,
+            60_000,
+          );
+        } catch {
+          return fallback;
+        }
       },
     },
     transfer: {
@@ -704,6 +713,14 @@ function normalizeLifecycleError(error: unknown): { name?: string; message: stri
     return { message: String((error as { message?: unknown }).message ?? 'Unknown app error') };
   }
   return { message: 'Unknown app error' };
+}
+
+function isRecoverableViewTransitionError(error: unknown): boolean {
+  const record = error as { name?: unknown; message?: unknown } | null;
+  const message = typeof record?.message === 'string' ? record.message : String(error ?? '');
+  const name = typeof record?.name === 'string' ? record.name : '';
+  const text = `${name} ${message}`;
+  return VIEW_TRANSITION_ERROR_RE.test(text) && RECOVERABLE_TRANSITION_ERROR_RE.test(text);
 }
 
 function waitForPaintableDom(timeoutMs: number): Promise<void> {

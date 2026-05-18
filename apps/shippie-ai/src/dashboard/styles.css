@@ -141,6 +141,18 @@ body,
   border-color: var(--accent);
 }
 
+.actions button.danger {
+  border-color: rgba(244, 63, 94, 0.55);
+  color: #fecdd3;
+}
+
+.action-status {
+  min-height: 20px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .error {
   padding: 8px 12px;
   background: rgba(244, 63, 94, 0.1);

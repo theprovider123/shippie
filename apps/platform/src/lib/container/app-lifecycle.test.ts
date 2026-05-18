@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 import {
   SHIPPIE_APP_LIFECYCLE_EVENT,
   appLifecycleErrorMessage,
+  isRecoverableAppLifecycleError,
+  isRetryableAppLifecycleError,
   parseAppLifecycleMessage,
 } from './app-lifecycle';
 
@@ -35,5 +37,27 @@ describe('app lifecycle contract', () => {
     });
     expect(parsed).not.toBeNull();
     expect(appLifecycleErrorMessage(parsed!)).toBe('chunk failed');
+  });
+
+  test('classifies view-transition timeouts as recoverable', () => {
+    const parsed = parseAppLifecycleMessage({
+      type: SHIPPIE_APP_LIFECYCLE_EVENT,
+      version: 1,
+      event: 'error',
+      error: { message: 'View transition update callback timed out.' },
+    });
+    expect(parsed).not.toBeNull();
+    expect(isRecoverableAppLifecycleError(parsed!)).toBe(true);
+  });
+
+  test('classifies stale asset failures as retryable', () => {
+    const parsed = parseAppLifecycleMessage({
+      type: SHIPPIE_APP_LIFECYCLE_EVENT,
+      version: 1,
+      event: 'error',
+      error: { message: 'asset failed to load: /__shippie-run/coffee/assets/index.js' },
+    });
+    expect(parsed).not.toBeNull();
+    expect(isRetryableAppLifecycleError(parsed!)).toBe(true);
   });
 });

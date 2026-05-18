@@ -115,6 +115,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       apps: fallback.apps.slice(offset, offset + PER_PAGE),
       featured: [],
       topFourSlugs: [] as string[],
+      suggestionPool: fallbackApps().slice(0, 12),
       query,
       page,
       hasMore: fallback.apps.length > offset + PER_PAGE,
@@ -160,6 +161,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
             .slice(0, 4)
             .map((app) => app.slug)
         : [],
+      suggestionPool: fallbackApps().slice(0, 12),
       query,
       page,
       hasMore: fallback.apps.length > offset + PER_PAGE,
@@ -178,6 +180,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       apps: fallback.apps.slice(offset, offset + PER_PAGE),
       featured: [],
       topFourSlugs: [] as string[],
+      suggestionPool: fallbackApps().slice(0, 12),
       query,
       page,
       hasMore: fallback.apps.length > offset + PER_PAGE,
@@ -232,10 +235,16 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
     : [];
   const topFourSlugs = featured.slice(0, 4).map((app) => app.slug);
 
+  // Suggestion pool for the empty-search fallback. Always populated so
+  // the client-side resolver has something to score against, even on
+  // queries that hit zero rows from the DB filter.
+  const suggestionPool = fallbackApps().slice(0, 12);
+
   return {
     apps: decorated,
     featured,
     topFourSlugs,
+    suggestionPool,
     query,
     page,
     hasMore,

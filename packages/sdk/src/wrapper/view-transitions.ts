@@ -11,6 +11,7 @@ import { reportAppNavigation } from './lifecycle.ts';
 
 interface ViewTransitionLike {
   finished: Promise<void>;
+  updateCallbackDone?: Promise<void>;
 }
 
 type DocumentWithViewTransition = Document & {
@@ -50,6 +51,9 @@ export interface LocalNavigationController<T> {
   backOrReplace: (fallback: T, opts?: ViewTransitionOptions) => Promise<'back' | 'replace'>;
   destroy: () => void;
 }
+
+const VIEW_TRANSITION_ERROR_RE = /view transition|transition/i;
+const RECOVERABLE_TRANSITION_ERROR_RE = /timed out|timeout|skipped|aborted|interrupted/i;
 
 export function supportsViewTransitions(): boolean {
   if (typeof document === 'undefined') return false;
@@ -93,22 +97,38 @@ export async function wrapNavigation(
     .catch(() => {
       /* swallow */
     });
-  const runUpdateAndSettle = async () => {
-    await update();
-    // React state updates scheduled inside the transition callback may commit
-    // just after the callback returns. Waiting one frame keeps local app
-    // navigation visible instead of capturing and finishing on the old screen.
-    await new Promise<void>((resolve) => {
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(() => resolve());
-        return;
-      }
-      setTimeout(resolve, 0);
-    });
+  let updatePromise: Promise<void> | null = null;
+  const runUpdate = () => {
+    try {
+      // Do not return this promise to startViewTransition. Browsers abort
+      // the native transition if the update callback takes too long, and
+      // that cosmetic timeout used to bubble as an app-level crash.
+      updatePromise = Promise.resolve(update()).then(afterAnimationFrame);
+    } catch (err) {
+      updatePromise = Promise.reject(err);
+    }
   };
-  const vt = (document as DocumentWithViewTransition).startViewTransition!(runUpdateAndSettle);
+  let vt: ViewTransitionLike;
   try {
-    await vt.finished;
+    vt = (document as DocumentWithViewTransition).startViewTransition!(runUpdate);
+  } catch {
+    if (!updatePromise) updatePromise = Promise.resolve().then(update).then(afterAnimationFrame);
+    await updatePromise;
+    if (previous) root.dataset.shippieTransition = previous;
+    else delete root.dataset.shippieTransition;
+    return;
+  }
+  const updateCallbackDone = (vt.updateCallbackDone ?? Promise.resolve()).catch((err) => {
+    if (!isRecoverableViewTransitionError(err)) throw err;
+  });
+  const finished = vt.finished.catch((err) => {
+    if (!isRecoverableViewTransitionError(err)) throw err;
+  });
+  try {
+    await updateCallbackDone;
+    if (!updatePromise) updatePromise = Promise.resolve().then(update).then(afterAnimationFrame);
+    await updatePromise;
+    await finished;
   } finally {
     if (previous) root.dataset.shippieTransition = previous;
     else delete root.dataset.shippieTransition;
@@ -335,4 +355,22 @@ function viewTransitionCss(durationMs: number): string {
   }
 }
 `;
+}
+
+function afterAnimationFrame(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => resolve());
+      return;
+    }
+    setTimeout(resolve, 0);
+  });
+}
+
+function isRecoverableViewTransitionError(err: unknown): boolean {
+  const record = err as { name?: unknown; message?: unknown } | null;
+  const message = typeof record?.message === 'string' ? record.message : String(err ?? '');
+  const name = typeof record?.name === 'string' ? record.name : '';
+  const text = `${name} ${message}`;
+  return VIEW_TRANSITION_ERROR_RE.test(text) && RECOVERABLE_TRANSITION_ERROR_RE.test(text);
 }

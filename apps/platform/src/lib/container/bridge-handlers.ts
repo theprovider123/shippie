@@ -385,10 +385,10 @@ export function createAppHandlers(ctx: AppHandlerContext): AppHandlers {
       return ctx.fireTexture(name);
     },
     // Phase B1 — run a local AI task through the container's worker.
-    // The contract gates this on the app declaring localAi.tasks; the
-    // bridge already enforces the gate before this handler runs. The
-    // worker handles backend selection (WebNN→WebGPU→WASM), model
-    // loading, and edge fallback for non-local tasks.
+    // This is intentionally ambient for iframe apps: the caller only
+    // submits data it already owns, inference stays device-local, and
+    // unavailable devices get a controlled no-op result. The worker
+    // handles backend selection (WebNN→WebGPU→WASM) and model loading.
     'ai.run': async ({ payload }) => {
       const req = readAiRunPayload(payload);
       if (!req) {

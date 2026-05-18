@@ -298,17 +298,15 @@ async function handleClearOffline(port) {
 }
 
 self.addEventListener('message', (e) => {
-  // Existing skip-waiting trigger (page → SW after user taps "Refresh"
-  // on the new-version-available toast).
+  // Skip-waiting trigger from the page shell. Updates are applied
+  // silently; controllerchange reloads the document once the worker
+  // claims the page.
   if (e.data === 'SKIP_WAITING' || (e.data && e.data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
     return;
   }
-  // Version probe — the page asks the WAITING worker for its build id
-  // so the SwUpdateToast can use that as the suppression key for
-  // "skip this version" (instead of a 24h timestamp, which would
-  // suppress unrelated future updates). Replies via the MessageChannel
-  // port if provided; otherwise via the message source.
+  // Version probe — kept for diagnostics and older clients. Replies via
+  // the MessageChannel port if provided; otherwise via the message source.
   if (e.data && e.data.t === 'version') {
     const port = e.ports && e.ports[0];
     const reply = { versionId: '__SHIPPIE_BUILD__' };

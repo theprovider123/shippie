@@ -1,23 +1,20 @@
 # Mobile-audit — static rules report
 
-_Generated 2026-05-18T10:49:37.833Z_
+_Generated 2026-05-18T12:09:33.787Z_
 
 Allowed shell breakpoints: max-width 640/1024, min-width 641/1025.
 Allowed density (grid-column) breakpoints: min-width 1280/1536/1920.
 Tap-target floor: 44px (Apple HIG).
+iOS Safari zooms inputs with font-size < 16px on focus.
 
-Findings: 17 breakpoint drift, 0 tap-target.
+Findings: 14 breakpoint drift, 0 tap-target, 0 input-zoom.
 
 ## Breakpoint drift
 - `apps/platform/src/lib/container/your-data/YourDataTab.svelte`
   - L220: `min-width: 1100px`
 - `apps/platform/src/lib/styles/tokens.css`
   - L104: `min-width: 1440px`
-  - L207: `min-width: 1440px`
-- `apps/platform/src/routes/+page.svelte`
-  - L554: `max-width: 820px`
-  - L570: `max-width: 560px`
-  - L642: `min-width: 720px`
+  - L216: `min-width: 1440px`
 - `apps/platform/src/routes/admin/+layout.svelte`
   - L95: `max-width: 720px`
 - `apps/platform/src/routes/admin/profile/+page.svelte`
@@ -31,7 +28,7 @@ Findings: 17 breakpoint drift, 0 tap-target.
 - `apps/platform/src/routes/build/+page.svelte`
   - L180: `min-width: 1024px`
 - `apps/platform/src/routes/container/+page.svelte`
-  - L3400: `max-width: 900px`
+  - L3428: `max-width: 900px`
 - `apps/platform/src/routes/dashboard/+layout.svelte`
   - L27: `max-width: 720px`
 - `apps/platform/src/routes/dashboard/apps/[slug]/profile/+page.svelte`
@@ -40,4 +37,7 @@ Findings: 17 breakpoint drift, 0 tap-target.
   - L383: `max-width: 860px`
 
 ## Tap-target floor
+_None._
+
+## Input-zoom risk (iOS Safari)
 _None._

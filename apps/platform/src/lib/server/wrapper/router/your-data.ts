@@ -58,6 +58,10 @@ function renderHtml(slug: string): string {
     .tag { display: inline-block; padding: 2px 8px; border-radius: 4px;
            background: var(--line); color: var(--muted); font-size: 11px;
            font-family: ui-monospace, monospace; margin-left: 6px; }
+    .status { margin: 14px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .status.success { color: #3E7D4D; }
+    .status.warning { color: var(--danger); }
+    .status[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -99,6 +103,7 @@ function renderHtml(slug: string): string {
         <button class="danger" id="wipe">Delete everything from this device</button>
       </div>
     </section>
+    <p class="status" id="status" role="status" aria-live="polite" hidden></p>
 
     <p class="footer">
       Shippie stores sealed copies. We can help recover them, but we can't open them.
@@ -137,8 +142,37 @@ function clientScript(slug: string): string {
     }
   }
 
+  function setStatus(message, state) {
+    const out = document.getElementById('status');
+    if (!out) return;
+    out.textContent = message || '';
+    out.className = 'status' + (state ? ' ' + state : '');
+    out.hidden = !message;
+  }
+
   async function wipe() {
-    if (!confirm("Delete ALL data this app has stored on this device? You can't undo this.")) return;
+    const button = document.getElementById('wipe');
+    if (!button) return;
+    const now = Date.now();
+    const armedAt = Number(button.dataset.confirmDeleteAt || 0);
+    if (!armedAt || now - armedAt > 8000) {
+      button.dataset.confirmDeleteAt = String(now);
+      button.textContent = 'Tap again to delete';
+      setStatus("This deletes all data this app stored on this device. You can't undo it.", 'warning');
+      window.setTimeout(() => {
+        if (button.dataset.confirmDeleteAt === String(now)) {
+          delete button.dataset.confirmDeleteAt;
+          button.textContent = 'Delete everything from this device';
+          setStatus('', '');
+        }
+      }, 8000);
+      return;
+    }
+
+    delete button.dataset.confirmDeleteAt;
+    button.disabled = true;
+    button.textContent = 'Deleting...';
+    setStatus('Deleting local data...', '');
     try {
       const dbs = await (indexedDB.databases ? indexedDB.databases() : []);
       for (const d of dbs) if (d.name) indexedDB.deleteDatabase(d.name);
@@ -154,14 +188,15 @@ function clientScript(slug: string): string {
       console.warn('wipe partial failure', e);
     }
     await refreshStats();
-    alert('Done. Reload to start fresh.');
+    setStatus('Done. Reloading to start fresh...', 'success');
+    window.setTimeout(() => window.location.reload(), 600);
   }
 
   document.getElementById('export').addEventListener('click', () => {
-    alert('Encrypted export wires up alongside the backup providers — coming soon. For now, your data is here, on this device, untouched.');
+    setStatus('Encrypted export is coming soon. For now, your data stays here on this device.', '');
   });
   document.getElementById('import').addEventListener('click', () => {
-    alert('Restore wires up alongside the backup providers — coming soon.');
+    setStatus('Restore from file is coming soon.', '');
   });
   document.getElementById('add-device').addEventListener('click', () => {
     openInheritedPanel('add-device');
@@ -202,7 +237,7 @@ function clientScript(slug: string): string {
       'recovery-card': 'Open the app to generate the app-specific recovery card.',
       restore: 'Open the app so this device can unwrap restored access locally.',
     };
-    alert(messages[action] || 'Open the app to continue.');
+    setStatus(messages[action] || 'Open the app to continue.', '');
   }
 })();
 `;

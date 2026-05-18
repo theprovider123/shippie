@@ -56,10 +56,11 @@ describe('wrapNavigation', () => {
   test('uses startViewTransition when available', async () => {
     let started = 0;
     let cbCalled = 0;
+    let callbackResult: unknown;
     // @ts-expect-error injecting for test
     win.document.startViewTransition = (cb: () => void) => {
       started += 1;
-      cb();
+      callbackResult = cb();
       return { finished: Promise.resolve(), ready: Promise.resolve(), updateCallbackDone: Promise.resolve() };
     };
     await wrapNavigation(() => {
@@ -67,8 +68,27 @@ describe('wrapNavigation', () => {
     }, { kind: 'rise' });
     expect(started).toBe(1);
     expect(cbCalled).toBe(1);
+    expect(callbackResult).toBeUndefined();
     expect(win.document.documentElement.dataset.shippieTransition).toBeUndefined();
     expect(win.document.querySelector('style[data-shippie-view-transitions]')?.textContent).toContain('shippie-rise-in');
+  });
+
+  test('swallows native View Transition timeout errors after applying the update', async () => {
+    let cbCalled = 0;
+    // @ts-expect-error injecting for test
+    win.document.startViewTransition = (cb: () => void) => {
+      cb();
+      return {
+        finished: Promise.reject(new Error('View transition update callback timed out.')),
+        ready: Promise.resolve(),
+        updateCallbackDone: Promise.resolve(),
+      };
+    };
+    await wrapNavigation(() => {
+      cbCalled += 1;
+    });
+    expect(cbCalled).toBe(1);
+    expect(win.document.documentElement.dataset.shippieTransition).toBeUndefined();
   });
 
   test('installs transition styles once', () => {

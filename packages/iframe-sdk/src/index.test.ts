@@ -193,6 +193,24 @@ describe('createShippieIframeSdk — wire format + helpers', () => {
     delete (globalThis as any).window;
   });
 
+  test('ai.run resolves unavailable instead of throwing on bridge errors', async () => {
+    const { win, posted, fireMessage } = fakeWindow();
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    const promise = sdk.ai.run({ task: 'classify', input: 'oat milk', options: { labels: ['food'] } });
+    expect(posted).toHaveLength(1);
+    const message = posted[0]!.message as { id: string; capability: string };
+    expect(message.capability).toBe('ai.run');
+    fireMessage({
+      protocol: 'shippie.bridge.v1',
+      id: message.id,
+      ok: false,
+      error: { message: 'Capability is not granted for this app.' },
+    });
+    await expect(promise).resolves.toEqual({ task: 'classify', output: null, source: 'unavailable' });
+    delete (globalThis as any).window;
+  });
+
   test('listBuiltinTextureNames returns the 9 presets', () => {
     expect(listBuiltinTextureNames()).toHaveLength(9);
   });

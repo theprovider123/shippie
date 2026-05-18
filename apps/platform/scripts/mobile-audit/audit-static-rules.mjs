@@ -90,6 +90,38 @@ function findBreakpointDrift(text, filePath) {
   return findings;
 }
 
+function findInputZoom(text, filePath) {
+  // Flag explicit font-size declarations on input/textarea/select
+  // selectors that pin below 16px — iOS Safari zooms the viewport on
+  // focus when the computed font-size is less than 16. Tokens.css sets
+  // a global floor, so this is a defence against per-component
+  // overrides that re-introduce the regression.
+  const findings = [];
+  const blockRe = /([^{}\n]+)\{([^{}]+)\}/g;
+  let block;
+  while ((block = blockRe.exec(text)) !== null) {
+    const [, selector, body] = block;
+    if (!/\b(input|textarea|select)\b/.test(selector)) continue;
+    const sizeRe = /\bfont-size\s*:\s*(\d+(?:\.\d+)?)(px|rem)\b/g;
+    let size;
+    while ((size = sizeRe.exec(body)) !== null) {
+      const [, raw, unit] = size;
+      const value = unit === 'rem' ? Number(raw) * 16 : Number(raw);
+      if (value >= 16) continue;
+      const offset = block.index + 1 + selector.length + size.index;
+      const line = text.slice(0, offset).split('\n').length;
+      findings.push({
+        filePath,
+        line,
+        kind: 'input-zoom',
+        value: `${raw}${unit}`,
+        selector: selector.replace(/\s+/g, ' ').trim().slice(0, 80),
+      });
+    }
+  }
+  return findings;
+}
+
 function findTapTargets(text, filePath) {
   const findings = [];
   // Walk top-level rule blocks. Naive matcher: <selector>{<body>}. Works
@@ -125,11 +157,12 @@ function findTapTargets(text, filePath) {
 
 async function main() {
   const files = await walk(SRC);
-  const all = { breakpoints: [], tapTargets: [] };
+  const all = { breakpoints: [], tapTargets: [], inputZoom: [] };
   for (const file of files) {
     const text = await readFile(file, 'utf8');
     all.breakpoints.push(...findBreakpointDrift(text, file));
     all.tapTargets.push(...findTapTargets(text, file));
+    all.inputZoom.push(...findInputZoom(text, file));
   }
 
   const byFileBp = new Map();
@@ -144,6 +177,12 @@ async function main() {
     if (!byFileTap.has(key)) byFileTap.set(key, []);
     byFileTap.get(key).push(f);
   }
+  const byFileZoom = new Map();
+  for (const f of all.inputZoom) {
+    const key = relative(ROOT, f.filePath);
+    if (!byFileZoom.has(key)) byFileZoom.set(key, []);
+    byFileZoom.get(key).push(f);
+  }
 
   const md = [];
   md.push('# Mobile-audit — static rules report');
@@ -153,8 +192,11 @@ async function main() {
   md.push('Allowed shell breakpoints: max-width 640/1024, min-width 641/1025.');
   md.push('Allowed density (grid-column) breakpoints: min-width 1280/1536/1920.');
   md.push(`Tap-target floor: ${TAP_FLOOR}px (Apple HIG).`);
+  md.push('iOS Safari zooms inputs with font-size < 16px on focus.');
   md.push('');
-  md.push(`Findings: ${all.breakpoints.length} breakpoint drift, ${all.tapTargets.length} tap-target.`);
+  md.push(
+    `Findings: ${all.breakpoints.length} breakpoint drift, ${all.tapTargets.length} tap-target, ${all.inputZoom.length} input-zoom.`,
+  );
   md.push('');
   md.push('## Breakpoint drift');
   if (all.breakpoints.length === 0) {
@@ -177,12 +219,24 @@ async function main() {
     }
   }
   md.push('');
+  md.push('## Input-zoom risk (iOS Safari)');
+  if (all.inputZoom.length === 0) {
+    md.push('_None._');
+  } else {
+    for (const [file, list] of [...byFileZoom.entries()].sort()) {
+      md.push(`- \`${file}\``);
+      for (const f of list)
+        md.push(`  - L${f.line}: \`font-size: ${f.value}\` in \`${f.selector}\``);
+    }
+  }
+  md.push('');
 
   await writeFile(REPORT, md.join('\n'));
 
   console.log(`[mobile-audit] static rules:`);
   console.log(`  breakpoint drift: ${all.breakpoints.length} finding${all.breakpoints.length === 1 ? '' : 's'} across ${byFileBp.size} file${byFileBp.size === 1 ? '' : 's'}`);
   console.log(`  tap-target floor: ${all.tapTargets.length} finding${all.tapTargets.length === 1 ? '' : 's'} across ${byFileTap.size} file${byFileTap.size === 1 ? '' : 's'}`);
+  console.log(`  input-zoom risk: ${all.inputZoom.length} finding${all.inputZoom.length === 1 ? '' : 's'} across ${byFileZoom.size} file${byFileZoom.size === 1 ? '' : 's'}`);
   console.log(`[mobile-audit] wrote ${relative(ROOT, REPORT)}`);
 }
 

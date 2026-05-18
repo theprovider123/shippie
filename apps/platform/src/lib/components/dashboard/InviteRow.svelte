@@ -14,9 +14,24 @@
   let busy = $state(false);
   let revoked = $state(false);
   let error = $state<string | null>(null);
+  let confirmingRevoke = $state(false);
+  let confirmTimer: number | undefined;
 
   async function revoke() {
-    if (!confirm('Revoke this invite?')) return;
+    if (!confirmingRevoke) {
+      confirmingRevoke = true;
+      error = null;
+      if (confirmTimer) window.clearTimeout(confirmTimer);
+      confirmTimer = window.setTimeout(() => {
+        confirmingRevoke = false;
+        confirmTimer = undefined;
+      }, 7000);
+      return;
+    }
+
+    if (confirmTimer) window.clearTimeout(confirmTimer);
+    confirmTimer = undefined;
+    confirmingRevoke = false;
     busy = true;
     error = null;
     const res = await fetch(`/api/apps/${encodeURIComponent(slug)}/invites/${invite.id}`, {
@@ -41,8 +56,9 @@
       {invite.usedCount}{#if invite.maxUses != null}/{invite.maxUses}{/if} used
       {#if invite.expiresAt} · expires {new Date(invite.expiresAt).toLocaleDateString()}{/if}
     </span>
-    <button onclick={revoke} disabled={busy}>Revoke</button>
+    <button onclick={revoke} disabled={busy}>{busy ? 'Revoking…' : confirmingRevoke ? 'Tap again' : 'Revoke'}</button>
     {#if error}<span class="error">{error}</span>{/if}
+    {#if confirmingRevoke}<span class="warning" role="status">Revokes immediately.</span>{/if}
   </div>
 {/if}
 
@@ -63,6 +79,7 @@
   .meta { color: #8B847A; font-family: ui-monospace, monospace; font-size: 11px; }
   button { background: transparent; border: 1px solid #C9C2B1; padding: 4px 12px; border-radius: 0; cursor: pointer; font-size: 12px; }
   .error { color: #B43F2A; font-size: 12px; }
+  .warning { color: #B43F2A; font-size: 12px; grid-column: 1 / -1; }
   @media (prefers-color-scheme: dark) {
     .row { border-color: #2A251E; }
     .kind { background: rgba(255,255,255,0.05); }
