@@ -9,6 +9,8 @@
   orchestration weight without changing the user-visible UI.
 -->
 <script lang="ts">
+  import Sheet from '$lib/components/ui/Sheet.svelte';
+
   export interface PendingIntentPrompt {
     consumerId: string;
     consumerName: string;
@@ -24,10 +26,9 @@
   let { prompt, onApprove, onDeny }: Props = $props();
 </script>
 
-{#if prompt}
-  <div class="intent-prompt-backdrop" role="presentation">
-    <div class="intent-prompt" role="dialog" aria-labelledby="intent-prompt-title">
-      <h3 id="intent-prompt-title">Cross-app permission</h3>
+<Sheet open={prompt !== null} onClose={onDeny} title="Cross-app permission">
+  {#if prompt}
+    <div class="intent-prompt">
       {#if prompt.intents.length === 1}
         <p>
           <strong>{prompt.consumerName}</strong> wants to receive
@@ -52,35 +53,16 @@
         <button class="intent-allow" onclick={onApprove}>Allow</button>
       </div>
     </div>
-  </div>
-{/if}
+  {/if}
+</Sheet>
 
 <style>
-  .intent-prompt-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(20, 18, 15, 0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1300;
-    padding: var(--space-md);
-  }
   .intent-prompt {
-    background: var(--bg);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    padding: var(--space-lg);
-    max-width: 440px;
-    width: 100%;
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
-  }
-  .intent-prompt h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
+    display: grid;
+    gap: 0.75rem;
   }
   .intent-prompt p {
-    margin: 0 0 0.75rem 0;
+    margin: 0;
     color: var(--text-secondary);
     font-size: 0.95rem;
   }
@@ -94,7 +76,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin: 0 0 0.75rem;
   }
   .intent-prompt .hint {
     color: var(--text-light);
@@ -104,9 +85,10 @@
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
-    margin-top: var(--space-md);
+    margin-top: 0.25rem;
   }
   .intent-prompt-actions button {
+    min-height: var(--touch-min);
     padding: 0.5rem 1rem;
     border-radius: 0;
     cursor: pointer;

@@ -19,6 +19,11 @@
       blurb: 'The HTML rewriter that injects the manifest, service worker, and SDK at the edge.',
     },
     {
+      id: 'private-spaces',
+      title: 'Private spaces',
+      blurb: 'Invite people into role-bound rooms without building accounts, auth, or a backend.',
+    },
+    {
       id: 'local-runtime',
       title: 'Local Runtime',
       blurb: 'Run apps locally against the same edge worker. Zero-cost dev loop with real bindings.',
@@ -126,6 +131,40 @@
       Wrapper config lives in a tiny <code>shippie.json</code> at the root of your deploy. App name,
       theme color, icon path, and any opt-in capability flags. We have sensible defaults for every
       field.
+    </p>
+  </section>
+
+  <section id="private-spaces" class="section">
+    <h2>Private spaces</h2>
+    <p>
+      A private space is Shippie's shared context for a tool: a room, class, household, team, trip,
+      or match-day group. Builders do not write account systems to use it. They declare the roles
+      their app understands, then Shippie generates signed invite links and QR codes that carry only
+      that scoped access.
+    </p>
+    <p>
+      The public app can stay listed on the marketplace while each space stays private to the people
+      holding its link. Shippie can count joins and archive a space, but the space content remains
+      sealed to the members and devices that hold the keys.
+    </p>
+    <pre class="code">&#123;
+  "spaces": &#123;
+    "enabled": true,
+    "roles": [
+      &#123; "id": "captain", "permissions": ["read", "write", "invite", "moderate"] &#125;,
+      &#123; "id": "member", "permissions": ["read", "write"] &#125;,
+      &#123; "id": "viewer", "permissions": ["read"] &#125;
+    ],
+    "syncMode": "sealed-cloud",
+    "archivable": true
+  &#125;
+&#125;</pre>
+    <h3>Builder flow</h3>
+    <p>
+      Deploy your app, open its access page, choose a role and preset, then share the generated link
+      or QR. Use <strong>One friend</strong> for a single person, <strong>Room QR</strong> for live
+      spaces, <strong>Team</strong> for trusted groups, and <strong>New device</strong> for a sealed
+      access handoff to another device you own.
     </p>
   </section>
 
@@ -240,6 +279,7 @@
   }
 
   .section {
+    scroll-margin-top: 96px;
     margin-bottom: var(--space-2xl);
     padding-top: var(--space-xl);
     border-top: 1px solid var(--border-light);

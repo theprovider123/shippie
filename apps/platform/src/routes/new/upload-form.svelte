@@ -404,7 +404,7 @@
   }
   .action-row a {
     display: inline-flex;
-    min-height: 34px;
+    min-height: var(--touch-min);
     align-items: center;
     padding: 0 0.75rem;
     border: 1px solid rgba(46,125,91,0.35);

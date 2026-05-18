@@ -3261,7 +3261,7 @@
   }
   .app-icon {
     --accent: var(--sunset);
-    width: 42px;
+    width: var(--touch-min);
     aspect-ratio: 1;
     border-radius: 0;
     display: grid;
@@ -3543,7 +3543,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
+    width: var(--touch-min);
     height: 46px;
     padding: 0;
     background: rgba(20, 18, 15, 0.65);
@@ -3589,7 +3589,7 @@
      overlaps Stack's leftmost touch button). 'all' shrinks both. */
   .focused-chrome-button.input-region-bottom.focused-chrome-tools,
   .focused-chrome-button.input-region-all {
-    width: 36px;
+    width: var(--touch-min);
     opacity: 0.82;
     background: rgba(20, 18, 15, 0.74);
   }
@@ -3604,7 +3604,7 @@
   .focused-chrome-button.input-region-bottom.focused-chrome-tools:focus-visible,
   .focused-chrome-button.input-region-all:hover,
   .focused-chrome-button.input-region-all:focus-visible {
-    width: 42px;
+    width: var(--touch-min);
     opacity: 1;
   }
 
@@ -3676,7 +3676,7 @@
   }
   @media (max-width: 640px) {
     .focused-chrome-button {
-      width: 40px;
+      width: var(--touch-min);
       height: 48px;
     }
     .focused-chrome-tools {

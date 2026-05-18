@@ -81,6 +81,35 @@
     </article>
   </section>
 
+  <section class="panel spaces-panel">
+    <div class="section-head">
+      <h2>Private spaces</h2>
+      <p>Demand signal for rooms, capsules, and private collaboration without member trails.</p>
+    </div>
+    <div class="stat-grid compact" aria-label="Aggregate private space metrics">
+      <article>
+        <span>Total spaces</span>
+        <strong>{n(data.spacesSummary.totalSpaces)}</strong>
+        <p>{n(data.spacesSummary.activeSpaces)} active · {n(data.spacesSummary.archivedSpaces)} archived</p>
+      </article>
+      <article>
+        <span>Join links</span>
+        <strong>{n(data.spacesSummary.activeJoinLinks)}</strong>
+        <p>{n(data.spacesSummary.totalJoinLinks)} created</p>
+      </article>
+      <article>
+        <span>Claims</span>
+        <strong>{n(data.spacesSummary.totalClaims)}</strong>
+        <p>aggregate count only</p>
+      </article>
+      <article>
+        <span>Invite uses</span>
+        <strong>{n(data.spacesSummary.totalInviteUses)}</strong>
+        <p>across all invite types</p>
+      </article>
+    </div>
+  </section>
+
   <section class="two-col">
     <div class="panel">
       <div class="section-head">
@@ -242,6 +271,9 @@
     gap: 0.75rem;
     margin-bottom: 1rem;
   }
+  .stat-grid.compact {
+    margin-bottom: 0;
+  }
   .stat-grid article { padding: 1rem; display: grid; gap: 0.45rem; }
   .stat-grid span,
   .thead,
@@ -253,6 +285,14 @@
     color: var(--text-secondary, #B8A88F);
   }
   .stat-grid strong { font-family: var(--font-heading, Georgia, serif); font-size: 1.65rem; }
+  .stat-grid p {
+    margin: 0;
+    color: var(--text-secondary, #B8A88F);
+    font-size: 0.82rem;
+  }
+  .spaces-panel {
+    margin-bottom: 1rem;
+  }
   .two-col {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -300,12 +340,12 @@
   .tr:hover strong:first-child { color: var(--sunset, #E8603C); }
   .tr span:first-child { display: grid; gap: 0.2rem; }
   .empty { padding: 2rem; }
-  @media (max-width: 980px) {
+  @media (max-width: 1024px) {
     .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .two-col,
     .ethos { grid-template-columns: 1fr; }
   }
-  @media (max-width: 680px) {
+  @media (max-width: 640px) {
     .stat-grid,
     .thead,
     .tr { grid-template-columns: 1fr; }

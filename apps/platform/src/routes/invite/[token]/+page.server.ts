@@ -32,7 +32,20 @@ import { incrementSpaceJoinTokenClaim } from '$server/spaces/private-spaces';
 
 const COOKIE_TTL_DAYS = 30;
 
-export const load: PageServerLoad = async ({ platform, params }) => {
+type SpaceInvitePreview =
+  | {
+      enabled: true;
+      valid: true;
+      spaceId: string;
+      role: string;
+      hasSealedHandoff: boolean;
+    }
+  | {
+      enabled: true;
+      valid: false;
+    };
+
+export const load: PageServerLoad = async ({ platform, params, url }) => {
   if (!platform?.env.DB) throw error(503, 'Database unavailable');
   const db = getDrizzleClient(platform.env.DB);
 
@@ -69,6 +82,14 @@ export const load: PageServerLoad = async ({ platform, params }) => {
           appSlug: inv.appSlug,
           appTagline: inv.appTagline,
         }
+      : null,
+    spaceInvite: inv
+      ? await previewPrivateSpaceInvite({
+          url,
+          appSlug: inv.appSlug,
+          inviteToken: params.token,
+          secret: platform.env.INVITE_SECRET ?? platform.env.AUTH_SECRET,
+        })
       : null,
     token: params.token,
   };
@@ -192,3 +213,30 @@ export const actions: Actions = {
     }));
   },
 };
+
+async function previewPrivateSpaceInvite(input: {
+  url: URL;
+  appSlug: string;
+  inviteToken: string;
+  secret: string | undefined;
+}): Promise<SpaceInvitePreview | null> {
+  if (!hasPrivateSpaceCapabilityParams(input.url)) return null;
+  const capability = privateSpaceCapabilityFromUrl(input.url, {
+    appSlug: input.appSlug,
+    inviteToken: input.inviteToken,
+  });
+  if (!capability || !input.secret) return { enabled: true, valid: false };
+  const valid = await verifyPrivateSpaceCapability(
+    input.secret,
+    capability,
+    input.url.searchParams.get(PRIVATE_SPACE_SIGNATURE_PARAM),
+  );
+  if (!valid) return { enabled: true, valid: false };
+  return {
+    enabled: true,
+    valid: true,
+    spaceId: capability.spaceId,
+    role: capability.role,
+    hasSealedHandoff: Boolean(capability.transferId),
+  };
+}

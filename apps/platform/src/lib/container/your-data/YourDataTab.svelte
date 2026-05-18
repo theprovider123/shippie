@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { replaceState } from '$app/navigation';
   import type { ContainerApp, LocalRow } from '$lib/container/state';
   import type { AppReceipt } from '@shippie/app-package-contract';
   import DevicesPane from './DevicesPane.svelte';
@@ -83,7 +84,7 @@
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     url.searchParams.set('pane', next);
-    window.history.replaceState({}, '', url.toString());
+    replaceState(url, {});
   }
 </script>
 
@@ -93,7 +94,7 @@
     <p>Each tool keeps its data private by default. Apps using Private Sync add sealed recovery copies that Shippie can store but cannot open.</p>
   </header>
 
-  <nav class="segmented" role="tablist" aria-label="Your data sections">
+  <div class="segmented" role="tablist" aria-label="Your data sections">
     <button
       role="tab"
       aria-selected={pane === 'devices'}
@@ -112,7 +113,7 @@
       class:active={pane === 'backup'}
       onclick={() => pickPane('backup')}
     >Backup</button>
-  </nav>
+  </div>
 
   <div class="pane">
     {#if pane === 'devices'}

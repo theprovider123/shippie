@@ -31,7 +31,8 @@ const ROOT = join(HERE, '..', '..', '..', '..');
 const SRC = join(ROOT, 'apps/platform/src');
 const REPORT = join(HERE, 'static-rules-report.md');
 
-const ALLOWED_SHELL_BPS = new Set([640, 1024]);
+const ALLOWED_SHELL_MAX_BPS = new Set([640, 1024]);
+const ALLOWED_SHELL_MIN_BPS = new Set([641, 1025]);
 const ALLOWED_DENSITY_BPS = new Set([1280, 1536, 1920]);
 const TAP_FLOOR = 44;
 
@@ -80,7 +81,9 @@ function findBreakpointDrift(text, filePath) {
   while ((match = re.exec(text)) !== null) {
     const [, dir, raw] = match;
     const value = Number(raw);
-    if (ALLOWED_SHELL_BPS.has(value) || ALLOWED_DENSITY_BPS.has(value)) continue;
+    if (dir === 'max-width' && ALLOWED_SHELL_MAX_BPS.has(value)) continue;
+    if (dir === 'min-width' && ALLOWED_SHELL_MIN_BPS.has(value)) continue;
+    if (dir === 'min-width' && ALLOWED_DENSITY_BPS.has(value)) continue;
     const line = text.slice(0, match.index).split('\n').length;
     findings.push({ filePath, line, kind: 'breakpoint', dir, value });
   }
@@ -97,6 +100,7 @@ function findTapTargets(text, filePath) {
   while ((block = blockRe.exec(text)) !== null) {
     const [, selector, body] = block;
     if (!isInteractiveBlock(selector)) continue;
+    if (/\s+(img|svg|path)\b/.test(selector)) continue;
     // Only flag size declarations that pin to a fixed pixel value.
     const sizeRe = /\b(min-height|height|width|min-width)\s*:\s*(\d+)px\b/g;
     let size;
@@ -146,8 +150,8 @@ async function main() {
   md.push('');
   md.push(`_Generated ${new Date().toISOString()}_`);
   md.push('');
-  md.push('Allowed shell breakpoints: 640, 1024.');
-  md.push('Allowed density (grid-column) breakpoints: 1280, 1536, 1920.');
+  md.push('Allowed shell breakpoints: max-width 640/1024, min-width 641/1025.');
+  md.push('Allowed density (grid-column) breakpoints: min-width 1280/1536/1920.');
   md.push(`Tap-target floor: ${TAP_FLOOR}px (Apple HIG).`);
   md.push('');
   md.push(`Findings: ${all.breakpoints.length} breakpoint drift, ${all.tapTargets.length} tap-target.`);

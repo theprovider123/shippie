@@ -36,11 +36,20 @@
   ];
   const invitePresets = [
     {
+      id: 'device',
+      label: 'New device',
+      description: 'Single-use handoff for one of your own devices.',
+      maxUses: '1',
+      expiresDays: '7',
+      purpose: 'add-device',
+    },
+    {
       id: 'friend',
       label: 'One friend',
-      description: 'A single-use link for one person or one extra device.',
+      description: 'A single-use link for one person.',
       maxUses: '1',
       expiresDays: '30',
+      purpose: 'join-space',
     },
     {
       id: 'room',
@@ -48,6 +57,7 @@
       description: 'Reusable during a live room, class, pub table, or match day.',
       maxUses: '20',
       expiresDays: '1',
+      purpose: 'join-space',
     },
     {
       id: 'team',
@@ -55,6 +65,7 @@
       description: 'A longer-lived link for a trusted group.',
       maxUses: '50',
       expiresDays: '14',
+      purpose: 'join-space',
     },
   ] as const;
   let selectedRole = $state('member');
@@ -112,10 +123,10 @@
       body.space_name = activeSpaceName;
       body.space_role = selectedRole;
       body.space_join = joinToken;
-      const uses = Number(maxUses);
-      if (Number.isInteger(uses) && uses > 0) body.max_uses = uses;
-      const days = Number(expiresDays);
-      if (Number.isFinite(days) && days > 0) {
+      const uses = readOptionalPositiveInteger(maxUses, 'Uses', 500);
+      if (uses != null) body.max_uses = uses;
+      const days = readOptionalPositiveInteger(expiresDays, 'Days', 365);
+      if (days != null) {
         const expires = new Date();
         expires.setDate(expires.getDate() + days);
         body.expires_at = expires.toISOString();
@@ -145,8 +156,8 @@
           appSlug: slug,
           appName,
           spaceName: activeSpaceName,
-          purpose: uses === 1 ? 'add-device' : 'join-space',
-          maxClaims: Number.isInteger(uses) && uses > 0 ? uses : undefined,
+          purpose: invitePresets.find((item) => item.id === selectedPreset)?.purpose ?? 'join-space',
+          maxClaims: uses ?? undefined,
           expiresAt: typeof body.expires_at === 'string' ? body.expires_at : undefined,
           routes: [{ kind: spaces?.syncMode === 'hub' ? 'hub' : 'cloud', url: window.location.origin }],
         });
@@ -233,6 +244,16 @@
     selectedPreset = preset.id;
     maxUses = preset.maxUses;
     expiresDays = preset.expiresDays;
+  }
+
+  function readOptionalPositiveInteger(value: string, label: string, max: number): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > max) {
+      throw new Error(`${label} must be a whole number between 1 and ${max}.`);
+    }
+    return parsed;
   }
 
   function generateSpaceId(prefix: string): string {
@@ -326,7 +347,7 @@
         <input bind:value={expiresDays} inputmode="numeric" placeholder="30" />
       </label>
       <button type="button" class="primary" onclick={startShare} disabled={busy}>
-        {busy ? 'Creating...' : 'Create private link'}
+        {busy ? 'Creating...' : 'Create space link'}
       </button>
     </div>
     {#if selectedRoleDetails}
@@ -400,7 +421,7 @@
   }
   .presets {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 0.5rem;
   }
   .presets button {
@@ -458,7 +479,7 @@
     background: transparent;
     color: inherit;
     font-family: ui-monospace, monospace;
-    font-size: 14px;
+    font-size: var(--type-body-mobile, 16px);
   }
   label.wide input {
     width: 100%;
@@ -484,7 +505,7 @@
     align-items: center;
   }
   button {
-    height: 40px;
+    min-height: var(--touch-min);
     border-radius: 0;
     cursor: pointer;
     font-weight: 600;

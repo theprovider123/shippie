@@ -15,37 +15,55 @@
     error = null;
     qrMarkup = null;
     busy = true;
-    const body: Record<string, unknown> = { kind: 'link' };
-    if (maxUses) body.max_uses = Number(maxUses);
-    if (expiresDays) {
-      const d = new Date();
-      d.setDate(d.getDate() + Number(expiresDays));
-      body.expires_at = d.toISOString();
-    }
-    const res = await fetch(`/api/apps/${encodeURIComponent(slug)}/invites`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    busy = false;
-    const j = (await res.json().catch(() => ({}))) as {
-      url?: string;
-      short_url?: string | null;
-      error?: string;
-    };
-    if (j.url) {
-      url = j.short_url ?? j.url;
-      maxUses = '';
-      expiresDays = '';
-      try {
-        qrMarkup = await qrSvg(url, { ecc: 'M', size: 192 });
-      } catch {
-        qrMarkup = null;
+    try {
+      const body: Record<string, unknown> = { kind: 'link' };
+      const uses = readOptionalPositiveInteger(maxUses, 'Max uses', 500);
+      if (uses != null) body.max_uses = uses;
+      const days = readOptionalPositiveInteger(expiresDays, 'Expiry days', 365);
+      if (days != null) {
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        body.expires_at = d.toISOString();
       }
-    } else {
-      error = j.error ?? 'Failed';
+      const res = await fetch(`/api/apps/${encodeURIComponent(slug)}/invites`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        short_url?: string | null;
+        error?: string;
+      };
+      if (j.url) {
+        url = j.short_url ?? j.url;
+        maxUses = '';
+        expiresDays = '';
+        try {
+          qrMarkup = await qrSvg(url, { ecc: 'M', size: 192 });
+        } catch {
+          qrMarkup = null;
+        }
+      } else {
+        error = j.error ?? 'Failed';
+        toast.push({ kind: 'error', message: error });
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed';
       toast.push({ kind: 'error', message: error });
+    } finally {
+      busy = false;
     }
+  }
+
+  function readOptionalPositiveInteger(value: string, label: string, max: number): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > max) {
+      throw new Error(`${label} must be a whole number between 1 and ${max}.`);
+    }
+    return parsed;
   }
 
   async function copyLink() {
@@ -107,9 +125,9 @@
   .form { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
   label { display: flex; flex-direction: column; gap: 4px; }
   label span { font-size: 11px; color: #8B847A; font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.12em; }
-  input { height: 40px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: 14px; width: 140px; box-sizing: border-box; color: inherit; }
+  input { height: 40px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: var(--type-body-mobile, 16px); width: 140px; box-sizing: border-box; color: inherit; }
   button {
-    height: 40px;
+    min-height: var(--touch-min);
     background: #14120F;
     color: white;
     border: none;

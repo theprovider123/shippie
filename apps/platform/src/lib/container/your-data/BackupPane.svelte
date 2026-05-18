@@ -155,7 +155,7 @@
     background: var(--surface);
   }
   .segmented button {
-    min-height: 40px;
+    min-height: var(--touch-min);
     border: 0;
     background: transparent;
     color: var(--text-secondary);

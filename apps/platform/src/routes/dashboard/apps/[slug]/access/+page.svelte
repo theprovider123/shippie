@@ -10,6 +10,9 @@
   const hostRole = $derived(
     data.spaces?.roles.find((role) => role.permissions.includes('invite'))?.id ?? 'host',
   );
+  const canCreatePrivateSpace = $derived(
+    Boolean(data.spaces?.enabled || data.app.visibilityScope === 'private' || data.privateSpaces.length > 0),
+  );
 
   function isInviteActive(invite: (typeof data.invites)[number]): boolean {
     if (invite.revokedAt != null) return false;
@@ -21,9 +24,15 @@
 
 <svelte:head><title>Access · {data.app.name}</title></svelte:head>
 
-{#if data.app.visibilityScope === 'private'}
+{#if canCreatePrivateSpace}
   <section class="block share">
-    <h2>Share private space</h2>
+    <h2>Create private space</h2>
+    {#if data.app.visibilityScope !== 'private'}
+      <p class="section-note">
+        This app can stay listed publicly while each room, household, class, or team space remains
+        private to the people holding its link.
+      </p>
+    {/if}
     <PrivateSpaceShareComposer
       slug={data.app.slug}
       appName={data.app.name}
@@ -96,7 +105,7 @@
 
 {#if data.app.visibilityScope !== 'private'}
   <section class="block">
-    <h2>Create invite link</h2>
+    <h2>Create general invite link</h2>
     <CreateInviteForm slug={data.app.slug} />
   </section>
 {/if}
@@ -137,7 +146,13 @@
 <style>
   .block { margin-bottom: 2.5rem; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 0 0 0.75rem 0; }
-  .muted { color: #8B847A; }
+  .muted,
+  .section-note { color: #8B847A; }
+  .section-note {
+    max-width: 64ch;
+    margin: -0.25rem 0 0.875rem;
+    line-height: 1.55;
+  }
   .metrics {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -202,10 +217,10 @@
     .space-actions a,
     .space-actions button { border-color: #3A352D; }
   }
-  @media (max-width: 760px) {
+  @media (max-width: 1024px) {
     .metrics { grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 520px) {
+  @media (max-width: 640px) {
     .metrics { grid-template-columns: 1fr; }
   }
 </style>

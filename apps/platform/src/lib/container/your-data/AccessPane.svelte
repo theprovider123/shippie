@@ -114,7 +114,7 @@
     background: var(--bg-pure);
   }
   .revoke-button {
-    min-height: 32px;
+    min-height: var(--touch-min);
     padding: 0.35rem 0.7rem;
     border: 1px solid var(--border-light);
     background: var(--bg-pure);
