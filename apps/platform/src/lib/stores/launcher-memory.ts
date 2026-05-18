@@ -119,6 +119,10 @@ export function togglePinnedApp(slug: string): void {
   });
 }
 
+export function clearLauncherMemory(): void {
+  persist(DEFAULT_MEMORY);
+}
+
 export function recordAppLaunch(slug: string, now = new Date()): number {
   let nextCount = 1;
   launcherMemory.update((memory) => {

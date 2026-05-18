@@ -1,0 +1,613 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import type { PageData } from './$types';
+  import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
+  import SavedDock from '$lib/components/marketplace/SavedDock.svelte';
+  import { displayCategory, titleCap } from '$lib/marketplace/display-text';
+  import { cachedSlugs, offlineStatuses, refreshCachedSlugs } from '$lib/stores/cached-slugs';
+  import {
+    clearLauncherMemory,
+    hydrateLauncherMemory,
+    launcherMemory,
+    recordAppLaunch,
+  } from '$lib/stores/launcher-memory';
+
+  let { data }: { data: PageData } = $props();
+
+  type YouApp = (typeof data.apps)[number];
+
+  const appBySlug = $derived.by(() => new Map(data.apps.map((app) => [app.slug, app])));
+  const savedApps = $derived.by(() =>
+    $launcherMemory.pinned
+      .map((slug) => appBySlug.get(slug))
+      .filter((app): app is YouApp => Boolean(app)),
+  );
+  const recentApps = $derived.by(() =>
+    $launcherMemory.recents
+      .map((recent) => {
+        const app = appBySlug.get(recent.slug);
+        return app ? { app, lastOpened: recent.lastOpened } : null;
+      })
+      .filter((item): item is { app: YouApp; lastOpened: string } => Boolean(item))
+      .slice(0, 6),
+  );
+  const offlineApps = $derived.by(() =>
+    data.apps.filter((app) => $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved'),
+  );
+  const totalLaunches = $derived.by(() =>
+    Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, count) => sum + count, 0),
+  );
+  const hasLocalData = $derived(
+    savedApps.length > 0 || recentApps.length > 0 || offlineApps.length > 0 || totalLaunches > 0,
+  );
+
+  onMount(() => {
+    hydrateLauncherMemory();
+    void refreshCachedSlugs(data.apps.map((app) => app.slug));
+  });
+
+  function theme(app: YouApp): string {
+    return app.themeColor || '#E8603C';
+  }
+
+  function openedLabel(value: string): string {
+    const opened = new Date(value);
+    if (Number.isNaN(opened.getTime())) return 'recently';
+    const minutes = Math.max(1, Math.round((Date.now() - opened.getTime()) / 60000));
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    return `${days}d ago`;
+  }
+
+  function clearLocalMemory() {
+    if (!hasLocalData) return;
+    const ok = window.confirm('Clear saved and recent launcher memory on this device? Offline app files stay saved.');
+    if (ok) clearLauncherMemory();
+  }
+</script>
+
+<svelte:head>
+  <title>You · Shippie</title>
+  <meta
+    name="description"
+    content="Your local Shippie profile: saved tools, recent launches, offline-ready apps, and optional account sync."
+  />
+</svelte:head>
+
+<div class="you-page">
+  <header class="you-head wrap">
+    <p class="eyebrow">You</p>
+    <div class="head-row">
+      <div>
+        <h1>This device</h1>
+        <p class="lede">
+          Saved tools, recent launches, and offline copies live here. Sign-in is optional.
+        </p>
+      </div>
+      <a class="home-link" href="/">Home →</a>
+    </div>
+  </header>
+
+  <section class="summary wrap" aria-label="Local Shippie summary">
+    <div class="stat">
+      <span>Saved</span>
+      <strong>{savedApps.length}</strong>
+    </div>
+    <div class="stat">
+      <span>Recent</span>
+      <strong>{recentApps.length}</strong>
+    </div>
+    <div class="stat">
+      <span>Offline</span>
+      <strong>{offlineApps.length}</strong>
+    </div>
+    <div class="stat">
+      <span>Launches</span>
+      <strong>{totalLaunches}</strong>
+    </div>
+  </section>
+
+  <div class="content wrap">
+    <SavedDock apps={savedApps} />
+
+    <section class="panel" aria-labelledby="recent-title">
+      <div class="section-head">
+        <h2 id="recent-title">Recent</h2>
+        <span>{recentApps.length > 0 ? 'local history' : 'nothing opened yet'}</span>
+      </div>
+
+      {#if recentApps.length > 0}
+        <ul class="recent-list" role="list">
+          {#each recentApps as item (item.app.slug)}
+            {@const app = item.app}
+            <li>
+              <a
+                class="recent-row"
+                href={`/run/${encodeURIComponent(app.slug)}`}
+                onclick={() => recordAppLaunch(app.slug)}
+              >
+                <span class="recent-icon">
+                  <IconOrMonogram
+                    name={app.name}
+                    slug={app.slug}
+                    iconUrl={app.iconUrl}
+                    themeColor={theme(app)}
+                    size={48}
+                  />
+                </span>
+                <span class="recent-copy">
+                  <strong>{titleCap(app.name)}</strong>
+                  <small>{displayCategory(app.category)} · {openedLabel(item.lastOpened)}</small>
+                </span>
+                <span class="recent-action" aria-hidden="true">→</span>
+              </a>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <div class="empty-block">
+          <p>Open a tool from Home and it will appear here.</p>
+          <a href="/">Explore tools →</a>
+        </div>
+      {/if}
+    </section>
+
+    <section class="panel data-panel" aria-labelledby="data-title">
+      <div class="section-head">
+        <h2 id="data-title">Local data</h2>
+        <span>on this device</span>
+      </div>
+      <div class="data-grid">
+        <div>
+          <strong>Launcher memory</strong>
+          <p>Saved and recent tools are stored locally, with a cookie backup for this browser.</p>
+        </div>
+        <div>
+          <strong>Offline copies</strong>
+          <p>{offlineApps.length} {offlineApps.length === 1 ? 'tool is' : 'tools are'} currently ready without the network.</p>
+        </div>
+      </div>
+      <button type="button" class="text-danger" disabled={!hasLocalData} onclick={clearLocalMemory}>
+        Clear local launcher memory
+      </button>
+    </section>
+
+    <section class="panel account-panel" aria-labelledby="account-title">
+      <div class="section-head">
+        <h2 id="account-title">Account</h2>
+        <span>{data.user ? 'signed in' : 'optional'}</span>
+      </div>
+
+      {#if data.user}
+        <div class="account-row">
+          <div>
+            <strong>{data.user.displayName ?? data.user.username ?? data.user.email}</strong>
+            <p>{data.user.email}</p>
+          </div>
+          <div class="account-actions">
+            <a href="/dashboard">Dashboard →</a>
+            <form method="POST" action="/auth/logout">
+              <button type="submit">Sign out</button>
+            </form>
+          </div>
+        </div>
+
+        {#if data.makerApps.length > 0}
+          <div class="maker-strip">
+            <span>{data.makerApps.length} {data.makerApps.length === 1 ? 'tool shipped' : 'tools shipped'}</span>
+            <a href="/dashboard/apps">Manage apps →</a>
+          </div>
+        {:else}
+          <div class="maker-strip">
+            <span>No maker apps yet</span>
+            <a href="/new">Ship a tool →</a>
+          </div>
+        {/if}
+      {:else}
+        <div class="account-row">
+          <div>
+            <strong>Use Shippie without an account.</strong>
+            <p>Sign in only when you want sync, recovery, builder tools, or a dashboard.</p>
+          </div>
+          <div class="account-actions">
+            <a href="/auth/login?return_to=%2Fyou">Sign in →</a>
+            <a class="quiet" href="/new">Ship a tool</a>
+          </div>
+        </div>
+      {/if}
+    </section>
+  </div>
+</div>
+
+<style>
+  .you-page {
+    padding-top: var(--space-xl);
+    padding-bottom: max(var(--space-3xl), env(safe-area-inset-bottom, 0px));
+  }
+
+  .you-head {
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .eyebrow {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-light);
+  }
+
+  .head-row {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-lg);
+  }
+
+  h1,
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2.25rem, 8vw, 4.25rem);
+    line-height: 0.96;
+    letter-spacing: 0;
+  }
+
+  .lede {
+    max-width: 36rem;
+    margin-top: var(--space-sm);
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.5;
+  }
+
+  .home-link {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    border: 1px solid var(--border-light);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .home-link:hover {
+    color: var(--sunset);
+    border-color: var(--sunset);
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    padding-top: var(--space-lg);
+  }
+
+  .stat {
+    min-height: 104px;
+    padding: 14px;
+    display: grid;
+    align-content: space-between;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+
+  .stat span {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-light);
+  }
+
+  .stat strong {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 7vw, 3.2rem);
+    line-height: 0.9;
+    color: var(--text);
+  }
+
+  .content {
+    padding-top: var(--space-xl);
+  }
+
+  .content :global(.dock-section) {
+    margin-bottom: var(--space-lg);
+  }
+
+  .panel {
+    margin-bottom: var(--space-xl);
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: 10px;
+  }
+
+  .section-head h2 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .section-head span {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-light);
+    text-align: right;
+  }
+
+  .recent-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .recent-list li {
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .recent-row {
+    min-height: 72px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    color: inherit;
+  }
+
+  .recent-row:hover .recent-action {
+    color: var(--sunset);
+  }
+
+  .recent-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+  }
+
+  .recent-icon :global(.shippie-icon) {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .recent-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .recent-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+  }
+
+  .recent-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-light);
+  }
+
+  .recent-action {
+    color: var(--text-light);
+    font-family: var(--font-mono);
+  }
+
+  .empty-block,
+  .account-row,
+  .data-grid,
+  .maker-strip {
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+
+  .empty-block {
+    display: grid;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+    color: var(--text-secondary);
+  }
+
+  .empty-block a,
+  .account-actions a,
+  .maker-strip a {
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .data-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--border-light);
+  }
+
+  .data-grid > div {
+    padding: var(--space-md);
+    background: var(--surface);
+  }
+
+  .data-grid strong,
+  .account-row strong {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    color: var(--text);
+  }
+
+  .data-grid p,
+  .account-row p {
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.45;
+  }
+
+  .text-danger {
+    min-height: var(--touch-min);
+    margin-top: 10px;
+    padding: 0 12px;
+    border: 1px solid rgba(232, 96, 60, 0.35);
+    background: transparent;
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .text-danger:disabled {
+    cursor: not-allowed;
+    color: var(--text-light);
+    border-color: var(--border-light);
+    opacity: 0.55;
+  }
+
+  .account-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-lg);
+    align-items: center;
+    padding: var(--space-lg);
+  }
+
+  .account-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .account-actions a,
+  .account-actions button {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .account-actions a:first-child {
+    border-color: var(--sunset);
+    color: var(--sunset);
+  }
+
+  .account-actions .quiet {
+    color: var(--text-secondary);
+  }
+
+  .maker-strip {
+    margin-top: 10px;
+    min-height: 52px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-md);
+    padding: 0 var(--space-md);
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+  }
+
+  @media (max-width: 640px) {
+    .you-page {
+      padding-top: var(--space-md);
+    }
+
+    .you-head {
+      padding-bottom: var(--space-md);
+    }
+
+    .head-row {
+      align-items: start;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 12vw, 2.7rem);
+    }
+
+    .lede {
+      font-size: 1rem;
+    }
+
+    .home-link {
+      display: none;
+    }
+
+    .summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      padding-top: var(--space-md);
+    }
+
+    .stat {
+      min-height: 78px;
+      padding: 12px;
+    }
+
+    .content {
+      padding-top: var(--space-md);
+    }
+
+    .panel {
+      margin-bottom: var(--space-lg);
+    }
+
+    .recent-row {
+      min-height: 64px;
+      padding: 8px 0;
+    }
+
+    .section-head {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .data-grid,
+    .account-row {
+      grid-template-columns: 1fr;
+    }
+
+    .account-actions {
+      justify-content: stretch;
+    }
+
+    .account-actions a,
+    .account-actions button {
+      justify-content: center;
+      flex: 1 1 120px;
+    }
+
+    .maker-strip {
+      align-items: flex-start;
+      flex-direction: column;
+      justify-content: center;
+      padding: 12px var(--space-md);
+    }
+  }
+</style>

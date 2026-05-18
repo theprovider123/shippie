@@ -50,7 +50,7 @@
 
     <div class="nav-right">
       {#if user}
-        <a href="/dashboard" class="nav-user" aria-label="Open your Shippie dashboard">
+        <a href="/you" class="nav-user" class:active={$page.url.pathname === '/you'} aria-label="Open your Shippie profile">
           {#if user.avatarUrl}
             <img src={user.avatarUrl} alt="" width="28" height="28" />
           {:else}
@@ -60,7 +60,7 @@
           {/if}
         </a>
       {:else}
-        <a href="/auth/login" class="nav-signin">Sign in</a>
+        <a href="/you" class="nav-signin" class:active={$page.url.pathname === '/you'}>You</a>
       {/if}
       <a href="/new" class="nav-cta">Ship</a>
       <button
@@ -81,12 +81,13 @@
       <a href="/" onclick={() => (mobileOpen = false)}>Home</a>
       <a href="/docs" onclick={() => (mobileOpen = false)}>Docs</a>
       {#if user}
+        <a href="/you" onclick={() => (mobileOpen = false)}>You</a>
         <a href="/dashboard" onclick={() => (mobileOpen = false)}>Dashboard</a>
         {#if user.isAdmin}
           <a href="/admin" onclick={() => (mobileOpen = false)}>Admin</a>
         {/if}
       {:else}
-        <a href="/auth/login" onclick={() => (mobileOpen = false)}>Sign in</a>
+        <a href="/you" onclick={() => (mobileOpen = false)}>You</a>
       {/if}
       <a href="/new" class="mobile-cta" onclick={() => (mobileOpen = false)}>Ship an app</a>
     </div>
@@ -167,6 +168,13 @@
     color: var(--text-light);
   }
   .nav-signin:hover { color: var(--text-secondary); }
+  .nav-signin.active {
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: var(--sunset);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+  }
   .nav-cta {
     display: none;
     padding: 0.5rem 1.125rem;
@@ -187,6 +195,9 @@
     border-radius: 50%;
     overflow: hidden;
     background: var(--surface-alt);
+  }
+  .nav-user.active {
+    box-shadow: 0 0 0 2px var(--sunset);
   }
   .nav-user img { width: 100%; height: 100%; object-fit: cover; }
   .nav-user-monogram {

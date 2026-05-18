@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
+  clearLauncherMemory,
   hydrateLauncherMemory,
   launcherMemory,
   togglePinnedApp,
@@ -58,5 +59,17 @@ describe('launcher memory', () => {
     hydrateLauncherMemory();
 
     expect(get(launcherMemory).pinned).toEqual(['crewtrip']);
+  });
+
+  test('can clear local launcher memory', () => {
+    launcherMemory.set({
+      pinned: ['crewtrip'],
+      recents: [{ slug: 'crewtrip', lastOpened: new Date().toISOString() }],
+      launchCounts: { crewtrip: 2 },
+    });
+
+    clearLauncherMemory();
+
+    expect(get(launcherMemory)).toEqual(emptyMemory);
   });
 });

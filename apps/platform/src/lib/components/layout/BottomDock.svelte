@@ -26,6 +26,10 @@
       || pathname === '/professionals'
       || pathname === '/labs';
   }
+
+  function isYou(pathname: string): boolean {
+    return pathname === '/you';
+  }
 </script>
 
 <nav class="bottom-dock" aria-label="Primary">
@@ -42,10 +46,10 @@
     <strong>Ship</strong>
   </a>
   <a
-    href={user ? '/dashboard' : '/auth/login'}
-    class:active={$page.url.pathname.startsWith('/dashboard') || $page.url.pathname.startsWith('/auth')}
-    aria-current={$page.url.pathname.startsWith('/dashboard') || $page.url.pathname.startsWith('/auth') ? 'page' : undefined}
-    aria-label={user ? 'Open your Shippie dashboard' : 'Sign in to Shippie'}
+    href="/you"
+    class:active={isYou($page.url.pathname)}
+    aria-current={isYou($page.url.pathname) ? 'page' : undefined}
+    aria-label={user ? 'Open your Shippie profile' : 'Open your local Shippie data'}
   >
     <span aria-hidden="true">◌</span>
     <strong>You</strong>
