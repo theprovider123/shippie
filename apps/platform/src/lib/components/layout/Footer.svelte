@@ -1,45 +1,31 @@
 <script lang="ts">
-  // Three-column footer with brand attribution.
+  // Compact launch footer: public chrome should not reintroduce retired routes.
 </script>
 
 <footer class="footer">
   <div class="wrap">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <div class="footer-mark">
+    <div class="footer-lines">
+      <div class="footer-brandline">
+        <a href="/" class="footer-mark">
           <img
             src="/__shippie-pwa/icon.svg"
             alt=""
-            width="32"
-            height="32"
+            width="24"
+            height="24"
             aria-hidden="true"
           />
-          <span>shippie</span>
-        </div>
-        <p class="footer-tagline">No app store. Just the web, installed.</p>
-        <a href="https://github.com/shippie/shippie" class="footer-link">GitHub</a>
+          <span>Shippie</span>
+        </a>
+        <span>open source</span>
+        <span>AGPL-3.0</span>
+        <a href="https://github.com/shippie/shippie">GitHub</a>
       </div>
-      <div>
-        <p class="footer-heading">Product</p>
-        <a href="/" class="footer-link">Tools</a>
-        <a href="/leaderboards" class="footer-link">Leaderboards</a>
-        <a href="/new" class="footer-link">Deploy</a>
-        <a href="/why" class="footer-link">Why Shippie</a>
-      </div>
-      <div>
-        <p class="footer-heading">Build</p>
-        <a href="/docs" class="footer-link">Docs</a>
-        <a href="/docs#sdk" class="footer-link">SDK reference</a>
-        <a href="/docs#self-hosting" class="footer-link">Self-hosting</a>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>&copy; 2026 Shippie · AGPL-3.0 · Made with sage and sunset</span>
-      <span class="legal-links">
+      <div class="footer-links" aria-label="Legal and trust links">
         <a href="/docs/privacy">Privacy</a>
         <a href="/docs/terms">Terms</a>
         <a href="/docs/security">Security</a>
-      </span>
+        <a href="/docs/install">Install</a>
+      </div>
     </div>
   </div>
 </footer>
@@ -51,71 +37,46 @@
     padding: var(--space-3xl) 0 var(--space-xl);
     margin-top: var(--space-3xl);
   }
-  .footer-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
-    gap: var(--space-xl);
-  }
-  @media (max-width: 640px) {
-    .footer-grid { grid-template-columns: 1fr; gap: var(--space-lg); }
-  }
-  .footer-brand { max-width: 360px; }
-  .footer-mark {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: var(--space-sm);
-    font-family: var(--font-heading);
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
-  .footer-mark img { display: block; flex-shrink: 0; }
-  .footer-tagline {
-    font-family: var(--font-heading);
-    font-style: italic;
-    font-size: var(--small-size);
-    color: var(--text-secondary);
-    margin: 0 0 var(--space-md);
-  }
-  .footer-heading {
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-light);
-    margin: 0 0 var(--space-md);
-  }
-  .footer-link {
-    display: block;
-    font-size: var(--small-size);
-    color: var(--text-secondary);
-    padding: 0.25rem 0;
-    transition: color 0.2s;
-  }
-  .footer-link:hover { color: var(--text); }
-  .footer-bottom {
-    margin-top: var(--space-2xl);
-    padding-top: var(--space-md);
-    border-top: 1px solid var(--border);
+  .footer-lines {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    gap: var(--space-md);
+    gap: var(--space-md) var(--space-xl);
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
   }
-  .legal-links {
+  .footer-brandline,
+  .footer-links {
     display: inline-flex;
-    gap: 0.75rem;
+    align-items: center;
     flex-wrap: wrap;
+    gap: 0.75rem;
   }
-  .legal-links a {
+  .footer-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-heading);
+    font-size: var(--small-size);
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+  .footer-mark img { display: block; flex-shrink: 0; }
+  .footer a {
     color: inherit;
     text-decoration: none;
   }
-  .legal-links a:hover {
+  .footer a:hover {
     color: var(--text-secondary);
+  }
+  @media (max-width: 640px) {
+    .footer {
+      padding-bottom: calc(var(--space-3xl) + var(--safe-bottom));
+    }
+    .footer-lines {
+      display: grid;
+      gap: var(--space-md);
+    }
   }
 </style>
