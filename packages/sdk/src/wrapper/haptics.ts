@@ -20,10 +20,12 @@ export function haptic(kind: HapticKind): void {
   } catch {
     // matchMedia may throw in very old environments; best-effort.
   }
-  const vibrate = (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate;
-  if (typeof vibrate !== 'function') return;
+  const nav = navigator as Navigator & {
+    vibrate?: (p: number | readonly number[]) => boolean;
+  };
+  if (typeof nav.vibrate !== 'function') return;
   try {
-    vibrate.call(navigator, PATTERNS[kind]);
+    nav.vibrate(PATTERNS[kind]);
   } catch {
     // swallow — haptics are non-essential
   }

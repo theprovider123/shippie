@@ -49,10 +49,12 @@ export function fireTexture(
   const runHaptic = config.haptics && tex.haptic
     ? () => {
         if (typeof navigator === 'undefined') return;
-        const v = (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate;
-        if (typeof v !== 'function') return;
+        const nav = navigator as Navigator & {
+          vibrate?: (p: number | readonly number[]) => boolean;
+        };
+        if (typeof nav.vibrate !== 'function') return;
         try {
-          v.call(navigator, tex.haptic!.pattern);
+          nav.vibrate(tex.haptic!.pattern);
         } catch {
           /* ignore — haptics are non-essential */
         }
