@@ -75,10 +75,6 @@
   "bugs": {
     "url": "https://github.com/theprovider123/shippie/issues"
   },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "scripts": {
     "typecheck": "tsc --noEmit && tsup --dts-only --silent",
     "lint": "echo 'lint placeholder'",

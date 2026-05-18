@@ -1,7 +1,7 @@
 import adapter from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-const isTestRuntime = process.env.CI === 'true' || process.env.VITEST === 'true';
+const useRemoteBindings = process.env.SHIPPIE_REMOTE_BINDINGS === 'true';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -9,12 +9,14 @@ const config = {
 
   kit: {
     adapter: adapter({
-      // Use the platform-proxy in dev so bindings resolve against the live
-      // Cloudflare account when running `vite dev`.
+      // Use local platform-proxy bindings by default so production builds and
+      // CI never need a Cloudflare edge-preview session. Edge preview cannot
+      // host Durable Object bindings such as SIGNAL_ROOM. Developers can opt
+      // into live remote resources with SHIPPIE_REMOTE_BINDINGS=true.
       platformProxy: {
         configPath: 'wrangler.toml',
         persist: '.wrangler/state',
-        remoteBindings: !isTestRuntime
+        remoteBindings: useRemoteBindings
       }
     }),
 
