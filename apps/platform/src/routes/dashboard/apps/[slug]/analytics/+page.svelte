@@ -12,6 +12,27 @@
 <svelte:head><title>Analytics · {data.app.name}</title></svelte:head>
 
 <section class="analytics">
+  <aside class="privacy-band" aria-labelledby="privacy-band-title">
+    <p id="privacy-band-title">
+      <strong>Basic usage only.</strong>
+      No raw app data. No personal data unless you explicitly declare identifiable analytics.
+    </p>
+    <details>
+      <summary>What gets recorded</summary>
+      <ul>
+        <li><strong>✓ Recorded:</strong> event names, app slug, install/open counts, aggregate timings.</li>
+        <li><strong>✓ Recorded:</strong> coarse referrer (where someone came from) only when present.</li>
+        <li><strong>✖ Never:</strong> form contents, file contents, photos, voice memos, anything the user typed inside the app.</li>
+        <li><strong>✖ Never:</strong> user identity across apps. Each app sees its own usage only.</li>
+        <li><strong>✖ Never:</strong> IP addresses, device fingerprints, or third-party tracking IDs.</li>
+        <li>
+          Failed SDK batches stay on the user's device and retry — they don't disappear and they
+          don't get exfiltrated by another route.
+        </li>
+      </ul>
+    </details>
+  </aside>
+
   <div class="health">
     <p class="eyebrow">Analytics health</p>
     <h2>{statusCopy[data.analytics.health]}</h2>
@@ -59,6 +80,29 @@
 
 <style>
   .analytics { display: grid; gap: 1.25rem; }
+  .privacy-band {
+    border: 1px solid #C9C2B1;
+    background: rgba(250, 247, 239, 0.72);
+    padding: 1rem 1.25rem;
+    display: grid;
+    gap: 0.6rem;
+  }
+  .privacy-band p { margin: 0; font-size: var(--small-size, 0.9rem); line-height: 1.55; }
+  .privacy-band strong { color: #2a2a2a; }
+  .privacy-band details summary {
+    cursor: pointer;
+    font-size: var(--small-size, 0.9rem);
+    color: #5C544A;
+  }
+  .privacy-band details ul {
+    margin: 0.6rem 0 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.35rem;
+    font-size: var(--small-size, 0.9rem);
+    line-height: 1.55;
+    color: #3F3A33;
+  }
   .health,
   .stats article,
   .recent,
