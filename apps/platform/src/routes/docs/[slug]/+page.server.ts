@@ -266,6 +266,49 @@ const pages: Record<string, DocsPage> = {
       { href: '/docs', label: 'Docs home' },
     ],
   },
+  remix: {
+    title: 'Remix apps',
+    eyebrow: 'For builders',
+    description: 'How makers opt into remixing, and how remixers preserve source lineage.',
+    updated,
+    sections: [
+      {
+        title: 'Maker opt-in',
+        body: [
+          'A maker must explicitly mark an app as remixable before Shippie exposes remix handoff commands. The app must be public, have a source repository URL, have a license, and set remix_allowed to true.',
+          'For zip, upload, CLI, and MCP deploys, put source_repo, license, and remix_allowed in shippie.json. For URL wraps, pass the same metadata through the wrap flow or CLI flags.',
+        ],
+        bullets: [
+          'source_repo should be an HTTPS repository URL that users can read.',
+          'license should be a short SPDX-style identifier such as MIT, Apache-2.0, or AGPL-3.0.',
+          'remix_allowed is false by default. A remix is not automatically remixable unless its maker opts in again.',
+        ],
+      },
+      {
+        title: 'Remixer flow',
+        body: [
+          'Start with the remix handoff. It returns the source repo, license, fork URL when available, and exact deploy arguments needed to preserve lineage.',
+          'After editing and rebuilding, deploy with --remix or remix_from. Shippie validates the original app is still remixable, records the parent app/version, and keeps the new maker as the owner of the new slug.',
+        ],
+        bullets: [
+          'CLI: shippie remix recipe-saver, then shippie deploy ./dist --slug recipe-saver-remix --remix recipe-saver.',
+          'MCP: call remix_info first, then deploy with remix_from.',
+          'Workspaces: set remixFrom on each app entry that descends from an existing app.',
+        ],
+      },
+      {
+        title: 'Deploy paths',
+        body: [
+          'Zip upload, trial deploys, GitHub deploys, workspaces, MCP deploys, and URL wraps all preserve remix lineage when a remix source is supplied.',
+          'Trial deploys are useful for quick experiments, but claiming the slug is still required for long-lived ownership.',
+        ],
+      },
+    ],
+    links: [
+      { href: '/docs', label: 'Docs home' },
+      { href: '/new', label: 'Ship an app' },
+    ],
+  },
   why: {
     title: 'Why Shippie',
     eyebrow: 'For teams',
