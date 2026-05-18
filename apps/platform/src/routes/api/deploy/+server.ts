@@ -14,6 +14,7 @@ import type { RequestHandler } from './$types';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { deployStatic } from '$server/deploy/pipeline';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
+import { checkRateLimit } from '$server/wrapper/rate-limit';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { remixEligibilityForSlug } from '$server/remix/eligibility';
 import { VALID_SURFACES, type Surface } from '$lib/curation/schema';
@@ -31,6 +32,29 @@ export const POST: RequestHandler = async (event) => {
 
   const who = await resolveRequestUserId(event);
   if (!who) return json({ error: 'unauthenticated' }, { status: 401 });
+
+  // Per-maker deploy rate limit. Bypasses the wrapper's per-IP limit so a
+  // bad actor on a fresh IP can't burst-publish. 10 deploys / rolling 24h
+  // for claimed makers; trial (anonymous) deploys go through /api/deploy/
+  // trial which has its own per-IP throttle.
+  const deployRate = checkRateLimit({
+    key: `deploy:maker:${who}`,
+    limit: 10,
+    windowMs: 24 * 60 * 60 * 1000,
+  });
+  if (!deployRate.ok) {
+    return json(
+      {
+        error: 'rate_limited',
+        reason: 'You\'ve hit the 10-deploys-per-24h limit. Try again later.',
+        retry_after_ms: deployRate.retryAfterMs,
+      },
+      {
+        status: 429,
+        headers: { 'retry-after': String(Math.ceil(deployRate.retryAfterMs / 1000)) },
+      },
+    );
+  }
 
   let form: FormData;
   try {

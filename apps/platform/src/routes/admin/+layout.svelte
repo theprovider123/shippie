@@ -19,6 +19,7 @@
       <a href="/admin" class:active={$page.url.pathname === '/admin'}>Apps</a>
       <a href="/admin/analytics" class:active={$page.url.pathname.startsWith('/admin/analytics')}>Analytics</a>
       <a href="/admin/moderation" class:active={$page.url.pathname.startsWith('/admin/moderation')}>Moderation</a>
+      <a href="/admin/disputes" class:active={$page.url.pathname.startsWith('/admin/disputes')}>Disputes</a>
       <a href="/admin/audit" class:active={$page.url.pathname.startsWith('/admin/audit')}>Audit log</a>
       <a href="/admin/profile" class:active={$page.url.pathname.startsWith('/admin/profile')}>Builder profile</a>
     </nav>

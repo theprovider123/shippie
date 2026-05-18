@@ -269,9 +269,12 @@ describe('admin /+page.server archive action — gate + audit', () => {
     expect(dbState.audits[0].action).toBe('admin.app.archive');
     expect(dbState.audits[0].targetType).toBe('apps');
     expect(dbState.audits[0].targetId).toBe('app-1');
+    // After Z1+Z5: the audit metadata also records takedown_reason and
+    // suspension_reason so the audit trail tells admin/maker cleanup
+    // apart from policy enforcement after the fact.
     expect(dbState.audits[0].metadata).toEqual({
-      before: { isArchived: false },
-      after: { isArchived: true },
+      before: { isArchived: false, takedownReason: null, suspensionReason: null },
+      after: { isArchived: true, takedownReason: null, suspensionReason: null },
     });
   });
 
@@ -297,8 +300,8 @@ describe('admin /+page.server archive action — gate + audit', () => {
     expect((result as { ok: boolean }).ok).toBe(true);
     expect(dbState.audits[0].action).toBe('admin.app.unarchive');
     expect(dbState.audits[0].metadata).toEqual({
-      before: { isArchived: true },
-      after: { isArchived: false },
+      before: { isArchived: true, takedownReason: null, suspensionReason: null },
+      after: { isArchived: false, takedownReason: null, suspensionReason: null },
     });
   });
 });

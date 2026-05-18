@@ -112,6 +112,21 @@
           <td class="actions">
             <form method="POST" action={app.isArchived ? '?/unarchive' : '?/archive'} class="inline">
               <input type="hidden" name="id" value={app.id} />
+              {#if !app.isArchived}
+                <input
+                  type="text"
+                  name="reason"
+                  placeholder="reason (optional)"
+                  class="mod-reason"
+                  aria-label="Archive reason (optional)"
+                />
+                <select name="suspensionReason" class="mod-susp" aria-label="Treat as enforcement?">
+                  <option value="">Cleanup (no policy flag)</option>
+                  <option value="policy_violation">Policy violation</option>
+                  <option value="dmca">DMCA</option>
+                  <option value="spam">Spam</option>
+                </select>
+              {/if}
               <button type="submit" class="btn-text">
                 {app.isArchived ? 'Unarchive' : 'Archive'}
               </button>
@@ -184,6 +199,18 @@
   .status-failed { background: rgba(232, 96, 60, 0.18); color: #F47552; }
   .status-building { background: rgba(232, 197, 71, 0.18); color: #E8C547; }
   .status-archived { background: rgba(180, 63, 42, 0.25); color: #F47552; }
+  .mod-reason, .mod-susp {
+    background: var(--surface, #1E1A15);
+    color: var(--text, #EDE4D3);
+    border: 1px solid var(--border-light, #2A251E);
+    padding: 3px 7px;
+    font: inherit;
+    font-size: 11px;
+    min-height: calc(var(--touch-min, 44px) - 12px);
+    max-width: 12rem;
+  }
+  .mod-susp { max-width: 9rem; }
+  .actions form.inline { display: inline-flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
   select {
     font-family: var(--font-mono, ui-monospace, monospace);
     font-size: var(--type-body-mobile, 16px);

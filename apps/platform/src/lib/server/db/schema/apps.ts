@@ -68,7 +68,26 @@ export const apps = sqliteTable(
      * extensible without a migration.
      */
     surface: text('surface').default('featured').notNull(),
+    /**
+     * Why an app was removed from public listings. Free-text. Used for
+     * both maker-side archival (e.g., 'retired', 'duplicate', 'cleanup')
+     * and admin-side suspension. For admin suspension, also populate
+     * `suspensionReason` / `suspendedAt` / `suspendedBy` — those mark
+     * it as enforcement rather than maker cleanup.
+     */
     takedownReason: text('takedown_reason'),
+    /**
+     * Admin-side suspension semantics. `isArchived` does double duty
+     * (cleanup + enforcement); these columns let the platform tell the
+     * difference. When `suspensionReason` is set, the takedown is
+     * enforcement-driven and:
+     *   - The slug enters a hold list (see reserved-slugs.ts)
+     *   - The maker is notified by email
+     *   - Re-deploy under the same slug is blocked for the maker
+     */
+    suspensionReason: text('suspension_reason'), // 'dmca' | 'policy_violation' | 'spam' | etc
+    suspendedAt: text('suspended_at'),
+    suspendedBy: text('suspended_by').references(() => users.id),
 
     /** Cached deploy pointers — maintained in app code post-port. */
     latestDeployId: text('latest_deploy_id'),

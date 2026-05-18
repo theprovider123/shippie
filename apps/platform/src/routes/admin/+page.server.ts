@@ -21,6 +21,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { requireAdmin } from '$server/admin/auth';
 import { recordAudit } from '$server/admin/audit';
+import { notifyMakerOfTakedown } from '$server/admin/notify-maker';
 
 export type AdminAppRow = {
   id: string;
@@ -227,34 +228,109 @@ async function setArchived(
   const id = String(form.get('id') ?? '');
   if (!id) return fail(400, { error: 'missing app id' });
 
+  // Optional reason (free-text). When `suspensionReason` is one of the
+  // enforcement categories, this is treated as an admin enforcement
+  // action — the suspension columns get populated, the maker gets
+  // notified, and the slug enters the hold list. Otherwise it's a
+  // maker-style cleanup archive with just `takedownReason` recorded.
+  const reason = (form.get('reason')?.toString() ?? '').trim() || null;
+  const suspensionReasonRaw = (form.get('suspensionReason')?.toString() ?? '').trim();
+  const SUSPENSION_VALUES = new Set(['dmca', 'policy_violation', 'spam']);
+  const isSuspension = archived && SUSPENSION_VALUES.has(suspensionReasonRaw);
+  const suspensionReason = isSuspension ? suspensionReasonRaw : null;
+
   const [before] = await db
     .select({
       id: schema.apps.id,
       slug: schema.apps.slug,
+      makerId: schema.apps.makerId,
       isArchived: schema.apps.isArchived,
+      takedownReason: schema.apps.takedownReason,
+      suspensionReason: schema.apps.suspensionReason,
+      suspendedAt: schema.apps.suspendedAt,
+      suspendedBy: schema.apps.suspendedBy,
     })
     .from(schema.apps)
     .where(eq(schema.apps.id, id))
     .limit(1);
 
   if (!before) return fail(404, { error: 'app not found' });
-  if (before.isArchived === archived) {
+  if (
+    before.isArchived === archived &&
+    (before.takedownReason ?? null) === reason &&
+    (before.suspensionReason ?? null) === suspensionReason
+  ) {
     return { ok: true, noop: true };
   }
 
+  const now = new Date().toISOString();
   await db
     .update(schema.apps)
-    .set({ isArchived: archived, updatedAt: new Date().toISOString() })
+    .set({
+      isArchived: archived,
+      takedownReason: archived ? reason : null,
+      suspensionReason,
+      suspendedAt: isSuspension ? now : archived ? before.suspendedAt ?? null : null,
+      suspendedBy: isSuspension ? admin.id : archived ? before.suspendedBy ?? null : null,
+      updatedAt: now,
+    } as Record<string, unknown>)
     .where(eq(schema.apps.id, id));
 
+  // Normalize undefined → null in audit metadata so the JSON column has a
+  // stable shape regardless of whether older rows were created before the
+  // suspension columns existed.
   await recordAudit(db, {
     actorUserId: admin.id,
-    action: archived ? 'admin.app.archive' : 'admin.app.unarchive',
+    action: archived
+      ? isSuspension
+        ? 'admin.app.suspend'
+        : 'admin.app.archive'
+      : 'admin.app.unarchive',
     targetTable: 'apps',
     targetId: id,
-    before: { isArchived: before.isArchived },
-    after: { isArchived: archived },
+    before: {
+      isArchived: before.isArchived,
+      takedownReason: before.takedownReason ?? null,
+      suspensionReason: before.suspensionReason ?? null,
+    },
+    after: { isArchived: archived, takedownReason: archived ? reason : null, suspensionReason },
   });
+
+  // Notify the maker on the transition. notifyMakerOfTakedown is a
+  // no-op when the EMAIL binding is missing (dev), so this never blocks
+  // the action — it's a best-effort side-channel.
+  if (archived && !before.isArchived) {
+    await notifyMakerOfTakedown(event.platform.env, db, {
+      appId: id,
+      slug: before.slug,
+      makerId: before.makerId,
+      reason,
+      suspensionReason,
+    });
+  }
+
+  // Suspension-grade takedowns (dmca / policy_violation / spam) also
+  // place the slug on the reserved list so the maker can't redeploy the
+  // same name with slightly different content and reset the case. Plain
+  // archives (no suspension reason) DON'T touch reserved_slugs — those
+  // are maker-style cleanup and unarchive should be uncontentious.
+  // Idempotent: if the row already exists, INSERT OR IGNORE leaves it
+  // alone. If the admin later unarchives without lifting suspension,
+  // the reserved row stays — that's intentional.
+  if (isSuspension) {
+    try {
+      await event.platform.env.DB.prepare(
+        'INSERT OR IGNORE INTO reserved_slugs (slug, reason) VALUES (?, ?)',
+      )
+        .bind(before.slug, `suspension:${suspensionReason}`)
+        .run();
+    } catch (err) {
+      console.warn('[admin.suspend] reserved_slugs insert failed', {
+        slug: before.slug,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   return { ok: true };
 }
