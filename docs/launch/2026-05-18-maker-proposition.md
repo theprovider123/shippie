@@ -498,6 +498,164 @@ If a proposed surface doesn't converge on one of those, it earns scrutiny before
 
 ---
 
+---
+
+## Zero-human-in-the-middle — the open-marketplace audit (2026-05-18)
+
+**Premise**: Shippie is a truly open-source marketplace. Makers publish → users use → users share → users feed back, with **no Shippie operator in the loop**. The single admin (you) moderates **reactively** — takedowns of abuse, never approval before publish.
+
+Two parallel agents traced the publish→use→share→feedback loop against HEAD and audited the admin surface. The verdict: **the loop is already 95% open. One quiet human gate remains, plus the admin moderation surface needs sharpening.**
+
+### Loop verdict (file-cited)
+
+| Step | Verdict | Cite |
+|---|---|---|
+| **Publish** | ✅ self-service, technical gates only (scanner, arcade purity) | `api/deploy/+server.ts`, `deploy/pipeline.ts:248-288` |
+| **Claim / visibility** | ✅ self-service, instant PATCH | `trial-claim.ts:145`, `api/apps/[slug]/visibility/+server.ts:29-67` |
+| **Use** | ✅ visibility-gated only, no per-user approval | `container-page-data.ts`, `wrapper/router/access-gate.ts` |
+| **Share** | ✅ URL-first, no moderation queue | (no moderation code on share path) |
+| **Feedback** | ⚠ auto-moderated; **maker can't see flagged items** | `moderation/feedback.ts`, `admin/moderation/+page.server.ts` |
+| **Remix** | ✅ license-gated, no approval (now fixed for first-party via this morning's commit) | `remix/eligibility.ts` |
+| **Upgrade** | ✅ instant to all users, rollback works | `api/deploy/+server.ts`, `api/deploy/rollback/+server.ts:82-96` |
+| **Takedown** | ⚠ reactive (good) but minimal — only `isArchived`, no reason, no notification | `admin/+page.server.ts:166-214` |
+
+**Pre-publish moderation**: ✅ NONE. All gates are technical (scanner failures, arcade purity, security blocks) with actionable error messages. **No Shippie operator clicks a button to let a publish through.** Correct.
+
+### The one quiet human gate
+
+The auto-moderation in `apps/platform/src/lib/server/moderation/feedback.ts` flags risky feedback into `status='reviewing'`. The maker dashboard at `/dashboard/feedback` only shows `status='open'`. So:
+
+- Clean feedback → maker sees it instantly ✓
+- Auto-flagged feedback → only admin sees it on `/admin/moderation`, maker never knows it exists
+
+**This is partially a feature** (protects makers from abuse spam) **but the opacity is the bug**:
+- Maker doesn't know there's flagged feedback waiting for admin review
+- User who submitted it gets no feedback that their submission was queued
+- Admin becomes a bottleneck for legitimate but flagged feedback (e.g., "I think your pricing is unfair" trips `negative` patterns)
+
+**Fix**: show the maker a count of flagged items they can't see yet, with a link to the admin moderation queue. Show the user a soft confirmation: *"Thanks. Sometimes feedback takes a few hours to appear publicly."* No silent black box.
+
+### Admin moderation surface — what exists
+
+- **`/admin`** — list ALL apps, archive/unarchive, set visibility (public/unlisted/private). Audit logged.
+- **`/admin/moderation`** — list ALL feedback, set status (open/reviewing/hidden/resolved/spam). Audit logged.
+- **`/admin/audit`** — read-only audit trail with before/after JSON, filterable by action prefix + actor + time window.
+- **`/admin/analytics`** — platform health aggregates (no user-level trails).
+- **`/admin/profile`** — admin's own builder profile (not moderation-related).
+- **Auth gating** — `requireAdmin(event)` at `apps/platform/src/lib/server/admin/auth.ts:31-46`. Unauthenticated → 303 to login; authenticated but `!isAdmin` → 404 (masks surface existence). Form actions re-check. Single-admin: only `users.is_admin = true` passes.
+- **Auto-moderation** — regex flags spam (crypto, casino, telegram, SEO) and risky-claim language (scam, hate, medical, guaranteed). Pre-flagged on submit, not pre-blocked.
+
+The foundation is good. The gaps are about **closing the loop with the maker** so a takedown doesn't feel like a black box.
+
+### Admin moderation gaps — closing the loop (P0 for launch)
+
+**Z1. Populate `apps.takedown_reason` on admin archive**
+- Column exists in schema (`apps.ts:71`) but never populated by the admin form.
+- Add an optional reason field to the archive action; populate the column; surface to the maker.
+- File: `apps/platform/src/routes/admin/+page.server.ts:250` area
+- Time: 30 min
+
+**Z2. Email maker on takedown / feedback-hide**
+- Today: archives are silent. Maker logs in, finds app missing, no explanation.
+- Add `notifyMakerOfTakedown(makerEmail, slug, reason)` → existing Resend / email sender (per `env.EMAIL` binding in wrangler.toml). Template includes: the action, the reason, where to appeal (reply to email, or `/dashboard/apps/[slug]/appeal` if we add that).
+- Same shape for feedback `hidden` / `spam` — optional, maker-side toggle (some makers want to know, some don't care).
+- File: new `apps/platform/src/lib/server/admin/notify-maker.ts`
+- Time: 1-1.5h
+
+**Z3. Surface flagged feedback to maker (with redaction)**
+- Today: maker sees only `status='open'` items.
+- Show a "pending review" counter in the maker dashboard: *"3 items awaiting moderator review."* No content shown until admin clears them.
+- After admin reviews, mark `open` → maker sees content. If `hidden` or `spam` → maker sees a stub: *"1 item was hidden (spam)"* with optional appeal link.
+- File: `apps/platform/src/routes/dashboard/feedback/+page.server.ts` + `+page.svelte`
+- Time: 1h
+
+**Z4. User-facing acknowledgement after feedback submit**
+- Today: user submits, sees a "thanks." Nothing about review queue.
+- Soft copy: *"Thanks — your feedback was received. Most appears within minutes; some takes a few hours for moderator review."*
+- File: SDK's feedback submit response surface + container Your Data feedback widget
+- Time: 30 min
+
+**Z5. Split `isArchived` from `suspensionReason`**
+- Today: `isArchived` does double duty (maker-side cleanup + admin-side takedown).
+- Add `suspensionReason: 'dmca' | 'policy_violation' | 'spam' | null`, `suspendedAt`, `suspendedBy` columns. Migration.
+- Maker can `isArchived: true` themselves (clean up retired app). Admin sets `suspensionReason` for enforcement. Queries filter both separately.
+- Public listings hide either. Maker dashboard shows the difference.
+- File: `apps/platform/src/lib/server/db/schema/apps.ts` + new migration
+- Time: 1.5-2h
+
+**Z6. Admin moderation filters + search**
+- Today: `/admin/moderation` shows 200 most-recent items. No filter, no search.
+- Add: filter by flag type (`?flag=spam|review-language|empty|all`), filter by app slug, search by content/maker.
+- File: `apps/platform/src/routes/admin/moderation/+page.server.ts:14-37` + `+page.svelte`
+- Time: 1-1.5h
+
+**Z7. Bulk feedback action**
+- Today: spam wave of 20 items requires 20 clicks.
+- Add checkbox column + "Mark selected as spam" / "Mark as open" buttons. Audit log records each row individually for trail integrity.
+- File: `apps/platform/src/routes/admin/moderation/+page.svelte` + new endpoint `+page.server.ts` action
+- Time: 1h
+
+**Z8. App Kinds dispute surface in admin**
+- Today: dispute flow exists in schema (`publicKindStatus = 'disputed'`), surfaced on maker dashboard, but no admin counterpart. Disputes go nowhere.
+- Add `/admin/disputes` listing apps where `publicKindStatus === 'disputed'`, with admin actions: accept-claim / reject / dismiss.
+- File: new `apps/platform/src/routes/admin/disputes/+page.{svelte,server.ts}`
+- Time: 1.5-2h
+
+**Z9. Per-maker deploy rate limit**
+- Today: rate limit is per IP (easily bypassed). A bad actor can claim, abuse, repeat.
+- Add: per-maker quota (10/day public, 3/day trial). Check after auth, before pipeline.
+- File: `apps/platform/src/routes/api/deploy/+server.ts:26-40` area, helper in `$server/auth/rate-limit.ts` (if it doesn't exist)
+- Time: 1-1.5h
+
+**Z10. Block slug re-registration after policy takedown**
+- Today: admin archives `bad-app`. Maker uploads `bad-app-v2`, same content. Cycle.
+- Add: when a slug is suspended for `policy_violation` or `dmca`, add to `reserved-slugs.ts` for that maker (or globally for severe cases).
+- File: `apps/platform/src/lib/server/deploy/reserved-slugs.ts`
+- Time: 1h
+
+### Cumulative
+
+Z1-Z10 = ≈10-12 hours. Z1-Z5 are the **must-haves for the "no silent black box" promise** — ≈4-5 hours.
+
+### What gets the user told (acceptance criteria)
+
+For the loop to feel genuinely open, every actor needs to see what's happening:
+
+- **User submits feedback** → soft acknowledgement ("most appears within minutes; some takes longer")
+- **Auto-flag triggers** → maker sees count of pending-review items (not content)
+- **Admin marks open** → maker sees full content; user's submission becomes public
+- **Admin marks hidden/spam** → user gets one notification ("your feedback was set aside"). Maker sees a redacted stub if their settings allow.
+- **Admin archives app** → maker gets email with reason + appeal contact within 5 minutes
+- **Admin suspends app for policy** → same notification, plus the slug enters a hold list
+
+If any of these is silent today, it's a launch gap.
+
+### What this does NOT add
+
+- **Pre-publish review** — never. Technical gates only.
+- **Curation workflow** — featured-vs-not is curation-side (`first-party-curation.ts`), not moderation.
+- **User identity verification** — anonymous feedback stays anonymous. Per-user rate limit is the spam vector control, not identity verification.
+- **A formal appeal court** — reply-by-email is enough for a solo admin.
+
+### Sequencing into the locked decisions
+
+Slot Z1-Z5 ahead of P0.4 (per-app feedback inbox) in the maker-proposition plan, because feedback opacity is the most-likely launch-day complaint. Z6-Z10 fold into the admin surface work during launch week.
+
+| Order | Item | Time |
+|---|---|---|
+| 1 | **Z1 + Z2** (takedown reason + email) | 2h |
+| 2 | **Z3 + Z4** (flagged-item visibility for maker + user soft ack) | 1.5h |
+| 3 | **Z5** (suspension semantics — DB migration) | 2h |
+| 4 | Original P0.3 — dashboard launchpad | 3-4h |
+| 5 | Original P0.4 — per-app feedback inbox | 3-4h |
+| 6 | **Z6 + Z7** (admin filters + bulk) | 2h |
+| 7 | Continue P0.5-P0.9 from prior plan | 5-9h |
+| 8 | **Z8 + Z9 + Z10** (disputes + rate-limit + slug holds) | 4h |
+
+**Net add to the P0 budget**: ≈5h for Z1-Z5 must-haves. Worth it — opacity is the trust-killer for an open marketplace.
+
+---
+
 ## Glossary (the words that should appear everywhere)
 
 These are the words to keep saying. If a surface uses different words for the same concept, fix the surface.

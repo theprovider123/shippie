@@ -105,7 +105,12 @@ export async function handleFeedback(ctx: WrapperContext): Promise<Response> {
     return Response.json({ error: 'insert_failed' }, { status: 500 });
   }
 
-  return Response.json({ ok: true, id });
+  // Return the moderation status so the SDK / UI can render the right
+  // soft-ack ("Thanks — appears in a few hours" vs "Thanks — visible now").
+  // status === 'open' = visible immediately; 'reviewing' or 'spam' = held
+  // for moderator review. We never block the submit — only the visibility
+  // of the row.
+  return Response.json({ ok: true, id, status: moderation.status });
 }
 
 export async function handleFeedbackVote(
