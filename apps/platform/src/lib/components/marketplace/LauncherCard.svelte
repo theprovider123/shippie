@@ -429,8 +429,8 @@
     touch-action: manipulation;
   }
   .quick-actions button {
-    width: 34px;
-    height: 34px;
+    width: var(--touch-min);
+    height: var(--touch-min);
     display: inline-grid;
     place-items: center;
     border: 1px solid var(--border);
@@ -480,8 +480,8 @@
       background: transparent;
     }
     .quick-actions button {
-      width: 40px;
-      height: 40px;
+      width: var(--touch-min);
+      height: var(--touch-min);
     }
   }
   @media (prefers-reduced-motion: reduce) {

@@ -186,7 +186,7 @@
   .status-archived { background: rgba(180, 63, 42, 0.25); color: #F47552; }
   select {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--type-body-mobile, 16px);
     background: var(--surface, #1E1A15);
     color: var(--text, #EDE4D3);
     border: 1px solid var(--border-light, #2A251E);

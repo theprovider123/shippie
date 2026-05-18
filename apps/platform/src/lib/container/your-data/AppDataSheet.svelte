@@ -2,6 +2,7 @@
   import type { ContainerApp, LocalRow } from '$lib/container/state';
   import type { AppReceipt } from '@shippie/app-package-contract';
   import KindBadge from '$lib/components/marketplace/KindBadge.svelte';
+  import Sheet from '$lib/components/ui/Sheet.svelte';
 
   interface Props {
     app: ContainerApp;
@@ -17,22 +18,9 @@
   const { app, receipt, rows, trustLine, onOpen, onClearData, onUninstall, onClose }: Props = $props();
 
   let showDetails = $state(false);
-
-  function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onClose();
-  }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-<div
-  class="scrim"
-  role="presentation"
-  onclick={onClose}
-  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }}
-></div>
-<div class="sheet" role="dialog" aria-modal="true" aria-label={`${app.name} data`}>
-  <div class="grab" aria-hidden="true"></div>
+<Sheet open onClose={onClose} label={`${app.name} data`}>
   <header>
     <h3>{app.name}</h3>
     <KindBadge kind={app.appKind} status="estimated" compact />
@@ -66,7 +54,7 @@
   {/if}
 
   <button class="close" onclick={onClose}>Close</button>
-</div>
+</Sheet>
 
 <style>
   h3,
@@ -75,38 +63,6 @@
   dt,
   dd {
     margin: 0;
-  }
-  .scrim {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.36);
-    z-index: 1000;
-  }
-  .sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1001;
-    margin: 0 auto;
-    max-width: 520px;
-    padding: 14px 18px calc(18px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--border-light);
-    background: var(--bg-pure);
-    display: grid;
-    gap: 12px;
-    animation: rise 180ms ease-out;
-  }
-  @keyframes rise {
-    from { transform: translateY(20px); opacity: 0.6; }
-    to   { transform: translateY(0);    opacity: 1;   }
-  }
-  .grab {
-    width: 36px;
-    height: 4px;
-    margin: 2px auto 6px;
-    background: var(--border);
-    border-radius: 2px;
   }
   header {
     display: flex;
@@ -146,7 +102,7 @@
     color: #B6472D;
   }
   .disclosure {
-    min-height: 36px;
+    min-height: var(--touch-min);
     padding: 0;
     border: 0;
     background: transparent;
@@ -183,25 +139,11 @@
     font-size: var(--caption-size);
   }
   .close {
-    min-height: 44px;
+    min-height: var(--touch-min);
     border: 1px solid var(--border-light);
     background: var(--surface);
     color: var(--text);
     cursor: pointer;
     font: inherit;
-  }
-  @media (min-width: 700px) {
-    .sheet {
-      bottom: auto;
-      top: 50%;
-      transform: translateY(-50%);
-      border: 1px solid var(--border-light);
-      animation: fade 140ms ease-out;
-    }
-    @keyframes fade {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-    .grab { display: none; }
   }
 </style>

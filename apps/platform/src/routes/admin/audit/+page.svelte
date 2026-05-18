@@ -137,7 +137,7 @@
     border-radius: 0;
     padding: 6px 10px;
     font: inherit;
-    font-size: 13px;
+    font-size: var(--type-body-mobile, 16px);
   }
   .apply {
     background: var(--sunset, #E8603C);

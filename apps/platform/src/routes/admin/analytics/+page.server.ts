@@ -48,6 +48,16 @@ type RecentProofRow = {
   distinctDevices: number;
 };
 
+type SpacesSummaryRow = {
+  totalSpaces: number;
+  activeSpaces: number;
+  archivedSpaces: number;
+  totalJoinLinks: number;
+  activeJoinLinks: number;
+  totalClaims: number;
+  totalInviteUses: number;
+};
+
 const RANGE_MODIFIER = '-30 days';
 
 export const load: PageServerLoad = async (event) => {
@@ -63,10 +73,11 @@ export const load: PageServerLoad = async (event) => {
       topEvents: [] as EventRow[],
       kinds: [] as KindRow[],
       recentProof: [] as RecentProofRow[],
+      spacesSummary: emptySpacesSummary(),
     };
   }
 
-  const [summary, topTools, topEvents, daily, kinds, recentProof] = await Promise.all([
+  const [summary, topTools, topEvents, daily, kinds, recentProof, spacesSummary] = await Promise.all([
     db.prepare(
       `
       SELECT
@@ -161,6 +172,18 @@ export const load: PageServerLoad = async (event) => {
       LIMIT 10
       `,
     ).bind(RANGE_MODIFIER).all<RecentProofRow>(),
+    db.prepare(
+      `
+      SELECT
+        (SELECT COUNT(*) FROM spaces) AS totalSpaces,
+        (SELECT COUNT(*) FROM spaces WHERE status != 'archived') AS activeSpaces,
+        (SELECT COUNT(*) FROM spaces WHERE status = 'archived') AS archivedSpaces,
+        (SELECT COUNT(*) FROM space_join_tokens) AS totalJoinLinks,
+        (SELECT COUNT(*) FROM space_join_tokens WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > datetime('now'))) AS activeJoinLinks,
+        (SELECT COALESCE(SUM(claim_count), 0) FROM space_join_tokens) AS totalClaims,
+        (SELECT COALESCE(SUM(used_count), 0) FROM app_invites) AS totalInviteUses
+      `,
+    ).first<SpacesSummaryRow>(),
   ]);
 
   return {
@@ -172,6 +195,7 @@ export const load: PageServerLoad = async (event) => {
     daily: normalizeRows(daily.results),
     kinds: normalizeRows(kinds.results),
     recentProof: normalizeRows(recentProof.results),
+    spacesSummary: normalizeSpacesSummary(spacesSummary),
   };
 };
 
@@ -213,5 +237,30 @@ function emptySummary(): SummaryRow {
     proofDevices: 0,
     totalTools: 0,
     builders: 0,
+  };
+}
+
+function normalizeSpacesSummary(row: SpacesSummaryRow | null): SpacesSummaryRow {
+  if (!row) return emptySpacesSummary();
+  return {
+    totalSpaces: Number(row.totalSpaces ?? 0),
+    activeSpaces: Number(row.activeSpaces ?? 0),
+    archivedSpaces: Number(row.archivedSpaces ?? 0),
+    totalJoinLinks: Number(row.totalJoinLinks ?? 0),
+    activeJoinLinks: Number(row.activeJoinLinks ?? 0),
+    totalClaims: Number(row.totalClaims ?? 0),
+    totalInviteUses: Number(row.totalInviteUses ?? 0),
+  };
+}
+
+function emptySpacesSummary(): SpacesSummaryRow {
+  return {
+    totalSpaces: 0,
+    activeSpaces: 0,
+    archivedSpaces: 0,
+    totalJoinLinks: 0,
+    activeJoinLinks: 0,
+    totalClaims: 0,
+    totalInviteUses: 0,
   };
 }

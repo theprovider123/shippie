@@ -254,7 +254,7 @@
     flex-wrap: wrap;
   }
   .waiting-actions button {
-    min-height: 36px;
+    min-height: var(--touch-min);
     padding: 0.45rem 0.7rem;
     border: 1px solid var(--border-light);
     background: var(--bg-pure);
@@ -282,7 +282,7 @@
   }
   .export-button {
     margin: 12px 14px 0;
-    min-height: 40px;
+    min-height: var(--touch-min);
     padding: 0.5rem 0.9rem;
     border: 1px solid var(--border-light);
     background: var(--bg-pure);

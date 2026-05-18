@@ -179,8 +179,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: var(--touch-min);
+    height: var(--touch-min);
     border-radius: 50%;
     overflow: hidden;
     background: var(--surface-alt);
@@ -196,8 +196,8 @@
     flex-direction: column;
     justify-content: center;
     gap: 4px;
-    width: 36px;
-    height: 36px;
+    width: var(--touch-min);
+    height: var(--touch-min);
     background: none;
     border: 1px solid transparent;
     border-radius: 0;
@@ -243,7 +243,7 @@
     font-weight: 600;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1025px) {
     .nav-center { display: flex; }
     .nav-cta { display: inline-flex; }
     .nav-toggle { display: none; }

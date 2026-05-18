@@ -223,7 +223,7 @@
     border-left: 1px solid var(--border);
     background: var(--bg);
     color: var(--text);
-    padding: var(--space-xl);
+    padding: var(--space-xl) var(--space-xl) calc(var(--space-xl) + var(--safe-bottom));
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
@@ -240,8 +240,8 @@
     position: absolute;
     top: var(--space-md);
     right: var(--space-md);
-    width: 32px;
-    height: 32px;
+    width: var(--touch-min);
+    height: var(--touch-min);
     display: grid;
     place-items: center;
     border: 1px solid var(--border);
@@ -287,7 +287,7 @@
   .actions a,
   .actions button {
     min-width: 0;
-    min-height: 38px;
+    min-height: var(--touch-min);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -370,9 +370,9 @@
     from { transform: translateX(16px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
   }
-  @media (max-width: 520px) {
+  @media (max-width: 640px) {
     .inspector {
-      padding: var(--space-lg);
+      padding: var(--space-lg) var(--space-lg) calc(var(--space-lg) + var(--safe-bottom));
     }
     .actions,
     .facts {

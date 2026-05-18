@@ -13,6 +13,20 @@
   --nav-height: 72px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* ── Mobile-first floors ───────────────────────────────────────
+     Canonical breakpoint edges (enforced by mobile-audit harness):
+       shell    = max 640/1024, min 641/1025  (mobile / tablet / desktop)
+       density  = min 1280/1536/1920          (grid-column count, type scale)
+     Anything else is a finding in `audit-static-rules.mjs`.
+     ─────────────────────────────────────────────────────────────
+     --touch-min        Apple HIG floor for interactive elements.
+     --type-body-mobile Input/textarea/select floor on mobile to
+                        suppress iOS focus-zoom. */
+  --touch-min: 44px;
+  --type-body-mobile: 16px;
 
   /* ── Brand ─────────────────────────────────────────────────── */
   --sunset: #E8603C;

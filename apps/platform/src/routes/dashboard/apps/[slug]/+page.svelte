@@ -218,7 +218,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     margin: 0.5rem 0;
     padding: 0.5rem;
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--type-body-mobile, 16px);
     border: 1px solid #E5DDC8;
     border-radius: 0;
     box-sizing: border-box;

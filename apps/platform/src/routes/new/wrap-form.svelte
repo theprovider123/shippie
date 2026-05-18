@@ -107,7 +107,7 @@
   .row label { flex: 1; }
   label { display: flex; flex-direction: column; gap: 4px; }
   label span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: #8B847A; font-family: ui-monospace, monospace; }
-  input, select { height: 44px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: 14px; color: inherit; border-radius: 0; box-sizing: border-box; }
+  input, select { height: 44px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: var(--type-body-mobile, 16px); color: inherit; border-radius: 0; box-sizing: border-box; }
   input:focus, select:focus { border-color: #E8603C; outline: none; }
   .btn-primary {
     height: 48px;

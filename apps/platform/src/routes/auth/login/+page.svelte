@@ -127,7 +127,7 @@
     background: transparent;
     border: 1px solid #C9C2B1;
     color: inherit;
-    font-size: 15px;
+    font-size: var(--type-body-mobile, 16px);
     outline: none;
     border-radius: 0;
     box-sizing: border-box;

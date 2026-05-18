@@ -239,7 +239,7 @@
   textarea {
     width: 100%;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: var(--type-body-mobile, 16px);
     padding: 12px;
     border: 1px solid var(--border);
     border-radius: 0;

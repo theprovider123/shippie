@@ -103,3 +103,99 @@ See the sidecar file for the full table; copy it into this doc when ready to sta
 ## What gets nailed down next
 
 Once PR0 lands the harness, **PR1 starts the primitives**. The cascading promise: PR2 is the headline mobile fix for the user's "Your Data still looks horrible" complaint — single-pane container shell + BottomNav. After PR2 ships, the gap between "the app feels desktop-first" and "feels like an app" should be obviously closed on `/container`. PR3-6 finish the rest of the platform.
+
+---
+
+## Revisions (2026-05-18)
+
+PR0 (harness) and PR #13's seven showcase phases shipped to prod on 2026-05-18 07:21 UTC (worker `e2aa57c8`). With the harness in production hands, the original PR1 was too big and the sequencing put `/container` before mobile users actually arrive on it. This revision sharpens the plan against HEAD without throwing the original away.
+
+### What's already done (subtract from PR1)
+
+- ✅ PR0 harness (`apps/platform/scripts/mobile-audit/`) — landed in PR #13.
+- ✅ Phase 1–7 showcase mobile work — landed in PR #13 (Recipe/Steep/Ledger banner slot, onboarding fade, bottom-nav restructure for Coffee/Dough/Lift/Ledger, toolbar/modal collapse on Whiteboard/Touch, game first-screen polish on Five Letter/Quartet, Match Room hero deferral, Mevrouw full IA restructure).
+- ✅ Your Data redesign as Devices/Tools/Backup segmented panes — landed in PR #13.
+- ✅ SDK bottom-sheet styling for the Your Data overlay — landed in PR #13.
+
+### New PR0.5 — Snapshot the post-deploy baseline
+
+Re-run the harness against HEAD post-deploy; commit the snapshots to `docs/launch/mobile-audit-snapshots/`:
+
+- `2026-05-18-route-inventory.md`
+- `2026-05-18-static-rules.md`
+- `2026-05-18-tokens.md`
+
+Subsequent PRs must attach a fresh snapshot diff vs the previous date as evidence; otherwise we can't tell if drift went up or down.
+
+Owner scripts: `route-inventory.mjs`, `audit-static-rules.mjs`, and `audit-tokens.mjs` write the working reports under `apps/platform/scripts/mobile-audit/`. PR0.5 copies those outputs to the dated snapshot paths on each run.
+
+Current PR0.5/PR1a-c result after the first foundation pass:
+
+- Static tap-target findings: **24 → 0**.
+- Static breakpoint drift: **23 → 17**.
+- Token safe-area findings: **1 → 0**.
+- Token input font-size findings: **11 → 0**.
+
+### Split PR1 into PR1a + PR1b
+
+The original PR1 bundled four primitives + tokens + Nav fixes + two modal migrations. That's too many independent decisions in one review.
+
+- **PR1a** — `<Sheet>` primitive only. Promote `RecoverySheet.svelte` to `lib/components/ui/Sheet.svelte` with focus trap, escape/back dismissal, body scroll lock, reduced-motion, safe-area padding, `role="dialog"` + `aria-modal` + `aria-labelledby`. Migrate `RecoverySheet` + `AppDataSheet` to consume it. **Defer** `IntentPromptModal` + `TransferPromptModal` migration to PR1c — a separate change keeps the primitive review focused on a11y, and the modal migrations focused on call-site rewrites.
+- **PR1b** — Tokens + audit scripts. Add to `tokens.css`:
+  - Document the canonical CSS breakpoint convention: shell edges are `max-width: 640px`, `min-width: 641px`, `max-width: 1024px`, `min-width: 1025px`; density edges are `min-width: 1280px`, `1536px`, and `1920px`. CSS vars cannot drive `@media`, so this phase keeps a documented convention plus script enforcement instead of adding a PostCSS dependency.
+  - `--touch-min: 44px;` token.
+  - `--type-body-mobile: 16px;` token (no iOS focus zoom).
+  - `--safe-bottom: env(safe-area-inset-bottom)` already present at `tokens.css:15`; add `--safe-top` if missing.
+  - Update `apps/platform/scripts/mobile-audit/audit-static-rules.mjs` to understand the canonical min/max breakpoint edges.
+  - New script `apps/platform/scripts/mobile-audit/audit-tokens.mjs` — flags input font-size floors and bottom-positioned regions missing safe-area padding. Runs alongside the existing static-rules script. **No visual change.**
+- **PR1c** — `IntentPromptModal` + `TransferPromptModal` migration to `<Sheet>`. Also bump Nav avatar 32→44, hamburger 36→44, AppInspector close 32→44 — the three Nav fixes from the original PR1.
+
+### Re-sequence: public surfaces before `/container`
+
+The user's first encounter with Shippie on a phone is `/` (apex) → `/apps` → `/apps/[slug]` → install → only THEN `/container`. The original PR2 fixed return-user feel, not first-impression feel. Re-sequence:
+
+| New PR | Replaces | Scope | Why this order |
+|---|---|---|---|
+| **PR0.5** | — | Baseline snapshot | Without a dated "before," no PR has measurable pass/fail. |
+| **PR1a** | half of PR1 | `<Sheet>` primitive | Foundation for every dialog migration. |
+| **PR1b** | half of PR1 | Tokens + `audit-tokens.mjs` | Foundation for every shell PR. Zero visual change. |
+| **PR1c** | other half of PR1 | Existing modal → `<Sheet>` migrations + Nav tap targets | Quick visible wins; unblocks dialog work in PR2+. |
+| **PR2 (new)** | old PR5 partial | `/`, `/apps`, `/apps/[slug]` mobile-first pass | First-visit = first-impression. 60-second README promise. |
+| **PR3 (new)** | old PR2 | `/container` launcher-mode shell migration | Headline fix for "Your Data still looks horrible". **Scope explicitly excludes `?focused=1` mode** — that path already strips chrome and is single-pane; touching it would regress the marketplace one-button-collapse contract. |
+| **PR4 (new)** | old PR3 | `/dashboard/*` + `/admin/*` shell migration | Both have desktop rails that stack — share one fix. |
+| **PR5 (new)** | old PR4 | `/auth/login`, `/invite/[token]`, `/c/[hash]`, `/new` | Invite acceptance is mobile-critical. |
+| **PR6 (new)** | old PR5 + old PR6 | Content pages (`/today`, `/glance`, `/build`, `/professionals`, `/why`, `/docs`, `/labs`, `/arcade`, `/leaderboards`, `/whitepaper`, `/trust-preview`) + viewport policy review + standalone polish | Lowest-risk last; viewport policy needs deliberate `pipeline.test.ts` update. |
+
+### Showcase mobile-certification — parallel track
+
+PR #13 made 12 of 62 showcases mobile-first. The remaining 50 lag. After the platform shell migrates (PR3+), the mismatch will be the next complaint: launcher chrome feels app-like; the apps themselves don't. Two options, **pick one before PR2 lands**:
+
+- **Cert gate**: `apps/platform/scripts/prepare-showcases.mjs` runs each showcase through a mobile-cert check (`@viewport`, no horizontal scroll, tap floor, input font-size, sticky CTA safe-area). Failing showcases get excluded from `/apps` until they pass. Mechanical, harsh, ships hygiene.
+- **Parallel track**: separate workstream sweeps the remaining 50 showcases. Doesn't gate launch, but doesn't fix the mismatch automatically either.
+
+### Conflict-management
+
+PRs 3–6 all touch shared platform files. To avoid merge conflicts cascading:
+
+- **Moratorium**: no edits to `apps/platform/src/routes/container/+page.svelte`, `dashboard/+layout.svelte`, `admin/+layout.svelte`, or `lib/components/layout/Nav.svelte` outside the migration PRs while PR3–PR6 are in flight. Other Codex tracks must stage feature work and rebase after PR6 merges.
+- **Or worktree**: do the shell migration on a feature branch via git worktree. Adds setup cost but isolates conflict surface.
+
+### Per-PR evidence requirement
+
+Every PR after PR0.5 attaches as evidence:
+
+1. Fresh `audit-static-rules.mjs` report → diff vs prior snapshot (delta in findings count).
+2. Fresh `audit-tokens.mjs` report → diff vs prior snapshot (after PR1b lands).
+3. Manual screenshots at the four viewport widths from the matrix for every route the PR touched.
+
+Screenshots can be captured manually until the screenshot harness exists; eventually a Playwright script in `apps/platform/scripts/mobile-audit/screenshot-matrix.mjs` would emit them as CI artifacts.
+
+### Acceptance criteria — unchanged
+
+The ten criteria above remain canonical. PR3–6 each cite which criteria they discharge for which routes. A PR is mergeable only when every route × viewport cell in its scope reads ✓.
+
+### Open decisions (block PR2 until resolved)
+
+1. **Cert gate vs parallel track for showcases** — pick one.
+2. **Snapshot destination** — locked to both: PR artifact for review, repo file for trend.
+3. **One operator or two** — if Claude + Codex run in parallel, the moratorium is binding. If solo, advisory.
