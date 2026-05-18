@@ -1,6 +1,6 @@
 # Mobile-audit — tokens report
 
-_Generated 2026-05-18T12:08:36.972Z_
+_Generated 2026-05-18T13:50:32.417Z_
 
 Input font-size floor: 16px (iOS focus-zoom prevention).
 Safe-area rule: `position: fixed/sticky` + `bottom: 0` must include `env(safe-area-inset-bottom)` or `var(--safe-bottom)`.

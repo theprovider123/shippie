@@ -202,6 +202,7 @@ export const POST: RequestHandler = async (event) => {
       .insert(schema.appLineage)
       .values({
         appId: app.id,
+        templateId: remixApp.templateId ?? null,
         parentAppId: remixApp.id,
         parentVersion: remixApp.latestVersion,
         sourceRepo: parsed.repo_url,
@@ -212,6 +213,7 @@ export const POST: RequestHandler = async (event) => {
       .onConflictDoUpdate({
         target: schema.appLineage.appId,
         set: {
+          templateId: remixApp.templateId ?? null,
           parentAppId: remixApp.id,
           parentVersion: remixApp.latestVersion,
           sourceRepo: parsed.repo_url,

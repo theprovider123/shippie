@@ -211,7 +211,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   // 3. Preflight
   const preflight = runPreflight({
     slug: input.slug,
-    manifest: { type: manifest.type, name: manifest.name },
+    manifest: { type: manifest.type, name: manifest.name, data: manifest.data },
     files,
     totalBytes,
     reservedSlugs: input.reservedSlugs,

@@ -9,11 +9,16 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["counter.tapped"],
+    "provides": [
+      "counter.tapped"
+    ],
     "consumes": []
   },
   "curation": {
     "surface": "featured",
     "category": "tools"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-tap-counter",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

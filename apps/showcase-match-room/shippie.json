@@ -17,16 +17,38 @@
   "spaces": {
     "enabled": true,
     "roles": [
-      { "id": "host", "permissions": ["read", "write", "invite", "moderate", "archive"] },
-      { "id": "play", "permissions": ["read", "write"] },
-      { "id": "display", "permissions": ["read"] }
+      {
+        "id": "host",
+        "permissions": [
+          "read",
+          "write",
+          "invite",
+          "moderate",
+          "archive"
+        ]
+      },
+      {
+        "id": "play",
+        "permissions": [
+          "read",
+          "write"
+        ]
+      },
+      {
+        "id": "display",
+        "permissions": [
+          "read"
+        ]
+      }
     ],
     "syncMode": "gossip",
     "archivable": true
   },
   "data": {
     "mode": "shippie-documents",
-    "documents": ["room-archive"],
+    "documents": [
+      "room-archive"
+    ],
     "attachments": false,
     "recovery": "inherited",
     "migrations": "snapshot-v0",
@@ -34,8 +56,12 @@
     "media": "none",
     "realtime": "inherited",
     "localStorage": {
-      "keys": ["match-room-theme"],
-      "prefixes": ["shippie.matchRoom."]
+      "keys": [
+        "match-room-theme"
+      ],
+      "prefixes": [
+        "shippie.matchRoom."
+      ]
     }
   },
   "intents": {
@@ -46,11 +72,16 @@
       "city-of-the-day",
       "live-match-status"
     ],
-    "consumes": ["user-display-name"]
+    "consumes": [
+      "user-display-name"
+    ]
   },
   "data_schemas": {},
   "curation": {
     "surface": "featured",
     "category": "social"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-match-room",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

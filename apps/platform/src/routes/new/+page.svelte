@@ -1,4 +1,5 @@
 <script lang="ts">
+  import EntryNav from '$lib/components/layout/EntryNav.svelte';
   import UploadForm from './upload-form.svelte';
   import WrapForm from './wrap-form.svelte';
   import type { PageData } from './$types';
@@ -37,6 +38,8 @@
 
 <main class="page">
   <div class="container">
+    <EntryNav actions={[{ href: '/apps', label: 'Browse tools' }]} />
+
     <header class="hero">
       <div>
         <img
@@ -206,7 +209,13 @@ shippie deploy ./dist</code></pre>
 </main>
 
 <style>
-  .page { min-height: 100dvh; padding: 3rem 1.25rem 4rem; background: #FAF7EF; color: #14120F; }
+  .page {
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding: calc(var(--safe-top, 0px) + 1rem) 1.25rem calc(var(--safe-bottom, 0px) + 4rem);
+    background: #FAF7EF;
+    color: #14120F;
+  }
   .container { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
   .hero {
     display: grid;
@@ -380,13 +389,44 @@ shippie deploy ./dist</code></pre>
   }
   .footer { color: #8B847A; font-size: 13px; }
   code { font-family: ui-monospace, monospace; font-size: 0.9em; }
-  @media (max-width: 860px) {
+  @media (max-width: 1024px) {
     .hero, .remix-panel, .path-chooser, .primary-flow, .secondary-flow, .next { grid-template-columns: 1fr; }
     .path-chooser ol, .toolbelt { grid-template-columns: 1fr; }
     .path-chooser li, .toolbelt article { border-right: 0; border-bottom: 1px solid #E5DDC8; }
     .path-chooser li:last-child, .toolbelt article:last-child { border-bottom: 0; }
     .hero-status { border-left: 0; padding-left: 0; border-top: 1px solid #E5DDC8; padding-top: 1rem; }
     .remix-actions { justify-content: flex-start; }
+  }
+  @media (max-width: 640px) {
+    .page {
+      padding: calc(var(--safe-top, 0px) + 0.75rem) 1rem calc(var(--safe-bottom, 0px) + 2rem);
+    }
+    .hero {
+      gap: 1.25rem;
+      padding-bottom: 1.25rem;
+    }
+    .header-mark {
+      width: 44px;
+      height: 44px;
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-size: clamp(2.25rem, 13vw, 3.5rem);
+      line-height: 0.98;
+    }
+    .lede {
+      font-size: 1rem;
+    }
+    .primary-flow,
+    .secondary-flow {
+      gap: 1rem;
+      padding-top: 1.25rem;
+    }
+    .signin-panel a {
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+    }
   }
   @media (prefers-color-scheme: dark) {
     .page { background: #14120F; color: #EDE4D3; }

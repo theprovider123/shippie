@@ -24,9 +24,28 @@
   "spaces": {
     "enabled": true,
     "roles": [
-      { "id": "owner", "permissions": ["read", "write", "invite", "moderate"] },
-      { "id": "editor", "permissions": ["read", "write"] },
-      { "id": "viewer", "permissions": ["read"] }
+      {
+        "id": "owner",
+        "permissions": [
+          "read",
+          "write",
+          "invite",
+          "moderate"
+        ]
+      },
+      {
+        "id": "editor",
+        "permissions": [
+          "read",
+          "write"
+        ]
+      },
+      {
+        "id": "viewer",
+        "permissions": [
+          "read"
+        ]
+      }
     ],
     "syncMode": "sealed-cloud",
     "archivable": true
@@ -58,5 +77,8 @@
     "surface": "archived",
     "category": "tools",
     "successor": "therapy-notes"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-journal",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

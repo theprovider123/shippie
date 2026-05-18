@@ -34,9 +34,27 @@
   "spaces": {
     "enabled": true,
     "roles": [
-      { "id": "owner", "permissions": ["read", "write", "invite"] },
-      { "id": "editor", "permissions": ["read", "write"] },
-      { "id": "viewer", "permissions": ["read"] }
+      {
+        "id": "owner",
+        "permissions": [
+          "read",
+          "write",
+          "invite"
+        ]
+      },
+      {
+        "id": "editor",
+        "permissions": [
+          "read",
+          "write"
+        ]
+      },
+      {
+        "id": "viewer",
+        "permissions": [
+          "read"
+        ]
+      }
     ],
     "syncMode": "sealed-cloud",
     "archivable": true
@@ -62,7 +80,9 @@
   ],
   "data": {
     "mode": "shippie-documents",
-    "documents": ["recipe-book"],
+    "documents": [
+      "recipe-book"
+    ],
     "attachments": false,
     "recovery": "inherited",
     "migrations": "snapshot-v0",
@@ -106,5 +126,8 @@
   "curation": {
     "surface": "featured",
     "category": "food-drink"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-recipe",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

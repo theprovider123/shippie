@@ -37,7 +37,7 @@ export function configure(opts: ConfigureOptions): void {
       break;
     case 'firebase':
       throw new Error(
-        'Firebase adapter ships in a future release. Use Supabase for now, or contribute at github.com/shippie/shippie.',
+        'Firebase adapter ships in a future release. Use Supabase for now, or contribute at github.com/theprovider123/shippie.',
       );
     default:
       throw new Error(`Unknown backend: ${opts.backend}. Supported: supabase, firebase.`);

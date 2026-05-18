@@ -95,6 +95,7 @@ export const POST: RequestHandler = async (event) => {
       surfaceOverride,
       lineage: remixApp
         ? {
+            templateId: remixApp.templateId ?? undefined,
             parentAppId: remixApp.id,
             parentVersion: remixApp.latestVersion,
             license: remixApp.license,

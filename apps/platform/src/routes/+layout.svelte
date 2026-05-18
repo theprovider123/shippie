@@ -38,13 +38,19 @@
 
   function hideNavOnMobile(url: URL): boolean {
     return showBottomDock(url)
+      || url.pathname.startsWith('/auth')
+      || url.pathname.startsWith('/invite')
+      || url.pathname.startsWith('/c/')
+      || url.pathname === '/new'
       || url.pathname.startsWith('/run')
       || (url.pathname === '/container' && url.searchParams.get('focused') === '1');
   }
 
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);
+    const mobileAppChrome = hideNavOnMobile($page.url);
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
+    document.body.dataset.mobileAppChrome = mobileAppChrome ? 'true' : 'false';
   });
 
   onMount(() => {
@@ -116,7 +122,7 @@
       display: none;
     }
 
-    :global(body[data-mobile-dock-chrome='true']) {
+    :global(body[data-mobile-app-chrome='true']) {
       padding-top: var(--safe-top);
     }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import EntryNav from '$lib/components/layout/EntryNav.svelte';
   import { toast } from '$lib/stores/toast';
   import { encodeBlobToFragment } from '@shippie/share';
 
@@ -44,6 +45,11 @@
             ? { slug: 'mevrouw', name: 'Mevrouw', subdomain: 'mevrouw.shippie.app' }
             : null,
   );
+  const railActions = $derived(
+    targetApp
+      ? [{ href: `/apps/${targetApp.slug}`, label: 'Install app' }]
+      : [{ href: '/apps', label: 'Browse tools' }],
+  );
 
   let openUrl = $state<string | null>(null);
   $effect(() => {
@@ -72,6 +78,8 @@
 </svelte:head>
 
 <main class="wrap">
+  <EntryNav actions={railActions} />
+
   <article class="pinned">
     <header class="pinned-header">
       <p class="eyebrow">pinned · anonymous · {expiresLabel ?? '90-day window'}</p>
@@ -168,7 +176,9 @@
   .wrap {
     max-width: 680px;
     margin: 0 auto;
-    padding: var(--space-xl) var(--space-md);
+    padding: calc(var(--safe-top, 0px) + var(--space-md)) var(--space-md) calc(var(--safe-bottom, 0px) + var(--space-xl));
+    display: grid;
+    gap: 1rem;
   }
   .pinned {
     background: var(--surface);
@@ -293,4 +303,29 @@
     border-radius: 0;
   }
   .secondary-cta:hover { border-color: var(--text-secondary); }
+  @media (max-width: 640px) {
+    .wrap {
+      padding: calc(var(--safe-top, 0px) + 0.75rem) 1rem calc(var(--safe-bottom, 0px) + 1.25rem);
+    }
+    .pinned {
+      padding: 1rem;
+      gap: 1rem;
+    }
+    .pinned-header {
+      gap: 0.5rem;
+    }
+    h1 {
+      font-size: clamp(2rem, 12vw, 3rem);
+    }
+    .cta-row {
+      display: grid;
+    }
+    .primary-cta,
+    .secondary-cta {
+      width: 100%;
+      min-width: 0;
+      min-height: var(--touch-min, 44px);
+      box-sizing: border-box;
+    }
+  }
 </style>

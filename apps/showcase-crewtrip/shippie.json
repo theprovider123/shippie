@@ -23,16 +23,37 @@
   "spaces": {
     "enabled": true,
     "roles": [
-      { "id": "host", "permissions": ["read", "write", "invite", "moderate"] },
-      { "id": "crew", "permissions": ["read", "write"] },
-      { "id": "viewer", "permissions": ["read"] }
+      {
+        "id": "host",
+        "permissions": [
+          "read",
+          "write",
+          "invite",
+          "moderate"
+        ]
+      },
+      {
+        "id": "crew",
+        "permissions": [
+          "read",
+          "write"
+        ]
+      },
+      {
+        "id": "viewer",
+        "permissions": [
+          "read"
+        ]
+      }
     ],
     "syncMode": "inherited",
     "archivable": true
   },
   "data": {
     "mode": "shippie-documents",
-    "documents": ["trip-archive"],
+    "documents": [
+      "trip-archive"
+    ],
     "attachments": true,
     "recovery": "inherited",
     "migrations": "snapshot-v0",
@@ -204,5 +225,8 @@
   "curation": {
     "surface": "featured",
     "category": "social"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-crewtrip",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

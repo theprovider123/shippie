@@ -27,5 +27,8 @@
     "surface": "archived",
     "category": "health-fitness",
     "successor": "tap-counter"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-sip-log",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

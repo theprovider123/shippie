@@ -18,9 +18,26 @@
   "spaces": {
     "enabled": true,
     "roles": [
-      { "id": "athlete", "permissions": ["read", "write", "invite"] },
-      { "id": "coach", "permissions": ["read"] },
-      { "id": "viewer", "permissions": ["read"] }
+      {
+        "id": "athlete",
+        "permissions": [
+          "read",
+          "write",
+          "invite"
+        ]
+      },
+      {
+        "id": "coach",
+        "permissions": [
+          "read"
+        ]
+      },
+      {
+        "id": "viewer",
+        "permissions": [
+          "read"
+        ]
+      }
     ],
     "syncMode": "sealed-cloud",
     "archivable": true
@@ -28,5 +45,8 @@
   "curation": {
     "surface": "featured",
     "category": "health-fitness"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-lift",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

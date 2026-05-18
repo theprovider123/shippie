@@ -21,6 +21,10 @@ export interface WrapInput {
   type?: 'app' | 'web_app' | 'website';
   category?: string;
   cspMode?: 'lenient' | 'strict';
+  remix?: string;
+  sourceRepo?: string;
+  license?: string;
+  remixable?: boolean;
   log?: (line: string) => void;
 }
 
@@ -43,6 +47,10 @@ export async function wrapCommand(input: WrapInput): Promise<void> {
     type: input.type ?? 'app',
     category: input.category ?? 'tools',
     csp_mode: input.cspMode,
+    remix_from: input.remix,
+    source_repo: input.sourceRepo,
+    license: input.license,
+    remix_allowed: input.remixable,
   };
 
   const res = await postJson<WrapResponse>(

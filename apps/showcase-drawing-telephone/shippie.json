@@ -16,7 +16,9 @@
   },
   "data": {
     "mode": "shippie-documents",
-    "documents": ["drawing-telephone-game"],
+    "documents": [
+      "drawing-telephone-game"
+    ],
     "attachments": false,
     "recovery": "inherited",
     "migrations": "snapshot-v0",
@@ -37,5 +39,8 @@
     "surface": "arcade",
     "category": "games",
     "subcategory": "room"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-drawing-telephone",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

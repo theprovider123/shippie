@@ -18,7 +18,7 @@
         </a>
         <span>open source</span>
         <span>AGPL-3.0</span>
-        <a href="https://github.com/shippie/shippie">GitHub</a>
+        <a href="https://github.com/theprovider123/shippie">GitHub</a>
       </div>
       <div class="footer-links" aria-label="Legal and trust links">
         <a href="/docs/privacy">Privacy</a>

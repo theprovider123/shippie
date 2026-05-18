@@ -76,7 +76,7 @@ export async function deployDirectory(
   if (opts.remixFrom) form.append('remix_from', opts.remixFrom);
 
   const endpoint = opts.trial ? '/api/deploy/trial' : '/api/deploy';
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { origin: normalizedOrigin(ctx.apiUrl) };
 
   if (!opts.trial) {
     form.append('slug', inputSlug);
@@ -144,6 +144,14 @@ export async function deployDirectory(
   };
 }
 
+function normalizedOrigin(apiUrl: string): string {
+  try {
+    return new URL(apiUrl).origin;
+  } catch {
+    return 'https://shippie.app';
+  }
+}
+
 function parseVisibility(input: unknown): DeployVisibility | undefined {
   return input === 'public' || input === 'unlisted' || input === 'private' || input === 'team'
     ? input
@@ -203,6 +211,20 @@ function defaultSingleFileManifest(slug: string): Record<string, unknown> {
       notifications: false,
       analytics: true,
       external_network: false,
+    },
+    data: {
+      mode: 'shippie-documents',
+      documents: ['main'],
+      attachments: false,
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      media: 'none',
+      realtime: 'inherited',
+      localStorage: {
+        keys: [],
+        prefixes: [],
+      },
     },
   };
 }

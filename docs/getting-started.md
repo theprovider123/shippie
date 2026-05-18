@@ -63,12 +63,25 @@ deploy directory=/absolute/path/to/dist slug=recipe-saver-remix remix_from=recip
 
 Remix requires a public app whose maker has published source, a license, and remix permission. A GitHub account is only required when you want GitHub fork history or private-repo access; local clone/edit/upload works without GitHub.
 
+Makers opt in from `shippie.json`:
+
+```json
+{
+  "source_repo": "https://github.com/acme/recipe-saver",
+  "license": "MIT",
+  "remix_allowed": true
+}
+```
+
 ```bash
 # Inspect source, license, fork URL, and redeploy commands
 npx @shippie/cli remix recipe-saver
 
 # After cloning or forking and rebuilding your copy
 npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
+
+# Wrapped URL apps can preserve lineage too
+npx @shippie/cli wrap https://recipes.example.com --slug recipe-saver-web --remix recipe-saver
 ```
 
 Multi-app workspaces can keep lineage per app:

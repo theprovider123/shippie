@@ -80,12 +80,14 @@ describe('deployDirectory', () => {
     ]);
   });
 
-  test('sends remix lineage to the deploy endpoint', async () => {
-    const calls: Array<{ url: string; remixFrom: FormDataEntryValue | null }> = [];
+  test('sends remix lineage and same-origin header to the deploy endpoint', async () => {
+    const calls: Array<{ url: string; origin: string | null; remixFrom: FormDataEntryValue | null }> = [];
     globalThis.fetch = (async (input, init) => {
       const body = init?.body as FormData;
+      const headers = new Headers(init?.headers);
       calls.push({
         url: String(input),
+        origin: headers.get('origin'),
         remixFrom: body.get('remix_from'),
       });
       return new Response(
@@ -107,23 +109,32 @@ describe('deployDirectory', () => {
 
     expect(result.ok).toBe(true);
     expect(calls).toEqual([
-      { url: 'https://example.com/api/deploy', remixFrom: 'recipe-saver' },
+      { url: 'https://example.com/api/deploy', origin: 'https://example.com', remixFrom: 'recipe-saver' },
     ]);
   });
 
   test('wraps a single html file and defaults it to unlisted', async () => {
     const htmlFile = join(TMP, 'Ticket Prioritizer.html');
     writeFileSync(htmlFile, '<!doctype html><title>Tickets</title><main>ok</main>');
-    const calls: Array<{ slug: FormDataEntryValue | null; visibility: FormDataEntryValue | null; files: string[] }> = [];
+    const calls: Array<{
+      slug: FormDataEntryValue | null;
+      visibility: FormDataEntryValue | null;
+      files: string[];
+      dataMode: string | undefined;
+    }> = [];
     globalThis.fetch = (async (_input, init) => {
       const body = init?.body as FormData;
       const zipFile = body.get('zip') as File;
       const buffer = Buffer.from(await zipFile.arrayBuffer());
       const zip = new AdmZip(buffer);
+      const manifest = JSON.parse(zip.readAsText('shippie.json')) as {
+        data?: { mode?: string };
+      };
       calls.push({
         slug: body.get('slug'),
         visibility: body.get('visibility'),
         files: zip.getEntries().map((entry) => entry.entryName).sort(),
+        dataMode: manifest.data?.mode,
       });
       return new Response(
         JSON.stringify({
@@ -150,6 +161,7 @@ describe('deployDirectory', () => {
         slug: 'ticket-prioritizer',
         visibility: 'unlisted',
         files: ['index.html', 'shippie.json'],
+        dataMode: 'shippie-documents',
       },
     ]);
   });

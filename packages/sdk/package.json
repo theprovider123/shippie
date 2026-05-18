@@ -44,11 +44,11 @@
   "homepage": "https://shippie.app",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shippie/shippie.git",
+    "url": "git+https://github.com/theprovider123/shippie.git",
     "directory": "packages/sdk"
   },
   "bugs": {
-    "url": "https://github.com/shippie/shippie/issues"
+    "url": "https://github.com/theprovider123/shippie/issues"
   },
   "publishConfig": {
     "access": "public",

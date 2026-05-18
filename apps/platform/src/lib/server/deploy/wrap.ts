@@ -9,7 +9,7 @@ import { eq } from 'drizzle-orm';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { getDrizzleClient, schema } from '../db/client';
 import { writeWrapMeta, writeAppMeta } from './kv-write';
-import { resolveLiveUrl } from './pipeline';
+import { resolveLiveUrl, type DeployLineageOverride } from './pipeline';
 import { probeWrappedUrlPwaReadiness } from './pwa-readiness';
 
 export interface CreateWrappedAppInput {
@@ -24,6 +24,7 @@ export interface CreateWrappedAppInput {
   themeColor?: string;
   visibilityScope?: 'public' | 'unlisted' | 'private' | 'team';
   organizationId?: string | null;
+  lineage?: DeployLineageOverride;
   reservedSlugs: ReadonlySet<string>;
   db: D1Database;
   kv: KVNamespace;
@@ -113,6 +114,34 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
     .returning({ id: schema.deploys.id });
 
   if (!deployRow) return { success: false, reason: 'deploy_insert_failed' };
+
+  if (input.lineage) {
+    const completedAt = new Date().toISOString();
+    await db
+      .insert(schema.appLineage)
+      .values({
+        appId: appRow.id,
+        templateId: input.lineage.templateId ?? null,
+        parentAppId: input.lineage.parentAppId ?? null,
+        parentVersion: input.lineage.parentVersion ?? null,
+        sourceRepo: input.lineage.sourceRepo ?? null,
+        license: input.lineage.license ?? null,
+        remixAllowed: input.lineage.remixAllowed ?? false,
+        updatedAt: completedAt,
+      })
+      .onConflictDoUpdate({
+        target: schema.appLineage.appId,
+        set: {
+          templateId: input.lineage.templateId ?? null,
+          parentAppId: input.lineage.parentAppId ?? null,
+          parentVersion: input.lineage.parentVersion ?? null,
+          sourceRepo: input.lineage.sourceRepo ?? null,
+          license: input.lineage.license ?? null,
+          remixAllowed: input.lineage.remixAllowed ?? false,
+          updatedAt: completedAt,
+        },
+      });
+  }
 
   const completedAt = new Date().toISOString();
   await db

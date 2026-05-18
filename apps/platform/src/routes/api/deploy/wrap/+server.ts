@@ -11,6 +11,7 @@ import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { createWrappedApp } from '$server/deploy/wrap';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
+import { remixEligibilityForSlug } from '$server/remix/eligibility';
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -38,6 +39,10 @@ export const POST: RequestHandler = async (event) => {
   const category = typeof body.category === 'string' ? body.category : 'tools';
   const cspMode = body.csp_mode === 'strict' ? 'strict' : 'lenient';
   const themeColor = typeof body.theme_color === 'string' && HEX_RE.test(body.theme_color) ? body.theme_color : undefined;
+  const remixFrom = typeof body.remix_from === 'string' ? body.remix_from.trim() : '';
+  const sourceRepo = typeof body.source_repo === 'string' ? body.source_repo.trim() : '';
+  const license = typeof body.license === 'string' ? body.license.trim() : '';
+  const remixAllowed = typeof body.remix_allowed === 'boolean' ? body.remix_allowed : undefined;
   const visibilityScope = (typeof body.visibility_scope === 'string'
     ? body.visibility_scope
     : 'public') as 'public' | 'unlisted' | 'private' | 'team';
@@ -62,6 +67,15 @@ export const POST: RequestHandler = async (event) => {
   if (!['public', 'unlisted', 'private', 'team'].includes(visibilityScope)) {
     return json({ error: 'invalid_visibility_scope' }, { status: 400 });
   }
+  if (sourceRepo && !sourceRepo.startsWith('https://')) {
+    return json({ error: 'invalid_source_repo' }, { status: 400 });
+  }
+  if (license && license.length > 64) {
+    return json({ error: 'invalid_license' }, { status: 400 });
+  }
+  if (remixAllowed === true && (!sourceRepo || !license)) {
+    return json({ error: 'remix_metadata_required' }, { status: 400 });
+  }
 
   const db = getDrizzleClient(env.DB);
   const organizationId =
@@ -71,6 +85,13 @@ export const POST: RequestHandler = async (event) => {
   if (visibilityScope === 'team' && !organizationId) {
     return json({ error: 'invalid_or_forbidden_organization' }, { status: 403 });
   }
+  const remix = remixFrom
+    ? await remixEligibilityForSlug(db, remixFrom)
+    : null;
+  if (remix?.ok === false) {
+    return json({ error: 'remix_unavailable', reason: remix.reason }, { status: 400 });
+  }
+  const remixApp = remix?.ok ? remix.app : null;
 
   const reservedSlugs = await loadReservedSlugs(env.DB);
   const result = await createWrappedApp({
@@ -85,6 +106,16 @@ export const POST: RequestHandler = async (event) => {
     themeColor,
     visibilityScope,
     organizationId,
+    lineage: remixApp || sourceRepo || license || (remixAllowed !== undefined)
+      ? {
+          templateId: remixApp?.templateId ?? undefined,
+          parentAppId: remixApp?.id ?? undefined,
+          parentVersion: remixApp?.latestVersion ?? undefined,
+          sourceRepo: sourceRepo || undefined,
+          license: license || remixApp?.license,
+          remixAllowed: remixAllowed ?? false,
+        }
+      : undefined,
     reservedSlugs,
     db: env.DB,
     kv: env.CACHE,

@@ -16,5 +16,8 @@
     "surface": "arcade",
     "category": "games",
     "subcategory": "arcade-cabinet"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-stack",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

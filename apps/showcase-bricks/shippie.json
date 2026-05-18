@@ -9,12 +9,17 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": ["game.completed"],
+    "provides": [
+      "game.completed"
+    ],
     "consumes": []
   },
   "curation": {
     "surface": "arcade",
     "category": "games",
     "subcategory": "arcade-cabinet"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-bricks",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

@@ -16,5 +16,8 @@
     "surface": "arcade",
     "category": "games",
     "subcategory": "strategy"
-  }
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-bulwark",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
 }

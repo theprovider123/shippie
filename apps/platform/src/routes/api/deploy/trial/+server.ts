@@ -98,6 +98,7 @@ export const POST: RequestHandler = async (event) => {
       zipBuffer,
       lineage: remixApp
         ? {
+            templateId: remixApp.templateId ?? undefined,
             parentAppId: remixApp.id,
             parentVersion: remixApp.latestVersion,
             license: remixApp.license,

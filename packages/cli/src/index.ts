@@ -226,6 +226,10 @@ program
   .option('--type <type>', 'app | web_app | website', 'app')
   .option('-c, --category <category>', 'Marketplace category', 'tools')
   .option('--strict-csp', 'Pass upstream CSP through instead of the default Shippie CSP')
+  .option('--remix <slug>', 'Register this wrap as a remix of an existing public app slug')
+  .option('--source-repo <url>', 'Public source repository URL for this wrapped app')
+  .option('--license <id>', 'SPDX-style license identifier for the wrapped app source')
+  .option('--remixable', 'Allow future remixes when source repo and license are present')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .action(
     async (
@@ -237,6 +241,10 @@ program
         type?: string;
         category?: string;
         strictCsp?: boolean;
+        remix?: string;
+        sourceRepo?: string;
+        license?: string;
+        remixable?: boolean;
         api?: string;
       },
     ) => {
@@ -253,6 +261,10 @@ program
         type,
         category: opts.category,
         cspMode: opts.strictCsp ? 'strict' : undefined,
+        remix: opts.remix,
+        sourceRepo: opts.sourceRepo,
+        license: opts.license,
+        remixable: opts.remixable,
       });
     },
   );
