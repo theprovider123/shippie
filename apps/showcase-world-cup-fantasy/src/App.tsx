@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { haptic } from '@shippie/sdk/wrapper';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import {
+  BackupCard,
+  IntentToastHost,
+  KeepsakeRenderer,
+  OnboardingFlow,
+  type IntentLike,
+  type IntentSubscription,
+} from '@shippie/showcase-kit-v2';
 import { buildSquadShare } from './squad-share.ts';
 import {
   BUDGET,
@@ -23,6 +31,25 @@ import {
   type Position,
   type SavedTeam,
 } from './fantasy-engine.ts';
+import { CouchLeague, loadLeague, readLeagueFromLocation, type LeagueContextPayload } from './CouchLeague.tsx';
+import { MATCHERS as INTENT_MATCHERS } from './IntentMatchers.ts';
+import { TournamentProgramme, programmeFilename, type TournamentProgrammeData } from './TournamentProgramme.tsx';
+import { createWcfBackupStore } from './BackupAdapter.ts';
+
+const ONBOARDING_SLIDES = [
+  {
+    title: 'A squad sheet for 8 friends.',
+    body: 'Build a 15-player squad, pick a captain, pick a chip. The maths is transparent and local — every point traces back to a real match event.',
+  },
+  {
+    title: 'Pass the phone around to build the league. No server.',
+    body: 'Each friend takes the phone in turn, picks their squad, hands it on with a QR. Standings sync peer-to-peer.',
+  },
+  {
+    title: 'After the final, everyone gets the programme.',
+    body: 'A keepsake PDF — your final squad, captain log, league finish, and the journey across snapshots. Pinned on your device, not ours.',
+  },
+];
 
 const shippie = createShippieIframeSdk({ appId: 'app_world_cup_fantasy' });
 
@@ -66,11 +93,39 @@ function saveTeam(team: SavedTeam): SavedTeam {
   return next;
 }
 
+// Adapter from the SDK's intent subscribe API to the kit's IntentSubscription shape.
+const intentSource: IntentSubscription = {
+  subscribe(cb) {
+    const matchedKinds = INTENT_MATCHERS.map((m) => m.kind);
+    const unsubs = matchedKinds.map((kind) =>
+      shippie.intent.subscribe(kind as unknown as 'matchday-prediction-stats', (broadcast: { rows?: readonly unknown[] }) => {
+        const rows = broadcast?.rows ?? [];
+        cb({ kind, payload: { rows: [...rows] } } satisfies IntentLike);
+      }),
+    );
+    return () => {
+      for (const u of unsubs) u();
+    };
+  },
+};
+
+const wcfBackupStore = createWcfBackupStore();
+
 export function App() {
   const [team, setTeam] = useState<SavedTeam>(() => loadTeam());
   const [snapshotIndex, setSnapshotIndex] = useState(0);
   const [roomStats, setRoomStats] = useState<MatchdayPredictionStat[]>([]);
   const snapshot = liveSnapshotAt(snapshotIndex);
+
+  // Couch-league: read an incoming league-context from the URL fragment
+  // on first paint, hand it to <CouchLeague> via the importingContext prop.
+  const [importingLeague, setImportingLeague] = useState<LeagueContextPayload | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    void readLeagueFromLocation(window.location.href).then((ctx) => {
+      if (ctx) setImportingLeague(ctx);
+    });
+  }, []);
 
   // Cross-app bridge: subscribe to Match Room's prediction stats so
   // managers see the latest crowd sentiment alongside their squad.
@@ -217,9 +272,48 @@ export function App() {
     return buckets;
   }, [squad]);
 
+  const captainName = team.captainId ? PLAYER_BY_ID.get(team.captainId)?.name ?? null : null;
+  const programmeData: TournamentProgrammeData = useMemo(() => {
+    const storedLeague = loadLeague();
+    return {
+      tournamentName: 'World Cup Fantasy',
+      leagueName: storedLeague?.context.leagueName ?? 'Open league',
+      leagueId: storedLeague?.context.leagueId ?? 'local',
+      managerName: team.manager || 'Local manager',
+      finalScore: teamScore.total,
+      squad: squad.map((player) => ({
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        team: player.team,
+        isCaptain: player.id === team.captainId,
+      })),
+      captainLog: LIVE_SNAPSHOTS.map((snap, idx) => ({
+        fixture: snap.label,
+        captain: captainName ?? '—',
+        points: scoreFantasyTeam(squad, team.captainId, team.chip, liveSnapshotAt(idx)).total,
+      })),
+      standings: leaderboard.map((row) => ({
+        managerName: row.manager,
+        total: row.score.total,
+        isYou: row.manager === (team.manager || 'You'),
+      })),
+      snapshots: LIVE_SNAPSHOTS.map((snap, idx) => ({
+        label: snap.label,
+        total: scoreFantasyTeam(squad, team.captainId, team.chip, liveSnapshotAt(idx)).total,
+      })),
+      peerSignatures: leaderboard.slice(0, 6).map((row) => ({
+        initials: row.manager.split(' ').map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase() || '··',
+      })),
+    };
+  }, [captainName, leaderboard, snapshot, squad, team]);
+
   return (
-    <main className="fantasy-app">
-      <header className="fantasy-topbar">
+    <>
+      <OnboardingFlow appSlug="world-cup-fantasy" version={1} slides={ONBOARDING_SLIDES} />
+      <IntentToastHost matchers={INTENT_MATCHERS} source={intentSource} />
+      <main className="fantasy-app">
+        <header className="fantasy-topbar">
         <div>
           <p className="eyebrow">Private preview</p>
           <h1>World Cup Fantasy</h1>
@@ -485,7 +579,36 @@ export function App() {
           ))}
         </section>
       </div>
+
+      <section className="couch-league-section" aria-label="Couch league">
+        <CouchLeague
+          managerName={team.manager || 'You'}
+          squadCaptainName={captainName}
+          squadChip={team.chip}
+          squadScore={teamScore.total}
+          importingContext={importingLeague}
+          onImportHandled={() => setImportingLeague(null)}
+        />
+      </section>
+
+      <section className="programme-section" aria-label="Tournament keepsake">
+        <KeepsakeRenderer
+          template={TournamentProgramme}
+          data={programmeData}
+          filename={programmeFilename(programmeData.leagueId)}
+          trigger={(open, busy) => (
+            <button type="button" className="programme-button" onClick={open} disabled={busy}>
+              {busy ? 'Rendering programme…' : 'Save tournament programme'}
+            </button>
+          )}
+        />
+      </section>
+
+      <section className="data-section" aria-label="Your data">
+        <BackupCard appSlug="world-cup-fantasy" store={wcfBackupStore} />
+      </section>
     </main>
+    </>
   );
 }
 

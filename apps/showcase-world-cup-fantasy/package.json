@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "bun test src",
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
@@ -21,6 +22,7 @@
     "@shippie/sdk": "workspace:*",
     "@shippie/share": "workspace:*",
     "@shippie/showcase-kit": "workspace:*",
+    "@shippie/showcase-kit-v2": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
