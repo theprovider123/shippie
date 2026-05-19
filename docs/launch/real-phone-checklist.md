@@ -267,3 +267,35 @@ When this checklist passes, Phase 1 + Phase 2 acceptance are met.
 | Backup popup hangs | `OAUTH_COORDINATOR_SECRET` or `GOOGLE_DRIVE_CLIENT_*` env vars missing. Check Pages → shippie-platform → Environment variables. |
 | Capability Proof Badges don't appear | The daily cron (`0 4 * * *`) hasn't run yet. Or proof events haven't reached threshold (3 distinct devices). Use this checklist itself across two phones to prime the data. |
 | `/__shippie/data` returns 500 | Worker logs (`wrangler tail`) for the actual error. Most likely a binding mismatch in `wrangler.toml`. |
+
+---
+
+## Showcase elevation checks (2026-05-19)
+
+The 4 best-in-class showcase elevations (Chiwit / Palate / Match Room /
+World Cup Fantasy) landed in commits `d6e31d2c..695c9102`. Real-phone
+smoke needs the following six checks on iPhone Safari + Android Chrome
++ installed PWA:
+
+- [ ] Open each of `chiwit.shippie.app`, `recipe.shippie.app`,
+  `match-room.shippie.app`, `world-cup-fantasy.shippie.app` cold —
+  onboarding (3 slides) fires, Skip works, second open skips the flow.
+- [ ] Keepsake share-sheet opens in iOS Files / Android Share for each
+  app's closing-moment artifact:
+  - Chiwit — Patterns tab → "Share this week"
+  - Palate — finish a CookMode → cook-recap card
+  - Match Room — full-time → programme PDF
+  - WC Fantasy — final snapshot → tournament programme
+- [ ] Match Room buzzer-fairness reaches consensus across 2 real phones
+  on the same wifi (`floor(N/2)+1` of `N` peers).
+- [ ] WC Fantasy couch-league QR roundtrip — Phone A creates a league,
+  generates QR; Phone B scans, opens picker pre-loaded with the same
+  tournament data; both phones see each other's scoreSnapshot
+  broadcasts.
+- [ ] Palate cook-with-me proximity sync survives phone-locked →
+  unlocked transition on both phones.
+- [ ] Cross-app intent toasts appear when sibling apps emit:
+  - Coffee → Chiwit ("Coffee Brewer logged …")
+  - Lift → Chiwit ("Lift logged a workout")
+  - Pantry Scanner → Palate ("garlic low (via Pantry Scanner)")
+  - WC Fantasy → Match Room ("Sarah's locked in! 🔒")

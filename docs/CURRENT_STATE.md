@@ -2,8 +2,50 @@
 
 > Living truth file. If a doc, plan, or memory disagrees with this, **trust this file**. Re-verify against HEAD before encoding any new claims into a plan.
 >
-> **Last updated:** 2026-04-29 (evening — improvement plan rev2 P1–P6 complete)
-> **Recent HEAD anchor:** `5905702` (P6D catalogue refresh) — sits on top of the P1–P5 stack documented at the bottom of this file.
+> **Last updated:** 2026-05-19 (showcase elevation pass — kit-v2 + 4 best-in-class apps)
+> **Recent HEAD anchor:** `695c9102` (WC Fantasy elevation) — sits on top of the `d6e31d2c..77452a0b` elevation stack.
+
+---
+
+## 2026-05-19 — Showcase elevation pass (Chiwit, Palate, Match Room, WC Fantasy)
+
+Four flagship showcases lifted from typography-handshake to best-in-class via a new shared kit + 6 platform moves + per-app heroes. Spec: `docs/superpowers/specs/2026-05-19-best-in-class-showcases-design.md`. Plan: `docs/superpowers/plans/2026-05-19-best-in-class-showcases.md`. Mevrouw deliberately excluded.
+
+**Landed (5 commits on `main`):**
+
+- `d6e31d2c` — `packages/showcase-kit-v2`: shared primitives (EmptyState, OnboardingFlow, IntentToastHost, QrShareSheet, BackupCard, KeepsakeRenderer). 19/19 unit tests pass; ESM + DTS build green.
+- `d6959ae7` — `apps/showcase-chiwit` (§4): ambient pulse (6 cross-app intents fill the day), sage-on-cream button skin, tone-driven insight hierarchy, Fraunces-italic pull-quote hero reading, weekly-shape keepsake, backup card. 8/8 tests.
+- `498a29ea` — `apps/showcase-recipe` (Palate, §5): cook-with-me proximity hero, pantry/plan/shop visual lifts (location badges + meal-type colour-coding + aisle grouping), RecipeSheet photo hero + sage-tile ingredient boxes, cook-recap keepsake, backup card. 46/46 tests.
+- `77452a0b` — `apps/showcase-match-room` (§6): full-bleed hero scoreboard, presence ribbon, poll-close fanfare (confetti + flash + haptic), peer-consensus buzzer (`floor(N/2)+1`), MVP votes, sweepstake lifecycle, full-time programme keepsake, QR-first join, per-room backup. 39/39 tests.
+- `695c9102` — `apps/showcase-world-cup-fantasy` (§7): couch-league pass-the-phone flow with signed-fragment QR handoff, captain compare, leaderboard drama, tournament programme keepsake, encrypted league+squad backup. 4/4 tests.
+
+**Total: 116 tests passing across the 5 elevation packages, all builds green, all typechecks clean.**
+
+**Cross-app intent matrix verified statically (11/12 flows aligned):**
+
+| Consumer | Kind | Emitter |
+|---|---|---|
+| Chiwit | `coffee-brewed` | showcase-coffee |
+| Chiwit | `workout-completed` | showcase-lift |
+| Chiwit | `mindful-session` | showcase-breath, showcase-quiet |
+| Chiwit | `cooked-meal` | showcase-cooking, showcase-meal-planner |
+| Chiwit | `sleep-logged` | showcase-move |
+| Chiwit | `hydration-logged` | showcase-sip-log |
+| Palate | `pantry-low` | showcase-pantry-scanner |
+| Palate | `cooked-meal` | showcase-cooking, showcase-meal-planner |
+| Palate | `cooking-now` | showcase-recipe (peer Cook-with-me) |
+| Match Room | `fantasy-team.saved` | showcase-world-cup-fantasy |
+| WCF | `kickoff-soon` | *(no emitter — forward-compat matcher)* |
+
+**Outstanding:**
+
+- Phase 3 — real-phone smoke per `docs/launch/real-phone-checklist.md` (extended with 6 elevation checks). User-driven on iPhone Safari + Android Chrome + installed PWA.
+- Phase 4 — production deploy. User-authorized. Clean `.svelte-kit`/`.wrangler` first, then `bun run --cwd apps/platform deploy`, then 13-route prod smoke.
+- Match Room should emit `kickoff-soon` (or `match.kickoff-soon`) at the appropriate moment so WCF's matcher activates. Currently the matcher sits as forward-compat awaiting that emission.
+
+---
+
+
 
 This file replaces stale assumptions about Shippie's architecture. Read it before planning anything.
 
