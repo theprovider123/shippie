@@ -97,3 +97,4 @@ shippie_icon*.svg
 app\ icon.png
 *.sketch
 *.fig
+.superpowers/
