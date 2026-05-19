@@ -4708,3 +4708,296 @@ p {
     margin-top: 56px;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   World Cup landing v2 — simplified IA per M1+M2+M5 plan
+   - One CTA, one join, one solo link, saved rooms
+   - Scoreboard hero, gold accent, hairline cards
+   - Replaces the .start-screen / .start-panel / .private-space-hero
+     / .landing-passport / .landing-routes / .landing-city-preview
+     / .board-switcher landing stack. Older classes left in place
+     so any direct linkers (e.g. design previews) keep working until
+     the styles.css rewrite PR lands.
+   ───────────────────────────────────────────────────────────────── */
+
+.wc-landing {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: clamp(20px, 6vw, 40px) clamp(16px, 5vw, 32px) 64px;
+  display: grid;
+  gap: 20px;
+  color: var(--ink, #15110d);
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+}
+
+.wc-scoreboard {
+  position: relative;
+  padding: clamp(20px, 5vw, 32px);
+  background: linear-gradient(160deg, var(--pitch, #0E5C3A) 0%, var(--pitch-deep, #0B4630) 100%);
+  color: #f7f3ea;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  overflow: hidden;
+}
+.wc-scoreboard::before {
+  /* faint pitch lines top + bottom — a single hairline, not a stadium mockup */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to bottom, rgba(247, 243, 234, 0.18) 1px, transparent 1px),
+    linear-gradient(to top,    rgba(247, 243, 234, 0.18) 1px, transparent 1px);
+  background-size: 100% 12px;
+  background-position: 0 12px, 0 calc(100% - 12px);
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+.wc-scoreboard-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.wc-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold, #C9A24B);
+}
+.wc-icon-btn {
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid rgba(247, 243, 234, 0.3);
+  color: #f7f3ea;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+.wc-icon-btn:hover { border-color: var(--gold, #C9A24B); background: rgba(201, 162, 75, 0.08); }
+.wc-icon-btn:focus-visible {
+  outline: 2px solid var(--gold, #C9A24B);
+  outline-offset: 2px;
+}
+.wc-display {
+  margin: 12px 0 6px;
+  font-family: var(--font-display, 'Fraunces', 'Georgia', serif);
+  font-size: clamp(2.4rem, 9vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+.wc-tagline {
+  margin: 0;
+  color: rgba(247, 243, 234, 0.86);
+  font-size: 15px;
+  line-height: 1.45;
+  max-width: 28rem;
+}
+.wc-passport {
+  margin: 16px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(247, 243, 234, 0.08);
+  border: 1px solid rgba(247, 243, 234, 0.15);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: rgba(247, 243, 234, 0.92);
+}
+.wc-passport-flag {
+  width: 16px;
+  height: 12px;
+  display: inline-block;
+  border: 1px solid rgba(247, 243, 234, 0.3);
+}
+.wc-passport strong { font-weight: 600; }
+.wc-passport em { font-style: normal; color: rgba(247, 243, 234, 0.7); }
+
+.wc-card {
+  padding: clamp(16px, 4vw, 24px);
+  background: var(--paper-elevated, #ffffff);
+  border: 1px solid var(--hairline, rgba(23, 21, 19, 0.12));
+  border-radius: 0;
+  display: grid;
+  gap: 14px;
+}
+.wc-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wc-card-head h2 {
+  margin: 0;
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.wc-card-hint {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--ink-soft, rgba(23, 21, 19, 0.55));
+}
+
+.wc-cta {
+  gap: 12px;
+}
+.wc-primary {
+  display: block;
+  width: 100%;
+  padding: 16px 20px;
+  background: var(--pitch, #0E5C3A);
+  color: #f7f3ea;
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  min-height: 56px;
+  transition: background 0.15s, transform 0.15s;
+}
+.wc-primary:hover {
+  background: var(--pitch-deep, #0B4630);
+}
+.wc-primary:active { transform: translateY(1px); }
+.wc-primary:focus-visible {
+  outline: 2px solid var(--gold, #C9A24B);
+  outline-offset: 3px;
+}
+.wc-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+  color: var(--ink-soft, rgba(23, 21, 19, 0.45));
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.wc-divider::before,
+.wc-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--hairline, rgba(23, 21, 19, 0.12));
+}
+.wc-link-action {
+  align-self: start;
+  margin-top: 4px;
+  padding: 12px 0;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-body, system-ui, sans-serif);
+  font-size: 14px;
+  color: var(--ink-soft, rgba(23, 21, 19, 0.6));
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--gold, #C9A24B);
+}
+.wc-link-action:hover { color: var(--pitch, #0E5C3A); }
+
+.wc-rooms { padding: clamp(12px, 3vw, 18px); }
+.wc-room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.wc-room-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
+}
+.wc-room-link {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+  min-height: 56px;
+}
+.wc-room-link:hover {
+  background: var(--paper-muted, #f1ecdf);
+  border-color: var(--hairline, rgba(23, 21, 19, 0.08));
+}
+.wc-room-mark {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--pitch, #0E5C3A);
+  color: #f7f3ea;
+  font-size: 16px;
+  border-radius: 0;
+}
+.wc-room-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.wc-room-meta strong {
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 1rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-room-meta em {
+  font-style: normal;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--ink-soft, rgba(23, 21, 19, 0.55));
+}
+.wc-room-go { color: var(--ink-soft, rgba(23, 21, 19, 0.4)); font-size: 18px; }
+.wc-room-link:hover .wc-room-go { color: var(--pitch, #0E5C3A); }
+.wc-room-remove {
+  width: 44px;
+  min-width: 44px;
+  background: transparent;
+  border: 0;
+  color: var(--ink-soft, rgba(23, 21, 19, 0.35));
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.wc-room-remove:hover { color: var(--pitch-deep, #0B4630); }
+.wc-room-remove:focus-visible {
+  outline: 2px solid var(--gold, #C9A24B);
+  outline-offset: -2px;
+}
+
+.wc-settings { padding: 0; }
+.wc-settings :global(.profile-settings) { border: 0; }
+
+.wc-footer {
+  margin-top: 16px;
+  text-align: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--ink-soft, rgba(23, 21, 19, 0.5));
+}
+.wc-footer a {
+  color: var(--pitch, #0E5C3A);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

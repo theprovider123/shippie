@@ -1,29 +1,18 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { HostMatchday } from './host/HostMatchday.tsx';
 import { GuestMatchday } from './guest/GuestMatchday.tsx';
 import { DisplayMatchday } from './display/DisplayMatchday.tsx';
 import { JoinForm } from './guest/JoinForm.tsx';
-import { ALL_FIXTURES, HOST_CITIES, HOST_CITY_PROFILES, TEAMS, teamByCode } from './data/tournament.ts';
+import { teamByCode } from './data/tournament.ts';
 import { copyFor, detectLocale, type Locale } from './i18n.ts';
 import { detectTimeZone } from './lib/time-zone.ts';
-import { readSavedRooms, readUserProfile, saveRoomShortcut, saveUserProfile, type SavedRoom, type UserProfile } from './shared/local-store.ts';
+import { readSavedRooms, readUserProfile, removeRoomShortcut, saveRoomShortcut, saveUserProfile, type SavedRoom, type UserProfile } from './shared/local-store.ts';
 import { getStablePeerId, randomId } from './shared/peer-id.ts';
 import { matchRoomUrl, readRoomParams } from './shared/signal-config.ts';
 import type { RoomTemplate } from './shared/types.ts';
-import { BoardSwitcher } from './ui/BoardSwitcher.tsx';
-import { ForYouStrip } from './ui/ForYouStrip.tsx';
-import { InstallPanel } from './ui/InstallPanel.tsx';
-import { EngagementLoopPanel } from './ui/EngagementLoopPanel.tsx';
 import { ProfileSettings } from './ui/ProfileSettings.tsx';
-import { ViralMomentsPanel } from './ui/ViralMomentsPanel.tsx';
 
-const ROOM_TEMPLATES: RoomTemplate[] = ['friends', 'pub', 'family', 'office', 'hardcore', 'watch-party'];
-const BOARD_PRESETS: Array<{ title: string; template: RoomTemplate; label: string }> = [
-  { title: 'Personal board', template: 'hardcore', label: 'Personal' },
-  { title: 'Friends board', template: 'friends', label: 'Friends' },
-  { title: 'Family board', template: 'family', label: 'Family' },
-  { title: 'Company board', template: 'office', label: 'Company' },
-];
+const TEMPLATE_DEFAULT: RoomTemplate = 'friends';
 
 export function App() {
   const [params, setParams] = useState(() => readRoomParams());
@@ -38,26 +27,18 @@ export function App() {
     return { ...existing, locale: params.locale ?? existing.locale, timeZone: params.timeZone ?? existing.timeZone };
   });
   const [locale, setLocale] = useState<Locale>(() => normaliseLocale(profile.locale));
-  const [template, setTemplate] = useState<RoomTemplate>(() => params.template);
   const [timeZone, setTimeZone] = useState(() => profile.timeZone);
   const [savedRooms, setSavedRooms] = useState<SavedRoom[]>(() => readSavedRooms());
+  const [profileOpen, setProfileOpen] = useState(false);
   const copy = useMemo(() => copyFor(locale), [locale]);
-  const hasIdentity = Boolean(profile.updatedAt || profile.displayName);
-  const latestRoom = savedRooms[0] ?? null;
-  const movedFromLiveRoom =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('from') === 'live-room';
 
   const updateProfile = (next: Partial<Omit<UserProfile, 'updatedAt'>>) => {
-    const saved = saveUserProfile(next);
-    setProfile(saved);
+    setProfile(saveUserProfile(next));
   };
-
   const updateLocale = (next: Locale) => {
     setLocale(next);
     setProfile(saveUserProfile({ locale: next }));
   };
-
   const updateTimeZone = (next: string) => {
     setTimeZone(next);
     setProfile(saveUserProfile({ timeZone: next }));
@@ -67,15 +48,19 @@ export function App() {
     applyIdentityTheme(profile);
   }, [profile]);
 
-  const startHost = (nextTemplate: RoomTemplate = template, title = boardTitle(nextTemplate)) => {
+  // Start a room. `solo=true` creates a hidden "just me" room — same data
+  // model, no invite expected. Front-door cold-start path that lets you
+  // get value before sharing.
+  const startHost = (opts: { template?: RoomTemplate; title?: string; solo?: boolean } = {}) => {
+    const template = opts.template ?? TEMPLATE_DEFAULT;
+    const title = opts.title ?? (opts.solo ? 'Just me' : 'Match room');
     const roomId = randomId('match').replace(/^match_/, 'match-');
     const roomKey = randomId('key').replace(/^key_/, '');
-    const url = matchRoomUrl({ role: 'host', roomId, roomKey, template: nextTemplate, locale, timeZone });
+    const url = matchRoomUrl({ role: 'host', roomId, roomKey, template, locale, timeZone });
     window.history.replaceState(null, '', url);
     setParams(readRoomParams());
-    setTemplate(nextTemplate);
     setSavedRooms((rooms) => [
-      saveRoomShortcut({ id: roomId, title, role: 'host', template: nextTemplate, url }),
+      saveRoomShortcut({ id: roomId, title, role: 'host', template, url }),
       ...rooms.filter((room) => room.id !== roomId),
     ]);
   };
@@ -98,7 +83,7 @@ export function App() {
     setSavedRooms((rooms) => [
       saveRoomShortcut({
         id: roomId,
-        title: boardTitle(params.template),
+        title: defaultRoomTitle(params.template),
         role,
         template: params.template,
         url,
@@ -108,93 +93,20 @@ export function App() {
   }, [locale, params.role, params.roomId, params.roomKey, params.signalBase, params.template, timeZone]);
 
   if (!params.role || !params.roomId || !params.roomKey) {
-    return (
-      <main className="start-screen">
-        <section className="stadium-mark" aria-hidden="true">
-          <div className="pitch">
-            <span />
-            <span />
-            <span />
-          </div>
-        </section>
-        <section className="start-panel">
-          <p className="eyebrow">{copy.startEyebrow}</p>
-          <h1>{copy.startHeadline}</h1>
-          <p className="start-support">{copy.startSupport}</p>
-          {movedFromLiveRoom ? (
-            <p className="moved-notice">
-              Live Room is now Match Room. It keeps the same-room play idea, but uses persistent rooms, share links, and sealed archives instead of temporary mesh-only sessions.
-            </p>
-          ) : null}
-          <PrivateSpaceHero onCreate={startHost} />
-          {hasIdentity ? (
-            <LandingPassport
-              profile={profile}
-              locale={locale}
-              timeZone={timeZone}
-              latestRoom={latestRoom}
-              onCreate={() => startHost()}
-              onCreateTemplate={startHost}
-              onProfileChange={updateProfile}
-              onLocaleChange={updateLocale}
-              onTimeZoneChange={updateTimeZone}
-            />
-          ) : null}
-          {!hasIdentity ? (
-            <>
-              <div className="start-controls">
-                <label>
-                  {copy.templatesLabel}
-                  <select value={template} onChange={(event) => setTemplate(event.currentTarget.value as RoomTemplate)}>
-                    {ROOM_TEMPLATES.map((item) => (
-                      <option key={item} value={item}>{templateLabel(copy, item)}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="start-actions start-actions-hero">
-                <button className="primary-action" onClick={() => startHost()}>{copy.startAction}</button>
-                <button type="button" onClick={() => document.getElementById('landing-routes')?.scrollIntoView({ behavior: 'smooth' })}>Room types</button>
-              </div>
-            </>
-          ) : null}
-          <JoinForm copy={copy} />
-          {!hasIdentity ? (
-            <details className="simple-drawer landing-identity-drawer">
-              <summary>
-                <span>Optional setup</span>
-                <strong>Choose name, team, language, theme</strong>
-              </summary>
-              <ProfileSettings
-                variant="panel"
-                profile={profile}
-                locale={locale}
-                timeZone={timeZone}
-                onProfileChange={updateProfile}
-                onLocaleChange={updateLocale}
-                onTimeZoneChange={updateTimeZone}
-              />
-            </details>
-          ) : null}
-          {hasIdentity ? null : <InstallPanel />}
-          <LandingRoutes onCreate={startHost} />
-          {/* Secondary surfaces below the hero fold. Keep them reachable
-              via scroll, but don't let them compete with the Create /
-              Join / Room-types primary actions on first paint. */}
-          <section className="hero-secondary" aria-label="More about the tournament">
-            <div className="tournament-stats" aria-label="Tournament scale">
-              <strong>{TEAMS.length}<span>nations</span></strong>
-              <strong>{ALL_FIXTURES.length}<span>matches</span></strong>
-              <strong>{HOST_CITIES.length}<span>host cities</span></strong>
-            </div>
-            {hasIdentity ? <ForYouStrip profile={profile} locale={locale} timeZone={timeZone} /> : <EngagementLoopPanel />}
-            {hasIdentity ? null : <ViralMomentsPanel />}
-            <LandingCityPreview />
-            <BoardSwitcher rooms={savedRooms} onChange={setSavedRooms} />
-          </section>
-        </section>
-      </main>
-    );
+    return <Landing
+      profile={profile}
+      locale={locale}
+      timeZone={timeZone}
+      savedRooms={savedRooms}
+      profileOpen={profileOpen}
+      onProfileOpen={setProfileOpen}
+      onProfileChange={updateProfile}
+      onLocaleChange={updateLocale}
+      onTimeZoneChange={updateTimeZone}
+      onStartHost={startHost}
+      onRoomsChange={setSavedRooms}
+      copy={copy}
+    />;
   }
 
   if (params.role === 'host') {
@@ -218,6 +130,9 @@ export function App() {
     );
   }
 
+  // The `display` role is preserved for old shared URLs. New "Cast"
+  // affordances open `?role=display` in a new window from the host
+  // info sheet; the URL contract is unchanged.
   if (params.role === 'display') {
     return (
       <DisplayMatchday
@@ -248,6 +163,173 @@ export function App() {
       onRoomsChange={setSavedRooms}
     />
   );
+}
+
+/**
+ * Landing — one CTA, one join, one solo link, saved rooms.
+ *
+ * Replaces the previous landing's 11 stacked sections (PrivateSpaceHero,
+ * LandingPassport, ROOM_TEMPLATES select, JoinForm, optional-setup
+ * drawer, InstallPanel, LandingRoutes, tournament-stats strip,
+ * ForYouStrip/EngagementLoopPanel, ViralMomentsPanel, LandingCityPreview,
+ * BoardSwitcher) with a single scoreboard-style hero plus a saved-rooms
+ * list. Settings live behind a single button (no more landing-passport
+ * conditional split).
+ */
+function Landing(props: {
+  profile: UserProfile;
+  locale: Locale;
+  timeZone: string;
+  savedRooms: SavedRoom[];
+  profileOpen: boolean;
+  onProfileOpen: (open: boolean) => void;
+  onProfileChange: (next: Partial<Omit<UserProfile, 'updatedAt'>>) => void;
+  onLocaleChange: (next: Locale) => void;
+  onTimeZoneChange: (next: string) => void;
+  onStartHost: (opts?: { template?: RoomTemplate; title?: string; solo?: boolean }) => void;
+  onRoomsChange: (rooms: SavedRoom[]) => void;
+  copy: ReturnType<typeof copyFor>;
+}) {
+  const team = teamByCode(props.profile.primaryTeam);
+  const hasIdentity = Boolean(props.profile.updatedAt || props.profile.displayName);
+  const rooms = uniqueRooms(props.savedRooms);
+
+  const removeRoom = (roomId: string) => {
+    props.onRoomsChange(removeRoomShortcut(roomId));
+  };
+
+  return (
+    <main className="wc-landing">
+      <header className="wc-scoreboard">
+        <div className="wc-scoreboard-row">
+          <span className="wc-eyebrow">2026 · World Cup</span>
+          <button
+            type="button"
+            className="wc-icon-btn"
+            aria-label={props.profileOpen ? 'Close settings' : 'Open settings'}
+            aria-expanded={props.profileOpen}
+            onClick={() => props.onProfileOpen(!props.profileOpen)}
+          >
+            ⚙
+          </button>
+        </div>
+        <h1 className="wc-display">Match Room</h1>
+        <p className="wc-tagline">Watch the World Cup together. Private rooms. No accounts. No ads.</p>
+        {hasIdentity ? (
+          <p className="wc-passport">
+            <span className="wc-passport-flag" style={{ background: team.swatch[0] }} aria-hidden="true" />
+            <strong>{props.profile.displayName || 'Supporter'}</strong>
+            <em>following {team.name}</em>
+          </p>
+        ) : null}
+      </header>
+
+      {props.profileOpen ? (
+        <section className="wc-card wc-settings" aria-label="Profile and settings">
+          <ProfileSettings
+            variant="panel"
+            profile={props.profile}
+            locale={props.locale}
+            timeZone={props.timeZone}
+            onProfileChange={props.onProfileChange}
+            onLocaleChange={props.onLocaleChange}
+            onTimeZoneChange={props.onTimeZoneChange}
+          />
+        </section>
+      ) : null}
+
+      <section className="wc-card wc-cta" aria-label="Start or join a room">
+        <button
+          className="wc-primary"
+          type="button"
+          onClick={() => props.onStartHost()}
+        >
+          Start a room
+        </button>
+        <div className="wc-divider"><span>or</span></div>
+        <JoinForm copy={props.copy} />
+        <button
+          type="button"
+          className="wc-link-action"
+          onClick={() => props.onStartHost({ title: 'Just me', solo: true })}
+        >
+          Or: track predictions just for me →
+        </button>
+      </section>
+
+      {rooms.length > 0 ? (
+        <section className="wc-card wc-rooms" aria-labelledby="wc-rooms-title">
+          <header className="wc-card-head">
+            <h2 id="wc-rooms-title">Your rooms</h2>
+            <span className="wc-card-hint">{rooms.length} saved</span>
+          </header>
+          <ul className="wc-room-list" role="list">
+            {rooms.map((room) => (
+              <li key={`${room.role}:${room.id}`}>
+                <a href={room.url} className="wc-room-link" aria-label={`Enter ${room.title}`}>
+                  <span className="wc-room-mark" aria-hidden="true">⚽</span>
+                  <span className="wc-room-meta">
+                    <strong>{room.title}</strong>
+                    <em>{room.role === 'host' ? 'You created · ' : ''}{templateBlurb(room.template)}</em>
+                  </span>
+                  <span className="wc-room-go" aria-hidden="true">→</span>
+                </a>
+                <button
+                  type="button"
+                  className="wc-room-remove"
+                  aria-label={`Remove ${room.title}`}
+                  onClick={() => removeRoom(room.id)}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <footer className="wc-footer">
+        <small>
+          Private spaces, no login. <a href="/apps/match-room">About this app</a>
+        </small>
+      </footer>
+    </main>
+  );
+}
+
+function uniqueRooms(rooms: SavedRoom[]): SavedRoom[] {
+  const byId = new Map<string, SavedRoom>();
+  for (const room of rooms) {
+    const existing = byId.get(room.id);
+    if (!existing || new Date(room.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
+      byId.set(room.id, room);
+    }
+  }
+  return Array.from(byId.values());
+}
+
+function templateBlurb(template: string): string {
+  switch (template) {
+    case 'family': return 'Family vibe';
+    case 'office': return 'Office vibe';
+    case 'hardcore': return 'Solo / hardcore';
+    case 'pub': return 'Pub vibe';
+    case 'watch-party': return 'Watch party';
+    case 'friends':
+    default:
+      return 'Friends vibe';
+  }
+}
+
+function defaultRoomTitle(template: RoomTemplate): string {
+  switch (template) {
+    case 'family': return 'Family room';
+    case 'office': return 'Office room';
+    case 'hardcore': return 'Just me';
+    case 'pub': return 'Pub room';
+    case 'watch-party': return 'Watch party';
+    case 'friends': return 'Friends room';
+  }
 }
 
 function normaliseLocale(locale: string): Locale {
@@ -284,197 +366,4 @@ function darken(hex: string): string {
   if (value.length !== 6) return hex;
   const parts = [0, 2, 4].map((index) => Math.max(0, Math.round(parseInt(value.slice(index, index + 2), 16) * 0.68)));
   return `#${parts.map((part) => part.toString(16).padStart(2, '0')).join('')}`;
-}
-
-function PrivateSpaceHero(props: { onCreate: (template?: RoomTemplate, title?: string) => void }) {
-  const steps = [
-    { title: 'Create', text: 'Start one private room for friends, family, work, or a pub table.' },
-    { title: 'Invite', text: 'A link or QR carries the room, role, route, and encrypted room key.' },
-    { title: 'Play', text: 'Phones vote, predict, and react together without sharing a global account.' },
-    { title: 'Archive', text: 'When the tournament ends, the room becomes a private memory.' },
-  ];
-
-  return (
-    <section className="private-space-hero" aria-label="Private space demo">
-      <div>
-        <span>Shippie Spaces demo</span>
-        <h2>Make a private World Cup room in seconds.</h2>
-        <p>
-          Match Room is the proof: a tiny app can create a shared space between phones,
-          keep roles local to the room, and sync the experience without becoming another account system.
-        </p>
-        <p className="space-quiet-proof">
-          Shippie can help move the invite and relay encrypted messages. It cannot read the room.
-        </p>
-      </div>
-      <div className="space-step-grid">
-        {steps.map((step) => (
-          <article key={step.title}>
-            <strong>{step.title}</strong>
-            <p>{step.text}</p>
-          </article>
-        ))}
-      </div>
-      <div className="space-hero-actions">
-        <button className="primary-action" type="button" onClick={() => props.onCreate('pub', 'Pub board')}>
-          Create pub room
-        </button>
-        <button type="button" onClick={() => props.onCreate('friends', 'Friends board')}>
-          Create friends room
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function LandingPassport(props: {
-  profile: UserProfile;
-  locale: Locale;
-  timeZone: string;
-  latestRoom: SavedRoom | null;
-  onCreate: () => void;
-  onCreateTemplate: (template?: RoomTemplate, title?: string) => void;
-  onProfileChange: (profile: Partial<Omit<UserProfile, 'updatedAt'>>) => void;
-  onLocaleChange: (locale: Locale) => void;
-  onTimeZoneChange: (timeZone: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const team = teamByCode(props.profile.primaryTeam);
-
-  return (
-    <section className="landing-passport" style={{ '--swatch-a': team.swatch[0], '--swatch-b': team.swatch[1] } as CSSProperties}>
-      <div className="passport-card">
-        <span className="flag-cloth" />
-        <div>
-          <small>Tournament passport</small>
-          <strong>{props.profile.displayName || 'Match Room supporter'}</strong>
-          <em>{team.name} · {props.profile.followedTeams.length} followed teams · {props.timeZone.replace('_', ' ')}</em>
-        </div>
-        <button type="button" onClick={() => setEditing((current) => !current)}>
-          {editing ? 'Close' : 'Edit'}
-        </button>
-      </div>
-      {editing ? (
-        <ProfileSettings
-          variant="panel"
-          profile={props.profile}
-          locale={props.locale}
-          timeZone={props.timeZone}
-          onProfileChange={props.onProfileChange}
-          onLocaleChange={props.onLocaleChange}
-          onTimeZoneChange={props.onTimeZoneChange}
-        />
-      ) : (
-        <div className="passport-actions">
-          {props.latestRoom ? <a className="share-card-link" href={props.latestRoom.url}>Enter {props.latestRoom.title}</a> : null}
-          <button className="primary-action" type="button" onClick={props.onCreate}>Create room</button>
-          <button type="button" onClick={() => props.onCreateTemplate('friends', 'Friends board')}>Friends</button>
-          <button type="button" onClick={() => props.onCreateTemplate('office', 'Company board')}>Company</button>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function LandingRoutes(props: { onCreate: (template?: RoomTemplate, title?: string) => void }) {
-  const routes: Array<{ title: string; text: string; action: string; preset: (typeof BOARD_PRESETS)[number] }> = [
-    { title: 'Friends', text: 'Score picks, receipts, VAR votes, and just enough chaos for the group chat.', action: 'Start friends room', preset: BOARD_PRESETS[1]! },
-    { title: 'Family', text: 'Gentle trivia, flag colours, easy predictions, and no harsh callouts.', action: 'Start family room', preset: BOARD_PRESETS[2]! },
-    { title: 'Company', text: '48-team sweepstake, HR-safe banter, daily five, and Monday recap cards.', action: 'Start office board', preset: BOARD_PRESETS[3]! },
-    { title: 'Solo', text: 'Follow a team, track kickoff times, build a bracket, and share prediction receipts.', action: 'Start personal board', preset: BOARD_PRESETS[0]! },
-  ];
-
-  return (
-    <section id="landing-routes" className="landing-routes" aria-label="Ways to use Match Room">
-      <div className="panel-head">
-        <h2>Pick your route</h2>
-        <span>one app, many rooms</span>
-      </div>
-      <div className="route-grid">
-        {routes.map((route) => (
-          <article key={route.title}>
-            <span>{route.title}</span>
-            <p>{route.text}</p>
-            <button type="button" onClick={() => props.onCreate(route.preset.template, route.preset.title)}>
-              {route.action}
-            </button>
-          </article>
-        ))}
-      </div>
-      <div className="viral-strip">
-        <strong>Share loops built in</strong>
-        <span>Prediction receipts</span>
-        <span>Room invite cards</span>
-        <span>Trivia flexes</span>
-        <span>City stamps</span>
-      </div>
-    </section>
-  );
-}
-
-function LandingCityPreview() {
-  const featured = HOST_CITIES.slice(0, 4);
-  return (
-    <section className="landing-city-preview" aria-label="Host city preview">
-      <div className="panel-head">
-        <h2>Host city papers</h2>
-        <span>useful, not just pretty</span>
-      </div>
-      <div className="landing-city-grid">
-        {featured.map((city) => {
-          const profile = HOST_CITY_PROFILES[city.code]!;
-          const matchCount = ALL_FIXTURES.filter((fixture) => fixture.cityCode === city.code).length;
-          return (
-            <article
-              key={city.code}
-              style={{
-                '--city-a': city.palette[0],
-                '--city-b': city.palette[1],
-                '--city-c': city.palette[2],
-              } as CSSProperties}
-            >
-              <span>{city.name}</span>
-              <strong>{matchCount} matches</strong>
-              <p>{profile.paperNote}</p>
-              <small>{profile.localBite.replace('Room snack idea: ', '')}</small>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function boardTitle(template: RoomTemplate): string {
-  switch (template) {
-    case 'family':
-      return 'Family board';
-    case 'office':
-      return 'Company board';
-    case 'hardcore':
-      return 'Personal board';
-    case 'pub':
-      return 'Pub board';
-    case 'watch-party':
-      return 'Watch party board';
-    case 'friends':
-      return 'Friends board';
-  }
-}
-
-function templateLabel(copy: ReturnType<typeof copyFor>, template: RoomTemplate): string {
-  switch (template) {
-    case 'friends':
-      return copy.templateFriends;
-    case 'pub':
-      return copy.templatePub;
-    case 'family':
-      return copy.templateFamily;
-    case 'office':
-      return copy.templateOffice;
-    case 'hardcore':
-      return copy.templateHardcore;
-    case 'watch-party':
-      return copy.templateWatchParty;
-  }
 }

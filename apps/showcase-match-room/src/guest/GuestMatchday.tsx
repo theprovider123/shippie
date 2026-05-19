@@ -9,19 +9,15 @@ import { readPredictionReceipts, savePredictionReceipt, type PredictionReceipt, 
 import { useOpeningLiveScore } from '../shared/use-live-score.ts';
 import { useMatchdayRoom } from '../shared/use-matchday-room.ts';
 import type { RoomTemplate } from '../shared/types.ts';
-import { AppTabs, type AppTab } from '../ui/AppTabs.tsx';
 import { BoardSwitcher } from '../ui/BoardSwitcher.tsx';
 import { CityPaperAtlas } from '../ui/CityPaperAtlas.tsx';
 import { CommentaryRoom } from '../ui/CommentaryRoom.tsx';
 import { ShareCardButton } from '../ui/ShareCardButton.tsx';
 import { TeamFollowPanel } from '../ui/TeamFollowPanel.tsx';
-import { EngagementLoopPanel } from '../ui/EngagementLoopPanel.tsx';
 import { ProfileSettings } from '../ui/ProfileSettings.tsx';
 import { TournamentStructure } from '../ui/TournamentStructure.tsx';
 import { InstallPanel } from '../ui/InstallPanel.tsx';
-import { ViralMomentsPanel } from '../ui/ViralMomentsPanel.tsx';
 import { BanterPanel } from './BanterPanel.tsx';
-import { ForYouStrip } from '../ui/ForYouStrip.tsx';
 import { ChoiceBallot } from './ballots/ChoiceBallot.tsx';
 import { RatingBallot } from './ballots/RatingBallot.tsx';
 import { ScorePredictBallot } from './ballots/ScorePredictBallot.tsx';
@@ -49,7 +45,6 @@ export function GuestMatchday(props: {
 }) {
   const room = useMatchdayRoom(props);
   const [receipts, setReceipts] = useState<PredictionReceipt[]>(() => readPredictionReceipts());
-  const [activeTab, setActiveTab] = useState<AppTab>('today');
   const openPolls = useMemo(() => {
     const seen = new Set<string>();
     return room.polls.filter((poll) => Date.now() <= poll.closesAt).filter((poll) => {
@@ -93,19 +88,14 @@ export function GuestMatchday(props: {
           <StatusPill status={room.status.connection} peers={room.status.peerCount} copy={props.copy} />
         </div>
       </header>
-      <AppTabs active={activeTab} onChange={setActiveTab} />
-      <div hidden={activeTab !== 'room'}>
-        <BoardSwitcher rooms={props.savedRooms} activeRoomId={props.roomId} onChange={props.onRoomsChange} />
-      </div>
-
       {latestApproved ? (
-        <section className="screen-strip" hidden={activeTab !== 'today'}>
+        <section className="screen-strip">
           <span>On screen</span>
           <strong>{latestApproved.text}</strong>
         </section>
       ) : null}
 
-      <section className="next-action-card guest-priority-action" hidden={activeTab !== 'today'}>
+      <section className="next-action-card guest-priority-action">
         <div>
           <span>{openPolls.length + openScorePolls.length ? 'play now' : 'waiting room'}</span>
           <strong>{openPolls.length + openScorePolls.length ? 'Your room has a moment open' : 'Nothing open yet'}</strong>
@@ -114,11 +104,11 @@ export function GuestMatchday(props: {
         {openPolls.length + openScorePolls.length ? (
           <button className="primary-action" onClick={() => document.querySelector('.ballot-stack')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Play now</button>
         ) : (
-          <button onClick={() => setActiveTab('tournament')}>Explore tournament</button>
+          <button onClick={() => document.querySelector('.tournament-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Explore tournament</button>
         )}
       </section>
 
-      <section className={`guest-match-card ${cityTreatmentClass(OPENING_FIXTURE.cityCode)}`.trim()} hidden={activeTab !== 'today'}>
+      <section className={`guest-match-card ${cityTreatmentClass(OPENING_FIXTURE.cityCode)}`.trim()}>
         <p className="eyebrow">Opening match</p>
         <h2>{fixtureTitle(OPENING_FIXTURE)}</h2>
         <div className="match-card-teams compact">
@@ -133,7 +123,7 @@ export function GuestMatchday(props: {
         <p className="muted">{OPENING_FIXTURE.venue}, {OPENING_FIXTURE.city} · {formatKickoff(OPENING_FIXTURE.kickoff, props.timeZone, props.locale)}</p>
       </section>
 
-      <details className="simple-drawer" hidden={activeTab !== 'today'}>
+      <details className="simple-drawer">
         <summary>
           <span>Match guide</span>
           <strong>Kickoff, venue, city notes</strong>
@@ -147,7 +137,7 @@ export function GuestMatchday(props: {
         />
       </details>
 
-      <section className="ballot-stack" hidden={activeTab !== 'today'}>
+      <section className="ballot-stack">
         {openPolls.map((poll) => {
           const tally = room.tallies.find((item) => item.pollId === poll.id);
           if (poll.kind === 'choice') {
@@ -197,25 +187,22 @@ export function GuestMatchday(props: {
       </section>
 
       {latestReceipt ? (
-        <section className="receipt-strip" hidden={activeTab !== 'today'}>
+        <section className="receipt-strip">
           <span>Latest receipt</span>
           <strong>{latestReceipt.matchTitle} · {latestReceipt.home}-{latestReceipt.away}</strong>
           <ShareCardButton provenance={provenanceLabel(liveScore.provenance)} profile={props.profile} prediction={`${latestReceipt.matchTitle} ${latestReceipt.home}-${latestReceipt.away}`} moment="Prediction receipt" />
         </section>
       ) : null}
 
-      <details className="simple-drawer" hidden={activeTab !== 'today'}>
+      <details className="simple-drawer">
         <summary>
-          <span>Room extras</span>
-          <strong>Banter, commentary, share loops</strong>
+          <span>Room chat</span>
+          <strong>Banter and commentary</strong>
         </summary>
         <BanterPanel template={props.template} disabled={room.status.connection !== 'open'} onPrompt={room.submitShoutout} />
         <CommentaryRoom />
-        <EngagementLoopPanel />
-        <ViralMomentsPanel action={latestReceipt ? <ShareCardButton provenance={provenanceLabel(liveScore.provenance)} profile={props.profile} prediction={`${latestReceipt.matchTitle} ${latestReceipt.home}-${latestReceipt.away}`} moment="Prediction receipt" /> : undefined} />
       </details>
-      <div className="tournament-hub" hidden={activeTab !== 'tournament'}>
-        <ForYouStrip profile={props.profile} locale={props.locale} timeZone={props.timeZone} />
+      <div className="tournament-hub">
         <details className="tournament-drawer">
           <summary>
             <span>Tournament format</span>
@@ -265,7 +252,7 @@ export function GuestMatchday(props: {
           <TriviaPanel />
         </details>
       </div>
-      <div className="room-management-stack" hidden={activeTab !== 'room'}>
+      <div className="room-management-stack">
         <SweepstakePanel />
         <details className="simple-drawer">
           <summary>

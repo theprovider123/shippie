@@ -17,18 +17,14 @@ import { useOpeningLiveScore } from '../shared/use-live-score.ts';
 import { useMatchdayRoom } from '../shared/use-matchday-room.ts';
 import type { RoomTemplate, ScorePoll, ScoreTally } from '../shared/types.ts';
 import { BoardSwitcher } from '../ui/BoardSwitcher.tsx';
-import { AppTabs, type AppTab } from '../ui/AppTabs.tsx';
 import { CityPaperAtlas } from '../ui/CityPaperAtlas.tsx';
 import { CommentaryRoom } from '../ui/CommentaryRoom.tsx';
 import { MatchProgramme } from '../ui/MatchProgramme.tsx';
 import { ShareCardButton } from '../ui/ShareCardButton.tsx';
 import { TeamFollowPanel } from '../ui/TeamFollowPanel.tsx';
-import { EngagementLoopPanel } from '../ui/EngagementLoopPanel.tsx';
 import { ProfileSettings } from '../ui/ProfileSettings.tsx';
 import { TournamentStructure } from '../ui/TournamentStructure.tsx';
 import { InstallPanel } from '../ui/InstallPanel.tsx';
-import { ViralMomentsPanel } from '../ui/ViralMomentsPanel.tsx';
-import { ForYouStrip } from '../ui/ForYouStrip.tsx';
 import { TriviaPanel } from '../guest/TriviaPanel.tsx';
 import { durationFromMinutes, randomDrawSeed, randomMemberPlaceholder, randomPlayerPlaceholder } from './host-controller.ts';
 
@@ -57,7 +53,6 @@ export function HostMatchday(props: {
   const [options, setOptions] = useState(() => randomPlayerPlaceholder());
   const [drawSeed, setDrawSeed] = useState(() => randomDrawSeed());
   const [drawMembers, setDrawMembers] = useState(() => randomMemberPlaceholder());
-  const [activeTab, setActiveTab] = useState<AppTab>('today');
   const [lastMoment, setLastMoment] = useState<string | null>(null);
   const [roomModes, setRoomModes] = useState<RoomModes>({
     predictions: true,
@@ -222,14 +217,9 @@ export function HostMatchday(props: {
           <StatusPill status={room.status.connection} peers={room.status.peerCount} copy={props.copy} />
         </div>
       </header>
-      <AppTabs active={activeTab} onChange={setActiveTab} />
-      <div hidden={activeTab !== 'room'}>
-        <BoardSwitcher rooms={props.savedRooms} activeRoomId={props.roomId} onChange={props.onRoomsChange} />
-      </div>
-
-      <section className={`host-grid ${activeTab === 'tournament' ? 'single-pane' : ''}`}>
+      <section className="host-grid">
         <div className="control-column">
-          <section className={`operator-panel match-card ${cityTreatmentClass(OPENING_FIXTURE.cityCode)}`.trim()} hidden={activeTab !== 'today'}>
+          <section className={`operator-panel match-card ${cityTreatmentClass(OPENING_FIXTURE.cityCode)}`.trim()}>
             <div className="panel-head">
               <h2>{fixtureTitle(OPENING_FIXTURE)}</h2>
               <span>{config.title}</span>
@@ -265,7 +255,7 @@ export function HostMatchday(props: {
             ) : null}
           </section>
 
-          <details className="simple-drawer" hidden={activeTab !== 'today'}>
+          <details className="simple-drawer">
             <summary>
               <span>More host controls</span>
               <strong>First goal, next goal, player vote, snacks</strong>
@@ -285,7 +275,7 @@ export function HostMatchday(props: {
             />
           </details>
 
-          <details className="simple-drawer" hidden={activeTab !== 'today'}>
+          <details className="simple-drawer">
             <summary>
               <span>Match guide</span>
               <strong>Kickoff, venue, city notes</strong>
@@ -299,7 +289,7 @@ export function HostMatchday(props: {
             />
           </details>
 
-          <section className="operator-panel room-share-panel" hidden={activeTab !== 'room'}>
+          <section className="operator-panel room-share-panel">
             <div className="panel-head">
               <h2>Invite this room</h2>
               <span>Guest and screen links</span>
@@ -324,7 +314,7 @@ export function HostMatchday(props: {
             </div>
           </section>
 
-          <section className="operator-panel room-tools-panel" hidden={activeTab !== 'room'}>
+          <section className="operator-panel room-tools-panel">
             <details className="advanced-tools">
               <summary>
                 <span>Room game</span>
@@ -351,7 +341,7 @@ export function HostMatchday(props: {
             </details>
           </section>
 
-          <section className="operator-panel host-tools-panel" hidden={activeTab !== 'room'}>
+          <section className="operator-panel host-tools-panel">
             <details className="advanced-tools">
               <summary>
                 <span>Advanced host tools</span>
@@ -382,7 +372,7 @@ export function HostMatchday(props: {
         </div>
 
         <div className="results-column">
-          <section className="operator-panel live-results" hidden={activeTab !== 'today' || (visiblePolls.length === 0 && visibleScorePolls.length === 0)}>
+          <section className="operator-panel live-results" hidden={visiblePolls.length === 0 && visibleScorePolls.length === 0}>
             <div className="panel-head">
               <h2>{props.copy.liveTallies}</h2>
               <span>{visiblePolls.length + visibleScorePolls.length} active</span>
@@ -406,18 +396,23 @@ export function HostMatchday(props: {
             ))}
           </section>
 
-          <details className="simple-drawer" hidden={activeTab !== 'today'}>
+          <details className="simple-drawer">
             <summary>
-              <span>More room energy</span>
-              <strong>Commentary, share ideas, viral loops</strong>
+              <span>Commentary</span>
+              <strong>Optional sideband chatter</strong>
             </summary>
             <CommentaryRoom />
-            <EngagementLoopPanel />
-            <ViralMomentsPanel action={lastMoment ? <ShareCardButton provenance={provenanceLabel(liveScore.provenance)} profile={props.profile} roomName={config.title} moment={lastMoment} /> : undefined} />
+            {lastMoment ? (
+              <ShareCardButton
+                provenance={provenanceLabel(liveScore.provenance)}
+                profile={props.profile}
+                roomName={config.title}
+                moment={lastMoment}
+              />
+            ) : null}
           </details>
 
-          <div className="tournament-hub" hidden={activeTab !== 'tournament'}>
-            <ForYouStrip profile={props.profile} locale={props.locale} timeZone={props.timeZone} />
+          <div className="tournament-hub">
             <details className="tournament-drawer">
               <summary>
                 <span>Tournament format</span>
@@ -461,7 +456,7 @@ export function HostMatchday(props: {
             </details>
           </div>
 
-          <details className="simple-drawer" hidden={activeTab !== 'room'}>
+          <details className="simple-drawer">
             <summary>
               <span>Moderation</span>
               <strong>{room.pendingShoutouts.length} shoutouts pending</strong>
@@ -476,7 +471,7 @@ export function HostMatchday(props: {
               {room.pendingShoutouts.length === 0 ? <p className="muted">{props.copy.queueClear}</p> : null}
             </div>
           </details>
-          <details className="simple-drawer" hidden={activeTab !== 'room'}>
+          <details className="simple-drawer">
             <summary>
               <span>App setup</span>
               <strong>Install Match Room</strong>
