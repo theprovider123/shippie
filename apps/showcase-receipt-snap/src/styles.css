@@ -285,6 +285,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
 /* Review form */
 .review-form {
   display: flex;
+  flex-wrap: wrap;
   flex-direction: column;
   gap: 12px;
   background: #FFFFFF;
@@ -294,6 +295,8 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
 }
 .review-form label {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
@@ -334,12 +337,13 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
 .confidence.med  { background: #FBF1E0; color: #8C5A1D; }
 .confidence.low  { background: #FBE5DE; color: #B6472D; }
 
-.row { display: flex; gap: 10px; }
-.row .grow { flex: 1; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.row .grow { flex: 1 1 160px; min-width: 0; }
 .row .currency { width: 110px; }
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 8px;
 }

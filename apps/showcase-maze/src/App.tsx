@@ -197,11 +197,10 @@ export function App() {
     <main className="app">
       <header className="head">
         <div>
-          <h1>Maze</h1>
-          <p className="muted small">
+          <h1 className="title-hero">Maze</h1>
+          <p className="eyebrow">
             {mode === 'daily' ? `Daily · ${todayKey().slice(5)}` : mode === 'practice' ? 'Practice (no death)' : 'Classic'}
-            {' · '}{world.score} pts · {dotsEaten}/{world.parsed.dotCount} dots
-            {' · '}{'♥'.repeat(Math.max(0, world.lives))}
+            <span className="game-code"> · <span className="score-numeric">{world.score}</span> pts · <span className="score-numeric">{dotsEaten}</span>/<span className="score-numeric">{world.parsed.dotCount}</span> dots · {'♥'.repeat(Math.max(0, world.lives))}</span>
             {mode === 'daily' && stored.dailyStreak > 0 ? <span className="streak"> · 🔥 {stored.dailyStreak}</span> : null}
           </p>
         </div>

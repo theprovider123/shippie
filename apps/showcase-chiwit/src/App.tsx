@@ -72,6 +72,7 @@ interface Insight {
 
 const shippie = createShippieIframeSdk({ appId: 'app_chiwit' });
 const STORAGE_KEY = 'shippie.chiwit.daily-pulse.v1';
+const CHIWIT_LOGO_URL = `${import.meta.env.BASE_URL}brand/chiwit-logo.png`;
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'today', label: 'Today' },
@@ -471,7 +472,7 @@ export function App() {
     <main className="chiwit-app">
       <header className="app-header">
         <button className="brand-lockup" type="button" onClick={() => navigate('today')} aria-label="Open Chiwit today">
-          <img src="/brand/chiwit-logo.png" alt="" />
+          <img src={CHIWIT_LOGO_URL} alt="" />
           <span>
             <strong>Chiwit</strong>
             <small>Daily Pulse</small>
@@ -770,7 +771,7 @@ function PulseRing({ pulse }: { pulse: PulseScore }) {
   return (
     <section className="pulse-card" aria-label={`Daily Pulse ${pulse.overall}`}>
       <div className="pulse-ring" style={{ '--score': pulse.overall } as CSSProperties}>
-        <img src="/brand/chiwit-logo.png" alt="" />
+        <img src={CHIWIT_LOGO_URL} alt="" />
         <strong>{pulse.overall}</strong>
         <span>Daily Pulse</span>
         <small>{pulse.message}</small>

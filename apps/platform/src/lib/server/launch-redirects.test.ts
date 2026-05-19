@@ -63,6 +63,7 @@ describe('launch retired-route redirects', () => {
       '/run/[slug]',
       '/trust-preview',
       '/whitepaper',
+      '/you',
     ]);
     const retired = new Set(Object.keys(RETIRED_PUBLIC_ROUTES));
     const orphaned = inventory.rows

@@ -40,9 +40,11 @@ describe('/run/[slug]/+page.server load', () => {
     ['care-log', 'co-pilot'],
     ['journal', 'therapy-notes'],
     ['move', 'lift'],
-    ['shopping-list', '/run/recipe?tab=shopping&from=shopping-list'],
-    ['meal-planner', '/run/recipe?tab=meal-plan&from=meal-planner'],
-    ['pantry-scanner', '/run/recipe?tab=pantry&from=pantry-scanner'],
+    ['recipe', 'palate'],
+    ['recipe-saver', 'palate'],
+    ['shopping-list', '/run/palate?tab=shop&from=shopping-list'],
+    ['meal-planner', '/run/palate?tab=plan&from=meal-planner'],
+    ['pantry-scanner', '/run/palate?tab=pantry&from=pantry-scanner'],
   ] as const) {
     test(`/run/${oldSlug} throws redirect(302) to canonical successor`, () => {
       try {
@@ -74,13 +76,13 @@ describe('/run/[slug]/+page.server load', () => {
     });
   }
 
-  test('canonical /run/recipe does NOT redirect (proceeds to load container data)', () => {
+  test('canonical /run/palate does NOT redirect (proceeds to load container data)', () => {
     // Canonical slug → no redirect thrown. Without platform bindings
     // the load will fail differently (calling loadContainerPageData
     // with platform=undefined), but it should NOT throw a 302 first.
     let threwRedirect = false;
     try {
-      callLoad({ slug: 'recipe' });
+      callLoad({ slug: 'palate' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       if (r.status === 302) threwRedirect = true;
@@ -119,13 +121,13 @@ describe('/run/[slug]/+page.server load', () => {
     }
   });
 
-  test('recipe tab redirects preserve existing query and inject tab params', () => {
+  test('palate tab redirects preserve existing query and inject tab params', () => {
     try {
       callLoad({ slug: 'shopping-list', search: '?invite=abc' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
-      expect(r.location).toBe('/run/recipe?invite=abc&tab=shopping&from=shopping-list');
+      expect(r.location).toBe('/run/palate?invite=abc&tab=shop&from=shopping-list');
     }
   });
 

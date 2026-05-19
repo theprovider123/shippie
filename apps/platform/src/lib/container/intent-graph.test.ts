@@ -10,7 +10,7 @@
  *   2. Every provider has at least one declared consumer OR is on
  *      the allowed-orphan list (intents some apps may listen to in
  *      future without yet having a producer in-tree).
- *   3. The cross-cluster acceptance pair (Recipe Saver ->
+ *   3. The cross-cluster acceptance pair (Palate ->
  *      Habit Tracker on `cooked-meal`) resolves through the
  *      registry exactly the way the design pass requires.
  *   4. Heavy-hitting intents (cooked-meal, workout-completed,
@@ -71,6 +71,9 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   'cooking-now',
   'dough-ready',
   'hydration-logged',
+  // Palate — useful for /today and future household planning surfaces,
+  // but no curated iframe app consumes meal-planned directly yet.
+  'meal-planned',
   // Cycle — single-user journal-shape; no curated consumer.
   'cycle-logged',
   // Hearth — household-internal events; no curated cross-app consumer
@@ -185,10 +188,10 @@ describe('intent graph — registry resolves all curated intents', () => {
     }
   });
 
-  test('cross-cluster acceptance: Recipe Saver provides cooked-meal to Habit Tracker', () => {
+  test('cross-cluster acceptance: Palate provides cooked-meal to Habit Tracker', () => {
     const providers = registry.providersFor('cooked-meal');
     const consumers = registry.consumersFor('cooked-meal');
-    expect(providers.map((p) => p.appSlug)).toContain('recipe');
+    expect(providers.map((p) => p.appSlug)).toContain('palate');
     expect(consumers.map((c) => c.appSlug)).toContain('habit-tracker');
   });
 

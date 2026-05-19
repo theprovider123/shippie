@@ -133,7 +133,7 @@ shippie.feedback.submit({
 
   <div class="launchpad-stripe" aria-label="Status at a glance">
     <span class="vis vis-{data.app.visibilityScope}">{data.app.visibilityScope}</span>
-    <span class="stat">{data.app.installCount ?? 0} installs</span>
+    <span class="stat">{data.app.installCount ?? 0} opens</span>
     <span class="stat">{data.app.upvoteCount ?? 0} favorites</span>
     <span class="stat">{data.app.feedbackOpenCount ?? 0} feedback</span>
   </div>
@@ -141,7 +141,7 @@ shippie.feedback.submit({
   <div class="launchpad-quick">
     <a class="quick" href={`/dashboard/apps/${data.app.slug}/analytics`}>
       <strong>Analytics</strong>
-      <span>Opens, installs, latest event</span>
+      <span>Opens, favorites, latest event</span>
     </a>
     <a class="quick" href={`/dashboard/apps/${data.app.slug}/feedback`}>
       <strong>Feedback</strong>

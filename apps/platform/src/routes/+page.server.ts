@@ -29,7 +29,7 @@ const PER_PAGE = 48;
  */
 const LAUNCHER_FEATURED_SLUGS = [
   'crewtrip',
-  'recipe',
+  'palate',
   'coffee',
   'dough',
   'cooking',

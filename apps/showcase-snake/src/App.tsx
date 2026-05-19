@@ -232,10 +232,10 @@ export function App() {
     <main className="app">
       <header className="head">
         <div>
-          <h1>Snake</h1>
-          <p className="muted small">
+          <h1 className="title-hero">Snake</h1>
+          <p className="eyebrow">
             {mode === 'daily' ? `Daily · ${todayKey().slice(5)}` : mode === 'loop' ? 'Loop walls' : 'Classic'}
-            {' · '}{world.score} pts · {world.applesEaten} apples
+            <span className="game-code"> · <span className="score-numeric">{world.score}</span> pts · <span className="score-numeric">{world.applesEaten}</span> apples</span>
             {speedPct > 0 ? <span className="speed-chip">+{speedPct}%</span> : null}
             {mode === 'daily' && stored.dailyStreak > 0 ? <span className="streak"> · 🔥 {stored.dailyStreak}</span> : null}
           </p>
@@ -302,9 +302,11 @@ export function App() {
 
       {world.state === 'over' ? (
         <section className="overlay" aria-live="polite">
-          <p className="finish-line">Bit yourself · {world.score} pts</p>
+          <p className="finish-line">
+            Bit yourself · <span className="score-numeric size-hero">{world.score}</span> pts
+          </p>
           <p className="muted small">
-            Best {mode}: {mode === 'classic' ? stored.bestClassic : mode === 'loop' ? stored.bestLoop : stored.bestDaily} pts
+            Best {mode}: <span className="score-numeric size-card">{mode === 'classic' ? stored.bestClassic : mode === 'loop' ? stored.bestLoop : stored.bestDaily}</span> pts
           </p>
           <div className="overlay-actions">
             <button type="button" className="primary" onClick={() => startGame(mode)}>Play again</button>

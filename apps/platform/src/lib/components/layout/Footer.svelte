@@ -24,7 +24,6 @@
         <a href="/docs/privacy">Privacy</a>
         <a href="/docs/terms">Terms</a>
         <a href="/docs/security">Security</a>
-        <a href="/docs/install">Install</a>
       </div>
     </div>
   </div>

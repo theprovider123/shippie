@@ -5,13 +5,13 @@ import { curatedApps } from './state';
 describe('findRequestedApp', () => {
   test('resolves public runtime aliases to curated container slugs', () => {
     const app = findRequestedApp(curatedApps, 'recipe');
-    expect(app?.slug).toBe('recipe');
-    expect(app?.standaloneUrl).toBe('/run/recipe');
+    expect(app?.slug).toBe('palate');
+    expect(app?.standaloneUrl).toBe('/run/palate');
   });
 
-  test('resolves legacy recipe-saver requests to the source slug', () => {
+  test('resolves legacy recipe-saver requests to the consolidated food app', () => {
     const app = findRequestedApp(curatedApps, 'recipe-saver');
-    expect(app?.slug).toBe('recipe');
+    expect(app?.slug).toBe('palate');
   });
 
   test('keeps retired mode slugs resolvable through their consolidated homes', () => {

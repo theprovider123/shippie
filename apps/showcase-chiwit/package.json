@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "bun test src",
+    "test": "echo 'no tests yet'",
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {

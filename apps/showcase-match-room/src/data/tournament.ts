@@ -114,8 +114,8 @@ export const TEAMS: Team[] = [
 ];
 
 export const TEAM_PROFILES: Record<string, TeamProfile> = {
-  MEX: { code: 'MEX', region: 'North America', shortFact: 'Hosts the opening night, so every room starts with a proper home-crowd test.', roomPrompt: 'Who handles the opening-night pressure best?' },
-  RSA: { code: 'RSA', region: 'Southern Africa', shortFact: 'A room-friendly pick for upset cards: bright swatches, loud support, big opener energy.', roomPrompt: 'Does South Africa spoil the party?' },
+  MEX: { code: 'MEX', region: 'North America', shortFact: 'Host nation for the opener, with altitude, pressure, and the home crowd all in play.', roomPrompt: 'Who handles the opening-night pressure best?' },
+  RSA: { code: 'RSA', region: 'Southern Africa', shortFact: 'South Africa bring speed, colour, and underdog energy into the first match.', roomPrompt: 'Does South Africa spoil the party?' },
   KOR: { code: 'KOR', region: 'East Asia', shortFact: 'Korea Republic brings pace, pressing, and a fan culture that travels well.', roomPrompt: 'Who is chasing every loose ball?' },
   CZE: { code: 'CZE', region: 'Central Europe', shortFact: 'Czechia is a tidy tournament-room pick: disciplined, technical, and awkward to call.', roomPrompt: 'Is this the quietly dangerous team?' },
   CAN: { code: 'CAN', region: 'North America', shortFact: 'Canada gives the app its first northern-host storyline and a natural office sweepstake favourite.', roomPrompt: 'How far does the host-city bounce go?' },
@@ -165,7 +165,7 @@ export const TEAM_PROFILES: Record<string, TeamProfile> = {
 };
 
 export const HOST_CITY_PROFILES: Record<string, HostCityProfile> = {
-  'MEX-CITY': { code: 'MEX-CITY', timeZone: 'America/Mexico_City', venueName: 'Mexico City Stadium', cityNote: 'Opening-night altitude, colour, and noise. Match Room treats it with papel-picado rhythm and vivid pink/gold accents.', venueNote: 'Historic football setting, framed generically here to avoid official venue marks.', localBite: 'Room snack idea: tacos al pastor, lime, and something cold.', paperNote: 'Barragan pink, volcanic green, papel-picado cuts, and warm museum paper.' },
+  'MEX-CITY': { code: 'MEX-CITY', timeZone: 'America/Mexico_City', venueName: 'Mexico City Stadium', cityNote: "Opening-night altitude, colour, and noise in one of football's great high-altitude cities.", venueNote: 'Historic football setting, framed generically here to avoid official venue marks.', localBite: 'Room snack idea: tacos al pastor, lime, and something cold.', paperNote: 'Barragan pink, volcanic green, papel-picado cuts, and warm museum paper.' },
   GDL: { code: 'GDL', timeZone: 'America/Mexico_City', venueName: 'Estadio Guadalajara', cityNote: 'A western Mexico stop with tiled pattern energy and warm tournament colour.', venueNote: 'A large modern football ground; Match Room uses generic venue naming.', localBite: 'Room snack idea: birria-style tacos or tortas ahogadas.', paperNote: 'Talavera tile rhythm, mariachi poster warmth, terracotta, and deep green.' },
   MTY: { code: 'MTY', timeZone: 'America/Monterrey', venueName: 'Estadio Monterrey', cityNote: 'Mountain-backed northern Mexico energy with a bolder blue-and-red palette.', venueNote: 'A dramatic setting for wide-screen display rooms.', localBite: 'Room snack idea: cabrito-inspired grill plates.', paperNote: 'Sierra ridgelines, industrial blue, rust red, and dry northern paper grain.' },
   TOR: { code: 'TOR', timeZone: 'America/Toronto', venueName: 'Toronto Stadium', cityNote: 'Lake-shore host city, useful for family rooms and North American timezone handoffs.', venueNote: 'Compact city venue energy, rendered with red, black, and lake-light neutrals.', localBite: 'Room snack idea: peameal sandwiches or loaded fries.', paperNote: 'Streetcar red, lake grey, skyline grid lines, and crisp newspaper margins.' },

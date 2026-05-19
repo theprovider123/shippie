@@ -133,10 +133,10 @@ export function App() {
       </div>
 
       <header>
-        <h1>Body</h1>
-        <p>
-          {entries.length} entr{entries.length === 1 ? 'y' : 'ies'} ·{' '}
-          {photoCount} photo{photoCount === 1 ? '' : 's'} on this device
+        <h1 className="title-hero">Body</h1>
+        <p className="eyebrow">
+          <span className="score-numeric">{entries.length}</span> entr{entries.length === 1 ? 'y' : 'ies'} ·{' '}
+          <span className="score-numeric">{photoCount}</span> photo{photoCount === 1 ? '' : 's'} on this device
         </p>
       </header>
 

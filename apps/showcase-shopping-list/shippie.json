@@ -29,7 +29,7 @@
   "curation": {
     "surface": "archived",
     "category": "tools",
-    "successor": "recipe"
+    "successor": "palate"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-shopping-list",
   "license": "AGPL-3.0-or-later",

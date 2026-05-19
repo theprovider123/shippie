@@ -130,6 +130,15 @@
   @media (max-width: 640px), (display-mode: standalone) {
     .bottom-dock {
       display: grid;
+      background: rgba(20, 18, 15, 0.96);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    :global([data-theme='light']) .bottom-dock {
+      background: rgba(245, 239, 228, 0.97);
+      box-shadow: 0 10px 28px rgba(44, 31, 20, 0.14);
     }
   }
 </style>

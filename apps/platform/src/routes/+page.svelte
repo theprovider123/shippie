@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import type { PageProps } from './$types';
   import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
-  import InstallNudge from '$lib/components/marketplace/InstallNudge.svelte';
   import LauncherCard from '$lib/components/marketplace/LauncherCardV2.svelte';
   import SavedDock from '$lib/components/marketplace/SavedDock.svelte';
   import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
@@ -21,6 +20,7 @@
   let { data }: PageProps = $props();
   let selectedSlug = $state<string | null>(null);
   const autoSaving = new Set<string>();
+  let scheduledSavedWarm = false;
 
   type LauncherApp = (typeof data.apps)[number];
 
@@ -47,7 +47,7 @@
       card with spotlight=true. */
   const spotlightApp = $derived.by(() => {
     if (!isFirstVisit || recentApps.length > 0) return null;
-    const preferred = ['snake', 'recipe', 'crewtrip'];
+    const preferred = ['snake', 'palate', 'crewtrip'];
     for (const slug of preferred) {
       const found = appBySlug.get(slug);
       if (found) return found;
@@ -108,8 +108,17 @@
   });
 
   $effect(() => {
-    for (const slug of $launcherMemory.pinned) {
-      keepReady(slug);
+    if (scheduledSavedWarm || $launcherMemory.pinned.length === 0) return;
+    scheduledSavedWarm = true;
+    const run = () => {
+      for (const slug of $launcherMemory.pinned.slice(0, 4)) {
+        keepReady(slug);
+      }
+    };
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(run, { timeout: 5000 });
+    } else {
+      globalThis.setTimeout(run, 2500);
     }
   });
 
@@ -188,11 +197,7 @@
 
 <svelte:head>
   <title>Shippie — small tools that work on your device</title>
-  <meta name="description" content="Tap a tool to use it. They run on your device, work offline, and share local signals when it helps. No signup, no install, no subscription." />
-  {#each (data.topFourSlugs ?? []) as slug}
-    <link rel="prefetch" href="/run/{slug}" as="document" />
-    <link rel="prefetch" href="/__shippie-run/{slug}/?shippie_embed=1" as="document" />
-  {/each}
+  <meta name="description" content="Tap a tool to use it. They run on your device, work offline, and share local signals when it helps. No signup, no download, no subscription." />
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />
@@ -224,16 +229,18 @@
             <li>
               <a class="cat-chip" class:active={!data.categoryFilter} href={categoryHref(null)}>All</a>
             </li>
-            <li>
-              <a
-                class="cat-chip"
-                class:active={data.remixableFilter}
-                href={remixableHref(data.remixableFilter)}
-                aria-current={data.remixableFilter ? 'page' : undefined}
-              >
-                Remixable{#if data.remixableFilter} ✕{/if}
-              </a>
-            </li>
+            {#if data.remixableFilter}
+              <li>
+                <a
+                  class="cat-chip"
+                  class:active={data.remixableFilter}
+                  href={remixableHref(data.remixableFilter)}
+                  aria-current="page"
+                >
+                  Remixable ✕
+                </a>
+              </li>
+            {/if}
             {#each data.categories as cat (cat)}
               {@const isActive = data.categoryFilter === cat}
               <li>
@@ -471,9 +478,6 @@
     </div>
     <a class="builder-strip-cta" href="/build">Start building →</a>
   </section>
-  <div class="wrap">
-    <InstallNudge />
-  </div>
 </div>
 
 <AppInspector

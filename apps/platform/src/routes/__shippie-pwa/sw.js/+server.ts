@@ -6,7 +6,8 @@
  *
  * Strategy:
  *   - cache-first only for immutable assets and raw showcase bundles
- *   - network-first for app shell documents (never stored in Cache API)
+ *   - network-first for app shell documents, cached inside the current
+ *     versioned SW cache so saved tools can still open offline
  *   - graceful offline fallback — show "you're offline" branded page
  *
  * Tiny on purpose: under 2KB minified. The browser caches it. Updates
@@ -22,6 +23,7 @@ const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
 const MODEL_CACHE = 'shippie.models.v1';
 const APPS_PREFIX = '/apps';
 const RUNTIME_PREFIX = '/__shippie-run';
+const SHELL_DOCUMENTS = ['/', '/container', '/you'];
 // Phase 2: same-origin /__esm/<pkg> proxy serves the pinned
 // Transformers runtime + its transitive graph through our own zone.
 // The proxy rewrites every absolute import in the JS bodies back into
@@ -69,6 +71,90 @@ function expectedRuntimeResponse(req, res) {
     url.searchParams.get('shippie_embed') === '1';
   if (isEntryDocument) return type.includes('text/html');
   return expectedAssetResponse(req, res);
+}
+
+function expectedDocumentResponse(res) {
+  if (!res || !res.ok) return false;
+  return (res.headers.get('content-type') || '').toLowerCase().includes('text/html');
+}
+
+function absoluteUrl(path) {
+  return new URL(path, self.location.origin).toString();
+}
+
+function runSlugFromPath(path) {
+  const match = path.match(/^\\/run\\/([^/]+)\\/?/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function shellKeysForRequest(req) {
+  const url = new URL(req.url);
+  const keys = [url.toString()];
+  if (url.pathname === '/') keys.push(absoluteUrl('/'));
+  if (url.pathname === '/container') keys.push(absoluteUrl('/container'));
+  const slug = runSlugFromPath(url.pathname);
+  if (slug) {
+    keys.push(absoluteUrl('/run/' + encodeURIComponent(slug) + '/'));
+    keys.push(absoluteUrl('/container?app=' + encodeURIComponent(slug) + '&focused=1'));
+  }
+  keys.push(absoluteUrl('/container'));
+  keys.push(absoluteUrl('/'));
+  return Array.from(new Set(keys));
+}
+
+function shellDocumentUrls(slug) {
+  const urls = [...SHELL_DOCUMENTS];
+  if (slug) {
+    urls.push('/run/' + encodeURIComponent(slug) + '/');
+    urls.push('/container?app=' + encodeURIComponent(slug) + '&focused=1');
+  }
+  return urls.map(absoluteUrl);
+}
+
+async function cacheShellDocument(cache, req, res) {
+  if (!expectedDocumentResponse(res)) return false;
+  await cache.put(req, res.clone()).catch(() => {});
+  const url = new URL(req.url);
+  if (url.pathname === '/') {
+    await cache.put(absoluteUrl('/'), res.clone()).catch(() => {});
+  } else if (url.pathname === '/container' && !url.search) {
+    await cache.put(absoluteUrl('/container'), res.clone()).catch(() => {});
+  } else if (runSlugFromPath(url.pathname)) {
+    await cache.put(absoluteUrl(url.pathname.endsWith('/') ? url.pathname : url.pathname + '/'), res.clone()).catch(() => {});
+  }
+  return true;
+}
+
+async function cachedShellDocument(cache, req) {
+  for (const key of shellKeysForRequest(req)) {
+    const hit = await cache.match(key);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+async function warmPlatformShell(cache, slug) {
+  const urls = shellDocumentUrls(slug);
+  let done = 0;
+  for (const url of urls) {
+    try {
+      const req = new Request(url, { headers: { accept: 'text/html' } });
+      const res = await fetch(req);
+      if (await cacheShellDocument(cache, req, res)) done += 1;
+    } catch {
+      /* best effort — the next online navigation can warm this shell */
+    }
+  }
+  return { done, total: urls.length };
+}
+
+async function checkShellComplete(cache, slug) {
+  const urls = shellDocumentUrls(slug);
+  let done = 0;
+  for (const url of urls) {
+    if (await cache.match(url)) done += 1;
+  }
+  return { complete: done === urls.length, done, total: urls.length };
 }
 
 async function purgeShellDocuments(cache) {
@@ -122,6 +208,7 @@ self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cacheAddAll(cache, SHOWCASE_PRECACHE, () => {});
+    await warmPlatformShell(cache);
     if (RUNTIME_PRECACHE.length > 0) {
       // Same best-effort path as SHOWCASE_PRECACHE — failures land in
       // the failed[] return value but don't block install. Heavy
@@ -216,16 +303,17 @@ async function handleDownloadApp(slug, port) {
     const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
     if (assets.length === 0) throw new Error('manifest_empty');
     await warmShell(cache);
+    const shellCheck = await warmPlatformShell(cache, slug);
     await cacheAddAll(cache, assets, (done, total) => {
       port.postMessage({ type: 'progress', slug, done, total });
     });
     const check = await checkManifestComplete(cache, assets);
-    if (check.complete) {
-      port.postMessage({ type: 'done', state: 'saved', slug, total: check.total });
+    if (check.complete && shellCheck.done === shellCheck.total) {
+      port.postMessage({ type: 'done', state: 'saved', slug, total: check.total + shellCheck.total });
     } else {
       port.postMessage({
         type: 'done', state: 'partial', slug,
-        done: check.done, total: check.total,
+        done: check.done + shellCheck.done, total: check.total + shellCheck.total,
       });
     }
   } catch (err) {
@@ -264,15 +352,32 @@ async function handleGetStatus(slug, port) {
     const manifest = await res.json();
     const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
     const check = await checkManifestComplete(cache, assets);
+    const shellCheck = await checkShellComplete(cache, slug);
     let state = 'idle';
-    if (check.done === check.total && check.total > 0) state = 'saved';
-    else if (check.done > 0) state = 'partial';
+    if (check.done === check.total && check.total > 0 && shellCheck.complete) state = 'saved';
+    else if (check.done > 0 || shellCheck.done > 0) state = 'partial';
     port.postMessage({
       type: 'status', slug, state,
-      done: check.done, total: check.total,
+      done: check.done + shellCheck.done, total: check.total + shellCheck.total,
     });
   } catch {
     port.postMessage({ type: 'status', slug, state: 'idle', done: 0, total: 0 });
+  }
+}
+
+async function handleListSavedApps(port) {
+  try {
+    const cache = await caches.open(CACHE);
+    const reqs = await cache.keys();
+    const slugs = new Set();
+    for (const req of reqs) {
+      const path = new URL(req.url).pathname;
+      const match = path.match(/^\\/__shippie-run\\/([^/]+)\\//);
+      if (match) slugs.add(decodeURIComponent(match[1]));
+    }
+    port.postMessage({ type: 'saved-apps', slugs: Array.from(slugs).sort() });
+  } catch (err) {
+    port.postMessage({ type: 'saved-apps', slugs: [], error: String(err && err.message || err) });
   }
 }
 
@@ -325,6 +430,8 @@ self.addEventListener('message', (e) => {
     handleRemoveApp(msg.slug, port);
   } else if (msg.type === 'GET_APP_STATUS' && typeof msg.slug === 'string') {
     handleGetStatus(msg.slug, port);
+  } else if (msg.type === 'LIST_SAVED_APPS') {
+    handleListSavedApps(port);
   } else if (msg.type === 'CLEAR_OFFLINE') {
     handleClearOffline(port);
   } else {
@@ -487,10 +594,13 @@ self.addEventListener('fetch', (e) => {
   // instead of a stale route document.
   if (url.pathname.startsWith('/run/')) {
     e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
       try {
-        return await fetch(req);
+        const res = await fetch(req);
+        if (expectedDocumentResponse(res)) cacheShellDocument(cache, req, res.clone()).catch(() => {});
+        return res;
       } catch {
-        return offlineResponse();
+        return (await cachedShellDocument(cache, req)) || offlineResponse();
       }
     })());
     return;
@@ -500,10 +610,13 @@ self.addEventListener('fetch', (e) => {
     // Legacy marketplace route. Route HTML is network-only; app assets
     // are handled by the immutable/runtime branches above.
     e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
       try {
-        return await fetch(req);
+        const res = await fetch(req);
+        if (expectedDocumentResponse(res)) cacheShellDocument(cache, req, res.clone()).catch(() => {});
+        return res;
       } catch {
-        return offlineResponse();
+        return (await cachedShellDocument(cache, req)) || offlineResponse();
       }
     })());
     return;
@@ -514,10 +627,13 @@ self.addEventListener('fetch', (e) => {
   const isDoc = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
   if (isDoc) {
     e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
       try {
-        return await fetch(req);
+        const res = await fetch(req);
+        if (expectedDocumentResponse(res)) cacheShellDocument(cache, req, res.clone()).catch(() => {});
+        return res;
       } catch {
-        return offlineResponse();
+        return (await cachedShellDocument(cache, req)) || offlineResponse();
       }
     })());
   }

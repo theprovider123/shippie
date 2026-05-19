@@ -118,10 +118,13 @@ export function App() {
 
   const filledCount = ribbon.filter((d) => d.entry).length;
 
+  const pickedSwatch = todayEntry ? PALETTE.find((p) => p.color === todayEntry.color) : undefined;
+
   return (
     <main className="app">
       <header>
-        <h1>Colour of the Day</h1>
+        <p className="eyebrow">Colour · {today}</p>
+        <h1>Colour of the <em>Day</em></h1>
         <p className="muted">{todayEntry ? `Picked for ${formatDate(today)}` : `Pick a colour for today`}</p>
       </header>
 
@@ -133,26 +136,47 @@ export function App() {
               key={swatch.color}
               type="button"
               className={picked ? 'swatch picked' : 'swatch'}
-              style={{ background: swatch.color }}
               onClick={() => pick(swatch.color, swatch.sentiment)}
               aria-label={`Pick ${swatch.label}`}
               aria-pressed={picked}
-            />
+            >
+              <span
+                className="swatch-chip"
+                style={{ ['--swatch-bg' as never]: swatch.color }}
+                aria-hidden
+              />
+              <span className="swatch-hex">
+                <span>{swatch.color.toUpperCase()}</span>
+                <span className="label">{swatch.label}</span>
+              </span>
+            </button>
           );
         })}
       </section>
 
-      {todayEntry ? (
+      {todayEntry && pickedSwatch ? (
         <section className="today-readout" aria-live="polite">
           <p>
-            Today reads as <strong>{PALETTE.find((p) => p.color === todayEntry.color)?.label ?? '—'}</strong>.
+            Today reads as{' '}
+            <strong style={{ ['--readout-accent' as never]: pickedSwatch.color }}>
+              {pickedSwatch.label}
+            </strong>.
+          </p>
+          <p className="swatch-hex">
+            <span>{pickedSwatch.color.toUpperCase()}</span>
+            <span className="label">·  {pickedSwatch.sentiment}</span>
           </p>
         </section>
       ) : null}
 
       <section className="ribbon-section">
-        <h2>Last 30 days</h2>
-        <p className="muted small">{filledCount} filled · {30 - filledCount} skipped</p>
+        <div className="ribbon-counts">
+          <h2>Last 30 days</h2>
+          <span className="days-numeric">
+            {filledCount}<span className="unit">/30</span>
+          </span>
+        </div>
+        <p className="day-code">{filledCount} filled · {30 - filledCount} skipped</p>
         <div className="ribbon" role="img" aria-label={`Mood ribbon, ${filledCount} of 30 days filled`}>
           {ribbon.map(({ key, entry }) => (
             <span

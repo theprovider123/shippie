@@ -197,7 +197,7 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
 
 const curatedAppSpecs: CuratedAppSpec[] = [
   {
-    slug: 'recipe',
+    slug: 'palate',
     name: 'Palate',
     shortName: 'Palate',
     description: 'Recipes, cooking mode, meal planning, pantry, and shopping in one local-first kitchen app.',
@@ -394,12 +394,31 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     slug: 'match-room',
     name: 'Shippie Match Room',
     shortName: 'Match',
-    description: 'Private rooms for predictions, trivia, sweepstakes, votes, and matchday banter.',
+    description: 'Private match rooms for score predictions, quick votes, reactions, and matchday banter.',
     appKind: 'connected',
     icon: 'MR',
     accent: '#0E5C3A',
     category: 'social',
     port: 5249,
+    intents: {
+      provides: ['matchday-prediction-stats'],
+      consumes: ['fantasy-team.saved'],
+    },
+  },
+  {
+    slug: 'world-cup-fantasy',
+    name: 'World Cup Fantasy',
+    shortName: 'Fantasy',
+    description: 'Private 15-player World Cup squad builder with captaincy, chips, and local-only storage.',
+    appKind: 'local',
+    icon: 'WF',
+    accent: '#0E5C3A',
+    category: 'games',
+    port: 5250,
+    intents: {
+      provides: ['fantasy-team.saved'],
+      consumes: ['matchday-prediction-stats'],
+    },
   },
   {
     slug: 'quiet',

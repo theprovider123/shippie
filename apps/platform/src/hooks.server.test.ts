@@ -80,7 +80,7 @@ describe('hooks.server first-party showcase routing', () => {
     expect(resolve).not.toHaveBeenCalled();
     const body = (await res.json()) as { ok: boolean; slug: string };
     expect(body.ok).toBe(true);
-    expect(body.slug).toBe('recipe');
+    expect(body.slug).toBe('palate');
   });
 
   test('bare /run/<slug>/ falls through to the focused SvelteKit page', async () => {
@@ -148,9 +148,9 @@ describe('hooks.server first-party showcase routing', () => {
     ['care-log', 'co-pilot'],
     ['journal', 'therapy-notes'],
     ['move', 'lift'],
-    ['shopping-list', 'https://shippie.app/run/recipe/?tab=shopping&from=shopping-list'],
-    ['meal-planner', 'https://shippie.app/run/recipe/?tab=meal-plan&from=meal-planner'],
-    ['pantry-scanner', 'https://shippie.app/run/recipe/?tab=pantry&from=pantry-scanner'],
+    ['shopping-list', 'https://shippie.app/run/palate/?tab=shop&from=shopping-list'],
+    ['meal-planner', 'https://shippie.app/run/palate/?tab=plan&from=meal-planner'],
+    ['pantry-scanner', 'https://shippie.app/run/palate/?tab=pantry&from=pantry-scanner'],
   ] as const) {
     test(`subdomain ${oldSlug}.shippie.app/ 302s to canonical successor`, async () => {
       const resolve = vi.fn(async () => new Response('fallthrough'));

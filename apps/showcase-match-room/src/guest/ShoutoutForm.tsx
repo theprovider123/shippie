@@ -18,13 +18,13 @@ export function ShoutoutForm(props: { disabled: boolean; onSubmit: (text: string
         }
       }}
     >
-      <label htmlFor="shoutout">Custom shout</label>
+      <label htmlFor="shoutout">Room message</label>
       <textarea
         id="shoutout"
         value={text}
         maxLength={90}
         onChange={(event) => setText(event.currentTarget.value)}
-        placeholder="Optional: send your own line for the room screen"
+        placeholder="Send a short line to everyone in the room"
       />
       <div className="form-foot">
         <span>{sentAt ? 'Queued for review' : `${remaining} left`}</span>

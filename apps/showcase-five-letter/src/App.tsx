@@ -430,8 +430,8 @@ export function App() {
     <main className="app">
       <header className="head">
         <div>
-          <h1>Five Letter</h1>
-          <p className="muted small">
+          <h1 className="title-hero">Five Letter</h1>
+          <p className="eyebrow">
             {activeMode === 'daily' ? `Daily · ${today}` : activeMode === 'archive' ? `Archive · ${archiveDate ?? today}` : 'Practice mode'}
             {settings.hardMode ? <span className="hardmode-chip">HARD</span> : null}
           </p>

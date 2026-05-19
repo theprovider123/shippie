@@ -551,6 +551,13 @@ function writePrecacheList() {
   console.log(`[prepare-showcases] wrote ${PRECACHE_OUT} (re-export)`);
 }
 
+function slugsWithStaticRuntime(slugs) {
+  return slugs.filter((slug) => {
+    const dir = join(STATIC_RUNTIME_DIR, slug);
+    return existsSync(join(dir, 'index.html')) && existsSync(join(dir, '__shippie-assets.json'));
+  });
+}
+
 function main() {
   const generatedOnly = process.argv.includes('--generated-only');
   const showcases = listShowcases();
@@ -565,12 +572,19 @@ function main() {
   validateShowcaseLifecycleBoot(showcases);
   if (generatedOnly) {
     const slugs = showcases.map((showcase) => slugFor(showcase));
-    writeShowcaseCatalog(slugs);
+    const hostedSlugs = slugsWithStaticRuntime(slugs);
+    const missing = slugs.filter((slug) => !hostedSlugs.includes(slug));
+    if (missing.length > 0) {
+      console.warn(
+        `[prepare-showcases] generated-only: ${missing.length} showcase(s) have no static bake and were excluded from runtime manifests: ${missing.join(', ')}`,
+      );
+    }
+    writeShowcaseCatalog(hostedSlugs);
     writeFirstPartyCuration(slugs);
-    writeRuntimePrecache(slugs);
+    writeRuntimePrecache(hostedSlugs);
     writePrecacheList();
     console.log(
-      `[prepare-showcases] generated manifests only for ${slugs.length} showcase(s).`,
+      `[prepare-showcases] generated manifests only for ${hostedSlugs.length} hosted showcase(s).`,
     );
     return;
   }

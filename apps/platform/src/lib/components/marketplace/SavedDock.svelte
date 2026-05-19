@@ -76,7 +76,7 @@
   {#if apps.length === 0}
     <p class="empty">
       <span>Tap the ★ on a tool to keep it ready here, offline.</span>
-      <span class="empty-hint">no installs, no signups</span>
+      <span class="empty-hint">no downloads, no signups</span>
     </p>
   {:else}
     <ul

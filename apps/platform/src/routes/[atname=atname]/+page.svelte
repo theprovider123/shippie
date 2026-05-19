@@ -73,7 +73,7 @@
               <strong>{app.name}</strong>
               <small>{kindLabel(app.currentDetectedKind)} · {app.category}</small>
               <p>{app.tagline ?? app.description ?? `${app.name} on Shippie`}</p>
-              <span class="meta">{app.installCount.toLocaleString()} installs · {app.upvoteCount.toLocaleString()} upvotes</span>
+              <span class="meta">{app.installCount.toLocaleString()} opens · {app.upvoteCount.toLocaleString()} upvotes</span>
             </a>
           </li>
         {/each}

@@ -1,9 +1,9 @@
 /**
  * GET /manifest.webmanifest
  *
- * Phase 9.1 — the marketplace itself is an installable PWA. Practising
- * the ethos: shippie.app browses, installs, and works offline using the
- * same mechanics every maker app does.
+ * Phase 9.1 — the marketplace itself can run from a home-screen icon.
+ * Practising the ethos: shippie.app browses, opens, and works offline
+ * using the same mechanics every maker app does.
  *
  * Only served on root platform hostnames (shippie.app, www.shippie.app,
  * next.shippie.app). Maker subdomains pass through to the wrapper
@@ -30,7 +30,7 @@ export const GET: RequestHandler = async ({ url }) => {
   const manifest = {
     name: 'Shippie',
     short_name: 'Shippie',
-    description: 'Small tools that work on your device. No app store. Just the web, installed.',
+    description: 'Small tools that work on your device.',
     id: '/',
     start_url: '/',
     scope: '/',

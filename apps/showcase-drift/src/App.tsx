@@ -179,10 +179,10 @@ export function App() {
     <main className="app" style={{ background: skin.bg, color: skin.accent }}>
       <header className="head">
         <div>
-          <h1 style={{ color: skin.stroke }}>Drift</h1>
-          <p className="muted small" style={{ color: skin.accent }}>
+          <h1 className="title-hero" style={{ color: skin.stroke }}>Drift</h1>
+          <p className="eyebrow" style={{ color: skin.accent }}>
             {mode === 'daily' ? `Daily · ${todayKey().slice(5)}` : mode === 'endless' ? 'Endless' : 'Classic'}
-            {' · '}Wave {world.wave} · {world.score} pts · {'♥'.repeat(Math.max(0, world.lives))}
+            <span className="game-code"> · Wave <span className="score-numeric">{world.wave}</span> · <span className="score-numeric">{world.score}</span> pts · {'♥'.repeat(Math.max(0, world.lives))}</span>
             {mode === 'daily' && stored.dailyStreak > 0 ? <span className="streak"> · 🔥 {stored.dailyStreak}</span> : null}
           </p>
         </div>

@@ -93,7 +93,7 @@
             <span aria-label="upvotes">♥ {upvoteCount}</span>
           {/if}
           {#if installCount > 0}
-            <span aria-label="installs">{installCount.toLocaleString()} installs</span>
+            <span aria-label="opens">{installCount.toLocaleString()} opens</span>
           {/if}
         </div>
       </div>

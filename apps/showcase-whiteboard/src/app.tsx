@@ -119,10 +119,10 @@ function Lobby(props: {
       padding: 24,
     }}>
       <div style={{ maxWidth: 360, width: '100%' }}>
-        <h1 style={{ fontSize: 28, marginBottom: 4 }}>
+        <h1 className="title-hero" style={{ marginBottom: 4 }}>
           {props.showAndTellMode ? 'Show and Tell' : 'Shippie Whiteboard'}
         </h1>
-        <p style={{ color: '#9C9385', marginTop: 0 }}>
+        <p className="eyebrow" style={{ color: '#9C9385', marginTop: 0 }}>
           {props.showAndTellMode
             ? 'Show and Tell now lives inside Whiteboard. Start a room, drop sketches or notes, and keep the same temporary same-room feel.'
             : 'Local-network drawing. Pair via QR. Local strokes paint instantly, remote strokes appear in under 30ms on a shared WiFi.'}

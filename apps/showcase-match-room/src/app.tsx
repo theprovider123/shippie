@@ -3,9 +3,9 @@ import { HostMatchday } from './host/HostMatchday.tsx';
 import { GuestMatchday } from './guest/GuestMatchday.tsx';
 import { DisplayMatchday } from './display/DisplayMatchday.tsx';
 import { JoinForm } from './guest/JoinForm.tsx';
-import { teamByCode } from './data/tournament.ts';
+import { OPENING_FIXTURE, fixtureTitle, teamByCode } from './data/tournament.ts';
 import { copyFor, detectLocale, type Locale } from './i18n.ts';
-import { detectTimeZone } from './lib/time-zone.ts';
+import { detectTimeZone, formatKickoff } from './lib/time-zone.ts';
 import { readSavedRooms, readUserProfile, removeRoomShortcut, saveRoomShortcut, saveUserProfile, type SavedRoom, type UserProfile } from './shared/local-store.ts';
 import { getStablePeerId, randomId } from './shared/peer-id.ts';
 import { matchRoomUrl, readRoomParams } from './shared/signal-config.ts';
@@ -194,6 +194,8 @@ function Landing(props: {
   copy: ReturnType<typeof copyFor>;
 }) {
   const team = teamByCode(props.profile.primaryTeam);
+  const home = teamByCode(OPENING_FIXTURE.home);
+  const away = teamByCode(OPENING_FIXTURE.away);
   const hasIdentity = Boolean(props.profile.updatedAt || props.profile.displayName);
   const rooms = uniqueRooms(props.savedRooms);
 
@@ -203,9 +205,20 @@ function Landing(props: {
 
   return (
     <main className="wc-landing">
-      <header className="wc-scoreboard">
-        <div className="wc-scoreboard-row">
-          <span className="wc-eyebrow">2026 · World Cup</span>
+      <header className="room-topbar landing-topbar">
+        <div>
+          <p className="eyebrow">World Cup 2026</p>
+          <h1>Match Room</h1>
+          <p className="topbar-subcopy">Start a room, invite people, make predictions, and chat during the match. No accounts.</p>
+          {hasIdentity ? (
+            <p className="wc-passport">
+              <span className="wc-passport-flag" style={{ background: team.swatch[0] }} aria-hidden="true" />
+              <strong>{props.profile.displayName || 'Supporter'}</strong>
+              <em>following {team.name}</em>
+            </p>
+          ) : null}
+        </div>
+        <div className="topbar-actions">
           <button
             type="button"
             className="wc-icon-btn"
@@ -216,16 +229,23 @@ function Landing(props: {
             ⚙
           </button>
         </div>
-        <h1 className="wc-display">Match Room</h1>
-        <p className="wc-tagline">Watch the World Cup together. Private rooms. No accounts. No ads.</p>
-        {hasIdentity ? (
-          <p className="wc-passport">
-            <span className="wc-passport-flag" style={{ background: team.swatch[0] }} aria-hidden="true" />
-            <strong>{props.profile.displayName || 'Supporter'}</strong>
-            <em>following {team.name}</em>
-          </p>
-        ) : null}
       </header>
+
+      <section className="match-header landing-match-card" aria-label="Opening match preview">
+        <div className="match-meta">
+          <span>Opening match</span>
+          <h2>{fixtureTitle(OPENING_FIXTURE)}</h2>
+          <p>{OPENING_FIXTURE.venue}, {OPENING_FIXTURE.city} · {formatKickoff(OPENING_FIXTURE.kickoff, props.timeZone, props.locale)}</p>
+        </div>
+        <div className="score-line">
+          <LandingTeamMark team={home} />
+          <div className="score-core">
+            <strong>- -</strong>
+            <span>Awaiting kickoff</span>
+          </div>
+          <LandingTeamMark team={away} align="right" />
+        </div>
+      </section>
 
       {props.profileOpen ? (
         <section className="wc-card wc-settings" aria-label="Profile and settings">
@@ -242,6 +262,13 @@ function Landing(props: {
       ) : null}
 
       <section className="wc-card wc-cta" aria-label="Start or join a room">
+        <div className="wc-card-head">
+          <div>
+            <span>Room</span>
+            <h2>Start or join</h2>
+          </div>
+          <span className="wc-card-hint">5 seconds</span>
+        </div>
         <button
           className="wc-primary"
           type="button"
@@ -251,13 +278,16 @@ function Landing(props: {
         </button>
         <div className="wc-divider"><span>or</span></div>
         <JoinForm copy={props.copy} />
-        <button
-          type="button"
-          className="wc-link-action"
-          onClick={() => props.onStartHost({ title: 'Just me', solo: true })}
-        >
-          Or: track predictions just for me →
-        </button>
+        <div className="wc-solo-row">
+          <p>Just tracking your own predictions?</p>
+          <button
+            type="button"
+            className="wc-link-action"
+            onClick={() => props.onStartHost({ title: 'Just me', solo: true })}
+          >
+            Start solo
+          </button>
+        </div>
       </section>
 
       {rooms.length > 0 ? (
@@ -293,10 +323,20 @@ function Landing(props: {
 
       <footer className="wc-footer">
         <small>
-          Private spaces, no login. <a href="/apps/match-room">About this app</a>
+          Private rooms, no login. <a href="/apps/match-room">About this app</a>
         </small>
       </footer>
     </main>
+  );
+}
+
+function LandingTeamMark(props: { team: ReturnType<typeof teamByCode>; align?: 'right' }) {
+  return (
+    <div className={props.align === 'right' ? 'team-mark right' : 'team-mark'}>
+      <i style={{ background: `linear-gradient(135deg, ${props.team.swatch[0]}, ${props.team.swatch[1]})` }} />
+      <strong>{props.team.code}</strong>
+      <span>{props.team.name}</span>
+    </div>
   );
 }
 
@@ -315,7 +355,7 @@ function templateBlurb(template: string): string {
   switch (template) {
     case 'family': return 'Family vibe';
     case 'office': return 'Office vibe';
-    case 'hardcore': return 'Solo / hardcore';
+    case 'hardcore': return 'Solo board';
     case 'pub': return 'Pub vibe';
     case 'watch-party': return 'Watch party';
     case 'friends':

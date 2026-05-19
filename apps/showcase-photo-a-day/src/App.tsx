@@ -92,9 +92,17 @@ export function App() {
   return (
     <main className="app">
       <header>
-        <h1>Photo a Day</h1>
+        <p className="eyebrow">Contact sheet · {today}</p>
+        <h1>Photo a <em>Day</em></h1>
         <p className="muted">{todayRow ? `Today: ${todayRow.labels.length ? todayRow.labels.join(' · ') : 'labels pending…'}` : 'One photo for today'}</p>
       </header>
+
+      {days.length > 0 ? (
+        <div className="frame-strip">
+          <span className="frame-label">Frames exposed</span>
+          <span className="photo-numeric">{days.length}<span className="unit">days</span></span>
+        </div>
+      ) : null}
 
       {!todayRow ? (
         <section className="capture-card">

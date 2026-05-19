@@ -8,17 +8,22 @@
     type LocalAppProfile,
     type LocalAppState,
   } from '$lib/client/local-profile';
+  import { cachedSlugs, ensureAppOffline, offlineStatuses } from '$lib/stores/cached-slugs';
 
   let {
     slug,
     name,
     appUrl,
     showFavorite = true,
+    variant = 'default',
+    showStatus = true,
   }: {
     slug: string;
     name: string;
     appUrl: string;
     showFavorite?: boolean;
+    variant?: 'default' | 'inline';
+    showStatus?: boolean;
   } = $props();
 
   let profile = $state<LocalAppProfile | null>(null);
@@ -31,7 +36,7 @@
       profile = await recordAppOpen({ slug, name, url: appUrl });
       const current = await getLocalApp(slug);
       if (current) profile = current;
-      void refreshOfflineStatus();
+      refreshOfflineStatus();
     })();
   });
 
@@ -43,90 +48,73 @@
   async function saveToDevice() {
     if (!profile || saving) return;
     saving = true;
-    message = 'Saving...';
+    message = 'Saving';
     try {
-      const state = await downloadForOffline();
+      const state = await saveOfflineState();
       profile = await markSaved(slug, state);
-      message = state === 'offline_ready' ? 'Offline ready on this device.' : 'Saved locally.';
+      message = state === 'offline_ready' ? 'Saved' : 'Saved';
     } catch {
       profile = await markSaved(slug, 'partial');
-      message = 'Saved, but offline package is incomplete.';
+      message = 'Saved. Refresh later.';
     } finally {
       saving = false;
     }
   }
 
-  async function refreshOfflineStatus() {
+  function refreshOfflineStatus() {
     if (!profile) return;
-    try {
-      const state = await getOfflineStatus();
-      if (state && state !== profile.state) profile = await markSaved(slug, state);
-    } catch {
-      /* best effort */
+    const status = $offlineStatuses[slug];
+    const state = $cachedSlugs.has(slug) || status?.state === 'saved' ? 'offline_ready' : null;
+    if (state && state !== profile.state) {
+      void markSaved(slug, state).then((next) => {
+        if (next) profile = next;
+      });
     }
   }
 
   function stateLabel(state: LocalAppState | undefined): string {
-    if (state === 'offline_ready') return 'Offline ready';
-    if (state === 'partial') return 'Partially saved';
+    if (state === 'offline_ready') return 'Saved';
+    if (state === 'partial') return 'Saved';
     if (state === 'saved') return 'Saved';
     if (state === 'stale') return 'Update available';
     if (state === 'broken_cache') return 'Needs repair';
-    return 'Seen on this device';
+    return 'Not saved yet';
   }
 
-  function postToServiceWorker(payload: Record<string, unknown>): Promise<MessageEvent['data']> {
-    return new Promise((resolve, reject) => {
-      if (!navigator.serviceWorker?.controller) {
-        reject(new Error('service worker unavailable'));
-        return;
-      }
-      const channel = new MessageChannel();
-      const timer = setTimeout(() => reject(new Error('service worker timeout')), 20_000);
-      channel.port1.onmessage = (event) => {
-        if (event.data?.type === 'progress') {
-          message = `Saving ${event.data.done}/${event.data.total}`;
-          return;
-        }
-        clearTimeout(timer);
-        resolve(event.data);
-      };
-      navigator.serviceWorker.controller.postMessage(payload, [channel.port2]);
-    });
+  function saveButtonLabel(state: LocalAppState | undefined): string {
+    if (saving) return 'Saving';
+    if (state === 'offline_ready' || state === 'partial' || state === 'saved') return 'Saved';
+    return 'Save';
   }
 
-  async function downloadForOffline(): Promise<LocalAppState> {
+  async function saveOfflineState(): Promise<LocalAppState> {
     if (!appUrl.startsWith('/run/')) {
       return 'saved';
     }
-    const result = await postToServiceWorker({ type: 'DOWNLOAD_APP', slug });
+    const result = await ensureAppOffline(slug);
     if (result?.state === 'saved') return 'offline_ready';
     if (result?.state === 'partial') return 'partial';
     return 'saved';
   }
-
-  async function getOfflineStatus(): Promise<LocalAppState | null> {
-    if (!appUrl.startsWith('/run/')) return null;
-    const result = await postToServiceWorker({ type: 'GET_APP_STATUS', slug });
-    if (result?.state === 'saved') return 'offline_ready';
-    if (result?.state === 'partial') return 'partial';
-    return null;
-  }
 </script>
 
-{#if profile}
-  <div class="local-actions" aria-label="Local app controls">
+<div class="local-actions" class:inline={variant === 'inline'} aria-label="Save this tool">
+  {#if profile}
     {#if showFavorite}
       <button type="button" class:active={profile.favorite} onclick={toggleFavorite}>
-        {profile.favorite ? 'Favorited' : 'Favorite'}
+        {profile.favorite ? 'Saved' : 'Save'}
       </button>
     {/if}
-    <button type="button" class="primary" onclick={saveToDevice} disabled={saving}>
-      {saving ? 'Saving' : profile.state === 'offline_ready' ? 'Offline ready' : 'Save to device'}
+    <button type="button" class="primary" onclick={saveToDevice} disabled={saving || !profile}>
+      {saveButtonLabel(profile.state)}
     </button>
-    <span>{message || stateLabel(profile.state)}</span>
-  </div>
-{/if}
+    {#if showStatus}
+      <span>{message || stateLabel(profile.state)}</span>
+    {/if}
+  {:else}
+    <button type="button" class="primary" disabled>Save</button>
+  {/if}
+</div>
 
 <style>
   .local-actions {
@@ -135,6 +123,9 @@
     gap: 0.5rem;
     align-items: center;
     margin-top: 0.75rem;
+  }
+  .local-actions.inline {
+    margin-top: 0;
   }
   button {
     border: 1px solid rgba(20,18,15,0.25);
@@ -145,11 +136,29 @@
     font-size: 0.9rem;
     cursor: pointer;
   }
+  .local-actions.inline button {
+    min-height: 44px;
+    border-color: currentColor;
+    background: transparent;
+    color: inherit;
+    padding: 0 1.25rem;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: var(--small-size);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
   button.primary,
   button.active {
     background: #14120F;
     color: #EDE4D3;
     border-color: #14120F;
+  }
+  .local-actions.inline button.primary,
+  .local-actions.inline button.active {
+    background: transparent;
+    color: inherit;
+    border-color: currentColor;
   }
   button:disabled {
     opacity: 0.65;

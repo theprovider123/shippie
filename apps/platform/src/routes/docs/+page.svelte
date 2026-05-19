@@ -11,7 +11,7 @@
       id: 'wrap',
       label: 'Wrap',
       blurb:
-        'Deploy any web app. Shippie wraps it into an installable, offline-capable, tactile, proof-emitting experience — without touching your bundled code.',
+        'Deploy any web app. Shippie wraps it into a phone-ready, offline-capable, tactile, proof-emitting experience — without touching your bundled code.',
     },
     {
       id: 'run',
@@ -29,16 +29,10 @@
 
   const userSections = [
     {
-      id: 'install',
-      title: 'Install Shippie or a tool',
-      blurb:
-        'Open any Shippie tool in your browser, then use your browser’s install gesture. On iPhone Safari: Share → Add to Home Screen. On Android Chrome and desktop Chrome/Edge: tap the install icon in the address bar. The tool lives on your home screen and works without a connection.',
-    },
-    {
       id: 'what-local-means',
-      title: 'What "Local", "Connected", and "Cloud" mean',
+      title: 'Where data lives',
       blurb:
-        'Every tool on Shippie is one of three kinds, shown as a small badge. Local: runs entirely on your device, works offline, no data leaves. Connected: stores data locally, opens a peer-to-peer link to nearby devices when it helps. Cloud: needs the internet, talks to the maker’s server. Shippie verifies the kind from real-device telemetry, not maker claims.',
+        'Each tool says, in plain language, whether its data stays on this device, connects directly to nearby devices, or needs the maker’s server. Shippie checks this from real use, not just maker claims.',
     },
     {
       id: 'your-data',
@@ -101,7 +95,7 @@
   <nav class="nav-cards" aria-label="On this page">
     <a href="#for-users" class="nav-card">
       <p class="card-eyebrow">For users</p>
-      <p class="card-blurb">Install, what “local” means, your data, no signup.</p>
+      <p class="card-blurb">Open tools, save them, see where your data lives.</p>
     </a>
     <a href="#for-builders" class="nav-card">
       <p class="card-eyebrow">For builders</p>
@@ -121,7 +115,7 @@
     <h2>For users</h2>
     <p class="section-lede">
       You don’t need an account, a download, or a credit card to use Shippie. Open a tool. If
-      you like it, save it. If you love it, install it.
+      you like it, save it. Your data controls stay close by.
     </p>
     {#each userSections as s (s.id)}
       <h3 id={s.id}>{s.title}</h3>
@@ -142,7 +136,7 @@
     <h4>Wrap a hosted app</h4>
     <p>
       App already running somewhere else? Don’t move it. Shippie adds a marketplace entry, a
-      PWA shell, and an install funnel via an edge reverse-proxy at
+      phone-ready shell and a stable Shippie URL via an edge reverse-proxy at
       <code>{'{slug}'}.shippie.app</code>. Your backend stays where it runs best.
     </p>
     <pre class="code">shippie wrap https://your-app.example.com --slug your-app
@@ -171,7 +165,7 @@
     <h3 id="sdk">SDK</h3>
     <p>
       <code>@shippie/sdk/wrapper</code> is the runtime injected into every Shippie-hosted page. It
-      provides install prompts, push subscriptions, ratings UI, offline coordination, and a
+      provides the device-ready shell, push subscriptions, ratings UI, offline coordination, and a
       structured event spine that flows back to the marketplace.
     </p>
     <p>
@@ -185,7 +179,7 @@
     <h3 id="wrapper">Wrapper</h3>
     <p>
       The wrapper is the HTML rewriter that runs at the edge. It injects the PWA manifest, the
-      service worker registration, the SDK runtime, and the install funnel — without touching
+      service worker registration, the SDK runtime, and device-ready support — without touching
       your bundled code.
     </p>
     <p>

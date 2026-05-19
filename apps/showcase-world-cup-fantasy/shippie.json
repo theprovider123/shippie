@@ -1,0 +1,37 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "World Cup Fantasy",
+  "slug": "world-cup-fantasy",
+  "description": "A private World Cup fantasy squad builder with captaincy, chips, budget pressure, and local-only storage while the format is tested.",
+  "icon": "/icon.svg",
+  "theme_color": "#0E5C3A",
+  "background_color": "#FAF7EF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "fantasy-team.saved"
+    ],
+    "consumes": [
+      "matchday-prediction-stats"
+    ]
+  },
+  "data_schemas": {
+    "fantasy_team": {
+      "id": "text primary key",
+      "manager": "text",
+      "squad_json": "text not null",
+      "captain_id": "text",
+      "chip": "text",
+      "budget": "real",
+      "updated_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "games"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-world-cup-fantasy",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
+}

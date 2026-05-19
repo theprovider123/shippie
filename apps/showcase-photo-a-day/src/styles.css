@@ -1,52 +1,38 @@
-/* ── Shippie typography handshake — Fraunces 4-weight ─────────── */
-@font-face {
-  font-family: 'Fraunces';
-  font-style: italic;
-  font-weight: 500;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
-}
+/* ── photo-a-day · Contact-sheet / 35mm film identity ─────────────
+   A photographic diary. Bone paper, ink type, datestamp red,
+   sepia border. Cells are film-frame rectangles with corner crop
+   marks and a printed red datestamp in italic mono. */
+
+@font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 600; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 700; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype'); }
 
 :root {
   color-scheme: light;
-  --bg: #F8F1E0;
-  --fg: #2A1F16;
-  --muted: #6B5C4A;
-  --line: rgba(42, 31, 22, 0.16);
-  --accent: #C97B2D;
+  --bg: #F2EDDE;
+  --bg-paper: #FBF7EB;
+  --fg: #1A1612;
+  --fg-soft: #4A3F33;
+  --muted: #7A6B58;
+  --line: rgba(26, 22, 18, 0.18);
+  --line-strong: rgba(26, 22, 18, 0.36);
+  --sepia: #9C7F58;
+  --datestamp: #C73E2A;
   --error: #B23A2B;
   --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(140% 80% at 50% 0%, rgba(156, 127, 88, 0.07), transparent 65%),
+    var(--bg);
   color: var(--fg);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.45;
@@ -55,31 +41,51 @@ button, input { font: inherit; }
 
 .app {
   min-height: 100%;
-  padding: 16px 20px 80px;
-  max-width: 720px;
+  padding: 24px 20px 96px;
+  max-width: 760px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
 }
 
-h1, h2 { margin: 0; font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.01em; }
-h1 { font-size: 28px; }
-h2 { font-size: 18px; }
-.muted { color: var(--muted); font-size: 13px; }
-.muted.small { font-size: 12px; }
-
-.error { color: var(--error); }
-
-.capture-card {
+.app > header {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 32px 20px;
-  background: #fff;
-  border: 1px dashed var(--line);
-  text-align: center;
+  gap: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--sepia);
+}
+
+h1, h2 { margin: 0; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.022em;
+}
+h1 em { font-style: italic; font-weight: 600; color: var(--datestamp); }
+h2 {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.muted { color: var(--muted); font-size: 13px; }
+.muted.small { font-size: 12px; }
+.error { color: var(--error); }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--datestamp);
 }
 
 button {
@@ -91,90 +97,174 @@ button {
   cursor: pointer;
   font-weight: 500;
   border-radius: 0;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
-button:hover:not(:disabled) { opacity: 0.85; }
+button:hover:not(:disabled) { background: rgba(26, 22, 18, 0.04); }
 button:active:not(:disabled) { transform: scale(0.98); }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+button.primary { background: var(--fg); border-color: var(--fg); color: var(--bg-paper); }
 button.big { height: 56px; font-size: 17px; padding: 0 28px; }
 
-.hero { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+/* ── Capture card — film-loading panel ── */
+.capture-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 24px;
+  background: var(--bg-paper);
+  border: 1px solid var(--sepia);
+  text-align: center;
+  position: relative;
+}
+.capture-card::before,
+.capture-card::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: var(--sepia);
+  border-style: solid;
+}
+.capture-card::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.capture-card::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+.capture-card .muted.small {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Hero photo — today's frame ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
 .hero-img {
   width: 100%;
   max-width: 480px;
   display: block;
+  background: var(--bg-paper);
+  padding: 10px 10px 36px;
   border: 1px solid var(--line);
+  filter: contrast(1.03) saturate(0.96);
+  box-shadow: 0 14px 36px -22px rgba(26, 22, 18, 0.45);
 }
 
-.grid-section { display: flex; flex-direction: column; gap: 12px; }
+/* ── Calendar grid — contact sheet ── */
+.grid-section { display: flex; flex-direction: column; gap: 14px; }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
+  gap: 14px;
 }
 
 .cell {
   margin: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg-paper);
+  border: 1px solid var(--sepia);
+  padding: 6px 6px 4px;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.cell:hover { transform: translateY(-2px); }
+.cell img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  filter: contrast(1.03) saturate(0.96);
+}
+.cell figcaption {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: #fff;
-  border: 1px solid var(--line);
-  padding: 6px;
+  padding: 8px 2px 0;
 }
-.cell img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
-.cell figcaption { display: flex; flex-direction: column; gap: 2px; }
-.cell .labels { font-family: 'Fraunces', serif; font-size: 13px; }
-
-/* ── Shippie design-pattern primitives (4-move handshake) ───────
-   Photo-a-day edition: photo-numeric for streak counts / day totals,
-   photo-code for date stamps. */
-.eyebrow {
+.cell figcaption .muted.small {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-h1,
-.page-hero h1 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.018em;
-  line-height: 1.08;
-}
-h1 em,
-.page-hero h1 em {
   font-style: italic;
-  color: var(--accent);
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--datestamp);
+  text-transform: uppercase;
+}
+.cell .labels {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--fg-soft);
+  line-height: 1.25;
 }
 
-.photo-numeric {
+/* corner crop marks on each frame */
+.cell::before,
+.cell::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--line-strong);
+  border-style: solid;
+  pointer-events: none;
+}
+.cell::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.cell::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+/* ── 4-move primitives ── */
+.photo-numeric, .score-numeric {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.018em;
   line-height: 0.95;
-  font-size: clamp(2.4rem, 7vw, 4.4rem);
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
+  color: var(--fg);
 }
 .photo-numeric.size-card { font-size: clamp(1.4rem, 4vw, 2.2rem); }
-.photo-numeric .unit {
-  font-size: 0.45em;
+.photo-numeric .unit, .score-numeric .unit {
+  font-size: 0.4em;
   font-weight: 600;
   color: var(--muted);
-  vertical-align: 0.35em;
-  margin-left: 0.2em;
+  vertical-align: 0.4em;
+  margin-left: 0.3em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-
 .photo-code {
   font-family: var(--font-mono);
   font-style: italic;
   font-weight: 500;
   font-size: 0.78rem;
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: var(--datestamp);
   text-transform: uppercase;
+}
+
+.title-hero { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.022em; font-size: clamp(2.4rem, 7vw, 4rem); line-height: 0.95; }
+.title-hero em { font-style: italic; color: var(--datestamp); }
+
+/* ── Frame-counter strip below header ── */
+.frame-strip {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 4px;
+  border-bottom: 1px dashed var(--sepia);
+}
+.frame-strip .frame-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
 }

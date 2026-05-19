@@ -1,58 +1,148 @@
+/* ── snap-and-forget · Darkroom / Vault identity ──────────────────
+   Ephemeral camera. Photos are the only colour. UI is a black-room
+   safelight: deep charcoal, bone type, amber-safelight accent.
+   Capture is a single big disc. Cells are polaroid-style with
+   mono labels in italic. */
+
+@font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 600; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 700; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype'); }
+
 :root {
-  color-scheme: light;
-  --bg: #F8F1E0;
-  --fg: #2A1F16;
-  --muted: #6B5C4A;
-  --line: rgba(42, 31, 22, 0.16);
-  --accent: #4FA487;
-  --error: #B23A2B;
+  color-scheme: dark;
+  --bg: #0B0B0C;
+  --bg-room: #131214;
+  --bg-card: #181719;
+  --fg: #F4EFE6;
+  --fg-soft: #C8C2B6;
+  --muted: #6E665B;
+  --line: rgba(244, 239, 230, 0.10);
+  --line-strong: rgba(244, 239, 230, 0.22);
+  --accent: #E8A45E;
+  --accent-soft: rgba(232, 164, 94, 0.16);
+  --error: #E07767;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(232, 164, 94, 0.06), transparent 60%),
+    var(--bg);
   color: var(--fg);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.45;
 }
-button, input { font: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
 
 .app {
   min-height: 100%;
-  padding: 16px 20px 80px;
-  max-width: 720px;
+  padding: 20px 20px 96px;
+  max-width: 760px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
 }
 
-h1, h2 { margin: 0; font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.01em; }
-h1 { font-size: 28px; }
-h2 { font-size: 18px; }
+/* ── Header — safelight panel ── */
+.app > header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1, h2 { margin: 0; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.022em;
+}
+h1 em { font-style: italic; color: var(--accent); }
+
 .muted { color: var(--muted); font-size: 13px; }
 .muted.small { font-size: 12px; }
 .error { color: var(--error); }
 
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.eyebrow .dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  margin-right: 6px;
+  vertical-align: 1px;
+  box-shadow: 0 0 12px var(--accent);
+  animation: snap-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes snap-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+
+/* ── Capture row — single big shutter disc ── */
+.capture-row {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 4px;
+}
+
 button {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
   height: 42px;
   padding: 0 18px;
-  border: 1px solid var(--fg);
+  border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--fg);
   cursor: pointer;
-  font-weight: 500;
   border-radius: 0;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
 }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-button:hover:not(:disabled) { opacity: 0.85; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button:hover:not(:disabled) { background: rgba(244, 239, 230, 0.04); }
 button:active:not(:disabled) { transform: scale(0.98); }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-button.big { height: 56px; font-size: 17px; padding: 0 28px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #1A140A; }
+button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+
+button.primary.big {
+  width: 116px;
+  height: 116px;
+  border-radius: 999px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 0 6px var(--bg),
+    0 0 0 7px var(--accent),
+    0 18px 60px -18px rgba(232, 164, 94, 0.55);
+}
+button.primary.big:active:not(:disabled) { transform: scale(0.95); }
+
 button.link {
   height: auto;
   padding: 0;
@@ -60,81 +150,97 @@ button.link {
   background: transparent;
   color: var(--muted);
   text-decoration: underline;
-  font-size: 12px;
-  text-align: left;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
 }
-
-.capture-row { display: flex; }
-.capture-row .primary { flex: 1; }
 
 input[type="search"] {
   width: 100%;
   height: 42px;
   padding: 0 14px;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid var(--line);
   border-radius: 0;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--fg);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
 }
+input[type="search"]::placeholder { color: var(--muted); }
+input[type="search"]:focus { outline: none; border-color: var(--accent); }
 
+.search-row { display: flex; }
+
+/* ── Grid — polaroid wall ── */
 .grid-section { display: flex; flex-direction: column; gap: 12px; }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
+  gap: 14px;
 }
+
 .cell {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: #fff;
+  gap: 0;
+  background: var(--bg-card);
   border: 1px solid var(--line);
-  padding: 6px;
+  padding: 8px 8px 6px;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.18s ease;
 }
-.cell img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
-.cell figcaption { display: flex; flex-direction: column; gap: 2px; padding: 4px 2px; }
-.cell .labels { font-family: 'Fraunces', serif; font-size: 13px; color: var(--fg); }
-
-/* ── Shippie pattern moves: Fraunces · eyebrow · big numeric · code ── */
-@font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype'); }
-@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype'); }
-@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 600; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype'); }
-@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 700; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype'); }
-
-:root {
-  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+.cell:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+.cell img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  filter: contrast(1.04) saturate(0.96);
 }
 
-.eyebrow {
+.cell figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 2px 2px;
+}
+.cell .labels {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--fg-soft);
+  line-height: 1.25;
+}
+.cell .muted.small {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
 }
+.cell button.link { margin-top: 2px; align-self: flex-start; }
 
-.snap-numeric {
+/* ── 4-move primitives ── */
+.snap-numeric, .score-numeric {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.018em;
   line-height: 0.95;
-  font-size: clamp(2.8rem, 9vw, 5.6rem);
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
   color: var(--accent);
 }
 .snap-numeric .unit {
-  font-size: 0.45em;
+  font-size: 0.4em;
   font-weight: 600;
   color: var(--muted);
-  vertical-align: 0.35em;
-  margin-left: 0.2em;
+  vertical-align: 0.4em;
+  margin-left: 0.3em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-
 .snap-code {
   font-family: var(--font-mono);
   font-style: italic;
@@ -145,15 +251,21 @@ input[type="search"] {
   color: var(--accent);
 }
 
-.page-hero h1 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.4rem, 7vw, 4.7rem);
-  line-height: 0.95;
-  letter-spacing: -0.022em;
+.title-hero { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.022em; font-size: clamp(2.4rem, 7vw, 4rem); line-height: 0.95; }
+.title-hero em { font-style: italic; color: var(--accent); }
+
+/* ── Snap stats strip ── */
+.snap-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 6px;
 }
-.page-hero h1 em {
-  font-style: italic;
-  font-weight: 600;
-  color: var(--accent);
+.snap-stats .stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
 }

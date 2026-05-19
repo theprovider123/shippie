@@ -3,7 +3,7 @@
   "name": "Shippie Match Room",
   "short_name": "Match Room",
   "slug": "match-room",
-  "description": "Predictions, trivia, sweepstakes, votes, and matchday banter for the 2026 football tournament. No ads, no account.",
+  "description": "Private match rooms for score predictions, quick votes, reactions, and matchday banter. No ads, no account.",
   "icon": "/icon.svg",
   "start_url": "/run/match-room/",
   "scope": "/run/match-room/",
@@ -67,9 +67,7 @@
   "intents": {
     "provides": [
       "matchday-prediction-stats",
-      "tournament-leaderboard",
-      "tournament-fixtures-2026",
-      "city-of-the-day",
+      "matchday-room-feed",
       "live-match-status"
     ],
     "consumes": [

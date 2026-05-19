@@ -102,12 +102,12 @@
 {/if}
 
 <style>
-  .form { display: flex; flex-direction: column; gap: 1rem; }
-  .row { display: flex; gap: 1rem; }
-  .row label { flex: 1; }
-  label { display: flex; flex-direction: column; gap: 4px; }
+  .form { display: flex; min-width: 0; max-width: 100%; flex-direction: column; gap: 1rem; }
+  .row { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; gap: 1rem; }
+  .row label { flex: 1 1 160px; }
+  label { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
   label span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: #8B847A; font-family: ui-monospace, monospace; }
-  input, select { height: 44px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: var(--type-body-mobile, 16px); color: inherit; border-radius: 0; box-sizing: border-box; }
+  input, select { width: 100%; min-width: 0; height: 44px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: var(--type-body-mobile, 16px); color: inherit; border-radius: 0; box-sizing: border-box; }
   input:focus, select:focus { border-color: #E8603C; outline: none; }
   .btn-primary {
     height: 48px;
@@ -121,12 +121,20 @@
     align-self: flex-start;
   }
   .btn-primary:disabled { opacity: 0.5; }
-  .success { padding: 1rem 1.25rem; border: 1px solid rgba(46,125,91,0.4); background: rgba(46,125,91,0.05); border-radius: 0; color: #2E7D5B; }
+  .success { min-width: 0; max-width: 100%; padding: 1rem 1.25rem; border: 1px solid rgba(46,125,91,0.4); background: rgba(46,125,91,0.05); border-radius: 0; color: #2E7D5B; }
   .head { margin: 0; font-weight: 700; }
   .dim { color: #8B847A; font-size: 12px; }
-  .success a { color: inherit; font-family: ui-monospace, monospace; }
-  pre { font-family: ui-monospace, monospace; font-size: 12px; padding: 0.5rem; background: rgba(0,0,0,0.05); border-radius: 0; overflow: auto; }
+  .success a { color: inherit; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+  pre { max-width: 100%; font-family: ui-monospace, monospace; font-size: 12px; padding: 0.5rem; background: rgba(0,0,0,0.05); border-radius: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
   .error { color: #B43F2A; margin: 0; font-size: 13px; }
+  @media (max-width: 640px) {
+    .row { flex-direction: column; }
+    .btn-primary {
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+  }
   @media (prefers-color-scheme: dark) {
     input, select { border-color: #3A352D; }
     pre { background: rgba(255,255,255,0.05); }

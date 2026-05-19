@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { goto, pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import { readShippiePackageArchive } from '@shippie/app-package-builder';
   import { ContainerBridgeHost, createWindowBridgeTransport } from '@shippie/container-bridge';
@@ -1229,7 +1229,7 @@
   function restoreFocusedHistorySentinel() {
     if (!data.focused || typeof window === 'undefined') return;
     try {
-      history.pushState({ shippieFocused: true }, '');
+      pushState('', { ...window.history.state, shippieFocused: true });
     } catch {
       /* history API may be blocked */
     }
@@ -1768,7 +1768,7 @@
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     url.hash = `shippie-restore=${encodeURIComponent(transferId)}`;
-    window.history.replaceState(window.history.state, '', url);
+    replaceState(url, window.history.state ?? {});
   }
 
   function uninstallApp(appId: string) {
@@ -1835,7 +1835,7 @@
         at: new Date().toLocaleTimeString(),
         capability: 'package.update',
         method: 'stay-current',
-        summary: `Staying on installed ${receiptsByApp[appId]?.version ?? 'version'}`,
+        summary: `Staying on saved ${receiptsByApp[appId]?.version ?? 'version'}`,
       },
       ...logs.slice(0, 11),
     ];
@@ -2052,12 +2052,12 @@
       }
       const app = await cacheBuiltPackage(built, registryApp);
       privateJoinState = 'ready';
-      privateJoinStatus = `${app.name} is installed and ready on this device.`;
+      privateJoinStatus = `${app.name} is ready on this device.`;
       await maybeOpenPrivateJoinRestore(join);
     } catch (err) {
       if (registryApp) openApp(registryApp.id);
       privateJoinState = 'error';
-      privateJoinStatus = err instanceof Error ? err.message : `Could not install ${appName}.`;
+      privateJoinStatus = err instanceof Error ? err.message : `Could not save ${appName}.`;
     }
   }
 
@@ -2704,9 +2704,9 @@
       {#if notFoundSlug}
         <div class="focused-not-found">
           <EmptyState
-            title="We couldn't find that app."
-            body={`No app installed at /${notFoundSlug}. It may have been unpublished, made private, or the link is wrong.`}
-            actionLabel="Browse apps"
+            title="We couldn't find that tool."
+            body={`No tool found at /${notFoundSlug}. It may have been unpublished, made private, or the link is wrong.`}
+            actionLabel="Browse tools"
             actionHref="/apps"
           />
         </div>
@@ -2903,7 +2903,7 @@
     <div class="status-panel">
       <span class="status" class:ready={bridgeStatus === 'ready'}>{bridgeStatus}</span>
       <p>{installedApps.length} saved tools · {totalRows} local records</p>
-      <p>{Object.keys(receiptsByApp).length} saved installs · local data controls ready.</p>
+      <p>{Object.keys(receiptsByApp).length} saved versions · local data controls ready.</p>
     </div>
 
     <nav class="tabs" aria-label="Shippie sections">
@@ -3764,6 +3764,10 @@
     .focused-chrome-button {
       width: var(--touch-min);
       height: 48px;
+      background: rgba(20, 18, 15, 0.82);
+      box-shadow: 0 6px 18px rgba(20, 18, 15, 0.14);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
     .focused-chrome-tools {
       left: calc(env(safe-area-inset-left, 0px) - 16px);

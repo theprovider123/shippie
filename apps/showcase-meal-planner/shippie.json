@@ -36,7 +36,7 @@
   "curation": {
     "surface": "archived",
     "category": "food-drink",
-    "successor": "recipe"
+    "successor": "palate"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-meal-planner",
   "license": "AGPL-3.0-or-later",

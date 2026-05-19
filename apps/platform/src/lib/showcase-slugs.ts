@@ -16,8 +16,8 @@ export interface CanonicalShowcaseTarget {
 }
 
 const SLUG_ALIASES: Record<string, string> = {
-  'recipe-saver': 'recipe',
-  palate: 'recipe',
+  recipe: 'palate',
+  'recipe-saver': 'palate',
   // Phase 2 cleanup — Chiwit absorbs the loose daily wellness mirrors.
   // Move remains routed to Lift because strength/workout logging has a
   // sharper standalone home there.
@@ -29,8 +29,8 @@ const SLUG_ALIASES: Record<string, string> = {
   // daily-briefing demoted to platform-side `/today` surface; until
   // that's fully discoverable, alias into Chiwit's daily pulse.
   'daily-briefing': 'chiwit',
-  // Recipe absorbed the standalone temperature helper for launch.
-  cooking: 'recipe',
+  // Palate absorbed the standalone temperature helper for launch.
+  cooking: 'palate',
 
   // Slate v4 Phase 0 consolidations. Each successor app is a current
   // first-party showcase (match-room, co-pilot, therapy-notes, lift) so
@@ -58,10 +58,10 @@ const SLUG_ALIASES: Record<string, string> = {
   reaction: 'daily-puzzle',
 
   // Launch slate Phase 4 — food utilities now live as tabs inside
-  // Recipe so the cooking workflow has one mobile home.
-  'shopping-list': 'recipe',
-  'meal-planner': 'recipe',
-  'pantry-scanner': 'recipe',
+  // Palate so the cooking workflow has one mobile home.
+  'shopping-list': 'palate',
+  'meal-planner': 'palate',
+  'pantry-scanner': 'palate',
   'photo-a-day': 'snap-and-forget',
   'body-metrics': 'chiwit',
   breath: 'chiwit',

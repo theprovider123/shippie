@@ -3,22 +3,12 @@
   import type { PageProps } from './$types';
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
   import RatingsSummary from '$lib/components/marketplace/RatingsSummary.svelte';
-  import CapabilityBadges from '$lib/components/marketplace/CapabilityBadges.svelte';
   import LocalAppActions from '$lib/components/marketplace/LocalAppActions.svelte';
-  import UpvoteButton from '$lib/components/marketplace/UpvoteButton.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { pwaSurfaceLabel } from '$lib/types/pwa-readiness';
   import { toast } from '$lib/stores/toast';
 
   let { data, form }: PageProps = $props();
   let savingProfile = $state(false);
-
-  // Subdomain for direct install. `shippie.app` post-cutover; the canary
-  // form was `next.shippie.app` which still works since the wildcard
-  // route covers both hostnames.
-  function installUrl(slug: string): string {
-    return `https://${slug}.shippie.app/`;
-  }
 
   // Share copy varies by viewer:
   //   public app, any viewer → public marketplace URL
@@ -83,18 +73,6 @@
     return score === null ? 'Unscored' : `${score}/100`;
   }
 
-  const pwaLabel = $derived(
-    pwaSurfaceLabel(data.app.pwaReadiness.status, data.app.pwaReadiness.reasons),
-  );
-  const surfaceLabel = $derived(
-    pwaLabel === 'App'
-      ? 'Installable'
-      : pwaLabel === 'App — verifying'
-        ? 'Installable — verifying'
-        : pwaLabel === 'Web App'
-          ? 'Web tool'
-          : pwaLabel,
-  );
   const typeLabel = $derived(data.app.type.toLowerCase() === 'app' ? 'tool' : data.app.type);
   const isRemix = $derived(Boolean(data.ownership.lineage.parentAppId));
   const remixLabel = $derived(
@@ -128,23 +106,23 @@
         <h1 class="title">{data.app.name}</h1>
         <p class="tagline">{data.app.tagline ?? data.app.description ?? ''}</p>
         <div class="hero-tags">
-          <p class="kind">{surfaceLabel} · {typeLabel} · {data.app.category}</p>
+          <p class="kind">{typeLabel} · {data.app.category}</p>
           {#if isRemix}
             <span class="remix-badge">{remixLabel}</span>
           {/if}
-          {#if data.signingTrust}
-            <span class="signed-badge" title={data.signingTrust.summary}>{data.signingTrust.label}</span>
-          {/if}
         </div>
-        {#if data.capabilityBadges.length > 0}
-          <div class="badges">
-            <CapabilityBadges badges={data.capabilityBadges} max={5} />
-          </div>
-        {/if}
         <div class="cta-row">
-          <a class="install-btn" href={data.ownership.standaloneUrl}>
+          <a class="open-btn" href={data.ownership.standaloneUrl}>
             Open {data.app.name}
           </a>
+          <LocalAppActions
+            slug={data.app.slug}
+            name={data.app.name}
+            appUrl={data.ownership.standaloneUrl}
+            showFavorite={false}
+            variant="inline"
+            showStatus={false}
+          />
           <button
             type="button"
             class="share-btn"
@@ -153,123 +131,99 @@
           >
             Share
           </button>
-          <UpvoteButton slug={data.app.slug} initialCount={data.app.upvoteCount} label="Favorite" />
-          {#if data.ownership.remixAvailable}
-            <a class="remix-btn" href={`/new?remix=${data.app.slug}`} aria-label="Remix this tool">
-              Remix →
-            </a>
-          {/if}
         </div>
-        <LocalAppActions
-          slug={data.app.slug}
-          name={data.app.name}
-          appUrl={data.ownership.standaloneUrl}
-          showFavorite={false}
-        />
       </div>
     </div>
   </div>
 </header>
 
 <div class="body wrap">
-  {#if data.signingTrust}
-    <section class="section signed-card" aria-labelledby="signed-card-title">
-      <div>
-        <span>Trust signal</span>
-        <h2 id="signed-card-title">{data.signingTrust.label}</h2>
-        <p>{data.signingTrust.summary}</p>
-      </div>
-      <div>
-        <span>Package</span>
-        <p>
-          {#if data.signingTrust.packageHash}
-            v{data.signingTrust.version ?? 'current'} · {data.signingTrust.packageHash.slice(0, 26)}...
-          {:else}
-            First-party bundle
-          {/if}
-        </p>
-      </div>
-    </section>
-  {/if}
-
-  {#if data.trustCard}
-    <section class="section trust-card" aria-labelledby="trust-card-title">
-      <div class="section-intro">
-        <h2 id="trust-card-title">Trust Card</h2>
-        <p>What Shippie could verify before you open this tool.</p>
-      </div>
-      <div class="trust-grid">
-        <article>
-          <span>Data location</span>
-          <strong>{data.trustCard.dataLocation}</strong>
-          <p>{data.trustCard.serverContent}</p>
-        </article>
-        <article>
-          <span>Privacy grade</span>
-          <strong>{data.trustCard.privacyGrade ?? 'Ungraded'}</strong>
-          <p>
-            {data.trustCard.externalDomains.length === 0
-              ? 'No external domains detected.'
-              : `${data.trustCard.externalDomains.length} external domain${data.trustCard.externalDomains.length === 1 ? '' : 's'} detected.`}
-          </p>
-        </article>
-        <article>
-          <span>Security</span>
-          <strong>{securityLabel(data.trustCard.securityScore)}</strong>
-          <p>{eligibilityLabel(data.trustCard.containerEligibility)}</p>
-        </article>
-        <article>
-          <span>Proof badges</span>
-          <strong>{data.trustCard.proofBadges.length}</strong>
-          <p>
-            {data.trustCard.proofBadges.length > 0
-              ? data.trustCard.proofBadges.join(' · ')
-              : 'No runtime proof badges earned yet.'}
-          </p>
-        </article>
-        <article>
-          <span>PWA readiness</span>
-          <strong>{surfaceLabel}</strong>
-          <p>
-            {data.app.pwaReadiness.status === 'confirmed'
-              ? 'Confirmed by runtime proof from a real device.'
-              : data.app.pwaReadiness.reasons.includes('manifest-found')
-                ? 'Detected from deploy-time signals; awaiting runtime proof.'
-                : 'Wrapped as a web tool while PWA signals are missing.'}
-          </p>
-        </article>
-      </div>
-      <div class="trust-detail">
-        <div>
-          <span>Declared permissions</span>
-          <p>
-            {data.grantedPermissions.length > 0
-              ? data.grantedPermissions.join(' · ')
-              : 'No extra permissions declared.'}
-          </p>
+  {#if data.signingTrust || data.trustCard || data.grantedPermissions.length > 0}
+    <details class="section trust-details">
+      <summary>Why this is safe</summary>
+      {#if data.signingTrust}
+        <div class="signed-card" aria-labelledby="signed-card-title">
+          <div>
+            <span>Checked by Shippie</span>
+            <h2 id="signed-card-title">{data.signingTrust.label}</h2>
+            <p>{data.signingTrust.summary}</p>
+          </div>
+          <div>
+            <span>Version</span>
+            <p>
+              {#if data.signingTrust.packageHash}
+                v{data.signingTrust.version ?? 'current'} · {data.signingTrust.packageHash.slice(0, 26)}...
+              {:else}
+                First-party bundle
+              {/if}
+            </p>
+          </div>
         </div>
-        <div>
-          <span>External connections</span>
-          {#if data.trustCard.externalDomains.length > 0}
-            <div class="domain-list trust-domains">
-              {#each data.trustCard.externalDomains as domain (domain.domain)}
-                <p>
-                  {domain.domain} · {domain.purpose}
-                  {domain.personalData ? ' · may involve personal data' : ''}
-                </p>
-              {/each}
+      {/if}
+
+      {#if data.trustCard}
+        <div class="trust-card" aria-labelledby="trust-card-title">
+          <div class="section-intro">
+            <h2 id="trust-card-title">What Shippie checked</h2>
+            <p>Details for people who want to inspect the tool before opening it.</p>
+          </div>
+          <div class="trust-grid">
+            <article>
+              <span>Data</span>
+              <strong>{data.trustCard.dataLocation}</strong>
+              <p>{data.trustCard.serverContent}</p>
+            </article>
+            <article>
+              <span>Privacy</span>
+              <strong>{data.trustCard.privacyGrade ?? 'Ungraded'}</strong>
+              <p>
+                {data.trustCard.externalDomains.length === 0
+                  ? 'No external domains detected.'
+                  : `${data.trustCard.externalDomains.length} external domain${data.trustCard.externalDomains.length === 1 ? '' : 's'} detected.`}
+              </p>
+            </article>
+            <article>
+              <span>Security</span>
+              <strong>{securityLabel(data.trustCard.securityScore)}</strong>
+              <p>{eligibilityLabel(data.trustCard.containerEligibility)}</p>
+            </article>
+            <article>
+              <span>Proof</span>
+              <strong>{data.trustCard.proofBadges.length}</strong>
+              <p>
+                {data.trustCard.proofBadges.length > 0
+                  ? data.trustCard.proofBadges.join(' · ')
+                  : 'No runtime proof badges earned yet.'}
+              </p>
+            </article>
+          </div>
+          <div class="trust-detail">
+            <div>
+              <span>Permissions</span>
+              <p>
+                {data.grantedPermissions.length > 0
+                  ? data.grantedPermissions.join(' · ')
+                  : 'No extra permissions declared.'}
+              </p>
             </div>
-          {:else}
-            <p>No external network domains were detected in the latest package scan.</p>
-          {/if}
+            <div>
+              <span>External connections</span>
+              {#if data.trustCard.externalDomains.length > 0}
+                <div class="domain-list trust-domains">
+                  {#each data.trustCard.externalDomains as domain (domain.domain)}
+                    <p>
+                      {domain.domain} · {domain.purpose}
+                      {domain.personalData ? ' · may involve personal data' : ''}
+                    </p>
+                  {/each}
+                </div>
+              {:else}
+                <p>No external network domains were detected in the latest package scan.</p>
+              {/if}
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
-  {/if}
-
-  {#if data.grantedPermissions.length > 0}
-    <section class="section">
-      <h2>What this tool can do</h2>
+      {:else if data.grantedPermissions.length > 0}
       <ul class="perms">
         {#each data.grantedPermissions as perm (perm)}
           <li>
@@ -278,7 +232,8 @@
           </li>
         {/each}
       </ul>
-    </section>
+      {/if}
+    </details>
   {/if}
 
   {#if data.changelog && data.changelog.entries.length > 0}
@@ -448,7 +403,7 @@
 
   <section class="section meta-row">
     <p class="meta-line">
-      {data.app.installCount.toLocaleString()} installs · {data.app.upvoteCount.toLocaleString()} upvotes
+      {data.app.installCount.toLocaleString()} opens
     </p>
   </section>
 
@@ -531,27 +486,13 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
-  .signed-badge {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 0 0.6rem;
-    border: 1px solid rgba(237, 228, 211, 0.72);
-    background: rgba(237, 228, 211, 0.16);
-    color: #EDE4D3;
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .badges { margin-top: 1rem; }
   .cta-row {
     margin-top: var(--space-lg);
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
   }
-  .install-btn {
+  .open-btn {
     display: inline-flex;
     align-items: center;
     height: 44px;
@@ -562,7 +503,13 @@
     font-size: var(--small-size);
     transition: background 0.2s;
   }
-  .install-btn:hover { background: #000; }
+  .open-btn:hover { background: #000; }
+  .cta-row :global(.local-actions.inline) {
+    margin-top: 0;
+  }
+  .cta-row :global(.local-actions.inline button) {
+    color: #EDE4D3;
+  }
   .share-btn {
     display: inline-flex;
     align-items: center;
@@ -580,24 +527,6 @@
     transition: background 0.2s;
   }
   .share-btn:hover { background: rgba(232, 96, 60, 0.08); }
-  .remix-btn {
-    display: inline-flex;
-    align-items: center;
-    height: 44px;
-    padding: 0 1.25rem;
-    background: transparent;
-    color: inherit;
-    border: 1px solid currentColor;
-    border-radius: 0;
-    font-family: ui-monospace, SFMono-Regular, monospace;
-    font-size: var(--small-size);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .remix-btn:hover { background: rgba(232, 96, 60, 0.08); }
 
   .body {
     padding: var(--space-2xl) 0 var(--space-3xl);
@@ -618,6 +547,21 @@
     margin: 0;
     color: var(--text-secondary);
     font-size: var(--small-size);
+  }
+  .trust-details {
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    padding: var(--space-md);
+  }
+  .trust-details summary {
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .trust-details[open] summary {
+    margin-bottom: var(--space-md);
   }
   .trust-card {
     display: grid;
@@ -895,24 +839,25 @@
       bottom: calc(84px + var(--safe-bottom));
       z-index: 115;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       gap: 8px;
       margin-top: 0;
       padding: 8px;
       border: 1px solid rgba(237, 228, 211, 0.16);
-      background: rgba(20, 18, 15, 0.92);
-      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
+      background: rgba(20, 18, 15, 0.96);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
-    .install-btn,
-    .share-btn {
+    .open-btn,
+    .share-btn,
+    .cta-row :global(.local-actions.inline button) {
       justify-content: center;
       min-width: 0;
       height: 48px;
       padding: 0 1rem;
     }
-    .install-btn {
+    .open-btn {
       width: 100%;
       background: var(--sunset);
       color: var(--bg-pure);
@@ -920,8 +865,8 @@
     .share-btn {
       color: var(--text-secondary);
     }
-    .cta-row :global(.upvote) {
-      display: none;
+    .cta-row :global(.local-actions.inline) {
+      min-width: 0;
     }
     .ownership-grid {
       grid-template-columns: 1fr;

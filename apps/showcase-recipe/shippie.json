@@ -1,7 +1,7 @@
 {
   "$schema": "https://shippie.app/schemas/app.json",
   "name": "Palate",
-  "slug": "recipe",
+  "slug": "palate",
   "description": "Palate refactored into Shippie: recipes, cooking mode, meal planning, pantry, and shopping in one local-first kitchen app.",
   "icon": "/icon-512.png",
   "theme_color": "#D86918",

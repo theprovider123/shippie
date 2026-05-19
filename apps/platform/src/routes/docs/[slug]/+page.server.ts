@@ -26,8 +26,8 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'The short version',
         body: [
-          'Shippie is built around local-first tools. Most app data is created and stored inside your browser or installed PWA on your device. Shippie does not need that content to list, launch, or install tools.',
-          'We collect only the platform data needed to run Shippie: account identity if you sign in, app/deploy metadata for makers, operational logs, security events, and product telemetry such as launches or install-nudge interactions.',
+          'Shippie is built around local-first tools. Most app data is created and stored inside your browser or home-screen app on your device. Shippie does not need that content to list or launch tools.',
+          'We collect only the platform data needed to run Shippie: account identity if you sign in, app/deploy metadata for makers, operational logs, security events, and product telemetry such as launches or home-screen guide interactions.',
         ],
       },
       {
@@ -50,7 +50,7 @@ const pages: Record<string, DocsPage> = {
           'Account information when you sign in, such as email, display name, avatar, and provider identifiers.',
           'Maker app metadata, package hashes, scan results, deploy status, visibility settings, and public listing content.',
           'Operational logs, abuse-prevention signals, rate-limit events, and aggregate usage signals needed to keep the service reliable.',
-          'Capability proof events when a tool or wrapper reports that a feature worked, such as install, offline load, or local data export.',
+          'Capability proof events when a tool or wrapper reports that a feature worked, such as home-screen launch, offline load, or local data export.',
         ],
       },
       {
@@ -88,7 +88,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Shipping apps',
         body: [
-          'Makers keep ownership of their code and content. By deploying to Shippie, you give Shippie permission to host, scan, wrap, package, cache, display, and serve your app so users can open and install it.',
+          'Makers keep ownership of their code and content. By deploying to Shippie, you give Shippie permission to host, scan, wrap, package, cache, display, and serve your app so users can open it.',
           'You are responsible for the rights to your app, its dependencies, its content, and any services it contacts.',
         ],
         bullets: [
@@ -100,7 +100,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Local data and backups',
         body: [
-          'Shippie provides local-first platform features, but local data can still be lost if a device is cleared, a browser profile is deleted, storage is evicted, or a user removes the PWA.',
+          'Shippie provides local-first platform features, but local data can still be lost if a device is cleared, a browser profile is deleted, storage is evicted, or a user removes the home-screen app.',
           'Use export, transfer, or backup flows for important data.',
         ],
       },
@@ -137,7 +137,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'What we check',
         body: [
-          'The platform scans deploys and generated packages for installability, external domains, local-data signals, security posture, and container compatibility. Runtime proof badges are earned only after Shippie observes a capability working on real devices.',
+          'The platform scans deploys and generated packages for device support, external domains, local-data signals, security posture, and container compatibility. Runtime proof badges are earned only after Shippie observes a capability working on real devices.',
         ],
         bullets: [
           'Package hashes and signed metadata help users identify the version they opened.',
@@ -155,7 +155,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Current launch posture',
         body: [
-          'Shippie is a web/PWA platform. Browser isolation, Cloudflare Workers, signed package metadata, local storage boundaries, and user-visible capability surfaces are the core protections. Native app-store review is not part of the launch model.',
+          'Shippie is a web app platform. Browser isolation, Cloudflare Workers, signed package metadata, local storage boundaries, and user-visible capability surfaces are the core protections. Native app-store review is not part of the launch model.',
         ],
       },
     ],
@@ -165,39 +165,39 @@ const pages: Record<string, DocsPage> = {
     ],
   },
   install: {
-    title: 'Install Shippie',
+    title: 'Add Shippie to your home screen',
     eyebrow: 'For users',
-    description: 'Add Shippie to your home screen from iPhone, Android, or desktop.',
+    description: 'Optional home-screen setup for iPhone, Android, and desktop.',
     updated,
     sections: [
       {
         title: 'iPhone and iPad',
         body: [
           'Open shippie.app in Safari. Tap the Share button in the browser toolbar, scroll to Add to Home Screen, then confirm Add.',
-          'iOS does not let websites open the install prompt directly, so Shippie shows a manual guide when you have used a few tools and are still in Safari.',
+          'iOS does not let websites open this prompt directly, so Shippie keeps the guide here instead of interrupting your first visit.',
         ],
         bullets: [
-          'Use Safari, not an in-app browser, for the most reliable install.',
-          'After install, open Shippie from the home-screen icon for the standalone launcher.',
+          'Use Safari, not an in-app browser, for the most reliable home-screen setup.',
+          'After adding it, open Shippie from the home-screen icon for the standalone launcher.',
           'If the icon opens Safari instead of standalone mode, remove it and add it again from Safari.',
         ],
       },
       {
         title: 'Android',
         body: [
-          'Open shippie.app in Chrome or another install-capable browser. When prompted, tap Install. If no prompt appears, open the browser menu and choose Add to Home screen or Install app.',
+          'Open shippie.app in Chrome or another app-capable browser. If Chrome offers a prompt, accept it. If no prompt appears, open the browser menu and choose Add to Home screen or Install app.',
         ],
       },
       {
         title: 'Desktop',
         body: [
-          'Open shippie.app in Chrome, Edge, or another PWA-capable desktop browser. Use the install icon in the address bar or the browser menu to install Shippie as an app window.',
+          'Open shippie.app in Chrome, Edge, or another desktop browser that supports app windows. Use the address-bar icon or browser menu to add Shippie.',
         ],
       },
       {
-        title: 'After install',
+        title: 'After setup',
         body: [
-          'The installed launcher starts at Home. Your saved tools, recent tools, and local device data stay tied to the browser profile or installed app storage on that device.',
+          'The home-screen launcher starts at Home. Your saved tools, recent tools, and local device data stay tied to the browser profile or app storage on that device.',
         ],
       },
     ],
@@ -257,7 +257,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'What Shippie adds',
         body: [
-          'Shippie turns a web app into a listed, installable, container-compatible tool with package metadata, app detail pages, local-data surfaces, and launch telemetry.',
+          'Shippie turns a web app into a listed, phone-ready, container-compatible tool with package metadata, app detail pages, local-data surfaces, and launch telemetry.',
         ],
       },
     ],
@@ -312,26 +312,26 @@ const pages: Record<string, DocsPage> = {
   why: {
     title: 'Why Shippie',
     eyebrow: 'For teams',
-    description: 'Why small tools should be launchable, installable, and local-first by default.',
+    description: 'Why small tools should be launchable, phone-ready, and local-first by default.',
     updated,
     sections: [
       {
         title: 'The thesis',
         body: [
           'Teams and individuals need small software that behaves like an app without waiting for an app store, a procurement cycle, or a cloud platform redesign.',
-          'Shippie wraps ordinary web apps into installable tools, keeps local data visible, and gives builders a path from one-off utility to trusted product.',
+          'Shippie wraps ordinary web apps into phone-ready tools, keeps local data visible, and gives builders a path from one-off utility to trusted product.',
         ],
       },
       {
         title: 'The launch promise',
         body: [
-          'Open the launcher, run the tool, install it when it earns a place on your phone, and understand where your data lives before you trust it.',
+          'Open the launcher, run the tool, add it to your phone later if it earns the spot, and understand where your data lives before you trust it.',
         ],
       },
     ],
     links: [
       { href: '/whitepaper', label: 'Read the whitepaper' },
-      { href: '/docs/install', label: 'Install guide' },
+      { href: '/docs/install', label: 'Home-screen guide' },
     ],
   },
   pro: {

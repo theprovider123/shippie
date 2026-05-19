@@ -1,5 +1,7 @@
 import type { PollDescriptor, PollTally } from '@shippie/proximity';
 
+const RATING_LABELS = ['Flat', 'Calm', 'On edge', 'Loud', 'Chaos'];
+
 export function RatingBallot(props: {
   poll: PollDescriptor;
   tally: PollTally | undefined;
@@ -15,7 +17,8 @@ export function RatingBallot(props: {
       <div className="rating-row" aria-label="Rating">
         {[1, 2, 3, 4, 5].map((value) => (
           <button key={value} disabled={props.disabled} onClick={() => props.onVote(value)}>
-            {value}
+            <strong>{value}</strong>
+            <span>{RATING_LABELS[value - 1]}</span>
           </button>
         ))}
       </div>

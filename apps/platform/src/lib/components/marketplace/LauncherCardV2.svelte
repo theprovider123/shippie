@@ -146,9 +146,8 @@
     onclick={launchAndRemember}
     onpointerenter={warmLaunch}
     onfocus={warmLaunch}
-    ontouchstart={warmLaunch}
     data-sveltekit-preload-data="tap"
-    data-sveltekit-preload-code="eager"
+    data-sveltekit-preload-code="hover"
     aria-label={`Open ${safeName} — ${categoryLabel}`}
   >
     <div class="icon">

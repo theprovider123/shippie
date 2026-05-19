@@ -1,10 +1,25 @@
+/* ── colour-of-day · Gallery / Pantone-card identity ──────────────
+   A swatch-and-statement app. Gallery-white room, ink type, swatches
+   rendered as paint-store sample cards with hex codes below in mono.
+   The day's pick is restated as a typographic declaration. */
+
+@font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 600; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 700; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype'); }
+
 :root {
   color-scheme: light;
-  --bg: #F8F1E0;
-  --fg: #2A1F16;
-  --muted: #6B5C4A;
-  --line: rgba(42, 31, 22, 0.16);
-  --accent: #C97B2D;
+  --bg: #FAF7F0;
+  --bg-card: #FFFFFF;
+  --fg: #0E0D0C;
+  --muted: #8C8479;
+  --line: rgba(14, 13, 12, 0.12);
+  --line-strong: rgba(14, 13, 12, 0.28);
+  --accent: #0E0D0C;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -12,7 +27,7 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.45;
@@ -21,120 +36,180 @@ button, input, textarea { font: inherit; }
 
 .app {
   min-height: 100%;
-  padding: 16px 20px 80px;
-  max-width: 720px;
+  padding: 24px 20px 80px;
+  max-width: 760px;
   width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 36px;
 }
 
-h1, h2, h3 { margin: 0; font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.01em; }
-h1 { font-size: 28px; }
-h2 { font-size: 18px; }
+/* ── Hero header — gallery wall placard ── */
+.app > header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1, h2 { margin: 0; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.022em;
+}
+h1 em { font-style: italic; font-weight: 600; color: var(--accent); }
+h2 {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 
 .muted { color: var(--muted); font-size: 13px; }
 .muted.small { font-size: 12px; }
-
-.wheel {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.swatch {
-  aspect-ratio: 1;
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.12s ease, box-shadow 0.18s ease;
-  box-shadow: inset 0 0 0 0 transparent;
-}
-
-.swatch:hover { transform: scale(0.97); }
-.swatch:active { transform: scale(0.92); }
-
-.swatch.picked {
-  box-shadow: inset 0 0 0 4px var(--bg), 0 0 0 2px var(--fg);
-}
-
-.today-readout p {
-  margin: 0;
-  font-family: 'Fraunces', serif;
-  font-size: 18px;
-  text-align: center;
-}
-
-.today-readout strong {
-  font-weight: 600;
-  color: var(--accent);
-  text-transform: lowercase;
-}
-
-.ribbon-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ribbon {
-  display: grid;
-  grid-template-columns: repeat(15, 1fr);
-  gap: 4px;
-}
-
-.tile {
-  display: block;
-  aspect-ratio: 1;
-  border-radius: 0;
-}
-
-.tile.empty {
-  border: 1px dashed var(--line);
-}
-
-/* ── Shippie pattern moves: Fraunces · eyebrow · big numeric · code ── */
-@font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype'); }
-@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype'); }
-@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 600; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype'); }
-@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 700; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype'); }
-
-:root {
-  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
-}
 
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-/* Big numeric — streak / days-painted count for the daily ribbon. */
+/* ── Palette wheel → Pantone-card grid ── */
+.wheel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+@media (min-width: 520px) {
+  .wheel { grid-template-columns: repeat(5, 1fr); gap: 18px; }
+}
+
+.swatch {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.16s ease;
+}
+
+.swatch-chip {
+  display: block;
+  aspect-ratio: 1;
+  background: var(--swatch-bg, #ccc);
+  border-radius: 0;
+  box-shadow:
+    0 1px 0 rgba(14, 13, 12, 0.06),
+    inset 0 0 0 1px rgba(14, 13, 12, 0.04);
+}
+
+.swatch-hex {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  margin-top: 8px;
+  color: var(--fg);
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.swatch-hex .label {
+  font-style: italic;
+  font-weight: 500;
+  text-transform: lowercase;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.swatch:hover .swatch-chip { transform: translateY(-2px); box-shadow: 0 8px 22px -10px rgba(14, 13, 12, 0.2), inset 0 0 0 1px rgba(14, 13, 12, 0.06); }
+.swatch:active .swatch-chip { transform: translateY(0) scale(0.985); }
+
+.swatch.picked .swatch-chip {
+  box-shadow:
+    inset 0 0 0 4px var(--bg),
+    0 0 0 2px var(--fg),
+    0 10px 26px -10px rgba(14, 13, 12, 0.25);
+}
+.swatch.picked .swatch-hex { color: var(--accent); }
+
+/* ── Today readout — gallery declaration ── */
+.today-readout {
+  padding: 32px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+}
+
+.today-readout p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.6rem, 4.4vw, 2.4rem);
+  line-height: 1.15;
+  letter-spacing: -0.012em;
+  text-align: center;
+}
+
+.today-readout strong {
+  font-weight: 600;
+  font-style: italic;
+  color: var(--readout-accent, var(--accent));
+}
+
+.today-readout .swatch-hex {
+  margin-top: 12px;
+  justify-content: center;
+  color: var(--muted);
+}
+
+/* ── Ribbon — mosaic tile wall ── */
+.ribbon-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ribbon-counts {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .days-numeric {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.018em;
   line-height: 0.95;
-  font-size: clamp(2.8rem, 9vw, 5.6rem);
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
   color: var(--accent);
 }
 .days-numeric .unit {
-  font-size: 0.45em;
+  font-size: 0.36em;
   font-weight: 600;
   color: var(--muted);
-  vertical-align: 0.35em;
-  margin-left: 0.2em;
+  vertical-align: 0.4em;
+  margin-left: 0.3em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-
-/* Italic-mono day-label stamp — "today", "yesterday", ISO date. */
 .day-code {
   font-family: var(--font-mono);
   font-style: italic;
@@ -142,18 +217,33 @@ h2 { font-size: 18px; }
   font-size: 0.78rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--muted);
 }
 
-.page-hero h1 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.4rem, 7vw, 4.7rem);
-  line-height: 0.95;
-  letter-spacing: -0.022em;
+.ribbon {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  gap: 3px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
 }
-.page-hero h1 em {
-  font-style: italic;
-  font-weight: 600;
-  color: var(--accent);
+
+.tile {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 0;
 }
+.tile.empty {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0 4px,
+      rgba(14, 13, 12, 0.05) 4px 5px);
+}
+
+/* ── 4-move primitives kept available ── */
+.title-hero { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.022em; font-size: clamp(2.4rem, 7vw, 4rem); line-height: 0.95; }
+.title-hero em { font-style: italic; color: var(--accent); }
+.score-numeric, .move-count, .time-left { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.018em; line-height: 0.95; }
+.score-numeric.size-hero { font-size: clamp(2.8rem, 9vw, 5.6rem); }
+.score-numeric.size-card { font-size: clamp(1.6rem, 4vw, 2.4rem); }

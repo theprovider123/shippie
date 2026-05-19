@@ -676,13 +676,13 @@ export function App() {
     <main className="app" ref={containerRef}>
       <header className="head">
         <div>
-          <h1 style={{ color: world === 'space' ? '#F8F1E0' : undefined }}>Crossing</h1>
-          <p className="muted small" style={{ color: world === 'space' ? '#bbb1a4' : undefined }}>
-            {mode === 'campaign' ? `Lvl ${stage}` : mode === 'daily' ? `Daily · ${todayKey().slice(5)}` : `Stage ${stage}`} ·{' '}
+          <h1 className="title-hero" style={{ color: world === 'space' ? '#F8F1E0' : undefined }}>Crossing</h1>
+          <p className="eyebrow" style={{ color: world === 'space' ? '#bbb1a4' : undefined }}>
+            <span className="game-code">{mode === 'campaign' ? <>Lvl <span className="score-numeric">{stage}</span></> : mode === 'daily' ? `Daily · ${todayKey().slice(5)}` : <>Stage <span className="score-numeric">{stage}</span></>}</span> ·{' '}
             {Array.from({ length: STARTING_LIVES }).map((_, i) => (
               <span key={i} className={i < lives ? 'life-icon' : 'life-icon dead'} aria-hidden>♥</span>
             ))}{' '}
-            · {score} pts {multiplier > 1 ? <span className="mult">×{multiplier}</span> : null}
+            · <span className="score-numeric">{score}</span> pts {multiplier > 1 ? <span className="mult">×{multiplier}</span> : null}
             {shields > 0 ? <span className="badge-shield" title={`${shields} shield${shields > 1 ? 's' : ''}`}> ◇{shields}</span> : null}
           </p>
         </div>

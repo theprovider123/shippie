@@ -16,6 +16,7 @@ import {
   clearOfflineApps,
   downloadApp,
   getAppStatus,
+  listSavedApps,
   removeApp,
 } from '$lib/offline/download-app';
 
@@ -35,6 +36,25 @@ function setOfflineStatus(slug: string, progress: AppDownloadProgress): void {
  */
 export async function refreshCachedSlugs(slugs: readonly string[]): Promise<void> {
   if (slugs.length === 0) return;
+
+  // Bulk refresh happens on launcher mount. A per-slug manifest check
+  // creates dozens of network requests and makes missing/retired bakes
+  // very noisy. Ask the SW to scan its cache once, then only deep-check
+  // tiny candidate sets where a user-facing state needs proof.
+  if (slugs.length > 12) {
+    const allowed = new Set(slugs);
+    const saved = (await listSavedApps()).filter((slug) => allowed.has(slug));
+    cachedSlugs.set(new Set(saved));
+    offlineStatuses.update((statuses) => {
+      const next = { ...statuses };
+      for (const slug of saved) {
+        next[slug] = { slug, state: 'saved', done: 0, total: 0 };
+      }
+      return next;
+    });
+    return;
+  }
+
   const next = new Set<string>();
   const results = await Promise.allSettled(slugs.map((slug) => getAppStatus(slug)));
   for (let i = 0; i < slugs.length; i += 1) {

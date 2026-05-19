@@ -38,6 +38,7 @@ export const SHOWCASE_SLUGS = [
   "memory-grid",
   "mevrouw",
   "move",
+  "palate",
   "pantry-scanner",
   "photo-a-day",
   "pitch-forge",
@@ -46,7 +47,6 @@ export const SHOWCASE_SLUGS = [
   "reaction",
   "read-later",
   "receipt-snap",
-  "recipe",
   "restaurant-memory",
   "shopping-list",
   "show-and-tell",
@@ -65,6 +65,7 @@ export const SHOWCASE_SLUGS = [
   "touch",
   "voice-memo",
   "whiteboard",
+  "world-cup-fantasy",
   "would-you-rather"
 ] as const;
 

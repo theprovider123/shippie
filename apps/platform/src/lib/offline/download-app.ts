@@ -106,7 +106,13 @@ interface SwStatusMessage {
   total: number;
 }
 
-type SwMessage = SwProgressMessage | SwDoneMessage | SwStatusMessage;
+interface SwSavedAppsMessage {
+  type: 'saved-apps';
+  slugs: string[];
+  error?: string;
+}
+
+type SwMessage = SwProgressMessage | SwDoneMessage | SwStatusMessage | SwSavedAppsMessage;
 
 export async function downloadApp(
   slug: string,
@@ -193,6 +199,24 @@ export async function getAppStatus(slug: string): Promise<AppDownloadProgress> {
       });
     };
     sw.postMessage({ type: 'GET_APP_STATUS', slug }, [channel.port2]);
+  });
+}
+
+export async function listSavedApps(): Promise<string[]> {
+  const sw = await getActiveSw();
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = window.setTimeout(() => {
+      channel.port1.close();
+      resolve([]);
+    }, 4000);
+    channel.port1.onmessage = (event) => {
+      window.clearTimeout(timer);
+      channel.port1.close();
+      const msg = event.data as SwSavedAppsMessage;
+      resolve(Array.isArray(msg.slugs) ? msg.slugs : []);
+    };
+    sw.postMessage({ type: 'LIST_SAVED_APPS' }, [channel.port2]);
   });
 }
 

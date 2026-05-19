@@ -114,11 +114,19 @@ export function App() {
   return (
     <main className="app">
       <header>
-        <h1>Snap and Forget</h1>
+        <p className="eyebrow"><span className="dot" aria-hidden />Safelight · {snaps.length} on this device</p>
+        <h1>Snap and <em>Forget</em></h1>
         {showHeroSubtitle ? (
           <p className="muted">Photograph anything. Search by what was in it.</p>
         ) : null}
       </header>
+
+      {snaps.length > 0 ? (
+        <div className="snap-stats">
+          <span className="stat-label">Captured</span>
+          <span className="snap-numeric">{snaps.length}<span className="unit">snaps</span></span>
+        </div>
+      ) : null}
 
       <section className="capture-row">
         <button

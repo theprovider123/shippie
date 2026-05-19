@@ -65,7 +65,7 @@ export function ScorePredictBallot(props: {
           disabled={props.disabled || locked}
           onClick={submit}
         >
-          {locked ? 'Locked' : 'Lock prediction'}
+          {locked ? 'Locked' : 'Lock score'}
         </button>
       </div>
       {props.disabled && !locked ? <p className="ballot-note">Joining the room. Your pick unlocks as soon as the secure room connects.</p> : null}

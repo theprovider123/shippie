@@ -36,7 +36,7 @@
 
   const targetApp = $derived(
     blob.type === 'recipe'
-      ? { slug: 'recipe', name: 'Recipe Saver', subdomain: 'recipe.shippie.app' }
+      ? { slug: 'palate', name: 'Palate', subdomain: 'palate.shippie.app' }
       : blob.type === 'journal-entry'
         ? { slug: 'journal', name: 'Journal', subdomain: 'journal.shippie.app' }
         : blob.type === 'restaurant-visit'
@@ -163,7 +163,7 @@
         <p class="muted small">
           Don't have {targetApp.name}? Visit
           <a href="https://shippie.app/apps/{targetApp.slug}">shippie.app/apps/{targetApp.slug}</a>
-          to install it, then come back to this URL.
+          to open it, then come back to this URL.
         </p>
       {:else}
         <p class="muted small">No matching Shippie app for type "{blob.type}" yet.</p>

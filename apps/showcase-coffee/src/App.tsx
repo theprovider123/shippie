@@ -154,8 +154,8 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <div>
-          <h1>Coffee</h1>
-          <p className="subtitle">brew the usual</p>
+          <h1 className="title-hero">Coffee</h1>
+          <p className="eyebrow subtitle">brew the usual</p>
         </div>
       </header>
 

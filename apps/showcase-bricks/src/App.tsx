@@ -187,10 +187,10 @@ export function App() {
     <main className="app">
       <header className="head">
         <div>
-          <h1>Bricks</h1>
-          <p className="muted small">
+          <h1 className="title-hero">Bricks</h1>
+          <p className="eyebrow">
             {mode === 'daily' ? `Daily · ${todayKey().slice(5)}` : mode === 'endless' ? 'Endless' : 'Classic'}
-            {' · '}Lvl {world.level} · {world.score} pts · {'♥'.repeat(Math.max(0, world.lives))}
+            <span className="game-code"> · Lvl <span className="score-numeric">{world.level}</span> · <span className="score-numeric">{world.score}</span> pts · {'♥'.repeat(Math.max(0, world.lives))}</span>
             {mode === 'daily' && stored.dailyStreak > 0 ? <span className="streak"> · 🔥 {stored.dailyStreak}</span> : null}
           </p>
         </div>

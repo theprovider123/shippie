@@ -369,11 +369,12 @@ export function useMatchdayRoom(opts: UseRoomOptions): MatchdayRoomState {
     },
     async closeScorePoll(pollId) {
       const pollItem = scorePollMap.current.get(pollId);
+      const closedAt = Date.now() - 1;
       if (pollItem) {
-        scorePollMap.current.set(pollId, { ...pollItem, closesAt: Date.now() });
+        scorePollMap.current.set(pollId, { ...pollItem, closesAt: closedAt });
         refreshScoreState();
       }
-      const payload: MatchdayPayload = { kind: 'score-close', pollId, ts: Date.now() };
+      const payload: MatchdayPayload = { kind: 'score-close', pollId, ts: closedAt };
       rememberPayloadRef.current(payload);
       await roomRef.current?.broadcast(payload);
     },

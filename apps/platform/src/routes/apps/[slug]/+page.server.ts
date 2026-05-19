@@ -26,7 +26,8 @@ import { summaryForApp, recentReviews } from '$server/db/queries/ratings';
 import { describeGrantedPermissions } from '$server/marketplace/honesty';
 import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability-badges';
 import { readAppProfile } from '$server/deploy/kv-write';
-import { canonicalAppUrl, isFirstPartyShowcase } from '$lib/showcase-slugs';
+import { canonicalAppUrl, canonicalShowcaseTarget, isFirstPartyShowcase } from '$lib/showcase-slugs';
+import { curatedApps } from '$lib/container/state';
 import { publicRemixInfoForSlug } from '$server/remix/eligibility';
 import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
@@ -35,13 +36,30 @@ import type { KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 import type { TrustReport } from '@shippie/app-package-contract';
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const FIRST_PARTY_SOURCE_DIR_BY_SLUG: Record<string, string> = {
+  palate: 'showcase-recipe',
+};
 
 export const load: PageServerLoad = async ({ platform, params, cookies, locals, url }) => {
-  if (!platform?.env.DB) throw error(503, 'Database binding unavailable');
+  const canonical = canonicalShowcaseTarget(params.slug);
+  if (canonical.slug !== params.slug) {
+    const search = url.search;
+    throw redirect(302, `/apps/${encodeURIComponent(canonical.slug)}${search}`);
+  }
+
+  if (!platform?.env.DB) {
+    const bundled = bundledAppDetail(params.slug);
+    if (bundled) return bundled;
+    throw error(503, 'Database binding unavailable');
+  }
 
   const db = getDrizzleClient(platform.env.DB);
   const app = await findBySlug(db, params.slug);
-  if (!app) throw error(404, 'Not found');
+  if (!app) {
+    const bundled = bundledAppDetail(params.slug);
+    if (bundled) return bundled;
+    throw error(404, 'Not found');
+  }
 
   // Private-app gate. We treat private as 404-when-denied so app
   // existence isn't leaked.
@@ -271,6 +289,85 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     isMaker: locals.user?.id === app.makerId,
   };
 };
+
+function bundledAppDetail(slug: string) {
+  const app = curatedApps.find((item) => item.slug === slug);
+  if (!app || !isFirstPartyShowcase(slug)) return null;
+  const category = app.category ?? 'tools';
+  return {
+    app: {
+      slug: app.slug,
+      name: app.name,
+      tagline: app.description,
+      description: app.description,
+      type: 'app',
+      category,
+      iconUrl: null,
+      themeColor: app.accent,
+      upvoteCount: 0,
+      installCount: 0,
+      visibility: 'public' as const,
+      pwaReadiness: {
+        status: 'confirmed' as const,
+        reasons: ['first-party-showcase'],
+        checkedAt: null,
+      },
+    },
+    ownership: {
+      maker: {
+        name: 'Shippie',
+        username: 'shippie',
+        verified: true,
+      },
+      sourceRepo: `https://github.com/theprovider123/shippie/tree/main/apps/${FIRST_PARTY_SOURCE_DIR_BY_SLUG[app.slug] ?? `showcase-${app.slug}`}`,
+      license: 'AGPL-3.0-or-later',
+      remixAllowed: true,
+      remixAvailable: true,
+      remixVia: 'cli' as const,
+      lineage: {
+        templateId: null,
+        parentAppId: null,
+        parentVersion: null,
+        parentApp: null,
+      },
+      customDomains: [],
+      versions: [],
+      standaloneUrl: canonicalAppUrl(app.slug),
+    },
+    signingTrust: {
+      label: 'Shippie-signed',
+      scope: 'first-party',
+      summary: 'Built, packaged, and shipped by Shippie as part of the first-party showcase slate.',
+      packageHash: null,
+      version: null,
+    },
+    trustCard: {
+      privacyGrade: app.appKind === 'cloud' ? 'Review' : 'Local',
+      securityScore: null,
+      externalDomains: [],
+      containerEligibility: 'first_party',
+      dataLocation:
+        app.appKind === 'cloud'
+          ? 'May need the maker server'
+          : 'On this device by default',
+      serverContent:
+        app.appKind === 'cloud'
+          ? 'This tool may need a network connection for live features.'
+          : 'No app content stored on Shippie servers by default',
+      proofBadges: [],
+    },
+    grantedPermissions: [],
+    capabilityBadges: [],
+    changelog: null,
+    ratingSummary: {
+      average: 0,
+      count: 0,
+      distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    },
+    latestReviews: [],
+    isMaker: false,
+  };
+}
 
 export const actions: Actions = {
   saveProfile: async ({ request, locals, params, platform, url }) => {

@@ -108,6 +108,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'shop', label: 'Shop' },
   { id: 'data', label: 'Data' },
 ];
+const PALATE_LOGO_URL = `${import.meta.env.BASE_URL}brand/palate-logo.png`;
 
 const seedRecipes: Recipe[] = [
   {
@@ -635,7 +636,7 @@ export function App() {
     <main className="palate-app">
       <header className="app-header">
         <button className="brand-lockup" type="button" onClick={() => navigate('today')} aria-label="Open Palate today">
-          <img src="/brand/palate-logo.png" alt="" />
+          <img src={PALATE_LOGO_URL} alt="" />
           <span>
             <strong>Palate</strong>
             <small>Taste-led kitchen</small>
@@ -840,7 +841,7 @@ function TasteBoard({
   return (
     <section className="taste-board" aria-label="Taste board">
       <div className="taste-board-plate">
-        <img src="/brand/palate-logo.png" alt="" />
+        <img src={PALATE_LOGO_URL} alt="" />
       </div>
       <div className="taste-board-content">
         <p className="eyebrow">Next flavour</p>

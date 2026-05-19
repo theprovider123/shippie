@@ -253,9 +253,13 @@ export function App() {
     <main className="app" style={{ background: skin.bg, color: skin.text }} ref={containerRef}>
       <header className="head">
         <div>
-          <h1 style={{ color: skin.accent }}>Invaders</h1>
-          <p className="muted small" style={{ color: skin.text }}>
-            {w ? `Wave ${w.wave} · ${w.score} pts · ${'♥'.repeat(Math.max(0, w.lives))}` : `Best ${stored.bestScore} pts · wave ${stored.bestWave}`}
+          <h1 className="title-hero" style={{ color: skin.accent }}>Invaders</h1>
+          <p className="eyebrow" style={{ color: skin.text }}>
+            {w ? (
+              <span className="game-code">Wave <span className="score-numeric">{w.wave}</span> · <span className="score-numeric">{w.score}</span> pts · {'♥'.repeat(Math.max(0, w.lives))}</span>
+            ) : (
+              <span className="game-code">Best <span className="score-numeric">{stored.bestScore}</span> pts · wave <span className="score-numeric">{stored.bestWave}</span></span>
+            )}
             {rapid ? <span className="badge">RAPID</span> : null}
             {shielded ? <span className="badge">SHIELD</span> : null}
             {w && w.nowMs < w.doubleUntilMs ? <span className="badge">DOUBLE</span> : null}

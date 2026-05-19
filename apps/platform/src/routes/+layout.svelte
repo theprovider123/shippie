@@ -77,7 +77,7 @@
 </script>
 
 <svelte:head>
-  <title>Shippie — No app store. Just the web, installed.</title>
+  <title>Shippie — small tools that work on your device</title>
   <meta name="theme-color" content="#14120F" />
   <link
     rel="preconnect"

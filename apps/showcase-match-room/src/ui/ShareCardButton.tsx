@@ -89,21 +89,21 @@ export function ShareCardButton(props: { provenance: string; profile?: UserProfi
     );
   }
 
-  return <button className="share-card-trigger" onClick={() => setReady(true)}>Make receipt card</button>;
+  return <button className="share-card-trigger" onClick={() => setReady(true)}>Make share card</button>;
 }
 
 function shareReceiptKind(moment?: string): { label: string; description: string } {
   const lower = (moment ?? '').toLowerCase();
   if (lower.includes('var')) {
-    return { label: 'VAR verdict', description: 'Share the room decision with team colours and host-city paper.' };
+    return { label: 'VAR call', description: 'Share the room decision with team colours and host-city paper.' };
   }
   if (lower.includes('trivia') || lower.includes('daily')) {
-    return { label: 'Trivia flex', description: 'Turn the daily quiz moment into a clean card for the chat.' };
+    return { label: 'Trivia card', description: 'Turn the daily quiz into a clean card for the chat.' };
   }
   if (lower.includes('score') || lower.includes('prediction')) {
-    return { label: 'Prediction receipt', description: 'A match-ticket style receipt for picks, receipts, and bragging rights.' };
+    return { label: 'Prediction card', description: 'A match-ticket style card for picks and bragging rights.' };
   }
-  return { label: 'Match receipt', description: 'Poster-style card with team colours, host-city paper, and the room link.' };
+  return { label: 'Match card', description: 'Poster-style card with team colours, host-city paper, and the room link.' };
 }
 
 async function svgToPngBlob(svg: string): Promise<Blob> {
