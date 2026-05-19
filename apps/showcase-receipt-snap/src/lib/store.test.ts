@@ -2,9 +2,14 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   CATEGORIES,
   clearAll,
+  discardAllPhotos,
+  discardPhoto,
+  effectiveSupplier,
   insert,
   load,
+  markExported,
   newId,
+  normalise,
   remove,
   save,
   update,
@@ -54,6 +59,10 @@ function fixture(over: Partial<Receipt> = {}): Receipt {
     raw_ocr_text: over.raw_ocr_text ?? '',
     image_data_url: over.image_data_url ?? null,
     note: over.note ?? '',
+    // Spread any extra fields (accounting widening — supplier, tax_*,
+    // payment_method, etc.) so tests can construct rich rows without
+    // updating this fixture every time the schema grows.
+    ...over,
   };
 }
 
@@ -134,5 +143,145 @@ describe('store · clearAll', () => {
     save({ receipts: [fixture()] });
     clearAll();
     expect(load().receipts).toEqual([]);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────
+// Accounting widening — 2026-05-19
+// ──────────────────────────────────────────────────────────────────
+
+describe('store · normalise (back-compat for legacy rows)', () => {
+  test('fills accounting defaults on legacy row', () => {
+    // Legacy row only has the core fields.
+    const legacy = fixture({ id: 'legacy' });
+    const out = normalise(legacy);
+    expect(out.supplier).toBeNull();
+    expect(out.net_cents).toBeNull();
+    expect(out.tax_cents).toBeNull();
+    expect(out.tax_rate_bp).toBeNull();
+    expect(out.tax_scheme).toBe('unknown');
+    expect(out.payment_method).toBeNull();
+    expect(out.receipt_ref).toBeNull();
+    expect(out.project).toBeNull();
+    expect(out.client).toBeNull();
+    expect(out.export_status).toBe('not_exported');
+    expect(out.discarded_photo_at).toBeNull();
+    // Reimbursable is intentionally NOT defaulted (would silently flip
+    // legacy rows to a business decision the user didn't make).
+    expect(out.reimbursable).toBeUndefined();
+  });
+
+  test('is idempotent', () => {
+    const once = normalise(fixture());
+    const twice = normalise(once);
+    expect(twice).toEqual(once);
+  });
+
+  test('preserves caller-set accounting fields', () => {
+    const row = normalise({
+      ...fixture(),
+      tax_cents: 200,
+      tax_scheme: 'vat',
+      reimbursable: true,
+    });
+    expect(row.tax_cents).toBe(200);
+    expect(row.tax_scheme).toBe('vat');
+    expect(row.reimbursable).toBe(true);
+  });
+
+  test('load() normalises rows read from storage', () => {
+    // Persist a legacy-shaped row directly.
+    save({ receipts: [fixture({ id: 'legacy' })] });
+    const out = load();
+    expect(out.receipts[0]?.tax_scheme).toBe('unknown');
+    expect(out.receipts[0]?.export_status).toBe('not_exported');
+  });
+});
+
+describe('store · effectiveSupplier', () => {
+  test('falls back to vendor when supplier is unset', () => {
+    expect(effectiveSupplier(fixture({ vendor: 'Hagen', supplier: null }))).toBe('Hagen');
+  });
+
+  test('falls back to vendor when supplier is empty whitespace', () => {
+    expect(effectiveSupplier(fixture({ vendor: 'Hagen', supplier: '   ' }))).toBe('Hagen');
+  });
+
+  test('returns supplier override when set', () => {
+    expect(effectiveSupplier(fixture({ vendor: 'Hagen', supplier: 'Hagen Coffee Ltd' }))).toBe(
+      'Hagen Coffee Ltd',
+    );
+  });
+});
+
+describe('store · update (resets export_status on edit)', () => {
+  test('editing fields on an exported row resets export_status', () => {
+    // Don't narrow with `as const` — `update()` returns rows typed
+    // ExportStatus | undefined, and assigning back to a narrowed type
+    // breaks the reassignment.
+    const row: Receipt = { ...fixture({ id: 'a' }), export_status: 'exported' };
+    let state = { receipts: [row] };
+    state = update(state, 'a', { vendor: 'Updated' });
+    expect(state.receipts[0]?.export_status).toBe('not_exported');
+  });
+
+  test('explicit export_status patch wins (used by mark-as-exported)', () => {
+    const row = fixture({ id: 'a' });
+    let state = { receipts: [row] };
+    state = update(state, 'a', { export_status: 'exported' });
+    expect(state.receipts[0]?.export_status).toBe('exported');
+  });
+
+  test('editing an already-not-exported row leaves status unchanged', () => {
+    const row = fixture({ id: 'a' });
+    let state = { receipts: [row] };
+    state = update(state, 'a', { vendor: 'Updated' });
+    // Not-exported stays not-exported; nothing to reset.
+    expect(state.receipts[0]?.export_status).toBeUndefined();
+  });
+});
+
+describe('store · discardPhoto / discardAllPhotos', () => {
+  test('discardPhoto nulls image_data_url and stamps discarded_photo_at', () => {
+    const row = fixture({ id: 'a', image_data_url: 'data:image/jpeg;base64,Zm9v' });
+    let state = { receipts: [row] };
+    state = discardPhoto(state, 'a');
+    expect(state.receipts[0]?.image_data_url).toBeNull();
+    expect(typeof state.receipts[0]?.discarded_photo_at).toBe('string');
+  });
+
+  test('discardPhoto does not touch unrelated fields', () => {
+    const row = fixture({ id: 'a', vendor: 'Hagen', total_cents: 500 });
+    let state = { receipts: [row] };
+    state = discardPhoto(state, 'a');
+    expect(state.receipts[0]?.vendor).toBe('Hagen');
+    expect(state.receipts[0]?.total_cents).toBe(500);
+  });
+
+  test('discardAllPhotos skips rows that already have no photo (no churn)', () => {
+    const withPhoto = fixture({ id: 'a', image_data_url: 'data:image/jpeg;base64,Zm9v' });
+    const without = fixture({ id: 'b', image_data_url: null });
+    let state = { receipts: [withPhoto, without] };
+    state = discardAllPhotos(state);
+    expect(state.receipts[0]?.image_data_url).toBeNull();
+    expect(state.receipts[0]?.discarded_photo_at).toBeTruthy();
+    // Untouched row stays untouched (no new discarded_photo_at).
+    expect(state.receipts[1]?.discarded_photo_at).toBeUndefined();
+  });
+});
+
+describe('store · markExported', () => {
+  test('flips matching rows to exported', () => {
+    let state = { receipts: [fixture({ id: 'a' }), fixture({ id: 'b' }), fixture({ id: 'c' })] };
+    state = markExported(state, ['a', 'c']);
+    expect(state.receipts[0]?.export_status).toBe('exported');
+    expect(state.receipts[1]?.export_status).toBeUndefined();
+    expect(state.receipts[2]?.export_status).toBe('exported');
+  });
+
+  test('empty ids is a no-op', () => {
+    const initial = { receipts: [fixture({ id: 'a' })] };
+    const out = markExported(initial, []);
+    expect(out.receipts[0]?.export_status).toBeUndefined();
   });
 });
