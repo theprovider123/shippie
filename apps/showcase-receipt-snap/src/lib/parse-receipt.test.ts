@@ -49,6 +49,7 @@ describe('parse-receipt · totals', () => {
 
   test('parses UK terminal shorthand from crumpled receipt photos', () => {
     expect(extractTotal('EFT No Grats £23-20').value).toBe(2320);
+    expect(extractTotal('EFT No Grats £23 20').value).toBe(2320);
     expect(extractTotal('£FT Na Grats #23 .20').value).toBe(2320);
     expect(extractTotal('£FT Na Grats #23 .20').currency).toBe('GBP');
     const cardSlip = extractTotal('VISA(SALE)\nAMT GBP88.00\nVERIFIED BY DEVICE');
@@ -437,6 +438,34 @@ describe('parse-receipt · parseReceipt full extraction', () => {
     expect(out.total_cents.currency).toBe('GBP');
     expect(out.tax?.value).toBe(381);
     expect(out.tax?.rate_bp).toBe(2000);
+  });
+
+  test('Golden Fleece live OCR with spaced pence still recovers merchant and total', () => {
+    const text = [
+      '\\ A rly',
+      '\\ Wi p XN',
+      'a Golden Fleecdh Td',
+      'NY \\ Londan 2ECAN 1SPANYS ; i',
+      'SUN 0207 286 1433 2 rg',
+      'Ti 3 8 B A i i',
+      'eratin 06 Ha os 17:47 "',
+      '2, "Asahi Superdry pa 1X le',
+      '1 Neck Dil Keg = 7.80',
+      '1 \\PROMO)Happy Hour =“. oon',
+      'Total W TRE c2cizr I',
+      'EFT No Grats £23 20',
+      '20% Drink VAT included £3.87',
+      'Receipt ng, 08/2175 d',
+      'yAT No. B14 9182 46',
+      'Thank you for visiting. ite Golden Fleece',
+    ].join('\n');
+    const out = parseReceipt(text);
+    expect(out.vendor.value).toContain('Golden Fleec');
+    expect(out.total_cents.value).toBe(2320);
+    expect(out.total_cents.currency).toBe('GBP');
+    expect(out.tax?.value).toBe(387);
+    expect(out.tax?.rate_bp).toBe(2000);
+    expect(out.payment_method?.value).toBe('card');
   });
 
   test('Browns / Barclays card-slip photo fixture text fills useful review fields', () => {

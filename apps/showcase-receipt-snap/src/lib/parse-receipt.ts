@@ -42,8 +42,8 @@ const CURRENCY_CODES = new Set(['USD', 'GBP', 'EUR', 'JPY', 'CAD', 'AUD', 'CHF',
 const CURRENCY_CODE_PATTERN = 'USD|GBP|EUR|JPY|CAD|AUD|CHF|SEK|NOK|DKK';
 const MONEY_PATTERN = new RegExp(
   [
-    `#\\s*-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*[.,-]\\s*\\d{2})`,
-    `(?:(?:[£$€¥]|${CURRENCY_CODE_PATTERN})\\s*)-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*[.,-]\\s*\\d{2})?`,
+    `#\\s*-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*(?:[.,-]|\\s)\\s*\\d{2})`,
+    `(?:(?:[£$€¥]|${CURRENCY_CODE_PATTERN})\\s*)-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*(?:[.,-]|\\s)\\s*\\d{2})?`,
     `-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*[.,-]\\s*\\d{2})(?:\\s*(?:[£$€¥]|${CURRENCY_CODE_PATTERN}))?`,
   ].join('|'),
   'gi',
@@ -93,6 +93,7 @@ function parseMoney(raw: string): { cents: number; currency: string } | null {
     }
   }
   amountStr = amountStr.replace(/(\d)\s*-\s*(\d{2})$/, '$1.$2');
+  amountStr = amountStr.replace(/(\d)\s+(\d{2})$/, '$1.$2');
   amountStr = amountStr.replace(/[^0-9.,-]/g, '').trim();
   if (!amountStr) return null;
   // Treat both `1,234.56` (en) and `1.234,56` (eu) by counting separators.
@@ -133,7 +134,7 @@ export function extractTotal(text: string): {
   currency: string;
   confidence: number;
 } {
-  const totalKeywords = /(grand\s*total|amount\s*due|total\s*due|\btotal\b|balance\s*due|\bamt\b|\bamount\b|\bno\s*grats?\b|\bgratuity\b)/i;
+  const totalKeywords = /(grand\s*total|amount\s*due|total\s*due|\btotal\b|balance\s*due|\bamt\b|\bamount\b|\bn[oa]\s*grats?\b|\bgratuity\b)/i;
   const candidates: Array<{ value: number; currency: string; confidence: number }> = [];
 
   for (const line of text.split(/\n/)) {
@@ -174,9 +175,11 @@ export function extractTotal(text: string): {
 }
 
 function totalCandidateConfidence(line: string, rawAmount: string): number {
-  let confidence = /\b(grand\s*total|amount\s*due|total\s*due|\btotal\b|balance\s*due)\b/i.test(line)
-    ? 0.85
-    : 0.78;
+  let confidence = /\b(n[oa]\s*grats?|gratuity)\b/i.test(line)
+    ? 0.9
+    : /\b(grand\s*total|amount\s*due|total\s*due|\btotal\b|balance\s*due)\b/i.test(line)
+      ? 0.85
+      : 0.78;
   if (!/[.,-]\s*\d{2}\b/.test(rawAmount)) confidence -= 0.14;
   if (hasCurrencyMarker(rawAmount)) confidence += 0.03;
   return Math.max(0.55, Math.min(0.9, confidence));
@@ -299,7 +302,7 @@ export function extractVendor(text: string): { value: string; confidence: number
 
     const cleaned = line.replace(/\s+/g, ' ').slice(0, 60);
     let score = 1.2 - i * 0.06;
-    if (/\b(LTD|LIMITED|INC|LLC|PLC|CO\.?|COMPANY|CAFE|COFFEE|BAR|RESTAURANT|FLEECE|BROWN'S|BROWNS)\b/i.test(cleaned)) {
+    if (/\b(LTD|LIMITED|INC|LLC|PLC|CO\.?|COMPANY|CAFE|COFFEE|BAR|BARS|PUB|TAVERN|KITCHEN|GRILL|BISTRO|RESTAURANT|GOLDEN|FLEEC\w*|BROWN'S|BROWNS)\b/i.test(cleaned)) {
       score += 0.35;
     }
     if (/^[A-Z0-9 &'.-]+$/.test(cleaned) && /[A-Z]{3}/.test(cleaned)) score += 0.1;
@@ -314,11 +317,16 @@ function cleanVendorLine(line: string): string {
   return line
     .trim()
     .replace(/^[*\s]+|[*\s]+$/g, '')
+    .replace(/^[^A-Za-zÀ-ɏ0-9]+|[^A-Za-zÀ-ɏ0-9]+$/g, '')
     .replace(/\s+/g, ' ');
 }
 
 function isVendorJunk(line: string): boolean {
   const upper = line.toUpperCase();
+  const letters = upper.match(/[A-ZÀ-ɏ]/g)?.length ?? 0;
+  const oneLetterTokens = upper.split(/\s+/).filter((token) => /^[A-Z]$/.test(token)).length;
+  if (/[\\|]/.test(line) && letters < 8) return true;
+  if (oneLetterTokens > 0 && letters <= 6) return true;
   if (/\b(BARCLAYS|VISA|MASTERCARD|MASTER CARD|AMEX|CARDHOLDER|CUSTOMER COPY|MERCHANT COPY)\b/.test(upper)) return true;
   if (/\b(AID|APP PSN|AUTH|AUTHORISED|AUTHORIZED|VERIFIED BY DEVICE|RESPONSE CODE|PLEASE RETAIN)\b/.test(upper)) return true;
   if (/\b(TILL|TABLE|CASHIER|SERVER|OPERATOR|TERMINAL|ACC NO|VAT NO|RECEIPT NO|DATE|TIME)\b/.test(upper)) return true;
