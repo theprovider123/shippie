@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { R2Bucket } from '@cloudflare/workers-types';
-import type { AppPackageManifest, AppPermissions, TrustReport } from '@shippie/app-package-contract';
+import type { AppDataPassportRecord, AppPackageManifest, AppPermissions, AppVersionRecord, TrustReport } from '@shippie/app-package-contract';
 import {
   inviteCookieName,
   verifyInviteGrant,
@@ -20,6 +20,7 @@ export type ContainerPackageSummary = {
   entry: string;
   version: string;
   packageHash: string;
+  data?: AppDataPassportRecord;
   packageUrl: string;
   standaloneUrl: string;
   permissions: AppPermissions;
@@ -110,6 +111,7 @@ export async function loadContainerPageData({
     manifestPath: string;
     permissionsPath: string;
     trustReportPath: string;
+    artifactPrefix: string;
     createdAt: string;
     visibilityScope: string;
     makerId: string;
@@ -122,6 +124,7 @@ export async function loadContainerPageData({
         manifestPath: schema.appPackages.manifestPath,
         permissionsPath: schema.appPackages.permissionsPath,
         trustReportPath: schema.appPackages.trustReportPath,
+        artifactPrefix: schema.appPackages.artifactPrefix,
         createdAt: schema.appPackages.createdAt,
         visibilityScope: schema.apps.visibilityScope,
         makerId: schema.apps.makerId,
@@ -152,10 +155,11 @@ export async function loadContainerPageData({
 
   const packageResults = await Promise.all(
     rows.map(async (row) => {
-      const [manifest, permissions, trust] = await Promise.all([
+      const [manifest, permissions, trust, version] = await Promise.all([
         readJson<AppPackageManifest>(platform.env.APPS, row.manifestPath),
         readJson<AppPermissions>(platform.env.APPS, row.permissionsPath),
         readJson<TrustReport>(platform.env.APPS, row.trustReportPath),
+        readJson<AppVersionRecord>(platform.env.APPS, `${row.artifactPrefix}/version.json`),
       ]);
 
       if (!manifest || !permissions || !trust) return null;
@@ -169,6 +173,7 @@ export async function loadContainerPageData({
         entry: manifest.entry,
         version: row.version,
         packageHash: manifest.packageHash,
+        data: version?.data,
         packageUrl: packageDownloadUrl(manifest.slug, manifest.packageHash),
         standaloneUrl: manifest.domains.canonical,
         permissions,

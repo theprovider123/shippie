@@ -36,7 +36,8 @@ export async function preparePackageInstall(input: {
     : input.archiveBytes;
   const built = await readShippiePackageArchive(archiveBytes);
   const manifest = built.manifest;
-  const version = readPackageVersion(built) ?? manifest.packageHash;
+  const versionRecord = readPackageVersionRecord(built);
+  const version = versionRecord?.code.version ?? manifest.packageHash;
   const verifiedArchive = await createShippiePackageArchive(built);
   const entry: AppCollectionEntry = {
     appId: manifest.id,
@@ -48,6 +49,7 @@ export async function preparePackageInstall(input: {
     packageUrl: `./packages/${manifest.packageHash}.shippie`,
     domains: [manifest.domains.canonical, ...(manifest.domains.custom ?? [])],
     summary: manifest.description,
+    ...(versionRecord?.data ? { data: versionRecord.data } : {}),
   };
   const receipt = createAppReceipt({
     ...collectionEntryToReceiptInput(entry, input.source ?? 'package'),
@@ -62,12 +64,12 @@ export async function preparePackageInstall(input: {
   };
 }
 
-function readPackageVersion(built: BuiltShippiePackage): string | null {
+function readPackageVersionRecord(built: BuiltShippiePackage): AppVersionRecord | null {
   const versionBytes = built.files.get('version.json');
   if (!versionBytes) return null;
   try {
     const version = JSON.parse(new TextDecoder().decode(versionBytes)) as Partial<AppVersionRecord>;
-    return typeof version.code?.version === 'string' ? version.code.version : null;
+    return typeof version.code?.version === 'string' ? (version as AppVersionRecord) : null;
   } catch {
     return null;
   }

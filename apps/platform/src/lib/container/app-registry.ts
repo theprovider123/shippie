@@ -6,7 +6,7 @@
  * renders. No reactive state — call sites pass arrays in, get arrays out.
  */
 
-import type { AppPackageManifest, AppPermissions, TrustReport } from '@shippie/app-package-contract';
+import type { AppDataPassportRecord, AppPackageManifest, AppPermissions, TrustReport } from '@shippie/app-package-contract';
 import { containerSlugForRequest } from '$lib/showcase-slugs';
 import {
   accentForKind,
@@ -26,6 +26,7 @@ interface PackageSummary {
   entry: string;
   version: string;
   packageHash: string;
+  data?: AppDataPassportRecord;
   standaloneUrl: string;
   visibility?: ContainerApp['visibility'];
   owned?: boolean;
@@ -53,6 +54,7 @@ export function packageToContainerApp(pkg: PackageSummary): ContainerApp {
     accent: accentForKind(pkg.appKind),
     version: pkg.version,
     packageHash: pkg.packageHash,
+    data: pkg.data,
     standaloneUrl: pkg.standaloneUrl,
     visibility: pkg.visibility ?? 'public',
     owned: pkg.owned,
@@ -70,6 +72,7 @@ export function packageToContainerApp(pkg: PackageSummary): ContainerApp {
 export function manifestToContainerApp(
   manifest: AppPackageManifest,
   permissions?: AppPermissions,
+  data?: AppDataPassportRecord,
 ): ContainerApp {
   const app: ContainerApp = {
     id: manifest.id,
@@ -84,6 +87,7 @@ export function manifestToContainerApp(
     accent: accentForKind(manifest.kind),
     version: 'imported',
     packageHash: manifest.packageHash,
+    data,
     standaloneUrl: manifest.domains.canonical,
     visibility: 'local',
     owned: true,

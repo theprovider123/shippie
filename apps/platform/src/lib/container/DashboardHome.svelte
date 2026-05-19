@@ -101,6 +101,9 @@
             {#if card.addedPermissions.length > 0}
               New capabilities: {card.addedPermissions.join(', ')}.
             {/if}
+            {#if card.dataCompatibility.status !== 'same-schema'}
+              Data: {card.dataCompatibility.summary}
+            {/if}
             {#if card.latestSecurityScore !== null || card.latestPrivacyGrade}
               Trust now: {card.latestSecurityScore ?? 'unscored'} security · {card.latestPrivacyGrade ?? 'ungraded'} privacy.
             {/if}

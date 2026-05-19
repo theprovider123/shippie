@@ -10,6 +10,7 @@ import {
   assertValidPermissions,
   assertValidReceipt,
   assertCapabilityAllowed,
+  assessDataPassportCompatibility,
   canLoadInContainer,
   canShowRemixAction,
   collectionEntryToReceiptInput,
@@ -137,6 +138,29 @@ describe('@shippie/app-package-contract', () => {
 
     expect(receipt.schema).toBe(SHIPPIE_RECEIPT_SCHEMA);
     expect(receipt.installedAt).toBe('2026-04-28T00:00:00.000Z');
+  });
+
+  test('assesses Data Passport v1 compatibility conservatively', () => {
+    expect(
+      assessDataPassportCompatibility(
+        { schemaVersion: 1, family: 'receipt-inbox', schema: 'receipt-inbox.v1' },
+        { schemaVersion: 1, family: 'receipt-inbox', schema: 'receipt-inbox.v1' },
+      ).status,
+    ).toBe('same-schema');
+
+    expect(
+      assessDataPassportCompatibility(
+        { schemaVersion: 1, family: 'receipt-inbox', schema: 'receipt-inbox.v1' },
+        { schemaVersion: 2, family: 'receipt-inbox', schema: 'receipt-inbox.v2' },
+      ).status,
+    ).toBe('migration-required');
+
+    expect(
+      assessDataPassportCompatibility(
+        { schemaVersion: 1, family: 'receipt-inbox', schema: 'receipt-inbox.v1' },
+        { schemaVersion: 1, family: 'notes', schema: 'notes.v1' },
+      ),
+    ).toMatchObject({ status: 'incompatible-family', compatible: false });
   });
 
   test('remix and container gates are explicit', () => {

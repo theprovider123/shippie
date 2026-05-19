@@ -14,8 +14,10 @@
 import {
   SHIPPIE_BACKUP_SCHEMA,
   SHIPPIE_PERMISSIONS_SCHEMA,
+  assessDataPassportCompatibility,
   createAppReceipt,
   type AppKind,
+  type AppDataPassportRecord,
   type AppPackageManifest,
   type AppPermissions,
   type AppReceipt,
@@ -45,6 +47,7 @@ export type ContainerApp = {
   accent: string;
   version: string;
   packageHash: string;
+  data?: AppDataPassportRecord;
   standaloneUrl: string;
   visibility?: ContainerVisibility;
   owned?: boolean;
@@ -98,6 +101,7 @@ export type UpdateCard = {
   removedPermissions: string[];
   addedNetworkDomains: string[];
   removedNetworkDomains: string[];
+  dataCompatibility: import('@shippie/app-package-contract').DataPassportCompatibility;
   latestSecurityScore: number | null;
   latestPrivacyGrade: string | null;
   containerEligibility: string | null;
@@ -173,6 +177,15 @@ function labelKindForAppKind(kind: AppKind): ContainerApp['labelKind'] {
   return 'Connected';
 }
 
+function defaultAppDataPassport(slug: string): AppDataPassportRecord {
+  const family = slug.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'local-tool';
+  return {
+    schemaVersion: 1,
+    family,
+    schema: `${family}.v1`,
+  };
+}
+
 function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
   return {
     id: `app_${spec.slug.replace(/-/g, '_')}`,
@@ -187,6 +200,7 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
     accent: spec.accent,
     version: '1',
     packageHash: `sha256:${(index + 1).toString(16).slice(-1).repeat(64)}`,
+    data: defaultAppDataPassport(spec.slug),
     standaloneUrl: `/run/${spec.slug}`,
     visibility: 'public',
     permissions: localPermissions(spec.slug, spec.intents),
@@ -1115,6 +1129,7 @@ export function createReceiptFor(app: ContainerApp): AppReceipt {
     domains: [new URL(app.standaloneUrl, 'https://shippie.app').href],
     kind: app.appKind,
     permissions: app.permissions.capabilities as unknown as Record<string, unknown>,
+    ...(app.data ? { data: app.data } : {}),
   });
 }
 
@@ -1128,6 +1143,7 @@ export function buildUpdateCard(
   const appPermissions = permissionKeys(app.permissions.capabilities as unknown as Record<string, unknown>);
   const receiptDomains = networkDomainsFromCapabilities(receipt.permissions);
   const appDomains = networkDomainsFromCapabilities(app.permissions.capabilities as unknown as Record<string, unknown>);
+  const dataCompatibility = assessDataPassportCompatibility(receipt.data, app.data);
   return {
     app,
     receipt,
@@ -1139,6 +1155,7 @@ export function buildUpdateCard(
     removedPermissions: receiptPermissions.filter((permission) => !appPermissions.includes(permission)),
     addedNetworkDomains: appDomains.filter((domain) => !receiptDomains.includes(domain)),
     removedNetworkDomains: receiptDomains.filter((domain) => !appDomains.includes(domain)),
+    dataCompatibility,
     latestSecurityScore: app.trust?.security.score ?? null,
     latestPrivacyGrade: app.trust?.privacy.grade ?? null,
     containerEligibility: app.trust?.containerEligibility ?? null,

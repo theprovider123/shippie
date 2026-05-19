@@ -34,8 +34,9 @@ export function installBuiltPackage(built: BuiltShippiePackage): InstalledPackag
     throw new Error('This package is standalone-only and cannot run in the container yet.');
   }
   const permissions = readPackagePermissions(built.files);
+  const version = readPackageVersionRecord(built.files);
   return {
-    app: manifestToContainerApp(manifest, permissions),
+    app: manifestToContainerApp(manifest, permissions, version?.data),
     packageFiles: packageFilesFromBuiltPackage(built),
   };
 }
@@ -54,6 +55,17 @@ export function readPackagePermissions(files: ReadonlyMap<string, Uint8Array>): 
   const permissions = JSON.parse(new TextDecoder().decode(bytes)) as AppPermissions;
   assertValidPermissions(permissions);
   return permissions;
+}
+
+function readPackageVersionRecord(files: ReadonlyMap<string, Uint8Array>): AppVersionRecord | null {
+  const bytes = files.get('version.json');
+  if (!bytes) return null;
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<AppVersionRecord>;
+    return typeof parsed.code?.version === 'string' ? (parsed as AppVersionRecord) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function buildSingleHtmlPackage(file: File): Promise<BuiltShippiePackage> {

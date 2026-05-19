@@ -193,6 +193,25 @@ export interface AppVersionRecord {
   };
 }
 
+export type AppDataPassportRecord = AppVersionRecord['data'];
+
+export type DataPassportCompatibilityStatus =
+  | 'same-schema'
+  | 'same-family'
+  | 'migration-required'
+  | 'incompatible-family'
+  | 'unknown';
+
+export interface DataPassportCompatibility {
+  status: DataPassportCompatibilityStatus;
+  compatible: boolean;
+  summary: string;
+  fromFamily?: string;
+  fromSchema?: string;
+  toFamily?: string;
+  toSchema?: string;
+}
+
 export interface LocalDbPermission {
   enabled: boolean;
   namespace: string;
@@ -311,6 +330,8 @@ export interface AppReceipt {
   domains: string[];
   kind: AppKind;
   permissions: Record<string, unknown>;
+  /** Data Passport v1 metadata captured at install time. */
+  data?: AppDataPassportRecord;
 }
 
 export interface AppCollectionEntry {
@@ -325,6 +346,7 @@ export interface AppCollectionEntry {
   domains?: readonly string[];
   iconUrl?: string;
   summary?: string;
+  data?: AppDataPassportRecord;
 }
 
 export interface AppCollectionManifest {
@@ -608,6 +630,71 @@ export function collectionEntryToReceiptInput(
     domains: entry.domains?.length ? [...entry.domains] : [entry.packageUrl],
     kind: entry.kind,
     permissions: {},
+    ...(entry.data ? { data: entry.data } : {}),
+  };
+}
+
+/**
+ * Data Passport v1 — install/update compatibility check.
+ *
+ * This is intentionally conservative. v1 does not run migrations; it
+ * names whether a candidate package is safe for the user's existing
+ * local data, or whether the UI should pause and explain that a
+ * migration/export path is needed first.
+ */
+export function assessDataPassportCompatibility(
+  installed: AppDataPassportRecord | null | undefined,
+  candidate: AppDataPassportRecord | null | undefined,
+): DataPassportCompatibility {
+  const fromFamily = normalizePassportValue(installed?.family);
+  const fromSchema = normalizePassportValue(installed?.schema);
+  const toFamily = normalizePassportValue(candidate?.family);
+  const toSchema = normalizePassportValue(candidate?.schema);
+  const base = { fromFamily, fromSchema, toFamily, toSchema };
+
+  if (!fromFamily || !toFamily) {
+    return {
+      ...base,
+      status: 'unknown',
+      compatible: false,
+      summary: 'Data compatibility unknown — one package did not declare a data family.',
+    };
+  }
+
+  if (fromFamily !== toFamily) {
+    return {
+      ...base,
+      status: 'incompatible-family',
+      compatible: false,
+      summary: `Data family changed from ${fromFamily} to ${toFamily}. Treat this as a new tool unless an explicit import is offered.`,
+    };
+  }
+
+  if (fromSchema && toSchema && fromSchema === toSchema) {
+    return {
+      ...base,
+      status: 'same-schema',
+      compatible: true,
+      summary: `Same data schema (${toSchema}). Existing local data can stay in place.`,
+    };
+  }
+
+  const fromMajor = schemaMajor(fromSchema);
+  const toMajor = schemaMajor(toSchema);
+  if (fromMajor !== null && toMajor !== null && fromMajor === toMajor) {
+    return {
+      ...base,
+      status: 'same-family',
+      compatible: true,
+      summary: `Same data family (${toFamily}) with compatible schema line. Existing local data can stay in place.`,
+    };
+  }
+
+  return {
+    ...base,
+    status: 'migration-required',
+    compatible: false,
+    summary: `Same data family (${toFamily}), but schema changed from ${fromSchema ?? 'unknown'} to ${toSchema ?? 'unknown'}. Require a migration or export/import step before replacing the app.`,
   };
 }
 
@@ -719,6 +806,16 @@ export function normalizeHostname(value: string): string | null {
   return value.toLowerCase();
 }
 
+function normalizePassportValue(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function schemaMajor(schema: string | undefined): number | null {
+  if (!schema) return null;
+  const match = /\.v(\d+)(?:\.|$)/.exec(schema);
+  return match ? Number(match[1]) : null;
+}
+
 export function createBridgeRequest(input: Omit<BridgeRequest, 'protocol'>): BridgeRequest {
   return {
     protocol: SHIPPIE_BRIDGE_PROTOCOL,
@@ -747,6 +844,7 @@ export function createAppReceipt(
     domains: input.domains,
     kind: input.kind,
     permissions: input.permissions,
+    ...(input.data ? { data: input.data } : {}),
   };
   assertValidReceipt(receipt);
   return receipt;
