@@ -1,7 +1,55 @@
+/* ── Chiwit — private daily pulse · field-notes botanical journal ──
+   Wellness apps default to the pink/teal pastel SaaS look. Chiwit
+   sits opposite: a quiet warm-cream logbook with sage ink, a single
+   warm-coral accent for "today's signal" moments, and Fraunces for
+   the editorial weight a personal logbook deserves.
+
+   The atmosphere is field journal, not vital-signs dashboard. */
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #333;
-  background: #fffaf8;
+  --bg: #f6f1e3;
+  --bg-deep: #ede5cf;
+  --paper: #fbf6e8;
+  --ink: #1f2a24;
+  --ink-soft: #3f4a44;
+  --muted: #6b7670;
+  --soft: #8c9590;
+  --line: rgba(31, 42, 36, 0.12);
+  --line-strong: rgba(31, 42, 36, 0.22);
+  --sage: #4a7a5e;
+  --sage-deep: #2f5640;
+  --sage-soft: #d6e3d8;
+  --coral: #d96a3c;
+  --coral-soft: #f3d9c8;
+  --warn: #b04330;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color-scheme: light;
@@ -22,8 +70,15 @@ body {
   min-width: 320px;
   min-height: 100svh;
   background:
-    linear-gradient(120deg, rgba(255, 250, 248, 0.98) 0%, rgba(255, 232, 230, 0.92) 48%, rgba(224, 242, 241, 0.9) 100%),
-    linear-gradient(180deg, rgba(249, 112, 102, 0.08), rgba(38, 166, 154, 0.08));
+    /* Subtle horizontal botanical-journal rule, the only "decoration" */
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(31, 42, 36, 0.025) 31px,
+      rgba(31, 42, 36, 0.025) 32px
+    ),
+    linear-gradient(180deg, var(--paper) 0%, var(--bg) 60%, var(--bg-deep) 100%);
   overscroll-behavior-y: none;
 }
 
@@ -50,10 +105,10 @@ select,
 textarea {
   width: 100%;
   min-height: 44px;
-  border: 1px solid rgba(51, 51, 51, 0.14);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #333;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
   font-size: 16px;
   padding: 0.75rem 0.85rem;
   outline: none;
@@ -63,8 +118,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #f97066;
-  box-shadow: 0 0 0 3px rgba(249, 112, 102, 0.16);
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px rgba(74, 122, 94, 0.16);
 }
 
 textarea {
@@ -86,8 +141,8 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   padding: max(0.85rem, env(safe-area-inset-top)) 1rem 0.85rem;
-  background: rgba(255, 250, 248, 0.86);
-  border-bottom: 1px solid rgba(51, 51, 51, 0.1);
+  background: rgba(251, 246, 232, 0.92);
+  border-bottom: 1px solid var(--line);
   backdrop-filter: blur(18px);
 }
 
@@ -104,15 +159,19 @@ textarea {
 .brand-lockup img {
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: 6px;
   object-fit: cover;
-  box-shadow: 0 10px 28px rgba(249, 112, 102, 0.26);
+  box-shadow: 0 8px 22px rgba(31, 42, 36, 0.14);
 }
 
 .brand-lockup strong {
   display: block;
-  font-size: 1rem;
-  line-height: 1.1;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: -0.012em;
+  line-height: 1.05;
+  color: var(--ink);
 }
 
 .brand-lockup small,
@@ -124,8 +183,55 @@ textarea {
 .measure,
 .empty,
 .timeline-day header strong {
-  color: #666;
+  color: var(--muted);
 }
+
+/* Eyebrow — field-notes section labels, mono caps. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Section + page headings — Fraunces, editorial. */
+.section-heading h2,
+.timeline-day header h3,
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  line-height: 1.08;
+}
+.page-title {
+  font-size: clamp(1.6rem, 3.4vw, 2.2rem);
+  margin: 0.2em 0;
+}
+
+/* Vital-sign numeric primitive — large, mono, tabular. The "today's
+   signal" highlight tint goes warm coral; the everyday measure stays
+   sage-ink. */
+.pulse-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  color: var(--sage-deep);
+}
+.pulse-numeric.size-hero { font-size: clamp(2.4rem, 7vw, 4rem); }
+.pulse-numeric.size-card { font-size: clamp(1.4rem, 3.6vw, 2rem); }
+.pulse-numeric.size-inline { font-size: 1.05rem; }
+.pulse-numeric .unit {
+  font-size: 0.45em;
+  margin-left: 0.2em;
+  color: var(--muted);
+  vertical-align: 0.35em;
+  letter-spacing: 0;
+}
+.pulse-numeric.today { color: var(--coral); }
 
 .brand-lockup small {
   display: block;

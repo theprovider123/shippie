@@ -1,7 +1,46 @@
+/* ── Recipe — kitchen-tile cookbook aesthetic ─────────────────────
+   Cream paper background with sage tile gridlines + cooking-orange
+   accents. Existing palette stays — it's intentional and works. This
+   pass adds editorial typography: Fraunces for recipe titles (the
+   classic cookbook serif), JetBrains Mono for eyebrows + cook-time
+   codes. */
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #2c2118;
-  background: #f4e4c1;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+  --ink: #2c2118;
+  --paper: #f4e4c1;
+  --sage: #8fa070;
+  --sage-deep: #5d6e48;
+  --cooking: #d86918;
+  --cooking-deep: #a84e0d;
+  --muted: #6e5e4e;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color-scheme: light;
@@ -998,4 +1037,61 @@ h2 {
   .app-header {
     padding-top: max(0.85rem, env(safe-area-inset-top));
   }
+}
+
+/* ── 2026-05-19 cookbook typography ─────────────────────────────── */
+
+/* Recipe titles + page heros — the editorial moment. Cookbook serif
+   with a slight italic accent on the highlighted word for the warm
+   "this is a recipe, not an app feature" feel. */
+.recipe-title,
+.recipe-card h2,
+.page-hero h1,
+.dish-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  line-height: 1.08;
+}
+.recipe-title em,
+.page-hero h1 em {
+  font-style: italic;
+  color: var(--cooking-deep);
+}
+
+/* Eyebrow + section labels — mono caps. */
+.eyebrow,
+.section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Cook-time / yield / temperature code — italic mono in sage-deep.
+   "30 min · 8 servings · 200°C" in the recipe header strip. */
+.cook-code {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--sage-deep);
+  text-transform: lowercase;
+}
+
+/* Ingredient quantity + step-number primitives — fraction-friendly. */
+.qty,
+.step-number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums diagonal-fractions;
+  font-weight: 600;
+  color: var(--cooking-deep);
+}
+.step-number {
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
 }
