@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
 import type { Trip } from '../db/schema.ts';
 import { listTrips, createTrip, endTrip, deleteTrip } from '../db/queries.ts';
-import { emitIntent } from '../app/intents.ts';
+import { emitIntent, loadDinedOut, subscribeDinedOut, type DinedOutEntry } from '../app/intents.ts';
 
 interface Props {
   db: ShippieLocalDb;
@@ -12,6 +12,7 @@ interface Props {
 export function TripsPage({ db, onOpen }: Props) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [name, setName] = useState('');
+  const [dinedOut, setDinedOut] = useState<DinedOutEntry[]>(() => loadDinedOut());
 
   async function refresh() {
     setTrips(await listTrips(db));
@@ -20,6 +21,8 @@ export function TripsPage({ db, onOpen }: Props) {
   useEffect(() => {
     void refresh();
   }, []);
+
+  useEffect(() => subscribeDinedOut(setDinedOut), []);
 
   async function start() {
     const trimmed = name.trim();
@@ -77,6 +80,28 @@ export function TripsPage({ db, onOpen }: Props) {
           ))}
         </ul>
       )}
+
+      {dinedOut.length > 0 ? (
+        <>
+          <h2 className="atlas-section-title">Recent visits · from Restaurant Memory</h2>
+          <p className="atlas-empty" style={{ marginBottom: 8 }}>
+            Coordinates stay private to that app. Drop a pin in Atlas to put them on the map.
+          </p>
+          <ul className="atlas-list">
+            {dinedOut.slice(0, 6).map((v) => (
+              <li key={v.id}>
+                <div className="atlas-trip-row" style={{ pointerEvents: 'none' }}>
+                  <strong>{v.title}</strong>
+                  <span className="atlas-trip-meta">
+                    {v.rating ? `${v.rating}/5 · ` : ''}
+                    {new Date(v.visitedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
 
       <h2 className="atlas-section-title">Past</h2>
       {past.length === 0 ? (

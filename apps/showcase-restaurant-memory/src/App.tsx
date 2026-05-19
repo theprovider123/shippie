@@ -61,6 +61,17 @@ async function getPositionOnce(): Promise<{ lat: number; lon: number } | null> {
   });
 }
 
+/** Great-circle distance in metres between two lat/lon points. */
+function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const R = 6371e3;
+  const phi1 = (a.lat * Math.PI) / 180;
+  const phi2 = (b.lat * Math.PI) / 180;
+  const dPhi = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLambda = ((b.lon - a.lon) * Math.PI) / 180;
+  const h = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 export function App() {
   const initial = load();
   const [visits, setVisits] = useState<RestaurantVisit[]>(initial.visits);
@@ -73,6 +84,48 @@ export function App() {
   const [pendingImport, setPendingImport] = useState<
     Extract<VisitImportCheck, { ok: true }> | null
   >(null);
+  const [lightbox, setLightbox] = useState<{ url: string; alt: string } | null>(null);
+  const [dedupCandidate, setDedupCandidate] = useState<RestaurantVisit | null>(null);
+
+  // Geo dedup: when the user starts typing a name + has location,
+  // surface the closest known visit within ~150m so they don't log
+  // it twice. Haversine; threshold loose enough to forgive GPS drift.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const trimmed = name.trim();
+      if (trimmed.length < 2) {
+        setDedupCandidate(null);
+        return;
+      }
+      const here = await getPositionOnce();
+      if (cancelled) return;
+      if (!here) {
+        // Fall back to name-similarity match.
+        const close = visits.find((v) => v.name.toLowerCase() === trimmed.toLowerCase());
+        setDedupCandidate(close ?? null);
+        return;
+      }
+      const near = visits.find((v) => {
+        if (!v.coords) return v.name.toLowerCase() === trimmed.toLowerCase();
+        return haversineMeters(here, v.coords) <= 150;
+      });
+      setDedupCandidate(near ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [name, visits]);
+
+  // Lightbox keyboard: ESC closes.
+  useEffect(() => {
+    if (!lightbox) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLightbox(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox]);
 
   // Detect a #shippie-import=… fragment carrying a restaurant visit.
   // Pure client-side. Verifies the signature, previews the visit (with
@@ -198,6 +251,23 @@ export function App() {
         )}
       </header>
 
+      {dedupCandidate ? (
+        <p className="dedup-banner" role="status">
+          You logged <strong>{dedupCandidate.name}</strong> on{' '}
+          {new Date(dedupCandidate.visitedAt).toLocaleDateString()}
+          {dedupCandidate.rating ? ` · ${dedupCandidate.rating}/5` : ''}
+          {dedupCandidate.notes ? ` — "${dedupCandidate.notes}"` : ''}
+          .{' '}
+          <button
+            type="button"
+            className="link"
+            onClick={() => setDedupCandidate(null)}
+          >
+            Log again anyway
+          </button>
+        </p>
+      ) : null}
+
       <form onSubmit={logVisit}>
         <input
           type="text"
@@ -240,7 +310,14 @@ export function App() {
             {visits.slice(0, 12).map((v) => (
               <li key={v.id}>
                 {v.photoLocalId && photoUrls[v.photoLocalId] && (
-                  <img src={photoUrls[v.photoLocalId]} alt={`Photo from ${v.name}`} />
+                  <button
+                    type="button"
+                    className="photo-thumb"
+                    onClick={() => setLightbox({ url: photoUrls[v.photoLocalId!]!, alt: `Photo from ${v.name}` })}
+                    aria-label={`Open photo from ${v.name}`}
+                  >
+                    <img src={photoUrls[v.photoLocalId]} alt={`Photo from ${v.name}`} />
+                  </button>
                 )}
                 <div className="meta">
                   <strong>{v.name}</strong>
@@ -297,6 +374,26 @@ export function App() {
           }}
           onDiscard={() => setPendingImport(null)}
         />
+      ) : null}
+
+      {lightbox ? (
+        <div
+          className="photo-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            className="photo-lightbox-close"
+            onClick={() => setLightbox(null)}
+            aria-label="Close photo"
+          >
+            ×
+          </button>
+          <img src={lightbox.url} alt={lightbox.alt} />
+        </div>
       ) : null}
     </main>
   );

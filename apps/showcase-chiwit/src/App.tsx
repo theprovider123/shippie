@@ -207,6 +207,68 @@ function scoreForKind(kind: EntryKind, entries: PulseEntry[], state: ChiwitState
   return avg === null ? null : clamp(Math.round((avg / 5) * 100));
 }
 
+const FACTOR_NAMES: Record<keyof ScoreBreakdown, string> = {
+  foundations: 'Foundations',
+  recovery: 'Recovery',
+  movement: 'Movement',
+  mind: 'Mind',
+  body: 'Body',
+};
+
+/**
+ * Consistency = share of the last 7 days with ≥ 3 logged signals.
+ * Replaces a brittle streak counter that punishes missed days; this
+ * forgives a quiet day without resetting the user's relationship to
+ * the app. Returned as 0–100 for symmetry with breakdown values.
+ */
+function consistencyPct(state: ChiwitState): number {
+  const days = Array.from({ length: 7 }, (_, index) => addDays(-index));
+  const goodDays = days.filter((d) => entriesForDate(state.entries, d).length >= 3).length;
+  return Math.round((goodDays / 7) * 100);
+}
+
+/**
+ * Templated paragraph reading for the day. Two short sentences,
+ * second-person, grounded in the actual pulse breakdown + entry mix.
+ * No model call — fragments are selected from score-banded buckets
+ * plus a sentence about the strongest or weakest factor.
+ */
+function generateReading(state: ChiwitState, pulse: PulseScore, when: string = today()): string {
+  const sentences: string[] = [];
+  sentences.push(
+    pulse.overall >= 80 ? 'Life feels open today.' :
+    pulse.overall >= 62 ? 'A steady day is forming.' :
+    pulse.overall >= 45 ? 'Gentle attention helps today.' :
+    'Keep the bar kind and small.',
+  );
+
+  const sorted = (Object.entries(pulse.breakdown) as Array<[keyof ScoreBreakdown, number]>)
+    .sort((a, b) => b[1] - a[1]);
+  const top = sorted[0];
+  const bottom = sorted[sorted.length - 1];
+  const dayEntries = entriesForDate(state.entries, when);
+  const externalToday = dayEntries.filter((entry) =>
+    entry.note === 'Coffee' || entry.note === 'Caffeine' || entry.note === 'Tea ritual' ||
+    entry.note === 'Cooked meal' || entry.note === 'Ritual',
+  );
+
+  if (top && top[1] >= 72 && bottom && bottom[1] < 50 && top[0] !== bottom[0]) {
+    sentences.push(`${FACTOR_NAMES[top[0]]} is leading at ${top[1]}; ${FACTOR_NAMES[bottom[0]].toLowerCase()} is the soft spot — a small move shifts the score.`);
+  } else if (top && top[1] >= 72) {
+    sentences.push(`${FACTOR_NAMES[top[0]]} is leading at ${top[1]} today.`);
+  } else if (bottom && bottom[1] < 50) {
+    sentences.push(`${FACTOR_NAMES[bottom[0]]} is the soft spot — a small move there shifts the whole reading.`);
+  } else if (externalToday.length > 0) {
+    sentences.push(`${externalToday.length} signal${externalToday.length === 1 ? '' : 's'} folded in from your other apps so far.`);
+  } else if (dayEntries.length === 0) {
+    sentences.push('No signals yet — log one when you notice it, not by the clock.');
+  } else {
+    sentences.push(`${dayEntries.length} signal${dayEntries.length === 1 ? '' : 's'} logged so far. The shape comes from how steady the week feels, not any single day.`);
+  }
+
+  return sentences.join(' ');
+}
+
 function computePulse(state: ChiwitState, date = today()): PulseScore {
   const dayEntries = entriesForDate(state.entries, date);
   const dayCheckins = state.checkins.filter((checkin) => checkin.date === date);
@@ -372,6 +434,8 @@ export function App() {
   }, []);
 
   const pulse = useMemo(() => computePulse(state), [state]);
+  const reading = useMemo(() => generateReading(state, pulse), [state, pulse]);
+  const consistency = useMemo(() => consistencyPct(state), [state]);
   const insights = useMemo(() => generateInsights(state), [state]);
   const todayEntries = entriesForDate(state.entries, today()).sort((a, b) => b.createdAt - a.createdAt);
   const days = useMemo(() => Array.from({ length: 14 }, (_, index) => addDays(-index)), []);
@@ -490,6 +554,7 @@ export function App() {
       {tab === 'today' ? (
         <TodayView
           pulse={pulse}
+          reading={reading}
           entries={todayEntries}
           insights={insights}
           onQuickLog={quickLog}
@@ -516,7 +581,7 @@ export function App() {
       ) : null}
 
       {tab === 'patterns' ? (
-        <PatternsView state={state} pulse={pulse} insights={insights} onDismissInsight={dismissInsight} />
+        <PatternsView state={state} pulse={pulse} consistency={consistency} insights={insights} onDismissInsight={dismissInsight} />
       ) : null}
 
       {tab === 'timeline' ? (
@@ -532,6 +597,7 @@ export function App() {
 
 function TodayView({
   pulse,
+  reading,
   entries,
   insights,
   onQuickLog,
@@ -539,6 +605,7 @@ function TodayView({
   onNavigate,
 }: {
   pulse: PulseScore;
+  reading: string;
   entries: PulseEntry[];
   insights: Insight[];
   onQuickLog: (action: QuickAction) => void;
@@ -549,9 +616,9 @@ function TodayView({
     <section className="page-shell today-shell">
       <div className="hero-plane">
         <div>
-          <p className="eyebrow">Chiwit</p>
+          <p className="eyebrow">Chiwit · Today's reading</p>
           <h1>How does life feel today?</h1>
-          <p>Tap the signal you notice. Chiwit turns small moments into a pulse you can read.</p>
+          <p className="reading">{reading}</p>
           <div className="hero-actions">
             <button type="button" className="primary" onClick={() => onNavigate('track')}>Log feeling</button>
             <button type="button" onClick={() => onNavigate('patterns')}>Read pulse</button>
@@ -680,11 +747,13 @@ function TrackView({
 function PatternsView({
   state,
   pulse,
+  consistency,
   insights,
   onDismissInsight,
 }: {
   state: ChiwitState;
   pulse: PulseScore;
+  consistency: number;
   insights: Insight[];
   onDismissInsight: (id: string) => void;
 }) {
@@ -696,10 +765,22 @@ function PatternsView({
           <h1>Find the shape of the week.</h1>
         </div>
       </div>
+      <section className="consistency-card" aria-label="7-day consistency">
+        <div>
+          <p className="eyebrow">7-day consistency</p>
+          <strong>{consistency}%</strong>
+          <small>
+            {consistency >= 70 ? 'Steady rhythm — keep the bar kind.' :
+             consistency >= 40 ? 'A few quiet days. That is okay.' :
+             'Logging is sparse this week. Three signals counts as a day.'}
+          </small>
+        </div>
+        <meter min={0} max={100} value={consistency} />
+      </section>
       <section className="category-grid">
         {(Object.entries(pulse.breakdown) as Array<[keyof ScoreBreakdown, number]>).map(([key, value]) => (
           <div key={key} className="category-row">
-            <strong>{key}</strong>
+            <strong>{FACTOR_NAMES[key]}</strong>
             <span>{value}</span>
             <meter min={0} max={100} value={value} />
           </div>

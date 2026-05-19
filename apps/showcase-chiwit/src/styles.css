@@ -804,3 +804,50 @@ meter {
     padding-top: max(0.85rem, env(safe-area-inset-top));
   }
 }
+
+/* Reading paragraph in TodayView hero — softer, italic-leaning, readable. */
+.hero-plane .reading {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1rem, 2.8vw, 1.15rem);
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--text, #2A1F16);
+  max-width: 40ch;
+}
+
+/* Consistency card in PatternsView — hero metric for the week. */
+.consistency-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: var(--surface, rgba(255, 255, 255, 0.6));
+  border: 1px solid var(--border, rgba(42, 31, 22, 0.12));
+  margin-bottom: 16px;
+}
+.consistency-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.consistency-card strong {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: clamp(2.4rem, 7vw, 3.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.022em;
+  color: var(--accent, currentColor);
+}
+.consistency-card small {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--muted, rgba(0, 0, 0, 0.55));
+}
+.consistency-card meter {
+  flex: 0 0 120px;
+  width: 120px;
+  height: 8px;
+}

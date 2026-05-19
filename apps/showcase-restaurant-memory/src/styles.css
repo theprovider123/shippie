@@ -269,3 +269,70 @@ header h1 em,
   color: var(--accent);
   text-transform: uppercase;
 }
+
+/* Dedup banner — shown when typing a name matches an existing visit. */
+.dedup-banner {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--accent, currentColor);
+  background: rgba(168, 96, 96, 0.08);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.dedup-banner .link {
+  background: none;
+  border: 0;
+  color: var(--accent, currentColor);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+/* Photo thumbnail button — full bleed, click-to-open. */
+.photo-thumb {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: block;
+}
+.photo-thumb img { display: block; transition: transform 0.18s ease; }
+.photo-thumb:hover img { transform: scale(1.02); }
+
+/* Lightbox overlay — full-screen, click-anywhere-to-close. */
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 14, 10, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  cursor: zoom-out;
+}
+.photo-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.photo-lightbox-close {
+  position: fixed;
+  top: max(20px, env(safe-area-inset-top));
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.photo-lightbox-close:hover { background: rgba(255, 255, 255, 0.2); }
