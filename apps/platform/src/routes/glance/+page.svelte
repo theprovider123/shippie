@@ -145,7 +145,7 @@
                     style:height={`${Math.min(100, count * 16 + (count > 0 ? 6 : 2))}%`}
                     data-empty={count === 0}
                     title={`${dayLabel(6 - i)}: ${count}`}
-                  />
+                  ></span>
                 {/each}
               </div>
             </li>

@@ -19,8 +19,13 @@
 
   // Track q via a local input so we can show the controlled value without
   // resubmitting on every keystroke. The form actually navigates on submit.
-  let qInput = $state(data.filters.q);
-  let appSlugInput = $state(data.filters.appSlug);
+  let qInput = $state('');
+  let appSlugInput = $state('');
+
+  $effect(() => {
+    qInput = data.filters.q;
+    appSlugInput = data.filters.appSlug;
+  });
 </script>
 
 <svelte:head><title>Moderation · Admin</title></svelte:head>
