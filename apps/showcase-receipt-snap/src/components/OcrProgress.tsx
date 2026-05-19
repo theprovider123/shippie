@@ -21,7 +21,11 @@ function formatBytes(b: number | undefined): string {
 export function OcrProgress({ state, firstRun }: OcrProgressProps) {
   if (!state) return null;
   if (state.phase === 'error') {
-    return <p className="error">{state.message}</p>;
+    return (
+      <p className="error" role="alert">
+        {state.message}
+      </p>
+    );
   }
   let label = 'Reading the receipt…';
   let percent: number | null = null;
@@ -34,7 +38,7 @@ export function OcrProgress({ state, firstRun }: OcrProgressProps) {
   else if (state.phase === 'done') label = 'Done.';
 
   return (
-    <div className="ocr-progress">
+    <div className="ocr-progress" aria-live="polite">
       {firstRun && state.phase !== 'inference' && state.phase !== 'done' ? (
         <p className="muted small">
           First run downloads ~95 MB on Wi-Fi. After that, the model lives in this PWA's cache —
@@ -46,7 +50,14 @@ export function OcrProgress({ state, firstRun }: OcrProgressProps) {
         {percent != null ? <span className="ocr-progress-percent">{Math.round(percent)}%</span> : null}
       </div>
       {percent != null ? (
-        <div className="ocr-progress-bar">
+        <div
+          className="ocr-progress-bar"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.min(100, Math.round(percent))}
+          aria-label={label}
+        >
           <div className="ocr-progress-bar-fill" style={{ width: `${Math.min(100, percent)}%` }} />
         </div>
       ) : null}

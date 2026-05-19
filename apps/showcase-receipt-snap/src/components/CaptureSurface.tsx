@@ -95,7 +95,14 @@ export function CaptureSurface({ onCaptured }: CaptureSurfaceProps) {
         accept="image/*"
         capture="environment"
         style={{ display: 'none' }}
-        onChange={(e) => handleFile(e.target.files?.[0])}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          // Clear the input's value so re-selecting the SAME file fires
+          // `change` again. Without this, retrying after a Re-take with
+          // the same source file silently does nothing.
+          e.target.value = '';
+          handleFile(file);
+        }}
       />
 
       <div className="capture-actions">
@@ -110,7 +117,11 @@ export function CaptureSurface({ onCaptured }: CaptureSurfaceProps) {
         <p className="muted small">or drop an image here · paste from clipboard</p>
       </div>
 
-      {error ? <p className="error">{error}</p> : null}
+      {error ? (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

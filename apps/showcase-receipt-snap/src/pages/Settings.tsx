@@ -30,6 +30,10 @@ interface SettingsPageProps {
   /** True when at least one sample receipt is currently in the inbox.
    *  Drives the visibility of the "Clear sample data" button. */
   hasSampleData?: boolean;
+  /** Optional — flips `export_status` on the rows that were exported.
+   *  Without this, the export-status state-machine never advances and
+   *  the "edited row resets export_status" behaviour never fires. */
+  onExported?: (ids: readonly string[]) => void;
 }
 
 function formatBytes(b: number): string {
@@ -51,6 +55,7 @@ export function SettingsPage({
   onLoadSampleData,
   onClearSampleData,
   hasSampleData = false,
+  onExported,
 }: SettingsPageProps) {
   const bytes = estimateBytes({ receipts: [...receipts] });
   const overBudget = bytes > QUOTA_WARN_BYTES;
@@ -105,7 +110,7 @@ export function SettingsPage({
             <code>date,vendor,total,currency,category,note</code>
           ) : null}
         </p>
-        <ExportButton receipts={receipts} />
+        <ExportButton receipts={receipts} onExported={onExported} />
       </div>
 
       <div className="settings-block">

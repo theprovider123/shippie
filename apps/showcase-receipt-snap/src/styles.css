@@ -351,3 +351,162 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   margin: 4px 0 8px;
   color: #1F2A24;
 }
+
+/* ── 2026-05-19 accounting widening ────────────────────────────── */
+
+/* Inline badges on receipt cards (sample / no-photo). */
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
+  border-radius: 0;
+}
+.badge-sample {
+  background: rgba(232, 197, 71, 0.18);
+  color: var(--marigold);
+  border: 1px solid rgba(232, 197, 71, 0.4);
+}
+.badge-muted {
+  background: transparent;
+  color: var(--text-light);
+  border: 1px solid var(--border);
+}
+.warn {
+  color: var(--marigold);
+}
+
+/* Quick / Accounting mode picker on Settings. */
+.mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.mode-chip {
+  flex: 1 1 0;
+  min-height: 38px;
+  padding: 0 14px;
+  background: var(--bg-pure);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+}
+.mode-chip.active {
+  background: var(--marigold);
+  color: var(--bg-pure);
+  border-color: var(--marigold);
+}
+
+/* Export dropdown + description on Settings. */
+.export-control {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.export-format select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--bg-pure);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+.export-description {
+  margin: 0;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Accounting disclosure inside ReviewForm. */
+.accounting-extras {
+  border: 1px dashed var(--border);
+  padding: 12px;
+  background: rgba(232, 197, 71, 0.04);
+}
+.accounting-extras > summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  padding: 4px 0;
+}
+.accounting-extras > summary:hover {
+  color: var(--text);
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+.checkbox-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--marigold);
+}
+
+/* Accounting disclosure inside History detail. */
+.accounting-detail {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px;
+}
+.accounting-detail > summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  padding: 4px 0;
+}
+.accounting-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.accounting-grid dt {
+  color: var(--text-light);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.accounting-grid dd {
+  margin: 0;
+  color: var(--text);
+}
+.accounting-grid code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--marigold);
+}

@@ -12,6 +12,7 @@ import {
   discardAllPhotos,
   insert,
   load,
+  markExported,
   newId,
   remove,
   save,
@@ -257,6 +258,10 @@ export function App() {
     setReceipts((prev) => withoutSamples(prev));
   }
 
+  function onExported(ids: readonly string[]) {
+    setReceipts((prev) => markExported({ receipts: prev }, ids).receipts);
+  }
+
   // Make the linter aware we'll use CATEGORIES via the form components.
   void CATEGORIES;
 
@@ -321,6 +326,7 @@ export function App() {
           onLoadSampleData={onLoadSampleData}
           onClearSampleData={onClearSampleData}
           hasSampleData={hasSampleDataIn(receipts)}
+          onExported={onExported}
         />
       )}
 
