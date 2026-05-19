@@ -248,12 +248,15 @@ function scoreOcrText(text: string, parsed: ExtractedReceipt): number {
 }
 
 function hasUsefulCore(parsed: ExtractedReceipt, score: number, text: string): boolean {
-  if (text.trim().length > 80) return true;
+  void text;
   if (parsed.total_cents.value == null) return score >= 4.2;
+  if (parsed.total_cents.confidence < 0.55) return score >= 3.6;
   return (
-    parsed.vendor.value.length > 0 ||
+    parsed.vendor.confidence >= 0.55 ||
     parsed.occurred_on.value != null ||
     parsed.tax?.value != null ||
+    parsed.tax?.rate_bp != null ||
+    parsed.receipt_ref?.value != null ||
     parsed.payment_method?.value != null
   );
 }
