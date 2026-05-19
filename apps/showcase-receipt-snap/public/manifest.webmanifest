@@ -1,0 +1,19 @@
+{
+  "name": "Receipt Snap",
+  "short_name": "Receipts",
+  "description": "Snap or upload a receipt, read it on this phone, and export expenses without an account.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#F5EFE4",
+  "theme_color": "#5EA777",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

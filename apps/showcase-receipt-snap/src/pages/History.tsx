@@ -44,11 +44,13 @@ interface HistoryPageProps {
   receipts: ReadonlyArray<Receipt>;
   onDelete: (id: string) => void;
   onUpdate: (id: string, patch: Partial<Receipt>) => void;
+  onCapture?: () => void;
 }
 
-export function HistoryPage({ receipts, onDelete, onUpdate }: HistoryPageProps) {
+export function HistoryPage({ receipts, onDelete, onUpdate, onCapture }: HistoryPageProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const open = openId ? receipts.find((r) => r.id === openId) ?? null : null;
+  const exportedCount = receipts.filter((r) => r.export_status === 'exported').length;
 
   if (open) {
     return (
@@ -182,15 +184,26 @@ export function HistoryPage({ receipts, onDelete, onUpdate }: HistoryPageProps) 
         <p className="eyebrow">History</p>
         <h2>No receipts yet</h2>
         <p className="muted">
-          Snap your first receipt — it'll show up here, and you can export the lot to CSV anytime.
+          Snap or upload your first receipt. Saved expenses appear here for review and export.
         </p>
+        {onCapture ? (
+          <button type="button" className="primary" onClick={onCapture}>
+            Capture receipt
+          </button>
+        ) : null}
       </section>
     );
   }
 
   return (
     <section className="page history-page">
-      <p className="eyebrow">History</p>
+      <div className="page-heading">
+        <p className="eyebrow">History</p>
+        <h2>Saved receipts</h2>
+        <p className="muted small">
+          {receipts.length} saved · {exportedCount} exported · newest first
+        </p>
+      </div>
       <ul className="receipt-list">
         {receipts.map((r) => (
           <li key={r.id}>

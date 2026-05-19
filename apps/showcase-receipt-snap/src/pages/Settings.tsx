@@ -75,7 +75,7 @@ export function SettingsPage({
         <p className="eyebrow">Review mode</p>
         <p className="muted small">
           {reviewMode === 'accounting'
-            ? 'Accounting fields are visible on every review — net / tax / payment method / receipt # / project / client / reimbursable. Photos are discarded after save by default to keep storage light.'
+            ? 'Accounting fields are visible on every review — net / tax / payment method / receipt # / project / client / reimbursable. Export first, then discard photos when you want to keep storage light.'
             : 'Five quick fields per receipt: vendor, total, date, category, note. Switch to Accounting when you need VAT, payment method, or per-project tagging.'}
         </p>
         <div className="mode-toggle" role="radiogroup" aria-label="Review mode">

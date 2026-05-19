@@ -307,7 +307,12 @@ export function App() {
           onMarkWarm={markModelWarm}
         />
       ) : tab === 'history' ? (
-        <HistoryPage receipts={receipts} onDelete={onDelete} onUpdate={onUpdate} />
+        <HistoryPage
+          receipts={receipts}
+          onDelete={onDelete}
+          onUpdate={onUpdate}
+          onCapture={() => navigateTab('capture')}
+        />
       ) : (
         <SettingsPage
           receipts={receipts}

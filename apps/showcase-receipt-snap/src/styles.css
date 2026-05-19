@@ -18,10 +18,10 @@ button, input, textarea, select { font: inherit; }
 
 .app {
   min-height: 100%;
-  max-width: 480px;
+  max-width: 520px;
   width: 100%;
   margin: 0 auto;
-  padding: calc(20px + env(safe-area-inset-top, 0)) 20px calc(80px + env(safe-area-inset-bottom, 0));
+  padding: calc(20px + env(safe-area-inset-top, 0)) 20px calc(92px + env(safe-area-inset-bottom, 0));
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -31,7 +31,7 @@ button, input, textarea, select { font: inherit; }
   font-family: var(--font-heading);
   font-size: 28px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   margin: 0;
   color: #1F2A24;
 }
@@ -88,13 +88,15 @@ button, input, textarea, select { font: inherit; }
 
 /* Buttons */
 button.primary, button.ghost {
-  border-radius: 0;
+  border-radius: 8px;
   padding: 12px 18px;
   font-family: var(--font-body);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
+  min-height: 48px;
+  touch-action: manipulation;
 }
 button.primary {
   background: #5EA777;
@@ -124,15 +126,32 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
 
 /* Capture surface */
 .page { display: flex; flex-direction: column; gap: 16px; }
+.page-heading {
+  display: grid;
+  gap: 4px;
+}
+.page-heading h2 {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  line-height: 1.08;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0;
+}
+.page-heading p { margin: 0; }
 
 .capture-surface {
   background: #FFFFFF;
-  border: 1px dashed rgba(31, 42, 36, 0.2);
-  padding: 28px 20px;
+  border: 1px solid rgba(31, 42, 36, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(31, 42, 36, 0.08);
+  padding: 24px 18px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
+  position: relative;
+  overflow: hidden;
 }
 .capture-surface.drag-over {
   border-color: #5EA777;
@@ -143,7 +162,32 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   font-size: 22px;
   font-weight: 600;
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+}
+.receipt-visual {
+  width: 100%;
+  min-height: 148px;
+  border: 1px dashed rgba(31, 42, 36, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent 0 18px, rgba(94, 167, 119, 0.12) 18px 20px, transparent 20px),
+    linear-gradient(#FFFFFF, #FBF7EF);
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  padding: 26px 34px;
+}
+.receipt-visual span {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(31, 42, 36, 0.12);
+}
+.receipt-visual span:nth-child(1) { width: 72%; }
+.receipt-visual span:nth-child(2) { width: 92%; }
+.receipt-visual span:nth-child(3) { width: 54%; background: rgba(94, 167, 119, 0.34); }
+.file-input {
+  display: none;
 }
 .capture-actions {
   display: flex;
@@ -153,6 +197,23 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   margin-top: 4px;
 }
 .capture-actions button { width: 100%; }
+.capture-option {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  text-align: left;
+}
+.capture-option-primary {
+  min-height: 56px;
+}
+.capture-option small {
+  font-size: 12px;
+  font-weight: 500;
+  color: currentColor;
+  opacity: 0.72;
+}
+.desktop-capture-hint { display: block; }
+.mobile-capture-hint { display: none; }
 .capture-preview img,
 .review-thumb img {
   display: block;
@@ -161,6 +222,27 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   object-fit: contain;
   background: #FFFFFF;
   border: 1px solid rgba(31, 42, 36, 0.1);
+  border-radius: 8px;
+}
+.capture-checklist {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: -4px 0 0;
+  padding: 0;
+}
+.capture-checklist li {
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 8px;
+  border: 1px solid rgba(31, 42, 36, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #4C5C53;
+  font-size: 12px;
 }
 
 /* OCR progress */
@@ -171,6 +253,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   padding: 12px;
   background: #FFFFFF;
   border: 1px solid rgba(31, 42, 36, 0.1);
+  border-radius: 8px;
 }
 .ocr-progress-row {
   display: flex;
@@ -183,6 +266,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   height: 4px;
   background: rgba(31, 42, 36, 0.08);
   overflow: hidden;
+  border-radius: 999px;
 }
 .ocr-progress-bar-fill {
   height: 100%;
@@ -198,6 +282,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   background: #FFFFFF;
   padding: 20px 18px;
   border: 1px solid rgba(31, 42, 36, 0.08);
+  border-radius: 8px;
 }
 .review-form label {
   display: flex;
@@ -214,7 +299,8 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   border: 1px solid rgba(31, 42, 36, 0.16);
   background: #FFFFFF;
   font-size: 15px;
-  border-radius: 0;
+  border-radius: 6px;
+  min-height: 44px;
 }
 .review-form input:focus,
 .review-form select:focus {
@@ -263,6 +349,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   background: #F5EFE4;
   padding: 8px;
   font-size: 11px;
+  border-radius: 6px;
 }
 
 /* History list */
@@ -274,7 +361,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   justify-content: space-between;
   background: #FFFFFF;
   border: 1px solid rgba(31, 42, 36, 0.08);
-  border-radius: 0;
+  border-radius: 8px;
   padding: 14px 16px;
   cursor: pointer;
   text-align: left;
@@ -306,6 +393,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   object-fit: contain;
   background: #FFFFFF;
   border: 1px solid rgba(31, 42, 36, 0.1);
+  border-radius: 8px;
 }
 .recategorise {
   display: flex;
@@ -320,6 +408,8 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   border: 1px solid rgba(31, 42, 36, 0.16);
   background: #FFFFFF;
   font-size: 15px;
+  border-radius: 6px;
+  min-height: 44px;
 }
 
 /* Settings */
@@ -327,6 +417,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   background: #FFFFFF;
   padding: 16px;
   border: 1px solid rgba(31, 42, 36, 0.08);
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -337,6 +428,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   padding: 14px 16px;
   font-size: 14px;
   color: #1F2A24;
+  border-radius: 8px;
 }
 .privacy-banner p { margin: 0; }
 
@@ -344,6 +436,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   text-align: center;
   padding: 40px 20px;
   color: #6B7670;
+  align-items: stretch;
 }
 .empty-state h2 {
   font-family: var(--font-heading);
@@ -443,6 +536,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   border: 1px dashed var(--border);
   padding: 12px;
   background: rgba(232, 197, 71, 0.04);
+  border-radius: 8px;
 }
 .accounting-extras > summary {
   cursor: pointer;
@@ -477,6 +571,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   border: 1px solid var(--border);
   background: var(--surface);
   padding: 12px;
+  border-radius: 8px;
 }
 .accounting-detail > summary {
   cursor: pointer;
@@ -509,4 +604,50 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--marigold);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .desktop-capture-hint { display: none; }
+  .mobile-capture-hint { display: block; }
+}
+
+@media (max-width: 640px) {
+  .desktop-capture-hint { display: none; }
+  .mobile-capture-hint { display: block; }
+}
+
+@media (max-width: 420px) {
+  .app {
+    padding-left: 14px;
+    padding-right: 14px;
+    gap: 14px;
+  }
+  .tabs {
+    gap: 0;
+  }
+  .tab {
+    flex: 1 1 0;
+    padding-left: 6px;
+    padding-right: 6px;
+    text-align: center;
+  }
+  .row,
+  .form-actions {
+    flex-direction: column;
+  }
+  .row .currency,
+  .row .grow,
+  .form-actions button {
+    width: 100%;
+  }
+  .capture-surface {
+    padding: 20px 14px 14px;
+  }
+  .receipt-visual {
+    min-height: 132px;
+    padding: 22px 26px;
+  }
+  .capture-checklist {
+    grid-template-columns: 1fr;
+  }
 }
