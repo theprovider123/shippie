@@ -3,10 +3,24 @@
  * silently save extracted values without a tap-confirm. Confidence
  * indicators tell the user which fields the OCR was less sure about
  * so they know where to look harder.
+ *
+ * Two modes (2026-05-19 accounting widening):
+ *   - 'quick'     — vendor, total, date, category, note (today's fields)
+ *   - 'accounting'— Quick fields + net/tax/payment-method/receipt-ref/
+ *                   project/client/reimbursable/supplier override.
+ *                   Accounting-only fields live behind a disclosure so
+ *                   the form stays short when those fields are empty.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ExtractedReceipt } from '../lib/parse-receipt.ts';
-import { CATEGORIES, type Category } from '../lib/store.ts';
+import {
+  CATEGORIES,
+  type Category,
+  type PaymentMethod,
+  type TaxScheme,
+} from '../lib/store.ts';
+
+export type ReviewMode = 'quick' | 'accounting';
 
 export interface ReviewFormValues {
   vendor: string;
@@ -15,11 +29,24 @@ export interface ReviewFormValues {
   category: Category;
   occurred_on: string;
   note: string;
+  // Accounting fields — always present on the values payload; ignored by
+  // callers that don't care, populated when the user has filled them.
+  supplier: string | null;
+  net_cents: number | null;
+  tax_cents: number | null;
+  tax_rate_bp: number | null;
+  tax_scheme: TaxScheme;
+  payment_method: PaymentMethod | null;
+  receipt_ref: string | null;
+  project: string | null;
+  client: string | null;
+  reimbursable: boolean;
 }
 
 interface ReviewFormProps {
   extracted: ExtractedReceipt;
   rawOcrText: string;
+  mode?: ReviewMode;
   onSave: (values: ReviewFormValues) => void;
   onCancel: () => void;
 }
@@ -34,6 +61,21 @@ function stringToCents(s: string): number | null {
   if (!trimmed) return null;
   const num = Number.parseFloat(trimmed.replace(',', '.'));
   if (!Number.isFinite(num)) return null;
+  return Math.round(num * 100);
+}
+
+function rateBpToString(bp: number | null): string {
+  if (bp == null) return '';
+  // Render in percent with two decimals (2000 → "20.00").
+  return (bp / 100).toFixed(2);
+}
+
+function stringToRateBp(s: string): number | null {
+  const trimmed = s.trim().replace('%', '');
+  if (!trimmed) return null;
+  const num = Number.parseFloat(trimmed.replace(',', '.'));
+  if (!Number.isFinite(num)) return null;
+  if (num < 0 || num > 50) return null;
   return Math.round(num * 100);
 }
 
@@ -52,13 +94,53 @@ function confidenceTag(confidence: number) {
   return null;
 }
 
-export function ReviewForm({ extracted, rawOcrText, onSave, onCancel }: ReviewFormProps) {
+export function ReviewForm({
+  extracted,
+  rawOcrText,
+  mode = 'quick',
+  onSave,
+  onCancel,
+}: ReviewFormProps) {
+  // Core fields (mode-independent).
   const [vendor, setVendor] = useState(extracted.vendor.value);
   const [totalStr, setTotalStr] = useState(centsToString(extracted.total_cents.value));
   const [currency, setCurrency] = useState(extracted.total_cents.currency);
   const [category, setCategory] = useState<Category>('food');
-  const [date, setDate] = useState(extracted.occurred_on.value ?? new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(
+    extracted.occurred_on.value ?? new Date().toISOString().slice(0, 10),
+  );
   const [note, setNote] = useState('');
+
+  // Accounting fields — pre-filled from the parser's optional extractors.
+  // We initialise these even in Quick mode (cheap, and a later toggle to
+  // Accounting mode will surface the pre-fills automatically).
+  const initialTax = extracted.tax ?? null;
+  const initialRef = extracted.receipt_ref?.value ?? null;
+  const initialPayment = extracted.payment_method?.value ?? null;
+  const initialTotalCents = extracted.total_cents.value;
+  const initialNetCents = useMemo(() => {
+    if (initialTotalCents == null || !initialTax?.value) return null;
+    return initialTotalCents - initialTax.value;
+  }, [initialTotalCents, initialTax]);
+
+  const [supplier, setSupplier] = useState<string>('');
+  const [netStr, setNetStr] = useState(centsToString(initialNetCents));
+  const [taxStr, setTaxStr] = useState(centsToString(initialTax?.value ?? null));
+  const [taxRateStr, setTaxRateStr] = useState(rateBpToString(initialTax?.rate_bp ?? null));
+  const [taxScheme, setTaxScheme] = useState<TaxScheme>(
+    initialTax?.scheme === 'sales_tax' || initialTax?.scheme === 'vat'
+      ? initialTax.scheme
+      : 'unknown',
+  );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>(initialPayment ?? '');
+  const [receiptRef, setReceiptRef] = useState(initialRef ?? '');
+  const [project, setProject] = useState('');
+  const [client, setClient] = useState('');
+  const [reimbursable, setReimbursable] = useState(false);
+
+  // In accounting mode the disclosure stays open by default so users
+  // see the wider form immediately. In quick mode it stays closed.
+  const [showAccountingExtras, setShowAccountingExtras] = useState(mode === 'accounting');
 
   function submit() {
     onSave({
@@ -68,6 +150,16 @@ export function ReviewForm({ extracted, rawOcrText, onSave, onCancel }: ReviewFo
       category,
       occurred_on: date,
       note: note.trim(),
+      supplier: supplier.trim() ? supplier.trim() : null,
+      net_cents: stringToCents(netStr),
+      tax_cents: stringToCents(taxStr),
+      tax_rate_bp: stringToRateBp(taxRateStr),
+      tax_scheme: taxScheme,
+      payment_method: paymentMethod || null,
+      receipt_ref: receiptRef.trim() ? receiptRef.trim() : null,
+      project: project.trim() ? project.trim() : null,
+      client: client.trim() ? client.trim() : null,
+      reimbursable,
     });
   }
 
@@ -85,7 +177,7 @@ export function ReviewForm({ extracted, rawOcrText, onSave, onCancel }: ReviewFo
         submit();
       }}
     >
-      <p className="eyebrow">Review</p>
+      <p className="eyebrow">Review · {mode === 'accounting' ? 'accounting mode' : 'quick mode'}</p>
       {missing.length > 0 ? (
         <p className="muted small">
           Couldn't read {missing.join(' / ')} cleanly — fill in what's missing.
@@ -165,6 +257,140 @@ export function ReviewForm({ extracted, rawOcrText, onSave, onCancel }: ReviewFo
           placeholder="business lunch, etc."
         />
       </label>
+
+      {mode === 'accounting' || (extracted.tax?.value ?? null) != null ? (
+        <details
+          className="accounting-extras"
+          open={showAccountingExtras}
+          onToggle={(e) => setShowAccountingExtras((e.target as HTMLDetailsElement).open)}
+        >
+          <summary>Accounting fields</summary>
+
+          <label>
+            <span>Supplier <span className="muted small">(override — falls back to vendor)</span></span>
+            <input
+              type="text"
+              value={supplier}
+              onChange={(e) => setSupplier(e.target.value)}
+              placeholder={vendor || 'e.g. Hagen Coffee Ltd'}
+            />
+          </label>
+
+          <div className="row">
+            <label className="grow">
+              <span>Net (pre-tax)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={netStr}
+                onChange={(e) => setNetStr(e.target.value)}
+                placeholder="0.00"
+              />
+            </label>
+            <label className="grow">
+              <span className="label-row">
+                <span>Tax / VAT</span>
+                {extracted.tax ? confidenceTag(extracted.tax.confidence) : null}
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={taxStr}
+                onChange={(e) => setTaxStr(e.target.value)}
+                placeholder="0.00"
+              />
+            </label>
+          </div>
+
+          <div className="row">
+            <label className="grow">
+              <span>Rate (%)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={taxRateStr}
+                onChange={(e) => setTaxRateStr(e.target.value)}
+                placeholder="20.00"
+              />
+            </label>
+            <label className="currency">
+              <span>Scheme</span>
+              <select
+                value={taxScheme}
+                onChange={(e) => setTaxScheme(e.target.value as TaxScheme)}
+              >
+                <option value="unknown">unknown</option>
+                <option value="vat">VAT</option>
+                <option value="sales_tax">sales tax</option>
+                <option value="none">none</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="row">
+            <label className="grow">
+              <span className="label-row">
+                <span>Payment method</span>
+                {extracted.payment_method
+                  ? confidenceTag(extracted.payment_method.confidence)
+                  : null}
+              </span>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | '')}
+              >
+                <option value="">(not set)</option>
+                <option value="card">card</option>
+                <option value="cash">cash</option>
+                <option value="bank_transfer">bank transfer</option>
+                <option value="other">other</option>
+              </select>
+            </label>
+            <label className="grow">
+              <span className="label-row">
+                <span>Receipt #</span>
+                {extracted.receipt_ref ? confidenceTag(extracted.receipt_ref.confidence) : null}
+              </span>
+              <input
+                type="text"
+                value={receiptRef}
+                onChange={(e) => setReceiptRef(e.target.value)}
+                placeholder="INV-2891"
+              />
+            </label>
+          </div>
+
+          <div className="row">
+            <label className="grow">
+              <span>Project</span>
+              <input
+                type="text"
+                value={project}
+                onChange={(e) => setProject(e.target.value)}
+                placeholder="optional"
+              />
+            </label>
+            <label className="grow">
+              <span>Client</span>
+              <input
+                type="text"
+                value={client}
+                onChange={(e) => setClient(e.target.value)}
+                placeholder="optional"
+              />
+            </label>
+          </div>
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={reimbursable}
+              onChange={(e) => setReimbursable(e.target.checked)}
+            />
+            <span>Reimbursable expense (employee → company)</span>
+          </label>
+        </details>
+      ) : null}
 
       {rawOcrText ? (
         <details className="raw-ocr">

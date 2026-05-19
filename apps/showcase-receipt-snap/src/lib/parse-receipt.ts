@@ -14,6 +14,20 @@ export interface ExtractedReceipt {
   vendor: { value: string; confidence: number };
   total_cents: { value: number | null; currency: string; confidence: number };
   occurred_on: { value: string | null; confidence: number };
+  /** Accounting extractors — added 2026-05-19. All optional in the
+   *  resulting receipt row; conservative confidence floors keep us
+   *  from filling fields with bad guesses. */
+  tax?: {
+    value: number | null;     // tax/VAT amount in smallest currency unit
+    rate_bp: number | null;   // basis points (2000 = 20.00%)
+    scheme: 'vat' | 'sales_tax' | 'unknown';
+    confidence: number;
+  };
+  receipt_ref?: { value: string | null; confidence: number };
+  payment_method?: {
+    value: 'card' | 'cash' | 'bank_transfer' | 'other' | null;
+    confidence: number;
+  };
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -232,13 +246,162 @@ export function extractVendor(text: string): { value: string; confidence: number
 }
 
 /**
+ * Tax / VAT detection. Conservative — only fires when the line is clearly
+ * a tax line (keyword + amount, optionally + rate). Returns `null` values
+ * with confidence 0 when nothing is found rather than guessing. UK
+ * receipts typically print `VAT 20%` or `VAT @ 20.00 £4.05`; US receipts
+ * print `Tax 8.25% $1.65` or `Sales Tax $1.65`.
+ *
+ * Rate is returned as basis points (2000 = 20.00%) for lossless integer
+ * persistence — same convention the schema uses.
+ */
+export function extractTax(text: string): {
+  value: number | null;
+  rate_bp: number | null;
+  scheme: 'vat' | 'sales_tax' | 'unknown';
+  confidence: number;
+} {
+  const NONE = { value: null, rate_bp: null, scheme: 'unknown' as const, confidence: 0 };
+
+  // Money pattern same as extractTotal — find amounts on tax-like lines.
+  const moneyPattern = /([£$€¥]\s*-?\d{1,3}(?:[,.]?\d{3})*(?:[.,]\d{2})?|\d{1,3}(?:[,.]?\d{3})*[.,]\d{2}\s*(?:[£$€¥]|[A-Z]{3})?)/g;
+  // Rate pattern: 20%, 20.00%, 5% etc.
+  const ratePattern = /(\d{1,2}(?:[.,]\d{1,2})?)\s*%/;
+
+  // Iterate lines, find clear tax lines.
+  for (const line of text.split(/\n/)) {
+    // Skip subtotals — they aren't the tax.
+    if (/sub\s*total/i.test(line)) continue;
+
+    // Two schemes:
+    //   VAT — UK / EU
+    //   Sales Tax — US (and "Tax" alone — ambiguous but usually sales tax)
+    const isVat = /\bvat\b/i.test(line);
+    const isSalesTax = /\b(sales\s*tax|tax)\b/i.test(line);
+    if (!isVat && !isSalesTax) continue;
+
+    // Try to pull a money amount.
+    const moneyMatches = line.match(moneyPattern);
+    if (!moneyMatches || moneyMatches.length === 0) continue;
+    const lastMoney = moneyMatches[moneyMatches.length - 1];
+    if (!lastMoney) continue;
+    const parsed = parseMoney(lastMoney);
+    if (!parsed) continue;
+
+    // Rate is optional. When present we believe more.
+    // Two forms accepted:
+    //   "VAT 20%" / "8.25%" — explicit percent sign
+    //   "VAT @ 20.00"        — `@` prefix (UK convention, percent often elided)
+    let rateBp: number | null = null;
+    const rateMatch = line.match(ratePattern);
+    if (rateMatch && rateMatch[1]) {
+      const ratePct = Number.parseFloat(rateMatch[1].replace(',', '.'));
+      if (Number.isFinite(ratePct) && ratePct >= 0 && ratePct <= 50) {
+        rateBp = Math.round(ratePct * 100);
+      }
+    } else {
+      const atMatch = line.match(/@\s*(\d{1,2}(?:[.,]\d{1,2})?)\b/);
+      if (atMatch && atMatch[1]) {
+        const ratePct = Number.parseFloat(atMatch[1].replace(',', '.'));
+        if (Number.isFinite(ratePct) && ratePct >= 0 && ratePct <= 50) {
+          rateBp = Math.round(ratePct * 100);
+        }
+      }
+    }
+
+    return {
+      value: parsed.cents,
+      rate_bp: rateBp,
+      scheme: isVat ? 'vat' : 'sales_tax',
+      // Higher confidence when a rate was found AND it's plausible.
+      confidence: rateBp != null ? 0.85 : 0.65,
+    };
+  }
+
+  return NONE;
+}
+
+/**
+ * Receipt reference / invoice number / order number. We look for common
+ * label prefixes followed by a token of digits / letters / dashes.
+ *
+ * Conservative: only fires when the prefix is unambiguous. "Receipt:" or
+ * "Invoice #" is fine; bare digits floating in the OCR text aren't,
+ * because OCR garbles plenty of things into digit-only blobs.
+ */
+export function extractReceiptRef(text: string): { value: string | null; confidence: number } {
+  // Patterns ordered most-specific → least-specific.
+  // (?: ) groups don't capture; capture group 1 is the value.
+  const patterns: Array<{ re: RegExp; conf: number }> = [
+    { re: /\binvoice\s*(?:no\.?|number|#)?\s*[:#]?\s*([A-Z0-9][A-Z0-9-_/]{2,20})\b/i, conf: 0.85 },
+    { re: /\breceipt\s*(?:no\.?|number|#)?\s*[:#]?\s*([A-Z0-9][A-Z0-9-_/]{2,20})\b/i, conf: 0.85 },
+    { re: /\border\s*(?:no\.?|number|#)?\s*[:#]?\s*([A-Z0-9][A-Z0-9-_/]{2,20})\b/i, conf: 0.85 },
+    { re: /\bref(?:erence)?\s*(?:no\.?|number|#)?\s*[:#]?\s*([A-Z0-9][A-Z0-9-_/]{2,20})\b/i, conf: 0.8 },
+    { re: /\btxn\s*(?:no\.?|number|#)?\s*[:#]?\s*([A-Z0-9][A-Z0-9-_/]{2,20})\b/i, conf: 0.8 },
+  ];
+
+  for (const { re, conf } of patterns) {
+    const m = text.match(re);
+    if (m && m[1]) {
+      // Reject obvious junk: pure dashes or anything starting with a
+      // common-word prefix we accidentally captured.
+      const candidate = m[1].trim();
+      if (/^-+$/.test(candidate)) continue;
+      if (candidate.length < 3) continue;
+      return { value: candidate, confidence: conf };
+    }
+  }
+
+  return { value: null, confidence: 0 };
+}
+
+/**
+ * Payment method hints. Strong signals: card-network keywords (VISA,
+ * MASTERCARD, AMEX, CONTACTLESS), explicit `CASH` / `CHANGE`, or
+ * `BANK TRANSFER`. We don't try to recover from ambiguous shorthand
+ * ("CARD" alone could be anything — we lean `card` but with low conf).
+ */
+export function extractPaymentMethod(text: string): {
+  value: 'card' | 'cash' | 'bank_transfer' | 'other' | null;
+  confidence: number;
+} {
+  const upper = text.toUpperCase();
+  // Card network — strong card hint.
+  if (/\b(VISA|MASTERCARD|MASTER\s*CARD|AMEX|AMERICAN\s*EXPRESS|DISCOVER|MAESTRO|CONTACTLESS|APPLE\s*PAY|GOOGLE\s*PAY|GPAY)\b/.test(upper)) {
+    return { value: 'card', confidence: 0.9 };
+  }
+  // Explicit CASH / CHANGE GIVEN.
+  if (/\bCASH\b/.test(upper) && /\bCHANGE\b|TENDERED|GIVEN/.test(upper)) {
+    return { value: 'cash', confidence: 0.85 };
+  }
+  if (/\bCASH\s+(?:PAYMENT|RECEIVED)?\b/.test(upper)) {
+    return { value: 'cash', confidence: 0.7 };
+  }
+  // Bank transfer / direct debit.
+  if (/\b(BANK\s*TRANSFER|BACS|SEPA|ACH|WIRE\s*TRANSFER)\b/.test(upper)) {
+    return { value: 'bank_transfer', confidence: 0.85 };
+  }
+  // Weak `CARD` mention — last-resort hint.
+  if (/\bCARD\b/.test(upper) && !/GIFT\s*CARD/.test(upper)) {
+    return { value: 'card', confidence: 0.55 };
+  }
+  return { value: null, confidence: 0 };
+}
+
+/**
  * Run all extractors. Always returns shape — never throws on garbage.
+ * Accounting extractors (tax, receipt_ref, payment_method) are included
+ * but their values may be null/empty when the OCR text doesn't carry
+ * enough signal.
  */
 export function parseReceipt(text: string): ExtractedReceipt {
   return {
     vendor: extractVendor(text),
     total_cents: extractTotal(text),
     occurred_on: extractDate(text),
+    tax: extractTax(text),
+    receipt_ref: extractReceiptRef(text),
+    payment_method: extractPaymentMethod(text),
   };
 }
 

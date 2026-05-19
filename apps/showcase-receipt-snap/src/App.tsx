@@ -9,6 +9,7 @@ import { SettingsPage } from './pages/Settings.tsx';
 import {
   CATEGORIES,
   clearAll,
+  discardAllPhotos,
   insert,
   load,
   newId,
@@ -19,12 +20,24 @@ import {
 } from './lib/store.ts';
 import { parseReceipt, type ExtractedReceipt } from './lib/parse-receipt.ts';
 import type { ReviewFormValues } from './components/ReviewForm.tsx';
+import {
+  buildSampleReceipts,
+  hasSampleData as hasSampleDataIn,
+  withoutSamples,
+} from './lib/sample-data.ts';
+import {
+  EVENT_DINED_OUT,
+  EVENT_EXPENSE_LOGGED,
+  type DinedOutPayload,
+  type ExpenseLoggedPayload,
+} from './lib/events.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_receipt_snap' });
 const observations = createObservationClient(shippie);
 
 const MODEL_WARM_KEY = 'shippie.receipt-snap.model-warm.v1';
 const HEADER_SUBTITLE_SEEN_KEY = 'receiptSnap:onboarding:headerSubtitle:v1';
+const REVIEW_MODE_KEY = 'shippie.receipt-snap.review-mode.v1';
 
 type Tab = 'capture' | 'history' | 'settings';
 type Screen = { kind: 'tab' } | { kind: 'review'; rawText: string; imageDataUrl: string };
@@ -84,6 +97,16 @@ export function App() {
       return true;
     }
   });
+  // Review mode — Quick (today's 5 fields) or Accounting (full set).
+  // Defaults to Quick to protect the existing audience; users opt into
+  // Accounting via the Settings page (Phase E).
+  const [reviewMode, setReviewMode] = useState<'quick' | 'accounting'>(() => {
+    try {
+      return localStorage.getItem(REVIEW_MODE_KEY) === 'accounting' ? 'accounting' : 'quick';
+    } catch {
+      return 'quick';
+    }
+  });
 
   useEffect(() => {
     save({ receipts });
@@ -130,6 +153,21 @@ export function App() {
       raw_ocr_text: screen.rawText,
       image_data_url: screen.imageDataUrl,
       note: values.note,
+      // Accounting widening (2026-05-19). All optional on the row — only
+      // included when the user filled them in or the parser pre-filled
+      // them. The export layer (Phase D) reads through these.
+      supplier: values.supplier,
+      net_cents: values.net_cents,
+      tax_cents: values.tax_cents,
+      tax_rate_bp: values.tax_rate_bp,
+      tax_scheme: values.tax_scheme,
+      payment_method: values.payment_method,
+      receipt_ref: values.receipt_ref,
+      project: values.project,
+      client: values.client,
+      reimbursable: values.reimbursable,
+      export_status: 'not_exported',
+      discarded_photo_at: null,
     };
     setReceipts((prev) => insert({ receipts: prev }, receipt).receipts);
     broadcastSaved(receipt);
@@ -144,26 +182,27 @@ export function App() {
   function broadcastSaved(receipt: Receipt) {
     // Ledger consumes expense-logged. Payload is intentionally minimal —
     // amount + when + where + category — no photo, no raw OCR text.
-    shippie.intent.broadcast('expense-logged', [
-      {
-        amount_cents: receipt.total_cents ?? 0,
-        currency: receipt.currency,
-        category: receipt.category,
-        vendor: receipt.vendor,
-        occurred_on: receipt.occurred_on ?? receipt.captured_at.slice(0, 10),
-      },
-    ]);
+    // Type-checked via ExpenseLoggedPayload so any future schema drift
+    // is caught at the call site, not by a downstream consumer at runtime.
+    const occurredOn = receipt.occurred_on ?? receipt.captured_at.slice(0, 10);
+    const expensePayload: ExpenseLoggedPayload = {
+      amount_cents: receipt.total_cents ?? 0,
+      currency: receipt.currency,
+      category: receipt.category,
+      vendor: receipt.vendor,
+      occurred_on: occurredOn,
+    };
+    shippie.intent.broadcast(EVENT_EXPENSE_LOGGED, [expensePayload]);
     if (RESTAURANT_CATEGORIES.has(receipt.category) && receipt.vendor) {
       // Restaurant Memory + Atlas listen for this. Optional — skipped
       // when category implies a non-meal purchase.
-      shippie.intent.broadcast('dined-out', [
-        {
-          venue: receipt.vendor,
-          occurred_on: receipt.occurred_on ?? receipt.captured_at.slice(0, 10),
-          amount_cents: receipt.total_cents ?? 0,
-          currency: receipt.currency,
-        },
-      ]);
+      const dinedPayload: DinedOutPayload = {
+        venue: receipt.vendor,
+        occurred_on: occurredOn,
+        amount_cents: receipt.total_cents ?? 0,
+        currency: receipt.currency,
+      };
+      shippie.intent.broadcast(EVENT_DINED_OUT, [dinedPayload]);
     }
     // Observation bus — vendor as a single-item label set so Randomiser
     // can surface "the bakery on Tuesday" without seeing the photo or
@@ -197,6 +236,25 @@ export function App() {
     setReceipts([]);
     clearAll();
     shippie.feel.texture('milestone');
+  }
+
+  function onDiscardAllPhotos() {
+    setReceipts((prev) => discardAllPhotos({ receipts: prev }).receipts);
+    shippie.feel.texture('confirm');
+  }
+
+  function onLoadSampleData() {
+    // Prepend so the seeds show first in history. Don't duplicate
+    // existing samples if the user taps twice.
+    setReceipts((prev) => {
+      const withoutOld = withoutSamples(prev);
+      return [...buildSampleReceipts(), ...withoutOld];
+    });
+    shippie.feel.texture('confirm');
+  }
+
+  function onClearSampleData() {
+    setReceipts((prev) => withoutSamples(prev));
   }
 
   // Make the linter aware we'll use CATEGORIES via the form components.
@@ -233,6 +291,7 @@ export function App() {
           extracted={extracted}
           rawOcrText={screen.rawText}
           imageDataUrl={screen.imageDataUrl}
+          mode={reviewMode}
           onSave={onSave}
           onCancel={onCancel}
         />
@@ -245,7 +304,24 @@ export function App() {
       ) : tab === 'history' ? (
         <HistoryPage receipts={receipts} onDelete={onDelete} onUpdate={onUpdate} />
       ) : (
-        <SettingsPage receipts={receipts} modelWarm={modelWarm} onClearAll={onClearAll} />
+        <SettingsPage
+          receipts={receipts}
+          modelWarm={modelWarm}
+          reviewMode={reviewMode}
+          onChangeReviewMode={(next) => {
+            setReviewMode(next);
+            try {
+              localStorage.setItem(REVIEW_MODE_KEY, next);
+            } catch {
+              /* ignore */
+            }
+          }}
+          onClearAll={onClearAll}
+          onDiscardAllPhotos={onDiscardAllPhotos}
+          onLoadSampleData={onLoadSampleData}
+          onClearSampleData={onClearSampleData}
+          hasSampleData={hasSampleDataIn(receipts)}
+        />
       )}
 
     </div>

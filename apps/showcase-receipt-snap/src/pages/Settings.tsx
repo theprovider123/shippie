@@ -1,15 +1,35 @@
 /**
  * Settings — verbatim privacy banner, CSV export, clear all data,
- * model cache status. The voice here is honest accounting: what runs
- * where, what's cached, what'll be deleted.
+ * model cache status, review mode toggle (Quick / Accounting), storage
+ * discipline (bulk photo discard), and a "Try sample data" helper to
+ * load 5 fixture receipts for exploring the export flow.
+ *
+ * The voice here is honest accounting: what runs where, what's cached,
+ * what'll be deleted.
  */
 import { ExportButton } from '../components/ExportButton.tsx';
-import { estimateBytes, type Receipt } from '../lib/store.ts';
+import {
+  discardAllPhotos as discardAllPhotosOp,
+  estimateBytes,
+  type Receipt,
+} from '../lib/store.ts';
+
+export type ReviewMode = 'quick' | 'accounting';
 
 interface SettingsPageProps {
   receipts: ReadonlyArray<Receipt>;
   modelWarm: boolean;
+  reviewMode?: ReviewMode;
+  onChangeReviewMode?: (next: ReviewMode) => void;
   onClearAll: () => void;
+  /** Optional — Phase E wiring for "Discard all photos" + "Try sample data".
+   *  When omitted (older callers), those controls are not rendered. */
+  onDiscardAllPhotos?: () => void;
+  onLoadSampleData?: () => void;
+  onClearSampleData?: () => void;
+  /** True when at least one sample receipt is currently in the inbox.
+   *  Drives the visibility of the "Clear sample data" button. */
+  hasSampleData?: boolean;
 }
 
 function formatBytes(b: number): string {
@@ -18,8 +38,24 @@ function formatBytes(b: number): string {
   return `${b} B`;
 }
 
-export function SettingsPage({ receipts, modelWarm, onClearAll }: SettingsPageProps) {
+// Storage soft-cap — well under Safari's 5 MB localStorage quota.
+const QUOTA_WARN_BYTES = 4 * 1024 * 1024;
+
+export function SettingsPage({
+  receipts,
+  modelWarm,
+  reviewMode = 'quick',
+  onChangeReviewMode,
+  onClearAll,
+  onDiscardAllPhotos,
+  onLoadSampleData,
+  onClearSampleData,
+  hasSampleData = false,
+}: SettingsPageProps) {
   const bytes = estimateBytes({ receipts: [...receipts] });
+  const overBudget = bytes > QUOTA_WARN_BYTES;
+  const photoCount = receipts.filter((r) => r.image_data_url != null).length;
+
   return (
     <section className="page settings-page">
       <p className="eyebrow">Privacy</p>
@@ -31,10 +67,43 @@ export function SettingsPage({ receipts, modelWarm, onClearAll }: SettingsPagePr
       </div>
 
       <div className="settings-block">
+        <p className="eyebrow">Review mode</p>
+        <p className="muted small">
+          {reviewMode === 'accounting'
+            ? 'Accounting fields are visible on every review — net / tax / payment method / receipt # / project / client / reimbursable. Photos are discarded after save by default to keep storage light.'
+            : 'Five quick fields per receipt: vendor, total, date, category, note. Switch to Accounting when you need VAT, payment method, or per-project tagging.'}
+        </p>
+        <div className="mode-toggle" role="radiogroup" aria-label="Review mode">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={reviewMode === 'quick'}
+            className={`mode-chip ${reviewMode === 'quick' ? 'active' : ''}`}
+            onClick={() => onChangeReviewMode?.('quick')}
+          >
+            Quick
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={reviewMode === 'accounting'}
+            className={`mode-chip ${reviewMode === 'accounting' ? 'active' : ''}`}
+            onClick={() => onChangeReviewMode?.('accounting')}
+          >
+            Accounting
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-block">
         <p className="eyebrow">Export</p>
         <p className="muted small">
-          One row per receipt: <code>date,vendor,total,currency,category,note</code>. Drop into
-          your spreadsheet of choice.
+          {reviewMode === 'accounting'
+            ? 'Accountant CSV, FreeAgent-ready JSON (Expenses API shape), FreeAgent bank-import CSV, or a ZIP bundle of everything for your accountant.'
+            : 'One row per receipt: '}
+          {reviewMode === 'quick' ? (
+            <code>date,vendor,total,currency,category,note</code>
+          ) : null}
         </p>
         <ExportButton receipts={receipts} />
       </div>
@@ -49,11 +118,32 @@ export function SettingsPage({ receipts, modelWarm, onClearAll }: SettingsPagePr
       </div>
 
       <div className="settings-block">
-        <p className="eyebrow">Storage</p>
-        <p className="muted small">
-          {receipts.length} receipt{receipts.length === 1 ? '' : 's'} · about {formatBytes(bytes)}{' '}
-          on this device.
+        <p className="eyebrow">Storage on this device</p>
+        <p className={overBudget ? 'warn small' : 'muted small'}>
+          {receipts.length} receipt{receipts.length === 1 ? '' : 's'} · {photoCount} with photo
+          · about {formatBytes(bytes)}.
+          {overBudget
+            ? ' Over the 4 MB safe budget — discard photos or export + clear to free space.'
+            : ''}
         </p>
+        {onDiscardAllPhotos != null ? (
+          <button
+            type="button"
+            className="ghost"
+            disabled={photoCount === 0}
+            onClick={() => {
+              if (
+                confirm(
+                  `Discard photos on ${photoCount} receipt${photoCount === 1 ? '' : 's'}? The receipts (vendor, total, etc.) stay. Only the photos are cleared.`,
+                )
+              ) {
+                onDiscardAllPhotos();
+              }
+            }}
+          >
+            Discard all photos
+          </button>
+        ) : null}
         <button
           type="button"
           className="ghost danger"
@@ -71,6 +161,24 @@ export function SettingsPage({ receipts, modelWarm, onClearAll }: SettingsPagePr
           Clear all receipts
         </button>
       </div>
+
+      {onLoadSampleData != null ? (
+        <div className="settings-block">
+          <p className="eyebrow">Try sample data</p>
+          <p className="muted small">
+            Loads 5 example receipts to explore the export flow. Useful for testing without
+            polluting your real inbox — sample rows are tagged and removable in one tap.
+          </p>
+          <button type="button" className="ghost" onClick={onLoadSampleData}>
+            Load sample data
+          </button>
+          {hasSampleData && onClearSampleData != null ? (
+            <button type="button" className="ghost" onClick={onClearSampleData}>
+              Clear sample data
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
