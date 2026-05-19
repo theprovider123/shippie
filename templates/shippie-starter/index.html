@@ -1,25 +1,161 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My Shippie App</title>
-  <style>
-    * { margin: 0; box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 640px; margin: 0 auto; }
-    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-    p { color: #666; margin-bottom: 1.5rem; }
-    .card { border: 1px solid #ddd; padding: 1.5rem; margin-bottom: 1rem; }
-  </style>
-</head>
-<body>
-  <h1>Hello from Shippie</h1>
-  <p>This is a starter template. Edit index.html and redeploy.</p>
-  <div class="card">
-    <strong>Deploy:</strong> <code>shippie deploy .</code>
-  </div>
-  <div class="card">
-    <strong>Add a backend:</strong> See <a href="https://docs.shippie.app/sdk/configure">the SDK docs</a>.
-  </div>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#E8603C" />
+    <title>My Shippie Tool</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #14120f;
+        --panel: #1e1a15;
+        --line: #3d3530;
+        --text: #ede4d3;
+        --muted: #b8a88f;
+        --faint: #8e8170;
+        --accent: #e8603c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        min-height: 100dvh;
+        padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        overscroll-behavior-y: contain;
+        touch-action: manipulation;
+      }
+      main {
+        width: min(680px, 100%);
+        margin: 0 auto;
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+      }
+      header { display: grid; gap: 8px; padding-top: 8px; }
+      .eyebrow {
+        margin: 0;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+      h1, h2, p { margin: 0; }
+      h1 { font-family: Georgia, serif; font-size: clamp(2.5rem, 12vw, 4.5rem); line-height: 0.92; }
+      h2 { font-size: 1rem; }
+      p { color: var(--muted); line-height: 1.5; }
+      form, .note, .empty {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 16px;
+      }
+      form { display: grid; gap: 12px; }
+      label {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      textarea {
+        min-height: 132px;
+        resize: vertical;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--line);
+        padding: 12px;
+        font: inherit;
+        font-size: 16px;
+      }
+      button {
+        min-height: 44px;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: var(--bg);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .notes { display: grid; gap: 10px; margin-top: 10px; }
+      .note { display: grid; gap: 6px; }
+      .note small {
+        color: var(--faint);
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 0.72rem;
+      }
+      .empty {
+        border-style: dashed;
+        color: var(--faint);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Local Tool</p>
+        <h1>My Shippie Tool</h1>
+        <p>Save a note with one local database call. No account, no server, no setup.</p>
+      </header>
+
+      <form id="note-form">
+        <label for="note">Note</label>
+        <textarea id="note" name="note" placeholder="A tiny tool I want to build..." required></textarea>
+        <button type="submit">Save locally</button>
+      </form>
+
+      <section aria-labelledby="saved-title">
+        <h2 id="saved-title">Saved on this device</h2>
+        <div id="notes" class="notes" role="list"></div>
+      </section>
+    </main>
+
+    <script type="module">
+      const db = window.shippie?.local?.db;
+      const form = document.querySelector('#note-form');
+      const textarea = document.querySelector('#note');
+      const notes = document.querySelector('#notes');
+
+      await renderNotes();
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const text = textarea.value.trim();
+        if (!text) return;
+        await db.save('notes', {
+          id: crypto.randomUUID(),
+          text,
+          createdAt: new Date().toISOString(),
+        });
+        form.reset();
+        await renderNotes();
+      });
+
+      async function renderNotes() {
+        if (!db) {
+          notes.innerHTML = '<p class="empty">Deploy to Shippie to use shippie.local.db.</p>';
+          return;
+        }
+        const rows = await db.list('notes');
+        if (rows.length === 0) {
+          notes.innerHTML = '<p class="empty">No notes yet.</p>';
+          return;
+        }
+        notes.innerHTML = rows
+          .slice()
+          .reverse()
+          .map((row) => `<article class="note" role="listitem"><p>${escapeHtml(row.text)}</p><small>${escapeHtml(new Date(row.createdAt).toLocaleString())}</small></article>`)
+          .join('');
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+    </script>
+  </body>
 </html>

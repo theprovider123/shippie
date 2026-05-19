@@ -5,14 +5,28 @@
   "theme_color": "#E8603C",
   "display": "standalone",
   "categories": ["tools"],
-  "description": "A tiny installable Shippie app.",
+  "description": "A private local Shippie tool with one-line device storage.",
   "badge": true,
   "transitions": "slide",
   "haptics": true,
   "sound": false,
   "ambient": false,
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["main"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited"
+  },
+  "data_passport": {
+    "family": "my-app",
+    "schema": "my-app.v1"
+  },
   "local": {
-    "database": false,
+    "database": true,
     "files": false,
     "ai": [],
     "sync": false

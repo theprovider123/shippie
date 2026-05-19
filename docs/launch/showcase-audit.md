@@ -1,6 +1,6 @@
 # Showcase Local Tool Audit
 
-Generated: 2026-05-19T14:33:13.940Z
+Generated: 2026-05-19T14:37:31.470Z
 
 This is the launch ledger for first-party showcases. It does not replace the deploy-time Local Tool policy scanner; it records the current slate so we know which tools are ready for the public launcher, which belong in Labs, and which need conversion before launch.
 
@@ -31,7 +31,7 @@ This is the launch ledger for first-party showcases. It does not replace the dep
 | coffee | featured | launch | eligible-reference-network (0 blocks, 0 warns) | coffee/coffee.v1 | worksOffline, reference:fonts.googleapis.com,fonts.gstatic.com, sharesIntents, localDb | — |
 | colour-of-day | archived | archived | eligible-reference-network (0 blocks, 0 warns) | colour-of-day/colour-of-day.v1 | worksOffline, reference:fonts.googleapis.com,fonts.gstatic.com, localDb | — |
 | cooking | archived | archived | eligible-reference-network (0 blocks, 0 warns) | cooking/cooking.v1 | worksOffline, reference:fonts.googleapis.com,fonts.gstatic.com, sharesIntents, localDb | — |
-| crewtrip | featured | launch | eligible-reference-network (0 blocks, 0 warns) | crewtrip/crewtrip.v1 | worksOffline, reference:${trimmed},music.apple.com,open.spotify.com,soundcloud.com, privateRelay, localDb, localFiles | — |
+| crewtrip | featured | launch | eligible-reference-network (0 blocks, 0 warns) | crewtrip/crewtrip.v1 | worksOffline, reference:music.apple.com,open.spotify.com,soundcloud.com, privateRelay, localDb, localFiles | — |
 | crossing | archived | archived | eligible-reference-network (0 blocks, 0 warns) | crossing/crossing.v1 | worksOffline, reference:fonts.googleapis.com,fonts.gstatic.com, localDb | — |
 | cycle | featured | launch | eligible-reference-network (0 blocks, 0 warns) | cycle/cycle.v1 | worksOffline, reference:fonts.googleapis.com,fonts.gstatic.com, privateRelay, sharesIntents, localDb | — |
 | daily-puzzle | arcade | launch | eligible-reference-network (0 blocks, 0 warns) | daily-puzzle/daily-puzzle.v1 | worksOffline, reference:fonts.googleapis.com,fonts.gstatic.com, localDb | — |

@@ -37,11 +37,10 @@ describe('local-tool-policy scan', () => {
 
     expect(report.passed).toBe(false);
     expect(report.status).toBe('needs-conversion');
-    expect(report.findings.map((f) => f.id)).toEqual(expect.arrayContaining([
-      'cloud-storage-supabase',
-      'third-party-auth',
-      'analytics-tracker',
-    ]));
+    const ids = report.findings.map((f) => f.id);
+    expect(ids).toContain('cloud-storage-supabase');
+    expect(ids).toContain('third-party-auth');
+    expect(ids).toContain('analytics-tracker');
   });
 
   test('blocks external writes but allows reference-data reads with domain disclosure', () => {

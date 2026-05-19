@@ -24,7 +24,7 @@ npx @shippie/cli deploy ./dist
 
 `shippie init` writes the launch-path starter: a phone-first local notes tool using `shippie.local.db.save()` and `shippie.local.db.list()`, with a `data_passport`, safe-area CSS, 16px inputs, and no server setup. Your app is live at `https://your-app.shippie.app`.
 
-Want a no-build zip fixture? Use `templates/local-notes/`: it is a single-file version of the same local-tool pattern for browser upload and smoke tests.
+Want a no-build zip fixture? Use `templates/local-notes/` or `templates/shippie-starter/`: both are single-file versions of the same local-tool pattern for browser upload and smoke tests.
 
 ## Option 2: Web upload
 

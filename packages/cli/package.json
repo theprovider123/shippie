@@ -1,7 +1,7 @@
 {
   "name": "@shippie/cli",
   "version": "0.0.2",
-  "description": "Deploy apps to Shippie from your terminal. PWA hosting, no app store, BYO backend.",
+  "description": "Build and deploy private local Shippie tools from your terminal.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -18,7 +18,8 @@
     "deploy",
     "cli",
     "no-app-store",
-    "static-hosting"
+    "local-first",
+    "private-tools"
   ],
   "homepage": "https://shippie.app",
   "repository": {
