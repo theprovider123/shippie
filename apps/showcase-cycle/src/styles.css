@@ -1,0 +1,88 @@
+/* Cycle — dark, calm, private. The kit ships the base tokens (deep
+   bg / cream text / Inter body). This file adds the four Shippie
+   shared moves: Fraunces display, mono eyebrow handshake, big numeric
+   (cycle day / length), italic-mono code (day label / pair code). */
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+:root {
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --cycle-accent: #C66B6B;       /* muted-rose, not the SaaS pink */
+  --cycle-accent-deep: #8C4A4A;
+  --cycle-muted: var(--text-light, #7A6B58);
+}
+
+/* Sharpen page heads */
+.page-head h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.08;
+}
+
+/* Mono eyebrow — platform handshake (override any kit defaults) */
+.eyebrow {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cycle-muted);
+}
+
+/* Big numeric — cycle day, cycle length */
+.cycle-numeric {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.6rem, 8vw, 4.6rem);
+  color: var(--cycle-accent);
+}
+.cycle-numeric .unit {
+  font-size: 0.4em;
+  font-weight: 600;
+  color: var(--cycle-muted);
+  vertical-align: 0.45em;
+  margin-left: 0.25em;
+  letter-spacing: 0.04em;
+}
+
+/* Italic-mono "code" — day label / pair code */
+.day-code {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--cycle-accent-deep);
+  text-transform: uppercase;
+}

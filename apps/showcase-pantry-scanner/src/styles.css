@@ -43,7 +43,7 @@ section h2 {
 .hint { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
 
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.row input { flex: 1 1 120px; }
+.row input { flex: 1 1 120px; min-width: 0; }
 
 input {
   height: 40px;
@@ -69,6 +69,7 @@ button {
 
 form {
   display: flex;
+  flex-wrap: wrap;
   flex-direction: column;
   gap: 8px;
 }
@@ -199,3 +200,84 @@ ul.items li.expired {
   background: rgba(178, 58, 43, 0.1);
 }
 ul.items li.expired strong { color: #B23A2B; }
+
+/* ── Shippie design pattern: shared moves ─────────────────────────────
+   Fraunces display serif, mono eyebrow, big numeric primitive (item
+   count), italic-mono code primitive (shelf code / expiry tag).
+   Sage-leaf "fresh" atmosphere preserved. */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+:root {
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+}
+
+header h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+}
+
+.eyebrow {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Big numeric — pantry item count, fresh-days remaining */
+.items-numeric {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.2rem, 7vw, 3.8rem);
+  color: var(--accent);
+}
+.items-numeric .unit {
+  font-size: 0.4em;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 0.4em;
+  margin-left: 0.25em;
+}
+
+/* Italic-mono "code" — shelf code / expiry tag */
+.shelf-code {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}

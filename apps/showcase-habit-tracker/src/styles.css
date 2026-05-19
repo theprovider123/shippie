@@ -196,10 +196,12 @@ button.pill {
 /* Add habit form ----------------------------------------------------- */
 .add-habit-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .add-habit-form input {
-  flex: 1;
+  flex: 1 1 160px;
+  min-width: 0;
   height: 44px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.7);
@@ -392,6 +394,7 @@ button.ghost.danger { color: var(--danger); border-color: rgba(177, 84, 58, 0.4)
 }
 .form-row {
   display: flex;
+  flex-wrap: wrap;
   flex-direction: column;
   gap: 6px;
   margin-bottom: 14px;
@@ -471,3 +474,84 @@ button.ghost.danger { color: var(--danger); border-color: rgba(177, 84, 58, 0.4)
   cursor: pointer;
 }
 .bottom-tabs .tab-active { color: var(--accent); font-weight: 600; }
+
+/* ── Shippie design pattern: shared moves ─────────────────────────────
+   Fraunces display serif, mono eyebrow, big numeric primitive (streak
+   days / completion %), italic-mono code primitive (habit slug / day
+   label). Sage-moss "on-track" atmosphere preserved. */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+:root {
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+}
+
+.page-head h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+}
+
+.eyebrow {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Big numeric — streak days, completion percentage */
+.streak-numeric {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 8vw, 4.2rem);
+  color: var(--accent);
+}
+.streak-numeric .unit {
+  font-size: 0.4em;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 0.4em;
+  margin-left: 0.25em;
+}
+
+/* Italic-mono "code" — habit slug / day label stamp */
+.habit-code {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}

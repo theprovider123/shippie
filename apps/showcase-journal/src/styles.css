@@ -4,7 +4,38 @@
    --accent of the old build is gone; everything's sunset now. */
 @import "@shippie/design-tokens/tokens.css";
 
+/* ── Shippie typography handshake — Fraunces 4-weight ─────────── */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
 :root {
+  --font-display: var(--font-heading);
   /* Journal-specific aliases on top of canonical tokens. --bg / --surface
      flow from canonical (no local override). The remaining names stay so
      the existing 400+ lines downstream don't need a global rename. */
@@ -299,11 +330,13 @@ button:disabled {
 
 .search-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .search-form .search-input {
-  flex: 1;
+  flex: 1 1 160px;
+  min-width: 0;
 }
 
 .chart-figure {
@@ -628,6 +661,7 @@ button:disabled {
   font-size: 12px;
   word-break: break-all;
   flex: 1;
+  min-width: 0;
   color: var(--accent);
 }
 .share-sheet-actions {
@@ -737,4 +771,56 @@ button:disabled {
   .import-card-overlay,
   .share-sheet,
   .import-card { animation: none; }
+}
+
+/* ── Shippie design-pattern primitives (4-move handshake) ───────
+   Journal edition: entry-numeric for streaks / word counts,
+   entry-code for date stamps. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.page-hero h1,
+.app-header h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.08;
+}
+.page-hero h1 em,
+.app-header h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.entry-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 7vw, 4.4rem);
+}
+.entry-numeric.size-card { font-size: clamp(1.4rem, 4vw, 2.2rem); }
+.entry-numeric .unit {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 0.35em;
+  margin-left: 0.2em;
+}
+
+.entry-code {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
 }

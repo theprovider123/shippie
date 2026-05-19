@@ -1,6 +1,39 @@
 @import "@shippie/design-tokens/tokens.css";
 
-:root { color-scheme: dark; }
+/* ── Shippie typography handshake — Fraunces 4-weight ─────────── */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+:root {
+  color-scheme: dark;
+  --font-display: var(--font-heading);
+}
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -236,7 +269,7 @@ button, input, textarea { font: inherit; }
   flex-direction: column;
   gap: 6px;
 }
-.field--inline { flex: 1; }
+.field--inline { flex: 1; min-width: 0; }
 .field span {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -517,6 +550,7 @@ button, input, textarea { font: inherit; }
 }
 .timer-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .timer-actions button { flex: 1; height: 44px; font-weight: 600; border-radius: 0; }
@@ -617,6 +651,7 @@ button, input, textarea { font: inherit; }
   border-top: 3px solid var(--marigold);
   padding: 14px;
   display: flex;
+  flex-wrap: wrap;
   flex-direction: column;
   gap: 10px;
 }
@@ -648,6 +683,7 @@ button, input, textarea { font: inherit; }
 .note-input:focus { outline: none; border-color: var(--marigold); }
 .done-form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .done-form-actions button { flex: 1; height: 40px; font-weight: 600; border-radius: 0; }
@@ -714,4 +750,56 @@ button, input, textarea { font: inherit; }
   border: 1px solid var(--border);
   padding: 20px;
   text-align: center;
+}
+
+/* ── Shippie design-pattern primitives (4-move handshake) ───────
+   Cooking-mode edition: cook-numeric for minutes/temperature,
+   cook-code for the dish-stamp tag. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+
+.app-header h1,
+.page-hero h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.08;
+}
+.page-hero h1 em,
+.app-header h1 em {
+  font-style: italic;
+  color: var(--sunset);
+}
+
+.cook-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 7vw, 4.4rem);
+}
+.cook-numeric.size-card { font-size: clamp(1.4rem, 4vw, 2.2rem); }
+.cook-numeric .unit {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--text-light);
+  vertical-align: 0.35em;
+  margin-left: 0.2em;
+}
+
+.cook-code {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--sunset);
+  text-transform: uppercase;
 }

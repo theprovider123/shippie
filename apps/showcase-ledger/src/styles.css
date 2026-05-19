@@ -687,3 +687,87 @@ button.subtle {
 .more-sheet-list button:hover { background: rgba(0,0,0,0.04); }
 .more-sheet-list .more-label { font-size: 16px; font-weight: 600; }
 .more-sheet-list .more-subtitle { font-size: 13px; opacity: 0.7; }
+
+/* ── Shippie design pattern: shared moves ─────────────────────────────
+   Fraunces display serif, mono eyebrow (0.16em handshake), big
+   numeric primitive (running balance / amount), italic-mono code
+   primitive (entry id / category code). Sage balance-sheet voice. */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+:root {
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+}
+
+/* Mono eyebrow — bring in line with platform 0.16em handshake */
+.eyebrow,
+.eyebrow-row {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Big numeric — running balance, total spent */
+.balance-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 8vw, 4.4rem);
+  color: var(--accent-deep);
+}
+.balance-numeric .currency {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 0.4em;
+  margin-right: 0.2em;
+}
+.balance-numeric .unit {
+  font-size: 0.4em;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 0.4em;
+  margin-left: 0.25em;
+}
+
+/* Italic-mono "code" — entry id / category code */
+.ledger-code {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--accent-deep);
+  text-transform: uppercase;
+}

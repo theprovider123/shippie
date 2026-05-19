@@ -99,9 +99,10 @@ input[type="text"] {
 
 .join-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
-.join-row input { flex: 1; text-transform: uppercase; letter-spacing: 0.15em; }
+.join-row input { flex: 1 1 160px; min-width: 0; text-transform: uppercase; letter-spacing: 0.15em; }
 
 .error {
   color: var(--error);
@@ -157,7 +158,7 @@ input[type="text"] {
   touch-action: none;
 }
 
-.row-actions { display: flex; gap: 8px; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .waiting p { margin: 0; padding: 24px; text-align: center; border: 1px dashed var(--line); background: #fff; font-family: 'Fraunces', serif; font-size: 18px; }
 
@@ -250,10 +251,11 @@ input[type="text"] {
 
 .caption-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
-.caption-row input { flex: 1; }
+.caption-row input { flex: 1 1 160px; min-width: 0; }
 .voice-btn {
   width: 40px;
   height: 40px;
@@ -278,4 +280,65 @@ input[type="text"] {
   font-weight: 600;
   color: #4FA487;
   margin-top: 4px;
+}
+
+/* ── Shippie pattern moves: Fraunces · eyebrow · big numeric · code ── */
+@font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 600; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 700; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype'); }
+
+:root {
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.round-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.8rem, 9vw, 5.6rem);
+  color: var(--accent);
+}
+.round-numeric .unit {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 0.35em;
+  margin-left: 0.2em;
+}
+
+.room-code {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.page-hero h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 7vw, 4.7rem);
+  line-height: 0.95;
+  letter-spacing: -0.022em;
+}
+.page-hero h1 em {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--accent);
 }

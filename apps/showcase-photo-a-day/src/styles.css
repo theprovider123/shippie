@@ -1,3 +1,33 @@
+/* ── Shippie typography handshake — Fraunces 4-weight ─────────── */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
 :root {
   color-scheme: light;
   --bg: #F8F1E0;
@@ -6,6 +36,9 @@
   --line: rgba(42, 31, 22, 0.16);
   --accent: #C97B2D;
   --error: #B23A2B;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -93,3 +126,55 @@ button.big { height: 56px; font-size: 17px; padding: 0 28px; }
 .cell img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
 .cell figcaption { display: flex; flex-direction: column; gap: 2px; }
 .cell .labels { font-family: 'Fraunces', serif; font-size: 13px; }
+
+/* ── Shippie design-pattern primitives (4-move handshake) ───────
+   Photo-a-day edition: photo-numeric for streak counts / day totals,
+   photo-code for date stamps. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1,
+.page-hero h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.08;
+}
+h1 em,
+.page-hero h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.photo-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 7vw, 4.4rem);
+}
+.photo-numeric.size-card { font-size: clamp(1.4rem, 4vw, 2.2rem); }
+.photo-numeric .unit {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 0.35em;
+  margin-left: 0.2em;
+}
+
+.photo-code {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}

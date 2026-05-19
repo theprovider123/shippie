@@ -1,6 +1,39 @@
 @import "@shippie/design-tokens/tokens.css";
 
-:root { color-scheme: dark; }
+/* ── Shippie typography handshake — Fraunces 4-weight ─────────── */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+:root {
+  color-scheme: dark;
+  --font-display: var(--font-heading);
+}
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -262,6 +295,7 @@ button, input, textarea, select { font: inherit; }
 }
 .dial-label-row input[type="range"] {
   flex: 1;
+  min-width: 0;
   accent-color: var(--sunset);
 }
 
@@ -340,6 +374,7 @@ button, input, textarea, select { font: inherit; }
 .time-over { color: var(--sunset); }
 .timer-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .timer-actions button {
@@ -802,10 +837,11 @@ button, input, textarea, select { font: inherit; }
   border-color: var(--sunset);
 }
 .field textarea { resize: vertical; min-height: 60px; font-family: var(--font-body); }
-.field-row { display: flex; gap: 8px; }
-.field-row .field { flex: 1; }
+.field-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.field-row .field { flex: 1 1 160px; min-width: 0; }
 .sheet-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
 }
@@ -873,6 +909,7 @@ button, input, textarea, select { font: inherit; }
   margin: 0;
 }
 .bottom-sheet .sheet-actions button {
+  min-width: 0;
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
@@ -881,6 +918,7 @@ button, input, textarea, select { font: inherit; }
   text-align: left;
   cursor: pointer;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -926,4 +964,57 @@ button, input, textarea, select { font: inherit; }
 .bottom-tabs .tab.tab-active {
   background: var(--accent-subtle, rgba(168, 96, 96, 0.12));
   color: var(--accent, #a86060);
+}
+
+/* ── Shippie design-pattern primitives (4-move handshake) ───────
+   Brew-room edition: cup-numeric for ratios / minutes, bean-code
+   for origin stamps. Eyebrow overrides the token default to the
+   sharper 0.7rem / 0.16em spec. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+
+.app-header h1,
+.page-hero h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.08;
+}
+.page-hero h1 em,
+.app-header h1 em {
+  font-style: italic;
+  color: var(--accent, #a86060);
+}
+
+.cup-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 7vw, 4.4rem);
+}
+.cup-numeric.size-card { font-size: clamp(1.4rem, 4vw, 2.2rem); }
+.cup-numeric .unit {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--text-light);
+  vertical-align: 0.35em;
+  margin-left: 0.2em;
+}
+
+.bean-code {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--accent, #a86060);
+  text-transform: uppercase;
 }

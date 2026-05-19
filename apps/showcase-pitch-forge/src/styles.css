@@ -299,7 +299,7 @@ button.small { height: 32px; padding: 0 10px; font-size: 12px; }
 .pitch-title-input:focus { outline: none; border-bottom-color: var(--pf-accent); }
 
 /* Fields */
-.field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 .field span {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
@@ -411,8 +411,8 @@ button.small { height: 32px; padding: 0 10px; font-size: 12px; }
   margin-top: 8px;
   flex-wrap: wrap;
 }
-.add-section input { flex: 2; min-width: 140px; }
-.add-section select { flex: 1; min-width: 100px; }
+.add-section input { flex: 2 1 140px; min-width: 0; }
+.add-section select { flex: 1 1 100px; min-width: 0; }
 .add-section input,
 .add-section select {
   background: var(--pf-paper);
@@ -438,6 +438,7 @@ button.small { height: 32px; padding: 0 10px; font-size: 12px; }
 }
 .section-title-input {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: 0;
   border-bottom: 1px dashed var(--pf-line);
@@ -531,7 +532,7 @@ button.small { height: 32px; padding: 0 10px; font-size: 12px; }
 }
 .snapshot-bar input {
   flex: 1;
-  min-width: 160px;
+  min-width: 0;
   background: var(--pf-paper);
   border: 1px solid var(--pf-line);
   padding: 8px 10px;
@@ -700,4 +701,81 @@ button.small { height: 32px; padding: 0 10px; font-size: 12px; }
   }
   .print-cover { page-break-after: always; padding-top: 96px; }
   .print-section { page-break-inside: avoid; }
+}
+
+/* ── Shippie design pattern: shared moves ─────────────────────────────
+   Fraunces display serif, mono eyebrow (0.16em handshake), big
+   numeric primitive (word count / draft progress), italic-mono code
+   primitive (draft version / brief id). Forest-green forge tone. */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
+}
+
+:root {
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+}
+
+/* Mono eyebrow — bring in line with platform 0.16em handshake */
+.eyebrow {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pf-muted);
+}
+
+/* Big numeric — word count, draft progress, brief age */
+.word-count {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 8vw, 4.2rem);
+  color: var(--pf-accent);
+}
+.word-count .unit {
+  font-size: 0.4em;
+  font-weight: 600;
+  color: var(--pf-muted);
+  vertical-align: 0.4em;
+  margin-left: 0.25em;
+  letter-spacing: 0.04em;
+}
+
+/* Italic-mono "code" — draft version / brief id */
+.draft-code {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--pf-accent);
+  text-transform: uppercase;
 }
