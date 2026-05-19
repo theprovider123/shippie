@@ -230,7 +230,7 @@ export async function runReceiptOcr(
         score,
       };
     }
-    if (hasUsefulCore(parsed, score)) break;
+    if (hasUsefulCore(parsed, score, text)) break;
   }
 
   return best ?? { text: '', imageDataUrl, orientationTurns: 0, score: 0 };
@@ -247,7 +247,8 @@ function scoreOcrText(text: string, parsed: ExtractedReceipt): number {
   return score;
 }
 
-function hasUsefulCore(parsed: ExtractedReceipt, score: number): boolean {
+function hasUsefulCore(parsed: ExtractedReceipt, score: number, text: string): boolean {
+  if (text.trim().length > 80) return true;
   if (parsed.total_cents.value == null) return score >= 4.2;
   return (
     parsed.vendor.value.length > 0 ||
