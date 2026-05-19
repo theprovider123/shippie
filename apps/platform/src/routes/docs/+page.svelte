@@ -167,7 +167,7 @@ shippie deploy ./dist
       write attachments with <code>shippie.local.files</code>, and broadcast useful local signals
       with Shippie intents.
     </p>
-    <pre class="code">import { shippie } from '@shippie/sdk';
+    <pre class="code">import &#123; shippie &#125; from '@shippie/sdk';
 
 await shippie.local.db.save('receipts', receipt);
 const receipts = await shippie.local.db.list('receipts');</pre>
