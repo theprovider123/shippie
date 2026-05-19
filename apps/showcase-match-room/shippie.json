@@ -64,6 +64,10 @@
       ]
     }
   },
+  "data_passport": {
+    "family": "match-room",
+    "schema": "match-room.v1"
+  },
   "intents": {
     "provides": [
       "matchday-prediction-stats",

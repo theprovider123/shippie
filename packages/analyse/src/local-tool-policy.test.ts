@@ -85,4 +85,31 @@ describe('local-tool-policy scan', () => {
     expect(report.blocks).toBe(0);
     expect(report.capabilityHints.privateRelay).toBe(true);
   });
+
+  test('ignores source metadata URLs when deriving runtime reference domains', () => {
+    const report = runLocalToolPolicyScan(files({
+      'shippie.json': JSON.stringify({
+        source_repo: 'https://github.com/acme/local-tool',
+        repository: 'https://github.com/acme/local-tool',
+        data_passport: { family: 'local-tool', schema: 'local-tool.v1' },
+      }),
+      'app.js': `await shippie.local.db.save('notes', note);`,
+    }));
+
+    expect(report.passed).toBe(true);
+    expect(report.status).toBe('eligible-local');
+    expect(report.referenceDomains).toEqual([]);
+  });
+
+  test('ignores template-literal placeholder URLs that are not concrete domains', () => {
+    const report = runLocalToolPolicyScan(files({
+      'app.js': `
+        const trimmed = input.trim();
+        const url = \`https://\${trimmed}/playlist\`;
+      `,
+    }));
+
+    expect(report.passed).toBe(true);
+    expect(report.referenceDomains).toEqual([]);
+  });
 });

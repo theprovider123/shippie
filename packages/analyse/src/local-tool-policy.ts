@@ -336,13 +336,22 @@ function scanExternalNetwork(
   while ((urlMatch = EXTERNAL_URL_RE.exec(body))) {
     const url = parseHttpsUrl(urlMatch[0] ?? '');
     if (!url || isAllowedShippieUrl(url)) continue;
+    if (isMetadataUrlReference(body, urlMatch.index)) continue;
     if (isStaticAssetUrl(url)) continue;
     if (isLikelyAlreadyRecordedFetch(body, urlMatch.index)) continue;
     referenceDomains.add(url.hostname);
   }
 }
 
+function isMetadataUrlReference(body: string, index: number): boolean {
+  const prefix = body.slice(Math.max(0, index - 100), index);
+  return /["'](?:source_repo|sourceRepo|repository|homepage|license_url|licenseUrl|documentation|docs)["']\s*:\s*["']?$/i.test(
+    prefix,
+  );
+}
+
 function parseHttpsUrl(raw: string): URL | null {
+  if (raw.includes('${')) return null;
   try {
     const url = new URL(raw);
     return url.protocol === 'https:' ? url : null;

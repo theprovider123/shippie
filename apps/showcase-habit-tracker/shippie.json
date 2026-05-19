@@ -35,5 +35,9 @@
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-habit-tracker",
   "license": "AGPL-3.0-or-later",
-  "remix_allowed": true
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "habit-tracker",
+    "schema": "habit-tracker.v1"
+  }
 }

@@ -35,6 +35,10 @@
       ]
     }
   },
+  "data_passport": {
+    "family": "daily-puzzle",
+    "schema": "daily-puzzle.v1"
+  },
   "curation": {
     "surface": "arcade",
     "category": "games",

@@ -61,6 +61,10 @@
       ]
     }
   },
+  "data_passport": {
+    "family": "chiwit",
+    "schema": "chiwit.v1"
+  },
   "data_schemas": {
     "entries": {
       "id": "text primary key",

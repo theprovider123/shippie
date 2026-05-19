@@ -77,6 +77,10 @@
       ]
     }
   },
+  "data_passport": {
+    "family": "palate",
+    "schema": "palate.v1"
+  },
   "data_schemas": {
     "recipes": {
       "id": "text primary key",

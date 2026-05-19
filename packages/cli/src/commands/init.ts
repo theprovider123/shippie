@@ -38,7 +38,7 @@ export async function initCommand() {
       theme_color: '#E8603C',
       display: 'standalone',
       categories: ['tools'],
-      description: `An installable Shippie app called ${name}.`,
+      description: `A private local notes tool called ${name}.`,
       badge: true,
       transitions: 'slide',
       haptics: true,
@@ -54,8 +54,12 @@ export async function initCommand() {
         media: 'none',
         realtime: 'inherited',
       },
+      data_passport: {
+        family: slug,
+        schema: `${slug}.v1`,
+      },
       local: {
-        database: false,
+        database: true,
         files: false,
         ai: [],
         sync: false,
@@ -143,8 +147,22 @@ function INDEX_HTML_TEMPLATE(name: string): string {
   </head>
   <body>
     <main id="main">
-      <h1>${escapeHtml(name)}</h1>
-      <p>Replace this with your app.</p>
+      <header>
+        <p class="eyebrow">Local Tool</p>
+        <h1>${escapeHtml(name)}</h1>
+        <p>Save a note, reload, and it is still here. No account, no server, no setup.</p>
+      </header>
+
+      <form id="note-form">
+        <label for="note">Note</label>
+        <textarea id="note" name="note" placeholder="A thought worth keeping..." required></textarea>
+        <button type="submit">Save locally</button>
+      </form>
+
+      <section aria-labelledby="saved-title">
+        <h2 id="saved-title">Saved on this device</h2>
+        <div id="notes" class="notes" role="list"></div>
+      </section>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>
@@ -192,7 +210,62 @@ body {
   overscroll-behavior-y: contain;
 }
 
-main { padding: 1.5rem; }
+main {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+header {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.5rem 0 0.75rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8E8170;
+}
+
+h1, h2, p { margin: 0; }
+h1 { font-size: clamp(2.2rem, 12vw, 4rem); line-height: 0.95; }
+h2 { font-size: 1rem; }
+p { color: #B8A88F; line-height: 1.5; }
+
+form,
+.note,
+.empty {
+  border: 1px solid #3D3530;
+  background: #1E1A15;
+  padding: 1rem;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: #B8A88F;
+}
+
+textarea {
+  min-height: 8rem;
+  resize: vertical;
+  background: #14120F;
+  color: #EDE4D3;
+  border: 1px solid #3D3530;
+  padding: 0.85rem;
+  font: inherit;
+}
 
 /* Sharp corners — Shippie hallmark. No border-radius. */
 button,
@@ -203,9 +276,40 @@ input,
   min-height: 44px;
 }
 
+button {
+  border: 1px solid #E8603C;
+  background: #E8603C;
+  color: #14120F;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 input, textarea, select, [contenteditable="true"] {
   /* iOS zooms inputs <16px on focus — this prevents that. */
   font-size: 16px;
+}
+
+.notes {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.note {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.note small {
+  color: #8E8170;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+}
+
+.empty {
+  color: #8E8170;
+  border-style: dashed;
 }
 `;
 
@@ -230,15 +334,15 @@ function MANIFEST_TEMPLATE(name: string, slug: string): string {
 }
 
 const MAIN_TS_TEMPLATE = `/**
- * Wire the Shippie SDK helpers so the chrome around your app cooperates
- * with what's happening inside it (keyboard rises → host steps out of
- * the way; orientation changes → safe-area insets refresh).
+ * Golden path for a Shippie maker:
  *
- * Each helper is a no-op outside Shippie (e.g. when previewed standalone
- * via vite or a static server), so the app keeps working in both
- * contexts.
+ *   await shippie.local.db.save('notes', row)
+ *   await shippie.local.db.list('notes')
+ *
+ * The SDK helpers below are no-ops outside Shippie, so this starter also
+ * works in local previews while teaching the production path.
  */
-import { useKeyboard, useSafeArea, useViewport, matchesStandalone } from '@shippie/sdk';
+import { shippie, useKeyboard, useSafeArea, useViewport, matchesStandalone } from '@shippie/sdk';
 
 // Tells the Shippie shell when a text input is focused so the chrome
 // can hide / reposition for the keyboard. Origin-safe — only posts to
@@ -254,6 +358,61 @@ console.log('[shippie] viewport', viewport, 'safe-area', safe);
 
 if (matchesStandalone()) {
   document.documentElement.dataset.standalone = 'true';
+}
+
+const form = document.querySelector<HTMLFormElement>('#note-form');
+const textarea = document.querySelector<HTMLTextAreaElement>('#note');
+const notes = document.querySelector<HTMLDivElement>('#notes');
+
+void renderNotes();
+
+form?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const text = textarea?.value.trim();
+  if (!text) return;
+
+  await shippie.local.db.save('notes', {
+    id: crypto.randomUUID(),
+    text,
+    createdAt: new Date().toISOString(),
+  });
+
+  form.reset();
+  await renderNotes();
+});
+
+async function renderNotes() {
+  if (!notes) return;
+  let rows: Array<{ id?: string; text?: string; createdAt?: string }> = [];
+  try {
+    rows = await shippie.local.db.list('notes');
+  } catch (error) {
+    notes.innerHTML = '<p class="empty">Local database unavailable in this preview. Deploy to Shippie or run inside the local runtime.</p>';
+    return;
+  }
+
+  if (rows.length === 0) {
+    notes.innerHTML = '<p class="empty">No notes yet. Save one above.</p>';
+    return;
+  }
+
+  notes.innerHTML = rows
+    .slice()
+    .reverse()
+    .map((row) => {
+      const text = escapeHtml(String(row.text ?? 'Untitled note'));
+      const when = row.createdAt ? new Date(row.createdAt).toLocaleString() : 'saved locally';
+      return \`<article class="note" role="listitem"><p>\${text}</p><small>\${escapeHtml(when)}</small></article>\`;
+    })
+    .join('');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 `;
 

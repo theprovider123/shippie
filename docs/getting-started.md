@@ -17,17 +17,19 @@ Pick one now — every deploy path (CLI, upload, MCP, GitHub) asks for this.
 ## Option 1: CLI (recommended)
 
 ```bash
-# Install the CLI
+# Scaffold the canonical local notes starter
 npx @shippie/cli init
 npx @shippie/cli deploy ./dist
 ```
 
-Your app is live at `https://your-app.shippie.app`.
+`shippie init` writes the launch-path starter: a phone-first local notes tool using `shippie.local.db.save()` and `shippie.local.db.list()`, with a `data_passport`, safe-area CSS, 16px inputs, and no server setup. Your app is live at `https://your-app.shippie.app`.
+
+Want a no-build zip fixture? Use `templates/local-notes/`: it is a single-file version of the same local-tool pattern for browser upload and smoke tests.
 
 ## Option 2: Web upload
 
 1. Go to [shippie.app/new](https://shippie.app/new)
-2. Drag your build output (dist/, build/, out/) as a zip
+2. Drag your build output (dist/, build/, out/) as a zip, or zip `templates/local-notes/` for the no-build starter
 3. Pick a name, slug, and type
 4. Click "Ship it"
 

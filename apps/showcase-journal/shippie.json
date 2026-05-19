@@ -80,5 +80,9 @@
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-journal",
   "license": "AGPL-3.0-or-later",
-  "remix_allowed": true
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "journal",
+    "schema": "journal.v1"
+  }
 }

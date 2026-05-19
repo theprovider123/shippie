@@ -72,6 +72,10 @@
       ]
     }
   },
+  "data_passport": {
+    "family": "crewtrip",
+    "schema": "crewtrip.v1"
+  },
   "data_schemas": {
     "events": {
       "id": "text primary key",

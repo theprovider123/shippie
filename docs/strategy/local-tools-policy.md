@@ -114,7 +114,7 @@ The same Local Tool policy scanner runs for browser zip uploads, trial uploads, 
 - **Workspace deploy:** each app is scanned independently.
 - **Hosted URL wrap:** retired for marketplace publishing. Convert to a local tool and upload the built bundle.
 
-## Data Passport v0
+## Data Passport v1
 
 Every local-data app can declare:
 
@@ -127,11 +127,10 @@ Every local-data app can declare:
 }
 ```
 
-v0 is metadata only. It lets remixes and successors name compatible data families now, without pretending migration runners and rollback are already finished.
+v1 is compatibility metadata plus conservative install/update checks. It lets remixes and successors name compatible data families now, and the container can warn when an update or remix points at a different data family or a future schema that needs migration.
 
 Future phases:
 
-- v1: install-time compatibility checks.
 - v2: migration runners and rollback.
 
 ## Deployment Enforcement
@@ -155,6 +154,6 @@ When a deploy is blocked, the maker sees conversion guidance instead of a vague 
 
 ## Honest Limitations
 
-Static scanning is not proof of perfect privacy. It catches common patterns and obvious network egress, but cannot fully prove semantic intent. Runtime proof events, package review, and user reporting still matter.
+Static scanning is not proof of perfect privacy. It catches common patterns and obvious network egress, but cannot fully prove semantic intent. Runtime proof events, package review, and user reporting still matter. Data Passport v1 also does not move data between incompatible tools yet; it makes compatibility visible before we add migration runners.
 
 The policy also narrows the marketplace. That is intentional. Fewer tools with a hard guarantee are better than many tools that make users check fine print.

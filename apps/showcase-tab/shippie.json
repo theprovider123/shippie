@@ -20,5 +20,9 @@
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-tab",
   "license": "AGPL-3.0-or-later",
-  "remix_allowed": true
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "tab",
+    "schema": "tab.v1"
+  }
 }

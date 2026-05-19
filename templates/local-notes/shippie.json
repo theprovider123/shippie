@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "type": "app",
+  "name": "Local Notes",
+  "tagline": "One-line local database. No account. No server.",
+  "description": "The canonical Shippie starter: save a note with shippie.local.db.save(), list it with shippie.local.db.list(), and deploy as a private local tool.",
+  "category": "tools",
+  "categories": ["tools", "productivity"],
+  "theme_color": "#E8603C",
+  "background_color": "#14120F",
+  "display": "standalone",
+  "badge": true,
+  "transitions": "slide",
+  "haptics": true,
+  "sound": false,
+  "ambient": false,
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["main"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited"
+  },
+  "data_passport": {
+    "family": "local-notes",
+    "schema": "local-notes.v1"
+  },
+  "local": {
+    "database": true,
+    "files": false,
+    "ai": [],
+    "sync": false
+  }
+}
