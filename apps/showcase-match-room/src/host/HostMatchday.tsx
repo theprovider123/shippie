@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { qrSvg } from '@shippie/qr';
 import type { PollDescriptor, PollTally } from '@shippie/proximity';
+import { KeepsakeRenderer, QrShareSheet, EmptyState } from '@shippie/showcase-kit-v2';
 import { OPENING_FIXTURE, fixtureTitle, teamByCode } from '../data/tournament.ts';
 import type { Copy, Locale } from '../i18n.ts';
 import { formatKickoff } from '../lib/time-zone.ts';
@@ -16,6 +17,11 @@ import { RoomFeed } from '../ui/RoomFeed.tsx';
 import { ShareCardButton } from '../ui/ShareCardButton.tsx';
 import { durationFromMinutes, randomPlayerPlaceholder } from './host-controller.ts';
 import { broadcastPredictionStats } from '../lib/intent-bridge.ts';
+import { HeroScoreboard } from '../HeroScoreboard.tsx';
+import { PresenceRibbon, type PresencePeer } from '../PresenceRibbon.tsx';
+import { Fanfare } from '../Fanfare.tsx';
+import { Buzzer, isPeerLocked } from '../Buzzer.tsx';
+import { FulltimeProgramme, type FulltimeKeepsakeData } from '../FulltimeProgramme.tsx';
 
 export function HostMatchday(props: {
   roomId: string;
@@ -37,12 +43,82 @@ export function HostMatchday(props: {
   const [qrMarkup, setQrMarkup] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [qrSheetOpen, setQrSheetOpen] = useState(false);
   const [lastMoment, setLastMoment] = useState<string | null>(null);
   const [playerOptions] = useState(() => randomPlayerPlaceholder());
+  const [fanfareKey, setFanfareKey] = useState<string | null>(null);
+  const peerLockedRef = useRef<Set<string>>(new Set());
   const liveScore = useOpeningLiveScore();
   const home = teamByCode(OPENING_FIXTURE.home);
   const away = teamByCode(OPENING_FIXTURE.away);
   const kickoff = new Date(OPENING_FIXTURE.kickoff).getTime();
+  const peerCount = room.status.peerCount;
+
+  // Buzzer fairness — when any open score poll has a strict-majority of
+  // peers voting, auto-close it. This runs alongside the host clock so
+  // either path can trigger close (whichever wins first).
+  useEffect(() => {
+    for (const poll of room.scorePolls) {
+      if (Date.now() >= poll.closesAt) continue;
+      const tally = room.scoreTallies.find((t) => t.pollId === poll.id);
+      if (isPeerLocked(poll, tally, peerCount) && !peerLockedRef.current.has(poll.id)) {
+        peerLockedRef.current.add(poll.id);
+        setFanfareKey(`peer-lock:${poll.id}`);
+        void room.closeScorePoll(poll.id);
+      }
+    }
+  }, [room.scorePolls, room.scoreTallies, peerCount, room]);
+
+  // Synthesise PresenceRibbon peers from the relay-gossip peer list.
+  // We don't have display names from peers yet — initials are derived
+  // from the peer-id slug. `votedLast` tracks the most recent vote/poll
+  // activity in the room.
+  const presencePeers: PresencePeer[] = useMemo(() => {
+    const peers: PresencePeer[] = [];
+    // Always include self.
+    peers.push({ peerId: props.peerId, displayName: props.profile.displayName, teamCode: props.profile.primaryTeam });
+    // Best-effort: synthesise peers from peerCount so the ribbon shows
+    // something. Real peer ids would land in the gossip layer.
+    for (let i = 1; i < peerCount; i += 1) {
+      peers.push({ peerId: `peer_${props.roomId}_${i}` });
+    }
+    return peers;
+  }, [peerCount, props.peerId, props.profile.displayName, props.profile.primaryTeam, props.roomId]);
+
+  // Full-time keepsake — wired live; "Save the programme" CTA opens
+  // share sheet (or anchor-download fallback). Photos are intentionally
+  // not collected in this MVP, so the template renders pitch-grid texture.
+  const fulltimeKeepsakeData: FulltimeKeepsakeData = useMemo(() => {
+    const closedScorePolls = room.scorePolls.filter((p) => Date.now() >= p.closesAt);
+    const tallyByPoll = new Map(room.scoreTallies.map((t) => [t.pollId, t]));
+    const standings = closedScorePolls
+      .map((poll) => {
+        const tally = tallyByPoll.get(poll.id);
+        const total = tally?.totalVotes ?? 0;
+        return {
+          peerInitials: poll.organiserId.slice(-2).toUpperCase(),
+          accuracy: total === 0 ? 0 : (tally?.leaders?.[0]?.count ?? 0) / total,
+          totalVotes: total,
+        };
+      })
+      .sort((a, b) => b.accuracy - a.accuracy)
+      .slice(0, 5);
+    return {
+      fixtureCode: OPENING_FIXTURE.id,
+      fixtureTitle: fixtureTitle(OPENING_FIXTURE),
+      homeName: home.name,
+      awayName: away.name,
+      homeScore: liveScore.scoreHome ?? 0,
+      awayScore: liveScore.scoreAway ?? 0,
+      leaderboard: standings,
+      mvpName: null,
+      shoutouts: room.approvedShoutouts.slice(0, 3).map((s) => s.text),
+      signatures: presencePeers.map((peer, idx) => ({
+        initials: peer.peerId.slice(-2).toUpperCase(),
+        color: idx % 2 === 0 ? home.swatch[0] : away.swatch[0],
+      })),
+    };
+  }, [room.scorePolls, room.scoreTallies, room.approvedShoutouts, liveScore, home, away, presencePeers]);
 
   const visiblePolls = useMemo(() => {
     const seen = new Set<string>();
@@ -171,14 +247,18 @@ export function HostMatchday(props: {
         onTimeZoneChange={props.onTimeZoneChange}
       />
 
+      <PresenceRibbon peers={presencePeers} selfPeerId={props.peerId} />
+      <Fanfare trigger={fanfareKey} tone={home.swatch[0]} />
+
       <div className="room-workspace">
         <section className="room-main">
-          <MatchHeader
-            home={home}
-            away={away}
-            liveScore={liveScore}
+          <HeroScoreboard
+            peerCount={room.status.peerCount}
             timeZone={props.timeZone}
             locale={props.locale}
+            homeScore={liveScore.scoreHome ?? null}
+            awayScore={liveScore.scoreAway ?? null}
+            liveLabel={provenanceLabel(liveScore.provenance)}
           />
 
           <MatchGuide locale={props.locale} timeZone={props.timeZone} />
@@ -197,6 +277,29 @@ export function HostMatchday(props: {
               <button onClick={() => void openMoment('Room mood', () => room.openRatingPoll('How are we feeling?', durationFromMinutes(4)))}>Room mood</button>
             </div>
           </section>
+
+          {visibleScorePolls.length > 0 ? (
+            <section className="buzzer-stack" aria-label="Goal predictions with peer consensus">
+              {visibleScorePolls.map((poll) => (
+                <Buzzer
+                  key={`buzzer:${poll.id}`}
+                  poll={poll}
+                  tally={room.scoreTallies.find((t) => t.pollId === poll.id)}
+                  connectedPeerCount={peerCount}
+                  onLock={(pollId) => void room.closeScorePoll(pollId)}
+                />
+              ))}
+            </section>
+          ) : null}
+
+          {visiblePolls.length + visibleScorePolls.length === 0 ? (
+            <EmptyState
+              eyebrow="No polls yet"
+              headline={<>Open a poll when the moment <em>lands.</em></>}
+              body="Predict score, first goal, or VAR call — start with one tap."
+              className="match-room-empty match-room-empty--host-polls"
+            />
+          ) : null}
 
           <ActiveMoments
             polls={visiblePolls}
@@ -225,7 +328,28 @@ export function HostMatchday(props: {
             guestUrl={guestUrl}
             displayUrl={displayUrl}
             onShare={shareRoom}
+            onLargeQr={() => setQrSheetOpen(true)}
           />
+
+          <section className="room-side-panel">
+            <div className="section-head">
+              <div>
+                <span>Full-time</span>
+                <h2>Programme</h2>
+              </div>
+            </div>
+            <p className="quiet-copy">When the final whistle blows, save the room's programme as a PDF.</p>
+            <KeepsakeRenderer<FulltimeKeepsakeData>
+              template={FulltimeProgramme}
+              data={fulltimeKeepsakeData}
+              filename={`match-room-${OPENING_FIXTURE.id}-fulltime.pdf`}
+              trigger={(open, busy) => (
+                <button type="button" className="primary-action" onClick={open} disabled={busy}>
+                  {busy ? 'Rendering…' : 'Save full-time programme'}
+                </button>
+              )}
+            />
+          </section>
           <section className="room-side-panel">
             <div className="section-head">
               <div>
@@ -290,9 +414,27 @@ export function HostMatchday(props: {
               <h2>Invite</h2>
               <button onClick={() => setInviteOpen(false)}>Done</button>
             </div>
-            <InvitePanel qrMarkup={qrMarkup} guestUrl={guestUrl} displayUrl={displayUrl} onShare={shareRoom} compact />
+            <InvitePanel
+              qrMarkup={qrMarkup}
+              guestUrl={guestUrl}
+              displayUrl={displayUrl}
+              onShare={shareRoom}
+              onLargeQr={() => setQrSheetOpen(true)}
+              compact
+            />
           </section>
         </div>
+      ) : null}
+
+      {qrSheetOpen ? (
+        <QrShareSheet
+          open
+          url={guestUrl}
+          title="Scan to join the room"
+          body={`Match code ${OPENING_FIXTURE.id}`}
+          size={480}
+          onClose={() => setQrSheetOpen(false)}
+        />
       ) : null}
     </main>
   );
@@ -464,6 +606,7 @@ function InvitePanel(props: {
   displayUrl: string;
   compact?: boolean;
   onShare: () => Promise<void>;
+  onLargeQr?: () => void;
 }) {
   return (
     <section className={props.compact ? 'invite-panel compact' : 'invite-panel'}>
@@ -476,6 +619,9 @@ function InvitePanel(props: {
       {props.qrMarkup ? <div className="qr-frame" dangerouslySetInnerHTML={{ __html: props.qrMarkup }} /> : null}
       <div className="invite-actions">
         <button className="primary-action" onClick={() => void props.onShare()}>Share room</button>
+        {props.onLargeQr ? (
+          <button onClick={props.onLargeQr} aria-label="Show large QR for cast">Show big QR</button>
+        ) : null}
         <button onClick={() => void navigator.clipboard?.writeText(props.guestUrl)}>Copy invite</button>
         <button onClick={() => void navigator.clipboard?.writeText(props.displayUrl)}>Copy cast link</button>
       </div>

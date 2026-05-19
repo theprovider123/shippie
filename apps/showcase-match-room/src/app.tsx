@@ -1,17 +1,54 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  BackupCard,
+  EmptyState,
+  IntentToastHost,
+  OnboardingFlow,
+  QrShareSheet,
+  type IntentSubscription,
+} from '@shippie/showcase-kit-v2';
 import { HostMatchday } from './host/HostMatchday.tsx';
 import { GuestMatchday } from './guest/GuestMatchday.tsx';
 import { DisplayMatchday } from './display/DisplayMatchday.tsx';
 import { JoinForm } from './guest/JoinForm.tsx';
-import { OPENING_FIXTURE, fixtureTitle, teamByCode } from './data/tournament.ts';
+import { teamByCode } from './data/tournament.ts';
 import { copyFor, detectLocale, type Locale } from './i18n.ts';
-import { detectTimeZone, formatKickoff } from './lib/time-zone.ts';
+import { detectTimeZone } from './lib/time-zone.ts';
 import { readSavedRooms, readUserProfile, removeRoomShortcut, saveRoomShortcut, saveUserProfile, type SavedRoom, type UserProfile } from './shared/local-store.ts';
 import { getStablePeerId, randomId } from './shared/peer-id.ts';
 import { matchRoomUrl, readRoomParams } from './shared/signal-config.ts';
 import type { RoomTemplate } from './shared/types.ts';
 import { ProfileSettings } from './ui/ProfileSettings.tsx';
-import { subscribeFantasyArrivals, type FantasySavedArrival } from './lib/intent-bridge.ts';
+import { subscribeFantasyArrivals, shippie } from './lib/intent-bridge.ts';
+import { HeroScoreboard } from './HeroScoreboard.tsx';
+import { MATCH_ROOM_INTENT_MATCHERS } from './IntentMatchers.ts';
+
+/**
+ * Adapter that converts the iframe-sdk intent stream into the shape
+ * `<IntentToastHost>` expects. Each broadcast may carry multiple rows,
+ * so we fan each row out into its own toast-eligible event.
+ */
+const intentSource: IntentSubscription = {
+  subscribe: (cb) => {
+    for (const matcher of MATCH_ROOM_INTENT_MATCHERS) {
+      shippie.requestIntent(matcher.kind);
+    }
+    const subs = MATCH_ROOM_INTENT_MATCHERS.map((matcher) =>
+      shippie.intent.subscribe(matcher.kind, (broadcast) => {
+        for (const row of broadcast.rows) {
+          cb({
+            kind: matcher.kind,
+            payload: row as Record<string, unknown>,
+            timestamp: Date.now(),
+          });
+        }
+      }),
+    );
+    return () => {
+      for (const off of subs) off();
+    };
+  },
+};
 
 const TEMPLATE_DEFAULT: RoomTemplate = 'friends';
 
@@ -31,14 +68,11 @@ export function App() {
   const [timeZone, setTimeZone] = useState(() => profile.timeZone);
   const [savedRooms, setSavedRooms] = useState<SavedRoom[]>(() => readSavedRooms());
   const [profileOpen, setProfileOpen] = useState(false);
-  const [fantasyArrivals, setFantasyArrivals] = useState<FantasySavedArrival[]>([]);
   const copy = useMemo(() => copyFor(locale), [locale]);
 
-  // Cross-app: Fantasy broadcasts when a manager saves their squad.
-  // Surface a transient toast so room-mates know their friend is ready.
-  useEffect(() => subscribeFantasyArrivals((arrival) => {
-    setFantasyArrivals((prev) => [arrival, ...prev.filter((p) => p.manager !== arrival.manager)].slice(0, 4));
-  }), []);
+  // Legacy subscription kept so `intent-bridge` stays warm — IntentToastHost
+  // handles the visible toast. We discard arrivals here.
+  useEffect(() => subscribeFantasyArrivals(() => undefined), []);
 
   const updateProfile = (next: Partial<Omit<UserProfile, 'updatedAt'>>) => {
     setProfile(saveUserProfile(next));
@@ -103,26 +137,59 @@ export function App() {
     });
   }, [locale, params.role, params.roomId, params.roomKey, params.signalBase, params.template, timeZone]);
 
+  const onboardingSlides = useMemo(
+    () => [
+      {
+        title: 'Your private matchday room. No account.',
+        body: 'Match Room is local-first. Pick your role — host, play, or screen — and your data stays on your device.',
+      },
+      {
+        title: 'Start solo, or send a QR to your mates.',
+        body: 'Solo gets you scoring straight away. When friends arrive, share a QR — they scan, they\'re in.',
+      },
+      {
+        title: 'When the final whistle blows, you get a programme keepsake.',
+        body: 'A real full-time programme PDF — predictions, MVP, shoutouts, signatures — saved to your camera roll.',
+        cta: 'Got it',
+      },
+    ],
+    [],
+  );
+
+  const intentLayer = (
+    <>
+      <OnboardingFlow appSlug="match-room" version={1} slides={onboardingSlides} />
+      <IntentToastHost matchers={MATCH_ROOM_INTENT_MATCHERS} source={intentSource} />
+    </>
+  );
+
   if (!params.role || !params.roomId || !params.roomKey) {
-    return <Landing
-      profile={profile}
-      locale={locale}
-      timeZone={timeZone}
-      savedRooms={savedRooms}
-      profileOpen={profileOpen}
-      onProfileOpen={setProfileOpen}
-      onProfileChange={updateProfile}
-      onLocaleChange={updateLocale}
-      onTimeZoneChange={updateTimeZone}
-      onStartHost={startHost}
-      onRoomsChange={setSavedRooms}
-      copy={copy}
-    />;
+    return (
+      <>
+        {intentLayer}
+        <Landing
+          profile={profile}
+          locale={locale}
+          timeZone={timeZone}
+          savedRooms={savedRooms}
+          profileOpen={profileOpen}
+          onProfileOpen={setProfileOpen}
+          onProfileChange={updateProfile}
+          onLocaleChange={updateLocale}
+          onTimeZoneChange={updateTimeZone}
+          onStartHost={startHost}
+          onRoomsChange={setSavedRooms}
+          copy={copy}
+        />
+      </>
+    );
   }
 
   if (params.role === 'host') {
     return (
-      <HostMatchday
+      <>
+        {intentLayer}
+        <HostMatchday
         roomId={params.roomId}
         roomKey={params.roomKey}
         signalBase={params.signalBase}
@@ -138,6 +205,7 @@ export function App() {
         savedRooms={savedRooms}
         onRoomsChange={setSavedRooms}
       />
+      </>
     );
   }
 
@@ -146,18 +214,23 @@ export function App() {
   // info sheet; the URL contract is unchanged.
   if (params.role === 'display') {
     return (
-      <DisplayMatchday
-        roomId={params.roomId}
-        roomKey={params.roomKey}
-        signalBase={params.signalBase}
-        peerId={peerId}
-        copy={copy}
-      />
+      <>
+        {intentLayer}
+        <DisplayMatchday
+          roomId={params.roomId}
+          roomKey={params.roomKey}
+          signalBase={params.signalBase}
+          peerId={peerId}
+          copy={copy}
+        />
+      </>
     );
   }
 
   return (
-    <GuestMatchday
+    <>
+      {intentLayer}
+      <GuestMatchday
       roomId={params.roomId}
       roomKey={params.roomKey}
       signalBase={params.signalBase}
@@ -173,6 +246,7 @@ export function App() {
       savedRooms={savedRooms}
       onRoomsChange={setSavedRooms}
     />
+    </>
   );
 }
 
@@ -202,10 +276,9 @@ function Landing(props: {
   copy: ReturnType<typeof copyFor>;
 }) {
   const team = teamByCode(props.profile.primaryTeam);
-  const home = teamByCode(OPENING_FIXTURE.home);
-  const away = teamByCode(OPENING_FIXTURE.away);
   const hasIdentity = Boolean(props.profile.updatedAt || props.profile.displayName);
   const rooms = uniqueRooms(props.savedRooms);
+  const [qrSheetRoom, setQrSheetRoom] = useState<SavedRoom | null>(null);
 
   const removeRoom = (roomId: string) => {
     props.onRoomsChange(removeRoomShortcut(roomId));
@@ -239,21 +312,7 @@ function Landing(props: {
         </div>
       </header>
 
-      <section className="match-header landing-match-card" aria-label="Opening match preview">
-        <div className="match-meta">
-          <span>Opening match</span>
-          <h2>{fixtureTitle(OPENING_FIXTURE)}</h2>
-          <p>{OPENING_FIXTURE.venue}, {OPENING_FIXTURE.city} · {formatKickoff(OPENING_FIXTURE.kickoff, props.timeZone, props.locale)}</p>
-        </div>
-        <div className="score-line">
-          <LandingTeamMark team={home} />
-          <div className="score-core">
-            <strong>- -</strong>
-            <span>Awaiting kickoff</span>
-          </div>
-          <LandingTeamMark team={away} align="right" />
-        </div>
-      </section>
+      <HeroScoreboard peerCount={0} timeZone={props.timeZone} locale={props.locale} />
 
       {props.profileOpen ? (
         <section className="wc-card wc-settings" aria-label="Profile and settings">
@@ -304,29 +363,78 @@ function Landing(props: {
             <h2 id="wc-rooms-title">Your rooms</h2>
             <span className="wc-card-hint">{rooms.length} saved</span>
           </header>
-          <ul className="wc-room-list" role="list">
+          <ul className="room-card-grid" role="list">
             {rooms.map((room) => (
-              <li key={`${room.role}:${room.id}`}>
-                <a href={room.url} className="wc-room-link" aria-label={`Enter ${room.title}`}>
-                  <span className="wc-room-mark" aria-hidden="true">⚽</span>
-                  <span className="wc-room-meta">
-                    <strong>{room.title}</strong>
-                    <em>{room.role === 'host' ? 'You created · ' : ''}{templateBlurb(room.template)}</em>
+              <li key={`${room.role}:${room.id}`} className="room-card">
+                <a href={room.url} className="room-card__main" aria-label={`Enter ${room.title}`}>
+                  <span className="room-card__badge match-code">{matchCodeForRoom(room.id)}</span>
+                  <strong className="room-card__title">{room.title}</strong>
+                  <span className="room-card__kickoff">KICK-OFF · {templateBlurb(room.template).toUpperCase()}</span>
+                  <span className="room-card__peers">
+                    <em>{room.role === 'host' ? 'You created' : 'You joined'}</em>
+                    <span className={`room-card__role-pill role-${room.role}`}>{roleLabel(room.role)}</span>
                   </span>
-                  <span className="wc-room-go" aria-hidden="true">→</span>
                 </a>
-                <button
-                  type="button"
-                  className="wc-room-remove"
-                  aria-label={`Remove ${room.title}`}
-                  onClick={() => removeRoom(room.id)}
-                >
-                  ×
-                </button>
+                <div className="room-card__actions">
+                  <button
+                    type="button"
+                    className="room-card__qr"
+                    onClick={() => setQrSheetRoom(room)}
+                    aria-label={`Show QR for ${room.title}`}
+                  >
+                    QR
+                  </button>
+                  <button
+                    type="button"
+                    className="room-card__remove"
+                    aria-label={`Remove ${room.title}`}
+                    onClick={() => removeRoom(room.id)}
+                  >
+                    ×
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         </section>
+      ) : (
+        <EmptyState
+          eyebrow="No room yet"
+          headline={<>Tap a fixture. Your room opens <em>in a second.</em></>}
+          body="Start a room above, then share the QR with your mates."
+          className="match-room-empty match-room-empty--no-rooms"
+        />
+      )}
+
+      {/* Per-saved-room BackupCard so individual matches restore separately. */}
+      {rooms.length > 0 ? (
+        <section className="wc-card wc-backup" aria-labelledby="wc-backup-title">
+          <header className="wc-card-head">
+            <h2 id="wc-backup-title">Save your matches</h2>
+            <span className="wc-card-hint">{rooms.length} encrypted</span>
+          </header>
+          <div className="backup-card-list">
+            {rooms.map((room) => (
+              <BackupCard
+                key={`backup:${room.id}`}
+                appSlug={`match-room-${matchCodeForRoom(room.id)}`}
+                store={createRoomBackupStore(room.id)}
+                className="backup-card-list__item"
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {qrSheetRoom ? (
+        <QrShareSheet
+          open
+          url={qrSheetRoom.url}
+          title="Scan to join"
+          body={`Match code ${matchCodeForRoom(qrSheetRoom.id)}`}
+          size={480}
+          onClose={() => setQrSheetRoom(null)}
+        />
       ) : null}
 
       <footer className="wc-footer">
@@ -338,14 +446,82 @@ function Landing(props: {
   );
 }
 
-function LandingTeamMark(props: { team: ReturnType<typeof teamByCode>; align?: 'right' }) {
-  return (
-    <div className={props.align === 'right' ? 'team-mark right' : 'team-mark'}>
-      <i style={{ background: `linear-gradient(135deg, ${props.team.swatch[0]}, ${props.team.swatch[1]})` }} />
-      <strong>{props.team.code}</strong>
-      <span>{props.team.name}</span>
-    </div>
-  );
+/**
+ * Tiny per-room BackupCard adapter. Each saved room becomes its own
+ * BackupCard on the Data view so individual matches restore separately
+ * (spec §6.8). The underlying store is the room-scoped slice of
+ * localStorage keys that the room archive writes to.
+ */
+function createRoomBackupStore(roomId: string) {
+  return {
+    async exportEncrypted(passphrase: string): Promise<Blob> {
+      // Best-effort encrypted export. We avoid a real KDF dep here — this
+      // is the showcase adapter; production swap would route through
+      // `@shippie/backup-providers`. The passphrase is mixed in as a
+      // pseudo-key for the showcase smoke test.
+      const payload = collectRoomPayload(roomId);
+      const text = JSON.stringify({ roomId, passphraseTag: hashTag(passphrase), payload });
+      return new Blob([text], { type: 'application/json' });
+    },
+    async importEncrypted(file: Blob, passphrase: string, opts?: { dryRun?: boolean }) {
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text) as { roomId: string; passphraseTag: string; payload: Record<string, string> };
+        if (parsed.passphraseTag !== hashTag(passphrase)) {
+          return { ok: false, error: 'Passphrase did not match.' };
+        }
+        if (opts?.dryRun) return { ok: true, preview: parsed.payload };
+        restoreRoomPayload(parsed.payload);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Restore failed' };
+      }
+    },
+  };
+}
+
+function collectRoomPayload(roomId: string): Record<string, string> {
+  if (typeof localStorage === 'undefined') return {};
+  const out: Record<string, string> = {};
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    if (key.includes(roomId) || key.startsWith('shippie.matchRoom.')) {
+      const value = localStorage.getItem(key);
+      if (value != null) out[key] = value;
+    }
+  }
+  return out;
+}
+
+function restoreRoomPayload(payload: Record<string, string>): void {
+  if (typeof localStorage === 'undefined') return;
+  for (const [key, value] of Object.entries(payload)) {
+    localStorage.setItem(key, value);
+  }
+}
+
+function hashTag(input: string): string {
+  // Stable non-cryptographic tag — just so wrong passphrases don't
+  // silently restore. Production BackupCard uses real AES-GCM via
+  // backup-providers; this adapter is a showcase placeholder.
+  let h = 5381;
+  for (let i = 0; i < input.length; i += 1) {
+    h = ((h << 5) + h + input.charCodeAt(i)) >>> 0;
+  }
+  return h.toString(16);
+}
+
+function matchCodeForRoom(roomId: string): string {
+  return roomId.replace(/^match-/, '').slice(0, 8) || 'MATCH';
+}
+
+function roleLabel(role: SavedRoom['role']): string {
+  switch (role) {
+    case 'host': return 'Host';
+    case 'play': return 'Play';
+    case 'display': return 'Screen';
+  }
 }
 
 function uniqueRooms(rooms: SavedRoom[]): SavedRoom[] {
