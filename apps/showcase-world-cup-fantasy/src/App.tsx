@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { haptic } from '@shippie/sdk/wrapper';
+import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import {
   BUDGET,
   CHIPS,
@@ -21,6 +22,16 @@ import {
   type Position,
   type SavedTeam,
 } from './fantasy-engine.ts';
+
+const shippie = createShippieIframeSdk({ appId: 'app_world_cup_fantasy' });
+
+interface MatchdayPredictionStat {
+  fixture?: string;
+  question?: string;
+  leaderName?: string;
+  leaderShare?: number;
+  total?: number;
+}
 
 function loadTeam(): SavedTeam {
   if (typeof localStorage === 'undefined') return emptyTeam();
@@ -57,7 +68,18 @@ function saveTeam(team: SavedTeam): SavedTeam {
 export function App() {
   const [team, setTeam] = useState<SavedTeam>(() => loadTeam());
   const [snapshotIndex, setSnapshotIndex] = useState(0);
+  const [roomStats, setRoomStats] = useState<MatchdayPredictionStat[]>([]);
   const snapshot = liveSnapshotAt(snapshotIndex);
+
+  // Cross-app bridge: subscribe to Match Room's prediction stats so
+  // managers see the latest crowd sentiment alongside their squad.
+  useEffect(() => {
+    shippie.requestIntent('matchday-prediction-stats');
+    return shippie.intent.subscribe('matchday-prediction-stats', (broadcast) => {
+      const rows = broadcast.rows.filter((row): row is MatchdayPredictionStat => Boolean(row));
+      if (rows.length > 0) setRoomStats(rows.slice(0, 4));
+    });
+  }, []);
   const squad = useMemo(() => team.squadIds.map((id) => PLAYER_BY_ID.get(id)).filter((player): player is Player => Boolean(player)), [team.squadIds]);
   const spent = squad.reduce((total, player) => total + player.price, 0);
   const left = Math.round((BUDGET - spent) * 10) / 10;
@@ -126,7 +148,24 @@ export function App() {
   };
 
   const save = () => {
-    setTeam((current) => saveTeam(current));
+    setTeam((current) => {
+      const next = saveTeam(current);
+      // Broadcast to Match Room (and anyone else listening) that a
+      // fantasy team has been saved. Payload is intentionally light —
+      // squad composition is private to this device.
+      shippie.intent.broadcast('fantasy-team.saved', [
+        {
+          manager: next.manager || 'You',
+          squad_size: next.squadIds.length,
+          captain_name: next.captainId ? PLAYER_BY_ID.get(next.captainId)?.name ?? null : null,
+          chip: next.chip,
+          budget_spent: spent,
+          valid: valid.ok,
+          updated_at: next.updatedAt,
+        },
+      ]);
+      return next;
+    });
     haptic(valid.ok ? 'success' : 'warn');
   };
 
@@ -189,6 +228,29 @@ export function App() {
         <strong>{valid.ok ? 'Squad valid' : 'Needs fixing'}</strong>
         <span>{valid.message}{valid.ok ? ` Tournament projection: ${projected}.` : ''}</span>
       </section>
+
+      {roomStats.length > 0 ? (
+        <section className="room-stats" aria-label="Live from Match Room">
+          <header>
+            <p className="eyebrow">From your Match Room</p>
+            <h2>What the room thinks</h2>
+          </header>
+          <ul>
+            {roomStats.map((stat, index) => (
+              <li key={index}>
+                <strong>{stat.question ?? stat.fixture ?? 'Question'}</strong>
+                {stat.leaderName ? (
+                  <span>
+                    Leader: <em>{stat.leaderName}</em>
+                    {typeof stat.leaderShare === 'number' ? ` · ${Math.round(stat.leaderShare * 100)}%` : ''}
+                    {typeof stat.total === 'number' ? ` of ${stat.total} votes` : ''}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="live-grid">
         <section className="live-panel" aria-label="Live data bridge">

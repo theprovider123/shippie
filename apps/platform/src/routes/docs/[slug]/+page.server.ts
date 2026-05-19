@@ -56,8 +56,8 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Third-party tools',
         body: [
-          'A Shippie listing can point to first-party showcases or maker-uploaded tools. Shippie scans and wraps tools where possible, but each maker is responsible for what their app does and what external services it contacts.',
-          'Check a tool detail page for capability badges, privacy grade, external domains, and declared permissions before relying on it with sensitive data.',
+          'A public Shippie listing must pass the Local Tool policy scanner before it publishes. That scanner blocks common cloud databases, third-party auth, trackers, ads, and silent user-data egress.',
+          'Static scanning is still not perfect proof. Check a tool detail page for capability badges, reference-data domains, and proof status before relying on it with sensitive data.',
         ],
       },
       {
@@ -209,31 +209,31 @@ const pages: Record<string, DocsPage> = {
   'what-is-local': {
     title: 'What local means',
     eyebrow: 'For users',
-    description: 'The difference between Local, Connected, and Cloud tools on Shippie.',
+    description: 'The Local Tool promise, capabilities, and reference-data rule on Shippie.',
     updated,
     sections: [
       {
-        title: 'Local',
+        title: 'Local Tool',
         body: [
-          'A Local tool keeps its primary working data on your device. It may still download the app package, icons, fonts, or updates from Shippie, but the meaningful content you create is designed to remain in browser-managed storage unless you export or share it.',
+          'A Shippie tool keeps its primary working data on your device. It may still download the app package, icons, fonts, or updates from Shippie, but the meaningful content you create stays in browser-managed storage unless you export, back up, or share it.',
         ],
       },
       {
-        title: 'Connected',
+        title: 'Capabilities',
         body: [
-          'A Connected tool keeps important data local but can talk to nearby devices, private spaces, or user-approved services when that is the point of the tool. Collaboration, invites, transfers, and backups should be visible user actions.',
+          'Capabilities are facts about a local tool: works offline, secure backup, reference data used, local AI, private relay via Shippie, shares with my tools, local database, and local files.',
         ],
       },
       {
-        title: 'Cloud',
+        title: 'Reference data',
         body: [
-          'A Cloud tool depends on a remote service for its primary function or storage. Shippie can still wrap and launch it, but users should expect some data or requests to leave the device.',
+          'Reference data may come in. User data does not go out. Weather, exchange rates, and public scores are fine when personal context is not sent to the external service.',
         ],
       },
       {
         title: 'How to read a listing',
         body: [
-          'Look at the app detail page for the current kind label, proof badges, privacy grade, security score, and external domains. Labels can start as deploy-time estimates and become stronger when runtime proof arrives from real devices.',
+          'Look at the app detail page for capability badges, proof status, reference-data domains, and any review warnings. Public tools should never require you to check fine print before trusting that your data stays yours.',
         ],
       },
     ],
@@ -245,13 +245,13 @@ const pages: Record<string, DocsPage> = {
   build: {
     title: 'Build with Shippie',
     eyebrow: 'For builders',
-    description: 'The launch path for wrapping, uploading, or shipping a web tool.',
+    description: 'The launch path for uploading or shipping a local tool.',
     updated,
     sections: [
       {
         title: 'Fast path',
         body: [
-          'Start at Ship. Upload a built site, wrap an existing URL, or use the CLI when you want repeatable deploys.',
+          'Start at Ship. Upload a built local tool, deploy with CLI, or use MCP from your editor. Hosted URL wraps are retired for marketplace publishing.',
         ],
       },
       {
@@ -276,7 +276,7 @@ const pages: Record<string, DocsPage> = {
         title: 'Maker opt-in',
         body: [
           'A maker must explicitly mark an app as remixable before Shippie exposes remix handoff commands. The app must be public, have a source repository URL, have a license, and set remix_allowed to true.',
-          'For zip, upload, CLI, and MCP deploys, put source_repo, license, and remix_allowed in shippie.json. For URL wraps, pass the same metadata through the wrap flow or CLI flags.',
+          'For zip, upload, CLI, and MCP deploys, put source_repo, license, and remix_allowed in shippie.json.',
         ],
         bullets: [
           'source_repo should be an HTTPS repository URL that users can read.',
@@ -299,7 +299,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Deploy paths',
         body: [
-          'Zip upload, trial deploys, GitHub deploys, workspaces, MCP deploys, and URL wraps all preserve remix lineage when a remix source is supplied.',
+          'Zip upload, trial deploys, GitHub deploys, workspaces, and MCP deploys all preserve remix lineage when a remix source is supplied.',
           'Trial deploys are useful for quick experiments, but claiming the slug is still required for long-lived ownership.',
         ],
       },
@@ -319,7 +319,7 @@ const pages: Record<string, DocsPage> = {
         title: 'The thesis',
         body: [
           'Teams and individuals need small software that behaves like an app without waiting for an app store, a procurement cycle, or a cloud platform redesign.',
-          'Shippie wraps ordinary web apps into phone-ready tools, keeps local data visible, and gives builders a path from one-off utility to trusted product.',
+          'Shippie packages local tools into phone-ready experiences, keeps local data visible, and gives builders a path from one-off utility to trusted product.',
         ],
       },
       {

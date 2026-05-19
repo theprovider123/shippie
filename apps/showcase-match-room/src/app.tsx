@@ -11,6 +11,7 @@ import { getStablePeerId, randomId } from './shared/peer-id.ts';
 import { matchRoomUrl, readRoomParams } from './shared/signal-config.ts';
 import type { RoomTemplate } from './shared/types.ts';
 import { ProfileSettings } from './ui/ProfileSettings.tsx';
+import { subscribeFantasyArrivals, type FantasySavedArrival } from './lib/intent-bridge.ts';
 
 const TEMPLATE_DEFAULT: RoomTemplate = 'friends';
 
@@ -30,7 +31,14 @@ export function App() {
   const [timeZone, setTimeZone] = useState(() => profile.timeZone);
   const [savedRooms, setSavedRooms] = useState<SavedRoom[]>(() => readSavedRooms());
   const [profileOpen, setProfileOpen] = useState(false);
+  const [fantasyArrivals, setFantasyArrivals] = useState<FantasySavedArrival[]>([]);
   const copy = useMemo(() => copyFor(locale), [locale]);
+
+  // Cross-app: Fantasy broadcasts when a manager saves their squad.
+  // Surface a transient toast so room-mates know their friend is ready.
+  useEffect(() => subscribeFantasyArrivals((arrival) => {
+    setFantasyArrivals((prev) => [arrival, ...prev.filter((p) => p.manager !== arrival.manager)].slice(0, 4));
+  }), []);
 
   const updateProfile = (next: Partial<Omit<UserProfile, 'updatedAt'>>) => {
     setProfile(saveUserProfile(next));

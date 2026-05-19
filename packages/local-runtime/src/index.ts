@@ -132,7 +132,17 @@ function lazyDb(source: ShippieLocalDb | (() => Promise<ShippieLocalDb>)): Shipp
       proven();
       return r;
     },
+    save: async (table, value) => {
+      const db = await get();
+      const r = typeof db.save === 'function' ? await db.save(table, value) : await db.insert(table, value);
+      proven();
+      return r;
+    },
     query: async (table, opts) => (await get()).query(table, opts),
+    list: async (table, opts) => {
+      const db = await get();
+      return typeof db.list === 'function' ? db.list(table, opts) : db.query(table, opts);
+    },
     search: async (table, query, opts) => (await get()).search(table, query, opts),
     vectorSearch: async (table, vector, opts) => (await get()).vectorSearch(table, vector, opts),
     update: async (table, id, patch) => (await get()).update(table, id, patch),
@@ -166,7 +176,9 @@ function unsupportedDb(): ShippieLocalDb {
   return {
     create: unsupported('db.create'),
     insert: unsupported('db.insert'),
+    save: unsupported('db.save'),
     query: unsupported('db.query'),
+    list: unsupported('db.list'),
     search: unsupported('db.search'),
     vectorSearch: unsupported('db.vectorSearch'),
     update: unsupported('db.update'),

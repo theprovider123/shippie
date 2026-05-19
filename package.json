@@ -2,7 +2,7 @@
   "name": "shippie",
   "private": true,
   "version": "0.0.0",
-  "description": "Shippie — the post-cloud app platform. Wrap. Run. Connect. Deploy any web app, run it locally on every device, and connect nearby phones directly.",
+  "description": "Shippie — local tools that know each other. One-line local database, zero backend setup, private by architecture.",
   "license": "UNLICENSED",
   "type": "module",
   "workspaces": [

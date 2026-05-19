@@ -1,13 +1,12 @@
 /**
- * SDK configuration — stores the active backend adapter.
+ * Legacy SDK configuration — stores the active backend adapter.
  *
- * Makers call shippie.configure() once at app startup. After that,
- * shippie.auth/db/files delegate to the adapter.
+ * Older embedded apps can call shippie.configure() once at app startup.
+ * After that, shippie.auth/db/files delegate to the adapter.
  *
- * Tier 1 (no backend): auth/db/files throw a helpful error.
- * Tier 2 (BYO): wraps the maker's initialized client.
- *
- * Spec v5 §2.
+ * Public Shippie marketplace tools should use shippie.local.db/files/ai
+ * instead; the deploy scanner blocks third-party storage/auth in public
+ * bundles. This surface remains for compatibility and localize tooling.
  */
 import type { BackendAdapter } from './backends/types.ts';
 import { createSupabaseAdapter } from './backends/supabase.ts';
@@ -21,7 +20,7 @@ export interface ConfigureOptions {
 }
 
 /**
- * Configure the Shippie SDK with a BYO backend.
+ * Configure the legacy Shippie SDK backend adapter.
  *
  * @example
  * import { createClient } from '@supabase/supabase-js'
@@ -52,8 +51,7 @@ export function getAdapter(): BackendAdapter {
   if (!adapter) {
     throw new Error(
       'shippie.configure() has not been called. ' +
-        'This app needs a backend for auth/storage/files. ' +
-        'See https://docs.shippie.app/sdk/configure',
+        'Use shippie.local.db/files for Local Tool storage, or call shippie.configure() for legacy backend adapters.',
     );
   }
   return adapter;

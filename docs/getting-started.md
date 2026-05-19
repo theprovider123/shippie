@@ -1,6 +1,6 @@
 # Getting Started with Shippie
 
-Deploy your first app in under 5 minutes. Before you start, pick what you're shipping.
+Deploy your first local tool in under 5 minutes. Before you start, pick what you're shipping.
 
 ## Pick your type
 
@@ -80,8 +80,8 @@ npx @shippie/cli remix recipe-saver
 # After cloning or forking and rebuilding your copy
 npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
 
-# Wrapped URL apps can preserve lineage too
-npx @shippie/cli wrap https://recipes.example.com --slug recipe-saver-web --remix recipe-saver
+# Hosted URL wraps are retired. Convert to local primitives, build, then deploy.
+npx @shippie/cli deploy ./dist --slug recipe-saver-web --remix recipe-saver
 ```
 
 Multi-app workspaces can keep lineage per app:
@@ -98,20 +98,36 @@ Multi-app workspaces can keep lineage per app:
 }
 ```
 
-## Adding a backend (optional)
+## Store data locally
 
-Shippie hosts your frontend. For auth, storage, and files, bring your own backend:
+Shippie is not a place to bring a Supabase/Firebase app and call it private. The public
+marketplace accepts local tools: no external login, no third-party user-data storage, no
+trackers, no ads, and no silent user-data egress.
 
-```javascript
-import { createClient } from '@supabase/supabase-js'
+```ts
 import { shippie } from '@shippie/sdk'
 
-const supabase = createClient(url, anonKey)
-shippie.configure({ backend: 'supabase', client: supabase })
+await shippie.local.db.save('notes', { id: 'abc', title: 'Hello' })
+const notes = await shippie.local.db.list('notes')
+await shippie.local.files.write('photo.jpg', photoBlob)
+```
 
-// Now you have auth, storage, and files
-await shippie.auth.signIn()
-await shippie.db.set('notes', 'abc', { title: 'Hello' })
+If the user wants continuity, use Shippie secure backup. Backup stores sealed copies that
+Shippie cannot open; it is not a login system.
+
+```json
+{
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["main"],
+    "recovery": "inherited",
+    "realtime": "inherited"
+  },
+  "data_passport": {
+    "family": "notes",
+    "schema": "notes.v1"
+  }
+}
 ```
 
 ## What Shippie provides
@@ -120,16 +136,20 @@ await shippie.db.set('notes', 'abc', { title: 'Hello' })
 - PWA generation (manifest, service worker, icons)
 - Marketplace listing with search and discovery
 - Feedback system (comments, bugs, ratings)
-- Analytics (anonymous event tracking)
+- Proof events and aggregate diagnostics
+- Local Tool policy scanning on zip, CLI, MCP, trial, and workspace deploys
 - Build pipeline (auto-detects Vite, Next.js, Astro, etc.)
 
-## What you provide (if needed)
+## What the scanner blocks
 
-- Auth (Supabase Auth, Firebase Auth)
-- Database (Supabase Postgres, Firebase Firestore)
-- File storage (Supabase Storage, Firebase Storage)
+- Hosted user databases and storage clients
+- External auth required for core use
+- Third-party analytics, tracking pixels, and ad SDKs
+- External writes that can carry user content
+- Silent external AI calls with user content
 
-Shippie never touches your users' data.
+Public reference data is allowed when user data is not sent out. For the full rule, see
+[`docs/strategy/local-tools-policy.md`](./strategy/local-tools-policy.md).
 
 ## Create private spaces
 

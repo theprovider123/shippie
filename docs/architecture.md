@@ -1,12 +1,12 @@
 # Architecture
 
-Shippie is a post-cloud app platform. The public story is **Wrap. Run. Connect.**
+Shippie is a platform for **local tools that know each other**.
 
-- **Wrap** — deploy any web app, Shippie makes it installable, offline-capable, faster, and more tactile.
-- **Run** — everything runs on the user's device: local DB, files, AI, intelligence, backup, data ownership.
-- **Connect** — nearby devices talk directly via real-time rooms, peer-to-peer sync, offline propagation.
+- **Local** — accepted tools keep user data on the device by default.
+- **Private** — no external login, third-party user-data store, trackers, or ads in the public tool surface.
+- **Connected to each other** — tools share local signals through intents and encrypted Shippie relay when the user chooses live collaboration.
 
-Underneath the public story, the platform is composed of nine engineering components: **Shell, Boost, Sense, Core, AI, Vault, Pulse, Spark, Hub.** Documentation, the SDK, and the whitepaper map them in detail; product surfaces never expose all nine at once.
+Underneath the public story, the platform is composed of Shell, Boost, Sense, Core, AI, Vault, Pulse, Spark, and Hub. Documentation, the SDK, and the whitepaper map them in detail; product surfaces lead with the Local Tool promise.
 
 ## Stack
 
@@ -15,7 +15,7 @@ The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`). The
 | Concern | Technology |
 |---|---|
 | Platform app | SvelteKit (`apps/platform/`) on Cloudflare Pages |
-| Wrapper / subdomain routing / wrap injection | Cloudflare Workers via SvelteKit's `hooks.server.ts` |
+| Wrapper / subdomain routing / SDK injection | Cloudflare Workers via SvelteKit's `hooks.server.ts` |
 | Database | Cloudflare D1 (SQLite at the edge) — schema in `packages/db/` |
 | File storage | Cloudflare R2 (`shippie-apps`, `shippie-public`) |
 | Cache / KV | Cloudflare KV |
@@ -53,7 +53,7 @@ packages/
   proximity/                Rooms, WebRTC, gossip, transfer primitives
   backup-providers/         Encrypted backup adapters (iCloud, Google Drive, Dropbox)
   session-crypto/           Encryption helpers
-  analyse/                  HTML/CSS/JS scanner → AppProfile → enhance rule compilation
+  analyse/                  HTML/CSS/JS scanner → AppProfile + Local Tool policy scan
   access/                   OAuth + OIDC adapters
   shared/                   Shared project types
   db/                       Drizzle schema + D1 migrations
@@ -92,32 +92,34 @@ This pattern keeps typecheck immune to build state. Vite (used by SvelteKit + th
 
 Open [`architecture.svg`](./architecture.svg) for the full diagram. In short:
 
-- **Maker tools** on the left (Claude Code, CLI, GitHub, web upload) deploy via the Cloudflare platform.
+- **Maker tools** on the left (Claude Code, CLI, MCP, GitHub, web upload) deploy via the Cloudflare platform.
 - **Deploy truth** in the middle (Cloudflare Workers + Pages + D1 + R2 + KV + Durable Objects) handles deploy ingestion, package artifacts, wrapper injection on every `*.shippie.app` HTML response, proof-event ingestion + cron rollup, and the `/__shippie/signal/[roomId]` WebSocket signalling DO.
 - **Portable packages** keep URL ownership, custom-domain metadata, version lineage, app permissions, and the static build together so the same artifact can run on `shippie.app` or a future `hub.local` node.
 - **User device** on the right runs the actual app: standalone URL if opened directly, or the Shippie container if installed. Local SQLite/OPFS, shared AI model cache, Your Data, and cross-app intents live in the container/device boundary; WebRTC connects nearby devices.
 
-Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit, proof events) in D1 — never per-user app data.
+Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit, proof events) in D1 — never readable per-user app data.
 
-## App Kinds
+## Local Tool Policy
 
-Every app the platform accepts is classified as **Local**, **Connected**, or
-**Cloud** based on where its data lives and whether it works offline. The
-classifier ships as part of `@shippie/analyse` and writes a kind profile
-alongside the existing `AppProfile`. The marketplace label is detection +
-proof, not maker declaration.
+The public app kind is now **Local Tool**. Capabilities describe optional
+behavior: works offline, secure backup, reference data, local AI, private
+relay, intents, local DB, and local files.
 
-See [`app-kinds.md`](./app-kinds.md) for the vocabulary, profile shape,
-proof rules, and conflict handling. Rollout plan:
-[`superpowers/plans/2026-04-26-app-kinds-rollout.md`](./superpowers/plans/2026-04-26-app-kinds-rollout.md).
+Every browser zip upload, trial upload, CLI deploy, MCP deploy, and workspace
+deploy runs the same Local Tool policy scanner before publishing. The scanner
+blocks external auth, third-party user-data storage, trackers, ads, and silent
+user-data egress. URL-wrap deploys are retired for marketplace publishing
+because a reverse-proxied hosted app cannot prove the promise.
+
+See [`strategy/local-tools-policy.md`](./strategy/local-tools-policy.md).
 
 ## Deploy paths
 
 | Path | How | Time-to-URL |
 |---|---|---|
-| **CLI** | `shippie deploy ./dist` | ~30 s |
-| **Web upload** | drag a built zip at `shippie.app/new` | ~30 s |
-| **MCP** | "deploy this to Shippie" inside Claude Code / Cursor | ~60 s |
+| **CLI** | `shippie deploy ./dist` | usually under a minute |
+| **Web upload** | drag a built zip at `shippie.app/new` | usually under a minute |
+| **MCP** | "deploy this to Shippie" inside Claude Code / Cursor | usually under a minute |
 | **GitHub** | push to a connected repo | ~10 s to placeholder, ~2–5 min to built (GitHub Actions runner) |
 
 Pre-built paths (CLI, web upload, MCP) hit the fast lane. Repo-based deploys go through GitHub Actions; the build runs on GitHub's disposable VMs, never on Shippie infrastructure, so untrusted code never executes inside the platform's blast radius.

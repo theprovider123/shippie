@@ -48,6 +48,15 @@ export type {
   DomainReference,
   PrivacyAuditReport,
 } from './privacy-audit.ts';
+export { runLocalToolPolicyScan } from './local-tool-policy.ts';
+export type {
+  LocalToolCapabilityHints,
+  LocalToolEligibilityStatus,
+  LocalToolFinding,
+  LocalToolFindingCategory,
+  LocalToolFindingSeverity,
+  LocalToolPolicyReport,
+} from './local-tool-policy.ts';
 export { computeSecurityScore } from './security-score.ts';
 export type { SecurityScore, SecurityDeduction } from './security-score.ts';
 export { computePrivacyGrade } from './privacy-grade.ts';

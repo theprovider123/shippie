@@ -6,67 +6,87 @@
 npm install @shippie/sdk
 ```
 
-Or via script tag (auto-injected on every deployed app):
+Or via script tag, auto-injected on every deployed tool:
+
 ```html
 <script src="/__shippie/sdk.js" async></script>
 ```
 
-## Configuration
+## Local Tool Surface
 
-The SDK requires a backend for auth, storage, and files. Feedback, analytics, and install tracking work without configuration.
+The public maker path starts here:
 
-```javascript
-import { createClient } from '@supabase/supabase-js'
-import { shippie } from '@shippie/sdk'
+```ts
+import { shippie } from '@shippie/sdk';
 
-const supabase = createClient(url, anonKey)
-shippie.configure({ backend: 'supabase', client: supabase })
+await shippie.local.db.save('receipts', receipt);
+const receipts = await shippie.local.db.list('receipts');
+await shippie.local.files.write('receipt.jpg', photoBlob);
+await shippie.local.ai.classify('Uber to Heathrow', ['travel', 'food']);
 ```
 
-## API
+No backend configuration is required. The deploy scanner blocks third-party user-data storage, external auth required for core use, trackers, ads, and silent user-data egress.
 
-### `shippie.configure(opts)`
-Initialize the SDK with a BYO backend. Must be called before using auth/db/files.
+## `shippie.local.db`
 
-### `shippie.auth`
 | Method | Description |
 |---|---|
-| `getUser()` | Returns the current user or null |
-| `signIn(returnTo?)` | Triggers sign-in flow |
-| `signOut()` | Signs out the current user |
-| `onChange(listener)` | Subscribe to auth state changes. Returns unsubscribe function. |
-| `getToken()` | Returns the current session JWT (for `Authorization: Bearer` headers) |
+| `save(table, value)` | Friendly alias for inserting a local record. |
+| `list(table, opts?)` | Friendly alias for querying local records. |
+| `create(table, schema)` | Create/ensure a local table. |
+| `insert(table, value)` | Insert a local record. |
+| `query(table, opts?)` | Query local records. |
+| `search(table, query, opts?)` | Text search in a local table. |
+| `vectorSearch(table, vector, opts?)` | Semantic/vector search when available. |
+| `update(table, id, patch)` | Patch a local record. |
+| `delete(table, id)` | Delete a local record. |
+| `count(table, opts?)` | Count local records. |
+| `export(table, opts?)` | Export a local table as JSON/SQLite/Shippie backup. |
+| `restore(backup, opts?)` | Restore a local backup. |
+| `lastBackup()` | Inspect the latest backup metadata. |
+| `usage()` | Estimate local storage usage. |
+| `requestPersistence()` | Ask the browser for durable storage. |
 
-### `shippie.db`
+## `shippie.local.files`
+
 | Method | Description |
 |---|---|
-| `set(collection, key, value)` | Upsert a record |
-| `get(collection, key)` | Get a record by key |
-| `list(collection, { limit?, offset? })` | List records in a collection |
-| `delete(collection, key)` | Delete a record |
+| `write(path, blobOrBytes)` | Store a local file. |
+| `read(path)` | Read a local file. |
+| `list(path?)` | List local files. |
+| `delete(path)` | Delete a local file. |
+| `usage()` | Estimate local file usage. |
+| `thumbnail(path, opts?)` | Generate/read a local thumbnail when supported. |
 
-### `shippie.files`
+## `shippie.local.ai`
+
 | Method | Description |
 |---|---|
-| `upload(blob, filename)` | Upload a file. Returns `{ key, url }`. |
-| `get(key)` | Get the public URL for a file |
-| `delete(key)` | Delete a file |
+| `classify(text, labels)` | Local text classification. |
+| `embed(text)` | Local embedding. |
+| `sentiment(text)` | Local sentiment. |
+| `moderate(text)` | Local moderation. |
 
-### `shippie.feedback` (no backend required)
-| Method | Description |
+External LLM calls with user content are not silent background work on Shippie. If a tool needs OpenAI/Claude/Gemini, the user must explicitly trigger that one call and the UI must say what is being sent.
+
+## Secure Backup
+
+`shippie.backup` is optional continuity for a local tool. Backups are sealed before storage; Shippie cannot read them. Do not frame backup as a cloud account or replacement database.
+
+## Wrapper Helpers
+
+| API | Description |
 |---|---|
-| `submit({ type, title?, body?, rating? })` | Submit feedback to the Shippie marketplace |
-| `open()` | Open the feedback UI |
+| `shippie.install.status()` | Returns install state. |
+| `shippie.install.prompt()` | Triggers native install prompt when available. |
+| `shippie.openYourData()` | Opens the user's data/export/backup surface. |
+| `useKeyboard()` | Lets the Shippie shell adapt to mobile keyboards. |
+| `useSafeArea()` | Reads safe-area inset values. |
+| `useViewport()` | Reads dynamic viewport metrics. |
+| `matchesStandalone()` | Checks installed PWA display mode. |
 
-### `shippie.install` (no backend required)
-| Method | Description |
-|---|---|
-| `status()` | Returns `'installed'`, `'installable'`, or `'unsupported'` |
-| `prompt()` | Trigger the native install prompt (Android). Returns `{ outcome }`. |
-| `instructions()` | Returns platform-specific install instructions (useful for iOS) |
+## Legacy Adapter APIs
 
-### `shippie.track(event, props?, opts?)` (no backend required)
-Fire-and-forget analytics event. Batched and flushed automatically.
+`shippie.configure()`, `shippie.auth`, `shippie.db`, and `shippie.files` still exist for backwards compatibility with old BYO-backend experiments. They are not accepted for new public marketplace tools when they require external auth or third-party user-data storage.
 
-### `shippie.meta()` (no backend required)
-Returns app metadata (name, type, theme, version, permissions).
+For the governing rule, see [`docs/strategy/local-tools-policy.md`](./strategy/local-tools-policy.md).

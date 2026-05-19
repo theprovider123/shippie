@@ -185,6 +185,10 @@ export interface AppVersionRecord {
   };
   data: {
     schemaVersion: number;
+    /** Data Passport v0 family, e.g. "receipt-inbox". */
+    family?: string;
+    /** Data Passport v0 schema id, e.g. "receipt-inbox.v1". */
+    schema?: string;
     migrationPlanHash?: string;
   };
 }

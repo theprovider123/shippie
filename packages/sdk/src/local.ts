@@ -328,12 +328,100 @@ const intelligenceApi = {
   },
 };
 
+type LocalDbRecord = Record<string, unknown>;
+type LocalDbQueryOptions = {
+  where?: Record<string, unknown>;
+  orderBy?: Record<string, 'asc' | 'desc'>;
+  limit?: number;
+  offset?: number;
+};
+type LocalDbLike = {
+  create?: (table: string, schema: Record<string, unknown>) => Promise<unknown>;
+  insert?: (table: string, value: LocalDbRecord) => Promise<unknown>;
+  save?: (table: string, value: LocalDbRecord) => Promise<unknown>;
+  query?: <T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions) => Promise<T[]>;
+  list?: <T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions) => Promise<T[]>;
+  search?: <T extends LocalDbRecord = LocalDbRecord>(table: string, query: string, opts?: LocalDbQueryOptions) => Promise<T[]>;
+  vectorSearch?: <T extends LocalDbRecord = LocalDbRecord>(
+    table: string,
+    vector: Float32Array,
+    opts?: { limit?: number; column?: string },
+  ) => Promise<Array<T & { score: number }>>;
+  update?: <T extends LocalDbRecord>(table: string, id: string, patch: Partial<T>) => Promise<unknown>;
+  delete?: (table: string, id: string) => Promise<unknown>;
+  count?: (table: string, opts?: Pick<LocalDbQueryOptions, 'where'>) => Promise<number>;
+  export?: (table: string, opts?: object) => Promise<Blob>;
+  restore?: (backup: Blob, opts?: object) => Promise<unknown>;
+  lastBackup?: () => Promise<unknown>;
+  usage?: () => Promise<unknown>;
+  requestPersistence?: () => Promise<boolean>;
+};
+
+const localDbApi = {
+  raw(): unknown {
+    return currentLocalRuntime()?.db;
+  },
+  async create(table: string, schema: Record<string, unknown>): Promise<unknown> {
+    return callDb('create', [table, schema]);
+  },
+  async insert<T extends LocalDbRecord>(table: string, value: T): Promise<unknown> {
+    return callDb('insert', [table, value]);
+  },
+  async save<T extends LocalDbRecord>(table: string, value: T): Promise<unknown> {
+    const db = await requireDb();
+    if (typeof db.save === 'function') return db.save(table, value);
+    if (typeof db.insert === 'function') return db.insert(table, value);
+    throw new Error('shippie.local.db.save() requires a runtime db.save or db.insert implementation');
+  },
+  async query<T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions): Promise<T[]> {
+    return callDb('query', [table, opts]) as Promise<T[]>;
+  },
+  async list<T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions): Promise<T[]> {
+    const db = await requireDb();
+    if (typeof db.list === 'function') return db.list<T>(table, opts);
+    if (typeof db.query === 'function') return db.query<T>(table, opts);
+    throw new Error('shippie.local.db.list() requires a runtime db.list or db.query implementation');
+  },
+  async search<T extends LocalDbRecord = LocalDbRecord>(table: string, query: string, opts?: LocalDbQueryOptions): Promise<T[]> {
+    return callDb('search', [table, query, opts]) as Promise<T[]>;
+  },
+  async vectorSearch<T extends LocalDbRecord = LocalDbRecord>(
+    table: string,
+    vector: Float32Array,
+    opts?: { limit?: number; column?: string },
+  ): Promise<Array<T & { score: number }>> {
+    return callDb('vectorSearch', [table, vector, opts]) as Promise<Array<T & { score: number }>>;
+  },
+  async update<T extends LocalDbRecord>(table: string, id: string, patch: Partial<T>): Promise<unknown> {
+    return callDb('update', [table, id, patch]);
+  },
+  async delete(table: string, id: string): Promise<unknown> {
+    return callDb('delete', [table, id]);
+  },
+  async count(table: string, opts?: Pick<LocalDbQueryOptions, 'where'>): Promise<number> {
+    return callDb('count', [table, opts]) as Promise<number>;
+  },
+  async export(table: string, opts?: object): Promise<Blob> {
+    return callDb('export', [table, opts]) as Promise<Blob>;
+  },
+  async restore(backup: Blob, opts?: object): Promise<unknown> {
+    return callDb('restore', [backup, opts]);
+  },
+  async lastBackup(): Promise<unknown> {
+    return callDb('lastBackup', []);
+  },
+  async usage(): Promise<unknown> {
+    return callDb('usage', []);
+  },
+  async requestPersistence(): Promise<boolean> {
+    return callDb('requestPersistence', []) as Promise<boolean>;
+  },
+};
+
 export const local = {
   load,
   capabilities,
-  get db() {
-    return currentLocalRuntime()?.db;
-  },
+  db: localDbApi,
   get files() {
     return currentLocalRuntime()?.files;
   },
@@ -364,6 +452,22 @@ export const local = {
    */
   intelligence: intelligenceApi,
 };
+
+async function requireDb(): Promise<LocalDbLike> {
+  const runtime = currentLocalRuntime() ?? await load();
+  const db = runtime.db as LocalDbLike | undefined;
+  if (!db) throw new Error('shippie.local.db is unavailable in this runtime');
+  return db;
+}
+
+async function callDb(method: keyof LocalDbLike, args: unknown[]): Promise<unknown> {
+  const db = await requireDb();
+  const fn = db[method];
+  if (typeof fn !== 'function') {
+    throw new Error(`shippie.local.db.${String(method)}() is unavailable in this runtime`);
+  }
+  return (fn as (...innerArgs: unknown[]) => Promise<unknown>)(...args);
+}
 
 export async function load(opts: LoadLocalRuntimeOptions = {}): Promise<ShippieLocalRuntimeGlobal> {
   const existing = currentLocalRuntime();

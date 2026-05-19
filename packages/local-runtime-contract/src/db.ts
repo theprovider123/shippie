@@ -41,7 +41,11 @@ export interface LocalDbUsage {
 export interface ShippieLocalDb {
   create(table: string, schema: LocalDbSchema): Promise<void>;
   insert<T extends LocalDbRecord>(table: string, value: T): Promise<void>;
+  /** Friendly alias for insert(), used by maker-facing examples. */
+  save?<T extends LocalDbRecord>(table: string, value: T): Promise<void>;
   query<T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions): Promise<T[]>;
+  /** Friendly alias for query(), used by maker-facing examples. */
+  list?<T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions): Promise<T[]>;
   search<T extends LocalDbRecord = LocalDbRecord>(table: string, query: string, opts?: LocalDbQueryOptions): Promise<T[]>;
   vectorSearch<T extends LocalDbRecord = LocalDbRecord>(
     table: string,

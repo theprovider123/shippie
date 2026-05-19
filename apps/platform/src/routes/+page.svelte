@@ -196,8 +196,8 @@
 </script>
 
 <svelte:head>
-  <title>Shippie — small tools that work on your device</title>
-  <meta name="description" content="Tap a tool to use it. They run on your device, work offline, and share local signals when it helps. No signup, no download, no subscription." />
+  <title>Shippie — local tools that know each other</title>
+  <meta name="description" content="Tap a tool to use it. If it is on Shippie, it is private: local by default, offline-ready, no external login, and no silent user-data egress." />
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />
@@ -219,7 +219,7 @@
         </p>
         <h1 class="title">Shippie</h1>
         <p class="lede">
-          Tap a tool to use it. They run on your device, work offline, and share local signals when it helps.
+          Tap a tool to use it. Local by default, offline-ready, and private with no exceptions.
         </p>
       </div>
       <div class="head-tools">
@@ -474,7 +474,7 @@
     <div>
       <p class="eyebrow">For builders</p>
       <h2 id="builder-strip-title">Ship a tool.</h2>
-      <p>Built with HTML and one SDK. Shippie adds offline, haptics, local data, and proof — automatically.</p>
+      <p>One-line local database. Zero backend setup. Shippie adds offline, haptics, secure backup, and proof.</p>
     </div>
     <a class="builder-strip-cta" href="/build">Start building →</a>
   </section>

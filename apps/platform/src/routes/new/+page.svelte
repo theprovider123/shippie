@@ -10,11 +10,11 @@
   );
 
   const checks = [
-    'Detects your framework + app kind',
+    'Detects local-tool capabilities',
+    'Blocks cloud storage, auth, ads, and trackers',
     'Blocks security failures before publish',
     'Writes a flight-recorder export',
-    'Honours declared App Policy',
-    'Splits URL ownership from container eligibility',
+    'Honours Your Data secure backup policy',
   ];
 </script>
 
@@ -39,8 +39,8 @@
             Fork on GitHub or upload your build. Shippie keeps the parent app, version, license,
             and attribution wired to your remix.
           {:else}
-            Drop a zip, wrap a hosted URL, or push from your editor. Shippie scans the app,
-            gives you a phone QR, and records the deploy — never the user.
+            Drop a built local tool zip or push from your editor. Shippie scans the bundle,
+            blocks user-data egress, gives you a phone QR, and records the deploy — never the user.
           {/if}
         </p>
       </div>
@@ -106,8 +106,8 @@
         </li>
         <li>
           <a href="#wrap-url">
-            <strong>Wrap an existing URL</strong>
-            <span>Give a hosted site a Shippie home.</span>
+            <strong>Convert a hosted app</strong>
+            <span>Move Supabase/Firebase/Auth0 data paths to Shippie local primitives.</span>
           </a>
         </li>
       </ul>
@@ -139,26 +139,19 @@
     <section class="secondary-flow" aria-labelledby="wrap-url">
       <div class="section-head">
         <p class="eyebrow">{data.user ? 'Already hosted' : 'Maker account'}</p>
-        <h2 id="wrap-url">Wrap a hosted URL</h2>
+        <h2 id="wrap-url">Convert a hosted app</h2>
         <p>
           {#if data.user}
-            Keep your hosting. Shippie adds the maker subdomain, install support, proof badges,
-            ratings, and a path into the container once the app earns trust.
+            URL wrapping is retired for the marketplace. If a tool depends on a hosted backend,
+            move user data to <code>shippie.local.db</code> and publish the built bundle.
           {:else}
-            URL wraps touch ownership and DNS, so they need a sign-in. The zip trial above
-            stays open.
+            Shippie tools must be private by architecture. Try the zip flow above, then sign in
+            when you want to keep the deploy.
           {/if}
         </p>
       </div>
       <div class="form-surface">
-        {#if data.user}
-          <WrapForm />
-        {:else}
-          <div class="signin-panel">
-            <p>Already hosted somewhere else?</p>
-            <a href="/auth/login?return_to=/new">Sign in to wrap a URL</a>
-          </div>
-        {/if}
+        <WrapForm />
       </div>
     </section>
 
@@ -168,9 +161,9 @@
         <h2>Shippie tells you what it did.</h2>
         <ol>
           <li>Live at <code>{'<slug>'}.shippie.app</code> with the wrapper runtime and install support.</li>
-          <li>The App Flight Recorder shows detected kind, blocked risks, fixed essentials, and health checks.</li>
+          <li>The App Flight Recorder shows local-tool eligibility, blocked risks, fixed essentials, and health checks.</li>
           <li>The dashboard tracks proof badges as real devices use the app.</li>
-          <li>Your URL stays yours; the container becomes the richer home.</li>
+          <li>Your tool runs locally; secure backup is optional continuity, not a cloud account.</li>
         </ol>
       </div>
       <div class="next-tools" aria-label="Other deploy paths">
@@ -348,24 +341,6 @@ shippie deploy ./dist</code></pre>
   .section-head { min-width: 0; }
   .section-head p { color: #6F675E; font-size: 14px; margin: 0.8rem 0 0; line-height: 1.55; overflow-wrap: anywhere; }
   .form-surface { min-width: 0; max-width: 100%; }
-  .signin-panel {
-    border-left: 2px solid #E8603C;
-    padding: 1rem 0 1rem 1rem;
-  }
-  .signin-panel p {
-    margin: 0 0 0.75rem;
-    color: #6F675E;
-    font-size: 14px;
-  }
-  .signin-panel a {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    padding: 0 1rem;
-    background: #14120F;
-    color: #EDE4D3;
-    font-weight: 700;
-  }
 
   .next-tools {
     display: grid;
@@ -448,11 +423,6 @@ shippie deploy ./dist</code></pre>
       gap: 1rem;
       padding-top: 1.25rem;
     }
-    .signin-panel a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
   }
   @media (prefers-color-scheme: dark) {
     .page { background: #14120F; color: #EDE4D3; }
@@ -460,8 +430,6 @@ shippie deploy ./dist</code></pre>
     pre { background: #0D0B09; }
     .next { background: rgba(232, 96, 60, 0.06); }
     .lede, .remix-panel p, .section-head p, .next-tools p, .hero-status ul, .next ol { color: #AFA693; }
-    .signin-panel p { color: #AFA693; }
-    .signin-panel a { background: #EDE4D3; color: #14120F; }
     .remix-actions a,
     .remix-panel.unavailable > a {
       border-color: #EDE4D3;

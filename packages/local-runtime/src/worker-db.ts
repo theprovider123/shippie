@@ -54,7 +54,10 @@ export function createWorkerLocalDb(opts: WorkerDbOptions = {}): ShippieLocalDb 
   return {
     create: (table: string, schema: LocalDbSchema) => call('create', [table, schema]) as Promise<void>,
     insert: <T extends LocalDbRecord>(table: string, value: T) => call('insert', [table, value]) as Promise<void>,
+    save: <T extends LocalDbRecord>(table: string, value: T) => call('insert', [table, value]) as Promise<void>,
     query: <T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions) =>
+      call('query', [table, opts]) as Promise<T[]>,
+    list: <T extends LocalDbRecord = LocalDbRecord>(table: string, opts?: LocalDbQueryOptions) =>
       call('query', [table, opts]) as Promise<T[]>,
     search: <T extends LocalDbRecord = LocalDbRecord>(table: string, query: string, opts?: LocalDbQueryOptions) =>
       call('search', [table, query, opts]) as Promise<T[]>,

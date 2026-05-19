@@ -1,9 +1,10 @@
 /**
  * shippie.files.*
  *
- * BYO backend file storage — delegates to the configured BackendAdapter.
+ * Legacy BYO backend file storage — delegates to the configured BackendAdapter.
+ * Public Shippie marketplace tools should use `shippie.local.files` instead.
  *
- * Spec v5 §2.
+ * Kept for older embedded apps and migration helpers.
  */
 import { getAdapter } from './configure.ts';
 

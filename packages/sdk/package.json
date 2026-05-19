@@ -1,7 +1,7 @@
 {
   "name": "@shippie/sdk",
   "version": "2.0.0",
-  "description": "Same-origin client SDK for Shippie runtime apps. Auth, storage, files, feedback, analytics, install, native bridge. BYO backend (Supabase, Firebase).",
+  "description": "Local-first SDK for Shippie tools: one-line local database, files, local AI, intents, install runtime, proof events, and secure backup.",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",
@@ -58,13 +58,12 @@
     "shippie",
     "pwa",
     "sdk",
-    "auth",
-    "storage",
+    "local-first",
+    "local-storage",
     "feedback",
-    "analytics",
-    "byo-backend",
-    "supabase",
-    "firebase"
+    "proof",
+    "offline",
+    "privacy"
   ],
   "homepage": "https://shippie.app",
   "repository": {

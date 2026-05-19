@@ -1,29 +1,27 @@
 <script lang="ts">
   /**
-   * Docs landing — single-page anchor structure (sub-routes are a
-   * separate IA pass). Leads with the whitepaper, then the three
-   * pillars, then for-users and for-builders sections, then the
-   * open-source + remix story that ties the whole thing together.
+   * Docs landing — single-page anchor structure. Leads with the Local Tool
+   * promise, then maker entry paths and the source/remix story.
    */
 
   const pillars = [
     {
       id: 'wrap',
-      label: 'Wrap',
+      label: 'Local',
       blurb:
-        'Deploy any web app. Shippie wraps it into a phone-ready, offline-capable, tactile, proof-emitting experience — without touching your bundled code.',
+        'Every public Shippie tool keeps user data on the device. No external login, no third-party user-data store, no trackers.',
     },
     {
       id: 'run',
-      label: 'Run',
+      label: 'Build',
       blurb:
-        'Database, files, and AI inference run on the user’s device. No round-trips to a server you have to rent. Their data, their hardware, their tab.',
+        'Use one-line local database, local files, local AI, intents, and secure backup without provisioning a backend.',
     },
     {
       id: 'connect',
       label: 'Connect',
       blurb:
-        'Nearby devices talk peer-to-peer. WebRTC + CRDTs + end-to-end encryption + local mesh. The cloud is optional, not load-bearing.',
+        'Tools can share local signals with each other and use encrypted Shippie relay when live collaboration needs it.',
     },
   ];
 
@@ -32,7 +30,7 @@
       id: 'what-local-means',
       title: 'Where data lives',
       blurb:
-        'Each tool says, in plain language, whether its data stays on this device, connects directly to nearby devices, or needs the maker’s server. Shippie checks this from real use, not just maker claims.',
+        'On Shippie, user data stays on the device by default. Reference data can come in, but user data does not go out unless you explicitly export, back up, or join an encrypted relay.',
     },
     {
       id: 'your-data',
@@ -53,7 +51,7 @@
   <title>Docs · Shippie</title>
   <meta
     name="description"
-    content="The whitepaper, the three pillars (Wrap, Run, Connect), guides for users and builders, and how every Shippie app can be remixed when the maker enables it."
+    content="Build local tools on Shippie: one-line local database, no external login, no third-party user-data storage, and deploy paths that enforce the promise."
   />
 </svelte:head>
 
@@ -63,27 +61,27 @@
       <img src="/__shippie-pwa/icon.svg" alt="" width="14" height="14" />
       Documentation
     </p>
-    <h1 class="title">Apps on your device. Open all the way down.</h1>
+    <h1 class="title">Local tools that know each other.</h1>
     <p class="lede">
-      Shippie is a post-cloud platform: wrap a web app, run it on the user’s device, connect
-      devices peer-to-peer. The whole stack is open source, and every app can be marked remixable
-      so anyone can fork it for their own niche.
+      If it is on Shippie, it is private. Build tools with one-line local database,
+      zero backend setup, secure backup as continuity, and deploy paths that block cloud
+      user-data storage before publish.
     </p>
   </header>
 
   <a class="paper-card" href="/whitepaper">
     <div class="paper-card-meta">
       <p class="paper-eyebrow">Whitepaper · the long read</p>
-      <h2>Locally This, Locally That</h2>
+      <h2>Build on Shippie</h2>
       <p class="paper-blurb">
-        How Shippie puts apps back on your device — the thesis, the stack, and what the
-        platform is composing rather than inventing. Start here if you want the why before the how.
+        The category: Vercel deploys cloud apps, Netlify deploys static sites,
+        Shippie deploys local tools. Start here if you want the why before the how.
       </p>
     </div>
     <span class="paper-cta">Read the whitepaper →</span>
   </a>
 
-  <section class="pillars" aria-label="The three pillars">
+  <section class="pillars" aria-label="Local tool principles">
     {#each pillars as p (p.id)}
       <article class="pillar">
         <p class="pillar-eyebrow">{p.label}</p>
@@ -113,7 +111,7 @@
 
   <section id="for-users" class="section">
     <h2>For users</h2>
-    <p class="section-lede">
+      <p class="section-lede">
       You don’t need an account, a download, or a credit card to use Shippie. Open a tool. If
       you like it, save it. Your data controls stay close by.
     </p>
@@ -126,34 +124,34 @@
   <section id="for-builders" class="section">
     <h2>For builders</h2>
     <p class="section-lede">
-      Ship in 60 seconds. Pick the shortest path to a live URL, then come back to layer in
-      offline, haptics, local data, and proof — mostly automatic.
+      Ship a local tool in under a minute. Pick the shortest path to a live URL, then come back
+      to layer in haptics, local data, intents, secure backup, and proof — mostly automatic.
     </p>
 
     <h3 id="getting-started">Getting started</h3>
-    <p>Four paths, same result. Pick the shortest one for your codebase.</p>
-
-    <h4>Wrap a hosted app</h4>
-    <p>
-      App already running somewhere else? Don’t move it. Shippie adds a marketplace entry, a
-      phone-ready shell and a stable Shippie URL via an edge reverse-proxy at
-      <code>{'{slug}'}.shippie.app</code>. Your backend stays where it runs best.
-    </p>
-    <pre class="code">shippie wrap https://your-app.example.com --slug your-app
-
-# → live at https://your-app.shippie.app/</pre>
+    <p>Three entry paths, same policy scanner. Pick the shortest one for your codebase.</p>
 
     <h4>Drop a zip in the browser</h4>
     <p>
-      Visit <a href="/new">/new</a> and drag a zip of your built site into the drop zone. We
-      unpack it to R2, register the slug, wire the wrapper, and the URL goes live in under a
-      minute.
+      Visit <a href="/new">/new</a> and drag in a built local tool. We unpack it, scan it for
+      local-tool eligibility, wire the wrapper, and put it live.
+    </p>
+    <pre class="code"># dist/, build/, out/, or a single HTML file all work
+shippie deploy ./dist
+
+# → live at https://your-app.shippie.app/</pre>
+
+    <h4>Push from the CLI or MCP</h4>
+    <p>
+      CLI and MCP use the same deploy API as the browser zip upload. If Supabase, Firebase,
+      Auth0, analytics, ad code, or silent external user-data writes are detected, the deploy
+      is blocked with conversion guidance.
     </p>
 
-    <h4>Push from the CLI</h4>
+    <h4>Convert a hosted app</h4>
     <p>
-      <code>shippie ship</code> from any project directory. Detects the build output, zips it, and
-      uploads with the same 60-second floor as the web flow.
+      Hosted URL wraps are retired for marketplace publishing. Convert user data paths to
+      <code>shippie.local.db</code> and <code>shippie.local.files</code>, then upload the built bundle.
     </p>
 
     <h4>Connect a GitHub repo</h4>
@@ -163,6 +161,16 @@
     </p>
 
     <h3 id="sdk">SDK</h3>
+    <p>
+      The maker entry point is <code>@shippie/sdk</code>. Store records with
+      <code>shippie.local.db.save()</code>, list them with <code>shippie.local.db.list()</code>,
+      write attachments with <code>shippie.local.files</code>, and broadcast useful local signals
+      with Shippie intents.
+    </p>
+    <pre class="code">import { shippie } from '@shippie/sdk';
+
+await shippie.local.db.save('receipts', receipt);
+const receipts = await shippie.local.db.list('receipts');</pre>
     <p>
       <code>@shippie/sdk/wrapper</code> is the runtime injected into every Shippie-hosted page. It
       provides the device-ready shell, push subscriptions, ratings UI, offline coordination, and a
@@ -216,8 +224,8 @@
       install variance is the spread.
     </p>
     <p>
-      If you need 60-second deploys for a GitHub-tracked project, set up a CI step that ships the
-      built artifact via <code>shippie ship</code>. Same speed as the web upload.
+      If you need under-a-minute deploys for a GitHub-tracked project, set up a CI step that ships the
+      built artifact via <code>shippie deploy ./dist</code>. Same speed as the web upload.
     </p>
   </section>
 
@@ -226,7 +234,7 @@
     <p class="section-lede">
       Shippie apps can be remixable. If the maker has flagged it on, anyone can fork the source,
       tweak it for their niche, and ship the result back to the marketplace under a new slug
-      — in the same 60 seconds it took the original. This is how good ideas become good
+      — through the same local-tool scanner as the original. This is how good ideas become good
       ideas for everyone.
     </p>
 

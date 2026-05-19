@@ -32,7 +32,27 @@ describe('shippie.local loader', () => {
 
     await expect(load()).resolves.toMatchObject({ version: 'test-runtime' });
     expect(win.document.querySelector('script[data-shippie-local-runtime]')).toBeNull();
-    expect(local.db).toEqual({ query: expect.any(Function) });
+    await expect(local.db.list('items')).resolves.toEqual([]);
+    expect(local.db.raw()).toEqual({ query: expect.any(Function) });
+  });
+
+  test('local.db.save and local.db.list are one-line aliases over insert/query', async () => {
+    const inserted: Array<{ table: string; value: unknown }> = [];
+    (win as any).shippie = {
+      local: {
+        version: 'test-runtime',
+        db: {
+          insert: async (table: string, value: unknown) => {
+            inserted.push({ table, value });
+          },
+          query: async (table: string) => [{ id: 'r1', table }],
+        },
+      },
+    };
+
+    await expect(local.db.save('receipts', { total: 1200 })).resolves.toBeUndefined();
+    await expect(local.db.list('receipts')).resolves.toEqual([{ id: 'r1', table: 'receipts' }]);
+    expect(inserted).toEqual([{ table: 'receipts', value: { total: 1200 } }]);
   });
 
   test('injects same-origin local runtime script on demand', async () => {

@@ -15,6 +15,7 @@ import { ProfileSettings } from '../ui/ProfileSettings.tsx';
 import { RoomFeed } from '../ui/RoomFeed.tsx';
 import { ShareCardButton } from '../ui/ShareCardButton.tsx';
 import { durationFromMinutes, randomPlayerPlaceholder } from './host-controller.ts';
+import { broadcastPredictionStats } from '../lib/intent-bridge.ts';
 
 export function HostMatchday(props: {
   roomId: string;
@@ -62,6 +63,19 @@ export function HostMatchday(props: {
       return true;
     });
   }, [room.scorePolls]);
+
+  // Cross-app bridge: rebroadcast a compact view of the current
+  // prediction tallies so World Cup Fantasy (and any other consumer)
+  // can read the room's pulse. Throttle is implicit — tallies only
+  // change when a vote lands.
+  useEffect(() => {
+    broadcastPredictionStats({
+      fixture: fixtureTitle(OPENING_FIXTURE),
+      tallies: room.tallies,
+      scoreTallies: room.scoreTallies,
+      polls: room.polls,
+    });
+  }, [room.tallies, room.scoreTallies, room.polls]);
 
   const guestUrl = useMemo(
     () => matchRoomUrl({

@@ -1,7 +1,8 @@
 /**
  * shippie deploy [path]
  *
- * Zips the target directory/file and POSTs to the platform.
+ * Zips the target directory/file and POSTs to the platform. The platform
+ * runs the same Local Tool policy scanner for CLI, MCP, and browser uploads.
  *
  * By default posts to /api/deploy (requires a ~/.shippie/token).
  * With --trial, posts to /api/deploy/trial — no signup needed,
@@ -66,6 +67,7 @@ export async function deployCommand(
   }
 
   console.log('Uploading...');
+  console.log('Policy: local tools only — no external login, cloud user-data storage, ads, trackers, or silent user-data egress.');
 
   try {
     const slug = opts.slug ?? slugFromPath(target, isFile);

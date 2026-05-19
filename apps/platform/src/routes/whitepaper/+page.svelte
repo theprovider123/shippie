@@ -6,12 +6,12 @@
   <title>Whitepaper · Shippie</title>
   <meta
     name="description"
-    content="Locally This, Locally That — how Shippie puts apps back on your device. The post-cloud platform thesis, the stack, and where help is wanted."
+    content="Build on Shippie — local tools that know each other. If it is on Shippie, it is private."
   />
-  <meta property="og:title" content="Shippie Whitepaper — Locally This, Locally That" />
+  <meta property="og:title" content="Build on Shippie — Local tools that know each other" />
   <meta
     property="og:description"
-    content="Wrap. Run. Connect. Apps that install on your phone, run on your device, and talk peer-to-peer."
+    content="One-line local database, zero config, secure backup as continuity, and no third-party user-data storage."
   />
 </svelte:head>
 

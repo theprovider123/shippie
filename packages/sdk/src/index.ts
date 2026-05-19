@@ -1,25 +1,25 @@
 /**
  * @shippie/sdk — client SDK for Shippie apps.
  *
- * BYO backend model: auth/db/files delegate to the maker's own backend
- * (Supabase, Firebase) via a configured adapter. feedback/analytics/
- * install/meta still route through the same-origin /__shippie/* paths
- * on the Shippie Worker.
+ * Local Tool model: shippie.local.db, shippie.local.files, local AI, intents,
+ * install/meta, and proof events are the first-class maker surface. Legacy
+ * configure()/auth/db/files adapter APIs remain for compatibility, but public
+ * marketplace deploys are scanned for local-first eligibility and cannot
+ * require external auth or third-party user-data storage.
  *
  * Three consumption modes:
  *   1. npm import:
  *        import { shippie } from '@shippie/sdk'
- *        shippie.configure({ backend: 'supabase', client: mySupabase })
+ *        await shippie.local.db.save('receipts', receipt)
  *
  *   2. Same-origin script tag (injected by the platform):
  *        <script src="/__shippie/sdk.js" async></script>
- *        // worker injects window.__shippie_meta with backend info
- *        // maker must still include their backend SDK + call configure()
+ *        // worker injects install, local runtime, proof, and Your Data support
  *
  *   3. CDN script tag:
  *        <script src="https://cdn.shippie.app/sdk/v2.latest.js" async></script>
  *
- * Spec v5 §2 (BYO backend).
+ * Local-first public SDK.
  */
 import * as authApi from './auth.ts';
 import * as dbApi from './db.ts';
@@ -39,7 +39,7 @@ import { configureKindEmitter } from './wrapper/kind-emitter.ts';
 export const shippie = {
   version: '2.0.0' as const,
 
-  /** Configure the SDK with a BYO backend (Supabase, Firebase). */
+  /** Legacy adapter configuration. Not accepted for public local-tool deploys. */
   configure,
 
   /** Check whether a backend has been configured. */

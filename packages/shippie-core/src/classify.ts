@@ -1,6 +1,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { classifyKind, localize, type LocalizeTransform } from '@shippie/analyse';
+import {
+  classifyKind,
+  localize,
+  runLocalToolPolicyScan,
+  type LocalToolPolicyReport,
+  type LocalizeTransform,
+} from '@shippie/analyse';
 
 /**
  * Read a directory into the (path → bytes) map @shippie/analyse expects.
@@ -59,11 +65,14 @@ export function loadAppFiles(directory: string): Map<string, Uint8Array> {
   return files;
 }
 
-export type ClassifyResult = ReturnType<typeof classifyKind>;
+export type ClassifyResult = ReturnType<typeof classifyKind> & {
+  localToolPolicy: LocalToolPolicyReport;
+};
 
 /**
- * Classify a directory into local | connected | cloud. Pure file-system
- * read — no platform API call, runs offline.
+ * Check a directory against the local-tool policy, with legacy kind
+ * classification attached for migration context. Pure file-system read —
+ * no platform API call, runs offline.
  */
 export function classifyDirectory(directory: string): ClassifyResult | { error: string } {
   if (!existsSync(directory)) {
@@ -73,7 +82,10 @@ export function classifyDirectory(directory: string): ClassifyResult | { error: 
   if (files.size === 0) {
     return { error: 'no scannable files in directory' };
   }
-  return classifyKind(files);
+  return {
+    ...classifyKind(files),
+    localToolPolicy: runLocalToolPolicyScan(files),
+  };
 }
 
 export interface LocalizePlanInput {

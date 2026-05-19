@@ -8,7 +8,7 @@
  *
  * Steps:
  *   1. Extract zip (with zip-slip protection)
- *   2. Derive manifest (BaaS scanner picks up Supabase/Firebase/etc.)
+ *   2. Derive manifest (maker metadata + local-data passport defaults)
  *   3. Preflight checks (slug + reserved-paths + SW + size + server-code)
  *   4. Upsert apps + deploys rows (Drizzle on D1)
  *   5. PWA + CSP injection into HTML files
@@ -28,7 +28,9 @@ import {
   computePrivacyGrade,
   extractRemixSpec,
   localize,
+  runLocalToolPolicyScan,
   type SecurityScanReport,
+  type LocalToolPolicyReport,
   type LocalizeTransform,
   type RemixSpec,
 } from '@shippie/analyse';
@@ -229,6 +231,21 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     };
   }
 
+  const localToolPolicy = runLocalToolPolicyScan(files);
+  if (!localToolPolicy.passed) {
+    const blockedPreflight = preflightWithLocalToolPolicyBlocks(preflight, localToolPolicy);
+    emitter.emit({ type: 'deploy_failed', reason: 'local_tool_policy', step: 'preflight' });
+    return {
+      success: false,
+      version: 0,
+      files: files.size,
+      totalBytes,
+      preflight: blockedPreflight,
+      liveUrl: '',
+      reason: blockedPreflight.blockers.map((b) => b.title).join(' · '),
+    };
+  }
+
   // 3b. Arcade purity gate. Run BEFORE we touch D1 / R2 so a dirty
   // upload bounces with no side effects. We need the resolved surface
   // to know whether to enforce — peek the existing apps row up front
@@ -288,6 +305,10 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   }
 
   const db = getDrizzleClient(input.db);
+  const policyAllowedConnectDomains = uniqueStrings([
+    ...(manifest.allowed_connect_domains ?? []),
+    ...localToolPolicy.referenceDomains,
+  ]);
 
   // 4. Upsert apps row
   let appRow = await db.query.apps.findFirst({
@@ -484,7 +505,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     notifications: manifest.permissions?.notifications ?? false,
     analytics: manifest.permissions?.analytics ?? true,
     externalNetwork: manifest.permissions?.external_network ?? false,
-    allowedConnectDomains: manifest.allowed_connect_domains ?? [],
+    allowedConnectDomains: policyAllowedConnectDomains,
     updatedAt: completedAt,
   };
   await db
@@ -531,7 +552,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       analytics: true,
     },
     data: manifest.data,
-    allowed_connect_domains: manifest.allowed_connect_domains ?? [],
+    allowed_connect_domains: policyAllowedConnectDomains,
     workflow_probes: manifest.workflow_probes ?? [],
     routing: { mode: routing.mode },
     pwa_readiness: {
@@ -554,11 +575,9 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     console.error('[shippie:deploy] analyseApp failed', err);
   }
 
-  // App Kinds classification (docs/app-kinds.md). Same non-blocking
-  // pattern as the AppProfile call above — a corrupt or empty profile
-  // shouldn't take down a deploy. Persists per-deploy in `deploys` and
-  // denormalizes onto `apps` for fast marketplace queries; KV mirror
-  // for the wrapper.
+  // Legacy kind classification. This remains non-blocking and maker-facing
+  // only while older rows migrate to the Local Tool + capabilities model.
+  // Public copy should use the Local Tool policy, not Local/Connected/Cloud.
   let kindProfileForReport: ReturnType<typeof profileFromDetection> | null = null;
   try {
     const detection = classifyKind(files);
@@ -614,6 +633,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       totalBytes: upload.totalBytes,
       preflight,
       securityReport,
+      localToolPolicy,
       emitter,
     });
   } catch (err) {
@@ -685,6 +705,10 @@ function normalizeVisibilityScope(value: string): NonNullable<DeployStaticResult
   return value === 'private' || value === 'unlisted' || value === 'team' ? value : 'public';
 }
 
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
 function emitSecurityScanEvents(
   emitter: DeployEventEmitter,
   securityReport: SecurityScanReport,
@@ -730,6 +754,29 @@ export function preflightWithSecurityBlocks(
     }));
   const findings = [...preflight.findings, ...securityBlockers];
   const blockers = [...preflight.blockers, ...securityBlockers];
+  return {
+    ...preflight,
+    passed: false,
+    findings,
+    blockers,
+  };
+}
+
+export function preflightWithLocalToolPolicyBlocks(
+  preflight: PreflightReport,
+  report: LocalToolPolicyReport,
+): PreflightReport {
+  if (report.blocks === 0) return preflight;
+  const policyBlockers = report.findings
+    .filter((finding) => finding.severity === 'block')
+    .map((finding) => ({
+      rule: `local-tool:${finding.id}`,
+      severity: 'block' as const,
+      title: finding.title,
+      detail: `${finding.location}: ${finding.detail}`,
+    }));
+  const findings = [...preflight.findings, ...policyBlockers];
+  const blockers = [...preflight.blockers, ...policyBlockers];
   return {
     ...preflight,
     passed: false,
@@ -938,6 +985,7 @@ interface WriteDeployReportInput {
   totalBytes: number;
   preflight: PreflightReport;
   securityReport?: SecurityScanReport;
+  localToolPolicy?: LocalToolPolicyReport;
   emitter: DeployEventEmitter;
 }
 
@@ -963,6 +1011,32 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
     finishedAtMs: input.preflight.durationMs,
     notes: input.preflight.warnings.map((w) => w.title),
   });
+
+  if (input.localToolPolicy) {
+    report.localToolPolicy = {
+      status: input.localToolPolicy.status,
+      summary: input.localToolPolicy.summary,
+      findings: input.localToolPolicy.findings,
+      blocks: input.localToolPolicy.blocks,
+      warns: input.localToolPolicy.warns,
+      infos: input.localToolPolicy.infos,
+      scannedFiles: input.localToolPolicy.scannedFiles,
+      referenceDomains: input.localToolPolicy.referenceDomains,
+      capabilityHints: input.localToolPolicy.capabilityHints,
+    };
+    steps.push({
+      id: 'local_tool_policy',
+      title: 'Local Tool policy',
+      status:
+        input.localToolPolicy.blocks > 0
+          ? 'block'
+          : input.localToolPolicy.warns > 0
+            ? 'warn'
+            : 'ok',
+      finishedAtMs: input.durationMs,
+      notes: [input.localToolPolicy.summary],
+    });
+  }
 
   // Security scan.
   let securityReport;
@@ -1009,8 +1083,12 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
 
   // Privacy audit.
   try {
+    const allowedFeatureDomains = uniqueStrings([
+      ...(input.manifest.allowed_connect_domains ?? []),
+      ...(input.localToolPolicy?.referenceDomains ?? []),
+    ]);
     const privacyReport = runPrivacyAudit(input.files, {
-      allowedFeatureDomains: input.manifest.allowed_connect_domains ?? [],
+      allowedFeatureDomains,
     });
     report.privacy = {
       ...privacyReport,
@@ -1118,7 +1196,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   // a verified portable archive containing the deployed app files, so the same
   // deploy can be installed from shippie.app, a Hub, or a local import.
   try {
-    const packagePermissions = packagePermissionsFromManifest(input.manifest, input.slug);
+    const packagePermissions = packagePermissionsFromManifest(input.manifest, input.slug, input.localToolPolicy);
     const packageTrustReport = packageTrustReportFromDeployReport(report);
     const packageDomains = await packageDomainsForApp(input.db, input.appId, input.slug);
     const builtPackage = await buildShippiePackage({
@@ -1156,6 +1234,8 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
         },
         data: {
           schemaVersion: input.manifest.version ?? 1,
+          family: input.manifest.data_passport?.family,
+          schema: input.manifest.data_passport?.schema,
         },
       },
       permissions: packagePermissions,
@@ -1282,8 +1362,15 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
   });
 }
 
-function packagePermissionsFromManifest(manifest: ShippieJsonLite, slug: string): AppPermissions {
-  const allowedDomains = (manifest.allowed_connect_domains ?? []).map((domain) => domain.toLowerCase());
+function packagePermissionsFromManifest(
+  manifest: ShippieJsonLite,
+  slug: string,
+  localToolPolicy?: LocalToolPolicyReport,
+): AppPermissions {
+  const allowedDomains = uniqueStrings([
+    ...(manifest.allowed_connect_domains ?? []),
+    ...(localToolPolicy?.referenceDomains ?? []),
+  ]).map((domain) => domain.toLowerCase());
   const capabilities: AppPermissions['capabilities'] = {
     localDb: { enabled: true, namespace: slug },
     localFiles: { enabled: true, namespace: slug },

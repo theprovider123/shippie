@@ -26,20 +26,26 @@ import { Categories } from './pages/Categories.tsx';
 import { Recurring } from './pages/Recurring.tsx';
 import { Export } from './pages/Export.tsx';
 import { Settings } from './pages/Settings.tsx';
+import { Groups } from './pages/Groups.tsx';
+import { GroupDetail } from './pages/GroupDetail.tsx';
+import { createGroup, createGroupExpense, getGroup, listGroups } from './db/groups-queries.ts';
+import type { Group } from './db/groups-schema.ts';
+import { checkGroupImport } from './share/group-share.ts';
+import { readImportFragment } from '@shippie/share';
 
-type Tab = 'entries' | 'month' | 'recurring' | 'categories' | 'export' | 'settings' | 'more';
+type Tab = 'entries' | 'month' | 'recurring' | 'groups' | 'categories' | 'export' | 'settings' | 'more';
 
 // Bottom-nav rulebook: 4 primary tabs visible, everything else in More.
-// "Cats" expanded to "Categories" (clarity over brevity once we have
-// the breathing room). CSV + Settings demoted — settings only belongs
-// primary if the app is settings-heavy (Ledger isn't).
+// Groups promoted to primary: split-the-bill is half the reason a person
+// opens Ledger on a trip; surfacing it once a group exists matters.
 const PRIMARY_TABS: Array<{ id: Tab; label: string }> = [
   { id: 'entries', label: 'Entries' },
   { id: 'month', label: 'Month' },
-  { id: 'recurring', label: 'Recurring' },
+  { id: 'groups', label: 'Groups' },
   { id: 'more', label: 'More' },
 ];
 const MORE_TABS: Array<{ id: Tab; label: string; subtitle: string }> = [
+  { id: 'recurring', label: 'Recurring', subtitle: 'Bills and subscriptions on a cadence' },
   { id: 'categories', label: 'Categories', subtitle: 'Manage spending categories' },
   { id: 'export', label: 'Export', subtitle: 'Download a CSV of your entries' },
   { id: 'settings', label: 'Settings', subtitle: 'Currency and preferences' },
@@ -53,6 +59,14 @@ interface ConsumePrompt {
   amountText: string;
   note: string;
   categoryHint: string;
+}
+
+export interface DraftSeed {
+  kind: 'spend' | 'income';
+  amountCents: number | null;
+  note: string;
+  categoryHint: string;
+  source: 'dined-out' | 'shopping-list' | 'expense-logged';
 }
 
 export function App() {
@@ -70,7 +84,10 @@ export function App() {
   const [currency, setCurrencyState] = useState<string>('GBP');
   const [toast, setToast] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<ConsumePrompt | null>(null);
+  const [draftSeed, setDraftSeed] = useState<DraftSeed | null>(null);
   const [ready, setReady] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<Group | null>(null);
+  const [groupImport, setGroupImport] = useState<{ name: string; memberCount: number; expenseCount: number; accept: () => Promise<void> } | null>(null);
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
@@ -89,6 +106,8 @@ export function App() {
             { name: SETTINGS_TABLE, schema: settingsSchema },
           ],
         });
+        // Touch the groups tables so the schema migration runs once on boot.
+        await listGroups(db);
         const [cats, cur] = await Promise.all([listCategories(db), getCurrency(db)]);
         if (cancelled) return;
         setCategories(cats);
@@ -154,9 +173,34 @@ export function App() {
         categoryHint: 'Food',
       });
     });
+    // Receipt Snap bridge — another expense provider. Open the draft
+    // pre-filled directly (skip the confirm step since the row already
+    // came from the user explicitly tapping "Export to Ledger").
+    const unsubReceipt = shippie.intent.subscribe('expense-logged', (broadcast) => {
+      const row = broadcast.rows[0] as
+        | { amount?: number | string; supplier?: string; note?: string; category?: string; source?: string }
+        | undefined;
+      if (!row) return;
+      // Avoid recursion: ignore our own broadcasts.
+      if (row.source === 'ledger' || !row.supplier) return;
+      const raw = row.amount;
+      const cents = typeof raw === 'number'
+        ? Math.round(raw * 100)
+        : typeof raw === 'string' ? parseAmountToCents(raw) : null;
+      setDraftSeed({
+        kind: 'spend',
+        amountCents: cents,
+        note: row.note ?? row.supplier,
+        categoryHint: row.category ?? 'Food',
+        source: 'expense-logged',
+      });
+      void localNavigation.navigate('entries', { kind: 'crossfade' });
+      showToast(`Receipt from ${row.supplier} ready to log.`);
+    });
     return () => {
       unsubDined();
       unsubShop();
+      unsubReceipt();
     };
   }, []);
 
@@ -211,20 +255,66 @@ export function App() {
 
   const acceptPrompt = useCallback(() => {
     if (!prompt) return;
+    // Seed the entry draft from the prompt. EntryList reads `draftSeed`
+    // and opens its editor pre-filled. The user still confirms by hitting
+    // Save — we never log a row silently.
+    setDraftSeed({
+      kind: 'spend',
+      amountCents: prompt.amountCents,
+      note: prompt.amountText
+        ? `${prompt.note} (${prompt.amountText})`
+        : prompt.note,
+      categoryHint: prompt.categoryHint,
+      source: prompt.intent,
+    });
     setPrompt(null);
     void localNavigation.navigate('entries', { kind: 'crossfade' });
-    // EntryList opens the spend draft via the URL hash convention. Using
-    // local state instead: we drop the prompt onto a starter draft by
-    // toggling tab + a query param. Simplest path is to push the values
-    // into a sessionStorage stash that EntryList reads on mount of its
-    // editor — but we don't currently wire that. For now, surface a
-    // toast that the prompt cleared and trust the user to retype if
-    // needed. The intent here is to NOT silently log a row.
-    const summary = prompt.amountText
-      ? `${prompt.amountText} for ${prompt.note}`
-      : prompt.note;
-    showToast(`Tap "+ Log spending" to record ${summary}.`);
-  }, [prompt, showToast]);
+  }, [prompt]);
+
+  // Group share-link import handler — same pattern as Restaurant Memory.
+  // Detects a #shippie-import=… fragment, verifies the signed blob,
+  // previews the group, then accepts on user confirmation.
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      const blob = await readImportFragment(window.location.href);
+      if (!blob || cancelled) return;
+      const check = checkGroupImport(blob);
+      if (!check.ok) return;
+      setGroupImport({
+        name: check.payload.name,
+        memberCount: check.payload.members.length,
+        expenseCount: check.payload.expenses.length,
+        accept: async () => {
+          const created = await createGroup(db, {
+            name: check.payload.name,
+            base_currency: check.payload.base_currency,
+            members: check.payload.members,
+          });
+          for (const exp of check.payload.expenses) {
+            await createGroupExpense(db, {
+              group_id: created.id,
+              paid_by_id: exp.paid_by_id,
+              amount_cents: exp.amount_cents,
+              currency: exp.currency,
+              note: exp.note,
+              occurred_on: exp.occurred_on,
+              split_among: exp.split_among,
+            });
+          }
+          setGroupImport(null);
+          setActiveGroup(created);
+          void localNavigation.navigate('groups', { kind: 'crossfade' });
+          showToast(`Imported "${created.name}".`);
+        },
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, db, localNavigation, showToast]);
 
   if (!ready) {
     return (
@@ -258,6 +348,8 @@ export function App() {
             onChanged={refresh}
             onEntryCreated={handleEntryCreated}
             onToast={showToast}
+            seedDraft={draftSeed}
+            onSeedConsumed={() => setDraftSeed(null)}
           />
         ) : null}
         {tab === 'month' ? (
@@ -283,6 +375,26 @@ export function App() {
             onChanged={refresh}
             onToast={showToast}
           />
+        ) : null}
+        {tab === 'groups' ? (
+          activeGroup ? (
+            <GroupDetail
+              db={db}
+              group={activeGroup}
+              onBack={() => setActiveGroup(null)}
+              onToast={showToast}
+            />
+          ) : (
+            <Groups
+              db={db}
+              defaultCurrency={currency}
+              onOpenGroup={async (g) => {
+                const fresh = await getGroup(db, g.id);
+                setActiveGroup(fresh ?? g);
+              }}
+              onToast={showToast}
+            />
+          )
         ) : null}
         {tab === 'categories' ? (
           <Categories
@@ -348,6 +460,25 @@ export function App() {
           );
         })}
       </nav>
+
+      {groupImport ? (
+        <div className="consume-prompt" role="dialog" aria-label="Import shared group?">
+          <span className="summary">
+            <strong>Import "{groupImport.name}"?</strong>
+            <br />
+            {groupImport.memberCount} {groupImport.memberCount === 1 ? 'member' : 'members'}
+            {groupImport.expenseCount > 0 ? ` · ${groupImport.expenseCount} expense${groupImport.expenseCount === 1 ? '' : 's'}` : ''}
+          </span>
+          <div className="actions">
+            <button type="button" className="ghost" onClick={() => setGroupImport(null)}>
+              Dismiss
+            </button>
+            <button type="button" className="primary" onClick={() => void groupImport.accept()}>
+              Add group
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Single bottom alert slot — priority high→low: prompt (action) > toast (status). */}
       {prompt ? (

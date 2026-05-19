@@ -21,6 +21,7 @@ import type {
   PrivacyGradeResult,
   LocalizePatch,
   RemixSpec,
+  LocalToolPolicyReport,
 } from '@shippie/analyse';
 import type { AppKindProfile } from '$lib/types/app-kind';
 import type { RouteModeDecision } from './route-mode';
@@ -74,6 +75,20 @@ export interface DeployReport {
   privacy: PrivacyAuditReport & {
     /** Internal-only until Stage B. */
     grade?: PrivacyGradeResult;
+  };
+
+  /** Local Tool policy eligibility. This is the enforceable "private by
+   * architecture" gate used by zip, CLI, and MCP deploys. */
+  localToolPolicy?: {
+    status: LocalToolPolicyReport['status'];
+    summary: string;
+    findings: LocalToolPolicyReport['findings'];
+    blocks: number;
+    warns: number;
+    infos: number;
+    scannedFiles: number;
+    referenceDomains: string[];
+    capabilityHints: LocalToolPolicyReport['capabilityHints'];
   };
 
   /** Step-by-step record of what the pipeline did. Phase 3 turns this

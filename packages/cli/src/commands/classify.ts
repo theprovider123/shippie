@@ -1,6 +1,6 @@
 /**
- * `shippie classify [dir]` — App Kind classification (local / connected /
- * cloud). Pure local — no platform call, runs offline.
+ * `shippie classify [dir]` — Local Tool policy check. Pure local — no
+ * platform call, runs offline.
  */
 import { resolve } from 'node:path';
 import { classifyDirectory } from '@shippie/core';
@@ -23,10 +23,24 @@ export async function classifyCommand(dir: string | undefined, opts: ClassifyOpt
     return;
   }
 
-  console.log(`App Kind: ${result.detectedKind}`);
-  console.log(`Confidence: ${Math.round(result.confidence * 100)}%`);
+  const policy = result.localToolPolicy;
+  console.log(`Local Tool eligibility: ${policy.status}`);
+  console.log(`Policy: ${policy.passed ? 'PASS' : 'NEEDS CONVERSION'}`);
+  console.log(`Findings: ${policy.blocks} block · ${policy.warns} warn · ${policy.infos} info`);
+  console.log(`Legacy kind signal: ${result.detectedKind} (${Math.round(result.confidence * 100)}%)`);
+  console.log(`\n${policy.summary}`);
+  if (policy.findings.length) {
+    console.log('\nPolicy findings:');
+    for (const finding of policy.findings.slice(0, 12)) {
+      console.log(`  - ${finding.severity.toUpperCase()} ${finding.title}`);
+      console.log(`    ${finding.location}: ${finding.detail}`);
+    }
+  }
+  if (policy.referenceDomains.length) {
+    console.log(`\nReference-data domains: ${policy.referenceDomains.join(', ')}`);
+  }
   if (result.reasons.length) {
-    console.log('\nReasons:');
+    console.log('\nLegacy kind reasons:');
     for (const r of result.reasons) console.log(`  - ${r}`);
   }
 }

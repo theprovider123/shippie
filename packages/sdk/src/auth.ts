@@ -1,12 +1,13 @@
 /**
  * shippie.auth.*
  *
- * BYO backend auth — delegates to the configured BackendAdapter.
- * If no backend is configured (Tier 1 static app), all methods throw
+ * Legacy BYO backend auth — delegates to the configured BackendAdapter.
+ * Public Shippie marketplace tools should not require external auth for
+ * their core workflow. If no backend is configured, all methods throw
  * `ShippieSDKError('not_configured', ...)` directing the maker to
  * call shippie.configure().
  *
- * Spec v5 §2.
+ * Kept for older embedded apps and migration helpers.
  */
 import { getAdapter } from './configure.ts';
 import { ShippieSDKError } from './errors.ts';

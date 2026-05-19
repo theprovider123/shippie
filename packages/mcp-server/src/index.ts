@@ -10,7 +10,7 @@
  *   config   — read/write maker shippie.json overrides
  *   templates — list blessed starter templates
  *   remix_info — get source, license, fork URL, and redeploy commands
- *   deploy_workspace — deploy several connected apps from shippie-workspace.json
+ *   deploy_workspace — deploy several local tools from shippie-workspace.json
  *   data_standard_doc — explain the inherited Your Data / sealed-copy contract
  *   data_doctor — inspect shippie.json for the app data inheritance contract
  *
@@ -35,6 +35,7 @@ import {
   computeGraduation,
   describeGraduationTier,
   localize,
+  runLocalToolPolicyScan,
   type DeploySignals,
   type GraduationInput,
   type LocalizeTransform,
@@ -56,8 +57,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'deploy',
       description:
-        'Deploy a directory to Shippie. Returns the live URL, deploy_id, and deploy intelligence transcript. ' +
+        'Deploy a local tool directory to Shippie. Returns the live URL, deploy_id, and deploy intelligence transcript. ' +
         'Pass trial=true for a no-signup 24-hour trial deploy (no authentication required). ' +
+        'The same local-tool policy scanner used by zip uploads runs here: no external login, no third-party user-data storage, no ads/trackers, and no silent user-data egress. ' +
         'Generated apps must feel like a real app inside Shippie — use 100dvh / 100svh (NOT 100vh) ' +
         'for full-height layouts, env(safe-area-inset-*) for any fixed positioning, touch targets ' +
         '≥44px (Apple HIG) / ≥48dp (Android), and call useKeyboard() from @shippie/sdk if the app ' +
@@ -236,7 +238,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'deploy_workspace',
       description:
-        'Deploy every app declared in a shippie-workspace.json file. Use this for multi-app products such as fan/control/display venue workspaces. ' +
+        'Deploy every local tool declared in a shippie-workspace.json file. Use this for multi-tool products such as fan/control/display venue workspaces. ' +
         'Each app entry may include remixFrom or remix_from to preserve remix lineage.',
       inputSchema: {
         type: 'object' as const,
@@ -262,11 +264,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'classify_kind',
       description:
-        "Classify an app source directory as Shippie's Local / Connected / Cloud. " +
-        'Static analysis only — same classifier used at deploy time. ' +
-        'Returns the detected kind, reasons, external domains, backend providers, ' +
-        'local signals, and Localize candidacy. Use this BEFORE building to know ' +
-        'how the app will be labelled in the marketplace.',
+        "Check an app source directory against Shippie's Local Tool policy. " +
+        'Static analysis only — same local-tool scanner used at deploy time, plus legacy kind detection for migration context. ' +
+        'Returns eligibility, blockers, reference-data domains, capability hints, and Localize candidacy. Use this BEFORE building to know whether the app can publish.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -306,10 +306,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'app_kinds_doc',
       description:
-        'Return the Shippie App Kinds vocabulary — Local / Connected / Cloud definitions, ' +
-        'proof rules, and how detection vs. declaration vs. proof interact. Use this when ' +
-        'helping a user decide how to architect a new app for Shippie. Pulls from the ' +
-        'docs/app-kinds.md authoritative source.',
+        'Return the Shippie Local Tool policy: private by architecture, allowed capabilities, blocked cloud patterns, reference-data rules, and migration guidance.',
       inputSchema: {
         type: 'object' as const,
         properties: {},
@@ -1002,13 +999,37 @@ function handleClassifyKind(args: { directory: string }) {
     };
   }
   const detection = classifyKind(files);
+  const policy = runLocalToolPolicyScan(files);
   const lines = [
-    `Detected kind: ${detection.detectedKind.toUpperCase()}`,
-    `Confidence: ${detection.confidence.toFixed(2)} (${files.size} files scanned)`,
+    `Local Tool eligibility: ${policy.status}`,
+    `Policy result: ${policy.passed ? 'PASS' : 'NEEDS CONVERSION'}`,
+    `Policy scan: ${policy.blocks} block · ${policy.warns} warn · ${policy.infos} info (${policy.scannedFiles} files scanned)`,
+    `Legacy kind signal: ${detection.detectedKind.toUpperCase()} (${detection.confidence.toFixed(2)})`,
     '',
-    'Reasons:',
-    ...detection.reasons.map((r) => '  • ' + r),
+    'Policy summary:',
+    '  • ' + policy.summary,
   ];
+  if (policy.findings.length) {
+    lines.push('', 'Policy findings:');
+    for (const finding of policy.findings.slice(0, 12)) {
+      lines.push(`  ${finding.severity.toUpperCase()} ${finding.id} — ${finding.title}`);
+      lines.push(`    ${finding.location}: ${finding.detail}`);
+    }
+  }
+  if (policy.referenceDomains.length) {
+    lines.push('', 'Reference-data domains: ' + policy.referenceDomains.join(', '));
+  }
+  const caps = Object.entries(policy.capabilityHints)
+    .filter(([key, value]) => key !== 'referenceData' && value === true)
+    .map(([key]) => key);
+  if (caps.length) {
+    lines.push('Capability hints: ' + caps.join(', '));
+  }
+  lines.push(
+    '',
+    'Legacy kind reasons:',
+    ...detection.reasons.map((r) => '  • ' + r),
+  );
   if (detection.backendProviders.length) {
     lines.push('', 'Backend providers: ' + detection.backendProviders.join(', '));
   }
@@ -1091,36 +1112,39 @@ function handleLocalizePlan(args: { directory: string; transforms?: string[] }) 
 
 function handleAppKindsDoc() {
   const text = [
-    'Shippie App Kinds — Local / Connected / Cloud',
+    'Shippie Local Tool Policy',
     '',
-    'Every app on Shippie is classified by where its data lives and whether',
-    'it works offline. The classifier runs at deploy time and the badge is',
-    'upgraded by runtime proof events from real devices.',
+    'If it is on Shippie, it is private. No exceptions, no badge-checking, no hidden cloud account.',
     '',
-    'LOCAL — Your app data lives on your device. Core features work offline.',
-    '  Allowed traffic: Shippie wrapper / proof / update + declared static',
-    '  CDN. No external data dependencies.',
+    'One public app kind: Local Tool.',
+    'Capabilities are additive: works offline, secure backup, reference data used, local AI, private relay via Shippie, shares with my tools.',
     '',
-    'CONNECTED — Your app data lives on your device. The app fetches live',
-    '  information (weather, prices, news, AI inference, real-time peer',
-    '  sync) when online. Personal data stays local; external data needs',
-    '  internet.',
+    'Allowed:',
+    '  • shippie.local.db, shippie.local.files, shippie.local.ai',
+    '  • Shippie intents and local intelligence',
+    '  • encrypted Shippie backup chosen by the user',
+    '  • encrypted Shippie relay/signal rooms that Shippie cannot read',
+    '  • public reference-data APIs when user data is not sent out',
     '',
-    'CLOUD — Your app data or core app state lives on someone else\'s server.',
-    '  Usually requires an account or hosted backend.',
+    'Blocked:',
+    '  • Supabase, Firebase, Appwrite, PocketBase, or third-party DB clients',
+    '  • external auth providers required for core use',
+    '  • Google Analytics, Mixpanel, PostHog, Segment, Meta pixel, ads',
+    '  • external POST/PUT/PATCH/DELETE with user content',
+    '  • external LLM calls with user content unless the user explicitly triggers that one call',
     '',
-    'When building for Shippie, prefer Local. Use @shippie/sdk\'s local DB',
-    '(wa-sqlite + OPFS), local files, and local AI primitives instead of',
-    'Supabase, Firebase, or hosted backends.',
+    'Asymmetry rule:',
+    '  Reference data may come in. User data does not go out, except visible export, encrypted backup, or encrypted Shippie relay.',
     '',
-    'Authentication: Shippie\'s "local identity" model has no providers. The',
-    'user is "logged in" as themselves on their own device. No login screen',
-    'is needed for most apps.',
+    'Maker entry point:',
+    '  import { shippie } from "@shippie/sdk";',
+    '  await shippie.local.db.save("receipts", receipt);',
+    '  await shippie.local.db.list("receipts");',
+    '  shippie deploy ./dist',
     '',
-    'Use the classify_kind MCP tool to check what kind a project will be.',
-    'Use localize_plan to migrate a Cloud app toward Local.',
+    'Use classify_kind before deploy. Use localize_plan to migrate cloud-backed code toward local primitives.',
     '',
-    'Authoritative reference: docs/app-kinds.md in the Shippie repo.',
+    'Authoritative reference: docs/strategy/local-tools-policy.md in the Shippie repo.',
   ].join('\n');
   return { content: [{ type: 'text', text }] };
 }

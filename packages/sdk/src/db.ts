@@ -1,11 +1,10 @@
 /**
  * shippie.db.*
  *
- * BYO backend storage — delegates to the configured BackendAdapter.
- * The API shape (set/get/list/delete by collection+key) is
- * backend-agnostic; each adapter maps it to the backend's native API.
+ * Legacy BYO backend storage — delegates to the configured BackendAdapter.
+ * Public Shippie marketplace tools should use `shippie.local.db` instead.
  *
- * Spec v5 §2.
+ * Kept for older embedded apps and migration helpers.
  */
 import { getAdapter } from './configure.ts';
 

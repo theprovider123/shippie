@@ -14,6 +14,7 @@ import {
 } from '../db/queries.ts';
 import type { Category, Entry, EntryKind, Recurring } from '../db/schema.ts';
 import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
+import type { DraftSeed } from '../App.tsx';
 
 export interface EntryListProps {
   db: ShippieLocalDb;
@@ -25,6 +26,10 @@ export interface EntryListProps {
   onChanged(): void;
   onEntryCreated(entry: Entry): void;
   onToast(message: string): void;
+  /** Cross-app draft seed. When set, opens the editor pre-filled. */
+  seedDraft?: DraftSeed | null;
+  /** Called once the seed has been turned into an open draft. */
+  onSeedConsumed?(): void;
 }
 
 interface DraftState {
@@ -56,6 +61,8 @@ export function EntryList({
   onChanged,
   onEntryCreated,
   onToast,
+  seedDraft,
+  onSeedConsumed,
 }: EntryListProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [totals, setTotals] = useState({ spend_cents: 0, income_cents: 0, net_cents: 0 });
@@ -84,6 +91,25 @@ export function EntryList({
       cancelled = true;
     };
   }, [db, year, month, refreshKey]);
+
+  // Cross-app seed: when another app (Restaurant Memory, Receipt Snap,
+  // Palate's shopping list) hands us values, open the draft editor with
+  // them already populated. The user still confirms by hitting Save.
+  useEffect(() => {
+    if (!seedDraft) return;
+    const hint = seedDraft.categoryHint.toLowerCase();
+    const matched = categories.find((c) => c.label.toLowerCase().includes(hint))
+      ?? categories.find((c) => hint.includes(c.label.toLowerCase()))
+      ?? null;
+    setDraft({
+      kind: seedDraft.kind,
+      amountCents: seedDraft.amountCents,
+      categoryId: matched?.id ?? null,
+      note: seedDraft.note,
+      occurredOn: toIsoDate(new Date()),
+    });
+    onSeedConsumed?.();
+  }, [seedDraft, categories, onSeedConsumed]);
 
   const grouped = useMemo(() => groupByDay(entries), [entries]);
   const currency = entries[0]?.currency ?? 'GBP';

@@ -1,17 +1,16 @@
 /**
  * shippie wrap <upstream-url>
  *
- * Wraps an already-hosted URL as a Shippie marketplace app served via the
- * Worker reverse-proxy at `{slug}.shippie.app`. No build, no upload —
- * we just register the upstream + config, and the edge handles the rest.
+ * URL-wrap deploys used to register an already-hosted site behind
+ * `{slug}.shippie.app`. The public maker path is now local-tool-only, so the
+ * command is retained as a clear migration error rather than silently creating
+ * a cloud-backed Shippie app.
  *
  * Examples:
  *   shippie wrap https://mevrouw.example.com
  *   shippie wrap https://example.com --slug cool-app --name "Cool App"
  *   shippie wrap https://app.acme.io --strict-csp
  */
-import { postJson } from '../api.js';
-
 export interface WrapInput {
   upstreamUrl: string;
   slug: string;
@@ -28,46 +27,15 @@ export interface WrapInput {
   log?: (line: string) => void;
 }
 
-interface WrapResponse {
-  success: boolean;
-  slug: string;
-  live_url: string;
-  runtime_config: { required_redirect_uris: string[] };
-  reason?: string;
-}
-
 export async function wrapCommand(input: WrapInput): Promise<void> {
   const log = input.log ?? console.log;
-
-  const body = {
-    slug: input.slug,
-    upstream_url: input.upstreamUrl,
-    name: input.name ?? input.slug,
-    tagline: input.tagline,
-    type: input.type ?? 'app',
-    category: input.category ?? 'tools',
-    csp_mode: input.cspMode,
-    remix_from: input.remix,
-    source_repo: input.sourceRepo,
-    license: input.license,
-    remix_allowed: input.remixable,
-  };
-
-  const res = await postJson<WrapResponse>(
-    { apiUrl: input.apiUrl },
-    '/api/deploy/wrap',
-    body,
-  );
-
-  if (!res.success) {
-    throw new Error(`wrap failed: ${res.reason ?? 'unknown'}`);
-  }
-
-  log(`wrapped ${res.slug}`);
-  log(`  live: ${res.live_url}`);
+  log('Shippie no longer wraps hosted cloud apps into the marketplace.');
+  log('Build a local tool, then deploy the built output instead:');
   log('');
-  log('  Add this redirect URI to your auth provider:');
-  for (const uri of res.runtime_config.required_redirect_uris) {
-    log(`    ${uri}`);
-  }
+  log('  shippie deploy ./dist');
+  log('');
+  log('A Shippie tool must keep user data on the device, avoid external login, and pass the local-tool policy scanner.');
+  throw new Error(
+    `wrap retired for ${input.upstreamUrl}. Convert to shippie.local.db / shippie.local.files, then deploy a zip or build folder.`,
+  );
 }

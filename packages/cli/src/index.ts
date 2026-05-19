@@ -54,7 +54,7 @@ const program = new Command();
 
 program
   .name('shippie')
-  .description('Ship apps to shippie.app from your terminal.')
+  .description('Ship local, private tools to shippie.app from your terminal.')
   .version('0.0.2');
 
 program
@@ -142,7 +142,7 @@ program
 
 program
   .command('deploy [path]')
-  .description('Deploy a directory, .zip, or single .html file to Shippie')
+  .description('Deploy a local tool directory, .zip, or single .html file to Shippie')
   .option('-s, --slug <slug>', 'App slug (defaults to path name)')
   .option('--remix <slug>', 'Deploy as a remix of an existing public app slug')
   .option('--skip-build', 'Skip install + build, deploy as-is')
@@ -219,7 +219,7 @@ program
 
 program
   .command('wrap <upstream-url>')
-  .description('Wrap an already-hosted URL as a Shippie marketplace app')
+  .description('Retired: hosted URL wraps are not accepted for local-tool deploys')
   .option('-s, --slug <slug>', 'App slug (defaults to upstream hostname)')
   .option('-n, --name <name>', 'Human-readable name (defaults to slug)')
   .option('-t, --tagline <tagline>', 'Short tagline')
@@ -330,7 +330,7 @@ program
 
 program
   .command('classify [dir]')
-  .description('Classify an app directory as local | connected | cloud (offline)')
+  .description('Check a tool directory against the Local Tool policy (offline)')
   .option('--json', 'Emit JSON instead of human-readable output')
   .action(classifyCommand);
 

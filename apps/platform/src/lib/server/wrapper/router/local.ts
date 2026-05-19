@@ -30,13 +30,19 @@ const DEV_STUB = `// __shippie/local.js — dev local-runtime boundary
       crypto: typeof crypto !== 'undefined' && !!crypto.subtle
     };
   };
-  shippie.local = shippie.local || {
+  const existingLocal = shippie.local;
+  const isSdkFacade = existingLocal &&
+    typeof existingLocal.load === 'function' &&
+    typeof existingLocal.intelligence === 'object';
+  if (!existingLocal || isSdkFacade) shippie.local = {
     version: 'dev-stub',
     capabilities,
     db: {
       create: unsupported('db.create'),
       insert: unsupported('db.insert'),
+      save: unsupported('db.save'),
       query: unsupported('db.query'),
+      list: unsupported('db.list'),
       search: unsupported('db.search'),
       vectorSearch: unsupported('db.vectorSearch'),
       update: unsupported('db.update'),

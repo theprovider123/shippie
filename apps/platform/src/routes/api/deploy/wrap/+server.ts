@@ -1,20 +1,15 @@
 /**
  * POST /api/deploy/wrap
  *
- * URL-wrap deploy — register an upstream URL as a Shippie app.
- * Contract preserved from apps/web/app/api/deploy/wrap/route.ts.
+ * URL-wrap deploys are retired for the public Shippie maker path.
+ * A reverse-proxied cloud app cannot be statically verified as local,
+ * private, offline, and no-login, so it cannot wear the Shippie marketplace
+ * promise. Makers should upload a built local tool zip, use the CLI/MCP
+ * deploy path, or convert the hosted app to Shippie local primitives first.
  */
 import { json, error } from '@sveltejs/kit';
-import { and, eq, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
-import { createWrappedApp } from '$server/deploy/wrap';
-import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
-import { getDrizzleClient, schema } from '$server/db/client';
-import { remixEligibilityForSlug } from '$server/remix/eligibility';
-
-const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
-const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 export const POST: RequestHandler = async (event) => {
   const env = event.platform?.env;
@@ -23,147 +18,18 @@ export const POST: RequestHandler = async (event) => {
   const who = await resolveRequestUserId(event);
   if (!who) return json({ error: 'unauthenticated' }, { status: 401 });
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await event.request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'invalid_json' }, { status: 400 });
-  }
-
-  // Validate inline (zod isn't a dep yet — keep this self-contained).
-  const slug = typeof body.slug === 'string' ? body.slug.trim() : '';
-  const upstreamUrl = typeof body.upstream_url === 'string' ? body.upstream_url : '';
-  const name = typeof body.name === 'string' ? body.name : '';
-  const tagline = typeof body.tagline === 'string' ? body.tagline : undefined;
-  const type = (typeof body.type === 'string' ? body.type : 'app') as 'app' | 'web_app' | 'website';
-  const category = typeof body.category === 'string' ? body.category : 'tools';
-  const cspMode = body.csp_mode === 'strict' ? 'strict' : 'lenient';
-  const themeColor = typeof body.theme_color === 'string' && HEX_RE.test(body.theme_color) ? body.theme_color : undefined;
-  const remixFrom = typeof body.remix_from === 'string' ? body.remix_from.trim() : '';
-  const sourceRepo = typeof body.source_repo === 'string' ? body.source_repo.trim() : '';
-  const license = typeof body.license === 'string' ? body.license.trim() : '';
-  const remixAllowed = typeof body.remix_allowed === 'boolean' ? body.remix_allowed : undefined;
-  const visibilityScope = (typeof body.visibility_scope === 'string'
-    ? body.visibility_scope
-    : 'public') as 'public' | 'unlisted' | 'private' | 'team';
-  const organization = typeof body.organization === 'string'
-    ? body.organization
-    : typeof body.organization_id === 'string'
-      ? body.organization_id
-      : '';
-
-  if (!slug || !SLUG_RE.test(slug) || slug.length > 64) {
-    return json({ error: 'invalid_slug' }, { status: 400 });
-  }
-  if (!upstreamUrl.startsWith('https://')) {
-    return json({ error: 'upstream_not_https' }, { status: 400 });
-  }
-  if (!name || name.length > 120) {
-    return json({ error: 'invalid_name' }, { status: 400 });
-  }
-  if (!['app', 'web_app', 'website'].includes(type)) {
-    return json({ error: 'invalid_type' }, { status: 400 });
-  }
-  if (!['public', 'unlisted', 'private', 'team'].includes(visibilityScope)) {
-    return json({ error: 'invalid_visibility_scope' }, { status: 400 });
-  }
-  if (sourceRepo && !sourceRepo.startsWith('https://')) {
-    return json({ error: 'invalid_source_repo' }, { status: 400 });
-  }
-  if (license && license.length > 64) {
-    return json({ error: 'invalid_license' }, { status: 400 });
-  }
-  if (remixAllowed === true && (!sourceRepo || !license)) {
-    return json({ error: 'remix_metadata_required' }, { status: 400 });
-  }
-
-  const db = getDrizzleClient(env.DB);
-  const organizationId =
-    visibilityScope === 'team'
-      ? await resolveWrapOrganization(db, who.userId, organization)
-      : undefined;
-  if (visibilityScope === 'team' && !organizationId) {
-    return json({ error: 'invalid_or_forbidden_organization' }, { status: 403 });
-  }
-  const remix = remixFrom
-    ? await remixEligibilityForSlug(db, remixFrom)
-    : null;
-  if (remix?.ok === false) {
-    return json({ error: 'remix_unavailable', reason: remix.reason }, { status: 400 });
-  }
-  const remixApp = remix?.ok ? remix.app : null;
-
-  const reservedSlugs = await loadReservedSlugs(env.DB);
-  const result = await createWrappedApp({
-    slug,
-    makerId: who.userId,
-    upstreamUrl,
-    name,
-    tagline,
-    type,
-    category,
-    cspMode,
-    themeColor,
-    visibilityScope,
-    organizationId,
-    lineage: remixApp || sourceRepo || license || (remixAllowed !== undefined)
-      ? {
-          templateId: remixApp?.templateId ?? undefined,
-          parentAppId: remixApp?.id ?? undefined,
-          parentVersion: remixApp?.latestVersion ?? undefined,
-          sourceRepo: sourceRepo || undefined,
-          license: license || remixApp?.license,
-          remixAllowed: remixAllowed ?? false,
-        }
-      : undefined,
-    reservedSlugs,
-    db: env.DB,
-    kv: env.CACHE,
-    publicOrigin: env.PUBLIC_ORIGIN ?? 'https://shippie.app',
-  });
-
-  if (!result.success) {
-    return json({ error: 'wrap_failed', reason: result.reason }, { status: 400 });
-  }
-
-  return json({
-    success: true,
-    slug: result.slug,
-    deploy_id: result.deployId,
-    live_url: result.liveUrl,
-    runtime_config: {
-      required_redirect_uris: result.runtimeConfig.requiredRedirectUris,
+  return json(
+    {
+      error: 'wrap_retired',
+      reason:
+        'URL wraps are retired for Shippie marketplace deploys. Shippie tools must be local-first: no external login, no third-party user-data storage, and no silent user-data egress. Upload a built zip or deploy from the CLI/MCP path so the local-tool policy scanner can verify the bundle.',
+      alternatives: [
+        'Upload a built dist/, build/, or out/ folder as a zip.',
+        'Run shippie deploy ./dist from the CLI.',
+        'Use the Shippie MCP deploy tool from your editor.',
+        'Convert the hosted app to shippie.local.db / shippie.local.files before publishing.',
+      ],
     },
-  });
+    { status: 410 },
+  );
 };
-
-async function resolveWrapOrganization(
-  db: ReturnType<typeof getDrizzleClient>,
-  userId: string,
-  organization: string,
-): Promise<string | null> {
-  if (!organization) return null;
-  const [org] = await db
-    .select({ id: schema.organizations.id })
-    .from(schema.organizations)
-    .where(
-      or(
-        eq(schema.organizations.id, organization),
-        eq(schema.organizations.slug, organization),
-      ),
-    )
-    .limit(1);
-  if (!org) return null;
-
-  const [member] = await db
-    .select({ role: schema.organizationMembers.role })
-    .from(schema.organizationMembers)
-    .where(
-      and(
-        eq(schema.organizationMembers.orgId, org.id),
-        eq(schema.organizationMembers.userId, userId),
-      ),
-    )
-    .limit(1);
-  return member && (member.role === 'admin' || member.role === 'deployer') ? org.id : null;
-}

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import type { Entry } from '../lib/store.ts';
 import { csvFilename, entriesToCsv, photoFilename } from '../lib/export.ts';
 import { loadPhoto } from '../photo-store.ts';
+import { migrateEntriesToChiwit } from '../lib/migrate-to-chiwit.ts';
 
 interface SettingsProps {
   entries: readonly Entry[];
@@ -20,6 +21,7 @@ interface SettingsProps {
 export function Settings({ entries, onWipe }: SettingsProps) {
   const [exportingPhotos, setExportingPhotos] = useState(false);
   const [photoExportIndex, setPhotoExportIndex] = useState(0);
+  const [migrating, setMigrating] = useState<'idle' | 'running' | 'done'>('idle');
   const photoCount = entries.filter((e) => e.photoLocalId).length;
 
   function exportCsv() {
@@ -66,8 +68,41 @@ export function Settings({ entries, onWipe }: SettingsProps) {
     onWipe();
   }
 
+  function moveToChiwit() {
+    const sure = window.confirm(
+      `Move ${entries.length} weight ${entries.length === 1 ? 'entry' : 'entries'} into Chiwit's Daily Pulse? Body Metrics data stays here too until you wipe it.`,
+    );
+    if (!sure) return;
+    setMigrating('running');
+    try {
+      const moved = migrateEntriesToChiwit(entries);
+      setMigrating('done');
+      window.alert(`Moved ${moved} ${moved === 1 ? 'entry' : 'entries'} into Chiwit. Open Chiwit → Track to confirm.`);
+    } catch (err) {
+      setMigrating('idle');
+      window.alert(`Migration failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   return (
     <>
+      <section className="migrate-callout">
+        <h2>Body Metrics is moving to Chiwit</h2>
+        <p>
+          Chiwit's Daily Pulse covers weight along with sleep, mood,
+          movement and hydration — the all-in-one wellness picture.
+          Body Metrics will keep working, but new wellness features land
+          in Chiwit first.
+        </p>
+        <button type="button" className="primary" onClick={moveToChiwit} disabled={entries.length === 0 || migrating !== 'idle'}>
+          {migrating === 'running'
+            ? 'Moving…'
+            : migrating === 'done'
+              ? '✓ Moved to Chiwit'
+              : `Move ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} to Chiwit`}
+        </button>
+      </section>
+
       <section className="privacy-callout">
         <h2>Privacy</h2>
         <p>

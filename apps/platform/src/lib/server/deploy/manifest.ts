@@ -4,10 +4,7 @@
  * Ported from apps/web/lib/deploy/index.ts:deriveManifest. Same semantics:
  *   - Maker-provided shippie.json wins.
  *   - Otherwise, look for shippie.json in the zip.
- *   - Otherwise auto-draft from defaults + BaaS scanner output.
- *
- * The BaaS scanner is inlined here as a Worker-friendly module — no
- * dependency on apps/web/lib/trust.
+ *   - Otherwise auto-draft from defaults + local-data passport metadata.
  */
 import { parseMakerCuration, type MakerCuration } from '$lib/curation/schema';
 
@@ -50,15 +47,13 @@ export interface ShippieJsonLite {
     consumes?: string[];
   };
   /**
-   * Maker-declared App Kind (docs/app-kinds.md). Optional — if omitted,
-   * the platform uses static-analysis detection only. If declared and
-   * detection disagrees, the marketplace shows the detected kind and
-   * surfaces a conflict notice in the maker dashboard.
+   * Legacy maker-declared app kind. Public listings now use a single
+   * Local Tool promise plus capabilities; this remains during migration
+   * so old shippie.json files continue to parse.
    */
   kind?: 'local' | 'connected' | 'cloud';
   /**
-   * Maker-declared core-workflow probes (docs/app-kinds.md → "Defining
-   * core workflow completed"). v1: list of route paths or selectors the
+   * Maker-declared core-workflow probes. v1: list of route paths or selectors the
    * wrapper observes for offline completion. Used to upgrade
    * publicKindStatus from `verifying` to `confirmed`.
    */
@@ -92,8 +87,14 @@ export interface ShippieJsonLite {
    * durable app data should flow through Shippie Documents so users can
    * add devices, move phones, recover from Safari storage wipes, and
    * keep sealed copies that Shippie can store but cannot open.
-   */
+  */
   data?: ShippieDataPolicy;
+  /**
+   * Data Passport v0. Names the app's durable data family so a remix or
+   * successor can declare compatibility before runtime migration runners
+   * exist. v0 is metadata only.
+   */
+  data_passport?: ShippieDataPassport;
   spaces?: ShippieSpacesPolicy;
   /**
    * Container commons ownership metadata. These are optional so existing
@@ -143,6 +144,11 @@ export interface ShippieDataPolicy {
   localStorage: ShippieDataStorageScope;
 }
 
+export interface ShippieDataPassport {
+  family: string;
+  schema: string;
+}
+
 export interface ShippieSpaceRole {
   id: string;
   permissions: string[];
@@ -177,6 +183,10 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         data: hasObjectDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
           ? parseDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
           : undefined,
+        data_passport: parseDataPassport(
+          (input.shippieJson as unknown as Record<string, unknown>).data_passport,
+          input.slug,
+        ),
         spaces: parseSpaces((input.shippieJson as unknown as Record<string, unknown>).spaces),
       },
       notes: [],
@@ -214,6 +224,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
           : undefined,
         migrations: parseMigrations(m.migrations),
         data: hasObjectDataPolicy(m.data) ? parseDataPolicy(m.data) : undefined,
+        data_passport: parseDataPassport(m.data_passport, input.slug),
         spaces: parseSpaces(m.spaces),
         intents: parseIntents(m.intents),
         source_repo: typeof m.source_repo === 'string' ? m.source_repo : undefined,
@@ -271,7 +282,31 @@ function defaultManifest(slug: string): ShippieJsonLite {
     theme_color: '#E8603C',
     background_color: '#ffffff',
     data: defaultDataPolicy(slug),
+    data_passport: defaultDataPassport(slug),
   };
+}
+
+export function defaultDataPassport(slug: string): ShippieDataPassport {
+  const family = normalizeDataPassportPart(slug) || 'local-tool';
+  return {
+    family,
+    schema: `${family}.v1`,
+  };
+}
+
+export function parseDataPassport(raw: unknown, slug: string): ShippieDataPassport {
+  const fallback = defaultDataPassport(slug);
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return fallback;
+  const obj = raw as Record<string, unknown>;
+  const family =
+    typeof obj.family === 'string'
+      ? normalizeDataPassportPart(obj.family) || fallback.family
+      : fallback.family;
+  const schema =
+    typeof obj.schema === 'string'
+      ? normalizeDataPassportSchema(obj.schema) || `${family}.v1`
+      : `${family}.v1`;
+  return { family, schema };
 }
 
 export function defaultDataPolicy(slug = ''): ShippieDataPolicy {
@@ -413,6 +448,24 @@ function isSafeStoragePattern(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 160 && !value.startsWith('shippie.inherited-data.v0');
 }
 
+function normalizeDataPassportPart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function normalizeDataPassportSchema(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
+}
+
 function hasObjectDataPolicy(raw: unknown): boolean {
   return typeof raw === 'object' && raw !== null && !Array.isArray(raw);
 }
@@ -532,7 +585,8 @@ function titleCase(slug: string): string {
 }
 
 // ----------------------------------------------------------------------
-// BaaS scanner (ported inline from apps/web/lib/trust/baas-scanner.ts)
+// Legacy backend-domain scanner. The local-tool policy scanner is the
+// deploy gate; this helper remains for migration notes and older reports.
 // ----------------------------------------------------------------------
 
 const PER_FILE_BYTE_CAP = 5 * 1024 * 1024;
