@@ -22,6 +22,7 @@ import type {
   LocalizePatch,
   RemixSpec,
   LocalToolPolicyReport,
+  ConnectionGuardReport,
 } from '@shippie/analyse';
 import type { AppKindProfile } from '$lib/types/app-kind';
 import type { RouteModeDecision } from './route-mode';
@@ -89,6 +90,20 @@ export interface DeployReport {
     scannedFiles: number;
     referenceDomains: string[];
     capabilityHints: LocalToolPolicyReport['capabilityHints'];
+  };
+
+  /** Runtime connection policy generated from the uploaded bundle. This is
+   *  both disclosure evidence and the source of the enforced CSP allowlist. */
+  connectionGuard?: {
+    schema: ConnectionGuardReport['schema'];
+    summary: string;
+    findings: ConnectionGuardReport['findings'];
+    blocks: number;
+    warns: number;
+    infos: number;
+    scannedFiles: number;
+    connections: ConnectionGuardReport['connections'];
+    csp: ConnectionGuardReport['csp'];
   };
 
   /** Step-by-step record of what the pipeline did. Phase 3 turns this

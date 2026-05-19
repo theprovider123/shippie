@@ -237,16 +237,20 @@ shippie.analytics.track('opened');`}</pre>
 
 <section class="grid">
   <div class="card">
-    <h2>App Kind</h2>
+    <h2>Connection Status</h2>
     {#if profile && detected}
-      <div class="kind-row">
-        <KindBadge kind={detected} {status} />
-      </div>
+      {#if detected === 'local'}
+        <p class="hint">No external connections detected in the latest app profile.</p>
+      {:else}
+        <div class="kind-row">
+          <KindBadge kind={detected} {status} />
+        </div>
+      {/if}
       {#if conflict}
         <p class="conflict">
           You declared this as <strong>{conflict.declared}</strong>, but Shippie
-          detected <strong>{conflict.detected}</strong>. The marketplace shows
-          the detected kind.
+          detected <strong>{conflict.detected}</strong>. Public surfaces stay quiet
+          unless an external or hosted service is detected.
         </p>
       {/if}
       {#if profile.reasons?.length}

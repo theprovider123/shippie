@@ -1,6 +1,6 @@
 # Mobile-audit — static rules report
 
-_Generated 2026-05-19T12:31:21.385Z_
+_Generated 2026-05-19T14:57:17.838Z_
 
 Allowed shell breakpoints: max-width 640/1024, min-width 641/1025.
 Allowed density (grid-column) breakpoints: min-width 1280/1536/1920.

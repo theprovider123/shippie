@@ -9,21 +9,44 @@ import { injectPwaTags } from '../rewriter';
 
 declare const HTMLRewriter: { new (): any };
 
-const SHIPPIE_CSP =
-  "default-src 'self'; " +
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-  "style-src 'self' 'unsafe-inline'; " +
-  "img-src 'self' data: https: blob:; " +
-  "font-src 'self' data:; " +
-  "connect-src 'self' https:; " +
-  "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
-
 /** Strip Domain attribute from a single Set-Cookie header. */
 export function stripCookieDomain(singleSetCookie: string): string {
   return singleSetCookie
     .split(';')
     .filter((p) => !/^\s*Domain=/i.test(p))
     .join(';');
+}
+
+export function buildWrappedCsp(wrap: WrapMetaRuntime): string {
+  const upstreamSource = cspSourceForUrl(wrap.upstreamUrl);
+  const resourceSource = wrap.cspMode === 'lenient' ? 'https:' : upstreamSource;
+  const connectSource = wrap.cspMode === 'lenient' ? 'https:' : upstreamSource;
+  const formSource = wrap.cspMode === 'lenient' ? 'https:' : upstreamSource;
+
+  return [
+    "default-src 'self'",
+    ["script-src", "'self'", "'unsafe-inline'", "'unsafe-eval'", resourceSource].filter(Boolean).join(' '),
+    ["style-src", "'self'", "'unsafe-inline'", resourceSource].filter(Boolean).join(' '),
+    ["img-src", "'self'", 'data:', 'blob:', resourceSource].filter(Boolean).join(' '),
+    ["font-src", "'self'", 'data:', resourceSource].filter(Boolean).join(' '),
+    ["connect-src", "'self'", connectSource].filter(Boolean).join(' '),
+    ["frame-src", "'self'", resourceSource].filter(Boolean).join(' '),
+    ["worker-src", "'self'", 'blob:', resourceSource].filter(Boolean).join(' '),
+    ["manifest-src", "'self'", resourceSource].filter(Boolean).join(' '),
+    ["form-action", "'self'", formSource].filter(Boolean).join(' '),
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    'upgrade-insecure-requests',
+  ].join('; ');
+}
+
+function cspSourceForUrl(raw: string): string {
+  try {
+    const url = new URL(raw);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return '';
+  }
 }
 
 export function buildUpstreamUrl(upstreamBase: string, reqUrl: string): string {
@@ -126,12 +149,14 @@ export async function proxyWrappedApp(opts: ProxyOpts): Promise<Response> {
 
   outHeaders.delete('content-security-policy');
   if (wrap.cspMode === 'lenient') {
-    outHeaders.set('content-security-policy', SHIPPIE_CSP);
+    outHeaders.set('content-security-policy', buildWrappedCsp(wrap));
   } else if (upstream.headers.get('content-security-policy')) {
     outHeaders.set(
       'content-security-policy',
       upstream.headers.get('content-security-policy')!
     );
+  } else {
+    outHeaders.set('content-security-policy', buildWrappedCsp(wrap));
   }
 
   const contentType = upstream.headers.get('content-type') ?? '';

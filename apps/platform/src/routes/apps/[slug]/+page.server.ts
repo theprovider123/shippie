@@ -25,10 +25,16 @@ import {
 import { summaryForApp, recentReviews } from '$server/db/queries/ratings';
 import { describeGrantedPermissions } from '$server/marketplace/honesty';
 import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability-badges';
-import { readAppProfile } from '$server/deploy/kv-write';
+import { readAppMeta, readAppProfile } from '$server/deploy/kv-write';
 import { canonicalAppUrl, canonicalShowcaseTarget, isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { curatedApps } from '$lib/container/state';
 import { publicRemixInfoForSlug } from '$server/remix/eligibility';
+import {
+  connectionBadgesFromConnections,
+  connectionBadgesFromKind,
+  connectionsFromGuard,
+} from '$lib/marketplace/connection-badges';
+import type { AppKind } from '$lib/types/app-kind';
 import { desc, eq } from 'drizzle-orm';
 import { capabilityBadges as capabilityBadgesTable } from '$server/db/schema/proof-events';
 import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
@@ -84,6 +90,7 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     ratingSummary,
     latestReviews,
     appProfile,
+    appMeta,
     provenBadges,
     makerRows,
     domainRows,
@@ -97,6 +104,9 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       recentReviews(db, app.id, 5),
       platform.env.CACHE
         ? readAppProfile(platform.env.CACHE, params.slug)
+        : Promise.resolve(null),
+      platform.env.CACHE
+        ? readAppMeta(platform.env.CACHE, params.slug)
         : Promise.resolve(null),
       db
         .select({ badge: capabilityBadgesTable.badge })
@@ -163,6 +173,22 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       purpose: 'Declared network access',
       personalData: false,
     })) ?? [];
+  const detectedKind = asAppKind(app.currentDetectedKind);
+  const guardConnections = connectionsFromGuard(appMeta?.connection_guard);
+  const guardBadges = connectionBadgesFromConnections(guardConnections);
+  const connectionBadges =
+    guardBadges.length > 0
+      ? guardBadges
+      : permissions?.externalNetwork
+        ? connectionBadgesFromConnections(
+            fallbackExternalDomains.map((domain) => ({
+              host: domain.domain,
+              purpose: domain.purpose,
+              category: 'feature',
+            })),
+            detectedKind,
+          )
+        : connectionBadgesFromKind(detectedKind);
 
   // Changelog from the autopackaging report — only show if the app
   // actually wrote one (no 'default' filler).
@@ -281,6 +307,7 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
         : 'No app content stored on Shippie servers by default',
       proofBadges: capabilityBadges.filter((badge) => badge.proven).map((badge) => badge.label),
     },
+    connectionBadges,
     grantedPermissions,
     capabilityBadges,
     changelog,
@@ -356,6 +383,7 @@ function bundledAppDetail(slug: string) {
           : 'No app content stored on Shippie servers by default',
       proofBadges: [],
     },
+    connectionBadges: connectionBadgesFromKind(app.appKind),
     grantedPermissions: [],
     capabilityBadges: [],
     changelog: null,
@@ -367,6 +395,10 @@ function bundledAppDetail(slug: string) {
     latestReviews: [],
     isMaker: false,
   };
+}
+
+function asAppKind(value: string | null | undefined): AppKind | null {
+  return value === 'local' || value === 'connected' || value === 'cloud' ? value : null;
 }
 
 export const actions: Actions = {

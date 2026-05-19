@@ -135,6 +135,87 @@ describe('dispatchMakerSubdomain', () => {
     expect(html).toContain("we can't open");
   });
 
+  test('/__shippie/connections returns connection guard metadata', async () => {
+    const env = envWith(
+      fakeKv({
+        'apps:x:meta': JSON.stringify({
+          name: 'X App',
+          connection_guard: {
+            schema: 'shippie.connection-guard.v1',
+            passed: true,
+            summary: '1 outbound host disclosed and constrained by Connection Guard.',
+            connections: [{ host: 'api.weather.test', destinations: ['connect'], risk: 'medium' }],
+          },
+        }),
+      })
+    );
+    const res = await dispatchMakerSubdomain({
+      request: new Request('https://x.shippie.app/__shippie/connections', {
+        headers: { host: 'x.shippie.app' },
+      }),
+      env,
+    });
+    expect(res!.status).toBe(200);
+    const body = (await res!.json()) as {
+      name: string;
+      connection_guard: { connections: Array<{ host: string }> };
+    };
+    expect(body.name).toBe('X App');
+    expect(body.connection_guard.connections[0]?.host).toBe('api.weather.test');
+  });
+
+  test('/__shippie/connections discloses legacy wrapped URL upstreams', async () => {
+    const env = envWith(
+      fakeKv({
+        'apps:legacy:wrap': JSON.stringify({
+          upstream_url: 'https://legacy.example/app',
+          csp_mode: 'lenient',
+        }),
+      })
+    );
+    const res = await dispatchMakerSubdomain({
+      request: new Request('https://legacy.shippie.app/__shippie/connections', {
+        headers: { host: 'legacy.shippie.app' },
+      }),
+      env,
+    });
+    expect(res!.status).toBe(200);
+    const body = (await res!.json()) as {
+      connection_guard: { warns: number; connections: Array<{ host: string; risk: string }> };
+      allowed_connect_domains: string[];
+    };
+    expect(body.connection_guard.warns).toBe(1);
+    expect(body.connection_guard.connections[0]).toMatchObject({
+      host: 'legacy.example',
+      risk: 'high',
+    });
+    expect(body.allowed_connect_domains).toEqual(['legacy.example']);
+  });
+
+  test('/__shippie/meta includes wrapped URL connection guard fallback', async () => {
+    const env = envWith(
+      fakeKv({
+        'apps:legacy-meta:wrap': JSON.stringify({
+          upstream_url: 'https://legacy-meta.example/app',
+          csp_mode: 'strict',
+        }),
+      })
+    );
+    const res = await dispatchMakerSubdomain({
+      request: new Request('https://legacy-meta.shippie.app/__shippie/meta', {
+        headers: { host: 'legacy-meta.shippie.app' },
+      }),
+      env,
+    });
+    expect(res!.status).toBe(200);
+    const body = (await res!.json()) as {
+      connection_guard: { connections: Array<{ host: string }> };
+      allowed_connect_domains: string[];
+    };
+    expect(body.connection_guard.connections[0]?.host).toBe('legacy-meta.example');
+    expect(body.allowed_connect_domains).toEqual(['legacy-meta.example']);
+  });
+
   test('/__shippie/signal/{room} without binding → 503', async () => {
     const env = envWith(fakeKv({}));
     const res = await dispatchMakerSubdomain({

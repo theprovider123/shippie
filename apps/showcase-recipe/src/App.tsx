@@ -608,6 +608,7 @@ export function App() {
     if (!file) return;
     const dataUrl = await fileToDataUrl(file);
     setDraft((prev) => ({ ...prev, photoDataUrl: dataUrl }));
+    event.currentTarget.value = '';
   }
 
   function saveRecipe(event: FormEvent<HTMLFormElement>): void {
@@ -1194,6 +1195,9 @@ function CookbookView({
   onAddFirstRecipe: () => void;
 }) {
   const showEmpty = recipes.length === 0 && !query.trim();
+  const scrollToEditor = () => {
+    document.getElementById('palate-recipe-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -1201,6 +1205,7 @@ function CookbookView({
           <p className="eyebrow">Cookbook</p>
           <h1>Save the dishes worth repeating.</h1>
         </div>
+        <button type="button" className="primary toolbar-action" onClick={scrollToEditor}>Add recipe</button>
         <label className="search-box">
           <span>Search</span>
           <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="ingredient, cuisine, tag" />
@@ -1227,18 +1232,18 @@ function CookbookView({
             ))
           )}
         </div>
-        <form className="recipe-editor recipe-editor-lifted" onSubmit={onSaveRecipe}>
+        <form id="palate-recipe-editor" className="recipe-editor recipe-editor-lifted" onSubmit={onSaveRecipe}>
           <div className="recipe-editor-hero">
             {draft.photoDataUrl ? (
               <img src={draft.photoDataUrl} alt="" />
             ) : (
               <div className="recipe-editor-hero-fallback" aria-hidden>
-                <span>Add a photo</span>
+                <span>Take or choose photo</span>
               </div>
             )}
             <label className="file-pill recipe-editor-photo-pill">
-              {draft.photoDataUrl ? 'Replace photo' : 'Add photo'}
-              <input type="file" accept="image/*" onChange={(event) => void onPhotoChange(event)} />
+              {draft.photoDataUrl ? 'Replace photo' : 'Take or choose photo'}
+              <input type="file" accept="image/*" aria-label="Take or choose a recipe photo" onChange={(event) => void onPhotoChange(event)} />
             </label>
           </div>
           <h2>Add recipe</h2>

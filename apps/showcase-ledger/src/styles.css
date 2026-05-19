@@ -777,6 +777,7 @@ button.subtle {
 .group-form {
   display: flex;
   flex-direction: column;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 16px 0;
 }
@@ -784,7 +785,9 @@ button.subtle {
 .group-form .field {
   display: flex;
   flex-direction: column;
+  flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 .group-form .field > span,
 .group-form .field > legend {
@@ -799,6 +802,8 @@ button.subtle {
 .group-form input[type="text"],
 .group-form input[type="date"],
 .group-form select {
+  width: 100%;
+  min-width: 0;
   font-family: var(--font-body);
   font-size: 1rem;
   padding: 12px 14px;
@@ -817,13 +822,14 @@ button.subtle {
 
 .group-form .row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: stretch;
   margin-bottom: 6px;
 }
-.group-form .row .grow { flex: 1; }
-.group-form .row input { flex: 1; }
-.group-form .row.split { display: flex; gap: 12px; }
+.group-form .row .grow { flex: 1 1 160px; min-width: 0; }
+.group-form .row input { flex: 1 1 160px; min-width: 0; }
+.group-form .row.split { display: flex; flex-wrap: wrap; gap: 12px; }
 
 .group-form fieldset {
   border: 0;
@@ -833,6 +839,7 @@ button.subtle {
 
 .group-form .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }

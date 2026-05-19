@@ -197,7 +197,7 @@
 
 <svelte:head>
   <title>Shippie — local tools that know each other</title>
-  <meta name="description" content="Tap a tool to use it. If it is on Shippie, it is private: local by default, offline-ready, no external login, and no silent user-data egress." />
+  <meta name="description" content="Tap a tool to use it. If it is on Shippie, data movement is visible: local by default, offline-ready, no external login, and no hidden connections." />
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />
@@ -219,7 +219,7 @@
         </p>
         <h1 class="title">Shippie</h1>
         <p class="lede">
-          Tap a tool to use it. Local by default, offline-ready, and private with no exceptions.
+          Tap a tool to use it. Local by default, offline-ready, and clear when something connects.
         </p>
       </div>
       <div class="head-tools">

@@ -67,7 +67,7 @@ No backend configuration is required. The deploy scanner blocks third-party user
 | `sentiment(text)` | Local sentiment. |
 | `moderate(text)` | Local moderation. |
 
-External LLM calls with user content are not silent background work on Shippie. If a tool needs OpenAI/Claude/Gemini, the user must explicitly trigger that one call and the UI must say what is being sent.
+External AI calls are allowed when visible. If a tool needs OpenAI, Claude, Gemini, or another provider, Shippie discloses the connection in the runtime surfaces; the best UX still says what is being sent near the action itself.
 
 ## Secure Backup
 

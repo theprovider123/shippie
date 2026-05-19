@@ -29,6 +29,7 @@ import {
   notePersonalDataLeak,
 } from './kind-emitter.ts';
 import { installAppLifecycleReporter } from './lifecycle.ts';
+import { installRuntimeConnectionMonitor } from './runtime-connections.ts';
 import { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
 
 interface AppMetaPayload {
@@ -42,12 +43,25 @@ interface AppMetaPayload {
   backend_url?: string | null;
   workflow_probes?: string[];
   allowed_connect_domains?: string[];
+  connection_guard?: {
+    summary?: string;
+    connections?: ConnectionNoticeConnection[];
+  };
   data?: {
     localStorage?: {
       keys?: readonly string[];
       prefixes?: readonly string[];
     };
   };
+}
+
+interface ConnectionNoticeConnection {
+  host?: string;
+  purpose?: string;
+  risk?: 'low' | 'medium' | 'high';
+  category?: string;
+  requiresConsent?: boolean;
+  data?: string[];
 }
 
 type BeforeInstallPromptEvent = Event & {
@@ -197,12 +211,123 @@ async function bootstrap(): Promise<void> {
   }
 
   installAppLifecycleReporter({ appId: meta.slug, source: 'sdk' });
+  installRuntimeConnectionMonitor({ slug: meta.slug, version: meta.version ?? null });
+  installConnectionNotice(meta);
 
   configureProof({ appSlug: meta.slug });
   configureKindEmitter({
     workflowProbes: meta.workflow_probes ?? [],
     allowedHosts: meta.allowed_connect_domains ?? [],
   });
+}
+
+function installConnectionNotice(meta: AppMetaPayload): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const connections = notableConnections(meta.connection_guard?.connections ?? []);
+  if (connections.length === 0) return;
+
+  const noticeKey = [
+    'shippie:connection-notice',
+    meta.slug,
+    String(meta.version ?? 0),
+    connections.map((c) => c.host ?? 'unknown').sort().join(','),
+  ].join(':');
+  try {
+    if (window.localStorage.getItem(noticeKey) === '1') return;
+  } catch {
+    /* localStorage can be unavailable in private contexts */
+  }
+
+  const show = () => showConnectionNotice(meta, connections, noticeKey);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', show, { once: true });
+  } else {
+    show();
+  }
+}
+
+function notableConnections(connections: ConnectionNoticeConnection[]): ConnectionNoticeConnection[] {
+  return connections
+    .filter((connection) => {
+      if (!connection.host) return false;
+      if (connection.risk === 'high') return true;
+      if (connection.category === 'external-ai') return true;
+      if (connection.requiresConsent) return true;
+      return (connection.data ?? []).some((item) =>
+        ['user_data', 'personal_context', 'text', 'images', 'files'].includes(item),
+      );
+    })
+    .slice(0, 4);
+}
+
+function showConnectionNotice(
+  meta: AppMetaPayload,
+  connections: ConnectionNoticeConnection[],
+  noticeKey: string,
+): void {
+  if (document.getElementById('shippie-connection-notice')) return;
+  const root = document.createElement('div');
+  root.id = 'shippie-connection-notice';
+  root.setAttribute('role', 'status');
+  root.style.cssText =
+    'position:fixed;left:16px;right:16px;bottom:16px;z-index:2147483646;display:flex;justify-content:center;pointer-events:none';
+
+  const panel = document.createElement('div');
+  panel.style.cssText =
+    'max-width:520px;width:100%;box-sizing:border-box;border:1px solid rgba(20,18,15,.16);border-radius:14px;background:#fffaf0;color:#14120f;box-shadow:0 18px 50px rgba(20,18,15,.18);font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:14px;pointer-events:auto';
+
+  const title = document.createElement('div');
+  title.textContent = 'This app uses external services';
+  title.style.cssText = 'font-weight:700;font-size:15px;margin:0 0 4px';
+  panel.appendChild(title);
+
+  const body = document.createElement('div');
+  const appName = meta.name || meta.slug;
+  const hostList = connections.map((c) => c.host).filter(Boolean).join(', ');
+  body.textContent = `${appName} can connect to ${hostList}. Shippie allows this, and shows it so data movement is not hidden.`;
+  body.style.cssText = 'color:#554c40;margin:0 0 10px';
+  panel.appendChild(body);
+
+  const list = document.createElement('ul');
+  list.style.cssText = 'margin:0 0 12px;padding:0;list-style:none;display:grid;gap:5px;color:#554c40';
+  for (const connection of connections) {
+    const item = document.createElement('li');
+    const data = (connection.data ?? []).slice(0, 3).join(', ');
+    item.textContent = `${connection.host}: ${connection.purpose || 'External connection'}${data ? ` (${data})` : ''}`;
+    list.appendChild(item);
+  }
+  panel.appendChild(list);
+
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end';
+
+  const details = document.createElement('button');
+  details.type = 'button';
+  details.textContent = 'View details';
+  details.style.cssText =
+    'height:36px;border:1px solid rgba(20,18,15,.22);border-radius:999px;background:transparent;color:#14120f;padding:0 13px;font:600 13px system-ui,-apple-system,sans-serif;cursor:pointer';
+  details.addEventListener('click', () => {
+    window.location.assign('/__shippie/data');
+  });
+  actions.appendChild(details);
+
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button';
+  dismiss.textContent = 'Got it';
+  dismiss.style.cssText =
+    'height:36px;border:1px solid #14120f;border-radius:999px;background:#14120f;color:#fffaf0;padding:0 14px;font:700 13px system-ui,-apple-system,sans-serif;cursor:pointer';
+  dismiss.addEventListener('click', () => {
+    try {
+      window.localStorage.setItem(noticeKey, '1');
+    } catch {
+      /* ignore */
+    }
+    root.remove();
+  });
+  actions.appendChild(dismiss);
+  panel.appendChild(actions);
+  root.appendChild(panel);
+  document.body.appendChild(root);
 }
 
 const shippie = {

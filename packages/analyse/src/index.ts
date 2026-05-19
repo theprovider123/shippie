@@ -57,6 +57,16 @@ export type {
   LocalToolFindingSeverity,
   LocalToolPolicyReport,
 } from './local-tool-policy.ts';
+export { runConnectionGuardScan } from './connection-guard.ts';
+export type {
+  ConnectionDestination,
+  ConnectionGuardConnection,
+  ConnectionGuardCspPolicy,
+  ConnectionGuardFinding,
+  ConnectionGuardReport,
+  ConnectionGuardSeverity,
+  ConnectionRisk,
+} from './connection-guard.ts';
 export { computeSecurityScore } from './security-score.ts';
 export type { SecurityScore, SecurityDeduction } from './security-score.ts';
 export { computePrivacyGrade } from './privacy-grade.ts';

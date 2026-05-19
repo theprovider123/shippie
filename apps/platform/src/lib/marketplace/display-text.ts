@@ -89,7 +89,6 @@ export function formatRecency(
 }
 
 export function kindPillLabel(kind: AppKind | null | undefined): string | null {
-  if (kind === 'local') return 'local';
   if (kind === 'connected') return 'connected';
   if (kind === 'cloud') return 'cloud';
   return null;

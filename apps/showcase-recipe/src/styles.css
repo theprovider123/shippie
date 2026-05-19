@@ -582,6 +582,10 @@ h2 {
   align-items: end;
 }
 
+.toolbar-action {
+  flex: 0 0 auto;
+}
+
 .toolbar h1 {
   font-size: clamp(2rem, 5vw, 4.8rem);
 }
@@ -660,6 +664,40 @@ h2 {
   padding: 1rem;
 }
 
+.recipe-editor-hero {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  min-height: 180px;
+  height: clamp(180px, 32vw, 280px);
+  max-height: 280px;
+  border-radius: 8px;
+  background: rgba(255, 249, 239, 0.72);
+  border: 1px solid rgba(101, 86, 70, 0.14);
+}
+
+.recipe-editor-hero img,
+.recipe-editor-hero-fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+}
+
+.recipe-editor-hero-fallback {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  color: #655646;
+  background:
+    linear-gradient(135deg, rgba(216, 105, 24, 0.13), rgba(143, 160, 112, 0.18)),
+    rgba(255, 249, 239, 0.72);
+}
+
+.recipe-editor-hero-fallback span {
+  display: none;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -671,10 +709,12 @@ h2 {
   display: grid;
   place-items: center;
   min-height: 42px;
+  padding: 0.55rem 0.8rem;
   border: 1px dashed rgba(101, 86, 70, 0.32);
   border-radius: 8px;
   color: #655646;
   cursor: pointer;
+  text-align: center;
 }
 
 .file-pill input {
@@ -682,6 +722,17 @@ h2 {
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+
+.recipe-editor .recipe-editor-photo-pill {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  min-height: 48px;
+  background: rgba(255, 249, 239, 0.94);
+  border-color: rgba(101, 86, 70, 0.42);
+  backdrop-filter: blur(8px);
 }
 
 .draft-photo {
@@ -950,6 +1001,10 @@ h2 {
 
   .recipe-editor {
     position: static;
+  }
+
+  .recipe-editor-lifted {
+    order: -1;
   }
 
   .toolbar {

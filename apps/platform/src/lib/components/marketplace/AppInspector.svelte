@@ -1,6 +1,5 @@
 <script lang="ts">
   import IconOrMonogram from './IconOrMonogram.svelte';
-  import KindBadge from './KindBadge.svelte';
   import CapabilityBadges from './CapabilityBadges.svelte';
   import { toast } from '$lib/stores/toast';
   import { copyText } from '$lib/utils/copy-link';
@@ -13,6 +12,7 @@
   } from '$lib/stores/cached-slugs';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
+  import { connectionBadgesFromKind } from '$lib/marketplace/connection-badges';
 
   interface InspectorApp {
     slug: string;
@@ -49,6 +49,7 @@
   const isOffline = $derived(Boolean(app && ($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved')));
   const isSaving = $derived(offlineStatus?.state === 'downloading');
   const isSaved = $derived(Boolean(app && (pinned || isOffline)));
+  const connectionBadges = $derived(connectionBadgesFromKind(app?.kind));
   const offlineLabel = $derived.by(() => {
     if (!app) return '';
     if (offlineStatus?.state === 'downloading') {
@@ -63,9 +64,9 @@
   });
   const dataLabel = $derived.by(() => {
     if (!app?.kind) return 'Not scanned yet';
-    if (app.kind === 'local') return 'Data stays on this device';
-    if (app.kind === 'connected') return 'Local data with live connections';
-    return 'Cloud-backed tool';
+    if (app.kind === 'local') return 'No external connections detected';
+    if (app.kind === 'connected') return 'Uses external services';
+    return 'Uses a creator-hosted service';
   });
 
   async function copyAppLink() {
@@ -188,11 +189,17 @@
     </dl>
 
     <section>
-      <h3>Local status</h3>
-      {#if app.kind}
-        <KindBadge kind={app.kind} status={app.kindStatus} />
+      <h3>Connections</h3>
+      {#if connectionBadges.length > 0}
+        <div class="connection-list">
+          {#each connectionBadges as badge (badge.label)}
+            <span class="connection-pill connection-{badge.tone}" title={badge.title}>{badge.label}</span>
+          {/each}
+        </div>
+      {:else if app.kind === 'local'}
+        <p class="muted">No external connections detected.</p>
       {:else}
-        <p class="muted">No runtime profile yet.</p>
+        <p class="muted">No connection profile yet.</p>
       {/if}
     </section>
 
@@ -365,6 +372,40 @@
   .muted {
     color: var(--text-light);
     margin: 0;
+  }
+  .connection-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .connection-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    border: 1px solid rgba(232, 96, 60, 0.45);
+    color: var(--sunset);
+    background: rgba(232, 96, 60, 0.08);
+    padding: 0 9px;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .connection-pill.connection-ai {
+    color: #7c5cc4;
+    border-color: rgba(124, 92, 196, 0.42);
+    background: rgba(124, 92, 196, 0.08);
+  }
+  .connection-pill.connection-weather,
+  .connection-pill.connection-location {
+    color: var(--sage-leaf);
+    border-color: rgba(122, 154, 110, 0.4);
+    background: rgba(122, 154, 110, 0.08);
+  }
+  .connection-pill.connection-payment {
+    color: var(--marigold);
+    border-color: rgba(232, 197, 71, 0.42);
+    background: rgba(232, 197, 71, 0.08);
   }
   @keyframes inspect-in {
     from { transform: translateX(16px); opacity: 0; }

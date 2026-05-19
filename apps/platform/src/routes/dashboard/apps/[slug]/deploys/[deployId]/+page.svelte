@@ -9,6 +9,7 @@
   const routeEvent = $derived(events.find((event) => event.type === 'route_mode_detected'));
   const assetFixes = $derived(events.filter((event) => event.type === 'asset_fixed'));
   const remixSpec = $derived(report?.remixSpec);
+  const connectionGuard = $derived(report?.connectionGuard);
 
   function gradeColor(grade: string | undefined): string {
     if (!grade) return 'var(--text-light)';
@@ -305,6 +306,56 @@
             </li>
           {/each}
         </ul>
+      </section>
+    {/if}
+
+    {#if connectionGuard}
+      <section class="card">
+        <div class="section-head">
+          <h3>Connection Guard</h3>
+          <span class="pill">
+            {connectionGuard.blocks} block · {connectionGuard.warns} warn · {connectionGuard.connections.length} host{connectionGuard.connections.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <p class="sub">{connectionGuard.summary}</p>
+        {#if connectionGuard.connections.length}
+          <table class="connection-table">
+            <thead>
+              <tr>
+                <th>Host</th>
+                <th>Risk</th>
+                <th>Purpose</th>
+                <th>Destinations</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each connectionGuard.connections as connection}
+                <tr class="risk-{connection.risk}">
+                  <td><code>{connection.host}</code></td>
+                  <td>{connection.risk}</td>
+                  <td>{connection.purpose}</td>
+                  <td>{connection.destinations.join(', ')}</td>
+                  <td>{connection.data.join(', ') || 'none detected'}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {/if}
+        {#if connectionGuard.findings.length}
+          <ul class="findings connection-findings">
+            {#each connectionGuard.findings.slice(0, 12) as finding}
+              <li class="finding finding-{finding.severity}">
+                <div class="finding-head">
+                  <span class="severity">{finding.severity}</span>
+                  <span class="rule">{finding.id}</span>
+                  <span class="location">{finding.location}</span>
+                </div>
+                <p class="reason">{finding.detail}</p>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </section>
     {/if}
 
@@ -621,6 +672,15 @@
   }
   .domain-tracker { background: rgba(200, 75, 75, 0.05); }
   .domain-unknown { background: rgba(232, 165, 71, 0.05); }
+  .risk-high { background: rgba(200, 75, 75, 0.05); }
+  .risk-medium { background: rgba(232, 165, 71, 0.05); }
+  .risk-low { background: rgba(61, 139, 92, 0.05); }
+  .connection-table td {
+    vertical-align: top;
+  }
+  .connection-findings {
+    margin-top: 1rem;
+  }
   td.reason { color: var(--text-light); font-size: 0.85rem; }
   .steps {
     list-style: none;

@@ -23,7 +23,9 @@
 <Sheet open onClose={onClose} label={`${app.name} data`}>
   <header>
     <h3>{app.name}</h3>
-    <KindBadge kind={app.appKind} status="estimated" compact />
+    {#if app.appKind !== 'local'}
+      <KindBadge kind={app.appKind} status="estimated" compact />
+    {/if}
   </header>
   <p class="count">{rows.length} item{rows.length === 1 ? '' : 's'} on this device</p>
 

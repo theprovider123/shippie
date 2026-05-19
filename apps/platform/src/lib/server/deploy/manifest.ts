@@ -29,6 +29,12 @@ export interface ShippieJsonLite {
   };
   allowed_connect_domains?: string[];
   /**
+   * Optional resource hosts (images/fonts/media) that are safe to allow in
+   * runtime CSP when they are not directly discoverable from the bundle.
+   * Example: a product API may return image URLs from a sibling CDN host.
+   */
+  allowed_resource_domains?: string[];
+  /**
    * Phase A2 — declared cross-app intents this app participates in.
    *
    * `provides` lists intents the app can emit data for (e.g. a recipe
@@ -214,6 +220,9 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
           : undefined,
         allowed_connect_domains: Array.isArray(m.allowed_connect_domains)
           ? (m.allowed_connect_domains.filter((x) => typeof x === 'string') as string[])
+          : undefined,
+        allowed_resource_domains: Array.isArray(m.allowed_resource_domains)
+          ? (m.allowed_resource_domains.filter((x) => typeof x === 'string') as string[])
           : undefined,
         kind:
           m.kind === 'local' || m.kind === 'connected' || m.kind === 'cloud'

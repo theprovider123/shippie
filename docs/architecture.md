@@ -107,9 +107,15 @@ relay, intents, local DB, and local files.
 
 Every browser zip upload, trial upload, CLI deploy, MCP deploy, and workspace
 deploy runs the same Local Tool policy scanner before publishing. The scanner
-blocks external auth, third-party user-data storage, trackers, ads, and silent
-user-data egress. URL-wrap deploys are retired for marketplace publishing
-because a reverse-proxied hosted app cannot prove the promise.
+blocks external auth, third-party user-data storage, trackers, ads, insecure
+transports, and bundled secrets. External AI, service writes, and third-party
+resources are allowed by default when disclosed through Connection Guard and
+the runtime Your Data surfaces. Quiet local/default tools do not get extra
+badges; Shippie only labels apps when an outside service, AI provider,
+payment provider, weather/location service, or creator-hosted endpoint is in
+use. URL-wrap deploys are retired for marketplace
+publishing because a reverse-proxied hosted app cannot prove the promise;
+legacy wrapped apps are disclosed as hosted upstream connections.
 
 See [`strategy/local-tools-policy.md`](./strategy/local-tools-policy.md).
 

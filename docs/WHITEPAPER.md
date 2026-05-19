@@ -10,7 +10,7 @@ Draft v2 · 2026-05-19 · Devante Providence
 
 For users:
 
-> If it is on Shippie, it is private. No exceptions.
+> If it is on Shippie, data movement is visible. No hidden connections.
 
 For makers:
 
@@ -18,7 +18,7 @@ For makers:
 
 For enterprises:
 
-> Every tool keeps data on the device. Every tool works offline. Every tool is private by architecture. No per-tool auditing required.
+> Every tool starts from the device. Every outside connection is scanned and disclosed. No per-tool guesswork required.
 
 For the world:
 
@@ -41,23 +41,25 @@ Netlify deploys static sites.
 
 Shippie deploys local tools.
 
-A Shippie tool runs on the user's device, stores its data locally, works offline for its core workflow, uses local AI when it needs intelligence, and shares useful signals with other Shippie tools only through user-controlled local primitives.
+A Shippie tool runs on the user's device, stores its data locally by default, works offline for its core workflow where possible, prefers local or private AI when it needs intelligence, and shares useful signals with other Shippie tools through user-controlled primitives.
 
 The old web default was: create an account, send your data to a server, hope the company behaves.
 
-The Shippie default is: tap a tool, use it immediately, keep the data on your device.
+The Shippie default is: tap a tool, use it immediately, keep data on your device, and see clearly when a tool connects outside.
 
 ---
 
 ## The Rule
 
-Reference data may come in. User data does not go out.
+Local by default. Open by design. No hidden data movement.
 
 Allowed:
 
 - weather forecasts, exchange rates, public sports scores, public reference data,
 - encrypted Shippie backup chosen by the user,
 - encrypted Shippie relay for live rooms that Shippie cannot read,
+- external AI and service APIs when disclosed to the user,
+- third-party resources that are not tracking or ad infrastructure,
 - explicit user exports such as CSV, ZIP, PDF, or share sheets.
 
 Blocked:
@@ -65,10 +67,11 @@ Blocked:
 - hosted user databases,
 - external auth required for core use,
 - trackers, ads, analytics pixels,
-- silent external AI calls with user content,
+- insecure external connections,
+- leaked API keys or secrets,
 - cloud apps reverse-proxied into a Shippie costume.
 
-This is not purity for its own sake. It is the product. The value is that a user never has to ask whether a Shippie tool is private.
+This is not purity for its own sake. It is the product. The value is that a user never has to inspect code to know what a Shippie tool can connect to.
 
 ---
 
@@ -127,10 +130,9 @@ The scanner blocks common violations:
 - Supabase, Firebase, Appwrite, PocketBase, Neon, Planetscale, and similar third-party stores,
 - Auth0, Clerk, Firebase Auth, Supabase Auth, NextAuth, and similar auth dependencies,
 - Google Analytics, Tag Manager, Mixpanel, PostHog, Segment, Meta Pixel, and ad SDKs,
-- external writes that can carry user content,
-- silent external LLM endpoints.
+- insecure transports and bundled secrets.
 
-It allows public reference data with disclosure and flags suspicious query strings for review.
+It allows public reference data, external AI, service writes, and third-party resources with disclosure. Quiet local/default tools stay visually quiet; Shippie adds labels only when something extra is happening. High-risk connections are visible at runtime and in Your Data; suspicious query strings are flagged for review.
 
 Hosted URL wrapping is retired for marketplace publishing because a reverse proxy cannot prove the local-tool promise.
 
@@ -165,7 +167,7 @@ For makers, Shippie makes local-first easier than cloud-first: one-line database
 
 For schools, hospitals, teams, and privacy-sensitive organizations, Shippie gives a stronger security story than per-app auditing:
 
-> Every tool keeps data on the device. Always.
+> Every tool starts local, and every outside connection is visible.
 
 The narrower marketplace is the moat. Fewer tools, clearer guarantee, deeper trust.
 
@@ -173,7 +175,7 @@ The narrower marketplace is the moat. Fewer tools, clearer guarantee, deeper tru
 
 ## Honest Limitations
 
-Static scanning cannot perfectly prove privacy. It catches common cloud patterns and obvious egress, but runtime proof, package review, and user reporting still matter.
+Static scanning cannot perfectly prove privacy. It catches common cloud patterns and obvious egress, but the wrapper also records runtime-created external hosts locally on the user's device. Runtime proof, package review, and user reporting still matter.
 
 Local AI depends on device capability and model availability. Some tasks will need explicit user-approved external calls until local models are good enough.
 

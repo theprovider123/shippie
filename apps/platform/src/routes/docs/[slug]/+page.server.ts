@@ -56,8 +56,8 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Third-party tools',
         body: [
-          'A public Shippie listing must pass the Local Tool policy scanner before it publishes. That scanner blocks common cloud databases, third-party auth, trackers, ads, and silent user-data egress.',
-          'Static scanning is still not perfect proof. Check a tool detail page for capability badges, reference-data domains, and proof status before relying on it with sensitive data.',
+          'A public Shippie listing must pass the Local Tool policy scanner before it publishes. That scanner blocks common cloud databases, third-party auth, trackers, ads, insecure connections, and bundled secrets.',
+          'Static scanning is still not perfect proof. Check a tool detail page or Your Data for capability badges, disclosed connection domains, and proof status before relying on it with sensitive data.',
         ],
       },
       {
@@ -233,7 +233,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'How to read a listing',
         body: [
-          'Look at the app detail page for capability badges, proof status, reference-data domains, and any review warnings. Public tools should never require you to check fine print before trusting that your data stays yours.',
+          'Look at the app detail page for capability badges, proof status, disclosed connection domains, and any review warnings. Quiet tools are not labelled as local-only; Shippie only raises a signal when something extra is connected.',
         ],
       },
     ],

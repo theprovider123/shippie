@@ -30,6 +30,7 @@ export interface AppMeta {
   backend_type?: string | null;
   backend_url?: string | null;
   allowed_connect_domains?: string[];
+  connection_guard?: unknown;
   workflow_probes?: string[];
   routing?: {
     mode: RouteMode;
@@ -47,6 +48,19 @@ export async function writeAppMeta(
   meta: AppMeta,
 ): Promise<void> {
   await kv.put(`apps:${slug}:meta`, JSON.stringify(meta));
+}
+
+export async function readAppMeta(
+  kv: KVNamespace,
+  slug: string,
+): Promise<AppMeta | null> {
+  const raw = await kv.get(`apps:${slug}:meta`);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AppMeta;
+  } catch {
+    return null;
+  }
 }
 
 /**

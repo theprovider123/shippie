@@ -90,6 +90,11 @@ function renderHtml(slug: string): string {
     </section>
 
     <section>
+      <h2>Connections</h2>
+      <pre id="connections">checking…</pre>
+    </section>
+
+    <section>
       <h2>Backup</h2>
       <div class="row">
         <button id="export">Download as encrypted file</button>
@@ -139,6 +144,64 @@ function clientScript(slug: string): string {
       out.textContent = used + ' used · ' + quota + ' quota';
     } catch (e) {
       out.textContent = 'unable to estimate (browser does not support storage.estimate)';
+    }
+  }
+
+  async function refreshConnections() {
+    const out = document.getElementById('connections');
+    if (!out) return;
+    try {
+      const res = await fetch('/__shippie/connections', { cache: 'no-store' });
+      if (!res.ok) throw new Error('connection policy unavailable');
+      const payload = await res.json();
+      const guard = payload && payload.connection_guard;
+      const staticConnections = Array.isArray(guard && guard.connections) ? guard.connections : [];
+      const runtimeConnections = readRuntimeConnections(appSlug);
+      if (!staticConnections.length && !runtimeConnections.length) {
+        out.textContent = 'No external connections detected.';
+        return;
+      }
+      const lines = [];
+      if (staticConnections.length) {
+        lines.push('Allowed by deploy scan');
+        for (const c of staticConnections) {
+          const risk = c.risk ? ' · ' + c.risk + ' risk' : '';
+          const destinations = Array.isArray(c.destinations) ? c.destinations.join(', ') : 'network';
+          lines.push('- ' + c.host + ' · ' + destinations + risk);
+          lines.push('  ' + (c.purpose || 'External connection'));
+        }
+      }
+      if (runtimeConnections.length) {
+        if (lines.length) lines.push('');
+        lines.push('Seen on this device');
+        for (const c of runtimeConnections) {
+          const blocked = c.blocked ? ' · blocked' : '';
+          lines.push('- ' + c.host + ' · ' + c.surface + ' · ' + c.risk + ' risk' + blocked);
+          lines.push('  ' + (c.purpose || 'External connection') + ' · seen ' + c.count + ' time' + (c.count === 1 ? '' : 's'));
+        }
+      }
+      out.textContent = lines.join('\\n');
+    } catch (e) {
+      out.textContent = 'Unable to load connection policy.';
+    }
+  }
+
+  function readRuntimeConnections(slug) {
+    try {
+      const key = 'shippie.runtime-connections.v1:' + slug;
+      const parsed = JSON.parse(window.localStorage.getItem(key) || '[]');
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((item) =>
+          item &&
+          typeof item.host === 'string' &&
+          typeof item.surface === 'string' &&
+          typeof item.risk === 'string' &&
+          typeof item.count === 'number'
+        )
+        .slice(0, 12);
+    } catch (e) {
+      return [];
     }
   }
 
@@ -215,6 +278,7 @@ function clientScript(slug: string): string {
   });
 
   await refreshStats();
+  await refreshConnections();
 
   function openInheritedPanel(action) {
     const api = window.shippie;

@@ -36,6 +36,7 @@ import {
 import { handleInstall } from './router/install';
 import { handleLocalAsset, handleLocalScript } from './router/local';
 import { handleYourData } from './router/your-data';
+import { handleConnections } from './router/connections';
 import {
   handleGroupChooser,
   handleGroupModerate
@@ -177,6 +178,9 @@ export async function dispatchWrapperSystemRoute(
       return handlePushUnsubscribe(ctx);
     case '/__shippie/data':
       return handleYourData(ctx);
+    case '/__shippie/connections':
+    case '/__shippie/connections.json':
+      return handleConnections(ctx);
     case '/__shippie/group':
     case '/__shippie/group/':
       return handleGroupChooser(ctx);

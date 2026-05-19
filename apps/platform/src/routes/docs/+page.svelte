@@ -63,9 +63,10 @@
     </p>
     <h1 class="title">Local tools that know each other.</h1>
     <p class="lede">
-      If it is on Shippie, it is private. Build tools with one-line local database,
-      zero backend setup, secure backup as continuity, and deploy paths that block cloud
-      user-data storage before publish.
+      If it is on Shippie, data movement is visible. Build tools with one-line local
+      database, zero backend setup, secure backup as continuity, and deploy paths that
+      disclose outside connections before publish. Quiet local tools stay visually quiet;
+      Shippie only raises a signal when something extra is connected.
     </p>
   </header>
 
@@ -144,8 +145,9 @@ shippie deploy ./dist
     <h4>Push from the CLI or MCP</h4>
     <p>
       CLI and MCP use the same deploy API as the browser zip upload. If Supabase, Firebase,
-      Auth0, analytics, ad code, or silent external user-data writes are detected, the deploy
-      is blocked with conversion guidance.
+      Auth0, analytics, ad code, insecure connections, or bundled secrets are detected, the
+      deploy is blocked with conversion guidance. External services are allowed by default
+      when they can be disclosed cleanly.
     </p>
 
     <h4>Convert a hosted app</h4>

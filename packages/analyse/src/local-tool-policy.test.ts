@@ -43,7 +43,7 @@ describe('local-tool-policy scan', () => {
     expect(ids).toContain('analytics-tracker');
   });
 
-  test('blocks external writes but allows reference-data reads with domain disclosure', () => {
+  test('warns on external writes and discloses the destination domain', () => {
     const report = runLocalToolPolicyScan(files({
       'app.js': `
         const forecast = await fetch('https://api.weather.test/forecast?lat=51&lon=0');
@@ -54,9 +54,28 @@ describe('local-tool-policy scan', () => {
       `,
     }));
 
-    expect(report.passed).toBe(false);
-    expect(report.referenceDomains).toEqual(['api.weather.test']);
-    expect(report.findings.some((f) => f.id === 'external-user-data-write')).toBe(true);
+    expect(report.passed).toBe(true);
+    expect(report.status).toBe('eligible-reference-network');
+    expect(report.referenceDomains).toEqual(['api.vendor.test', 'api.weather.test']);
+    const writeFinding = report.findings.find((f) => f.id === 'external-user-data-write');
+    expect(writeFinding?.severity).toBe('warn');
+  });
+
+  test('allows external AI endpoints with disclosure warnings', () => {
+    const report = runLocalToolPolicyScan(files({
+      'ai.js': `
+        await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          body: JSON.stringify({ input: noteText })
+        });
+      `,
+    }));
+
+    expect(report.passed).toBe(true);
+    expect(report.blocks).toBe(0);
+    expect(report.referenceDomains).toEqual(['api.openai.com']);
+    expect(report.findings.find((f) => f.id === 'external-llm-silent')?.severity).toBe('warn');
+    expect(report.findings.find((f) => f.id === 'external-user-data-write')?.severity).toBe('warn');
   });
 
   test('warns on GET query strings that may carry personal context', () => {

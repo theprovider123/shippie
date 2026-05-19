@@ -31,6 +31,13 @@ async function kvReadJson(kv: KVNamespace, key: string): Promise<unknown> {
   // available, falling back to manual parse.
   try {
     const raw = await kv.get(key, { type: 'json' });
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw) as unknown;
+      } catch {
+        return null;
+      }
+    }
     return raw;
   } catch {
     const raw = await kv.get(key);

@@ -101,7 +101,7 @@ describe('formatRecency', () => {
 
 describe('kind labels', () => {
   it('pill labels are short and lowercase', () => {
-    expect(kindPillLabel('local')).toBe('local');
+    expect(kindPillLabel('local')).toBeNull();
     expect(kindPillLabel('connected')).toBe('connected');
     expect(kindPillLabel('cloud')).toBe('cloud');
     expect(kindPillLabel(null)).toBeNull();

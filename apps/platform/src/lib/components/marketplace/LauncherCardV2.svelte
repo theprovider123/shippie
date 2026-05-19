@@ -14,10 +14,9 @@
   } from '$lib/stores/cached-slugs';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
+  import { connectionBadgesFromKind } from '$lib/marketplace/connection-badges';
   import {
     displayCategory,
-    kindAriaLabel,
-    kindPillLabel,
     normaliseBlurb,
     titleCap,
   } from '$lib/marketplace/display-text';
@@ -73,8 +72,7 @@
   const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
-  const kindLabel = $derived(kindPillLabel(app.kind));
-  const kindLabelAria = $derived(kindAriaLabel(app.kind));
+  const connectionBadges = $derived(connectionBadgesFromKind(app.kind));
 
   const cornerSummary = $derived.by(() => {
     const parts: string[] = [];
@@ -168,9 +166,9 @@
     <div class="copy">
       <p class="eyebrow">
         <span class="category">{categoryLabel}</span>
-        {#if kindLabel}
-          <span class="kind-pill kind-{app.kind}" title={kindLabelAria}>{kindLabel}</span>
-        {/if}
+        {#each connectionBadges as badge (badge.label)}
+          <span class="connection-pill connection-{badge.tone}" title={badge.title}>{badge.label}</span>
+        {/each}
         {#if cornerSummary}
           <span class="sr-only">{cornerSummary}</span>
         {/if}
@@ -324,7 +322,7 @@
     color: var(--text-light);
   }
   .category { line-height: 1.2; }
-  .kind-pill {
+  .connection-pill {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -335,26 +333,34 @@
     color: var(--text-light);
     background: transparent;
   }
-  .kind-pill::before {
+  .connection-pill::before {
     content: '';
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: currentColor;
   }
-  .kind-pill.kind-local {
-    color: var(--sage-leaf);
-    border-color: rgba(122, 154, 110, 0.4);
-    background: rgba(122, 154, 110, 0.08);
-  }
-  .kind-pill.kind-connected {
+  .connection-service,
+  .connection-hosted {
     color: var(--sunset);
     border-color: rgba(232, 96, 60, 0.45);
     background: rgba(232, 96, 60, 0.08);
   }
-  .kind-pill.kind-cloud {
-    color: var(--text-light);
-    border-color: var(--border);
+  .connection-ai {
+    color: #7c5cc4;
+    border-color: rgba(124, 92, 196, 0.42);
+    background: rgba(124, 92, 196, 0.08);
+  }
+  .connection-weather,
+  .connection-location {
+    color: var(--sage-leaf);
+    border-color: rgba(122, 154, 110, 0.4);
+    background: rgba(122, 154, 110, 0.08);
+  }
+  .connection-payment {
+    color: var(--marigold);
+    border-color: rgba(232, 197, 71, 0.42);
+    background: rgba(232, 197, 71, 0.08);
   }
 
   h3 {

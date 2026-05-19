@@ -1,8 +1,8 @@
 # Showcase mobile-overflow report
 
-_Generated 2026-05-19T12:31:21.876Z_
+_Generated 2026-05-19T14:57:18.521Z_
 
-Scanned 64 showcases / 1139 source files.
+Scanned 64 showcases / 1151 source files.
 
 Findings are review prompts, not automatic failures. Intentional short chips, icon-only controls, print-only tables, and fixed-format canvases may be acceptable.
 
@@ -34,7 +34,7 @@ Findings are review prompts, not automatic failures. Intentional short chips, ic
 - `apps/showcase-daily-puzzle/src/styles.css:66` — .combined
 - `apps/showcase-match-room/src/styles.css:712` — .status-pill
 - `apps/showcase-pitch-forge/src/styles.css:190` — .status-pill
-- `apps/showcase-receipt-snap/src/styles.css:433` — .visually-hidden
+- `apps/showcase-receipt-snap/src/styles.css:534` — .visually-hidden
 - `apps/showcase-restaurant-memory/src/styles.css:143` — .visit-actions .share-btn
 - `apps/showcase-stack/src/styles.css:216` — .toast
 - `apps/showcase-steep/src/styles.css:445` — .visually-hidden

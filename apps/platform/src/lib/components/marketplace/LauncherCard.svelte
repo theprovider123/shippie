@@ -1,7 +1,6 @@
 <script lang="ts">
   import { preloadData } from '$app/navigation';
   import IconOrMonogram from './IconOrMonogram.svelte';
-  import KindBadge from './KindBadge.svelte';
   import CapabilityBadges from './CapabilityBadges.svelte';
   import { toast } from '$lib/stores/toast';
   import { copyText } from '$lib/utils/copy-link';
@@ -17,6 +16,7 @@
   } from '$lib/stores/cached-slugs';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
+  import { connectionBadgesFromKind } from '$lib/marketplace/connection-badges';
 
   interface LauncherApp {
     slug: string;
@@ -78,12 +78,7 @@
     if (offlineStatus?.state === 'partial' || offlineStatus?.state === 'error') return 'warn';
     return 'idle';
   });
-  const localSignal = $derived.by(() => {
-    if (app.kind === 'local') return 'Local data';
-    if (app.kind === 'connected') return 'Local + live';
-    if (app.kind === 'cloud') return 'Cloud';
-    return 'Unchecked';
-  });
+  const connectionBadges = $derived(connectionBadgesFromKind(app.kind));
 
   async function copyAppLink(event: MouseEvent) {
     event.preventDefault();
@@ -186,11 +181,9 @@
       <p class="kind">{typeLabel} · {app.category}</p>
       <p class="blurb">{blurb}</p>
       <div class="signals">
-        {#if app.kind}
-          <KindBadge kind={app.kind} status={app.kindStatus} compact />
-        {:else}
-          <span class="signal">{localSignal}</span>
-        {/if}
+        {#each connectionBadges as badge (badge.label)}
+          <span class="signal connection connection-{badge.tone}" title={badge.title}>{badge.label}</span>
+        {/each}
         {#if proofCount > 0}
           <span class="signal">{proofCount} proof{proofCount === 1 ? '' : 's'}</span>
         {/if}
@@ -398,6 +391,27 @@
     color: var(--sage-leaf);
     border-color: rgba(122, 154, 110, 0.45);
     background: rgba(122, 154, 110, 0.08);
+  }
+  .signal.connection {
+    color: var(--sunset);
+    border-color: rgba(232, 96, 60, 0.45);
+    background: rgba(232, 96, 60, 0.08);
+  }
+  .signal.connection-ai {
+    color: #7c5cc4;
+    border-color: rgba(124, 92, 196, 0.42);
+    background: rgba(124, 92, 196, 0.08);
+  }
+  .signal.connection-weather,
+  .signal.connection-location {
+    color: var(--sage-leaf);
+    border-color: rgba(122, 154, 110, 0.4);
+    background: rgba(122, 154, 110, 0.08);
+  }
+  .signal.connection-payment {
+    color: var(--marigold);
+    border-color: rgba(232, 197, 71, 0.42);
+    background: rgba(232, 197, 71, 0.08);
   }
   .signal.offline-saved {
     color: var(--sage-leaf);

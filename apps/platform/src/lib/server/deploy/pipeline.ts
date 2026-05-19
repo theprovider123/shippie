@@ -29,8 +29,10 @@ import {
   extractRemixSpec,
   localize,
   runLocalToolPolicyScan,
+  runConnectionGuardScan,
   type SecurityScanReport,
   type LocalToolPolicyReport,
+  type ConnectionGuardReport,
   type LocalizeTransform,
   type RemixSpec,
 } from '@shippie/analyse';
@@ -246,6 +248,25 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     };
   }
 
+  const connectionGuard = runConnectionGuardScan(files, {
+    appHost: appHostFromPublicOrigin(input.publicOrigin, input.slug),
+    declaredConnectDomains: manifest.allowed_connect_domains ?? [],
+    declaredResourceDomains: manifest.allowed_resource_domains ?? [],
+  });
+  if (!connectionGuard.passed) {
+    const blockedPreflight = preflightWithConnectionGuardBlocks(preflight, connectionGuard);
+    emitter.emit({ type: 'deploy_failed', reason: 'connection_guard', step: 'preflight' });
+    return {
+      success: false,
+      version: 0,
+      files: files.size,
+      totalBytes,
+      preflight: blockedPreflight,
+      liveUrl: '',
+      reason: blockedPreflight.blockers.map((b) => b.title).join(' · '),
+    };
+  }
+
   // 3b. Arcade purity gate. Run BEFORE we touch D1 / R2 so a dirty
   // upload bounces with no side effects. We need the resolved surface
   // to know whether to enforce — peek the existing apps row up front
@@ -308,6 +329,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   const policyAllowedConnectDomains = uniqueStrings([
     ...(manifest.allowed_connect_domains ?? []),
     ...localToolPolicy.referenceDomains,
+    ...connectionGuardConnectDomains(connectionGuard),
   ]);
 
   // 4. Upsert apps row
@@ -406,7 +428,10 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   if (!deployRow) return failReport(input.slug, 'Failed to create deploy row');
 
   // 6. CSP + PWA injection
-  const csp = buildCsp(manifest);
+  const csp = buildCsp(manifest, {
+    connectDomains: policyAllowedConnectDomains,
+    policy: connectionGuard.csp,
+  });
   injectIntoHtmlFiles(files, csp.metaTag, manifest, version);
   emitter.emit({
     type: 'essentials_injected',
@@ -553,6 +578,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     },
     data: manifest.data,
     allowed_connect_domains: policyAllowedConnectDomains,
+    connection_guard: compactConnectionGuardForMeta(connectionGuard),
     workflow_probes: manifest.workflow_probes ?? [],
     routing: { mode: routing.mode },
     pwa_readiness: {
@@ -634,6 +660,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       preflight,
       securityReport,
       localToolPolicy,
+      connectionGuard,
       emitter,
     });
   } catch (err) {
@@ -705,8 +732,24 @@ function normalizeVisibilityScope(value: string): NonNullable<DeployStaticResult
   return value === 'private' || value === 'unlisted' || value === 'team' ? value : 'public';
 }
 
+function appHostFromPublicOrigin(publicOrigin: string, slug: string): string | null {
+  try {
+    return `${slug}.${new URL(publicOrigin).hostname}`;
+  } catch {
+    return null;
+  }
+}
+
 function uniqueStrings(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function connectionGuardConnectDomains(report: ConnectionGuardReport): string[] {
+  return report.connections
+    .filter((connection) => connection.destinations.includes('connect'))
+    .map((connection) =>
+      connection.protocol === 'wss:' ? `wss://${connection.host}` : connection.host,
+    );
 }
 
 function emitSecurityScanEvents(
@@ -782,6 +825,45 @@ export function preflightWithLocalToolPolicyBlocks(
     passed: false,
     findings,
     blockers,
+  };
+}
+
+export function preflightWithConnectionGuardBlocks(
+  preflight: PreflightReport,
+  report: ConnectionGuardReport,
+): PreflightReport {
+  if (report.blocks === 0) return preflight;
+  const connectionBlockers = report.findings
+    .filter((finding) => finding.severity === 'block')
+    .map((finding) => ({
+      rule: `connection-guard:${finding.id}`,
+      severity: 'block' as const,
+      title: finding.title,
+      detail: `${finding.location}: ${finding.detail}`,
+    }));
+  const findings = [...preflight.findings, ...connectionBlockers];
+  const blockers = [...preflight.blockers, ...connectionBlockers];
+  return {
+    ...preflight,
+    passed: false,
+    findings,
+    blockers,
+  };
+}
+
+function compactConnectionGuardForMeta(report: ConnectionGuardReport): Pick<
+  ConnectionGuardReport,
+  'schema' | 'passed' | 'summary' | 'blocks' | 'warns' | 'infos' | 'connections' | 'csp'
+> {
+  return {
+    schema: report.schema,
+    passed: report.passed,
+    summary: report.summary,
+    blocks: report.blocks,
+    warns: report.warns,
+    infos: report.infos,
+    connections: report.connections,
+    csp: report.csp,
   };
 }
 
@@ -986,6 +1068,7 @@ interface WriteDeployReportInput {
   preflight: PreflightReport;
   securityReport?: SecurityScanReport;
   localToolPolicy?: LocalToolPolicyReport;
+  connectionGuard?: ConnectionGuardReport;
   emitter: DeployEventEmitter;
 }
 
@@ -1035,6 +1118,32 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
             : 'ok',
       finishedAtMs: input.durationMs,
       notes: [input.localToolPolicy.summary],
+    });
+  }
+
+  if (input.connectionGuard) {
+    report.connectionGuard = {
+      schema: input.connectionGuard.schema,
+      summary: input.connectionGuard.summary,
+      findings: input.connectionGuard.findings,
+      blocks: input.connectionGuard.blocks,
+      warns: input.connectionGuard.warns,
+      infos: input.connectionGuard.infos,
+      scannedFiles: input.connectionGuard.scannedFiles,
+      connections: input.connectionGuard.connections,
+      csp: input.connectionGuard.csp,
+    };
+    steps.push({
+      id: 'connection_guard',
+      title: 'Connection Guard',
+      status:
+        input.connectionGuard.blocks > 0
+          ? 'block'
+          : input.connectionGuard.warns > 0
+            ? 'warn'
+            : 'ok',
+      finishedAtMs: input.durationMs,
+      notes: [input.connectionGuard.summary],
     });
   }
 

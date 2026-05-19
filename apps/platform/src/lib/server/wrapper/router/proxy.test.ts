@@ -6,6 +6,7 @@
  */
 import { describe, expect, test } from 'vitest';
 import {
+  buildWrappedCsp,
   buildUpstreamUrl,
   rewriteLocation,
   stripCookieDomain
@@ -46,5 +47,25 @@ describe('proxy helpers', () => {
     expect(out).toContain('sid=abc');
     expect(out).toContain('Expires=Wed, 09 Jun 2021');
     expect(out.toLowerCase()).not.toContain('domain=');
+  });
+
+  test('buildWrappedCsp discloses lenient wrapped mode as broadly connected', () => {
+    const csp = buildWrappedCsp({
+      upstreamUrl: 'https://upstream.example/app',
+      cspMode: 'lenient',
+    });
+
+    expect(csp).toContain("connect-src 'self' https:");
+    expect(csp).toContain('upgrade-insecure-requests');
+  });
+
+  test('buildWrappedCsp constrains strict fallback to the upstream origin', () => {
+    const csp = buildWrappedCsp({
+      upstreamUrl: 'https://upstream.example/app',
+      cspMode: 'strict',
+    });
+
+    expect(csp).toContain("connect-src 'self' https://upstream.example");
+    expect(csp).not.toMatch(/connect-src[^;]*\shttps:(?:\s|;|$)/);
   });
 });

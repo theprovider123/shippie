@@ -107,6 +107,9 @@
         <p class="tagline">{data.app.tagline ?? data.app.description ?? ''}</p>
         <div class="hero-tags">
           <p class="kind">{typeLabel} · {data.app.category}</p>
+          {#each data.connectionBadges as badge (badge.label)}
+            <span class="connection-badge connection-{badge.tone}" title={badge.title}>{badge.label}</span>
+          {/each}
           {#if isRemix}
             <span class="remix-badge">{remixLabel}</span>
           {/if}
@@ -178,7 +181,7 @@
               <strong>{data.trustCard.privacyGrade ?? 'Ungraded'}</strong>
               <p>
                 {data.trustCard.externalDomains.length === 0
-                  ? 'No external domains detected.'
+                  ? 'No external connections detected.'
                   : `${data.trustCard.externalDomains.length} external domain${data.trustCard.externalDomains.length === 1 ? '' : 's'} detected.`}
               </p>
             </article>
@@ -218,7 +221,7 @@
                   {/each}
                 </div>
               {:else}
-                <p>No external network domains were detected in the latest package scan.</p>
+                <p>No external connections were detected in the latest package scan.</p>
               {/if}
             </div>
           </div>
@@ -473,7 +476,8 @@
     gap: 0.625rem;
     margin-top: 0.625rem;
   }
-  .remix-badge {
+  .remix-badge,
+  .connection-badge {
     display: inline-flex;
     align-items: center;
     min-height: 28px;
@@ -485,6 +489,18 @@
     font-size: var(--caption-size);
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+  .connection-badge {
+    border-color: rgba(237, 228, 211, 0.44);
+    background: rgba(20, 18, 15, 0.26);
+  }
+  .connection-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    margin-right: 6px;
+    background: currentColor;
   }
   .cta-row {
     margin-top: var(--space-lg);

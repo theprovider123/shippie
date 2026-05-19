@@ -3,12 +3,13 @@ import {
   containerEligibilityFromDeployReport,
   injectEssentials,
   packageDomainsFromVerifiedRows,
+  preflightWithConnectionGuardBlocks,
   preflightWithSecurityBlocks,
 } from './pipeline';
 import type { ShippieJsonLite } from './manifest';
 import type { DeployReport } from './deploy-report';
 import type { PreflightReport } from './preflight';
-import type { SecurityScanReport } from '@shippie/analyse';
+import type { ConnectionGuardReport, SecurityScanReport } from '@shippie/analyse';
 
 const manifest = {
   name: 'Recipe Saver',
@@ -402,6 +403,61 @@ describe('preflightWithSecurityBlocks', () => {
       },
     ]);
     expect(result.findings.at(-1)?.rule).toBe('security:secret_stripe_key');
+  });
+});
+
+describe('preflightWithConnectionGuardBlocks', () => {
+  const passedPreflight: PreflightReport = {
+    passed: true,
+    findings: [{ rule: 'entry-file-present', severity: 'pass', title: 'Root index.html found' }],
+    warnings: [],
+    blockers: [],
+    durationMs: 1,
+  };
+
+  test('turns block-level connection findings into preflight blockers', () => {
+    const report: ConnectionGuardReport = {
+      schema: 'shippie.connection-guard.v1',
+      passed: false,
+      summary: '1 unsafe connection blocked before deploy.',
+      scannedFiles: 2,
+      findings: [
+        {
+          id: 'external-ai-provider',
+          severity: 'block',
+          title: 'External AI provider: api.openai.com',
+          detail: 'Route through Shippie Private AI or require explicit consent.',
+          location: 'assets/app.js:10',
+          host: 'api.openai.com',
+        },
+      ],
+      blocks: 1,
+      warns: 0,
+      infos: 0,
+      connections: [],
+      csp: {
+        connectSrc: [],
+        scriptSrc: [],
+        styleSrc: [],
+        fontSrc: [],
+        imgSrc: [],
+        frameSrc: [],
+        workerSrc: [],
+        manifestSrc: [],
+      },
+    };
+
+    const result = preflightWithConnectionGuardBlocks(passedPreflight, report);
+    expect(result.passed).toBe(false);
+    expect(result.blockers).toEqual([
+      {
+        rule: 'connection-guard:external-ai-provider',
+        severity: 'block',
+        title: 'External AI provider: api.openai.com',
+        detail:
+          'assets/app.js:10: Route through Shippie Private AI or require explicit consent.',
+      },
+    ]);
   });
 });
 

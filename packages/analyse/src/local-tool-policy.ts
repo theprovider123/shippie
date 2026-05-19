@@ -2,8 +2,9 @@
  * Local Tool policy scan.
  *
  * This is the build-time guardrail for the Shippie promise:
- * user data stays on the device unless the user explicitly exports it,
- * enables encrypted Shippie backup, or joins an encrypted Shippie relay.
+ * user data stays on the device by default, and any external data movement
+ * must be visible rather than hidden. Shippie is open by default, so
+ * non-tracking external services warn/disclose instead of blocking.
  *
  * The scanner is intentionally conservative. It is not a full data-flow
  * verifier; it catches common cloud/storage/auth/tracking patterns before a
@@ -91,7 +92,7 @@ const SCANNABLE_EXTENSIONS = new Set([
   '.txt',
 ]);
 
-const BLOCKED_RULES: PatternRule[] = [
+const PATTERN_RULES: PatternRule[] = [
   {
     id: 'cloud-storage-supabase',
     category: 'third-party-storage',
@@ -172,10 +173,10 @@ const BLOCKED_RULES: PatternRule[] = [
   {
     id: 'external-llm-silent',
     category: 'external-ai',
-    severity: 'block',
+    severity: 'warn',
     title: 'External AI endpoint detected',
     detail:
-      'External LLM calls may only happen after a clear per-call user action. Prefer shippie.local.ai for local inference; otherwise label the action as sending data to the provider.',
+      'External AI is allowed on Shippie when visible. The app will disclose this provider to users; prefer local or Shippie-private AI for sensitive default workflows.',
     patterns: [
       /api\.openai\.com\/v1/i,
       /api\.anthropic\.com/i,
@@ -254,7 +255,7 @@ function fileExtension(path: string): string {
 }
 
 function scanPatternRules(path: string, body: string, findings: LocalToolFinding[]): void {
-  for (const rule of BLOCKED_RULES) {
+  for (const rule of PATTERN_RULES) {
     for (const pattern of rule.patterns) {
       pattern.lastIndex = 0;
       const match = pattern.exec(body);
@@ -303,20 +304,20 @@ function scanExternalNetwork(
       continue;
     }
     const method = METHOD_RE.exec(options)?.[2]?.toUpperCase() ?? 'GET';
+    referenceDomains.add(url.hostname);
     if (method !== 'GET' && method !== 'HEAD') {
       findings.push({
         id: 'external-user-data-write',
         category: 'external-write',
-        severity: 'block',
+        severity: 'warn',
         title: `External ${method} request to ${url.hostname}`,
         detail:
-          'Shippie tools may fetch public reference data, but user data must not be posted to external services. Use shippie.local.db or a visible user export instead.',
+          'External writes can move user data out of Shippie. Shippie allows them when visible, and marks this connection for user-facing disclosure.',
         location,
         snippet: trimSnippet(rawUrl),
       });
       continue;
     }
-    referenceDomains.add(url.hostname);
     if (QUERY_RISK_RE.test(url.search)) {
       findings.push({
         id: 'reference-query-risk',
@@ -380,12 +381,12 @@ function summarize(
   referenceDomainCount: number,
 ): string {
   if (status === 'needs-conversion') {
-    return `${blocks} local-tool blocker${blocks === 1 ? '' : 's'} found. Convert external storage/auth/tracking to Shippie local primitives before publishing.`;
+    return `${blocks} local-tool blocker${blocks === 1 ? '' : 's'} found. Convert prohibited storage/auth/tracking to Shippie local primitives before publishing.`;
   }
   if (status === 'eligible-reference-network') {
-    return `Eligible local tool with ${referenceDomainCount} declared reference-data domain${referenceDomainCount === 1 ? '' : 's'}${warns ? ` and ${warns} review warning${warns === 1 ? '' : 's'}` : ''}.`;
+    return `Eligible local tool with ${referenceDomainCount} disclosed external domain${referenceDomainCount === 1 ? '' : 's'}${warns ? ` and ${warns} review warning${warns === 1 ? '' : 's'}` : ''}.`;
   }
-  return 'Eligible local tool. No third-party user-data egress detected.';
+  return 'Eligible local tool. No external domains detected.';
 }
 
 function lineForOffset(body: string, offset: number): number {

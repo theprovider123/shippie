@@ -6,7 +6,7 @@
   <title>Whitepaper · Shippie</title>
   <meta
     name="description"
-    content="Build on Shippie — local tools that know each other. If it is on Shippie, it is private."
+    content="Build on Shippie — local tools that know each other. If it is on Shippie, data movement is visible."
   />
   <meta property="og:title" content="Build on Shippie — Local tools that know each other" />
   <meta

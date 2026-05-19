@@ -266,7 +266,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       description:
         "Check an app source directory against Shippie's Local Tool policy. " +
         'Static analysis only — same local-tool scanner used at deploy time, plus legacy kind detection for migration context. ' +
-        'Returns eligibility, blockers, reference-data domains, capability hints, and Localize candidacy. Use this BEFORE building to know whether the app can publish.',
+        'Returns eligibility, blockers, disclosed external domains, capability hints, and Localize candidacy. Use this BEFORE building to know whether the app can publish.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -1114,7 +1114,7 @@ function handleAppKindsDoc() {
   const text = [
     'Shippie Local Tool Policy',
     '',
-    'If it is on Shippie, it is private. No exceptions, no badge-checking, no hidden cloud account.',
+    'If it is on Shippie, data movement is visible. No hidden connections, no badge-checking, no hidden cloud account.',
     '',
     'One public app kind: Local Tool.',
     'Capabilities are additive: works offline, secure backup, reference data used, local AI, private relay via Shippie, shares with my tools.',
@@ -1125,16 +1125,18 @@ function handleAppKindsDoc() {
     '  • encrypted Shippie backup chosen by the user',
     '  • encrypted Shippie relay/signal rooms that Shippie cannot read',
     '  • public reference-data APIs when user data is not sent out',
+    '  • external AI and service APIs when disclosed to users',
+    '  • third-party resources that are not tracking or ad infrastructure',
     '',
     'Blocked:',
     '  • Supabase, Firebase, Appwrite, PocketBase, or third-party DB clients',
     '  • external auth providers required for core use',
     '  • Google Analytics, Mixpanel, PostHog, Segment, Meta pixel, ads',
-    '  • external POST/PUT/PATCH/DELETE with user content',
-    '  • external LLM calls with user content unless the user explicitly triggers that one call',
+    '  • insecure external connections',
+    '  • leaked API keys or secrets',
     '',
     'Asymmetry rule:',
-    '  Reference data may come in. User data does not go out, except visible export, encrypted backup, or encrypted Shippie relay.',
+    '  Local by default. Open by design. Any outside connection must be visible.',
     '',
     'Maker entry point:',
     '  import { shippie } from "@shippie/sdk";',

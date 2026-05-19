@@ -2,9 +2,9 @@
   import IconOrMonogram from './IconOrMonogram.svelte';
   import CapabilityBadges from './CapabilityBadges.svelte';
   import DownloadButton from './DownloadButton.svelte';
-  import KindBadge from './KindBadge.svelte';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
+  import { connectionBadgesFromKind } from '$lib/marketplace/connection-badges';
 
   interface Props {
     slug: string;
@@ -38,7 +38,6 @@
     installCount = 0,
     badges = [],
     kind = null,
-    kindStatus = null,
     firstPartySigned = false,
     sealed = false,
   }: Props = $props();
@@ -50,6 +49,7 @@
   // and overrides this via the explicit `sealed` prop.
   const inferredSeal = $derived(badges.filter((b) => b.proven).length >= 3);
   const showSeal = $derived(sealed || inferredSeal);
+  const connectionBadges = $derived(connectionBadgesFromKind(kind));
 </script>
 
 <div class="app-card" class:sealed={showSeal}>
@@ -71,9 +71,11 @@
         </h2>
         <p class="kind">{typeLabel} · {category}</p>
         <p class="blurb">{blurb}</p>
-        {#if kind}
+        {#if connectionBadges.length > 0}
           <div class="kind-row">
-            <KindBadge {kind} status={kindStatus} compact />
+            {#each connectionBadges as badge (badge.label)}
+              <span class="connection-mini connection-{badge.tone}" title={badge.title}>{badge.label}</span>
+            {/each}
             {#if firstPartySigned}
               <span class="signed-mini">Shippie-signed</span>
             {/if}
@@ -198,6 +200,32 @@
     font-size: var(--caption-size);
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+  .connection-mini {
+    border: 1px solid rgba(232, 96, 60, 0.45);
+    color: var(--sunset);
+    background: rgba(232, 96, 60, 0.08);
+    padding: 2px 7px;
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .connection-mini.connection-ai {
+    color: #7c5cc4;
+    border-color: rgba(124, 92, 196, 0.42);
+    background: rgba(124, 92, 196, 0.08);
+  }
+  .connection-mini.connection-weather,
+  .connection-mini.connection-location {
+    color: var(--sage-leaf);
+    border-color: rgba(122, 154, 110, 0.4);
+    background: rgba(122, 154, 110, 0.08);
+  }
+  .connection-mini.connection-payment {
+    color: var(--marigold);
+    border-color: rgba(232, 197, 71, 0.42);
+    background: rgba(232, 197, 71, 0.08);
   }
   .counts {
     margin-top: 0.625rem;

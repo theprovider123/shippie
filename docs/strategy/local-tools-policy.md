@@ -4,9 +4,13 @@ This is the source of truth for what Shippie accepts into the public tool surfac
 
 ## The Promise
 
-If it is on Shippie, it is private. No exceptions.
+If it is on Shippie, data movement is visible. No hidden connections.
 
-Users should not need to inspect a badge before trusting a tool. A Shippie tool keeps user data on the device by default, works offline for its core workflow, and never requires a third-party account to be useful.
+Users should not need to inspect source code before trusting a tool. A Shippie tool keeps user data on the device by default, works offline for its core workflow where possible, and never hides when it reaches an outside service.
+
+Shippie is open by default. Makers can use useful external services, including AI and public APIs, but those connections must be scanned, disclosed, and visible in the app's Shippie surfaces. The platform blocks clearly unsafe classes such as trackers, ad networks, insecure transports, leaked secrets, and cloud structures that replace the local-tool data path.
+
+The quiet state is unlabelled. Shippie does not add a "local only" badge to normal tools; it only raises a visible signal when something extra is happening, such as external AI, public APIs, payment providers, weather/location services, or creator-hosted services.
 
 ## One Kind, Many Capabilities
 
@@ -34,6 +38,8 @@ This replaces the old Local / Connected / Cloud user taxonomy. Internally, legac
 - Shippie secure backup when the user opts in. Backup is continuity, not identity.
 - Shippie relay/signal for live collaboration when payloads are encrypted and opaque to Shippie.
 - Public reference-data APIs, when user data is not sent out.
+- External AI and service APIs, when the connection is disclosed to users and the app remains useful without hidden account lock-in.
+- Third-party resource domains for images, fonts, maps, embeds, or scripts, when disclosed and not tracking/ad infrastructure.
 - Explicit user export, such as CSV, ZIP, PDF, or a visible share/download action.
 
 ## Blocked
@@ -42,8 +48,8 @@ This replaces the old Local / Connected / Cloud user taxonomy. Internally, legac
 - Third-party auth required for the core workflow: Auth0, Clerk, Firebase Auth, Supabase Auth, NextAuth, and similar.
 - Third-party analytics and trackers: Google Analytics, Google Tag Manager, Mixpanel, PostHog, Segment, Amplitude, Meta Pixel.
 - Ad SDKs and ad networks.
-- External `POST`, `PUT`, `PATCH`, or `DELETE` requests that can carry user content.
-- Silent external LLM calls with user content.
+- Insecure external `http:` or `ws:` connections.
+- Leaked API keys or secrets in client bundles.
 - URL wrapping hosted cloud apps into the marketplace. A reverse proxy cannot prove the local-tool promise.
 
 ## The Asymmetry Rule
@@ -66,17 +72,17 @@ Match Room, Live Room, Crewtrip, and future multiplayer tools must declare the `
 
 > Private relay via Shippie. Encrypted live data moves between your devices or room members; Shippie cannot read it.
 
-## External LLMs
+## External AI
 
-Default stance: local AI only.
+Default stance: prefer local or Shippie-private AI for sensitive workflows.
 
-Exception: user-explicit-per-call external AI is allowed when the action clearly says what will be sent and to whom. Examples:
+External AI is allowed when it is visible. The runtime shows high-risk external AI connections on open, and Your Data lists the provider, purpose, and likely data categories. Clear per-action copy is still the best product experience. Examples:
 
 - `Send this note to OpenAI`
 - `Ask Claude about this receipt`
 - `Translate with Gemini`
 
-Silent background calls are blocked. Shippie-proxied cloud AI is a future infrastructure option, not the launch path.
+Silent background calls are warnings, not automatic rejection, unless they also use trackers, ads, insecure transports, leaked secrets, or a prohibited data-store/auth pattern. Shippie-proxied private AI is a future infrastructure option for keeping heavy models off the device while keeping the disclosure surface simple.
 
 ## Secure Backup
 
@@ -113,6 +119,7 @@ The same Local Tool policy scanner runs for browser zip uploads, trial uploads, 
 - **MCP deploy:** same API path and scanner.
 - **Workspace deploy:** each app is scanned independently.
 - **Hosted URL wrap:** retired for marketplace publishing. Convert to a local tool and upload the built bundle.
+- **Legacy wrapped URL:** existing wrapped apps remain visibly marked as hosted upstreams. Shippie discloses the upstream domain because static bundle scanning is not available for that mode.
 
 ## Data Passport v1
 
@@ -139,21 +146,27 @@ The deploy pipeline blocks:
 
 - blocked providers or auth libraries,
 - tracking/ads,
-- external user-data writes,
-- silent external AI endpoints.
+- insecure external connections,
+- bundled secrets or other security scanner blockers.
 
 It allows with disclosure:
 
 - declared public reference-data domains,
 - Shippie relay/signal/backup/proof endpoints,
-- static CDN assets.
+- static CDN assets,
+- external AI and service writes,
+- third-party scripts/resources that are not known tracking or ad infrastructure.
 
 When a deploy is blocked, the maker sees conversion guidance instead of a vague failure:
 
 > This tool stores user data on Supabase. Shippie tools keep user data on the device. Convert to `shippie.local.db`, or deploy the cloud app elsewhere.
 
+When a deploy is allowed with warnings, the user sees the connection plainly in Shippie:
+
+> This app uses external services: api.openai.com for external AI processing. Shippie allows this, and shows it so data movement is not hidden.
+
 ## Honest Limitations
 
-Static scanning is not proof of perfect privacy. It catches common patterns and obvious network egress, but cannot fully prove semantic intent. Runtime proof events, package review, and user reporting still matter. Data Passport v1 also does not move data between incompatible tools yet; it makes compatibility visible before we add migration runners.
+Static scanning is not proof of perfect privacy. It catches common patterns and obvious network egress, but cannot fully prove semantic intent. The wrapper also records runtime-created external hosts locally on the user's device, so Your Data can show connections static scanning missed. Runtime proof events, package review, and user reporting still matter. Data Passport v1 also does not move data between incompatible tools yet; it makes compatibility visible before we add migration runners.
 
-The policy also narrows the marketplace. That is intentional. Fewer tools with a hard guarantee are better than many tools that make users check fine print.
+The policy keeps the default local-tool promise without turning Shippie into a locked-down platform. Open does not mean opaque: makers can connect things, and users can see what is connected.
