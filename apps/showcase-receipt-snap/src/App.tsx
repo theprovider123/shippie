@@ -135,10 +135,11 @@ export function App() {
       setShowHeaderSubtitle(false);
       try { localStorage.setItem(HEADER_SUBTITLE_SEEN_KEY, '1'); } catch { /* ignore */ }
     }
-    void localNavigation.navigate(
-      { tab, screen: { kind: 'review', rawText, imageDataUrl } },
-      { kind: 'rise' },
-    );
+    // OCR finishes from a worker/canvas-heavy path. Enter Review via
+    // direct state so a view-transition quirk can never strand users on
+    // the capture screen with a finished progress state.
+    setTab('capture');
+    setScreen({ kind: 'review', rawText, imageDataUrl });
   }
 
   function onSave(values: ReviewFormValues) {
