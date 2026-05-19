@@ -105,6 +105,7 @@
         : '',
   );
   const slugPattern = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
+  const cliRemixCommand = $derived(`npx @shippie/cli remix ${data.app.slug}`);
 </script>
 
 <svelte:head>
@@ -429,6 +430,9 @@
       {/if}
       {#if data.ownership.remixAvailable}
         <a href={`/new?remix=${data.app.slug}`}>Remix this tool</a>
+        {#if data.ownership.remixVia === 'cli'}
+          <code class="remix-command">{cliRemixCommand}</code>
+        {/if}
       {:else}
         <span>Remix unavailable until the maker publishes source + license</span>
       {/if}
@@ -867,6 +871,18 @@
   }
   .ownership-actions a {
     color: var(--sunset);
+  }
+  .ownership-actions .remix-command {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    overflow-wrap: anywhere;
   }
   @media (max-width: 640px) {
     .hero {

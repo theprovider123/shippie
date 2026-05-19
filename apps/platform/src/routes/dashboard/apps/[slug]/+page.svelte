@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { qrSvg } from '@shippie/qr';
   import type { PageData, ActionData } from './$types';
   import KindBadge from '$lib/components/marketplace/KindBadge.svelte';
   import type {
@@ -21,6 +23,77 @@
   const pwaReasons = $derived(data.app.currentPwaReadinessReasons ?? []);
   const pwaLabel = $derived(pwaSurfaceLabel(data.app.currentPwaReadiness, pwaReasons));
   const pwaItems = $derived(pwaChecklist(pwaReasons));
+  const publicUrl = $derived(`https://${data.app.slug}.shippie.app/`);
+  const launchpad = $derived(
+    data.launchpad ?? {
+      analyticsTotal: 0,
+      latestEvent: null,
+      lineage: null,
+    },
+  );
+  const hasSource = $derived(Boolean(launchpad.lineage?.sourceRepo || data.app.githubRepo));
+  const isRemixable = $derived(
+    Boolean(launchpad.lineage?.remixAllowed && launchpad.lineage?.license && hasSource),
+  );
+  const checklist = $derived([
+    {
+      label: 'App is live',
+      done: Boolean(data.app.activeDeployId || data.deploys.length > 0),
+      href: publicUrl,
+      action: 'Open',
+    },
+    {
+      label: 'Feedback is ready',
+      done: (data.app.feedbackOpenCount ?? 0) > 0,
+      href: `/dashboard/apps/${data.app.slug}/feedback`,
+      action: 'Inbox',
+    },
+    {
+      label: 'Analytics has received an event',
+      done: launchpad.analyticsTotal > 0,
+      href: `/dashboard/apps/${data.app.slug}/analytics`,
+      action: launchpad.analyticsTotal > 0 ? 'View events' : 'Watch first event',
+    },
+    {
+      label: 'Source and remix terms are published',
+      done: isRemixable,
+      href: `/dashboard/apps/${data.app.slug}/profile`,
+      action: isRemixable ? 'Review' : 'Add source',
+    },
+    {
+      label: 'GitHub is connected',
+      done: Boolean(data.app.githubVerified || data.app.githubInstallationId),
+      href: data.app.githubVerified ? `/dashboard/apps/${data.app.slug}/profile` : '/new#github',
+      action: data.app.githubVerified ? 'Connected' : 'Connect',
+    },
+  ]);
+  let qrMarkup = $state<string | null>(null);
+  let copied = $state(false);
+
+  onMount(() => {
+    void qrSvg(publicUrl, { ecc: 'M', size: 148 })
+      .then((markup) => (qrMarkup = markup))
+      .catch(() => (qrMarkup = null));
+  });
+
+  async function shareApp() {
+    const payload = {
+      title: `${data.app.name} on Shippie`,
+      text: data.app.tagline ?? `${data.app.name} on Shippie`,
+      url: publicUrl,
+    };
+    if ('share' in navigator) {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch {
+        // Copy fallback below.
+      }
+    }
+    await navigator.clipboard.writeText(publicUrl);
+    copied = true;
+    window.setTimeout(() => (copied = false), 1400);
+  }
 </script>
 
 <script lang="ts" module>
@@ -84,6 +157,53 @@ shippie.feedback.submit({
     </a>
   </div>
 
+  <div class="ship-panel">
+    <div class="qr-card">
+      <div class="qr-box" aria-label={`QR code for ${data.app.name}`}>
+        {#if qrMarkup}
+          {@html qrMarkup}
+        {:else}
+          <span>QR</span>
+        {/if}
+      </div>
+      <div>
+        <strong>Open on phone</strong>
+        <p>{publicUrl}</p>
+        <button type="button" onclick={shareApp}>{copied ? 'Copied' : 'Share / copy link'}</button>
+      </div>
+    </div>
+    <div class="analytics-card">
+      <span>First analytics event</span>
+      {#if launchpad.analyticsTotal > 0}
+        <strong>{launchpad.analyticsTotal} total events</strong>
+        <p>
+          Latest: {launchpad.latestEvent?.eventName ?? 'event'}
+          {#if launchpad.latestEvent?.createdAt} · {launchpad.latestEvent.createdAt}{/if}
+        </p>
+      {:else}
+        <strong>Waiting for first event</strong>
+        <p>Open the live app once after adding the SDK; accepted aggregate events appear here.</p>
+      {/if}
+      <a href={`/dashboard/apps/${data.app.slug}/analytics`}>Open analytics →</a>
+    </div>
+  </div>
+
+  <section class="checklist-card" aria-labelledby="launch-checklist-title">
+    <div>
+      <p class="eyebrow">Launch checklist</p>
+      <h2 id="launch-checklist-title">Make this app easier to trust, improve, and remix.</h2>
+    </div>
+    <ol>
+      {#each checklist as item (item.label)}
+        <li class:done={item.done}>
+          <span>{item.done ? '✓' : '○'}</span>
+          <strong>{item.label}</strong>
+          <a href={item.href}>{item.action}</a>
+        </li>
+      {/each}
+    </ol>
+  </section>
+
   <details class="snippet-card">
     <summary>Turn on feedback in your app</summary>
     <p class="hint">
@@ -101,6 +221,17 @@ shippie.feedback.submit({
         <pre>{buildHtmlSnippet(data.app.slug)}</pre>
       </details>
     </div>
+  </details>
+
+  <details class="snippet-card">
+    <summary>Turn on basic analytics</summary>
+    <p class="hint">
+      Aggregate events help you see whether people can open and use the app. No raw app data or
+      cross-app identity is recorded.
+    </p>
+    <pre>{`import { shippie } from '@shippie/sdk';
+
+shippie.analytics.track('opened');`}</pre>
   </details>
 </section>
 
@@ -280,15 +411,129 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   .quick:hover { background: rgba(232, 96, 60, 0.08); border-color: #E8603C; }
   .quick strong { font-size: 14px; }
   .quick span { font-size: 12px; color: #8B847A; }
+  .ship-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+    gap: 0.75rem;
+  }
+  .qr-card,
+  .analytics-card,
+  .checklist-card {
+    border: 1px solid #E5DDC8;
+    padding: 1rem;
+  }
+  .qr-card {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+  }
+  .qr-box {
+    width: 148px;
+    height: 148px;
+    padding: 8px;
+    background: #FAF7EF;
+    border: 1px solid #E5DDC8;
+    display: grid;
+    place-items: center;
+    color: #8B847A;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .qr-box :global(svg) { width: 100%; height: 100%; display: block; }
+  .qr-card p,
+  .analytics-card p {
+    margin: 0.3rem 0 0.6rem;
+    color: #8B847A;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .qr-card button,
+  .analytics-card a,
+  .checklist-card a {
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: #E8603C;
+    padding: 0 0.75rem;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .analytics-card {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+  }
+  .analytics-card span {
+    font-family: ui-monospace, monospace;
+    color: #8B847A;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .checklist-card {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
+    gap: 1rem;
+  }
+  .checklist-card h2 {
+    margin: 0.2rem 0 0;
+    font-size: 1.1rem;
+  }
+  .checklist-card ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .checklist-card li {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    gap: 0.55rem;
+    align-items: center;
+    font-size: 13px;
+    border-top: 1px solid #E5DDC8;
+    padding-top: 0.45rem;
+  }
+  .checklist-card li:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .checklist-card li > span {
+    font-family: ui-monospace, monospace;
+    color: #C84A2A;
+  }
+  .checklist-card li.done > span {
+    color: #2E7D5B;
+  }
   .snippet-card { padding: 1rem 1.25rem; border: 1px dashed #C9C2B1; }
   .snippet-card > summary { cursor: pointer; font-weight: 600; color: #E8603C; min-height: var(--touch-min, 44px); display: flex; align-items: center; }
   .snippet-tabs { display: grid; gap: 0.6rem; margin-top: 0.6rem; }
   .snippet-tabs > details { padding: 0; }
   .snippet-tabs > details > summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 12px; text-transform: uppercase; padding: 0.3rem 0; }
   @media (prefers-color-scheme: dark) {
-    .launchpad-stripe .stat, .snippet-card { border-color: #2A251E; }
+    .launchpad-stripe .stat, .snippet-card, .qr-card, .analytics-card, .checklist-card, .checklist-card li { border-color: #2A251E; }
     .quick { background: rgba(232, 96, 60, 0.06); border-color: rgba(232, 96, 60, 0.22); }
     .lede, .quick span { color: #B8A88F; }
+    .qr-box { background: #FAF7EF; border-color: #2A251E; }
+  }
+  @media (max-width: 760px) {
+    .ship-panel,
+    .checklist-card {
+      grid-template-columns: 1fr;
+    }
+    .qr-card {
+      grid-template-columns: 112px minmax(0, 1fr);
+    }
+    .qr-box {
+      width: 112px;
+      height: 112px;
+    }
   }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
   .card { padding: 1.5rem; border: 1px solid #E5DDC8; border-radius: 0; }

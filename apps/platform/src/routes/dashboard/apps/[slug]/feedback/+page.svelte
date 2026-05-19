@@ -141,6 +141,12 @@ shippie.feedback.submit({
               {#each item.metadata.moderation_flags as flag}<span>{flag}</span>{/each}
             </div>
           {/if}
+          <form method="POST" action="?/setStatus" class="item-actions">
+            <input type="hidden" name="id" value={item.id} />
+            <button name="status" value="open" type="submit" disabled={item.status === 'open'}>Reopen</button>
+            <button name="status" value="resolved" type="submit" disabled={item.status === 'resolved'}>Mark resolved</button>
+            <button name="status" value="hidden" type="submit" disabled={item.status === 'hidden'}>Hide</button>
+          </form>
           <small>{item.createdAt} · {item.voteCount} votes</small>
         </article>
       {/each}
@@ -183,6 +189,29 @@ shippie.feedback.submit({
   .row .user { color: #8B847A; }
   .flags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.55rem 0 0; }
   .flags span { border: 1px solid rgba(232,197,71,0.38); color: #B49100; padding: 2px 7px; font-family: ui-monospace, monospace; font-size: 11px; }
+  .item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.65rem;
+  }
+  .item-actions button {
+    min-height: var(--touch-min, 44px);
+    border: 1px solid #E5DDC8;
+    background: transparent;
+    color: #E8603C;
+    padding: 0 0.65rem;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .item-actions button:disabled {
+    color: #8B847A;
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
   .snippet { margin-top: 1rem; text-align: left; padding: 0.75rem 1rem; border: 1px dashed #C9C2B1; }
   .snippet > summary { cursor: pointer; font-weight: 600; color: #E8603C; min-height: var(--touch-min, 44px); display: flex; align-items: center; }
   .snippet-tabs { display: grid; gap: 0.5rem; margin-top: 0.5rem; }

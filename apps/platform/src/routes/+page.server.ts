@@ -76,13 +76,15 @@ function fallbackApps() {
 function filteredFallbackApps(
   query: string,
   categoryFilter: string | null,
+  remixableFilter = false,
 ) {
   const fallback = fallbackApps();
   const filtered = fallback.filter((app) => {
     const haystack = `${app.name} ${app.tagline ?? ''} ${app.category}`.toLowerCase();
     const matchesQuery = !query || haystack.includes(query.toLowerCase());
     const matchesCategory = !categoryFilter || app.category === categoryFilter;
-    return matchesQuery && matchesCategory;
+    const matchesRemixable = !remixableFilter || isFirstPartyShowcase(app.slug);
+    return matchesQuery && matchesCategory && matchesRemixable;
   });
   return {
     apps: filtered,
@@ -94,9 +96,10 @@ function mergeWithBundledApps(
   rows: FeaturedApp[],
   query: string,
   categoryFilter: string | null,
+  remixableFilter: boolean,
 ) {
   const seen = new Set(rows.map((app) => app.slug));
-  const fallback = filteredFallbackApps(query, categoryFilter).apps.filter((app) => !seen.has(app.slug));
+  const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter).apps.filter((app) => !seen.has(app.slug));
   return [...rows, ...fallback];
 }
 
@@ -109,8 +112,9 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   const page = Math.max(1, Number.parseInt(url.searchParams.get('p') ?? '1', 10) || 1);
   const offset = (page - 1) * PER_PAGE;
   const categoryFilter = (url.searchParams.get('category') ?? '').trim() || null;
+  const remixableFilter = url.searchParams.get('remixable') === '1';
   if (!platform?.env.DB) {
-    const fallback = filteredFallbackApps(query, categoryFilter);
+    const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
     return {
       apps: fallback.apps.slice(offset, offset + PER_PAGE),
       featured: [],
@@ -122,6 +126,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       categories: fallback.categories,
       kindFilter: null,
       categoryFilter,
+      remixableFilter,
     };
   }
 
@@ -131,7 +136,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   // fastest route to "Something went wrong" because they can reference
   // chunks from an older deploy. Cache the immutable assets aggressively;
   // keep the document itself network-first.
-  const isDefaultBrowse = !query && !categoryFilter && page === 1;
+  const isDefaultBrowse = !query && !categoryFilter && !remixableFilter && page === 1;
   setHeaders({ 'cache-control': 'no-store' });
 
   // Filter pushed into the DB query so pagination is correct.
@@ -145,7 +150,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       listCategories(db),
     ]);
   } catch {
-    const fallback = filteredFallbackApps(query, categoryFilter);
+    const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
     const visible = fallback.apps.slice(offset, offset + PER_PAGE);
     return {
       apps: visible,
@@ -168,12 +173,13 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       categories: fallback.categories,
       kindFilter: null,
       categoryFilter,
+      remixableFilter,
     };
   }
 
-  const fallback = filteredFallbackApps(query, categoryFilter);
+  const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
   const categories = [...new Set([...dbCategories, ...fallback.categories])].sort();
-  const appRows = offset === 0 ? mergeWithBundledApps(dbRows, query, categoryFilter) : dbRows;
+  const appRows = offset === 0 ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter) : dbRows;
 
   if (appRows.length === 0) {
     return {
@@ -187,6 +193,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       categories,
       kindFilter: null,
       categoryFilter,
+      remixableFilter,
     };
   }
 
@@ -201,6 +208,17 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
         .from(schema.capabilityBadges)
         .where(inArray(schema.capabilityBadges.appId, ids))
     : [];
+  const lineageRows = ids.length
+    ? await db
+        .select({
+          appId: schema.appLineage.appId,
+          sourceRepo: schema.appLineage.sourceRepo,
+          license: schema.appLineage.license,
+          remixAllowed: schema.appLineage.remixAllowed,
+        })
+        .from(schema.appLineage)
+        .where(inArray(schema.appLineage.appId, ids))
+    : [];
   const byApp = new Map<string, { badge: string }[]>();
   for (const row of awarded) {
     let bucket = byApp.get(row.appId);
@@ -210,17 +228,26 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
     }
     bucket.push({ badge: row.badge });
   }
+  const lineageByApp = new Map(lineageRows.map((row) => [row.appId, row]));
   // Narrow the wide schema column types into the AppKind union the UI expects.
   const isAppKind = (v: string | null): v is AppKind =>
     v === 'local' || v === 'connected' || v === 'cloud';
 
-  const decorated = visible.map((a) => ({
-    ...a,
-    badges: provenBadgesFromAwards(byApp.get(a.id ?? '') ?? []),
-    kind: isAppKind(a.currentDetectedKind) ? a.currentDetectedKind : null,
-    kindStatus: (a.currentPublicKindStatus ?? null) as PublicKindStatus | null,
-    firstPartySigned: isFirstPartyShowcase(a.slug),
-  }));
+  const decorated = visible
+    .map((a) => {
+      const lineage = lineageByApp.get(a.id ?? '');
+      const firstPartySigned = isFirstPartyShowcase(a.slug);
+      const remixable = firstPartySigned || Boolean(lineage?.remixAllowed && lineage.sourceRepo && lineage.license);
+      return {
+        ...a,
+        badges: provenBadgesFromAwards(byApp.get(a.id ?? '') ?? []),
+        kind: isAppKind(a.currentDetectedKind) ? a.currentDetectedKind : null,
+        kindStatus: (a.currentPublicKindStatus ?? null) as PublicKindStatus | null,
+        firstPartySigned,
+        remixable,
+      };
+    })
+    .filter((a) => !remixableFilter || a.remixable);
 
   const hasMore = appRows.length > PER_PAGE;
 
@@ -251,5 +278,6 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
     categories,
     kindFilter: null,
     categoryFilter,
+    remixableFilter,
   };
 };

@@ -37,6 +37,29 @@
   const totalLaunches = $derived.by(() =>
     Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, count) => sum + count, 0),
   );
+  const localAppRows = $derived.by(() =>
+    data.apps
+      .map((app) => {
+        const recent = $launcherMemory.recents.find((item) => item.slug === app.slug);
+        const launches = $launcherMemory.launchCounts?.[app.slug] ?? 0;
+        const saved = $launcherMemory.pinned.includes(app.slug);
+        const offline = $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved';
+        return {
+          app,
+          saved,
+          recent,
+          launches,
+          offline,
+          hasLocalSignal: saved || Boolean(recent) || launches > 0 || offline,
+        };
+      })
+      .filter((row) => row.hasLocalSignal)
+      .sort((a, b) => {
+        const aTime = a.recent ? Date.parse(a.recent.lastOpened) : 0;
+        const bTime = b.recent ? Date.parse(b.recent.lastOpened) : 0;
+        return bTime - aTime || b.launches - a.launches;
+      }),
+  );
   const hasLocalData = $derived(
     savedApps.length > 0 || recentApps.length > 0 || offlineApps.length > 0 || totalLaunches > 0,
   );
@@ -204,6 +227,48 @@
       <button type="button" class="text-danger" disabled={!hasLocalData} onclick={clearLocalMemory}>
         Clear local launcher memory
       </button>
+    </section>
+
+    <section class="panel app-data-panel" aria-labelledby="app-data-title">
+      <div class="section-head">
+        <h2 id="app-data-title">Per-app data</h2>
+        <span>{localAppRows.length > 0 ? 'local signals' : 'none yet'}</span>
+      </div>
+      {#if localAppRows.length > 0}
+        <div class="app-data-table" role="table" aria-label="Local app data on this device">
+          <div class="app-data-row app-data-head" role="row">
+            <span role="columnheader">Tool</span>
+            <span role="columnheader">Stored here</span>
+            <span role="columnheader">Last opened</span>
+            <span role="columnheader">Action</span>
+          </div>
+          {#each localAppRows as row (row.app.slug)}
+            <div class="app-data-row" role="row">
+              <strong>{titleCap(row.app.name)}</strong>
+              <span>
+                {[
+                  row.saved ? 'saved' : '',
+                  row.offline ? 'offline copy' : '',
+                  row.launches > 0 ? `${row.launches} launch${row.launches === 1 ? '' : 'es'}` : '',
+                ].filter(Boolean).join(' · ')}
+              </span>
+              <span>{row.recent ? openedLabel(row.recent.lastOpened) : 'not opened recently'}</span>
+              <a href={`/run/${encodeURIComponent(row.app.slug)}`} onclick={() => recordAppLaunch(row.app.slug)}>Open</a>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="empty-block">
+          <p>Save or open a tool and its local status will appear here.</p>
+        </div>
+      {/if}
+      <div class="move-row">
+        <div>
+          <strong>Move to another phone</strong>
+          <p>Use Your Data in the container to export, back up, or restore app data when you choose.</p>
+        </div>
+        <a href="/container?section=data">Open Your Data →</a>
+      </div>
     </section>
 
     <section class="panel account-panel" aria-labelledby="account-title">
@@ -532,6 +597,69 @@
     line-height: 1.45;
   }
 
+  .app-data-panel {
+    grid-column: 1 / -1;
+  }
+
+  .app-data-table {
+    display: grid;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .app-data-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(120px, 0.8fr) auto;
+    gap: var(--space-sm);
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: var(--small-size);
+  }
+
+  .app-data-head {
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .app-data-row span {
+    color: var(--text-secondary);
+  }
+
+  .app-data-row a,
+  .move-row a {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border-light);
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+  }
+
+  .move-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-light);
+  }
+
+  .move-row p {
+    margin-top: 0.2rem;
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+  }
+
   .text-danger {
     min-height: var(--touch-min);
     margin-top: 10px;
@@ -657,8 +785,14 @@
     }
 
     .data-grid,
-    .account-row {
+    .account-row,
+    .app-data-row {
       grid-template-columns: 1fr;
+    }
+
+    .move-row {
+      align-items: flex-start;
+      flex-direction: column;
     }
 
     .account-actions {

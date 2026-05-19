@@ -17,14 +17,24 @@ import {
   topByCategory,
   risingApps,
   topRated,
+  remixableApps,
+  popularWithMakers,
   type LeaderboardEntry,
 } from '$server/db/queries/leaderboards';
 
 export const load: PageServerLoad = async ({ platform }) => {
-  const empty: { trending: LeaderboardEntry[]; rising: LeaderboardEntry[]; rated: LeaderboardEntry[] } = {
+  const empty: {
+    trending: LeaderboardEntry[];
+    rising: LeaderboardEntry[];
+    rated: LeaderboardEntry[];
+    remixable: LeaderboardEntry[];
+    makerPopular: LeaderboardEntry[];
+  } = {
     trending: [],
     rising: [],
     rated: [],
+    remixable: [],
+    makerPopular: [],
   };
 
   if (!platform?.env.DB) return empty;
@@ -33,7 +43,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 
   // Three independent reads — fan out in parallel. Each guards itself so a
   // single shelf failing doesn't blank the whole page.
-  const [trending, rising, rated] = await Promise.all([
+  const [trending, rising, rated, remixable, makerPopular] = await Promise.all([
     topByCategory(db, { days: 7, limit: 12 }).catch((err) => {
       console.warn('[leaderboards] trending query failed', err);
       return [] as LeaderboardEntry[];
@@ -46,7 +56,15 @@ export const load: PageServerLoad = async ({ platform }) => {
       console.warn('[leaderboards] rated query failed', err);
       return [] as LeaderboardEntry[];
     }),
+    remixableApps(db, { limit: 12 }).catch((err) => {
+      console.warn('[leaderboards] remixable query failed', err);
+      return [] as LeaderboardEntry[];
+    }),
+    popularWithMakers(db, { limit: 12 }).catch((err) => {
+      console.warn('[leaderboards] maker-popular query failed', err);
+      return [] as LeaderboardEntry[];
+    }),
   ]);
 
-  return { trending, rising, rated };
+  return { trending, rising, rated, remixable, makerPopular };
 };

@@ -18,7 +18,8 @@
  */
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import type { ShippieDb } from '../client';
-import { apps, appRatings, usageDaily } from '../schema';
+import { isFirstPartyShowcase } from '$lib/showcase-slugs';
+import { apps, appLineage, appRatings, usageDaily } from '../schema';
 
 export interface LeaderboardEntry {
   slug: string;
@@ -176,4 +177,82 @@ export async function topRated(
   }
   entries.sort((a, b) => b.score - a.score);
   return entries.slice(0, limit);
+}
+
+export async function remixableApps(
+  db: ShippieDb,
+  opts: { limit?: number } = {},
+): Promise<LeaderboardEntry[]> {
+  const limit = opts.limit ?? 12;
+  const rows = await db
+    .select({
+      slug: apps.slug,
+      name: apps.name,
+      tagline: apps.tagline,
+      description: apps.description,
+      icon: apps.iconUrl,
+      themeColor: apps.themeColor,
+      installCount: apps.installCount,
+      upvoteCount: apps.upvoteCount,
+      sourceRepo: appLineage.sourceRepo,
+      license: appLineage.license,
+      remixAllowed: appLineage.remixAllowed,
+    })
+    .from(apps)
+    .leftJoin(appLineage, eq(appLineage.appId, apps.id))
+    .where(PUBLIC_FILTERS)
+    .limit(120);
+
+  return rows
+    .filter((r) => {
+      if (isFirstPartyShowcase(r.slug)) return true;
+      return Boolean(r.remixAllowed && r.sourceRepo && r.license);
+    })
+    .map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      taglineOrDesc: r.tagline ?? r.description ?? null,
+      icon: r.icon,
+      themeColor: r.themeColor,
+      score: Number(r.installCount ?? 0) + Number(r.upvoteCount ?? 0),
+    }))
+    .sort((a, b) => b.score - a.score || a.slug.localeCompare(b.slug))
+    .slice(0, limit);
+}
+
+export async function popularWithMakers(
+  db: ShippieDb,
+  opts: { limit?: number } = {},
+): Promise<LeaderboardEntry[]> {
+  const limit = opts.limit ?? 12;
+  const rows = await db
+    .select({
+      slug: apps.slug,
+      name: apps.name,
+      tagline: apps.tagline,
+      description: apps.description,
+      icon: apps.iconUrl,
+      themeColor: apps.themeColor,
+      feedbackOpenCount: apps.feedbackOpenCount,
+      activeUsers30d: apps.activeUsers30d,
+      installCount: apps.installCount,
+      upvoteCount: apps.upvoteCount,
+    })
+    .from(apps)
+    .where(PUBLIC_FILTERS)
+    .orderBy(desc(apps.feedbackOpenCount), desc(apps.activeUsers30d), desc(apps.installCount))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    taglineOrDesc: r.tagline ?? r.description ?? null,
+    icon: r.icon,
+    themeColor: r.themeColor,
+    score:
+      Number(r.feedbackOpenCount ?? 0) * 5 +
+      Number(r.activeUsers30d ?? 0) +
+      Number(r.installCount ?? 0) +
+      Number(r.upvoteCount ?? 0),
+  }));
 }

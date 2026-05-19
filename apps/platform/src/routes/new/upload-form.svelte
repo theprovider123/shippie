@@ -220,6 +220,9 @@
           </p>
           <div class="action-row" aria-label="Next actions">
             <a href={result.liveUrl} target="_blank" rel="noreferrer">Open app</a>
+            {#if !trialMode}
+              <a href={`/dashboard/apps/${result.slug}`}>Launchpad</a>
+            {/if}
             {#if result.reportUrl || result.deployId}
               <a href={absoluteUrl(result.reportUrl ?? `/dashboard/apps/${result.slug}/deploys/${result.deployId}`)}>
                 Flight Recorder

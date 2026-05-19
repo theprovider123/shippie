@@ -139,6 +139,12 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
     platform.env.APPS && packageRows[0]?.trustReportPath
       ? await readJson<TrustReport>(platform.env.APPS, packageRows[0].trustReportPath)
       : null;
+  const fallbackExternalDomains =
+    permissions?.allowedConnectDomains?.map((domain) => ({
+      domain,
+      purpose: 'Declared network access',
+      personalData: false,
+    })) ?? [];
 
   // Changelog from the autopackaging report — only show if the app
   // actually wrote one (no 'default' filler).
@@ -243,17 +249,20 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
           version: packageRows[0]?.version ?? null,
         }
       : null,
-    trustCard: latestTrust
-      ? {
-          privacyGrade: latestTrust.privacy.grade,
-          securityScore: latestTrust.security.score,
-          externalDomains: latestTrust.privacy.externalDomains,
-          containerEligibility: latestTrust.containerEligibility,
-          dataLocation: 'On this device by default',
-          serverContent: 'No app content stored on Shippie servers by default',
-          proofBadges: capabilityBadges.filter((badge) => badge.proven).map((badge) => badge.label),
-        }
-      : null,
+    trustCard: {
+      privacyGrade: latestTrust?.privacy.grade ?? (permissions?.externalNetwork ? 'Review' : 'Local'),
+      securityScore: latestTrust?.security.score ?? null,
+      externalDomains: latestTrust?.privacy.externalDomains ?? fallbackExternalDomains,
+      containerEligibility:
+        latestTrust?.containerEligibility ??
+        packageRows[0]?.containerEligibility ??
+        (isFirstPartyShowcase(app.slug) ? 'first_party' : 'compatible'),
+      dataLocation: 'On this device by default',
+      serverContent: permissions?.externalNetwork
+        ? 'This app declares external network access; review the domains below before using it.'
+        : 'No app content stored on Shippie servers by default',
+      proofBadges: capabilityBadges.filter((badge) => badge.proven).map((badge) => badge.label),
+    },
     grantedPermissions,
     capabilityBadges,
     changelog,

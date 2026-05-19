@@ -1,5 +1,4 @@
 <script lang="ts">
-  import EntryNav from '$lib/components/layout/EntryNav.svelte';
   import UploadForm from './upload-form.svelte';
   import WrapForm from './wrap-form.svelte';
   import type { PageData } from './$types';
@@ -38,8 +37,6 @@
 
 <main class="page">
   <div class="container">
-    <EntryNav actions={[{ href: '/apps', label: 'Browse tools' }]} />
-
     <header class="hero">
       <div>
         <img
@@ -111,9 +108,9 @@
           </a>
         </li>
         <li>
-          <a href="/apps/recipe">
+          <a href="/?remixable=1">
             <strong>Remix an existing tool</strong>
-            <span>Fork Recipe Saver, Coffee, Lift…</span>
+            <span>Browse tools with source and license published.</span>
           </a>
         </li>
         <li>
@@ -209,7 +206,7 @@ shippie deploy ./dist</code></pre>
         <p>Install the MCP server, then ask your editor to deploy.</p>
         <pre><code>bunx @shippie/mcp install</code></pre>
       </article>
-      <article>
+      <article id="github">
         <h2>GitHub</h2>
         <p>Connect a repo from <a href="/dashboard">app settings</a> after your first deploy.</p>
         <pre><code>git push origin main</code></pre>

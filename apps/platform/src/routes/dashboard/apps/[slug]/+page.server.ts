@@ -3,7 +3,7 @@
  * App Kind actions (dispute / clear dispute / save workflow probes).
  */
 import { error, fail, redirect } from '@sveltejs/kit';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import {
@@ -33,6 +33,28 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     .where(eq(schema.deploys.appId, layout.app.id))
     .orderBy(desc(schema.deploys.createdAt))
     .limit(10);
+  const [analyticsTotal] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.analyticsEvents)
+    .where(eq(schema.analyticsEvents.appId, layout.app.id));
+  const [latestEvent] = await db
+    .select({
+      eventName: schema.analyticsEvents.eventName,
+      createdAt: schema.analyticsEvents.createdAt,
+    })
+    .from(schema.analyticsEvents)
+    .where(eq(schema.analyticsEvents.appId, layout.app.id))
+    .orderBy(desc(schema.analyticsEvents.createdAt))
+    .limit(1);
+  const [lineage] = await db
+    .select({
+      sourceRepo: schema.appLineage.sourceRepo,
+      license: schema.appLineage.license,
+      remixAllowed: schema.appLineage.remixAllowed,
+    })
+    .from(schema.appLineage)
+    .where(eq(schema.appLineage.appId, layout.app.id))
+    .limit(1);
 
   const kindProfile = platform.env.CACHE
     ? await readAppKindProfile(platform.env.CACHE, layout.app.slug)
@@ -47,7 +69,17 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     ? (override?.workflow_probes as string[])
     : [];
 
-  return { ...layout, deploys, kindProfile, workflowProbes };
+  return {
+    ...layout,
+    deploys,
+    kindProfile,
+    workflowProbes,
+    launchpad: {
+      analyticsTotal: Number(analyticsTotal?.count ?? 0),
+      latestEvent: latestEvent ?? null,
+      lineage: lineage ?? null,
+    },
+  };
 };
 
 async function requireOwner(

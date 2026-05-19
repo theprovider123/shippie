@@ -22,6 +22,8 @@
 
   {@render shelf('Trending this week', 'Most installs, last 7 days', data.trending, 'no apps with installs in the last 7 days yet')}
   {@render shelf('New this week', 'Launched in the last two weeks', data.rising, 'no new launches in the last two weeks')}
+  {@render shelf('Remixable', 'Source + license published', data.remixable, 'no remixable apps yet')}
+  {@render shelf('Popular with makers', 'Feedback, active users, installs, and favorites', data.makerPopular, 'no maker signals yet')}
   {@render shelf('Top-rated', '3+ ratings, highest average', data.rated, 'no apps with 3+ ratings yet')}
 </div>
 

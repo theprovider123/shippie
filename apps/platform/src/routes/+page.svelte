@@ -26,7 +26,7 @@
 
   const appBySlug = $derived.by(() => new Map(data.apps.map((app) => [app.slug, app])));
   const selectedApp = $derived(selectedSlug ? (appBySlug.get(selectedSlug) ?? null) : null);
-  const filtered = $derived(Boolean(data.query || data.categoryFilter));
+  const filtered = $derived(Boolean(data.query || data.categoryFilter || data.remixableFilter));
   const pinnedSet = $derived.by(() => new Set($launcherMemory.pinned));
   const pinnedApps = $derived.by(() =>
     $launcherMemory.pinned
@@ -149,11 +149,17 @@
     return `${days}d`;
   }
 
-  function pageHref(q: string, page: number, category: string | null | undefined): string {
+  function pageHref(
+    q: string,
+    page: number,
+    category: string | null | undefined,
+    remixable = data.remixableFilter,
+  ): string {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (page > 1) params.set('p', String(page));
     if (category) params.set('category', category);
+    if (remixable) params.set('remixable', '1');
     const qs = params.toString();
     return qs ? `/?${qs}` : '/';
   }
@@ -165,6 +171,16 @@
     const params = new URLSearchParams();
     if (data.query) params.set('q', data.query);
     if (cat) params.set('category', cat);
+    if (data.remixableFilter) params.set('remixable', '1');
+    const qs = params.toString();
+    return qs ? `/?${qs}` : '/';
+  }
+
+  function remixableHref(active: boolean): string {
+    const params = new URLSearchParams();
+    if (data.query) params.set('q', data.query);
+    if (data.categoryFilter) params.set('category', data.categoryFilter);
+    if (!active) params.set('remixable', '1');
     const qs = params.toString();
     return qs ? `/?${qs}` : '/';
   }
@@ -202,11 +218,21 @@
         </p>
       </div>
       <div class="head-tools">
-        <SearchBar initial={data.query} placeholder="Search tools..." />
+        <SearchBar initial={data.query} placeholder="Search tools..." remixable={data.remixableFilter} />
         {#if data.categories.length > 0}
           <ul class="cats" aria-label="Browse categories">
             <li>
               <a class="cat-chip" class:active={!data.categoryFilter} href={categoryHref(null)}>All</a>
+            </li>
+            <li>
+              <a
+                class="cat-chip"
+                class:active={data.remixableFilter}
+                href={remixableHref(data.remixableFilter)}
+                aria-current={data.remixableFilter ? 'page' : undefined}
+              >
+                Remixable{#if data.remixableFilter} ✕{/if}
+              </a>
             </li>
             {#each data.categories as cat (cat)}
               {@const isActive = data.categoryFilter === cat}
@@ -241,6 +267,8 @@
               ? `No matches for "${data.query}"`
               : data.query
               ? `Results for "${data.query}"`
+              : data.remixableFilter
+              ? 'Remixable tools'
               : 'Results'}
           </h2>
           <span class="section-hint">
@@ -273,7 +301,7 @@
               {:else}
                 Try a different word, or browse a category:
               {/if}
-              <a class="empty-clear" href={pageHref('', 1, data.categoryFilter)}>clear search →</a>
+              <a class="empty-clear" href={pageHref('', 1, data.categoryFilter, false)}>clear search →</a>
             </p>
             {#if fallbackApps.length > 0}
               <ul class="launcher-grid compact-grid" role="list">

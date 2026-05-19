@@ -6,9 +6,10 @@
   interface Props {
     initial?: string;
     placeholder?: string;
+    remixable?: boolean;
   }
 
-  let { initial = '', placeholder = 'Search tools...' }: Props = $props();
+  let { initial = '', placeholder = 'Search tools...', remixable = false }: Props = $props();
   let q = $state('');
 
   $effect(() => {
@@ -27,6 +28,9 @@
     enterkeyhint="search"
     autocomplete="off"
   />
+  {#if remixable}
+    <input type="hidden" name="remixable" value="1" />
+  {/if}
   <button type="submit" class="search-btn" aria-label="Search">→</button>
 </form>
 

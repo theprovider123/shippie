@@ -13,8 +13,9 @@
  *   hidden    — admin or maker hid it (still visible to maker for context)
  *   resolved  — maker marked it done
  */
-import type { PageServerLoad } from './$types';
-import { desc, eq } from 'drizzle-orm';
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { and, desc, eq } from 'drizzle-orm';
 import { getDrizzleClient, schema } from '$server/db/client';
 
 export const load: PageServerLoad = async ({ parent, platform }) => {
@@ -41,4 +42,36 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     .limit(200);
 
   return { ...layout, items };
+};
+
+export const actions: Actions = {
+  setStatus: async ({ request, locals, params, platform, url }) => {
+    if (!platform?.env.DB) return fail(503, { error: 'database unavailable' });
+    if (!locals.user) {
+      throw redirect(303, `/auth/login?return_to=${encodeURIComponent(url.pathname)}`);
+    }
+    const form = await request.formData();
+    const id = String(form.get('id') ?? '');
+    const status = String(form.get('status') ?? '');
+    const allowed = new Set(['open', 'hidden', 'resolved']);
+    if (!id || !allowed.has(status)) {
+      return fail(400, { error: 'Invalid feedback status.' });
+    }
+
+    const db = getDrizzleClient(platform.env.DB);
+    const [app] = await db
+      .select({ id: schema.apps.id, makerId: schema.apps.makerId })
+      .from(schema.apps)
+      .where(eq(schema.apps.slug, params.slug))
+      .limit(1);
+    if (!app || app.makerId !== locals.user.id) {
+      return fail(403, { error: 'forbidden' });
+    }
+    await db
+      .update(schema.feedbackItems)
+      .set({ status, updatedAt: new Date().toISOString() })
+      .where(and(eq(schema.feedbackItems.id, id), eq(schema.feedbackItems.appId, app.id)));
+
+    return { ok: true };
+  },
 };
