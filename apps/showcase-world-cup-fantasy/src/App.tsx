@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { haptic } from '@shippie/sdk/wrapper';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
+import { buildSquadShare } from './squad-share.ts';
 import {
   BUDGET,
   CHIPS,
@@ -184,6 +185,38 @@ export function App() {
     haptic('tap');
   };
 
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const share = async () => {
+    if (!valid.ok) {
+      haptic('warn');
+      return;
+    }
+    const { url } = await buildSquadShare(team);
+    setShareUrl(url);
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({ url, title: `${team.manager || 'My'} squad — Shippie Fantasy` });
+        haptic('success');
+        return;
+      } catch {
+        /* user cancelled — fall through to clipboard */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      haptic('success');
+    } catch {
+      haptic('tap');
+    }
+  };
+
+  // Group squad by position for the pitch graphic.
+  const squadByPosition: Record<Position, Player[]> = useMemo(() => {
+    const buckets: Record<Position, Player[]> = { GK: [], DEF: [], MID: [], FWD: [] };
+    for (const player of squad) buckets[player.position].push(player);
+    return buckets;
+  }, [squad]);
+
   return (
     <main className="fantasy-app">
       <header className="fantasy-topbar">
@@ -215,7 +248,49 @@ export function App() {
         </label>
         <button className="primary" onClick={autoPick}>Auto-pick squad</button>
         <button onClick={save}>Save team</button>
+        <button onClick={() => void share()} disabled={!valid.ok}>↗ Share squad</button>
       </section>
+
+      {squad.length > 0 ? (
+        <section className="pitch" aria-label="Squad formation">
+          {(['FWD', 'MID', 'DEF', 'GK'] as Position[]).map((row) => (
+            <div key={row} className="pitch-row" data-row={row}>
+              <span className="pitch-row-label">{row}</span>
+              <div className="pitch-row-players">
+                {squadByPosition[row].length === 0 ? (
+                  <span className="pitch-empty">Pick {LIMITS[row]}</span>
+                ) : (
+                  squadByPosition[row].map((player) => {
+                    const isCaptain = player.id === team.captainId;
+                    return (
+                      <button
+                        key={player.id}
+                        type="button"
+                        className={`pitch-player ${isCaptain ? 'pitch-player-captain' : ''}`}
+                        onClick={() => setTeam((current) => ({ ...current, captainId: player.id }))}
+                        aria-label={`${player.name}${isCaptain ? ' (captain)' : ' — tap to make captain'}`}
+                      >
+                        <span className="pitch-shirt" style={{ background: player.team ? undefined : '#0E5C3A' }}>
+                          {isCaptain ? 'C' : ''}
+                        </span>
+                        <strong>{player.name.split(' ').pop()}</strong>
+                        <small>{player.price.toFixed(1)}m</small>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {shareUrl ? (
+        <p className="share-url-card" role="status">
+          <small>Squad link copied — paste into a Match Room or send to a friend.</small>
+          <code>{shareUrl}</code>
+        </p>
+      ) : null}
 
       <section className="scoreboard" aria-label="Squad status">
         <Metric label="Budget left" value={`${left.toFixed(1)}m`} warn={left < 0} />

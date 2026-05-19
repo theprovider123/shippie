@@ -376,6 +376,7 @@ export function App() {
   const [draft, setDraft] = useState<RecipeDraft>(() => emptyDraft(state.defaultServings));
   const [pantryDraft, setPantryDraft] = useState({ name: '', quantity: '1', unit: 'ea', location: 'pantry' as PantryLocation });
   const [shopDraft, setShopDraft] = useState('');
+  const [skippedToday, setSkippedToday] = useState<Set<string>>(new Set());
   const localNavigation = useMemo(() => createLocalNavigation<Tab>('today', setTab), []);
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
@@ -428,17 +429,44 @@ export function App() {
       .map((row) => row.recipe);
   }, [query, state.recipes]);
 
+  /**
+   * Tonight-aware ranking. Layers:
+   *   1) Recipes planned for today are pushed to the top (+80)
+   *   2) Pantry feasibility boost (0–40, by share of ingredients on hand)
+   *   3) Meal-of-the-day fit (+15 if category matches the hour)
+   *   4) Tie-break on personalFit
+   *
+   * Returned with `pantryFraction` so the hero can render "8/10 ready".
+   */
   const forYou = useMemo(() => {
     const hour = new Date().getHours();
     const preferred = hour < 11 ? 'Breakfast' : hour < 15 ? 'Lunch' : 'Dinner';
-    return [...state.recipes]
-      .sort((a, b) => {
-        const aBoost = a.category === preferred ? 15 : 0;
-        const bBoost = b.category === preferred ? 15 : 0;
-        return b.personalFit + bBoost - (a.personalFit + aBoost);
+    const plannedToday = new Set(
+      state.mealPlan.filter((entry) => entry.date === today()).map((entry) => entry.recipeId),
+    );
+    const pantryNames = new Set(state.pantry.map((item) => item.name.toLowerCase()));
+    return state.recipes
+      .filter((recipe) => !skippedToday.has(recipe.id))
+      .map((recipe) => {
+        const total = recipe.ingredients.length;
+        const have = recipe.ingredients.filter((ing) => pantryNames.has(ing.name.toLowerCase())).length;
+        const pantryFraction = total > 0 ? have / total : 1;
+        const planBoost = plannedToday.has(recipe.id) ? 80 : 0;
+        const timeBoost = recipe.category === preferred ? 15 : 0;
+        const pantryBoost = Math.round(pantryFraction * 40);
+        return {
+          recipe,
+          score: recipe.personalFit + planBoost + timeBoost + pantryBoost,
+          have,
+          total,
+          pantryFraction,
+        };
       })
-      .slice(0, 3);
-  }, [state.recipes]);
+      .sort((a, b) => b.score - a.score);
+  }, [state.recipes, state.mealPlan, state.pantry, skippedToday]);
+
+  const forYouRecipes = useMemo(() => forYou.slice(0, 4).map((row) => row.recipe), [forYou]);
+  const tonightPick = forYou[0] ?? null;
 
   const dates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(i)), []);
   const activePlan = state.mealPlan.filter((entry) => dates.includes(entry.date));
@@ -659,10 +687,14 @@ export function App() {
       {tab === 'today' ? (
         <TodayView
           state={state}
-          forYou={forYou}
+          forYou={forYouRecipes}
+          tonightPick={tonightPick}
           shoppingCount={shopping.filter((item) => !item.checked).length}
           onOpenRecipe={setSelectedRecipeId}
           onCook={setCookRecipeId}
+          onSkip={(id) => setSkippedToday((prev) => new Set([...prev, id]))}
+          onResetSkipped={() => setSkippedToday(new Set())}
+          skippedCount={skippedToday.size}
           onNavigate={navigate}
         />
       ) : null}
@@ -753,32 +785,58 @@ function emptyDraft(defaultServings: number): RecipeDraft {
 function TodayView({
   state,
   forYou,
+  tonightPick,
   shoppingCount,
   onOpenRecipe,
   onCook,
+  onSkip,
+  onResetSkipped,
+  skippedCount,
   onNavigate,
 }: {
   state: KitchenState;
   forYou: Recipe[];
+  tonightPick: { recipe: Recipe; have: number; total: number; pantryFraction: number } | null;
   shoppingCount: number;
   onOpenRecipe: (recipeId: string) => void;
   onCook: (recipeId: string) => void;
+  onSkip: (recipeId: string) => void;
+  onResetSkipped: () => void;
+  skippedCount: number;
   onNavigate: (tab: Tab) => void;
 }) {
   const cookedThisWeek = state.cooked.filter((meal) => Date.now() - meal.cookedAt < 7 * 24 * 60 * 60 * 1000).length;
   const todaysPlan = state.mealPlan.filter((entry) => entry.date === today());
   const pantryLow = state.pantry.filter((item) => item.quantity <= 1);
-  const firstPick = forYou[0] ?? state.recipes[0];
+  const firstPick = tonightPick?.recipe ?? state.recipes[0];
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
         <div>
-          <p className="eyebrow">Palate</p>
-          <h1>Taste first. Cook next.</h1>
-          <p>Choose a flavour, check what is in the kitchen, and turn the week into food without an account.</p>
+          <p className="eyebrow">Tonight · {new Date().toLocaleDateString(undefined, { weekday: 'long' })}</p>
+          <h1>{firstPick ? firstPick.title : 'Add a recipe to begin'}</h1>
+          {tonightPick ? (
+            <p>
+              <strong>{tonightPick.have}/{tonightPick.total}</strong> ingredients ready ·{' '}
+              {todaysPlan.some((p) => p.recipeId === firstPick?.id)
+                ? 'matches your plan'
+                : tonightPick.pantryFraction >= 0.8
+                ? 'kitchen ready'
+                : `${shoppingCount > 0 ? `${shoppingCount} on the list` : 'pantry light'}`}
+            </p>
+          ) : (
+            <p>Choose a flavour, check what is in the kitchen, and turn the week into food without an account.</p>
+          )}
           <div className="hero-actions">
-            <button type="button" className="primary" onClick={() => firstPick ? onCook(firstPick.id) : onNavigate('cookbook')}>Cook now</button>
-            <button type="button" onClick={() => onNavigate('cookbook')}>Add recipe</button>
+            <button type="button" className="primary" onClick={() => firstPick ? onCook(firstPick.id) : onNavigate('cookbook')} disabled={!firstPick}>
+              {firstPick ? 'Cook this' : 'Add recipe'}
+            </button>
+            {firstPick && forYou.length > 1 ? (
+              <button type="button" onClick={() => onSkip(firstPick.id)}>Skip · try another</button>
+            ) : null}
+            {skippedCount > 0 ? (
+              <button type="button" onClick={onResetSkipped}>Reset ({skippedCount} skipped)</button>
+            ) : null}
             <button type="button" onClick={() => onNavigate('plan')}>Plan week</button>
           </div>
         </div>
