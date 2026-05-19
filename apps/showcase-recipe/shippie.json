@@ -1,11 +1,11 @@
 {
   "$schema": "https://shippie.app/schemas/app.json",
-  "name": "Recipe",
+  "name": "Palate",
   "slug": "recipe",
-  "description": "A local-first kitchen app for recipes, meal planning, shopping, and pantry notes.",
-  "icon": "/icon.png",
-  "theme_color": "#E8603C",
-  "background_color": "#FAF7EF",
+  "description": "Palate refactored into Shippie: recipes, cooking mode, meal planning, pantry, and shopping in one local-first kitchen app.",
+  "icon": "/icon-512.png",
+  "theme_color": "#D86918",
+  "background_color": "#F4E4C1",
   "display": "standalone",
   "orientation": "portrait",
   "ai": [],
@@ -16,14 +16,17 @@
       "shopping-list",
       "needs-restocking",
       "pantry-inventory",
-      "pantry-low"
+      "pantry-low",
+      "meal-planned"
     ],
     "consumes": [
       "pantry-inventory",
       "shopping-list",
       "pantry-low",
       "budget-limit",
-      "cooked-meal"
+      "cooked-meal",
+      "mood-logged",
+      "hydration-logged"
     ]
   },
   "acceptsTransfer": {
@@ -31,41 +34,13 @@
       "recipe"
     ]
   },
-  "spaces": {
-    "enabled": true,
-    "roles": [
-      {
-        "id": "owner",
-        "permissions": [
-          "read",
-          "write",
-          "invite"
-        ]
-      },
-      {
-        "id": "editor",
-        "permissions": [
-          "read",
-          "write"
-        ]
-      },
-      {
-        "id": "viewer",
-        "permissions": [
-          "read"
-        ]
-      }
-    ],
-    "syncMode": "sealed-cloud",
-    "archivable": true
-  },
   "enhance": {
     "rules": {
       "wakelock": {
-        "selector": "video[data-shippie-canvas], canvas[data-shippie-canvas]"
+        "selector": "[data-shippie-wakelock]"
       },
       "list-swipe": {
-        "selector": "ul[data-shippie-list]",
+        "selector": ".shopping-list",
         "haptic": "tap"
       },
       "text-autocomplete": {
@@ -85,20 +60,17 @@
     ],
     "attachments": false,
     "recovery": "inherited",
-    "migrations": "snapshot-v0",
+    "migrations": "snapshot-v1-palate",
     "snapshots": "inherited",
-    "media": "none",
+    "media": "local-device",
     "realtime": "inherited",
     "localStorage": {
       "keys": [
-        "shippie:recipe-saver:backup-meta:v1",
-        "shippie:recipe-saver:safety-prompts:v1",
-        "shippie:recipe-saver:persistence:v1",
+        "shippie.palate.recipe-hub.v1",
+        "shippie.palate.recent-searches.v1",
         "shippie.meal-planner.v2",
         "shippie.shopping-list.v1",
-        "shippie.pantry-scanner.v1",
-        "shippie.pantry-scanner.consumption.v1",
-        "shippie.pantry-scanner.off-cache.v1"
+        "shippie.pantry-scanner.v1"
       ],
       "prefixes": [
         "shippie.shopping-list."
@@ -109,18 +81,34 @@
     "recipes": {
       "id": "text primary key",
       "title": "text not null",
-      "notes": "text",
+      "description": "text",
+      "category": "text",
+      "cuisine": "text",
+      "servings": "integer",
+      "prep_time": "integer",
+      "cook_time": "integer",
       "created_at": "datetime",
       "updated_at": "datetime"
     },
-    "ingredients": {
+    "meal_plan": {
       "id": "text primary key",
+      "date": "text not null",
+      "meal_type": "text not null",
       "recipe_id": "text not null",
+      "servings": "integer"
+    },
+    "pantry": {
+      "id": "text primary key",
       "name": "text not null",
-      "amount": "text",
+      "quantity": "real",
       "unit": "text",
-      "barcode": "text",
-      "brand": "text"
+      "location": "text"
+    },
+    "shopping_items": {
+      "id": "text primary key",
+      "name": "text not null",
+      "checked": "integer",
+      "source": "text"
     }
   },
   "curation": {

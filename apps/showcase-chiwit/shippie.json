@@ -1,0 +1,90 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Chiwit",
+  "slug": "chiwit",
+  "description": "How does life feel? A local-first Daily Pulse for sleep, mood, energy, hydration, movement, and body signals.",
+  "icon": "/icon-512.png",
+  "theme_color": "#F97066",
+  "background_color": "#FFFAF8",
+  "display": "standalone",
+  "orientation": "portrait",
+  "ai": [],
+  "intents": {
+    "provides": [
+      "mood-logged",
+      "sleep-logged",
+      "hydration-logged",
+      "workout-completed",
+      "mindful-session",
+      "symptom-logged",
+      "body-metrics-logged"
+    ],
+    "consumes": [
+      "cooked-meal",
+      "caffeine-logged",
+      "coffee-brewed",
+      "brewed-tea",
+      "wellness-ritual"
+    ]
+  },
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      },
+      "list-swipe": {
+        "selector": ".timeline-list",
+        "haptic": "tap"
+      }
+    }
+  },
+  "permissions": [
+    "wake-lock"
+  ],
+  "data": {
+    "mode": "shippie-documents",
+    "documents": [
+      "daily-pulse"
+    ],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v1-chiwit",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "shippie.chiwit.daily-pulse.v1"
+      ],
+      "prefixes": [
+        "shippie.chiwit."
+      ]
+    }
+  },
+  "data_schemas": {
+    "entries": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "date": "text not null",
+      "value": "real",
+      "amount": "real",
+      "note": "text",
+      "created_at": "datetime"
+    },
+    "checkins": {
+      "id": "text primary key",
+      "date": "text not null",
+      "window": "text not null",
+      "energy": "integer",
+      "mood": "integer",
+      "note": "text"
+    }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-chiwit",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true
+}

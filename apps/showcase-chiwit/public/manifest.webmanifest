@@ -1,13 +1,13 @@
 {
-  "name": "Palate",
-  "short_name": "Palate",
-  "description": "Recipes, cooking mode, meal planning, pantry, and shopping in one local-first kitchen app.",
+  "name": "Chiwit",
+  "short_name": "Chiwit",
+  "description": "A local-first Daily Pulse for sleep, mood, energy, hydration, movement, and body signals.",
   "id": "/",
   "start_url": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
-  "background_color": "#F4E4C1",
-  "theme_color": "#D86918",
+  "background_color": "#FFFAF8",
+  "theme_color": "#F97066",
   "orientation": "portrait",
   "scope": "/",
   "lang": "en",
@@ -26,18 +26,18 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["food", "lifestyle", "utilities"],
+  "categories": ["health", "lifestyle", "utilities"],
   "shortcuts": [
     {
-      "name": "Cookbook",
-      "short_name": "Cookbook",
-      "url": "/?tab=cookbook",
+      "name": "Track",
+      "short_name": "Track",
+      "url": "/?tab=track",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Shopping",
-      "short_name": "Shop",
-      "url": "/?tab=shop",
+      "name": "Patterns",
+      "short_name": "Patterns",
+      "url": "/?tab=patterns",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]

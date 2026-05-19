@@ -17,17 +17,18 @@ export interface CanonicalShowcaseTarget {
 
 const SLUG_ALIASES: Record<string, string> = {
   'recipe-saver': 'recipe',
-  // Phase 2 cleanup — Move + Quiet absorbed several single-screen
-  // wellness apps. Move now itself aliases to lift, so route the
-  // grandchildren straight to lift to avoid two-hop redirects.
+  palate: 'recipe',
+  // Phase 2 cleanup — Chiwit absorbs the loose daily wellness mirrors.
+  // Move remains routed to Lift because strength/workout logging has a
+  // sharper standalone home there.
   pace: 'lift',
   'sleep-logger': 'lift',
   'workout-logger': 'lift',
-  pomodoro: 'quiet',
-  'mood-pulse': 'quiet',
+  pomodoro: 'chiwit',
+  'mood-pulse': 'chiwit',
   // daily-briefing demoted to platform-side `/today` surface; until
-  // that's fully discoverable, alias to recipe so links don't 404.
-  'daily-briefing': 'recipe',
+  // that's fully discoverable, alias into Chiwit's daily pulse.
+  'daily-briefing': 'chiwit',
   // Recipe absorbed the standalone temperature helper for launch.
   cooking: 'recipe',
 
@@ -46,10 +47,9 @@ const SLUG_ALIASES: Record<string, string> = {
   journal: 'therapy-notes',
   move: 'lift',
 
-  // Slate v4 Phase 1 — Tap Counter shipped, so retire sip-log to it.
-  // sip-log was a single-purpose hydration tracker; Tap Counter is
-  // the general-purpose physical-input mirror that replaces it.
-  'sip-log': 'tap-counter',
+  // Chiwit now owns hydration and caffeine context, so old one-tap
+  // sip links open the wellness tracker instead of a narrow mirror.
+  'sip-log': 'chiwit',
   // Launch slate Phase 2 — standalone brain games now open as modes
   // inside Daily Puzzle. The target search params below preserve which
   // retired app the person intended to launch.
@@ -63,6 +63,11 @@ const SLUG_ALIASES: Record<string, string> = {
   'meal-planner': 'recipe',
   'pantry-scanner': 'recipe',
   'photo-a-day': 'snap-and-forget',
+  'body-metrics': 'chiwit',
+  breath: 'chiwit',
+  'habit-tracker': 'chiwit',
+  quiet: 'chiwit',
+  'colour-of-day': 'chiwit',
 };
 
 const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
@@ -72,11 +77,20 @@ const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
   sudoku: { mode: 'sudoku', from: 'sudoku' },
   'memory-grid': { mode: 'memory-grid', from: 'memory-grid' },
   reaction: { mode: 'reaction', from: 'reaction' },
-  'shopping-list': { tab: 'shopping', from: 'shopping-list' },
-  'meal-planner': { tab: 'meal-plan', from: 'meal-planner' },
+  'shopping-list': { tab: 'shop', from: 'shopping-list' },
+  'meal-planner': { tab: 'plan', from: 'meal-planner' },
   'pantry-scanner': { tab: 'pantry', from: 'pantry-scanner' },
-  cooking: { tab: 'recipes', from: 'cooking' },
+  cooking: { tab: 'cookbook', from: 'cooking' },
   'photo-a-day': { from: 'photo-a-day' },
+  'body-metrics': { tab: 'track', from: 'body-metrics' },
+  breath: { tab: 'track', from: 'breath' },
+  'habit-tracker': { tab: 'track', from: 'habit-tracker' },
+  quiet: { tab: 'track', from: 'quiet' },
+  'colour-of-day': { tab: 'track', from: 'colour-of-day' },
+  'daily-briefing': { tab: 'today', from: 'daily-briefing' },
+  'mood-pulse': { tab: 'track', from: 'mood-pulse' },
+  pomodoro: { tab: 'track', from: 'pomodoro' },
+  'sip-log': { tab: 'track', from: 'sip-log' },
 };
 
 export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>(SHOWCASE_SLUGS);

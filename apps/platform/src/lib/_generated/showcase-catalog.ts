@@ -11,6 +11,7 @@ export const SHOWCASE_SLUGS = [
   "bulwark",
   "care-log",
   "chess",
+  "chiwit",
   "co-pilot",
   "coffee",
   "colour-of-day",
