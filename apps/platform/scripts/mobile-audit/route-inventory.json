@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-05-18T10:49:37.781Z",
+  "generatedAt": "2026-05-19T08:03:07.703Z",
   "counts": {
-    "total": 39,
+    "total": 42,
     "public": 16,
     "priority_P0": 3,
     "container": 1,
-    "dashboard": 11,
-    "priority_P1": 8,
+    "dashboard": 12,
+    "priority_P1": 7,
     "auth": 2,
     "onboarding": 2,
-    "priority_P2": 22,
+    "priority_P2": 24,
     "showcase-wrapper": 1,
-    "admin": 5,
-    "priority_P3": 6,
-    "dev": 1
+    "admin": 6,
+    "priority_P3": 8,
+    "dev": 2
   },
   "rows": [
     {
@@ -51,12 +51,6 @@
       "shell": "auth",
       "priority": "P1",
       "pageFile": "apps/platform/src/routes/auth/login/+page.svelte"
-    },
-    {
-      "urlPath": "/build",
-      "shell": "public",
-      "priority": "P1",
-      "pageFile": "apps/platform/src/routes/build/+page.svelte"
     },
     {
       "urlPath": "/glance",
@@ -137,6 +131,12 @@
       "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/enhancements/+page.svelte"
     },
     {
+      "urlPath": "/dashboard/apps/[slug]/feedback",
+      "shell": "dashboard",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/feedback/+page.svelte"
+    },
+    {
       "urlPath": "/dashboard/apps/[slug]/localize",
       "shell": "dashboard",
       "priority": "P2",
@@ -215,6 +215,12 @@
       "pageFile": "apps/platform/src/routes/why/+page.svelte"
     },
     {
+      "urlPath": "/you",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/you/+page.svelte"
+    },
+    {
       "urlPath": "/admin",
       "shell": "admin",
       "priority": "P3",
@@ -233,6 +239,12 @@
       "pageFile": "apps/platform/src/routes/admin/audit/+page.svelte"
     },
     {
+      "urlPath": "/admin/disputes",
+      "shell": "admin",
+      "priority": "P3",
+      "pageFile": "apps/platform/src/routes/admin/disputes/+page.svelte"
+    },
+    {
       "urlPath": "/admin/moderation",
       "shell": "admin",
       "priority": "P3",
@@ -249,6 +261,12 @@
       "shell": "dev",
       "priority": "P3",
       "pageFile": "apps/platform/src/routes/dev/gesture-prototype/+page.svelte"
+    },
+    {
+      "urlPath": "/dev/launcher-lab",
+      "shell": "dev",
+      "priority": "P3",
+      "pageFile": "apps/platform/src/routes/dev/launcher-lab/+page.svelte"
     }
   ]
 }

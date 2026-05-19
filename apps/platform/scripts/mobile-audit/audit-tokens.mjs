@@ -153,7 +153,7 @@ function findFontSizeUnderFloor(body, baseLine) {
 function ruleNeedsSafeArea(body) {
   // Is this rule positioned to the bottom?
   const hasPosition = /position:\s*(fixed|sticky)\b/.test(body);
-  const hasBottomZero = /bottom:\s*0(px)?\b/.test(body);
+  const hasBottomZero = /(?:^|[;\s])bottom:\s*0(px)?\b/.test(body);
   if (!hasPosition || !hasBottomZero) return false;
   // Does it acknowledge safe-area? Recognize both longhand
   // `padding-bottom:` / `margin-bottom:` / `inset-block-end:` and the

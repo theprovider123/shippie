@@ -522,7 +522,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     .lede, .quick span { color: #B8A88F; }
     .qr-box { background: #FAF7EF; border-color: #2A251E; }
   }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .ship-panel,
     .checklist-card {
       grid-template-columns: 1fr;

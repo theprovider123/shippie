@@ -6,7 +6,6 @@
 | `/apps/[slug]` | public | P1 | · | · | · | · | · |  |
 | `/auth/cli/activate` | auth | P1 | · | · | · | · | · |  |
 | `/auth/login` | auth | P1 | · | · | · | · | · |  |
-| `/build` | public | P1 | · | · | · | · | · |  |
 | `/glance` | public | P1 | · | · | · | · | · |  |
 | `/invite/[token]` | onboarding | P1 | · | · | · | · | · |  |
 | `/new` | onboarding | P1 | · | · | · | · | · |  |
@@ -20,6 +19,7 @@
 | `/dashboard/apps/[slug]/analytics` | dashboard | P2 | · | · | · | · | · |  |
 | `/dashboard/apps/[slug]/deploys/[deployId]` | dashboard | P2 | · | · | · | · | · |  |
 | `/dashboard/apps/[slug]/enhancements` | dashboard | P2 | · | · | · | · | · |  |
+| `/dashboard/apps/[slug]/feedback` | dashboard | P2 | · | · | · | · | · |  |
 | `/dashboard/apps/[slug]/localize` | dashboard | P2 | · | · | · | · | · |  |
 | `/dashboard/apps/[slug]/profile` | dashboard | P2 | · | · | · | · | · |  |
 | `/dashboard/apps/[slug]/proof` | dashboard | P2 | · | · | · | · | · |  |
@@ -33,9 +33,12 @@
 | `/trust-preview` | public | P2 | · | · | · | · | · |  |
 | `/whitepaper` | public | P2 | · | · | · | · | · |  |
 | `/why` | public | P2 | · | · | · | · | · |  |
+| `/you` | public | P2 | · | · | · | · | · |  |
 | `/admin` | admin | P3 | · | · | · | · | · |  |
 | `/admin/analytics` | admin | P3 | · | · | · | · | · |  |
 | `/admin/audit` | admin | P3 | · | · | · | · | · |  |
+| `/admin/disputes` | admin | P3 | · | · | · | · | · |  |
 | `/admin/moderation` | admin | P3 | · | · | · | · | · |  |
 | `/admin/profile` | admin | P3 | · | · | · | · | · |  |
 | `/dev/gesture-prototype` | dev | P3 | · | · | · | · | · |  |
+| `/dev/launcher-lab` | dev | P3 | · | · | · | · | · |  |
