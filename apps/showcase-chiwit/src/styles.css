@@ -63,6 +63,7 @@
 html,
 body {
   min-height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -84,6 +85,7 @@ body {
 
 #root {
   min-height: 100svh;
+  overflow-x: hidden;
 }
 
 button,
@@ -130,6 +132,8 @@ textarea {
 .chiwit-app {
   min-height: 100svh;
   padding-bottom: env(safe-area-inset-bottom);
+  overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 .app-header {
@@ -150,10 +154,15 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
+  min-width: 0;
   padding: 0;
   background: transparent;
   color: inherit;
   text-align: left;
+}
+
+.brand-lockup span {
+  min-width: 0;
 }
 
 .brand-lockup img {
@@ -261,10 +270,36 @@ textarea {
   min-height: 44px;
   border-radius: 8px;
   padding: 0.65rem 0.9rem;
-  background: rgba(255, 255, 255, 0.72);
-  color: #333;
-  border: 1px solid rgba(51, 51, 51, 0.12);
-  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+/* Secondary branded button — cream bg + sage ink + sage border. */
+.hero-actions button,
+.quick-grid button,
+.tracking-form button[type="button"],
+.month-scrubber button,
+.shippie-backup-card__actions button {
+  background: var(--paper);
+  color: var(--sage-deep);
+  border-color: rgba(74, 122, 94, 0.28);
+}
+
+.hero-actions button:hover,
+.quick-grid button:hover,
+.tracking-form button:hover,
+.month-scrubber button:hover,
+.shippie-backup-card__actions button:hover {
+  border-color: var(--sage);
+  box-shadow: 0 6px 16px rgba(74, 122, 94, 0.12);
+}
+
+.app-header nav button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-header nav button:hover,
@@ -281,16 +316,34 @@ textarea {
 .app-header nav .active,
 .primary,
 .hero-actions .primary,
-.tracking-form .primary {
-  background: #f97066;
-  color: white;
-  border-color: #f97066;
+.tracking-form .primary,
+.month-scrubber button.active,
+.shippie-onboarding__next,
+.shippie-empty-state__cta,
+button.branded.primary {
+  background: var(--sage);
+  color: var(--paper);
+  border-color: var(--sage);
+  box-shadow: 0 8px 22px rgba(47, 86, 64, 0.22);
+}
+
+.app-header nav .active:hover,
+.primary:hover,
+.hero-actions .primary:hover,
+.tracking-form .primary:hover,
+.month-scrubber button.active:hover,
+.shippie-onboarding__next:hover,
+.shippie-empty-state__cta:hover,
+button.branded.primary:hover {
+  background: var(--sage-deep);
+  border-color: var(--sage-deep);
 }
 
 .page-shell {
   width: min(1160px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 1.2rem 0 calc(4rem + env(safe-area-inset-bottom));
+  min-width: 0;
 }
 
 .today-shell {
@@ -438,7 +491,8 @@ textarea {
   gap: 0.25rem;
   min-height: 92px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.64);
+  background: var(--paper);
+  border-color: rgba(74, 122, 94, 0.18);
 }
 
 .quick-grid button > span,
@@ -539,12 +593,58 @@ textarea {
   transition: transform 160ms ease;
 }
 
-.insight-card.good {
-  border-color: rgba(76, 175, 80, 0.28);
+/* Tone-driven insight cards (§4.3) — left-rule colour-codes each card. */
+.insight-card {
+  position: relative;
+  background: var(--paper);
+  border-color: var(--line);
+  padding-left: 1.1rem;
 }
-
-.insight-card.watch {
-  border-color: rgba(255, 152, 0, 0.28);
+.insight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0.6rem auto 0.6rem 0.45rem;
+  width: 4px;
+  border-radius: 4px;
+  background: var(--muted);
+}
+.insight-card.good,
+.insight-card--good {
+  border-color: rgba(74, 122, 94, 0.28);
+}
+.insight-card.good::before,
+.insight-card--good::before {
+  background: var(--sage);
+}
+.insight-card.watch,
+.insight-card--watch {
+  border-color: rgba(217, 106, 60, 0.32);
+}
+.insight-card.watch::before,
+.insight-card--watch::before {
+  background: var(--coral);
+}
+.insight-card.neutral::before,
+.insight-card--neutral::before {
+  background: var(--muted);
+}
+.insight-card strong::before {
+  content: '✦';
+  display: inline-block;
+  margin-right: 0.4rem;
+  color: var(--sage);
+  font-size: 0.85em;
+}
+.insight-card.watch strong::before,
+.insight-card--watch strong::before {
+  color: var(--coral);
+}
+.insight-card.neutral strong::before,
+.insight-card--neutral strong::before {
+  color: var(--muted);
+}
+.insight-card p {
+  font-style: italic;
 }
 
 .insight-card p {
@@ -805,14 +905,631 @@ meter {
   }
 }
 
-/* Reading paragraph in TodayView hero — softer, italic-leaning, readable. */
+@media (max-width: 700px) {
+  .chiwit-app {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .app-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.7rem;
+    padding: max(0.65rem, env(safe-area-inset-top)) 0.75rem 0.65rem;
+    background: rgba(251, 246, 232, 0.98);
+    backdrop-filter: none;
+  }
+
+  .app-header nav {
+    position: fixed;
+    right: max(0.5rem, env(safe-area-inset-right));
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    left: max(0.5rem, env(safe-area-inset-left));
+    z-index: 60;
+    display: grid;
+    width: auto;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.25rem;
+    padding: 0.35rem;
+    overflow: visible;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(251, 246, 232, 0.98);
+    box-shadow: 0 10px 28px rgba(31, 42, 36, 0.16);
+  }
+
+  .app-header nav button {
+    min-width: 0;
+    min-height: 48px;
+    padding: 0.35rem 0.2rem;
+    overflow: hidden;
+    font-size: 0.72rem;
+    font-weight: 750;
+    text-overflow: ellipsis;
+  }
+
+  .brand-lockup img {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-lockup strong {
+    font-size: 1rem;
+  }
+
+  .page-shell,
+  .today-shell {
+    width: min(100% - 1rem, 1220px);
+    padding-top: 0.75rem;
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+  }
+
+  .hero-plane {
+    gap: 1rem;
+    padding: 0.8rem 0 1rem;
+  }
+
+  .hero-plane h1,
+  .page-shell h1 {
+    font-size: clamp(2rem, 12vw, 3.15rem);
+  }
+
+  .hero-plane p {
+    font-size: 1rem;
+  }
+
+  .pulse-card {
+    width: 100%;
+    max-width: none;
+    grid-template-columns: 128px minmax(0, 1fr);
+    align-items: center;
+    justify-self: stretch;
+    padding: 0.75rem;
+  }
+
+  .pulse-ring {
+    width: 128px;
+    padding: 0.75rem;
+  }
+
+  .pulse-ring img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .pulse-ring strong {
+    font-size: 2.8rem;
+  }
+
+  .pulse-ring small {
+    display: none;
+  }
+
+  .pulse-factors {
+    min-width: 0;
+  }
+
+  .quick-panel {
+    padding-block: 0.75rem;
+  }
+
+  .quick-grid {
+    display: flex;
+    gap: 0.55rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .quick-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-grid button {
+    flex: 0 0 128px;
+    min-height: 84px;
+    scroll-snap-align: start;
+  }
+
+  .split-layout {
+    gap: 1rem;
+    padding-top: 1rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .pulse-card {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .pulse-ring {
+    width: 112px;
+  }
+
+  .app-header nav button {
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+/* Hero pull-quote — Fraunces italic 1.4rem, sage left-rule, tight leading. */
 .hero-plane .reading {
-  font-family: var(--font-display, Georgia, serif);
-  font-size: clamp(1rem, 2.8vw, 1.15rem);
-  line-height: 1.5;
+  position: relative;
+  margin: 1.1rem 0 0;
+  padding: 0.2rem 0 0.2rem 1.1rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 2.6vw, 1.4rem);
+  line-height: 0.85em;
+  line-height: 0.85;
   font-style: italic;
-  color: var(--text, #2A1F16);
-  max-width: 40ch;
+  font-weight: 500;
+  color: var(--ink);
+  max-width: 44ch;
+}
+.hero-plane .reading::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 3px;
+  background: var(--sage);
+  border-radius: 3px;
+}
+
+/* ───────────────────────────────────────────────────────────────────── *
+ * Showcase-kit-v2 — Chiwit skin                                          *
+ * Selectors live in the kit; we paint them in Chiwit's voice (sage on    *
+ * cream, Fraunces for titles, mono for eyebrows, coral only for warn).   *
+ * ─────────────────────────────────────────────────────────────────────── */
+
+/* ── Onboarding ──────────────────────────────────────────────────── */
+.shippie-onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(31, 42, 36, 0.42);
+  backdrop-filter: blur(10px);
+  animation: shippie-onboarding-fade 220ms ease both;
+}
+@keyframes shippie-onboarding-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.shippie-onboarding__surface {
+  width: min(520px, 100%);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 1.75rem 1.6rem 1.4rem;
+  box-shadow: 0 22px 60px rgba(31, 42, 36, 0.18);
+}
+.shippie-onboarding__progress {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+.shippie-onboarding__dot {
+  display: block;
+  flex: 1;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--sage-soft);
+}
+.shippie-onboarding__dot.is-current {
+  background: var(--sage);
+}
+.shippie-onboarding__title {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.4rem, 4vw, 1.85rem);
+  line-height: 1.1;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+}
+.shippie-onboarding__body {
+  font-family: var(--font-body);
+  color: var(--ink-soft);
+  line-height: 1.5;
+  font-size: 1.02rem;
+  margin-bottom: 1.4rem;
+}
+.shippie-onboarding__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+.shippie-onboarding__skip {
+  min-height: 44px;
+  padding: 0.55rem 0.9rem;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.shippie-onboarding__skip:hover {
+  color: var(--ink-soft);
+}
+.shippie-onboarding__next {
+  min-height: 44px;
+  padding: 0.65rem 1.1rem;
+  border-radius: 8px;
+  border: 1px solid var(--sage);
+  font-weight: 600;
+}
+
+/* ── Intent toast ────────────────────────────────────────────────── */
+.shippie-intent-toast {
+  position: fixed;
+  z-index: 90;
+  inset-inline: 0.75rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--paper);
+  border: 1px solid var(--sage);
+  border-left: 4px solid var(--sage);
+  border-radius: 10px;
+  box-shadow: 0 18px 44px rgba(31, 42, 36, 0.16);
+  cursor: pointer;
+  animation: shippie-intent-toast-in 240ms ease both;
+}
+.shippie-intent-toast--top    { top: max(0.75rem, env(safe-area-inset-top)); }
+.shippie-intent-toast--bottom { bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+@media (min-width: 561px) {
+  .shippie-intent-toast {
+    inset-inline: auto;
+    right: 1rem;
+    width: min(420px, 100% - 2rem);
+  }
+}
+@keyframes shippie-intent-toast-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.shippie-intent-toast__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--sage-soft);
+  font-size: 1.15rem;
+}
+.shippie-intent-toast__text {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+.shippie-intent-toast__text strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--ink);
+}
+.shippie-intent-toast__text span {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.shippie-intent-toast__close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.shippie-intent-toast__close:hover {
+  background: var(--sage-soft);
+  color: var(--ink);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.shippie-empty-state {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.4rem 1.2rem;
+  background: var(--paper);
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  text-align: left;
+}
+.shippie-empty-state__eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.shippie-empty-state__headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.1rem, 3vw, 1.45rem);
+  line-height: 1.18;
+  letter-spacing: -0.014em;
+  color: var(--ink);
+}
+.shippie-empty-state__headline em {
+  font-style: italic;
+  color: var(--sage-deep);
+}
+.shippie-empty-state__body {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.shippie-empty-state__cta {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--sage);
+  text-decoration: none;
+  font-weight: 600;
+  margin-top: 0.4rem;
+}
+
+/* ── QR share sheet ──────────────────────────────────────────────── */
+.shippie-qr-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: end center;
+  padding: 0.75rem;
+  background: rgba(31, 42, 36, 0.42);
+  backdrop-filter: blur(8px);
+}
+@media (min-width: 561px) {
+  .shippie-qr-sheet { place-items: center; }
+}
+.shippie-qr-sheet__surface {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 1.4rem 1.3rem 1.2rem;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px 14px 6px 6px;
+  box-shadow: 0 24px 60px rgba(31, 42, 36, 0.2);
+  display: grid;
+  gap: 0.8rem;
+}
+.shippie-qr-sheet__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: var(--ink);
+}
+.shippie-qr-sheet__body {
+  margin: 0;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.shippie-qr-sheet__qr {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.shippie-qr-sheet__qr svg {
+  width: 100%;
+  height: auto;
+  max-width: 280px;
+}
+.shippie-qr-sheet__url {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  background: var(--sage-soft);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--sage-deep);
+  word-break: break-all;
+  line-height: 1.35;
+}
+.shippie-qr-sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+.shippie-qr-sheet__actions button {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--sage);
+  background: var(--paper);
+  color: var(--sage-deep);
+  font-weight: 600;
+}
+.shippie-qr-sheet__actions button.primary {
+  background: var(--sage);
+  color: var(--paper);
+}
+.shippie-qr-sheet__close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+.shippie-qr-sheet__close:hover {
+  background: var(--sage-soft);
+  color: var(--ink);
+}
+
+/* ── Backup card ─────────────────────────────────────────────────── */
+.shippie-backup-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.1rem 1.1rem 1rem;
+  margin: 1.4rem 0 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.shippie-backup-card__eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.shippie-backup-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.3rem;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.shippie-backup-card__body {
+  margin: 0 0 0.5rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.shippie-backup-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.shippie-backup-card__actions button {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.shippie-backup-card__error {
+  margin: 0;
+  color: var(--coral);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+/* ── Chiwit-specific lifts ───────────────────────────────────────── */
+
+/* Inline helper text under a form group (e.g. KIND_META.helper). */
+.helper-text {
+  margin: -0.3rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Factor helper line on Patterns. */
+.category-row strong {
+  display: grid;
+  gap: 0.18rem;
+}
+.factor-helper {
+  display: block;
+  font-style: italic;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  color: var(--muted);
+  text-transform: none;
+}
+
+/* Month-jump scrubber on Timeline. */
+.month-scrubber {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  padding: 0.4rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.month-scrubber button {
+  min-height: 36px;
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Ambient-signal row on Today timeline — small sibling-app icon. */
+.entry-list li.is-ambient {
+  background: linear-gradient(90deg, var(--sage-soft) 0%, var(--paper) 38%);
+  border-color: rgba(74, 122, 94, 0.22);
+}
+.entry-source-icon {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.35rem;
+  background: var(--sage-soft);
+  border-radius: 6px;
+  font-style: normal;
+  font-size: 0.82em;
+  vertical-align: 1px;
+}
+
+/* Data tab — share-this-week block. */
+.data-share {
+  margin-top: 1.4rem;
+  padding: 1.1rem 1.1rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.data-share h2 {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--ink);
+}
+.data-share button {
+  margin-top: 0.6rem;
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
 }
 
 /* Consistency card in PatternsView — hero metric for the week. */

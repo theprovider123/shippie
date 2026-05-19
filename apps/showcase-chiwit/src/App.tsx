@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import { createShippieIframeSdk, type IntentBroadcast } from '@shippie/iframe-sdk';
 import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import {
+  BackupCard,
+  EmptyState,
+  IntentToastHost,
+  KeepsakeRenderer,
+  OnboardingFlow,
+  QrShareSheet,
+  encodeShareFragment,
+  type IntentLike,
+  type IntentSubscription,
+  type OnboardingSlide,
+} from '@shippie/showcase-kit-v2';
+import { AMBIENT_BY_KIND, MATCHED_KINDS, MATCHERS, type AmbientSignalKind } from './IntentMatchers';
+import { WeeklyShape, buildWeekShape, isoWeekCode, type WeekDay, type WeekShapeData } from './WeeklyShape';
+import { createChiwitBackupStore } from './backup-store';
 
 type Tab = 'today' | 'track' | 'patterns' | 'timeline' | 'data';
 type EntryKind = 'mood' | 'energy' | 'sleep' | 'hydration' | 'movement' | 'mindful' | 'body' | 'weight';
@@ -15,6 +30,9 @@ interface PulseEntry {
   unit?: string;
   note?: string;
   createdAt: number;
+  /** When set, this signal was folded in from a sibling Shippie app. */
+  source?: string;          // e.g. "app_coffee", "app_lift"
+  sourceIcon?: string;      // emoji glyph for the Today badge
 }
 
 interface Checkin {
@@ -57,6 +75,7 @@ interface PulseScore {
 interface QuickAction {
   kind: EntryKind;
   label: string;
+  helper: string;            // small one-line helper shown under the strong label
   value: number;
   amount?: number;
   unit?: string;
@@ -73,34 +92,61 @@ interface Insight {
 const shippie = createShippieIframeSdk({ appId: 'app_chiwit' });
 const STORAGE_KEY = 'shippie.chiwit.daily-pulse.v1';
 const CHIWIT_LOGO_URL = `${import.meta.env.BASE_URL}brand/chiwit-logo.png`;
+const backupStore = createChiwitBackupStore();
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'today', label: 'Today' },
-  { id: 'track', label: 'Track' },
+  { id: 'track', label: 'Log' },
   { id: 'patterns', label: 'Patterns' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'data', label: 'Data' },
 ];
 
-const KIND_META: Record<EntryKind, { label: string; color: string; unit: string }> = {
-  mood: { label: 'Mood', color: '#F97066', unit: '/5' },
-  energy: { label: 'Energy', color: '#FF9800', unit: '/5' },
-  sleep: { label: 'Sleep', color: '#9575CD', unit: 'h' },
-  hydration: { label: 'Hydration', color: '#42A5F5', unit: 'ml' },
-  movement: { label: 'Movement', color: '#66BB6A', unit: 'min' },
-  mindful: { label: 'Mindful', color: '#26A69A', unit: 'min' },
-  body: { label: 'Body', color: '#8D6E63', unit: '/5' },
-  weight: { label: 'Body metrics', color: '#A5D6A7', unit: 'kg' },
+const KIND_META: Record<EntryKind, { label: string; color: string; unit: string; helper: string }> = {
+  mood:      { label: 'Mood',         color: '#F97066', unit: '/5',  helper: 'Mind factor' },
+  energy:    { label: 'Energy',       color: '#FF9800', unit: '/5',  helper: 'Mind factor' },
+  sleep:     { label: 'Sleep',        color: '#9575CD', unit: 'h',   helper: 'Recovery factor' },
+  hydration: { label: 'Hydration',    color: '#42A5F5', unit: 'ml',  helper: 'Foundations factor' },
+  movement:  { label: 'Movement',     color: '#66BB6A', unit: 'min', helper: 'Movement factor' },
+  mindful:   { label: 'Mindful',      color: '#26A69A', unit: 'min', helper: 'Recovery factor' },
+  body:      { label: 'Body',         color: '#8D6E63', unit: '/5',  helper: 'Body factor' },
+  weight:    { label: 'Body metrics', color: '#A5D6A7', unit: 'kg',  helper: 'Body factor' },
+};
+
+const FACTOR_HELPER_TEXT: Record<keyof ScoreBreakdown, string> = {
+  foundations: 'Foundations = hydration + meals',
+  recovery:    'Recovery = sleep + mindful',
+  movement:    'Movement = walks + workouts',
+  mind:        'Mind = mood + energy',
+  body:        'Body = check-in body + symptoms',
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { kind: 'hydration', label: '+250 ml', value: 1, amount: 250, unit: 'ml', note: 'water' },
-  { kind: 'mood', label: 'Mood good', value: 4, note: 'steady' },
-  { kind: 'energy', label: 'Energy okay', value: 3, note: 'steady' },
-  { kind: 'sleep', label: '7.5h sleep', value: 4, amount: 7.5, unit: 'h' },
-  { kind: 'movement', label: '20 min walk', value: 3, amount: 20, unit: 'min' },
-  { kind: 'mindful', label: '5 min calm', value: 4, amount: 5, unit: 'min' },
-  { kind: 'body', label: 'Body okay', value: 3, note: 'okay' },
+  { kind: 'hydration', label: 'Hydration · +250 ml', helper: 'Foundations',           value: 1, amount: 250, unit: 'ml',  note: 'water' },
+  { kind: 'mood',      label: 'Mood · good',         helper: 'Mind · 4/5',            value: 4, note: 'steady' },
+  { kind: 'energy',    label: 'Energy · okay',       helper: 'Mind · 3/5',            value: 3, note: 'steady' },
+  { kind: 'sleep',     label: 'Sleep · 7.5 h',       helper: 'Recovery',              value: 4, amount: 7.5, unit: 'h' },
+  { kind: 'movement',  label: 'Movement · 20 min',   helper: 'A short walk counts',   value: 3, amount: 20, unit: 'min' },
+  { kind: 'mindful',   label: 'Mindful · 5 min',     helper: 'Recovery · breath',     value: 4, amount: 5, unit: 'min' },
+  { kind: 'body',      label: 'Body · okay',         helper: 'Body · 3/5',            value: 3, note: 'okay' },
+];
+
+const ONBOARDING_SLIDES: OnboardingSlide[] = [
+  {
+    title: 'Five signals a day. No app account.',
+    body: 'A signal is a small note — water, sleep, a walk, a mood. Everything stays on this device. Chiwit is local-first; there is no Chiwit cloud.',
+    cta: 'Next',
+  },
+  {
+    title: 'Your other apps already know about your coffee, sleep, workouts. Chiwit reads them so you don’t double-log.',
+    body: 'When a sibling Shippie app logs something, it folds in here as an ambient signal. You’ll see a small icon on the row so you can audit where it came from.',
+    cta: 'Next',
+  },
+  {
+    title: 'Tap a quick-signal pill, or open Log when you have a sentence.',
+    body: 'The shape of the week comes from how often you check in, not how perfectly. Three signals counts as a day.',
+    cta: 'Open Chiwit',
+  },
 ];
 
 function id(prefix: string): string {
@@ -217,9 +263,6 @@ const FACTOR_NAMES: Record<keyof ScoreBreakdown, string> = {
 
 /**
  * Consistency = share of the last 7 days with ≥ 3 logged signals.
- * Replaces a brittle streak counter that punishes missed days; this
- * forgives a quiet day without resetting the user's relationship to
- * the app. Returned as 0–100 for symmetry with breakdown values.
  */
 function consistencyPct(state: ChiwitState): number {
   const days = Array.from({ length: 7 }, (_, index) => addDays(-index));
@@ -227,12 +270,6 @@ function consistencyPct(state: ChiwitState): number {
   return Math.round((goodDays / 7) * 100);
 }
 
-/**
- * Templated paragraph reading for the day. Two short sentences,
- * second-person, grounded in the actual pulse breakdown + entry mix.
- * No model call — fragments are selected from score-banded buckets
- * plus a sentence about the strongest or weakest factor.
- */
 function generateReading(state: ChiwitState, pulse: PulseScore, when: string = today()): string {
   const sentences: string[] = [];
   sentences.push(
@@ -247,10 +284,7 @@ function generateReading(state: ChiwitState, pulse: PulseScore, when: string = t
   const top = sorted[0];
   const bottom = sorted[sorted.length - 1];
   const dayEntries = entriesForDate(state.entries, when);
-  const externalToday = dayEntries.filter((entry) =>
-    entry.note === 'Coffee' || entry.note === 'Caffeine' || entry.note === 'Tea ritual' ||
-    entry.note === 'Cooked meal' || entry.note === 'Ritual',
-  );
+  const externalToday = dayEntries.filter((entry) => entry.source && entry.source.startsWith('app_'));
 
   if (top && top[1] >= 72 && bottom && bottom[1] < 50 && top[0] !== bottom[0]) {
     sentences.push(`${FACTOR_NAMES[top[0]]} is leading at ${top[1]}; ${FACTOR_NAMES[bottom[0]].toLowerCase()} is the soft spot — a small move shifts the score.`);
@@ -394,6 +428,64 @@ function generateInsights(state: ChiwitState): Insight[] {
   return insights.filter((insight) => !state.dismissedInsightIds.includes(insight.id));
 }
 
+/**
+ * Bridge `shippie.intent.subscribe(kind, …)` (per-kind handlers) onto
+ * the kit's `IntentSubscription` shape (single callback, all kinds).
+ * Subscribes to each of MATCHED_KINDS up-front and forwards the
+ * `IntentBroadcast` payload as an `IntentLike` event.
+ */
+export function createIntentSubscriptionAdapter(): IntentSubscription {
+  return {
+    subscribe(callback: (intent: IntentLike) => void): () => void {
+      const unsubs = MATCHED_KINDS.map((kind) =>
+        shippie.intent.subscribe(kind, (broadcast: IntentBroadcast) => {
+          callback({
+            kind: broadcast.intent,
+            payload: { rows: broadcast.rows },
+            sourceAppId: broadcast.providerAppId,
+            timestamp: Date.now(),
+          });
+        }),
+      );
+      // Request consent for each kind we want to surface so the
+      // container's intent gate doesn't silently drop broadcasts.
+      MATCHED_KINDS.forEach((kind) => shippie.requestIntent(kind));
+      return () => {
+        unsubs.forEach((u) => u());
+      };
+    },
+  };
+}
+
+const intentSource = createIntentSubscriptionAdapter();
+
+/** Build a Chiwit `PulseEntry` for a sibling-app intent we matched. */
+function ambientEntryForKind(kind: string, signal: AmbientSignalKind, label: string, sourceApp: string, icon: string): PulseEntry {
+  const base: PulseEntry = {
+    id: id('entry'),
+    kind: signal === 'sleep' ? 'sleep'
+        : signal === 'movement' ? 'movement'
+        : signal === 'mindful' ? 'mindful'
+        : signal === 'hydration' ? 'hydration'
+        : signal === 'energy' ? 'energy'
+        : 'body',
+    date: today(),
+    value: 3,
+    note: label,
+    createdAt: Date.now(),
+    source: `app_${sourceApp}`,
+    sourceIcon: icon,
+  };
+  // Reasonable defaults so the ambient signal actually moves the pulse.
+  if (signal === 'hydration') { base.value = 1; base.amount = 250; base.unit = 'ml'; }
+  if (signal === 'movement')  { base.value = 3; base.amount = 20;  base.unit = 'min'; }
+  if (signal === 'mindful')   { base.value = 4; base.amount = 5;   base.unit = 'min'; }
+  if (signal === 'sleep')     { base.value = 4; base.amount = 7;   base.unit = 'h'; }
+  // Suppress unused param warning in strict mode; preserved for symmetry.
+  void kind;
+  return base;
+}
+
 export function App() {
   const [state, setState] = useState<ChiwitState>(() => readState());
   const [tab, setTab] = useState<Tab>(() => {
@@ -407,6 +499,9 @@ export function App() {
   const [manualAmount, setManualAmount] = useState('');
   const [manualNote, setManualNote] = useState('');
   const [checkin, setCheckin] = useState({ window: 'morning' as CheckinWindow, mood: '4', energy: '3', body: '4', note: '' });
+  const [timelineMonth, setTimelineMonth] = useState<string>(() => today().slice(0, 7));
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrUrl, setQrUrl] = useState<string>('');
   const localNavigation = useMemo(() => createLocalNavigation<Tab>('today', setTab), []);
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
@@ -415,17 +510,15 @@ export function App() {
     writeState(state);
   }, [state]);
 
+  // Legacy per-intent subscriptions (kept for back-compat with siblings
+  // that emit kinds the new MATCHERS table doesn't cover). These write
+  // signals but DO NOT raise toasts — the kit's IntentToastHost is
+  // authoritative for ambient-pulse UI.
   useEffect(() => {
     const unsubscribers = [
-      shippie.intent.subscribe('cooked-meal', (broadcast) => addExternalSignal(broadcast, 'body', 'Cooked meal')),
-      shippie.intent.subscribe('caffeine-logged', (broadcast) => addExternalSignal(broadcast, 'energy', 'Caffeine')),
-      shippie.intent.subscribe('coffee-brewed', (broadcast) => addExternalSignal(broadcast, 'energy', 'Coffee')),
-      shippie.intent.subscribe('brewed-tea', (broadcast) => addExternalSignal(broadcast, 'mindful', 'Tea ritual')),
-      shippie.intent.subscribe('wellness-ritual', (broadcast) => addExternalSignal(broadcast, 'mindful', 'Ritual')),
+      shippie.intent.subscribe('brewed-tea', (broadcast) => addLegacyExternalSignal(broadcast, 'mindful', 'Tea ritual', 'brew')),
+      shippie.intent.subscribe('wellness-ritual', (broadcast) => addLegacyExternalSignal(broadcast, 'mindful', 'Ritual', 'ritual')),
     ];
-    shippie.requestIntent('cooked-meal');
-    shippie.requestIntent('caffeine-logged');
-    shippie.requestIntent('coffee-brewed');
     shippie.requestIntent('brewed-tea');
     shippie.requestIntent('wellness-ritual');
     return () => {
@@ -438,7 +531,41 @@ export function App() {
   const consistency = useMemo(() => consistencyPct(state), [state]);
   const insights = useMemo(() => generateInsights(state), [state]);
   const todayEntries = entriesForDate(state.entries, today()).sort((a, b) => b.createdAt - a.createdAt);
-  const days = useMemo(() => Array.from({ length: 14 }, (_, index) => addDays(-index)), []);
+  const days = useMemo(() => Array.from({ length: 28 }, (_, index) => addDays(-index)), []);
+  const monthDays = useMemo(
+    () => days.filter((date) => date.startsWith(timelineMonth)),
+    [days, timelineMonth],
+  );
+  const availableMonths = useMemo(
+    () => Array.from(new Set(days.map((date) => date.slice(0, 7)))).sort((a, b) => b.localeCompare(a)),
+    [days],
+  );
+
+  // Pre-compute the keepsake data once per render — fast (last 7 days).
+  const weekKeepsake = useMemo<WeekShapeData>(() => {
+    const last7 = Array.from({ length: 7 }, (_, index) => addDays(-(6 - index)));
+    const dayShapes: WeekDay[] = last7.map((date) => {
+      const p = computePulse(state, date);
+      return { date, pulse: p.overall, signalCount: entriesForDate(state.entries, date).length };
+    });
+    const factors: Array<{ label: string; value: number }> = [
+      { label: 'Foundations', value: pulse.breakdown.foundations },
+      { label: 'Recovery',    value: pulse.breakdown.recovery },
+      { label: 'Movement',    value: pulse.breakdown.movement },
+      { label: 'Mind',        value: pulse.breakdown.mind },
+      { label: 'Body',        value: pulse.breakdown.body },
+    ];
+    const totalSignals = last7.reduce((sum, d) => sum + entriesForDate(state.entries, d).length, 0);
+    const pulseAvg = average(dayShapes.map((d) => d.pulse)) ?? pulse.overall;
+    return buildWeekShape({
+      days: dayShapes,
+      factors,
+      signalCount: totalSignals,
+      weekStartISO: last7[0]!,
+      weekEndISO:   last7[6]!,
+      pulseAverage: pulseAvg,
+    });
+  }, [state, pulse]);
 
   function navigate(next: Tab): void {
     void localNavigation.navigate(next, { kind: 'crossfade' });
@@ -460,20 +587,50 @@ export function App() {
     addEntry(makeEntry(action));
   }
 
-  function addExternalSignal(broadcast: IntentBroadcast, kind: EntryKind, label: string): void {
+  /** Handle an ambient cross-app intent that the kit toasted — write the row. */
+  function onAmbientIntent(intent: IntentLike): void {
+    const match = AMBIENT_BY_KIND[intent.kind];
+    if (!match) return;
+    const entry = ambientEntryForKind(intent.kind, match.signal, match.label, match.sourceApp, match.icon);
+    setState((prev) => {
+      const cutoff = Date.now() - 1000 * 60 * 10;
+      const dup = prev.entries.some(
+        (candidate) =>
+          candidate.note === entry.note &&
+          candidate.source === entry.source &&
+          candidate.createdAt > cutoff,
+      );
+      return dup ? prev : { ...prev, entries: [entry, ...prev.entries].slice(0, 500) };
+    });
+  }
+
+  /** Legacy non-matched-kind external signals (e.g. tea, ritual). */
+  function addLegacyExternalSignal(
+    broadcast: IntentBroadcast,
+    kind: EntryKind,
+    label: string,
+    sourceApp: string,
+  ): void {
     if (broadcast.rows.length === 0) return;
     const entry: PulseEntry = {
       id: id('entry'),
       kind,
       date: today(),
-      value: kind === 'energy' ? 3 : 4,
+      value: 4,
       amount: kind === 'mindful' ? 5 : undefined,
       unit: kind === 'mindful' ? 'min' : undefined,
       note: label,
       createdAt: Date.now(),
+      source: `app_${sourceApp}`,
+      sourceIcon: kind === 'mindful' ? '🍵' : '✨',
     };
     setState((prev) => {
-      const alreadyLogged = prev.entries.some((candidate) => candidate.note === label && candidate.date === entry.date && Date.now() - candidate.createdAt < 1000 * 60 * 10);
+      const alreadyLogged = prev.entries.some(
+        (candidate) =>
+          candidate.note === label &&
+          candidate.date === entry.date &&
+          Date.now() - candidate.createdAt < 1000 * 60 * 10,
+      );
       return alreadyLogged ? prev : { ...prev, entries: [entry, ...prev.entries].slice(0, 500) };
     });
   }
@@ -532,8 +689,40 @@ export function App() {
     writeState(fresh);
   }
 
+  async function openWeekShare(): Promise<void> {
+    // Anonymised week-shape: factors + signal counts only, no notes/IDs.
+    const fragment = await encodeShareFragment({
+      type: 'chiwit.week-shape',
+      payload: {
+        week: weekKeepsake.weekLabel,
+        pulse: weekKeepsake.pulseNumeric,
+        factors: weekKeepsake.factors,
+        ribbon: weekKeepsake.ribbon.map((r) => r.value),
+      },
+    });
+    const base = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : 'https://chiwit.shippie.app/';
+    setQrUrl(`${base}#${fragment}`);
+    setQrOpen(true);
+  }
+
   return (
     <main className="chiwit-app">
+      <OnboardingFlow appSlug="chiwit" version={1} slides={ONBOARDING_SLIDES} />
+      <IntentToastHost
+        matchers={MATCHERS}
+        source={{
+          subscribe(cb) {
+            return intentSource.subscribe((intent) => {
+              onAmbientIntent(intent);
+              cb(intent);
+            });
+          },
+        }}
+        position="top"
+      />
+
       <header className="app-header">
         <button className="brand-lockup" type="button" onClick={() => navigate('today')} aria-label="Open Chiwit today">
           <img src={CHIWIT_LOGO_URL} alt="" />
@@ -581,16 +770,38 @@ export function App() {
       ) : null}
 
       {tab === 'patterns' ? (
-        <PatternsView state={state} pulse={pulse} consistency={consistency} insights={insights} onDismissInsight={dismissInsight} />
+        <PatternsView
+          state={state}
+          pulse={pulse}
+          consistency={consistency}
+          insights={insights}
+          weekKeepsake={weekKeepsake}
+          onDismissInsight={dismissInsight}
+        />
       ) : null}
 
       {tab === 'timeline' ? (
-        <TimelineView state={state} days={days} onRemove={removeEntry} />
+        <TimelineView
+          state={state}
+          days={monthDays}
+          availableMonths={availableMonths}
+          activeMonth={timelineMonth}
+          onMonthChange={setTimelineMonth}
+          onRemove={removeEntry}
+        />
       ) : null}
 
       {tab === 'data' ? (
-        <DataView state={state} onWipe={wipe} />
+        <DataView state={state} onWipe={wipe} onShareWeek={openWeekShare} />
       ) : null}
+
+      <QrShareSheet
+        open={qrOpen}
+        url={qrUrl}
+        title="Pass this week to a friend"
+        body="Anonymised week-shape — factors + counts, no notes."
+        onClose={() => setQrOpen(false)}
+      />
     </main>
   );
 }
@@ -616,24 +827,24 @@ function TodayView({
     <section className="page-shell today-shell">
       <div className="hero-plane">
         <div>
-          <p className="eyebrow">Chiwit · Today's reading</p>
-          <h1>How does life feel today?</h1>
+          <p className="eyebrow">Today · Daily Pulse</p>
+          <h1>Log one signal. Read the day.</h1>
           <p className="reading">{reading}</p>
           <div className="hero-actions">
-            <button type="button" className="primary" onClick={() => onNavigate('track')}>Log feeling</button>
-            <button type="button" onClick={() => onNavigate('patterns')}>Read pulse</button>
+            <button type="button" className="primary" onClick={() => onNavigate('track')}>Log now</button>
+            <button type="button" onClick={() => onNavigate('patterns')}>Patterns</button>
           </div>
         </div>
         <PulseRing pulse={pulse} />
       </div>
       <section className="quick-panel">
-        <SectionHeading title="Quick log" action="One tap" />
+        <SectionHeading title="One-tap signals" action="Quick log" />
         <div className="quick-grid" aria-label="Quick log">
           {QUICK_ACTIONS.map((action) => (
             <button key={action.label} type="button" onClick={() => onQuickLog(action)}>
               <span style={{ background: KIND_META[action.kind].color }} />
               <strong>{action.label}</strong>
-              <small>{KIND_META[action.kind].label}</small>
+              <small>{action.helper}</small>
             </button>
           ))}
         </div>
@@ -641,13 +852,27 @@ function TodayView({
       <section className="split-layout">
         <div>
           <SectionHeading title="Today" action={`${entries.length} signal${entries.length === 1 ? '' : 's'}`} />
-          <EntryList entries={entries.slice(0, 8)} />
+          {entries.length === 0 ? (
+            <EmptyState
+              eyebrow="Today"
+              headline="Today's empty. Start with the thing you noticed in the last hour."
+              cta={{ label: 'Log now', onClick: () => onNavigate('track') }}
+            />
+          ) : (
+            <EntryList entries={entries.slice(0, 8)} />
+          )}
         </div>
         <aside className="insight-panel">
           <h2>What Chiwit notices</h2>
           {insights.slice(0, 3).map((insight) => (
             <InsightCard key={insight.id} insight={insight} onDismiss={onDismissInsight} />
           ))}
+          {insights.length === 0 ? (
+            <EmptyState
+              eyebrow="Insights"
+              headline={<>Signals from <em>2 days</em> build the first pattern card.</>}
+            />
+          ) : null}
         </aside>
       </section>
     </section>
@@ -736,6 +961,7 @@ function TrackView({
               <input value={manualAmount} onChange={(event) => onManualAmount(event.target.value)} inputMode="decimal" placeholder={KIND_META[manualKind].unit} />
             </label>
           </div>
+          <p className="helper-text">{KIND_META[manualKind].helper}</p>
           <textarea value={manualNote} onChange={(event) => onManualNote(event.target.value)} placeholder="Context, trigger, or detail" />
           <button type="submit" className="primary">Log signal</button>
         </form>
@@ -749,14 +975,39 @@ function PatternsView({
   pulse,
   consistency,
   insights,
+  weekKeepsake,
   onDismissInsight,
 }: {
   state: ChiwitState;
   pulse: PulseScore;
   consistency: number;
   insights: Insight[];
+  weekKeepsake: WeekShapeData;
   onDismissInsight: (id: string) => void;
 }) {
+  // §4.4 — Patterns (insufficient).
+  const totalSignals = state.entries.length;
+  const daysCovered = new Set(state.entries.map((entry) => entry.date)).size;
+  const insufficient = totalSignals < 5 || daysCovered < 3;
+  if (insufficient) {
+    return (
+      <section className="page-shell">
+        <div className="toolbar">
+          <div>
+            <p className="eyebrow">Patterns</p>
+            <h1>Find the shape of the week.</h1>
+          </div>
+        </div>
+        <EmptyState
+          eyebrow="Patterns"
+          headline={<>Five signals across <em>three days</em> will show your shape.</>}
+        />
+      </section>
+    );
+  }
+
+  const filename = `chiwit-week-${isoWeekCode(weekKeepsake.weekStartISO)}.pdf`;
+
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -764,6 +1015,16 @@ function PatternsView({
           <p className="eyebrow">Patterns</p>
           <h1>Find the shape of the week.</h1>
         </div>
+        <KeepsakeRenderer
+          template={WeeklyShape}
+          data={weekKeepsake}
+          filename={filename}
+          trigger={(open, busy) => (
+            <button type="button" className="branded primary" disabled={busy} onClick={open}>
+              {busy ? 'Drawing…' : 'Share this week'}
+            </button>
+          )}
+        />
       </div>
       <section className="consistency-card" aria-label="7-day consistency">
         <div>
@@ -780,14 +1041,24 @@ function PatternsView({
       <section className="category-grid">
         {(Object.entries(pulse.breakdown) as Array<[keyof ScoreBreakdown, number]>).map(([key, value]) => (
           <div key={key} className="category-row">
-            <strong>{FACTOR_NAMES[key]}</strong>
+            <strong>
+              {FACTOR_NAMES[key]}
+              <em className="factor-helper">{FACTOR_HELPER_TEXT[key]}</em>
+            </strong>
             <span>{value}</span>
             <meter min={0} max={100} value={value} />
           </div>
         ))}
       </section>
       <div className="insight-grid">
-        {insights.map((insight) => <InsightCard key={insight.id} insight={insight} onDismiss={onDismissInsight} />)}
+        {insights.length === 0 ? (
+          <EmptyState
+            eyebrow="Insights"
+            headline={<>Signals from <em>2 days</em> build the first pattern card.</>}
+          />
+        ) : insights.map((insight) => (
+          <InsightCard key={insight.id} insight={insight} onDismiss={onDismissInsight} />
+        ))}
       </div>
       <section className="week-ribbon" aria-label="Fourteen day pulse">
         {Array.from({ length: 14 }, (_, index) => {
@@ -800,7 +1071,37 @@ function PatternsView({
   );
 }
 
-function TimelineView({ state, days, onRemove }: { state: ChiwitState; days: string[]; onRemove: (entryId: string) => void }) {
+function TimelineView({
+  state,
+  days,
+  availableMonths,
+  activeMonth,
+  onMonthChange,
+  onRemove,
+}: {
+  state: ChiwitState;
+  days: string[];
+  availableMonths: string[];
+  activeMonth: string;
+  onMonthChange: (next: string) => void;
+  onRemove: (entryId: string) => void;
+}) {
+  if (state.entries.length === 0) {
+    return (
+      <section className="page-shell">
+        <div className="toolbar">
+          <div>
+            <p className="eyebrow">Timeline</p>
+            <h1>Your recent rhythm.</h1>
+          </div>
+        </div>
+        <EmptyState
+          eyebrow="Timeline"
+          headline="Your first week opens here."
+        />
+      </section>
+    );
+  }
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -809,6 +1110,18 @@ function TimelineView({ state, days, onRemove }: { state: ChiwitState; days: str
           <h1>Your recent rhythm.</h1>
         </div>
       </div>
+      <nav className="month-scrubber" aria-label="Jump to month">
+        {availableMonths.map((month) => (
+          <button
+            key={month}
+            type="button"
+            className={month === activeMonth ? 'active' : ''}
+            onClick={() => onMonthChange(month)}
+          >
+            {formatMonthLabel(month)}
+          </button>
+        ))}
+      </nav>
       <div className="timeline-list">
         {days.map((date) => {
           const entries = entriesForDate(state.entries, date).sort((a, b) => b.createdAt - a.createdAt);
@@ -828,7 +1141,22 @@ function TimelineView({ state, days, onRemove }: { state: ChiwitState; days: str
   );
 }
 
-function DataView({ state, onWipe }: { state: ChiwitState; onWipe: () => void }) {
+function formatMonthLabel(yyyymm: string): string {
+  const [y, m] = yyyymm.split('-');
+  if (!y || !m) return yyyymm;
+  const d = new Date(Number(y), Number(m) - 1, 15);
+  return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+}
+
+function DataView({
+  state,
+  onWipe,
+  onShareWeek,
+}: {
+  state: ChiwitState;
+  onWipe: () => void;
+  onShareWeek: () => void | Promise<void>;
+}) {
   const bytes = new Blob([JSON.stringify(state)]).size;
   return (
     <section className="page-shell data-page">
@@ -842,6 +1170,19 @@ function DataView({ state, onWipe }: { state: ChiwitState; onWipe: () => void })
         <div><strong>{state.checkins.length}</strong><span>check-ins</span></div>
         <div><strong>{Math.ceil(bytes / 1024)} KB</strong><span>local payload</span></div>
       </section>
+
+      <BackupCard appSlug="chiwit" store={backupStore} />
+
+      <div className="data-share">
+        <h2>Share this week</h2>
+        <p className="measure">
+          A scannable, anonymised QR for the last seven days — factors and counts only. No notes leave this device.
+        </p>
+        <button type="button" className="branded primary" onClick={() => void onShareWeek()}>
+          Open QR
+        </button>
+      </div>
+
       <button type="button" className="danger" onClick={onWipe}>Clear this device</button>
     </section>
   );
@@ -883,13 +1224,17 @@ function EntryList({ entries, onRemove }: { entries: PulseEntry[]; onRemove?: (e
   return (
     <ul className="entry-list">
       {entries.map((entry) => (
-        <li key={entry.id}>
+        <li key={entry.id} className={entry.source ? 'is-ambient' : ''}>
           <span style={{ background: KIND_META[entry.kind].color }} />
           <div>
-            <strong>{KIND_META[entry.kind].label}</strong>
+            <strong>
+              {KIND_META[entry.kind].label}
+              {entry.sourceIcon ? <em className="entry-source-icon" title={entry.source ?? ''}>{entry.sourceIcon}</em> : null}
+            </strong>
             <small>
               {entry.amount ?? entry.value}{entry.unit ?? KIND_META[entry.kind].unit}
               {entry.note ? ` - ${entry.note}` : ''}
+              {entry.source ? ` · ${entry.source.replace(/^app_/, '')}` : ''}
             </small>
           </div>
           {onRemove ? <button type="button" onClick={() => onRemove(entry.id)} aria-label={`Remove ${KIND_META[entry.kind].label}`}>×</button> : null}
@@ -901,7 +1246,7 @@ function EntryList({ entries, onRemove }: { entries: PulseEntry[]; onRemove?: (e
 
 function InsightCard({ insight, onDismiss }: { insight: Insight; onDismiss: (id: string) => void }) {
   return (
-    <article className={`insight-card ${insight.tone}`}>
+    <article className={`insight-card insight-card--${insight.tone} ${insight.tone}`}>
       <div>
         <strong>{insight.title}</strong>
         <p>{insight.body}</p>
