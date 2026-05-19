@@ -40,8 +40,8 @@ export const ROOM_TEMPLATE_CONFIG: Record<RoomTemplate, RoomTemplateConfig> = {
   hardcore: {
     id: 'hardcore',
     tone: 'spicy',
-    title: 'Hardcore Room',
-    tagline: 'Exact scores, receipts, route arguments, and no hiding.',
+    title: 'Just Me',
+    tagline: 'Track your own score picks first, then invite friends whenever the room earns it.',
     defaultPolls: ['Exact score', 'Upset pick', 'Receipts'],
   },
   'watch-party': {

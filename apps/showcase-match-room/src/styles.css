@@ -2553,6 +2553,7 @@ p {
 }
 
 .room-share-grid {
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   gap: 12px;
@@ -2583,12 +2584,17 @@ p {
 }
 
 .room-share-grid code {
+  max-width: 100%;
+  min-width: 0;
   min-height: 112px;
   display: block;
   align-content: center;
   padding: 12px;
   border-radius: var(--r-s);
   background: rgba(255, 255, 255, 0.52);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .room-tools-panel {

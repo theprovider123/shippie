@@ -52,7 +52,7 @@ export function App() {
   // model, no invite expected. Front-door cold-start path that lets you
   // get value before sharing.
   const startHost = (opts: { template?: RoomTemplate; title?: string; solo?: boolean } = {}) => {
-    const template = opts.template ?? TEMPLATE_DEFAULT;
+    const template = opts.template ?? (opts.solo ? 'hardcore' : TEMPLATE_DEFAULT);
     const title = opts.title ?? (opts.solo ? 'Just me' : 'Match room');
     const roomId = randomId('match').replace(/^match_/, 'match-');
     const roomKey = randomId('key').replace(/^key_/, '');
@@ -80,16 +80,19 @@ export function App() {
       timeZone,
     });
     window.history.replaceState(null, '', url);
-    setSavedRooms((rooms) => [
-      saveRoomShortcut({
-        id: roomId,
-        title: defaultRoomTitle(params.template),
-        role,
-        template: params.template,
-        url,
-      }),
-      ...rooms.filter((room) => room.id !== roomId || room.role !== role),
-    ]);
+    setSavedRooms((rooms) => {
+      const existing = rooms.find((room) => room.id === roomId && room.role === role);
+      return [
+        saveRoomShortcut({
+          id: roomId,
+          title: existing?.title ?? defaultRoomTitle(params.template),
+          role,
+          template: params.template,
+          url,
+        }),
+        ...rooms.filter((room) => room.id !== roomId || room.role !== role),
+      ];
+    });
   }, [locale, params.role, params.roomId, params.roomKey, params.signalBase, params.template, timeZone]);
 
   if (!params.role || !params.roomId || !params.roomKey) {
@@ -171,8 +174,8 @@ export function App() {
  * Replaces the previous landing's 11 stacked sections (PrivateSpaceHero,
  * LandingPassport, ROOM_TEMPLATES select, JoinForm, optional-setup
  * drawer, InstallPanel, LandingRoutes, tournament-stats strip,
- * ForYouStrip/EngagementLoopPanel, ViralMomentsPanel, LandingCityPreview,
- * BoardSwitcher) with a single scoreboard-style hero plus a saved-rooms
+ * ForYouStrip/EngagementLoopPanel, ViralMomentsPanel, and LandingCityPreview)
+ * with a single scoreboard-style hero plus a saved-rooms
  * list. Settings live behind a single button (no more landing-passport
  * conditional split).
  */

@@ -16,7 +16,6 @@ import { matchRoomUrl } from '../shared/signal-config.ts';
 import { useOpeningLiveScore } from '../shared/use-live-score.ts';
 import { useMatchdayRoom } from '../shared/use-matchday-room.ts';
 import type { RoomTemplate, ScorePoll, ScoreTally } from '../shared/types.ts';
-import { BoardSwitcher } from '../ui/BoardSwitcher.tsx';
 import { CityPaperAtlas } from '../ui/CityPaperAtlas.tsx';
 import { CommentaryRoom } from '../ui/CommentaryRoom.tsx';
 import { MatchProgramme } from '../ui/MatchProgramme.tsx';
