@@ -251,7 +251,8 @@ button, input, textarea, select { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1;
+  flex: 1 1 160px;
+  min-width: 0;
 }
 .field span {
   font-family: var(--font-mono);
@@ -268,13 +269,16 @@ button, input, textarea, select { font: inherit; }
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 16px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .field input { height: 44px; }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
   border-color: var(--marigold);
 }
-.field-row { display: flex; gap: 8px; }
+.field-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Mode toggle */
 .mode-toggle {

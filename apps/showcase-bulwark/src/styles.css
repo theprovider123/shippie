@@ -312,7 +312,7 @@ button.primary {
 }
 .tutorial-step { margin: 0; }
 .tutorial-title { margin: 0; font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
-.row-actions { display: flex; gap: 8px; }
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .specials {
   display: grid;
@@ -346,7 +346,7 @@ button.primary {
   font-size: 11px;
   color: var(--muted);
 }
-.row-actions { display: flex; gap: 8px; }
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .ghost.small { font-size: 12px; padding: 4px 8px; height: auto; width: auto; }
 
 /* Safe-edges CSS fallback. Keeps controls clear of iOS home-indicator
