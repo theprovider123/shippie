@@ -96,6 +96,20 @@ export async function rotateImageDataUrl(dataUrl: string, quarterTurns: number):
   return canvas.toDataURL('image/jpeg', RECEIPT_JPEG_QUALITY);
 }
 
+export async function resizeImageDataUrl(dataUrl: string, maxEdge: number): Promise<string> {
+  const image = await loadDataUrlImage(dataUrl);
+  const ratio = Math.min(1, maxEdge / Math.max(image.naturalWidth, image.naturalHeight));
+  if (ratio >= 1) return dataUrl;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.naturalWidth * ratio);
+  canvas.height = Math.round(image.naturalHeight * ratio);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', RECEIPT_JPEG_QUALITY);
+}
+
 function loadDataUrlImage(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();

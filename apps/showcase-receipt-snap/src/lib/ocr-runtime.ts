@@ -19,12 +19,13 @@
  * never trust extraction. Confidence is reported per field by
  * parse-receipt.ts, never as a raw percentage to the user.
  */
-import { rotateImageDataUrl } from './image-processing.ts';
-import { parseReceipt } from './parse-receipt.ts';
+import { resizeImageDataUrl, rotateImageDataUrl } from './image-processing.ts';
+import { parseReceipt, type ExtractedReceipt } from './parse-receipt.ts';
 
 const TESSERACT_URL = '/__esm/tesseract.js@6.0.1';
 const RUNTIME_URL = '/__esm/@huggingface/transformers@3.0.0';
 const MODEL_ID = 'Xenova/trocr-base-printed';
+const OCR_MAX_EDGE = 1400;
 
 export type OcrProgress =
   | { phase: 'init' }
@@ -209,27 +210,33 @@ export async function runReceiptOcr(
   imageDataUrl: string,
   onProgress?: OcrProgressHandler,
 ): Promise<ReceiptOcrResult> {
+  const ocrImageDataUrl = await resizeImageDataUrl(imageDataUrl, OCR_MAX_EDGE);
   const rotations = [0, 1, -1, 2];
   let best: ReceiptOcrResult | null = null;
 
   for (let i = 0; i < rotations.length; i++) {
     const turns = rotations[i] ?? 0;
     onProgress?.({ phase: 'orientation', attempt: i + 1, total: rotations.length });
-    const candidateImage = turns === 0 ? imageDataUrl : await rotateImageDataUrl(imageDataUrl, turns);
-    const text = await runOcr(candidateImage, onProgress);
-    const score = scoreOcrText(text);
+    const candidateOcrImage = turns === 0 ? ocrImageDataUrl : await rotateImageDataUrl(ocrImageDataUrl, turns);
+    const text = await runOcr(candidateOcrImage, onProgress);
+    const parsed = parseReceipt(text);
+    const score = scoreOcrText(text, parsed);
 
     if (!best || score > best.score) {
-      best = { text, imageDataUrl: candidateImage, orientationTurns: turns, score };
+      best = {
+        text,
+        imageDataUrl: turns === 0 ? imageDataUrl : await rotateImageDataUrl(imageDataUrl, turns),
+        orientationTurns: turns,
+        score,
+      };
     }
-    if (score >= 4.2) break;
+    if (hasUsefulCore(parsed, score)) break;
   }
 
   return best ?? { text: '', imageDataUrl, orientationTurns: 0, score: 0 };
 }
 
-function scoreOcrText(text: string): number {
-  const parsed = parseReceipt(text);
+function scoreOcrText(text: string, parsed: ExtractedReceipt): number {
   let score = Math.min(0.5, text.trim().length / 160);
   score += fieldScore(parsed.vendor.confidence, 1.4, parsed.vendor.value.length > 0);
   score += fieldScore(parsed.total_cents.confidence, 2.2, parsed.total_cents.value != null);
@@ -238,6 +245,16 @@ function scoreOcrText(text: string): number {
   score += fieldScore(parsed.receipt_ref?.confidence ?? 0, 0.35, parsed.receipt_ref?.value != null);
   score += fieldScore(parsed.payment_method?.confidence ?? 0, 0.35, parsed.payment_method?.value != null);
   return score;
+}
+
+function hasUsefulCore(parsed: ExtractedReceipt, score: number): boolean {
+  if (parsed.total_cents.value == null) return score >= 4.2;
+  return (
+    parsed.vendor.value.length > 0 ||
+    parsed.occurred_on.value != null ||
+    parsed.tax?.value != null ||
+    parsed.payment_method?.value != null
+  );
 }
 
 function fieldScore(confidence: number, weight: number, present: boolean): number {
