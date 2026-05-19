@@ -22,6 +22,7 @@
     "@shippie/sdk": "workspace:*",
     "@shippie/share": "workspace:*",
     "@shippie/showcase-kit": "workspace:*",
+    "@shippie/showcase-kit-v2": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

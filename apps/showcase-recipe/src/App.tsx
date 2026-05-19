@@ -1,10 +1,65 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createLocalNavigation } from '@shippie/sdk/wrapper';
+import {
+  BackupCard,
+  EmptyState,
+  IntentToastHost,
+  OnboardingFlow,
+  QrShareSheet,
+  type IntentLike,
+  type IntentSubscription,
+} from '@shippie/showcase-kit-v2';
+import {
+  CookAlongView,
+  COOKING_NOW_INTENT,
+  COOK_SESSION_TTL_MS,
+  createCookAlongClient,
+  loadOrCreatePeerId,
+  newCookSessionId,
+  useCookAlongPeer,
+  type CookAlongPayload,
+} from './CookAlong.tsx';
+import { CookRecapSheet } from './CookRecap.tsx';
+import { palateMatchers } from './IntentMatchers.ts';
+import { createPalateBackupStore } from './PalateBackupAdapter.ts';
 
 type Tab = 'today' | 'cookbook' | 'plan' | 'pantry' | 'shop' | 'data';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type PantryLocation = 'fridge' | 'pantry' | 'freezer' | 'spice-rack';
+
+const PANTRY_LOCATION_BADGES: Record<PantryLocation, { icon: string; label: string }> = {
+  fridge: { icon: '🥶', label: 'fridge' },
+  pantry: { icon: '🥫', label: 'pantry' },
+  freezer: { icon: '❄', label: 'freezer' },
+  'spice-rack': { icon: '🌿', label: 'spice rack' },
+};
+
+const MEAL_TONE: Record<MealType, string> = {
+  breakfast: 'meal-breakfast',
+  lunch: 'meal-lunch',
+  dinner: 'meal-dinner',
+  snack: 'meal-snack',
+};
+
+const SHOP_AISLES: Array<{ key: string; label: string; matchers: RegExp }> = [
+  { key: 'produce', label: 'Produce', matchers: /\b(apple|lemon|fennel|kale|cucumber|herbs?|parsley|sage|cardamom|garlic|onion|tomato|courgette)\b/i },
+  { key: 'dairy', label: 'Dairy', matchers: /\b(yogh?urt|milk|butter|cheese|cream|tofu)\b/i },
+  { key: 'dry', label: 'Dry goods', matchers: /\b(rice|oats|noodle|beans?|peanut|seed|spice|flour|pasta)\b/i },
+  { key: 'frozen', label: 'Frozen', matchers: /\b(frozen|ice|berry)\b/i },
+];
+
+const SOURCE_BADGE: Record<ShoppingItem['source'], { label: string; tone: string }> = {
+  manual: { label: 'manual', tone: 'badge-manual' },
+  plan: { label: 'planned', tone: 'badge-plan' },
+  pantry: { label: 'pantry gap', tone: 'badge-pantry' },
+};
+
+const ONBOARDING_SLIDES = [
+  { title: 'A cookbook that remembers.', body: 'Save the dishes that work. Palate keeps them on this device, in the order you actually cook them.' },
+  { title: 'Your dishes, your phone — no Pinterest, no Supabase.', body: 'Recipes, plans, pantry and shop live in this browser. Back up when you want; nothing leaves unless you say so.' },
+  { title: 'Cook together. Snap a recipe card later (opt-in).', body: 'Two phones in the same kitchen sync the step + timer. Scanning a recipe card from a book stays optional.' },
+];
 
 interface Ingredient {
   id: string;
@@ -93,7 +148,7 @@ interface RecipeDraft {
   photoDataUrl?: string;
 }
 
-const shippie = createShippieIframeSdk({ appId: 'app_recipe' });
+const shippie = createShippieIframeSdk({ appId: 'app_palate' });
 const STORAGE_KEY = 'shippie.palate.recipe-hub.v1';
 const SEARCH_KEY = 'shippie.palate.recent-searches.v1';
 const CATEGORIES = ['Dinner', 'Lunch', 'Breakfast', 'Snack', 'Batch cook'];
@@ -102,7 +157,7 @@ const LOCATIONS: PantryLocation[] = ['fridge', 'pantry', 'freezer', 'spice-rack'
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'today', label: 'Today' },
-  { id: 'cookbook', label: 'Cookbook' },
+  { id: 'cookbook', label: 'Recipes' },
   { id: 'plan', label: 'Plan' },
   { id: 'pantry', label: 'Pantry' },
   { id: 'shop', label: 'Shop' },
@@ -377,7 +432,34 @@ export function App() {
   const [pantryDraft, setPantryDraft] = useState({ name: '', quantity: '1', unit: 'ea', location: 'pantry' as PantryLocation });
   const [shopDraft, setShopDraft] = useState('');
   const [skippedToday, setSkippedToday] = useState<Set<string>>(new Set());
+  const [recapData, setRecapData] = useState<{ title: string; slug: string; cuisine: string; servingsCooked: number; durationMinutes: number; cookCount: number; ingredients: Array<{ name: string; quantity: number; unit: string }>; photoDataUrl?: string | null } | null>(null);
+  const [shareRecipeId, setShareRecipeId] = useState<string | null>(null);
+  const [cookAlongPayload, setCookAlongPayload] = useState<CookAlongPayload | null>(null);
+  const [hostCookSession, setHostCookSession] = useState<{ id: string; startedAt: number } | null>(null);
   const localNavigation = useMemo(() => createLocalNavigation<Tab>('today', setTab), []);
+  const peerId = useMemo(() => loadOrCreatePeerId(), []);
+  const cookAlongClient = useMemo(
+    () => createCookAlongClient({ broadcast: shippie.intent.broadcast, subscribe: shippie.intent.subscribe }, peerId),
+    [peerId],
+  );
+  const { peer: peerCookState, publish: publishCookState } = useCookAlongPeer(cookAlongClient);
+  const backupStore = useMemo(() => createPalateBackupStore(), []);
+  const intentSource = useMemo<IntentSubscription>(() => ({
+    subscribe(callback) {
+      const offs = palateMatchers.map((matcher) =>
+        shippie.intent.subscribe(matcher.kind, (broadcast) => {
+          const intent: IntentLike = {
+            kind: broadcast.intent,
+            payload: { rows: broadcast.rows },
+            sourceAppId: (broadcast as { providerAppId?: string }).providerAppId,
+            timestamp: Date.now(),
+          };
+          callback(intent);
+        }),
+      );
+      return () => offs.forEach((off) => off());
+    },
+  }), []);
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
@@ -410,6 +492,24 @@ export function App() {
   const cookRecipe = cookRecipeId
     ? state.recipes.find((recipe) => recipe.id === cookRecipeId) ?? null
     : null;
+  const shareRecipe = shareRecipeId
+    ? state.recipes.find((recipe) => recipe.id === shareRecipeId) ?? null
+    : null;
+  const shareUrl = useMemo(() => {
+    if (!shareRecipe) return '';
+    const payload = {
+      title: shareRecipe.title,
+      description: shareRecipe.description,
+      cuisine: shareRecipe.cuisine,
+      servings: shareRecipe.servings,
+      ingredients: shareRecipe.ingredients.map((ing) => ({ name: ing.name, quantity: ing.quantity, unit: ing.unit })),
+      steps: shareRecipe.steps,
+      dietaryTags: shareRecipe.dietaryTags,
+    };
+    const encoded = encodeShareFragment(payload);
+    const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '/';
+    return `${base}#recipe=${encoded}`;
+  }, [shareRecipe]);
 
   const filteredRecipes = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -627,8 +727,9 @@ export function App() {
     shippie.feel.texture('toggle');
   }
 
-  function completeCook(recipe: Recipe, servings: number): void {
+  function completeCook(recipe: Recipe, servings: number, durationMinutes?: number): void {
     const cookedAt = Date.now();
+    const nextCookCount = recipe.cookCount + 1;
     setState((prev) => {
       const pantry = prev.pantry.map((item) => {
         const used = recipe.ingredients.some((ing) => normaliseName(ing.name) === normaliseName(item.name));
@@ -639,7 +740,7 @@ export function App() {
         pantry,
         recipes: prev.recipes.map((candidate) =>
           candidate.id === recipe.id
-            ? { ...candidate, cookCount: candidate.cookCount + 1, cookedAt, personalFit: Math.min(99, candidate.personalFit + 2) }
+            ? { ...candidate, cookCount: nextCookCount, cookedAt, personalFit: Math.min(99, candidate.personalFit + 2) }
             : candidate,
         ),
         cooked: [{ id: id('cook'), recipeId: recipe.id, title: recipe.title, cookedAt, servings }, ...prev.cooked].slice(0, 50),
@@ -648,8 +749,85 @@ export function App() {
     shippie.intent.broadcast('cooked-meal', [recipePayload(recipe)]);
     shippie.feel.texture('milestone');
     setCookRecipeId(null);
+    setHostCookSession(null);
     setSelectedRecipeId(recipe.id);
+    const scale = recipe.servings > 0 ? servings / recipe.servings : 1;
+    setRecapData({
+      title: recipe.title,
+      slug: recipe.id,
+      cuisine: recipe.cuisine,
+      servingsCooked: servings,
+      durationMinutes: durationMinutes ?? recipeTotalTime(recipe),
+      cookCount: nextCookCount,
+      photoDataUrl: recipe.photoDataUrl ?? null,
+      ingredients: recipe.ingredients.map((ing) => ({
+        name: ing.name,
+        quantity: Number((ing.quantity * scale).toFixed(2)),
+        unit: ing.unit,
+      })),
+    });
   }
+
+  const ensureHostSession = useCallback(() => {
+    if (hostCookSession) return hostCookSession;
+    const fresh = { id: newCookSessionId(), startedAt: Date.now() };
+    setHostCookSession(fresh);
+    return fresh;
+  }, [hostCookSession]);
+
+  const broadcastCookingNow = useCallback(
+    (recipe: Recipe, step: number, servings: number, timerExpiresAt: number | null) => {
+      const session = ensureHostSession();
+      const payload: CookAlongPayload = {
+        recipeId: recipe.id,
+        title: recipe.title,
+        step,
+        totalSteps: Math.max(recipe.steps.length, 1),
+        servings,
+        timerExpiresAt,
+        sessionId: session.id,
+        sessionStartedAt: session.startedAt,
+        hostPeerId: peerId,
+        senderPeerId: peerId,
+        updatedAt: Date.now(),
+      };
+      publishCookState(payload);
+    },
+    [ensureHostSession, peerId, publishCookState],
+  );
+
+  // Open Cook-Along view when ?cookalong=1 is set AND a peer payload is fresh.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const wantsCookAlong = new URL(window.location.href).searchParams.get('cookalong') === '1';
+    if (!wantsCookAlong) return;
+    if (!peerCookState) return;
+    if (Date.now() - peerCookState.sessionStartedAt > COOK_SESSION_TTL_MS) return;
+    setCookAlongPayload(peerCookState);
+  }, [peerCookState]);
+
+  // Track the peer's state in the cook-along view if it advances.
+  useEffect(() => {
+    if (!cookAlongPayload || !peerCookState) return;
+    if (peerCookState.sessionId !== cookAlongPayload.sessionId) return;
+    if (peerCookState.updatedAt <= cookAlongPayload.updatedAt) return;
+    setCookAlongPayload(peerCookState);
+  }, [peerCookState, cookAlongPayload]);
+
+  const cookAlongAdvance = useCallback(
+    (nextStep: number) => {
+      if (!cookAlongPayload) return;
+      const next: CookAlongPayload = {
+        ...cookAlongPayload,
+        step: Math.max(0, nextStep),
+        senderPeerId: peerId,
+        updatedAt: Date.now(),
+      };
+      setCookAlongPayload(next);
+      publishCookState(next);
+    },
+    [cookAlongPayload, peerId, publishCookState],
+  );
 
   function wipeLocalData(): void {
     if (!window.confirm('Clear Palate data on this device?')) return;
@@ -714,6 +892,7 @@ export function App() {
           }}
           onOpenRecipe={setSelectedRecipeId}
           onCook={setCookRecipeId}
+          onAddFirstRecipe={() => navigate('cookbook')}
         />
       ) : null}
 
@@ -744,11 +923,12 @@ export function App() {
           onDraftChange={setShopDraft}
           onAdd={addShopping}
           onToggle={toggleShopping}
+          onNavigate={navigate}
         />
       ) : null}
 
       {tab === 'data' ? (
-        <DataView state={state} onWipe={wipeLocalData} />
+        <DataView state={state} onWipe={wipeLocalData} backupStore={backupStore} />
       ) : null}
 
       {selectedRecipe ? (
@@ -756,14 +936,66 @@ export function App() {
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipeId(null)}
           onCook={() => setCookRecipeId(selectedRecipe.id)}
+          onShare={() => setShareRecipeId(selectedRecipe.id)}
         />
       ) : null}
 
       {cookRecipe ? (
-        <CookMode recipe={cookRecipe} onClose={() => setCookRecipeId(null)} onComplete={completeCook} />
+        <CookMode
+          recipe={cookRecipe}
+          onClose={() => setCookRecipeId(null)}
+          onComplete={completeCook}
+          onBroadcast={broadcastCookingNow}
+        />
       ) : null}
+
+      {recapData ? (
+        <CookRecapSheet data={recapData} onClose={() => setRecapData(null)} />
+      ) : null}
+
+      {cookAlongPayload ? (
+        <CookAlongView
+          payload={cookAlongPayload}
+          onAdvance={cookAlongAdvance}
+          onClose={() => {
+            setCookAlongPayload(null);
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('cookalong');
+              window.history.replaceState(window.history.state, '', url);
+            }
+          }}
+        />
+      ) : null}
+
+      <QrShareSheet
+        open={Boolean(shareRecipe)}
+        url={shareUrl}
+        title={shareRecipe ? `Share "${shareRecipe.title}"` : ''}
+        body="Local-first: the recipe travels in the URL — no server holds the bytes."
+        onClose={() => setShareRecipeId(null)}
+      />
+
+      <OnboardingFlow appSlug="palate" version={1} slides={ONBOARDING_SLIDES} />
+      <IntentToastHost matchers={palateMatchers} source={intentSource} position="top" />
     </main>
   );
+}
+
+/**
+ * Encode a JSON payload as a URL-safe base64 fragment. Keeping the
+ * encoding lightweight (no signing, no compression) so it stays cheap
+ * to roundtrip in the QR sheet; recipients verify the structure on
+ * import. Photos are deliberately excluded upstream to keep the QR
+ * scannable per spec §5.7.
+ */
+function encodeShareFragment(payload: unknown): string {
+  const json = JSON.stringify(payload);
+  if (typeof btoa === 'undefined') return encodeURIComponent(json);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function emptyDraft(defaultServings: number): RecipeDraft {
@@ -825,7 +1057,7 @@ function TodayView({
                 : `${shoppingCount > 0 ? `${shoppingCount} on the list` : 'pantry light'}`}
             </p>
           ) : (
-            <p>Choose a flavour, check what is in the kitchen, and turn the week into food without an account.</p>
+            <p>Choose dinner from what you have, then turn the missing pieces into a list.</p>
           )}
           <div className="hero-actions">
             <button type="button" className="primary" onClick={() => firstPick ? onCook(firstPick.id) : onNavigate('cookbook')} disabled={!firstPick}>
@@ -877,6 +1109,24 @@ function TodayView({
           {pantryLow.length > 0 ? (
             <p className="soft-warning">{pantryLow.length} pantry item{pantryLow.length === 1 ? '' : 's'} running low.</p>
           ) : null}
+          <div className="cook-history">
+            <p className="eyebrow">Cook history</p>
+            {state.cooked.length === 0 ? (
+              <EmptyState
+                eyebrow="History"
+                headline={<>Cook your first dish and it'll live here.</>}
+              />
+            ) : (
+              <ul className="plain-list cook-history-list">
+                {state.cooked.slice(0, 4).map((entry) => (
+                  <li key={entry.id}>
+                    <span className="cook-code">{new Date(entry.cookedAt).toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                    <strong>{entry.title}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
       </section>
     </section>
@@ -929,6 +1179,7 @@ function CookbookView({
   onQuery,
   onOpenRecipe,
   onCook,
+  onAddFirstRecipe,
 }: {
   recipes: Recipe[];
   query: string;
@@ -940,7 +1191,9 @@ function CookbookView({
   onQuery: (value: string) => void;
   onOpenRecipe: (recipeId: string) => void;
   onCook: (recipeId: string) => void;
+  onAddFirstRecipe: () => void;
 }) {
+  const showEmpty = recipes.length === 0 && !query.trim();
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -962,11 +1215,32 @@ function CookbookView({
       ) : null}
       <div className="cookbook-grid">
         <div className="recipe-list">
-          {recipes.map((recipe) => (
-            <RecipeRow key={recipe.id} recipe={recipe} onOpen={onOpenRecipe} onCook={onCook} />
-          ))}
+          {showEmpty ? (
+            <EmptyState
+              eyebrow="Cookbook"
+              headline={<>Save the first dish worth repeating.</>}
+              cta={{ label: 'Start a recipe', onClick: onAddFirstRecipe }}
+            />
+          ) : (
+            recipes.map((recipe) => (
+              <RecipeRow key={recipe.id} recipe={recipe} onOpen={onOpenRecipe} onCook={onCook} />
+            ))
+          )}
         </div>
-        <form className="recipe-editor" onSubmit={onSaveRecipe}>
+        <form className="recipe-editor recipe-editor-lifted" onSubmit={onSaveRecipe}>
+          <div className="recipe-editor-hero">
+            {draft.photoDataUrl ? (
+              <img src={draft.photoDataUrl} alt="" />
+            ) : (
+              <div className="recipe-editor-hero-fallback" aria-hidden>
+                <span>Add a photo</span>
+              </div>
+            )}
+            <label className="file-pill recipe-editor-photo-pill">
+              {draft.photoDataUrl ? 'Replace photo' : 'Add photo'}
+              <input type="file" accept="image/*" onChange={(event) => void onPhotoChange(event)} />
+            </label>
+          </div>
           <h2>Add recipe</h2>
           <input value={draft.title} onChange={(event) => onDraftChange({ ...draft, title: event.target.value })} placeholder="Title" required />
           <textarea value={draft.description} onChange={(event) => onDraftChange({ ...draft, description: event.target.value })} placeholder="What makes it yours?" />
@@ -978,16 +1252,18 @@ function CookbookView({
             <input value={draft.prepTime} onChange={(event) => onDraftChange({ ...draft, prepTime: event.target.value })} inputMode="numeric" placeholder="Prep min" />
             <input value={draft.cookTime} onChange={(event) => onDraftChange({ ...draft, cookTime: event.target.value })} inputMode="numeric" placeholder="Cook min" />
             <input value={draft.servings} onChange={(event) => onDraftChange({ ...draft, servings: event.target.value })} inputMode="numeric" placeholder="Servings" />
-            <label className="file-pill">
-              Photo
-              <input type="file" accept="image/*" onChange={(event) => void onPhotoChange(event)} />
-            </label>
           </div>
           <textarea value={draft.ingredients} onChange={(event) => onDraftChange({ ...draft, ingredients: event.target.value })} placeholder="Ingredients, one per line. Example: 2 tbsp olive oil" rows={5} />
           <textarea value={draft.steps} onChange={(event) => onDraftChange({ ...draft, steps: event.target.value })} placeholder="Steps, one per line" rows={5} />
           <input value={draft.dietaryTags} onChange={(event) => onDraftChange({ ...draft, dietaryTags: event.target.value })} placeholder="Tags: vegetarian, quick, high fibre" />
+          {draft.dietaryTags.trim() ? (
+            <ul className="dietary-pill-row dietary-pill-row-preview" aria-label="Dietary tag preview">
+              {splitLines(draft.dietaryTags).map((tag) => (
+                <li key={tag} className="dietary-pill">{tag}</li>
+              ))}
+            </ul>
+          ) : null}
           <textarea value={draft.notes} onChange={(event) => onDraftChange({ ...draft, notes: event.target.value })} placeholder="Private notes" />
-          {draft.photoDataUrl ? <img className="draft-photo" src={draft.photoDataUrl} alt="" /> : null}
           <button type="submit" className="primary">Save recipe</button>
         </form>
       </div>
@@ -1008,33 +1284,56 @@ function PlanView({
   onPlan: (date: string, mealType: MealType, recipeId: string) => void;
   onAutoPlan: () => void;
 }) {
+  const todaysSet = mealPlan.filter((entry) => entry.date === today()).length;
+  const isEmpty = mealPlan.length === 0;
   return (
     <section className="page-shell">
       <div className="toolbar">
         <div>
-          <p className="eyebrow">Plan</p>
+          <p className="eyebrow">Plan · this week</p>
           <h1>Turn cravings into a week.</h1>
+          <p className="plan-summary">Today's plan: <strong>{todaysSet}/4 set</strong></p>
         </div>
         <button type="button" className="primary" onClick={onAutoPlan}>Fill week</button>
       </div>
-      <div className="plan-board">
-        {dates.map((date) => (
-          <section key={date} className="plan-day">
-            <h2>{formatDay(date)}</h2>
-            {MEALS.map((meal) => {
-              const entry = mealPlan.find((candidate) => candidate.date === date && candidate.mealType === meal);
-              return (
-                <label key={meal} className="plan-slot">
-                  <span>{meal}</span>
-                  <select value={entry?.recipeId ?? ''} onChange={(event) => onPlan(date, meal, event.target.value)}>
-                    <option value="">Choose recipe</option>
-                    {recipes.map((recipe) => <option value={recipe.id} key={recipe.id}>{recipe.title}</option>)}
-                  </select>
-                </label>
-              );
-            })}
-          </section>
-        ))}
+      {isEmpty ? (
+        <EmptyState
+          eyebrow="Plan"
+          headline={<>Drag a recipe into Monday dinner.</>}
+          cta={{ label: 'Fill the week', onClick: onAutoPlan }}
+        />
+      ) : null}
+      <div className="plan-board plan-calendar">
+        {dates.map((date) => {
+          const dayDate = new Date(`${date}T12:00:00`);
+          const weekday = dayDate.toLocaleDateString(undefined, { weekday: 'long' });
+          const dayNumber = dayDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          const isToday = date === today();
+          return (
+            <section key={date} className={`plan-day plan-day-card${isToday ? ' is-today' : ''}`}>
+              <header className="plan-day-header">
+                <strong>{weekday}</strong>
+                <span className="cook-code">{dayNumber}</span>
+              </header>
+              <div className="meal-grid">
+                {MEALS.map((meal) => {
+                  const entry = mealPlan.find((candidate) => candidate.date === date && candidate.mealType === meal);
+                  const recipe = entry ? recipes.find((r) => r.id === entry.recipeId) : null;
+                  return (
+                    <label key={meal} className={`plan-slot meal-cell ${MEAL_TONE[meal]}`}>
+                      <span className="meal-tag">{meal}</span>
+                      <select value={entry?.recipeId ?? ''} onChange={(event) => onPlan(date, meal, event.target.value)}>
+                        <option value="">— add —</option>
+                        {recipes.map((r) => <option value={r.id} key={r.id}>{r.title}</option>)}
+                      </select>
+                      {recipe ? <span className="meal-title">{recipe.title}</span> : null}
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </section>
   );
@@ -1070,21 +1369,52 @@ function PantryView({
           <button type="submit" className="primary">Add</button>
         </form>
       </div>
-      <div className="inventory-table">
-        {pantry.map((item) => (
-          <div className="inventory-row" key={item.id}>
-            <strong>{item.name}</strong>
-            <span>{item.quantity} {item.unit}</span>
-            <span>{item.location}</span>
-            <div>
-              <button type="button" aria-label={`Decrease ${item.name}`} onClick={() => onAdjust(item.id, -1)}>-</button>
-              <button type="button" aria-label={`Increase ${item.name}`} onClick={() => onAdjust(item.id, 1)}>+</button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {pantry.length === 0 ? (
+        <EmptyState
+          eyebrow="Pantry"
+          headline={<>Pop in the four staples that always run out.</>}
+        />
+      ) : (
+        <div className="inventory-table pantry-table">
+          {pantry.map((item) => {
+            const badge = PANTRY_LOCATION_BADGES[item.location];
+            const expiry = describeExpiry(item.expiresOn);
+            const low = item.quantity <= 1;
+            return (
+              <div className={`inventory-row pantry-row${low ? ' is-low' : ''}`} key={item.id}>
+                <strong className="pantry-name">{item.name}</strong>
+                <span className="pantry-qty">
+                  <span className="qty">{item.quantity}</span> {item.unit}
+                </span>
+                <span className={`pantry-location-badge pantry-location-${item.location}`}>
+                  <span aria-hidden>{badge.icon}</span>
+                  <small>{badge.label}</small>
+                </span>
+                {expiry ? (
+                  <span className={`pantry-expiry-chip${expiry.urgent ? ' is-urgent' : ''}`}>{expiry.label}</span>
+                ) : null}
+                <div className="pantry-actions">
+                  <button type="button" aria-label={`Decrease ${item.name}`} onClick={() => onAdjust(item.id, -1)}>-</button>
+                  <button type="button" aria-label={`Increase ${item.name}`} onClick={() => onAdjust(item.id, 1)}>+</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
+}
+
+function describeExpiry(expiresOn?: string): { label: string; urgent: boolean } | null {
+  if (!expiresOn) return null;
+  const target = new Date(`${expiresOn}T12:00:00`).getTime();
+  if (!Number.isFinite(target)) return null;
+  const days = Math.round((target - Date.now()) / (24 * 60 * 60 * 1000));
+  if (days < 0) return { label: `expired ${Math.abs(days)}d ago`, urgent: true };
+  if (days === 0) return { label: 'use today', urgent: true };
+  if (days === 1) return { label: '1 day left', urgent: true };
+  return { label: `${days} days left`, urgent: days <= 3 };
 }
 
 function ShoppingView({
@@ -1093,13 +1423,16 @@ function ShoppingView({
   onDraftChange,
   onAdd,
   onToggle,
+  onNavigate,
 }: {
   shopping: ShoppingItem[];
   draft: string;
   onDraftChange: (value: string) => void;
   onAdd: (event: FormEvent<HTMLFormElement>) => void;
   onToggle: (item: ShoppingItem) => void;
+  onNavigate: (tab: Tab) => void;
 }) {
+  const grouped = useMemo(() => groupByAisle(shopping), [shopping]);
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -1112,22 +1445,65 @@ function ShoppingView({
           <button type="submit" className="primary">Add</button>
         </form>
       </div>
-      <div className="shopping-list">
-        {shopping.length === 0 ? <p className="empty">Plan meals or add a pantry low to build a list.</p> : null}
-        {shopping.map((item) => (
-          <button key={item.id} type="button" className={item.checked ? 'checked' : ''} onClick={() => onToggle(item)}>
-            <span>{item.checked ? '✓' : ''}</span>
-            <strong>{item.name}</strong>
-            <small>{item.source}</small>
-          </button>
-        ))}
-      </div>
+      {shopping.length === 0 ? (
+        <EmptyState
+          eyebrow="Shop"
+          headline={<>What does this week need?</>}
+          cta={{ label: 'Plan this week', onClick: () => onNavigate('plan') }}
+        />
+      ) : (
+        <div className="shopping-list shop-grouped">
+          {grouped.map((group) => (
+            <section key={group.key} className="shop-aisle">
+              <header className="shop-aisle-header">
+                <p className="eyebrow">{group.label}</p>
+                <span className="cook-code">{group.items.length}</span>
+              </header>
+              {group.items.map((item) => {
+                const badge = SOURCE_BADGE[item.source];
+                return (
+                  <button key={item.id} type="button" className={item.checked ? 'checked' : ''} onClick={() => onToggle(item)}>
+                    <span>{item.checked ? '✓' : ''}</span>
+                    <strong>{item.name}</strong>
+                    <small className={`shop-source-badge ${badge.tone}`}>{badge.label}</small>
+                  </button>
+                );
+              })}
+            </section>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
-function DataView({ state, onWipe }: { state: KitchenState; onWipe: () => void }) {
-  const bytes = new Blob([JSON.stringify(state)]).size;
+function groupByAisle(items: ShoppingItem[]): Array<{ key: string; label: string; items: ShoppingItem[] }> {
+  const buckets = new Map<string, { label: string; items: ShoppingItem[] }>();
+  const other = { label: 'Other', items: [] as ShoppingItem[] };
+  for (const item of items) {
+    const aisle = SHOP_AISLES.find((candidate) => candidate.matchers.test(item.name));
+    if (aisle) {
+      const bucket = buckets.get(aisle.key) ?? { label: aisle.label, items: [] };
+      bucket.items.push(item);
+      buckets.set(aisle.key, bucket);
+    } else {
+      other.items.push(item);
+    }
+  }
+  const out = [...buckets.entries()].map(([key, value]) => ({ key, label: value.label, items: value.items }));
+  if (other.items.length > 0) out.push({ key: 'other', label: 'Other', items: other.items });
+  return out;
+}
+
+function DataView({
+  state,
+  onWipe,
+  backupStore,
+}: {
+  state: KitchenState;
+  onWipe: () => void;
+  backupStore: ReturnType<typeof createPalateBackupStore>;
+}) {
   return (
     <section className="page-shell data-page">
       <p className="eyebrow">Local data</p>
@@ -1139,8 +1515,9 @@ function DataView({ state, onWipe }: { state: KitchenState; onWipe: () => void }
       <section className="metric-strip">
         <div><strong>{state.recipes.length}</strong><span>recipes</span></div>
         <div><strong>{state.pantry.length}</strong><span>pantry rows</span></div>
-        <div><strong>{Math.ceil(bytes / 1024)} KB</strong><span>local payload</span></div>
+        <div><strong>{state.cooked.length}</strong><span>cooks logged</span></div>
       </section>
+      <BackupCard appSlug="palate" store={backupStore} />
       <button type="button" className="danger" onClick={onWipe}>Clear this device</button>
     </section>
   );
@@ -1183,43 +1560,94 @@ function RecipeRow({ recipe, onOpen, onCook }: { recipe: Recipe; onOpen: (recipe
   );
 }
 
-function RecipeSheet({ recipe, onClose, onCook }: { recipe: Recipe; onClose: () => void; onCook: () => void }) {
+function RecipeSheet({ recipe, onClose, onCook, onShare }: { recipe: Recipe; onClose: () => void; onCook: () => void; onShare: () => void }) {
   return (
     <div className="sheet-backdrop" onClick={onClose} role="presentation">
-      <section className="recipe-sheet" role="dialog" aria-label={recipe.title} onClick={(event) => event.stopPropagation()}>
-        <header>
-          <div>
-            <p className="eyebrow">{recipe.category} · {recipeTotalTime(recipe)} min</p>
-            <h1>{recipe.title}</h1>
-            <p>{recipe.description}</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close">×</button>
+      <section className="recipe-sheet recipe-sheet-lifted" role="dialog" aria-label={recipe.title} onClick={(event) => event.stopPropagation()}>
+        <div className="recipe-sheet-hero">
+          {recipe.photoDataUrl ? (
+            <img src={recipe.photoDataUrl} alt="" />
+          ) : (
+            <div className="recipe-sheet-hero-fallback" aria-hidden>
+              <span>{recipe.title.slice(0, 1)}</span>
+            </div>
+          )}
+          <span className="cuisine-programme-badge">{recipe.cuisine.toUpperCase()}</span>
+          <button type="button" onClick={onClose} aria-label="Close" className="recipe-sheet-close">×</button>
+        </div>
+        <header className="recipe-sheet-meta">
+          <p className="eyebrow">{recipe.category} · {recipeTotalTime(recipe)} min · serves {recipe.servings}</p>
+          <h1 className="recipe-title">{recipe.title}</h1>
+          <p>{recipe.description}</p>
+          {recipe.dietaryTags.length > 0 ? (
+            <ul className="dietary-pill-row" aria-label="Dietary tags">
+              {recipe.dietaryTags.map((tag) => (
+                <li key={tag} className="dietary-pill">{tag}</li>
+              ))}
+            </ul>
+          ) : null}
         </header>
         <div className="sheet-grid">
           <section>
             <h2>Ingredients</h2>
-            <ul>
-              {recipe.ingredients.map((ing) => <li key={ing.id}>{ing.quantity} {ing.unit} {ing.name}</li>)}
+            <ul className="ingredient-tile-list">
+              {recipe.ingredients.map((ing) => (
+                <li key={ing.id} className="ingredient-tile">
+                  <span className="qty">{ing.quantity}</span>
+                  <small>{ing.unit}</small>
+                  <strong>{ing.name}</strong>
+                </li>
+              ))}
             </ul>
           </section>
           <section>
             <h2>Method</h2>
-            <ol>
-              {recipe.steps.map((step, index) => <li key={`${step}-${index}`}>{step}</li>)}
+            <ol className="method-step-list">
+              {recipe.steps.map((step, index) => (
+                <li key={`${step}-${index}`} className="method-step">
+                  <span className="step-number">{index + 1}</span>
+                  <p>{step}</p>
+                </li>
+              ))}
             </ol>
           </section>
         </div>
         {recipe.notes ? <p className="note">{recipe.notes}</p> : null}
-        <button type="button" className="primary" onClick={onCook}>Start cooking</button>
+        <div className="recipe-sheet-actions">
+          <button type="button" className="primary" onClick={onCook}>Start cooking</button>
+          <button type="button" onClick={onShare}>Share via QR</button>
+        </div>
       </section>
     </div>
   );
 }
 
-function CookMode({ recipe, onClose, onComplete }: { recipe: Recipe; onClose: () => void; onComplete: (recipe: Recipe, servings: number) => void }) {
+function CookMode({
+  recipe,
+  onClose,
+  onComplete,
+  onBroadcast,
+}: {
+  recipe: Recipe;
+  onClose: () => void;
+  onComplete: (recipe: Recipe, servings: number, durationMinutes?: number) => void;
+  onBroadcast: (recipe: Recipe, step: number, servings: number, timerExpiresAt: number | null) => void;
+}) {
   const [step, setStep] = useState(0);
   const [servings, setServings] = useState(recipe.servings);
+  const [startedAt] = useState(() => Date.now());
+  const [timerExpiresAt, setTimerExpiresAt] = useState<number | null>(null);
   const current = recipe.steps[step] ?? 'Plate, taste, and make it yours.';
+
+  // Broadcast cooking-now intent on each step transition (and on mount).
+  useEffect(() => {
+    onBroadcast(recipe, step, servings, timerExpiresAt);
+  }, [recipe, step, servings, timerExpiresAt, onBroadcast]);
+
+  const startTimer = (minutes: number) => {
+    setTimerExpiresAt(Date.now() + minutes * 60 * 1000);
+  };
+
   return (
     <div className="cook-mode" data-shippie-wakelock>
       <header>
@@ -1235,13 +1663,23 @@ function CookMode({ recipe, onClose, onComplete }: { recipe: Recipe; onClose: ()
       </header>
       <section className="cook-step">
         <p>{current}</p>
+        <div className="cook-timer-controls">
+          <button type="button" className="cook-timer-btn" onClick={() => startTimer(5)}>5 min</button>
+          <button type="button" className="cook-timer-btn" onClick={() => startTimer(10)}>10 min</button>
+          <button type="button" className="cook-timer-btn" onClick={() => startTimer(20)}>20 min</button>
+          {timerExpiresAt ? (
+            <button type="button" className="cook-timer-btn" onClick={() => setTimerExpiresAt(null)}>Stop timer</button>
+          ) : null}
+        </div>
       </section>
       <footer>
         <button type="button" disabled={step === 0} onClick={() => setStep((prev) => Math.max(0, prev - 1))}>Back</button>
         {step < recipe.steps.length - 1 ? (
           <button type="button" className="primary" onClick={() => setStep((prev) => prev + 1)}>Next</button>
         ) : (
-          <button type="button" className="primary" onClick={() => onComplete(recipe, servings)}>Mark cooked</button>
+          <button type="button" className="primary" onClick={() => onComplete(recipe, servings, Math.max(1, Math.round((Date.now() - startedAt) / 60_000)))}>
+            Mark cooked
+          </button>
         )}
       </footer>
     </div>
