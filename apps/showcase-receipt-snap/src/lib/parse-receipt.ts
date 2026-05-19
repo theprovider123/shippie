@@ -33,11 +33,21 @@ export interface ExtractedReceipt {
 const CURRENCY_SYMBOLS: Record<string, string> = {
   $: 'USD',
   '£': 'GBP',
+  '#': 'GBP', // OCR often reads the pound sign as # on crumpled receipts.
   '€': 'EUR',
   '¥': 'JPY',
 };
 
 const CURRENCY_CODES = new Set(['USD', 'GBP', 'EUR', 'JPY', 'CAD', 'AUD', 'CHF', 'SEK', 'NOK', 'DKK']);
+const CURRENCY_CODE_PATTERN = 'USD|GBP|EUR|JPY|CAD|AUD|CHF|SEK|NOK|DKK';
+const MONEY_PATTERN = new RegExp(
+  [
+    `#\\s*-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*[.,-]\\s*\\d{2})`,
+    `(?:(?:[£$€¥]|${CURRENCY_CODE_PATTERN})\\s*)-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*[.,-]\\s*\\d{2})?`,
+    `-?\\d{1,3}(?:[,.]?\\d{3})*(?:\\s*[.,-]\\s*\\d{2})(?:\\s*(?:[£$€¥]|${CURRENCY_CODE_PATTERN}))?`,
+  ].join('|'),
+  'gi',
+);
 
 /**
  * Extract a money amount + ISO currency code from a single matched
@@ -63,12 +73,26 @@ function parseMoney(raw: string): { cents: number; currency: string } | null {
     }
   }
   if (!currency) {
-    const codeMatch = trimmed.match(/\b([A-Z]{3})\b/);
-    if (codeMatch && codeMatch[1] && CURRENCY_CODES.has(codeMatch[1])) {
-      currency = codeMatch[1];
-      amountStr = trimmed.replace(codeMatch[1], '');
+    const prefixCode = trimmed.match(new RegExp(`^(${CURRENCY_CODE_PATTERN})\\s*`, 'i'));
+    if (prefixCode && prefixCode[1]) {
+      const code = prefixCode[1].toUpperCase();
+      if (CURRENCY_CODES.has(code)) {
+        currency = code;
+        amountStr = trimmed.slice(prefixCode[0].length);
+      }
     }
   }
+  if (!currency) {
+    const suffixCode = trimmed.match(new RegExp(`\\s*(${CURRENCY_CODE_PATTERN})$`, 'i'));
+    if (suffixCode && suffixCode[1]) {
+      const code = suffixCode[1].toUpperCase();
+      if (CURRENCY_CODES.has(code)) {
+        currency = code;
+        amountStr = trimmed.slice(0, -suffixCode[0].length);
+      }
+    }
+  }
+  amountStr = amountStr.replace(/(\d)\s*-\s*(\d{2})$/, '$1.$2');
   amountStr = amountStr.replace(/[^0-9.,-]/g, '').trim();
   if (!amountStr) return null;
   // Treat both `1,234.56` (en) and `1.234,56` (eu) by counting separators.
@@ -109,26 +133,34 @@ export function extractTotal(text: string): {
   currency: string;
   confidence: number;
 } {
-  const totalKeywords = /(grand\s*total|amount\s*due|total\s*due|\btotal\b|balance\s*due)/i;
-  const moneyPattern = /([£$€¥]\s*-?\d{1,3}(?:[,.]?\d{3})*(?:[.,]\d{2})?|\d{1,3}(?:[,.]?\d{3})*[.,]\d{2}\s*(?:[£$€¥]|[A-Z]{3})?)/g;
+  const totalKeywords = /(grand\s*total|amount\s*due|total\s*due|\btotal\b|balance\s*due|\bamt\b|\bamount\b|\bno\s*grats?\b|\bgratuity\b)/i;
+  const candidates: Array<{ value: number; currency: string; confidence: number }> = [];
 
   for (const line of text.split(/\n/)) {
     if (!totalKeywords.test(line)) continue;
     if (/sub\s*total/i.test(line)) continue; // skip subtotal lines
-    const matches = line.match(moneyPattern);
+    const matches = line.match(MONEY_PATTERN);
     if (matches && matches.length > 0) {
       const last = matches[matches.length - 1];
       if (!last) continue;
       const parsed = parseMoney(last);
       if (parsed) {
-        return { value: parsed.cents, currency: parsed.currency, confidence: 0.85 };
+        const hasMarker = hasCurrencyMarker(last);
+        candidates.push({
+          value: parsed.cents,
+          currency: hasMarker ? parsed.currency : inferCurrency(text),
+          confidence: totalCandidateConfidence(line, last),
+        });
       }
     }
+  }
+  if (candidates.length > 0) {
+    return candidates.reduce((best, next) => (next.confidence >= best.confidence ? next : best));
   }
 
   // Fallback — largest money amount anywhere.
   const all: { cents: number; currency: string }[] = [];
-  const flat = text.match(moneyPattern) ?? [];
+  const flat = text.match(MONEY_PATTERN) ?? [];
   for (const raw of flat) {
     const parsed = parseMoney(raw);
     if (parsed) all.push(parsed);
@@ -139,6 +171,30 @@ export function extractTotal(text: string): {
   for (const m of all) if (m.cents > best.cents) best = m;
   if (!best) return { value: null, currency: 'USD', confidence: 0 };
   return { value: best.cents, currency: best.currency, confidence: 0.4 };
+}
+
+function totalCandidateConfidence(line: string, rawAmount: string): number {
+  let confidence = /\b(grand\s*total|amount\s*due|total\s*due|\btotal\b|balance\s*due)\b/i.test(line)
+    ? 0.85
+    : 0.78;
+  if (!/[.,-]\s*\d{2}\b/.test(rawAmount)) confidence -= 0.14;
+  if (hasCurrencyMarker(rawAmount)) confidence += 0.03;
+  return Math.max(0.55, Math.min(0.9, confidence));
+}
+
+function hasCurrencyMarker(raw: string): boolean {
+  return /[£$€¥#]/.test(raw) || new RegExp(`(${CURRENCY_CODE_PATTERN})`, 'i').test(raw);
+}
+
+function inferCurrency(text: string): string {
+  if (/[£#]/.test(text) || /GBP/i.test(text)) return 'GBP';
+  if (/€/.test(text) || /EUR/i.test(text)) return 'EUR';
+  if (/¥/.test(text) || /JPY/i.test(text)) return 'JPY';
+  if (/\b(CAD|AUD|CHF|SEK|NOK|DKK)\b/i.test(text)) {
+    const match = text.match(/\b(CAD|AUD|CHF|SEK|NOK|DKK)\b/i);
+    return match?.[1]?.toUpperCase() ?? 'USD';
+  }
+  return 'USD';
 }
 
 /**
@@ -228,9 +284,10 @@ function toIso(y: number, m: number, d: number): string {
 export function extractVendor(text: string): { value: string; confidence: number } {
   const lines = text
     .split(/\n/)
-    .map((l) => l.trim())
+    .map(cleanVendorLine)
     .filter(Boolean);
-  for (let i = 0; i < Math.min(5, lines.length); i++) {
+  let best: { value: string; confidence: number; score: number } | null = null;
+  for (let i = 0; i < Math.min(12, lines.length); i++) {
     const line = lines[i];
     if (!line) continue;
     if (line.length < 3) continue;
@@ -238,11 +295,37 @@ export function extractVendor(text: string): { value: string; confidence: number
     if (/^[\d\s\-,.()/]+$/.test(line)) continue; // all digits/punctuation
     if (!/[A-Za-zÀ-ɏ]/.test(line)) continue; // needs at least one letter
     if (/receipt|invoice/i.test(line)) continue;
-    // Strip trailing junk like "LTD", "INC" but keep
+    if (isVendorJunk(line)) continue;
+
     const cleaned = line.replace(/\s+/g, ' ').slice(0, 60);
-    return { value: cleaned, confidence: i === 0 ? 0.7 : 0.5 };
+    let score = 1.2 - i * 0.06;
+    if (/\b(LTD|LIMITED|INC|LLC|PLC|CO\.?|COMPANY|CAFE|COFFEE|BAR|RESTAURANT|FLEECE|BROWN'S|BROWNS)\b/i.test(cleaned)) {
+      score += 0.35;
+    }
+    if (/^[A-Z0-9 &'.-]+$/.test(cleaned) && /[A-Z]{3}/.test(cleaned)) score += 0.1;
+    const confidence = Math.max(0.45, Math.min(0.75, score / 1.8));
+    if (!best || score > best.score) best = { value: cleaned, confidence, score };
   }
+  if (best) return { value: best.value, confidence: best.confidence };
   return { value: '', confidence: 0 };
+}
+
+function cleanVendorLine(line: string): string {
+  return line
+    .trim()
+    .replace(/^[*\s]+|[*\s]+$/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function isVendorJunk(line: string): boolean {
+  const upper = line.toUpperCase();
+  if (/\b(BARCLAYS|VISA|MASTERCARD|MASTER CARD|AMEX|CARDHOLDER|CUSTOMER COPY|MERCHANT COPY)\b/.test(upper)) return true;
+  if (/\b(AID|APP PSN|AUTH|AUTHORISED|AUTHORIZED|VERIFIED BY DEVICE|RESPONSE CODE|PLEASE RETAIN)\b/.test(upper)) return true;
+  if (/\b(TILL|TABLE|CASHIER|SERVER|OPERATOR|TERMINAL|ACC NO|VAT NO|RECEIPT NO|DATE|TIME)\b/.test(upper)) return true;
+  if (/\bTI(?:LL)?\s*\d+\s*BAR\b/.test(upper)) return true;
+  if (/\b(LONDON|ROAD|STREET|LANE|AVENUE|HIGH ST|POSTCODE)\b/.test(upper) && !/\b(LTD|LIMITED|CAFE|BAR|RESTAURANT)\b/.test(upper)) return true;
+  if (/^[A-Z]{1,3}\d[\dA-Z\s]{3,}$/.test(upper)) return true;
+  return false;
 }
 
 /**
@@ -264,7 +347,6 @@ export function extractTax(text: string): {
   const NONE = { value: null, rate_bp: null, scheme: 'unknown' as const, confidence: 0 };
 
   // Money pattern same as extractTotal — find amounts on tax-like lines.
-  const moneyPattern = /([£$€¥]\s*-?\d{1,3}(?:[,.]?\d{3})*(?:[.,]\d{2})?|\d{1,3}(?:[,.]?\d{3})*[.,]\d{2}\s*(?:[£$€¥]|[A-Z]{3})?)/g;
   // Rate pattern: 20%, 20.00%, 5% etc.
   const ratePattern = /(\d{1,2}(?:[.,]\d{1,2})?)\s*%/;
 
@@ -281,13 +363,6 @@ export function extractTax(text: string): {
     if (!isVat && !isSalesTax) continue;
 
     // Try to pull a money amount.
-    const moneyMatches = line.match(moneyPattern);
-    if (!moneyMatches || moneyMatches.length === 0) continue;
-    const lastMoney = moneyMatches[moneyMatches.length - 1];
-    if (!lastMoney) continue;
-    const parsed = parseMoney(lastMoney);
-    if (!parsed) continue;
-
     // Rate is optional. When present we believe more.
     // Two forms accepted:
     //   "VAT 20%" / "8.25%" — explicit percent sign
@@ -308,6 +383,23 @@ export function extractTax(text: string): {
         }
       }
     }
+
+    const moneyMatches = line.match(MONEY_PATTERN);
+    if (!moneyMatches || moneyMatches.length === 0) {
+      if (isVat && rateBp != null && /\bincluded\b/i.test(line)) {
+        return {
+          value: null,
+          rate_bp: rateBp,
+          scheme: 'vat',
+          confidence: 0.45,
+        };
+      }
+      continue;
+    }
+    const lastMoney = moneyMatches[moneyMatches.length - 1];
+    if (!lastMoney) continue;
+    const parsed = parseMoney(lastMoney);
+    if (!parsed) continue;
 
     return {
       value: parsed.cents,
@@ -367,8 +459,11 @@ export function extractPaymentMethod(text: string): {
 } {
   const upper = text.toUpperCase();
   // Card network — strong card hint.
-  if (/\b(VISA|MASTERCARD|MASTER\s*CARD|AMEX|AMERICAN\s*EXPRESS|DISCOVER|MAESTRO|CONTACTLESS|APPLE\s*PAY|GOOGLE\s*PAY|GPAY)\b/.test(upper)) {
+  if (/\b(VISA|MASTERCARD|MASTER\s*CARD|AMEX|AMERICAN\s*EXPRESS|DISCOVER|MAESTRO|CONTACTLESS|APPLE\s*PAY|GOOGLE\s*PAY|GPAY|EFT)\b/.test(upper)) {
     return { value: 'card', confidence: 0.9 };
+  }
+  if (/\b(AUTH\s*CODE|AUTHORISED|AUTHORIZED|VERIFIED\s+BY\s+DEVICE|CARDHOLDER\s+COPY)\b/.test(upper)) {
+    return { value: 'card', confidence: 0.8 };
   }
   // Explicit CASH / CHANGE GIVEN.
   if (/\bCASH\b/.test(upper) && /\bCHANGE\b|TENDERED|GIVEN/.test(upper)) {

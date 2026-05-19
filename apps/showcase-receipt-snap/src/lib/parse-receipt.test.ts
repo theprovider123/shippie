@@ -46,6 +46,15 @@ describe('parse-receipt · totals', () => {
     expect(t.value).toBeNull();
     expect(t.confidence).toBe(0);
   });
+
+  test('parses UK terminal shorthand from crumpled receipt photos', () => {
+    expect(extractTotal('EFT No Grats £23-20').value).toBe(2320);
+    expect(extractTotal('£FT Na Grats #23 .20').value).toBe(2320);
+    expect(extractTotal('£FT Na Grats #23 .20').currency).toBe('GBP');
+    const cardSlip = extractTotal('VISA(SALE)\nAMT GBP88.00\nVERIFIED BY DEVICE');
+    expect(cardSlip.value).toBe(8800);
+    expect(cardSlip.currency).toBe('GBP');
+  });
 });
 
 describe('parse-receipt · dates', () => {
@@ -102,6 +111,11 @@ describe('parse-receipt · vendor', () => {
     const v = extractVendor('123\n456\n789');
     expect(v.value).toBe('');
     expect(v.confidence).toBe(0);
+  });
+
+  test('skips card processor headings and picks merchant on payment slips', () => {
+    const v = extractVendor('BARCLAYS\n**CARDHOLDER COPY**\nBLC BARS LIMITED\n1 Hanley Road\nLondon');
+    expect(v.value).toBe('BLC BARS LIMITED');
   });
 });
 
@@ -176,6 +190,14 @@ describe('parse-receipt · extractTax (UK VAT)', () => {
     expect(out.rate_bp).toBeNull();
     expect(out.scheme).toBe('vat');
     expect(out.confidence).toBeLessThan(0.8);
+    expect(out.confidence).toBeGreaterThan(0);
+  });
+
+  test('VAT included line preserves the rate even without an amount', () => {
+    const out = extractTax('20% Drink VAT included');
+    expect(out.value).toBeNull();
+    expect(out.rate_bp).toBe(2000);
+    expect(out.scheme).toBe('vat');
     expect(out.confidence).toBeGreaterThan(0);
   });
 });
@@ -278,6 +300,11 @@ describe('parse-receipt · extractPaymentMethod', () => {
     expect(extractPaymentMethod('CONTACTLESS').value).toBe('card');
   });
 
+  test('EFT / authorised terminal copy → card', () => {
+    expect(extractPaymentMethod('EFT No Grats £23-20').value).toBe('card');
+    expect(extractPaymentMethod('AUTH CODE: 006586\nAUTHORISED\nVERIFIED BY DEVICE').value).toBe('card');
+  });
+
   test('Cash tendered → cash', () => {
     const out = extractPaymentMethod('CASH £20.00\nCHANGE £2.50');
     expect(out.value).toBe('cash');
@@ -357,5 +384,86 @@ describe('parse-receipt · parseReceipt full extraction', () => {
     expect(out.tax?.value).toBeNull();
     expect(out.receipt_ref?.value).toBeNull();
     expect(out.payment_method?.value).toBeNull();
+  });
+
+  test('Golden Fleece photo fixture text fills useful review fields', () => {
+    const text = [
+      'Golden Fleece',
+      'London. EC4N 1SP',
+      '0207 236 1433',
+      'Till 3 Bar',
+      '06 Mar 2026 17:47',
+      'Acc No: 3071',
+      '2 Asahi Superdry 15.40',
+      '1 Neck Oil Keg 7.80',
+      '1 PROMO Happy Hour 0.00',
+      'Total £23-20',
+      'EFT No Grats £23-20',
+      '20% Drink VAT included',
+      'Receipt no. 08/2175',
+      'VAT No. 514 9182 46',
+    ].join('\n');
+    const out = parseReceipt(text);
+    expect(out.vendor.value).toBe('Golden Fleece');
+    expect(out.total_cents.value).toBe(2320);
+    expect(out.total_cents.currency).toBe('GBP');
+    expect(out.occurred_on.value).toBe('2026-03-06');
+    expect(out.tax?.rate_bp).toBe(2000);
+    expect(out.receipt_ref?.value).toBe('08/2175');
+    expect(out.payment_method?.value).toBe('card');
+  });
+
+  test('Golden Fleece live OCR fallback text still recovers the spend', () => {
+    const text = [
+      'A Si Golden Fleecs A',
+      'SO LoopoEcay PANES.',
+      'SRL 0207 2361433',
+      'Ti 3 Bar',
+      'Cra 06 wr nz 17:47',
+      '2 Asahi Superdry J Ta',
+      '1 Neck Dil Keg FO TaBh',
+      '1 PROMO)Happy Hour = "0800',
+      'Tota NW © TBE £23 28',
+      'payment Recel 1',
+      '£FT Na Grats #23 .20',
+      '20% Drink VAT included £3.81',
+      'Receipt ngs 08/2175',
+      'AT Nos B14 9182 48',
+      'Thank you for visiting ite Gotten fleece',
+    ].join('\n');
+    const out = parseReceipt(text);
+    expect(out.vendor.value).toContain('Golden Fleec');
+    expect(out.total_cents.value).toBe(2320);
+    expect(out.total_cents.currency).toBe('GBP');
+    expect(out.tax?.value).toBe(381);
+    expect(out.tax?.rate_bp).toBe(2000);
+  });
+
+  test('Browns / Barclays card-slip photo fixture text fills useful review fields', () => {
+    const text = [
+      'BARCLAYS',
+      '**CARDHOLDER COPY**',
+      'BLC BARS LIMITED',
+      '1 Hanley Road',
+      'London',
+      'E2 7NX',
+      '02074994789',
+      'AID: A0000000031010',
+      'VISA',
+      'APP PSN:0',
+      'AUTH CODE: 006586',
+      'AUTHORISED',
+      'VISA(SALE)',
+      'AMT GBP88.00',
+      'VERIFIED BY DEVICE',
+      'DATE: 07/03/2026',
+      'PLEASE RETAIN FOR YOUR RECORDS',
+    ].join('\n');
+    const out = parseReceipt(text);
+    expect(out.vendor.value).toBe('BLC BARS LIMITED');
+    expect(out.total_cents.value).toBe(8800);
+    expect(out.total_cents.currency).toBe('GBP');
+    expect(out.occurred_on.value).toBe('2026-03-07');
+    expect(out.payment_method?.value).toBe('card');
   });
 });

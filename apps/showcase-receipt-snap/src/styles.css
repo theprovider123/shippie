@@ -226,7 +226,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
 }
 .capture-checklist {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   list-style: none;
   margin: -4px 0 0;
@@ -243,6 +243,14 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   background: rgba(255, 255, 255, 0.72);
   color: #4C5C53;
   font-size: 12px;
+}
+.rotate-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.rotate-actions button {
+  width: 100%;
 }
 
 /* OCR progress */
@@ -648,6 +656,6 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
     padding: 22px 26px;
   }
   .capture-checklist {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -114,11 +114,11 @@ export function SettingsPage({
       </div>
 
       <div className="settings-block">
-        <p className="eyebrow">Model cache</p>
+        <p className="eyebrow">OCR cache</p>
         <p className="muted small">
           {modelWarm
-            ? 'Receipt OCR model is cached on this device. Reading new receipts is fast and offline-capable.'
-            : 'No model cached yet. The first time you run OCR, ~95 MB will download on Wi-Fi and stay on this phone.'}
+            ? 'Receipt OCR files are cached on this device. Reading new receipts is fast and offline-capable.'
+            : 'No OCR files cached yet. The first scan downloads the worker and English text data on Wi-Fi, then keeps them on this phone.'}
         </p>
       </div>
 

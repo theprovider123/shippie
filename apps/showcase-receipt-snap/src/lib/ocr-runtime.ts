@@ -1,6 +1,7 @@
 /**
- * On-device OCR via Transformers.js, loaded same-origin through the
- * platform's `/__esm/` proxy.
+ * On-device OCR via Tesseract.js, loaded same-origin through the
+ * platform's `/__esm/` proxy. TrOCR remains as a fallback for browsers
+ * that fail to initialise Tesseract.
  *
  * Why same-origin: imports from `https://shippie.app/__esm/...` are
  * subject to the platform service worker's cache-first handler, which
@@ -8,17 +9,20 @@
  * work in the iframe but would defeat offline + leak a third-party
  * fetch from the user's phone.
  *
- * Why dynamic import: the showcase ships ~3 KB of glue; the model and
- * runtime (~95 MB quantised) only load when the user actually points
+ * Why dynamic import: the showcase ships lightweight glue; the OCR
+ * worker/runtime/language files only load when the user actually points
  * at a receipt. First run is slow and shows a progress UI; second run
- * loads from MODEL_CACHE in milliseconds.
+ * loads from cache.
  *
- * Honest limits: TrOCR-base-printed misses on faded receipts, low-light
- * captures, italic fonts, and any non-Latin script. The UX is review-
- * then-save — never trust the extraction. Confidence is reported per
- * field by parse-receipt.ts, never as a raw percentage to the user.
+ * Honest limits: OCR still misses on faded receipts, low-light captures,
+ * crumpled paper, and any non-Latin script. The UX is review-then-save —
+ * never trust extraction. Confidence is reported per field by
+ * parse-receipt.ts, never as a raw percentage to the user.
  */
+import { rotateImageDataUrl } from './image-processing.ts';
+import { parseReceipt } from './parse-receipt.ts';
 
+const TESSERACT_URL = '/__esm/tesseract.js@6.0.1';
 const RUNTIME_URL = '/__esm/@huggingface/transformers@3.0.0';
 const MODEL_ID = 'Xenova/trocr-base-printed';
 
@@ -26,7 +30,8 @@ export type OcrProgress =
   | { phase: 'init' }
   | { phase: 'download'; file?: string; progress: number; loaded?: number; total?: number }
   | { phase: 'compile' }
-  | { phase: 'inference' }
+  | { phase: 'orientation'; attempt: number; total: number }
+  | { phase: 'inference'; progress?: number }
   | { phase: 'done' }
   | { phase: 'error'; message: string };
 
@@ -48,11 +53,23 @@ interface TransformersModule {
   };
 }
 
+interface TesseractModule {
+  recognize: (
+    input: string | Blob,
+    language?: string,
+    options?: {
+      logger?: (info: unknown) => void;
+      tessedit_pageseg_mode?: number;
+    },
+  ) => Promise<{ data?: { text?: string } }>;
+  PSM?: { AUTO?: number };
+}
+
 let pipelinePromise: Promise<Pipeline> | null = null;
 
 /**
- * Lazily instantiate the OCR pipeline. Returns the same Promise on
- * subsequent calls so we never double-load the 95 MB model.
+ * Lazily instantiate the fallback TrOCR pipeline. Returns the same
+ * Promise on subsequent calls so we never double-load the model.
  *
  * @throws When the runtime can't be loaded (no `/__esm/` proxy, e.g.
  *   running standalone in dev without the platform). Caller should
@@ -119,6 +136,53 @@ export async function runOcr(
   imageDataUrlOrBlob: string | Blob,
   onProgress?: OcrProgressHandler,
 ): Promise<string> {
+  try {
+    return await runTesseractOcr(imageDataUrlOrBlob, onProgress);
+  } catch (err) {
+    console.warn('Tesseract OCR failed; falling back to TrOCR', err);
+    return runTrocrOcr(imageDataUrlOrBlob, onProgress);
+  }
+}
+
+async function runTesseractOcr(
+  imageDataUrlOrBlob: string | Blob,
+  onProgress?: OcrProgressHandler,
+): Promise<string> {
+  onProgress?.({ phase: 'init' });
+  let tx: TesseractModule;
+  try {
+    tx = (await import(/* @vite-ignore */ TESSERACT_URL)) as TesseractModule;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'unknown error';
+    onProgress?.({ phase: 'error', message: `OCR runtime load failed: ${msg}` });
+    throw new Error(`Tesseract runtime not available via /__esm/. (${msg})`);
+  }
+
+  onProgress?.({ phase: 'compile' });
+  const result = await tx.recognize(imageDataUrlOrBlob, 'eng', {
+    tessedit_pageseg_mode: tx.PSM?.AUTO,
+    logger: (info: unknown) => {
+      if (!info || typeof info !== 'object') return;
+      const obj = info as Record<string, unknown>;
+      const status = typeof obj.status === 'string' ? obj.status : '';
+      const progress = typeof obj.progress === 'number' ? obj.progress : 0;
+      if (/recognizing/i.test(status)) {
+        onProgress?.({ phase: 'inference', progress: progress * 100 });
+      } else if (/loading|download/i.test(status)) {
+        onProgress?.({ phase: 'download', file: status, progress: progress * 100 });
+      } else if (/initializing|core|worker/i.test(status)) {
+        onProgress?.({ phase: 'compile' });
+      }
+    },
+  });
+  onProgress?.({ phase: 'done' });
+  return (result.data?.text ?? '').trim();
+}
+
+async function runTrocrOcr(
+  imageDataUrlOrBlob: string | Blob,
+  onProgress?: OcrProgressHandler,
+): Promise<string> {
   const pipe = await getOcrPipeline(onProgress);
   onProgress?.({ phase: 'inference' });
   const result = await pipe(imageDataUrlOrBlob);
@@ -127,6 +191,57 @@ export async function runOcr(
     return result.map((r) => r.generated_text ?? '').join('\n').trim();
   }
   return (result.generated_text ?? '').trim();
+}
+
+export interface ReceiptOcrResult {
+  text: string;
+  imageDataUrl: string;
+  orientationTurns: number;
+  score: number;
+}
+
+/**
+ * Receipt photos often arrive sideways on mobile. If the first pass
+ * yields no parseable fields, retry rotated variants and keep whichever
+ * OCR result gives the review form the most useful pre-fill.
+ */
+export async function runReceiptOcr(
+  imageDataUrl: string,
+  onProgress?: OcrProgressHandler,
+): Promise<ReceiptOcrResult> {
+  const rotations = [0, 1, -1, 2];
+  let best: ReceiptOcrResult | null = null;
+
+  for (let i = 0; i < rotations.length; i++) {
+    const turns = rotations[i] ?? 0;
+    onProgress?.({ phase: 'orientation', attempt: i + 1, total: rotations.length });
+    const candidateImage = turns === 0 ? imageDataUrl : await rotateImageDataUrl(imageDataUrl, turns);
+    const text = await runOcr(candidateImage, onProgress);
+    const score = scoreOcrText(text);
+
+    if (!best || score > best.score) {
+      best = { text, imageDataUrl: candidateImage, orientationTurns: turns, score };
+    }
+    if (score >= 4.2) break;
+  }
+
+  return best ?? { text: '', imageDataUrl, orientationTurns: 0, score: 0 };
+}
+
+function scoreOcrText(text: string): number {
+  const parsed = parseReceipt(text);
+  let score = Math.min(0.5, text.trim().length / 160);
+  score += fieldScore(parsed.vendor.confidence, 1.4, parsed.vendor.value.length > 0);
+  score += fieldScore(parsed.total_cents.confidence, 2.2, parsed.total_cents.value != null);
+  score += fieldScore(parsed.occurred_on.confidence, 1.4, parsed.occurred_on.value != null);
+  score += fieldScore(parsed.tax?.confidence ?? 0, 0.5, (parsed.tax?.value ?? parsed.tax?.rate_bp) != null);
+  score += fieldScore(parsed.receipt_ref?.confidence ?? 0, 0.35, parsed.receipt_ref?.value != null);
+  score += fieldScore(parsed.payment_method?.confidence ?? 0, 0.35, parsed.payment_method?.value != null);
+  return score;
+}
+
+function fieldScore(confidence: number, weight: number, present: boolean): number {
+  return present ? Math.max(0.2, confidence) * weight : 0;
 }
 
 /** Reset the cached pipeline (useful for tests; not used in prod). */

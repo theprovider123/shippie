@@ -1,7 +1,6 @@
 /**
- * Visible progress for the model download + inference. Surfaces the
- * "first run downloads ~95 MB on Wi-Fi" caveat exactly once per
- * device — after the runtime is warm, subsequent runs only show the
+ * Visible progress for OCR download + inference. Surfaces the first-run
+ * cache caveat exactly once per device; subsequent runs mostly show the
  * inference indicator.
  */
 import type { OcrProgress as OcrProgressEvent } from '../lib/ocr-runtime.ts';
@@ -34,15 +33,19 @@ export function OcrProgress({ state, firstRun }: OcrProgressProps) {
     label = state.file ? `Downloading ${state.file}…` : 'Downloading model…';
     percent = state.progress;
   } else if (state.phase === 'compile') label = 'Preparing model…';
-  else if (state.phase === 'inference') label = 'Reading the receipt…';
+  else if (state.phase === 'orientation') label = `Checking orientation ${state.attempt}/${state.total}…`;
+  else if (state.phase === 'inference') {
+    label = 'Reading the receipt…';
+    percent = typeof state.progress === 'number' ? state.progress : null;
+  }
   else if (state.phase === 'done') label = 'Done.';
 
   return (
     <div className="ocr-progress" aria-live="polite">
       {firstRun && state.phase !== 'inference' && state.phase !== 'done' ? (
         <p className="muted small">
-          First run downloads ~95 MB on Wi-Fi. After that, the model lives in this PWA's cache —
-          subsequent receipts read in seconds.
+          First run downloads the OCR worker and English text data on Wi-Fi. After that, the
+          files live in this PWA's cache and subsequent receipts read faster.
         </p>
       ) : null}
       <div className="ocr-progress-row">

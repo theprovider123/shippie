@@ -1,82 +1,18 @@
 /**
  * Multi-input capture: camera, photo library / Files, paste from
  * clipboard, and drag/drop on desktop. The surface owns the downscale
- * step — receipts get compressed to <1280px on the long edge and
- * re-encoded as JPEG @ ~0.85 quality so localStorage doesn't blow up.
+ * step — receipts get compressed before local storage, but kept sharp
+ * enough for thermal-printer OCR.
  * Original full-res photos are never persisted.
  */
 import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
+import { compressReceiptImage } from '../lib/image-processing.ts';
 
 interface CaptureSurfaceProps {
   onCaptured: (dataUrl: string) => void;
 }
 
-const MAX_EDGE = 1280;
-const JPEG_QUALITY = 0.85;
-
 type CaptureSource = 'camera' | 'library' | 'drop' | 'paste';
-
-interface DrawableImage {
-  width: number;
-  height: number;
-  draw: (ctx: CanvasRenderingContext2D, width: number, height: number) => void;
-  close: () => void;
-}
-
-async function loadDrawable(file: Blob): Promise<DrawableImage> {
-  if ('createImageBitmap' in window) {
-    try {
-      const bitmap = await createImageBitmap(file);
-      return {
-        width: bitmap.width,
-        height: bitmap.height,
-        draw: (ctx, width, height) => ctx.drawImage(bitmap, 0, 0, width, height),
-        close: () => bitmap.close?.(),
-      };
-    } catch {
-      // Fall through to <img>. Some mobile browsers are stricter about
-      // camera-library blobs, while the image element can still decode them.
-    }
-  }
-
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      resolve({
-        width: image.naturalWidth || image.width,
-        height: image.naturalHeight || image.height,
-        draw: (ctx, width, height) => ctx.drawImage(image, 0, 0, width, height),
-        close: () => URL.revokeObjectURL(url),
-      });
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("couldn't read that image"));
-    };
-    image.src = url;
-  });
-}
-
-async function downscale(file: Blob): Promise<string> {
-  if (file.type && !file.type.startsWith('image/')) {
-    throw new Error('Choose a receipt photo or image file.');
-  }
-  const image = await loadDrawable(file);
-  const ratio = Math.min(1, MAX_EDGE / Math.max(image.width, image.height));
-  const w = Math.round(image.width * ratio);
-  const h = Math.round(image.height * ratio);
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas 2d context unavailable');
-  image.draw(ctx, w, h);
-  image.close();
-  const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-  if (!dataUrl || dataUrl === 'data:,') throw new Error("couldn't read that image");
-  return dataUrl;
-}
 
 export function CaptureSurface({ onCaptured }: CaptureSurfaceProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +30,7 @@ export function CaptureSurface({ onCaptured }: CaptureSurfaceProps) {
     setBusySource(source);
     setError(null);
     try {
-      const dataUrl = await downscale(file);
+      const dataUrl = await compressReceiptImage(file);
       onCaptured(dataUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "couldn't read that image");
