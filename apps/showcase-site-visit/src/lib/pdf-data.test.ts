@@ -15,7 +15,7 @@ const visit = (overrides: Partial<Visit> = {}): Visit => ({
   id: 'v1',
   site_id: 's1',
   status: 'submitted',
-  inspector_name: 'D. Providence',
+  inspector_name: 'S. Inspector',
   weather: 'overcast',
   started_at: '2026-05-04T08:30:00.000Z',
   ended_at: '2026-05-04T09:10:00.000Z',

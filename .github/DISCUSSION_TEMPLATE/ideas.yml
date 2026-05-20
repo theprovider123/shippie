@@ -1,0 +1,24 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for early ideas, rough product feedback, and "what if Shippie could..." conversations.
+  - type: textarea
+    id: moment
+    attributes:
+      label: The moment
+      description: What is the user or maker trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: Describe the smallest useful version.
+    validations:
+      required: true
+  - type: textarea
+    id: local
+    attributes:
+      label: Local-first fit
+      description: How does this preserve Shippie's local/private promise?

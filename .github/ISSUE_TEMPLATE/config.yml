@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/shippie-app/shippie/security/advisories/new
+    about: Report vulnerabilities privately. If unavailable, email security@shippie.app.
+  - name: Try Shippie
+    url: https://shippie.app
+    about: Open the launcher and try local tools.
+  - name: Build a tool
+    url: https://shippie.app/new
+    about: Upload a local tool to Shippie.

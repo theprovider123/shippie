@@ -1,0 +1,47 @@
+name: Bug report
+description: Report something broken in Shippie.
+title: "Bug: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping tighten Shippie. Do not include secrets, private user data, or vulnerability details here. Use `SECURITY.md` for security reports.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the bug in plain language.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: route
+    attributes:
+      label: Route or package
+      placeholder: "Example: /new, /container?tab=you, packages/sdk"
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: "Example: iPhone 15 Pro PWA, Safari 18"
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or logs
+      description: Redact private data first.

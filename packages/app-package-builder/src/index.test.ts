@@ -91,7 +91,7 @@ function buildFixture() {
       kind: 'connected',
       entry: 'app/index.html',
       createdAt: '2026-04-27T12:00:00Z',
-      maker: { id: 'maker_devante', name: 'Devante' },
+      maker: { id: 'maker_demo', name: 'Demo Maker' },
       domains: { canonical: 'https://recipe-saver.shippie.app' },
       runtime: { standalone: true, container: true, hub: true, minimumSdk: '1.0.0' },
       spaces: {

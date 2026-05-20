@@ -59,6 +59,9 @@ npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
 - [Self-hosting](docs/self-hosting.md)
 - [Architecture](docs/architecture.md)
 - [Contributing](CONTRIBUTING.md)
+- [Governance](docs/contributing/governance.md)
+- [Security](SECURITY.md)
+- [Local Tool policy](docs/strategy/local-tools-policy.md)
 
 ## License
 

@@ -73,7 +73,7 @@
         </label>
         <label>
           GitHub
-          <input name="github" value={data.profile.githubUrl ?? ''} placeholder="devante or https://github.com/devante" />
+          <input name="github" value={data.profile.githubUrl ?? ''} placeholder="shippie-maker or https://github.com/shippie-maker" />
         </label>
         <label>
           X

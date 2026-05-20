@@ -10,6 +10,7 @@
     "audit:storage": "bun scripts/audit-showcase-storage.mjs",
     "audit:local-tools": "bun scripts/audit-local-tool-slate.mjs",
     "audit:mobile": "bun scripts/mobile-audit/route-inventory.mjs && bun scripts/mobile-audit/audit-static-rules.mjs && bun scripts/mobile-audit/audit-tokens.mjs && bun scripts/mobile-audit/audit-showcase-overflow.mjs",
+    "audit:showcase-runtime": "bun scripts/prepare-showcases.mjs && bun scripts/mobile-audit/audit-showcase-runtime.mjs",
     "prepare:whitepaper": "bun scripts/prepare-whitepaper.mjs",
     "build": "bun scripts/prepare-showcases.mjs && bun scripts/audit-showcase-storage.mjs && bun scripts/prepare-whitepaper.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
     "preview": "wrangler dev",

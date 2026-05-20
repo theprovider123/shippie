@@ -173,13 +173,33 @@ async function createDefaultDb(opts: CreateLocalRuntimeOptions): Promise<Shippie
 }
 
 function unsupportedDb(): ShippieLocalDb {
+  const queryUnavailable = async <T extends LocalDbRecord = LocalDbRecord>(
+    _table: string,
+    _opts?: LocalDbQueryOptions,
+  ): Promise<T[]> => {
+    throw new UnsupportedError('db.query is not available in this local runtime build');
+  };
+  const listUnavailable = async <T extends LocalDbRecord = LocalDbRecord>(
+    _table: string,
+    _opts?: LocalDbQueryOptions,
+  ): Promise<T[]> => {
+    throw new UnsupportedError('db.list is not available in this local runtime build');
+  };
+  const searchUnavailable = async <T extends LocalDbRecord = LocalDbRecord>(
+    _table: string,
+    _query: string,
+    _opts?: LocalDbQueryOptions,
+  ): Promise<T[]> => {
+    throw new UnsupportedError('db.search is not available in this local runtime build');
+  };
+
   return {
     create: unsupported('db.create'),
     insert: unsupported('db.insert'),
     save: unsupported('db.save'),
-    query: unsupported('db.query'),
-    list: unsupported('db.list'),
-    search: unsupported('db.search'),
+    query: queryUnavailable,
+    list: listUnavailable,
+    search: searchUnavailable,
     vectorSearch: unsupported('db.vectorSearch'),
     update: unsupported('db.update'),
     delete: unsupported('db.delete'),

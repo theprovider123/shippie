@@ -67,6 +67,7 @@ test-results
 playwright-report
 apps/platform/scripts/mobile-audit/screenshots/
 apps/platform/scripts/mobile-audit/screenshots-report.md
+apps/platform/scripts/mobile-audit/showcase-runtime-overflow-report.md
 
 # OS
 Thumbs.db

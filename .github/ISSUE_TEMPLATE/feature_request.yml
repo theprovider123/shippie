@@ -1,0 +1,45 @@
+name: Feature idea
+description: Suggest a feature, tool, or product improvement.
+title: "Idea: "
+labels: ["feature", "triage"]
+body:
+  - type: textarea
+    id: user
+    attributes:
+      label: Who is this for?
+      description: User, maker, admin, self-hoster, or enterprise.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does it solve?
+      description: Tell us the moment where Shippie currently falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would feel great?
+      description: Describe the simplest version that would solve it.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - User launcher
+        - Maker deploy flow
+        - SDK / CLI / MCP
+        - Local Tool policy scanner
+        - Marketplace moderation
+        - Showcase/tool
+        - Docs
+        - Self-hosting
+        - Other
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence or examples
+      description: Screenshots, links, or workflows that explain the idea.

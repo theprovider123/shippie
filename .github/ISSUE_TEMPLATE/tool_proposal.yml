@@ -1,0 +1,43 @@
+name: Tool proposal
+description: Propose a local tool or showcase for Shippie.
+title: "Tool: "
+labels: ["tool-proposal", "triage"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Tool name
+    validations:
+      required: true
+  - type: textarea
+    id: user
+    attributes:
+      label: Who is it for?
+      description: Be specific about the job, context, or community.
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Core workflow
+      description: What does the user do in the first 30 seconds?
+    validations:
+      required: true
+  - type: checkboxes
+    id: policy
+    attributes:
+      label: Local Tool policy
+      options:
+        - label: It works without a third-party login.
+        - label: User data stays on device unless explicitly exported or backed up through Shippie.
+        - label: It does not use trackers, ads, or third-party analytics.
+        - label: Any reference data domains are declared.
+  - type: textarea
+    id: data
+    attributes:
+      label: Data shape
+      description: What records does the tool store locally? Does it need a data passport family?
+  - type: textarea
+    id: references
+    attributes:
+      label: Similar tools or screenshots

@@ -60,7 +60,7 @@ describe('schema allowlist — top level', () => {
   test('only allowlisted top-level fields are present', () => {
     const beacon = mkBeacon({
       // Inputs that include forbidden fields:
-      userId: 'devante@example.com',
+      userId: 'demo@example.com',
       ip: '127.0.0.1',
       userAgent: 'Mozilla/5.0',
       cookies: ['a', 'b'],
@@ -111,7 +111,7 @@ describe('schema allowlist — pages', () => {
     const beacon = mkBeacon({
       metrics: {
         pages: {
-          '/?user=devante@example.com': 1,
+          '/?user=demo@example.com': 1,
           '/page with space': 1,
         },
       },
@@ -236,8 +236,8 @@ describe('serialized payload — no forbidden fields anywhere', () => {
   test('full attack payload yields a clean beacon', () => {
     const beacon = mkBeacon({
       // Forbidden across every level.
-      userId: 'devante@example.com',
-      email: 'devante@example.com',
+      userId: 'demo@example.com',
+      email: 'demo@example.com',
       ip: '127.0.0.1',
       city: 'London',
       country: 'GB',
