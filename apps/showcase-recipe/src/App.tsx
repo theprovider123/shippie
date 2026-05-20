@@ -1328,6 +1328,10 @@ function PlanView({
 }) {
   const todaysSet = mealPlan.filter((entry) => entry.date === today()).length;
   const isEmpty = mealPlan.length === 0;
+  const [picker, setPicker] = useState<{ date: string; meal: MealType } | null>(null);
+  const pickerCurrent = picker
+    ? mealPlan.find((e) => e.date === picker.date && e.mealType === picker.meal)?.recipeId ?? null
+    : null;
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -1341,7 +1345,7 @@ function PlanView({
       {isEmpty ? (
         <EmptyState
           eyebrow="Plan"
-          headline={<>Drag a recipe into Monday dinner.</>}
+          headline={<>Tap an empty meal slot to drop a recipe in.</>}
           cta={{ label: 'Fill the week', onClick: onAutoPlan }}
         />
       ) : null}
@@ -1362,14 +1366,20 @@ function PlanView({
                   const entry = mealPlan.find((candidate) => candidate.date === date && candidate.mealType === meal);
                   const recipe = entry ? recipes.find((r) => r.id === entry.recipeId) : null;
                   return (
-                    <label key={meal} className={`plan-slot meal-cell ${MEAL_TONE[meal]}`}>
+                    <button
+                      key={meal}
+                      type="button"
+                      className={`plan-slot meal-cell ${MEAL_TONE[meal]}${recipe ? ' is-filled' : ''}`}
+                      onClick={() => setPicker({ date, meal })}
+                      aria-label={recipe ? `${meal}: ${recipe.title} — tap to change` : `${meal}: empty — tap to assign a recipe`}
+                    >
                       <span className="meal-tag">{meal}</span>
-                      <select value={entry?.recipeId ?? ''} onChange={(event) => onPlan(date, meal, event.target.value)}>
-                        <option value="">— add —</option>
-                        {recipes.map((r) => <option value={r.id} key={r.id}>{r.title}</option>)}
-                      </select>
-                      {recipe ? <span className="meal-title">{recipe.title}</span> : null}
-                    </label>
+                      {recipe ? (
+                        <span className="meal-title">{recipe.title}</span>
+                      ) : (
+                        <span className="meal-empty">Tap to assign</span>
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -1377,7 +1387,117 @@ function PlanView({
           );
         })}
       </div>
+      {picker ? (
+        <RecipePickerSheet
+          recipes={recipes}
+          mealLabel={picker.meal}
+          dayLabel={formatDay(picker.date)}
+          currentRecipeId={pickerCurrent}
+          onPick={(recipeId) => {
+            onPlan(picker.date, picker.meal, recipeId);
+            setPicker(null);
+          }}
+          onClear={() => {
+            onPlan(picker.date, picker.meal, '');
+            setPicker(null);
+          }}
+          onClose={() => setPicker(null)}
+        />
+      ) : null}
     </section>
+  );
+}
+
+/**
+ * Mobile recipe picker — replaces the old <select>. Tapping an empty slot
+ * opens this bottom-sheet list; tapping a filled slot also offers "Clear".
+ * Searchable so a long cookbook stays usable on a phone.
+ */
+function RecipePickerSheet({
+  recipes,
+  mealLabel,
+  dayLabel,
+  currentRecipeId,
+  onPick,
+  onClear,
+  onClose,
+}: {
+  recipes: Recipe[];
+  mealLabel: MealType;
+  dayLabel: string;
+  currentRecipeId: string | null;
+  onPick: (recipeId: string) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? recipes.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.cuisine.toLowerCase().includes(q) ||
+          r.category.toLowerCase().includes(q),
+      )
+    : recipes;
+  return (
+    <div className="sheet-backdrop" onClick={onClose} role="presentation">
+      <section
+        className="recipe-picker recipe-sheet-lifted"
+        role="dialog"
+        aria-label={`Pick a recipe for ${mealLabel}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="recipe-picker-head">
+          <div>
+            <p className="eyebrow">{dayLabel} · {mealLabel}</p>
+            <h2>Pick a recipe</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="recipe-sheet-close">×</button>
+        </header>
+        <label className="search-box recipe-picker-search">
+          <span>Search the cookbook</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="title, cuisine, category"
+            autoFocus
+          />
+        </label>
+        <div className="recipe-picker-list">
+          {shown.length === 0 ? (
+            <p className="empty">No recipes match "{query}".</p>
+          ) : (
+            shown.map((recipe) => (
+              <button
+                key={recipe.id}
+                type="button"
+                className={`recipe-picker-item${recipe.id === currentRecipeId ? ' is-current' : ''}`}
+                onClick={() => onPick(recipe.id)}
+              >
+                <span className="recipe-picker-mark" aria-hidden>
+                  {recipe.photoDataUrl ? (
+                    <img src={recipe.photoDataUrl} alt="" />
+                  ) : (
+                    recipe.title.slice(0, 1).toUpperCase()
+                  )}
+                </span>
+                <span className="recipe-picker-text">
+                  <strong>{recipe.title}</strong>
+                  <small>{recipe.cuisine} · {recipe.category} · {recipeTotalTime(recipe)} min</small>
+                </span>
+                {recipe.id === currentRecipeId ? <span className="recipe-picker-tick">✓</span> : null}
+              </button>
+            ))
+          )}
+        </div>
+        {currentRecipeId ? (
+          <button type="button" className="recipe-picker-clear" onClick={onClear}>
+            Clear this slot
+          </button>
+        ) : null}
+      </section>
+    </div>
   );
 }
 

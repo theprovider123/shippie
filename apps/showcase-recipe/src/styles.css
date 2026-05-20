@@ -910,6 +910,152 @@ h2 {
   color: #655646;
 }
 
+/* Plan tab — tap-to-assign meal slots */
+.plan-slot.meal-cell {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  background: rgba(255, 249, 239, 0.55);
+  border: 1px dashed rgba(101, 86, 70, 0.32);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  min-height: 56px;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.plan-slot.meal-cell:hover {
+  border-color: rgba(216, 105, 24, 0.5);
+  background: rgba(255, 249, 239, 0.85);
+}
+
+.plan-slot.meal-cell.is-filled {
+  border-style: solid;
+  border-color: rgba(216, 105, 24, 0.28);
+  background: rgba(255, 249, 239, 0.92);
+}
+
+.plan-slot .meal-empty {
+  color: #9a8a78;
+  font-style: italic;
+  font-size: 0.82rem;
+}
+
+.plan-slot .meal-title {
+  color: #2c2118;
+  font-weight: 600;
+  font-size: 0.92rem;
+  text-transform: none;
+}
+
+/* Recipe picker bottom-sheet */
+.recipe-picker {
+  width: min(560px, 100%);
+  max-height: min(720px, calc(100svh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border-radius: 8px;
+  padding: 1.1rem;
+  background: rgba(255, 249, 239, 0.96);
+  border: 1px solid rgba(101, 86, 70, 0.16);
+  box-shadow: 0 18px 50px rgba(44, 33, 24, 0.18);
+}
+
+.recipe-picker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.recipe-picker-head h2 {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.recipe-picker-search {
+  width: 100%;
+}
+
+.recipe-picker-list {
+  display: grid;
+  gap: 0.5rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.recipe-picker-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgba(101, 86, 70, 0.14);
+  color: inherit;
+}
+
+.recipe-picker-item:hover {
+  border-color: rgba(216, 105, 24, 0.45);
+}
+
+.recipe-picker-item.is-current {
+  border-color: rgba(216, 105, 24, 0.55);
+  background: rgba(216, 105, 24, 0.08);
+}
+
+.recipe-picker-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 7px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  color: #fff9ef;
+  background: linear-gradient(135deg, rgba(216, 105, 24, 0.92), rgba(143, 160, 112, 0.92));
+}
+
+.recipe-picker-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recipe-picker-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.recipe-picker-text strong {
+  font-size: 0.96rem;
+}
+
+.recipe-picker-text small {
+  color: #655646;
+  font-size: 0.78rem;
+}
+
+.recipe-picker-tick {
+  color: #d86918;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.recipe-picker-clear {
+  min-height: 44px;
+  border-radius: 8px;
+  color: #8b3520;
+  background: rgba(180, 75, 45, 0.11);
+  border: 1px solid rgba(180, 75, 45, 0.22);
+}
+
 .cook-mode {
   display: flex;
   flex-direction: column;
