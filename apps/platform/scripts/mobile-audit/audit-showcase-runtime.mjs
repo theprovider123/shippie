@@ -341,9 +341,10 @@ async function main() {
     `[runtime-audit] ${slugs.length} showcases, engines ${ENGINES.join('+')}, widths ${WIDTHS.join('/')}`,
   );
 
-  // Launch each requested engine. An engine that fails to launch (e.g. its
-  // browser binary was never installed) is skipped, not fatal.
-  const browsers = [];
+  // Verify each requested engine launches once, then close the probe.
+  // Actual browsers are launched fresh per-showcase below so a 64-app
+  // sweep does not accumulate context/memory until WebKit crashes.
+  const enginesUsed = [];
   for (const engineName of ENGINES) {
     const engine = playwright[engineName];
     if (!engine) {
@@ -351,8 +352,9 @@ async function main() {
       continue;
     }
     try {
-      const browser = await engine.launch();
-      browsers.push({ name: engineName, browser });
+      const probe = await engine.launch();
+      await probe.close();
+      enginesUsed.push(engineName);
     } catch (err) {
       console.warn(
         `[runtime-audit] engine '${engineName}' failed to launch (${err.message}); skipping. ` +
@@ -360,12 +362,11 @@ async function main() {
       );
     }
   }
-  if (!browsers.length) {
+  if (!enginesUsed.length) {
     console.error('[runtime-audit] no usable browser engine; aborting.');
     process.exit(2);
   }
 
-  const enginesUsed = browsers.map((b) => b.name);
   const results = [];
 
   for (const slug of slugs) {
@@ -393,6 +394,16 @@ async function main() {
     // showcase's asset base; the server strips the prefix when resolving
     // files. Showcases built with a root base still resolve fine here.
     const url = `http://127.0.0.1:${port}/__shippie-run/${slug}/`;
+
+    // Fresh browsers per showcase — bounds memory across the full sweep.
+    const browsers = [];
+    for (const name of enginesUsed) {
+      try {
+        browsers.push({ name, browser: await playwright[name].launch() });
+      } catch (err) {
+        console.warn(`[runtime-audit] ${slug}: ${name} relaunch failed (${err.message})`);
+      }
+    }
 
     for (const { name: engineName, browser } of browsers) {
       for (const width of WIDTHS) {
@@ -446,14 +457,29 @@ async function main() {
           run.loaded = false;
           run.note = `nav error: ${err.message}`;
         } finally {
-          await context.close();
+          try {
+            await context.close();
+          } catch {
+            /* browser/context already gone — webkit crash mid-app */
+          }
         }
 
         appResult.runs.push(run);
       }
     }
 
-    server.close();
+    for (const { browser } of browsers) {
+      try {
+        await browser.close();
+      } catch {
+        /* already gone */
+      }
+    }
+    try {
+      server.close();
+    } catch {
+      /* already closed */
+    }
 
     appResult.loadFailed = appResult.runs.every((r) => !r.loaded);
     const anyOverflow = appResult.runs.some(
@@ -473,8 +499,6 @@ async function main() {
           : 'ok';
     console.log(`[runtime-audit] ${slug.padEnd(22)} ${tag}`);
   }
-
-  for (const { browser } of browsers) await browser.close();
 
   // ---- classify severity -------------------------------------------------
   // P0: overflow > ~24px on any engine/width (content likely clipped/
