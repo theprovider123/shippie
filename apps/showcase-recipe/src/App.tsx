@@ -23,6 +23,7 @@ import {
 import { CookRecapSheet } from './CookRecap.tsx';
 import { palateMatchers } from './IntentMatchers.ts';
 import { createPalateBackupStore } from './PalateBackupAdapter.ts';
+import { parseRecipeText, type ParsedRecipe } from './recipe-import.ts';
 
 type Tab = 'today' | 'cookbook' | 'plan' | 'pantry' | 'shop' | 'data';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -465,6 +466,7 @@ export function App() {
     }
   });
   const [draft, setDraft] = useState<RecipeDraft>(() => emptyDraft(state.defaultServings));
+  const [importOpen, setImportOpen] = useState(false);
   const [pantryDraft, setPantryDraft] = useState<PantryDraft>({ name: '', quantity: '1', unit: 'ea', location: 'pantry', expiresOn: '' });
   const [shopDraft, setShopDraft] = useState('');
   const [skippedToday, setSkippedToday] = useState<Set<string>>(new Set());
@@ -674,6 +676,26 @@ export function App() {
     setDraft(emptyDraft(state.defaultServings));
     setSelectedRecipeId(recipe.id);
     shippie.feel.texture('confirm');
+  }
+
+  /**
+   * Accept a parsed-recipe preview from the import sheet. We pour it
+   * into the existing recipe draft (not straight into the cookbook) so
+   * the user lands in the normal editor and can fix the heuristics
+   * before saving via the unchanged saveRecipe path.
+   */
+  function applyImportedRecipe(parsed: ParsedRecipe): void {
+    setDraft((prev) => ({
+      ...prev,
+      title: parsed.title === 'Imported recipe' ? '' : parsed.title,
+      ingredients: parsed.ingredients.join('\n'),
+      steps: parsed.steps.join('\n'),
+    }));
+    setImportOpen(false);
+    shippie.feel.texture('confirm');
+    requestAnimationFrame(() => {
+      document.getElementById('palate-recipe-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   function planMeal(date: string, mealType: MealType, recipeId: string): void {
@@ -931,6 +953,10 @@ export function App() {
           onOpenRecipe={setSelectedRecipeId}
           onCook={setCookRecipeId}
           onAddFirstRecipe={() => navigate('cookbook')}
+          importOpen={importOpen}
+          onOpenImport={() => setImportOpen(true)}
+          onCloseImport={() => setImportOpen(false)}
+          onApplyImport={applyImportedRecipe}
         />
       ) : null}
 
@@ -1218,6 +1244,10 @@ function CookbookView({
   onOpenRecipe,
   onCook,
   onAddFirstRecipe,
+  importOpen,
+  onOpenImport,
+  onCloseImport,
+  onApplyImport,
 }: {
   recipes: Recipe[];
   query: string;
@@ -1230,6 +1260,10 @@ function CookbookView({
   onOpenRecipe: (recipeId: string) => void;
   onCook: (recipeId: string) => void;
   onAddFirstRecipe: () => void;
+  importOpen: boolean;
+  onOpenImport: () => void;
+  onCloseImport: () => void;
+  onApplyImport: (parsed: ParsedRecipe) => void;
 }) {
   const showEmpty = recipes.length === 0 && !query.trim();
   const scrollToEditor = () => {
@@ -1242,6 +1276,7 @@ function CookbookView({
           <p className="eyebrow">Cookbook</p>
           <h1>Save the dishes worth repeating.</h1>
         </div>
+        <button type="button" className="text-action toolbar-action" onClick={onOpenImport}>Import</button>
         <button type="button" className="primary toolbar-action" onClick={scrollToEditor}>Add recipe</button>
         <label className="search-box">
           <span>Search</span>
@@ -1309,7 +1344,113 @@ function CookbookView({
           <button type="submit" className="primary">Save recipe</button>
         </form>
       </div>
+      {importOpen ? (
+        <RecipeImportSheet onClose={onCloseImport} onApply={onApplyImport} />
+      ) : null}
     </section>
+  );
+}
+
+/**
+ * Recipe import sheet — paste a blob copied off any website, parse it
+ * locally with heuristics, then preview/edit before it flows into the
+ * normal recipe editor. No network, no AI: the parsing is all in
+ * recipe-import.ts and the user always confirms.
+ */
+function RecipeImportSheet({
+  onClose,
+  onApply,
+}: {
+  onClose: () => void;
+  onApply: (parsed: ParsedRecipe) => void;
+}) {
+  const [raw, setRaw] = useState('');
+  const [parsed, setParsed] = useState<ParsedRecipe | null>(null);
+
+  function runParse(): void {
+    if (!raw.trim()) return;
+    setParsed(parseRecipeText(raw));
+  }
+
+  return (
+    <div className="sheet-backdrop" onClick={onClose} role="presentation">
+      <section
+        className="recipe-import recipe-sheet-lifted"
+        role="dialog"
+        aria-label="Import a recipe"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="recipe-picker-head">
+          <div>
+            <p className="eyebrow">Cookbook · import</p>
+            <h2>Paste a recipe</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="recipe-sheet-close">×</button>
+        </header>
+        {parsed === null ? (
+          <>
+            <p className="empty">
+              Copy a recipe off any website and paste the whole block below. Palate sorts
+              the title, ingredients and steps on your device — nothing is sent anywhere.
+            </p>
+            <textarea
+              className="recipe-import-input"
+              value={raw}
+              onChange={(event) => setRaw(event.target.value)}
+              placeholder={'Paste recipe text here…\n\nTitle\n2 tbsp olive oil\n1 onion, diced\n\nMethod\n1. Soften the onion…'}
+              rows={9}
+              autoFocus
+            />
+            <div className="recipe-import-actions">
+              <button type="button" onClick={onClose} className="text-action">Cancel</button>
+              <button type="button" className="primary" onClick={runParse} disabled={!raw.trim()}>
+                Parse recipe
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="empty">Check the parse below — you can fix anything in the editor after.</p>
+            <div className="recipe-import-preview">
+              <div className="recipe-import-field">
+                <span className="eyebrow">Title</span>
+                <strong>{parsed.title}</strong>
+              </div>
+              <div className="recipe-import-field">
+                <span className="eyebrow">Ingredients · {parsed.ingredients.length}</span>
+                {parsed.ingredients.length > 0 ? (
+                  <ul className="recipe-import-list">
+                    {parsed.ingredients.map((line, index) => (
+                      <li key={`ing-${index}`}>{line}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="empty">None detected — add them by hand in the editor.</p>
+                )}
+              </div>
+              <div className="recipe-import-field">
+                <span className="eyebrow">Steps · {parsed.steps.length}</span>
+                {parsed.steps.length > 0 ? (
+                  <ol className="recipe-import-list">
+                    {parsed.steps.map((line, index) => (
+                      <li key={`step-${index}`}>{line}</li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="empty">None detected — add them by hand in the editor.</p>
+                )}
+              </div>
+            </div>
+            <div className="recipe-import-actions">
+              <button type="button" onClick={() => setParsed(null)} className="text-action">Re-paste</button>
+              <button type="button" className="primary" onClick={() => onApply(parsed)}>
+                Use this recipe
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
   );
 }
 
