@@ -987,15 +987,15 @@ function TrackView({
               </select>
             </label>
             <label>
-              Mood
+              <span className="range-label">Mood<em>{checkin.mood} / 5</em></span>
               <input value={checkin.mood} min={1} max={5} type="range" onChange={(event) => onCheckin({ ...checkin, mood: event.target.value })} />
             </label>
             <label>
-              Energy
+              <span className="range-label">Energy<em>{checkin.energy} / 5</em></span>
               <input value={checkin.energy} min={1} max={5} type="range" onChange={(event) => onCheckin({ ...checkin, energy: event.target.value })} />
             </label>
             <label>
-              Body
+              <span className="range-label">Body<em>{checkin.body} / 5</em></span>
               <input value={checkin.body} min={1} max={5} type="range" onChange={(event) => onCheckin({ ...checkin, body: event.target.value })} />
             </label>
           </div>
@@ -1013,7 +1013,7 @@ function TrackView({
               </select>
             </label>
             <label>
-              Score
+              <span className="range-label">Score<em>{manualValue} / 5</em></span>
               <input value={manualValue} min={1} max={5} type="range" onChange={(event) => onManualValue(event.target.value)} />
             </label>
             <label>
@@ -1269,7 +1269,6 @@ function PulseRing({ pulse }: { pulse: PulseScore }) {
         <img src={CHIWIT_LOGO_URL} alt="" />
         <strong>{hasPulse ? pulse.overall : '—'}</strong>
         <span>Daily Pulse</span>
-        <small>{pulse.message}</small>
       </div>
       <div className="pulse-factors" aria-label="Pulse factors">
         {factors.map(([key, value]) => (
@@ -1279,6 +1278,7 @@ function PulseRing({ pulse }: { pulse: PulseScore }) {
           </span>
         ))}
       </div>
+      <p className="pulse-message">{pulse.message}</p>
     </section>
   );
 }
