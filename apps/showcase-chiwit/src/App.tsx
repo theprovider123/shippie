@@ -804,6 +804,7 @@ export function App() {
         <TodayView
           pulse={pulse}
           reading={reading}
+          weekValues={weekKeepsake.ribbon.map((r) => r.value)}
           entries={todayEntries}
           insights={insights}
           onQuickLog={quickLog}
@@ -866,9 +867,43 @@ export function App() {
   );
 }
 
+/**
+ * WeekContour — the shape of the week as a drawn line, not a grade.
+ *
+ * Chiwit's whole pitch is "the shape of the week"; a single 0-100 number
+ * is a grade and invites achievement-chasing. The contour shows rhythm:
+ * it can't be "won", only noticed. Values are the 7-day pulse series
+ * (0-100); a 0 means a day with too few signals to score honestly.
+ */
+function WeekContour({ values }: { values: number[] }) {
+  const W = 264;
+  const H = 72;
+  const p = 8;
+  const pts = values.length > 1 ? values : [0, 0];
+  const stepX = (W - p * 2) / (pts.length - 1);
+  const x = (i: number) => p + i * stepX;
+  const y = (v: number) => H - p - (Math.max(0, Math.min(100, v)) / 100) * (H - p * 2);
+  const line = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  const area = `${line} L ${x(pts.length - 1).toFixed(1)} ${H - p} L ${x(0).toFixed(1)} ${H - p} Z`;
+  const lastIdx = pts.length - 1;
+  return (
+    <figure className="week-contour" aria-label="Your pulse across the last seven days">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" preserveAspectRatio="none">
+        <path className="week-contour__area" d={area} />
+        <path className="week-contour__line" d={line} />
+        {pts.map((v, i) => (
+          <circle key={i} cx={x(i)} cy={y(v)} r={i === lastIdx ? 3.6 : 2} className={i === lastIdx ? 'week-contour__today' : 'week-contour__dot'} />
+        ))}
+      </svg>
+      <figcaption>Your last seven days</figcaption>
+    </figure>
+  );
+}
+
 function TodayView({
   pulse,
   reading,
+  weekValues,
   entries,
   insights,
   onQuickLog,
@@ -877,6 +912,7 @@ function TodayView({
 }: {
   pulse: PulseScore;
   reading: string;
+  weekValues: number[];
   entries: PulseEntry[];
   insights: Insight[];
   onQuickLog: (action: QuickAction) => void;
@@ -890,6 +926,7 @@ function TodayView({
           <p className="eyebrow">Today · Daily Pulse</p>
           <h1>Log one signal. Read the day.</h1>
           <p className="reading">{reading}</p>
+          <WeekContour values={weekValues} />
           <div className="hero-actions">
             <button type="button" className="primary" onClick={() => onNavigate('track')}>Log now</button>
             <button type="button" onClick={() => onNavigate('patterns')}>Patterns</button>

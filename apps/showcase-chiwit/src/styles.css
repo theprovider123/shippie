@@ -1606,3 +1606,35 @@ meter {
   width: 120px;
   height: 8px;
 }
+
+/* ── Week contour — the shape of the week, drawn ─────────────────────── */
+.week-contour {
+  margin: 0.9rem 0 0.2rem;
+}
+.week-contour svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 320px;
+}
+.week-contour__area {
+  fill: var(--sage-soft);
+  opacity: 0.55;
+}
+.week-contour__line {
+  fill: none;
+  stroke: var(--sage);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.week-contour__dot { fill: var(--sage); }
+.week-contour__today { fill: var(--coral); }
+.week-contour figcaption {
+  margin-top: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
