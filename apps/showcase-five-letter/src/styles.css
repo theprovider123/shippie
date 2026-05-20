@@ -58,10 +58,11 @@ h2 { font-size: 18px; }
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  flex-wrap: wrap;
 }
-.head-actions { display: flex; align-items: center; gap: 8px; }
+.head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
-.lang-row { display: flex; gap: 4px; }
+.lang-row { display: flex; gap: 4px; flex-wrap: wrap; }
 .lang {
   height: 36px;
   width: 36px;

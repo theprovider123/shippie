@@ -649,6 +649,7 @@ const secondaryBtnStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
+  minWidth: 0,
   height: 48,
   padding: '0 14px',
   borderRadius: 999,

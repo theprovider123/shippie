@@ -1026,3 +1026,28 @@ button, input, textarea, select { font: inherit; }
 .score-numeric.size-hero { font-size: clamp(2.8rem, 9vw, 5.6rem); }
 .score-numeric.size-card { font-size: clamp(1.6rem, 4vw, 2.4rem); }
 .score-numeric .unit { font-size: 0.45em; font-weight: 600; color: var(--muted); vertical-align: 0.35em; margin-left: 0.2em; }
+
+/* ── Mobile-safe date/time inputs ─────────────────────────────────────
+   iOS Safari renders date/time inputs as native controls that can ignore
+   width and spill past their container on a narrow phone. Constrain the
+   box everywhere; reset native appearance only at phone widths so desktop
+   keeps its calendar/picker affordance. */
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'],
+input[type='month'],
+input[type='week'] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 560px) {
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='time'],
+  input[type='month'],
+  input[type='week'] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
