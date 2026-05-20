@@ -66,11 +66,24 @@ interface ScoreBreakdown {
   body: number;
 }
 
+/** Which factors were computed from real logged data vs. left un-logged. */
+type FactorLogged = Record<keyof ScoreBreakdown, boolean>;
+
 interface PulseScore {
-  overall: number;
+  /** Overall 0-100 pulse, or null when fewer than 3 signals exist (shown as "—"). */
+  overall: number | null;
   breakdown: ScoreBreakdown;
+  /** True for each factor that has at least one logged signal behind it. */
+  logged: FactorLogged;
+  /** Count of factors with logged data — drives the "—" honesty gate. */
+  loggedCount: number;
+  /** Total raw signals (entries + check-ins) for the day/window. */
+  signalCount: number;
   message: string;
 }
+
+/** Placeholder value used to render un-logged factor bars at a calm baseline. */
+const UNLOGGED_FACTOR_VALUE = 45;
 
 interface QuickAction {
   kind: EntryKind;
@@ -273,13 +286,17 @@ function consistencyPct(state: ChiwitState): number {
 function generateReading(state: ChiwitState, pulse: PulseScore, when: string = today()): string {
   const sentences: string[] = [];
   sentences.push(
+    pulse.overall === null ? 'The day is still gathering signals.' :
     pulse.overall >= 80 ? 'Life feels open today.' :
     pulse.overall >= 62 ? 'A steady day is forming.' :
     pulse.overall >= 45 ? 'Gentle attention helps today.' :
     'Keep the bar kind and small.',
   );
 
+  // Only reason about factors that were actually logged — an un-logged
+  // factor sitting at the baseline must not be called a "soft spot".
   const sorted = (Object.entries(pulse.breakdown) as Array<[keyof ScoreBreakdown, number]>)
+    .filter(([key]) => pulse.logged[key])
     .sort((a, b) => b[1] - a[1]);
   const top = sorted[0];
   const bottom = sorted[sorted.length - 1];
@@ -303,6 +320,19 @@ function generateReading(state: ChiwitState, pulse: PulseScore, when: string = t
   return sentences.join(' ');
 }
 
+/**
+ * Compute the Daily Pulse honestly.
+ *
+ * Each of the five factors is only "logged" when at least one real signal
+ * sits behind it. Un-logged factors render at a calm baseline
+ * (`UNLOGGED_FACTOR_VALUE`) so the bar UI has something to draw, but they
+ * are excluded from the overall pulse — that number is the average of the
+ * *logged* factors only.
+ *
+ * If fewer than three factors are logged, the overall pulse is `null` and
+ * the UI shows "—" rather than a precise-looking number invented from
+ * defaulted factors.
+ */
 function computePulse(state: ChiwitState, date = today()): PulseScore {
   const dayEntries = entriesForDate(state.entries, date);
   const dayCheckins = state.checkins.filter((checkin) => checkin.date === date);
@@ -318,23 +348,51 @@ function computePulse(state: ChiwitState, date = today()): PulseScore {
   const energy = scoreForKind('energy', dayEntries, state) ?? (checkinEnergy === null ? null : Math.round((checkinEnergy / 5) * 100));
   const body = scoreForKind('body', dayEntries, state) ?? (checkinBody === null ? null : Math.round((checkinBody / 5) * 100));
 
-  const foundations = average([hydration].filter((value): value is number => value !== null)) ?? 45;
-  const recovery = average([sleep, mindful].filter((value): value is number => value !== null)) ?? 45;
-  const move = movement ?? 45;
-  const mind = average([mood, energy].filter((value): value is number => value !== null)) ?? 45;
-  const bodyScore = body ?? 45;
-  const breakdown = {
-    foundations: Math.round(foundations),
-    recovery: Math.round(recovery),
-    movement: Math.round(move),
-    mind: Math.round(mind),
-    body: Math.round(bodyScore),
+  // Each factor reduces to a value-or-null; null means "not yet logged".
+  const foundationsRaw = average([hydration].filter((value): value is number => value !== null));
+  const recoveryRaw = average([sleep, mindful].filter((value): value is number => value !== null));
+  const moveRaw = movement;
+  const mindRaw = average([mood, energy].filter((value): value is number => value !== null));
+  const bodyRaw = body;
+
+  const logged: FactorLogged = {
+    foundations: foundationsRaw !== null,
+    recovery: recoveryRaw !== null,
+    movement: moveRaw !== null,
+    mind: mindRaw !== null,
+    body: bodyRaw !== null,
   };
-  const overall = Math.round(average(Object.values(breakdown)) ?? 45);
+
+  // Un-logged factors render at the calm baseline so bars have a value,
+  // but they never feed the overall pulse — see `loggedValues` below.
+  const breakdown: ScoreBreakdown = {
+    foundations: Math.round(foundationsRaw ?? UNLOGGED_FACTOR_VALUE),
+    recovery: Math.round(recoveryRaw ?? UNLOGGED_FACTOR_VALUE),
+    movement: Math.round(moveRaw ?? UNLOGGED_FACTOR_VALUE),
+    mind: Math.round(mindRaw ?? UNLOGGED_FACTOR_VALUE),
+    body: Math.round(bodyRaw ?? UNLOGGED_FACTOR_VALUE),
+  };
+
+  const loggedCount = Object.values(logged).filter(Boolean).length;
+  const loggedValues = (Object.keys(logged) as Array<keyof ScoreBreakdown>)
+    .filter((key) => logged[key])
+    .map((key) => breakdown[key]);
+
+  // Honesty gate: fewer than 3 logged factors → no precise number.
+  const overall = loggedCount >= 3
+    ? Math.round(average(loggedValues) ?? UNLOGGED_FACTOR_VALUE)
+    : null;
+
+  const signalCount = dayEntries.length + dayCheckins.length;
+
   return {
     overall,
     breakdown,
+    logged,
+    loggedCount,
+    signalCount,
     message:
+      overall === null ? 'Log a few signals and the day takes shape.' :
       overall >= 80 ? 'Life feels open today.' :
       overall >= 62 ? 'A steady day is forming.' :
       overall >= 45 ? 'Gentle attention helps today.' :
@@ -546,7 +604,9 @@ export function App() {
     const last7 = Array.from({ length: 7 }, (_, index) => addDays(-(6 - index)));
     const dayShapes: WeekDay[] = last7.map((date) => {
       const p = computePulse(state, date);
-      return { date, pulse: p.overall, signalCount: entriesForDate(state.entries, date).length };
+      // A day with too few signals has no honest number — render it flat
+      // (0) in the ribbon rather than inventing a pulse.
+      return { date, pulse: p.overall ?? 0, signalCount: entriesForDate(state.entries, date).length };
     });
     const factors: Array<{ label: string; value: number }> = [
       { label: 'Foundations', value: pulse.breakdown.foundations },
@@ -556,7 +616,7 @@ export function App() {
       { label: 'Body',        value: pulse.breakdown.body },
     ];
     const totalSignals = last7.reduce((sum, d) => sum + entriesForDate(state.entries, d).length, 0);
-    const pulseAvg = average(dayShapes.map((d) => d.pulse)) ?? pulse.overall;
+    const pulseAvg = average(dayShapes.map((d) => d.pulse)) ?? pulse.overall ?? 0;
     return buildWeekShape({
       days: dayShapes,
       factors,
@@ -1064,7 +1124,13 @@ function PatternsView({
         {Array.from({ length: 14 }, (_, index) => {
           const date = addDays(index - 13);
           const score = computePulse(state, date).overall;
-          return <span key={date} title={`${formatDate(date)}: ${score}`} style={{ height: `${Math.max(14, score)}%` }} />;
+          return (
+            <span
+              key={date}
+              title={`${formatDate(date)}: ${score ?? '—'}`}
+              style={{ height: `${Math.max(14, score ?? 0)}%` }}
+            />
+          );
         })}
       </section>
     </section>
@@ -1130,7 +1196,7 @@ function TimelineView({
             <section className="timeline-day" key={date}>
               <header>
                 <h2>{formatDate(date)}</h2>
-                <strong>{pulse.overall}</strong>
+                <strong>{pulse.overall ?? '—'}</strong>
               </header>
               <EntryList entries={entries} onRemove={onRemove} />
             </section>
@@ -1190,19 +1256,26 @@ function DataView({
 
 function PulseRing({ pulse }: { pulse: PulseScore }) {
   const factors = Object.entries(pulse.breakdown) as Array<[keyof ScoreBreakdown, number]>;
+  // When the pulse has too few signals it shows "—" instead of a number;
+  // the ring still fills to a calm baseline so the surface isn't empty.
+  const hasPulse = pulse.overall !== null;
+  const ringScore = pulse.overall ?? UNLOGGED_FACTOR_VALUE;
   return (
-    <section className="pulse-card" aria-label={`Daily Pulse ${pulse.overall}`}>
-      <div className="pulse-ring" style={{ '--score': pulse.overall } as CSSProperties}>
+    <section
+      className="pulse-card"
+      aria-label={hasPulse ? `Daily Pulse ${pulse.overall}` : 'Daily Pulse not yet enough signals'}
+    >
+      <div className="pulse-ring" style={{ '--score': ringScore } as CSSProperties}>
         <img src={CHIWIT_LOGO_URL} alt="" />
-        <strong>{pulse.overall}</strong>
+        <strong>{hasPulse ? pulse.overall : '—'}</strong>
         <span>Daily Pulse</span>
         <small>{pulse.message}</small>
       </div>
       <div className="pulse-factors" aria-label="Pulse factors">
         {factors.map(([key, value]) => (
-          <span key={key}>
+          <span key={key} className={pulse.logged[key] ? '' : 'is-unlogged'}>
             <i style={{ inlineSize: `${Math.max(18, value)}%` }} />
-            <strong>{key}</strong>
+            <strong>{key}{pulse.logged[key] ? '' : ' · not yet'}</strong>
           </span>
         ))}
       </div>
