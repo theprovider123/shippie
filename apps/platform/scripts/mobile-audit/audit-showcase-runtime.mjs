@@ -8,9 +8,8 @@
  * real and measures actual layout boxes.
  *
  * Mechanism: each showcase is a Vite + React app with a prebuilt `dist/`.
- * We serve `dist/` over a tiny static HTTP server (one server reused for
- * the whole run; the slug is the first path segment) and drive it with
- * Playwright at the QA phone widths 360 / 390 / 430.
+ * We serve each `dist/` over a tiny per-showcase static HTTP server and
+ * drive it with Playwright at the QA phone widths 360 / 390 / 430.
  *
  * ENGINES: we test BOTH Chromium and WebKit. WebKit is the engine iOS
  * Safari ships — datetime-local / date / time inputs have a wide intrinsic
@@ -61,6 +60,7 @@ const ENGINES = (process.env.ENGINES ?? 'chromium,webkit')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+const BAKED_RUNTIME_PREFIX = new RegExp('^/__shippie-run/[^/]+/');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -93,25 +93,29 @@ async function showcaseSlugs() {
 }
 
 /**
- * One static server for the whole run. URL shape:
- *   /<slug>/                -> apps/showcase-<slug>/dist/index.html
- *   /<slug>/assets/x.js     -> apps/showcase-<slug>/dist/assets/x.js
- * Unknown paths inside a slug fall back to that slug's index.html so a
- * client-side router (BrowserRouter) still resolves.
+ * One static server PER showcase, each rooted at that showcase's `dist/`.
+ *
+ * Showcases ship two different Vite `base` configs: some build with
+ * root-absolute asset URLs (`/assets/index-xxx.js`), most build with a
+ * baked prefix (`/__shippie-run/<slug>/assets/index-xxx.js`) since the
+ * platform serves them under that route. A single shared server keyed on
+ * `/<slug>/` would 404 the assets and the React app would silently never
+ * mount — an empty body then reads as "no overflow", a FALSE clean.
+ *
+ * So: one server per showcase, rooted at its `dist/`, and we strip a
+ * leading `/__shippie-run/<slug>/` prefix so both base styles resolve.
+ * SPA deep links fall back to index.html.
  */
-function startServer() {
-  return new Promise((resolve) => {
+function startShowcaseServer(slug) {
+  const distRoot = join(APPS, 'showcase-' + slug, 'dist');
+  return new Promise((resolve, reject) => {
     const server = createServer(async (req, res) => {
       try {
         const url = new URL(req.url, 'http://localhost');
-        const parts = url.pathname.split('/').filter(Boolean);
-        const slug = parts.shift();
-        if (!slug) {
-          res.writeHead(404).end('no slug');
-          return;
-        }
-        const distRoot = join(APPS, `showcase-${slug}`, 'dist');
-        let rel = parts.join('/') || 'index.html';
+        let rel = url.pathname
+          // baked platform prefix used by most showcases
+          .replace(BAKED_RUNTIME_PREFIX, '/')
+          .replace(/^\/+/, '') || 'index.html';
         let filePath = normalize(join(distRoot, rel));
         if (!filePath.startsWith(distRoot)) {
           res.writeHead(403).end('forbidden');
@@ -141,6 +145,7 @@ function startServer() {
         res.writeHead(500).end(String(err?.message ?? err));
       }
     });
+    server.on('error', reject);
     server.listen(0, '127.0.0.1', () => {
       const { port } = server.address();
       resolve({ server, port });
@@ -332,9 +337,6 @@ async function main() {
   }
 
   const slugs = await showcaseSlugs();
-  const { server, port } = await startServer();
-  const base = `http://127.0.0.1:${port}`;
-  console.log(`[runtime-audit] serving showcases from ${base}`);
   console.log(
     `[runtime-audit] ${slugs.length} showcases, engines ${ENGINES.join('+')}, widths ${WIDTHS.join('/')}`,
   );
@@ -360,7 +362,6 @@ async function main() {
   }
   if (!browsers.length) {
     console.error('[runtime-audit] no usable browser engine; aborting.');
-    server.close();
     process.exit(2);
   }
 
@@ -370,6 +371,28 @@ async function main() {
   for (const slug of slugs) {
     // appResult.runs: flat list, each tagged with engine + width.
     const appResult = { slug, runs: [], loadFailed: false };
+
+    // one short-lived static server per showcase, rooted at its dist/
+    let server, port;
+    try {
+      ({ server, port } = await startShowcaseServer(slug));
+    } catch (err) {
+      appResult.loadFailed = true;
+      appResult.runs.push({
+        engine: enginesUsed[0],
+        width: WIDTHS[0],
+        loaded: false,
+        inspect: null,
+        note: `server start failed: ${err.message}`,
+      });
+      results.push(appResult);
+      console.log(`[runtime-audit] ${slug.padEnd(22)} LOAD-FAILED (server)`);
+      continue;
+    }
+    // Load at the baked platform path so the document URL matches the
+    // showcase's asset base; the server strips the prefix when resolving
+    // files. Showcases built with a root base still resolve fine here.
+    const url = `http://127.0.0.1:${port}/__shippie-run/${slug}/`;
 
     for (const { name: engineName, browser } of browsers) {
       for (const width of WIDTHS) {
@@ -382,7 +405,6 @@ async function main() {
         const page = await context.newPage();
         const consoleErrors = [];
         page.on('pageerror', (e) => consoleErrors.push(e.message));
-        const url = `${base}/${slug}/`;
         const run = {
           engine: engineName,
           width,
@@ -392,17 +414,33 @@ async function main() {
         };
 
         try {
-          await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
+          const response = await page.goto(url, {
+            waitUntil: 'networkidle',
+            timeout: 30_000,
+          });
+          if (response && response.status() >= 400) {
+            throw new Error(`HTTP ${response.status()}`);
+          }
           await page.waitForTimeout(700); // fonts / wasm / lazy layout settle
-          const bodyLen = await page.evaluate(
-            () => document.body && document.body.innerText.trim().length,
-          );
-          // landing + bounded interaction sweep; keeps the worst state seen
-          const inspect = await inspectWithInteraction(page);
-          run.inspect = inspect;
-          if (bodyLen === 0 && consoleErrors.length) {
+          // render sanity: did the SPA actually mount real content?
+          const rendered = await page.evaluate(() => {
+            const b = document.body;
+            return {
+              textLen: (b.innerText || '').trim().length,
+              elCount: b.querySelectorAll('*').length,
+              bodyH: Math.round(b.getBoundingClientRect().height),
+            };
+          });
+          // An app that mounts nothing (empty body, ~0 height) trivially
+          // "has no overflow" — that is a false clean, so flag it instead.
+          if (rendered.elCount < 3 && rendered.textLen === 0 && rendered.bodyH < 4) {
             run.loaded = false;
-            run.note = `empty body; pageerror: ${consoleErrors[0]}`;
+            run.note = consoleErrors.length
+              ? `did not render; pageerror: ${consoleErrors[0]}`
+              : 'did not render (empty body)';
+          } else {
+            // landing + bounded interaction sweep; keeps worst state seen
+            run.inspect = await inspectWithInteraction(page);
           }
         } catch (err) {
           run.loaded = false;
@@ -414,6 +452,8 @@ async function main() {
         appResult.runs.push(run);
       }
     }
+
+    server.close();
 
     appResult.loadFailed = appResult.runs.every((r) => !r.loaded);
     const anyOverflow = appResult.runs.some(
@@ -435,7 +475,6 @@ async function main() {
   }
 
   for (const { browser } of browsers) await browser.close();
-  server.close();
 
   // ---- classify severity -------------------------------------------------
   // P0: overflow > ~24px on any engine/width (content likely clipped/

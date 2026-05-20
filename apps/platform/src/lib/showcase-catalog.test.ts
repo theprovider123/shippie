@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FIRST_PARTY_CURATION } from '$lib/_generated/first-party-curation';
 import { SHOWCASE_PRECACHE, SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
 import { FIRST_PARTY_SHOWCASE_SLUGS } from '$lib/showcase-slugs';
 import { curatedApps } from '$lib/container/state';
@@ -16,8 +17,10 @@ describe('showcase catalog drift check', () => {
     expect([...SHOWCASE_SLUGS].sort()).toEqual(staticRuntimeSlugs());
   });
 
-  test('first-party slug set uses the generated catalog', () => {
-    expect([...FIRST_PARTY_SHOWCASE_SLUGS].sort()).toEqual([...SHOWCASE_SLUGS].sort());
+  test('first-party slug set uses the generated curation manifest', () => {
+    expect([...FIRST_PARTY_SHOWCASE_SLUGS].sort()).toEqual(
+      FIRST_PARTY_CURATION.map((entry) => entry.slug).sort(),
+    );
   });
 
   test('container curated apps match hosted showcase slugs', () => {
