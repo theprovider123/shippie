@@ -376,6 +376,34 @@ function recipeTotalTime(recipe: Recipe): number {
   return recipe.prepTime + recipe.cookTime;
 }
 
+/**
+ * Render a scaled ingredient quantity legibly. Scaling produces awkward
+ * decimals (0.5 → "½", 1.333 → "1⅓"), so we snap to common kitchen
+ * fractions and trim trailing zeros for everything else.
+ */
+function formatQuantity(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '0';
+  const whole = Math.floor(value);
+  const frac = value - whole;
+  const fractions: Array<[number, string]> = [
+    [0, ''],
+    [0.25, '¼'],
+    [1 / 3, '⅓'],
+    [0.5, '½'],
+    [2 / 3, '⅔'],
+    [0.75, '¾'],
+    [1, ''],
+  ];
+  let best = fractions[0]!;
+  for (const candidate of fractions) {
+    if (Math.abs(candidate[0] - frac) < Math.abs(best[0] - frac)) best = candidate;
+  }
+  if (best[0] === 1) return String(whole + 1);
+  if (best[1]) return whole > 0 ? `${whole}${best[1]}` : best[1];
+  if (whole > 0) return String(whole);
+  return String(Number(value.toFixed(2)));
+}
+
 function normaliseName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -1642,16 +1670,45 @@ function CookMode({
   const [servings, setServings] = useState(recipe.servings);
   const [startedAt] = useState(() => Date.now());
   const [timerExpiresAt, setTimerExpiresAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const current = recipe.steps[step] ?? 'Plate, taste, and make it yours.';
+
+  const scale = recipe.servings > 0 ? servings / recipe.servings : 1;
+  const scaledIngredients = useMemo(
+    () => recipe.ingredients.map((ing) => ({
+      id: ing.id,
+      name: ing.name,
+      unit: ing.unit,
+      quantity: formatQuantity(ing.quantity * scale),
+    })),
+    [recipe.ingredients, scale],
+  );
 
   // Broadcast cooking-now intent on each step transition (and on mount).
   useEffect(() => {
     onBroadcast(recipe, step, servings, timerExpiresAt);
   }, [recipe, step, servings, timerExpiresAt, onBroadcast]);
 
+  // Tick once a second while a timer is live so the countdown re-renders.
+  useEffect(() => {
+    if (timerExpiresAt === null) return;
+    setNow(Date.now());
+    const handle = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(handle);
+  }, [timerExpiresAt]);
+
   const startTimer = (minutes: number) => {
     setTimerExpiresAt(Date.now() + minutes * 60 * 1000);
   };
+
+  const remainingMs = timerExpiresAt !== null ? timerExpiresAt - now : 0;
+  const timerDone = timerExpiresAt !== null && remainingMs <= 0;
+  const countdownLabel = (() => {
+    const total = Math.max(0, Math.ceil(remainingMs / 1000));
+    const mm = String(Math.floor(total / 60)).padStart(2, '0');
+    const ss = String(total % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  })();
 
   return (
     <div className="cook-mode" data-shippie-wakelock>
@@ -1668,14 +1725,36 @@ function CookMode({
       </header>
       <section className="cook-step">
         <p>{current}</p>
+        {timerExpiresAt !== null ? (
+          <div className={`cook-timer-display${timerDone ? ' is-done' : ''}`} role="timer" aria-live="polite">
+            <span className="cook-timer-time">{timerDone ? 'Timer done' : countdownLabel}</span>
+            <small>{timerDone ? 'Check the pan' : 'time remaining'}</small>
+          </div>
+        ) : null}
         <div className="cook-timer-controls">
           <button type="button" className="cook-timer-btn" onClick={() => startTimer(5)}>5 min</button>
           <button type="button" className="cook-timer-btn" onClick={() => startTimer(10)}>10 min</button>
           <button type="button" className="cook-timer-btn" onClick={() => startTimer(20)}>20 min</button>
-          {timerExpiresAt ? (
-            <button type="button" className="cook-timer-btn" onClick={() => setTimerExpiresAt(null)}>Stop timer</button>
+          {timerExpiresAt !== null ? (
+            <button type="button" className="cook-timer-btn" onClick={() => setTimerExpiresAt(null)}>
+              {timerDone ? 'Clear' : 'Stop timer'}
+            </button>
           ) : null}
         </div>
+      </section>
+      <section className="cook-ingredients" aria-label={`Ingredients for ${servings} serving${servings === 1 ? '' : 's'}`}>
+        <p className="cook-ingredients-head">
+          For <strong>{servings}</strong> serving{servings === 1 ? '' : 's'}
+          {servings !== recipe.servings ? <small> · recipe makes {recipe.servings}</small> : null}
+        </p>
+        <ul className="cook-ingredient-list">
+          {scaledIngredients.map((ing) => (
+            <li key={ing.id}>
+              <span className="cook-ingredient-qty">{ing.quantity} {ing.unit}</span>
+              <span className="cook-ingredient-name">{ing.name}</span>
+            </li>
+          ))}
+        </ul>
       </section>
       <footer>
         <button type="button" disabled={step === 0} onClick={() => setStep((prev) => Math.max(0, prev - 1))}>Back</button>
