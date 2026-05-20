@@ -1,16 +1,16 @@
 # Getting Started with Shippie
 
-Deploy your first local tool in under 5 minutes. Before you start, pick what you're shipping.
+Deploy your first local tool in under 5 minutes. Before you start, pick the shape it should take in the launcher.
 
-## Pick your type
+## Pick your launcher shape
 
-Shippie supports three first-class project types. They deploy the same way; they live in different shelves.
+Every Shippie project starts as a local tool: no external login, no hidden user-data egress, and local storage by default. The `type` field only tells the launcher how to present it.
 
-| Type | What it is | Best for |
+| Shape | What it is | Best for |
 |---|---|---|
-| **app** | Phone-first PWA. Installable. Works offline. | AI micro-tools, habit trackers, capture tools, single-purpose utilities |
-| **web_app** | Browser-first. Tabs, URLs, desktop-friendly. | Internal tools, dashboards, authoring tools, productivity |
-| **website** | Static + light runtime. No install. | Portfolios, docs, landing pages, marketing sites |
+| **app** | Phone-first PWA. Installable. Offline-first. | AI micro-tools, habit trackers, capture tools, single-purpose utilities |
+| **web_app** | Local workflow with more room. Tabs, URLs, desktop-friendly. | Internal tools, dashboards, authoring tools, productivity |
+| **website** | Static public surface with Shippie scanning and listing. | Docs, landing pages, portfolios for local tools |
 
 Pick one now — every deploy path (CLI, upload, MCP, GitHub) asks for this.
 

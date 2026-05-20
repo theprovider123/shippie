@@ -180,24 +180,21 @@ program
 program
   .command('graduate <slug>')
   .description(
-    'Scaffold a Capacitor wrap for a deployed Shippie app so you can ship native binaries (Phase 6 — wrapped-binary build path).',
+    'Retired: native wrappers are not part of the launch maker path',
   )
   .option('-o, --out-dir <dir>', 'Where to scaffold (default: ./<slug>-native)')
   .option('--server-url <url>', 'Override the wrapped PWA URL (default: https://<slug>.shippie.app)')
   .option('--force', 'Overwrite an existing scaffold')
   .action((slug: string, opts: { outDir?: string; serverUrl?: string; force?: boolean }) => {
     try {
-      const result = graduateScaffold({
+      graduateScaffold({
         slug,
         outDir: opts.outDir,
         serverUrl: opts.serverUrl,
         force: opts.force,
       });
-      console.log(`Scaffolded ${slug} native wrap at ${result.outDir}`);
-      console.log('Next steps:');
-      for (const step of result.nextSteps) console.log(`  ${step}`);
     } catch (err) {
-      console.error(`graduate failed: ${(err as Error).message}`);
+      console.error((err as Error).message);
       process.exitCode = 1;
     }
   });
@@ -252,20 +249,25 @@ program
         opts.type === 'web_app' || opts.type === 'website' || opts.type === 'app'
           ? opts.type
           : 'app';
-      await wrapCommand({
-        upstreamUrl,
-        slug: opts.slug ?? deriveSlug(upstreamUrl),
-        apiUrl: opts.api ?? 'https://shippie.app',
-        name: opts.name,
-        tagline: opts.tagline,
-        type,
-        category: opts.category,
-        cspMode: opts.strictCsp ? 'strict' : undefined,
-        remix: opts.remix,
-        sourceRepo: opts.sourceRepo,
-        license: opts.license,
-        remixable: opts.remixable,
-      });
+      try {
+        await wrapCommand({
+          upstreamUrl,
+          slug: opts.slug ?? deriveSlug(upstreamUrl),
+          apiUrl: opts.api ?? 'https://shippie.app',
+          name: opts.name,
+          tagline: opts.tagline,
+          type,
+          category: opts.category,
+          cspMode: opts.strictCsp ? 'strict' : undefined,
+          remix: opts.remix,
+          sourceRepo: opts.sourceRepo,
+          license: opts.license,
+          remixable: opts.remixable,
+        });
+      } catch (err) {
+        console.error((err as Error).message);
+        process.exitCode = 1;
+      }
     },
   );
 

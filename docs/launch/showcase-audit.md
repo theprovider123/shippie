@@ -1,6 +1,6 @@
 # Showcase Local Tool Audit
 
-Generated: 2026-05-19T14:37:31.470Z
+Generated: 2026-05-20T07:57:33.191Z
 
 This is the launch ledger for first-party showcases. It does not replace the deploy-time Local Tool policy scanner; it records the current slate so we know which tools are ready for the public launcher, which belong in Labs, and which need conversion before launch.
 

@@ -28,9 +28,9 @@ mock.module('../api.js', () => ({
 const { wrapCommand } = await import('./wrap');
 
 describe('shippie wrap', () => {
-  test('success path prints slug, live URL, redirect URI', async () => {
+  test('is retired from the launch maker path', async () => {
     const out: string[] = [];
-    await wrapCommand({
+    await expect(wrapCommand({
       upstreamUrl: 'https://mevrouw.example.com',
       slug: 'mevrouw',
       apiUrl: 'https://shippie.app',
@@ -38,15 +38,14 @@ describe('shippie wrap', () => {
       type: 'app',
       category: 'tools',
       log: (s) => out.push(s),
-    });
+    })).rejects.toThrow(/wrap retired/);
     const joined = out.join('\n');
-    expect(joined).toContain('wrapped');
-    expect(joined).toContain('mevrouw');
-    expect(joined).toContain('https://mevrouw.shippie.app/');
-    expect(joined).toContain('https://mevrouw.shippie.app/api/auth/callback');
+    expect(joined).toContain('no longer wraps hosted cloud apps');
+    expect(joined).toContain('shippie deploy ./dist');
+    expect(joined).toContain('local-tool policy scanner');
   });
 
-  test('passes remix and source metadata to the wrap endpoint', async () => {
+  test('does not call the retired wrap endpoint', async () => {
     const bodies: unknown[] = [];
     mock.module('../api.js', () => ({
       postJson: async (_opts: { apiUrl: string }, _path: string, body: unknown) => {
@@ -63,7 +62,7 @@ describe('shippie wrap', () => {
     }));
     const { wrapCommand: isolatedWrapCommand } = await import(`./wrap?case=${Date.now()}`);
 
-    await isolatedWrapCommand({
+    await expect(isolatedWrapCommand({
       upstreamUrl: 'https://mevrouw.example.com',
       slug: 'mevrouw-remix',
       apiUrl: 'https://shippie.app',
@@ -72,14 +71,8 @@ describe('shippie wrap', () => {
       license: 'MIT',
       remixable: true,
       log: () => {},
-    });
+    })).rejects.toThrow(/Convert to shippie\.local\.db/);
 
-    expect(bodies).toHaveLength(1);
-    const body = bodies[0] as Record<string, unknown>;
-    expect(body.slug).toBe('mevrouw-remix');
-    expect(body.remix_from).toBe('mevrouw');
-    expect(body.source_repo).toBe('https://github.com/acme/mevrouw-remix');
-    expect(body.license).toBe('MIT');
-    expect(body.remix_allowed).toBe(true);
+    expect(bodies).toHaveLength(0);
   });
 });

@@ -60,7 +60,7 @@ async function main() {
         isMobile: width < 768,
       });
       const page = await context.newPage();
-      const url = `${TARGET}${route}`;
+      const url = /^https?:\/\//i.test(route) ? route : new URL(route, TARGET).toString();
       const result = { route, width, url, ok: true, errors: [] };
 
       try {
