@@ -37,6 +37,12 @@ Green = baseline acceptable. As of 2026-04-26: 26/26 typecheck, 31/31 test (33 p
 
 Internal packages expose `exports.types` and `exports.import` as `./src/index.ts`, **not** `./dist/...`. Source resolution is immune to `tsup --clean` races during parallel typecheck/build. If you find a package still pointing at `dist`, it's an outlier — bring it in line with `local-db`, `ambient`, `backup-providers`, `intelligence`, `proximity`.
 
+## Showcase kit (`@shippie/showcase-kit-v2`)
+
+`packages/showcase-kit-v2` holds six shared showcase primitives — `EmptyState`, `OnboardingFlow`, `IntentToastHost`, `QrShareSheet`, `BackupCard`, `KeepsakeRenderer`. The four flagship showcases (`showcase-{chiwit,recipe,match-room,world-cup-fantasy}`) integrate it.
+
+**Invariant — the kit ships zero CSS.** It's logic-only by design: every app paints the `shippie-*` classes (`.shippie-onboarding`, `.shippie-intent-toast`, `.shippie-qr-sheet`, `.shippie-backup-card`, `.shippie-empty-state`) in its own palette inside its `styles.css`. An app that imports the kit without writing that skin block (~56 rules) ships visibly-broken unstyled components. `showcase-chiwit/src/styles.css` is the reference skin. If you add the kit to a new showcase, the skin block is a required deliverable, not optional.
+
 ## Where things live
 
 | What | Where |
