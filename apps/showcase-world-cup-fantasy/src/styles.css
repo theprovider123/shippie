@@ -698,3 +698,166 @@ label {
   opacity: 0.7;
   letter-spacing: 0;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+ * showcase-kit-v2 — World Cup Fantasy skin
+ * Selectors live in @shippie/showcase-kit-v2; painted here in the
+ * squad-sheet voice — pitch-green primary, gold-leaf accent, cream paper.
+ * ════════════════════════════════════════════════════════════════════ */
+
+.shippie-onboarding {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center; padding: 1rem;
+  background: rgba(10, 57, 40, 0.55); backdrop-filter: blur(10px);
+  animation: shippie-onboarding-fade 220ms ease both;
+}
+@keyframes shippie-onboarding-fade { from { opacity: 0; } to { opacity: 1; } }
+.shippie-onboarding__surface {
+  width: min(520px, 100%); background: var(--cream);
+  border: 1px solid rgba(23, 21, 19, 0.24); border-radius: 10px;
+  padding: 1.75rem 1.6rem 1.4rem; box-shadow: 0 22px 60px rgba(10, 57, 40, 0.3);
+}
+.shippie-onboarding__progress { display: flex; gap: 0.45rem; margin-bottom: 1rem; }
+.shippie-onboarding__dot { display: block; flex: 1; height: 4px; border-radius: 4px; background: rgba(201, 162, 75, 0.28); }
+.shippie-onboarding__dot.is-current { background: var(--gold); }
+.shippie-onboarding__title {
+  margin: 0 0 0.55rem; font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(1.4rem, 4vw, 1.85rem); line-height: 1.1;
+  letter-spacing: -0.018em; color: var(--ink);
+}
+.shippie-onboarding__body {
+  font-family: var(--font-body); color: var(--muted);
+  line-height: 1.5; font-size: 1.02rem; margin-bottom: 1.4rem;
+}
+.shippie-onboarding__actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; }
+.shippie-onboarding__skip {
+  min-height: 44px; padding: 0.55rem 0.9rem; background: transparent;
+  color: var(--muted); border: 0; border-radius: 6px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.shippie-onboarding__skip:hover { color: var(--ink); }
+.shippie-onboarding__next {
+  min-height: 44px; padding: 0.65rem 1.2rem; border-radius: 8px;
+  border: 1px solid var(--pitch); background: var(--pitch); color: var(--cream);
+  font-weight: 600; cursor: pointer; box-shadow: 0 8px 22px rgba(14, 92, 58, 0.28);
+}
+.shippie-onboarding__next:hover { background: var(--pitch-deep); border-color: var(--pitch-deep); }
+
+.shippie-intent-toast {
+  position: fixed; z-index: 90; inset-inline: 0.75rem;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 0.7rem; padding: 0.75rem 0.9rem;
+  background: var(--cream); border: 1px solid var(--line);
+  border-left: 4px solid var(--gold); border-radius: 10px;
+  box-shadow: 0 18px 45px rgba(10, 57, 40, 0.18); cursor: pointer;
+  animation: shippie-intent-toast-in 240ms ease both;
+}
+.shippie-intent-toast--top { top: max(0.75rem, env(safe-area-inset-top)); }
+.shippie-intent-toast--bottom { bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+@media (min-width: 561px) {
+  .shippie-intent-toast { inset-inline: auto; right: 1rem; width: min(420px, 100% - 2rem); }
+}
+@keyframes shippie-intent-toast-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.shippie-intent-toast__icon {
+  display: inline-grid; place-items: center; width: 36px; height: 36px;
+  border-radius: 8px; background: rgba(201, 162, 75, 0.2); font-size: 1.15rem;
+}
+.shippie-intent-toast__text { min-width: 0; display: grid; gap: 0.15rem; }
+.shippie-intent-toast__text strong { font-family: var(--font-display); font-weight: 600; font-size: 0.98rem; color: var(--ink); }
+.shippie-intent-toast__text span {
+  font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.04em; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.shippie-intent-toast__close {
+  width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px;
+  background: transparent; color: var(--muted); font-size: 1.1rem; line-height: 1; cursor: pointer;
+}
+.shippie-intent-toast__close:hover { background: rgba(201, 162, 75, 0.2); color: var(--ink); }
+
+.shippie-empty-state {
+  display: grid; gap: 0.5rem; padding: 1.4rem 1.2rem;
+  background: var(--cream); border: 1px dashed rgba(23, 21, 19, 0.24);
+  border-radius: 10px; text-align: left;
+}
+.shippie-empty-state__eyebrow {
+  margin: 0; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+}
+.shippie-empty-state__headline {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(1.1rem, 3vw, 1.45rem); line-height: 1.18;
+  letter-spacing: -0.014em; color: var(--ink);
+}
+.shippie-empty-state__headline em { font-style: italic; color: var(--gold-deep); }
+.shippie-empty-state__body { margin: 0; color: var(--muted); line-height: 1.45; }
+.shippie-empty-state__cta {
+  justify-self: start; min-height: 44px; padding: 0.55rem 1.1rem;
+  border-radius: 8px; border: 1px solid var(--pitch); background: var(--pitch);
+  color: var(--cream); text-decoration: none; font-weight: 600; margin-top: 0.4rem; cursor: pointer;
+}
+.shippie-empty-state__cta:hover { background: var(--pitch-deep); border-color: var(--pitch-deep); }
+
+.shippie-qr-sheet {
+  position: fixed; inset: 0; z-index: 95;
+  display: grid; place-items: end center; padding: 0.75rem;
+  background: rgba(10, 57, 40, 0.5); backdrop-filter: blur(8px);
+}
+@media (min-width: 561px) { .shippie-qr-sheet { place-items: center; } }
+.shippie-qr-sheet__surface {
+  position: relative; width: min(440px, 100%); padding: 1.4rem 1.3rem 1.2rem;
+  background: var(--cream); border: 1px solid rgba(23, 21, 19, 0.24);
+  border-radius: 14px 14px 6px 6px; box-shadow: 0 24px 60px rgba(10, 57, 40, 0.3);
+  display: grid; gap: 0.8rem;
+}
+.shippie-qr-sheet__title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; color: var(--ink); }
+.shippie-qr-sheet__body { margin: 0; color: var(--muted); font-style: italic; }
+.shippie-qr-sheet__qr {
+  display: grid; place-items: center; padding: 1rem;
+  background: #fff; border: 1px solid var(--line); border-radius: 8px;
+}
+.shippie-qr-sheet__qr svg { width: 100%; height: auto; max-width: 280px; }
+.shippie-qr-sheet__url {
+  display: block; padding: 0.55rem 0.7rem; background: rgba(14, 92, 58, 0.1);
+  border-radius: 6px; font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--pitch-deep); word-break: break-all; line-height: 1.35;
+}
+.shippie-qr-sheet__actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+.shippie-qr-sheet__actions button {
+  min-height: 44px; padding: 0.55rem 1rem; border-radius: 8px;
+  border: 1px solid var(--pitch); background: var(--cream); color: var(--pitch-deep);
+  font-weight: 600; cursor: pointer;
+}
+.shippie-qr-sheet__actions button.primary { background: var(--pitch); color: var(--cream); }
+.shippie-qr-sheet__actions button.primary:hover { background: var(--pitch-deep); }
+.shippie-qr-sheet__close {
+  position: absolute; top: 0.6rem; right: 0.6rem; width: 36px; height: 36px;
+  border: 0; border-radius: 999px; background: transparent; color: var(--muted);
+  font-size: 1.2rem; cursor: pointer;
+}
+.shippie-qr-sheet__close:hover { background: rgba(201, 162, 75, 0.2); color: var(--ink); }
+
+.shippie-backup-card {
+  display: grid; gap: 0.5rem; padding: 1.1rem 1.1rem 1rem; margin: 1.4rem 0 0;
+  background: var(--cream); border: 1px solid var(--line); border-radius: 10px;
+}
+.shippie-backup-card__eyebrow {
+  margin: 0; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+}
+.shippie-backup-card__title {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: 1.3rem; letter-spacing: -0.012em; color: var(--ink);
+}
+.shippie-backup-card__body { margin: 0 0 0.5rem; color: var(--muted); font-style: italic; }
+.shippie-backup-card__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.shippie-backup-card__actions button {
+  min-height: 44px; padding: 0.55rem 1rem; border-radius: 8px;
+  border: 1px solid var(--pitch); background: var(--cream); color: var(--pitch-deep);
+  font-weight: 600; cursor: pointer;
+}
+.shippie-backup-card__actions button:hover { border-color: var(--pitch-deep); box-shadow: 0 6px 16px rgba(14, 92, 58, 0.16); }
+.shippie-backup-card__actions button:disabled { opacity: 0.55; cursor: default; }
+.shippie-backup-card__error { margin: 0; color: var(--warn); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
