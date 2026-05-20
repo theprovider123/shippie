@@ -133,6 +133,14 @@ interface KitchenState {
   avoid: string[];
 }
 
+interface PantryDraft {
+  name: string;
+  quantity: string;
+  unit: string;
+  location: PantryLocation;
+  expiresOn: string;
+}
+
 interface RecipeDraft {
   title: string;
   description: string;
@@ -457,7 +465,7 @@ export function App() {
     }
   });
   const [draft, setDraft] = useState<RecipeDraft>(() => emptyDraft(state.defaultServings));
-  const [pantryDraft, setPantryDraft] = useState({ name: '', quantity: '1', unit: 'ea', location: 'pantry' as PantryLocation });
+  const [pantryDraft, setPantryDraft] = useState<PantryDraft>({ name: '', quantity: '1', unit: 'ea', location: 'pantry', expiresOn: '' });
   const [shopDraft, setShopDraft] = useState('');
   const [skippedToday, setSkippedToday] = useState<Set<string>>(new Set());
   const [recapData, setRecapData] = useState<{ title: string; slug: string; cuisine: string; servingsCooked: number; durationMinutes: number; cookCount: number; ingredients: Array<{ name: string; quantity: number; unit: string }>; photoDataUrl?: string | null } | null>(null);
@@ -717,12 +725,13 @@ export function App() {
           quantity: Number(pantryDraft.quantity) || 1,
           unit: pantryDraft.unit.trim() || 'ea',
           location: pantryDraft.location,
+          expiresOn: pantryDraft.expiresOn.trim() || undefined,
           updatedAt: Date.now(),
         },
         ...prev.pantry,
       ],
     }));
-    setPantryDraft({ name: '', quantity: '1', unit: 'ea', location: 'pantry' });
+    setPantryDraft({ name: '', quantity: '1', unit: 'ea', location: 'pantry', expiresOn: '' });
     shippie.feel.texture('confirm');
   }
 
@@ -1380,8 +1389,8 @@ function PantryView({
   onAdjust,
 }: {
   pantry: PantryItem[];
-  draft: { name: string; quantity: string; unit: string; location: PantryLocation };
-  onDraftChange: (draft: { name: string; quantity: string; unit: string; location: PantryLocation }) => void;
+  draft: PantryDraft;
+  onDraftChange: (draft: PantryDraft) => void;
   onAdd: (event: FormEvent<HTMLFormElement>) => void;
   onAdjust: (itemId: string, delta: number) => void;
 }) {
@@ -1399,6 +1408,13 @@ function PantryView({
           <select value={draft.location} onChange={(event) => onDraftChange({ ...draft, location: event.target.value as PantryLocation })}>
             {LOCATIONS.map((loc) => <option key={loc}>{loc}</option>)}
           </select>
+          <input
+            type="date"
+            value={draft.expiresOn}
+            onChange={(event) => onDraftChange({ ...draft, expiresOn: event.target.value })}
+            aria-label="Expiry date (optional)"
+            title="Expiry date (optional)"
+          />
           <button type="submit" className="primary">Add</button>
         </form>
       </div>
