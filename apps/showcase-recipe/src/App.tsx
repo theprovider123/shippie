@@ -5,7 +5,6 @@ import {
   BackupCard,
   EmptyState,
   IntentToastHost,
-  OnboardingFlow,
   QrShareSheet,
   type IntentLike,
   type IntentSubscription,
@@ -55,12 +54,6 @@ const SOURCE_BADGE: Record<ShoppingItem['source'], { label: string; tone: string
   plan: { label: 'planned', tone: 'badge-plan' },
   pantry: { label: 'pantry gap', tone: 'badge-pantry' },
 };
-
-const ONBOARDING_SLIDES = [
-  { title: 'A cookbook that remembers.', body: 'Save the dishes that work. Palate keeps them on this device, in the order you actually cook them.' },
-  { title: 'Your dishes, your phone — no Pinterest, no Supabase.', body: 'Recipes, plans, pantry and shop live in this browser. Back up when you want; nothing leaves unless you say so.' },
-  { title: 'Cook together. Snap a recipe card later (opt-in).', body: 'Two phones in the same kitchen sync the step + timer. Scanning a recipe card from a book stays optional.' },
-];
 
 interface Ingredient {
   id: string;
@@ -1040,7 +1033,6 @@ export function App() {
         onClose={() => setShareRecipeId(null)}
       />
 
-      <OnboardingFlow appSlug="palate" version={1} slides={ONBOARDING_SLIDES} />
       <IntentToastHost matchers={palateMatchers} source={intentSource} position="top" />
     </main>
   );
@@ -1108,11 +1100,12 @@ function TodayView({
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
-        <div>
+        <TasteBoard recipes={forYou} pantryLow={pantryLow.length} shoppingCount={shoppingCount} onCook={onCook} />
+        <div className="hero-copy">
           <p className="eyebrow">Tonight · {new Date().toLocaleDateString(undefined, { weekday: 'long' })}</p>
           <h1>{firstPick ? firstPick.title : 'Add a recipe to begin'}</h1>
           {tonightPick ? (
-            <p>
+            <p className="hero-status">
               <strong>{tonightPick.have}/{tonightPick.total}</strong> ingredients ready ·{' '}
               {todaysPlan.some((p) => p.recipeId === firstPick?.id)
                 ? 'matches your plan'
@@ -1121,9 +1114,16 @@ function TodayView({
                 : `${shoppingCount > 0 ? `${shoppingCount} on the list` : 'pantry light'}`}
             </p>
           ) : (
-            <p>Choose dinner from what you have, then turn the missing pieces into a list.</p>
+            <p className="hero-status">Choose dinner from what you have, then turn the missing pieces into a list.</p>
           )}
-          <div className="hero-actions">
+          {tonightPick ? (
+            <div className="decision-strip" aria-label="Why this dish">
+              <span><strong>{recipeTotalTime(tonightPick.recipe)}</strong><small>minutes</small></span>
+              <span><strong>{Math.round(tonightPick.pantryFraction * 100)}%</strong><small>pantry ready</small></span>
+              <span><strong>{tonightPick.recipe.personalFit}</strong><small>fit score</small></span>
+            </div>
+          ) : null}
+          <div className={`hero-actions ${firstPick ? 'hero-actions-secondary' : ''}`}>
             <button type="button" className="primary" onClick={() => firstPick ? onCook(firstPick.id) : onNavigate('cookbook')} disabled={!firstPick}>
               {firstPick ? 'Cook this' : 'Add recipe'}
             </button>
@@ -1136,7 +1136,6 @@ function TodayView({
             <button type="button" onClick={() => onNavigate('plan')}>Plan week</button>
           </div>
         </div>
-        <TasteBoard recipes={forYou} pantryLow={pantryLow.length} shoppingCount={shoppingCount} onCook={onCook} />
       </div>
 
       <section className="metric-strip" aria-label="Kitchen status">

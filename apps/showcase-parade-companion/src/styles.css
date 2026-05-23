@@ -196,15 +196,19 @@ button:active { transform: translateY(1px); }
 }
 
 .readiness-chip {
+  width: 100%;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 4px 9px;
   flex-shrink: 0;
   align-items: baseline;
+  text-align: left;
   padding: 8px 20px;
+  border: 0;
   border-bottom: 1px solid var(--line);
   border-left: 3px solid var(--gold);
   background: var(--paper-2);
+  cursor: pointer;
 }
 .readiness-chip strong {
   font-family: var(--mono);

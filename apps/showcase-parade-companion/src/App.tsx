@@ -184,8 +184,13 @@ export function App() {
           <button type="button" className="lost-button" onClick={() => setActive('safety')}>
             Help
           </button>
-          <button type="button" className={`offline-pill ${online ? 'online' : 'offline'}`} onClick={showOfflineStatus}>
-            {online ? 'online' : 'offline'}
+          <button
+            type="button"
+            className={`offline-pill ${online ? 'online' : 'offline'}`}
+            onClick={showOfflineStatus}
+            aria-label={online ? 'Online connection detected' : 'Offline mode status'}
+          >
+            {online ? 'Online' : 'Offline'}
           </button>
         </div>
       </header>
@@ -200,7 +205,7 @@ export function App() {
         <div className="day-banner">Parade day. Keep Location on; signal may not matter.</div>
       ) : null}
 
-      <ReadinessChip pack={pack} />
+      <ReadinessChip pack={pack} onShowStatus={showOfflineStatus} />
       <ImportPreviewSheet
         preview={importPreview?.preview ?? null}
         onJoin={() => void onJoinImport()}

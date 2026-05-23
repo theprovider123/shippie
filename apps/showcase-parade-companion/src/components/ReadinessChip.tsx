@@ -4,11 +4,12 @@ import { packFreshnessLabel } from '../lib/route-pack';
 
 interface ReadinessChipProps {
   pack: RoutePack;
+  onShowStatus?: () => void;
 }
 
 type Readiness = 'checking' | 'ready' | 'needs-online' | 'unknown';
 
-export function ReadinessChip({ pack }: ReadinessChipProps) {
+export function ReadinessChip({ pack, onShowStatus }: ReadinessChipProps) {
   const [readiness, setReadiness] = useState<Readiness>('checking');
   const assets = useMemo(
     () => [
@@ -53,10 +54,15 @@ export function ReadinessChip({ pack }: ReadinessChipProps) {
 
   const copy = readinessCopy(readiness);
   return (
-    <div className={`readiness-chip ${readiness}`} role="status" aria-live="polite">
+    <button
+      type="button"
+      className={`readiness-chip ${readiness}`}
+      onClick={onShowStatus}
+      aria-live="polite"
+    >
       <strong>{copy.title}</strong>
       <span>{copy.detail} · pack {packFreshnessLabel(pack)}</span>
-    </div>
+    </button>
   );
 }
 
