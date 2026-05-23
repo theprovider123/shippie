@@ -22,6 +22,9 @@ export function TemplateEditor({ forkOf, onClose }: TemplateEditorProps) {
   const [name, setName] = useState('');
   const [steps, setSteps] = useState<TemplateStep[]>([]);
   const [busy, setBusy] = useState(false);
+  // Dirty flag — flipped true by any user mutation after the initial seed.
+  // Used to gate Cancel with an "unsaved changes" confirmation.
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,11 +45,20 @@ export function TemplateEditor({ forkOf, onClose }: TemplateEditorProps) {
         setName('New template');
         setSteps([]);
       }
+      // Initial seed shouldn't count as dirty.
+      if (!cancelled) setDirty(false);
     })();
     return () => {
       cancelled = true;
     };
   }, [forkOf, lift.db, lift.templates]);
+
+  function requestClose() {
+    if (dirty && !window.confirm('Discard unsaved changes to this template?')) {
+      return;
+    }
+    onClose();
+  }
 
   function addStep(exerciseId: string) {
     const ex = lift.exercises.find((e) => e.id === exerciseId);
@@ -64,14 +76,17 @@ export function TemplateEditor({ forkOf, onClose }: TemplateEditorProps) {
         target_load_pct: null,
       },
     ]);
+    setDirty(true);
   }
 
   function updateStep(stepId: string, patch: Partial<TemplateStep>) {
     setSteps((prev) => prev.map((s) => (s.id === stepId ? { ...s, ...patch } : s)));
+    setDirty(true);
   }
 
   function removeStep(stepId: string) {
     setSteps((prev) => prev.filter((s) => s.id !== stepId).map((s, i) => ({ ...s, order_index: i })));
+    setDirty(true);
   }
 
   async function handleSave() {
@@ -99,7 +114,7 @@ export function TemplateEditor({ forkOf, onClose }: TemplateEditorProps) {
   return (
     <div className="lift-page">
       <header className="lift-template-editor__head">
-        <button type="button" className="lift-progression__back" onClick={onClose}>
+        <button type="button" className="lift-progression__back" onClick={requestClose}>
           ← Cancel
         </button>
         <h1 className="lift-h1">Edit template</h1>
@@ -111,7 +126,10 @@ export function TemplateEditor({ forkOf, onClose }: TemplateEditorProps) {
           type="text"
           className="lift-search"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            setDirty(true);
+          }}
           aria-label="Template name"
         />
       </label>
