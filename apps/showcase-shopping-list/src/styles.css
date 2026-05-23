@@ -173,6 +173,18 @@ li.done .name { transition: color 200ms ease, text-decoration-color 200ms ease; 
   color: var(--muted);
   cursor: pointer;
 }
+.aisle-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--marigold);
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin: 0;
+}
+.aisle-toggle label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 .aisle-toggle small {
   font-size: 11px;
   color: var(--muted);

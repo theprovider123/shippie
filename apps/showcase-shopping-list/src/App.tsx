@@ -272,10 +272,12 @@ export function App() {
             <input
               type="text"
               value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value)}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
               placeholder="Join code"
               maxLength={8}
               aria-label="Join code"
+              autoCapitalize="characters"
+              spellCheck={false}
             />
             <button onClick={joinExisting} disabled={!joinCode || meshState === 'connecting'}>
               Join
@@ -298,12 +300,13 @@ export function App() {
         <button type="submit">Add</button>
       </form>
 
-      {items.length > 0 && aisleAvailable !== false && (
+      {aisleAvailable !== false && (
         <div className="aisle-toggle">
           <label>
             <input
               type="checkbox"
               checked={groupByAisle}
+              disabled={items.length === 0}
               onChange={(e) => setGroupByAisle(e.target.checked)}
             />
             Group by aisle
