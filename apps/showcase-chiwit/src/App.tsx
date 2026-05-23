@@ -1155,6 +1155,7 @@ function PatternsView({
              consistency >= 40 ? 'A few quiet days. That is okay.' :
              'Logging is sparse this week. Three signals counts as a day.'}
           </small>
+          <small className="consistency-legend">Days with 3+ signals logged · last 7</small>
         </div>
         <meter min={0} max={100} value={consistency} />
       </section>
