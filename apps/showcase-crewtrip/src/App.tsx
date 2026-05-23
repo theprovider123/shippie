@@ -1,3 +1,6 @@
+// TODO(2026-05-23 review, batch_B): App.tsx is ~3400 lines. Split into feature modules
+// with a shared state provider (timeline, inbox, tournaments, host setup, wrap, chat).
+// Tracked in docs/reviews/_batch_B.md (showcase-crewtrip → UI polish).
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ChangeEvent } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
@@ -579,10 +582,21 @@ export function App() {
     return [...messageItems, ...broadcastItems, ...requestItems].sort((a, b) => b.rank - a.rank);
   }, [activePlayer.groupId, activePlayer.id, groups, messages, role, visibleBroadcasts, visibleInboxRequests]);
   const visibleChatTimelineItems = inboxItems;
-  const openOwnRequests = state.requests.filter((request) => request.authorId === activePlayer.id && request.status !== 'done');
-  const headerInboxCount = (inboxEnabled ? inboxMessages.length : 0)
-    + (features.requests ? (role === 'host' ? pendingRequests.length : openOwnRequests.length) : 0)
-    + (inboxEnabled ? visibleBroadcasts.filter((broadcast) => !messages.some((message) => message.id === broadcast.id)).length : 0);
+  const openOwnRequests = useMemo(
+    () => state.requests.filter((request) => request.authorId === activePlayer.id && request.status !== 'done'),
+    [state.requests, activePlayer.id],
+  );
+  const headerInboxCount = useMemo(() => {
+    const messageIdSet = new Set(messages.map((message) => message.id));
+    const messagesPart = inboxEnabled ? inboxMessages.length : 0;
+    const requestsPart = features.requests
+      ? (role === 'host' ? pendingRequests.length : openOwnRequests.length)
+      : 0;
+    const broadcastsPart = inboxEnabled
+      ? visibleBroadcasts.reduce((count, broadcast) => count + (messageIdSet.has(broadcast.id) ? 0 : 1), 0)
+      : 0;
+    return messagesPart + requestsPart + broadcastsPart;
+  }, [features.requests, inboxEnabled, inboxMessages.length, messages, openOwnRequests.length, pendingRequests.length, role, visibleBroadcasts]);
   const headerInboxIcon: IconName = features.requests && (pendingRequests.length > 0 || !features.chat) ? 'requests' : 'chat';
   const wrapMemories = state.memories.slice(0, 10);
   const memoryStats = useMemo(() => ({
