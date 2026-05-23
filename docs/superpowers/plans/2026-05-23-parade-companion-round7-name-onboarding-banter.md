@@ -3,6 +3,8 @@
 > Branch status at write: **typecheck clean · 37/37 tests · build OK · `f54e1c09 feat(showcase): tighten parade group hub launch`** is the latest parade commit.
 > Group Hub (Identity · Plan · Members · Chat · Side tings) is shipped and clean. This round adds three things: a personal name, a first-run guide, and a Banter tab for joy.
 
+> Codex amendment: keep Round 7 one-time-use and offline-first. Banter ships as **cue cards, local votes, and local cheer taps**. No full lyrics, no public wall, no relay dependency for v1. Future relay sync can read the same local records, but the parade-day UI must remain useful in airplane mode.
+
 ---
 
 ## 1. Quick state review (what's working)
@@ -109,7 +111,7 @@ Triggered on first launch when `!localStorage.getItem('parade-companion:onboarde
 ### Implementation
 
 - New `components/Onboarding.tsx` — overlay (z-index above ToastHost), one-component flow.
-- New `lib/onboarded.ts` — flag set + check helpers (mirrors `display-name.ts`).
+- New `lib/onboarding.ts` — flag set + check helpers (mirrors `display-name.ts`).
 - App.tsx renders `<Onboarding ... />` conditionally on first run; dismiss sets the flag + saves the name.
 - Skip on slide 1 = sets the flag without a name (defaults to "Me"; user can edit later).
 
@@ -142,9 +144,9 @@ Still tight. The sequence reads: **utility · coordination · fun · safety net.
 
 ### Three cards in the Banter screen
 
-#### ① Chants & lyrics
+#### ① Chant cues
 
-A scrollable song-book. **Static** content baked into the route pack (or a sibling `chants.json` in `runtime_assets`). Offline-first.
+A scrollable cue-book. **Static** content baked into the route pack. Offline-first. Do **not** ship full copyrighted lyrics; ship titles, short prompts, and "phones away" nudges.
 
 Data model:
 
@@ -152,24 +154,23 @@ Data model:
 interface Chant {
   id: string;
   title: string;
-  tune?: string;        // "to the tune of Hey Jude"
-  verses: string[];     // each verse as one string with \n line breaks
-  chorus?: string;
+  cue: string;
+  detail: string;
 }
 ```
 
-5–10 chants for v1. Each renders as a paper card; tap the title to expand the lyrics. Title in italic Fraunces (1.2rem), tune note in mono (smaller, ink-mute), lyrics in mono (12.5px, line-height 1.45, paper-2 surface inside the card for "printed programme" feel).
+5–10 chant cues for v1. Each renders as one sharp paper row; tap the title to expand the detail. Title in General Sans bold, cue in mono red, detail in small ink-dim copy. The point is a 2-second prompt, not a song-book.
 
 A **search/filter** bar is overkill at 10 items — skip it. A 1-tap "Random chant" button might be fun, but defer.
 
 #### ② Polls
 
-2–3 group-scoped polls per parade. Pre-defined questions + options baked into the route pack.
+2–3 local-first polls per parade. Pre-defined questions + options baked into the route pack. Group relay can merge later, but v1 must work fully in airplane mode.
 
 Defaults for parade day:
-- **"Player of the season?"** — Saka · Ødegaard · Saliba · Rice · Other.
-- **"Best moment this season?"** — Open-text (or a curated list).
-- **"Pub after?"** — Group's own list (members can suggest).
+- **"Player of the season?"** — Saka · Odegaard · Saliba · Rice · Other.
+- **"Best moment this season?"** — curated list only.
+- **"After the parade?"** — Pub · Park · Food · Home · Still deciding.
 
 Data model:
 
@@ -182,7 +183,7 @@ interface Poll {
 }
 ```
 
-Voting model — new relay packet kind:
+Voting model — local v1, relay-ready later:
 
 ```ts
 type PollVotePacket = {
@@ -196,7 +197,7 @@ type PollVotePacket = {
 };
 ```
 
-Storage: new `lib/polls.ts` module + local `poll_vote` store (same shape as group_events).
+Storage: new local banter module with one vote per poll per phone. Relay packets remain P1.
 
 UI: each poll renders as a card — question in italic Fraunces, options as chips (paper, sharp, 1px line). Tap an option to vote. Below: a small horizontal stacked bar showing percentages (paper-2 fill, sage for leading option). Vote count shown in mono.
 
@@ -204,7 +205,7 @@ UI: each poll renders as a card — question in italic Fraunces, options as chip
 
 Celebratory taps — pure expression, no message.
 
-5–6 tiles in a grid: **🏆 Champions** · **❤️🤍 COYG** · **Premier League** · **Up the Gunners** · **Mikel** · **🍻 Cheers**.
+5–6 tiles in a grid: **Champions** · **COYG** · **North London** · **Mikel** · **Reds** · **One more song**.
 
 Each tap:
 - Increments a local counter.
@@ -218,7 +219,7 @@ The counter display: a big mono number on each tile (your own total). When the r
 
 ```
 section.banter-hub (gap 14px stacked cards)
-  ① Chants & lyrics  (panel)
+  ① Chant cues       (panel)
   ② Polls            (panel)
   ③ Cheer            (panel — tile grid inside)
 ```
@@ -233,8 +234,8 @@ Banter content needs to be available **offline**. Three layers of content delive
 
 | Content | Where it lives | Offline? |
 |---|---|---|
-| Chant lyrics | `pack.chants[]` in `route-pack.json` (already in `runtime_assets`) | ✅ Yes — comes down with the route pack |
-| Poll definitions | `pack.polls[]` similarly baked | ✅ Yes |
+| Chant cues | `pack.banter.chants[]` in `route-pack.json` (already in `runtime_assets`) | ✅ Yes — comes down with the route pack |
+| Poll definitions | `pack.banter.polls[]` similarly baked | ✅ Yes |
 | Poll votes | Local `poll_vote` store + relay sync when up | ✅ Local-first |
 | Cheer counters | Local `cheer_count` store + relay sync (P1) | ✅ Local-first |
 
@@ -247,19 +248,19 @@ Route pack stays a single JSON; the additional sections add maybe **5–8 KB** t
 ### P0 — must ship for parade
 
 1. **`lib/display-name.ts`** + wire into `GroupScreen.onSignal`.
-2. **`components/Onboarding.tsx`** with two slides, `lib/onboarded.ts` flag, App.tsx conditional mount.
+2. **`components/Onboarding.tsx`** with two slides, `lib/onboarding.ts` flag, App.tsx conditional mount.
 3. **Topbar overflow menu** with **Edit name** sheet (small modal; reuses the toast / panel styles).
 4. **Delete `components/ShareMyDotEmptyState.tsx`** (dead code).
 5. **Banter tab — minimum viable:**
    - 4th nav entry `'banter'` in App.tsx + new `screens/BanterScreen.tsx`.
-   - Chants card with static content from `pack.chants[]` (extend `parade-2026.ts` types + `route-pack.json` data).
+   - Chants card with static cue content from `pack.banter.chants[]` (extend `parade-2026.ts` types + `route-pack.json` data).
    - Cheer card with **local** counters (6 tiles, haptic, counter). No relay broadcast yet.
+   - Polls card with **local** votes. Relay merge remains P1.
 6. **Side tings empty copy** tightened (one-liner change).
 
 ### P1 — try to land
 
-7. **Polls card** in Banter — uses the existing relay infra; new `poll_vote` packet kind.
-8. **Cheer relay broadcast** — same packet plumbing as chat signals.
+7. **Cheer relay broadcast** — same packet plumbing as chat signals.
 9. **Bus timing collapse-to-chip** post-departure on the Map screen.
 10. **"Parade is tomorrow" banner** the day before (Setup nudge).
 
@@ -277,7 +278,7 @@ Route pack stays a single JSON; the additional sections add maybe **5–8 KB** t
 1. **Banter as a 4th nav tab — confirm?** Alternative is folding into Group Hub as a card; recommend keeping it separate so Group stays focused on coordination and Banter stays focused on joy.
 2. **Onboarding skippable from slide 1?** Recommend yes — the name is fixable later. Pressing through resistance on slide 1 doesn't help adoption.
 3. **Cheer broadcast to group in v1 (P0) or local-only (defer to P1)?** Recommend **local-only in v1** — relay bandwidth is precious; cheers are the easiest to make optional. Group aggregation lands v1.1.
-4. **Polls in v1 (P1) or v1.1?** Recommend P1 — they're delightful but require the relay client to be reliably wired first.
+4. **Polls in v1 or v1.1?** Ship local-first in v1; relay aggregation stays v1.1.
 
 ---
 

@@ -15,7 +15,13 @@ export type ParadeAnalyticsEvent =
   | 'parade_road_reported'
   | 'parade_help_reported'
   | 'parade_sync_qr_opened'
-  | 'parade_signal_imported';
+  | 'parade_signal_imported'
+  | 'parade_onboarding_completed'
+  | 'parade_onboarding_skipped'
+  | 'parade_display_name_saved'
+  | 'parade_banter_chant_opened'
+  | 'parade_banter_poll_voted'
+  | 'parade_banter_cheer_tapped';
 
 type QueuedAnalyticsEvent = {
   event: ParadeAnalyticsEvent;

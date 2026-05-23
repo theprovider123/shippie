@@ -32,6 +32,24 @@ export interface RoutePoi extends LngLat {
   note?: string;
 }
 
+export interface RouteBanterChant {
+  id: string;
+  title: string;
+  cue: string;
+  detail: string;
+}
+
+export interface RouteBanterPoll {
+  id: string;
+  question: string;
+  options: Array<{ id: string; label: string }>;
+}
+
+export interface RouteBanter {
+  chants: RouteBanterChant[];
+  polls: RouteBanterPoll[];
+}
+
 export interface RoutePack {
   schemaVersion: 1;
   packVersion: string;
@@ -57,6 +75,7 @@ export interface RoutePack {
   meetingLandmarks: Array<{ id: string; label: string; lng: number; lat: number; note?: string }>;
   safety: Array<{ heading: string; body: string }>;
   scheduleEstimate: Array<{ label: string; time: string; note?: string }>;
+  banter?: RouteBanter;
 }
 
 export const CORRIDOR_EXTENT: MapExtent = {
@@ -234,4 +253,73 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
     { label: 'Expected movement along the corridor', time: '14:20-15:15', note: 'Estimated, not live.' },
     { label: 'Crowds disperse toward stations and side streets', time: '15:30+', note: 'Leave extra time.' },
   ],
+  banter: {
+    chants: [
+      {
+        id: 'north-london-forever',
+        title: 'North London Forever',
+        cue: 'Start soft, let the crowd carry it.',
+        detail: 'Use this as a cue card only. Keep phones down once the song starts.',
+      },
+      {
+        id: 'come-on-you-reds',
+        title: 'Come on you reds',
+        cue: 'Short call. Big clap. Repeat once.',
+        detail: 'Best when the bus appears or a nearby section starts moving.',
+      },
+      {
+        id: 'champions-again',
+        title: 'Champions again',
+        cue: 'Point at the bus, then join the chant around you.',
+        detail: 'A quick prompt for the trophy moment, not a lyrics screen.',
+      },
+      {
+        id: 'mikel-reds',
+        title: 'Mikel and the reds',
+        cue: 'Manager cue. Keep it loud, keep it clean.',
+        detail: 'For the quieter waits between route movements.',
+      },
+      {
+        id: 'up-the-arsenal',
+        title: 'Up the Arsenal',
+        cue: 'One line, full voice, phones away.',
+        detail: 'Works as a call-and-response nudge for your group.',
+      },
+    ],
+    polls: [
+      {
+        id: 'player-of-season',
+        question: 'Player of the season',
+        options: [
+          { id: 'saka', label: 'Saka' },
+          { id: 'rice', label: 'Rice' },
+          { id: 'saliba', label: 'Saliba' },
+          { id: 'odegaard', label: 'Odegaard' },
+          { id: 'other', label: 'Other' },
+        ],
+      },
+      {
+        id: 'moment-of-season',
+        question: 'Moment of the season',
+        options: [
+          { id: 'title-confirmed', label: 'Title confirmed' },
+          { id: 'derby-day', label: 'Derby day' },
+          { id: 'late-winner', label: 'Late winner' },
+          { id: 'clean-sheet-run', label: 'Clean sheet run' },
+          { id: 'other', label: 'Other' },
+        ],
+      },
+      {
+        id: 'after-parade',
+        question: 'After the parade',
+        options: [
+          { id: 'pub', label: 'Pub' },
+          { id: 'park', label: 'Park' },
+          { id: 'food', label: 'Food' },
+          { id: 'home', label: 'Home' },
+          { id: 'deciding', label: 'Still deciding' },
+        ],
+      },
+    ],
+  },
 };

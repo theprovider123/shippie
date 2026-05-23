@@ -27,6 +27,7 @@ import { showToast } from '../lib/toast';
 interface GroupScreenProps {
   pack: RoutePack;
   plan: GroupPlan | null;
+  displayName: string;
   onSave: (plan: GroupPlan) => Promise<void>;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
   sideTingsRefresh?: number;
@@ -41,6 +42,7 @@ interface GroupScreenProps {
 export function GroupScreen({
   pack,
   plan,
+  displayName,
   onSave,
   onTrack,
   sideTingsRefresh,
@@ -120,16 +122,17 @@ export function GroupScreen({
   };
 
   const shareMyDot = async () => {
+    const name = displayName || 'Me';
     const solo = ensurePlanRoom({
       ...createDefaultGroupPlan(pack),
       name: 'Just me',
-      members: ['Me'],
+      members: [name],
       roleHint: 'watch',
       updatedAt: new Date().toISOString(),
     });
     await onSave(solo);
     setDraft(solo);
-    setMembersText('Me');
+    setMembersText(name);
     setDraftHydrated(true);
     const fragment = await encodePlan(solo);
     setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
@@ -143,7 +146,6 @@ export function GroupScreen({
   };
 
   const onSignal = (preset: ChatPreset) => {
-    const displayName = plan?.members[0] ?? membersText.split(',')[0]?.trim() ?? 'Me';
     addGroupEvent({
       kind: 'group_signal',
       source_id: getOrCreateSourceId(),

@@ -41,7 +41,7 @@ export function SideTingsCard({ onAdd, refreshKey, onChange }: SideTingsCardProp
       </div>
       {rows.length === 0 ? (
         <p className="side-tings-card__empty">
-          Watch another crew on your map. Scan their QR or paste their code to add them.
+          Add a friend's QR to watch their crew here.
         </p>
       ) : (
         <ul className="side-tings-card__list">

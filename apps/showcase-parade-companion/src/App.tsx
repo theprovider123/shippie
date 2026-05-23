@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ImportPreviewSheet, type ImportPreview } from './components/ImportPreviewSheet';
+import { Onboarding } from './components/Onboarding';
 import { ReadinessChip } from './components/ReadinessChip';
 import { ToastHost } from './components/ToastHost';
+import { BanterScreen } from './screens/BanterScreen';
 import { GroupScreen } from './screens/GroupScreen';
 import { MapScreen } from './screens/MapScreen';
 import { SafetyScreen } from './screens/SafetyScreen';
+import { cleanDisplayName, getDisplayName, setDisplayName as saveDisplayName } from './lib/display-name';
 import { decodePlan, type GroupPlan } from './lib/group-plan';
 import {
   listBusMarkers,
@@ -18,14 +21,16 @@ import { loadRoutePack, packFreshnessLabel } from './lib/route-pack';
 import type { BusMarker } from './lib/bus';
 import { decodeFanEventsSync, dedupeFanEvents, sortEvents, type FanEvent } from './lib/fan-events';
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
+import { isOnboarded, markOnboarded } from './lib/onboarding';
 import { addSideTing } from './lib/side-tings';
 import { showToast } from './lib/toast';
 
-type Screen = 'map' | 'group' | 'safety';
+type Screen = 'map' | 'group' | 'banter' | 'safety';
 
 const nav: Array<{ id: Screen; label: string }> = [
   { id: 'map', label: 'Map' },
   { id: 'group', label: 'Group' },
+  { id: 'banter', label: 'Banter' },
   { id: 'safety', label: 'Safety' },
 ];
 
@@ -38,6 +43,11 @@ export function App() {
   const [fanEvents, setFanEvents] = useState<FanEvent[]>([]);
   const [importStatus, setImportStatus] = useState('');
   const [sideTingsRefresh, setSideTingsRefresh] = useState(0);
+  const [displayName, setDisplayNameState] = useState(() => getDisplayName());
+  const [onboardingOpen, setOnboardingOpen] = useState(() => !isOnboarded());
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [nameEditorOpen, setNameEditorOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState(displayName);
   const online = useOnlineStatus();
 
   useEffect(() => {
@@ -173,6 +183,30 @@ export function App() {
     showToast(`Saved offline. Map and fonts are on this phone · pack ${packFreshnessLabel(pack)}`, 'success');
   };
 
+  const finishOnboarding = (name: string) => {
+    const saved = saveDisplayName(name);
+    setDisplayNameState(saved);
+    setNameDraft(saved);
+    markOnboarded();
+    setOnboardingOpen(false);
+    trackParadeAction('parade_onboarding_completed', { display_name_set: saved !== 'Me' });
+  };
+
+  const skipOnboarding = () => {
+    markOnboarded();
+    setOnboardingOpen(false);
+    trackParadeAction('parade_onboarding_skipped');
+  };
+
+  const saveName = () => {
+    const saved = saveDisplayName(cleanDisplayName(nameDraft));
+    setDisplayNameState(saved);
+    setNameDraft(saved);
+    setNameEditorOpen(false);
+    showToast(`Name saved: ${saved}`, 'success');
+    trackParadeAction('parade_display_name_saved', { display_name_set: saved !== 'Me' });
+  };
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -181,9 +215,6 @@ export function App() {
           <span>Islington · unofficial local tool</span>
         </div>
         <div className="topbar-actions">
-          <button type="button" className="lost-button" onClick={() => setActive('safety')}>
-            Help
-          </button>
           <button
             type="button"
             className={`offline-pill ${online ? 'online' : 'offline'}`}
@@ -192,6 +223,51 @@ export function App() {
           >
             {online ? 'Online' : 'Offline'}
           </button>
+          <div className="topbar-menu-wrap">
+            <button
+              type="button"
+              className="more-button"
+              aria-label="App options"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((current) => !current)}
+            >
+              ...
+            </button>
+            {menuOpen ? (
+              <div className="topbar-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setNameEditorOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  Edit name
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setActive('safety');
+                    setMenuOpen(false);
+                  }}
+                >
+                  Help
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    showToast('Unofficial local-first parade companion. Save it before you travel.');
+                    setMenuOpen(false);
+                  }}
+                >
+                  About
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -213,6 +289,37 @@ export function App() {
         onDismiss={() => setImportPreview(null)}
       />
       <ToastHost />
+      <Onboarding
+        open={onboardingOpen}
+        initialName={displayName}
+        onFinish={finishOnboarding}
+        onSkip={skipOnboarding}
+      />
+      {nameEditorOpen ? (
+        <div className="name-sheet" role="dialog" aria-modal="true" aria-labelledby="name-sheet-title">
+          <div className="name-sheet__surface">
+            <p className="eyebrow">Display name</p>
+            <h2 id="name-sheet-title">What should friends see?</h2>
+            <label className="name-field">
+              Name
+              <input
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.currentTarget.value)}
+                maxLength={24}
+                autoFocus
+              />
+            </label>
+            <div className="name-sheet__actions">
+              <button type="button" className="secondary-action" onClick={() => setNameEditorOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="primary-action" onClick={saveName}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="screen-host">
         {active === 'map' ? (
@@ -232,12 +339,14 @@ export function App() {
           <GroupScreen
             pack={pack}
             plan={plan}
+            displayName={displayName}
             onSave={onSavePlan}
             onTrack={trackParadeAction}
             sideTingsRefresh={sideTingsRefresh}
             onSideTingsRefresh={() => setSideTingsRefresh((current) => current + 1)}
           />
         ) : null}
+        {active === 'banter' ? <BanterScreen pack={pack} onTrack={trackParadeAction} /> : null}
         {active === 'safety' ? <SafetyScreen pack={pack} /> : null}
       </div>
 
