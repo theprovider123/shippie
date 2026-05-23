@@ -10,11 +10,11 @@ import { and, eq, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { getDrizzleClient, schema } from '$server/db/client';
-import { patchAppMeta } from '$server/deploy/kv-write';
+import { isAppVisibilityScope, setAppVisibility } from '$server/apps/visibility';
 
 export const PATCH: RequestHandler = async (event) => {
   const env = event.platform?.env;
-  if (!env?.DB || !env?.CACHE) throw error(500, 'platform bindings unavailable');
+  if (!env?.DB) throw error(500, 'platform bindings unavailable');
 
   const who = await resolveRequestUserId(event);
   if (!who) return json({ error: 'unauthenticated' }, { status: 401 });
@@ -27,7 +27,7 @@ export const PATCH: RequestHandler = async (event) => {
   }
 
   const visibility = body.visibility_scope;
-  if (visibility !== 'public' && visibility !== 'unlisted' && visibility !== 'private' && visibility !== 'team') {
+  if (!isAppVisibilityScope(visibility)) {
     return json({ error: 'invalid_input' }, { status: 400 });
   }
   const organization = typeof body.organization === 'string'
@@ -61,30 +61,37 @@ export const PATCH: RequestHandler = async (event) => {
     return json({ error: 'invalid_or_forbidden_organization' }, { status: 403 });
   }
 
-  await db
-    .update(schema.apps)
-    .set({ visibilityScope: visibility, organizationId, updatedAt: new Date().toISOString() })
-    .where(eq(schema.apps.id, app.id));
+  const result = await setAppVisibility({
+    db,
+    cache: env.CACHE ?? null,
+    app: {
+      id: app.id,
+      slug,
+      visibilityScope: app.visibilityScope,
+      organizationId: app.organizationId,
+    },
+    visibility,
+    organizationId,
+  });
 
   await db.insert(schema.auditLog).values({
     organizationId: organizationId ?? null,
     actorUserId: who.userId,
-    action: visibility === 'public' && app.visibilityScope !== 'public' ? 'promoted' : 'visibility_changed',
+    action: visibility === 'public' && result.before.visibilityScope !== 'public' ? 'promoted' : 'visibility_changed',
     targetType: 'app',
     targetId: app.id,
     metadata: {
       slug,
-      before: app.visibilityScope,
-      after: visibility,
+      before: result.before.visibilityScope,
+      after: result.after.visibilityScope,
     },
   });
 
-  await patchAppMeta(env.CACHE, slug, {
-    visibility_scope: visibility,
-    organization_id: organizationId ?? undefined,
+  return json({
+    success: true,
+    visibility_scope: result.after.visibilityScope,
+    metadata_synced: result.metadataSynced,
   });
-
-  return json({ success: true });
 };
 
 async function resolveTeamOrganization(

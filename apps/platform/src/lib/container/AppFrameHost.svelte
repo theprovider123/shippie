@@ -16,9 +16,12 @@
   dashboard-mode renders can both reuse it.
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { ContainerApp } from '$lib/container/state';
   import type { FrameStates } from '$lib/container/frame-runtime';
   import RocketLoader from '$lib/components/ui/RocketLoader.svelte';
+
+  type RegisterCleanup = { destroy?: () => void } | void;
 
   interface Props {
     app: ContainerApp;
@@ -34,7 +37,7 @@
     packageFrameSrc: string | null;
     /** Generated fallback srcdoc — last-resort src. */
     srcdoc: string;
-    onRegister: (node: HTMLIFrameElement, appId: string) => void;
+    onRegister: (node: HTMLIFrameElement, appId: string) => RegisterCleanup;
     onReady: (appId: string, node: HTMLIFrameElement) => void;
     onError: (appId: string, message?: string) => void;
     onReload: (appId: string) => void;
@@ -55,44 +58,101 @@
     onReload,
     onGoHome,
   }: Props = $props();
+
+  let parentHash = $state('');
+  let activeFrame: HTMLIFrameElement | null = null;
+  const runtimeSrcWithHash = $derived(srcWithHash(runtimeSrc, parentHash));
+  const packageFrameSrcWithHash = $derived(srcWithHash(packageFrameSrc, parentHash));
+
+  onMount(() => {
+    const updateHash = () => {
+      parentHash = window.location.hash;
+      postParentHashBurst();
+    };
+    updateHash();
+    window.addEventListener('hashchange', updateHash);
+    return () => window.removeEventListener('hashchange', updateHash);
+  });
+
+  function registerFrame(node: HTMLIFrameElement, appId: string) {
+    activeFrame = node;
+    const cleanup = onRegister(node, appId);
+    postParentHashBurst(node);
+    return {
+      destroy() {
+        if (activeFrame === node) activeFrame = null;
+        cleanup?.destroy?.();
+      },
+    };
+  }
+
+  function handleFrameLoad(event: Event) {
+    const node = event.currentTarget as HTMLIFrameElement;
+    activeFrame = node;
+    onReady(app.id, node);
+    postParentHashBurst(node);
+  }
+
+  function postParentHashBurst(node = activeFrame) {
+    postParentHash(node);
+    window.setTimeout(() => postParentHash(node), 50);
+    window.setTimeout(() => postParentHash(node), 250);
+  }
+
+  function postParentHash(node: HTMLIFrameElement | null) {
+    if (!node?.contentWindow || !parentHash) return;
+    node.contentWindow.postMessage(
+      {
+        kind: 'shippie.parent-hash',
+        hash: parentHash,
+      },
+      '*',
+    );
+  }
+
+  function srcWithHash(src: string | null, hash: string): string | null {
+    if (!src) return null;
+    const base = src.split('#')[0];
+    return hash ? `${base}${hash.startsWith('#') ? hash : `#${hash}`}` : base;
+  }
 </script>
 
 <div class="frame-stage" class:active>
   {#key `${app.id}:${reloadNonce}`}
-    {#if runtimeSrc}
+    {#if runtimeSrcWithHash}
       <iframe
-        use:onRegister={app.id}
+        use:registerFrame={app.id}
         data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
         allowfullscreen
-        src={runtimeSrc}
-        onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
+        src={runtimeSrcWithHash}
+        onload={handleFrameLoad}
         onerror={() => onError(app.id)}
       ></iframe>
-    {:else if packageFrameSrc}
+    {:else if packageFrameSrcWithHash}
       <iframe
-        use:onRegister={app.id}
+        use:registerFrame={app.id}
         data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
         allowfullscreen
-        src={packageFrameSrc}
-        onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
+        src={packageFrameSrcWithHash}
+        onload={handleFrameLoad}
         onerror={() => onError(app.id)}
       ></iframe>
     {:else}
       <iframe
-        use:onRegister={app.id}
+        use:registerFrame={app.id}
         data-shippie-app-id={app.id}
         title={`${app.name} container app`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
         allowfullscreen
         {srcdoc}
-        onload={(event) => onReady(app.id, event.currentTarget as HTMLIFrameElement)}
+        onload={handleFrameLoad}
         onerror={() => onError(app.id)}
       ></iframe>
     {/if}

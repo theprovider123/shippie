@@ -12,6 +12,12 @@ export interface PlanPoint {
   time?: string;
 }
 
+export interface RelayRoomRef {
+  roomId: string;
+  roomKey: string;
+  issuedAt: string;
+}
+
 export interface GroupPlan {
   v: 1;
   name: string;
@@ -22,6 +28,8 @@ export interface GroupPlan {
   leavePlan?: string;
   note?: string;
   updatedAt: string;
+  room?: RelayRoomRef;
+  roleHint?: 'join' | 'watch';
 }
 
 export function createDefaultGroupPlan(pack: RoutePack): GroupPlan {
@@ -38,6 +46,19 @@ export function createDefaultGroupPlan(pack: RoutePack): GroupPlan {
     note: '',
     updatedAt: new Date().toISOString(),
   };
+}
+
+export function createRelayRoomRef(): RelayRoomRef {
+  return {
+    roomId: `parade_${randomToken(18)}`,
+    roomKey: randomToken(24),
+    issuedAt: new Date().toISOString(),
+  };
+}
+
+export function ensurePlanRoom(plan: GroupPlan): GroupPlan {
+  if (isValidRoom(plan.room)) return plan;
+  return { ...plan, room: createRelayRoomRef() };
 }
 
 export async function encodePlan(plan: GroupPlan): Promise<string> {
@@ -75,6 +96,8 @@ export function validateGroupPlan(input: unknown): GroupPlan | null {
     leavePlan: typeof input.leavePlan === 'string' ? input.leavePlan.slice(0, 200) : '',
     note: typeof input.note === 'string' ? input.note.slice(0, 200) : '',
     updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : new Date().toISOString(),
+    room: isValidRoom(input.room) ? input.room : undefined,
+    roleHint: input.roleHint === 'join' || input.roleHint === 'watch' ? input.roleHint : undefined,
   };
 }
 
@@ -115,11 +138,21 @@ function compactPlan(plan: GroupPlan): Record<string, unknown> {
     l: plan.leavePlan ?? '',
     o: plan.note ?? '',
     u: plan.updatedAt,
+    r: plan.room ? [plan.room.roomId, plan.room.roomKey, plan.room.issuedAt] : undefined,
+    z: plan.roleHint ?? undefined,
   };
 }
 
 function expandPlan(input: unknown): unknown {
   if (!isRecord(input) || input.v !== 1 || !('n' in input)) return input;
+  const room = Array.isArray(input.r) && input.r.length >= 3
+    ? {
+        roomId: String(input.r[0] ?? ''),
+        roomKey: String(input.r[1] ?? ''),
+        issuedAt: String(input.r[2] ?? ''),
+      }
+    : undefined;
+  const roleHint = input.z === 'join' || input.z === 'watch' ? input.z : undefined;
   return {
     v: 1,
     name: input.n,
@@ -130,6 +163,8 @@ function expandPlan(input: unknown): unknown {
     leavePlan: input.l,
     note: input.o,
     updatedAt: input.u,
+    room,
+    roleHint,
   };
 }
 
@@ -157,4 +192,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isValidRoom(value: unknown): value is RelayRoomRef {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.roomId === 'string' &&
+    value.roomId.length >= 8 &&
+    typeof value.roomKey === 'string' &&
+    value.roomKey.length >= 12 &&
+    typeof value.issuedAt === 'string' &&
+    value.issuedAt.length >= 10
+  );
+}
+
+function randomToken(length: number): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
+  }
+  return Math.random().toString(36).slice(2, 2 + length).padEnd(length, '0');
 }

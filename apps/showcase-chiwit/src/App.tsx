@@ -6,12 +6,10 @@ import {
   EmptyState,
   IntentToastHost,
   KeepsakeRenderer,
-  OnboardingFlow,
   QrShareSheet,
   encodeShareFragment,
   type IntentLike,
   type IntentSubscription,
-  type OnboardingSlide,
 } from '@shippie/showcase-kit-v2';
 import { AMBIENT_BY_KIND, MATCHED_KINDS, MATCHERS, type AmbientSignalKind } from './IntentMatchers';
 import { WeeklyShape, buildWeekShape, isoWeekCode, type WeekDay, type WeekShapeData } from './WeeklyShape';
@@ -142,24 +140,6 @@ const QUICK_ACTIONS: QuickAction[] = [
   { kind: 'movement',  label: 'Movement · 20 min',   helper: 'A short walk counts',   value: 3, amount: 20, unit: 'min' },
   { kind: 'mindful',   label: 'Mindful · 5 min',     helper: 'Recovery · breath',     value: 4, amount: 5, unit: 'min' },
   { kind: 'body',      label: 'Body · okay',         helper: 'Body · 3/5',            value: 3, note: 'okay' },
-];
-
-const ONBOARDING_SLIDES: OnboardingSlide[] = [
-  {
-    title: 'Five signals a day. No app account.',
-    body: 'A signal is a small note — water, sleep, a walk, a mood. Everything stays on this device. Chiwit is local-first; there is no Chiwit cloud.',
-    cta: 'Next',
-  },
-  {
-    title: 'Your other apps already know about your coffee, sleep, workouts. Chiwit reads them so you don’t double-log.',
-    body: 'When a sibling Shippie app logs something, it folds in here as an ambient signal. You’ll see a small icon on the row so you can audit where it came from.',
-    cta: 'Next',
-  },
-  {
-    title: 'Tap a quick-signal pill, or open Log when you have a sentence.',
-    body: 'The shape of the week comes from how often you check in, not how perfectly. Three signals counts as a day.',
-    cta: 'Open Chiwit',
-  },
 ];
 
 function id(prefix: string): string {
@@ -769,7 +749,6 @@ export function App() {
 
   return (
     <main className="chiwit-app">
-      <OnboardingFlow appSlug="chiwit" version={1} slides={ONBOARDING_SLIDES} />
       <IntentToastHost
         matchers={MATCHERS}
         source={{
@@ -919,13 +898,23 @@ function TodayView({
   onDismissInsight: (id: string) => void;
   onNavigate: (tab: Tab) => void;
 }) {
+  const starterSignals = QUICK_ACTIONS.filter((action) => action.kind === 'mood' || action.kind === 'energy' || action.kind === 'hydration');
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
         <div>
           <p className="eyebrow">Today · Daily Pulse</p>
-          <h1>Log one signal. Read the day.</h1>
+          <h1>How are you today?</h1>
           <p className="reading">{reading}</p>
+          <div className="signal-composer" aria-label="Start a check-in">
+            {starterSignals.map((action) => (
+              <button key={action.label} type="button" onClick={() => onQuickLog(action)}>
+                <span style={{ background: KIND_META[action.kind].color }} />
+                <strong>{action.label.replace(' · ', ' ')}</strong>
+                <small>{action.helper}</small>
+              </button>
+            ))}
+          </div>
           <WeekContour values={weekValues} />
           <div className="hero-actions">
             <button type="button" className="primary" onClick={() => onNavigate('track')}>Log now</button>
@@ -1008,7 +997,8 @@ function TrackView({
       <div className="toolbar">
         <div>
           <p className="eyebrow">Track</p>
-          <h1>Log what you feel.</h1>
+          <h1>Check in.</h1>
+          <p className="toolbar-subcopy">One gentle read now, or a specific signal when you know the detail.</p>
         </div>
       </div>
       <div className="form-layout">
@@ -1092,7 +1082,7 @@ function PatternsView({
         <div className="toolbar">
           <div>
             <p className="eyebrow">Patterns</p>
-            <h1>Find the shape of the week.</h1>
+            <h1>Your pattern.</h1>
           </div>
         </div>
         <EmptyState
@@ -1110,7 +1100,7 @@ function PatternsView({
       <div className="toolbar">
         <div>
           <p className="eyebrow">Patterns</p>
-          <h1>Find the shape of the week.</h1>
+          <h1>Your pattern.</h1>
         </div>
         <KeepsakeRenderer
           template={WeeklyShape}
@@ -1195,7 +1185,7 @@ function TimelineView({
         <div className="toolbar">
           <div>
             <p className="eyebrow">Timeline</p>
-            <h1>Your recent rhythm.</h1>
+            <h1>Recent rhythm.</h1>
           </div>
         </div>
         <EmptyState
@@ -1210,7 +1200,7 @@ function TimelineView({
       <div className="toolbar">
         <div>
           <p className="eyebrow">Timeline</p>
-          <h1>Your recent rhythm.</h1>
+          <h1>Recent rhythm.</h1>
         </div>
       </div>
       <nav className="month-scrubber" aria-label="Jump to month">
@@ -1226,7 +1216,7 @@ function TimelineView({
         ))}
       </nav>
       <div className="timeline-list">
-        {days.map((date) => {
+        {days.filter((date) => entriesForDate(state.entries, date).length > 0 || date === today()).slice(0, 12).map((date) => {
           const entries = entriesForDate(state.entries, date).sort((a, b) => b.createdAt - a.createdAt);
           const pulse = computePulse(state, date);
           return (
@@ -1264,7 +1254,7 @@ function DataView({
   return (
     <section className="page-shell data-page">
       <p className="eyebrow">Local data</p>
-      <h1>No Chiwit account. No health cloud.</h1>
+      <h1>Your Chiwit data.</h1>
       <p className="measure">
         Chiwit stores your Daily Pulse on this device. Shippie hosts the app package and recovery wrapper; your entries do not live in a Chiwit or Shippie app database.
       </p>

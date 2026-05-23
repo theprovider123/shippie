@@ -1,23 +1,30 @@
 import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useMemo, useState } from 'react';
+import { ShareMyDotEmptyState } from '../components/ShareMyDotEmptyState';
+import { SideTingsCard } from '../components/SideTingsCard';
 import type { RoutePack } from '../data/parade-2026';
 import {
   createDefaultGroupPlan,
   encodePlan,
+  ensurePlanRoom,
   pointFromLandmark,
   type GroupPlan,
   type PlanPoint,
 } from '../lib/group-plan';
+import type { ParadeAnalyticsEvent } from '../lib/analytics';
+import { hapticConfirm } from '../lib/haptic';
+import { showToast } from '../lib/toast';
 
 interface PlanScreenProps {
   pack: RoutePack;
   plan: GroupPlan | null;
-  pendingImport: GroupPlan | null;
   onSave: (plan: GroupPlan) => Promise<void>;
-  onClearImport: () => void;
+  onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
+  sideTingsRefresh?: number;
+  onSideTingsRefresh: () => void;
 }
 
-export function PlanScreen({ pack, plan, pendingImport, onSave, onClearImport }: PlanScreenProps) {
+export function PlanScreen({ pack, plan, onSave, onTrack, sideTingsRefresh, onSideTingsRefresh }: PlanScreenProps) {
   const [draft, setDraft] = useState<GroupPlan>(() => plan ?? createDefaultGroupPlan(pack));
   const [membersText, setMembersText] = useState(() => (plan?.members ?? []).join(', '));
   const [shareUrl, setShareUrl] = useState('');
@@ -51,32 +58,59 @@ export function PlanScreen({ pack, plan, pendingImport, onSave, onClearImport }:
     await onSave(next);
     setDraft(next);
     setStatus('Saved to this device.');
-    if ('vibrate' in navigator) navigator.vibrate(25);
+    onTrack('parade_plan_saved', {
+      members_count: next.members.length,
+      has_leave_plan: Boolean(next.leavePlan?.trim()),
+    });
+    hapticConfirm();
+    showToast('Saved to this device.', 'success');
   };
 
   const share = async () => {
-    const next = {
+    const next = ensurePlanRoom({
       ...draft,
       members: membersText
         .split(',')
         .map((member) => member.trim())
         .filter(Boolean)
         .slice(0, 12),
+      roleHint: 'join',
       updatedAt: new Date().toISOString(),
-    };
+    });
     await onSave(next);
+    setDraft(next);
     const fragment = await encodePlan(next);
     setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
     setSheetOpen(true);
+    onTrack('parade_plan_share_opened', {
+      members_count: next.members.length,
+      has_leave_plan: Boolean(next.leavePlan?.trim()),
+    });
+    hapticConfirm();
+    showToast('Share QR ready.', 'success');
   };
 
-  const acceptImport = async () => {
-    if (!pendingImport) return;
-    await onSave(pendingImport);
-    setDraft(pendingImport);
-    setMembersText(pendingImport.members.join(', '));
-    onClearImport();
-    setStatus('Imported plan saved to this device.');
+  const shareMyDot = async () => {
+    const solo = ensurePlanRoom({
+      ...createDefaultGroupPlan(pack),
+      name: 'Just me',
+      members: ['Me'],
+      roleHint: 'watch',
+      updatedAt: new Date().toISOString(),
+    });
+    await onSave(solo);
+    setDraft(solo);
+    setMembersText('Me');
+    const fragment = await encodePlan(solo);
+    setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
+    setSheetOpen(true);
+    setStatus('Solo dot saved to this device.');
+    onTrack('parade_plan_share_opened', {
+      members_count: 1,
+      has_leave_plan: Boolean(solo.leavePlan?.trim()),
+    });
+    hapticConfirm();
+    showToast('Share my dot QR ready.', 'success');
   };
 
   return (
@@ -87,20 +121,7 @@ export function PlanScreen({ pack, plan, pendingImport, onSave, onClearImport }:
         <p>Make the plan while you still have signal. The shared link stores the plan in the URL fragment, not on a server.</p>
       </div>
 
-      {pendingImport ? (
-        <div className="import-banner">
-          <div>
-            <strong>Plan link found</strong>
-            <span>{pendingImport.name}</span>
-          </div>
-          <button type="button" onClick={() => void acceptImport()}>
-            Save
-          </button>
-          <button type="button" className="ghost" onClick={onClearImport}>
-            Ignore
-          </button>
-        </div>
-      ) : null}
+      {!plan ? <ShareMyDotEmptyState onShare={() => void shareMyDot()} /> : null}
 
       <form className="form-stack" onSubmit={(event) => event.preventDefault()}>
         <label>
@@ -179,6 +200,15 @@ export function PlanScreen({ pack, plan, pendingImport, onSave, onClearImport }:
         <h2>Remember</h2>
         <p>This is a snapshot. If you change the plan, share a fresh QR or link with everyone.</p>
       </div>
+
+      <SideTingsCard
+        refreshKey={sideTingsRefresh}
+        onChange={onSideTingsRefresh}
+        onAdd={() => {
+          showToast("Open a friend's parade QR link, then choose Watch on map.", 'default');
+          onSideTingsRefresh();
+        }}
+      />
 
       <QrShareSheet
         open={sheetOpen}

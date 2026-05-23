@@ -5,6 +5,8 @@ import { clusterFanEvents, FAN_EVENT_LABELS, type FanEvent, type FanEventCluster
 import { lngLatToPixel, metersToPixelRadius, type PixelPoint } from '../lib/geo';
 import type { GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
+import { chipForGroupName, type SideTing } from '../lib/side-tings';
+import type { MapLayerId } from './LayerToggleRow';
 
 interface CorridorMapProps {
   pack: RoutePack;
@@ -12,6 +14,8 @@ interface CorridorMapProps {
   plan?: GroupPlan | null;
   busMarkers?: BusMarker[];
   fanEvents?: FanEvent[];
+  sideTings?: SideTing[];
+  layers?: Partial<Record<MapLayerId, boolean>>;
   target?: PlanPoint | null;
   compact?: boolean;
 }
@@ -22,6 +26,8 @@ export function CorridorMap({
   plan,
   busMarkers = [],
   fanEvents = [],
+  sideTings = [],
+  layers = {},
   target,
   compact = false,
 }: CorridorMapProps) {
@@ -34,11 +40,15 @@ export function CorridorMap({
   const [offset, setOffset] = useState<PixelPoint>({ x: 0, y: 0 });
   const basemapSrc = `${import.meta.env.BASE_URL}basemap/corridor.webp`;
   const fanClusters = useMemo(() => clusterFanEvents(fanEvents), [fanEvents]);
-  const hasFanBus = fanClusters.some((cluster) => cluster.type === 'bus_seen');
+  const visibleFanClusters = useMemo(
+    () => fanClusters.filter((cluster) => layerAllowsCluster(cluster.type, layers)),
+    [fanClusters, layers],
+  );
+  const hasFanBus = visibleFanClusters.some((cluster) => cluster.type === 'bus_seen');
   const summaryId = compact ? 'corridor-map-summary-compact' : 'corridor-map-summary';
   const mapSummary = useMemo(
-    () => buildMapSummary(gpsFix, fanClusters, busMarkers.length),
-    [busMarkers.length, fanClusters, gpsFix],
+    () => buildMapSummary(gpsFix, visibleFanClusters, layers.bus === false ? 0 : busMarkers.length),
+    [busMarkers.length, gpsFix, layers.bus, visibleFanClusters],
   );
 
   const points = useMemo(() => {
@@ -65,11 +75,12 @@ export function CorridorMap({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     drawRoute(ctx, pack.route.coordinates);
-    if (fanClusters.length > 0) drawFanEvents(ctx, fanClusters);
+    if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters);
+    if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings);
     drawPois(ctx, points);
-    if (busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers);
+    if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers);
     if (gpsFix) drawGps(ctx, gpsFix);
-  }, [pack, points, busMarkers, fanClusters, gpsFix, hasFanBus]);
+  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings]);
 
   const clampZoom = (value: number) => Math.max(1, Math.min(3.2, value));
 
@@ -282,6 +293,39 @@ function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[]) {
     drawLabel(ctx, 'Bus tap', p.x + 58, p.y);
   }
   ctx.restore();
+}
+
+function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[]) {
+  ctx.save();
+  for (const row of rows.slice(0, 5)) {
+    if (!row.primary) continue;
+    const p = lngLatToPixel(row.primary);
+    const ageSource = row.lastSeenAt ?? row.addedAt;
+    const ageMin = (Date.now() - Date.parse(ageSource)) / 60_000;
+    const stale = !Number.isFinite(ageMin) || ageMin > 10 || !row.lastSeenAt;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 34, 0, Math.PI * 2);
+    ctx.fillStyle = stale ? 'rgba(237, 187, 74, 0.18)' : '#EDBB4A';
+    ctx.fill();
+    ctx.lineWidth = stale ? 7 : 9;
+    ctx.strokeStyle = stale ? 'rgba(20, 18, 15, 0.7)' : '#14120F';
+    ctx.stroke();
+    if (stale) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+      ctx.strokeStyle = '#EDBB4A';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+    }
+    drawLabel(ctx, chipForGroupName(row.name), p.x + 50, p.y);
+  }
+  ctx.restore();
+}
+
+function layerAllowsCluster(type: FanEventType, layers: Partial<Record<MapLayerId, boolean>>): boolean {
+  if (type === 'bus_seen') return layers.bus !== false;
+  if (type === 'presence') return layers['my-taps'] !== false;
+  return layers.reports !== false;
 }
 
 function eventColor(type: FanEventType): { strong: string; soft: string } {

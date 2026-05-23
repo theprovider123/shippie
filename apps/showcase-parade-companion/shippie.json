@@ -15,7 +15,7 @@
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-parade-companion",
   "remix_allowed": true,
   "curation": {
-    "surface": "arcade",
+    "surface": "featured",
     "category": "tools",
     "tags": ["offline", "maps", "safety", "local-first"],
     "capabilities": ["worksOffline", "localDb"]

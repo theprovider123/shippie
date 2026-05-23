@@ -11,40 +11,17 @@ import { checkRateLimit, clientKey } from '../rate-limit';
 import { getDrizzleClient, schema } from '../../db/client';
 import { eq } from 'drizzle-orm';
 import { ensureShellAppSeeded, SHELL_APP_SLUG } from '../../../util/shippie-shell';
+import { sanitizeAnalyticsEvent, type RawAnalyticsEvent, type SanitizedAnalyticsEvent } from '../../analytics/sanitize';
 
-interface SdkEvent {
-  event?: string;
-  event_name?: string;
-  props?: Record<string, unknown>;
-  properties?: Record<string, unknown>;
+interface SdkEvent extends RawAnalyticsEvent {
   ts?: number;
   identify?: boolean;
-  session_id?: string;
-  url?: string;
-  referrer?: string;
-  user_id?: string;
 }
 
-interface PlatformEvent {
-  event_name: string;
-  properties?: Record<string, unknown>;
-  session_id?: string;
-  url?: string;
-  referrer?: string;
-  user_id?: string;
-}
+type PlatformEvent = SanitizedAnalyticsEvent;
 
 function normalize(e: SdkEvent): PlatformEvent | null {
-  const name = e.event_name ?? e.event;
-  if (!name || typeof name !== 'string' || name.length === 0 || name.length > 128) return null;
-  return {
-    event_name: name,
-    properties: e.properties ?? e.props ?? undefined,
-    session_id: typeof e.session_id === 'string' ? e.session_id : undefined,
-    url: typeof e.url === 'string' ? e.url : undefined,
-    referrer: typeof e.referrer === 'string' ? e.referrer : undefined,
-    user_id: typeof e.user_id === 'string' ? e.user_id : undefined,
-  };
+  return sanitizeAnalyticsEvent(e);
 }
 
 export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
@@ -96,12 +73,12 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
     await db.insert(schema.analyticsEvents).values(
       events.map((e) => ({
         appId: app.id,
-        userId: e.user_id ?? null,
-        sessionId: e.session_id ?? null,
-        eventName: e.event_name,
-        properties: e.properties ?? null,
-        url: e.url ?? null,
-        referrer: e.referrer ?? null,
+        userId: e.userId,
+        sessionId: e.sessionId,
+        eventName: e.eventName,
+        properties: e.properties,
+        url: e.url,
+        referrer: e.referrer,
       })),
     );
     ingested = events.length;

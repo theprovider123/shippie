@@ -1,6 +1,8 @@
 import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useEffect, useMemo, useState } from 'react';
 import { CorridorMap } from '../components/CorridorMap';
+import { LayerToggleRow, type MapLayerId } from '../components/LayerToggleRow';
+import { StatusStrip } from '../components/StatusStrip';
 import type { RoutePack } from '../data/parade-2026';
 import { recordSighting, formatMarkerTime, type BusMarker } from '../lib/bus';
 import {
@@ -16,6 +18,10 @@ import {
 import { haversineMeters, nearestRouteSegment } from '../lib/geo';
 import { formatAccuracy, formatGpsAge, isFreshGpsFix, isReportableGpsFix, watchGps, type GpsFix } from '../lib/gps';
 import type { GroupPlan } from '../lib/group-plan';
+import type { ParadeAnalyticsEvent } from '../lib/analytics';
+import { hapticConfirm, hapticWarn, hapticWow } from '../lib/haptic';
+import { listSideTings, type SideTing } from '../lib/side-tings';
+import { showToast, type ToastVariant } from '../lib/toast';
 
 interface MapScreenProps {
   pack: RoutePack;
@@ -23,19 +29,29 @@ interface MapScreenProps {
   busMarkers: BusMarker[];
   fanEvents: FanEvent[];
   importStatus: string;
+  sideTingsRefresh: number;
   onBusMarker: (marker: BusMarker) => void;
   onFanEvent: (event: FanEvent) => Promise<void>;
+  onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
 }
 
 const REPORT_TYPES: FanEventType[] = ['crowd_dense', 'road_blocked', 'need_help'];
 
-export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, onBusMarker, onFanEvent }: MapScreenProps) {
+export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sideTingsRefresh, onBusMarker, onFanEvent, onTrack }: MapScreenProps) {
   const [gpsFix, setGpsFix] = useState<GpsFix | null>(null);
   const [gpsError, setGpsError] = useState('');
   const [batterySaver, setBatterySaver] = useState(true);
-  const [status, setStatus] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [sideTings, setSideTings] = useState<SideTing[]>(() => listSideTings());
+  const [layers, setLayers] = useState<Record<MapLayerId, boolean>>({
+    bus: true,
+    friends: true,
+    'side-tings': listSideTings().length > 0,
+    reports: true,
+    'my-taps': true,
+  });
   const fanSummary = useMemo(() => summarizeFanEvents(fanEvents), [fanEvents]);
 
   useEffect(() => {
@@ -46,6 +62,20 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, onB
     });
     return stop;
   }, [batterySaver]);
+
+  useEffect(() => {
+    if (importStatus) showToast(importStatus, 'success');
+  }, [importStatus]);
+
+  useEffect(() => {
+    if (gpsError) showToast(gpsError, 'warn');
+  }, [gpsError]);
+
+  useEffect(() => {
+    const rows = listSideTings();
+    setSideTings(rows);
+    if (rows.length > 0) setLayers((current) => ({ ...current, 'side-tings': true }));
+  }, [sideTingsRefresh]);
 
   const nearestPoi = useMemo(() => {
     if (!gpsFix) return null;
@@ -59,17 +89,22 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, onB
     return nearestRouteSegment(gpsFix, pack.route.coordinates);
   }, [gpsFix, pack.route.coordinates]);
 
+  const feedback = (message: string, variant: ToastVariant = 'default') => showToast(message, variant);
+
   const saveEvent = async (type: FanEventType) => {
     if (!gpsFix) {
-      setStatus('Turn on Location and wait for the dot before tapping.');
+      feedback('Turn on Location and wait for the dot before tapping.', 'warn');
+      hapticWarn();
       return;
     }
     if (!isFreshGpsFix(gpsFix)) {
-      setStatus(`Your last GPS snapshot is ${formatGpsAge(gpsFix)}. Wait for a live fix before tapping.`);
+      feedback(`Your last GPS snapshot is ${formatGpsAge(gpsFix)}. Wait for a live fix before tapping.`, 'warn');
+      hapticWarn();
       return;
     }
     if (type !== 'presence' && !isReportableGpsFix(gpsFix)) {
-      setStatus(`GPS is ${formatAccuracy(gpsFix)}. Wait for a tighter fix before placing a bus or safety report.`);
+      feedback(`GPS is ${formatAccuracy(gpsFix)}. Wait for a tighter fix before placing a bus or safety report.`, 'warn');
+      hapticWarn();
       return;
     }
     const event = createFanEvent(type, gpsFix, pack.route.coordinates);
@@ -77,51 +112,63 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, onB
     if (type === 'bus_seen') {
       const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
       onBusMarker(marker);
-      setStatus(`Bus saved at ${formatMarkerTime(marker)}. It can move phone-to-phone by QR.`);
+      feedback(`Bus saved at ${formatMarkerTime(marker)}. It can move phone-to-phone by QR.`, 'success');
     } else if (type === 'need_help') {
-      setStatus('Move to a steward or call 999 now. This marker only travels by QR or relay.');
+      feedback('Move to a steward or call 999 now. This marker only travels by QR or relay.', 'warn');
     } else {
-      setStatus(`${FAN_EVENT_LABELS[type]} saved near ${eventSegmentLabel(event)}.`);
+      feedback(`${FAN_EVENT_LABELS[type]} saved near ${eventSegmentLabel(event)}.`, 'success');
     }
-    if ('vibrate' in navigator) navigator.vibrate(type === 'presence' ? 20 : [25, 25, 45]);
+    onTrack(analyticsEventForSignal(type), {
+      snapped: Boolean(event.segment_id),
+      reportable_gps: isReportableGpsFix(gpsFix),
+    });
+    if (type === 'bus_seen') hapticWow();
+    else hapticConfirm();
+    if (reportsOpen) setReportsOpen(false);
   };
 
   const openSync = async () => {
     if (fanEvents.length === 0) {
-      setStatus('Tap "I am here" first, then show the QR to nearby fans.');
+      feedback('Tap "I am here" first, then show the QR to nearby fans.', 'warn');
       return;
     }
     try {
       const fragment = await encodeFanEventsForSync(fanEvents);
       setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
       setSheetOpen(true);
-      setStatus('Show this QR to another fan. Their phone imports the carried pulse.');
+      feedback('Show this QR to another fan. Their phone imports the carried pulse.', 'success');
+      onTrack('parade_sync_qr_opened', { carried_count: Math.min(fanEvents.length, 36) });
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Could not make a sync QR.');
+      feedback(error instanceof Error ? error.message : 'Could not make a sync QR.', 'warn');
     }
   };
 
+  const aroundEmpty = !nearestPoi && !fanSummary.latestBus && fanSummary.activeReports.length === 0;
+
   return (
     <section className="screen map-screen">
-      <div className="screen-heading">
-        <p className="eyebrow">Rung 0 — offline</p>
-        <h1>Map</h1>
-        <p>GPS, the raster map, your bus taps, and QR-carried reports work without signal.</p>
-      </div>
+      <LayerToggleRow
+        layers={layers}
+        onToggle={(id) => setLayers((current) => ({ ...current, [id]: !current[id] }))}
+      />
 
-      <div className="map-actions">
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={batterySaver}
-            onChange={(event) => setBatterySaver(event.currentTarget.checked)}
-          />
-          Battery saver
-        </label>
-        <button type="button" className="secondary-action" onClick={() => void openSync()}>
-          Show QR
-        </button>
-      </div>
+      <CorridorMap
+        pack={pack}
+        gpsFix={gpsFix}
+        plan={plan}
+        busMarkers={busMarkers}
+        fanEvents={fanEvents}
+        sideTings={sideTings}
+        layers={layers}
+      />
+
+      <StatusStrip
+        gpsFix={gpsFix}
+        routeDistanceM={routeDistance?.distanceM ?? null}
+        batterySaver={batterySaver}
+        onToggleBatterySaver={() => setBatterySaver((current) => !current)}
+        onOpenQr={() => void openSync()}
+      />
 
       <div className="pulse-actions" aria-label="Fast parade taps">
         <button type="button" className="primary-action fan-tap" onClick={() => void saveEvent('presence')}>
@@ -130,43 +177,41 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, onB
         <button type="button" className="primary-action fan-tap bus-action" onClick={() => void saveEvent('bus_seen')}>
           Bus is here
         </button>
+        <button
+          type="button"
+          className="primary-action fan-tap"
+          aria-expanded={reportsOpen}
+          onClick={() => setReportsOpen((value) => !value)}
+        >
+          Report {reportsOpen ? '▴' : '▾'}
+        </button>
       </div>
 
-      <div className="report-grid" aria-label="Report what is happening nearby">
-        {REPORT_TYPES.map((type) => (
-          <button
-            type="button"
-            key={type}
-            className={`report-button ${type}`}
-            onClick={() => void saveEvent(type)}
-          >
-            <span>{FAN_EVENT_LABELS[type]}</span>
-            <small>{reportHint(type)}</small>
-          </button>
-        ))}
-      </div>
-
-      {status ? <p className="inline-status">{status}</p> : null}
-      {importStatus ? <p className="inline-status">{importStatus}</p> : null}
-
-      <CorridorMap pack={pack} gpsFix={gpsFix} plan={plan} busMarkers={busMarkers} fanEvents={fanEvents} />
-
-      <div className="info-grid two">
-        <div className="metric">
-          <span>Your GPS</span>
-          <strong>{formatAccuracy(gpsFix)}</strong>
-          <small>{gpsError || `${formatGpsAge(gpsFix)}. Accuracy circle is shown on the map.`}</small>
+      {reportsOpen ? (
+        <div className="report-chips" aria-label="Report what is happening nearby">
+          {REPORT_TYPES.map((type) => (
+            <button
+              type="button"
+              key={type}
+              data-kind={type}
+              onClick={() => void saveEvent(type)}
+            >
+              {FAN_EVENT_LABELS[type]}
+            </button>
+          ))}
         </div>
-        <div className="metric">
-          <span>To route</span>
-          <strong>{routeDistance ? formatDistance(routeDistance.distanceM) : 'No fix'}</strong>
-          <small>Nearest provisional route segment</small>
-        </div>
-      </div>
+      ) : null}
 
-      <div className="panel">
-        <h2>Local pulse</h2>
+      <div className="panel around-you">
+        <h2>Around you</h2>
         <div className="pulse-list">
+          {nearestPoi ? (
+            <div className="pulse-row landmark">
+              <strong>Nearest</strong>
+              <span>{nearestPoi.poi.name}</span>
+              <small>{formatDistance(nearestPoi.distance)}</small>
+            </div>
+          ) : null}
           {fanSummary.latestBus ? (
             <div className="pulse-row confirmed">
               <strong>Bus</strong>
@@ -181,26 +226,11 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, onB
               <small>{report.count} carried · {eventAgeLabel(report.latest)}</small>
             </div>
           ))}
-          {!fanSummary.latestBus && fanSummary.activeReports.length === 0 ? (
-            <p>No carried reports yet. Tap only what you can actually see.</p>
+          {aroundEmpty ? (
+            <p>Quiet for now. Turn on Location and tap what you can actually see.</p>
           ) : null}
         </div>
       </div>
-
-      {nearestPoi ? (
-        <div className="panel location-panel">
-          <h2>Nearest landmark</h2>
-          <p>
-            {nearestPoi.poi.name} · {formatDistance(nearestPoi.distance)}
-          </p>
-          <small>{nearestPoi.poi.note}</small>
-        </div>
-      ) : (
-        <div className="panel location-panel">
-          <h2>No GPS fix yet</h2>
-          <p>Turn on Location. Airplane mode is fine, but Location Services must remain on.</p>
-        </div>
-      )}
 
       <div className="panel">
         <h2>Bus timing estimate</h2>
@@ -231,15 +261,17 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
-function reportHint(type: FanEventType): string {
+function analyticsEventForSignal(type: FanEventType): ParadeAnalyticsEvent {
   switch (type) {
+    case 'presence':
+      return 'parade_presence_tapped';
+    case 'bus_seen':
+      return 'parade_bus_seen_tapped';
     case 'crowd_dense':
-      return 'slow down';
+      return 'parade_crowd_reported';
     case 'road_blocked':
-      return 'route change';
+      return 'parade_road_reported';
     case 'need_help':
-      return 'QR/relay only';
-    default:
-      return 'nearby';
+      return 'parade_help_reported';
   }
 }
