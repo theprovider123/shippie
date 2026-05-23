@@ -471,8 +471,13 @@ function mergeCookedHistory(
   next: readonly CookedMealRow[],
 ): CookedMealRow[] {
   const seen = new Map<string, CookedMealRow>();
-  for (const row of prev) seen.set(row.cookedAt + '|' + row.title, row);
-  for (const row of next) seen.set(row.cookedAt + '|' + row.title, row);
+  // Include recipeId in the key so same-day repeats of distinct recipes
+  // (or distinct cooks of the same recipe at different ISO timestamps)
+  // dedup cleanly even if upstream collapses cookedAt to date precision.
+  const keyFor = (row: CookedMealRow) =>
+    `${row.cookedAt}|${row.recipeId ?? ''}|${row.title}`;
+  for (const row of prev) seen.set(keyFor(row), row);
+  for (const row of next) seen.set(keyFor(row), row);
   return [...seen.values()].sort((a, b) => a.cookedAt.localeCompare(b.cookedAt)).slice(-30);
 }
 
