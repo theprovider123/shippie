@@ -475,20 +475,38 @@ export function App() {
   );
   const { peer: peerCookState, publish: publishCookState } = useCookAlongPeer(cookAlongClient);
   const backupStore = useMemo(() => createPalateBackupStore(), []);
+  /**
+   * Intent subscription wrapper — wraps each matcher subscription in a
+   * try/catch so a single broken provider can't tear down the whole
+   * IntentToastHost. Errors are surfaced to the dev console without
+   * crashing the cook.
+   */
   const intentSource = useMemo<IntentSubscription>(() => ({
     subscribe(callback) {
-      const offs = palateMatchers.map((matcher) =>
-        shippie.intent.subscribe(matcher.kind, (broadcast) => {
-          const intent: IntentLike = {
-            kind: broadcast.intent,
-            payload: { rows: broadcast.rows },
-            sourceAppId: (broadcast as { providerAppId?: string }).providerAppId,
-            timestamp: Date.now(),
-          };
-          callback(intent);
-        }),
-      );
-      return () => offs.forEach((off) => off());
+      const offs: Array<() => void> = [];
+      for (const matcher of palateMatchers) {
+        try {
+          const off = shippie.intent.subscribe(matcher.kind, (broadcast) => {
+            try {
+              const intent: IntentLike = {
+                kind: broadcast.intent,
+                payload: { rows: broadcast.rows },
+                sourceAppId: (broadcast as { providerAppId?: string }).providerAppId,
+                timestamp: Date.now(),
+              };
+              callback(intent);
+            } catch (err) {
+              console.warn(`[palate] intent handler failed for ${matcher.kind}`, err);
+            }
+          });
+          offs.push(off);
+        } catch (err) {
+          console.warn(`[palate] intent subscribe failed for ${matcher.kind}`, err);
+        }
+      }
+      return () => offs.forEach((off) => {
+        try { off(); } catch (err) { console.warn('[palate] intent unsubscribe failed', err); }
+      });
     },
   }), []);
 
