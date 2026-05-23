@@ -70,6 +70,11 @@ export function App() {
     [counters, activeId],
   );
 
+  const runningSum = useMemo(
+    () => counters.reduce((acc, c) => acc + c.count, 0),
+    [counters],
+  );
+
   const addCounter = () => {
     const label = draftLabel.trim();
     if (!label) return;
@@ -199,6 +204,13 @@ export function App() {
           </div>
           <p className="muted small">Started {new Date(active.resetAt).toLocaleDateString()}.</p>
         </section>
+      ) : null}
+
+      {counters.length > 1 ? (
+        <footer className="running-sum" aria-label="Running sum across counters">
+          <span className="muted small">Across all counters</span>
+          <strong>{runningSum}</strong>
+        </footer>
       ) : null}
     </main>
   );
