@@ -34,6 +34,7 @@ export function App() {
   const [draftUrl, setDraftUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastFailedUrl, setLastFailedUrl] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,8 +45,8 @@ export function App() {
     }
   }, [articles]);
 
-  // P3-adjacent — subscribe to mood-logged so the suggestion ribbon
-  // can hint "you marked low mood; here's a 3-min read you saved".
+  // Subscribe to mood-logged so the suggestion ribbon can hint
+  // "you marked low mood; here's a 3-min read you saved".
   const [moodHint, setMoodHint] = useState<string | null>(null);
   useEffect(() => {
     shippie.requestIntent('mood-logged');
@@ -63,10 +64,7 @@ export function App() {
     return [...articles].sort((a, b) => a.readMinutes - b.readMinutes);
   }, [articles, moodHint]);
 
-  async function saveUrl(e: React.FormEvent) {
-    e.preventDefault();
-    const url = draftUrl.trim();
-    if (!url) return;
+  async function fetchAndSave(url: string) {
     setBusy(true);
     setError(null);
     try {
@@ -87,12 +85,27 @@ export function App() {
       };
       setArticles((prev) => [saved, ...prev].slice(0, 200));
       setDraftUrl('');
+      setLastFailedUrl(null);
       shippie.feel.texture('install');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not fetch.');
+      setLastFailedUrl(url);
       shippie.feel.texture('error');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function saveUrl(e: React.FormEvent) {
+    e.preventDefault();
+    const url = draftUrl.trim();
+    if (!url) return;
+    await fetchAndSave(url);
+  }
+
+  function retry() {
+    if (lastFailedUrl) {
+      void fetchAndSave(lastFailedUrl);
     }
   }
 
@@ -155,7 +168,19 @@ export function App() {
           {busy ? 'Saving…' : 'Save'}
         </button>
       </form>
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error">
+          {error}
+          {lastFailedUrl && (
+            <>
+              {' '}
+              <button type="button" className="retry" onClick={retry} disabled={busy}>
+                Try again
+              </button>
+            </>
+          )}
+        </p>
+      )}
       {moodHint && <p className="hint">{moodHint}</p>}
 
       {filtered.length === 0 ? (
