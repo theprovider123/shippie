@@ -209,10 +209,25 @@ export interface ShippieIframeSdk {
      * origin so 5 apps share one download.
      *
      * The result carries `source: 'unavailable'` when the backend
-     * can't run the task. Showcases MUST gate features on this and
-     * hide the UI when unavailable — never render broken AI.
+     * can't run the task. Showcases MUST gate AI-dependent features
+     * on `source !== 'unavailable'` and hide those features when it
+     * isn't — never render broken inference UI. This is a load-bearing
+     * invariant; the three flagship AI consumers (journal,
+     * pantry-scanner, shopping-list) all rely on it.
      */
     run(req: AiRunRequest): Promise<AiRunResult>;
+    /**
+     * Resolve once the container's AI subsystem has signalled that it
+     * is ready to serve inference. Useful for showcases that want to
+     * gate AI-dependent UI on readiness — e.g. show an "AI loading…"
+     * placeholder until `await shippie.ai.ready()` returns.
+     *
+     * Readiness is advisory: never rejects, and resolves quickly on
+     * older hosts that don't yet forward the ready ping (so consumers
+     * don't hang). Pair with the `source !== 'unavailable'` gate on
+     * each `ai.run` result for the actual capability check.
+     */
+    ready(): Promise<void>;
   };
   transfer: {
     /**
@@ -597,6 +612,18 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
           );
         } catch {
           return fallback;
+        }
+      },
+      async ready() {
+        // Probe the container for AI readiness. Falls back to a
+        // resolved no-op against older hosts that don't implement the
+        // `ai.ready` bridge method (the `call` helper resolves to the
+        // supplied fallback on timeout, so we never throw). Outside
+        // the container, `call` short-circuits to the fallback too.
+        try {
+          await call<Record<string, unknown>>('ai.ready', 'ready', {}, {}, 2_500);
+        } catch {
+          // Readiness is advisory — never reject.
         }
       },
     },
