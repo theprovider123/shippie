@@ -275,7 +275,7 @@ header h1 em,
   margin: 12px 0;
   padding: 12px 14px;
   border: 1px dashed var(--accent, currentColor);
-  background: rgba(168, 96, 96, 0.08);
+  background: rgba(168, 96, 96, 0.18);
   font-size: 0.9rem;
   line-height: 1.45;
 }
@@ -325,7 +325,7 @@ header h1 em,
   right: 20px;
   width: 44px;
   height: 44px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 0;
   background: rgba(255, 255, 255, 0.12);
   color: white;
