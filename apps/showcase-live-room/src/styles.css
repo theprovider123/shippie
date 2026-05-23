@@ -1,5 +1,8 @@
 /* Canonical Shippie tokens. Live Room maps positive to sage-leaf —
    the "first-buzz" success colour, distinct from Habit Tracker. */
+/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
+   when kit components (EmptyState, etc.) get adopted in JSX. Currently only
+   mountShowcase() boot helper is imported, so no skin selectors render. */
 @import "@shippie/design-tokens/tokens.css";
 
 :root {
