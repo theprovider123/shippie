@@ -101,8 +101,20 @@ function loadRecords(): Records {
     };
   }
 }
+function warnQuota(key: string, err: unknown): void {
+  // localStorage.setItem throws QuotaExceededError (or NS_ERROR_DOM_QUOTA_REACHED
+  // on Firefox) when full / private-mode-restricted. We swallow so the game
+  // keeps running, but surface a one-time console.warn so devs notice in QA.
+  // eslint-disable-next-line no-console
+  console.warn(`[stack] localStorage write failed for "${key}":`, err);
+}
+
 function saveRecords(r: Records) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); } catch {/**/}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(r));
+  } catch (err) {
+    warnQuota(STORAGE_KEY, err);
+  }
 }
 
 const COLOR: Record<number, string> = {
@@ -153,7 +165,11 @@ export function App() {
   const tspinKeyRef = useRef(0);
 
   useEffect(() => {
-    try { localStorage.setItem('shippie:stack:theme:v1', theme); } catch {/**/}
+    try {
+      localStorage.setItem('shippie:stack:theme:v1', theme);
+    } catch (err) {
+      warnQuota('shippie:stack:theme:v1', err);
+    }
     document.body.dataset.theme = theme;
   }, [theme]);
 
