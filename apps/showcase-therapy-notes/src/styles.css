@@ -1,6 +1,10 @@
 /* Therapy Notes — quiet visual. Generous whitespace, restrained colour,
    serif headings (Fraunces), sharp corners. The visual goal: the least
    shouty thing on the user's phone. */
+/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
+   when kit components (OnboardingFlow/IntentToastHost/QrShareSheet/BackupCard/
+   EmptyState) get adopted in JSX. Currently only mountShowcase() boot helper
+   is imported, so no skin selectors render. */
 @import "@shippie/design-tokens/tokens.css";
 
 :root {
