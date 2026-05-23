@@ -80,7 +80,14 @@ interface PulseScore {
   message: string;
 }
 
-/** Placeholder value used to render un-logged factor bars at a calm baseline. */
+/**
+ * Calm-baseline placeholder for un-logged factor bars. Picked at 45 (not
+ * 50) so the bar visibly *isn't* "average" — it leans low without looking
+ * defaulted. Bars at this value are styled as ghost dashes
+ * (see `.pulse-factors span.is-unlogged i`) so the user can read at a
+ * glance that there's no signal behind them. Never feeds the overall
+ * pulse — see the honesty gate in `computePulse`.
+ */
 const UNLOGGED_FACTOR_VALUE = 45;
 
 interface QuickAction {
@@ -113,15 +120,22 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'data', label: 'Data' },
 ];
 
+/**
+ * Per-kind metadata. `color` resolves through a CSS variable so the
+ * Chiwit theme owns the palette — change `--kind-mood` etc. in
+ * styles.css to retint every dot/pill/entry-marker. The hex fallbacks
+ * inside the var() keep the visual identical when the page hasn't
+ * loaded styles.css yet (FOUC) or the var is unset under a sub-theme.
+ */
 const KIND_META: Record<EntryKind, { label: string; color: string; unit: string; helper: string }> = {
-  mood:      { label: 'Mood',         color: '#F97066', unit: '/5',  helper: 'Mind factor' },
-  energy:    { label: 'Energy',       color: '#FF9800', unit: '/5',  helper: 'Mind factor' },
-  sleep:     { label: 'Sleep',        color: '#9575CD', unit: 'h',   helper: 'Recovery factor' },
-  hydration: { label: 'Hydration',    color: '#42A5F5', unit: 'ml',  helper: 'Foundations factor' },
-  movement:  { label: 'Movement',     color: '#66BB6A', unit: 'min', helper: 'Movement factor' },
-  mindful:   { label: 'Mindful',      color: '#26A69A', unit: 'min', helper: 'Recovery factor' },
-  body:      { label: 'Body',         color: '#8D6E63', unit: '/5',  helper: 'Body factor' },
-  weight:    { label: 'Body metrics', color: '#A5D6A7', unit: 'kg',  helper: 'Body factor' },
+  mood:      { label: 'Mood',         color: 'var(--kind-mood, #F97066)',      unit: '/5',  helper: 'Mind factor' },
+  energy:    { label: 'Energy',       color: 'var(--kind-energy, #FF9800)',    unit: '/5',  helper: 'Mind factor' },
+  sleep:     { label: 'Sleep',        color: 'var(--kind-sleep, #9575CD)',     unit: 'h',   helper: 'Recovery factor' },
+  hydration: { label: 'Hydration',    color: 'var(--kind-hydration, #42A5F5)', unit: 'ml',  helper: 'Foundations factor' },
+  movement:  { label: 'Movement',     color: 'var(--kind-movement, #66BB6A)',  unit: 'min', helper: 'Movement factor' },
+  mindful:   { label: 'Mindful',      color: 'var(--kind-mindful, #26A69A)',   unit: 'min', helper: 'Recovery factor' },
+  body:      { label: 'Body',         color: 'var(--kind-body, #8D6E63)',      unit: '/5',  helper: 'Body factor' },
+  weight:    { label: 'Body metrics', color: 'var(--kind-weight, #A5D6A7)',    unit: 'kg',  helper: 'Body factor' },
 };
 
 const FACTOR_HELPER_TEXT: Record<keyof ScoreBreakdown, string> = {
@@ -1595,7 +1609,7 @@ function EntryList({ entries, onRemove }: { entries: PulseEntry[]; onRemove?: (e
               {entry.source ? ` · ${entry.source.replace(/^app_/, '')}` : ''}
             </small>
           </div>
-          {onRemove ? <button type="button" onClick={() => onRemove(entry.id)} aria-label={`Remove ${KIND_META[entry.kind].label}`}>×</button> : null}
+          {onRemove ? <button type="button" onClick={() => onRemove(entry.id)} aria-label={`Remove ${KIND_META[entry.kind].label} signal from ${formatDate(entry.date)}${entry.note ? ` — ${entry.note}` : ''}`}>×</button> : null}
         </li>
       ))}
     </ul>
