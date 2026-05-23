@@ -2,6 +2,10 @@
    Recipe-saver pattern: import the token base, then map the cream-mode
    token family to Steep's palette so the existing brand-shell utilities
    keep working without a global rename. */
+/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
+   when kit components (OnboardingFlow/IntentToastHost/QrShareSheet/BackupCard/
+   EmptyState) get adopted in JSX. Currently only the mountShowcase() boot helper
+   is imported via main.tsx, so no .shippie-* selectors render. */
 @import "@shippie/design-tokens/tokens.css";
 
 :root {
