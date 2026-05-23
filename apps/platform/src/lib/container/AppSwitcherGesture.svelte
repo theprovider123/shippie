@@ -31,7 +31,14 @@
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { shouldCancelBottomTap } from './app-switcher-gesture';
+  import {
+    APP_OPACITY_AT_OPEN,
+    APP_SCALE_AT_OPEN,
+    ENTRY_DURATION_MS,
+    EXIT_DURATION_MS,
+    SPRING_OVERSHOOT,
+    shouldCancelBottomTap,
+  } from './app-switcher-gesture';
 
   interface Props {
     /** Drawer content. Typically a mini app grid. */
@@ -72,14 +79,9 @@
     onBack = () => {},
   }: Props = $props();
 
-  // Gesture-tuning constants. Pulled out for ease of real-phone
-  // adjustment. If these need to change per-device, switch to a
-  // matchMedia probe.
-  const ENTRY_DURATION_MS = 200;
-  const EXIT_DURATION_MS = 150;
-  const APP_SCALE_AT_OPEN = 0.95;
-  const APP_OPACITY_AT_OPEN = 0.5;
-  const SPRING_OVERSHOOT = 1.03;
+  // Gesture-tuning constants live in `./app-switcher-gesture.ts` so
+  // `/dev/gesture-prototype` and any future telemetry can read the
+  // same source. Edit the .ts to retune real-phone QA.
 
   // Detect reduced-motion preference once at mount; respect it for
   // every transition.
