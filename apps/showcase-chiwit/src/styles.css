@@ -2091,3 +2091,37 @@ button.branded.primary {
   outline: 2px solid var(--sage);
   outline-offset: 2px;
 }
+
+/* ─── Micro-interactions (cluster 3) ────────────────────────────────── *
+ * Dismiss-button press feedback; pulse-ring score-fill transition so the
+ * conic-gradient eases when `--score` changes; quick-grid pill commit
+ * pulse so haptics have a visual echo. Respects reduced-motion via the
+ * earlier 1ms clamp.
+ * ──────────────────────────────────────────────────────────────────── */
+.insight-card button,
+.entry-list button {
+  transition: transform 120ms cubic-bezier(0.4, 0, 0.2, 1), background 160ms ease;
+}
+.insight-card button:active,
+.entry-list button:active {
+  transform: scale(0.9);
+}
+
+/* The conic-gradient itself can't tween, but transitioning the custom
+ * property smooths the visual jump when --score updates. */
+@property --score {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 45;
+}
+.pulse-ring {
+  transition: --score 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Quick-grid pill — confirm pulse on press (visual echo of the
+ * texture('confirm') haptic in quickLog). */
+.quick-grid button:active,
+.signal-composer button:active {
+  transform: scale(0.97);
+  background: var(--sage-soft);
+}

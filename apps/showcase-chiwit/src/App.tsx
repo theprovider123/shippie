@@ -735,6 +735,7 @@ export function App() {
 
   function dismissInsight(idToDismiss: string): void {
     setState((prev) => ({ ...prev, dismissedInsightIds: [...prev.dismissedInsightIds, idToDismiss] }));
+    shippie.feel.texture('toggle');
   }
 
   function removeEntry(entryId: string): void {
