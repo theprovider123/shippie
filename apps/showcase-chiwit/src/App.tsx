@@ -559,6 +559,7 @@ export function App() {
   const [timelineMonth, setTimelineMonth] = useState<string>(() => today().slice(0, 7));
   const [qrOpen, setQrOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string>('');
+  const [wipeOpen, setWipeOpen] = useState(false);
   const localNavigation = useMemo(() => createLocalNavigation<Tab>(tab, setTab), []);
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
@@ -849,6 +850,7 @@ export function App() {
           activeMonth={timelineMonth}
           onMonthChange={setTimelineMonth}
           onRemove={removeEntry}
+          onNavigate={navigate}
         />
       ) : null}
 
@@ -991,6 +993,11 @@ function TodayView({
             <EmptyState
               eyebrow="Insights"
               headline={<>Signals from <em>2 days</em> build the first pattern card.</>}
+              body={
+                <span className="insight-example">
+                  e.g. <em>"Mood lifts on days you log a short walk before noon."</em>
+                </span>
+              }
             />
           ) : null}
         </aside>
@@ -1111,6 +1118,8 @@ function PatternsView({
   const daysCovered = new Set(state.entries.map((entry) => entry.date)).size;
   const insufficient = totalSignals < 5 || daysCovered < 3;
   if (insufficient) {
+    const signalsPct = Math.min(100, Math.round((totalSignals / 5) * 100));
+    const daysPct = Math.min(100, Math.round((daysCovered / 3) * 100));
     return (
       <section className="page-shell">
         <div className="toolbar">
@@ -1122,6 +1131,20 @@ function PatternsView({
         <EmptyState
           eyebrow="Patterns"
           headline={<>Five signals across <em>three days</em> will show your shape.</>}
+          body={
+            <span className="patterns-progress" aria-label="Pattern progress">
+              <span className="patterns-progress__row">
+                <strong>Signals</strong>
+                <meter min={0} max={100} value={signalsPct} />
+                <em>{totalSignals}/5</em>
+              </span>
+              <span className="patterns-progress__row">
+                <strong>Days covered</strong>
+                <meter min={0} max={100} value={daysPct} />
+                <em>{daysCovered}/3</em>
+              </span>
+            </span>
+          }
         />
       </section>
     );
@@ -1177,6 +1200,11 @@ function PatternsView({
           <EmptyState
             eyebrow="Insights"
             headline={<>Signals from <em>2 days</em> build the first pattern card.</>}
+            body={
+              <span className="insight-example">
+                e.g. <em>"Mood lifts on days you log a short walk before noon."</em>
+              </span>
+            }
           />
         ) : insights.map((insight) => (
           <InsightCard key={insight.id} insight={insight} onDismiss={onDismissInsight} />
@@ -1206,6 +1234,7 @@ function TimelineView({
   activeMonth,
   onMonthChange,
   onRemove,
+  onNavigate,
 }: {
   state: ChiwitState;
   days: string[];
@@ -1213,6 +1242,7 @@ function TimelineView({
   activeMonth: string;
   onMonthChange: (next: string) => void;
   onRemove: (entryId: string) => void;
+  onNavigate: (tab: Tab) => void;
 }) {
   if (state.entries.length === 0) {
     return (
@@ -1226,6 +1256,8 @@ function TimelineView({
         <EmptyState
           eyebrow="Timeline"
           headline="Your first week opens here."
+          body="Log a signal — mood, hydration, a short walk — and this view starts drawing your rhythm by day."
+          cta={{ label: 'Log a signal', onClick: () => onNavigate('track') }}
         />
       </section>
     );
