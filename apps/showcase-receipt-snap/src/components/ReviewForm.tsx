@@ -265,6 +265,7 @@ export function ReviewForm({
           onToggle={(e) => setShowAccountingExtras((e.target as HTMLDetailsElement).open)}
         >
           <summary>Accounting fields</summary>
+          <p className="muted small">Net, tax, payment method, and receipt reference — optional, kept for bookkeeping export.</p>
 
           <label>
             <span>Supplier <span className="muted small">(override — falls back to vendor)</span></span>

@@ -155,9 +155,9 @@ export function App() {
       raw_ocr_text: screen.rawText,
       image_data_url: screen.imageDataUrl,
       note: values.note,
-      // Accounting widening (2026-05-19). All optional on the row — only
-      // included when the user filled them in or the parser pre-filled
-      // them. The export layer (Phase D) reads through these.
+      // Accounting fields — all optional on the row. Included only when
+      // the user filled them in or the parser pre-filled them. The
+      // export layer reads through these.
       supplier: values.supplier,
       net_cents: values.net_cents,
       tax_cents: values.tax_cents,

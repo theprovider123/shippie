@@ -84,7 +84,10 @@ button, input, textarea, select { font: inherit; }
   color: #1F2A24;
   border-bottom-color: #5EA777;
 }
-.tab:hover:not(.active) { color: #1F2A24; }
+.tab:hover:not(.active) {
+  color: #1F2A24;
+  border-bottom-color: rgba(31, 42, 36, 0.18);
+}
 
 /* Buttons */
 button.primary, button.ghost {
@@ -289,7 +292,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   flex-direction: column;
   gap: 12px;
   background: #FFFFFF;
-  padding: 20px 18px;
+  padding: 18px;
   border: 1px solid rgba(31, 42, 36, 0.08);
   border-radius: 8px;
 }
