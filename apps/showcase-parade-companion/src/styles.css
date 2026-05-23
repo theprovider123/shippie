@@ -152,6 +152,7 @@ button:active { transform: translateY(1px); }
   cursor: pointer;
 }
 .offline-pill.online { color: var(--sage); }
+.offline-pill.saved { color: var(--sage); border-color: var(--sage); }
 .offline-pill.offline { color: var(--red); }
 
 .topbar-menu-wrap {
@@ -274,6 +275,7 @@ button:active { transform: translateY(1px); }
 }
 .readiness-chip.ready { border-left-color: var(--sage); }
 .readiness-chip.needs-online { border-left-color: var(--red); background: var(--red-soft); }
+.readiness-chip.unknown { border-left-color: var(--gold); }
 
 .screen-host {
   flex: 1;
@@ -719,6 +721,7 @@ textarea { resize: vertical; min-height: 64px; }
 
 /* ----- Source block ----- */
 .source-block { padding-bottom: 8px; }
+.source-block small { flex-basis: 100%; color: var(--ink-mute); }
 .source-block a { color: var(--red); font-weight: 600; text-decoration: none; }
 .source-block a:hover { text-decoration: underline; }
 

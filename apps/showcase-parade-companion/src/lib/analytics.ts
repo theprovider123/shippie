@@ -16,6 +16,7 @@ export type ParadeAnalyticsEvent =
   | 'parade_help_reported'
   | 'parade_sync_qr_opened'
   | 'parade_signal_imported'
+  | 'parade_offline_status_checked'
   | 'parade_onboarding_completed'
   | 'parade_onboarding_skipped'
   | 'parade_display_name_saved'

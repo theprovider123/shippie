@@ -11,6 +11,7 @@ import {
   eventAgeLabel,
   eventSegmentLabel,
   FAN_EVENT_LABELS,
+  isActive,
   summarizeFanEvents,
   type FanEvent,
   type FanEventType,
@@ -128,16 +129,22 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
   };
 
   const openSync = async () => {
-    if (fanEvents.length === 0) {
-      feedback('Tap "I am here" first, then show the QR to nearby fans.', 'warn');
+    const activeEvents = fanEvents.filter((event) => isActive(event));
+    if (activeEvents.length === 0) {
+      feedback(
+        fanEvents.length > 0
+          ? 'Your carried signals expired. Tap "I am here" again before sharing QR.'
+          : 'Tap "I am here" first, then show the QR to nearby fans.',
+        'warn',
+      );
       return;
     }
     try {
-      const fragment = await encodeFanEventsForSync(fanEvents);
+      const fragment = await encodeFanEventsForSync(activeEvents);
       setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
       setSheetOpen(true);
       feedback('Show this QR to another fan. Their phone imports the carried pulse.', 'success');
-      onTrack('parade_sync_qr_opened', { carried_count: Math.min(fanEvents.length, 36) });
+      onTrack('parade_sync_qr_opened', { carried_count: Math.min(activeEvents.length, 36) });
     } catch (error) {
       feedback(error instanceof Error ? error.message : 'Could not make a sync QR.', 'warn');
     }

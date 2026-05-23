@@ -72,12 +72,16 @@
   },
   "data_passport": {
     "stores": [
+      "Your display name for local group signals",
       "Your saved group plan and meetup notes",
       "Your own bus sighting taps",
       "Your fan pulse taps and reports",
-      "Nearby fan signals you choose to import by QR"
+      "Nearby fan signals you choose to import by QR",
+      "Your local group quick-signal activity",
+      "Your local Banter votes and cheer counts",
+      "An anonymous app action queue for admin health analytics"
     ],
-    "leaves_device": "The offline fan core sends nothing. Nearby sync only moves data when one fan shows a QR and another fan scans it.",
+    "leaves_device": "The offline fan core sends no location or group content unless one fan shows a QR and another fan scans it. Anonymous app action events may sync to Shippie admin when connected. Banter is local-only in v1.",
     "delete": "Use Shippie's app data controls, or clear the plan, sightings, and fan pulse data inside the tool."
   }
 }

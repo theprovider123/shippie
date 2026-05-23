@@ -74,6 +74,7 @@ export function SafetyScreen({ pack }: SafetyScreenProps) {
 
       <div className="source-block">
         <span>Info as of {packFreshnessLabel(pack)}</span>
+        <small>Links need signal; the guidance above is the offline copy.</small>
         {pack.sources.map((source) => (
           <a key={source.url} href={source.url} target="_blank" rel="noreferrer">
             {source.label}

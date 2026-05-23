@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ImportPreviewSheet, type ImportPreview } from './components/ImportPreviewSheet';
 import { Onboarding } from './components/Onboarding';
-import { ReadinessChip } from './components/ReadinessChip';
+import { ReadinessChip, type Readiness } from './components/ReadinessChip';
 import { ToastHost } from './components/ToastHost';
 import { BanterScreen } from './screens/BanterScreen';
 import { GroupScreen } from './screens/GroupScreen';
@@ -48,7 +48,9 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState(displayName);
+  const [offlineReadiness, setOfflineReadiness] = useState<Readiness>('checking');
   const online = useOnlineStatus();
+  const offlinePill = offlinePillState(offlineReadiness, online);
 
   useEffect(() => {
     const stopAnalytics = installParadeAnalyticsFlush();
@@ -180,7 +182,21 @@ export function App() {
   };
 
   const showOfflineStatus = () => {
-    showToast(`Saved offline. Map and fonts are on this phone · pack ${packFreshnessLabel(pack)}`, 'success');
+    const packLabel = packFreshnessLabel(pack);
+    trackParadeAction('parade_offline_status_checked', { readiness: offlineReadiness, online });
+    if (offlineReadiness === 'ready') {
+      showToast(`Saved offline. Map and fonts are on this phone · pack ${packLabel}`, 'success');
+      return;
+    }
+    if (offlineReadiness === 'needs-online') {
+      showToast(`Not fully saved yet. Open on Wi-Fi before you travel · pack ${packLabel}`, 'warn');
+      return;
+    }
+    if (offlineReadiness === 'checking') {
+      showToast('Still checking the offline pack. Keep this page open on Wi-Fi.', 'default');
+      return;
+    }
+    showToast('Offline check is limited. Keep this page open before you travel.', 'warn');
   };
 
   const finishOnboarding = (name: string) => {
@@ -217,11 +233,11 @@ export function App() {
         <div className="topbar-actions">
           <button
             type="button"
-            className={`offline-pill ${online ? 'online' : 'offline'}`}
+            className={`offline-pill ${offlinePill.className}`}
             onClick={showOfflineStatus}
-            aria-label={online ? 'Online connection detected' : 'Offline mode status'}
+            aria-label={offlinePill.ariaLabel}
           >
-            {online ? 'Online' : 'Offline'}
+            {offlinePill.label}
           </button>
           <div className="topbar-menu-wrap">
             <button
@@ -281,7 +297,7 @@ export function App() {
         <div className="day-banner">Parade day. Keep Location on; signal may not matter.</div>
       ) : null}
 
-      <ReadinessChip pack={pack} onShowStatus={showOfflineStatus} />
+      <ReadinessChip pack={pack} onShowStatus={showOfflineStatus} onReadinessChange={setOfflineReadiness} />
       <ImportPreviewSheet
         preview={importPreview?.preview ?? null}
         onJoin={() => void onJoinImport()}
@@ -390,6 +406,28 @@ function isParadeDay(startTime: string): boolean {
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
   return now >= dayStart.getTime() && now < dayEnd.getTime();
+}
+
+function offlinePillState(readiness: Readiness, online: boolean): { label: string; className: string; ariaLabel: string } {
+  if (readiness === 'ready') {
+    return {
+      label: 'Saved',
+      className: 'saved',
+      ariaLabel: 'Offline pack saved on this phone',
+    };
+  }
+  if (online) {
+    return {
+      label: 'Online',
+      className: 'online',
+      ariaLabel: 'Online connection detected',
+    };
+  }
+  return {
+    label: 'Offline',
+    className: 'offline',
+    ariaLabel: 'Offline mode status',
+  };
 }
 
 function readShareHash(incomingHash?: string): string {

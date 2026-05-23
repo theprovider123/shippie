@@ -2,32 +2,40 @@ import { useEffect, useMemo, useState } from 'react';
 import type { RoutePack } from '../data/parade-2026';
 import { packFreshnessLabel } from '../lib/route-pack';
 
+const READINESS_CHECK_DELAYS_MS = [0, 1200, 4000];
+
 interface ReadinessChipProps {
   pack: RoutePack;
   onShowStatus?: () => void;
+  onReadinessChange?: (readiness: Readiness) => void;
 }
 
-type Readiness = 'checking' | 'ready' | 'needs-online' | 'unknown';
+export type Readiness = 'checking' | 'ready' | 'needs-online' | 'unknown';
 
-export function ReadinessChip({ pack, onShowStatus }: ReadinessChipProps) {
+export function ReadinessChip({ pack, onShowStatus, onReadinessChange }: ReadinessChipProps) {
   const [readiness, setReadiness] = useState<Readiness>('checking');
   const assets = useMemo(
     () => [
       `${import.meta.env.BASE_URL}basemap/corridor.webp`,
       `${import.meta.env.BASE_URL}route-pack.json`,
-      `${import.meta.env.BASE_URL}fonts/general-sans-400.woff2`,
+      `${import.meta.env.BASE_URL}fonts/fraunces-roman.woff2`,
       `${import.meta.env.BASE_URL}fonts/fraunces-italic.woff2`,
+      `${import.meta.env.BASE_URL}fonts/jetbrains-mono.woff2`,
+      `${import.meta.env.BASE_URL}fonts/general-sans-400.woff2`,
+      `${import.meta.env.BASE_URL}fonts/general-sans-500.woff2`,
+      `${import.meta.env.BASE_URL}fonts/general-sans-600.woff2`,
+      `${import.meta.env.BASE_URL}fonts/general-sans-700.woff2`,
     ],
     [],
   );
 
   useEffect(() => {
     let cancelled = false;
+    const timers: number[] = [];
 
-    async function check() {
+    async function readReadiness(): Promise<Readiness> {
       if (!('caches' in window)) {
-        if (!cancelled) setReadiness('unknown');
-        return;
+        return 'unknown';
       }
       try {
         const matches = await Promise.all(
@@ -36,21 +44,38 @@ export function ReadinessChip({ pack, onShowStatus }: ReadinessChipProps) {
             return (await caches.match(absolute, { ignoreSearch: true })) ?? (await caches.match(asset, { ignoreSearch: true }));
           }),
         );
-        if (!cancelled) setReadiness(matches.every(Boolean) ? 'ready' : 'needs-online');
+        return matches.every(Boolean) ? 'ready' : 'needs-online';
       } catch {
-        if (!cancelled) setReadiness('unknown');
+        return 'unknown';
       }
     }
 
-    void check();
-    window.addEventListener('online', check);
-    window.addEventListener('offline', check);
+    async function check(finalPass = true) {
+      const next = await readReadiness();
+      if (cancelled) return;
+      setReadiness(next === 'needs-online' && !finalPass ? 'checking' : next);
+    }
+
+    READINESS_CHECK_DELAYS_MS.forEach((delay, index) => {
+      timers.push(window.setTimeout(() => void check(index === READINESS_CHECK_DELAYS_MS.length - 1), delay));
+    });
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.ready.then(() => check(false)).catch(() => undefined);
+    }
+    const checkFinal = () => void check(true);
+    window.addEventListener('online', checkFinal);
+    window.addEventListener('offline', checkFinal);
     return () => {
       cancelled = true;
-      window.removeEventListener('online', check);
-      window.removeEventListener('offline', check);
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener('online', checkFinal);
+      window.removeEventListener('offline', checkFinal);
     };
   }, [assets]);
+
+  useEffect(() => {
+    onReadinessChange?.(readiness);
+  }, [onReadinessChange, readiness]);
 
   const copy = readinessCopy(readiness);
   return (
