@@ -80,7 +80,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   min-width: 64px;
   border-radius: 0;
 }
-.tower-chip.active { background: rgba(42, 31, 22, 0.08); }
+.tower-chip.active { background: rgba(42, 31, 22, 0.15); }
 .tower-chip.broke { opacity: 0.4; }
 .tower-chip .num { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; }
 .tower-chip .name { font-size: 11px; text-transform: capitalize; color: var(--muted); }
@@ -114,7 +114,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
     repeating-linear-gradient(45deg, transparent 0 12px, rgba(0, 0, 0, 0.04) 12px 13px);
   width: 100%;
   aspect-ratio: 18 / 12;
-  max-height: 60vh;
+  max-height: 75vh;
 }
 
 .cell {

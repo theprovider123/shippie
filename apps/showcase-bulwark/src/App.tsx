@@ -52,6 +52,8 @@ const sfx = createSoundBank({
   levelUp: ARCADE_SAMPLES.levelUp,
 });
 
+// TODO(2026-05-23 review): TUTORIAL_STEPS is defined but never rendered.
+// Either wire up a useTutorial() hook + first-run overlay, or drop the constant.
 const TUTORIAL_STEPS = [
   { title: 'Pick a tower', body: 'Tap one of the six tower chips below the header. Cheaper towers are good first picks.' },
   { title: 'Place it', body: 'Tap any grass cell along the enemy path. Cells on the path itself can’t be built on.' },
