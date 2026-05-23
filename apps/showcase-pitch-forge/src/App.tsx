@@ -15,7 +15,6 @@ import {
   insertPitch,
   load,
   newId,
-  removePitch,
   removeSection,
   reorderSections,
   save,
@@ -242,11 +241,6 @@ export function App() {
     shippie.feel.texture('milestone');
   }
 
-  function deletePitch(pitchId: string) {
-    setState((prev) => removePitch(prev, pitchId));
-    void localNavigation.replace({ kind: 'home' }, { kind: 'crossfade' });
-  }
-
   function saveIdentity(identity: Identity) {
     setState((prev) => setIdentity(prev, identity));
     shippie.feel.texture('confirm');
@@ -334,11 +328,7 @@ export function App() {
             }, 'rise')
           }
           onSent={() => markSent(activePitch.id)}
-          onBack={() => {
-            // Optional cleanup hook for empty pitches in the future.
-            void deletePitch;
-            closeTo({ kind: 'home' });
-          }}
+          onBack={() => closeTo({ kind: 'home' })}
         />
       ) : screen.kind === 'compare' && activePitch ? (
         <ComparePage
