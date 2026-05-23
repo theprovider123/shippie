@@ -11,7 +11,11 @@ export function MemoCard({ memo, onOpen }: Props) {
     memo.transcript.length > 140 ? `${memo.transcript.slice(0, 140).trim()}…` : memo.transcript.trim();
   const recorded = formatRecorded(memo.recorded_at);
   return (
-    <button type="button" className="vm-memo-card" onClick={() => onOpen(memo.id)}>
+    <button
+      type="button"
+      className={`vm-memo-card${memo.edited ? ' is-edited' : ''}`}
+      onClick={() => onOpen(memo.id)}
+    >
       <div className="vm-memo-card-head">
         <span className="vm-memo-title">{memo.title || 'Untitled memo'}</span>
         <span className="vm-memo-meta muted small">
