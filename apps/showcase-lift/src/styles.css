@@ -5,6 +5,12 @@
  * Serif for headings, IBM Plex Sans for UI, IBM Plex Mono fixed-width
  * for the load × reps numerals. Worn-journal hatching at very low
  * opacity, plate-cutout notch only on hero panels.
+ *
+ * TODO: converge on @shippie/design-tokens for cross-app consistency.
+ * Currently uses bespoke iron/chalk/clay/signal theme map (data-theme
+ * driven). Migration should map --lift-* vars onto canonical tokens
+ * (--text, --bg, --sunset, --sage-leaf, etc.) while preserving the
+ * four-theme switcher via attribute selectors.
  */
 
 :root {
@@ -323,6 +329,10 @@ html, body {
   border-color: var(--lift-accent);
   color: var(--lift-accent);
 }
+.lift-pill:focus-visible {
+  outline: 2px solid var(--lift-accent);
+  outline-offset: 2px;
+}
 .lift-pill__label {
   flex: 1 1 auto;
   text-align: center;
@@ -351,6 +361,10 @@ html, body {
   background: var(--lift-accent-soft);
   color: var(--lift-accent);
   border-color: var(--lift-accent);
+}
+.lift-chip:focus-visible {
+  outline: 2px solid var(--lift-accent);
+  outline-offset: 2px;
 }
 
 /* ── Plate breakdown chip ────────────────────────────────────────── */
