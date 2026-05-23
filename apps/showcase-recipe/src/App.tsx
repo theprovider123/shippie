@@ -599,6 +599,17 @@ export function App() {
   const forYouRecipes = useMemo(() => forYou.slice(0, 4).map((row) => row.recipe), [forYou]);
   const tonightPick = forYou[0] ?? null;
 
+  const fitTrend = useMemo(() => {
+    const recentCooks = state.cooked.slice(0, 6);
+    if (recentCooks.length === 0) return { values: [] as number[], average: 0 };
+    const values = recentCooks
+      .map((cook) => state.recipes.find((r) => r.id === cook.recipeId)?.personalFit ?? null)
+      .filter((v): v is number => v !== null)
+      .reverse();
+    const average = values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+    return { values, average };
+  }, [state.cooked, state.recipes]);
+
   const dates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(i)), []);
   const activePlan = state.mealPlan.filter((entry) => dates.includes(entry.date));
   const plannedShopping = useMemo(
@@ -758,6 +769,12 @@ export function App() {
         .map((item) => item.id === itemId ? { ...item, quantity: Math.max(0, item.quantity + delta), updatedAt: Date.now() } : item)
         .filter((item) => item.quantity > 0 || delta >= 0),
     }));
+  }
+
+  /** Remove a pantry item outright — used for the "Discard" action on expired stock. */
+  function discardPantry(itemId: string): void {
+    setState((prev) => ({ ...prev, pantry: prev.pantry.filter((item) => item.id !== itemId) }));
+    shippie.feel.texture('toggle');
   }
 
   function addShopping(event: FormEvent<HTMLFormElement>): void {
@@ -922,6 +939,7 @@ export function App() {
           forYou={forYouRecipes}
           tonightPick={tonightPick}
           shoppingCount={shopping.filter((item) => !item.checked).length}
+          fitTrend={fitTrend}
           onOpenRecipe={setSelectedRecipeId}
           onCook={setCookRecipeId}
           onSkip={(id) => setSkippedToday((prev) => new Set([...prev, id]))}
@@ -971,6 +989,7 @@ export function App() {
           onDraftChange={setPantryDraft}
           onAdd={addPantry}
           onAdjust={adjustPantry}
+          onDiscard={discardPantry}
         />
       ) : null}
 
@@ -1008,7 +1027,15 @@ export function App() {
       ) : null}
 
       {recapData ? (
-        <CookRecapSheet data={recapData} onClose={() => setRecapData(null)} />
+        <CookRecapSheet
+          data={recapData}
+          onClose={() => setRecapData(null)}
+          onCookAgain={() => {
+            const recipeId = recapData.slug;
+            setRecapData(null);
+            setCookRecipeId(recipeId);
+          }}
+        />
       ) : null}
 
       {cookAlongPayload ? (
@@ -1076,6 +1103,7 @@ function TodayView({
   forYou,
   tonightPick,
   shoppingCount,
+  fitTrend,
   onOpenRecipe,
   onCook,
   onSkip,
@@ -1087,6 +1115,7 @@ function TodayView({
   forYou: Recipe[];
   tonightPick: { recipe: Recipe; have: number; total: number; pantryFraction: number } | null;
   shoppingCount: number;
+  fitTrend: { values: number[]; average: number };
   onOpenRecipe: (recipeId: string) => void;
   onCook: (recipeId: string) => void;
   onSkip: (recipeId: string) => void;
@@ -1098,13 +1127,27 @@ function TodayView({
   const todaysPlan = state.mealPlan.filter((entry) => entry.date === today());
   const pantryLow = state.pantry.filter((item) => item.quantity <= 1);
   const firstPick = tonightPick?.recipe ?? state.recipes[0];
+  /**
+   * Meal-aware framing: the eyebrow + headline reflect the current slot
+   * (breakfast/lunch/dinner) so users see the right intent for the time
+   * of day, not always "Tonight".
+   */
+  const hour = new Date().getHours();
+  const mealLabel = hour < 11 ? 'Breakfast' : hour < 15 ? 'Lunch' : hour < 21 ? 'Tonight' : 'Late';
+  const weekday = new Date().toLocaleDateString(undefined, { weekday: 'long' });
+  const fitDelta = tonightPick && fitTrend.average > 0
+    ? tonightPick.recipe.personalFit - fitTrend.average
+    : 0;
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
         <TasteBoard recipes={forYou} pantryLow={pantryLow.length} shoppingCount={shoppingCount} onCook={onCook} />
         <div className="hero-copy">
-          <p className="eyebrow">Tonight · {new Date().toLocaleDateString(undefined, { weekday: 'long' })}</p>
-          <h1>{firstPick ? firstPick.title : 'Add a recipe to begin'}</h1>
+          <p className="eyebrow">{mealLabel} · {weekday}</p>
+          <h1>
+            {mealLabel === 'Tonight' && firstPick ? <span className="hero-meal-prefix">Tonight: </span> : null}
+            {firstPick ? firstPick.title : 'Add a recipe to begin'}
+          </h1>
           {tonightPick ? (
             <p className="hero-status">
               <strong>{tonightPick.have}/{tonightPick.total}</strong> ingredients ready ·{' '}
@@ -1121,7 +1164,23 @@ function TodayView({
             <div className="decision-strip" aria-label="Why this dish">
               <span><strong>{recipeTotalTime(tonightPick.recipe)}</strong><small>minutes</small></span>
               <span><strong>{Math.round(tonightPick.pantryFraction * 100)}%</strong><small>pantry ready</small></span>
-              <span><strong>{tonightPick.recipe.personalFit}</strong><small>fit score</small></span>
+              <span>
+                <strong>{tonightPick.recipe.personalFit}</strong>
+                <small>
+                  fit
+                  {fitTrend.values.length >= 2 ? (
+                    <>
+                      {' · '}
+                      <FitSparkline values={fitTrend.values} />
+                      {fitDelta !== 0 ? (
+                        <span className={`fit-delta${fitDelta > 0 ? ' up' : ' down'}`}>
+                          {fitDelta > 0 ? '+' : ''}{fitDelta}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                </small>
+              </span>
             </div>
           ) : null}
           <div className={`hero-actions ${firstPick ? 'hero-actions-secondary' : ''}`}>
@@ -1197,6 +1256,30 @@ function TodayView({
   );
 }
 
+/**
+ * Tiny inline sparkline rendering the last N personalFit scores. Gives
+ * the hero decision a memory: "is this dish better or worse than what
+ * we've been cooking?" without a separate stats screen.
+ */
+function FitSparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(max - min, 1);
+  const points = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * 36;
+      const y = 10 - ((v - min) / range) * 8;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+  return (
+    <svg className="fit-sparkline" viewBox="0 0 36 10" width="36" height="10" aria-hidden>
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function TasteBoard({
   recipes,
   pantryLow,
@@ -1209,7 +1292,22 @@ function TasteBoard({
   onCook: (recipeId: string) => void;
 }) {
   const featured = recipes[0];
-  const notes = [...new Set((featured?.ingredients ?? []).map((ingredient) => ingredient.name).slice(0, 6))];
+  /**
+   * Flavour notes — reorder so users see the dish's character first:
+   * spices/aromatics → proteins/dairy → fresh produce. Caps at 5 so
+   * the chip row doesn't wrap into a wall.
+   */
+  const allNames = [...new Set((featured?.ingredients ?? []).map((ing) => ing.name))];
+  const FLAVOUR_ORDER: Array<{ rx: RegExp; rank: number }> = [
+    { rx: /\b(cardamom|sage|cinnamon|chilli|chili|cumin|garlic|ginger|pepper|spice|herb|parsley|basil|coriander)\b/i, rank: 0 },
+    { rx: /\b(salmon|chicken|tofu|beef|pork|prawn|fish|egg|yog?hurt|cheese|milk|butter)\b/i, rank: 1 },
+    { rx: /\b(lemon|lime|apple|fennel|kale|cucumber|tomato|onion|courgette|berry)\b/i, rank: 2 },
+  ];
+  const notes = allNames
+    .map((name) => ({ name, rank: FLAVOUR_ORDER.find((entry) => entry.rx.test(name))?.rank ?? 3 }))
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, 5)
+    .map((entry) => entry.name);
   return (
     <section className="taste-board" aria-label="Taste board">
       <div className="taste-board-plate">
@@ -1649,12 +1747,14 @@ function PantryView({
   onDraftChange,
   onAdd,
   onAdjust,
+  onDiscard,
 }: {
   pantry: PantryItem[];
   draft: PantryDraft;
   onDraftChange: (draft: PantryDraft) => void;
   onAdd: (event: FormEvent<HTMLFormElement>) => void;
   onAdjust: (itemId: string, delta: number) => void;
+  onDiscard: (itemId: string) => void;
 }) {
   return (
     <section className="page-shell">
@@ -1693,7 +1793,7 @@ function PantryView({
             const expiry = describeExpiry(item.expiresOn);
             const low = item.quantity <= 1;
             return (
-              <div className={`inventory-row pantry-row${low ? ' is-low' : ''}`} key={item.id}>
+              <div className={`inventory-row pantry-row${low ? ' is-low' : ''}${expiry?.expired ? ' is-expired' : ''}`} key={item.id}>
                 <strong className="pantry-name">{item.name}</strong>
                 <span className="pantry-qty">
                   <span className="qty">{item.quantity}</span> {item.unit}
@@ -1703,11 +1803,21 @@ function PantryView({
                   <small>{badge.label}</small>
                 </span>
                 {expiry ? (
-                  <span className={`pantry-expiry-chip${expiry.urgent ? ' is-urgent' : ''}`}>{expiry.label}</span>
+                  <span className={`pantry-expiry-chip${expiry.urgent ? ' is-urgent' : ''}${expiry.expired ? ' is-expired' : ''}`}>
+                    <span aria-hidden>🕐</span> {expiry.label}
+                  </span>
                 ) : null}
                 <div className="pantry-actions">
-                  <button type="button" aria-label={`Decrease ${item.name}`} onClick={() => onAdjust(item.id, -1)}>-</button>
-                  <button type="button" aria-label={`Increase ${item.name}`} onClick={() => onAdjust(item.id, 1)}>+</button>
+                  {expiry?.expired ? (
+                    <button type="button" className="pantry-discard" onClick={() => onDiscard(item.id)} aria-label={`Discard ${item.name}`}>
+                      Discard
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" aria-label={`Decrease ${item.name}`} onClick={() => onAdjust(item.id, -1)}>-</button>
+                      <button type="button" aria-label={`Increase ${item.name}`} onClick={() => onAdjust(item.id, 1)}>+</button>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -1718,15 +1828,15 @@ function PantryView({
   );
 }
 
-function describeExpiry(expiresOn?: string): { label: string; urgent: boolean } | null {
+function describeExpiry(expiresOn?: string): { label: string; urgent: boolean; expired: boolean; days: number } | null {
   if (!expiresOn) return null;
   const target = new Date(`${expiresOn}T12:00:00`).getTime();
   if (!Number.isFinite(target)) return null;
   const days = Math.round((target - Date.now()) / (24 * 60 * 60 * 1000));
-  if (days < 0) return { label: `expired ${Math.abs(days)}d ago`, urgent: true };
-  if (days === 0) return { label: 'use today', urgent: true };
-  if (days === 1) return { label: '1 day left', urgent: true };
-  return { label: `${days} days left`, urgent: days <= 3 };
+  if (days < 0) return { label: `expired ${Math.abs(days)}d ago`, urgent: true, expired: true, days };
+  if (days === 0) return { label: 'use today', urgent: true, expired: false, days };
+  if (days === 1) return { label: '1 day left', urgent: true, expired: false, days };
+  return { label: `${days} days left`, urgent: days <= 3, expired: false, days };
 }
 
 function ShoppingView({
@@ -1846,6 +1956,7 @@ function SectionHeading({ title, action }: { title: string; action?: string }) {
 }
 
 function RecipeTile({ recipe, onOpen, onCook }: { recipe: Recipe; onOpen: (recipeId: string) => void; onCook: (recipeId: string) => void }) {
+  const lastCookedLabel = recipe.cookedAt ? formatRelativeCook(recipe.cookedAt) : null;
   return (
     <article className="recipe-tile">
       {recipe.photoDataUrl ? <img src={recipe.photoDataUrl} alt="" /> : <div className="recipe-mark">{recipe.title.slice(0, 1)}</div>}
@@ -1853,10 +1964,22 @@ function RecipeTile({ recipe, onOpen, onCook }: { recipe: Recipe; onOpen: (recip
         <span>{recipe.category} · {recipeTotalTime(recipe)} min</span>
         <strong>{recipe.title}</strong>
         <small>{recipe.personalFit}% personal fit</small>
+        {lastCookedLabel ? <small className="recipe-tile-last">Last cooked {lastCookedLabel}</small> : null}
       </button>
       <button type="button" className="cook-button" onClick={() => onCook(recipe.id)}>Cook</button>
     </article>
   );
+}
+
+/** Friendly relative-time label for "Last cooked …" on recipe tiles. */
+function formatRelativeCook(timestamp: number): string {
+  const days = Math.round((Date.now() - timestamp) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 14) return 'last week';
+  if (days < 30) return `${Math.round(days / 7)} weeks ago`;
+  return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function RecipeRow({ recipe, onOpen, onCook }: { recipe: Recipe; onOpen: (recipeId: string) => void; onCook: (recipeId: string) => void }) {
@@ -1951,6 +2074,17 @@ function CookMode({
   const [startedAt] = useState(() => Date.now());
   const [timerExpiresAt, setTimerExpiresAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [cookAlongShareOpen, setCookAlongShareOpen] = useState(false);
+  /**
+   * Cook-along invite URL — derived once on entry so the QR is stable
+   * for the cook. The second phone hits `?cookalong=1`, lands on the
+   * standard URL, and the existing peer-state effect (App.tsx :854)
+   * opens the Cook-Along view once a fresh peer payload arrives.
+   */
+  const cookAlongShareUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}${window.location.pathname}?cookalong=1`;
+  }, []);
   const current = recipe.steps[step] ?? 'Plate, taste, and make it yours.';
 
   const scale = recipe.servings > 0 ? servings / recipe.servings : 1;
@@ -1998,10 +2132,21 @@ function CookMode({
           <p>{step + 1} / {Math.max(recipe.steps.length, 1)}</p>
           <h1>{recipe.title}</h1>
         </div>
-        <label>
-          Serves
-          <input value={servings} onChange={(event) => setServings(Number(event.target.value) || 1)} inputMode="numeric" />
-        </label>
+        <div className="cook-mode-header-actions">
+          <button
+            type="button"
+            className="cook-along-invite"
+            onClick={() => setCookAlongShareOpen(true)}
+            aria-label="Invite a second phone to cook along"
+            title="Cook with a second phone"
+          >
+            <span aria-hidden>📲</span> Cook-along
+          </button>
+          <label>
+            Serves
+            <input value={servings} onChange={(event) => setServings(Number(event.target.value) || 1)} inputMode="numeric" />
+          </label>
+        </div>
       </header>
       <section className="cook-step">
         <p>{current}</p>
@@ -2046,6 +2191,13 @@ function CookMode({
           </button>
         )}
       </footer>
+      <QrShareSheet
+        open={cookAlongShareOpen}
+        url={cookAlongShareUrl}
+        title="Cook together"
+        body="Scan with the second phone to follow this cook step-for-step. Local-first — the live state hops device-to-device."
+        onClose={() => setCookAlongShareOpen(false)}
+      />
     </div>
   );
 }

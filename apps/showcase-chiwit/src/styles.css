@@ -1504,7 +1504,7 @@ meter {
   font-style: italic;
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   letter-spacing: 0;
   color: var(--muted);
   text-transform: none;
@@ -1530,6 +1530,10 @@ meter {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.month-scrubber button:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
 
 /* Ambient-signal row on Today timeline — small sibling-app icon. */
 .entry-list li.is-ambient {
@@ -1537,14 +1541,24 @@ meter {
   border-color: rgba(74, 122, 94, 0.22);
 }
 .entry-source-icon {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   margin-left: 0.45rem;
-  padding: 0.05rem 0.35rem;
+  padding: 0.05rem 0.4rem 0.05rem 0.32rem;
   background: var(--sage-soft);
-  border-radius: 6px;
+  border-radius: 999px;
   font-style: normal;
-  font-size: 0.82em;
-  vertical-align: 1px;
+  font-size: 1.2em;
+  line-height: 1;
+  vertical-align: -2px;
+}
+.entry-source-icon::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sage);
 }
 
 /* Data tab — share-this-week block. */
@@ -2057,4 +2071,23 @@ button.branded.primary {
 }
 @keyframes chiwit-contour-draw {
   to { stroke-dashoffset: 0; }
+}
+
+/* ─── Information-hierarchy polish (cluster 2) ─────────────────────── *
+ * Consistency legend explains the meter's denominator.
+ * Focus-visible rings on interactive scrubber + dismiss buttons land a
+ * keyboard-first read.
+ * ──────────────────────────────────────────────────────────────────── */
+.consistency-legend {
+  margin-top: 0.1rem;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+.insight-card button:focus-visible,
+.entry-list button:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
 }

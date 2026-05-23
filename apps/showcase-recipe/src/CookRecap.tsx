@@ -253,9 +253,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 export function CookRecapSheet({
   data,
   onClose,
+  onCookAgain,
 }: {
   data: Omit<CookRecapData, 'notes'>;
   onClose: () => void;
+  onCookAgain?: () => void;
 }) {
   const [notes, setNotes] = useState('');
   const [sharedAt, setSharedAt] = useState<number | null>(null);
@@ -307,6 +309,9 @@ export function CookRecapSheet({
               </button>
             )}
           />
+          {onCookAgain ? (
+            <button type="button" onClick={onCookAgain}>Cook again</button>
+          ) : null}
           <button type="button" onClick={onClose}>Skip</button>
         </div>
         {sharedAt ? (
