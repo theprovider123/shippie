@@ -202,10 +202,10 @@ export function App() {
         </div>
       </header>
 
-      <section className="mode-row">
-        <button type="button" className={mode === 'classic' ? 'tab active' : 'tab'} onClick={() => startGame('classic')}>Classic</button>
-        <button type="button" className={mode === 'daily' ? 'tab active' : 'tab'} onClick={() => startGame('daily')}>Daily</button>
-        <button type="button" className={mode === 'endless' ? 'tab active' : 'tab'} onClick={() => startGame('endless')}>Endless</button>
+      <section className="mode-row" role="tablist" aria-label="Game mode">
+        <button type="button" role="tab" aria-selected={mode === 'classic'} className={mode === 'classic' ? 'tab active' : 'tab'} onClick={() => startGame('classic')}>Classic</button>
+        <button type="button" role="tab" aria-selected={mode === 'daily'} className={mode === 'daily' ? 'tab active' : 'tab'} onClick={() => startGame('daily')}>Daily</button>
+        <button type="button" role="tab" aria-selected={mode === 'endless'} className={mode === 'endless' ? 'tab active' : 'tab'} onClick={() => startGame('endless')}>Endless</button>
       </section>
 
       <div
