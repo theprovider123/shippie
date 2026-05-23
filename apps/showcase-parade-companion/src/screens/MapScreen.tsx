@@ -1,14 +1,17 @@
+import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useEffect, useMemo, useState } from 'react';
 import { CorridorMap } from '../components/CorridorMap';
 import type { RoutePack } from '../data/parade-2026';
 import { recordSighting, formatMarkerTime, type BusMarker } from '../lib/bus';
 import {
   createFanEvent,
+  encodeFanEventsForSync,
   eventAgeLabel,
   eventSegmentLabel,
   FAN_EVENT_LABELS,
   summarizeFanEvents,
   type FanEvent,
+  type FanEventType,
 } from '../lib/fan-events';
 import { haversineMeters, nearestRouteSegment } from '../lib/geo';
 import { formatAccuracy, formatGpsAge, isFreshGpsFix, isReportableGpsFix, watchGps, type GpsFix } from '../lib/gps';
@@ -19,15 +22,20 @@ interface MapScreenProps {
   plan: GroupPlan | null;
   busMarkers: BusMarker[];
   fanEvents: FanEvent[];
+  importStatus: string;
   onBusMarker: (marker: BusMarker) => void;
   onFanEvent: (event: FanEvent) => Promise<void>;
 }
 
-export function MapScreen({ pack, plan, busMarkers, fanEvents, onBusMarker, onFanEvent }: MapScreenProps) {
+const REPORT_TYPES: FanEventType[] = ['crowd_dense', 'road_blocked', 'need_help'];
+
+export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, onBusMarker, onFanEvent }: MapScreenProps) {
   const [gpsFix, setGpsFix] = useState<GpsFix | null>(null);
   const [gpsError, setGpsError] = useState('');
   const [batterySaver, setBatterySaver] = useState(true);
-  const [busStatus, setBusStatus] = useState('');
+  const [status, setStatus] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
+  const [sheetOpen, setSheetOpen] = useState(false);
   const fanSummary = useMemo(() => summarizeFanEvents(fanEvents), [fanEvents]);
 
   useEffect(() => {
@@ -51,25 +59,46 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, onBusMarker, onFa
     return nearestRouteSegment(gpsFix, pack.route.coordinates);
   }, [gpsFix, pack.route.coordinates]);
 
-  const onBusHere = async () => {
+  const saveEvent = async (type: FanEventType) => {
     if (!gpsFix) {
-      setBusStatus('Wait for a GPS fix before saving a bus sighting.');
+      setStatus('Turn on Location and wait for the dot before tapping.');
       return;
     }
     if (!isFreshGpsFix(gpsFix)) {
-      setBusStatus(`Your last GPS snapshot is ${formatGpsAge(gpsFix)}. Wait for a live fix before saving the bus.`);
+      setStatus(`Your last GPS snapshot is ${formatGpsAge(gpsFix)}. Wait for a live fix before tapping.`);
       return;
     }
-    if (!isReportableGpsFix(gpsFix)) {
-      setBusStatus(`GPS is ${formatAccuracy(gpsFix)}. Wait for a tighter fix before placing the bus.`);
+    if (type !== 'presence' && !isReportableGpsFix(gpsFix)) {
+      setStatus(`GPS is ${formatAccuracy(gpsFix)}. Wait for a tighter fix before placing a bus or safety report.`);
       return;
     }
-    const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
-    const event = createFanEvent('bus_seen', gpsFix, pack.route.coordinates);
+    const event = createFanEvent(type, gpsFix, pack.route.coordinates);
     await onFanEvent(event);
-    onBusMarker(marker);
-    setBusStatus(`Saved locally at ${formatMarkerTime(marker)}. Nearby fans can carry it by QR sync.`);
-    if ('vibrate' in navigator) navigator.vibrate([30, 30, 50]);
+    if (type === 'bus_seen') {
+      const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
+      onBusMarker(marker);
+      setStatus(`Bus saved at ${formatMarkerTime(marker)}. It can move phone-to-phone by QR.`);
+    } else if (type === 'need_help') {
+      setStatus('Move to a steward or call 999 now. This marker only travels by QR or relay.');
+    } else {
+      setStatus(`${FAN_EVENT_LABELS[type]} saved near ${eventSegmentLabel(event)}.`);
+    }
+    if ('vibrate' in navigator) navigator.vibrate(type === 'presence' ? 20 : [25, 25, 45]);
+  };
+
+  const openSync = async () => {
+    if (fanEvents.length === 0) {
+      setStatus('Tap "I am here" first, then show the QR to nearby fans.');
+      return;
+    }
+    try {
+      const fragment = await encodeFanEventsForSync(fanEvents);
+      setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
+      setSheetOpen(true);
+      setStatus('Show this QR to another fan. Their phone imports the carried pulse.');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Could not make a sync QR.');
+    }
   };
 
   return (
@@ -81,9 +110,6 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, onBusMarker, onFa
       </div>
 
       <div className="map-actions">
-        <button type="button" className="primary-action bus-action" onClick={() => void onBusHere()}>
-          Bus is here
-        </button>
         <label className="toggle">
           <input
             type="checkbox"
@@ -92,9 +118,36 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, onBusMarker, onFa
           />
           Battery saver
         </label>
+        <button type="button" className="secondary-action" onClick={() => void openSync()}>
+          Show QR
+        </button>
       </div>
 
-      {busStatus ? <p className="inline-status">{busStatus}</p> : null}
+      <div className="pulse-actions" aria-label="Fast parade taps">
+        <button type="button" className="primary-action fan-tap" onClick={() => void saveEvent('presence')}>
+          I am here
+        </button>
+        <button type="button" className="primary-action fan-tap bus-action" onClick={() => void saveEvent('bus_seen')}>
+          Bus is here
+        </button>
+      </div>
+
+      <div className="report-grid" aria-label="Report what is happening nearby">
+        {REPORT_TYPES.map((type) => (
+          <button
+            type="button"
+            key={type}
+            className={`report-button ${type}`}
+            onClick={() => void saveEvent(type)}
+          >
+            <span>{FAN_EVENT_LABELS[type]}</span>
+            <small>{reportHint(type)}</small>
+          </button>
+        ))}
+      </div>
+
+      {status ? <p className="inline-status">{status}</p> : null}
+      {importStatus ? <p className="inline-status">{importStatus}</p> : null}
 
       <CorridorMap pack={pack} gpsFix={gpsFix} plan={plan} busMarkers={busMarkers} fanEvents={fanEvents} />
 
@@ -129,7 +182,7 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, onBusMarker, onFa
             </div>
           ))}
           {!fanSummary.latestBus && fanSummary.activeReports.length === 0 ? (
-            <p>No carried reports yet. Use Pulse to tap what you can actually see.</p>
+            <p>No carried reports yet. Tap only what you can actually see.</p>
           ) : null}
         </div>
       </div>
@@ -161,6 +214,14 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, onBusMarker, onFa
           ))}
         </div>
       </div>
+
+      <QrShareSheet
+        open={sheetOpen}
+        url={shareUrl}
+        title="Sync nearby pulse"
+        body="Scan on a phone that already opened Parade Companion before the signal drops."
+        onClose={() => setSheetOpen(false)}
+      />
     </section>
   );
 }
@@ -168,4 +229,17 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, onBusMarker, onFa
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function reportHint(type: FanEventType): string {
+  switch (type) {
+    case 'crowd_dense':
+      return 'slow down';
+    case 'road_blocked':
+      return 'route change';
+    case 'need_help':
+      return 'QR/relay only';
+    default:
+      return 'nearby';
+  }
 }

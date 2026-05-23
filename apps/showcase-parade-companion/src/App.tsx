@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CardScreen } from './screens/CardScreen';
 import { ReadinessChip } from './components/ReadinessChip';
 import { MapScreen } from './screens/MapScreen';
-import { MeetScreen } from './screens/MeetScreen';
 import { PlanScreen } from './screens/PlanScreen';
-import { PulseScreen } from './screens/PulseScreen';
 import { SafetyScreen } from './screens/SafetyScreen';
 import { decodePlan, type GroupPlan } from './lib/group-plan';
 import {
@@ -19,15 +16,12 @@ import { loadRoutePack } from './lib/route-pack';
 import type { BusMarker } from './lib/bus';
 import { decodeFanEventsSync, dedupeFanEvents, sortEvents, type FanEvent } from './lib/fan-events';
 
-type Screen = 'pulse' | 'map' | 'plan' | 'meet' | 'safety' | 'card';
+type Screen = 'map' | 'group' | 'safety';
 
 const nav: Array<{ id: Screen; label: string }> = [
-  { id: 'pulse', label: 'Pulse' },
   { id: 'map', label: 'Map' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'meet', label: 'Meet' },
+  { id: 'group', label: 'Group' },
   { id: 'safety', label: 'Safety' },
-  { id: 'card', label: 'Card' },
 ];
 
 export function App() {
@@ -69,14 +63,14 @@ export function App() {
           if (cancelled) return;
           setFanEvents(rows);
           setImportStatus(`Imported ${syncedEvents.length} nearby signal${syncedEvents.length === 1 ? '' : 's'} by QR.`);
-          setActive('pulse');
+          setActive('map');
           history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
           return;
         }
         const decoded = await decodePlan(hash);
         if (cancelled || !decoded) return;
         setPendingImport(decoded);
-        setActive('plan');
+        setActive('group');
       })();
     };
     handleHash();
@@ -109,8 +103,8 @@ export function App() {
           <strong>Parade Companion — Islington</strong>
         </div>
         <div className="topbar-actions">
-          <button type="button" className="lost-button" onClick={() => setActive('meet')}>
-            Lost?
+          <button type="button" className="lost-button" onClick={() => setActive('safety')}>
+            Help
           </button>
           <span className="offline-pill">offline core</span>
         </div>
@@ -129,28 +123,18 @@ export function App() {
       <ReadinessChip pack={pack} />
 
       <div className="screen-host">
-        {active === 'pulse' ? (
-          <PulseScreen
-            pack={pack}
-            fanEvents={fanEvents}
-            busMarkers={busMarkers}
-            importStatus={importStatus}
-            onFanEvent={onFanEvent}
-            onBusMarker={onBusMarker}
-            onOpenMap={() => setActive('map')}
-          />
-        ) : null}
         {active === 'map' ? (
           <MapScreen
             pack={pack}
             plan={plan}
             busMarkers={busMarkers}
             fanEvents={fanEvents}
+            importStatus={importStatus}
             onBusMarker={onBusMarker}
             onFanEvent={onFanEvent}
           />
         ) : null}
-        {active === 'plan' ? (
+        {active === 'group' ? (
           <PlanScreen
             pack={pack}
             plan={plan}
@@ -159,13 +143,7 @@ export function App() {
             onClearImport={() => setPendingImport(null)}
           />
         ) : null}
-        {active === 'meet' ? (
-          <MeetScreen pack={pack} plan={plan} onCreatePlan={() => setActive('plan')} />
-        ) : null}
         {active === 'safety' ? <SafetyScreen pack={pack} /> : null}
-        {active === 'card' ? (
-          <CardScreen pack={pack} fanEvents={fanEvents} busMarkers={busMarkers} plan={plan} />
-        ) : null}
       </div>
 
       <nav className="bottom-nav" aria-label="Parade companion sections">

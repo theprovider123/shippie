@@ -827,7 +827,7 @@ textarea { resize: vertical; min-height: 64px; }
 /* ----- Bottom nav ----- */
 .bottom-nav {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   flex-shrink: 0;
   min-height: calc(58px + env(safe-area-inset-bottom));
   padding: 7px 7px calc(env(safe-area-inset-bottom) + 7px);

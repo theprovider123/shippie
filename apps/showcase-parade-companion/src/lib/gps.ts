@@ -59,6 +59,38 @@ export function watchGps(options: GpsWatchOptions): () => void {
   return () => navigator.geolocation.clearWatch(id);
 }
 
+/**
+ * Course over ground (degrees, 0..360) — the bearing between two successive fixes,
+ * but only when the implied speed exceeds `minSpeedMps`. Returns null otherwise.
+ * Useful as a magnetometer-independent heading source: when the user is actually
+ * walking, where they're walking IS where they're facing.
+ */
+export function courseOverGround(
+  prev: Pick<GpsFix, 'lng' | 'lat' | 'at'> | null,
+  next: Pick<GpsFix, 'lng' | 'lat' | 'at'> | null,
+  minSpeedMps = 0.5,
+): number | null {
+  if (!prev || !next) return null;
+  const dtSeconds = (next.at - prev.at) / 1000;
+  if (!(dtSeconds > 0)) return null;
+  // Lazy-import-style: keep gps.ts free of geo dependency by inlining the maths.
+  // Bearing from prev → next (forward azimuth).
+  const φ1 = (prev.lat * Math.PI) / 180;
+  const φ2 = (next.lat * Math.PI) / 180;
+  const Δλ = ((next.lng - prev.lng) * Math.PI) / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  // Haversine distance for the speed check.
+  const Δφ = φ2 - φ1;
+  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  const distance = 2 * 6_371_000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const speed = distance / dtSeconds;
+  if (speed < minSpeedMps) return null;
+  let bearing = (Math.atan2(y, x) * 180) / Math.PI;
+  if (bearing < 0) bearing += 360;
+  return bearing;
+}
+
 export function formatAccuracy(fix: Pick<GpsFix, 'accuracyM'> | null): string {
   if (!fix) return 'No fix';
   if (fix.accuracyM < 1000) return `±${Math.round(fix.accuracyM)} m`;
