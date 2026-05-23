@@ -16,7 +16,7 @@ import { ProfileSettings } from '../ui/ProfileSettings.tsx';
 import { RoomFeed } from '../ui/RoomFeed.tsx';
 import { ShareCardButton } from '../ui/ShareCardButton.tsx';
 import { durationFromMinutes, randomPlayerPlaceholder } from './host-controller.ts';
-import { broadcastPredictionStats } from '../lib/intent-bridge.ts';
+import { broadcastKickoffSoon, broadcastPredictionStats } from '../lib/intent-bridge.ts';
 import { HeroScoreboard } from '../HeroScoreboard.tsx';
 import { PresenceRibbon, type PresencePeer } from '../PresenceRibbon.tsx';
 import { Fanfare } from '../Fanfare.tsx';
@@ -48,6 +48,7 @@ export function HostMatchday(props: {
   const [playerOptions] = useState(() => randomPlayerPlaceholder());
   const [fanfareKey, setFanfareKey] = useState<string | null>(null);
   const peerLockedRef = useRef<Set<string>>(new Set());
+  const kickoffSoonSentRef = useRef<Set<string>>(new Set());
   const liveScore = useOpeningLiveScore();
   const home = teamByCode(OPENING_FIXTURE.home);
   const away = teamByCode(OPENING_FIXTURE.away);
@@ -152,6 +153,28 @@ export function HostMatchday(props: {
       polls: room.polls,
     });
   }, [room.tallies, room.scoreTallies, room.polls]);
+
+  // Cross-app bridge (forward-compat): emit `kickoff-soon` /
+  // `match.kickoff-soon` exactly once when kickoff is ≤ 10 minutes away
+  // so WCF's IntentToastHost matcher activates. Re-evaluates each minute
+  // via a lightweight interval; idempotent via kickoffSoonSentRef.
+  useEffect(() => {
+    const fixtureKey = OPENING_FIXTURE.id;
+    const tryEmit = () => {
+      if (kickoffSoonSentRef.current.has(fixtureKey)) return;
+      const msUntil = kickoff - Date.now();
+      if (msUntil <= 0) return; // already kicked off
+      if (msUntil > 10 * 60 * 1000) return; // not yet in the 10-min window
+      kickoffSoonSentRef.current.add(fixtureKey);
+      broadcastKickoffSoon({
+        fixture: fixtureTitle(OPENING_FIXTURE),
+        minutesUntil: Math.max(1, Math.round(msUntil / 60_000)),
+      });
+    };
+    tryEmit();
+    const id = window.setInterval(tryEmit, 60_000);
+    return () => window.clearInterval(id);
+  }, [kickoff]);
 
   const guestUrl = useMemo(
     () => matchRoomUrl({

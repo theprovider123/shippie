@@ -2,6 +2,10 @@
    Ledger inherits the dark default. The accent is sage-leaf — green like
    a balance-sheet column heading, not the sunset orange of the food
    cluster. Spreadsheet voice; numbers feel like spreadsheet cells. */
+/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
+   when kit components (OnboardingFlow/IntentToastHost/QrShareSheet/BackupCard/
+   EmptyState) get adopted in JSX. Currently only mountShowcase() boot helper
+   is imported, so no skin selectors render. */
 @import "@shippie/design-tokens/tokens.css";
 
 :root {

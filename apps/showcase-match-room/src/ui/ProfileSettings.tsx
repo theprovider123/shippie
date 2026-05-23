@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { TEAMS, teamByCode, teamProfileByCode } from '../data/tournament.ts';
 import { LOCALE_LABELS, type Locale } from '../i18n.ts';
 import type { MatchRoomThemeMode, UserProfile } from '../shared/local-store.ts';
@@ -21,6 +21,16 @@ export function ProfileSettings(props: {
   variant?: 'panel' | 'chip';
 }) {
   const [open, setOpen] = useState(props.variant === 'panel');
+
+  // a11y: close the settings sheet on Escape when it's open as an overlay.
+  useEffect(() => {
+    if (!open || props.variant === 'panel') return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, props.variant]);
   const [teamFilter, setTeamFilter] = useState('');
   const primaryTeam = teamByCode(props.profile.primaryTeam);
   const primaryProfile = teamProfileByCode(primaryTeam.code);
@@ -175,7 +185,7 @@ export function ProfileSettings(props: {
           <div className="settings-sheet" role="dialog" aria-modal="true" aria-label="Match identity">
             <div className="panel-head">
               <h2>Settings</h2>
-              <button type="button" onClick={() => setOpen(false)}>Done</button>
+              <button type="button" aria-label="Close settings" onClick={() => setOpen(false)}>Done</button>
             </div>
             {settingsPanel}
           </div>

@@ -25,6 +25,26 @@ export interface FantasySavedArrival {
   receivedAt: number;
 }
 
+/**
+ * Cross-app forward-compat: emit `kickoff-soon` (legacy hyphenated) AND
+ * `match.kickoff-soon` (dot-namespaced) so World Cup Fantasy's matcher —
+ * which subscribes to both kinds — can fire once kickoff is ~10 min away.
+ * Per spec §7.6 + Brief D, this is a soft-link signal; consumers throttle.
+ */
+export function broadcastKickoffSoon(opts: {
+  fixture: string;
+  minutesUntil: number;
+  captainName?: string | null;
+}): void {
+  const row = {
+    fixture: opts.fixture,
+    minutesUntil: opts.minutesUntil,
+    captainName: opts.captainName ?? undefined,
+  };
+  shippie.intent.broadcast('kickoff-soon', [row]);
+  shippie.intent.broadcast('match.kickoff-soon', [row]);
+}
+
 export function broadcastPredictionStats(opts: {
   fixture: string | undefined;
   tallies: ReadonlyArray<PollTally>;
