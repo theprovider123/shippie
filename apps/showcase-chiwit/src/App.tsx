@@ -431,13 +431,43 @@ function broadcastEntry(entry: PulseEntry): void {
   }
 }
 
+/**
+ * Walk backwards from today and count consecutive days with ≥ 3 logged
+ * signals. A "streak" is the number of unbroken consistency-quality days
+ * leading up to (and including) today. Returns 0 when today is empty —
+ * "consistency is your edge" only lands if the user's actually consistent.
+ */
+function consistencyStreak(state: ChiwitState): number {
+  let streak = 0;
+  for (let offset = 0; offset < 60; offset += 1) {
+    const date = addDays(-offset);
+    if (entriesForDate(state.entries, date).length >= 3) streak += 1;
+    else break;
+  }
+  return streak;
+}
+
 function generateInsights(state: ChiwitState): Insight[] {
   const insights: Insight[] = [];
   const last7 = Array.from({ length: 7 }, (_, index) => addDays(-index));
-  const hydrationDays = last7.map((date) => entriesForDate(state.entries, date).filter((entry) => entry.kind === 'hydration').reduce((sum, entry) => sum + (entry.amount ?? 0), 0));
-  const movementDays = last7.map((date) => entriesForDate(state.entries, date).filter((entry) => entry.kind === 'movement').reduce((sum, entry) => sum + (entry.amount ?? 0), 0));
-  const moodDays = last7.map((date) => average(entriesForDate(state.entries, date).filter((entry) => entry.kind === 'mood').map((entry) => entry.value)));
-  const energyDays = last7.map((date) => average(entriesForDate(state.entries, date).filter((entry) => entry.kind === 'energy').map((entry) => entry.value)));
+  // Shared per-day lookup: cuts O(N × 7) entry scans down to O(N + 7).
+  const last7Entries = last7.map((date) => entriesForDate(state.entries, date));
+  const hydrationDays = last7Entries.map((rows) => rows.filter((entry) => entry.kind === 'hydration').reduce((sum, entry) => sum + (entry.amount ?? 0), 0));
+  const movementDays = last7Entries.map((rows) => rows.filter((entry) => entry.kind === 'movement').reduce((sum, entry) => sum + (entry.amount ?? 0), 0));
+  const moodDays = last7Entries.map((rows) => average(rows.filter((entry) => entry.kind === 'mood').map((entry) => entry.value)));
+  const energyDays = last7Entries.map((rows) => average(rows.filter((entry) => entry.kind === 'energy').map((entry) => entry.value)));
+
+  const streak = consistencyStreak(state);
+  if (streak >= 3) {
+    insights.push({
+      id: `streak-${streak}`,
+      title: `${streak}-day streak`,
+      body: streak >= 7
+        ? `${streak} unbroken days with 3+ signals — consistency is your edge.`
+        : `${streak} days in a row with 3+ signals. Steady wins.`,
+      tone: 'good',
+    });
+  }
 
   const hydrationAverage = average(hydrationDays);
   if (hydrationAverage !== null && hydrationAverage < state.goals.waterMl * 0.55) {
