@@ -438,7 +438,7 @@ function drawWorld(canvas: HTMLCanvasElement | null, w: World, skin: typeof SKIN
 
   // Player ship.
   const shielded = w.nowMs < w.shieldUntilMs;
-  ctx.fillStyle = shielded ? skin.accent : skin.accent;
+  ctx.fillStyle = skin.accent;
   const px = w.player.x * sx;
   const py = PLAYER_Y * sy;
   ctx.beginPath();
