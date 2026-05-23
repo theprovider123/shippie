@@ -1,8 +1,4 @@
-/* ── snap-and-forget · Darkroom / Vault identity ──────────────────
-   Ephemeral camera. Photos are the only colour. UI is a black-room
-   safelight: deep charcoal, bone type, amber-safelight accent.
-   Capture is a single big disc. Cells are polaroid-style with
-   mono labels in italic. */
+/* snap-and-forget · darkroom safelight: charcoal + bone + amber, polaroid cells, single capture disc. */
 
 @font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype'); }
 @font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 500; font-display: swap; src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype'); }
@@ -127,8 +123,10 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 
 button.primary.big {
-  width: 116px;
-  height: 116px;
+  width: min(116px, 80vw);
+  height: min(116px, 80vw);
+  max-width: 116px;
+  max-height: 116px;
   border-radius: 999px;
   padding: 0;
   font-family: var(--font-mono);

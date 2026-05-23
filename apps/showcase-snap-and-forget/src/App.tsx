@@ -147,16 +147,16 @@ export function App() {
         />
       </section>
 
-      {snaps.length > 0 ? (
-        <section className="search-row">
-          <input
-            type="search"
-            placeholder="search by label (pizza, dog, beach…)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </section>
-      ) : null}
+      <section className="search-row">
+        <input
+          type="search"
+          placeholder={snaps.length === 0 ? 'snap something first…' : 'search by label (pizza, dog, beach…)'}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          disabled={snaps.length === 0}
+          aria-label="Search snaps by label"
+        />
+      </section>
 
       <section className="grid-section">
         {snaps.length === 0 ? (
@@ -172,7 +172,17 @@ export function App() {
                   ) : labellingId === s.id ? (
                     <span className="muted small">labelling…</span>
                   ) : (
-                    <span className="muted small">labels pending</span>
+                    <span className="muted small">
+                      labels pending
+                      {' · '}
+                      <button
+                        type="button"
+                        className="link"
+                        onClick={() => void labelInBackground(s.id, s.blob)}
+                      >
+                        retry
+                      </button>
+                    </span>
                   )}
                   <span className="muted small">{new Date(s.capturedAt).toLocaleString()}</span>
                   <button type="button" className="link" onClick={() => onDelete(s.id)}>delete</button>
