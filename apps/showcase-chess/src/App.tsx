@@ -58,7 +58,14 @@ function loadSettings(): Settings {
   const fallback: Settings = { mode: 'vsComputer', skill: 3, flipped: false, theme: 'classic', showCoords: true };
   if (typeof localStorage === 'undefined') return fallback;
   try {
-    return { ...fallback, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') };
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<Settings>;
+    return {
+      mode: raw.mode === 'twoPlayer' ? 'twoPlayer' : 'vsComputer',
+      skill: typeof raw.skill === 'number' && raw.skill >= 0 && raw.skill <= 6 ? raw.skill : fallback.skill,
+      flipped: typeof raw.flipped === 'boolean' ? raw.flipped : fallback.flipped,
+      theme: raw.theme === 'walnut' || raw.theme === 'cobalt' ? raw.theme : 'classic',
+      showCoords: typeof raw.showCoords === 'boolean' ? raw.showCoords : fallback.showCoords,
+    };
   } catch {
     return fallback;
   }

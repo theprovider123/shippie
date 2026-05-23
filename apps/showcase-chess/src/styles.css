@@ -103,7 +103,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 28px; font-weight: 60
      aspect-ratio derive the height. This guarantees the board is a
      real square on every viewport, instead of relying on height
      clamping to keep cells uniform. */
-  width: min(100%, calc(100vw - 32px), 72vh);
+  width: min(100%, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), 72vh);
   max-width: 520px;
   margin: 0 auto;
   aspect-ratio: 1 / 1;
@@ -151,6 +151,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 28px; font-weight: 60
   height: 28%;
   border-radius: 999px;
   background: var(--legal);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 .sq.legal-capture::after {
   content: '';
