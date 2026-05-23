@@ -54,7 +54,7 @@ input, textarea {
   background: var(--cl-surface);
   color: var(--cl-text);
   border: 1px solid var(--cl-line);
-  border-radius: 0;
+  border-radius: 2px;
   padding: 0.625rem 0.75rem;
   width: 100%;
   outline: none;
@@ -143,6 +143,16 @@ textarea { resize: vertical; min-height: 5rem; font-family: inherit; }
 .cl-tabnav button[data-active='true'] {
   color: var(--cl-text);
   border-top-color: var(--cl-accent);
+}
+
+/* Sub-340px tab labels truncate; shrink font + tighten letter-spacing. */
+@media (max-width: 340px) {
+  .cl-tabnav button {
+    font-size: 0.5625rem;
+    letter-spacing: 0.04em;
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 
 .cl-tabnav-count {
