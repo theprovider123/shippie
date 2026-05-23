@@ -31,6 +31,7 @@
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { shouldCancelBottomTap } from './app-switcher-gesture';
 
   interface Props {
     /** Drawer content. Typically a mini app grid. */
@@ -103,6 +104,8 @@
   // "user tried to swipe but didn't pull far enough" and fire a
   // confirmation haptic.
   let lastPointerDx = 0;
+  let lastPointerDy = 0;
+  let bottomTapCancelled = false;
   let backPointerStartX = 0;
   let backPointerStartY = 0;
   let backPointerActive = false;
@@ -115,6 +118,8 @@
     pointerStartY = event.clientY;
     pointerActive = true;
     lastPointerDx = 0;
+    lastPointerDy = 0;
+    bottomTapCancelled = false;
   }
 
   function handlePointerMove(event: PointerEvent) {
@@ -122,9 +127,14 @@
     const dx = event.clientX - pointerStartX;
     const dy = event.clientY - pointerStartY;
     lastPointerDx = dx;
+    lastPointerDy = dy;
 
     if (edge === 'bottom') {
       const upwardPull = pointerStartY - event.clientY;
+      if (shouldCancelBottomTap(dx, dy)) {
+        bottomTapCancelled = true;
+      }
+      if (bottomTapCancelled) return;
       if (upwardPull < edgeSwipeThreshold) return;
       const angle = (Math.atan2(Math.abs(dx), Math.abs(upwardPull)) * 180) / Math.PI;
       if (angle > edgeSwipeMaxAngle) return;
@@ -143,9 +153,16 @@
 
   function handlePointerUp() {
     if (pointerActive && edge === 'bottom') {
+      const cancelBottomTap = bottomTapCancelled || shouldCancelBottomTap(lastPointerDx, lastPointerDy);
       pointerActive = false;
       lastPointerDx = 0;
-      onOpenChange(true);
+      lastPointerDy = 0;
+      bottomTapCancelled = false;
+      if (cancelBottomTap) {
+        void fireSubThresholdHaptic();
+      } else {
+        onOpenChange(true);
+      }
       return;
     }
 
@@ -158,6 +175,8 @@
     }
     pointerActive = false;
     lastPointerDx = 0;
+    lastPointerDy = 0;
+    bottomTapCancelled = false;
   }
 
   async function fireSubThresholdHaptic() {

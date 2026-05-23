@@ -37,6 +37,7 @@ const MODEL_BYTE_HINTS: Record<string, number> = {
 const MODEL_FALLBACK_BYTES = 50 * 1024 * 1024;
 
 const cacheBudget: CacheBudget = createAiCacheBudget();
+let cacheEvictionQueue: Promise<void> = Promise.resolve();
 
 interface WireRequest {
   kind: 'shippie.ai.request';
@@ -127,7 +128,7 @@ async function getLocalAi(): Promise<ShippieLocalAi | null> {
               const evict = cacheBudget.planEviction(bytes);
               for (const key of evict) {
                 cacheBudget.delete(key);
-                void evictFromCacheStorage(key);
+                queueCacheEviction(key);
               }
               cacheBudget.put(progress.name, bytes);
             }
@@ -140,6 +141,14 @@ async function getLocalAi(): Promise<ShippieLocalAi | null> {
     })();
   }
   return localAiPromise;
+}
+
+function queueCacheEviction(modelKey: string): void {
+  cacheEvictionQueue = cacheEvictionQueue.then(
+    () => evictFromCacheStorage(modelKey),
+    () => evictFromCacheStorage(modelKey),
+  );
+  void cacheEvictionQueue;
 }
 
 async function evictFromCacheStorage(modelKey: string): Promise<void> {

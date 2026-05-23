@@ -674,7 +674,7 @@ function searchLocalDbRows(rows: LocalRow[], payload: unknown): LocalRow[] {
   if (!needle) return rows;
   return rows.filter((row) =>
     Object.values(readRowRecord(row)).some((value) =>
-      typeof value === 'string' && value.toLowerCase().includes(needle),
+      value != null && String(value).toLowerCase().includes(needle),
     ),
   );
 }

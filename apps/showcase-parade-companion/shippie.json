@@ -1,0 +1,83 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Parade Companion — Islington",
+  "short_name": "Parade",
+  "slug": "parade-companion",
+  "description": "Offline map, group meet-up plan, safety info, and honest bus sightings for the Islington victory parade. Works with no signal. No account. Unofficial, fan-made.",
+  "icon": "/icon.svg",
+  "start_url": "/run/parade-companion/",
+  "scope": "/run/parade-companion/",
+  "theme_color": "#EF0107",
+  "background_color": "#F5EFE4",
+  "display": "standalone",
+  "orientation": "portrait",
+  "license": "AGPL-3.0-or-later",
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-parade-companion",
+  "remix_allowed": true,
+  "curation": {
+    "surface": "arcade",
+    "category": "tools",
+    "tags": ["offline", "maps", "safety", "local-first"],
+    "capabilities": ["worksOffline", "localDb"]
+  },
+  "runtime_assets": [
+    "basemap/corridor.webp",
+    "route-pack.json",
+    "fonts/fraunces-roman.woff2",
+    "fonts/fraunces-italic.woff2",
+    "fonts/jetbrains-mono.woff2",
+    "fonts/general-sans-400.woff2",
+    "fonts/general-sans-500.woff2",
+    "fonts/general-sans-600.woff2",
+    "fonts/general-sans-700.woff2"
+  ],
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "data_schemas": {
+    "group_plan": {
+      "id": "text primary key",
+      "payload": "json not null",
+      "updated_at": "datetime"
+    },
+    "bus_marker": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "lng": "real",
+      "lat": "real",
+      "accuracy_m": "real",
+      "segment_id": "text",
+      "segment_index": "integer",
+      "snapped_lng": "real",
+      "snapped_lat": "real",
+      "source": "text",
+      "created_at": "datetime"
+    },
+    "fan_event": {
+      "id": "text primary key",
+      "type": "text not null",
+      "source_id": "text not null",
+      "source": "text not null",
+      "lng": "real",
+      "lat": "real",
+      "accuracy_m": "real",
+      "segment_id": "text",
+      "segment_index": "integer",
+      "snapped_lng": "real",
+      "snapped_lat": "real",
+      "created_at": "datetime",
+      "expires_at": "datetime"
+    }
+  },
+  "data_passport": {
+    "stores": [
+      "Your saved group plan and meetup notes",
+      "Your own bus sighting taps",
+      "Your fan pulse taps and reports",
+      "Nearby fan signals you choose to import by QR"
+    ],
+    "leaves_device": "The offline fan core sends nothing. Nearby sync only moves data when one fan shows a QR and another fan scans it.",
+    "delete": "Use Shippie's app data controls, or clear the plan, sightings, and fan pulse data inside the tool."
+  }
+}

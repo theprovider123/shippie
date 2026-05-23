@@ -27,6 +27,7 @@ export interface WrapperEnv {
   ASSETS?: { fetch: typeof fetch };
   CACHE: KVNamespace;
   SIGNAL_ROOM?: DurableObjectNamespace;
+  BUS_PULSE?: DurableObjectNamespace;
   SHIPPIE_ENV: string;
   PUBLIC_ORIGIN: string;
   SEALED_DOCS_ENABLED?: string;

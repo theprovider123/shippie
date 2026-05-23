@@ -1,0 +1,21 @@
+{
+  "name": "Parade Companion — Islington",
+  "short_name": "Parade",
+  "description": "Offline map, group meet-up plan, safety info, and honest bus sightings for the Islington victory parade. Works with no signal. No account. Unofficial, fan-made.",
+  "id": "/run/parade-companion/",
+  "start_url": "/run/parade-companion/",
+  "display": "standalone",
+  "background_color": "#F5EFE4",
+  "theme_color": "#EF0107",
+  "orientation": "portrait",
+  "scope": "/run/parade-companion/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["navigation", "utilities"]
+}

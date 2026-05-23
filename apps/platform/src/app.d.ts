@@ -49,6 +49,8 @@ declare global {
         CACHE: KVNamespace;
         // SIGNAL_ROOM lands in Phase 6 alongside the proximity DO port.
         SIGNAL_ROOM?: DurableObjectNamespace;
+        // Parade Companion crowd-sourced bus segment pulse.
+        BUS_PULSE?: DurableObjectNamespace;
         SHIPPIE_ENV: string;
         PUBLIC_ORIGIN: string;
         // Phase 3 secrets — set via `wrangler secret put`.

@@ -93,6 +93,8 @@ describe('container local DB bridge', () => {
 
     await expect(client.call('db.query', 'query', { table: 'sets', where: { reps: { gte: 6 } } }))
       .resolves.toMatchObject({ rows: [{ id: 's2', payload: { id: 's2', reps: 8, weight: 80 } }] });
+    await expect(client.call('db.query', 'search', { table: 'sets', query: '100' }))
+      .resolves.toMatchObject({ rows: [{ id: 's1', payload: { id: 's1', reps: 5, weight: 100 } }] });
     await expect(client.call('db.query', 'count', { table: 'sets' })).resolves.toEqual({ count: 2 });
     await expect(client.call('db.insert', 'update', { table: 'sets', id: 's1', patch: { reps: 6 } }))
       .resolves.toEqual({ updated: true });

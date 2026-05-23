@@ -255,6 +255,17 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     },
   },
   {
+    slug: 'parade-companion',
+    name: 'Parade Companion — Islington',
+    shortName: 'Parade',
+    description: 'Offline map, group meet-up plan, safety info, and honest bus sightings for the Islington victory parade.',
+    appKind: 'local',
+    icon: 'PC',
+    accent: '#C8102E',
+    category: 'tools',
+    port: 5252,
+  },
+  {
     slug: 'whiteboard',
     name: 'Whiteboard',
     shortName: 'Board',

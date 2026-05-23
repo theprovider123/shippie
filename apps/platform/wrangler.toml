@@ -67,10 +67,8 @@ allowed_sender_addresses = ["login@shippie.app"]
 crons = ["*/5 * * * *", "0 * * * *", "0 4 * * *"]
 
 # Durable Objects — SignalRoom is the per-room signalling DO for the
-# Proximity Protocol. v1 created the class; v2 deleted it (the class
-# was never actually exported back then). v3 re-creates it now that
-# `apps/platform/src/lib/server/proximity/signal-room.ts` is wired into
-# the wrap-worker script.
+# Proximity Protocol. BusPulseSegment stores anonymous per-route-segment
+# parade sightings; no coordinates or device ids are persisted.
 [[migrations]]
 tag = "v1"
 new_classes = ["SignalRoom"]
@@ -83,9 +81,17 @@ deleted_classes = ["SignalRoom"]
 tag = "v3"
 new_sqlite_classes = ["SignalRoom"]
 
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["BusPulseSegment"]
+
 [[durable_objects.bindings]]
 name = "SIGNAL_ROOM"
 class_name = "SignalRoom"
+
+[[durable_objects.bindings]]
+name = "BUS_PULSE"
+class_name = "BusPulseSegment"
 
 [vars]
 SHIPPIE_ENV = "production"
