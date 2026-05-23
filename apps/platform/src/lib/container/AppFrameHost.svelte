@@ -64,6 +64,22 @@
   const runtimeSrcWithHash = $derived(srcWithHash(runtimeSrc, parentHash));
   const packageFrameSrcWithHash = $derived(srcWithHash(packageFrameSrc, parentHash));
 
+  // Flip true after 5s of continuous 'booting'. Surfaces an explanatory
+  // line so users know the app isn't dead — first launches often need
+  // to download assets behind the iframe.
+  let slowBoot = $state<Record<string, boolean>>({});
+  $effect(() => {
+    const status = frameStates[app.id]?.status;
+    if (status !== 'booting') {
+      if (slowBoot[app.id]) slowBoot = { ...slowBoot, [app.id]: false };
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      slowBoot = { ...slowBoot, [app.id]: true };
+    }, 5_000);
+    return () => window.clearTimeout(timer);
+  });
+
   onMount(() => {
     const updateHash = () => {
       parentHash = window.location.hash;
@@ -161,6 +177,11 @@
     <div class="frame-loader" role="status" aria-live="polite">
       <RocketLoader size="lg" label={`Opening ${app.name}`} />
       <p class="frame-loader-label">Opening {app.name}…</p>
+      {#if slowBoot[app.id]}
+        <p class="frame-loader-slow">
+          Taking longer than usual — the first launch may need to download assets.
+        </p>
+      {/if}
     </div>
   {/if}
   {#if frameStates[app.id]?.status === 'error'}
@@ -208,6 +229,15 @@
     letter-spacing: 0.08em;
     color: var(--text-light);
     margin: 0;
+  }
+  .frame-loader-slow {
+    font-family: var(--font-sans);
+    font-size: var(--caption-size);
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 36ch;
+    text-align: center;
+    line-height: 1.4;
   }
   .frame-recovery {
     position: absolute;
