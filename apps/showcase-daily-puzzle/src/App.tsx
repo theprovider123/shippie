@@ -163,8 +163,10 @@ function modeFromUrlOrStore(store: Store): Mode {
 }
 
 export function App() {
+  // Load once and reuse for the initial mode resolution — calling
+  // loadStore() twice walks every legacy key twice on mount.
   const [store, setStore] = useState<Store>(() => loadStore());
-  const [mode, setMode] = useState<Mode>(() => modeFromUrlOrStore(loadStore()));
+  const [mode, setMode] = useState<Mode>(() => modeFromUrlOrStore(store));
   const streak = computeModeStreak(store.completions, mode);
   const combined = longestCombinedStreak(store.completions);
 
@@ -217,6 +219,8 @@ export function App() {
             type="button"
             className={item.id === mode ? 'mode active' : 'mode'}
             onClick={() => changeMode(item.id)}
+            title={item.label}
+            aria-label={item.label}
           >
             {item.short}
           </button>
@@ -255,7 +259,9 @@ function TrailMode({ onComplete }: { onComplete: (mode: Mode, score: string, res
 
   useEffect(() => {
     if (!startedAt || done) return;
-    const id = window.setInterval(() => setNow(Date.now()), 100);
+    // 200ms is fast enough for tenth-of-a-second display without the
+    // jitter of 100ms re-renders on lower-end hardware.
+    const id = window.setInterval(() => setNow(Date.now()), 200);
     return () => window.clearInterval(id);
   }, [startedAt, done]);
 
