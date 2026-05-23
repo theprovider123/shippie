@@ -77,6 +77,12 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 28px; font-weight: 60
   display: grid;
   gap: 8px;
 }
+/* Tiny phones (e.g. iPhone SE 1st gen, 320px width) — drop to 2 cols so
+   cards stay tappable instead of crushing to a thin slice. The inline
+   gridTemplateColumns from JS wins by specificity unless we use !important. */
+@media (max-width: 320px) {
+  .grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
 
 .card {
   appearance: none;

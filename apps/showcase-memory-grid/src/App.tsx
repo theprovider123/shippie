@@ -24,7 +24,8 @@ interface Card {
 }
 
 interface PersonalBest {
-  pairs: number;
+  // `pairs` lives in the parent record key (Record<number, PersonalBest>);
+  // duplicating it inside the row caused drift if either side updated.
   moves: number;
   ms: number;
   at: string;
@@ -108,7 +109,7 @@ export function App() {
   useEffect(() => {
     if (allMatched && startedRef.current !== null) {
       const ms = Math.round(performance.now() - startedRef.current);
-      const result: PersonalBest = { pairs, moves, ms, at: new Date().toISOString() };
+      const result: PersonalBest = { moves, ms, at: new Date().toISOString() };
       const prev = bests[pairs];
       const next = !prev || result.moves < prev.moves || (result.moves === prev.moves && result.ms < prev.ms)
         ? result
@@ -140,7 +141,9 @@ export function App() {
         }, 250);
         return () => window.clearTimeout(id);
       }
-      // Mismatch — flip back after a beat.
+      // Mismatch — flip back after a beat, with an error tick so the
+      // body knows the pair failed even if their eyes were elsewhere.
+      haptic('error');
       const id = window.setTimeout(() => {
         setDeck((d) => d.map((c) => c.matched ? c : { ...c, flipped: false }));
         lockRef.current = false;
