@@ -197,7 +197,9 @@ export function App() {
           >
             {t.label}
             {t.id === 'active' && activeCooks.length > 0 ? (
-              <span className="tab-pill">{activeCooks.length}</span>
+              <span className="tab-pill" aria-live="polite" aria-label={`${activeCooks.length} active cooks`}>
+                {activeCooks.length}
+              </span>
             ) : null}
           </button>
         ))}
@@ -205,11 +207,13 @@ export function App() {
 
       {/* Pending rating overlay — shown on top of any tab. */}
       {pendingRatingFor ? (
-        <DoneRatingForm
-          cutName={pendingRatingFor.cut_name}
-          onSubmit={saveRating}
-          onSkip={skipRating}
-        />
+        <div className="done-overlay" role="dialog" aria-modal="true" aria-label="Rate cook">
+          <DoneRatingForm
+            cutName={pendingRatingFor.cut_name}
+            onSubmit={saveRating}
+            onSkip={skipRating}
+          />
+        </div>
       ) : null}
 
       {tab === 'home' ? (

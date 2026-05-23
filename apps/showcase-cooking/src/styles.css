@@ -526,8 +526,9 @@ button, input, textarea { font: inherit; }
   border-bottom: 1px solid var(--border);
 }
 .timer-clock .big-number {
-  font-size: 44px;
-  letter-spacing: -0.02em;
+  font-size: clamp(56px, 14vw, 88px);
+  letter-spacing: -0.025em;
+  line-height: 1;
 }
 .stage {
   background: var(--bg);
@@ -645,6 +646,23 @@ button, input, textarea { font: inherit; }
 }
 
 /* Done rating form */
+.done-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 14, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.done-overlay .done-form {
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
 .done-form {
   background: var(--surface);
   border: 1px solid var(--marigold);
