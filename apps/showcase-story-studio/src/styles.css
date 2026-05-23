@@ -3,6 +3,11 @@
    four Shippie shared moves: Fraunces display serif, mono eyebrow
    handshake, big numeric primitive (page count / words), italic-mono
    code primitive (story slug / draft version). */
+/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
+   when kit components (OnboardingFlow/IntentToastHost/QrShareSheet/BackupCard/
+   EmptyState) get adopted in JSX. Currently only the mountShowcase() boot helper
+   and base kit styles.css are imported via main.tsx, so no .shippie-* selectors
+   render. */
 
 @font-face {
   font-family: 'Fraunces';
