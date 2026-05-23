@@ -122,6 +122,10 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 22px; font-weight: 60
   touch-action: none;
 }
 .dpad-stack .dpad-btn { height: 44px; }
+.dpad-btn:hover {
+  background: rgba(255, 214, 107, 0.18);
+  border-color: rgba(255, 214, 107, 0.55);
+}
 .dpad-btn:active {
   background: rgba(255, 214, 107, 0.3);
   transform: scale(0.95);

@@ -186,7 +186,9 @@ export function App() {
     if ((e.target as HTMLElement | null)?.closest('button')) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
-    if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
+    // Threshold scales with viewport so phones get a forgiving swipe.
+    const threshold = Math.max(8, window.innerWidth * 0.02);
+    if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
     if (Math.abs(dx) > Math.abs(dy)) issueDirection(dx > 0 ? 'E' : 'W');
     else issueDirection(dy > 0 ? 'S' : 'N');
   };
