@@ -2280,3 +2280,36 @@ button.branded.primary {
   color: var(--sage-deep);
   border: 1px solid rgba(74, 122, 94, 0.28);
 }
+
+/* ─── Repeat-yesterday button (cluster 5) ───────────────────────────── */
+.tracking-form__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.2rem;
+}
+.tracking-form__header h2 {
+  margin: 0;
+}
+.repeat-yesterday {
+  min-height: 32px;
+  padding: 0.3rem 0.7rem;
+  background: var(--sage-soft);
+  color: var(--sage-deep);
+  border: 1px solid rgba(74, 122, 94, 0.28);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 160ms ease, background 160ms ease;
+}
+.repeat-yesterday:hover {
+  background: var(--paper);
+  border-color: var(--sage);
+}
+.repeat-yesterday:active {
+  transform: scale(0.96);
+}

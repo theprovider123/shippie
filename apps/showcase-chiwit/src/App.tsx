@@ -851,6 +851,14 @@ export function App() {
 
       {tab === 'track' ? (
         <TrackView
+          yesterdayCheckin={state.checkins.find((c) => c.date === addDays(-1))}
+          onRepeatYesterday={(prev) => setCheckin({
+            window: prev.window,
+            mood: String(prev.mood),
+            energy: String(prev.energy),
+            body: String(prev.body),
+            note: '',
+          })}
           manualKind={manualKind}
           manualValue={manualValue}
           manualAmount={manualAmount}
@@ -1051,6 +1059,8 @@ function TodayView({
 }
 
 function TrackView({
+  yesterdayCheckin,
+  onRepeatYesterday,
   manualKind,
   manualValue,
   manualAmount,
@@ -1064,6 +1074,8 @@ function TrackView({
   onSaveManual,
   onSaveCheckin,
 }: {
+  yesterdayCheckin: Checkin | undefined;
+  onRepeatYesterday: (prev: Checkin) => void;
   manualKind: EntryKind;
   manualValue: string;
   manualAmount: string;
@@ -1088,7 +1100,19 @@ function TrackView({
       </div>
       <div className="form-layout">
         <form className="tracking-form" onSubmit={onSaveCheckin}>
-          <h2>Daily check-in</h2>
+          <div className="tracking-form__header">
+            <h2>Daily check-in</h2>
+            {yesterdayCheckin ? (
+              <button
+                type="button"
+                className="repeat-yesterday"
+                onClick={() => onRepeatYesterday(yesterdayCheckin)}
+                title="Pre-fill from yesterday's check-in"
+              >
+                ↺ Repeat yesterday
+              </button>
+            ) : null}
+          </div>
           <div className="form-grid">
             <label>
               Window
@@ -1352,6 +1376,56 @@ function formatMonthLabel(yyyymm: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
 }
 
+/**
+ * CSV export — Apple Health-friendly columns. RFC 4180 quoting: double
+ * any embedded quote, wrap fields containing commas/quotes/newlines.
+ * Filename matches the recap convention: chiwit-signals-YYYYMMDD.csv.
+ */
+function csvField(value: string | number | undefined): string {
+  if (value === undefined || value === null) return '';
+  const s = String(value);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function entriesToCsv(entries: PulseEntry[]): string {
+  const header = ['date', 'time', 'kind', 'value', 'amount', 'unit', 'note', 'source'];
+  const rows = entries
+    .slice()
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .map((entry) => {
+      const t = new Date(entry.createdAt);
+      const hh = String(t.getHours()).padStart(2, '0');
+      const mm = String(t.getMinutes()).padStart(2, '0');
+      return [
+        entry.date,
+        `${hh}:${mm}`,
+        entry.kind,
+        entry.value,
+        entry.amount ?? '',
+        entry.unit ?? KIND_META[entry.kind].unit,
+        entry.note ?? '',
+        entry.source ?? '',
+      ].map(csvField).join(',');
+    });
+  return [header.join(','), ...rows].join('\n');
+}
+
+function downloadCsv(state: ChiwitState): void {
+  const csv = entriesToCsv(state.entries);
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chiwit-signals-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function DataView({
   state,
   onWipe,
@@ -1384,6 +1458,21 @@ function DataView({
         </p>
         <button type="button" className="branded primary" onClick={() => void onShareWeek()}>
           Open QR
+        </button>
+      </div>
+
+      <div className="data-share">
+        <h2>Export signals</h2>
+        <p className="measure">
+          Download a CSV of every signal on this device — Apple Health-friendly columns (date, time, kind, value, amount, unit, note, source).
+        </p>
+        <button
+          type="button"
+          className="branded primary"
+          onClick={() => downloadCsv(state)}
+          disabled={state.entries.length === 0}
+        >
+          Download CSV
         </button>
       </div>
 
