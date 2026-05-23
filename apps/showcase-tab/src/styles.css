@@ -5,6 +5,10 @@
  * Generous tap targets. Big, readable numbers — this is the "split the
  * dinner across the table" voice.
  */
+/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
+   when kit components (OnboardingFlow/IntentToastHost/QrShareSheet/BackupCard/
+   EmptyState) get adopted in JSX. Currently only mountShowcase() boot helper
+   is imported, so no skin selectors render. */
 @import '@shippie/design-tokens/tokens.css';
 
 :root {
