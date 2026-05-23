@@ -1432,6 +1432,40 @@ meter {
   color: var(--ink);
 }
 
+.wipe-confirm-sheet {
+  border-color: rgba(124, 45, 30, 0.22);
+}
+
+.wipe-confirm-sheet__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.wipe-confirm-sheet__stats span {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--sage-soft);
+}
+
+.wipe-confirm-sheet__stats strong {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.wipe-confirm-sheet__stats small {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 /* ── Backup card ─────────────────────────────────────────────────── */
 .shippie-backup-card {
   display: grid;
@@ -2124,4 +2158,125 @@ button.branded.primary {
 .signal-composer button:active {
   transform: scale(0.97);
   background: var(--sage-soft);
+}
+
+/* ─── Empty + edge states (cluster 4) ──────────────────────────────── *
+ * patterns-progress shows bars toward the "Patterns" threshold so the
+ * empty state teaches the next move. insight-example surfaces a
+ * concrete-shaped sample insight. wipe-sheet replaces window.confirm
+ * with a styled modal showing counts.
+ * ──────────────────────────────────────────────────────────────────── */
+.patterns-progress {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+  max-width: 360px;
+}
+.patterns-progress__row {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+.patterns-progress__row strong {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.patterns-progress__row meter {
+  width: 100%;
+  height: 8px;
+}
+.patterns-progress__row em {
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--sage-deep);
+}
+
+.insight-example {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+}
+.insight-example em {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ink);
+}
+
+/* Wipe confirm sheet — replaces window.confirm with counts + tone. */
+.wipe-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  animation: shippie-onboarding-fade 180ms ease both;
+}
+.wipe-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(31, 42, 36, 0.42);
+  backdrop-filter: blur(8px);
+}
+.wipe-sheet__panel {
+  position: relative;
+  width: min(440px, 100%);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 1.5rem 1.4rem 1.2rem;
+  box-shadow: 0 28px 70px rgba(31, 42, 36, 0.22);
+  display: grid;
+  gap: 0.55rem;
+}
+.wipe-sheet__panel h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.wipe-sheet__counts {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink-soft);
+}
+.wipe-sheet__counts strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--coral);
+}
+.wipe-sheet__body {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.wipe-sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 0.4rem;
+}
+.wipe-sheet__actions button {
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.wipe-sheet__actions button:not(.danger) {
+  background: var(--paper);
+  color: var(--sage-deep);
+  border: 1px solid rgba(74, 122, 94, 0.28);
 }

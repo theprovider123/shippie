@@ -744,11 +744,16 @@ export function App() {
     shippie.feel.texture('delete');
   }
 
-  function wipe(): void {
-    if (!window.confirm('Clear Chiwit data on this device?')) return;
+  function requestWipe(): void {
+    setWipeOpen(true);
+  }
+
+  function confirmWipe(): void {
     const fresh = emptyState();
     setState(fresh);
     writeState(fresh);
+    setWipeOpen(false);
+    shippie.feel.texture('delete');
   }
 
   async function openWeekShare(): Promise<void> {
@@ -855,7 +860,16 @@ export function App() {
       ) : null}
 
       {tab === 'data' ? (
-        <DataView state={state} onWipe={wipe} onShareWeek={openWeekShare} />
+        <DataView state={state} onWipe={requestWipe} onShareWeek={openWeekShare} />
+      ) : null}
+
+      {wipeOpen ? (
+        <WipeConfirmSheet
+          entryCount={state.entries.length}
+          checkinCount={state.checkins.length}
+          onCancel={() => setWipeOpen(false)}
+          onConfirm={confirmWipe}
+        />
       ) : null}
 
       <QrShareSheet
@@ -1345,6 +1359,49 @@ function DataView({
 
       <button type="button" className="danger" onClick={onWipe}>Clear this device</button>
     </section>
+  );
+}
+
+function WipeConfirmSheet({
+  entryCount,
+  checkinCount,
+  onCancel,
+  onConfirm,
+}: {
+  entryCount: number;
+  checkinCount: number;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') onCancel();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  return (
+    <div className="shippie-qr-sheet" role="dialog" aria-modal="true" aria-labelledby="wipe-title" onClick={onCancel}>
+      <section className="shippie-qr-sheet__surface wipe-confirm-sheet" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="shippie-qr-sheet__close" onClick={onCancel} aria-label="Cancel clear data">
+          ×
+        </button>
+        <p className="eyebrow">Clear local data</p>
+        <h2 id="wipe-title" className="shippie-qr-sheet__title">Clear Chiwit on this device?</h2>
+        <p className="shippie-qr-sheet__body">
+          This removes your local pulse history from this browser. It does not affect other devices or any exports you already saved.
+        </p>
+        <div className="wipe-confirm-sheet__stats" aria-label="Data that will be removed">
+          <span><strong>{entryCount}</strong><small>signals</small></span>
+          <span><strong>{checkinCount}</strong><small>check-ins</small></span>
+        </div>
+        <div className="shippie-qr-sheet__actions">
+          <button type="button" onClick={onCancel}>Keep data</button>
+          <button type="button" className="danger" onClick={onConfirm}>Clear device</button>
+        </div>
+      </section>
+    </div>
   );
 }
 
