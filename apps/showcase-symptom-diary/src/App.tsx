@@ -228,11 +228,19 @@ export function App() {
     return (fromIso: string, toIso: string) => dosesInRange(db, fromIso, toIso);
   }, [db]);
 
-  const activeMedications = medications.filter((m) => m.active === 1);
+  const activeMedications = useMemo(
+    () => medications.filter((m) => m.active === 1),
+    [medications],
+  );
 
   if (!ready) {
     return (
-      <div className="app-loading">
+      <div className="app-loading" aria-busy="true">
+        <div className="app-loading-skeleton" aria-hidden="true">
+          <span className="app-loading-skeleton-bar app-loading-skeleton-bar-title" />
+          <span className="app-loading-skeleton-bar app-loading-skeleton-bar-row" />
+          <span className="app-loading-skeleton-bar app-loading-skeleton-bar-row" />
+        </div>
         <p className="muted">Opening Symptom Diary…</p>
       </div>
     );

@@ -8,6 +8,10 @@
  * Print CSS at the bottom: ink-friendly black-on-white, hides nav/
  * controls, fits the secretary's filing format.
  */
+/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
+   when kit components (OnboardingFlow/IntentToastHost/QrShareSheet/BackupCard/
+   EmptyState) get adopted in JSX. Currently only mountShowcase() boot helper
+   is imported, so no skin selectors render. */
 
 :root {
   color-scheme: light;
@@ -57,7 +61,40 @@ button, input, textarea, select { font: inherit; }
   min-height: 100vh;
   display: grid;
   place-items: center;
+  gap: 16px;
   font-family: var(--font-body);
+}
+
+.app-loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(280px, 70vw);
+}
+
+.app-loading-skeleton-bar {
+  display: block;
+  height: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: app-loading-shimmer 1.4s ease-in-out infinite;
+}
+
+.app-loading-skeleton-bar-title { width: 60%; height: 18px; }
+.app-loading-skeleton-bar-row { width: 100%; }
+
+@keyframes app-loading-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loading-skeleton-bar { animation: none; }
 }
 
 .page {
