@@ -57,6 +57,9 @@ header p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
 .trend[data-trend="down"] { border-color: rgba(78, 124, 154, 0.4); }
 .rate { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 
+/* Sharp corners (border-radius: 0) are intentional across forms, inputs,
+   cards and chips — the clinical/precision aesthetic matches the
+   privacy-first body-tracking story. Do not soften without product sign-off. */
 form {
   display: flex;
   flex-wrap: wrap;

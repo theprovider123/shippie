@@ -80,7 +80,9 @@ export function App() {
     const id = `e_${Date.now()}`;
     let photoLocalId: string | undefined = entry.photoLocalId;
     if (photoFile) {
-      photoLocalId = `p_${Date.now()}`;
+      // Append a random suffix so two photos saved in the same millisecond
+      // (e.g. rapid retries from the file picker) don't collide on key.
+      photoLocalId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       await savePhoto(photoLocalId, photoFile);
     }
     const full: Entry = { ...entry, id, photoLocalId };
