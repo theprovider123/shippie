@@ -340,6 +340,16 @@ export function App() {
 
   const activeHabit = route.kind === 'habit' ? habits.find((h) => h.id === route.habitId) : null;
 
+  // If we're on a habit route but the habit no longer exists (deleted,
+  // archived elsewhere, stale deep-link), fall back to the today list
+  // rather than rendering an empty shell.
+  useEffect(() => {
+    if (route.kind === 'habit' && !activeHabit) {
+      closeTo({ kind: 'today' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.kind, activeHabit]);
+
   return (
     <div className="app">
       {insights.length > 0 && route.kind === 'today' ? (
