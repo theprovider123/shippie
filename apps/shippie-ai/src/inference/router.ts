@@ -154,7 +154,30 @@ function boot() {
   if (typeof window === 'undefined') return;
   // Lazy-construct the dedicated Worker only once we're in the browser.
   let worker: Worker | null = null;
-  const pending = new Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  const pending = new Map<
+    string,
+    {
+      resolve: (v: unknown) => void;
+      reject: (e: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
+
+  // Circuit breaker: a Worker stuck mid-WASM-computation never fires
+  // `error`, so the embedder hangs forever. If a request doesn't respond
+  // within WORKER_DEADLOCK_MS, we assume the Worker is wedged, terminate
+  // it, and reject all pending batches. The next request rebuilds.
+  const WORKER_DEADLOCK_MS = 90_000;
+
+  const tripBreaker = (reason: string): void => {
+    for (const p of pending.values()) {
+      clearTimeout(p.timer);
+      p.reject(new Error(reason));
+    }
+    pending.clear();
+    worker?.terminate();
+    worker = null;
+  };
 
   const ensureWorker = (): Worker => {
     if (worker) return worker;
@@ -165,16 +188,14 @@ function boot() {
       const p = pending.get(data.requestId);
       if (!p) return;
       pending.delete(data.requestId);
+      clearTimeout(p.timer);
       if (data.error) p.reject(new Error(data.error));
       else p.resolve(data.result);
     });
     worker.addEventListener('error', () => {
       // If the worker dies, reject everything in flight so the embedder gets
       // a real error instead of hanging forever. The next request rebuilds.
-      for (const p of pending.values()) p.reject(new Error('worker crashed'));
-      pending.clear();
-      worker?.terminate();
-      worker = null;
+      tripBreaker('worker crashed');
     });
     return worker;
   };
@@ -182,7 +203,13 @@ function boot() {
   const dispatch = (req: InferenceMessage): Promise<unknown> => {
     const w = ensureWorker();
     return new Promise<unknown>((resolve, reject) => {
-      pending.set(req.requestId, { resolve, reject });
+      const timer = setTimeout(() => {
+        // Worker missed its deadline — treat as wedged. Tripping the
+        // breaker also rejects any other pending batches sharing the
+        // same Worker, so consumers see a real error instead of a hang.
+        tripBreaker(`worker deadlock (no response in ${WORKER_DEADLOCK_MS}ms)`);
+      }, WORKER_DEADLOCK_MS);
+      pending.set(req.requestId, { resolve, reject, timer });
       w.postMessage(req);
     });
   };

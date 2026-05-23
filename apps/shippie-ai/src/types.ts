@@ -10,6 +10,9 @@
  * egress beyond the initial model download from the Shippie CDN.
  */
 
+import type { Backend } from './inference/backend.ts';
+export type { Backend } from './inference/backend.ts';
+
 export type InferenceTask = 'classify' | 'embed' | 'sentiment' | 'moderate' | 'vision';
 
 export interface ClassifyRequest {
@@ -74,7 +77,7 @@ export interface UsageEntry {
   durationMs: number;
   /** Hardware backend that ran the inference. Optional for back-compat
    *  with logs written before this field existed. */
-  source?: BackendForUsage;
+  source?: Backend;
 }
 
 export interface InstalledModelInfo {
@@ -84,12 +87,6 @@ export interface InstalledModelInfo {
   /** True if the model files are present in Cache Storage. */
   installed: boolean;
 }
-
-import type { Backend } from './inference/backend.ts';
-export type { Backend } from './inference/backend.ts';
-// Internal alias used by UsageEntry to avoid a forward reference inside the
-// same file (UsageEntry is declared above the Backend re-export).
-type BackendForUsage = Backend;
 
 export interface ClassifyResult {
   label: string;
