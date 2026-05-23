@@ -70,6 +70,18 @@ describe('showcase catalog drift check', () => {
     }
   });
 
+  test('static showcase local-db bridge retries pending requests until the host is ready', () => {
+    if (!existsSync(STATIC_RUNTIME_DIR)) return;
+
+    for (const slug of SHOWCASE_SLUGS) {
+      const indexPath = join(STATIC_RUNTIME_DIR, slug, 'index.html');
+      if (!existsSync(indexPath)) continue;
+      const html = readFileSync(indexPath, 'utf8');
+      expect(html, `${slug} bridge should repost pending db requests`).toContain('postPending(id)');
+      expect(html, `${slug} bridge should clear the retry interval`).toContain('clearInterval(entry.interval)');
+    }
+  });
+
   test('precache entries are derived from every generated slug', () => {
     expect(SHOWCASE_PRECACHE).toEqual(
       SHOWCASE_SLUGS.map((slug) => `/__shippie-run/${slug}/?shippie_embed=1`),
