@@ -68,7 +68,9 @@
   }
 </script>
 
-<InsightStrip {insights} onOpen={onOpenInsight} onDismiss={onDismissInsight} />
+{#if insights.length > 0}
+  <InsightStrip {insights} onOpen={onOpenInsight} onDismiss={onDismissInsight} />
+{/if}
 <div class="section-head">
   <div class="section-title-row">
     <h2>Tools</h2>
