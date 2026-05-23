@@ -54,8 +54,13 @@ export function App() {
     [],
   );
 
+  // Debounce localStorage writes so rapid edits (e.g. rating taps) don't
+  // thrash the JSON serialiser on every state change.
   useEffect(() => {
-    save({ beans, brews, tasting_notes: tastingNotes });
+    const id = window.setTimeout(() => {
+      save({ beans, brews, tasting_notes: tastingNotes });
+    }, 300);
+    return () => window.clearTimeout(id);
   }, [beans, brews, tastingNotes]);
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);

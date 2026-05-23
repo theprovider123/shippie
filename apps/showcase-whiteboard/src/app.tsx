@@ -472,7 +472,7 @@ function Room(props: { group: Group; showAndTellMode: boolean; onLeave: () => vo
                   ...(replayActive ? { color: '#FAF7EF' } : {}),
                 }}
               >
-                {replayActive ? 'Stop replay' : 'Replay'}
+                {replayActive ? 'Stop replay' : totalStrokes === 0 ? 'Replay (no strokes)' : 'Replay'}
               </button>
               <button
                 role="menuitem"
@@ -559,7 +559,10 @@ function SharePanel(props: {
     }}>
       <p style={{ margin: '0 0 10px', fontWeight: 600 }}>Invite a friend</p>
       <div
-        // QR comes from a trusted in-process renderer.
+        // SAFE: `renderQrSvg()` is a trusted in-process SVG renderer
+        // (packages/proximity) that emits a fixed SVG template from a join
+        // URL — no user input flows into the markup. Justifies the
+        // eslint-disable.
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: props.qrSvg }}
       />
