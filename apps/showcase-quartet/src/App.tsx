@@ -130,7 +130,11 @@ export function App() {
     setShareCopied(false);
   }, [puzzle.id, puzzle.date]);
 
-  const tiles: Tile[] = useMemo(() => shuffledTiles(puzzle), [puzzle]);
+  const initialTiles = useMemo(() => shuffledTiles(puzzle), [puzzle]);
+  const [tiles, setTiles] = useState<Tile[]>(initialTiles);
+  useEffect(() => {
+    setTiles(initialTiles);
+  }, [initialTiles]);
 
   const solvedTiles: Tile[] = [];
   const remainingTiles: Tile[] = [];
@@ -202,13 +206,23 @@ export function App() {
   }
 
   function shuffleRemaining() {
-    // Reorder visually — implementation: re-derive tiles from a fresh
-    // shuffle. We simulate by toggling a shuffle key... but tiles are
-    // memoised on puzzle.id. Instead, we keep tiles fixed and just
-    // give the user a small toast.
     sfx.play('tap', { pitch: 1.3 });
     haptic('tap');
-    // Real shuffle: rotate the unsolved-tiles client-side.
+    // Fisher-Yates shuffle of unsolved tiles only; solved bands stay put.
+    setTiles((prev) => {
+      const next = [...prev];
+      const unsolvedIdx = next
+        .map((t, i) => ({ t, i }))
+        .filter(({ t }) => !solvedBands.has(t.band))
+        .map(({ i }) => i);
+      for (let i = unsolvedIdx.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const a = unsolvedIdx[i]!;
+        const b = unsolvedIdx[j]!;
+        [next[a], next[b]] = [next[b]!, next[a]!];
+      }
+      return next;
+    });
     setShake((n) => n + 1);
   }
 
