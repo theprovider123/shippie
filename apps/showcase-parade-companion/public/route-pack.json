@@ -14,6 +14,11 @@
       "note": "Official source for date, 14:00 start time, and route updates."
     },
     {
+      "label": "Islington possible route and closures map",
+      "url": "https://www.islington.gov.uk/~/media/sharepoint-lists/public-records/transportandinfrastructure/publicity/publicconsultation/20252026/20260521arsenal-parade-possible-route-map-and-closures.pdf",
+      "note": "Council PDF showing the possible route/closure corridor. Check again before travelling."
+    },
+    {
       "label": "TfL travel updates",
       "url": "https://tfl.gov.uk/status-updates/",
       "note": "Use on Wi-Fi before travelling for final station and service changes."
@@ -22,12 +27,13 @@
   "route": {
     "type": "LineString",
     "label": "Provisional parade corridor",
-    "note": "Official route not final in this pack. Use this as a planning corridor only.",
+    "note": "Council possible-route corridor: stadium area, Drayton Park, Aubert Park, Highbury Grove, St Pauls Road, Upper Street, Town Hall area. Confirm before travel.",
     "coordinates": [
       [-0.1086, 51.5549],
-      [-0.1066, 51.5524],
-      [-0.1048, 51.5487],
-      [-0.1037, 51.5457],
+      [-0.1055, 51.5532],
+      [-0.1028, 51.5525],
+      [-0.1016, 51.5486],
+      [-0.1027, 51.5461],
       [-0.1026, 51.5421]
     ]
   },

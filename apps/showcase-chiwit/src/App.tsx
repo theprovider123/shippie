@@ -540,7 +540,7 @@ export function App() {
   const [timelineMonth, setTimelineMonth] = useState<string>(() => today().slice(0, 7));
   const [qrOpen, setQrOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string>('');
-  const localNavigation = useMemo(() => createLocalNavigation<Tab>('today', setTab), []);
+  const localNavigation = useMemo(() => createLocalNavigation<Tab>(tab, setTab), []);
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
@@ -608,7 +608,8 @@ export function App() {
   }, [state, pulse]);
 
   function navigate(next: Tab): void {
-    void localNavigation.navigate(next, { kind: 'crossfade' });
+    setTab(next);
+    void localNavigation.navigate(next, { kind: 'crossfade', history: 'none' });
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (next === 'today') url.searchParams.delete('tab');

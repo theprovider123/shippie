@@ -83,16 +83,27 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
       url: 'https://www.islington.gov.uk/Roads/Arsenal-Football-Club-parade',
       note: 'Official source for date, 14:00 start time, and route updates.',
     },
+    {
+      label: 'Islington possible route and closures map',
+      url: 'https://www.islington.gov.uk/~/media/sharepoint-lists/public-records/transportandinfrastructure/publicity/publicconsultation/20252026/20260521arsenal-parade-possible-route-map-and-closures.pdf',
+      note: 'Council PDF showing the possible route/closure corridor. Check again before travelling.',
+    },
+    {
+      label: 'TfL travel updates',
+      url: 'https://tfl.gov.uk/status-updates/',
+      note: 'Use on Wi-Fi before travelling for final station and service changes.',
+    },
   ],
   route: {
     type: 'LineString',
     label: 'Provisional parade corridor',
-    note: 'Official route not final in this pack. Use this as a planning corridor only.',
+    note: 'Council possible-route corridor: stadium area, Drayton Park, Aubert Park, Highbury Grove, St Pauls Road, Upper Street, Town Hall area. Confirm before travel.',
     coordinates: [
       [-0.1086, 51.5549],
-      [-0.1066, 51.5524],
-      [-0.1048, 51.5487],
-      [-0.1037, 51.5457],
+      [-0.1055, 51.5532],
+      [-0.1028, 51.5525],
+      [-0.1016, 51.5486],
+      [-0.1027, 51.5461],
       [-0.1026, 51.5421],
     ],
   },
@@ -104,6 +115,14 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
       lng: -0.1086,
       lat: 51.5549,
       note: 'Expected start area. Use official stewarding and road-closure guidance on the day.',
+    },
+    {
+      id: 'drayton-park',
+      kind: 'station',
+      name: 'Drayton Park',
+      lng: -0.1055,
+      lat: 51.5532,
+      note: 'Nearby rail station; check event access before relying on it.',
     },
     {
       id: 'highbury-fields',
@@ -129,11 +148,39 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
       lat: 51.546,
       note: 'Very busy. Have a walking fallback.',
     },
+    {
+      id: 'angel',
+      kind: 'station',
+      name: 'Angel',
+      lng: -0.1058,
+      lat: 51.5327,
+      note: 'Useful southern exit if Upper Street is crowded.',
+    },
+    {
+      id: 'medical-north',
+      kind: 'medical',
+      name: 'Ask steward for nearest first aid',
+      lng: -0.1067,
+      lat: 51.5519,
+      note: 'Placeholder until official first-aid points are published.',
+    },
+    {
+      id: 'stewards-upper',
+      kind: 'stewards',
+      name: 'Stewarded route area',
+      lng: -0.1035,
+      lat: 51.5445,
+      note: 'Follow Met Police, steward and council directions over this offline pack.',
+    },
   ],
   closures: [
     {
       label: 'Road closures',
       note: 'Closures are expected around the route. This offline pack will be updated as official details firm up.',
+    },
+    {
+      label: 'Tube and rail access',
+      note: 'Station entry may change at short notice for crowd control. Keep a walking fallback.',
     },
   ],
   transport: {
@@ -159,6 +206,7 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
   },
   meetingLandmarks: [
     { id: 'stadium-clock-end', label: 'Stadium area', lng: -0.1086, lat: 51.5549 },
+    { id: 'drayton-park', label: 'Drayton Park station area', lng: -0.1055, lat: 51.5532 },
     { id: 'highbury-fields', label: 'Highbury Fields edge', lng: -0.1027, lat: 51.5461 },
     { id: 'town-hall', label: 'Town Hall area', lng: -0.1026, lat: 51.5421 },
     { id: 'angel', label: 'Angel station area', lng: -0.1058, lat: 51.5327 },
@@ -176,10 +224,14 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
       heading: 'If signal dies',
       body: 'Airplane mode is fine, but keep Location Services on. Your GPS dot can still work without internet.',
     },
+    {
+      heading: 'If you need help',
+      body: 'Show the My location card to a steward. It has your coordinates, accuracy radius, and nearest landmark.',
+    },
   ],
   scheduleEstimate: [
     { label: 'Parade starts at the stadium area', time: '14:00', note: 'Official start time.' },
-    { label: 'Expect movement along the corridor', time: '14:20-15:15', note: 'Estimated, not live.' },
+    { label: 'Expected movement along the corridor', time: '14:20-15:15', note: 'Estimated, not live.' },
     { label: 'Crowds disperse toward stations and side streets', time: '15:30+', note: 'Leave extra time.' },
   ],
 };

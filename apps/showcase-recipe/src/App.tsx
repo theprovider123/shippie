@@ -467,7 +467,7 @@ export function App() {
   const [shareRecipeId, setShareRecipeId] = useState<string | null>(null);
   const [cookAlongPayload, setCookAlongPayload] = useState<CookAlongPayload | null>(null);
   const [hostCookSession, setHostCookSession] = useState<{ id: string; startedAt: number } | null>(null);
-  const localNavigation = useMemo(() => createLocalNavigation<Tab>('today', setTab), []);
+  const localNavigation = useMemo(() => createLocalNavigation<Tab>(tab, setTab), []);
   const peerId = useMemo(() => loadOrCreatePeerId(), []);
   const cookAlongClient = useMemo(
     () => createCookAlongClient({ broadcast: shippie.intent.broadcast, subscribe: shippie.intent.subscribe }, peerId),
@@ -619,7 +619,8 @@ export function App() {
   }, [plannedShopping]);
 
   function navigate(next: Tab): void {
-    void localNavigation.navigate(next, { kind: 'crossfade' });
+    setTab(next);
+    void localNavigation.navigate(next, { kind: 'crossfade', history: 'none' });
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (next === 'today') url.searchParams.delete('tab');
@@ -1273,7 +1274,8 @@ function CookbookView({
       <div className="toolbar">
         <div>
           <p className="eyebrow">Cookbook</p>
-          <h1>Save the dishes worth repeating.</h1>
+          <h1>Your cookbook.</h1>
+          <p className="toolbar-subcopy">The recipes you actually cook, saved here instead of scattered through screenshots and tabs.</p>
         </div>
         <button type="button" className="text-action toolbar-action" onClick={onOpenImport}>Import</button>
         <button type="button" className="primary toolbar-action" onClick={scrollToEditor}>Add recipe</button>
@@ -1477,7 +1479,7 @@ function PlanView({
       <div className="toolbar">
         <div>
           <p className="eyebrow">Plan · this week</p>
-          <h1>Turn cravings into a week.</h1>
+          <h1>This week.</h1>
           <p className="plan-summary">Today's plan: <strong>{todaysSet}/4 set</strong></p>
         </div>
         <button type="button" className="primary" onClick={onAutoPlan}>Fill week</button>
@@ -1659,7 +1661,8 @@ function PantryView({
       <div className="toolbar">
         <div>
           <p className="eyebrow">Pantry</p>
-          <h1>Start from what is here.</h1>
+          <h1>What’s in the kitchen.</h1>
+          <p className="toolbar-subcopy">Stock, low items, and the gaps your plan already knows about.</p>
         </div>
         <form className="inline-form" onSubmit={onAdd}>
           <input value={draft.name} onChange={(event) => onDraftChange({ ...draft, name: event.target.value })} placeholder="Item" required />
@@ -1747,7 +1750,8 @@ function ShoppingView({
       <div className="toolbar">
         <div>
           <p className="eyebrow">Shop</p>
-          <h1>Buy only what the week needs.</h1>
+          <h1>Shopping list.</h1>
+          <p className="toolbar-subcopy">Only the missing pieces. Checked items disappear from the noise.</p>
         </div>
         <form className="inline-form compact" onSubmit={onAdd}>
           <input value={draft} onChange={(event) => onDraftChange(event.target.value)} placeholder="Add item" />
@@ -1816,7 +1820,7 @@ function DataView({
   return (
     <section className="page-shell data-page">
       <p className="eyebrow">Local data</p>
-      <h1>No Palate account. No Supabase.</h1>
+      <h1>Your kitchen data.</h1>
       <p className="measure">
         Recipes, pantry, meal plan, shopping, and photos are stored in this browser on this device.
         Shippie hosts the app package; your kitchen data does not live in a Shippie database.

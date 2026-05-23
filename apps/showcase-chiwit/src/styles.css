@@ -1935,7 +1935,7 @@ button.branded.primary {
   .hero-plane h1,
   .page-shell h1,
   .toolbar h1 {
-    font-size: clamp(1.8rem, 8vw, 2.35rem);
+    font-size: clamp(1.65rem, 7.2vw, 2.05rem);
     line-height: 0.98;
   }
 

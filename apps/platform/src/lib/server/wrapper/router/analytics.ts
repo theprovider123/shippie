@@ -12,6 +12,7 @@ import { getDrizzleClient, schema } from '../../db/client';
 import { eq } from 'drizzle-orm';
 import { ensureShellAppSeeded, SHELL_APP_SLUG } from '../../../util/shippie-shell';
 import { sanitizeAnalyticsEvent, type RawAnalyticsEvent, type SanitizedAnalyticsEvent } from '../../analytics/sanitize';
+import { ensureFirstPartyAnalyticsApp } from '../../analytics/first-party';
 
 interface SdkEvent extends RawAnalyticsEvent {
   ts?: number;
@@ -62,10 +63,16 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
   if (ctx.slug === SHELL_APP_SLUG) {
     await ensureShellAppSeeded(ctx.env.DB);
   }
-  const app = await db.query.apps.findFirst({
+  let app = await db.query.apps.findFirst({
     where: eq(schema.apps.slug, ctx.slug),
     columns: { id: true },
   });
+  if (!app && (await ensureFirstPartyAnalyticsApp(ctx.env.DB, ctx.slug))) {
+    app = await db.query.apps.findFirst({
+      where: eq(schema.apps.slug, ctx.slug),
+      columns: { id: true },
+    });
+  }
   if (!app) return Response.json({ success: false, error: 'unknown_app', slug: ctx.slug }, { status: 404 });
 
   let ingested = 0;
