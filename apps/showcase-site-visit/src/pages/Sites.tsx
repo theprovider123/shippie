@@ -26,6 +26,7 @@ export function Sites({ sites, visitCounts, onOpenSite, onCreateSite }: SitesPro
   const [address, setAddress] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const filtered = query.trim()
     ? sites.filter((s) =>
@@ -41,14 +42,25 @@ export function Sites({ sites, visitCounts, onOpenSite, onCreateSite }: SitesPro
     setAddress('');
     setContactName('');
     setContactPhone('');
+    setValidationError(null);
     setAdding(false);
   }
 
   function save() {
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    const trimmedAddress = address.trim();
+    if (!trimmedName) {
+      setValidationError('Site name is required.');
+      return;
+    }
+    if (!trimmedAddress) {
+      setValidationError('Address is required so visits can be located later.');
+      return;
+    }
+    setValidationError(null);
     onCreateSite({
-      name: name.trim(),
-      address: address.trim(),
+      name: trimmedName,
+      address: trimmedAddress,
       contact_name: contactName.trim(),
       contact_phone: contactPhone.trim(),
     });
@@ -104,11 +116,19 @@ export function Sites({ sites, visitCounts, onOpenSite, onCreateSite }: SitesPro
             onChange={(e) => setContactPhone(e.target.value)}
             inputMode="tel"
           />
+          {validationError ? (
+            <p className="form-card__error" role="alert">{validationError}</p>
+          ) : null}
           <div className="form-card__actions">
             <button type="button" className="link-button" onClick={reset}>
               cancel
             </button>
-            <button type="button" className="primary" disabled={!name.trim()} onClick={save}>
+            <button
+              type="button"
+              className="primary"
+              disabled={!name.trim() || !address.trim()}
+              onClick={save}
+            >
               save site
             </button>
           </div>

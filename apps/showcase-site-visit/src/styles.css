@@ -101,6 +101,7 @@ input, textarea, select {
   display: flex;
   background: var(--surface-elevated);
   border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .sv-tabnav button {
   flex: 1;
@@ -127,6 +128,7 @@ input, textarea, select {
   display: inline-block;
   padding: 2px 8px;
   font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -221,4 +223,13 @@ input, textarea, select {
   font-style: italic;
   font-weight: 600;
   color: var(--accent);
+}
+
+.form-card__error {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  background: rgba(178, 58, 43, 0.1);
+  border: 1px solid rgba(178, 58, 43, 0.4);
+  color: #8a2c20;
+  font-size: 0.8rem;
 }
