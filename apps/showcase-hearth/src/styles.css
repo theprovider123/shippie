@@ -43,7 +43,7 @@
   /* Override to the cream/oat palette by default — Hearth lives in
      light mode by feel. The Shippie cream tokens are reused so we
      don't drift from the brand. */
-  --bg: #F5EFE4;
+  --bg: #F4F0E8;
   --bg-pure: #EDE4D3;
   --surface: #FBF5E8;
   --surface-alt: #E8DEC6;

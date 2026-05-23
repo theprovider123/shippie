@@ -9,7 +9,7 @@ export function SyncBar({ state, onResync }: Props) {
   const status = state?.status ?? 'connecting';
   const peers = state?.peerCount ?? 0;
   return (
-    <div className="hearth-sync-bar" data-status={status}>
+    <div className="hearth-sync-bar" data-status={status} aria-live="polite">
       <span>
         {status === 'open'
           ? peers > 0
