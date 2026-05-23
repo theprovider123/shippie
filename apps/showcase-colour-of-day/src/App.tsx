@@ -66,9 +66,16 @@ function loadEntries(): Record<string, DayEntry> {
 function saveEntries(entries: Record<string, DayEntry>): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    /* best-effort */
+  } catch (err) {
+    // Quota errors are expected on long-lived installs — log everything
+    // else so silent corruption doesn't hide real bugs.
+    const isQuota = err instanceof DOMException && (err.name === 'QuotaExceededError' || err.code === 22);
+    if (!isQuota) console.warn('[colour-of-day] saveEntries failed', err);
   }
+}
+
+function sentimentLabel(s: Sentiment): string {
+  return s > 0 ? 'warming' : s < 0 ? 'cooling' : 'balancing';
 }
 
 function formatDate(key: string): string {
@@ -164,7 +171,7 @@ export function App() {
           </p>
           <p className="swatch-hex">
             <span>{pickedSwatch.color.toUpperCase()}</span>
-            <span className="label">·  {pickedSwatch.sentiment}</span>
+            <span className="label">·  {sentimentLabel(pickedSwatch.sentiment)}</span>
           </p>
         </section>
       ) : null}
