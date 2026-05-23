@@ -19,8 +19,9 @@ function formatDue(iso: string | null): string {
 
 export function TaskRow({ task, personLabel, onToggle }: Props) {
   const done = Boolean(task.done_at);
+  const overdue = !done && task.due_at ? new Date(task.due_at).getTime() < Date.now() : false;
   return (
-    <div className={`task-row ${done ? 'done' : ''}`}>
+    <div className={`task-row ${done ? 'done' : ''} ${overdue ? 'overdue' : ''}`.trim()}>
       <input
         type="checkbox"
         checked={done}

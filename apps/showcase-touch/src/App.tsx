@@ -365,7 +365,7 @@ export function App() {
       ) : null}
 
       {!openPerson && crossAppPrompt ? (
-        <div className="card" style={{ borderLeft: '3px solid #A86060' }}>
+        <div className="card cross-app-prompt">
           <h3>Log a touch?</h3>
           <p className="small">{crossAppPrompt.summary}</p>
           <p className="muted small">Pick a person and we'll attribute it.</p>

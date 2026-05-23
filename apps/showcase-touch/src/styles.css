@@ -286,6 +286,10 @@ label {
   color: #7E7570;
 }
 .task-row.done .body { text-decoration: line-through; color: #9A938E; }
+.task-row.overdue { border-left: 3px solid #D88882; padding-left: 8px; }
+
+/* Cross-app prompt card — broadcast intent suggestion */
+.card.cross-app-prompt { border-left: 3px solid #A86060; }
 
 /* Bottom sheet — desktop. On phone, expands to full height so the
    keyboard doesn't crop the textarea (audit Phase 4 fix). */
@@ -357,6 +361,9 @@ label {
 .sentiment-chip.active.pos { background: #E5F1E5; border-color: #8FAE8F; }
 .sentiment-chip.active.neu { background: #EFE7D7; border-color: #DDD2C2; }
 .sentiment-chip.active.neg { background: #F8D9D8; border-color: #D88882; }
+.sentiment-chip.active.pos:hover { background: #D6E8D6; }
+.sentiment-chip.active.neu:hover { background: #E5DAC4; }
+.sentiment-chip.active.neg:hover { background: #F2C7C6; }
 
 /* Card */
 .card {
