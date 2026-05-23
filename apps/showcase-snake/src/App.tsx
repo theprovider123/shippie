@@ -191,7 +191,7 @@ export function App() {
     if ((e.target as HTMLElement | null)?.closest('button')) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
-    if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
     if (Math.abs(dx) > Math.abs(dy)) hopOrSetDir(dx > 0 ? 'E' : 'W');
     else hopOrSetDir(dy > 0 ? 'S' : 'N');
   };
