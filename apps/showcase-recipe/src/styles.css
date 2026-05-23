@@ -2083,3 +2083,264 @@ body {
     box-shadow: 0 14px 32px rgba(44, 33, 24, 0.18);
   }
 }
+
+/* ── 2026-05-23 standout pass ─────────────────────────────────────
+   Meal-tone codes, decision-strip sparkline, recipe-tile hover lift,
+   shopping-list checked flash, CookMode entry transition, pantry
+   discard affordance, hierarchy polish. */
+
+.hero-meal-prefix {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.58em;
+  letter-spacing: 0.08em;
+  color: var(--cooking-deep);
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-right: 0.45em;
+}
+
+.fit-sparkline {
+  display: inline-block;
+  vertical-align: -1px;
+  color: var(--sage-deep);
+  opacity: 0.85;
+  margin-inline: 0.3em 0.2em;
+}
+
+.fit-delta {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.fit-delta.up { color: var(--sage-deep); }
+.fit-delta.down { color: var(--cooking-deep); }
+
+/* Recipe tile — gentle lift on hover so the "for you" rail feels
+   tactile. The base tile already has a transform transition declared
+   earlier; here we set the lifted state + shadow. */
+.recipe-tile {
+  transform: translateY(0);
+  transition: transform 160ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.recipe-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(44, 33, 24, 0.12);
+}
+
+.recipe-tile-last {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Plan-board meal cells — colour-code by mealtime so a week-at-a-glance
+   reads instantly. Subtle tints, kitchen palette. */
+.plan-slot.meal-cell.meal-breakfast {
+  background: linear-gradient(180deg, rgba(255, 217, 163, 0.22), rgba(255, 250, 240, 0.65));
+}
+.plan-slot.meal-cell.meal-breakfast.is-filled {
+  border-color: rgba(216, 142, 24, 0.36);
+}
+.plan-slot.meal-cell.meal-lunch {
+  background: linear-gradient(180deg, rgba(143, 160, 112, 0.18), rgba(255, 250, 240, 0.65));
+}
+.plan-slot.meal-cell.meal-lunch.is-filled {
+  border-color: rgba(93, 110, 72, 0.4);
+}
+.plan-slot.meal-cell.meal-dinner {
+  background: linear-gradient(180deg, rgba(216, 105, 24, 0.16), rgba(255, 250, 240, 0.65));
+}
+.plan-slot.meal-cell.meal-dinner.is-filled {
+  border-color: rgba(168, 78, 13, 0.42);
+}
+.plan-slot.meal-cell.meal-snack {
+  background: linear-gradient(180deg, rgba(110, 94, 78, 0.14), rgba(255, 250, 240, 0.65));
+}
+.plan-slot.meal-cell.meal-snack.is-filled {
+  border-color: rgba(110, 94, 78, 0.4);
+}
+
+.meal-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Shopping list — stronger dimming for checked items + brief flash on
+   toggle so the user feels the action without it disappearing. */
+.shopping-list .checked {
+  opacity: 0.42;
+  pointer-events: auto; /* keep tappable so users can uncheck */
+}
+
+.shopping-list button {
+  transition: background 200ms ease, transform 160ms ease;
+}
+
+.shopping-list button:active {
+  background: rgba(143, 160, 112, 0.18);
+  transform: scale(0.98);
+}
+
+.shop-source-badge {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Pantry expiry chip — clock glyph + tomato-tint background for expired
+   items so the at-risk stock pops without yelling. */
+.pantry-expiry-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(143, 160, 112, 0.16);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--sage-deep);
+}
+
+.pantry-expiry-chip.is-urgent {
+  background: rgba(216, 105, 24, 0.18);
+  color: var(--cooking-deep);
+}
+
+.pantry-expiry-chip.is-expired {
+  background: rgba(180, 60, 45, 0.14);
+  color: #8b3520;
+}
+
+.pantry-row.is-expired {
+  background: rgba(180, 60, 45, 0.06);
+}
+
+.pantry-discard {
+  min-height: 44px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  color: #8b3520;
+  background: rgba(180, 60, 45, 0.12);
+  border: 1px solid rgba(180, 60, 45, 0.28);
+  font-weight: 600;
+}
+
+.pantry-discard:hover {
+  background: rgba(180, 60, 45, 0.2);
+}
+
+/* CookMode entry — warm fade-in plus subtle title lift so the
+   transition feels like "the kitchen lights coming up". */
+.cook-mode {
+  animation: cook-mode-enter 320ms cubic-bezier(0.22, 0.8, 0.36, 1) both;
+}
+
+.cook-mode header h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  letter-spacing: -0.01em;
+}
+
+@keyframes cook-mode-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    background:
+      radial-gradient(circle at 50% 40%, rgba(216, 105, 24, 0.4), transparent 32%),
+      #15100c;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    background:
+      radial-gradient(circle at 50% 40%, rgba(216, 105, 24, 0.2), transparent 36%),
+      #1f1712;
+  }
+}
+
+/* CookMode step transition — slide-in the next step text so users feel
+   forward motion without losing context. */
+.cook-step p {
+  animation: cook-step-in 240ms cubic-bezier(0.22, 0.8, 0.36, 1) both;
+}
+
+@keyframes cook-step-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Cook-along invite — friendly tab-style button in CookMode header. */
+.cook-mode-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cook-along-invite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  color: #ffd9a3;
+  background: rgba(255, 217, 163, 0.12);
+  border: 1px solid rgba(255, 217, 163, 0.3);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.cook-along-invite:hover {
+  background: rgba(255, 217, 163, 0.22);
+  border-color: rgba(255, 217, 163, 0.5);
+}
+
+/* Pantry +/- pulse when qty hits 1 (low-stock heads-up). */
+.pantry-row.is-low .pantry-qty .qty {
+  animation: pantry-low-pulse 1.6s ease-in-out infinite;
+  color: var(--cooking-deep);
+}
+
+@keyframes pantry-low-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Search input focus — soft orange glow that ties to the cooking palette
+   without overriding the global focus ring elsewhere. */
+.search-box input:focus {
+  border-color: var(--cooking);
+  box-shadow: 0 0 0 3px rgba(216, 105, 24, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recipe-tile,
+  .cook-mode,
+  .cook-step p,
+  .pantry-row.is-low .pantry-qty .qty {
+    animation: none;
+    transition: none;
+  }
+}

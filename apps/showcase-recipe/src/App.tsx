@@ -1413,7 +1413,8 @@ function CookbookView({
             <EmptyState
               eyebrow="Cookbook"
               headline={<>Save the first dish worth repeating.</>}
-              cta={{ label: 'Start a recipe', onClick: onAddFirstRecipe }}
+              body="Paste a recipe off any blog with Import, or type one in by hand on the right. Everything stays on this device."
+              cta={{ label: 'Paste from a blog', onClick: onOpenImport }}
             />
           ) : (
             recipes.map((recipe) => (
@@ -1890,6 +1891,7 @@ function ShoppingView({
         <EmptyState
           eyebrow="Shop"
           headline={<>What does this week need?</>}
+          body="Plan the week's meals and Palate pulls the missing ingredients here automatically — grouped by aisle to mirror the store."
           cta={{ label: 'Plan this week', onClick: () => onNavigate('plan') }}
         />
       ) : (
