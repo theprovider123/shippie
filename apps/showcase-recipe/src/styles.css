@@ -1981,6 +1981,11 @@ body {
 }
 
 @media (max-width: 980px) {
+  .hero-plane {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
   .hero-copy,
   .taste-board {
     grid-column: auto;
@@ -2050,27 +2055,11 @@ body {
   }
 
   .hero-status {
-    margin: 0;
-    max-width: none;
-    font-size: 0.92rem;
+    display: none;
   }
 
   .decision-strip {
-    margin-top: 0;
-    gap: 0.35rem;
-  }
-
-  .decision-strip span {
-    min-height: 50px;
-    padding: 0.45rem;
-  }
-
-  .decision-strip strong {
-    font-size: 1.08rem;
-  }
-
-  .decision-strip small {
-    font-size: 0.66rem;
+    display: none;
   }
 
   .hero-actions {
