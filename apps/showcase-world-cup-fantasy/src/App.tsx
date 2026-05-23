@@ -484,13 +484,17 @@ export function App() {
             <span>{team.chip === 'none' ? 'Classic' : CHIPS.find((chip) => chip.id === team.chip)?.label}</span>
           </div>
           <div className="leaderboard">
-            {leaderboard.map((entry, index) => (
-              <article key={entry.manager} className={entry.manager === (team.manager || 'You') ? 'leader-row you' : 'leader-row'}>
-                <span>#{index + 1}</span>
-                <strong>{entry.manager}</strong>
-                <em>{entry.score.total} pts</em>
-              </article>
-            ))}
+            {leaderboard.map((entry) => {
+              // Tied managers share a rank: count peers strictly above.
+              const rank = leaderboard.filter((row) => row.score.total > entry.score.total).length + 1;
+              return (
+                <article key={entry.manager} className={entry.manager === (team.manager || 'You') ? 'leader-row you' : 'leader-row'}>
+                  <span>#{rank}</span>
+                  <strong>{entry.manager}</strong>
+                  <em>{entry.score.total} pts</em>
+                </article>
+              );
+            })}
           </div>
         </section>
 
@@ -676,7 +680,7 @@ function validateSquad(squad: Player[]): { ok: boolean; message: string } {
   }
   const crowded = Array.from(teamCounts.entries()).find(([, count]) => count > 3);
   if (crowded) return { ok: false, message: `Too many from ${crowded[0]} (max 3).` };
-  return { ok: true, message: 'Ready to share into a private space when league rooms are switched on.' };
+  return { ok: true, message: 'Squad locked in. Pass the phone or share via QR to invite managers.' };
 }
 
 function canAddPlayer(squad: Player[], position: Position): boolean {
