@@ -92,3 +92,20 @@ export interface CookedMealRow {
 export interface NeedsRestockingRow {
   name: string;
 }
+
+/**
+ * Pull ingredient names out of a list of cooked-meal rows. Handles unknown
+ * shapes gracefully — anything not matching `CookedMealRow` is skipped.
+ */
+export function collectIngredientNames(rows: ReadonlyArray<unknown>): string[] {
+  const out: string[] = [];
+  for (const row of rows as readonly CookedMealRow[]) {
+    if (!row) continue;
+    if (Array.isArray(row.ingredients)) {
+      for (const ing of row.ingredients) {
+        if (ing && typeof ing.name === 'string') out.push(ing.name);
+      }
+    }
+  }
+  return out;
+}

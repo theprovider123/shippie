@@ -16,7 +16,8 @@ import { Pantry } from './pages/Pantry.tsx';
 import { Recipes } from './pages/Recipes.tsx';
 import { Settings } from './pages/Settings.tsx';
 import { usePantryStore } from './lib/store.ts';
-import type { CookedMealRow, NeedsRestockingRow } from './lib/types.ts';
+import { collectIngredientNames } from './lib/types.ts';
+import type { NeedsRestockingRow } from './lib/types.ts';
 
 const shippie = createShippieIframeSdk({ appId: 'app_pantry_scanner' });
 
@@ -182,15 +183,3 @@ export function App() {
   );
 }
 
-function collectIngredientNames(rows: ReadonlyArray<unknown>): string[] {
-  const out: string[] = [];
-  for (const row of rows as readonly CookedMealRow[]) {
-    if (!row) continue;
-    if (Array.isArray(row.ingredients)) {
-      for (const ing of row.ingredients) {
-        if (ing && typeof ing.name === 'string') out.push(ing.name);
-      }
-    }
-  }
-  return out;
-}
