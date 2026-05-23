@@ -8,6 +8,7 @@ export type ParadeAnalyticsEvent =
   | 'parade_plan_saved'
   | 'parade_plan_share_opened'
   | 'parade_plan_import_saved'
+  | 'parade_group_signal'
   | 'parade_presence_tapped'
   | 'parade_bus_seen_tapped'
   | 'parade_crowd_reported'

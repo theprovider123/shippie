@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ImportPreviewSheet, type ImportPreview } from './components/ImportPreviewSheet';
 import { ReadinessChip } from './components/ReadinessChip';
 import { ToastHost } from './components/ToastHost';
+import { GroupScreen } from './screens/GroupScreen';
 import { MapScreen } from './screens/MapScreen';
-import { PlanScreen } from './screens/PlanScreen';
 import { SafetyScreen } from './screens/SafetyScreen';
 import { decodePlan, type GroupPlan } from './lib/group-plan';
 import {
@@ -229,7 +229,7 @@ export function App() {
           />
         ) : null}
         {active === 'group' ? (
-          <PlanScreen
+          <GroupScreen
             pack={pack}
             plan={plan}
             onSave={onSavePlan}
