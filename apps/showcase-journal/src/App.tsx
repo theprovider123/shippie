@@ -51,7 +51,15 @@ export function App() {
       try {
         await migrateJournalEntriesToDocument(resolveLocalDb());
       } catch (err) {
-        if (!cancelled) console.info('shippie:journal sealed migration postponed', err);
+        if (cancelled) return;
+        // Surface the failure rather than swallowing it silently — a stalled
+        // migration leaves the entries in their pre-document shape, which
+        // breaks downstream search/year-in-review reads. `console.warn` so it
+        // shows up in normal devtools triage, not just verbose info logs.
+        console.warn('shippie:journal sealed migration failed', err);
+        setEncryptionNotice(
+          'Heads up: a sealed-entries upgrade didn’t finish. Older notes may not show up in Search or Trends until you reload.',
+        );
       }
     })();
     return () => {
@@ -74,16 +82,26 @@ export function App() {
   // fragment so a reload doesn't re-prompt.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    async function detect() {
       if (typeof window === 'undefined') return;
       const blob = await readImportFragment(window.location.href);
       if (!blob || cancelled) return;
       const check = await checkJournalImport(blob);
       if (!check.ok) return; // wrong type — silently ignore
       if (!cancelled) setPendingImport(check);
-    })();
+    }
+    void detect();
+    // Re-detect when the URL fragment changes (e.g. user pastes a fresh
+    // share link without a full reload). The hashchange listener is cheap
+    // and the inner function is idempotent.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('hashchange', detect);
+    }
     return () => {
       cancelled = true;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('hashchange', detect);
+      }
     };
   }, []);
 
