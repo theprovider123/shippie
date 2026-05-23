@@ -152,6 +152,18 @@ function today(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Time-of-day greeting for the Today hero. Morning < 12, afternoon < 18,
+ * evening otherwise. Keeps "How are you" cadence so micro-copy lands in
+ * the same key as the rest of the page.
+ */
+function timeAwareGreeting(now: Date = new Date()): string {
+  const h = now.getHours();
+  if (h < 12) return 'Good morning — how is it landing?';
+  if (h < 18) return 'Good afternoon — how is it going?';
+  return 'Good evening — how did today land?';
+}
+
 function addDays(offset: number): string {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -294,7 +306,14 @@ function generateReading(state: ChiwitState, pulse: PulseScore, when: string = t
   } else if (dayEntries.length === 0) {
     sentences.push('No signals yet — log one when you notice it, not by the clock.');
   } else {
-    sentences.push(`${dayEntries.length} signal${dayEntries.length === 1 ? '' : 's'} logged so far. The shape comes from how steady the week feels, not any single day.`);
+    // Surface which factors are already in so the user knows what to log next.
+    const loggedFactors = (Object.keys(pulse.logged) as Array<keyof ScoreBreakdown>)
+      .filter((key) => pulse.logged[key])
+      .map((key) => FACTOR_NAMES[key].toLowerCase());
+    const tail = loggedFactors.length > 0
+      ? ` So far: ${loggedFactors.join(', ')}.`
+      : '';
+    sentences.push(`${dayEntries.length} signal${dayEntries.length === 1 ? '' : 's'} logged so far.${tail}`);
   }
 
   return sentences.join(' ');
@@ -866,16 +885,28 @@ function WeekContour({ values }: { values: number[] }) {
   const line = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
   const area = `${line} L ${x(pts.length - 1).toFixed(1)} ${H - p} L ${x(0).toFixed(1)} ${H - p} Z`;
   const lastIdx = pts.length - 1;
+  // Average ignores honesty-gated 0s — those days had too few signals to score.
+  const scored = values.filter((v) => v > 0);
+  const avg = scored.length > 0 ? Math.round(scored.reduce((s, v) => s + v, 0) / scored.length) : null;
   return (
     <figure className="week-contour" aria-label="Your pulse across the last seven days">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" preserveAspectRatio="none">
         <path className="week-contour__area" d={area} />
-        <path className="week-contour__line" d={line} />
+        <path
+          className="week-contour__line"
+          d={line}
+          pathLength={500}
+          strokeDasharray="500"
+          strokeDashoffset="500"
+        />
         {pts.map((v, i) => (
           <circle key={i} cx={x(i)} cy={y(v)} r={i === lastIdx ? 3.6 : 2} className={i === lastIdx ? 'week-contour__today' : 'week-contour__dot'} />
         ))}
       </svg>
-      <figcaption>Your last seven days</figcaption>
+      <figcaption>
+        Last 7 days
+        {avg !== null ? <> · <strong>avg {avg}</strong></> : null}
+      </figcaption>
     </figure>
   );
 }
@@ -900,19 +931,20 @@ function TodayView({
   onNavigate: (tab: Tab) => void;
 }) {
   const starterSignals = QUICK_ACTIONS.filter((action) => action.kind === 'mood' || action.kind === 'energy' || action.kind === 'hydration');
+  const greeting = timeAwareGreeting();
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
         <div>
           <p className="eyebrow">Today · Daily Pulse</p>
-          <h1>How are you today?</h1>
+          <h1>{greeting}</h1>
           <p className="reading">{reading}</p>
           <div className="signal-composer" aria-label="Start a check-in">
             {starterSignals.map((action) => (
               <button key={action.label} type="button" onClick={() => onQuickLog(action)}>
                 <span style={{ background: KIND_META[action.kind].color }} />
                 <strong>{action.label.replace(' · ', ' ')}</strong>
-                <small>{action.helper}</small>
+                <small className="factor-boost">{action.helper}</small>
               </button>
             ))}
           </div>
@@ -931,7 +963,7 @@ function TodayView({
             <button key={action.label} type="button" onClick={() => onQuickLog(action)}>
               <span style={{ background: KIND_META[action.kind].color }} />
               <strong>{action.label}</strong>
-              <small>{action.helper}</small>
+              <small className="factor-boost">{action.helper}</small>
             </button>
           ))}
         </div>
@@ -1285,18 +1317,33 @@ function DataView({
 function PulseRing({ pulse }: { pulse: PulseScore }) {
   const factors = Object.entries(pulse.breakdown) as Array<[keyof ScoreBreakdown, number]>;
   // When the pulse has too few signals it shows "—" instead of a number;
-  // the ring still fills to a calm baseline so the surface isn't empty.
+  // the ring now fills to *momentum* (logged / 3) so the surface shows how
+  // close the user is to earning their first honest pulse, not a baseline.
   const hasPulse = pulse.overall !== null;
-  const ringScore = pulse.overall ?? UNLOGGED_FACTOR_VALUE;
+  const REQUIRED = 3;
+  const progressPct = Math.min(100, Math.round((pulse.loggedCount / REQUIRED) * 100));
+  const ringScore = hasPulse ? pulse.overall : progressPct;
+  const aria = hasPulse
+    ? `Daily Pulse ${pulse.overall}`
+    : `Daily Pulse — ${pulse.loggedCount} of ${REQUIRED} factors logged`;
   return (
     <section
-      className="pulse-card"
-      aria-label={hasPulse ? `Daily Pulse ${pulse.overall}` : 'Daily Pulse not yet enough signals'}
+      className={`pulse-card${hasPulse ? '' : ' pulse-card--progress'}`}
+      aria-label={aria}
     >
-      <div className="pulse-ring" style={{ '--score': ringScore } as CSSProperties}>
+      <div
+        className={`pulse-ring${hasPulse ? '' : ' pulse-ring--progress'}`}
+        style={{ '--score': ringScore } as CSSProperties}
+      >
         <img src={CHIWIT_LOGO_URL} alt="" />
-        <strong>{hasPulse ? pulse.overall : '—'}</strong>
-        <span>Daily Pulse</span>
+        {hasPulse ? (
+          <strong>{pulse.overall}</strong>
+        ) : (
+          <strong className="pulse-ring__progress">
+            {pulse.loggedCount}<span>/{REQUIRED}</span>
+          </strong>
+        )}
+        <span>{hasPulse ? 'Daily Pulse' : 'Factors logged'}</span>
       </div>
       <div className="pulse-factors" aria-label="Pulse factors">
         {factors.map(([key, value]) => (

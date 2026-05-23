@@ -1997,3 +1997,64 @@ button.branded.primary {
     min-height: 46px;
   }
 }
+
+/* ─── Hero-moment polish (cluster 1) ───────────────────────────────── *
+ * Tabular nums on the reading so "45" / "7" land with vital-sign weight.
+ * factor-boost class on quick-action helpers makes the signal→factor
+ * mapping legible at a glance ("Foundations" / "Mind" / "Recovery").
+ * PulseRing progress mode replaces "—" with a momentum ring toward the
+ * 3-factor honesty gate.
+ * WeekContour line draws over 1.2s — keepsake-feel, not chart-feel.
+ * ──────────────────────────────────────────────────────────────────── */
+.hero-plane .reading {
+  font-variant-numeric: tabular-nums;
+}
+
+.factor-boost {
+  display: inline-block;
+  margin-top: 0.1rem;
+  padding: 0.05rem 0.4rem;
+  background: var(--sage-soft);
+  color: var(--sage-deep);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.week-contour figcaption strong {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--sage-deep);
+  letter-spacing: 0.08em;
+}
+
+/* PulseRing — momentum mode when overall is null. */
+.pulse-ring--progress {
+  background:
+    radial-gradient(circle at center, rgba(255, 250, 248, 0.98) 0 48%, transparent 49%),
+    conic-gradient(var(--sage) calc(var(--score) * 1%), var(--sage-soft) 0);
+}
+.pulse-ring__progress {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.pulse-ring__progress span {
+  display: inline;
+  font-size: 0.45em;
+  color: var(--muted);
+  margin-left: 0.04em;
+  vertical-align: 0.35em;
+}
+
+/* WeekContour line draw — runs on mount; respects reduced-motion via the
+ * earlier media query that clamps animation-duration to 1ms. */
+.week-contour__line {
+  animation: chiwit-contour-draw 1200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes chiwit-contour-draw {
+  to { stroke-dashoffset: 0; }
+}
