@@ -694,7 +694,7 @@ export function App() {
             {muted ? '🔇' : '🔊'}
           </button>
           <button type="button" className="ghost" onClick={toggleFullscreen} aria-label="Toggle fullscreen">
-            {fullscreen ? '⤡' : '⛶'}
+            <FullscreenIcon expanded={fullscreen} />
           </button>
           <button type="button" className="ghost" onClick={tutorial.reset} aria-label="Show tutorial">?</button>
         </div>
@@ -862,6 +862,29 @@ function useReducedMotion(): boolean {
     return () => mq.removeEventListener('change', handler);
   }, []);
   return reduced;
+}
+
+function FullscreenIcon({ expanded }: { expanded: boolean }) {
+  // Clear SVG glyph in place of opaque unicode (⛶/⤡). 2026-05-23 review.
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {expanded ? (
+        <>
+          <path d="M6 2v4H2" />
+          <path d="M10 2v4h4" />
+          <path d="M6 14v-4H2" />
+          <path d="M10 14v-4h4" />
+        </>
+      ) : (
+        <>
+          <path d="M2 6V2h4" />
+          <path d="M14 6V2h-4" />
+          <path d="M2 10v4h4" />
+          <path d="M14 10v4h-4" />
+        </>
+      )}
+    </svg>
+  );
 }
 
 function CharacterSprite({ character }: { character: CharacterDef }) {
