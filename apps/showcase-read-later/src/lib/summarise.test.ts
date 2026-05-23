@@ -77,6 +77,7 @@ describe('summariseWithFallback', () => {
           output: { sentences: ['AI sentence one.', 'AI sentence two.'] },
           source: 'local' as const,
         }),
+        ready: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText);
@@ -92,6 +93,7 @@ describe('summariseWithFallback', () => {
           output: null,
           source: 'unavailable' as const,
         }),
+        ready: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText, { maxSentences: 2 });
@@ -105,6 +107,7 @@ describe('summariseWithFallback', () => {
         run: async () => {
           throw new Error('no transformers');
         },
+        ready: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText, { maxSentences: 2 });
@@ -120,6 +123,7 @@ describe('summariseWithFallback', () => {
           output: 'First. Second. Third.',
           source: 'local' as const,
         }),
+        ready: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, 'irrelevant', { maxSentences: 2 });
@@ -135,6 +139,7 @@ describe('summariseWithFallback', () => {
           output: { weird: 42 },
           source: 'local' as const,
         }),
+        ready: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText, { maxSentences: 2 });

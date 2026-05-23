@@ -100,6 +100,7 @@ describe('suggestLabel', () => {
           output: { label: 'tech' as const },
           source: 'local' as const,
         }),
+        ready: async () => undefined,
       },
     };
     const label = await suggestLabel(fakeShippie, { title: 'GPU drivers', plainText: 'CUDA' });
@@ -114,6 +115,7 @@ describe('suggestLabel', () => {
           output: null,
           source: 'unavailable' as const,
         }),
+        ready: async () => undefined,
       },
     };
     expect(await suggestLabel(fakeShippie, { title: 'X', plainText: 'Y' })).toBeNull();
@@ -127,6 +129,7 @@ describe('suggestLabel', () => {
           output: { label: 'sports' },
           source: 'local' as const,
         }),
+        ready: async () => undefined,
       },
     };
     expect(await suggestLabel(fakeShippie, { title: 'X', plainText: 'Y' })).toBeNull();
