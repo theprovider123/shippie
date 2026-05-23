@@ -198,7 +198,7 @@ button, input, textarea, select { font: inherit; }
   text-align: left;
   min-height: 88px;
 }
-.recipe-chip:hover { background: var(--surface-alt); border-color: var(--text-secondary); }
+.recipe-chip:hover { background: var(--surface-alt); border-color: var(--text-secondary); transform: translateY(-1px); }
 .recipe-chip.mine {
   border-left: 3px solid var(--marigold);
 }
@@ -267,7 +267,7 @@ button, input, textarea, select { font: inherit; }
 }
 .bake-card-bar-fill {
   height: 100%;
-  background: var(--sage-leaf);
+  background: color-mix(in srgb, var(--sage-leaf) 80%, #000);
   transition: width 0.4s ease-out;
 }
 
@@ -847,16 +847,6 @@ button, input, textarea, select { font: inherit; }
   color: var(--text-light);
   vertical-align: 0.35em;
   margin-left: 0.2em;
-}
-
-.dough-code {
-  font-family: var(--font-mono);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  color: var(--accent, var(--sunset));
-  text-transform: uppercase;
 }
 
 /* ── Mobile-safe date/time inputs ─────────────────────────────────────
