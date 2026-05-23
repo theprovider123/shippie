@@ -4,18 +4,7 @@ import { createGroup, joinGroup, type Group } from '@shippie/proximity';
 
 const shippie = createShippieIframeSdk({ appId: 'app_show_and_tell' });
 
-/**
- * P4C-2 — Show and Tell.
- *
- * A pure mesh-only ephemeral scratchpad. Anyone on the same room
- * code can drop short text, photos, or links. Items expire when
- * the room empties: when `group.members().length === 0` for 30+
- * seconds, we wipe the local list.
- *
- * Privacy contract: nothing persists across sessions. No
- * localStorage, no IndexedDB. The room code is the only identifier
- * and it's only useful while peers are connected.
- */
+/** Show and Tell — mesh-only ephemeral scratchpad; wipes local state once the room has been empty for {@link EMPTY_ROOM_GRACE_MS}. */
 
 interface MeshItem {
   id: string;
@@ -187,19 +176,31 @@ export function App() {
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={meshState === 'live' ? 'Drop a thought, link, or quote' : 'Start or join a room first'}
+          placeholder={
+            meshState === 'live'
+              ? 'Drop a thought · paste a link to auto-format'
+              : 'Start or join a room first'
+          }
           disabled={meshState !== 'live'}
           onKeyDown={(e) => e.key === 'Enter' && post()}
           aria-label="Post text"
+          aria-describedby="compose-help"
         />
         <button onClick={post} disabled={meshState !== 'live' || !draft.trim()}>
           Post
         </button>
+        <small id="compose-help" className="compose-help">
+          Press Enter or tap Post.
+        </small>
       </section>
 
       <section className="feed" aria-label="Mesh feed">
         {items.length === 0 ? (
           <p className="empty">
+            <span className={`room-badge room-badge-${meshState === 'live' ? 'live' : 'off'}`}>
+              Room: {meshState === 'live' ? 'live' : 'off'}
+            </span>
+            {' '}
             Nothing here. {meshState === 'live' ? 'Drop something — everyone in the room sees it.' : 'Start a room and share the code.'}
           </p>
         ) : (

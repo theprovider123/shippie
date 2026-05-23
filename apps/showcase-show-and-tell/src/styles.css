@@ -190,3 +190,31 @@ header p { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
   font-weight: 600;
   color: var(--accent);
 }
+
+.compose-help {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.room-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.room-badge-live {
+  background: rgba(116, 165, 127, 0.18);
+  color: #2f6a3f;
+}
+.room-badge-off {
+  background: rgba(120, 120, 120, 0.14);
+  color: var(--muted);
+}
