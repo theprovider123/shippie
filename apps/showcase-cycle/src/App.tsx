@@ -145,9 +145,11 @@ export function App() {
         setMoodHint(
           `Mood read low ${lows.length === 1 ? 'once' : `${lows.length} times`} recently — predicted period in about ${days} ${days === 1 ? 'day' : 'days'}.`,
         );
-        // Auto-fade after 8s — long enough to read, gone before it becomes
+        // Auto-fade after 12s — long enough to read, gone before it becomes
         // permanent first-screen weight. Plan key: cycle:onboarding:moodHint:v1.
-        window.setTimeout(() => setMoodHint(null), 8000);
+        // 2026-05-23 review: extended from 8s; explicit close button tracked
+        // as a TODO inside Today.tsx where the hint is rendered.
+        window.setTimeout(() => setMoodHint(null), 12000);
       }
     });
     return () => offMood();
@@ -200,14 +202,11 @@ export function App() {
     };
   }, [db, refreshKey]);
 
-  // Republish the projection on every refresh — covers the
-  // log-today-then-share case without needing a separate hook.
-  useEffect(() => {
-    if (!partnerRef.current) return;
-    void buildProjection(db).then((projection) => {
-      partnerRef.current?.publish(projection);
-    });
-  }, [db, refreshKey]);
+  // 2026-05-23 review: previous secondary effect re-published the projection
+  // on every refreshKey change. Removed — the partner-mesh effect above
+  // already rebinds + publishes on the same deps, so the second publish was a
+  // duplicate. The log-today-then-share case is still covered because
+  // bumpRefresh() flips refreshKey and re-runs the bind effect.
 
   return (
     <main className="cycle-app" data-route={route}>
