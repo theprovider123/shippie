@@ -125,7 +125,12 @@ export function App() {
             <div className="fill-b" style={{ width: `${bPct}%` }} />
           </div>
         </section>
-      ) : null}
+      ) : (
+        <section className="stats">
+          <h2>Your patterns</h2>
+          <p className="muted small">You haven't started building your pattern yet — pick one above to begin.</p>
+        </section>
+      )}
     </main>
   );
 }

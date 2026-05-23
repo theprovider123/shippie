@@ -224,21 +224,28 @@ export function App() {
     const guess = currentGuess.toLowerCase();
     // Hard mode: must reuse all revealed greens (in same position)
     // and yellows (somewhere). Block submit + flash a hint message.
+    // Accents are stripped on both sides so ñ ≡ n and ç ≡ c — the
+    // banks for fr/es include both forms, but a player typing on an
+    // English keyboard should still satisfy hard mode.
+    const stripDiacritics = (s: string): string =>
+      s.normalize('NFD').replace(/[̀-ͯ]/g, '');
     if (settings.hardMode && rows.length > 0) {
       const required: { letter: string; position: number | null }[] = [];
       for (const r of rows) {
-        for (let i = 0; i < r.guess.length; i++) {
-          const ch = r.guess[i]!;
+        const normalized = stripDiacritics(r.guess);
+        for (let i = 0; i < normalized.length; i++) {
+          const ch = normalized[i]!;
           const st = r.states[i]!;
           if (st === 'correct') required.push({ letter: ch, position: i });
           else if (st === 'present' && !required.some((q) => q.letter === ch)) required.push({ letter: ch, position: null });
         }
       }
+      const normalizedGuess = stripDiacritics(guess);
       for (const req of required) {
         if (req.position !== null) {
-          if (guess[req.position] !== req.letter) {
+          if (normalizedGuess[req.position] !== req.letter) {
             setHardModeError(`Hard mode: ${req.letter.toUpperCase()} must be in slot ${req.position + 1}`);
-            window.setTimeout(() => setHardModeError(null), 2200);
+            window.setTimeout(() => setHardModeError(null), 3000);
             haptic('error');
             sfx.play('fail');
             setShake(true);
@@ -246,9 +253,9 @@ export function App() {
             return;
           }
         } else {
-          if (!guess.includes(req.letter)) {
+          if (!normalizedGuess.includes(req.letter)) {
             setHardModeError(`Hard mode: must use ${req.letter.toUpperCase()}`);
-            window.setTimeout(() => setHardModeError(null), 2200);
+            window.setTimeout(() => setHardModeError(null), 3000);
             haptic('error');
             sfx.play('fail');
             setShake(true);

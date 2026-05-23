@@ -41,7 +41,7 @@ button { font: inherit; }
   flex-direction: column;
   gap: 12px;
 }
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   /* Tighten keyboard rows on phones — 48px keys keep the grid +
      keyboard inside an iPhone SE viewport. */
   .key { height: 48px; }

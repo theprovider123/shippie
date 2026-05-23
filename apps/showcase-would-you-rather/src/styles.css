@@ -82,7 +82,7 @@ h2 { font-size: 18px; }
 .option:nth-of-type(3) .letter { color: var(--accent-b); }
 /* nth-of-type(3) accounts for the .or div between options */
 
-.option.picked { border-color: var(--fg); border-width: 2px; }
+.option.picked { border-color: var(--fg); border-width: 2px; transform: scale(1.002); }
 .option.picked.option:nth-of-type(1) { border-color: var(--accent-a); }
 .option.picked.option:nth-of-type(3) { border-color: var(--accent-b); }
 
