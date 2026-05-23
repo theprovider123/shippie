@@ -94,6 +94,9 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   max-width: 380px;
   touch-action: none;
 }
+@media (min-width: 340px) {
+  .board { gap: 3px; }
+}
 .fx-canvas {
   position: absolute;
   inset: 0;
@@ -117,6 +120,9 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   background: rgba(232, 74, 45, 0.3);
   outline: 2px solid #E84A2D;
   outline-offset: -2px;
+}
+@media (max-width: 360px) {
+  .cell.ghost-invalid { outline-width: 3px; }
 }
 .shake-once {
   animation: shake 280ms ease;

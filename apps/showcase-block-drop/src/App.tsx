@@ -61,6 +61,8 @@ function saveStored(s: Stored) { try { localStorage.setItem(STORAGE_KEY, JSON.st
 
 type Mode = 'endless' | 'daily';
 
+// Cycles through six palette pairs as the player climbs levels, looping every
+// 6 levels so progression feels visually fresh without requiring assets.
 const PALETTE: ReadonlyArray<readonly [string, string]> = [
   ['#3F8AA8', '#7AC4E8'],
   ['#7E5B96', '#B48BC8'],
@@ -261,9 +263,9 @@ export function App() {
         </div>
       </header>
 
-      <section className="mode-row">
-        <button type="button" className={mode === 'endless' ? 'tab active' : 'tab'} onClick={() => startGame('endless')}>Endless</button>
-        <button type="button" className={mode === 'daily' ? 'tab active' : 'tab'} onClick={() => startGame('daily')}>Daily</button>
+      <section className="mode-row" role="tablist" aria-label="Game mode">
+        <button type="button" role="tab" aria-selected={mode === 'endless'} className={mode === 'endless' ? 'tab active' : 'tab'} onClick={() => startGame('endless')}>Endless</button>
+        <button type="button" role="tab" aria-selected={mode === 'daily'} className={mode === 'daily' ? 'tab active' : 'tab'} onClick={() => startGame('daily')}>Daily</button>
       </section>
 
       <div
