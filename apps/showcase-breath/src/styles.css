@@ -75,6 +75,8 @@ button { font: inherit; }
     transparent 100%
   );
   border: 2px solid var(--sage-moss);
+  /* Symmetric ease (cubic-bezier(0.45, 0, 0.55, 1)) ≈ a sine wave — mirrors
+     the soft, even rise/fall of natural breathing better than ease-in-out. */
   transition: transform 0.95s cubic-bezier(0.45, 0, 0.55, 1);
 }
 .ring.running { box-shadow: 0 0 60px rgba(94, 123, 92, 0.35); }
@@ -95,6 +97,10 @@ button { font: inherit; }
   margin: 0;
   color: var(--text);
   letter-spacing: -0.01em;
+}
+@media (max-width: 380px) {
+  /* Italic display type loses legibility under 380px wide; revert to roman. */
+  .phase-label { font-style: normal; }
 }
 .phase-count {
   font-family: var(--font-mono);
@@ -141,6 +147,10 @@ button { font: inherit; }
 .pattern-blurb {
   color: var(--text-light);
   font-size: 12px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(94, 123, 92, 0.18);
+  margin-top: 2px;
+  align-self: stretch;
 }
 
 .rounds-row { display: flex; flex-wrap: wrap; }

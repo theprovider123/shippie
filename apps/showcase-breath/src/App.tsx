@@ -139,11 +139,13 @@ export function App() {
       </p>
 
       {/* Pattern picker */}
-      <section className="pattern-row">
+      <section className="pattern-row" role="radiogroup" aria-label="Breathing pattern">
         {PATTERNS.map((p) => (
           <button
             key={p.id}
             type="button"
+            role="radio"
+            aria-checked={p.id === pattern.id}
             className={`pattern-chip ${p.id === pattern.id ? 'active' : ''}`}
             onClick={() => pickPattern(p)}
             disabled={running}
