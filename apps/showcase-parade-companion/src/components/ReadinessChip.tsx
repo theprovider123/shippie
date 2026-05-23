@@ -68,13 +68,13 @@ export function ReadinessChip({ pack, onShowStatus }: ReadinessChipProps) {
 
 function readinessCopy(readiness: Readiness): { title: string; detail: string } {
   if (readiness === 'ready') {
-    return { title: 'Saved offline', detail: 'Map and fonts are on this phone' };
+    return { title: 'Saved offline', detail: 'Map + fonts saved' };
   }
   if (readiness === 'needs-online') {
-    return { title: 'Open on Wi-Fi', detail: 'Finish saving before parade day' };
+    return { title: 'Open on Wi-Fi', detail: 'Finish saving this phone' };
   }
   if (readiness === 'unknown') {
-    return { title: 'Offline check limited', detail: 'Keep this page open once before leaving' };
+    return { title: 'Check limited', detail: 'Keep this page open before leaving' };
   }
-  return { title: 'Checking offline', detail: 'Verifying saved route pack' };
+  return { title: 'Checking offline', detail: 'Verifying route pack' };
 }

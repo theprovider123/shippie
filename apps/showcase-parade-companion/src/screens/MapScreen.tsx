@@ -170,37 +170,46 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         onOpenQr={() => void openSync()}
       />
 
-      <div className="pulse-actions" aria-label="Fast parade taps">
-        <button type="button" className="primary-action fan-tap" onClick={() => void saveEvent('presence')}>
-          I am here
-        </button>
-        <button type="button" className="primary-action fan-tap bus-action" onClick={() => void saveEvent('bus_seen')}>
-          Bus is here
-        </button>
-        <button
-          type="button"
-          className="primary-action fan-tap"
-          aria-expanded={reportsOpen}
-          onClick={() => setReportsOpen((value) => !value)}
-        >
-          Report {reportsOpen ? '▴' : '▾'}
-        </button>
-      </div>
-
-      {reportsOpen ? (
-        <div className="report-chips" aria-label="Report what is happening nearby">
-          {REPORT_TYPES.map((type) => (
-            <button
-              type="button"
-              key={type}
-              data-kind={type}
-              onClick={() => void saveEvent(type)}
-            >
-              {FAN_EVENT_LABELS[type]}
-            </button>
-          ))}
+      <div className="tap-panel" aria-label="Fast parade taps">
+        <div className="tap-panel__head">
+          <span>Tap what you see</span>
+          <small>saved on this phone first</small>
         </div>
-      ) : null}
+        <div className="pulse-actions">
+          <button type="button" className="fan-tap fan-tap--presence" onClick={() => void saveEvent('presence')}>
+            <strong>I am here</strong>
+            <span>fan dot</span>
+          </button>
+          <button type="button" className="fan-tap fan-tap--bus" onClick={() => void saveEvent('bus_seen')}>
+            <strong>Bus is here</strong>
+            <span>highest value</span>
+          </button>
+          <button
+            type="button"
+            className="fan-tap fan-tap--report"
+            aria-expanded={reportsOpen}
+            onClick={() => setReportsOpen((value) => !value)}
+          >
+            <strong>Report {reportsOpen ? '▴' : '▾'}</strong>
+            <span>crowd or road</span>
+          </button>
+        </div>
+
+        {reportsOpen ? (
+          <div className="report-chips" aria-label="Report what is happening nearby">
+            {REPORT_TYPES.map((type) => (
+              <button
+                type="button"
+                key={type}
+                data-kind={type}
+                onClick={() => void saveEvent(type)}
+              >
+                {FAN_EVENT_LABELS[type]}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div className="panel around-you">
         <h2>Around you</h2>

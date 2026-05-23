@@ -9,11 +9,6 @@ interface StatusStripProps {
   onOpenQr: () => void;
 }
 
-/**
- * One-row status strip that replaces the older `.map-actions` toggle row +
- * the two `.metric` tiles below the map. Four sharp tiles: GPS · route · saver · QR.
- * Each tile is tappable; saver + QR are buttons, GPS + route are readouts.
- */
 export function StatusStrip({
   gpsFix,
   routeDistanceM,
@@ -28,19 +23,15 @@ export function StatusStrip({
         className="status-strip__cell"
         aria-label={`GPS accuracy ${formatAccuracy(gpsFix)}`}
       >
-        <span className="status-strip__icon" aria-hidden>
-          ◎
-        </span>
-        <span className="status-strip__value">{formatAccuracy(gpsFix)}</span>
+        <span className="status-strip__label">GPS</span>
+        <strong className="status-strip__value">{formatAccuracy(gpsFix)}</strong>
       </div>
       <div
         className="status-strip__cell"
         aria-label={`Distance to route ${routeDistanceM != null ? `${Math.round(routeDistanceM)} metres` : 'unknown'}`}
       >
-        <span className="status-strip__icon" aria-hidden>
-          ↗
-        </span>
-        <span className="status-strip__value">{routeLabel}</span>
+        <span className="status-strip__label">Route</span>
+        <strong className="status-strip__value">{routeLabel}</strong>
       </div>
       <button
         type="button"

@@ -176,9 +176,9 @@ export function App() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">Unofficial local tool</p>
-          <strong>Parade Companion — Islington</strong>
+        <div className="masthead-title">
+          <strong>Parade Companion</strong>
+          <span>Islington · unofficial local tool</span>
         </div>
         <div className="topbar-actions">
           <button type="button" className="lost-button" onClick={() => setActive('safety')}>
