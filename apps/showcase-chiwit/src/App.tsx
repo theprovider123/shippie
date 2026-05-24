@@ -1674,19 +1674,89 @@ function TimelineView({
         ))}
       </nav>
       <div className="timeline-list">
-        {days.filter((date) => entriesForDate(state.entries, date).length > 0 || date === today()).slice(0, 12).map((date) => {
+        {days.slice(0, 12).map((date, index) => {
           const entries = entriesForDate(state.entries, date).sort((a, b) => b.createdAt - a.createdAt);
           const pulse = computePulse(state, date);
+          // First 3 days expanded by default per the brief — covers today
+          // + yesterday + the day before so the user immediately sees the
+          // recent shape, then older days fold to keep the page calm.
+          const defaultOpen = index < 3 && entries.length > 0;
           return (
-            <section className="timeline-day" key={date}>
-              <header>
-                <h2>{formatDate(date)}</h2>
-                <strong>{pulse.overall ?? '—'}</strong>
-              </header>
-              <EntryList entries={entries} onRemove={onRemove} />
-            </section>
+            <TimelineDay
+              key={date}
+              date={date}
+              entries={entries}
+              pulseOverall={pulse.overall}
+              defaultOpen={defaultOpen}
+              onRemove={onRemove}
+            />
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * One row in the Timeline list — expandable per-day disclosure.
+ *
+ * First 3 days open by default (per brief); empty days render their muted
+ * "no signals" placeholder collapsed and are non-interactive (clicking the
+ * header is a no-op when there's nothing to reveal).
+ *
+ * The entries list animates open with a 280ms max-height transition. We
+ * track `open` in component state and apply `aria-expanded` to the header
+ * button for screen readers; the chevron rotates 90° on open.
+ */
+function TimelineDay({
+  date,
+  entries,
+  pulseOverall,
+  defaultOpen,
+  onRemove,
+}: {
+  date: string;
+  entries: PulseEntry[];
+  pulseOverall: number | null;
+  defaultOpen: boolean;
+  onRemove: (entryId: string) => void;
+}) {
+  const empty = entries.length === 0;
+  const [open, setOpen] = useState<boolean>(defaultOpen && !empty);
+
+  function toggle(): void {
+    if (empty) return;
+    setOpen((prev) => !prev);
+  }
+
+  return (
+    <section className={`timeline-day${open ? ' is-open' : ''}${empty ? ' is-empty' : ''}`}>
+      <header>
+        <button
+          type="button"
+          className="timeline-day__toggle"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-controls={`timeline-day-body-${date}`}
+          disabled={empty}
+        >
+          <span className="timeline-day__chevron" aria-hidden>›</span>
+          <h2>{formatDate(date)}</h2>
+        </button>
+        <strong>{pulseOverall ?? (empty ? '·' : '—')}</strong>
+      </header>
+      <div
+        className="timeline-day__body"
+        id={`timeline-day-body-${date}`}
+        role="region"
+        aria-label={`${formatDate(date)} signals`}
+        hidden={!open && empty}
+      >
+        {empty ? (
+          <p className="timeline-day__quiet">no signals</p>
+        ) : (
+          <EntryList entries={entries} onRemove={onRemove} />
+        )}
       </div>
     </section>
   );

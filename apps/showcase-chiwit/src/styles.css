@@ -3169,7 +3169,6 @@ button.branded.primary {
 .timeline-day header {
   padding-bottom: 0.7rem;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 0.95rem;
 }
 .timeline-day header h2 {
   font-family: var(--font-display);
@@ -3187,6 +3186,98 @@ button.branded.primary {
   letter-spacing: -0.024em;
   line-height: 0.92;
   color: var(--sage-deep);
+}
+
+/* ── Timeline day expand/collapse ────────────────────────────────────── */
+
+/* The day header becomes a button so the whole header row toggles the
+ * disclosure. Chevron rotates 90° on open; body uses max-height to keep
+ * the 280ms cubic-bezier ease honest (height: auto isn't animatable). */
+.timeline-day header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.timeline-day__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 4px;
+}
+.timeline-day__toggle:disabled {
+  cursor: default;
+}
+.timeline-day__toggle:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+.timeline-day__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--sage-deep);
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease;
+}
+.timeline-day.is-open .timeline-day__chevron {
+  transform: rotate(90deg);
+}
+.timeline-day.is-empty .timeline-day__chevron {
+  opacity: 0.3;
+}
+
+/* Body collapses with max-height + opacity. The 1200px ceiling is well
+ * above a normal day's entry-list height — animation feels natural and
+ * doesn't need per-day measurement. Padding zero'd when collapsed so
+ * the section visually disappears, not just hides. */
+.timeline-day__body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 200ms ease,
+    margin-top 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 0;
+}
+.timeline-day.is-open .timeline-day__body {
+  max-height: 1200px;
+  opacity: 1;
+  margin-top: 0.95rem;
+}
+.timeline-day__quiet {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0.7;
+  margin: 0;
+}
+.timeline-day.is-empty header {
+  padding-bottom: 0;
+  border-bottom-color: transparent;
+}
+.timeline-day.is-empty header strong {
+  font-size: 1.4rem;
+  color: var(--ink-soft);
+  opacity: 0.6;
 }
 
 /* Page H1 — pull the tracking even tighter; let Fraunces breathe. */
