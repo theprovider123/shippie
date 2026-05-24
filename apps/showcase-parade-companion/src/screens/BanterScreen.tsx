@@ -254,7 +254,7 @@ function TriviaCard({
           {trivia.explainer}
         </p>
       ) : (
-        <p className="trivia-result">Tap once. Debate cards save your pick; stat cards reveal the answer offline.</p>
+        <p className="trivia-result">Tap once. Your pick saves offline; there is no right answer on debate cards.</p>
       )}
       <div className="trivia-actions">
         <button type="button" className="secondary-action" onClick={onPrevious}>

@@ -70,6 +70,7 @@ export function GroupScreen({
   const [draftHydrated, setDraftHydrated] = useState(plan !== null);
   const [shareUrl, setShareUrl] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [shareMode, setShareMode] = useState<'group' | 'dot' | 'app'>('group');
   const [showMore, setShowMore] = useState(false);
   const [events, setEvents] = useState<GroupEvent[]>(() => listGroupEvents());
   const landmarks = pack.meetingLandmarks;
@@ -153,6 +154,7 @@ export function GroupScreen({
     setDraft(next);
     const fragment = await encodePlan(next);
     setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
+    setShareMode('group');
     setSheetOpen(true);
     onTrack('parade_plan_share_opened', {
       members_count: next.members.length,
@@ -175,6 +177,7 @@ export function GroupScreen({
     setDraftHydrated(true);
     const fragment = await encodePlan(solo);
     setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
+    setShareMode('dot');
     setSheetOpen(true);
     onTrack('parade_plan_share_opened', {
       members_count: 1,
@@ -182,6 +185,18 @@ export function GroupScreen({
     });
     hapticConfirm();
     showToast('Share my dot QR ready.', 'success');
+  };
+
+  const shareApp = () => {
+    setShareUrl(`${window.location.origin}/run/parade-companion/`);
+    setShareMode('app');
+    setSheetOpen(true);
+    onTrack('parade_plan_share_opened', {
+      members_count: 0,
+      has_leave_plan: false,
+      share_kind: 'app',
+    });
+    hapticConfirm();
   };
 
   const onSignal = (preset: ChatPreset) => {
@@ -209,6 +224,7 @@ export function GroupScreen({
           solo
           onShowInvite={() => void shareMyDot()}
           onShareMyDot={() => void shareMyDot()}
+          onShareApp={shareApp}
           displayName={displayName}
           supporterTag={supporterTag}
         />
@@ -229,8 +245,11 @@ export function GroupScreen({
         <QrShareSheet
           open={sheetOpen}
           url={shareUrl}
-          title="Share your dot"
-          body="Friends scan this. They can watch on their map, or join you."
+          title={shareMode === 'app' ? 'Share the app' : 'Share your dot'}
+          body={shareMode === 'app'
+            ? 'This opens the parade app only. It does not add anyone to your group.'
+            : 'This is your dot invite. Friends open it, tap Join, and your group plan saves to their phone.'}
+          size={260}
           onClose={() => setSheetOpen(false)}
         />
       </section>
@@ -244,6 +263,7 @@ export function GroupScreen({
         memberCount={visiblePlan.members.length}
         updatedAtIso={visiblePlan.updatedAt}
         onShowInvite={() => void share()}
+        onShareApp={shareApp}
       />
 
       <div className="panel plan-card">
@@ -361,8 +381,11 @@ export function GroupScreen({
       <QrShareSheet
         open={sheetOpen}
         url={shareUrl}
-        title="Share your parade plan"
-        body="Scan before you go. This works offline after it's saved."
+        title={shareMode === 'app' ? 'Share the app' : 'Invite to your group'}
+        body={shareMode === 'app'
+          ? 'This opens the parade app only. It will not add anyone to your group.'
+          : 'Group invite. Friends open it, tap Join, and this plan saves to their phone for offline use.'}
+        size={260}
         onClose={() => setSheetOpen(false)}
       />
     </section>

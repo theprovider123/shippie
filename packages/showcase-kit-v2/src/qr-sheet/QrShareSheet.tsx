@@ -12,9 +12,11 @@ export type QrShareSheetProps = {
 
 export function QrShareSheet({ open, url, title, body, onClose, size = 320 }: QrShareSheetProps) {
   const [svg, setSvg] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setCopied(false);
     let cancelled = false;
     qrSvg(url, { size, ecc: 'M' })
       .then((s) => {
@@ -33,6 +35,8 @@ export function QrShareSheet({ open, url, title, body, onClose, size = 320 }: Qr
   const onCopy = async () => {
     try {
       await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
     } catch {
       // best-effort
     }
@@ -59,7 +63,7 @@ export function QrShareSheet({ open, url, title, body, onClose, size = 320 }: Qr
         <code className="shippie-qr-sheet__url">{url}</code>
         <div className="shippie-qr-sheet__actions">
           <button type="button" onClick={onCopy}>
-            Copy link
+            {copied ? 'Copied' : 'Copy link'}
           </button>
           <button type="button" onClick={onShare} className="primary">
             Share

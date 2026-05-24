@@ -6,6 +6,7 @@ interface GroupIdentityCardProps {
   displayName?: string;
   supporterTag?: string;
   onShowInvite: () => void;
+  onShareApp?: () => void;
   onShareMyDot?: () => void;
 }
 
@@ -22,6 +23,7 @@ export function GroupIdentityCard({
   displayName,
   supporterTag,
   onShowInvite,
+  onShareApp,
   onShareMyDot,
 }: GroupIdentityCardProps) {
   if (solo) {
@@ -37,13 +39,20 @@ export function GroupIdentityCard({
             You appear as <strong>{displayName || 'Me'} #{supporterTag}</strong>
           </p>
         ) : null}
-        <button
-          type="button"
-          className="primary-action"
-          onClick={onShareMyDot ?? onShowInvite}
-        >
-          Share my dot
-        </button>
+        <div className="group-identity__actions">
+          <button
+            type="button"
+            className="primary-action"
+            onClick={onShareMyDot ?? onShowInvite}
+          >
+            Share my dot
+          </button>
+          {onShareApp ? (
+            <button type="button" className="secondary-action" onClick={onShareApp}>
+              Share app
+            </button>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -57,13 +66,18 @@ export function GroupIdentityCard({
           className="primary-action group-identity__invite"
           onClick={onShowInvite}
         >
-          Show invite
+          Invite group
         </button>
       </div>
       <p className="group-identity__meta">
         {memberCount} {memberCount === 1 ? 'member' : 'members'}
         {updatedAtIso ? ` · saved ${agoLabel(updatedAtIso)}` : ''}
       </p>
+      {onShareApp ? (
+        <button type="button" className="secondary-action group-identity__app-share" onClick={onShareApp}>
+          Share app only
+        </button>
+      ) : null}
     </div>
   );
 }

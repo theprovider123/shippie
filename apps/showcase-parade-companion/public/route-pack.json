@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-24T22:15:00+01:00",
+  "packVersion": "2026-05-24T23:05:00+01:00",
   "event": {
     "title": "Parade Companion — Islington",
     "dateLabel": "Sunday 31 May 2026",
@@ -757,65 +757,85 @@
     "trivia": [
       {
         "id": "minutes-monster",
-        "question": "Who felt like the season workload monster?",
-        "source": "Group debate",
-        "explainer": "No official answer here — it is a street debate card, saved so your group can argue it out.",
+        "question": "Who carried the title run when legs were gone?",
+        "source": "Fan debate card",
+        "explainer": "No official answer — this is the one to argue in the queue, not a stat exam.",
         "options": [
           {
             "id": "rice",
             "label": "Declan Rice",
-            "detail": "Midfield engine"
-          },
-          {
-            "id": "odegaard",
-            "label": "Martin Odegaard",
-            "detail": "Captain hub"
+            "detail": "Engine room"
           },
           {
             "id": "saka",
             "label": "Bukayo Saka",
-            "detail": "Right-side threat"
+            "detail": "Right-side burden"
           },
           {
-            "id": "havertz",
-            "label": "Kai Havertz",
-            "detail": "Forward graft"
-          }
-        ]
-      },
-      {
-        "id": "pass-accuracy",
-        "question": "Who felt calmest on the ball?",
-        "source": "Group debate",
-        "explainer": "No marked answer — pick the player you trusted most when the press came.",
-        "options": [
+            "id": "odegaard",
+            "label": "Martin Odegaard",
+            "detail": "Captain rhythm"
+          },
           {
             "id": "saliba",
             "label": "William Saliba",
-            "detail": "Calm distributor"
+            "detail": "Calm base"
           },
           {
             "id": "gabriel",
             "label": "Gabriel",
-            "detail": "Left-sided outlet"
-          },
-          {
-            "id": "partey",
-            "label": "Thomas Partey",
-            "detail": "Midfield passer"
+            "detail": "Box dominance"
           },
           {
             "id": "raya",
             "label": "David Raya",
-            "detail": "Keeper build-up"
+            "detail": "Back-line nerve"
+          }
+        ]
+      },
+      {
+        "id": "replay-moment",
+        "question": "Which moment are you still replaying?",
+        "source": "Fan debate card",
+        "explainer": "Your pick saves locally. The point is the conversation when someone next to you disagrees.",
+        "options": [
+          {
+            "id": "dowman-everton",
+            "label": "Dowman at Everton",
+            "detail": "The kid moment"
+          },
+          {
+            "id": "eze-goal",
+            "label": "Eze goal",
+            "detail": "Pure limbs"
+          },
+          {
+            "id": "city-bournemouth",
+            "label": "Bournemouth hold City",
+            "detail": "Phones out everywhere"
+          },
+          {
+            "id": "west-ham-var",
+            "label": "West Ham VAR",
+            "detail": "The wait, then noise"
+          },
+          {
+            "id": "derby-day",
+            "label": "Derby day",
+            "detail": "North London tax"
+          },
+          {
+            "id": "title-whistle",
+            "label": "Title whistle",
+            "detail": "Release valve"
           }
         ]
       },
       {
         "id": "clean-sheet-core",
-        "question": "Who defined the clean-sheet story?",
-        "source": "Group debate",
-        "explainer": "No wrong answer — keeper platform, centre-back dominance, and team structure all count.",
+        "question": "Who gave the back line its aura?",
+        "source": "Fan debate card",
+        "explainer": "No wrong answer — keeper calm, centre-back dominance, full-back bite and midfield cover all count.",
         "options": [
           {
             "id": "raya",
@@ -823,14 +843,24 @@
             "detail": "Keeper platform"
           },
           {
-            "id": "gabriel",
-            "label": "Gabriel",
-            "detail": "Box defender"
-          },
-          {
             "id": "saliba",
             "label": "William Saliba",
-            "detail": "Back-line calm"
+            "detail": "Rolls-Royce calm"
+          },
+          {
+            "id": "gabriel",
+            "label": "Gabriel",
+            "detail": "Duel monster"
+          },
+          {
+            "id": "timber",
+            "label": "Jurrien Timber",
+            "detail": "Full-back bite"
+          },
+          {
+            "id": "white",
+            "label": "Ben White",
+            "detail": "Dark arts"
           },
           {
             "id": "rice",
@@ -842,8 +872,8 @@
       {
         "id": "set-piece-menace",
         "question": "Who is the set-piece menace?",
-        "source": "Group debate",
-        "explainer": "This one is for discussion — goal threat, blocks, screens and delivery all matter.",
+        "source": "Fan debate card",
+        "explainer": "Goal threat, blocks, screens, delivery, keeper traffic — choose your favourite chaos merchant.",
         "options": [
           {
             "id": "gabriel",
@@ -851,37 +881,47 @@
             "detail": "Corner chaos"
           },
           {
+            "id": "saliba",
+            "label": "William Saliba",
+            "detail": "Far-post threat"
+          },
+          {
             "id": "white",
             "label": "Ben White",
-            "detail": "Near-post nuisance"
+            "detail": "Keeper traffic"
+          },
+          {
+            "id": "rice",
+            "label": "Declan Rice",
+            "detail": "Delivery"
+          },
+          {
+            "id": "saka",
+            "label": "Bukayo Saka",
+            "detail": "Left-foot whip"
           },
           {
             "id": "timber",
             "label": "Jurrien Timber",
-            "detail": "Duel machine"
-          },
-          {
-            "id": "jesus",
-            "label": "Gabriel Jesus",
-            "detail": "Pressing forward"
+            "detail": "Second-ball bite"
           }
         ]
       },
       {
         "id": "captain-creator",
         "question": "Who made the season tick?",
-        "source": "Group debate",
+        "source": "Fan debate card",
         "explainer": "No referee on this one — choose the player your group thinks everything flowed through.",
         "options": [
           {
             "id": "odegaard",
             "label": "Martin Odegaard",
-            "detail": "Captain"
+            "detail": "Captain hub"
           },
           {
             "id": "rice",
             "label": "Declan Rice",
-            "detail": "Runner"
+            "detail": "Tempo and legs"
           },
           {
             "id": "saka",
@@ -889,16 +929,26 @@
             "detail": "Final-third threat"
           },
           {
+            "id": "eze",
+            "label": "Eze",
+            "detail": "Spark"
+          },
+          {
             "id": "timber",
             "label": "Jurrien Timber",
             "detail": "Full-back power"
+          },
+          {
+            "id": "havertz",
+            "label": "Kai Havertz",
+            "detail": "Link and press"
           }
         ]
       },
       {
         "id": "academy-spark",
-        "question": "Which young player gets the academy spark card?",
-        "source": "Group debate",
+        "question": "Which Hale End spark had you grinning?",
+        "source": "Fan debate card",
         "explainer": "No official answer — save your pick, then settle it in the group.",
         "options": [
           {
@@ -909,7 +959,7 @@
           {
             "id": "dowman",
             "label": "Max Dowman",
-            "detail": "Fearless cameo"
+            "detail": "Everton moment"
           },
           {
             "id": "lewis-skelly",
@@ -917,8 +967,18 @@
             "detail": "Left-side burst"
           },
           {
-            "id": "nwaneri-dowman",
-            "label": "Both",
+            "id": "skelly-nwaneri",
+            "label": "MLS + Ethan",
+            "detail": "Double act"
+          },
+          {
+            "id": "dowman-nwaneri",
+            "label": "Dowman + Ethan",
+            "detail": "Future noise"
+          },
+          {
+            "id": "all-of-them",
+            "label": "All of them",
             "detail": "No splitting them"
           }
         ]

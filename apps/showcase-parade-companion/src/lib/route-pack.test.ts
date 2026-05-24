@@ -90,6 +90,7 @@ describe('route pack', () => {
     expect(momentPoll?.options.some((option) => option.id === 'west-ham-var')).toBe(true);
     expect(pack.banter?.trivia?.length).toBeGreaterThanOrEqual(6);
     expect(pack.banter?.trivia?.every((card) => card.answerId === undefined)).toBe(true);
+    expect(pack.banter?.trivia?.every((card) => card.options.length === 6)).toBe(true);
   });
 
   test('prefers a cached live route pack only when it is newer than the bake', () => {

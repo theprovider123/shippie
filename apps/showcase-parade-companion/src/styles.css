@@ -1234,6 +1234,7 @@ textarea { resize: vertical; min-height: 64px; }
   place-items: end center;
   padding: .75rem;
   background: rgba(20, 18, 15, .5);
+  overflow: hidden;
 }
 @media (min-width: 561px) { .shippie-qr-sheet { place-items: center; } }
 .shippie-qr-sheet__surface {
@@ -1241,6 +1242,9 @@ textarea { resize: vertical; min-height: 64px; }
   display: grid;
   gap: 12px;
   width: min(100%, 420px);
+  max-height: calc(100svh - 24px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 20px;
   border: 1px solid var(--line-strong);
   border-top: 3px solid var(--red);
@@ -1259,20 +1263,30 @@ textarea { resize: vertical; min-height: 64px; }
 .shippie-qr-sheet__qr {
   display: grid;
   place-items: center;
+  order: 4;
   padding: 12px;
   border: 1px solid var(--line);
   background: #fff;
 }
 .shippie-qr-sheet__qr svg { max-width: 100%; height: auto; }
 .shippie-qr-sheet__url {
+  order: 3;
   overflow-wrap: anywhere;
-  padding: 10px;
+  max-height: 44px;
+  overflow: hidden;
+  padding: 8px 10px;
   background: var(--paper-2);
   border: 1px solid var(--line);
   font-family: var(--mono);
-  font-size: .72rem;
+  font-size: .66rem;
+  line-height: 1.35;
+  color: var(--ink-mute);
 }
-.shippie-qr-sheet__actions { display: flex; gap: 8px; }
+.shippie-qr-sheet__actions {
+  display: flex;
+  order: 2;
+  gap: 8px;
+}
 .shippie-qr-sheet__actions button {
   flex: 1;
   border: 1px solid var(--line-strong);
@@ -1831,6 +1845,19 @@ textarea { resize: vertical; min-height: 64px; }
   font-size: 10.5px;
   letter-spacing: .04em;
   color: var(--ink-mute);
+}
+.group-identity__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.group-identity__app-share {
+  margin-top: 10px;
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 .group-identity--solo h2 {
   margin: 0 0 8px;
