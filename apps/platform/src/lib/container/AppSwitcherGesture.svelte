@@ -97,6 +97,38 @@
     return () => mql.removeEventListener('change', listener);
   });
 
+  // One-shot pulse on the (invisible) back-edge grabber the first time
+  // a user encounters an in-tool back action. The touch zone is invisible
+  // by design — without this hint, the back-swipe is undiscoverable.
+  // Gated by localStorage so it never repeats, and suppressed under
+  // prefers-reduced-motion.
+  const BACK_GESTURE_HINT_KEY = 'shippie:platform:back-gesture-seen-v1';
+  let backGesturePulse = $state(false);
+  let backGestureHintConsumed = false;
+  $effect(() => {
+    if (!canGoBack || backGestureHintConsumed || typeof window === 'undefined') return;
+    if (reducedMotion) {
+      backGestureHintConsumed = true;
+      return;
+    }
+    try {
+      if (localStorage.getItem(BACK_GESTURE_HINT_KEY)) {
+        backGestureHintConsumed = true;
+        return;
+      }
+      localStorage.setItem(BACK_GESTURE_HINT_KEY, '1');
+    } catch {
+      // localStorage may be blocked. Fire the pulse once for the session
+      // anyway — at worst we re-cue the hint next visit, which is benign.
+    }
+    backGestureHintConsumed = true;
+    backGesturePulse = true;
+    const timer = window.setTimeout(() => {
+      backGesturePulse = false;
+    }, 1400);
+    return () => window.clearTimeout(timer);
+  });
+
   // Pointer state for the edge-swipe.
   let pointerStartX = 0;
   let pointerStartY = 0;
@@ -279,7 +311,11 @@
     onpointerup={handleBackPointerUp}
     onpointercancel={handleBackPointerUp}
     role="presentation"
-  ></div>
+  >
+    {#if backGesturePulse}
+      <span class="back-edge-pulse" aria-hidden="true"></span>
+    {/if}
+  </div>
 {/if}
 
 <div
@@ -336,6 +372,29 @@
     width: var(--edge-grabber-width);
     touch-action: pan-y;
     cursor: w-resize;
+    overflow: hidden;
+  }
+  /* One-shot affordance pulse for first-time users — the back-grabber is
+     invisible by design, so without this the in-tool back gesture is
+     undiscoverable. Sage-deep at 0.18 opacity, 300ms fade-in + 700ms
+     hold + 400ms fade-out. Suppressed under prefers-reduced-motion in
+     the script. */
+  .back-edge-pulse {
+    position: absolute;
+    inset: 0;
+    background: var(--sage-deep, #4a6b54);
+    opacity: 0;
+    pointer-events: none;
+    animation: back-edge-pulse 1400ms ease-out forwards;
+  }
+  @keyframes back-edge-pulse {
+    0% { opacity: 0; }
+    21.43% { opacity: 0.18; }   /* 300ms — fade-in done */
+    71.43% { opacity: 0.18; }   /* +700ms — end of hold */
+    100% { opacity: 0; }        /* +400ms — fade-out done */
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .back-edge-pulse { animation: none; opacity: 0; }
   }
 
   /* Backdrop: dim + scale the underlying app while the drawer is
