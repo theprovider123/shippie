@@ -1701,10 +1701,26 @@ meter {
 :root {
   --surface-glass: rgba(255, 253, 246, 0.84);
   --surface-solid: #fffdf6;
+  --paper-warm:    #fdf8ea;   /* a touch warmer than `--paper` — card tone */
+  --paper-cool:    #f3ede0;   /* slightly cooler, recessed surface */
   --mist: #e6eee5;
   --lotus: #ef6f55;
-  --shadow-soft: 0 18px 48px rgba(31, 42, 36, 0.08);
-  --shadow-lift: 0 28px 70px rgba(31, 42, 36, 0.14);
+  --sage-shadow:   rgba(47, 86, 64, 0.16);   /* deep-sage cast for cards */
+  --sage-shadow-strong: rgba(47, 86, 64, 0.22);
+  --ink-quiet:     rgba(31, 42, 36, 0.46);   /* tertiary copy */
+  --shadow-paper:  0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 1px 2px rgba(31, 42, 36, 0.04);
+  --shadow-soft:   0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 14px 38px rgba(31, 42, 36, 0.07), 0 2px 6px rgba(31, 42, 36, 0.04);
+  --shadow-lift:   0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 30px 70px rgba(31, 42, 36, 0.14), 0 6px 14px rgba(31, 42, 36, 0.06);
+  --shadow-float:  0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 38px 90px rgba(47, 86, 64, 0.16), 0 10px 24px rgba(31, 42, 36, 0.08);
+  /* Motion scale — every transition in chiwit should pick from these. */
+  --dur-1: 120ms;     /* tap, micro */
+  --dur-2: 220ms;     /* hover, lift */
+  --dur-3: 480ms;     /* layout / score */
+  --dur-4: 1200ms;    /* contour draw */
+  --ease-chiwit: cubic-bezier(0.32, 0.72, 0.24, 1);        /* default */
+  --ease-lift:   cubic-bezier(0.2, 0.9, 0.3, 1.18);        /* hover lift */
+  --ease-quiet:  cubic-bezier(0.4, 0, 0.2, 1);             /* color/opacity */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);        /* score-fill */
 }
 
 body {
@@ -2322,4 +2338,392 @@ button.branded.primary {
 }
 .repeat-yesterday:active {
   transform: scale(0.96);
+}
+
+/* ─── Pass 3 · Visual standout ──────────────────────────────────────── *
+ * Adds:
+ *  - Numbers-as-poetry: hero pulse uses ss01 + tnum + tight tracking and a
+ *    handwritten unit pill aside the giant digit.
+ *  - Editorial rhythm: section headings get a hairline left-rule + tracked
+ *    eyebrow line; vertical breath normalised to an 8-grid.
+ *  - Depth: cards use a two-tone shadow that picks up sage in the cast, so
+ *    the page feels lit from above-left rather than flat-on.
+ *  - Hand-drawn divider: a sage botanical hairline below the hero.
+ *  - Motion: every transition standardised against the --dur-* / --ease-*
+ *    tokens introduced in the premium block above.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Numbers-as-art — the giant Daily Pulse digit.
+ *
+ * `font-feature-settings: 'tnum' 'lnum' 'ss01'` gives us:
+ *   tnum — fixed-width digits so the score never jitters at 89→90→100
+ *   lnum — lining figures (not old-style) so 7-9 reach baseline cleanly
+ *   ss01 — Fraunces stylistic set 1 (single-storey 'a', refined digits) */
+.pulse-ring strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
+  letter-spacing: -0.045em;
+  color: var(--sage-deep);
+  /* very subtle ink texture so the digit reads like printed type */
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.pulse-ring--progress strong {
+  color: var(--sage-deep);
+}
+.pulse-ring__progress {
+  /* When showing "1/3 etc." the slash stays a touch quieter than the digits */
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* Hero pulse caption — was a quiet uppercase line; promote it to a
+ * handwritten serif italic so the giant digit has a partner instead of
+ * a label. Also pin "Daily Pulse" to two lines on a narrow card. */
+.pulse-ring span {
+  margin-top: 0.35rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.86rem;
+  letter-spacing: 0.012em;
+  color: var(--ink-soft);
+  text-transform: none;
+}
+
+/* Editorial section-heading rhythm. The H2 keeps Fraunces weight, but
+ * gains a 24px hairline rule + a tracked mono eyebrow inside the spacing,
+ * matching the field-journal voice from the brand notes. */
+.section-heading {
+  margin-block: 2.5rem 1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+.section-heading h2 {
+  position: relative;
+  font-size: 1.18rem;
+  letter-spacing: -0.012em;
+}
+.section-heading span {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-quiet);
+}
+
+/* Today shell — give the hero its breath back. */
+.today-shell {
+  display: grid;
+  gap: 1.6rem;
+}
+.today-shell .hero-plane {
+  padding-block: 2.4rem 1.8rem;
+}
+.today-shell .quick-panel {
+  padding-block: 1.6rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Hand-drawn botanical divider — single SVG sprig set into a thin sage
+ * line. Pure CSS background so it works on every section heading without
+ * extra DOM. The svg is encoded inline so it ships with the stylesheet. */
+.today-shell .quick-panel::before {
+  content: '';
+  display: block;
+  width: 140px;
+  height: 18px;
+  margin: 0 auto 1.1rem;
+  opacity: 0.55;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 18' fill='none' stroke='%234a7a5e' stroke-width='1.1' stroke-linecap='round'><path d='M2 9 H58'/><path d='M82 9 H138'/><path d='M70 2 C 66 5, 66 13, 70 16 C 74 13, 74 5, 70 2 Z' fill='%234a7a5e' fill-opacity='0.18'/><path d='M70 4 V 14'/><path d='M67 7 L 70 9 L 73 7'/><path d='M66 11 L 70 13 L 74 11'/></svg>");
+}
+
+/* Quiet eyebrow lift — heavier tracking, hairline below for the
+ * field-notes vibe across every page. */
+.eyebrow {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+.eyebrow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+/* Hero reading pull-quote — tighten optical leading + push the rule. */
+.hero-plane .reading {
+  margin-top: 1.35rem;
+  padding-left: 1.4rem;
+  line-height: 1.18;
+  letter-spacing: -0.008em;
+}
+.hero-plane .reading::before {
+  width: 2px;
+  background: linear-gradient(180deg, var(--sage), var(--sage-deep));
+}
+
+/* Card depth — the standardised three-layer cast. Surfaces no longer
+ * compete: paper (page) → glass (card) → lifted (hover/modal). */
+.pulse-card,
+.entry-list li,
+.insight-panel,
+.insight-card,
+.tracking-form,
+.category-grid,
+.timeline-day,
+.metric-strip,
+.consistency-card,
+.data-share,
+.shippie-backup-card {
+  background: var(--paper-warm);
+  border-color: rgba(31, 42, 36, 0.08);
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform var(--dur-2) var(--ease-lift),
+    box-shadow var(--dur-2) var(--ease-quiet),
+    border-color var(--dur-2) var(--ease-quiet);
+}
+.entry-list li:hover,
+.insight-card:hover,
+.timeline-day:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  border-color: rgba(74, 122, 94, 0.22);
+}
+.pulse-card {
+  box-shadow: var(--shadow-float);
+}
+
+/* Metric strip — was 3 equal tiles; turn it into a hero-asymmetric piece
+ * so the first signal count reads like the headline metric. */
+.metric-strip {
+  grid-template-columns: 1.4fr 1fr 1fr;
+  background: var(--paper-warm);
+}
+.metric-strip div:first-child {
+  background: linear-gradient(180deg, var(--sage-soft) 0%, var(--paper-warm) 90%);
+}
+.metric-strip strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
+  letter-spacing: -0.022em;
+  line-height: 0.94;
+  color: var(--sage-deep);
+}
+.metric-strip div:first-child strong {
+  font-size: clamp(2.2rem, 5.4vw, 3.4rem);
+}
+.metric-strip span {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Consistency card — make the percent feel like a headline number,
+ * not a stat. Big tabular numerals + small italic % on the side. */
+.consistency-card {
+  background: linear-gradient(135deg, var(--paper-warm) 0%, var(--sage-soft) 140%);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.consistency-card::after {
+  /* sage "73" watermark in the corner — a tiny luxury that says
+   * "this is a designed surface, not a stat tile". */
+  content: '';
+  position: absolute;
+  inset: auto -20px -28px auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, rgba(74, 122, 94, 0.16) 0%, transparent 60%);
+  pointer-events: none;
+}
+.consistency-card strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
+  letter-spacing: -0.028em;
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18em;
+  color: var(--sage-deep);
+}
+.consistency-card strong::after {
+  /* Treat the % like a unit pill — small italic Fraunces */
+  content: '';
+}
+
+/* Pull-quote inside insight cards reads as poetry; tighten leading. */
+.insight-card p {
+  line-height: 1.4;
+  letter-spacing: -0.003em;
+}
+
+/* Standardise transitions on every interactive surface. Pulls in the
+ * --dur and --ease tokens introduced in the premium block. */
+.app-header nav button,
+.hero-actions button,
+.quick-grid button,
+.tracking-form button,
+.danger,
+.signal-composer button,
+.month-scrubber button,
+.shippie-backup-card__actions button {
+  transition:
+    transform var(--dur-2) var(--ease-lift),
+    background var(--dur-2) var(--ease-quiet),
+    color var(--dur-2) var(--ease-quiet),
+    border-color var(--dur-2) var(--ease-quiet),
+    box-shadow var(--dur-2) var(--ease-quiet);
+}
+.app-header nav button:hover,
+.hero-actions button:hover,
+.quick-grid button:hover,
+.tracking-form button:hover,
+.signal-composer button:hover,
+.month-scrubber button:hover,
+.shippie-backup-card__actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Pulse-ring score easing — keep the spring on score moves, but tie
+ * the duration to --dur-3 so the whole app feels timed together. */
+.pulse-ring {
+  transition: --score var(--dur-3) var(--ease-spring);
+}
+
+/* WeekContour line draws over --dur-4 (1.2s) — matches the keepsake feel. */
+.week-contour__line {
+  animation: chiwit-contour-draw var(--dur-4) var(--ease-quiet) forwards;
+}
+
+/* Hero pulse — very subtle 4s breathing scale on the ring. Reads as
+ * "alive" without animating the score itself. The 0.6% scale stays
+ * below the perception threshold for "moving"; it's an undertone. */
+@keyframes chiwit-pulse-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.006); }
+}
+.pulse-ring {
+  animation: chiwit-pulse-breathe 4.6s var(--ease-quiet) infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring { animation: none; }
+}
+
+/* Pulse-factors meter — tighten and add a soft sage cap so the bars look
+ * intentional rather than utility chart fills. */
+.pulse-factors i {
+  height: 6px;
+  background: linear-gradient(90deg, var(--sage-soft) 0%, var(--sage) 60%, var(--coral) 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+.pulse-factors strong {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.pulse-factors span.is-unlogged strong {
+  color: var(--ink-quiet);
+  font-weight: 500;
+}
+
+/* Week ribbon — make the bars feel typeset, not chart-drawn.
+ * Cap radius, hairline ground line, hover lift to surface the day. */
+.week-ribbon {
+  position: relative;
+  padding: 1.2rem 1rem 1.6rem;
+  background: linear-gradient(180deg, var(--paper-warm) 0%, var(--paper-cool) 100%);
+}
+.week-ribbon::after {
+  content: '';
+  position: absolute;
+  inset: auto 1rem 1.1rem 1rem;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+.week-ribbon span {
+  position: relative;
+  border-radius: 999px 999px 3px 3px;
+  background: linear-gradient(180deg, var(--coral) 0%, var(--sage) 70%, var(--sage-deep) 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  transition: transform var(--dur-2) var(--ease-lift), filter var(--dur-2) var(--ease-quiet);
+}
+.week-ribbon span:hover {
+  transform: scaleY(1.04);
+  filter: saturate(1.1);
+}
+
+/* Toolbar headlines — give the editorial H1 more breathing room and a
+ * tight optical-size leading. */
+.toolbar {
+  margin-bottom: 2rem;
+}
+.toolbar h1 {
+  letter-spacing: -0.022em;
+  line-height: 0.92;
+  font-feature-settings: 'ss01' 1, 'liga' 1;
+}
+
+.hero-plane h1 {
+  letter-spacing: -0.024em;
+  font-feature-settings: 'ss01' 1, 'liga' 1;
+}
+
+/* Pulse message — extend the italic Fraunces; sit it on a tiny mark
+ * (·) so it reads as a quoted line, not a tooltip. */
+.pulse-message {
+  position: relative;
+  padding-top: 0.45rem;
+  font-size: 1.02rem;
+  line-height: 1.42;
+  color: var(--ink-soft);
+}
+.pulse-message::before {
+  content: '·';
+  display: block;
+  margin: 0 auto 0.15rem;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--sage);
+  opacity: 0.7;
+}
+
+/* Mobile-only — keep the breathing animation off on small viewports to
+ * save battery, and tighten the ribbon ground-line. */
+@media (max-width: 700px) {
+  .pulse-ring { animation: none; }
+  .section-heading { margin-block: 1.6rem 0.7rem; }
+  .today-shell .quick-panel::before { width: 100px; }
+  .toolbar { margin-bottom: 1.2rem; }
 }
