@@ -30,14 +30,17 @@ describe('route pack', () => {
     expect(validateRoutePack(confirmed)).toBeNull();
   });
 
-  test('baked pack carries a fine-grained practical POI library (round 8)', () => {
+  test('baked pack carries only offline-safe static POI categories', () => {
     const pack = loadRoutePack();
-    expect(pack.pois.length).toBeGreaterThan(30);
+    expect(pack.pois.length).toBeGreaterThan(20);
     const kinds = new Set(pack.pois.map((poi) => poi.kind));
-    // The five quick-find categories must all be present in the bake.
-    for (const kind of ['toilet', 'water', 'food', 'pub', 'atm']) {
+    // Stable quick-find categories must be present in the bake.
+    for (const kind of ['toilet', 'water', 'atm']) {
       expect(kinds.has(kind as never)).toBe(true);
     }
+    // Food/pub "open now" changes too fast for a static offline map.
+    expect(kinds.has('food' as never)).toBe(false);
+    expect(kinds.has('pub' as never)).toBe(false);
   });
 
   test('schedule rows that carry coords stay inside the corridor extent', () => {

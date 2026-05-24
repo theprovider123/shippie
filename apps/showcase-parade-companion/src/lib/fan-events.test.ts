@@ -50,13 +50,25 @@ describe('fan events', () => {
     const events = [
       createFanEvent('presence', position, route, 'fan_a'),
       createFanEvent('road_blocked', position, route, 'fan_b'),
+      createFanEvent('food_open', { ...position, lng: -0.1042, lat: 51.5421 }, route, 'fan_c'),
     ];
     const fragment = await encodeFanEventsForSync(events);
     const decoded = await decodeFanEventsSync(fragment);
 
-    expect(decoded).toHaveLength(2);
+    expect(decoded).toHaveLength(3);
     expect(decoded.every((event) => event.source === 'nearby_sync')).toBe(true);
-    expect(decoded.map((event) => event.type).sort()).toEqual(['presence', 'road_blocked']);
+    expect(decoded.map((event) => event.type).sort()).toEqual(['food_open', 'presence', 'road_blocked']);
+  });
+
+  test('open food and toilet queue reports stay at the GPS point instead of snapping to the route', () => {
+    const food = createFanEvent('food_open', position, route, 'fan_food');
+    const queue = createFanEvent('toilet_queue', position, route, 'fan_toilet');
+    const summary = summarizeFanEvents([food, queue]);
+
+    expect(food.segment_id).toBeNull();
+    expect(food.snapped_lng).toBeNull();
+    expect(queue.segment_id).toBeNull();
+    expect(summary.activeReports.map((report) => report.type)).toEqual(['food_open', 'toilet_queue']);
   });
 
   test('ignores expired events and dedupes by id', () => {

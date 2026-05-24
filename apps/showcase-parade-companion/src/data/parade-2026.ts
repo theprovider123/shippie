@@ -26,8 +26,9 @@ export type RoutePoiKind =
   | 'toilet'
   | 'meeting'
   | 'stewards'
-  // Round-8 additions — practical "find a thing" categories for the
-  // POI library bake. Coordinates are approximate; verify before travel.
+  // Practical "find a thing" categories for the POI library bake.
+  // Food/pub kinds are accepted for future route packs, but v1 hides them
+  // unless verified; "open now" travels through peer reports instead.
   | 'tube-exit'
   | 'water'
   | 'food'

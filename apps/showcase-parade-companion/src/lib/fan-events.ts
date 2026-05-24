@@ -6,7 +6,14 @@ export const FAN_EVENTS_SHARE_TYPE = 'parade.fan-events.v1';
 export const MAX_FAN_EVENTS_FRAGMENT_LENGTH = 3600;
 export const ROUTE_SNAP_MAX_ACCURACY_M = 350;
 
-export type FanEventType = 'presence' | 'bus_seen' | 'crowd_dense' | 'road_blocked' | 'need_help';
+export type FanEventType =
+  | 'presence'
+  | 'bus_seen'
+  | 'crowd_dense'
+  | 'road_blocked'
+  | 'food_open'
+  | 'toilet_queue'
+  | 'need_help';
 export type FanEventSource = 'local' | 'nearby_sync';
 
 export interface FanEvent extends Record<string, unknown> {
@@ -58,6 +65,8 @@ const EVENT_TTL_MINUTES: Record<FanEventType, number> = {
   bus_seen: 120,
   crowd_dense: 45,
   road_blocked: 60,
+  food_open: 75,
+  toilet_queue: 30,
   need_help: 30,
 };
 
@@ -66,8 +75,18 @@ export const FAN_EVENT_LABELS: Record<FanEventType, string> = {
   bus_seen: 'Bus seen',
   crowd_dense: 'Too crowded',
   road_blocked: 'Road blocked',
+  food_open: 'Food open',
+  toilet_queue: 'Toilet queue',
   need_help: 'Need help',
 };
+
+export const REPORT_EVENT_TYPES: FanEventType[] = [
+  'crowd_dense',
+  'road_blocked',
+  'food_open',
+  'toilet_queue',
+  'need_help',
+];
 
 export function createFanEvent(
   type: FanEventType,
@@ -75,7 +94,9 @@ export function createFanEvent(
   route: readonly [number, number][],
   sourceId = getFanSourceId(),
 ): FanEvent {
-  const snap = position.accuracyM <= ROUTE_SNAP_MAX_ACCURACY_M ? nearestRouteSegment(position, route) : null;
+  const snap = shouldSnapToRoute(type) && position.accuracyM <= ROUTE_SNAP_MAX_ACCURACY_M
+    ? nearestRouteSegment(position, route)
+    : null;
   const createdAt = new Date();
   const expiresAt = new Date(createdAt.getTime() + EVENT_TTL_MINUTES[type] * 60_000);
   return {
@@ -102,7 +123,7 @@ export function summarizeFanEvents(events: FanEvent[], now = Date.now()): FanPul
   const localPresenceSources = new Set(presence.map((event) => event.source_id));
   const latestBus = active.find((event) => event.type === 'bus_seen') ?? null;
   const lastSyncAt = active.find((event) => event.source === 'nearby_sync')?.created_at ?? null;
-  const activeReports = (['crowd_dense', 'road_blocked', 'need_help'] as const)
+  const activeReports = REPORT_EVENT_TYPES
     .map((type) => {
       const rows = active.filter((event) => event.type === type);
       const latest = rows[0];
@@ -330,10 +351,11 @@ function eventPoint(event: FanEvent): LngLat {
 }
 
 function eventPriority(type: FanEventType): number {
-  if (type === 'need_help') return 5;
-  if (type === 'road_blocked') return 4;
-  if (type === 'bus_seen') return 3;
-  if (type === 'crowd_dense') return 2;
+  if (type === 'need_help') return 6;
+  if (type === 'road_blocked') return 5;
+  if (type === 'bus_seen') return 4;
+  if (type === 'crowd_dense') return 3;
+  if (type === 'food_open' || type === 'toilet_queue') return 2;
   return 1;
 }
 
@@ -342,7 +364,19 @@ function stripHash(fragment: string): string {
 }
 
 function isFanEventType(value: unknown): value is FanEventType {
-  return value === 'presence' || value === 'bus_seen' || value === 'crowd_dense' || value === 'road_blocked' || value === 'need_help';
+  return (
+    value === 'presence' ||
+    value === 'bus_seen' ||
+    value === 'crowd_dense' ||
+    value === 'road_blocked' ||
+    value === 'food_open' ||
+    value === 'toilet_queue' ||
+    value === 'need_help'
+  );
+}
+
+function shouldSnapToRoute(type: FanEventType): boolean {
+  return type === 'presence' || type === 'bus_seen' || type === 'crowd_dense' || type === 'road_blocked';
 }
 
 function validDate(value: unknown): value is string {

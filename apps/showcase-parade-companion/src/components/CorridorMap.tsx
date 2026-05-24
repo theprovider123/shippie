@@ -9,7 +9,7 @@ import { chipForGroupName, type SideTing } from '../lib/side-tings';
 import type { MapLayerId } from './LayerToggleRow';
 
 /**
- * Place categories (toilet/water/food/pub/atm) are filtered by their
+ * Place categories (toilet/water/atm) are filtered by their
  * corresponding LayerToggleRow toggle. Core categories (landmark, station,
  * medical, exit, stewards, meeting) always render. Tube exits, family
  * pockets, and view suggestions stay out of the base canvas until a dedicated
@@ -19,8 +19,6 @@ import type { MapLayerId } from './LayerToggleRow';
 function placeLayerForKind(kind: RoutePoiKind): MapLayerId | null {
   if (kind === 'toilet') return 'toilets';
   if (kind === 'water') return 'water';
-  if (kind === 'food') return 'food';
-  if (kind === 'pub') return 'pubs';
   if (kind === 'atm') return 'atm';
   return null;
 }
@@ -89,6 +87,7 @@ export function CorridorMap({
     const seen = new Set<string>();
     const out: RoutePoi[] = [];
     for (const poi of pack.pois) {
+      if (poi.kind === 'food' || poi.kind === 'pub') continue;
       if (poi.kind === 'tube-exit' || poi.kind === 'family' || poi.kind === 'view') continue;
       const layer = placeLayerForKind(poi.kind);
       if (layer && layers[layer] === false) continue;
@@ -297,9 +296,9 @@ function drawPois(ctx: CanvasRenderingContext2D, points: Array<{ id: string; lab
 }
 
 /**
- * Visual style per POI kind. Place categories (toilet/water/food/pub/atm)
+ * Visual style per POI kind. Place categories (toilet/water/atm)
  * draw smaller than the core landmarks and carry a single mono-glyph (T, W,
- * F, P, $) so the map stays scannable without leaning on icon files.
+ * $) so the map stays scannable without leaning on icon files.
  */
 function poiStyleForKind(kind: string): {
   radius: number;
@@ -328,8 +327,6 @@ function poiStyleForKind(kind: string): {
   if (kind === 'exit') return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, glyph: '↗', glyphSize: 26 };
   if (kind === 'toilet') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#5E7B5C', lineWidth: 4, glyph: 'T', glyphSize: 14, glyphColor: '#5E7B5C' };
   if (kind === 'water') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#5E7B5C', lineWidth: 4, glyph: '~', glyphSize: 14, glyphColor: '#5E7B5C' };
-  if (kind === 'food') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#A37918', lineWidth: 4, glyph: 'F', glyphSize: 14, glyphColor: '#A37918' };
-  if (kind === 'pub') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#A37918', lineWidth: 4, glyph: 'P', glyphSize: 14, glyphColor: '#A37918' };
   if (kind === 'atm') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 4, glyph: '$', glyphSize: 14 };
   if (kind === 'family') return { ...base, radius: 16, fill: '#EDE6D5', stroke: '#5E7B5C', lineWidth: 3 };
   if (kind === 'view') return { ...base, radius: 16, fill: '#EDE6D5', stroke: '#EDBB4A', lineWidth: 4, glyph: '◇', glyphSize: 18 };
@@ -517,6 +514,8 @@ function eventColor(type: FanEventType): { strong: string; soft: string } {
   if (type === 'crowd_dense') return { strong: '#EDBB4A', soft: 'rgba(237, 187, 74, 0.24)' };
   if (type === 'road_blocked') return { strong: '#14120F', soft: 'rgba(20, 18, 15, 0.18)' };
   if (type === 'need_help') return { strong: '#C40006', soft: 'rgba(196, 0, 6, 0.2)' };
+  if (type === 'food_open') return { strong: '#A37918', soft: 'rgba(237, 187, 74, 0.22)' };
+  if (type === 'toilet_queue') return { strong: '#5E7B5C', soft: 'rgba(94, 123, 92, 0.2)' };
   return { strong: '#EF0107', soft: 'rgba(239, 1, 7, 0.2)' };
 }
 
@@ -550,6 +549,8 @@ function offsetClusterPoint(point: PixelPoint, type: FanEventType): PixelPoint {
   if (type === 'bus_seen') return { x: point.x + 34, y: point.y - 4 };
   if (type === 'crowd_dense') return { x: point.x - 38, y: point.y + 46 };
   if (type === 'road_blocked') return { x: point.x + 42, y: point.y + 46 };
+  if (type === 'food_open') return { x: point.x + 70, y: point.y - 76 };
+  if (type === 'toilet_queue') return { x: point.x - 76, y: point.y + 78 };
   return { x: point.x + 52, y: point.y - 52 };
 }
 

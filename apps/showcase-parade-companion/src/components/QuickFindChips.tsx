@@ -1,12 +1,11 @@
 import type { RoutePoiKind } from '../data/parade-2026';
 
 /**
- * One-tap chips above the map for the five most-asked questions during the
- * parade — "where's a toilet / water / station / pub / food?" Tapping a chip
- * surfaces the nearest matches on the map and draws a walking line to the
- * closest one. Tapping again clears.
+ * One-tap chips above the map for stable, offline-safe needs. We deliberately
+ * keep volatile food/pub "open now" data out of this static surface; pop-ups
+ * and open/closed places travel through peer reports instead.
  */
-export type QuickFindCategory = 'toilet' | 'water' | 'station' | 'pub' | 'food';
+export type QuickFindCategory = 'toilet' | 'water' | 'station' | 'atm';
 
 interface QuickFindChipsProps {
   active: QuickFindCategory | null;
@@ -17,11 +16,10 @@ const CHIP_LABEL: Record<QuickFindCategory, string> = {
   toilet: 'Toilet',
   water: 'Water',
   station: 'Station',
-  pub: 'Pub',
-  food: 'Food',
+  atm: 'ATM',
 };
 
-const CHIP_ORDER: QuickFindCategory[] = ['toilet', 'water', 'station', 'pub', 'food'];
+const CHIP_ORDER: QuickFindCategory[] = ['toilet', 'water', 'station', 'atm'];
 
 export function QuickFindChips({ active, onPick }: QuickFindChipsProps) {
   return (
@@ -52,7 +50,6 @@ export function kindsForCategory(category: QuickFindCategory): RoutePoiKind[] {
   if (category === 'station') return ['station', 'tube-exit'];
   if (category === 'toilet') return ['toilet'];
   if (category === 'water') return ['water'];
-  if (category === 'pub') return ['pub'];
-  if (category === 'food') return ['food'];
+  if (category === 'atm') return ['atm'];
   return [];
 }

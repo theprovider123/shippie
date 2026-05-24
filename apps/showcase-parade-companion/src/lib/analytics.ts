@@ -13,6 +13,8 @@ export type ParadeAnalyticsEvent =
   | 'parade_bus_seen_tapped'
   | 'parade_crowd_reported'
   | 'parade_road_reported'
+  | 'parade_food_open_reported'
+  | 'parade_toilet_queue_reported'
   | 'parade_help_reported'
   | 'parade_sync_qr_opened'
   | 'parade_signal_imported'

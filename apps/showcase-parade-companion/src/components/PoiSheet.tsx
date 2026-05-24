@@ -14,7 +14,8 @@ interface PoiSheetProps {
  * Bottom-sheet POI detail. Opens when the user taps a baked POI hit-zone on
  * the map. Shows category, distance from the user (when GPS is live), and a
  * "Walk this way" action that draws a dashed sage line from the user's GPS
- * dot to the POI in the corridor map.
+ * dot to the POI in the corridor map. Food/pub "open now" does not live here:
+ * those places change too quickly during a parade, so they are peer reports.
  */
 export function PoiSheet({ poi, gpsFix, onClose, onWalkTo }: PoiSheetProps) {
   useEffect(() => {
@@ -97,10 +98,6 @@ function labelForKind(kind: string): string {
       return 'Stewards';
     case 'water':
       return 'Water';
-    case 'food':
-      return 'Food';
-    case 'pub':
-      return 'Pub';
     case 'atm':
       return 'ATM';
     case 'family':

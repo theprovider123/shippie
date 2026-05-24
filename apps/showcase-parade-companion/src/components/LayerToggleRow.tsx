@@ -4,8 +4,8 @@
  * with `aria-pressed` reflecting the current visibility.
  *
  * Round 8 split the layers into two rows: People (bus / friends / side-tings
- * / reports / my-taps) and Places (toilets / water / food / pubs / atm). The
- * Places filters control the new baked POI categories from §6 Layer B.
+ * / reports / my-taps) and Places (toilets / water / atm). Volatile food/pub
+ * availability is peer-reported instead of baked as static "open" data.
  */
 export type MapLayerId =
   // People layers — fan signals, group positions, bus marker.
@@ -17,8 +17,6 @@ export type MapLayerId =
   // Places layers — baked POI categories.
   | 'toilets'
   | 'water'
-  | 'food'
-  | 'pubs'
   | 'atm';
 
 interface LayerToggleRowProps {
@@ -34,13 +32,11 @@ const LAYER_LABEL: Record<MapLayerId, string> = {
   'my-taps': 'My taps',
   toilets: 'Toilets',
   water: 'Water',
-  food: 'Food',
-  pubs: 'Pubs',
   atm: 'ATM',
 };
 
 const PEOPLE_LAYERS: MapLayerId[] = ['bus', 'friends', 'side-tings', 'reports', 'my-taps'];
-const PLACE_LAYERS: MapLayerId[] = ['toilets', 'water', 'food', 'pubs', 'atm'];
+const PLACE_LAYERS: MapLayerId[] = ['toilets', 'water', 'atm'];
 
 export function LayerToggleRow({ layers, onToggle }: LayerToggleRowProps) {
   return (

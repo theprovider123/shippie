@@ -1534,8 +1534,6 @@ textarea { resize: vertical; min-height: 64px; }
 .layer-toggle--my-taps .layer-toggle__dot { background: var(--red-deep); }
 .layer-toggle--toilets .layer-toggle__dot { background: var(--sage); }
 .layer-toggle--water .layer-toggle__dot { background: var(--sage); }
-.layer-toggle--food .layer-toggle__dot { background: var(--gold-deep); }
-.layer-toggle--pubs .layer-toggle__dot { background: var(--gold-deep); }
 .layer-toggle--atm .layer-toggle__dot { background: var(--ink); }
 
 /* ============================================================

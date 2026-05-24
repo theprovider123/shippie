@@ -13,6 +13,7 @@ import {
   eventAgeLabel,
   eventSegmentLabel,
   FAN_EVENT_LABELS,
+  REPORT_EVENT_TYPES,
   isActive,
   summarizeFanEvents,
   type FanEvent,
@@ -38,8 +39,6 @@ interface MapScreenProps {
   onFanEvent: (event: FanEvent) => Promise<void>;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
 }
-
-const REPORT_TYPES: FanEventType[] = ['crowd_dense', 'road_blocked', 'need_help'];
 
 export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sideTingsRefresh, onBusMarker, onFanEvent, onTrack }: MapScreenProps) {
   const [gpsFix, setGpsFix] = useState<GpsFix | null>(null);
@@ -68,8 +67,6 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
     // for a category. Quick-find chips below the map also flip these on.
     toilets: false,
     water: false,
-    food: false,
-    pubs: false,
     atm: false,
   });
   const fanSummary = useMemo(() => summarizeFanEvents(fanEvents), [fanEvents]);
@@ -310,13 +307,13 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
             onClick={() => setReportsOpen((value) => !value)}
           >
             <strong>Report {reportsOpen ? '▴' : '▾'}</strong>
-            <span>crowd or road</span>
+            <span>crowd, food, toilets</span>
           </button>
         </div>
 
         {reportsOpen ? (
           <div className="report-chips" aria-label="Report what is happening nearby">
-            {REPORT_TYPES.map((type) => (
+            {REPORT_EVENT_TYPES.map((type) => (
               <button
                 type="button"
                 key={type}
@@ -417,6 +414,10 @@ function analyticsEventForSignal(type: FanEventType): ParadeAnalyticsEvent {
       return 'parade_crowd_reported';
     case 'road_blocked':
       return 'parade_road_reported';
+    case 'food_open':
+      return 'parade_food_open_reported';
+    case 'toilet_queue':
+      return 'parade_toilet_queue_reported';
     case 'need_help':
       return 'parade_help_reported';
   }
