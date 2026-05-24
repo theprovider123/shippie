@@ -15,6 +15,7 @@ import { createTransformersLocalAi } from '@shippie/local-ai';
 import { loadTransformers } from './transformers-host.ts';
 import { selectBackend } from '../backend.ts';
 import { backendToDevice } from './device-map.ts';
+import { emitProgress, type ModelProgressCallback } from './progress.ts';
 import type { Backend, VisionRequest, VisionResult } from '../../types.ts';
 
 const adapters = new Map<Backend, ReturnType<typeof createTransformersLocalAi>>();
@@ -25,13 +26,17 @@ function getAdapter(backend: Backend) {
     adapter = createTransformersLocalAi({
       transformersLoader: loadTransformers,
       device: backendToDevice(backend),
+      onProgress: (_feature, progress) => emitProgress(progress),
     });
     adapters.set(backend, adapter);
   }
   return adapter;
 }
 
-export async function runVision(_req: Omit<VisionRequest, 'task'>): Promise<VisionResult> {
+export async function runVision(
+  _req: Omit<VisionRequest, 'task'>,
+  _onProgress?: ModelProgressCallback,
+): Promise<VisionResult> {
   const backend = await selectBackend();
   // Prime the cache so subsequent calls (post v1.5) reuse the adapter.
   getAdapter(backend);

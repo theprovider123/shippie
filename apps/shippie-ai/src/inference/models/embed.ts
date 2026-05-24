@@ -12,6 +12,7 @@ import { createTransformersLocalAi } from '@shippie/local-ai';
 import { loadTransformers } from './transformers-host.ts';
 import { selectBackend } from '../backend.ts';
 import { backendToDevice } from './device-map.ts';
+import { emitProgress, setCurrentProgress, type ModelProgressCallback } from './progress.ts';
 import type { Backend, EmbedRequest, EmbedResult } from '../../types.ts';
 
 const adapters = new Map<Backend, ReturnType<typeof createTransformersLocalAi>>();
@@ -22,16 +23,25 @@ function getAdapter(backend: Backend) {
     adapter = createTransformersLocalAi({
       transformersLoader: loadTransformers,
       device: backendToDevice(backend),
+      onProgress: (_feature, progress) => emitProgress(progress),
     });
     adapters.set(backend, adapter);
   }
   return adapter;
 }
 
-export async function runEmbed(req: Omit<EmbedRequest, 'task'>): Promise<EmbedResult> {
+export async function runEmbed(
+  req: Omit<EmbedRequest, 'task'>,
+  onProgress?: ModelProgressCallback,
+): Promise<EmbedResult> {
   const backend = await selectBackend();
-  const vec = await getAdapter(backend).embed(req.text);
-  // Float32Array isn't structured-cloneable across all engines without
-  // round-tripping through Array; convert here so postMessage is boring.
-  return { embedding: Array.from(vec), source: backend };
+  setCurrentProgress(onProgress ?? null);
+  try {
+    const vec = await getAdapter(backend).embed(req.text);
+    // Float32Array isn't structured-cloneable across all engines without
+    // round-tripping through Array; convert here so postMessage is boring.
+    return { embedding: Array.from(vec), source: backend };
+  } finally {
+    setCurrentProgress(null);
+  }
 }

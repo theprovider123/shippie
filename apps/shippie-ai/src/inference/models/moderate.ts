@@ -13,6 +13,7 @@ import { createTransformersLocalAi } from '@shippie/local-ai';
 import { loadTransformers } from './transformers-host.ts';
 import { selectBackend } from '../backend.ts';
 import { backendToDevice } from './device-map.ts';
+import { emitProgress, setCurrentProgress, type ModelProgressCallback } from './progress.ts';
 import type { Backend, ModerateRequest, ModerateResult } from '../../types.ts';
 import { getModel } from './registry.ts';
 
@@ -29,17 +30,26 @@ function getAdapter(backend: Backend) {
       // text-classification model id); toxic-bert is a 2-class model so the
       // sentiment-shaped path returns the right answer.
       models: moderateModel ? { sentiment: moderateModel.modelId } : undefined,
+      onProgress: (_feature, progress) => emitProgress(progress),
     });
     adapters.set(backend, adapter);
   }
   return adapter;
 }
 
-export async function runModerate(req: Omit<ModerateRequest, 'task'>): Promise<ModerateResult> {
+export async function runModerate(
+  req: Omit<ModerateRequest, 'task'>,
+  onProgress?: ModelProgressCallback,
+): Promise<ModerateResult> {
   const backend = await selectBackend();
-  const result = await getAdapter(backend).sentiment(req.text);
-  // Treat 'negative'-leaning categories as flagged. The downstream group
-  // moderation hook applies its own threshold; we just normalize.
-  const flagged = result.sentiment === 'negative' && result.score > 0.7;
-  return { flagged, label: result.sentiment, score: result.score, source: backend };
+  setCurrentProgress(onProgress ?? null);
+  try {
+    const result = await getAdapter(backend).sentiment(req.text);
+    // Treat 'negative'-leaning categories as flagged. The downstream group
+    // moderation hook applies its own threshold; we just normalize.
+    const flagged = result.sentiment === 'negative' && result.score > 0.7;
+    return { flagged, label: result.sentiment, score: result.score, source: backend };
+  } finally {
+    setCurrentProgress(null);
+  }
 }

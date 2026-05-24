@@ -10,6 +10,7 @@ import { createTransformersLocalAi } from '@shippie/local-ai';
 import { loadTransformers } from './transformers-host.ts';
 import { selectBackend } from '../backend.ts';
 import { backendToDevice } from './device-map.ts';
+import { emitProgress, setCurrentProgress, type ModelProgressCallback } from './progress.ts';
 import type { Backend, ClassifyRequest, ClassifyResult } from '../../types.ts';
 
 const adapters = new Map<Backend, ReturnType<typeof createTransformersLocalAi>>();
@@ -20,17 +21,29 @@ function getAdapter(backend: Backend) {
     adapter = createTransformersLocalAi({
       transformersLoader: loadTransformers,
       device: backendToDevice(backend),
+      // Stable shim — the per-call callback lives in the shared slot
+      // (`progress.ts`) so we don't have to rebuild the adapter on
+      // every request and lose its pipeline cache.
+      onProgress: (_feature, progress) => emitProgress(progress),
     });
     adapters.set(backend, adapter);
   }
   return adapter;
 }
 
-export async function runClassify(req: Omit<ClassifyRequest, 'task'>): Promise<ClassifyResult> {
+export async function runClassify(
+  req: Omit<ClassifyRequest, 'task'>,
+  onProgress?: ModelProgressCallback,
+): Promise<ClassifyResult> {
   if (!req.labels || req.labels.length === 0) {
     throw new Error('classify requires at least one label');
   }
   const backend = await selectBackend();
-  const result = await getAdapter(backend).classify(req.text, { labels: req.labels });
-  return { label: result.label, confidence: result.confidence, source: backend };
+  setCurrentProgress(onProgress ?? null);
+  try {
+    const result = await getAdapter(backend).classify(req.text, { labels: req.labels });
+    return { label: result.label, confidence: result.confidence, source: backend };
+  } finally {
+    setCurrentProgress(null);
+  }
 }

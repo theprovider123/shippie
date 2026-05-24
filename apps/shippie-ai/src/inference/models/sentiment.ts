@@ -8,6 +8,7 @@ import { createTransformersLocalAi } from '@shippie/local-ai';
 import { loadTransformers } from './transformers-host.ts';
 import { selectBackend } from '../backend.ts';
 import { backendToDevice } from './device-map.ts';
+import { emitProgress, setCurrentProgress, type ModelProgressCallback } from './progress.ts';
 import type { Backend, SentimentRequest, SentimentResult } from '../../types.ts';
 
 const adapters = new Map<Backend, ReturnType<typeof createTransformersLocalAi>>();
@@ -18,6 +19,7 @@ function getAdapter(backend: Backend) {
     adapter = createTransformersLocalAi({
       transformersLoader: loadTransformers,
       device: backendToDevice(backend),
+      onProgress: (_feature, progress) => emitProgress(progress),
     });
     adapters.set(backend, adapter);
   }
@@ -26,8 +28,14 @@ function getAdapter(backend: Backend) {
 
 export async function runSentiment(
   req: Omit<SentimentRequest, 'task'>,
+  onProgress?: ModelProgressCallback,
 ): Promise<SentimentResult> {
   const backend = await selectBackend();
-  const result = await getAdapter(backend).sentiment(req.text);
-  return { sentiment: result.sentiment, score: result.score, source: backend };
+  setCurrentProgress(onProgress ?? null);
+  try {
+    const result = await getAdapter(backend).sentiment(req.text);
+    return { sentiment: result.sentiment, score: result.score, source: backend };
+  } finally {
+    setCurrentProgress(null);
+  }
 }

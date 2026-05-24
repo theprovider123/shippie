@@ -13,7 +13,12 @@
 (globalThis as unknown as { __SHIPPIE_AI_TEST__?: boolean }).__SHIPPIE_AI_TEST__ = true;
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { ALLOWED_ORIGIN_RE, createRouter, isAllowedOrigin } from './router.ts';
+import {
+  ALLOWED_ORIGIN_RE,
+  createRouter,
+  isAllowedOrigin,
+  type ProgressMessage,
+} from './router.ts';
 import type { InferenceMessage, InferenceResponse } from '../types.ts';
 
 describe('isAllowedOrigin', () => {
@@ -347,5 +352,161 @@ describe('createRouter', () => {
       expect(c.targetOrigin).not.toBe('*');
       expect(c.targetOrigin).toBe('https://recipe.shippie.app');
     }
+  });
+
+  test('answers ai.capabilities with the registry task list', async () => {
+    createRouter({
+      dispatch: async () => null,
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async () => {},
+    });
+
+    const source = newSource();
+    fakeWindow.emit({
+      origin: 'https://recipe.shippie.app',
+      source,
+      data: { type: 'ai.capabilities', requestId: 'cap-1' },
+    });
+    await Promise.resolve();
+
+    expect(source.calls).toHaveLength(1);
+    const reply = source.calls[0]!.data as {
+      type?: string;
+      requestId?: string;
+      availableTasks?: string[];
+    };
+    expect(reply.type).toBe('ai.capabilities');
+    expect(reply.requestId).toBe('cap-1');
+    expect(reply.availableTasks).toEqual(
+      expect.arrayContaining(['classify', 'embed', 'sentiment', 'moderate', 'vision']),
+    );
+  });
+
+  test('dispatches ai.preload hints to schedulePreload (no reply)', async () => {
+    const preloaded: string[] = [];
+    createRouter({
+      dispatch: async () => null,
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async () => {},
+      schedulePreload: (t) => preloaded.push(t),
+    });
+
+    const source = newSource();
+    fakeWindow.emit({
+      origin: 'https://recipe.shippie.app',
+      source,
+      data: { type: 'ai.preload', task: 'sentiment' },
+    });
+    await Promise.resolve();
+
+    expect(preloaded).toEqual(['sentiment']);
+    expect(source.calls).toHaveLength(0); // fire-and-forget
+  });
+
+  test('rejects ai.preload for unknown tasks', async () => {
+    const preloaded: string[] = [];
+    createRouter({
+      dispatch: async () => null,
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async () => {},
+      schedulePreload: (t) => preloaded.push(t),
+    });
+
+    const source = newSource();
+    fakeWindow.emit({
+      origin: 'https://recipe.shippie.app',
+      source,
+      data: { type: 'ai.preload', task: 'translate' },
+    });
+    await Promise.resolve();
+
+    expect(preloaded).toEqual([]);
+  });
+
+  test('forwards worker progress events to the original sender', async () => {
+    type EmitProgress = (event: ProgressMessage) => void;
+    let emitProgress: EmitProgress | undefined;
+    let releaseDispatch: (() => void) | undefined;
+    const dispatched = new Promise<void>((resolve) => {
+      releaseDispatch = resolve;
+    });
+
+    createRouter({
+      dispatch: async () => {
+        // Block until the test releases us, so the inflight entry is
+        // still live when we fire the progress event.
+        await dispatched;
+        return { label: 'food', confidence: 0.9 };
+      },
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async () => {},
+      onWorkerProgress: (h: EmitProgress) => {
+        emitProgress = h;
+      },
+    });
+
+    const source = newSource();
+    fakeWindow.emit({
+      origin: 'https://recipe.shippie.app',
+      source,
+      data: { requestId: 'prog-1', task: 'classify', payload: { text: 'x', labels: ['a'] } },
+    });
+
+    // Microtask flush so the handler reaches the dispatch await.
+    await Promise.resolve();
+
+    emitProgress!({
+      type: 'ai.progress',
+      requestId: 'prog-1',
+      task: 'classify',
+      loaded: 30,
+      total: 100,
+      status: 'download',
+    });
+
+    releaseDispatch!();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const progressMessages = source.calls.filter(
+      (c) => (c.data as { type?: string }).type === 'ai.progress',
+    );
+    expect(progressMessages).toHaveLength(1);
+    const evt = progressMessages[0]!.data as ProgressMessage;
+    expect(evt.requestId).toBe('prog-1');
+    expect(evt.loaded).toBe(30);
+    expect(progressMessages[0]!.targetOrigin).toBe('https://recipe.shippie.app');
+  });
+
+  test('progress events for unknown requestIds are dropped', async () => {
+    type EmitProgress = (event: ProgressMessage) => void;
+    let emitProgress: EmitProgress | undefined;
+    createRouter({
+      dispatch: async () => null,
+      now: () => now,
+      listenOn: fakeWindow as unknown as Window,
+      logUsage: async () => {},
+      onWorkerProgress: (h: EmitProgress) => {
+        emitProgress = h;
+      },
+    });
+
+    const source = newSource();
+    // No prior inference — should silently drop.
+    emitProgress!({
+      type: 'ai.progress',
+      requestId: 'ghost',
+      task: 'classify',
+      loaded: 1,
+      total: 2,
+      status: 'download',
+    });
+    await Promise.resolve();
+    expect(source.calls).toHaveLength(0);
   });
 });
