@@ -2079,6 +2079,9 @@ textarea { resize: vertical; min-height: 64px; }
 
 .chant-list {
   display: grid;
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-top: 1px solid var(--line);
 }
 .chant-row {
@@ -2107,6 +2110,7 @@ textarea { resize: vertical; min-height: 64px; }
   color: var(--ink-dim);
   font-size: 12px;
   line-height: 1.4;
+  white-space: pre-line;
 }
 .chant-row.is-open {
   padding-left: 8px;
@@ -2161,6 +2165,32 @@ textarea { resize: vertical; min-height: 64px; }
   padding: 3px 6px;
   border: 1px solid var(--red);
   background: var(--paper);
+}
+.poll-other-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  background: var(--paper-2);
+}
+.poll-other-option {
+  min-height: 31px;
+  padding: 6px 9px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+.poll-other-option.is-selected {
+  border-color: var(--red);
+  color: var(--paper);
+  background: var(--red);
 }
 .poll-footnote {
   margin: 0;

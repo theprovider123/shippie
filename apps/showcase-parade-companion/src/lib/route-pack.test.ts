@@ -50,4 +50,13 @@ describe('route pack', () => {
       expect(row.lat).toBeLessThan(51.566);
     }
   });
+
+  test('banter carries a full chant list and expanded player poll', () => {
+    const pack = loadRoutePack();
+    expect(pack.banter?.chants).toHaveLength(20);
+    const playerPoll = pack.banter?.polls.find((poll) => poll.id === 'player-of-season');
+    expect(playerPoll?.options.some((option) => option.id === 'raya')).toBe(true);
+    expect(playerPoll?.options.some((option) => option.id === 'gabriel')).toBe(true);
+    expect(playerPoll?.otherOptions?.length).toBeGreaterThan(10);
+  });
 });

@@ -5,12 +5,14 @@ import {
   banterFromPack,
   CHEER_TILES,
   listCheerCounts,
+  pollOptionLabel,
   resetCheerCounts,
   selectedOptionId,
   tapCheer,
   voteInPoll,
   type CheerId,
 } from '../lib/banter';
+import type { RouteBanterPoll } from '../data/parade-2026';
 import { hapticConfirm, hapticWow } from '../lib/haptic';
 import { showToast } from '../lib/toast';
 
@@ -23,6 +25,7 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
   const banter = useMemo(() => banterFromPack(pack), [pack]);
   const [openChantId, setOpenChantId] = useState<string | null>(null);
   const [voteVersion, setVoteVersion] = useState(0);
+  const [openOtherPollId, setOpenOtherPollId] = useState<string | null>(null);
   const [cheerCounts, setCheerCounts] = useState(() => listCheerCounts());
 
   const onChantToggle = (id: string) => {
@@ -34,15 +37,23 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
     hapticConfirm();
   };
 
-  const onVote = (pollId: string, optionId: string) => {
-    const poll = banter.polls.find((item) => item.id === pollId);
-    if (!poll) return;
+  const onVote = (poll: RouteBanterPoll, optionId: string) => {
     const saved = voteInPoll(poll, optionId);
     if (!saved) return;
     setVoteVersion((current) => current + 1);
-    onTrack('parade_banter_poll_voted', { poll_id: pollId, option_id: optionId });
+    onTrack('parade_banter_poll_voted', { poll_id: poll.id, option_id: optionId });
     hapticConfirm();
     showToast('Vote saved on this phone.', 'success');
+  };
+
+  const onPollOption = (poll: RouteBanterPoll, optionId: string) => {
+    if (optionId === 'other' && poll.otherOptions?.length) {
+      setOpenOtherPollId((current) => (current === poll.id ? null : poll.id));
+      hapticConfirm();
+      return;
+    }
+    onVote(poll, optionId);
+    setOpenOtherPollId(null);
   };
 
   const onCheer = (id: CheerId) => {
@@ -62,13 +73,13 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
       <div className="banter-intro">
         <p className="eyebrow">Banter</p>
         <h1>Small taps. Big noise.</h1>
-        <p>Chants, votes and cheer cues. Built to glance at, then pocket.</p>
+        <p>Lyrics, votes and cheer taps. Open fast, sing, then pocket.</p>
       </div>
 
       <div className="panel banter-card banter-card--chants">
         <div className="banter-card__head">
           <h2>Chants</h2>
-          <span>{banter.chants.length} cues</span>
+          <span>{banter.chants.length} lyrics</span>
         </div>
         <div className="chant-list">
           {banter.chants.map((chant) => {
@@ -98,26 +109,53 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
         <div className="poll-list" data-version={voteVersion}>
           {banter.polls.map((poll) => {
             const selected = selectedOptionId(poll.id);
+            const selectedOtherLabel =
+              poll.otherOptions?.some((option) => option.id === selected)
+                ? pollOptionLabel(poll, selected)
+                : null;
             return (
               <div className="poll-block" key={poll.id}>
                 <h3>{poll.question}</h3>
                 <div className="poll-options">
                   {poll.options.map((option) => {
-                    const active = selected === option.id;
+                    const active = selected === option.id || (option.id === 'other' && Boolean(selectedOtherLabel));
                     return (
                       <button
                         type="button"
                         key={option.id}
                         className={`poll-option ${active ? 'is-selected' : ''}`}
                         aria-pressed={active}
-                        onClick={() => onVote(poll.id, option.id)}
+                        aria-expanded={option.id === 'other' && poll.otherOptions?.length ? openOtherPollId === poll.id : undefined}
+                        onClick={() => onPollOption(poll, option.id)}
                       >
                         <span className="poll-option__label">{option.label}</span>
-                        {active ? <span className="poll-option__pick">Your pick</span> : null}
+                        {active ? (
+                          <span className="poll-option__pick">
+                            {selectedOtherLabel ? selectedOtherLabel : 'Your pick'}
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
                 </div>
+                {openOtherPollId === poll.id && poll.otherOptions?.length ? (
+                  <div className="poll-other-grid" aria-label={`${poll.question} other Arsenal players`}>
+                    {poll.otherOptions.map((option) => (
+                      <button
+                        type="button"
+                        key={option.id}
+                        className={`poll-other-option ${selected === option.id ? 'is-selected' : ''}`}
+                        aria-pressed={selected === option.id}
+                        onClick={() => {
+                          onVote(poll, option.id);
+                          setOpenOtherPollId(null);
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             );
           })}

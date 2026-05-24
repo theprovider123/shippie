@@ -48,7 +48,7 @@ export function listBanterVotes(): BanterVote[] {
 }
 
 export function voteInPoll(poll: RouteBanterPoll, optionId: string): BanterVote | null {
-  if (!poll.options.some((option) => option.id === optionId)) return null;
+  if (!pollAllowsOption(poll, optionId)) return null;
   const next: BanterVote = { pollId: poll.id, optionId, updatedAt: new Date().toISOString() };
   const votes = listBanterVotes().filter((vote) => vote.pollId !== poll.id);
   writeJson(VOTES_KEY, [next, ...votes]);
@@ -57,6 +57,15 @@ export function voteInPoll(poll: RouteBanterPoll, optionId: string): BanterVote 
 
 export function selectedOptionId(pollId: string): string | null {
   return listBanterVotes().find((vote) => vote.pollId === pollId)?.optionId ?? null;
+}
+
+export function pollOptionLabel(poll: RouteBanterPoll, optionId: string | null): string | null {
+  if (!optionId) return null;
+  return [...poll.options, ...(poll.otherOptions ?? [])].find((option) => option.id === optionId)?.label ?? null;
+}
+
+export function pollAllowsOption(poll: RouteBanterPoll, optionId: string): boolean {
+  return [...poll.options, ...(poll.otherOptions ?? [])].some((option) => option.id === optionId);
 }
 
 // pollOptionCount + totalPollVotes were removed in round 8 — they returned

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-24T16:00:00+01:00",
+  "packVersion": "2026-05-24T18:30:00+01:00",
   "event": {
     "title": "Parade Companion — Islington",
     "dateLabel": "Sunday 31 May 2026",
@@ -217,32 +217,122 @@
       {
         "id": "north-london-forever",
         "title": "North London Forever",
-        "cue": "Start soft, let the crowd carry it.",
-        "detail": "Use this as a cue card only. Keep phones down once the song starts."
+        "cue": "North London forever / whatever the weather",
+        "detail": "North London forever / whatever the weather"
+      },
+      {
+        "id": "one-nil",
+        "title": "One-nil to The Arsenal",
+        "cue": "One-nil to The Arsenal",
+        "detail": "One-nil to The Arsenal"
+      },
+      {
+        "id": "forty-nine",
+        "title": "49 undefeated",
+        "cue": "49, 49 undefeated",
+        "detail": "49, 49 undefeated"
+      },
+      {
+        "id": "till-i-die",
+        "title": "Arsenal till I die",
+        "cue": "Arsenal till I die",
+        "detail": "Arsenal till I die"
+      },
+      {
+        "id": "greatest-team",
+        "title": "Greatest team",
+        "cue": "We're by far the greatest team",
+        "detail": "We're by far the greatest team"
+      },
+      {
+        "id": "oh-to-be",
+        "title": "Oh to be a Gooner",
+        "cue": "Oh to be a Gooner",
+        "detail": "Oh to be a Gooner"
+      },
+      {
+        "id": "allez",
+        "title": "Allez Allez Allez",
+        "cue": "Allez, allez, allez",
+        "detail": "Allez, allez, allez"
+      },
+      {
+        "id": "set-piece",
+        "title": "Set-piece again",
+        "cue": "Set-piece again, ole ole",
+        "detail": "Set-piece again, ole ole"
+      },
+      {
+        "id": "we-love-you",
+        "title": "We love you Arsenal",
+        "cue": "We love you Arsenal, we do",
+        "detail": "We love you Arsenal, we do"
+      },
+      {
+        "id": "north-bank-clock-end",
+        "title": "North Bank / Clock End",
+        "cue": "We're the North Bank, Highbury",
+        "detail": "We're the North Bank, Highbury / We're the Clock End, Highbury"
       },
       {
         "id": "come-on-you-reds",
         "title": "Come on you reds",
-        "cue": "Short call. Big clap. Repeat once.",
-        "detail": "Best when the bus appears or a nearby section starts moving."
-      },
-      {
-        "id": "champions-again",
-        "title": "Champions again",
-        "cue": "Point at the bus, then join the chant around you.",
-        "detail": "A quick prompt for the trophy moment, not a lyrics screen."
-      },
-      {
-        "id": "mikel-reds",
-        "title": "Mikel and the reds",
-        "cue": "Manager cue. Keep it loud, keep it clean.",
-        "detail": "For the quieter waits between route movements."
+        "cue": "Come on you reds",
+        "detail": "Come on you reds"
       },
       {
         "id": "up-the-arsenal",
         "title": "Up the Arsenal",
-        "cue": "One line, full voice, phones away.",
-        "detail": "Works as a call-and-response nudge for your group."
+        "cue": "Up The Arsenal",
+        "detail": "Up The Arsenal"
+      },
+      {
+        "id": "saliba",
+        "title": "Saliba",
+        "cue": "Da da da da da, Saliba",
+        "detail": "Da da da da da, Saliba"
+      },
+      {
+        "id": "rice-rice-baby",
+        "title": "Rice Rice Baby",
+        "cue": "Rice, Rice, Baby",
+        "detail": "Rice, Rice, Baby"
+      },
+      {
+        "id": "bukayo-saka",
+        "title": "Bukayo Saka",
+        "cue": "Bukayo, Saka",
+        "detail": "Bukayo, Saka"
+      },
+      {
+        "id": "odegaard-oi",
+        "title": "Odegaard Oi Oi",
+        "cue": "Martin Odegaard, oi oi oi",
+        "detail": "Martin Odegaard, oi oi oi"
+      },
+      {
+        "id": "super-mik",
+        "title": "Super Mik Arteta",
+        "cue": "We've got Super Mik Arteta",
+        "detail": "We've got Super Mik Arteta"
+      },
+      {
+        "id": "kai-havertz",
+        "title": "Kai Havertz scores again",
+        "cue": "Kai Havertz scores again",
+        "detail": "Kai Havertz scores again"
+      },
+      {
+        "id": "his-name-is-gabi",
+        "title": "His name is Gabi",
+        "cue": "His name is Gabi",
+        "detail": "His name is Gabi"
+      },
+      {
+        "id": "trossard-again",
+        "title": "Trossard again",
+        "cue": "Trossard again, ole ole",
+        "detail": "Trossard again, ole ole"
       }
     ],
     "polls": [
@@ -254,7 +344,29 @@
           { "id": "rice", "label": "Rice" },
           { "id": "saliba", "label": "Saliba" },
           { "id": "odegaard", "label": "Odegaard" },
+          { "id": "raya", "label": "Raya" },
+          { "id": "gabriel", "label": "Gabriel" },
           { "id": "other", "label": "Other" }
+        ],
+        "otherOptions": [
+          { "id": "martinelli", "label": "Martinelli" },
+          { "id": "havertz", "label": "Havertz" },
+          { "id": "trossard", "label": "Trossard" },
+          { "id": "timber", "label": "Timber" },
+          { "id": "white", "label": "White" },
+          { "id": "calafiori", "label": "Calafiori" },
+          { "id": "merino", "label": "Merino" },
+          { "id": "jesus", "label": "Gabriel Jesus" },
+          { "id": "zinchenko", "label": "Zinchenko" },
+          { "id": "kiwior", "label": "Kiwior" },
+          { "id": "lewis-skelly", "label": "Myles Lewis-Skelly" },
+          { "id": "zubimendi", "label": "Zubimendi" },
+          { "id": "norgaard", "label": "Norgaard" },
+          { "id": "fabio-vieira", "label": "Fabio Vieira" },
+          { "id": "reiss-nelson", "label": "Reiss Nelson" },
+          { "id": "kepa", "label": "Kepa" },
+          { "id": "karl-hein", "label": "Karl Hein" },
+          { "id": "lokonga", "label": "Lokonga" }
         ]
       },
       {

@@ -3,6 +3,7 @@ import type { RouteBanterPoll } from '../data/parade-2026';
 import {
   listBanterVotes,
   listCheerCounts,
+  pollOptionLabel,
   resetCheerCounts,
   selectedOptionId,
   tapCheer,
@@ -15,6 +16,11 @@ const poll: RouteBanterPoll = {
   options: [
     { id: 'saka', label: 'Saka' },
     { id: 'rice', label: 'Rice' },
+    { id: 'other', label: 'Other' },
+  ],
+  otherOptions: [
+    { id: 'martinelli', label: 'Martinelli' },
+    { id: 'havertz', label: 'Havertz' },
   ],
 };
 
@@ -50,6 +56,12 @@ describe('banter', () => {
   test('voteInPoll rejects unknown options', () => {
     expect(voteInPoll(poll, 'unknown')).toBeNull();
     expect(listBanterVotes()).toHaveLength(0);
+  });
+
+  test('voteInPoll accepts explicit otherOptions and labels them', () => {
+    expect(voteInPoll(poll, 'martinelli')?.optionId).toBe('martinelli');
+    expect(selectedOptionId('player')).toBe('martinelli');
+    expect(pollOptionLabel(poll, 'martinelli')).toBe('Martinelli');
   });
 
   test('tapCheer increments and persists', () => {
