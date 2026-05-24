@@ -7,6 +7,8 @@ import {
   dedupeFanEvents,
   encodeFanEventsForSync,
   eventSegmentLabel,
+  isActive,
+  PUBLIC_PULSE_CUTOFF_ISO,
   summarizeFanEvents,
 } from './fan-events';
 
@@ -21,7 +23,7 @@ describe('fan events', () => {
     expect(event.segment_id).toMatch(/^seg-/);
     expect(typeof event.snapped_lng).toBe('number');
     expect(typeof event.snapped_lat).toBe('number');
-    expect(eventSegmentLabel(event).startsWith('stretch ')).toBe(true);
+    expect(eventSegmentLabel(event)).toMatch(/Highbury|Drayton|Upper|Stadium/);
   });
 
   test('keeps very wide GPS snapshots unsnapped instead of inventing a precise route point', () => {
@@ -127,5 +129,21 @@ describe('fan events', () => {
 
     expect(help?.count).toBe(1);
     expect(help?.latest.id).toBe(fresh.id);
+  });
+
+  test('caps fan pulse expiry at the parade security cutoff', () => {
+    const afterCutoff = new Date(Date.parse(PUBLIC_PULSE_CUTOFF_ISO) + 60_000);
+    const event = createFanEvent('presence', position, route, 'fan_late', afterCutoff);
+
+    expect(Date.parse(event.expires_at)).toBe(Date.parse(PUBLIC_PULSE_CUTOFF_ISO));
+    expect(isActive(event, afterCutoff.getTime())).toBe(false);
+  });
+
+  test('does not show active fan events after the parade security cutoff', () => {
+    const beforeCutoff = new Date(Date.parse(PUBLIC_PULSE_CUTOFF_ISO) - 30 * 60_000);
+    const event = createFanEvent('toilet_queue', position, route, 'fan_toilet_cutoff', beforeCutoff);
+
+    expect(isActive(event, beforeCutoff.getTime())).toBe(true);
+    expect(isActive(event, Date.parse(PUBLIC_PULSE_CUTOFF_ISO) + 1)).toBe(false);
   });
 });

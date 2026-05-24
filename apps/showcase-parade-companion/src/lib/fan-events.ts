@@ -5,6 +5,15 @@ import { isInsideExtent, nearestRouteSegment } from './geo';
 export const FAN_EVENTS_SHARE_TYPE = 'parade.fan-events.v1';
 export const MAX_FAN_EVENTS_FRAGMENT_LENGTH = 3600;
 export const ROUTE_SNAP_MAX_ACCURACY_M = 350;
+export const PUBLIC_PULSE_CUTOFF_ISO = '2026-05-31T22:00:00+01:00';
+
+const ROUTE_SEGMENT_LABELS: Record<number, string> = {
+  0: 'Stadium / Drayton Park',
+  1: 'Drayton Park / Aubert Park',
+  2: 'Highbury Grove',
+  3: "Highbury Fields / St Paul's Road",
+  4: 'Upper Street / Town Hall',
+};
 
 export type FanEventType =
   | 'presence'
@@ -93,12 +102,15 @@ export function createFanEvent(
   position: FanEventPosition,
   route: readonly [number, number][],
   sourceId = getFanSourceId(),
+  now = new Date(),
 ): FanEvent {
   const snap = shouldSnapToRoute(type) && position.accuracyM <= ROUTE_SNAP_MAX_ACCURACY_M
     ? nearestRouteSegment(position, route)
     : null;
-  const createdAt = new Date();
-  const expiresAt = new Date(createdAt.getTime() + EVENT_TTL_MINUTES[type] * 60_000);
+  const createdAt = now;
+  const ttlExpiresAt = new Date(createdAt.getTime() + EVENT_TTL_MINUTES[type] * 60_000);
+  const paradeCutoff = Date.parse(PUBLIC_PULSE_CUTOFF_ISO);
+  const expiresAt = new Date(Math.min(ttlExpiresAt.getTime(), paradeCutoff));
   return {
     id: `${type}_${createdAt.getTime().toString(36)}_${randomToken(7)}`,
     type,
@@ -227,7 +239,8 @@ export function clusterFanEvents(events: FanEvent[], now = Date.now()): FanEvent
 
 export function isActive(event: FanEvent, now = Date.now()): boolean {
   const expires = Date.parse(event.expires_at);
-  return Number.isFinite(expires) && expires > now;
+  const paradeCutoff = Date.parse(PUBLIC_PULSE_CUTOFF_ISO);
+  return Number.isFinite(expires) && expires > now && now < paradeCutoff;
 }
 
 export async function encodeFanEventsForSync(events: FanEvent[]): Promise<string> {
@@ -276,13 +289,15 @@ export function validateFanEvent(input: unknown): input is FanEvent {
 export function eventAgeLabel(event: Pick<FanEvent, 'created_at'>, now = Date.now()): string {
   const seconds = Math.max(0, Math.round((now - Date.parse(event.created_at)) / 1000));
   if (!Number.isFinite(seconds)) return 'saved';
-  if (seconds < 90) return `${seconds}s ago`;
+  if (seconds < 90) return 'live';
   if (seconds < 60 * 60) return `${Math.round(seconds / 60)} min ago`;
   return `${Math.round(seconds / 3600)}h ago`;
 }
 
-export function eventSegmentLabel(event: Pick<FanEvent, 'segment_id'>): string {
-  return event.segment_id ? event.segment_id.replace('seg-', 'stretch ') : 'near route';
+export function eventSegmentLabel(event: Pick<FanEvent, 'segment_id' | 'segment_index'>): string {
+  const index = segmentIndexForEvent(event);
+  if (index !== null) return ROUTE_SEGMENT_LABELS[index] ?? `route stretch ${index + 1}`;
+  return 'near route';
 }
 
 export function getFanSourceId(): string {
@@ -342,6 +357,12 @@ function clusterKey(event: FanEvent): string {
   if (event.segment_id) return `${event.type}:${event.segment_id}`;
   const point = eventPoint(event);
   return `${event.type}:grid:${Math.round(point.lng * 2000)}:${Math.round(point.lat * 2000)}`;
+}
+
+function segmentIndexForEvent(event: Pick<FanEvent, 'segment_id' | 'segment_index'>): number | null {
+  if (typeof event.segment_index === 'number' && Number.isInteger(event.segment_index)) return event.segment_index;
+  const match = /^seg-(\d+)$/.exec(event.segment_id ?? '');
+  return match ? Number(match[1]) : null;
 }
 
 function eventPoint(event: FanEvent): LngLat {

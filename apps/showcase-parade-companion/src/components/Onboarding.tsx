@@ -77,6 +77,20 @@ export function Onboarding({ open, initialName, supporterTag, onFinish, onSkip }
                 <span>I am here, Bus is here, or Toilet here.</span>
               </li>
             </ol>
+            <div className="onboarding__privacy" aria-label="What gets shared">
+              <div>
+                <strong>Private</strong>
+                <span>Your name, saved plan, and emergency/help taps stay here.</span>
+              </div>
+              <div>
+                <strong>Group</strong>
+                <span>Invite links share the plan only with people you choose.</span>
+              </div>
+              <div>
+                <strong>Public pulse</strong>
+                <span>Map taps are anonymous place signals and expire after the parade.</span>
+              </div>
+            </div>
             <div className="onboarding__actions">
               <button type="button" className="secondary-action" onClick={() => setStep(0)}>
                 Back

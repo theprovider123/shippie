@@ -18,8 +18,9 @@ import {
   FAN_EVENT_LABELS,
   REPORT_EVENT_TYPES,
   isActive,
-  summarizeFanEvents,
+  clusterFanEvents,
   type FanEvent,
+  type FanEventCluster,
   type FanEventType,
 } from '../lib/fan-events';
 import { haversineMeters, nearestRouteSegment } from '../lib/geo';
@@ -89,7 +90,12 @@ export function MapScreen({
     water: false,
     atm: false,
   });
-  const fanSummary = useMemo(() => summarizeFanEvents(fanEvents), [fanEvents]);
+  const publicInsightClusters = useMemo(
+    () => clusterFanEvents(fanEvents, now).filter((cluster) => cluster.type !== 'presence' && cluster.type !== 'need_help'),
+    [fanEvents, now],
+  );
+  const busInsight = publicInsightClusters.find((cluster) => cluster.type === 'bus_seen') ?? null;
+  const reportInsights = publicInsightClusters.filter((cluster) => cluster.type !== 'bus_seen').slice(0, 3);
 
   // Nearest 3 POIs of the active quick-find category. Computed from GPS when
   // available, otherwise from the route's first coordinate as a stable
@@ -182,13 +188,13 @@ export function MapScreen({
     if (type === 'bus_seen') {
       const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
       onBusMarker(marker);
-      feedback(`Bus saved at ${formatMarkerTime(marker)}. It can move phone-to-phone by QR.`, 'success');
+      feedback(`Bus saved at ${placeLabelForEvent(event, pack)} · ${formatMarkerTime(marker)}. Anonymous and short-lived.`, 'success');
     } else if (type === 'toilet_queue') {
-      feedback(`Toilet saved here near ${eventSegmentLabel(event)}.`, 'success');
+      feedback(`Toilet saved near ${placeLabelForEvent(event, pack)}. Anonymous pulse expires today.`, 'success');
     } else if (type === 'need_help') {
-      feedback('Move to a steward or call 999 now. This marker only travels by QR or relay.', 'warn');
+      feedback('Move to a steward or call 999 now. Help taps stay on this phone.', 'warn');
     } else {
-      feedback(`${FAN_EVENT_LABELS[type]} saved near ${eventSegmentLabel(event)}.`, 'success');
+      feedback(`${FAN_EVENT_LABELS[type]} saved near ${placeLabelForEvent(event, pack)}.`, 'success');
     }
     onTrack(analyticsEventForSignal(type), {
       snapped: Boolean(event.segment_id),
@@ -221,7 +227,7 @@ export function MapScreen({
     }
   };
 
-  const aroundEmpty = !nearestPoi && !fanSummary.latestBus && fanSummary.activeReports.length === 0;
+  const aroundEmpty = !nearestPoi && !busInsight && reportInsights.length === 0;
   const tapPanel = (
     <div className="tap-panel" aria-label="Fast parade taps">
       <div className="tap-panel__head">
@@ -389,18 +395,18 @@ export function MapScreen({
               <small>{formatDistance(nearestPoi.distance)}</small>
             </div>
           ) : null}
-          {fanSummary.latestBus ? (
+          {busInsight ? (
             <div className="pulse-row confirmed">
               <strong>Bus</strong>
-              <span>{eventSegmentLabel(fanSummary.latestBus)}</span>
-              <small>{eventAgeLabel(fanSummary.latestBus)}</small>
+              <span>{placeLabelForCluster(busInsight, pack)}</span>
+              <small>{insightMeta(busInsight)}</small>
             </div>
           ) : null}
-          {fanSummary.activeReports.map((report) => (
-            <div className={`pulse-row ${report.confidence}`} key={report.type}>
-              <strong>{FAN_EVENT_LABELS[report.type]}</strong>
-              <span>{report.confidence}</span>
-              <small>{report.count} carried · {eventAgeLabel(report.latest)}</small>
+          {reportInsights.map((cluster) => (
+            <div className={`pulse-row ${cluster.confidence}`} key={cluster.id}>
+              <strong>{FAN_EVENT_LABELS[cluster.type]}</strong>
+              <span>{placeLabelForCluster(cluster, pack)}</span>
+              <small>{insightMeta(cluster)}</small>
             </div>
           ))}
           {aroundEmpty ? (
@@ -454,6 +460,33 @@ export function MapScreen({
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function placeLabelForCluster(cluster: FanEventCluster, pack: RoutePack): string {
+  const routeLabel = eventSegmentLabel({ segment_id: cluster.segmentId, segment_index: cluster.segmentIndex });
+  return enrichPlaceLabel(routeLabel, cluster.point, pack);
+}
+
+function placeLabelForEvent(event: FanEvent, pack: RoutePack): string {
+  const point =
+    typeof event.snapped_lng === 'number' && typeof event.snapped_lat === 'number'
+      ? { lng: event.snapped_lng, lat: event.snapped_lat }
+      : { lng: event.lng, lat: event.lat };
+  return enrichPlaceLabel(eventSegmentLabel(event), point, pack);
+}
+
+function enrichPlaceLabel(routeLabel: string, point: { lng: number; lat: number }, pack: RoutePack): string {
+  const nearest = pack.pois
+    .filter((poi) => poi.kind !== 'toilet' && poi.kind !== 'water' && poi.kind !== 'atm')
+    .map((poi) => ({ poi, distance: haversineMeters(point, poi) }))
+    .sort((a, b) => a.distance - b.distance)[0];
+  if (!nearest || nearest.distance > 260) return routeLabel;
+  if (routeLabel === 'near route') return `near ${nearest.poi.name}`;
+  return `${routeLabel} · near ${nearest.poi.name}`;
+}
+
+function insightMeta(cluster: FanEventCluster): string {
+  return `${cluster.count} ${cluster.count === 1 ? 'fan' : 'fans'} · ${cluster.confidence} · ${eventAgeLabel(cluster.latest)}`;
 }
 
 function analyticsEventForSignal(type: FanEventType): ParadeAnalyticsEvent {

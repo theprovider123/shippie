@@ -81,6 +81,8 @@ function QrGlyph() {
 }
 
 function formatDistance(m: number): string {
+  if (m > 50_000) return 'away';
+  if (m > 5_000) return 'off route';
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(1)} km`;
 }

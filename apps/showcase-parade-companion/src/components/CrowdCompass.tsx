@@ -1,6 +1,6 @@
 import type { PlanPoint } from '../lib/group-plan';
 import type { GpsFix } from '../lib/gps';
-import { FAN_EVENT_LABELS, eventAgeLabel, type FanEvent } from '../lib/fan-events';
+import { FAN_EVENT_LABELS, eventAgeLabel, eventSegmentLabel, type FanEvent } from '../lib/fan-events';
 import { bearingDeg, haversineMeters } from '../lib/geo';
 import { crowdCompassTargets } from '../lib/live-sync';
 
@@ -25,7 +25,7 @@ export function CrowdCompass({ gpsFix, fanEvents, onTarget }: CrowdCompassProps)
         <p>Waiting for crowd taps. Your three fast taps help the next fan when the relay wakes up.</p>
       ) : (
         <div className="crowd-compass__targets">
-          {targets.map(({ event, point }) => {
+          {targets.map(({ event, point, count, confidence }) => {
             const bearing = bearingDeg(gpsFix, point);
             return (
               <button
@@ -39,7 +39,9 @@ export function CrowdCompass({ gpsFix, fanEvents, onTarget }: CrowdCompassProps)
                 </span>
                 <span>
                   <strong>{FAN_EVENT_LABELS[event.type]}</strong>
-                  <small>{formatDistance(haversineMeters(gpsFix, point))} · {eventAgeLabel(event)}</small>
+                  <small>
+                    {eventSegmentLabel(event)} · {formatDistance(haversineMeters(gpsFix, point))} · {count} {count === 1 ? 'tap' : 'taps'} · {confidence} · {eventAgeLabel(event)}
+                  </small>
                 </span>
               </button>
             );

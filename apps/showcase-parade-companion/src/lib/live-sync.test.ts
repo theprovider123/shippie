@@ -3,6 +3,7 @@ import { FALLBACK_ROUTE_PACK } from '../data/parade-2026';
 import { createFanEvent } from './fan-events';
 import {
   fanEventToPulsePacket,
+  isPublishableFanEvent,
   pullFanPulse,
   publishFanPulse,
   pulsePacketToFanEvent,
@@ -31,6 +32,16 @@ describe('live fan pulse sync', () => {
       eventSegmentId: null,
     });
     expect(Object.keys(packet ?? {}).sort()).not.toContain('displayName');
+  });
+
+  test('does not publish fan events after their public expiry', () => {
+    const expired = {
+      ...createFanEvent('bus_seen', position, route, 'fan_expired'),
+      expires_at: new Date(Date.now() - 1000).toISOString(),
+    };
+
+    expect(isPublishableFanEvent(expired)).toBe(false);
+    expect(fanEventToPulsePacket(expired, route)).toBeNull();
   });
 
   test('imports relay packets as relay fan events', () => {

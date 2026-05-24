@@ -1,5 +1,5 @@
 import type { LngLat } from '../data/parade-2026';
-import { type FanEvent, type FanEventType, validateFanEvent } from './fan-events';
+import { clusterFanEvents, isActive, type FanEvent, type FanEventType, type ReportConfidence, validateFanEvent } from './fan-events';
 import { nearestRouteSegment } from './geo';
 
 export const FAN_PULSE_ENDPOINT = '/__shippie/parade/fan-pulse';
@@ -43,7 +43,7 @@ export interface LiveFanPulseResponse {
 }
 
 export function isPublishableFanEvent(event: FanEvent): boolean {
-  return event.source === 'local' && PUBLISHABLE_TYPES.includes(event.type);
+  return event.source === 'local' && isActive(event) && PUBLISHABLE_TYPES.includes(event.type);
 }
 
 export function routeSegmentIds(route: readonly [number, number][]): string[] {
@@ -142,21 +142,23 @@ export async function pullFanPulse(
 
 export function crowdCompassTargets(events: readonly FanEvent[], here: LngLat | null, now = Date.now()) {
   if (!here) return [];
-  const active = events
-    .filter((event) => Date.parse(event.expires_at) > now)
-    .filter((event) => event.type === 'bus_seen' || event.type === 'toilet_queue' || event.type === 'crowd_dense' || event.type === 'road_blocked')
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const active = clusterFanEvents([...events], now)
+    .filter((cluster) => cluster.type === 'bus_seen' || cluster.type === 'toilet_queue' || cluster.type === 'crowd_dense' || cluster.type === 'road_blocked')
+    .sort((a, b) => {
+      const count = b.count - a.count;
+      if (count !== 0) return count;
+      return Date.parse(b.latest.created_at) - Date.parse(a.latest.created_at);
+    });
   const seen = new Set<FanEventType>();
-  const out: Array<{ event: FanEvent; point: LngLat }> = [];
-  for (const event of active) {
-    if (seen.has(event.type)) continue;
-    seen.add(event.type);
+  const out: Array<{ event: FanEvent; point: LngLat; count: number; confidence: ReportConfidence }> = [];
+  for (const cluster of active) {
+    if (seen.has(cluster.type)) continue;
+    seen.add(cluster.type);
     out.push({
-      event,
-      point:
-        typeof event.snapped_lng === 'number' && typeof event.snapped_lat === 'number'
-          ? { lng: event.snapped_lng, lat: event.snapped_lat }
-          : { lng: event.lng, lat: event.lat },
+      event: cluster.latest,
+      point: cluster.point,
+      count: cluster.count,
+      confidence: cluster.confidence,
     });
     if (out.length >= 3) break;
   }
