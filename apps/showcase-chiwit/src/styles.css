@@ -3283,3 +3283,78 @@ button.branded.primary {
   cursor: grabbing;
   transform: scale(0.98);
 }
+
+/* ─── Visual standout · Timeline month-scrubber hairline rule ─────────
+ * The scrubber pills were mono-caps but flat. Bring them in line with the
+ * section-heading treatment: a hairline rule under the strip + a tracked
+ * mono eyebrow inside, so the cross-page typography reads as one voice.
+ * ───────────────────────────────────────────────────────────────────── */
+.month-scrubber {
+  position: relative;
+  margin-block: 2rem 1.2rem;
+  padding: 0.55rem 0.5rem 1.1rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+.month-scrubber::before {
+  content: 'Jump to month';
+  position: absolute;
+  inset: -1.15rem 0 auto 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-quiet, var(--muted));
+  pointer-events: none;
+}
+.month-scrubber::after {
+  /* Sage hairline tick anchoring the strip — mirrors the
+   * tracking-form h2 motif so the cross-page rhythm matches. */
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 44px;
+  height: 1px;
+  background: var(--sage);
+}
+.month-scrubber button {
+  min-height: 32px;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-quiet, var(--muted));
+}
+.month-scrubber button:hover {
+  color: var(--sage-deep);
+  border-color: rgba(74, 122, 94, 0.18);
+}
+.month-scrubber button.active {
+  color: var(--paper);
+  /* Existing global rule paints the gradient; keep the rounder pill +
+   * tighter tracking so the active state still reads as a primary chip. */
+  letter-spacing: 0.12em;
+  border-color: rgba(53, 98, 70, 0.88);
+}
+
+/* ─── Visual standout · WeekContour per-day dot palette ───────────────
+ * Past-day dots tint to their dominant factor via inline `fill` from
+ * `tones[i]` (see App.tsx). The today dot keeps its coral halo. This
+ * rule just lifts each dot slightly so the tint reads cleanly against
+ * the paper-warm wash + adds a soft white anchor for contrast.
+ * ───────────────────────────────────────────────────────────────────── */
+.week-contour__dot {
+  /* Inline `fill` from React wins when supplied; this is the fallback +
+   * the shared finish. */
+  filter: drop-shadow(0 0 2px rgba(255, 253, 246, 0.9));
+  transition: r var(--dur-2, 220ms) var(--ease-quiet, cubic-bezier(0.4, 0, 0.2, 1));
+}
