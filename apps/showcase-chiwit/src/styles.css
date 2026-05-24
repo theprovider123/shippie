@@ -2727,3 +2727,251 @@ button.branded.primary {
   .today-shell .quick-panel::before { width: 100px; }
   .toolbar { margin-bottom: 1.2rem; }
 }
+
+/* ─── Pass 3 · Visual standout — refinements ────────────────────────── *
+ * Second-cluster lifts to specific elements:
+ *  - WeekContour: subtle paper-warm wash behind the area, today-dot
+ *    breathes, x-axis hairline + day initials below the line.
+ *  - Entry list: editorial type — bold Fraunces label, mono detail,
+ *    bigger swatch dot, hover row marks "active".
+ *  - Quick-grid + signal-composer pills: rounded paper tiles with a
+ *    coloured swatch corner instead of an in-line dot.
+ *  - Insight card title gets a Fraunces lift; bullet shape now
+ *    matches the tone colour.
+ *  - Tracking-form headings get a sage hairline mark like the
+ *    sectional rhythm.
+ *  - Heading rhythm for h1 leading on hero — tight, optical.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* WeekContour — line + area get a warmer floor; today dot gets a halo. */
+.week-contour {
+  position: relative;
+  margin: 1.2rem 0 0.4rem;
+  padding: 0.45rem 0.6rem 0.55rem;
+  background: linear-gradient(180deg, rgba(214, 227, 216, 0.32) 0%, rgba(255, 253, 246, 0.55) 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(74, 122, 94, 0.14);
+  max-width: 360px;
+}
+.week-contour__area {
+  fill: var(--sage);
+  opacity: 0.12;
+}
+.week-contour__line {
+  stroke: var(--sage-deep);
+  stroke-width: 2.2;
+}
+.week-contour__today {
+  fill: var(--coral);
+  filter: drop-shadow(0 0 6px rgba(217, 106, 60, 0.5));
+}
+.week-contour figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.15rem;
+  margin-top: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-quiet);
+}
+.week-contour figcaption strong {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--sage-deep);
+  text-transform: none;
+}
+
+/* Entry list — editorial item rows. The kind label becomes a Fraunces
+ * micro-headline; the detail line is mono so the unit reads as data. */
+.entry-list li {
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 0.95rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 10px;
+  background: var(--paper-warm);
+}
+.entry-list > li > span {
+  width: 8px;
+  height: 8px;
+  margin-top: 0.55rem;
+  box-shadow: 0 0 0 3px rgba(255, 253, 246, 1), 0 0 0 4px rgba(31, 42, 36, 0.08);
+}
+.entry-list strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.01rem;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.entry-list small {
+  margin-top: 0.18rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--ink-soft);
+}
+
+/* Ambient row gets a coral hairline at the swatch column so it reads
+ * as "this came from somewhere else" without shouting. */
+.entry-list li.is-ambient {
+  background: linear-gradient(90deg, var(--sage-soft) 0%, var(--paper-warm) 30%);
+  border-color: rgba(74, 122, 94, 0.2);
+}
+.entry-list li.is-ambient > span {
+  box-shadow: 0 0 0 3px rgba(214, 227, 216, 1), 0 0 0 4px var(--sage);
+}
+
+/* Quick-grid pills — paper tile with the swatch as a corner accent
+ * instead of an inline dot. Tighter copy hierarchy. */
+.quick-grid button {
+  position: relative;
+  align-content: center;
+  min-height: 96px;
+  padding: 0.85rem 0.85rem 0.8rem 1rem;
+  border-radius: 10px;
+  background: var(--paper-warm);
+  border: 1px solid rgba(74, 122, 94, 0.14);
+  overflow: hidden;
+}
+.quick-grid button > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  height: 100%;
+  border-radius: 0;
+  opacity: 0.85;
+}
+.quick-grid strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.96rem;
+  letter-spacing: -0.008em;
+  line-height: 1.18;
+  color: var(--ink);
+}
+.quick-grid small.factor-boost {
+  margin-top: 0.5rem;
+  justify-self: start;
+}
+
+/* Signal composer hero pills — same paper logic, slightly larger. */
+.signal-composer button {
+  position: relative;
+  padding-left: 1.05rem;
+  border-radius: 10px;
+  background: var(--paper-warm);
+  border-color: rgba(74, 122, 94, 0.16);
+  overflow: hidden;
+}
+.signal-composer span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 0;
+}
+.signal-composer strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* Insight card — title becomes a Fraunces micro-headline. */
+.insight-card strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.04rem;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  display: block;
+}
+.insight-card p {
+  font-family: var(--font-display);
+  font-size: 0.96rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+/* Insight panel header — match the editorial section heading. */
+.insight-panel h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.18rem;
+  letter-spacing: -0.012em;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.85rem;
+  color: var(--ink);
+}
+
+/* Tracking-form headings — sage hairline mark and tighter caps. */
+.tracking-form h2 {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.22rem;
+  letter-spacing: -0.014em;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.tracking-form h2::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 36px;
+  height: 1px;
+  background: var(--sage);
+}
+
+/* Timeline day headers — let the pulse number read as art. */
+.timeline-day {
+  border-radius: 10px;
+  padding: 1.2rem 1.15rem;
+}
+.timeline-day header {
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.95rem;
+}
+.timeline-day header h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.timeline-day header strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
+  font-size: 2.25rem;
+  letter-spacing: -0.024em;
+  line-height: 0.92;
+  color: var(--sage-deep);
+}
+
+/* Page H1 — pull the tracking even tighter; let Fraunces breathe. */
+.hero-plane h1,
+.page-shell h1 {
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 0.9;
+}
+
+/* Hero "what Chiwit notices" panel — recess a touch into the page. */
+.insight-panel {
+  padding: 1.25rem 1.15rem 1.1rem;
+  border-radius: 10px;
+}
