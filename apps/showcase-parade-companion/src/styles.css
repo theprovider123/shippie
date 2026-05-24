@@ -72,6 +72,10 @@ body { overflow: hidden; }
 button, input, select, textarea { font: inherit; }
 button { min-height: 44px; border: 0; cursor: pointer; border-radius: 0; }
 button:active { transform: translateY(1px); }
+button:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
 
 /* ----- Shell ----- */
 .app-shell {
@@ -960,8 +964,32 @@ textarea { resize: vertical; min-height: 64px; }
   color: var(--paper);
 }
 .fan-tap--bus span { color: rgba(245,239,228,.78); }
-.fan-tap--report {
-  border-top: 3px solid var(--gold);
+.fan-tap--toilet {
+  border-top: 3px solid var(--sage);
+}
+.secondary-report-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 11px;
+  border-top: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.secondary-report-toggle span {
+  color: var(--ink-mute);
+  font-weight: 500;
+  letter-spacing: .06em;
+  white-space: nowrap;
 }
 .report-grid {
   display: grid;
@@ -1269,7 +1297,7 @@ textarea { resize: vertical; min-height: 64px; }
 /* ----- Inline report chips (expanded "Report" row on Map) ----- */
 .report-chips {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   border-top: 1px solid var(--line);
   animation: toast-slide-in 160ms ease-out;
@@ -1287,9 +1315,10 @@ textarea { resize: vertical; min-height: 64px; }
   letter-spacing: .02em;
   cursor: pointer;
 }
-.report-chips button:first-child { border-left: 0; }
+.report-chips button:nth-child(2n+1) { border-left: 0; }
 .report-chips button[data-kind='crowd_dense'] { border-top: 3px solid var(--gold); }
 .report-chips button[data-kind='road_blocked'] { border-top: 3px solid var(--ink); }
+.report-chips button[data-kind='food_open'] { border-top: 3px solid var(--gold-deep); }
 .report-chips button[data-kind='need_help'] { border-top: 3px solid var(--red-deep); }
 .around-you .pulse-row.landmark { border-left-color: var(--ink-faint); }
 

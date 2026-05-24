@@ -40,6 +40,8 @@ interface MapScreenProps {
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
 }
 
+const SECONDARY_REPORT_TYPES = REPORT_EVENT_TYPES.filter((type) => type !== 'toilet_queue');
+
 export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sideTingsRefresh, onBusMarker, onFanEvent, onTrack }: MapScreenProps) {
   const [gpsFix, setGpsFix] = useState<GpsFix | null>(null);
   const [gpsError, setGpsError] = useState('');
@@ -200,9 +202,62 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
   };
 
   const aroundEmpty = !nearestPoi && !fanSummary.latestBus && fanSummary.activeReports.length === 0;
+  const tapPanel = (
+    <div className="tap-panel" aria-label="Fast parade taps">
+      <div className="tap-panel__head">
+        <span>Three fast taps</span>
+        <small>saved on this phone first</small>
+      </div>
+      <div className="pulse-actions">
+        <button type="button" className="fan-tap fan-tap--presence" onClick={() => void saveEvent('presence')}>
+          <strong>I am here</strong>
+          <span>fan dot</span>
+        </button>
+        <button type="button" className="fan-tap fan-tap--bus" onClick={() => void saveEvent('bus_seen')}>
+          <strong>Bus is here</strong>
+          <span>sighting</span>
+        </button>
+        <button
+          type="button"
+          className="fan-tap fan-tap--toilet"
+          onClick={() => void saveEvent('toilet_queue')}
+        >
+          <strong>Toilet queue</strong>
+          <span>busy now</span>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        className="secondary-report-toggle"
+        aria-expanded={reportsOpen}
+        onClick={() => setReportsOpen((value) => !value)}
+      >
+        More reports {reportsOpen ? '▴' : '▾'}
+        <span>crowd · food · help</span>
+      </button>
+
+      {reportsOpen ? (
+        <div className="report-chips" aria-label="Report what is happening nearby">
+          {SECONDARY_REPORT_TYPES.map((type) => (
+            <button
+              type="button"
+              key={type}
+              data-kind={type}
+              onClick={() => void saveEvent(type)}
+            >
+              {FAN_EVENT_LABELS[type]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <section className="screen map-screen">
+      {tapPanel}
+
       <QuickFindChips
         active={findCategory}
         onPick={(category) => {
@@ -285,47 +340,6 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
           Turn on Location. The dot appears once your phone gets a fix.
         </p>
       ) : null}
-
-      <div className="tap-panel" aria-label="Fast parade taps">
-        <div className="tap-panel__head">
-          <span>Tap what you see</span>
-          <small>saved on this phone first</small>
-        </div>
-        <div className="pulse-actions">
-          <button type="button" className="fan-tap fan-tap--presence" onClick={() => void saveEvent('presence')}>
-            <strong>I am here</strong>
-            <span>fan dot</span>
-          </button>
-          <button type="button" className="fan-tap fan-tap--bus" onClick={() => void saveEvent('bus_seen')}>
-            <strong>Bus is here</strong>
-            <span>highest value</span>
-          </button>
-          <button
-            type="button"
-            className="fan-tap fan-tap--report"
-            aria-expanded={reportsOpen}
-            onClick={() => setReportsOpen((value) => !value)}
-          >
-            <strong>Report {reportsOpen ? '▴' : '▾'}</strong>
-            <span>crowd, food, toilets</span>
-          </button>
-        </div>
-
-        {reportsOpen ? (
-          <div className="report-chips" aria-label="Report what is happening nearby">
-            {REPORT_EVENT_TYPES.map((type) => (
-              <button
-                type="button"
-                key={type}
-                data-kind={type}
-                onClick={() => void saveEvent(type)}
-              >
-                {FAN_EVENT_LABELS[type]}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
 
       <div className="panel around-you">
         <h2>Around you</h2>
