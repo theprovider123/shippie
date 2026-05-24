@@ -279,6 +279,44 @@
   );
   const transferRegistry = createTransferRegistry();
 
+  // Per-(source, target) in-flight transfer set. Surfaced as a small chip
+  // so the user has a "we received your drop" signal between the source
+  // app firing the drop and the target acknowledging it. Keys are
+  // `${sourceId}->${targetId}` so a single source/target pair only shows
+  // one chip at a time.
+  let transferPending = $state<Set<string>>(new Set());
+  let transferPendingLabel = $state<string>('');
+  let transferPendingLabelTimer: ReturnType<typeof setTimeout> | null = null;
+  function transferPendingKey(sourceId: string, targetId: string): string {
+    return `${sourceId}->${targetId}`;
+  }
+  function markTransferPending(sourceId: string, targetId: string, kind: string) {
+    const key = transferPendingKey(sourceId, targetId);
+    if (transferPending.has(key)) return;
+    const next = new Set(transferPending);
+    next.add(key);
+    transferPending = next;
+    transferPendingLabel = `Sending ${kind}…`;
+    if (transferPendingLabelTimer) clearTimeout(transferPendingLabelTimer);
+  }
+  function clearTransferPending(sourceId: string, targetId: string) {
+    const key = transferPendingKey(sourceId, targetId);
+    if (!transferPending.has(key)) return;
+    const next = new Set(transferPending);
+    next.delete(key);
+    transferPending = next;
+    if (next.size === 0) {
+      // Briefly hold the label so the chip doesn't ghost-flicker on
+      // fast resolutions; clearing immediately reads as "did anything
+      // happen?".
+      if (transferPendingLabelTimer) clearTimeout(transferPendingLabelTimer);
+      transferPendingLabelTimer = setTimeout(() => {
+        if (transferPending.size === 0) transferPendingLabel = '';
+        transferPendingLabelTimer = null;
+      }, 200);
+    }
+  }
+
   // Combined modal queue surface — intents are batched by consumerId so each
   // unique consumer counts once; transfers are one prompt per item.
   // Intents render first (the orchestrator dismisses them in that order), so
@@ -1159,7 +1197,7 @@
           startTransferDrop: (sourceId, kind, preview) =>
             startTransferDrop(sourceId, kind, preview),
           commitTransferDrop: (sourceId, targetSlug, kind, payload) =>
-            commitTransferDrop(sourceId, targetSlug, kind, payload),
+            trackedCommitTransferDrop(sourceId, targetSlug, kind, payload),
         }),
       }),
     );
@@ -1539,6 +1577,41 @@
    * grant. First-time deliveries enqueue a permission prompt and
    * resolve once the user accepts/declines.
    */
+  /**
+   * Wraps `commitTransferDrop` with a per-(source, target) pending chip
+   * so the user gets a "Sending {kind}…" signal between the drag-drop
+   * commit and the target's bridge ack. Cleared when the commit
+   * resolves (or rejects).
+   */
+  function trackedCommitTransferDrop(
+    sourceAppId: string,
+    targetSlug: string,
+    kind: string,
+    payload: unknown,
+  ): TransferCommitResult | Promise<TransferCommitResult> {
+    // Resolve the target id once for the pending-key. If the target
+    // can't be resolved, fall through — the underlying call will
+    // return a synchronous failure result, and there's no pending UI
+    // to display.
+    const targetApp = apps.find((a) => a.slug === targetSlug && a.id !== sourceAppId);
+    const targetId = targetApp?.id;
+    if (targetId) markTransferPending(sourceAppId, targetId, kind);
+    let result: TransferCommitResult | Promise<TransferCommitResult>;
+    try {
+      result = commitTransferDrop(sourceAppId, targetSlug, kind, payload);
+    } catch (err) {
+      if (targetId) clearTransferPending(sourceAppId, targetId);
+      throw err;
+    }
+    if (result instanceof Promise) {
+      return result.finally(() => {
+        if (targetId) clearTransferPending(sourceAppId, targetId);
+      });
+    }
+    if (targetId) clearTransferPending(sourceAppId, targetId);
+    return result;
+  }
+
   function commitTransferDrop(
     sourceAppId: string,
     targetSlug: string,
@@ -2676,6 +2749,16 @@
   queueIndex={transferQueueIndex}
   queueSize={pendingPromptQueueSize}
 />
+
+{#if transferPending.size > 0 && transferPendingLabel}
+  <!-- Pending transfer-drop chip — surfaces a "Sending {kind}…" signal
+       between the source app firing the drop and the target's ack so
+       the drag UI doesn't appear to hang while permissions resolve. -->
+  <div class="transfer-pending-chip" role="status" aria-live="polite">
+    <span class="transfer-pending-spinner" aria-hidden="true"></span>
+    <span>{transferPendingLabel}</span>
+  </div>
+{/if}
 
 {#if data.focused}
   <!--
@@ -4198,5 +4281,43 @@
       padding: 0 9px;
       font-size: 10px;
     }
+  }
+
+  /* Transfer-pending chip — small bottom-pinned status surface that
+     fires for the duration of an in-flight transfer-drop commit so the
+     source app's drag UI has a visible "we heard you" cue while the
+     permission prompt and target ack resolve. */
+  .transfer-pending-chip {
+    position: fixed;
+    left: 50%;
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
+    transform: translateX(-50%);
+    z-index: 1010;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid rgba(20, 18, 15, 0.14);
+    background: rgba(255, 253, 247, 0.94);
+    color: #14120F;
+    box-shadow: 0 12px 28px rgba(20, 18, 15, 0.14);
+    font-size: 12.5px;
+    line-height: 1.3;
+    backdrop-filter: blur(10px);
+    pointer-events: none;
+  }
+  .transfer-pending-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(20, 18, 15, 0.18);
+    border-top-color: rgba(20, 18, 15, 0.6);
+    border-radius: 50%;
+    animation: transfer-pending-spin 720ms linear infinite;
+  }
+  @keyframes transfer-pending-spin {
+    to { transform: rotate(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .transfer-pending-spinner { animation: none; }
   }
 </style>
