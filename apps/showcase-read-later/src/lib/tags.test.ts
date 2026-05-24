@@ -101,6 +101,8 @@ describe('suggestLabel', () => {
           source: 'local' as const,
         }),
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     const label = await suggestLabel(fakeShippie, { title: 'GPU drivers', plainText: 'CUDA' });
@@ -116,6 +118,8 @@ describe('suggestLabel', () => {
           source: 'unavailable' as const,
         }),
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     expect(await suggestLabel(fakeShippie, { title: 'X', plainText: 'Y' })).toBeNull();
@@ -130,6 +134,8 @@ describe('suggestLabel', () => {
           source: 'local' as const,
         }),
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     expect(await suggestLabel(fakeShippie, { title: 'X', plainText: 'Y' })).toBeNull();

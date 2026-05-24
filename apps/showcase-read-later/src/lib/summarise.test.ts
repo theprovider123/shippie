@@ -78,6 +78,8 @@ describe('summariseWithFallback', () => {
           source: 'local' as const,
         }),
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText);
@@ -94,6 +96,8 @@ describe('summariseWithFallback', () => {
           source: 'unavailable' as const,
         }),
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText, { maxSentences: 2 });
@@ -108,6 +112,8 @@ describe('summariseWithFallback', () => {
           throw new Error('no transformers');
         },
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText, { maxSentences: 2 });
@@ -124,6 +130,8 @@ describe('summariseWithFallback', () => {
           source: 'local' as const,
         }),
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, 'irrelevant', { maxSentences: 2 });
@@ -140,6 +148,8 @@ describe('summariseWithFallback', () => {
           source: 'local' as const,
         }),
         ready: async () => undefined,
+        capabilities: async () => ({ availableTasks: [] }),
+        preload: async () => undefined,
       },
     };
     const result = await summariseWithFallback(fakeShippie, longText, { maxSentences: 2 });
