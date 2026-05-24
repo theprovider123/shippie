@@ -55,8 +55,18 @@ export function GroupScreen({
   onAddSideTing,
   onEditName,
 }: GroupScreenProps) {
-  const [draft, setDraft] = useState<GroupPlan>(() => plan ?? createDefaultGroupPlan(pack));
-  const [membersText, setMembersText] = useState(() => (plan?.members ?? []).join(', '));
+  const localMemberName = formatSupporterHandle(displayName || 'Me', supporterTag);
+  const localSourceId = useMemo(() => getOrCreateSourceId(), []);
+  const visiblePlan = useMemo(
+    () => (plan ? normalizePlanForLocalDevice(plan, localMemberName, supporterTag) : null),
+    [plan, localMemberName, supporterTag],
+  );
+  const [draft, setDraft] = useState<GroupPlan>(() =>
+    normalizePlanForLocalDevice(plan ?? createDefaultGroupPlan(pack), localMemberName, supporterTag),
+  );
+  const [membersText, setMembersText] = useState(() =>
+    normalizeMembersForLocalDevice(plan?.members ?? [], localMemberName, supporterTag).join(', '),
+  );
   const [draftHydrated, setDraftHydrated] = useState(plan !== null);
   const [shareUrl, setShareUrl] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -68,12 +78,25 @@ export function GroupScreen({
   // and arrives from shippie-db on mount). Only fires before the user has
   // edited anything, to avoid clobbering in-progress edits.
   useEffect(() => {
-    if (!draftHydrated && plan) {
-      setDraft(plan);
-      setMembersText(plan.members.join(', '));
+    if (!draftHydrated && visiblePlan) {
+      setDraft(visiblePlan);
+      setMembersText(visiblePlan.members.join(', '));
       setDraftHydrated(true);
     }
-  }, [plan, draftHydrated]);
+  }, [visiblePlan, draftHydrated]);
+
+  useEffect(() => {
+    setDraft((current) => normalizePlanForLocalDevice(current, localMemberName, supporterTag));
+    setMembersText((current) =>
+      normalizeMembersForLocalDevice(parseMembers(current), localMemberName, supporterTag).join(', '),
+    );
+  }, [localMemberName, supporterTag]);
+
+  useEffect(() => {
+    if (!plan || !visiblePlan) return;
+    if (planSignature(plan) === planSignature(visiblePlan)) return;
+    void onSave(visiblePlan);
+  }, [plan, visiblePlan, onSave]);
 
   const primaryId = useMemo(() => closestLandmarkId(landmarks, draft.primary), [landmarks, draft.primary]);
   const fallbackId = useMemo(() => closestLandmarkId(landmarks, draft.fallback), [landmarks, draft.fallback]);
@@ -90,13 +113,13 @@ export function GroupScreen({
     } as Partial<GroupPlan>);
   };
 
-  const cleanMembers = () => parseMembers(membersText);
+  const cleanMembers = () => normalizeMembersForLocalDevice(parseMembers(membersText), localMemberName, supporterTag);
 
   const draftSignature = useMemo(
     () => planSignature({ ...draft, members: cleanMembers() }),
     [draft, membersText],
   );
-  const savedSignature = useMemo(() => (plan ? planSignature(plan) : ''), [plan]);
+  const savedSignature = useMemo(() => (visiblePlan ? planSignature(visiblePlan) : ''), [visiblePlan]);
   const planDirty = draftSignature !== savedSignature;
 
   const save = async () => {
@@ -139,17 +162,16 @@ export function GroupScreen({
   };
 
   const shareMyDot = async () => {
-    const name = formatSupporterHandle(displayName || 'Me', supporterTag);
     const solo = ensurePlanRoom({
       ...createDefaultGroupPlan(pack),
       name: 'Just me',
-      members: [name],
+      members: [localMemberName],
       roleHint: 'watch',
       updatedAt: new Date().toISOString(),
     });
     await onSave(solo);
     setDraft(solo);
-    setMembersText(name);
+    setMembersText(localMemberName);
     setDraftHydrated(true);
     const fragment = await encodePlan(solo);
     setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
@@ -165,7 +187,7 @@ export function GroupScreen({
   const onSignal = (preset: ChatPreset) => {
     addGroupEvent({
       kind: 'group_signal',
-      source_id: getOrCreateSourceId(),
+      source_id: localSourceId,
       display_name: displayName || 'Me',
       supporter_tag: supporterTag,
       preset,
@@ -178,7 +200,7 @@ export function GroupScreen({
 
   // Solo state — no plan yet. Identity card collapses to the "Just you" mode
   // with Share my dot. Side tings still visible so a solo user can watch others.
-  if (!plan) {
+  if (!visiblePlan) {
     return (
       <section className="screen group-hub">
         <GroupIdentityCard
@@ -218,9 +240,9 @@ export function GroupScreen({
   return (
     <section className="screen group-hub">
       <GroupIdentityCard
-        name={plan.name}
-        memberCount={plan.members.length}
-        updatedAtIso={plan.updatedAt}
+        name={visiblePlan.name}
+        memberCount={visiblePlan.members.length}
+        updatedAtIso={visiblePlan.updatedAt}
         onShowInvite={() => void share()}
       />
 
@@ -320,9 +342,15 @@ export function GroupScreen({
         </div>
       </div>
 
-      <GroupMembersCard members={plan.members} />
+      <GroupMembersCard members={visiblePlan.members} />
 
-      <GroupChatCard events={events} onSignal={onSignal} />
+      <GroupChatCard
+        events={events}
+        onSignal={onSignal}
+        localSourceId={localSourceId}
+        displayName={displayName || 'Me'}
+        supporterTag={supporterTag}
+      />
 
       <SideTingsCard
         refreshKey={sideTingsRefresh}
@@ -359,6 +387,54 @@ function closestLandmarkId(
 
 function parseMembers(value: string): string[] {
   return value.split(',').map((m) => m.trim()).filter(Boolean).slice(0, 12);
+}
+
+function normalizePlanForLocalDevice(
+  plan: GroupPlan,
+  localMemberName: string,
+  supporterTag: string,
+): GroupPlan {
+  const members = normalizeMembersForLocalDevice(plan.members, localMemberName, supporterTag);
+  if (sameStringList(plan.members, members)) return plan;
+  return { ...plan, members };
+}
+
+function normalizeMembersForLocalDevice(
+  members: string[],
+  localMemberName: string,
+  supporterTag: string,
+): string[] {
+  const tag = supporterTag.trim().toUpperCase();
+  const tagPattern = tag ? new RegExp(`#?${escapeRegExp(tag)}\\b`, 'i') : null;
+  const cleaned = members
+    .map((member) => member.trim())
+    .filter(Boolean)
+    .map((member) => {
+      const lower = member.toLowerCase();
+      if (lower === 'me' || lower.startsWith('me #')) return localMemberName;
+      if (tagPattern?.test(member)) return localMemberName;
+      return member;
+    });
+
+  if (cleaned.length === 0) cleaned.push(localMemberName);
+
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+  for (const member of cleaned) {
+    const key = member.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(member);
+  }
+  return deduped.slice(0, 12);
+}
+
+function sameStringList(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function planSignature(plan: GroupPlan): string {

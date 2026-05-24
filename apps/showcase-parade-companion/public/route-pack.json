@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-24T20:30:00+01:00",
+  "packVersion": "2026-05-24T21:30:00+01:00",
   "event": {
     "title": "Parade Companion — Islington",
     "dateLabel": "Sunday 31 May 2026",
@@ -459,121 +459,121 @@
         "id": "north-london-forever",
         "title": "North London Forever",
         "cue": "North London forever / whatever the weather",
-        "detail": "Start: \"North London forever\".\nSlow anthem, scarves up, let the chorus breathe.\nBest moment: bus in sight, crowd already singing."
+        "detail": "North London forever, whatever the weather."
       },
       {
         "id": "one-nil",
         "title": "One-nil to The Arsenal",
         "cue": "One-nil to The Arsenal",
-        "detail": "Start: \"One-nil\".\nShort, old-school, repeatable.\nUse after someone mentions clean sheets, Raya, Gabriel, or Saliba."
+        "detail": "One-nil to The Arsenal."
       },
       {
         "id": "forty-nine",
         "title": "49 undefeated",
         "cue": "49, 49 undefeated",
-        "detail": "Start: \"49\".\nKeep it punchy: call, clap, repeat.\nA history flex for the queue, the pub, or any Spurs-adjacent banter."
+        "detail": "49, 49 undefeated."
       },
       {
         "id": "till-i-die",
         "title": "Arsenal till I die",
         "cue": "Arsenal till I die",
-        "detail": "Start: \"Arsenal\".\nSimple loyalty chant.\nGood when the crowd needs one everyone can join without checking words."
+        "detail": "Arsenal till I die."
       },
       {
         "id": "greatest-team",
         "title": "Greatest team",
         "cue": "We're by far the greatest team",
-        "detail": "Start: \"by far\".\nBig grin energy, no subtlety.\nRepeat twice, clap on the gaps, keep it clean around families."
+        "detail": "We're by far the greatest team."
       },
       {
         "id": "oh-to-be",
         "title": "Oh to be a Gooner",
         "cue": "Oh to be a Gooner",
-        "detail": "Start: \"Oh to be\".\nFast chant, easy lift.\nWorks while walking between stations or waiting for the next bus glimpse."
+        "detail": "Oh to be a Gooner."
       },
       {
         "id": "allez",
         "title": "Allez Allez Allez",
         "cue": "Allez, allez, allez",
-        "detail": "Start: \"Allez\".\nEuropean-night rhythm.\nUse as a rolling chant when the street is moving and people can clap along."
+        "detail": "Allez, allez, allez."
       },
       {
         "id": "set-piece",
         "title": "Set-piece again",
         "cue": "Set-piece again, ole ole",
-        "detail": "Start: \"Set-piece\".\nFor the corner-kick era and Gabriel chaos.\nShort enough to use as a joke every time someone points at a lamp post."
+        "detail": "Set-piece again, ole ole."
       },
       {
         "id": "we-love-you",
         "title": "We love you Arsenal",
         "cue": "We love you Arsenal, we do",
-        "detail": "Start: \"We love you\".\nWarm, family-safe, simple.\nBest when the bus slows or players wave directly at your section."
+        "detail": "We love you Arsenal, we do."
       },
       {
         "id": "north-bank-clock-end",
         "title": "North Bank / Clock End",
         "cue": "We're the North Bank, Highbury",
-        "detail": "Start: \"North Bank\".\nOld-ground call-and-response.\nLet one side answer the other if the street splits naturally."
+        "detail": "We're the North Bank, Highbury."
       },
       {
         "id": "come-on-you-reds",
         "title": "Come on you reds",
         "cue": "Come on you reds",
-        "detail": "Start: \"Come on\".\nThe emergency chant: no setup, no memory test.\nUse when something needs to start right now."
+        "detail": "Come on you reds."
       },
       {
         "id": "up-the-arsenal",
         "title": "Up the Arsenal",
         "cue": "Up The Arsenal",
-        "detail": "Start: \"Up\".\nTiny phrase, massive usefulness.\nA quick shout after a tap, photo, wave, or group reunion."
+        "detail": "Up The Arsenal."
       },
       {
         "id": "saliba",
         "title": "Saliba",
         "cue": "Da da da da da, Saliba",
-        "detail": "Start: rhythm first, then \"Saliba\".\nDefender chant, arms up, bouncing optional.\nKeep the beat more than the words."
+        "detail": "Da da da da da, Saliba."
       },
       {
         "id": "rice-rice-baby",
         "title": "Rice Rice Baby",
         "cue": "Rice, Rice, Baby",
-        "detail": "Start: \"Rice\".\nMidfield engine chant.\nBest after trivia, player vote, or any mention of running forever."
+        "detail": "Rice, Rice, Baby."
       },
       {
         "id": "bukayo-saka",
         "title": "Bukayo Saka",
         "cue": "Bukayo, Saka",
-        "detail": "Start: \"Bukayo\".\nKeep it bright and clean.\nShort player chant for families, kids, and shirts with number 7 everywhere."
+        "detail": "Bukayo, Saka."
       },
       {
         "id": "odegaard-oi",
         "title": "Odegaard Oi Oi",
         "cue": "Martin Odegaard, oi oi oi",
-        "detail": "Start: \"Martin\".\nCaptain chant, clipped rhythm.\nGood for a quick lift without turning the whole street into a mosh pit."
+        "detail": "Martin Odegaard, oi oi oi."
       },
       {
         "id": "super-mik",
         "title": "Super Mik Arteta",
         "cue": "We've got Super Mik Arteta",
-        "detail": "Start: \"Super Mik\".\nManager appreciation, loud but tidy.\nUse after season-moment votes or when someone starts talking tactics."
+        "detail": "We've got Super Mik Arteta."
       },
       {
         "id": "kai-havertz",
         "title": "Kai Havertz scores again",
         "cue": "Kai Havertz scores again",
-        "detail": "Start: \"Kai\".\nForward chant with a wink.\nGood when the crowd is playful and someone wants a proper terrace bit."
+        "detail": "Kai Havertz scores again."
       },
       {
         "id": "his-name-is-gabi",
         "title": "His name is Gabi",
         "cue": "His name is Gabi",
-        "detail": "Start: \"Gabi\".\nUse for Gabriel, Martinelli, or general Gabi confusion.\nIf in doubt: point at the shirt and laugh."
+        "detail": "His name is Gabi."
       },
       {
         "id": "trossard-again",
         "title": "Trossard again",
         "cue": "Trossard again, ole ole",
-        "detail": "Start: \"Trossard\".\nSuper-sub energy, quick repeat.\nSave it for the person who brought snacks out of nowhere."
+        "detail": "Trossard again, ole ole."
       }
     ],
     "polls": [
@@ -622,6 +622,10 @@
           {
             "id": "trossard",
             "label": "Trossard"
+          },
+          {
+            "id": "eze",
+            "label": "Eze"
           },
           {
             "id": "timber",
@@ -682,6 +686,10 @@
           {
             "id": "nwaneri",
             "label": "Ethan Nwaneri"
+          },
+          {
+            "id": "dowman",
+            "label": "Max Dowman"
           },
           {
             "id": "lokonga",
@@ -746,9 +754,8 @@
       {
         "id": "minutes-monster",
         "question": "Who felt like the season workload monster?",
-        "answerId": "rice",
-        "source": "Season stats pack",
-        "explainer": "Rice was the obvious all-action answer in midfield: starts, minutes, set pieces, duels, everything.",
+        "source": "Group debate",
+        "explainer": "No official answer here — it is a street debate card, saved so your group can argue it out.",
         "options": [
           {
             "id": "rice",
@@ -774,10 +781,9 @@
       },
       {
         "id": "pass-accuracy",
-        "question": "Who is the safest pass-accuracy shout?",
-        "answerId": "saliba",
-        "source": "Season stats pack",
-        "explainer": "Saliba is the calm centre-back answer: short exits, switches, and pressure-proof recycling.",
+        "question": "Who felt calmest on the ball?",
+        "source": "Group debate",
+        "explainer": "No marked answer — pick the player you trusted most when the press came.",
         "options": [
           {
             "id": "saliba",
@@ -803,10 +809,9 @@
       },
       {
         "id": "clean-sheet-core",
-        "question": "Who anchors the clean-sheet story?",
-        "answerId": "raya",
-        "source": "Season reports",
-        "explainer": "Raya is the keeper answer, with Gabriel and Saliba doing the heavy defensive lifting in front.",
+        "question": "Who defined the clean-sheet story?",
+        "source": "Group debate",
+        "explainer": "No wrong answer — keeper platform, centre-back dominance, and team structure all count.",
         "options": [
           {
             "id": "raya",
@@ -814,28 +819,27 @@
             "detail": "Keeper platform"
           },
           {
-            "id": "saka",
-            "label": "Bukayo Saka",
-            "detail": "Right-wing spark"
+            "id": "gabriel",
+            "label": "Gabriel",
+            "detail": "Box defender"
           },
           {
-            "id": "merino",
-            "label": "Mikel Merino",
-            "detail": "Midfield depth"
+            "id": "saliba",
+            "label": "William Saliba",
+            "detail": "Back-line calm"
           },
           {
-            "id": "trossard",
-            "label": "Leandro Trossard",
-            "detail": "Late-game threat"
+            "id": "rice",
+            "label": "Declan Rice",
+            "detail": "Screening work"
           }
         ]
       },
       {
         "id": "set-piece-menace",
         "question": "Who is the set-piece menace?",
-        "answerId": "gabriel",
-        "source": "Season reports",
-        "explainer": "Gabriel is the obvious box-crashing pick: corners, blocks, headers, panic.",
+        "source": "Group debate",
+        "explainer": "This one is for discussion — goal threat, blocks, screens and delivery all matter.",
         "options": [
           {
             "id": "gabriel",
@@ -861,10 +865,9 @@
       },
       {
         "id": "captain-creator",
-        "question": "Who is the captain-creator hub?",
-        "answerId": "odegaard",
-        "source": "Season reports",
-        "explainer": "Odegaard is the organiser answer: press trigger, right-half-space passing, captain energy.",
+        "question": "Who made the season tick?",
+        "source": "Group debate",
+        "explainer": "No referee on this one — choose the player your group thinks everything flowed through.",
         "options": [
           {
             "id": "odegaard",
@@ -891,9 +894,8 @@
       {
         "id": "academy-spark",
         "question": "Which young player gets the academy spark card?",
-        "answerId": "nwaneri",
-        "source": "Season reports",
-        "explainer": "Nwaneri is the local excitement answer: young, brave, and instantly chantable.",
+        "source": "Group debate",
+        "explainer": "No official answer — save your pick, then settle it in the group.",
         "options": [
           {
             "id": "nwaneri",
@@ -901,19 +903,19 @@
             "detail": "Academy spark"
           },
           {
-            "id": "raya",
-            "label": "David Raya",
-            "detail": "Keeper"
+            "id": "dowman",
+            "label": "Max Dowman",
+            "detail": "Fearless cameo"
           },
           {
-            "id": "jorginho",
-            "label": "Jorginho",
-            "detail": "Veteran tempo"
+            "id": "lewis-skelly",
+            "label": "Myles Lewis-Skelly",
+            "detail": "Left-side burst"
           },
           {
-            "id": "zinchenko",
-            "label": "Zinchenko",
-            "detail": "Inverted full-back"
+            "id": "nwaneri-dowman",
+            "label": "Both",
+            "detail": "No splitting them"
           }
         ]
       }

@@ -21,7 +21,7 @@ export interface BanterVoter {
 export interface BanterTriviaAttempt {
   triviaId: string;
   optionId: string;
-  correct: boolean;
+  correct: boolean | null;
   updatedAt: string;
 }
 
@@ -88,7 +88,7 @@ export function answerTrivia(trivia: RouteBanterTrivia, optionId: string): Bante
   const attempt: BanterTriviaAttempt = {
     triviaId: trivia.id,
     optionId,
-    correct: optionId === trivia.answerId,
+    correct: trivia.answerId ? optionId === trivia.answerId : null,
     updatedAt: new Date().toISOString(),
   };
   const attempts = listTriviaAttempts().filter((item) => item.triviaId !== trivia.id);
@@ -153,12 +153,12 @@ function isRouteBanterTrivia(value: unknown): value is RouteBanterTrivia {
   return (
     isText(record.id) &&
     isText(record.question) &&
-    isText(record.answerId) &&
+    (record.answerId === undefined || isText(record.answerId)) &&
     isText(record.source) &&
     isText(record.explainer) &&
     Array.isArray(record.options) &&
     record.options.every(isBanterOption) &&
-    record.options.some((option) => option.id === record.answerId)
+    (record.answerId === undefined || record.options.some((option) => option.id === record.answerId))
   );
 }
 
@@ -178,7 +178,7 @@ function isTriviaAttempt(value: unknown): value is BanterTriviaAttempt {
   return (
     typeof record.triviaId === 'string' &&
     typeof record.optionId === 'string' &&
-    typeof record.correct === 'boolean' &&
+    (typeof record.correct === 'boolean' || record.correct === null) &&
     typeof record.updatedAt === 'string'
   );
 }

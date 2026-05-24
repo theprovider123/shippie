@@ -66,7 +66,7 @@ const EVENT_TTL_MINUTES: Record<FanEventType, number> = {
   crowd_dense: 45,
   road_blocked: 60,
   food_open: 75,
-  toilet_queue: 30,
+  toilet_queue: 240,
   need_help: 30,
 };
 
@@ -76,7 +76,7 @@ export const FAN_EVENT_LABELS: Record<FanEventType, string> = {
   crowd_dense: 'Too crowded',
   road_blocked: 'Road blocked',
   food_open: 'Food open',
-  toilet_queue: 'Toilet queue',
+  toilet_queue: 'Toilet here',
   need_help: 'Need help',
 };
 

@@ -4,6 +4,9 @@ import type { GroupEvent } from '../lib/group-events';
 interface GroupChatCardProps {
   events: GroupEvent[];
   onSignal: (preset: ChatPreset) => void;
+  localSourceId: string;
+  displayName: string;
+  supporterTag: string;
 }
 
 /**
@@ -11,7 +14,13 @@ interface GroupChatCardProps {
  * top (newest first, max 20 rows shown), preset chips at the bottom. Optional
  * short-text input is a v1.1 add behind a `text` toggle.
  */
-export function GroupChatCard({ events, onSignal }: GroupChatCardProps) {
+export function GroupChatCard({
+  events,
+  onSignal,
+  localSourceId,
+  displayName,
+  supporterTag,
+}: GroupChatCardProps) {
   const shown = events.slice(0, 20);
 
   return (
@@ -24,21 +33,26 @@ export function GroupChatCard({ events, onSignal }: GroupChatCardProps) {
           </p>
         ) : (
           <ul className="chat-activity__list">
-            {shown.map((event) => (
-              <li className="chat-activity__row" key={event.id}>
-                <span className="chat-activity__chip" aria-hidden>
-                  {initialsOf(event.display_name)}
-                </span>
-                <div className="chat-activity__meta">
-                  <strong>
-                    {event.display_name}
-                    {event.supporter_tag ? <em>#{event.supporter_tag}</em> : null}
-                  </strong>
-                  <small>{messageFor(event)}</small>
-                </div>
-                <span className="chat-activity__age">{ageLabel(event.created_at)}</span>
-              </li>
-            ))}
+            {shown.map((event) => {
+              const isLocal = event.source_id === localSourceId;
+              const rowName = isLocal ? displayName : event.display_name;
+              const rowTag = isLocal ? supporterTag : event.supporter_tag;
+              return (
+                <li className="chat-activity__row" key={event.id}>
+                  <span className="chat-activity__chip" aria-hidden>
+                    {initialsOf(rowName)}
+                  </span>
+                  <div className="chat-activity__meta">
+                    <strong>
+                      {rowName}
+                      {rowTag ? <em>#{rowTag}</em> : null}
+                    </strong>
+                    <small>{messageFor(event)}</small>
+                  </div>
+                  <span className="chat-activity__age">{ageLabel(event.created_at)}</span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -74,7 +74,7 @@ export function Onboarding({ open, initialName, supporterTag, onFinish, onSkip }
               </li>
               <li>
                 <strong>Tap the map</strong>
-                <span>I am here, Bus is here, or Toilet queue.</span>
+                <span>I am here, Bus is here, or Toilet here.</span>
               </li>
             </ol>
             <div className="onboarding__actions">

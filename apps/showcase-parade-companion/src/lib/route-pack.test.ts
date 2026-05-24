@@ -79,12 +79,14 @@ describe('route pack', () => {
   test('banter carries a full chant list and expanded player poll', () => {
     const pack = loadRoutePack();
     expect(pack.banter?.chants).toHaveLength(20);
-    expect(pack.banter?.chants.every((chant) => chant.detail.includes('\n'))).toBe(true);
+    expect(pack.banter?.chants.every((chant) => chant.detail.length > 0 && !chant.detail.includes('Start:'))).toBe(true);
     const playerPoll = pack.banter?.polls.find((poll) => poll.id === 'player-of-season');
     expect(playerPoll?.options.some((option) => option.id === 'raya')).toBe(true);
     expect(playerPoll?.options.some((option) => option.id === 'gabriel')).toBe(true);
+    expect(playerPoll?.otherOptions?.some((option) => option.id === 'dowman')).toBe(true);
     expect(playerPoll?.otherOptions?.length).toBeGreaterThan(10);
     expect(pack.banter?.trivia?.length).toBeGreaterThanOrEqual(6);
+    expect(pack.banter?.trivia?.every((card) => card.answerId === undefined)).toBe(true);
   });
 
   test('prefers a cached live route pack only when it is newer than the bake', () => {

@@ -37,6 +37,17 @@ const trivia = {
   ],
 };
 
+const debateTrivia = {
+  id: 'workload',
+  question: 'Who felt like the workload monster?',
+  source: 'debate',
+  explainer: 'No official answer.',
+  options: [
+    { id: 'rice', label: 'Rice' },
+    { id: 'odegaard', label: 'Odegaard' },
+  ],
+};
+
 function installFakeLocalStorage(): void {
   const store = new Map<string, string>();
   Object.defineProperty(globalThis, 'localStorage', {
@@ -86,6 +97,11 @@ describe('banter', () => {
     expect(selectedTriviaAttempt('minutes')?.optionId).toBe('rice');
   });
 
+  test('answerTrivia treats debate cards as saved picks, not right or wrong', () => {
+    expect(answerTrivia(debateTrivia, 'rice')?.correct).toBeNull();
+    expect(selectedTriviaAttempt('workload')?.optionId).toBe('rice');
+  });
+
   test('answerTrivia rejects unknown options', () => {
     expect(answerTrivia(trivia, 'unknown')).toBeNull();
     expect(listTriviaAttempts()).toHaveLength(0);
@@ -96,12 +112,12 @@ describe('banter', () => {
       banter: {
         chants: [{ id: 'ok', title: 'OK', cue: 'OK', detail: 'Line one\nLine two' }, { id: '', title: 'Bad', cue: 'Bad', detail: 'Bad' }],
         polls: [poll, { id: 'bad', question: 'Bad', options: [{ id: 'x' }] } as never],
-        trivia: [trivia, { ...trivia, id: 'bad', answerId: 'missing' }],
+        trivia: [trivia, debateTrivia, { ...trivia, id: 'bad', answerId: 'missing' }],
       },
     });
 
     expect(banter.chants).toHaveLength(1);
     expect(banter.polls).toHaveLength(1);
-    expect(banter.trivia).toHaveLength(1);
+    expect(banter.trivia).toHaveLength(2);
   });
 });

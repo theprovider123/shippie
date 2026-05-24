@@ -70,12 +70,15 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
       option_id: optionId,
       correct: attempt.correct,
     });
-    if (attempt.correct) {
+    if (attempt.correct === true) {
       hapticWow();
       showToast('Correct. Saved on this phone.', 'success');
-    } else {
+    } else if (attempt.correct === false) {
       hapticConfirm();
       showToast('Saved. The answer is revealed below.');
+    } else {
+      hapticConfirm();
+      showToast('Pick saved for the debate.', 'success');
     }
   };
 
@@ -85,8 +88,8 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
     <section className="screen banter-hub" aria-label="Parade banter">
       <div className="banter-intro">
         <p className="eyebrow">Banter</p>
-        <h1>Sing, vote, quiz.</h1>
-        <p>Quick chants, local votes and offline season cards for queues and train rides.</p>
+        <h1>Sing, vote, debate.</h1>
+        <p>Quick chant cues, local votes and season debate cards for queues and train rides.</p>
       </div>
 
       <div className="panel banter-card banter-card--chants">
@@ -180,7 +183,7 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
 
       <div className="panel banter-card banter-card--trivia" data-version={triviaVersion}>
         <div className="banter-card__head">
-          <h2>Season quiz</h2>
+          <h2>Season debate</h2>
           <span>{activeTrivia ? `${activeTriviaIndex + 1}/${banter.trivia?.length ?? 0}` : 'offline'}</span>
         </div>
         {activeTrivia ? (
@@ -220,7 +223,8 @@ function TriviaCard({
         {trivia.options.map((option) => {
           const picked = attempt?.optionId === option.id;
           const revealed = Boolean(attempt);
-          const correct = option.id === trivia.answerId;
+          const hasAnswer = Boolean(trivia.answerId);
+          const correct = hasAnswer && option.id === trivia.answerId;
           return (
             <button
               type="button"
@@ -229,7 +233,7 @@ function TriviaCard({
                 'trivia-option',
                 picked ? 'is-picked' : '',
                 revealed && correct ? 'is-correct' : '',
-                revealed && picked && !correct ? 'is-wrong' : '',
+                revealed && picked && hasAnswer && !correct ? 'is-wrong' : '',
               ].filter(Boolean).join(' ')}
               aria-pressed={picked}
               onClick={() => onAnswer(option.id)}
@@ -241,11 +245,16 @@ function TriviaCard({
         })}
       </div>
       {attempt ? (
-        <p className={`trivia-result ${attempt.correct ? 'is-correct' : 'is-wrong'}`}>
-          {attempt.correct ? 'Correct.' : 'Not that one.'} {trivia.explainer}
+        <p className={`trivia-result ${attempt.correct === true ? 'is-correct' : attempt.correct === false ? 'is-wrong' : ''}`}>
+          {attempt.correct === true
+            ? 'Correct. '
+            : attempt.correct === false
+              ? 'Not that one. '
+              : 'Your pick is saved. '}
+          {trivia.explainer}
         </p>
       ) : (
-        <p className="trivia-result">Tap once for instant results. Works fully offline.</p>
+        <p className="trivia-result">Tap once. Debate cards save your pick; stat cards reveal the answer offline.</p>
       )}
       <div className="trivia-actions">
         <button type="button" className="secondary-action" onClick={onPrevious}>

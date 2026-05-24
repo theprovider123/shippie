@@ -165,6 +165,8 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
       const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
       onBusMarker(marker);
       feedback(`Bus saved at ${formatMarkerTime(marker)}. It can move phone-to-phone by QR.`, 'success');
+    } else if (type === 'toilet_queue') {
+      feedback(`Toilet saved here near ${eventSegmentLabel(event)}.`, 'success');
     } else if (type === 'need_help') {
       feedback('Move to a steward or call 999 now. This marker only travels by QR or relay.', 'warn');
     } else {
@@ -222,8 +224,8 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
           className="fan-tap fan-tap--toilet"
           onClick={() => void saveEvent('toilet_queue')}
         >
-          <strong>Toilet queue</strong>
-          <span>busy now</span>
+          <strong>Toilet here</strong>
+          <span>found now</span>
         </button>
       </div>
 
@@ -431,7 +433,7 @@ function analyticsEventForSignal(type: FanEventType): ParadeAnalyticsEvent {
     case 'food_open':
       return 'parade_food_open_reported';
     case 'toilet_queue':
-      return 'parade_toilet_queue_reported';
+      return 'parade_toilet_here_reported';
     case 'need_help':
       return 'parade_help_reported';
   }

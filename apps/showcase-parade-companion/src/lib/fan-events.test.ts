@@ -60,7 +60,7 @@ describe('fan events', () => {
     expect(decoded.map((event) => event.type).sort()).toEqual(['food_open', 'presence', 'road_blocked']);
   });
 
-  test('open food and toilet queue reports stay at the GPS point instead of snapping to the route', () => {
+  test('open food and toilet-here reports stay at the GPS point instead of snapping to the route', () => {
     const food = createFanEvent('food_open', position, route, 'fan_food');
     const queue = createFanEvent('toilet_queue', position, route, 'fan_toilet');
     const summary = summarizeFanEvents([food, queue]);
