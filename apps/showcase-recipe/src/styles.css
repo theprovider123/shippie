@@ -3431,3 +3431,87 @@ body {
   margin: 0.25rem 0 0;
   font-size: 0.95rem;
 }
+
+/* ── 2026-05-24 cluster 3 — ShoppingList aisle-grouping density ───
+   Aisle headers should read like magazine departments — small-caps
+   mono with a hairline rule — and items breathe at 8px. Checked items
+   dim to 0.4 + strikethrough but stay tappable for unchecking. Header
+   sticks to top on scroll so users keep their place. */
+.shop-grouped {
+  gap: 1.1rem;
+}
+
+.shop-aisle {
+  display: grid;
+  gap: 0;
+  position: relative;
+}
+
+.shop-aisle-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.55rem 0.15rem 0.4rem;
+  background: var(--paper);
+  border-bottom: 1px solid rgba(101, 86, 70, 0.22);
+}
+
+.shop-aisle-header .eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-variant: small-caps;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
+  color: var(--muted);
+}
+
+.shop-aisle-header .cook-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--sage-deep);
+  opacity: 0.78;
+}
+
+.shop-aisle > button {
+  margin-top: 8px;
+}
+
+.shop-aisle > button:first-of-type {
+  margin-top: 10px;
+}
+
+/* Magazine-density override: tighter button surface, sharper checked
+   state. Keep tappable so users can uncheck — per brief. */
+.shopping-list .shop-aisle > button {
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 250, 240, 0.62);
+  border-color: rgba(101, 86, 70, 0.1);
+  box-shadow: none;
+}
+
+.shopping-list .shop-aisle > button.checked {
+  opacity: 0.4;
+}
+
+.shopping-list .shop-aisle > button.checked strong {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(101, 86, 70, 0.55);
+}
+
+.shopping-list .shop-aisle > button.checked span {
+  background: rgba(143, 160, 112, 0.32);
+  border-color: rgba(143, 160, 112, 0.6);
+  color: var(--sage-deep);
+}
