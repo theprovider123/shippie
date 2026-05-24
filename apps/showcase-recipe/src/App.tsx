@@ -89,6 +89,10 @@ interface MealPlanEntry {
   mealType: MealType;
   recipeId: string;
   servings: number;
+  /** Servings cooked against this slot. Bumped in completeCook when a
+   * cook completes on the same recipe + date. Used by the week-end
+   * Sunday summary to tally planned vs. cooked. */
+  cookedServings?: number;
 }
 
 interface PantryItem {
@@ -824,9 +828,22 @@ export function App() {
         const used = recipe.ingredients.some((ing) => normaliseName(ing.name) === normaliseName(item.name));
         return used ? { ...item, quantity: Math.max(0, item.quantity - 1), updatedAt: cookedAt } : item;
       });
+      // Increment cookedServings on the first matching plan slot for
+      // today. Lets the week-end summary tally "planned vs cooked"
+      // without changing the existing cooked[] history.
+      const todayKey = today();
+      let bumped = false;
+      const mealPlan = prev.mealPlan.map((entry) => {
+        if (bumped) return entry;
+        if (entry.recipeId !== recipe.id) return entry;
+        if (entry.date !== todayKey) return entry;
+        bumped = true;
+        return { ...entry, cookedServings: (entry.cookedServings ?? 0) + servings };
+      });
       return {
         ...prev,
         pantry,
+        mealPlan,
         recipes: prev.recipes.map((candidate) =>
           candidate.id === recipe.id
             ? { ...candidate, cookCount: nextCookCount, cookedAt, personalFit: Math.min(99, candidate.personalFit + 2) }
@@ -995,6 +1012,8 @@ export function App() {
           dates={dates}
           mealPlan={state.mealPlan}
           recipes={state.recipes}
+          cooked={state.cooked}
+          tonightCandidates={forYou.slice(0, 6)}
           onPlan={planMeal}
           onAutoPlan={autoPlan}
         />
@@ -1576,21 +1595,51 @@ function PlanView({
   dates,
   mealPlan,
   recipes,
+  cooked,
+  tonightCandidates,
   onPlan,
   onAutoPlan,
 }: {
   dates: string[];
   mealPlan: MealPlanEntry[];
   recipes: Recipe[];
+  cooked: CookedMeal[];
+  tonightCandidates: Array<{ recipe: Recipe; have: number; total: number; pantryFraction: number }>;
   onPlan: (date: string, mealType: MealType, recipeId: string) => void;
   onAutoPlan: () => void;
 }) {
-  const todaysSet = mealPlan.filter((entry) => entry.date === today()).length;
+  const todayKey = today();
+  const todaysSet = mealPlan.filter((entry) => entry.date === todayKey).length;
   const isEmpty = mealPlan.length === 0;
   const [picker, setPicker] = useState<{ date: string; meal: MealType } | null>(null);
   const pickerCurrent = picker
     ? mealPlan.find((e) => e.date === picker.date && e.mealType === picker.meal)?.recipeId ?? null
     : null;
+  // "Popular tonight" — only when today has no planned meals. A small
+  // horizontal rail of recipes ranked by pantryFraction. Tapping a tile
+  // drops it into tonight's dinner slot, giving the user a one-tap path
+  // from "nothing planned" to "tonight is sorted".
+  const popularTonight = todaysSet === 0
+    ? [...tonightCandidates]
+        .sort((a, b) => b.pantryFraction - a.pantryFraction)
+        .slice(0, 6)
+    : [];
+  // Week-end summary: on Sunday surface a small "this week" card —
+  // total cooked count, leftover portions (cookedServings > planned),
+  // and slot fill (planned vs. cooked).
+  const isSunday = new Date(`${todayKey}T12:00:00`).getDay() === 0;
+  const weekSummary = useMemo(() => {
+    const weekEntries = mealPlan.filter((e) => dates.includes(e.date));
+    const plannedSlots = weekEntries.length;
+    const cookedSlots = weekEntries.filter((e) => (e.cookedServings ?? 0) > 0).length;
+    const plannedServings = weekEntries.reduce((sum, e) => sum + e.servings, 0);
+    const cookedServings = weekEntries.reduce((sum, e) => sum + (e.cookedServings ?? 0), 0);
+    const weekStartMs = new Date(`${dates[0] ?? todayKey}T00:00:00`).getTime();
+    const cookedThisWeekTotal = cooked.filter((c) => c.cookedAt >= weekStartMs).length;
+    const leftoverPortions = Math.max(0, cookedServings - plannedServings);
+    return { plannedSlots, cookedSlots, cookedThisWeekTotal, leftoverPortions };
+  }, [mealPlan, dates, cooked, todayKey]);
+  const showWeekSummary = isSunday && weekSummary.plannedSlots > 0;
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -1601,6 +1650,46 @@ function PlanView({
         </div>
         <button type="button" className="primary" onClick={onAutoPlan}>Fill week</button>
       </div>
+      {showWeekSummary ? (
+        <section className="plan-week-summary" aria-label="Week-end summary">
+          <p className="eyebrow">Sunday wrap</p>
+          <p>
+            <strong>{weekSummary.cookedThisWeekTotal} meals cooked</strong>
+            {weekSummary.leftoverPortions > 0 ? (
+              <> · <strong>{weekSummary.leftoverPortions} portions leftover</strong></>
+            ) : null}
+            {' · '}
+            <strong>{weekSummary.plannedSlots} planned, {weekSummary.cookedSlots} cooked</strong>
+          </p>
+        </section>
+      ) : null}
+      {popularTonight.length > 0 ? (
+        <section className="plan-popular-tonight" aria-label="Popular tonight">
+          <header className="plan-popular-head">
+            <p className="eyebrow">Popular tonight</p>
+            <small>ranked by what's in your pantry</small>
+          </header>
+          <div className="plan-popular-rail">
+            {popularTonight.map(({ recipe, have, total, pantryFraction }) => (
+              <button
+                key={recipe.id}
+                type="button"
+                className="plan-popular-tile"
+                onClick={() => onPlan(todayKey, 'dinner', recipe.id)}
+                aria-label={`Plan ${recipe.title} for tonight's dinner`}
+              >
+                {recipe.photoDataUrl ? (
+                  <img src={recipe.photoDataUrl} alt="" />
+                ) : (
+                  <div className="plan-popular-mark" aria-hidden>{recipe.title.slice(0, 1)}</div>
+                )}
+                <strong>{recipe.title}</strong>
+                <small>{have}/{total} on hand · {Math.round(pantryFraction * 100)}%</small>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {isEmpty ? (
         <EmptyState
           eyebrow="Plan"
@@ -1624,15 +1713,17 @@ function PlanView({
                 {MEALS.map((meal) => {
                   const entry = mealPlan.find((candidate) => candidate.date === date && candidate.mealType === meal);
                   const recipe = entry ? recipes.find((r) => r.id === entry.recipeId) : null;
+                  const cookedServings = entry?.cookedServings ?? 0;
+                  const isCooked = cookedServings > 0;
                   return (
                     <button
                       key={meal}
                       type="button"
-                      className={`plan-slot meal-cell ${MEAL_TONE[meal]}${recipe ? ' is-filled' : ''}`}
+                      className={`plan-slot meal-cell ${MEAL_TONE[meal]}${recipe ? ' is-filled' : ''}${isCooked ? ' is-cooked' : ''}`}
                       onClick={() => setPicker({ date, meal })}
-                      aria-label={recipe ? `${meal}: ${recipe.title} — tap to change` : `${meal}: empty — tap to assign a recipe`}
+                      aria-label={recipe ? `${meal}: ${recipe.title}${isCooked ? ` — cooked ${cookedServings}` : ''} — tap to change` : `${meal}: empty — tap to assign a recipe`}
                     >
-                      <span className="meal-tag">{meal}</span>
+                      <span className="meal-tag">{meal}{isCooked ? ' · ✓' : ''}</span>
                       {recipe ? (
                         <span className="meal-title">{recipe.title}</span>
                       ) : (
