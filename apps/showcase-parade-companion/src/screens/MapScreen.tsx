@@ -14,7 +14,6 @@ import {
   createFanEvent,
   encodeFanEventsForSync,
   eventAgeLabel,
-  eventSegmentLabel,
   FAN_EVENT_LABELS,
   REPORT_EVENT_TYPES,
   isActive,
@@ -26,6 +25,7 @@ import {
 import { haversineMeters, nearestRouteSegment } from '../lib/geo';
 import { formatAccuracy, formatGpsAge, isFreshGpsFix, isReportableGpsFix, watchGps, type GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
+import { describeParadeLocation } from '../lib/location-labels';
 import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import { hapticConfirm, hapticWarn, hapticWow } from '../lib/haptic';
 import type { LiveSyncStatus } from '../lib/live-sync';
@@ -111,6 +111,16 @@ export function MapScreen({
       .slice(0, 3)
       .map(({ poi }) => poi);
   }, [findCategory, gpsFix, pack.pois, pack.route.coordinates]);
+
+  useEffect(() => {
+    if (!findCategory) return;
+    const nearest = nearestPoiForCategory(findCategory, pack, gpsFix);
+    if (!nearest) return;
+    setWalkTarget((current) => {
+      if (current?.label === nearest.name && current.lng === nearest.lng && current.lat === nearest.lat) return current;
+      return { lng: nearest.lng, lat: nearest.lat, label: nearest.name };
+    });
+  }, [findCategory, gpsFix, pack]);
 
   useEffect(() => {
     const stop = watchGps({
@@ -292,12 +302,7 @@ export function MapScreen({
             onTrack('parade_quick_find_used', { category });
             // Auto-target the nearest match for an instant "where do I walk?"
             // — recomputed inline (the memo doesn't update until next render).
-            const kinds = new Set(kindsForCategory(category));
-            const anchor = gpsFix ?? { lat: pack.route.coordinates[0]?.[1] ?? 0, lng: pack.route.coordinates[0]?.[0] ?? 0 };
-            const nearest = pack.pois
-              .filter((poi) => kinds.has(poi.kind))
-              .map((poi) => ({ poi, distance: haversineMeters(anchor, poi) }))
-              .sort((a, b) => a.distance - b.distance)[0]?.poi;
+            const nearest = nearestPoiForCategory(category, pack, gpsFix);
             if (nearest) {
               setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
             }
@@ -313,6 +318,34 @@ export function MapScreen({
       />
 
       <LiveSyncStrip status={liveSyncStatus} online={online} />
+
+      <StatusStrip
+        gpsFix={gpsFix}
+        routeDistanceM={routeDistance?.distanceM ?? null}
+        batterySaver={batterySaver}
+        onRoutePress={
+          routeDistance
+            ? () => {
+                setWalkTarget({
+                  lng: routeDistance.snapped.lng,
+                  lat: routeDistance.snapped.lat,
+                  label: 'Nearest route',
+                });
+                showToast('Walking line drawn back to the route.', 'success');
+                onTrack('parade_route_walk_to', { distance_m: Math.round(routeDistance.distanceM) });
+              }
+            : undefined
+        }
+        onToggleBatterySaver={() => setBatterySaver((current) => !current)}
+        onOpenQr={() => void openSync()}
+      />
+
+      <GoalPointer
+        pack={pack}
+        gpsFix={gpsFix}
+        target={walkTarget}
+        onClear={() => setWalkTarget(null)}
+      />
 
       <CorridorMap
         pack={pack}
@@ -342,34 +375,8 @@ export function MapScreen({
         }}
       />
 
-      <StatusStrip
-        gpsFix={gpsFix}
-        routeDistanceM={routeDistance?.distanceM ?? null}
-        batterySaver={batterySaver}
-        onRoutePress={
-          routeDistance
-            ? () => {
-                setWalkTarget({
-                  lng: routeDistance.snapped.lng,
-                  lat: routeDistance.snapped.lat,
-                  label: 'Nearest route',
-                });
-                showToast('Walking line drawn back to the route.', 'success');
-                onTrack('parade_route_walk_to', { distance_m: Math.round(routeDistance.distanceM) });
-              }
-            : undefined
-        }
-        onToggleBatterySaver={() => setBatterySaver((current) => !current)}
-        onOpenQr={() => void openSync()}
-      />
-
-      <GoalPointer
-        gpsFix={gpsFix}
-        target={walkTarget}
-        onClear={() => setWalkTarget(null)}
-      />
-
       <CrowdCompass
+        pack={pack}
         gpsFix={gpsFix}
         fanEvents={fanEvents}
         onTarget={(target) => {
@@ -462,9 +469,17 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+function nearestPoiForCategory(category: QuickFindCategory, pack: RoutePack, gpsFix: GpsFix | null): RoutePoi | null {
+  const kinds = new Set(kindsForCategory(category));
+  const anchor = gpsFix ?? { lat: pack.route.coordinates[0]?.[1] ?? 0, lng: pack.route.coordinates[0]?.[0] ?? 0 };
+  return pack.pois
+    .filter((poi) => kinds.has(poi.kind))
+    .map((poi) => ({ poi, distance: haversineMeters(anchor, poi) }))
+    .sort((a, b) => a.distance - b.distance)[0]?.poi ?? null;
+}
+
 function placeLabelForCluster(cluster: FanEventCluster, pack: RoutePack): string {
-  const routeLabel = eventSegmentLabel({ segment_id: cluster.segmentId, segment_index: cluster.segmentIndex });
-  return enrichPlaceLabel(routeLabel, cluster.point, pack);
+  return describeParadeLocation(cluster.point, pack).title;
 }
 
 function placeLabelForEvent(event: FanEvent, pack: RoutePack): string {
@@ -472,17 +487,7 @@ function placeLabelForEvent(event: FanEvent, pack: RoutePack): string {
     typeof event.snapped_lng === 'number' && typeof event.snapped_lat === 'number'
       ? { lng: event.snapped_lng, lat: event.snapped_lat }
       : { lng: event.lng, lat: event.lat };
-  return enrichPlaceLabel(eventSegmentLabel(event), point, pack);
-}
-
-function enrichPlaceLabel(routeLabel: string, point: { lng: number; lat: number }, pack: RoutePack): string {
-  const nearest = pack.pois
-    .filter((poi) => poi.kind !== 'toilet' && poi.kind !== 'water' && poi.kind !== 'atm')
-    .map((poi) => ({ poi, distance: haversineMeters(point, poi) }))
-    .sort((a, b) => a.distance - b.distance)[0];
-  if (!nearest || nearest.distance > 260) return routeLabel;
-  if (routeLabel === 'near route') return `near ${nearest.poi.name}`;
-  return `${routeLabel} · near ${nearest.poi.name}`;
+  return describeParadeLocation(point, pack).title;
 }
 
 function insightMeta(cluster: FanEventCluster): string {

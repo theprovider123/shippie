@@ -1,16 +1,19 @@
+import type { RoutePack } from '../data/parade-2026';
 import type { PlanPoint } from '../lib/group-plan';
 import type { GpsFix } from '../lib/gps';
-import { FAN_EVENT_LABELS, eventAgeLabel, eventSegmentLabel, type FanEvent } from '../lib/fan-events';
+import { FAN_EVENT_LABELS, eventAgeLabel, type FanEvent } from '../lib/fan-events';
 import { bearingDeg, haversineMeters } from '../lib/geo';
 import { crowdCompassTargets } from '../lib/live-sync';
+import { describeParadeLocation } from '../lib/location-labels';
 
 interface CrowdCompassProps {
+  pack: RoutePack;
   gpsFix: GpsFix | null;
   fanEvents: FanEvent[];
   onTarget: (target: PlanPoint) => void;
 }
 
-export function CrowdCompass({ gpsFix, fanEvents, onTarget }: CrowdCompassProps) {
+export function CrowdCompass({ pack, gpsFix, fanEvents, onTarget }: CrowdCompassProps) {
   const targets = crowdCompassTargets(fanEvents, gpsFix);
 
   return (
@@ -27,12 +30,13 @@ export function CrowdCompass({ gpsFix, fanEvents, onTarget }: CrowdCompassProps)
         <div className="crowd-compass__targets">
           {targets.map(({ event, point, count, confidence }) => {
             const bearing = bearingDeg(gpsFix, point);
+            const place = describeParadeLocation(point, pack);
             return (
               <button
                 type="button"
                 key={`${event.type}-${event.id}`}
                 className={`crowd-compass__target ${event.type}`}
-                onClick={() => onTarget({ ...point, label: FAN_EVENT_LABELS[event.type] })}
+                onClick={() => onTarget({ ...point, label: `${FAN_EVENT_LABELS[event.type]} · ${place.title}` })}
               >
                 <span className="crowd-compass__arrow" style={{ transform: `rotate(${bearing}deg)` }}>
                   ↑
@@ -40,8 +44,9 @@ export function CrowdCompass({ gpsFix, fanEvents, onTarget }: CrowdCompassProps)
                 <span>
                   <strong>{FAN_EVENT_LABELS[event.type]}</strong>
                   <small>
-                    {eventSegmentLabel(event)} · {formatDistance(haversineMeters(gpsFix, point))} · {count} {count === 1 ? 'tap' : 'taps'} · {confidence} · {eventAgeLabel(event)}
+                    {place.title} · {formatDistance(haversineMeters(gpsFix, point))} · {count} {count === 1 ? 'tap' : 'taps'} · {confidence} · {eventAgeLabel(event)}
                   </small>
+                  <em>{place.detail} · {place.grid}</em>
                 </span>
               </button>
             );

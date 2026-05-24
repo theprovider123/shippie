@@ -8,6 +8,7 @@ import {
   publishFanPulse,
   pulsePacketToFanEvent,
   routeSegmentIds,
+  selectFanPulseEvents,
 } from './live-sync';
 
 const route = FALLBACK_ROUTE_PACK.route.coordinates;
@@ -21,7 +22,7 @@ describe('live fan pulse sync', () => {
   });
 
   test('turns a local fan event into an anonymous relay packet', () => {
-    const event = createFanEvent('toilet_queue', position, route, 'fan_test');
+    const event = createFanEvent('toilet_queue', { lng: -0.1048123, lat: 51.5487456, accuracyM: 18 }, route, 'fan_test');
     const packet = fanEventToPulsePacket(event, route);
 
     expect(packet).toMatchObject({
@@ -31,6 +32,9 @@ describe('live fan pulse sync', () => {
       segmentId: expect.stringMatching(/^seg-/),
       eventSegmentId: null,
     });
+    expect(packet?.lng).toBe(Number(event.lng.toFixed(4)));
+    expect(packet?.lat).toBe(Number(event.lat.toFixed(4)));
+    expect(packet?.accuracyM).toBeGreaterThanOrEqual(20);
     expect(Object.keys(packet ?? {}).sort()).not.toContain('displayName');
   });
 
@@ -69,6 +73,18 @@ describe('live fan pulse sync', () => {
     expect(published).toBe(1);
     expect(calls).toHaveLength(1);
     expect(JSON.parse(calls[0] as string)).toMatchObject({ type: 'presence', sourceId: 'fan_test' });
+  });
+
+  test('selects a small priority batch for weak-signal sync', () => {
+    const events = [
+      createFanEvent('presence', position, route, 'fan_a', new Date('2026-05-31T12:00:00+01:00')),
+      createFanEvent('bus_seen', position, route, 'fan_a', new Date('2026-05-31T12:01:00+01:00')),
+      createFanEvent('toilet_queue', position, route, 'fan_a', new Date('2026-05-31T12:02:00+01:00')),
+    ];
+
+    const selected = selectFanPulseEvents(events, 2);
+
+    expect(selected.map((event) => event.type)).toEqual(['bus_seen', 'toilet_queue']);
   });
 
   test('pulls relay packets from all route segments and validates them', async () => {

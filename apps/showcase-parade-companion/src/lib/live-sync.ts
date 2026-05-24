@@ -5,6 +5,8 @@ import { nearestRouteSegment } from './geo';
 export const FAN_PULSE_ENDPOINT = '/__shippie/parade/fan-pulse';
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_PULL_SEGMENTS = 32;
+const MAX_PUBLISH_PER_SYNC = 8;
+const PUBLIC_COORD_DECIMALS = 4;
 const PUBLISHABLE_TYPES: FanEventType[] = [
   'presence',
   'bus_seen',
@@ -50,22 +52,40 @@ export function routeSegmentIds(route: readonly [number, number][]): string[] {
   return route.slice(0, -1).map((_, index) => `seg-${index}`);
 }
 
+export function selectFanPulseEvents(events: readonly FanEvent[], limit = MAX_PUBLISH_PER_SYNC): FanEvent[] {
+  const byKey = new Map<string, FanEvent>();
+  for (const event of events) {
+    if (!isPublishableFanEvent(event)) continue;
+    const key = `${event.type}:${event.segment_id ?? quantizedGridKey(event)}:${event.source_id}`;
+    const current = byKey.get(key);
+    if (!current || Date.parse(event.created_at) > Date.parse(current.created_at)) byKey.set(key, event);
+  }
+  return [...byKey.values()]
+    .sort((a, b) => {
+      const priority = publishPriority(b.type) - publishPriority(a.type);
+      if (priority !== 0) return priority;
+      return Date.parse(b.created_at) - Date.parse(a.created_at);
+    })
+    .slice(0, limit);
+}
+
 export function fanEventToPulsePacket(event: FanEvent, route: readonly [number, number][]): LiveFanPulsePacket | null {
   if (!isPublishableFanEvent(event)) return null;
   const relaySegmentId = event.segment_id ?? nearestRouteSegment(event, route)?.segmentId ?? null;
   if (!relaySegmentId) return null;
+  const publicPoint = publicPulsePoint(event);
   return {
     id: event.id,
     type: event.type as Exclude<FanEventType, 'need_help'>,
     sourceId: event.source_id,
-    lng: Number(event.lng.toFixed(6)),
-    lat: Number(event.lat.toFixed(6)),
-    accuracyM: Math.round(event.accuracy_m),
+    lng: publicPoint.lng,
+    lat: publicPoint.lat,
+    accuracyM: publicPoint.accuracyM,
     segmentId: relaySegmentId,
     eventSegmentId: event.segment_id,
     eventSegmentIndex: event.segment_index,
-    snappedLng: event.snapped_lng === null ? null : Number(event.snapped_lng.toFixed(6)),
-    snappedLat: event.snapped_lat === null ? null : Number(event.snapped_lat.toFixed(6)),
+    snappedLng: publicPoint.snappedLng,
+    snappedLat: publicPoint.snappedLat,
     createdAt: event.created_at,
     expiresAt: event.expires_at,
   };
@@ -98,7 +118,7 @@ export async function publishFanPulse(
 ): Promise<number> {
   if (events.length === 0) return 0;
   let published = 0;
-  const packets = events
+  const packets = selectFanPulseEvents(events)
     .map((event) => fanEventToPulsePacket(event, route))
     .filter((packet): packet is LiveFanPulsePacket => Boolean(packet));
 
@@ -163,6 +183,48 @@ export function crowdCompassTargets(events: readonly FanEvent[], here: LngLat | 
     if (out.length >= 3) break;
   }
   return out;
+}
+
+function publicPulsePoint(event: FanEvent): {
+  lng: number;
+  lat: number;
+  accuracyM: number;
+  snappedLng: number | null;
+  snappedLat: number | null;
+} {
+  const snapped = typeof event.snapped_lng === 'number' && typeof event.snapped_lat === 'number'
+    ? {
+        lng: quantizeCoord(event.snapped_lng),
+        lat: quantizeCoord(event.snapped_lat),
+      }
+    : null;
+  const lng = snapped?.lng ?? quantizeCoord(event.lng);
+  const lat = snapped?.lat ?? quantizeCoord(event.lat);
+  return {
+    lng,
+    lat,
+    accuracyM: Math.max(20, Math.round(event.accuracy_m)),
+    snappedLng: snapped?.lng ?? null,
+    snappedLat: snapped?.lat ?? null,
+  };
+}
+
+function quantizeCoord(value: number): number {
+  return Number(value.toFixed(PUBLIC_COORD_DECIMALS));
+}
+
+function quantizedGridKey(point: LngLat): string {
+  return `${quantizeCoord(point.lng)}:${quantizeCoord(point.lat)}`;
+}
+
+function publishPriority(type: FanEventType): number {
+  if (type === 'bus_seen') return 6;
+  if (type === 'road_blocked') return 5;
+  if (type === 'toilet_queue') return 4;
+  if (type === 'crowd_dense') return 3;
+  if (type === 'food_open') return 2;
+  if (type === 'presence') return 1;
+  return 0;
 }
 
 async function fetchWithTimeout(fetchImpl: typeof fetch, input: RequestInfo | URL, init?: RequestInit): Promise<Response> {

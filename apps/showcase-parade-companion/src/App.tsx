@@ -32,6 +32,7 @@ import {
   isPublishableFanEvent,
   publishFanPulse,
   pullFanPulse,
+  selectFanPulseEvents,
   type LiveSyncStatus,
 } from './lib/live-sync';
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
@@ -112,7 +113,7 @@ export function App() {
         const candidates = immediateEvent
           ? [immediateEvent]
           : fanEventsRef.current.filter((event) => isActive(event) && !publishedFanEventIds.current.has(event.id));
-        const publishable = candidates.filter(isPublishableFanEvent);
+        const publishable = selectFanPulseEvents(candidates.filter(isPublishableFanEvent));
         const published = await publishFanPulse(publishable, route);
         if (published === publishable.length) {
           for (const event of publishable) publishedFanEventIds.current.add(event.id);

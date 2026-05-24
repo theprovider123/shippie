@@ -7,7 +7,7 @@ export const MAX_FAN_EVENTS_FRAGMENT_LENGTH = 3600;
 export const ROUTE_SNAP_MAX_ACCURACY_M = 350;
 export const PUBLIC_PULSE_CUTOFF_ISO = '2026-05-31T22:00:00+01:00';
 
-const ROUTE_SEGMENT_LABELS: Record<number, string> = {
+export const ROUTE_SEGMENT_LABELS: Record<number, string> = {
   0: 'Stadium / Drayton Park',
   1: 'Drayton Park / Aubert Park',
   2: 'Highbury Grove',
