@@ -48,9 +48,10 @@ describe('banter', () => {
 
   test('voteInPoll stores one local vote per poll', () => {
     expect(voteInPoll(poll, 'saka')?.optionId).toBe('saka');
-    expect(voteInPoll(poll, 'rice')?.optionId).toBe('rice');
+    expect(voteInPoll(poll, 'rice', { sourceId: 'me_123', displayName: 'Leah', supporterTag: 'A7K2' })?.optionId).toBe('rice');
     expect(listBanterVotes()).toHaveLength(1);
     expect(selectedOptionId('player')).toBe('rice');
+    expect(listBanterVotes()[0]?.supporterTag).toBe('A7K2');
   });
 
   test('voteInPoll rejects unknown options', () => {

@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import {
   cleanDisplayName,
   DEFAULT_DISPLAY_NAME,
+  formatSupporterHandle,
   getDisplayName,
+  getSupporterTag,
   hasDisplayName,
   MAX_DISPLAY_NAME_LENGTH,
+  SUPPORTER_TAG_LENGTH,
   setDisplayName,
 } from './display-name';
 
@@ -44,5 +47,14 @@ describe('display-name', () => {
     expect(setDisplayName(' Leah ')).toBe('Leah');
     expect(getDisplayName()).toBe('Leah');
     expect(hasDisplayName()).toBe(true);
+  });
+
+  test('creates a stable local supporter tag for duplicate names', () => {
+    const first = getSupporterTag();
+    const second = getSupporterTag();
+
+    expect(first).toBe(second);
+    expect(first).toHaveLength(SUPPORTER_TAG_LENGTH);
+    expect(formatSupporterHandle(' Leah ', first)).toBe(`Leah #${first}`);
   });
 });

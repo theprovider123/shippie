@@ -7,6 +7,7 @@ import { SideTingsCard } from '../components/SideTingsCard';
 import type { RoutePack } from '../data/parade-2026';
 import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import { CHAT_PRESET_LABEL, type ChatPreset } from '../lib/chat-presets';
+import { formatSupporterHandle } from '../lib/display-name';
 import {
   addGroupEvent,
   getOrCreateSourceId,
@@ -28,6 +29,7 @@ interface GroupScreenProps {
   pack: RoutePack;
   plan: GroupPlan | null;
   displayName: string;
+  supporterTag: string;
   onSave: (plan: GroupPlan) => Promise<void>;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
   sideTingsRefresh?: number;
@@ -45,6 +47,7 @@ export function GroupScreen({
   pack,
   plan,
   displayName,
+  supporterTag,
   onSave,
   onTrack,
   sideTingsRefresh,
@@ -136,7 +139,7 @@ export function GroupScreen({
   };
 
   const shareMyDot = async () => {
-    const name = displayName || 'Me';
+    const name = formatSupporterHandle(displayName || 'Me', supporterTag);
     const solo = ensurePlanRoom({
       ...createDefaultGroupPlan(pack),
       name: 'Just me',
@@ -164,6 +167,7 @@ export function GroupScreen({
       kind: 'group_signal',
       source_id: getOrCreateSourceId(),
       display_name: displayName || 'Me',
+      supporter_tag: supporterTag,
       preset,
     });
     setEvents(listGroupEvents());
@@ -183,6 +187,8 @@ export function GroupScreen({
           solo
           onShowInvite={() => void shareMyDot()}
           onShareMyDot={() => void shareMyDot()}
+          displayName={displayName}
+          supporterTag={supporterTag}
         />
         {displayName === 'Me' ? (
           <div className="panel set-name-card">

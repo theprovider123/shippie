@@ -9,7 +9,13 @@ import { BanterScreen } from './screens/BanterScreen';
 import { GroupScreen } from './screens/GroupScreen';
 import { MapScreen } from './screens/MapScreen';
 import { SafetyScreen } from './screens/SafetyScreen';
-import { cleanDisplayName, getDisplayName, setDisplayName as saveDisplayName } from './lib/display-name';
+import {
+  cleanDisplayName,
+  formatSupporterHandle,
+  getDisplayName,
+  getSupporterTag,
+  setDisplayName as saveDisplayName,
+} from './lib/display-name';
 import { decodePlan, type GroupPlan } from './lib/group-plan';
 import {
   listBusMarkers,
@@ -48,6 +54,7 @@ export function App() {
   const [importStatus, setImportStatus] = useState('');
   const [sideTingsRefresh, setSideTingsRefresh] = useState(0);
   const [displayName, setDisplayNameState] = useState(() => getDisplayName());
+  const [supporterTag] = useState(() => getSupporterTag());
   const [onboardingOpen, setOnboardingOpen] = useState(() => !isOnboarded());
   const [menuOpen, setMenuOpen] = useState(false);
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
@@ -337,7 +344,7 @@ export function App() {
     setDisplayNameState(saved);
     setNameDraft(saved);
     setNameEditorOpen(false);
-    showToast(`Name saved: ${saved}`, 'success');
+    showToast(`Name saved: ${formatSupporterHandle(saved, supporterTag)}`, 'success');
     trackParadeAction('parade_display_name_saved', { display_name_set: saved !== 'Me' });
   };
 
@@ -428,6 +435,7 @@ export function App() {
       <Onboarding
         open={onboardingOpen}
         initialName={displayName}
+        supporterTag={supporterTag}
         onFinish={finishOnboarding}
         onSkip={skipOnboarding}
       />
@@ -453,6 +461,9 @@ export function App() {
                 autoFocus
               />
             </label>
+            <p className="supporter-tag">
+              Friends see <strong>{formatSupporterHandle(nameDraft, supporterTag)}</strong>. The tag stays on this phone.
+            </p>
             <div className="name-sheet__actions">
               <button type="button" className="secondary-action" onClick={() => setNameEditorOpen(false)}>
                 Cancel
@@ -530,6 +541,7 @@ export function App() {
             pack={pack}
             plan={plan}
             displayName={displayName}
+            supporterTag={supporterTag}
             onSave={onSavePlan}
             onTrack={trackParadeAction}
             sideTingsRefresh={sideTingsRefresh}
@@ -541,7 +553,14 @@ export function App() {
             }}
           />
         ) : null}
-        {active === 'banter' ? <BanterScreen pack={pack} onTrack={trackParadeAction} /> : null}
+        {active === 'banter' ? (
+          <BanterScreen
+            pack={pack}
+            displayName={displayName}
+            supporterTag={supporterTag}
+            onTrack={trackParadeAction}
+          />
+        ) : null}
         {active === 'safety' ? <SafetyScreen pack={pack} /> : null}
       </div>
 

@@ -13,15 +13,18 @@ import {
   type CheerId,
 } from '../lib/banter';
 import type { RouteBanterPoll } from '../data/parade-2026';
+import { getOrCreateSourceId } from '../lib/group-events';
 import { hapticConfirm, hapticWow } from '../lib/haptic';
 import { showToast } from '../lib/toast';
 
 interface BanterScreenProps {
   pack: RoutePack;
+  displayName: string;
+  supporterTag: string;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
 }
 
-export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
+export function BanterScreen({ pack, displayName, supporterTag, onTrack }: BanterScreenProps) {
   const banter = useMemo(() => banterFromPack(pack), [pack]);
   const [openChantId, setOpenChantId] = useState<string | null>(null);
   const [voteVersion, setVoteVersion] = useState(0);
@@ -38,7 +41,11 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
   };
 
   const onVote = (poll: RouteBanterPoll, optionId: string) => {
-    const saved = voteInPoll(poll, optionId);
+    const saved = voteInPoll(poll, optionId, {
+      sourceId: getOrCreateSourceId(),
+      displayName,
+      supporterTag,
+    });
     if (!saved) return;
     setVoteVersion((current) => current + 1);
     onTrack('parade_banter_poll_voted', { poll_id: poll.id, option_id: optionId });
@@ -104,7 +111,7 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
       <div className="panel banter-card">
         <div className="banter-card__head">
           <h2>Votes</h2>
-          <span>local only</span>
+          <span>as #{supporterTag}</span>
         </div>
         <div className="poll-list" data-version={voteVersion}>
           {banter.polls.map((poll) => {
@@ -159,7 +166,9 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
               </div>
             );
           })}
-          <p className="poll-footnote">Saved on this phone. Group counts arrive when the relay ships.</p>
+          <p className="poll-footnote">
+            Saved as {displayName} #{supporterTag}. Group counts arrive when the relay ships.
+          </p>
         </div>
       </div>
 

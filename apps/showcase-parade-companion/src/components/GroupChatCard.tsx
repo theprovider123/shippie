@@ -30,7 +30,10 @@ export function GroupChatCard({ events, onSignal }: GroupChatCardProps) {
                   {initialsOf(event.display_name)}
                 </span>
                 <div className="chat-activity__meta">
-                  <strong>{event.display_name}</strong>
+                  <strong>
+                    {event.display_name}
+                    {event.supporter_tag ? <em>#{event.supporter_tag}</em> : null}
+                  </strong>
                   <small>{messageFor(event)}</small>
                 </div>
                 <span className="chat-activity__age">{ageLabel(event.created_at)}</span>

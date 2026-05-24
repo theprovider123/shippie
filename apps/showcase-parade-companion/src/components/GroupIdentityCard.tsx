@@ -3,6 +3,8 @@ interface GroupIdentityCardProps {
   memberCount: number;
   updatedAtIso?: string;
   solo?: boolean;
+  displayName?: string;
+  supporterTag?: string;
   onShowInvite: () => void;
   onShareMyDot?: () => void;
 }
@@ -17,6 +19,8 @@ export function GroupIdentityCard({
   memberCount,
   updatedAtIso,
   solo,
+  displayName,
+  supporterTag,
   onShowInvite,
   onShareMyDot,
 }: GroupIdentityCardProps) {
@@ -28,6 +32,11 @@ export function GroupIdentityCard({
           Share your dot so friends can find you on the day. They can watch on their map,
           or join you so you see them too.
         </p>
+        {supporterTag ? (
+          <p className="identity-tag">
+            You appear as <strong>{displayName || 'Me'} #{supporterTag}</strong>
+          </p>
+        ) : null}
         <button
           type="button"
           className="primary-action"

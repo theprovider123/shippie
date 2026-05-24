@@ -20,6 +20,7 @@ export interface GroupEvent {
   kind: GroupEventKind;
   source_id: string;
   display_name: string;
+  supporter_tag?: string;
   preset?: ChatPreset;
   text?: string;
   created_at: string;
@@ -48,6 +49,7 @@ export function addGroupEvent(
     kind: input.kind,
     source_id: input.source_id,
     display_name: input.display_name,
+    supporter_tag: input.supporter_tag,
     preset: input.preset,
     text: input.text,
     created_at: new Date().toISOString(),
@@ -100,6 +102,7 @@ function isValidEvent(value: unknown): value is GroupEvent {
     typeof row.kind === 'string' &&
     typeof row.source_id === 'string' &&
     typeof row.display_name === 'string' &&
+    (row.supporter_tag === undefined || typeof row.supporter_tag === 'string') &&
     typeof row.created_at === 'string' &&
     typeof row.ttl_minutes === 'number'
   );

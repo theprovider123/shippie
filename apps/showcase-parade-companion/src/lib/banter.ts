@@ -21,6 +21,15 @@ export interface BanterVote {
   pollId: string;
   optionId: string;
   updatedAt: string;
+  sourceId?: string;
+  displayName?: string;
+  supporterTag?: string;
+}
+
+export interface BanterVoter {
+  sourceId: string;
+  displayName: string;
+  supporterTag: string;
 }
 
 export const CHEER_TILES: CheerTile[] = [
@@ -47,9 +56,16 @@ export function listBanterVotes(): BanterVote[] {
   return readJson<unknown[]>(VOTES_KEY, []).filter(isBanterVote);
 }
 
-export function voteInPoll(poll: RouteBanterPoll, optionId: string): BanterVote | null {
+export function voteInPoll(poll: RouteBanterPoll, optionId: string, voter?: BanterVoter): BanterVote | null {
   if (!pollAllowsOption(poll, optionId)) return null;
-  const next: BanterVote = { pollId: poll.id, optionId, updatedAt: new Date().toISOString() };
+  const next: BanterVote = {
+    pollId: poll.id,
+    optionId,
+    updatedAt: new Date().toISOString(),
+    sourceId: voter?.sourceId,
+    displayName: voter?.displayName,
+    supporterTag: voter?.supporterTag,
+  };
   const votes = listBanterVotes().filter((vote) => vote.pollId !== poll.id);
   writeJson(VOTES_KEY, [next, ...votes]);
   return next;
@@ -120,7 +136,10 @@ function isBanterVote(value: unknown): value is BanterVote {
   return (
     typeof record.pollId === 'string' &&
     typeof record.optionId === 'string' &&
-    typeof record.updatedAt === 'string'
+    typeof record.updatedAt === 'string' &&
+    (record.sourceId === undefined || typeof record.sourceId === 'string') &&
+    (record.displayName === undefined || typeof record.displayName === 'string') &&
+    (record.supporterTag === undefined || typeof record.supporterTag === 'string')
   );
 }
 

@@ -32,12 +32,14 @@ describe('group-events', () => {
       kind: 'group_signal',
       source_id: 'me',
       display_name: 'Me',
+      supporter_tag: 'K7P4',
       preset: 'on_my_way',
     });
     const rows = listGroupEvents();
     expect(rows).toHaveLength(1);
     expect(rows[0]?.id).toBe(event.id);
     expect(rows[0]?.preset).toBe('on_my_way');
+    expect(rows[0]?.supporter_tag).toBe('K7P4');
     expect(rows[0]?.ttl_minutes).toBe(180);
   });
 

@@ -4,6 +4,7 @@ import { cleanDisplayName } from '../lib/display-name';
 interface OnboardingProps {
   open: boolean;
   initialName: string;
+  supporterTag: string;
   onFinish: (name: string) => void;
   onSkip: () => void;
 }
@@ -15,7 +16,7 @@ interface OnboardingProps {
  * cold first slide that only asked for a name left users without context).
  * Slide 2 is the practical orientation.
  */
-export function Onboarding({ open, initialName, onFinish, onSkip }: OnboardingProps) {
+export function Onboarding({ open, initialName, supporterTag, onFinish, onSkip }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState(initialName);
 
@@ -46,6 +47,9 @@ export function Onboarding({ open, initialName, onFinish, onSkip }: OnboardingPr
                 placeholder="Your name"
               />
             </label>
+            <p className="supporter-tag">
+              Parade tag <strong>#{supporterTag}</strong> keeps duplicate names apart.
+            </p>
             <div className="onboarding__actions">
               <button type="button" className="secondary-action" onClick={onSkip}>
                 Skip
@@ -70,7 +74,7 @@ export function Onboarding({ open, initialName, onFinish, onSkip }: OnboardingPr
               </li>
               <li>
                 <strong>Tap the map</strong>
-                <span>I am here, Bus is here, or Report.</span>
+                <span>I am here, Bus is here, or Toilet queue.</span>
               </li>
             </ol>
             <div className="onboarding__actions">
