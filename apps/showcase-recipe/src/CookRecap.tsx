@@ -274,13 +274,44 @@ export function CookRecapSheet({
   return (
     <div className="cook-recap-overlay" role="dialog" aria-label="Cook recap">
       <div className="cook-recap-sheet">
-        <header>
+        <div className="cook-recap-hero">
+          {data.photoDataUrl ? (
+            <img src={data.photoDataUrl} alt="" />
+          ) : (
+            <div className="cook-recap-hero-fallback" aria-hidden>
+              {data.title.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <span className="cook-recap-cuisine">{data.cuisine.toUpperCase()}</span>
+          <span className="cook-recap-cook-count">v{data.cookCount}</span>
+        </div>
+        <header className="cook-recap-header">
           <p className="eyebrow">Cooked</p>
-          <h2>{data.title}</h2>
+          <h2 className="cook-recap-title">{data.title}</h2>
           <p className="cook-recap-meta">
-            {data.durationMinutes} min · serves {data.servingsCooked}
+            <span className="cook-recap-meta-time">{data.durationMinutes}</span>
+            <span className="cook-recap-meta-unit">min</span>
+            <span className="cook-recap-meta-sep">·</span>
+            <span className="cook-recap-meta-time">{data.servingsCooked}</span>
+            <span className="cook-recap-meta-unit">serves</span>
           </p>
         </header>
+        <div className="cook-recap-grid">
+          <section className="cook-recap-ingredients">
+            <p className="eyebrow">Ingredients</p>
+            <ul>
+              {data.ingredients.slice(0, 8).map((ing, idx) => (
+                <li key={`${ing.name}-${idx}`}>
+                  <span className="cook-recap-qty">{formatQuantity(ing.quantity)} {ing.unit}</span>
+                  <span className="cook-recap-ing-name">{ing.name}</span>
+                </li>
+              ))}
+              {data.ingredients.length > 8 ? (
+                <li className="cook-recap-ing-more">+{data.ingredients.length - 8} more</li>
+              ) : null}
+            </ul>
+          </section>
+        </div>
         <label className="cook-recap-notes">
           <span>Add your notes to this cook</span>
           <textarea
