@@ -79,6 +79,7 @@
       "Nearby fan signals you choose to import by QR",
       "Your local group quick-signal activity",
       "Your local Banter votes and cheer counts",
+      "The latest validated route and live information pack",
       "An anonymous app action queue for admin health analytics"
     ],
     "leaves_device": "The offline fan core sends no location or group content unless one fan shows a QR and another fan scans it. Anonymous app action events may sync to Shippie admin when connected. Banter is local-only in v1.",

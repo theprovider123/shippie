@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import packageInfo from '../package.json';
 import { AboutSheet } from './components/AboutSheet';
 import { ImportPreviewSheet, type ImportPreview } from './components/ImportPreviewSheet';
@@ -25,7 +25,7 @@ import {
   saveFanEvents,
   saveGroupPlan,
 } from './lib/shippie-db';
-import { loadRoutePack, packFreshnessLabel } from './lib/route-pack';
+import { loadRoutePack, packFreshnessLabel, syncRoutePack } from './lib/route-pack';
 import type { BusMarker } from './lib/bus';
 import { decodeFanEventsSync, dedupeFanEvents, sortEvents, type FanEvent } from './lib/fan-events';
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
@@ -45,7 +45,7 @@ const nav: Array<{ id: Screen; label: string }> = [
 ];
 
 export function App() {
-  const pack = useMemo(() => loadRoutePack(), []);
+  const [pack, setPack] = useState(() => loadRoutePack());
   const [active, setActive] = useState<Screen>('map');
   const [plan, setPlan] = useState<GroupPlan | null>(null);
   const [importPreview, setImportPreview] = useState<{ preview: ImportPreview; plan: GroupPlan } | null>(null);
@@ -63,15 +63,44 @@ export function App() {
   const [sideTingDraft, setSideTingDraft] = useState('');
   const [aboutOpen, setAboutOpen] = useState(false);
   const [offlineReadiness, setOfflineReadiness] = useState<Readiness>('checking');
+  const packRef = useRef(pack);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const screenHostRef = useRef<HTMLDivElement | null>(null);
   const online = useOnlineStatus();
   const offlinePill = offlinePillState(offlineReadiness, online);
 
   useEffect(() => {
+    packRef.current = pack;
+  }, [pack]);
+
+  useEffect(() => {
     const stopAnalytics = installParadeAnalyticsFlush();
     trackParadeAction('parade_app_opened');
     return stopAnalytics;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshRoutePack = async () => {
+      const result = await syncRoutePack('/__shippie/parade/route-pack', packRef.current);
+      if (cancelled) return;
+      if (result.status !== 'updated') return;
+      setPack(result.pack);
+      const packLabel = packFreshnessLabel(result.pack);
+      showToast(`Route info updated · pack ${packLabel}`, 'success');
+      trackParadeAction('parade_route_pack_updated', { pack_version: result.pack.packVersion });
+    };
+
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      void refreshRoutePack();
+    }
+
+    window.addEventListener('online', refreshRoutePack);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('online', refreshRoutePack);
+    };
   }, []);
 
   useEffect(() => {

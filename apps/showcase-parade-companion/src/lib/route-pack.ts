@@ -2,8 +2,94 @@ import { CORRIDOR_EXTENT, FALLBACK_ROUTE_PACK, type RoutePack } from '../data/pa
 import { isInsideExtent } from './geo';
 import bakedRoutePack from '../../public/route-pack.json';
 
+export const LIVE_ROUTE_PACK_STORAGE_KEY = 'parade-companion:live-route-pack:v1';
+
+export type RoutePackSyncResult =
+  | { status: 'updated'; pack: RoutePack }
+  | { status: 'current'; pack: RoutePack }
+  | { status: 'offline'; pack: RoutePack }
+  | { status: 'invalid'; pack: RoutePack }
+  | { status: 'failed'; pack: RoutePack; error?: unknown };
+
 export function loadRoutePack(): RoutePack {
+  const baked = loadBakedRoutePack();
+  const live = readCachedRoutePack();
+  if (live && comparePackVersions(live.packVersion, baked.packVersion) > 0) return live;
+  return baked;
+}
+
+export function loadBakedRoutePack(): RoutePack {
   return validateRoutePack(bakedRoutePack) ?? validateRoutePack(FALLBACK_ROUTE_PACK) ?? FALLBACK_ROUTE_PACK;
+}
+
+export async function syncRoutePack(url: string, current: RoutePack = loadRoutePack()): Promise<RoutePackSyncResult> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { status: 'offline', pack: current };
+  }
+
+  try {
+    const response = await fetch(cacheBustedUrl(url), {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) return { status: 'failed', pack: current };
+
+    const candidate = validateRoutePack(await response.json());
+    if (!candidate) return { status: 'invalid', pack: current };
+
+    if (comparePackVersions(candidate.packVersion, current.packVersion) <= 0) {
+      return { status: 'current', pack: current };
+    }
+
+    writeCachedRoutePack(candidate);
+    return { status: 'updated', pack: candidate };
+  } catch (error) {
+    return { status: 'failed', pack: current, error };
+  }
+}
+
+export function readCachedRoutePack(): RoutePack | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(LIVE_ROUTE_PACK_STORAGE_KEY);
+    if (!raw) return null;
+    const pack = validateRoutePack(JSON.parse(raw));
+    if (!pack) {
+      localStorage.removeItem(LIVE_ROUTE_PACK_STORAGE_KEY);
+      return null;
+    }
+    return pack;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedRoutePack(pack: RoutePack): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    localStorage.setItem(LIVE_ROUTE_PACK_STORAGE_KEY, JSON.stringify(pack));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearCachedRoutePack(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.removeItem(LIVE_ROUTE_PACK_STORAGE_KEY);
+  } catch {
+    // A stale live pack must never block the baked offline pack.
+  }
+}
+
+export function comparePackVersions(left: string, right: string): number {
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+  if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+    return Math.sign(leftTime - rightTime);
+  }
+  return left.localeCompare(right);
 }
 
 export function validateRoutePack(input: unknown): RoutePack | null {
@@ -73,4 +159,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function cacheBustedUrl(input: string): string {
+  try {
+    const base = typeof window === 'undefined' ? 'https://shippie.local/' : window.location.href;
+    const url = new URL(input, base);
+    url.searchParams.set('live_pack_ts', String(Date.now()));
+    return url.toString();
+  } catch {
+    const joiner = input.includes('?') ? '&' : '?';
+    return `${input}${joiner}live_pack_ts=${Date.now()}`;
+  }
 }
