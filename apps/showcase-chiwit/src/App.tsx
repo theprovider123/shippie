@@ -1561,7 +1561,12 @@ function PulseRing({ pulse }: { pulse: PulseScore }) {
       >
         <img src={CHIWIT_LOGO_URL} alt="" />
         {hasPulse ? (
-          <strong>{pulse.overall}</strong>
+          <strong>
+            {pulse.overall}
+            {/* "/100" set small + italic Fraunces — the unit reads as
+             * poetry against the giant digit, not as a label. */}
+            <em className="pulse-ring__unit" aria-hidden>/100</em>
+          </strong>
         ) : (
           <strong className="pulse-ring__progress">
             {pulse.loggedCount}<span>/{REQUIRED}</span>

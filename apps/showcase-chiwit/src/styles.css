@@ -2975,3 +2975,122 @@ button.branded.primary {
   padding: 1.25rem 1.15rem 1.1rem;
   border-radius: 10px;
 }
+
+/* ─── Pass 3 · Hero pulse unit annotation ──────────────────────────── */
+
+/* The "/100" beside the giant digit — Fraunces italic, baseline-lifted,
+ * intentionally tiny so the eye still treats the hero as the main mark. */
+.pulse-ring strong {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18em;
+}
+.pulse-ring__unit {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.28em;            /* ~1.96rem when digit is 7rem */
+  letter-spacing: 0.01em;
+  color: var(--ink-quiet);
+  align-self: flex-end;
+  margin-bottom: 0.55em;
+  font-feature-settings: normal;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.pulse-ring--progress .pulse-ring__progress {
+  /* progress digit keeps the existing layout (slash + denominator) */
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.08em;
+}
+
+/* Brand lockup small caption — lift to italic Fraunces; it's the only
+ * place the brand name + tagline sit together. */
+.brand-lockup strong {
+  font-feature-settings: 'ss01' 1, 'liga' 1;
+  letter-spacing: -0.014em;
+}
+.brand-lockup small {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.008em;
+  color: var(--ink-quiet);
+}
+
+/* Today / Patterns / etc. nav button typography — was a sans pill,
+ * push tracking + weight so the active state reads as inked-in. */
+.app-header nav button {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.app-header nav button.active {
+  letter-spacing: 0.08em;
+  color: var(--paper);
+}
+@media (max-width: 700px) {
+  .app-header nav button {
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* Hero actions — give the primary CTA a small inked corner mark to
+ * signal "this is the canonical action on this page". */
+.hero-actions .primary {
+  position: relative;
+  padding-right: 1.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.hero-actions button {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Empty state — push the headline into the editorial register. */
+.shippie-empty-state {
+  padding: 1.6rem 1.4rem;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--paper-warm) 0%, var(--paper-cool) 100%);
+}
+.shippie-empty-state__headline {
+  font-size: clamp(1.2rem, 3.2vw, 1.55rem);
+  letter-spacing: -0.018em;
+  line-height: 1.14;
+}
+
+/* Range-label live readout — bring the numeric up. */
+.range-label em {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--sage-deep);
+}
+
+/* Mobile — drop the hero unit one optical step so the big digit doesn't
+ * dominate the compact card and the /100 doesn't crowd the edge. */
+@media (max-width: 700px) {
+  .pulse-ring__unit {
+    font-size: 0.34em;
+    margin-bottom: 0.4em;
+  }
+  .hero-actions .primary,
+  .hero-actions button {
+    font-size: 0.72rem;
+  }
+}
