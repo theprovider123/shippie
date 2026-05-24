@@ -15,7 +15,7 @@ export interface Toast {
 type Listener = (toasts: Toast[]) => void;
 
 const TOAST_TTL_MS = 2500;
-const MAX_QUEUE = 3;
+const MAX_QUEUE = 1;
 
 let queue: Toast[] = [];
 let listeners: Listener[] = [];

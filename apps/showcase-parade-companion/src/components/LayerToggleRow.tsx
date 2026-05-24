@@ -2,8 +2,24 @@
  * Tiny chip row above the map for muting/unmuting layers. Re-uses the
  * sharp/paper/mono design language; no new colour. Each pill is a button
  * with `aria-pressed` reflecting the current visibility.
+ *
+ * Round 8 split the layers into two rows: People (bus / friends / side-tings
+ * / reports / my-taps) and Places (toilets / water / food / pubs / atm). The
+ * Places filters control the new baked POI categories from §6 Layer B.
  */
-export type MapLayerId = 'bus' | 'friends' | 'side-tings' | 'reports' | 'my-taps';
+export type MapLayerId =
+  // People layers — fan signals, group positions, bus marker.
+  | 'bus'
+  | 'friends'
+  | 'side-tings'
+  | 'reports'
+  | 'my-taps'
+  // Places layers — baked POI categories.
+  | 'toilets'
+  | 'water'
+  | 'food'
+  | 'pubs'
+  | 'atm';
 
 interface LayerToggleRowProps {
   layers: Record<MapLayerId, boolean>;
@@ -16,14 +32,39 @@ const LAYER_LABEL: Record<MapLayerId, string> = {
   'side-tings': 'Side tings',
   reports: 'Reports',
   'my-taps': 'My taps',
+  toilets: 'Toilets',
+  water: 'Water',
+  food: 'Food',
+  pubs: 'Pubs',
+  atm: 'ATM',
 };
 
-const LAYER_ORDER: MapLayerId[] = ['bus', 'friends', 'side-tings', 'reports', 'my-taps'];
+const PEOPLE_LAYERS: MapLayerId[] = ['bus', 'friends', 'side-tings', 'reports', 'my-taps'];
+const PLACE_LAYERS: MapLayerId[] = ['toilets', 'water', 'food', 'pubs', 'atm'];
 
 export function LayerToggleRow({ layers, onToggle }: LayerToggleRowProps) {
   return (
-    <div className="layer-toggle-row" role="group" aria-label="Map layers">
-      {LAYER_ORDER.map((id) => {
+    <div className="layer-toggle-stack" aria-label="Map layers">
+      <LayerRow group="People" ids={PEOPLE_LAYERS} layers={layers} onToggle={onToggle} />
+      <LayerRow group="Places" ids={PLACE_LAYERS} layers={layers} onToggle={onToggle} />
+    </div>
+  );
+}
+
+interface LayerRowProps {
+  group: string;
+  ids: MapLayerId[];
+  layers: Record<MapLayerId, boolean>;
+  onToggle: (id: MapLayerId) => void;
+}
+
+function LayerRow({ group, ids, layers, onToggle }: LayerRowProps) {
+  return (
+    <div className="layer-toggle-row" role="group" aria-label={`${group} layers`}>
+      <span className="layer-toggle-row__label" aria-hidden>
+        {group}
+      </span>
+      {ids.map((id) => {
         const on = layers[id];
         return (
           <button

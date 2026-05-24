@@ -2,8 +2,10 @@ import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useEffect, useMemo, useState } from 'react';
 import { CorridorMap } from '../components/CorridorMap';
 import { LayerToggleRow, type MapLayerId } from '../components/LayerToggleRow';
+import { PoiSheet } from '../components/PoiSheet';
+import { QuickFindChips, kindsForCategory, type QuickFindCategory } from '../components/QuickFindChips';
 import { StatusStrip } from '../components/StatusStrip';
-import type { RoutePack } from '../data/parade-2026';
+import type { RoutePack, RoutePoi } from '../data/parade-2026';
 import { recordSighting, formatMarkerTime, type BusMarker } from '../lib/bus';
 import {
   createFanEvent,
@@ -18,7 +20,7 @@ import {
 } from '../lib/fan-events';
 import { haversineMeters, nearestRouteSegment } from '../lib/geo';
 import { formatAccuracy, formatGpsAge, isFreshGpsFix, isReportableGpsFix, watchGps, type GpsFix } from '../lib/gps';
-import type { GroupPlan } from '../lib/group-plan';
+import type { GroupPlan, PlanPoint } from '../lib/group-plan';
 import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import { hapticConfirm, hapticWarn, hapticWow } from '../lib/haptic';
 import { listSideTings, type SideTing } from '../lib/side-tings';
@@ -46,14 +48,43 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
   const [sheetOpen, setSheetOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [sideTings, setSideTings] = useState<SideTing[]>(() => listSideTings());
+  // Persistent "Turn on Location" hint above the tap panel — only after we've
+  // waited a few seconds without a fix, so first-launch flicker doesn't shout
+  // at someone who's about to grant permission.
+  const [showGpsHint, setShowGpsHint] = useState(false);
+  const [selectedPoi, setSelectedPoi] = useState<RoutePoi | null>(null);
+  const [walkTarget, setWalkTarget] = useState<PlanPoint | null>(null);
+  const [findCategory, setFindCategory] = useState<QuickFindCategory | null>(null);
   const [layers, setLayers] = useState<Record<MapLayerId, boolean>>({
     bus: true,
     friends: true,
     'side-tings': listSideTings().length > 0,
     reports: true,
     'my-taps': true,
+    // Place layers default OFF — the map stays calm until the user asks
+    // for a category. Quick-find chips below the map also flip these on.
+    toilets: false,
+    water: false,
+    food: false,
+    pubs: false,
+    atm: false,
   });
   const fanSummary = useMemo(() => summarizeFanEvents(fanEvents), [fanEvents]);
+
+  // Nearest 3 POIs of the active quick-find category. Computed from GPS when
+  // available, otherwise from the route's first coordinate as a stable
+  // fallback so the chip still does something useful before a fix lands.
+  const findExtras = useMemo<RoutePoi[]>(() => {
+    if (!findCategory) return [];
+    const kinds = new Set(kindsForCategory(findCategory));
+    const anchor = gpsFix ?? { lat: pack.route.coordinates[0]?.[1] ?? 0, lng: pack.route.coordinates[0]?.[0] ?? 0 };
+    return pack.pois
+      .filter((poi) => kinds.has(poi.kind))
+      .map((poi) => ({ poi, distance: haversineMeters(anchor, poi) }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3)
+      .map(({ poi }) => poi);
+  }, [findCategory, gpsFix, pack.pois, pack.route.coordinates]);
 
   useEffect(() => {
     const stop = watchGps({
@@ -63,6 +94,15 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
     });
     return stop;
   }, [batterySaver]);
+
+  useEffect(() => {
+    if (gpsFix) {
+      setShowGpsHint(false);
+      return;
+    }
+    const id = window.setTimeout(() => setShowGpsHint(true), 5000);
+    return () => window.clearTimeout(id);
+  }, [gpsFix]);
 
   useEffect(() => {
     if (importStatus) showToast(importStatus, 'success');
@@ -154,6 +194,29 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
 
   return (
     <section className="screen map-screen">
+      <QuickFindChips
+        active={findCategory}
+        onPick={(category) => {
+          setFindCategory(category);
+          if (category) {
+            onTrack('parade_quick_find_used', { category });
+            // Auto-target the nearest match for an instant "where do I walk?"
+            // — recomputed inline (the memo doesn't update until next render).
+            const kinds = new Set(kindsForCategory(category));
+            const anchor = gpsFix ?? { lat: pack.route.coordinates[0]?.[1] ?? 0, lng: pack.route.coordinates[0]?.[0] ?? 0 };
+            const nearest = pack.pois
+              .filter((poi) => kinds.has(poi.kind))
+              .map((poi) => ({ poi, distance: haversineMeters(anchor, poi) }))
+              .sort((a, b) => a.distance - b.distance)[0]?.poi;
+            if (nearest) {
+              setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
+            }
+          } else {
+            setWalkTarget(null);
+          }
+        }}
+      />
+
       <LayerToggleRow
         layers={layers}
         onToggle={(id) => setLayers((current) => ({ ...current, [id]: !current[id] }))}
@@ -167,6 +230,24 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         fanEvents={fanEvents}
         sideTings={sideTings}
         layers={layers}
+        target={walkTarget}
+        extraPois={findExtras}
+        onPoiTap={(poi) => {
+          setSelectedPoi(poi);
+          onTrack('parade_poi_tapped', { kind: poi.kind, id: poi.id });
+        }}
+      />
+
+      <PoiSheet
+        poi={selectedPoi}
+        gpsFix={gpsFix}
+        onClose={() => setSelectedPoi(null)}
+        onWalkTo={(poi) => {
+          setWalkTarget({ lng: poi.lng, lat: poi.lat, label: poi.name });
+          setSelectedPoi(null);
+          onTrack('parade_poi_walk_to', { kind: poi.kind, id: poi.id });
+          showToast(`Walking line drawn to ${poi.name}.`, 'success');
+        }}
       />
 
       <StatusStrip
@@ -176,6 +257,12 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         onToggleBatterySaver={() => setBatterySaver((current) => !current)}
         onOpenQr={() => void openSync()}
       />
+
+      {showGpsHint && !gpsFix ? (
+        <p className="gps-hint" role="status">
+          Turn on Location. The dot appears once your phone gets a fix.
+        </p>
+      ) : null}
 
       <div className="tap-panel" aria-label="Fast parade taps">
         <div className="tap-panel__head">

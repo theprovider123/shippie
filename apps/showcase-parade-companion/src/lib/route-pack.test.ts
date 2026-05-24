@@ -29,4 +29,25 @@ describe('route pack', () => {
     confirmed.event.status = 'confirmed';
     expect(validateRoutePack(confirmed)).toBeNull();
   });
+
+  test('baked pack carries a fine-grained practical POI library (round 8)', () => {
+    const pack = loadRoutePack();
+    expect(pack.pois.length).toBeGreaterThan(30);
+    const kinds = new Set(pack.pois.map((poi) => poi.kind));
+    // The five quick-find categories must all be present in the bake.
+    for (const kind of ['toilet', 'water', 'food', 'pub', 'atm']) {
+      expect(kinds.has(kind as never)).toBe(true);
+    }
+  });
+
+  test('schedule rows that carry coords stay inside the corridor extent', () => {
+    const pack = loadRoutePack();
+    for (const row of pack.scheduleEstimate) {
+      if (typeof row.lng !== 'number' || typeof row.lat !== 'number') continue;
+      expect(row.lng).toBeGreaterThan(-0.125);
+      expect(row.lng).toBeLessThan(-0.085);
+      expect(row.lat).toBeGreaterThan(51.531);
+      expect(row.lat).toBeLessThan(51.566);
+    }
+  });
 });

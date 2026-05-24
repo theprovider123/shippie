@@ -5,10 +5,8 @@ import {
   banterFromPack,
   CHEER_TILES,
   listCheerCounts,
-  pollOptionCount,
   selectedOptionId,
   tapCheer,
-  totalPollVotes,
   voteInPoll,
   type CheerId,
 } from '../lib/banter';
@@ -22,7 +20,7 @@ interface BanterScreenProps {
 
 export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
   const banter = useMemo(() => banterFromPack(pack), [pack]);
-  const [openChantId, setOpenChantId] = useState<string | null>(banter.chants[0]?.id ?? null);
+  const [openChantId, setOpenChantId] = useState<string | null>(null);
   const [voteVersion, setVoteVersion] = useState(0);
   const [cheerCounts, setCheerCounts] = useState(() => listCheerCounts());
 
@@ -88,30 +86,27 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
       <div className="panel banter-card">
         <div className="banter-card__head">
           <h2>Votes</h2>
-          <span>local first</span>
+          <span>local only</span>
         </div>
         <div className="poll-list" data-version={voteVersion}>
           {banter.polls.map((poll) => {
             const selected = selectedOptionId(poll.id);
-            const total = totalPollVotes(poll.id);
             return (
               <div className="poll-block" key={poll.id}>
                 <h3>{poll.question}</h3>
                 <div className="poll-options">
                   {poll.options.map((option) => {
                     const active = selected === option.id;
-                    const count = pollOptionCount(poll.id, option.id);
-                    const width = total > 0 ? `${Math.max(8, Math.round((count / total) * 100))}%` : '0%';
                     return (
                       <button
                         type="button"
                         key={option.id}
                         className={`poll-option ${active ? 'is-selected' : ''}`}
+                        aria-pressed={active}
                         onClick={() => onVote(poll.id, option.id)}
                       >
-                        <span className="poll-option__bar" style={{ width }} aria-hidden />
                         <span className="poll-option__label">{option.label}</span>
-                        <span className="poll-option__count">{count}</span>
+                        {active ? <span className="poll-option__pick">Your pick</span> : null}
                       </button>
                     );
                   })}
@@ -119,6 +114,7 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
               </div>
             );
           })}
+          <p className="poll-footnote">Saved on this phone. Group counts arrive when the relay ships.</p>
         </div>
       </div>
 

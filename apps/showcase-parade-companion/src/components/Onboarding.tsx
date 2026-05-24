@@ -8,6 +8,13 @@ interface OnboardingProps {
   onSkip: () => void;
 }
 
+/**
+ * Two-slide first-run flow.
+ *
+ * Slide 1 explains what the app is BEFORE asking for a name (round-8 fix: a
+ * cold first slide that only asked for a name left users without context).
+ * Slide 2 is the practical orientation.
+ */
 export function Onboarding({ open, initialName, onFinish, onSkip }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState(initialName);
@@ -19,18 +26,24 @@ export function Onboarding({ open, initialName, onFinish, onSkip }: OnboardingPr
   return (
     <div className="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
       <div className="onboarding__surface">
+        <p className="onboarding__progress" aria-hidden>
+          {step + 1} / 2
+        </p>
         {step === 0 ? (
           <>
-            <p className="eyebrow">First run</p>
-            <h2 id="onboarding-title">Hey, what should we call you?</h2>
+            <p className="eyebrow">Parade Companion</p>
+            <h2 id="onboarding-title">Offline map. Group plan. No account.</h2>
+            <p className="onboarding__lede">
+              Made for the Islington parade. Works without signal once it's saved on this phone.
+            </p>
             <label className="name-field">
-              Display name
+              And what should we call you?
               <input
                 value={name}
                 onChange={(event) => setName(event.currentTarget.value)}
                 maxLength={24}
                 autoFocus
-                placeholder="Me"
+                placeholder="Your name"
               />
             </label>
             <div className="onboarding__actions">
@@ -44,7 +57,7 @@ export function Onboarding({ open, initialName, onFinish, onSkip }: OnboardingPr
           </>
         ) : (
           <>
-            <p className="eyebrow">Parade mode</p>
+            <p className="eyebrow">How it works</p>
             <h2 id="onboarding-title">Set it once. Use it in the crowd.</h2>
             <ol className="onboarding__steps">
               <li>

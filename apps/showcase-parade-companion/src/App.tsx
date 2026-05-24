@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ImportPreviewSheet, type ImportPreview } from './components/ImportPreviewSheet';
 import { Onboarding } from './components/Onboarding';
 import { ReadinessChip, type Readiness } from './components/ReadinessChip';
@@ -22,6 +22,7 @@ import type { BusMarker } from './lib/bus';
 import { decodeFanEventsSync, dedupeFanEvents, sortEvents, type FanEvent } from './lib/fan-events';
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
 import { isOnboarded, markOnboarded } from './lib/onboarding';
+import { markOfflineCelebrated, shouldCelebrateOffline } from './lib/offline-celebration';
 import { addSideTing } from './lib/side-tings';
 import { showToast } from './lib/toast';
 
@@ -48,7 +49,11 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState(displayName);
+  const [sideTingSheetOpen, setSideTingSheetOpen] = useState(false);
+  const [sideTingDraft, setSideTingDraft] = useState('');
   const [offlineReadiness, setOfflineReadiness] = useState<Readiness>('checking');
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const screenHostRef = useRef<HTMLDivElement | null>(null);
   const online = useOnlineStatus();
   const offlinePill = offlinePillState(offlineReadiness, online);
 
@@ -60,7 +65,47 @@ export function App() {
 
   useEffect(() => {
     trackParadeAction('parade_tab_viewed', { tab: active });
+    screenHostRef.current?.scrollTo({ top: 0 });
+    setMenuOpen(false);
   }, [active]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!nameEditorOpen && !sideTingSheetOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setNameEditorOpen(false);
+      setSideTingSheetOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [nameEditorOpen, sideTingSheetOpen]);
+
+  // First time the offline pack flips to ready, fire a one-shot celebration
+  // toast. Gated by a localStorage flag so subsequent loads are silent.
+  useEffect(() => {
+    if (offlineReadiness !== 'ready') return;
+    if (!shouldCelebrateOffline()) return;
+    markOfflineCelebrated();
+    showToast('Saved to this phone. Try it offline now.', 'success');
+    trackParadeAction('parade_offline_first_ready');
+  }, [offlineReadiness]);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,7 +196,13 @@ export function App() {
 
   const onWatchImport = () => {
     const incoming = importPreview?.plan;
-    if (!incoming?.room) return;
+    if (!incoming?.room) {
+      // Plans from before round-5's ensurePlanRoom carry no roomKey — there's
+      // nothing for the watcher to subscribe to. Surface that instead of a
+      // silent no-op so the user can fall back to Join.
+      showToast('This invite has no live room. Tap Join to copy the plan instead.', 'warn');
+      return;
+    }
     const result = addSideTing({
       roomId: incoming.room.roomId,
       roomKey: incoming.room.roomKey,
@@ -170,6 +221,47 @@ export function App() {
     }
     setImportPreview(null);
     setActive('group');
+  };
+
+  const onPasteSideTing = async () => {
+    const fragment = extractShareFragment(sideTingDraft);
+    const decoded = await decodePlan(fragment);
+    if (!decoded) {
+      showToast('Paste a Parade Companion invite link or QR code text.', 'warn');
+      return;
+    }
+    if (!decoded.room) {
+      showToast('This invite can be joined, but it cannot be watched live.', 'warn');
+      return;
+    }
+    const result = addSideTing({
+      roomId: decoded.room.roomId,
+      roomKey: decoded.room.roomKey,
+      name: decoded.name,
+      memberCount: decoded.members.length,
+      primary: decoded.primary,
+      fallback: decoded.fallback,
+    });
+    if (result.ok) {
+      showToast(`Watching ${decoded.name}`, 'success');
+      trackParadeAction('parade_side_ting_paste_imported', { members_count: decoded.members.length });
+      setSideTingDraft('');
+      setSideTingSheetOpen(false);
+      setSideTingsRefresh((current) => current + 1);
+      setActive('group');
+      return;
+    }
+    if (result.reason === 'duplicate') {
+      showToast(`Already watching ${decoded.name}`);
+      setSideTingSheetOpen(false);
+      return;
+    }
+    showToast('Side tings full. Remove one first.', 'warn');
+  };
+
+  const openSideTingSheet = () => {
+    setSideTingSheetOpen(true);
+    trackParadeAction('parade_side_ting_paste_opened');
   };
 
   const onBusMarker = (marker: BusMarker) => {
@@ -239,7 +331,7 @@ export function App() {
           >
             {offlinePill.label}
           </button>
-          <div className="topbar-menu-wrap">
+          <div className="topbar-menu-wrap" ref={menuRef}>
             <button
               type="button"
               className="more-button"
@@ -312,7 +404,15 @@ export function App() {
         onSkip={skipOnboarding}
       />
       {nameEditorOpen ? (
-        <div className="name-sheet" role="dialog" aria-modal="true" aria-labelledby="name-sheet-title">
+        <div
+          className="name-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="name-sheet-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setNameEditorOpen(false);
+          }}
+        >
           <div className="name-sheet__surface">
             <p className="eyebrow">Display name</p>
             <h2 id="name-sheet-title">What should friends see?</h2>
@@ -336,8 +436,45 @@ export function App() {
           </div>
         </div>
       ) : null}
+      {sideTingSheetOpen ? (
+        <div
+          className="side-ting-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="side-ting-sheet-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSideTingSheetOpen(false);
+          }}
+        >
+          <div className="side-ting-sheet__surface">
+            <p className="eyebrow">Watch a crew</p>
+            <h2 id="side-ting-sheet-title">Paste a friend's invite</h2>
+            <p className="side-ting-sheet__copy">
+              Use the link text from their QR. This only watches their group dot; it does not publish you to them.
+            </p>
+            <label className="name-field">
+              Invite link or code
+              <textarea
+                value={sideTingDraft}
+                onChange={(event) => setSideTingDraft(event.currentTarget.value)}
+                placeholder="https://shippie.app/run/parade-companion/#..."
+                rows={4}
+                autoFocus
+              />
+            </label>
+            <div className="side-ting-sheet__actions">
+              <button type="button" className="secondary-action" onClick={() => setSideTingSheetOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="primary-action" onClick={() => void onPasteSideTing()}>
+                Watch on map
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
-      <div className="screen-host">
+      <div className="screen-host" ref={screenHostRef}>
         {active === 'map' ? (
           <MapScreen
             pack={pack}
@@ -360,6 +497,7 @@ export function App() {
             onTrack={trackParadeAction}
             sideTingsRefresh={sideTingsRefresh}
             onSideTingsRefresh={() => setSideTingsRefresh((current) => current + 1)}
+            onAddSideTing={openSideTingSheet}
           />
         ) : null}
         {active === 'banter' ? <BanterScreen pack={pack} onTrack={trackParadeAction} /> : null}
@@ -455,4 +593,21 @@ function clearShareHash(): void {
   } catch {
     // Cross-origin parents cannot be cleaned, but the import has already happened.
   }
+}
+
+function extractShareFragment(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const hashIndex = trimmed.indexOf('#');
+  if (hashIndex >= 0) return cleanFragment(trimmed.slice(hashIndex + 1));
+  try {
+    const url = new URL(trimmed);
+    return url.hash.startsWith('#') ? cleanFragment(url.hash.slice(1)) : '';
+  } catch {
+    return cleanFragment(trimmed.replace(/^#/, ''));
+  }
+}
+
+function cleanFragment(fragment: string): string {
+  return fragment.trim().replace(/\s+/g, '');
 }

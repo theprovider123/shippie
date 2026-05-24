@@ -3,10 +3,8 @@ import type { RouteBanterPoll } from '../data/parade-2026';
 import {
   listBanterVotes,
   listCheerCounts,
-  pollOptionCount,
   selectedOptionId,
   tapCheer,
-  totalPollVotes,
   voteInPoll,
 } from './banter';
 
@@ -46,8 +44,6 @@ describe('banter', () => {
     expect(voteInPoll(poll, 'rice')?.optionId).toBe('rice');
     expect(listBanterVotes()).toHaveLength(1);
     expect(selectedOptionId('player')).toBe('rice');
-    expect(totalPollVotes('player')).toBe(1);
-    expect(pollOptionCount('player', 'rice')).toBe(1);
   });
 
   test('voteInPoll rejects unknown options', () => {

@@ -59,13 +59,11 @@ export function selectedOptionId(pollId: string): string | null {
   return listBanterVotes().find((vote) => vote.pollId === pollId)?.optionId ?? null;
 }
 
-export function pollOptionCount(pollId: string, optionId: string): number {
-  return selectedOptionId(pollId) === optionId ? 1 : 0;
-}
-
-export function totalPollVotes(pollId: string): number {
-  return selectedOptionId(pollId) ? 1 : 0;
-}
+// pollOptionCount + totalPollVotes were removed in round 8 — they returned
+// 1/0 based purely on the local vote, so the UI bars used to read as
+// "100% for your pick", which lied to the user. Until a relay aggregator
+// ships, the screen surfaces only "Your pick" + an honest "local only"
+// note. See docs/superpowers/plans/2026-05-24-parade-companion-round8...
 
 export function listCheerCounts(): Record<CheerId, number> {
   const raw = readJson<Record<string, unknown>>(CHEERS_KEY, {});

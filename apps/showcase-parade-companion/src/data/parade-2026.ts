@@ -18,16 +18,27 @@ export interface RoutePackSource {
   note?: string;
 }
 
+export type RoutePoiKind =
+  | 'station'
+  | 'landmark'
+  | 'medical'
+  | 'exit'
+  | 'toilet'
+  | 'meeting'
+  | 'stewards'
+  // Round-8 additions — practical "find a thing" categories for the
+  // POI library bake. Coordinates are approximate; verify before travel.
+  | 'tube-exit'
+  | 'water'
+  | 'food'
+  | 'pub'
+  | 'atm'
+  | 'family'
+  | 'view';
+
 export interface RoutePoi extends LngLat {
   id: string;
-  kind:
-    | 'station'
-    | 'landmark'
-    | 'medical'
-    | 'exit'
-    | 'toilet'
-    | 'meeting'
-    | 'stewards';
+  kind: RoutePoiKind;
   name: string;
   note?: string;
 }
@@ -74,7 +85,9 @@ export interface RoutePack {
   };
   meetingLandmarks: Array<{ id: string; label: string; lng: number; lat: number; note?: string }>;
   safety: Array<{ heading: string; body: string }>;
-  scheduleEstimate: Array<{ label: string; time: string; note?: string }>;
+  // Optional `lng`/`lat` on a schedule row places a numbered marker (①②③…)
+  // on the route polyline at that position. Round-8 addition.
+  scheduleEstimate: Array<{ label: string; time: string; note?: string; lng?: number; lat?: number }>;
   banter?: RouteBanter;
 }
 

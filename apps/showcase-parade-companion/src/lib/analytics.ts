@@ -22,7 +22,13 @@ export type ParadeAnalyticsEvent =
   | 'parade_display_name_saved'
   | 'parade_banter_chant_opened'
   | 'parade_banter_poll_voted'
-  | 'parade_banter_cheer_tapped';
+  | 'parade_banter_cheer_tapped'
+  | 'parade_offline_first_ready'
+  | 'parade_side_ting_paste_opened'
+  | 'parade_side_ting_paste_imported'
+  | 'parade_poi_tapped'
+  | 'parade_poi_walk_to'
+  | 'parade_quick_find_used';
 
 type QueuedAnalyticsEvent = {
   event: ParadeAnalyticsEvent;

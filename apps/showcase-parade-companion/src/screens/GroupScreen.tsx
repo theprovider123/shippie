@@ -32,6 +32,7 @@ interface GroupScreenProps {
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
   sideTingsRefresh?: number;
   onSideTingsRefresh: () => void;
+  onAddSideTing: () => void;
 }
 
 /**
@@ -47,6 +48,7 @@ export function GroupScreen({
   onTrack,
   sideTingsRefresh,
   onSideTingsRefresh,
+  onAddSideTing,
 }: GroupScreenProps) {
   const [draft, setDraft] = useState<GroupPlan>(() => plan ?? createDefaultGroupPlan(pack));
   const [membersText, setMembersText] = useState(() => (plan?.members ?? []).join(', '));
@@ -173,10 +175,7 @@ export function GroupScreen({
         <SideTingsCard
           refreshKey={sideTingsRefresh}
           onChange={onSideTingsRefresh}
-          onAdd={() => {
-            showToast("Open a friend's parade QR link, then choose Watch on map.", 'default');
-            onSideTingsRefresh();
-          }}
+          onAdd={onAddSideTing}
         />
         <QrShareSheet
           open={sheetOpen}
@@ -296,10 +295,7 @@ export function GroupScreen({
       <SideTingsCard
         refreshKey={sideTingsRefresh}
         onChange={onSideTingsRefresh}
-        onAdd={() => {
-          showToast("Open a friend's parade QR link, then choose Watch on map.", 'default');
-          onSideTingsRefresh();
-        }}
+        onAdd={onAddSideTing}
       />
 
       <QrShareSheet

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-22T12:00:00+01:00",
+  "packVersion": "2026-05-24T16:00:00+01:00",
   "event": {
     "title": "Parade Companion — Islington",
     "dateLabel": "Sunday 31 May 2026",
@@ -101,7 +101,55 @@
       "lng": -0.1035,
       "lat": 51.5445,
       "note": "Follow Met Police, steward and council directions over this offline pack."
-    }
+    },
+
+    { "id": "tube-highbury-islington-south", "kind": "tube-exit", "name": "Highbury & Islington · south exit", "lng": -0.1031, "lat": 51.5458, "note": "Toward Upper Street. Expect long queues at peak." },
+    { "id": "tube-highbury-islington-fields", "kind": "tube-exit", "name": "Highbury & Islington · Fields exit", "lng": -0.1024, "lat": 51.5462, "note": "Quieter side, opens onto Highbury Fields." },
+    { "id": "tube-holloway-road", "kind": "tube-exit", "name": "Holloway Road · station", "lng": -0.1129, "lat": 51.5527, "note": "Walking fallback north of the stadium area." },
+    { "id": "tube-caledonian-road", "kind": "tube-exit", "name": "Caledonian Road · station", "lng": -0.1182, "lat": 51.5479, "note": "West-side escape if Holloway is shut." },
+    { "id": "tube-angel-south", "kind": "tube-exit", "name": "Angel · south exit", "lng": -0.1059, "lat": 51.5322, "note": "Southern escape via Upper Street." },
+
+    { "id": "toilet-highbury-fields-north", "kind": "toilet", "name": "Highbury Fields · north toilet block", "lng": -0.1023, "lat": 51.5475, "note": "Council-maintained. Expect queues." },
+    { "id": "toilet-highbury-fields-south", "kind": "toilet", "name": "Highbury Fields · south block", "lng": -0.1031, "lat": 51.5450, "note": "Quieter than the north block." },
+    { "id": "toilet-town-hall", "kind": "toilet", "name": "Town Hall public WC", "lng": -0.1024, "lat": 51.5419, "note": "Check signage on the day." },
+    { "id": "toilet-islington-green", "kind": "toilet", "name": "Islington Green · WC", "lng": -0.1052, "lat": 51.5381, "note": "Verify open hours before relying on it." },
+    { "id": "toilet-angel-square", "kind": "toilet", "name": "Angel Square area · WC", "lng": -0.1063, "lat": 51.5340, "note": "Near the Angel southern exit." },
+    { "id": "toilet-event-portaloos", "kind": "toilet", "name": "Event portaloos", "lng": -0.1025, "lat": 51.5500, "note": "Placeholder; follow steward signs on the day." },
+
+    { "id": "water-highbury-fountain", "kind": "water", "name": "Highbury Fields · drinking fountain", "lng": -0.1023, "lat": 51.5464, "note": "Bring a bottle to refill." },
+    { "id": "water-town-hall-refill", "kind": "water", "name": "Town Hall · refill point", "lng": -0.1024, "lat": 51.5422, "note": "Public refill station." },
+    { "id": "water-highbury-corner", "kind": "water", "name": "Highbury Corner area · refill", "lng": -0.1033, "lat": 51.5466, "note": "Several cafés will refill for free if asked." },
+    { "id": "water-angel-area", "kind": "water", "name": "Angel area · shops sell water", "lng": -0.1058, "lat": 51.5340, "note": "Last reliable refill before heading south." },
+
+    { "id": "food-upper-north", "kind": "food", "name": "Upper Street cafés · north end", "lng": -0.1031, "lat": 51.5450, "note": "Cluster of quick eats near Highbury Corner." },
+    { "id": "food-upper-mid", "kind": "food", "name": "Upper Street cafés · mid", "lng": -0.1037, "lat": 51.5420, "note": "Take-away friendly." },
+    { "id": "food-upper-south", "kind": "food", "name": "Upper Street cafés · south", "lng": -0.1052, "lat": 51.5375, "note": "Heading toward Angel." },
+    { "id": "food-highbury-corner-quick", "kind": "food", "name": "Quick food · Highbury Corner", "lng": -0.1032, "lat": 51.5466, "note": "Bakeries and chains around the junction." },
+    { "id": "food-drayton-park", "kind": "food", "name": "Cafés near Drayton Park", "lng": -0.1060, "lat": 51.5530, "note": "Small cluster before the stadium area." },
+    { "id": "food-angel-strip", "kind": "food", "name": "Angel restaurant strip", "lng": -0.1062, "lat": 51.5340, "note": "Sit-down options after the parade." },
+
+    { "id": "pub-bank-of-friendship", "kind": "pub", "name": "Bank of Friendship", "lng": -0.1023, "lat": 51.5481, "note": "Local Arsenal pub off Highbury Fields." },
+    { "id": "pub-old-queens-head", "kind": "pub", "name": "Old Queen's Head", "lng": -0.1010, "lat": 51.5395, "note": "Essex Road; usually packed on big days." },
+    { "id": "pub-island-queen", "kind": "pub", "name": "Island Queen", "lng": -0.1003, "lat": 51.5377, "note": "Noel Road; quieter atmosphere." },
+    { "id": "pub-camden-head", "kind": "pub", "name": "Camden Head", "lng": -0.1057, "lat": 51.5366, "note": "Camden Passage; outdoor seating." },
+    { "id": "pub-the-angelic", "kind": "pub", "name": "The Angelic", "lng": -0.1062, "lat": 51.5343, "note": "Liverpool Road; near Angel." },
+    { "id": "pub-the-york", "kind": "pub", "name": "The York", "lng": -0.1054, "lat": 51.5358, "note": "Islington High Street; spacious." },
+    { "id": "pub-marquess-tavern", "kind": "pub", "name": "Marquess Tavern", "lng": -0.0959, "lat": 51.5403, "note": "Canonbury; quieter side away from Upper Street." },
+    { "id": "pub-canonbury-tavern", "kind": "pub", "name": "Canonbury Tavern", "lng": -0.0989, "lat": 51.5479, "note": "Canonbury Place; good garden." },
+
+    { "id": "atm-upper-north", "kind": "atm", "name": "ATMs · Upper St (north)", "lng": -0.1033, "lat": 51.5455, "note": "Several bank branches near Highbury Corner." },
+    { "id": "atm-upper-mid", "kind": "atm", "name": "ATMs · Upper St (mid)", "lng": -0.1042, "lat": 51.5410, "note": "Inside grocery and convenience stores." },
+    { "id": "atm-angel", "kind": "atm", "name": "ATMs · Angel", "lng": -0.1058, "lat": 51.5335, "note": "Several free-to-use machines near the station." },
+    { "id": "atm-town-hall", "kind": "atm", "name": "ATM · Town Hall area", "lng": -0.1029, "lat": 51.5425, "note": "Single machine; carry a backup card." },
+
+    { "id": "family-highbury-fields-south", "kind": "family", "name": "Highbury Fields · south lawn", "lng": -0.1018, "lat": 51.5450, "note": "Quieter pocket if the crowd gets tight." },
+    { "id": "family-liverpool-road", "kind": "family", "name": "Liverpool Road · quieter pavement", "lng": -0.1095, "lat": 51.5410, "note": "Parallel to Upper Street, much less dense." },
+    { "id": "family-canonbury-square", "kind": "family", "name": "Canonbury Square", "lng": -0.0990, "lat": 51.5450, "note": "Calm green square away from the main flow." },
+    { "id": "family-barnsbury-streets", "kind": "family", "name": "Barnsbury side streets", "lng": -0.1100, "lat": 51.5425, "note": "Residential, low foot traffic." },
+
+    { "id": "view-highbury-corner", "kind": "view", "name": "Highbury Corner · open view", "lng": -0.1030, "lat": 51.5460, "note": "Wide pavement; good sight line of the bus turn." },
+    { "id": "view-upper-mid", "kind": "view", "name": "Upper Street · mid kerb", "lng": -0.1037, "lat": 51.5400, "note": "Less crowded view if you arrive early." },
+    { "id": "view-town-hall-steps", "kind": "view", "name": "Town Hall · steps area", "lng": -0.1026, "lat": 51.5420, "note": "Elevated vantage at the civic endpoint." }
   ],
   "closures": [
     {
@@ -160,9 +208,9 @@
     }
   ],
   "scheduleEstimate": [
-    { "label": "Parade starts at the stadium area", "time": "14:00", "note": "Official start time." },
-    { "label": "Expected movement along the corridor", "time": "14:20-15:15", "note": "Estimated, not live." },
-    { "label": "Crowds disperse toward stations and side streets", "time": "15:30+", "note": "Leave extra time." }
+    { "label": "Parade starts at the stadium area", "time": "14:00", "note": "Official start time.", "lng": -0.1086, "lat": 51.5549 },
+    { "label": "Expected movement along the corridor", "time": "14:20-15:15", "note": "Estimated, not live.", "lng": -0.1027, "lat": 51.5461 },
+    { "label": "Crowds disperse toward stations and side streets", "time": "15:30+", "note": "Leave extra time.", "lng": -0.1026, "lat": 51.5421 }
   ],
   "banter": {
     "chants": [

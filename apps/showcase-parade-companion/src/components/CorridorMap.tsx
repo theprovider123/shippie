@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { RoutePack } from '../data/parade-2026';
+import type { RoutePack, RoutePoi, RoutePoiKind } from '../data/parade-2026';
 import type { BusMarker } from '../lib/bus';
 import { clusterFanEvents, FAN_EVENT_LABELS, type FanEvent, type FanEventCluster, type FanEventType } from '../lib/fan-events';
 import { lngLatToPixel, metersToPixelRadius, type PixelPoint } from '../lib/geo';
@@ -7,6 +7,23 @@ import type { GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
 import { chipForGroupName, type SideTing } from '../lib/side-tings';
 import type { MapLayerId } from './LayerToggleRow';
+
+/**
+ * Place categories (toilet/water/food/pub/atm) are filtered by their
+ * corresponding LayerToggleRow toggle. Core categories (landmark, station,
+ * medical, exit, stewards, meeting) always render. Tube exits, family
+ * pockets, and view suggestions stay out of the base canvas until a dedicated
+ * find/search surface ships; otherwise first load becomes a field of unlabeled
+ * dots.
+ */
+function placeLayerForKind(kind: RoutePoiKind): MapLayerId | null {
+  if (kind === 'toilet') return 'toilets';
+  if (kind === 'water') return 'water';
+  if (kind === 'food') return 'food';
+  if (kind === 'pub') return 'pubs';
+  if (kind === 'atm') return 'atm';
+  return null;
+}
 
 interface CorridorMapProps {
   pack: RoutePack;
@@ -18,6 +35,17 @@ interface CorridorMapProps {
   layers?: Partial<Record<MapLayerId, boolean>>;
   target?: PlanPoint | null;
   compact?: boolean;
+  /**
+   * Optional: extra POIs to render this frame regardless of layer state
+   * (used by the quick-find chips to surface tube-exits / family / view that
+   * are normally hidden, without flipping every place layer on).
+   */
+  extraPois?: RoutePoi[];
+  /**
+   * Optional: callback when a baked POI is tapped on the canvas. MapScreen
+   * uses this to open the POI bottom sheet.
+   */
+  onPoiTap?: (poi: RoutePoi) => void;
 }
 
 export function CorridorMap({
@@ -30,6 +58,8 @@ export function CorridorMap({
   layers = {},
   target,
   compact = false,
+  extraPois,
+  onPoiTap,
 }: CorridorMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -51,9 +81,34 @@ export function CorridorMap({
     [busMarkers.length, gpsFix, layers.bus, visibleFanClusters],
   );
 
+  /**
+   * Visible baked POIs (interactive — get hit zones + sheet on tap).
+   * Includes anything passed as `extraPois` (the quick-find surface).
+   */
+  const visiblePois = useMemo<RoutePoi[]>(() => {
+    const seen = new Set<string>();
+    const out: RoutePoi[] = [];
+    for (const poi of pack.pois) {
+      if (poi.kind === 'tube-exit' || poi.kind === 'family' || poi.kind === 'view') continue;
+      const layer = placeLayerForKind(poi.kind);
+      if (layer && layers[layer] === false) continue;
+      if (seen.has(poi.id)) continue;
+      seen.add(poi.id);
+      out.push(poi);
+    }
+    if (extraPois) {
+      for (const poi of extraPois) {
+        if (seen.has(poi.id)) continue;
+        seen.add(poi.id);
+        out.push(poi);
+      }
+    }
+    return out;
+  }, [pack.pois, layers, extraPois]);
+
   const points = useMemo(() => {
     const out: Array<{ id: string; label: string; kind: string; point: PixelPoint }> = [];
-    for (const poi of pack.pois) {
+    for (const poi of visiblePois) {
       out.push({ id: poi.id, label: poi.name, kind: poi.kind, point: lngLatToPixel(poi) });
     }
     if (plan) {
@@ -62,7 +117,7 @@ export function CorridorMap({
     }
     if (target) out.push({ id: 'target', label: target.label, kind: 'target', point: lngLatToPixel(target) });
     return out;
-  }, [pack.pois, plan, target]);
+  }, [visiblePois, plan, target]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -77,10 +132,12 @@ export function CorridorMap({
     drawRoute(ctx, pack.route.coordinates);
     if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters);
     if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings);
+    if (gpsFix && target) drawWalkLine(ctx, gpsFix, target);
     drawPois(ctx, points);
+    drawScheduleMarkers(ctx, pack.scheduleEstimate);
     if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers);
     if (gpsFix) drawGps(ctx, gpsFix);
-  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings]);
+  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target]);
 
   const clampZoom = (value: number) => Math.max(1, Math.min(3.2, value));
 
@@ -93,6 +150,10 @@ export function CorridorMap({
   };
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    // POI hit zones live inside the frame; their click handler opens the
+    // sheet. Don't capture the pointer in that case — capture would steal
+    // subsequent events from the button.
+    if ((event.target as HTMLElement | null)?.closest('[data-poi-hit]')) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     lastDrag.current = { x: event.clientX, y: event.clientY };
@@ -139,6 +200,29 @@ export function CorridorMap({
         >
           <img src={basemapSrc} alt="Offline map of the central Islington parade corridor" draggable={false} />
           <canvas ref={canvasRef} aria-hidden />
+          {onPoiTap ? (
+            <div className="poi-hit-layer" aria-hidden>
+              {visiblePois.map((poi) => {
+                const p = lngLatToPixel(poi);
+                const leftPct = (p.x / 1800) * 100;
+                const topPct = (p.y / 1800) * 100;
+                return (
+                  <button
+                    key={poi.id}
+                    type="button"
+                    data-poi-hit
+                    className="poi-hit"
+                    style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+                    aria-label={`${poi.name} — open detail`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onPoiTap(poi);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
       <p id={summaryId} className="sr-only">
@@ -190,20 +274,67 @@ function drawPois(ctx: CanvasRenderingContext2D, points: Array<{ id: string; lab
   ctx.font = '700 28px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
   for (const marker of points) {
-    const fill = marker.kind === 'primary' ? '#EF0107' : marker.kind === 'fallback' ? '#14120F' : marker.kind === 'target' ? '#EF0107' : '#F5EFE4';
-    const stroke = '#14120F';
+    const style = poiStyleForKind(marker.kind);
     ctx.beginPath();
-    ctx.arc(marker.point.x, marker.point.y, marker.kind === 'target' ? 34 : 24, 0, Math.PI * 2);
-    ctx.fillStyle = fill;
+    ctx.arc(marker.point.x, marker.point.y, style.radius, 0, Math.PI * 2);
+    ctx.fillStyle = style.fill;
     ctx.fill();
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = stroke;
+    ctx.lineWidth = style.lineWidth;
+    ctx.strokeStyle = style.stroke;
     ctx.stroke();
-    if (marker.kind === 'primary' || marker.kind === 'fallback' || marker.kind === 'target') {
-      drawLabel(ctx, marker.label, marker.point.x + 44, marker.point.y);
+    if (style.glyph) {
+      ctx.fillStyle = style.glyphColor;
+      ctx.font = `700 ${style.glyphSize}px "JetBrains Mono", ui-monospace, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(style.glyph, marker.point.x, marker.point.y + style.glyphSize * 0.35);
+      ctx.textAlign = 'start';
+    }
+    if (style.showLabel) {
+      drawLabel(ctx, marker.label, marker.point.x + style.radius + 18, marker.point.y);
     }
   }
   ctx.restore();
+}
+
+/**
+ * Visual style per POI kind. Place categories (toilet/water/food/pub/atm)
+ * draw smaller than the core landmarks and carry a single mono-glyph (T, W,
+ * F, P, $) so the map stays scannable without leaning on icon files.
+ */
+function poiStyleForKind(kind: string): {
+  radius: number;
+  fill: string;
+  stroke: string;
+  lineWidth: number;
+  glyph?: string;
+  glyphSize: number;
+  glyphColor: string;
+  showLabel: boolean;
+} {
+  const base = {
+    glyphSize: 22,
+    glyphColor: '#14120F',
+    showLabel: false,
+  };
+  if (kind === 'primary' || kind === 'target') {
+    return { ...base, radius: 34, fill: '#EF0107', stroke: '#14120F', lineWidth: 8, showLabel: true };
+  }
+  if (kind === 'fallback') {
+    return { ...base, radius: 24, fill: '#14120F', stroke: '#14120F', lineWidth: 8, showLabel: true };
+  }
+  if (kind === 'medical') return { ...base, radius: 22, fill: '#C40006', stroke: '#14120F', lineWidth: 6, glyph: '+', glyphSize: 26, glyphColor: '#F5EFE4' };
+  if (kind === 'stewards') return { ...base, radius: 22, fill: '#EDBB4A', stroke: '#14120F', lineWidth: 6, glyph: 'S', glyphSize: 22 };
+  if (kind === 'station' || kind === 'tube-exit') return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, glyph: '◉', glyphSize: 22 };
+  if (kind === 'exit') return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, glyph: '↗', glyphSize: 26 };
+  if (kind === 'toilet') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#5E7B5C', lineWidth: 4, glyph: 'T', glyphSize: 14, glyphColor: '#5E7B5C' };
+  if (kind === 'water') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#5E7B5C', lineWidth: 4, glyph: '~', glyphSize: 14, glyphColor: '#5E7B5C' };
+  if (kind === 'food') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#A37918', lineWidth: 4, glyph: 'F', glyphSize: 14, glyphColor: '#A37918' };
+  if (kind === 'pub') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#A37918', lineWidth: 4, glyph: 'P', glyphSize: 14, glyphColor: '#A37918' };
+  if (kind === 'atm') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 4, glyph: '$', glyphSize: 14 };
+  if (kind === 'family') return { ...base, radius: 16, fill: '#EDE6D5', stroke: '#5E7B5C', lineWidth: 3 };
+  if (kind === 'view') return { ...base, radius: 16, fill: '#EDE6D5', stroke: '#EDBB4A', lineWidth: 4, glyph: '◇', glyphSize: 18 };
+  // landmark + meeting + any unknown — neutral cream dot
+  return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6 };
 }
 
 function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[]) {
@@ -241,6 +372,48 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
     ctx.fill();
     drawLabel(ctx, clusterLabel(cluster), p.x + radius + 8, p.y);
   }
+  ctx.restore();
+}
+
+function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack['scheduleEstimate']) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  let index = 0;
+  for (const row of schedule) {
+    if (typeof row.lng !== 'number' || typeof row.lat !== 'number') continue;
+    index += 1;
+    const p = lngLatToPixel({ lng: row.lng, lat: row.lat });
+    // Slight up-shift so the marker sits above the route polyline.
+    const y = p.y - 64;
+    ctx.beginPath();
+    ctx.arc(p.x, y, 26, 0, Math.PI * 2);
+    ctx.fillStyle = '#F5EFE4';
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#EF0107';
+    ctx.stroke();
+    ctx.fillStyle = '#EF0107';
+    ctx.font = '700 28px "JetBrains Mono", ui-monospace, monospace';
+    ctx.fillText(String(index), p.x, y + 2);
+  }
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint) {
+  const a = lngLatToPixel(from);
+  const b = lngLatToPixel(to);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.setLineDash([2, 18]);
+  ctx.strokeStyle = '#5E7B5C';
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -369,16 +542,21 @@ function offsetClusterPoint(point: PixelPoint, type: FanEventType): PixelPoint {
 }
 
 function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
+  const displayText = text.length > 30 ? `${text.slice(0, 27)}...` : text;
   ctx.font = '700 52px "JetBrains Mono", ui-monospace, monospace';
-  const padded = text.length * 30 + 38;
+  const padded = displayText.length * 30 + 38;
+  let labelX = x;
+  if (labelX + padded > 1782) labelX = x - padded - 60;
+  labelX = Math.max(18, Math.min(1782 - padded, labelX));
+  const labelY = Math.max(42, Math.min(1758, y));
   ctx.fillStyle = 'rgba(245, 239, 228, 0.94)';
-  roundRect(ctx, x - 18, y - 42, padded, 84, 0);
+  roundRect(ctx, labelX - 18, labelY - 42, padded, 84, 0);
   ctx.fill();
   ctx.lineWidth = 3;
   ctx.strokeStyle = 'rgba(20, 18, 15, 0.82)';
   ctx.stroke();
   ctx.fillStyle = '#14120F';
-  ctx.fillText(text, x, y + 4);
+  ctx.fillText(displayText, labelX, labelY + 4);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
