@@ -207,7 +207,124 @@ describe('createShippieIframeSdk — wire format + helpers', () => {
       ok: false,
       error: { message: 'Capability is not granted for this app.' },
     });
-    await expect(promise).resolves.toEqual({ task: 'classify', output: null, source: 'unavailable' });
+    await expect(promise).resolves.toEqual({
+      task: 'classify',
+      output: null,
+      source: 'unavailable',
+      state: 'unavailable',
+    });
+    delete (globalThis as any).window;
+  });
+
+  test('ai.run forwards progress events to the per-request callback', async () => {
+    const { win, posted, fireMessage } = fakeWindow();
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    const events: Array<{ loaded: number; total: number; status: string }> = [];
+    const promise = sdk.ai.run({
+      task: 'sentiment',
+      input: 'today felt great',
+      onProgress: (e) => events.push(e),
+    });
+    const message = posted[0]!.message as { id: string };
+    fireMessage({ protocol: 'shippie.bridge.v1', kind: 'ai.progress', id: message.id, loaded: 50, total: 100, status: 'download' });
+    fireMessage({ protocol: 'shippie.bridge.v1', kind: 'ai.progress', id: message.id, loaded: 100, total: 100, status: 'done' });
+    fireMessage({
+      protocol: 'shippie.bridge.v1',
+      id: message.id,
+      ok: true,
+      result: { task: 'sentiment', output: { sentiment: 'positive', score: 0.91 }, source: 'local', state: 'ready' },
+    });
+    const result = await promise;
+    expect(result.state).toBe('ready');
+    expect(events).toEqual([
+      { loaded: 50, total: 100, status: 'download' },
+      { loaded: 100, total: 100, status: 'done' },
+    ]);
+    delete (globalThis as any).window;
+  });
+
+  test('ai.run honours per-request timeoutMs', async () => {
+    const { win, posted } = fakeWindow();
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    const promise = sdk.ai.run({ task: 'sentiment', input: 'x', timeoutMs: 5 });
+    expect(posted).toHaveLength(1);
+    const result = await promise;
+    expect(result.source).toBe('unavailable');
+    expect(result.state).toBe('unavailable');
+    delete (globalThis as any).window;
+  });
+
+  test('ai.run derives state from source when host omits it', async () => {
+    const { win, posted, fireMessage } = fakeWindow();
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    const promise = sdk.ai.run({ task: 'sentiment', input: 'x' });
+    const message = posted[0]!.message as { id: string };
+    fireMessage({
+      protocol: 'shippie.bridge.v1',
+      id: message.id,
+      ok: true,
+      result: { task: 'sentiment', output: { sentiment: 'neutral', score: 0.5 }, source: 'local' },
+    });
+    const result = await promise;
+    expect(result.state).toBe('ready');
+    delete (globalThis as any).window;
+  });
+
+  test('ai.capabilities returns availableTasks from the bridge', async () => {
+    const { win, posted, fireMessage } = fakeWindow();
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    const promise = sdk.ai.capabilities();
+    const message = posted[0]!.message as { id: string; capability: string };
+    expect(message.capability).toBe('ai.capabilities');
+    fireMessage({
+      protocol: 'shippie.bridge.v1',
+      id: message.id,
+      ok: true,
+      result: { availableTasks: ['classify', 'sentiment'] },
+    });
+    await expect(promise).resolves.toEqual({ availableTasks: ['classify', 'sentiment'] });
+    delete (globalThis as any).window;
+  });
+
+  test('ai.capabilities falls back to empty list outside the container', async () => {
+    const win: any = {
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    win.parent = win;
+    win.self = win;
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    await expect(sdk.ai.capabilities()).resolves.toEqual({ availableTasks: [] });
+    delete (globalThis as any).window;
+  });
+
+  test('ai.preload posts an ai.preload envelope and always resolves', async () => {
+    const { win, posted } = fakeWindow();
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    await expect(sdk.ai.preload('vision')).resolves.toBeUndefined();
+    expect(posted).toHaveLength(1);
+    const message = posted[0]!.message as { capability: string; payload: { task: string } };
+    expect(message.capability).toBe('ai.preload');
+    expect(message.payload.task).toBe('vision');
+    delete (globalThis as any).window;
+  });
+
+  test('ai.preload no-ops outside the container', async () => {
+    const win: any = {
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    win.parent = win;
+    win.self = win;
+    (globalThis as any).window = win;
+    const sdk = createShippieIframeSdk({ appId: 'app_demo' });
+    await expect(sdk.ai.preload('classify')).resolves.toBeUndefined();
     delete (globalThis as any).window;
   });
 

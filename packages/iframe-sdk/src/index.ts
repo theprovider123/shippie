@@ -39,10 +39,62 @@ export type AiTask =
   | 'generate'
   | 'translate';
 
+/**
+ * Subset of {@link AiTask} that the on-device inference iframe can
+ * actually serve today. Mirrors the registry in
+ * `apps/shippie-ai/src/inference/models/registry.ts`. Consumers can
+ * typecheck a `shippie.ai.capabilities()` result against this union
+ * instead of hard-coding string assumptions.
+ */
+export type InferenceTask =
+  | 'classify'
+  | 'embed'
+  | 'sentiment'
+  | 'moderate'
+  | 'vision';
+
+/**
+ * Streaming progress event emitted while a model is downloading before
+ * its first inference. Mirrors the transformers.js `progress_callback`
+ * shape, normalised so consumers don't need to know about the runtime.
+ *
+ * Treat any non-positive `total` as "indeterminate" and render a
+ * spinner rather than a percentage.
+ */
+export interface AiProgressEvent {
+  /** Bytes received so far, when known. */
+  loaded: number;
+  /** Total expected bytes, when known. `0` means indeterminate. */
+  total: number;
+  /**
+   * Transformers.js stage string — `'initiate' | 'download' | 'progress'
+   * | 'done' | 'ready'` etc. Consumers can switch on this to render
+   * different copy ("Downloading…" vs "Warming up…").
+   */
+  status: string;
+}
+
 export interface AiRunRequest {
   task: AiTask;
   input: unknown;
   options?: Record<string, unknown>;
+  /**
+   * Per-request deadline in milliseconds. Defaults to 60_000 — generous
+   * enough to swallow first-call model downloads on 4G. Drop it
+   * aggressively (e.g. 3_000) when degradation is acceptable, e.g.
+   * sentiment-on-every-keystroke where falling back to "unavailable"
+   * is fine.
+   */
+  timeoutMs?: number;
+  /**
+   * Fires zero or more times while the model behind this task is being
+   * downloaded for the first time. Subsequent runs of the same task
+   * hit the Cache Storage hot path and emit nothing.
+   *
+   * Outside the container this is never invoked — only the iframe can
+   * observe download progress.
+   */
+  onProgress?: (event: AiProgressEvent) => void;
 }
 
 export interface AiRunResult {
@@ -54,8 +106,30 @@ export interface AiRunResult {
    * failed, or device too constrained). Showcases MUST gate features
    * on `source !== 'unavailable'` and hide the UI when it isn't —
    * never render a broken AI feature.
+   *
+   * NOTE: this field's shape is preserved for the load-bearing
+   * `source !== 'unavailable'` gate the flagship consumers
+   * (journal/pantry-scanner/shopping-list) already rely on. For finer
+   * lifecycle distinctions (e.g. "still downloading"), prefer
+   * `state` below.
    */
   source: 'local' | 'edge' | 'unavailable';
+  /**
+   * Finer-grained lifecycle state. Use this when you want to
+   * distinguish a transient first-run download from a permanent
+   * "this device can't serve the task":
+   *
+   *   - `'ready'`        — inference completed and `output` is valid.
+   *   - `'loading'`      — model still downloading; `output` is null.
+   *                        Prefer rendering a download indicator
+   *                        instead of hiding the feature.
+   *   - `'unavailable'`  — the iframe can't run this task on this
+   *                        device. Hide the feature.
+   *
+   * Older hosts may omit this field; treat the absence as `'ready'`
+   * for `source === 'local' | 'edge'` and `'unavailable'` otherwise.
+   */
+  state?: 'loading' | 'ready' | 'unavailable';
   /** Backend the worker actually ran on, when `source === 'local'`. */
   backend?: 'webnn' | 'webgpu' | 'wasm';
 }
@@ -214,6 +288,10 @@ export interface ShippieIframeSdk {
      * isn't — never render broken inference UI. This is a load-bearing
      * invariant; the three flagship AI consumers (journal,
      * pantry-scanner, shopping-list) all rely on it.
+     *
+     * Pass `req.onProgress` to render a download bar on the first
+     * inference of a cold task; pass `req.timeoutMs` to override the
+     * default 60_000 ms deadline.
      */
     run(req: AiRunRequest): Promise<AiRunResult>;
     /**
@@ -228,6 +306,30 @@ export interface ShippieIframeSdk {
      * each `ai.run` result for the actual capability check.
      */
     ready(): Promise<void>;
+    /**
+     * Ask the container which inference tasks it can serve on this
+     * device today. Returns an empty list outside the container or
+     * when the iframe doesn't respond within ~2.5s — consumers should
+     * treat that as "AI not available" and fall back gracefully.
+     *
+     * Use this for upfront UI gating ("not supported on this device")
+     * instead of silently hiding features. Pair with the per-call
+     * `source !== 'unavailable'` gate on each `ai.run` result for the
+     * authoritative run-time check.
+     */
+    capabilities(): Promise<{ availableTasks: InferenceTask[] }>;
+    /**
+     * Hint the container that an inference task is likely to be
+     * needed soon, so it can warm the relevant model in the
+     * background. The iframe schedules the download via
+     * `requestIdleCallback` when available so it never competes with
+     * foreground inference.
+     *
+     * Always resolves — never rejects, even outside the container or
+     * when the underlying preload fails. Safe to call from any
+     * lifecycle hook (mount, route change, etc).
+     */
+    preload(task: InferenceTask): Promise<void>;
   };
   transfer: {
     /**
@@ -308,6 +410,11 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
     string,
     { resolve: (v: unknown) => void; reject: (err: Error) => void; timer: ReturnType<typeof setTimeout> }
   >();
+  // Streaming progress callbacks for in-flight `ai.run` requests, keyed
+  // by the same id used in `pending`. The iframe posts `ai.progress`
+  // envelopes mid-download; we fan out to the consumer's `onProgress`
+  // hook and leave the RPC `pending` entry untouched until completion.
+  const progressCallbacks = new Map<string, (event: AiProgressEvent) => void>();
   let rpcListenerInstalled = false;
 
   function ensureRpcListener(): void {
@@ -315,13 +422,40 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
     rpcListenerInstalled = true;
     w.addEventListener('message', (event: MessageEvent) => {
       const data = event.data as
-        | { protocol?: string; id?: string; ok?: boolean; result?: unknown; error?: { message: string } }
+        | {
+            protocol?: string;
+            id?: string;
+            ok?: boolean;
+            result?: unknown;
+            error?: { message: string };
+            kind?: string;
+            loaded?: unknown;
+            total?: unknown;
+            status?: unknown;
+          }
         | null;
       if (!data || data.protocol !== PROTOCOL) return;
+      // Streaming progress event for an in-flight `ai.run`. Same id as
+      // the original RPC; multiple events per id are expected.
+      if (data.kind === 'ai.progress' && typeof data.id === 'string') {
+        const cb = progressCallbacks.get(data.id);
+        if (!cb) return;
+        try {
+          cb({
+            loaded: typeof data.loaded === 'number' ? data.loaded : 0,
+            total: typeof data.total === 'number' ? data.total : 0,
+            status: typeof data.status === 'string' ? data.status : 'progress',
+          });
+        } catch {
+          /* progress callbacks must never break the RPC */
+        }
+        return;
+      }
       if (typeof data.id !== 'string' || typeof data.ok !== 'boolean') return;
       const entry = pending.get(data.id);
       if (!entry) return;
       pending.delete(data.id);
+      progressCallbacks.delete(data.id);
       clearTimeout(entry.timer);
       if (data.ok) entry.resolve(data.result);
       else entry.reject(new Error(data.error?.message ?? 'bridge error'));
@@ -440,6 +574,7 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
       const id = nextId(capability);
       const timer = setTimeout(() => {
         pending.delete(id);
+        progressCallbacks.delete(id);
         reject(new Error(`${capability} timed out after ${timeoutMs}ms`));
       }, timeoutMs);
       pending.set(id, {
@@ -447,6 +582,42 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
         reject,
         timer,
       });
+      w.parent.postMessage(
+        { protocol: PROTOCOL, id, appId, capability, method, payload },
+        '*',
+      );
+    });
+  }
+
+  /**
+   * RPC variant that registers a progress callback against the same
+   * id as the request. The iframe streams `{ kind: 'ai.progress', id,
+   * loaded, total, status }` envelopes mid-flight; the receiver in
+   * {@link ensureRpcListener} fans them out to `onProgress`.
+   */
+  function callWithProgress<T>(
+    capability: string,
+    method: string,
+    payload: Record<string, unknown>,
+    fallback: T,
+    timeoutMs: number,
+    onProgress?: (event: AiProgressEvent) => void,
+  ): Promise<T> {
+    if (!inContainer || !w) return Promise.resolve(fallback);
+    ensureRpcListener();
+    return new Promise<T>((resolve, reject) => {
+      const id = nextId(capability);
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        progressCallbacks.delete(id);
+        reject(new Error(`${capability} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+      pending.set(id, {
+        resolve: (v) => resolve(v as T),
+        reject,
+        timer,
+      });
+      if (onProgress) progressCallbacks.set(id, onProgress);
       w.parent.postMessage(
         { protocol: PROTOCOL, id, appId, capability, method, payload },
         '*',
@@ -598,18 +769,37 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
     },
     ai: {
       async run(req) {
-        // Bigger timeout — model downloads can run 10s+ on a cold
-        // first invocation. After the first call the backend cache
-        // makes subsequent calls instant.
-        const fallback: AiRunResult = { task: req.task, output: null, source: 'unavailable' };
+        // Default to 60s — generous enough to swallow cold-start model
+        // downloads on 4G; consumers can shorten it via `req.timeoutMs`
+        // when degradation is acceptable (e.g. sentiment-per-keystroke).
+        const timeoutMs = typeof req.timeoutMs === 'number' && req.timeoutMs > 0
+          ? req.timeoutMs
+          : 60_000;
+        const fallback: AiRunResult = {
+          task: req.task,
+          output: null,
+          source: 'unavailable',
+          state: 'unavailable',
+        };
         try {
-          return await call<AiRunResult>(
+          const raw = await callWithProgress<AiRunResult>(
             'ai.run',
             'run',
             { task: req.task, input: req.input, options: req.options },
             fallback,
-            60_000,
+            timeoutMs,
+            req.onProgress,
           );
+          // Back-compat: older hosts won't stamp `state`, so derive it
+          // from `source` so consumers can rely on the new field even
+          // when talking to an older iframe.
+          if (raw && typeof raw === 'object' && raw.state === undefined) {
+            return {
+              ...raw,
+              state: raw.source === 'unavailable' ? 'unavailable' : 'ready',
+            };
+          }
+          return raw;
         } catch {
           return fallback;
         }
@@ -624,6 +814,50 @@ export function createShippieIframeSdk(opts: ShippieIframeSdkOptions): ShippieIf
           await call<Record<string, unknown>>('ai.ready', 'ready', {}, {}, 2_500);
         } catch {
           // Readiness is advisory — never reject.
+        }
+      },
+      async capabilities() {
+        // Probe the iframe for its task list. Outside the container,
+        // and on older hosts that don't implement `ai.capabilities`,
+        // resolve to an empty list — consumers can treat that as
+        // "AI not available" and gate the UI accordingly.
+        try {
+          const result = await call<{ availableTasks?: InferenceTask[] }>(
+            'ai.capabilities',
+            'list',
+            {},
+            { availableTasks: [] },
+            2_500,
+          );
+          return {
+            availableTasks: Array.isArray(result.availableTasks)
+              ? result.availableTasks
+              : [],
+          };
+        } catch {
+          return { availableTasks: [] };
+        }
+      },
+      async preload(task) {
+        // Fire-and-forget hint. Iframe schedules the download via
+        // `requestIdleCallback` so it never competes with foreground
+        // inference. Always resolves; preload failures are silent by
+        // design — the next real `ai.run` will surface any error.
+        if (!inContainer || !w) return;
+        try {
+          w.parent.postMessage(
+            {
+              protocol: PROTOCOL,
+              id: nextId('ai.preload'),
+              appId,
+              capability: 'ai.preload',
+              method: 'preload',
+              payload: { task },
+            },
+            '*',
+          );
+        } catch {
+          /* preload never rejects */
         }
       },
     },
