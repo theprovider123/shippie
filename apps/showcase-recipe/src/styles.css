@@ -3289,3 +3289,52 @@ body {
     animation: none;
   }
 }
+
+/* ── 2026-05-24 cluster 2 — RecipeRow 4:3 mobile photo ────────────
+   Below 600px the 72-square thumb feels stamp-y. Promote the photo to
+   a 4:3 banner (matches RecipeTile treatment) so the cookbook list
+   reads like a feature spread on phone. Keep desktop square. Same
+   saturation + hover-scale finish as the tile. */
+.recipe-row img,
+.recipe-row .recipe-mark {
+  transition: filter 200ms ease, transform 240ms cubic-bezier(0.22, 0.8, 0.36, 1);
+}
+
+.recipe-row:hover img,
+.recipe-row:hover .recipe-mark {
+  filter: saturate(1.14) contrast(1.05);
+  transform: scale(1.015);
+}
+
+.recipe-row img {
+  filter: saturate(1.08) contrast(1.03);
+}
+
+@media (max-width: 600px) {
+  .recipe-row {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    padding: 0;
+    overflow: hidden;
+  }
+  .recipe-row img,
+  .recipe-row .recipe-mark {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    max-height: 160px;
+    border-radius: 8px 8px 0 0;
+    object-fit: cover;
+  }
+  .recipe-row > button:not(.primary) {
+    padding: 0.1rem 0.85rem 0;
+  }
+  .recipe-row > small,
+  .recipe-row > .small {
+    grid-column: auto;
+    padding: 0 0.85rem;
+  }
+  .recipe-row .primary {
+    margin: 0.4rem 0.85rem 0.85rem;
+  }
+}
