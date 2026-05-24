@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 /**
  * Tiny chip row above the map for muting/unmuting layers. Re-uses the
  * sharp/paper/mono design language; no new colour. Each pill is a button
@@ -39,10 +41,27 @@ const PEOPLE_LAYERS: MapLayerId[] = ['bus', 'friends', 'side-tings', 'reports', 
 const PLACE_LAYERS: MapLayerId[] = ['toilets', 'water', 'atm'];
 
 export function LayerToggleRow({ layers, onToggle }: LayerToggleRowProps) {
+  const [open, setOpen] = useState(false);
+  const activeCount = Object.values(layers).filter(Boolean).length;
+
   return (
     <div className="layer-toggle-stack" aria-label="Map layers">
-      <LayerRow group="People" ids={PEOPLE_LAYERS} layers={layers} onToggle={onToggle} />
-      <LayerRow group="Places" ids={PLACE_LAYERS} layers={layers} onToggle={onToggle} />
+      <button
+        type="button"
+        className="layer-toggle-summary"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>Map layers</span>
+        <strong>{activeCount} on</strong>
+        <em>{open ? 'Less' : 'More'}</em>
+      </button>
+      {open ? (
+        <>
+          <LayerRow group="People" ids={PEOPLE_LAYERS} layers={layers} onToggle={onToggle} />
+          <LayerRow group="Places" ids={PLACE_LAYERS} layers={layers} onToggle={onToggle} />
+        </>
+      ) : null}
     </div>
   );
 }

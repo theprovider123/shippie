@@ -1,6 +1,7 @@
 import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useEffect, useMemo, useState } from 'react';
 import { CorridorMap } from '../components/CorridorMap';
+import { GoalPointer } from '../components/GoalPointer';
 import { LayerToggleRow, type MapLayerId } from '../components/LayerToggleRow';
 import { PoiSheet } from '../components/PoiSheet';
 import { QuickFindChips, kindsForCategory, type QuickFindCategory } from '../components/QuickFindChips';
@@ -335,6 +336,12 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         }
         onToggleBatterySaver={() => setBatterySaver((current) => !current)}
         onOpenQr={() => void openSync()}
+      />
+
+      <GoalPointer
+        gpsFix={gpsFix}
+        target={walkTarget}
+        onClear={() => setWalkTarget(null)}
       />
 
       {showGpsHint && !gpsFix ? (
