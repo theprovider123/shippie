@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import packageInfo from '../package.json';
+import { AboutSheet } from './components/AboutSheet';
 import { ImportPreviewSheet, type ImportPreview } from './components/ImportPreviewSheet';
 import { Onboarding } from './components/Onboarding';
 import { ReadinessChip, type Readiness } from './components/ReadinessChip';
@@ -23,6 +25,7 @@ import { decodeFanEventsSync, dedupeFanEvents, sortEvents, type FanEvent } from 
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
 import { isOnboarded, markOnboarded } from './lib/onboarding';
 import { markOfflineCelebrated, shouldCelebrateOffline } from './lib/offline-celebration';
+import { isParadeDay, isParadeEve, isStartPromptWindow, startPromptKey } from './lib/parade-time';
 import { addSideTing } from './lib/side-tings';
 import { showToast } from './lib/toast';
 
@@ -51,6 +54,7 @@ export function App() {
   const [nameDraft, setNameDraft] = useState(displayName);
   const [sideTingSheetOpen, setSideTingSheetOpen] = useState(false);
   const [sideTingDraft, setSideTingDraft] = useState('');
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [offlineReadiness, setOfflineReadiness] = useState<Readiness>('checking');
   const menuRef = useRef<HTMLDivElement | null>(null);
   const screenHostRef = useRef<HTMLDivElement | null>(null);
@@ -87,15 +91,16 @@ export function App() {
   }, [menuOpen]);
 
   useEffect(() => {
-    if (!nameEditorOpen && !sideTingSheetOpen) return undefined;
+    if (!nameEditorOpen && !sideTingSheetOpen && !aboutOpen) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       setNameEditorOpen(false);
       setSideTingSheetOpen(false);
+      setAboutOpen(false);
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [nameEditorOpen, sideTingSheetOpen]);
+  }, [aboutOpen, nameEditorOpen, sideTingSheetOpen]);
 
   // First time the offline pack flips to ready, fire a one-shot celebration
   // toast. Gated by a localStorage flag so subsequent loads are silent.
@@ -106,6 +111,27 @@ export function App() {
     showToast('Saved to this phone. Try it offline now.', 'success');
     trackParadeAction('parade_offline_first_ready');
   }, [offlineReadiness]);
+
+  useEffect(() => {
+    let shownThisSession = false;
+    const check = () => {
+      if (shownThisSession) return;
+      if (!isStartPromptWindow(pack.event.startTime)) return;
+      try {
+        const key = startPromptKey(pack.event.startTime);
+        if (localStorage.getItem(key)) return;
+        localStorage.setItem(key, '1');
+      } catch {
+        // The prompt is a nudge, not state the app depends on.
+      }
+      shownThisSession = true;
+      showToast('Parade starts soon. Check your group plan before signal drops.', 'warn');
+      trackParadeAction('parade_start_prompt_shown');
+    };
+    check();
+    const id = window.setInterval(check, 60_000);
+    return () => window.clearInterval(id);
+  }, [pack.event.startTime]);
 
   useEffect(() => {
     let cancelled = false;
@@ -367,7 +393,7 @@ export function App() {
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    showToast('Unofficial local-first parade companion. Save it before you travel.');
+                    setAboutOpen(true);
                     setMenuOpen(false);
                   }}
                 >
@@ -386,7 +412,9 @@ export function App() {
       </div>
 
       {isParadeDay(pack.event.startTime) ? (
-        <div className="day-banner">Parade day. Keep Location on; signal may not matter.</div>
+        <div className="day-banner">Parade day. Keep Location on. Signal will be patchy.</div>
+      ) : isParadeEve(pack.event.startTime) ? (
+        <div className="day-banner">Parade is tomorrow. Open this page on Wi-Fi today so it works without signal.</div>
       ) : null}
 
       <ReadinessChip pack={pack} onShowStatus={showOfflineStatus} onReadinessChange={setOfflineReadiness} />
@@ -473,6 +501,15 @@ export function App() {
           </div>
         </div>
       ) : null}
+      {aboutOpen ? (
+        <AboutSheet
+          appVersion={packageInfo.version}
+          pack={pack}
+          readiness={offlineReadiness}
+          onClose={() => setAboutOpen(false)}
+          onOpenSafety={() => setActive('safety')}
+        />
+      ) : null}
 
       <div className="screen-host" ref={screenHostRef}>
         {active === 'map' ? (
@@ -498,6 +535,10 @@ export function App() {
             sideTingsRefresh={sideTingsRefresh}
             onSideTingsRefresh={() => setSideTingsRefresh((current) => current + 1)}
             onAddSideTing={openSideTingSheet}
+            onEditName={() => {
+              setNameDraft(displayName);
+              setNameEditorOpen(true);
+            }}
           />
         ) : null}
         {active === 'banter' ? <BanterScreen pack={pack} onTrack={trackParadeAction} /> : null}
@@ -533,17 +574,6 @@ function useOnlineStatus(): boolean {
     };
   }, []);
   return online;
-}
-
-function isParadeDay(startTime: string): boolean {
-  const start = new Date(startTime);
-  if (Number.isNaN(start.getTime())) return false;
-  const now = Date.now();
-  const dayStart = new Date(start);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-  return now >= dayStart.getTime() && now < dayEnd.getTime();
 }
 
 function offlinePillState(readiness: Readiness, online: boolean): { label: string; className: string; ariaLabel: string } {

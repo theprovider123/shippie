@@ -5,6 +5,7 @@ import {
   banterFromPack,
   CHEER_TILES,
   listCheerCounts,
+  resetCheerCounts,
   selectedOptionId,
   tapCheer,
   voteInPoll,
@@ -48,6 +49,12 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
     setCheerCounts(tapCheer(id));
     onTrack('parade_banter_cheer_tapped', { cheer_id: id });
     hapticWow();
+  };
+
+  const onResetCheers = () => {
+    setCheerCounts(resetCheerCounts());
+    hapticConfirm();
+    showToast('Cheer taps reset on this phone.');
   };
 
   return (
@@ -121,7 +128,9 @@ export function BanterScreen({ pack, onTrack }: BanterScreenProps) {
       <div className="panel banter-card">
         <div className="banter-card__head">
           <h2>Cheer</h2>
-          <span>on this phone</span>
+          <button type="button" className="banter-reset" onClick={onResetCheers}>
+            Reset
+          </button>
         </div>
         <div className="cheer-grid" role="group" aria-label="Cheer taps">
           {CHEER_TILES.map((tile) => (

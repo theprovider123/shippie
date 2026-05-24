@@ -79,6 +79,12 @@ export function tapCheer(id: CheerId): Record<CheerId, number> {
   return counts;
 }
 
+export function resetCheerCounts(): Record<CheerId, number> {
+  const empty = Object.fromEntries(CHEER_TILES.map((tile) => [tile.id, 0])) as Record<CheerId, number>;
+  writeJson(CHEERS_KEY, empty);
+  return empty;
+}
+
 function readJson<T>(key: string, fallback: T): T {
   if (typeof localStorage === 'undefined') return fallback;
   try {

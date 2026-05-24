@@ -5,6 +5,7 @@ interface StatusStripProps {
   gpsFix: GpsFix | null;
   routeDistanceM: number | null;
   batterySaver: boolean;
+  onRoutePress?: () => void;
   onToggleBatterySaver: () => void;
   onOpenQr: () => void;
 }
@@ -13,10 +14,15 @@ export function StatusStrip({
   gpsFix,
   routeDistanceM,
   batterySaver,
+  onRoutePress,
   onToggleBatterySaver,
   onOpenQr,
 }: StatusStripProps) {
   const routeLabel = routeDistanceM == null ? '—' : formatDistance(routeDistanceM);
+  const routeAria =
+    routeDistanceM != null
+      ? `Distance to route ${Math.round(routeDistanceM)} metres. Tap to draw a walking line back to the route.`
+      : 'Distance to route unknown';
   return (
     <div className="status-strip" aria-label="Quick status and actions">
       <div
@@ -26,13 +32,16 @@ export function StatusStrip({
         <span className="status-strip__label">GPS</span>
         <strong className="status-strip__value">{formatAccuracy(gpsFix)}</strong>
       </div>
-      <div
-        className="status-strip__cell"
-        aria-label={`Distance to route ${routeDistanceM != null ? `${Math.round(routeDistanceM)} metres` : 'unknown'}`}
+      <button
+        type="button"
+        className="status-strip__cell status-strip__button"
+        aria-label={routeAria}
+        disabled={!onRoutePress || routeDistanceM == null}
+        onClick={onRoutePress}
       >
         <span className="status-strip__label">Route</span>
         <strong className="status-strip__value">{routeLabel}</strong>
-      </div>
+      </button>
       <button
         type="button"
         className="icon-toggle saver"

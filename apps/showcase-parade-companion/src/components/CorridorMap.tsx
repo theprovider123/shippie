@@ -447,11 +447,13 @@ function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix) {
 function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[]) {
   ctx.save();
   for (const marker of markers) {
+    const alpha = busMarkerAlpha(marker);
     const point =
       typeof marker.snapped_lng === 'number' && typeof marker.snapped_lat === 'number'
         ? { lng: marker.snapped_lng, lat: marker.snapped_lat }
         : { lng: marker.lng, lat: marker.lat };
     const p = lngLatToPixel(point);
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.arc(p.x, p.y, 54, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(239, 1, 7, 0.2)';
@@ -463,9 +465,19 @@ function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[]) {
     ctx.lineWidth = 9;
     ctx.strokeStyle = '#F5EFE4';
     ctx.stroke();
-    drawLabel(ctx, 'Bus tap', p.x + 58, p.y);
+    drawLabel(ctx, alpha < 0.5 ? 'Old bus tap' : 'Bus tap', p.x + 58, p.y);
   }
+  ctx.globalAlpha = 1;
   ctx.restore();
+}
+
+function busMarkerAlpha(marker: Pick<BusMarker, 'created_at'>): number {
+  const ageMin = (Date.now() - Date.parse(marker.created_at)) / 60_000;
+  if (!Number.isFinite(ageMin) || ageMin < 0) return 0.75;
+  if (ageMin > 60) return 0.32;
+  if (ageMin > 20) return 0.5;
+  if (ageMin > 8) return 0.72;
+  return 1;
 }
 
 function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[]) {

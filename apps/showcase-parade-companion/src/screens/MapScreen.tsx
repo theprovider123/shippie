@@ -23,6 +23,7 @@ import { formatAccuracy, formatGpsAge, isFreshGpsFix, isReportableGpsFix, watchG
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
 import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import { hapticConfirm, hapticWarn, hapticWow } from '../lib/haptic';
+import { busTimingPresentation } from '../lib/parade-time';
 import { listSideTings, type SideTing } from '../lib/side-tings';
 import { showToast, type ToastVariant } from '../lib/toast';
 
@@ -55,6 +56,8 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
   const [selectedPoi, setSelectedPoi] = useState<RoutePoi | null>(null);
   const [walkTarget, setWalkTarget] = useState<PlanPoint | null>(null);
   const [findCategory, setFindCategory] = useState<QuickFindCategory | null>(null);
+  const [timingExpanded, setTimingExpanded] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const [layers, setLayers] = useState<Record<MapLayerId, boolean>>({
     bus: true,
     friends: true,
@@ -96,6 +99,11 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
   }, [batterySaver]);
 
   useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
     if (gpsFix) {
       setShowGpsHint(false);
       return;
@@ -129,6 +137,10 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
     if (!gpsFix) return null;
     return nearestRouteSegment(gpsFix, pack.route.coordinates);
   }, [gpsFix, pack.route.coordinates]);
+  const timing = useMemo(
+    () => busTimingPresentation(pack.event.startTime, pack.scheduleEstimate.length, now),
+    [now, pack.event.startTime, pack.scheduleEstimate.length],
+  );
 
   const feedback = (message: string, variant: ToastVariant = 'default') => showToast(message, variant);
 
@@ -254,6 +266,19 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         gpsFix={gpsFix}
         routeDistanceM={routeDistance?.distanceM ?? null}
         batterySaver={batterySaver}
+        onRoutePress={
+          routeDistance
+            ? () => {
+                setWalkTarget({
+                  lng: routeDistance.snapped.lng,
+                  lat: routeDistance.snapped.lat,
+                  label: 'Nearest route',
+                });
+                showToast('Walking line drawn back to the route.', 'success');
+                onTrack('parade_route_walk_to', { distance_m: Math.round(routeDistance.distanceM) });
+              }
+            : undefined
+        }
         onToggleBatterySaver={() => setBatterySaver((current) => !current)}
         onOpenQr={() => void openSync()}
       />
@@ -335,18 +360,36 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         </div>
       </div>
 
-      <div className="panel">
-        <h2>Bus timing estimate</h2>
-        <div className="timeline">
-          {pack.scheduleEstimate.map((item) => (
-            <div className="timeline-row" key={`${item.time}-${item.label}`}>
-              <strong>{item.time}</strong>
-              <span>{item.label}</span>
-              {item.note ? <small>{item.note}</small> : null}
-            </div>
-          ))}
+      {timing.collapsed ? (
+        <button
+          type="button"
+          className="timing-chip"
+          aria-expanded={timingExpanded}
+          onClick={() => setTimingExpanded((current) => !current)}
+        >
+          <strong>Bus timing</strong>
+          <span>{timing.currentIndex != null ? pack.scheduleEstimate[timing.currentIndex]?.time : 'estimate'} {timingExpanded ? '▴' : '▾'}</span>
+        </button>
+      ) : null}
+
+      {!timing.collapsed || timingExpanded ? (
+        <div className="panel timing-panel">
+          <h2>Bus timing estimate</h2>
+          <div className="timeline">
+            {pack.scheduleEstimate.map((item, index) => (
+              <div
+                className={`timeline-row ${timing.currentIndex === index ? 'is-current' : ''}`}
+                key={`${item.time}-${item.label}`}
+              >
+                <strong>{item.time}</strong>
+                <span>{item.label}</span>
+                {timing.currentIndex === index ? <em>now-ish</em> : null}
+                {item.note ? <small>{item.note}</small> : null}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <QrShareSheet
         open={sheetOpen}

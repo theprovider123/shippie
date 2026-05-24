@@ -3,6 +3,7 @@ import type { RouteBanterPoll } from '../data/parade-2026';
 import {
   listBanterVotes,
   listCheerCounts,
+  resetCheerCounts,
   selectedOptionId,
   tapCheer,
   voteInPoll,
@@ -56,5 +57,14 @@ describe('banter', () => {
     tapCheer('champions');
     tapCheer('champions');
     expect(listCheerCounts().champions).toBe(2);
+  });
+
+  test('resetCheerCounts clears every cheer tile', () => {
+    tapCheer('champions');
+    tapCheer('coyg');
+    const reset = resetCheerCounts();
+    expect(reset.champions).toBe(0);
+    expect(reset.coyg).toBe(0);
+    expect(listCheerCounts().champions).toBe(0);
   });
 });

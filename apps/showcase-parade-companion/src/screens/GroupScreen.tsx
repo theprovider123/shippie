@@ -33,6 +33,7 @@ interface GroupScreenProps {
   sideTingsRefresh?: number;
   onSideTingsRefresh: () => void;
   onAddSideTing: () => void;
+  onEditName: () => void;
 }
 
 /**
@@ -49,6 +50,7 @@ export function GroupScreen({
   sideTingsRefresh,
   onSideTingsRefresh,
   onAddSideTing,
+  onEditName,
 }: GroupScreenProps) {
   const [draft, setDraft] = useState<GroupPlan>(() => plan ?? createDefaultGroupPlan(pack));
   const [membersText, setMembersText] = useState(() => (plan?.members ?? []).join(', '));
@@ -85,10 +87,20 @@ export function GroupScreen({
     } as Partial<GroupPlan>);
   };
 
-  const cleanMembers = () =>
-    membersText.split(',').map((m) => m.trim()).filter(Boolean).slice(0, 12);
+  const cleanMembers = () => parseMembers(membersText);
+
+  const draftSignature = useMemo(
+    () => planSignature({ ...draft, members: cleanMembers() }),
+    [draft, membersText],
+  );
+  const savedSignature = useMemo(() => (plan ? planSignature(plan) : ''), [plan]);
+  const planDirty = draftSignature !== savedSignature;
 
   const save = async () => {
+    if (!planDirty) {
+      showToast('Plan already saved on this phone.');
+      return;
+    }
     const next = {
       ...draft,
       members: cleanMembers(),
@@ -172,6 +184,15 @@ export function GroupScreen({
           onShowInvite={() => void shareMyDot()}
           onShareMyDot={() => void shareMyDot()}
         />
+        {displayName === 'Me' ? (
+          <div className="panel set-name-card">
+            <h2>Set your name</h2>
+            <p>Friends will see this on group signals and invite cards.</p>
+            <button type="button" className="secondary-action" onClick={onEditName}>
+              Set name
+            </button>
+          </div>
+        ) : null}
         <SideTingsCard
           refreshKey={sideTingsRefresh}
           onChange={onSideTingsRefresh}
@@ -274,7 +295,12 @@ export function GroupScreen({
           ) : null}
         </form>
         <div className="plan-card__actions">
-          <button type="button" className="primary-action" onClick={() => void save()}>
+          <button
+            type="button"
+            className="primary-action"
+            onClick={() => void save()}
+            disabled={!planDirty}
+          >
             Save
           </button>
           <button
@@ -323,4 +349,28 @@ function closestLandmarkId(
     }
   }
   return best;
+}
+
+function parseMembers(value: string): string[] {
+  return value.split(',').map((m) => m.trim()).filter(Boolean).slice(0, 12);
+}
+
+function planSignature(plan: GroupPlan): string {
+  return JSON.stringify({
+    name: plan.name.trim(),
+    members: plan.members.map((member) => member.trim()).filter(Boolean),
+    primary: normalizePoint(plan.primary),
+    fallback: normalizePoint(plan.fallback),
+    ifSeparated: plan.ifSeparated.trim(),
+    leavePlan: (plan.leavePlan ?? '').trim(),
+  });
+}
+
+function normalizePoint(point: PlanPoint) {
+  return {
+    label: point.label.trim(),
+    time: (point.time ?? '').trim(),
+    lng: Number(point.lng.toFixed(6)),
+    lat: Number(point.lat.toFixed(6)),
+  };
 }

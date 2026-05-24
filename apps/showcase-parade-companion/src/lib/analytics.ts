@@ -28,7 +28,9 @@ export type ParadeAnalyticsEvent =
   | 'parade_side_ting_paste_imported'
   | 'parade_poi_tapped'
   | 'parade_poi_walk_to'
-  | 'parade_quick_find_used';
+  | 'parade_route_walk_to'
+  | 'parade_quick_find_used'
+  | 'parade_start_prompt_shown';
 
 type QueuedAnalyticsEvent = {
   event: ParadeAnalyticsEvent;
