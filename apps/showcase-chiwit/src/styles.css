@@ -1628,6 +1628,233 @@ meter {
   font-weight: 600;
 }
 
+/* ── Customize quick log pane — lives in the Data view. ────────────────
+ * Paper-tone surface with sage chevrons; matches the data-share block
+ * voice so the Customize section reads as another quiet utility, not
+ * a new visual register.
+ */
+.customize-quick {
+  margin-top: 1.4rem;
+  padding: 1.1rem 1.1rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.customize-quick__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+.customize-quick__header h2 {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--ink);
+}
+.customize-quick__header .measure {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  max-width: 36ch;
+}
+.customize-quick__reset {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0.35rem 0.8rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sage-deep);
+  cursor: pointer;
+}
+.customize-quick__reset:hover {
+  border-color: var(--sage);
+  background: var(--sage-soft);
+}
+.customize-quick__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.customize-quick__list li {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--bg, #fdfaf3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  transition: opacity 200ms ease, background 200ms ease;
+}
+.customize-quick__list li.is-hidden {
+  opacity: 0.5;
+}
+.customize-quick__list li.is-hidden .customize-quick__label strong {
+  text-decoration: line-through;
+  text-decoration-color: var(--line-strong);
+}
+.customize-quick__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+.customize-quick__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.customize-quick__label strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.customize-quick__label small {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.customize-quick__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.customize-quick__controls button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 0.5rem;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--sage-deep);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+.customize-quick__controls button:hover:not(:disabled) {
+  background: var(--sage-soft);
+  border-color: var(--sage);
+}
+.customize-quick__controls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.customize-quick__toggle,
+.customize-quick__remove {
+  font-family: var(--font-mono);
+  font-size: 0.7rem !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 0.6rem !important;
+}
+.customize-quick__remove {
+  color: var(--coral, #c84a3a);
+}
+.customize-quick__add-btn {
+  margin-top: 0.85rem;
+  width: 100%;
+  min-height: 40px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  color: var(--sage-deep);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.customize-quick__add-btn:hover {
+  background: var(--sage-soft);
+  border-color: var(--sage);
+}
+.customize-quick__add {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  background: var(--bg, #fdfaf3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.customize-quick__add .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+.customize-quick__add label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.customize-quick__add input,
+.customize-quick__add select {
+  min-height: 36px;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.customize-quick__add-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.customize-quick__add-actions button {
+  min-height: 36px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.customize-quick__add-actions button.primary {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: var(--paper);
+}
+.quick-grid__empty {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  padding: 0.6rem 0.8rem;
+  margin: 0;
+}
+
 /* Consistency card in PatternsView — hero metric for the week. */
 .consistency-card {
   display: flex;

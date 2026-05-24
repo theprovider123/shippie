@@ -1647,19 +1647,6 @@ function downloadCsv(state: ChiwitState): void {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Placeholder for the customisable quick-log editor that a sibling pass
- * has started wiring through `DataView`. Until the full UI lands, this
- * component renders nothing — keeps typecheck green and the Data page
- * intact while the feature finishes baking.
- */
-function CustomizeQuickLog(_props: {
-  customQuickActions: CustomQuickAction[];
-  onUpdate: (next: CustomQuickAction[]) => void;
-}): null {
-  return null;
-}
-
 function DataView({
   state,
   customQuickActions,
@@ -1678,9 +1665,36 @@ function DataView({
     <section className="page-shell data-page">
       <p className="eyebrow">Local data</p>
       <h1>Your Chiwit data.</h1>
-      <p className="measure">
-        Chiwit stores your Daily Pulse on this device. Shippie hosts the app package and recovery wrapper; your entries do not live in a Chiwit or Shippie app database.
-      </p>
+      <div className="data-hero">
+        <div>
+          <p className="measure">
+            Chiwit stores your Daily Pulse on this device. Shippie hosts the app package and recovery wrapper; your entries do not live in a Chiwit or Shippie app database.
+          </p>
+          <p className="data-hero__tagline">A device. A vault. Nothing in between.</p>
+        </div>
+        {/* Inline SVG pictogram — device + vault/lock in sage hairline strokes. */}
+        <svg className="data-hero__art" viewBox="0 0 220 140" role="img" aria-label="Your data lives on this device" preserveAspectRatio="xMidYMid meet">
+          {/* device — phone-shaped slab with a small status bar */}
+          <rect x="20" y="22" width="78" height="106" rx="10" ry="10" />
+          <rect x="30" y="32" width="58" height="78" rx="3" ry="3" className="data-hero__art-screen" />
+          <line x1="38" y1="46" x2="78" y2="46" />
+          <line x1="38" y1="58" x2="68" y2="58" />
+          <line x1="38" y1="70" x2="74" y2="70" />
+          <circle cx="59" cy="118" r="2.5" />
+          {/* dotted-line bridge (not a real network — locality cue) */}
+          <line x1="108" y1="74" x2="132" y2="74" strokeDasharray="3 4" />
+          {/* vault / lock — squat safe with a circle dial + hairline shackle */}
+          <rect x="138" y="42" width="68" height="68" rx="6" ry="6" />
+          <circle cx="172" cy="76" r="14" />
+          <circle cx="172" cy="76" r="3" className="data-hero__art-dot" />
+          <line x1="172" y1="60" x2="172" y2="56" />
+          <line x1="172" y1="92" x2="172" y2="96" />
+          <line x1="156" y1="76" x2="152" y2="76" />
+          <line x1="188" y1="76" x2="192" y2="76" />
+          {/* shackle hint above the vault */}
+          <path d="M 158 42 v -6 a 14 14 0 0 1 28 0 v 6" fill="none" />
+        </svg>
+      </div>
       <section className="metric-strip">
         <div><strong>{state.entries.length}</strong><span>signals</span></div>
         <div><strong>{state.checkins.length}</strong><span>check-ins</span></div>
@@ -1859,5 +1873,225 @@ function InsightCard({ insight, onDismiss }: { insight: Insight; onDismiss: (id:
       </div>
       <button type="button" onClick={() => onDismiss(insight.id)} aria-label="Dismiss insight">×</button>
     </article>
+  );
+}
+
+/**
+ * Customize quick log — lives inside the Data view per the chiwit IA
+ * (no new tab, per design brief). Lets the user reorder default actions
+ * with up/down chevrons, hide ones they never use, and add custom rows.
+ *
+ * The pane materialises the merged default+custom list (so reordering is
+ * intuitive) and emits a normalised `CustomQuickAction[]` back to App.
+ */
+function CustomizeQuickLog({
+  customQuickActions,
+  onUpdate,
+}: {
+  customQuickActions: CustomQuickAction[];
+  onUpdate: (next: CustomQuickAction[]) => void;
+}) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [draftKind, setDraftKind] = useState<EntryKind>('hydration');
+  const [draftAmount, setDraftAmount] = useState('');
+  const [draftUnit, setDraftUnit] = useState('');
+  const [draftLabel, setDraftLabel] = useState('');
+
+  const workingList: CustomQuickAction[] = useMemo(() => {
+    if (customQuickActions.length === 0) {
+      return QUICK_ACTIONS.map((action) => ({
+        kind: action.kind,
+        amount: action.amount,
+        unit: action.unit,
+      }));
+    }
+    const merged = [...customQuickActions];
+    for (const action of QUICK_ACTIONS) {
+      const sig = quickActionSignature(action);
+      if (!merged.some((row) => !row.custom && quickActionSignature(row) === sig)) {
+        merged.push({ kind: action.kind, amount: action.amount, unit: action.unit });
+      }
+    }
+    return merged;
+  }, [customQuickActions]);
+
+  function commit(next: CustomQuickAction[]): void {
+    onUpdate(next);
+  }
+
+  function move(index: number, delta: number): void {
+    const next = [...workingList];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    const [row] = next.splice(index, 1);
+    if (!row) return;
+    next.splice(target, 0, row);
+    commit(next);
+  }
+
+  function toggleHidden(index: number): void {
+    const next = [...workingList];
+    const row = next[index];
+    if (!row) return;
+    next[index] = { ...row, hidden: !row.hidden };
+    commit(next);
+  }
+
+  function removeRow(index: number): void {
+    const next = [...workingList];
+    next.splice(index, 1);
+    commit(next);
+  }
+
+  function resetDefaults(): void {
+    commit([]);
+  }
+
+  function handleAdd(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const amount = draftAmount.trim() ? Number(draftAmount) : undefined;
+    const unit = draftUnit.trim() || (amount !== undefined ? KIND_META[draftKind].unit : undefined);
+    const label = draftLabel.trim() || `${KIND_META[draftKind].label}${amount !== undefined ? ` · +${amount}${unit ?? ''}` : ' · custom'}`;
+    const next: CustomQuickAction[] = [
+      ...workingList,
+      {
+        kind: draftKind,
+        amount: amount !== undefined && Number.isFinite(amount) ? amount : undefined,
+        unit,
+        label,
+        custom: true,
+      },
+    ];
+    commit(next);
+    setDraftAmount('');
+    setDraftUnit('');
+    setDraftLabel('');
+    setAddOpen(false);
+  }
+
+  function labelFor(row: CustomQuickAction): string {
+    if (row.custom) return row.label ?? `${KIND_META[row.kind].label} · custom`;
+    const sig = quickActionSignature(row);
+    const base = QUICK_ACTIONS.find((action) => quickActionSignature(action) === sig);
+    return row.label ?? base?.label ?? KIND_META[row.kind].label;
+  }
+
+  return (
+    <section className="customize-quick" aria-labelledby="customize-quick-title">
+      <header className="customize-quick__header">
+        <div>
+          <h2 id="customize-quick-title">Customize quick log</h2>
+          <p className="measure">
+            Reorder, hide, or add the one-tap signals on the Today screen. Stored on this device only.
+          </p>
+        </div>
+        {customQuickActions.length > 0 ? (
+          <button type="button" className="customize-quick__reset" onClick={resetDefaults} title="Restore default quick actions">
+            Reset
+          </button>
+        ) : null}
+      </header>
+
+      <ol className="customize-quick__list" aria-label="Quick action order">
+        {workingList.map((row, index) => {
+          const hidden = !!row.hidden;
+          return (
+            <li key={`${quickActionSignature(row)}-${index}-${row.custom ? 'c' : 'd'}`} className={hidden ? 'is-hidden' : ''}>
+              <span className="customize-quick__dot" style={{ background: KIND_META[row.kind].color }} aria-hidden />
+              <span className="customize-quick__label">
+                <strong>{labelFor(row)}</strong>
+                <small>{row.custom ? 'custom' : KIND_META[row.kind].helper}</small>
+              </span>
+              <div className="customize-quick__controls" role="group" aria-label={`Reorder ${labelFor(row)}`}>
+                <button
+                  type="button"
+                  onClick={() => move(index, -1)}
+                  disabled={index === 0}
+                  aria-label={`Move ${labelFor(row)} up`}
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(index, 1)}
+                  disabled={index === workingList.length - 1}
+                  aria-label={`Move ${labelFor(row)} down`}
+                >
+                  ▼
+                </button>
+                {row.custom ? (
+                  <button
+                    type="button"
+                    className="customize-quick__remove"
+                    onClick={() => removeRow(index)}
+                    aria-label={`Remove ${labelFor(row)}`}
+                  >
+                    ×
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="customize-quick__toggle"
+                    onClick={() => toggleHidden(index)}
+                    aria-pressed={!hidden}
+                    aria-label={hidden ? `Show ${labelFor(row)}` : `Hide ${labelFor(row)}`}
+                  >
+                    {hidden ? 'Show' : 'Hide'}
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      {addOpen ? (
+        <form className="customize-quick__add" onSubmit={handleAdd}>
+          <div className="form-grid">
+            <label>
+              Kind
+              <select value={draftKind} onChange={(event) => setDraftKind(event.target.value as EntryKind)}>
+                {Object.entries(KIND_META).map(([kind, meta]) => (
+                  <option key={kind} value={kind}>{meta.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Amount
+              <input
+                value={draftAmount}
+                onChange={(event) => setDraftAmount(event.target.value)}
+                inputMode="decimal"
+                placeholder={KIND_META[draftKind].unit}
+              />
+            </label>
+            <label>
+              Unit
+              <input
+                value={draftUnit}
+                onChange={(event) => setDraftUnit(event.target.value)}
+                placeholder={KIND_META[draftKind].unit}
+              />
+            </label>
+            <label>
+              Label
+              <input
+                value={draftLabel}
+                onChange={(event) => setDraftLabel(event.target.value)}
+                placeholder={`${KIND_META[draftKind].label} · custom`}
+              />
+            </label>
+          </div>
+          <div className="customize-quick__add-actions">
+            <button type="button" onClick={() => setAddOpen(false)}>Cancel</button>
+            <button type="submit" className="primary">Add quick action</button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className="customize-quick__add-btn" onClick={() => setAddOpen(true)}>
+          + Add custom
+        </button>
+      )}
+    </section>
   );
 }
