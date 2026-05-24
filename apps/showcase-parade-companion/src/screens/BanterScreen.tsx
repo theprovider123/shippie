@@ -2,17 +2,14 @@ import { useMemo, useState } from 'react';
 import type { RoutePack } from '../data/parade-2026';
 import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import {
+  answerTrivia,
   banterFromPack,
-  CHEER_TILES,
-  listCheerCounts,
   pollOptionLabel,
-  resetCheerCounts,
   selectedOptionId,
-  tapCheer,
+  selectedTriviaAttempt,
   voteInPoll,
-  type CheerId,
 } from '../lib/banter';
-import type { RouteBanterPoll } from '../data/parade-2026';
+import type { RouteBanterPoll, RouteBanterTrivia } from '../data/parade-2026';
 import { getOrCreateSourceId } from '../lib/group-events';
 import { hapticConfirm, hapticWow } from '../lib/haptic';
 import { showToast } from '../lib/toast';
@@ -29,7 +26,8 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
   const [openChantId, setOpenChantId] = useState<string | null>(null);
   const [voteVersion, setVoteVersion] = useState(0);
   const [openOtherPollId, setOpenOtherPollId] = useState<string | null>(null);
-  const [cheerCounts, setCheerCounts] = useState(() => listCheerCounts());
+  const [triviaVersion, setTriviaVersion] = useState(0);
+  const [activeTriviaIndex, setActiveTriviaIndex] = useState(0);
 
   const onChantToggle = (id: string) => {
     setOpenChantId((current) => {
@@ -63,30 +61,38 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
     setOpenOtherPollId(null);
   };
 
-  const onCheer = (id: CheerId) => {
-    setCheerCounts(tapCheer(id));
-    onTrack('parade_banter_cheer_tapped', { cheer_id: id });
-    hapticWow();
+  const onTriviaAnswer = (trivia: RouteBanterTrivia, optionId: string) => {
+    const attempt = answerTrivia(trivia, optionId);
+    if (!attempt) return;
+    setTriviaVersion((current) => current + 1);
+    onTrack('parade_banter_trivia_answered', {
+      trivia_id: trivia.id,
+      option_id: optionId,
+      correct: attempt.correct,
+    });
+    if (attempt.correct) {
+      hapticWow();
+      showToast('Correct. Saved on this phone.', 'success');
+    } else {
+      hapticConfirm();
+      showToast('Saved. The answer is revealed below.');
+    }
   };
 
-  const onResetCheers = () => {
-    setCheerCounts(resetCheerCounts());
-    hapticConfirm();
-    showToast('Cheer taps reset on this phone.');
-  };
+  const activeTrivia = banter.trivia?.[activeTriviaIndex] ?? null;
 
   return (
     <section className="screen banter-hub" aria-label="Parade banter">
       <div className="banter-intro">
         <p className="eyebrow">Banter</p>
-        <h1>Small taps. Big noise.</h1>
-        <p>Lyrics, votes and cheer taps. Open fast, sing, then pocket.</p>
+        <h1>Sing, vote, quiz.</h1>
+        <p>Quick chants, local votes and offline season cards for queues and train rides.</p>
       </div>
 
       <div className="panel banter-card banter-card--chants">
         <div className="banter-card__head">
           <h2>Chants</h2>
-          <span>{banter.chants.length} lyrics</span>
+          <span>{banter.chants.length} cards</span>
         </div>
         <div className="chant-list">
           {banter.chants.map((chant) => {
@@ -172,28 +178,83 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
         </div>
       </div>
 
-      <div className="panel banter-card">
+      <div className="panel banter-card banter-card--trivia" data-version={triviaVersion}>
         <div className="banter-card__head">
-          <h2>Cheer</h2>
-          <button type="button" className="banter-reset" onClick={onResetCheers}>
-            Reset
-          </button>
+          <h2>Season quiz</h2>
+          <span>{activeTrivia ? `${activeTriviaIndex + 1}/${banter.trivia?.length ?? 0}` : 'offline'}</span>
         </div>
-        <div className="cheer-grid" role="group" aria-label="Cheer taps">
-          {CHEER_TILES.map((tile) => (
-            <button
-              type="button"
-              key={tile.id}
-              className="cheer-tile"
-              onClick={() => onCheer(tile.id)}
-            >
-              <strong>{tile.label}</strong>
-              <span>{tile.detail}</span>
-              <em>{cheerCounts[tile.id]}</em>
-            </button>
-          ))}
-        </div>
+        {activeTrivia ? (
+          <TriviaCard
+            trivia={activeTrivia}
+            attempt={selectedTriviaAttempt(activeTrivia.id)}
+            onAnswer={(optionId) => onTriviaAnswer(activeTrivia, optionId)}
+            onPrevious={() => setActiveTriviaIndex((index) => (index === 0 ? (banter.trivia?.length ?? 1) - 1 : index - 1))}
+            onNext={() => setActiveTriviaIndex((index) => (index + 1) % Math.max(1, banter.trivia?.length ?? 1))}
+          />
+        ) : (
+          <p className="poll-footnote">Trivia cards arrive with the route pack.</p>
+        )}
       </div>
     </section>
+  );
+}
+
+function TriviaCard({
+  trivia,
+  attempt,
+  onAnswer,
+  onPrevious,
+  onNext,
+}: {
+  trivia: RouteBanterTrivia;
+  attempt: ReturnType<typeof selectedTriviaAttempt>;
+  onAnswer: (optionId: string) => void;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="trivia-card">
+      <p className="trivia-card__source">{trivia.source}</p>
+      <h3>{trivia.question}</h3>
+      <div className="trivia-options">
+        {trivia.options.map((option) => {
+          const picked = attempt?.optionId === option.id;
+          const revealed = Boolean(attempt);
+          const correct = option.id === trivia.answerId;
+          return (
+            <button
+              type="button"
+              key={option.id}
+              className={[
+                'trivia-option',
+                picked ? 'is-picked' : '',
+                revealed && correct ? 'is-correct' : '',
+                revealed && picked && !correct ? 'is-wrong' : '',
+              ].filter(Boolean).join(' ')}
+              aria-pressed={picked}
+              onClick={() => onAnswer(option.id)}
+            >
+              <strong>{option.label}</strong>
+              {option.detail ? <span>{option.detail}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+      {attempt ? (
+        <p className={`trivia-result ${attempt.correct ? 'is-correct' : 'is-wrong'}`}>
+          {attempt.correct ? 'Correct.' : 'Not that one.'} {trivia.explainer}
+        </p>
+      ) : (
+        <p className="trivia-result">Tap once for instant results. Works fully offline.</p>
+      )}
+      <div className="trivia-actions">
+        <button type="button" className="secondary-action" onClick={onPrevious}>
+          Previous
+        </button>
+        <button type="button" className="secondary-action" onClick={onNext}>
+          Next card
+        </button>
+      </div>
+    </div>
   );
 }

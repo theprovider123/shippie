@@ -30,7 +30,7 @@ import type { BusMarker } from './lib/bus';
 import { decodeFanEventsSync, dedupeFanEvents, sortEvents, type FanEvent } from './lib/fan-events';
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
 import { isOnboarded, markOnboarded } from './lib/onboarding';
-import { markOfflineCelebrated, shouldCelebrateOffline } from './lib/offline-celebration';
+import { saveParadeOffline } from './lib/offline-save';
 import { isParadeDay, isParadeEve, isStartPromptWindow, startPromptKey } from './lib/parade-time';
 import { addSideTing } from './lib/side-tings';
 import { showToast } from './lib/toast';
@@ -110,6 +110,31 @@ export function App() {
   }, [active]);
 
   useEffect(() => {
+    let cancelled = false;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return undefined;
+    void saveParadeOffline().then((result) => {
+      if (cancelled) return;
+      if (result.state === 'saved') {
+        setOfflineReadiness('ready');
+        trackParadeAction('parade_offline_auto_saved', {
+          state: result.state,
+          done: result.done,
+          total: result.total,
+        });
+      } else if (result.state === 'partial') {
+        trackParadeAction('parade_offline_auto_saved', {
+          state: result.state,
+          done: result.done,
+          total: result.total,
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!menuOpen) return undefined;
     const onPointerDown = (event: PointerEvent) => {
       if (menuRef.current?.contains(event.target as Node)) return;
@@ -137,16 +162,6 @@ export function App() {
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [aboutOpen, nameEditorOpen, sideTingSheetOpen]);
-
-  // First time the offline pack flips to ready, fire a one-shot celebration
-  // toast. Gated by a localStorage flag so subsequent loads are silent.
-  useEffect(() => {
-    if (offlineReadiness !== 'ready') return;
-    if (!shouldCelebrateOffline()) return;
-    markOfflineCelebrated();
-    showToast('Saved to this phone. Try it offline now.', 'success');
-    trackParadeAction('parade_offline_first_ready');
-  }, [offlineReadiness]);
 
   useEffect(() => {
     let shownThisSession = false;
@@ -339,15 +354,15 @@ export function App() {
     const packLabel = packFreshnessLabel(pack);
     trackParadeAction('parade_offline_status_checked', { readiness: offlineReadiness, online });
     if (offlineReadiness === 'ready') {
-      showToast(`Saved offline. Map and fonts are on this phone · pack ${packLabel}`, 'success');
+      showToast(`Saved offline. Map, route pack, fonts and app shell are on this phone · pack ${packLabel}`, 'success');
       return;
     }
     if (offlineReadiness === 'needs-online') {
-      showToast(`Not fully saved yet. Open on Wi-Fi before you travel · pack ${packLabel}`, 'warn');
+      showToast(`Not fully saved yet. Open on Wi-Fi to save map, route pack, fonts and app shell · pack ${packLabel}`, 'warn');
       return;
     }
     if (offlineReadiness === 'checking') {
-      showToast('Still checking the offline pack. Keep this page open on Wi-Fi.', 'default');
+      showToast('Still saving the offline pack. Keep this page open on Wi-Fi.', 'default');
       return;
     }
     showToast('Offline check is limited. Keep this page open before you travel.', 'warn');
@@ -453,7 +468,12 @@ export function App() {
         <div className="day-banner">Parade is tomorrow. Open this page on Wi-Fi today so it works without signal.</div>
       ) : null}
 
-      <ReadinessChip pack={pack} onShowStatus={showOfflineStatus} onReadinessChange={setOfflineReadiness} />
+      <ReadinessChip
+        pack={pack}
+        onShowStatus={showOfflineStatus}
+        onReadinessChange={setOfflineReadiness}
+        visible={false}
+      />
       <ImportPreviewSheet
         preview={importPreview?.preview ?? null}
         onJoin={() => void onJoinImport()}

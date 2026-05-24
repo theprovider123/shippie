@@ -1,21 +1,7 @@
-import type { RouteBanter, RouteBanterPoll } from '../data/parade-2026';
+import type { RouteBanter, RouteBanterChant, RouteBanterPoll, RouteBanterTrivia } from '../data/parade-2026';
 
 const VOTES_KEY = 'parade-companion:banter-votes:v1';
-const CHEERS_KEY = 'parade-companion:banter-cheers:v1';
-
-export type CheerId =
-  | 'champions'
-  | 'coyg'
-  | 'north-london'
-  | 'mikel'
-  | 'reds'
-  | 'one-more-song';
-
-export interface CheerTile {
-  id: CheerId;
-  label: string;
-  detail: string;
-}
+const TRIVIA_KEY = 'parade-companion:banter-trivia:v1';
 
 export interface BanterVote {
   pollId: string;
@@ -32,14 +18,12 @@ export interface BanterVoter {
   supporterTag: string;
 }
 
-export const CHEER_TILES: CheerTile[] = [
-  { id: 'champions', label: 'Champions', detail: 'Big trophy energy.' },
-  { id: 'coyg', label: 'COYG', detail: 'Short and loud.' },
-  { id: 'north-london', label: 'North London', detail: 'For the chorus moments.' },
-  { id: 'mikel', label: 'Mikel', detail: 'Manager roar.' },
-  { id: 'reds', label: 'Reds', detail: 'Simple clap cue.' },
-  { id: 'one-more-song', label: 'One more song', detail: 'When the bus slows.' },
-];
+export interface BanterTriviaAttempt {
+  triviaId: string;
+  optionId: string;
+  correct: boolean;
+  updatedAt: string;
+}
 
 export const FALLBACK_BANTER: RouteBanter = {
   chants: [],
@@ -47,9 +31,10 @@ export const FALLBACK_BANTER: RouteBanter = {
 };
 
 export function banterFromPack(pack: { banter?: RouteBanter }): RouteBanter {
-  const chants = Array.isArray(pack.banter?.chants) ? pack.banter.chants : [];
-  const polls = Array.isArray(pack.banter?.polls) ? pack.banter.polls : [];
-  return { chants, polls };
+  const chants = Array.isArray(pack.banter?.chants) ? pack.banter.chants.filter(isRouteBanterChant) : [];
+  const polls = Array.isArray(pack.banter?.polls) ? pack.banter.polls.filter(isRouteBanterPoll) : [];
+  const trivia = Array.isArray(pack.banter?.trivia) ? pack.banter.trivia.filter(isRouteBanterTrivia) : [];
+  return { chants, polls, trivia };
 }
 
 export function listBanterVotes(): BanterVote[] {
@@ -90,24 +75,25 @@ export function pollAllowsOption(poll: RouteBanterPoll, optionId: string): boole
 // ships, the screen surfaces only "Your pick" + an honest "local only"
 // note. See docs/superpowers/plans/2026-05-24-parade-companion-round8...
 
-export function listCheerCounts(): Record<CheerId, number> {
-  const raw = readJson<Record<string, unknown>>(CHEERS_KEY, {});
-  return Object.fromEntries(
-    CHEER_TILES.map((tile) => [tile.id, safeCount(raw[tile.id])]),
-  ) as Record<CheerId, number>;
+export function listTriviaAttempts(): BanterTriviaAttempt[] {
+  return readJson<unknown[]>(TRIVIA_KEY, []).filter(isTriviaAttempt);
 }
 
-export function tapCheer(id: CheerId): Record<CheerId, number> {
-  const counts = listCheerCounts();
-  counts[id] = Math.min(999, counts[id] + 1);
-  writeJson(CHEERS_KEY, counts);
-  return counts;
+export function selectedTriviaAttempt(triviaId: string): BanterTriviaAttempt | null {
+  return listTriviaAttempts().find((attempt) => attempt.triviaId === triviaId) ?? null;
 }
 
-export function resetCheerCounts(): Record<CheerId, number> {
-  const empty = Object.fromEntries(CHEER_TILES.map((tile) => [tile.id, 0])) as Record<CheerId, number>;
-  writeJson(CHEERS_KEY, empty);
-  return empty;
+export function answerTrivia(trivia: RouteBanterTrivia, optionId: string): BanterTriviaAttempt | null {
+  if (!trivia.options.some((option) => option.id === optionId)) return null;
+  const attempt: BanterTriviaAttempt = {
+    triviaId: trivia.id,
+    optionId,
+    correct: optionId === trivia.answerId,
+    updatedAt: new Date().toISOString(),
+  };
+  const attempts = listTriviaAttempts().filter((item) => item.triviaId !== trivia.id);
+  writeJson(TRIVIA_KEY, [attempt, ...attempts]);
+  return attempt;
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -143,8 +129,56 @@ function isBanterVote(value: unknown): value is BanterVote {
   );
 }
 
-function safeCount(value: unknown): number {
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue) || numberValue < 0) return 0;
-  return Math.min(999, Math.floor(numberValue));
+function isRouteBanterChant(value: unknown): value is RouteBanterChant {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Partial<RouteBanterChant>;
+  return isText(record.id) && isText(record.title) && isText(record.cue) && isText(record.detail);
+}
+
+function isRouteBanterPoll(value: unknown): value is RouteBanterPoll {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Partial<RouteBanterPoll>;
+  return (
+    isText(record.id) &&
+    isText(record.question) &&
+    Array.isArray(record.options) &&
+    record.options.every(isBanterOption) &&
+    (record.otherOptions === undefined || (Array.isArray(record.otherOptions) && record.otherOptions.every(isBanterOption)))
+  );
+}
+
+function isRouteBanterTrivia(value: unknown): value is RouteBanterTrivia {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Partial<RouteBanterTrivia>;
+  return (
+    isText(record.id) &&
+    isText(record.question) &&
+    isText(record.answerId) &&
+    isText(record.source) &&
+    isText(record.explainer) &&
+    Array.isArray(record.options) &&
+    record.options.every(isBanterOption) &&
+    record.options.some((option) => option.id === record.answerId)
+  );
+}
+
+function isBanterOption(value: unknown): value is { id: string; label: string; detail?: string } {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as { id?: unknown; label?: unknown; detail?: unknown };
+  return isText(record.id) && isText(record.label) && (record.detail === undefined || typeof record.detail === 'string');
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isTriviaAttempt(value: unknown): value is BanterTriviaAttempt {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Partial<BanterTriviaAttempt>;
+  return (
+    typeof record.triviaId === 'string' &&
+    typeof record.optionId === 'string' &&
+    typeof record.correct === 'boolean' &&
+    typeof record.updatedAt === 'string'
+  );
 }

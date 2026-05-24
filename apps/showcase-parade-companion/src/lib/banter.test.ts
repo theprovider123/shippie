@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import type { RouteBanterPoll } from '../data/parade-2026';
 import {
+  answerTrivia,
+  banterFromPack,
   listBanterVotes,
-  listCheerCounts,
+  listTriviaAttempts,
   pollOptionLabel,
-  resetCheerCounts,
   selectedOptionId,
-  tapCheer,
+  selectedTriviaAttempt,
   voteInPoll,
 } from './banter';
 
@@ -21,6 +22,18 @@ const poll: RouteBanterPoll = {
   otherOptions: [
     { id: 'martinelli', label: 'Martinelli' },
     { id: 'havertz', label: 'Havertz' },
+  ],
+};
+
+const trivia = {
+  id: 'minutes',
+  question: 'Who played the most?',
+  answerId: 'rice',
+  source: 'test',
+  explainer: 'Rice was everywhere.',
+  options: [
+    { id: 'rice', label: 'Rice' },
+    { id: 'saka', label: 'Saka' },
   ],
 };
 
@@ -65,19 +78,30 @@ describe('banter', () => {
     expect(pollOptionLabel(poll, 'martinelli')).toBe('Martinelli');
   });
 
-  test('tapCheer increments and persists', () => {
-    expect(listCheerCounts().champions).toBe(0);
-    tapCheer('champions');
-    tapCheer('champions');
-    expect(listCheerCounts().champions).toBe(2);
+  test('answerTrivia stores one local attempt per card', () => {
+    expect(answerTrivia(trivia, 'saka')?.correct).toBe(false);
+    expect(selectedTriviaAttempt('minutes')?.optionId).toBe('saka');
+    expect(answerTrivia(trivia, 'rice')?.correct).toBe(true);
+    expect(listTriviaAttempts()).toHaveLength(1);
+    expect(selectedTriviaAttempt('minutes')?.optionId).toBe('rice');
   });
 
-  test('resetCheerCounts clears every cheer tile', () => {
-    tapCheer('champions');
-    tapCheer('coyg');
-    const reset = resetCheerCounts();
-    expect(reset.champions).toBe(0);
-    expect(reset.coyg).toBe(0);
-    expect(listCheerCounts().champions).toBe(0);
+  test('answerTrivia rejects unknown options', () => {
+    expect(answerTrivia(trivia, 'unknown')).toBeNull();
+    expect(listTriviaAttempts()).toHaveLength(0);
+  });
+
+  test('banterFromPack drops malformed live-pack banter rows', () => {
+    const banter = banterFromPack({
+      banter: {
+        chants: [{ id: 'ok', title: 'OK', cue: 'OK', detail: 'Line one\nLine two' }, { id: '', title: 'Bad', cue: 'Bad', detail: 'Bad' }],
+        polls: [poll, { id: 'bad', question: 'Bad', options: [{ id: 'x' }] } as never],
+        trivia: [trivia, { ...trivia, id: 'bad', answerId: 'missing' }],
+      },
+    });
+
+    expect(banter.chants).toHaveLength(1);
+    expect(banter.polls).toHaveLength(1);
+    expect(banter.trivia).toHaveLength(1);
   });
 });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-24T18:30:00+01:00",
+  "packVersion": "2026-05-24T20:30:00+01:00",
   "event": {
     "title": "Parade Companion — Islington",
     "dateLabel": "Sunday 31 May 2026",
@@ -29,12 +29,30 @@
     "label": "Provisional parade corridor",
     "note": "Council possible-route corridor: stadium area, Drayton Park, Aubert Park, Highbury Grove, St Pauls Road, Upper Street, Town Hall area. Confirm before travel.",
     "coordinates": [
-      [-0.1086, 51.5549],
-      [-0.1055, 51.5532],
-      [-0.1028, 51.5525],
-      [-0.1016, 51.5486],
-      [-0.1027, 51.5461],
-      [-0.1026, 51.5421]
+      [
+        -0.1086,
+        51.5549
+      ],
+      [
+        -0.1055,
+        51.5532
+      ],
+      [
+        -0.1028,
+        51.5525
+      ],
+      [
+        -0.1016,
+        51.5486
+      ],
+      [
+        -0.1027,
+        51.5461
+      ],
+      [
+        -0.1026,
+        51.5421
+      ]
     ]
   },
   "pois": [
@@ -102,38 +120,214 @@
       "lat": 51.5445,
       "note": "Follow Met Police, steward and council directions over this offline pack."
     },
-
-    { "id": "tube-highbury-islington-south", "kind": "tube-exit", "name": "Highbury & Islington · south exit", "lng": -0.1031, "lat": 51.5458, "note": "Toward Upper Street. Expect long queues at peak." },
-    { "id": "tube-highbury-islington-fields", "kind": "tube-exit", "name": "Highbury & Islington · Fields exit", "lng": -0.1024, "lat": 51.5462, "note": "Quieter side, opens onto Highbury Fields." },
-    { "id": "tube-holloway-road", "kind": "tube-exit", "name": "Holloway Road · station", "lng": -0.1129, "lat": 51.5527, "note": "Walking fallback north of the stadium area." },
-    { "id": "tube-caledonian-road", "kind": "tube-exit", "name": "Caledonian Road · station", "lng": -0.1182, "lat": 51.5479, "note": "West-side escape if Holloway is shut." },
-    { "id": "tube-angel-south", "kind": "tube-exit", "name": "Angel · south exit", "lng": -0.1059, "lat": 51.5322, "note": "Southern escape via Upper Street." },
-
-    { "id": "toilet-highbury-fields-north", "kind": "toilet", "name": "Highbury Fields · north toilet block", "lng": -0.1023, "lat": 51.5475, "note": "Council-maintained. Expect queues." },
-    { "id": "toilet-highbury-fields-south", "kind": "toilet", "name": "Highbury Fields · south block", "lng": -0.1031, "lat": 51.5450, "note": "Quieter than the north block." },
-    { "id": "toilet-town-hall", "kind": "toilet", "name": "Town Hall public WC", "lng": -0.1024, "lat": 51.5419, "note": "Check signage on the day." },
-    { "id": "toilet-islington-green", "kind": "toilet", "name": "Islington Green · WC", "lng": -0.1052, "lat": 51.5381, "note": "Verify open hours before relying on it." },
-    { "id": "toilet-angel-square", "kind": "toilet", "name": "Angel Square area · WC", "lng": -0.1063, "lat": 51.5340, "note": "Near the Angel southern exit." },
-    { "id": "toilet-event-portaloos", "kind": "toilet", "name": "Event portaloos", "lng": -0.1025, "lat": 51.5500, "note": "Placeholder; follow steward signs on the day." },
-
-    { "id": "water-highbury-fountain", "kind": "water", "name": "Highbury Fields · drinking fountain", "lng": -0.1023, "lat": 51.5464, "note": "Bring a bottle to refill." },
-    { "id": "water-town-hall-refill", "kind": "water", "name": "Town Hall · refill point", "lng": -0.1024, "lat": 51.5422, "note": "Public refill station." },
-    { "id": "water-highbury-corner", "kind": "water", "name": "Highbury Corner area · refill", "lng": -0.1033, "lat": 51.5466, "note": "Several cafés will refill for free if asked." },
-    { "id": "water-angel-area", "kind": "water", "name": "Angel area · shops sell water", "lng": -0.1058, "lat": 51.5340, "note": "Last reliable refill before heading south." },
-
-    { "id": "atm-upper-north", "kind": "atm", "name": "ATMs · Upper St (north)", "lng": -0.1033, "lat": 51.5455, "note": "Several bank branches near Highbury Corner." },
-    { "id": "atm-upper-mid", "kind": "atm", "name": "ATMs · Upper St (mid)", "lng": -0.1042, "lat": 51.5410, "note": "Inside grocery and convenience stores." },
-    { "id": "atm-angel", "kind": "atm", "name": "ATMs · Angel", "lng": -0.1058, "lat": 51.5335, "note": "Several free-to-use machines near the station." },
-    { "id": "atm-town-hall", "kind": "atm", "name": "ATM · Town Hall area", "lng": -0.1029, "lat": 51.5425, "note": "Single machine; carry a backup card." },
-
-    { "id": "family-highbury-fields-south", "kind": "family", "name": "Highbury Fields · south lawn", "lng": -0.1018, "lat": 51.5450, "note": "Quieter pocket if the crowd gets tight." },
-    { "id": "family-liverpool-road", "kind": "family", "name": "Liverpool Road · quieter pavement", "lng": -0.1095, "lat": 51.5410, "note": "Parallel to Upper Street, much less dense." },
-    { "id": "family-canonbury-square", "kind": "family", "name": "Canonbury Square", "lng": -0.0990, "lat": 51.5450, "note": "Calm green square away from the main flow." },
-    { "id": "family-barnsbury-streets", "kind": "family", "name": "Barnsbury side streets", "lng": -0.1100, "lat": 51.5425, "note": "Residential, low foot traffic." },
-
-    { "id": "view-highbury-corner", "kind": "view", "name": "Highbury Corner · open view", "lng": -0.1030, "lat": 51.5460, "note": "Wide pavement; good sight line of the bus turn." },
-    { "id": "view-upper-mid", "kind": "view", "name": "Upper Street · mid kerb", "lng": -0.1037, "lat": 51.5400, "note": "Less crowded view if you arrive early." },
-    { "id": "view-town-hall-steps", "kind": "view", "name": "Town Hall · steps area", "lng": -0.1026, "lat": 51.5420, "note": "Elevated vantage at the civic endpoint." }
+    {
+      "id": "tube-highbury-islington-south",
+      "kind": "tube-exit",
+      "name": "Highbury & Islington · south exit",
+      "lng": -0.1031,
+      "lat": 51.5458,
+      "note": "Toward Upper Street. Expect long queues at peak."
+    },
+    {
+      "id": "tube-highbury-islington-fields",
+      "kind": "tube-exit",
+      "name": "Highbury & Islington · Fields exit",
+      "lng": -0.1024,
+      "lat": 51.5462,
+      "note": "Quieter side, opens onto Highbury Fields."
+    },
+    {
+      "id": "tube-holloway-road",
+      "kind": "tube-exit",
+      "name": "Holloway Road · station",
+      "lng": -0.1129,
+      "lat": 51.5527,
+      "note": "Walking fallback north of the stadium area."
+    },
+    {
+      "id": "tube-caledonian-road",
+      "kind": "tube-exit",
+      "name": "Caledonian Road · station",
+      "lng": -0.1182,
+      "lat": 51.5479,
+      "note": "West-side escape if Holloway is shut."
+    },
+    {
+      "id": "tube-angel-south",
+      "kind": "tube-exit",
+      "name": "Angel · south exit",
+      "lng": -0.1059,
+      "lat": 51.5322,
+      "note": "Southern escape via Upper Street."
+    },
+    {
+      "id": "toilet-highbury-fields-north",
+      "kind": "toilet",
+      "name": "Highbury Fields · north toilet block",
+      "lng": -0.1023,
+      "lat": 51.5475,
+      "note": "Council-maintained. Expect queues."
+    },
+    {
+      "id": "toilet-highbury-fields-south",
+      "kind": "toilet",
+      "name": "Highbury Fields · south block",
+      "lng": -0.1031,
+      "lat": 51.545,
+      "note": "Quieter than the north block."
+    },
+    {
+      "id": "toilet-town-hall",
+      "kind": "toilet",
+      "name": "Town Hall public WC",
+      "lng": -0.1024,
+      "lat": 51.5419,
+      "note": "Check signage on the day."
+    },
+    {
+      "id": "toilet-islington-green",
+      "kind": "toilet",
+      "name": "Islington Green · WC",
+      "lng": -0.1052,
+      "lat": 51.5381,
+      "note": "Verify open hours before relying on it."
+    },
+    {
+      "id": "toilet-angel-square",
+      "kind": "toilet",
+      "name": "Angel Square area · WC",
+      "lng": -0.1063,
+      "lat": 51.534,
+      "note": "Near the Angel southern exit."
+    },
+    {
+      "id": "toilet-event-portaloos",
+      "kind": "toilet",
+      "name": "Event portaloos",
+      "lng": -0.1025,
+      "lat": 51.55,
+      "note": "Placeholder; follow steward signs on the day."
+    },
+    {
+      "id": "water-highbury-fountain",
+      "kind": "water",
+      "name": "Highbury Fields · drinking fountain",
+      "lng": -0.1023,
+      "lat": 51.5464,
+      "note": "Bring a bottle to refill."
+    },
+    {
+      "id": "water-town-hall-refill",
+      "kind": "water",
+      "name": "Town Hall · refill point",
+      "lng": -0.1024,
+      "lat": 51.5422,
+      "note": "Public refill station."
+    },
+    {
+      "id": "water-highbury-corner",
+      "kind": "water",
+      "name": "Highbury Corner area · refill",
+      "lng": -0.1033,
+      "lat": 51.5466,
+      "note": "Several cafés will refill for free if asked."
+    },
+    {
+      "id": "water-angel-area",
+      "kind": "water",
+      "name": "Angel area · shops sell water",
+      "lng": -0.1058,
+      "lat": 51.534,
+      "note": "Last reliable refill before heading south."
+    },
+    {
+      "id": "atm-upper-north",
+      "kind": "atm",
+      "name": "ATMs · Upper St (north)",
+      "lng": -0.1033,
+      "lat": 51.5455,
+      "note": "Several bank branches near Highbury Corner."
+    },
+    {
+      "id": "atm-upper-mid",
+      "kind": "atm",
+      "name": "ATMs · Upper St (mid)",
+      "lng": -0.1042,
+      "lat": 51.541,
+      "note": "Inside grocery and convenience stores."
+    },
+    {
+      "id": "atm-angel",
+      "kind": "atm",
+      "name": "ATMs · Angel",
+      "lng": -0.1058,
+      "lat": 51.5335,
+      "note": "Several free-to-use machines near the station."
+    },
+    {
+      "id": "atm-town-hall",
+      "kind": "atm",
+      "name": "ATM · Town Hall area",
+      "lng": -0.1029,
+      "lat": 51.5425,
+      "note": "Single machine; carry a backup card."
+    },
+    {
+      "id": "family-highbury-fields-south",
+      "kind": "family",
+      "name": "Highbury Fields · south lawn",
+      "lng": -0.1018,
+      "lat": 51.545,
+      "note": "Quieter pocket if the crowd gets tight."
+    },
+    {
+      "id": "family-liverpool-road",
+      "kind": "family",
+      "name": "Liverpool Road · quieter pavement",
+      "lng": -0.1095,
+      "lat": 51.541,
+      "note": "Parallel to Upper Street, much less dense."
+    },
+    {
+      "id": "family-canonbury-square",
+      "kind": "family",
+      "name": "Canonbury Square",
+      "lng": -0.099,
+      "lat": 51.545,
+      "note": "Calm green square away from the main flow."
+    },
+    {
+      "id": "family-barnsbury-streets",
+      "kind": "family",
+      "name": "Barnsbury side streets",
+      "lng": -0.11,
+      "lat": 51.5425,
+      "note": "Residential, low foot traffic."
+    },
+    {
+      "id": "view-highbury-corner",
+      "kind": "view",
+      "name": "Highbury Corner · open view",
+      "lng": -0.103,
+      "lat": 51.546,
+      "note": "Wide pavement; good sight line of the bus turn."
+    },
+    {
+      "id": "view-upper-mid",
+      "kind": "view",
+      "name": "Upper Street · mid kerb",
+      "lng": -0.1037,
+      "lat": 51.54,
+      "note": "Less crowded view if you arrive early."
+    },
+    {
+      "id": "view-town-hall-steps",
+      "kind": "view",
+      "name": "Town Hall · steps area",
+      "lng": -0.1026,
+      "lat": 51.542,
+      "note": "Elevated vantage at the civic endpoint."
+    }
   ],
   "closures": [
     {
@@ -147,11 +341,31 @@
   ],
   "transport": {
     "stations": [
-      { "name": "Arsenal", "status": "open-check", "note": "Closest to the start area; likely very busy." },
-      { "name": "Holloway Road", "status": "open-check", "note": "Check before travelling; event controls may change access." },
-      { "name": "Drayton Park", "status": "open-check", "note": "National Rail station near the stadium area." },
-      { "name": "Highbury & Islington", "status": "open-check", "note": "Major interchange; expect crowd-control queues." },
-      { "name": "Angel", "status": "open-check", "note": "Useful southern exit if Upper Street is busy." }
+      {
+        "name": "Arsenal",
+        "status": "open-check",
+        "note": "Closest to the start area; likely very busy."
+      },
+      {
+        "name": "Holloway Road",
+        "status": "open-check",
+        "note": "Check before travelling; event controls may change access."
+      },
+      {
+        "name": "Drayton Park",
+        "status": "open-check",
+        "note": "National Rail station near the stadium area."
+      },
+      {
+        "name": "Highbury & Islington",
+        "status": "open-check",
+        "note": "Major interchange; expect crowd-control queues."
+      },
+      {
+        "name": "Angel",
+        "status": "open-check",
+        "note": "Useful southern exit if Upper Street is busy."
+      }
     ],
     "stepFreeRoutesOut": [
       {
@@ -167,11 +381,36 @@
     ]
   },
   "meetingLandmarks": [
-    { "id": "stadium-clock-end", "label": "Stadium area", "lng": -0.1086, "lat": 51.5549 },
-    { "id": "drayton-park", "label": "Drayton Park station area", "lng": -0.1055, "lat": 51.5532 },
-    { "id": "highbury-fields", "label": "Highbury Fields edge", "lng": -0.1027, "lat": 51.5461 },
-    { "id": "town-hall", "label": "Town Hall area", "lng": -0.1026, "lat": 51.5421 },
-    { "id": "angel", "label": "Angel station area", "lng": -0.1058, "lat": 51.5327 }
+    {
+      "id": "stadium-clock-end",
+      "label": "Stadium area",
+      "lng": -0.1086,
+      "lat": 51.5549
+    },
+    {
+      "id": "drayton-park",
+      "label": "Drayton Park station area",
+      "lng": -0.1055,
+      "lat": 51.5532
+    },
+    {
+      "id": "highbury-fields",
+      "label": "Highbury Fields edge",
+      "lng": -0.1027,
+      "lat": 51.5461
+    },
+    {
+      "id": "town-hall",
+      "label": "Town Hall area",
+      "lng": -0.1026,
+      "lat": 51.5421
+    },
+    {
+      "id": "angel",
+      "label": "Angel station area",
+      "lng": -0.1058,
+      "lat": 51.5327
+    }
   ],
   "safety": [
     {
@@ -192,9 +431,27 @@
     }
   ],
   "scheduleEstimate": [
-    { "label": "Parade starts at the stadium area", "time": "14:00", "note": "Official start time.", "lng": -0.1086, "lat": 51.5549 },
-    { "label": "Expected movement along the corridor", "time": "14:20-15:15", "note": "Estimated, not live.", "lng": -0.1027, "lat": 51.5461 },
-    { "label": "Crowds disperse toward stations and side streets", "time": "15:30+", "note": "Leave extra time.", "lng": -0.1026, "lat": 51.5421 }
+    {
+      "label": "Parade starts at the stadium area",
+      "time": "14:00",
+      "note": "Official start time.",
+      "lng": -0.1086,
+      "lat": 51.5549
+    },
+    {
+      "label": "Expected movement along the corridor",
+      "time": "14:20-15:15",
+      "note": "Estimated, not live.",
+      "lng": -0.1027,
+      "lat": 51.5461
+    },
+    {
+      "label": "Crowds disperse toward stations and side streets",
+      "time": "15:30+",
+      "note": "Leave extra time.",
+      "lng": -0.1026,
+      "lat": 51.5421
+    }
   ],
   "banter": {
     "chants": [
@@ -202,121 +459,121 @@
         "id": "north-london-forever",
         "title": "North London Forever",
         "cue": "North London forever / whatever the weather",
-        "detail": "North London forever / whatever the weather"
+        "detail": "Start: \"North London forever\".\nSlow anthem, scarves up, let the chorus breathe.\nBest moment: bus in sight, crowd already singing."
       },
       {
         "id": "one-nil",
         "title": "One-nil to The Arsenal",
         "cue": "One-nil to The Arsenal",
-        "detail": "One-nil to The Arsenal"
+        "detail": "Start: \"One-nil\".\nShort, old-school, repeatable.\nUse after someone mentions clean sheets, Raya, Gabriel, or Saliba."
       },
       {
         "id": "forty-nine",
         "title": "49 undefeated",
         "cue": "49, 49 undefeated",
-        "detail": "49, 49 undefeated"
+        "detail": "Start: \"49\".\nKeep it punchy: call, clap, repeat.\nA history flex for the queue, the pub, or any Spurs-adjacent banter."
       },
       {
         "id": "till-i-die",
         "title": "Arsenal till I die",
         "cue": "Arsenal till I die",
-        "detail": "Arsenal till I die"
+        "detail": "Start: \"Arsenal\".\nSimple loyalty chant.\nGood when the crowd needs one everyone can join without checking words."
       },
       {
         "id": "greatest-team",
         "title": "Greatest team",
         "cue": "We're by far the greatest team",
-        "detail": "We're by far the greatest team"
+        "detail": "Start: \"by far\".\nBig grin energy, no subtlety.\nRepeat twice, clap on the gaps, keep it clean around families."
       },
       {
         "id": "oh-to-be",
         "title": "Oh to be a Gooner",
         "cue": "Oh to be a Gooner",
-        "detail": "Oh to be a Gooner"
+        "detail": "Start: \"Oh to be\".\nFast chant, easy lift.\nWorks while walking between stations or waiting for the next bus glimpse."
       },
       {
         "id": "allez",
         "title": "Allez Allez Allez",
         "cue": "Allez, allez, allez",
-        "detail": "Allez, allez, allez"
+        "detail": "Start: \"Allez\".\nEuropean-night rhythm.\nUse as a rolling chant when the street is moving and people can clap along."
       },
       {
         "id": "set-piece",
         "title": "Set-piece again",
         "cue": "Set-piece again, ole ole",
-        "detail": "Set-piece again, ole ole"
+        "detail": "Start: \"Set-piece\".\nFor the corner-kick era and Gabriel chaos.\nShort enough to use as a joke every time someone points at a lamp post."
       },
       {
         "id": "we-love-you",
         "title": "We love you Arsenal",
         "cue": "We love you Arsenal, we do",
-        "detail": "We love you Arsenal, we do"
+        "detail": "Start: \"We love you\".\nWarm, family-safe, simple.\nBest when the bus slows or players wave directly at your section."
       },
       {
         "id": "north-bank-clock-end",
         "title": "North Bank / Clock End",
         "cue": "We're the North Bank, Highbury",
-        "detail": "We're the North Bank, Highbury / We're the Clock End, Highbury"
+        "detail": "Start: \"North Bank\".\nOld-ground call-and-response.\nLet one side answer the other if the street splits naturally."
       },
       {
         "id": "come-on-you-reds",
         "title": "Come on you reds",
         "cue": "Come on you reds",
-        "detail": "Come on you reds"
+        "detail": "Start: \"Come on\".\nThe emergency chant: no setup, no memory test.\nUse when something needs to start right now."
       },
       {
         "id": "up-the-arsenal",
         "title": "Up the Arsenal",
         "cue": "Up The Arsenal",
-        "detail": "Up The Arsenal"
+        "detail": "Start: \"Up\".\nTiny phrase, massive usefulness.\nA quick shout after a tap, photo, wave, or group reunion."
       },
       {
         "id": "saliba",
         "title": "Saliba",
         "cue": "Da da da da da, Saliba",
-        "detail": "Da da da da da, Saliba"
+        "detail": "Start: rhythm first, then \"Saliba\".\nDefender chant, arms up, bouncing optional.\nKeep the beat more than the words."
       },
       {
         "id": "rice-rice-baby",
         "title": "Rice Rice Baby",
         "cue": "Rice, Rice, Baby",
-        "detail": "Rice, Rice, Baby"
+        "detail": "Start: \"Rice\".\nMidfield engine chant.\nBest after trivia, player vote, or any mention of running forever."
       },
       {
         "id": "bukayo-saka",
         "title": "Bukayo Saka",
         "cue": "Bukayo, Saka",
-        "detail": "Bukayo, Saka"
+        "detail": "Start: \"Bukayo\".\nKeep it bright and clean.\nShort player chant for families, kids, and shirts with number 7 everywhere."
       },
       {
         "id": "odegaard-oi",
         "title": "Odegaard Oi Oi",
         "cue": "Martin Odegaard, oi oi oi",
-        "detail": "Martin Odegaard, oi oi oi"
+        "detail": "Start: \"Martin\".\nCaptain chant, clipped rhythm.\nGood for a quick lift without turning the whole street into a mosh pit."
       },
       {
         "id": "super-mik",
         "title": "Super Mik Arteta",
         "cue": "We've got Super Mik Arteta",
-        "detail": "We've got Super Mik Arteta"
+        "detail": "Start: \"Super Mik\".\nManager appreciation, loud but tidy.\nUse after season-moment votes or when someone starts talking tactics."
       },
       {
         "id": "kai-havertz",
         "title": "Kai Havertz scores again",
         "cue": "Kai Havertz scores again",
-        "detail": "Kai Havertz scores again"
+        "detail": "Start: \"Kai\".\nForward chant with a wink.\nGood when the crowd is playful and someone wants a proper terrace bit."
       },
       {
         "id": "his-name-is-gabi",
         "title": "His name is Gabi",
         "cue": "His name is Gabi",
-        "detail": "His name is Gabi"
+        "detail": "Start: \"Gabi\".\nUse for Gabriel, Martinelli, or general Gabi confusion.\nIf in doubt: point at the shirt and laugh."
       },
       {
         "id": "trossard-again",
         "title": "Trossard again",
         "cue": "Trossard again, ole ole",
-        "detail": "Trossard again, ole ole"
+        "detail": "Start: \"Trossard\".\nSuper-sub energy, quick repeat.\nSave it for the person who brought snacks out of nowhere."
       }
     ],
     "polls": [
@@ -324,55 +581,340 @@
         "id": "player-of-season",
         "question": "Player of the season",
         "options": [
-          { "id": "saka", "label": "Saka" },
-          { "id": "rice", "label": "Rice" },
-          { "id": "saliba", "label": "Saliba" },
-          { "id": "odegaard", "label": "Odegaard" },
-          { "id": "raya", "label": "Raya" },
-          { "id": "gabriel", "label": "Gabriel" },
-          { "id": "other", "label": "Other" }
+          {
+            "id": "saka",
+            "label": "Saka"
+          },
+          {
+            "id": "rice",
+            "label": "Rice"
+          },
+          {
+            "id": "saliba",
+            "label": "Saliba"
+          },
+          {
+            "id": "odegaard",
+            "label": "Odegaard"
+          },
+          {
+            "id": "raya",
+            "label": "Raya"
+          },
+          {
+            "id": "gabriel",
+            "label": "Gabriel"
+          },
+          {
+            "id": "other",
+            "label": "Other"
+          }
         ],
         "otherOptions": [
-          { "id": "martinelli", "label": "Martinelli" },
-          { "id": "havertz", "label": "Havertz" },
-          { "id": "trossard", "label": "Trossard" },
-          { "id": "timber", "label": "Timber" },
-          { "id": "white", "label": "White" },
-          { "id": "calafiori", "label": "Calafiori" },
-          { "id": "merino", "label": "Merino" },
-          { "id": "jesus", "label": "Gabriel Jesus" },
-          { "id": "zinchenko", "label": "Zinchenko" },
-          { "id": "kiwior", "label": "Kiwior" },
-          { "id": "lewis-skelly", "label": "Myles Lewis-Skelly" },
-          { "id": "zubimendi", "label": "Zubimendi" },
-          { "id": "norgaard", "label": "Norgaard" },
-          { "id": "fabio-vieira", "label": "Fabio Vieira" },
-          { "id": "reiss-nelson", "label": "Reiss Nelson" },
-          { "id": "kepa", "label": "Kepa" },
-          { "id": "karl-hein", "label": "Karl Hein" },
-          { "id": "lokonga", "label": "Lokonga" }
+          {
+            "id": "martinelli",
+            "label": "Martinelli"
+          },
+          {
+            "id": "havertz",
+            "label": "Havertz"
+          },
+          {
+            "id": "trossard",
+            "label": "Trossard"
+          },
+          {
+            "id": "timber",
+            "label": "Timber"
+          },
+          {
+            "id": "white",
+            "label": "White"
+          },
+          {
+            "id": "calafiori",
+            "label": "Calafiori"
+          },
+          {
+            "id": "merino",
+            "label": "Merino"
+          },
+          {
+            "id": "jesus",
+            "label": "Gabriel Jesus"
+          },
+          {
+            "id": "zinchenko",
+            "label": "Zinchenko"
+          },
+          {
+            "id": "kiwior",
+            "label": "Kiwior"
+          },
+          {
+            "id": "lewis-skelly",
+            "label": "Myles Lewis-Skelly"
+          },
+          {
+            "id": "zubimendi",
+            "label": "Zubimendi"
+          },
+          {
+            "id": "norgaard",
+            "label": "Norgaard"
+          },
+          {
+            "id": "fabio-vieira",
+            "label": "Fabio Vieira"
+          },
+          {
+            "id": "reiss-nelson",
+            "label": "Reiss Nelson"
+          },
+          {
+            "id": "kepa",
+            "label": "Kepa"
+          },
+          {
+            "id": "karl-hein",
+            "label": "Karl Hein"
+          },
+          {
+            "id": "nwaneri",
+            "label": "Ethan Nwaneri"
+          },
+          {
+            "id": "lokonga",
+            "label": "Lokonga"
+          }
         ]
       },
       {
         "id": "moment-of-season",
         "question": "Moment of the season",
         "options": [
-          { "id": "title-confirmed", "label": "Title confirmed" },
-          { "id": "derby-day", "label": "Derby day" },
-          { "id": "late-winner", "label": "Late winner" },
-          { "id": "clean-sheet-run", "label": "Clean sheet run" },
-          { "id": "other", "label": "Other" }
+          {
+            "id": "title-confirmed",
+            "label": "Title confirmed"
+          },
+          {
+            "id": "derby-day",
+            "label": "Derby day"
+          },
+          {
+            "id": "late-winner",
+            "label": "Late winner"
+          },
+          {
+            "id": "clean-sheet-run",
+            "label": "Clean sheet run"
+          },
+          {
+            "id": "other",
+            "label": "Other"
+          }
         ]
       },
       {
         "id": "after-parade",
         "question": "After the parade",
         "options": [
-          { "id": "pub", "label": "Pub" },
-          { "id": "park", "label": "Park" },
-          { "id": "food", "label": "Food" },
-          { "id": "home", "label": "Home" },
-          { "id": "deciding", "label": "Still deciding" }
+          {
+            "id": "pub",
+            "label": "Pub"
+          },
+          {
+            "id": "park",
+            "label": "Park"
+          },
+          {
+            "id": "food",
+            "label": "Food"
+          },
+          {
+            "id": "home",
+            "label": "Home"
+          },
+          {
+            "id": "deciding",
+            "label": "Still deciding"
+          }
+        ]
+      }
+    ],
+    "trivia": [
+      {
+        "id": "minutes-monster",
+        "question": "Who felt like the season workload monster?",
+        "answerId": "rice",
+        "source": "Season stats pack",
+        "explainer": "Rice was the obvious all-action answer in midfield: starts, minutes, set pieces, duels, everything.",
+        "options": [
+          {
+            "id": "rice",
+            "label": "Declan Rice",
+            "detail": "Midfield engine"
+          },
+          {
+            "id": "odegaard",
+            "label": "Martin Odegaard",
+            "detail": "Captain hub"
+          },
+          {
+            "id": "saka",
+            "label": "Bukayo Saka",
+            "detail": "Right-side threat"
+          },
+          {
+            "id": "havertz",
+            "label": "Kai Havertz",
+            "detail": "Forward graft"
+          }
+        ]
+      },
+      {
+        "id": "pass-accuracy",
+        "question": "Who is the safest pass-accuracy shout?",
+        "answerId": "saliba",
+        "source": "Season stats pack",
+        "explainer": "Saliba is the calm centre-back answer: short exits, switches, and pressure-proof recycling.",
+        "options": [
+          {
+            "id": "saliba",
+            "label": "William Saliba",
+            "detail": "Calm distributor"
+          },
+          {
+            "id": "gabriel",
+            "label": "Gabriel",
+            "detail": "Left-sided outlet"
+          },
+          {
+            "id": "partey",
+            "label": "Thomas Partey",
+            "detail": "Midfield passer"
+          },
+          {
+            "id": "raya",
+            "label": "David Raya",
+            "detail": "Keeper build-up"
+          }
+        ]
+      },
+      {
+        "id": "clean-sheet-core",
+        "question": "Who anchors the clean-sheet story?",
+        "answerId": "raya",
+        "source": "Season reports",
+        "explainer": "Raya is the keeper answer, with Gabriel and Saliba doing the heavy defensive lifting in front.",
+        "options": [
+          {
+            "id": "raya",
+            "label": "David Raya",
+            "detail": "Keeper platform"
+          },
+          {
+            "id": "saka",
+            "label": "Bukayo Saka",
+            "detail": "Right-wing spark"
+          },
+          {
+            "id": "merino",
+            "label": "Mikel Merino",
+            "detail": "Midfield depth"
+          },
+          {
+            "id": "trossard",
+            "label": "Leandro Trossard",
+            "detail": "Late-game threat"
+          }
+        ]
+      },
+      {
+        "id": "set-piece-menace",
+        "question": "Who is the set-piece menace?",
+        "answerId": "gabriel",
+        "source": "Season reports",
+        "explainer": "Gabriel is the obvious box-crashing pick: corners, blocks, headers, panic.",
+        "options": [
+          {
+            "id": "gabriel",
+            "label": "Gabriel",
+            "detail": "Corner chaos"
+          },
+          {
+            "id": "white",
+            "label": "Ben White",
+            "detail": "Near-post nuisance"
+          },
+          {
+            "id": "timber",
+            "label": "Jurrien Timber",
+            "detail": "Duel machine"
+          },
+          {
+            "id": "jesus",
+            "label": "Gabriel Jesus",
+            "detail": "Pressing forward"
+          }
+        ]
+      },
+      {
+        "id": "captain-creator",
+        "question": "Who is the captain-creator hub?",
+        "answerId": "odegaard",
+        "source": "Season reports",
+        "explainer": "Odegaard is the organiser answer: press trigger, right-half-space passing, captain energy.",
+        "options": [
+          {
+            "id": "odegaard",
+            "label": "Martin Odegaard",
+            "detail": "Captain"
+          },
+          {
+            "id": "rice",
+            "label": "Declan Rice",
+            "detail": "Runner"
+          },
+          {
+            "id": "saka",
+            "label": "Bukayo Saka",
+            "detail": "Final-third threat"
+          },
+          {
+            "id": "timber",
+            "label": "Jurrien Timber",
+            "detail": "Full-back power"
+          }
+        ]
+      },
+      {
+        "id": "academy-spark",
+        "question": "Which young player gets the academy spark card?",
+        "answerId": "nwaneri",
+        "source": "Season reports",
+        "explainer": "Nwaneri is the local excitement answer: young, brave, and instantly chantable.",
+        "options": [
+          {
+            "id": "nwaneri",
+            "label": "Ethan Nwaneri",
+            "detail": "Academy spark"
+          },
+          {
+            "id": "raya",
+            "label": "David Raya",
+            "detail": "Keeper"
+          },
+          {
+            "id": "jorginho",
+            "label": "Jorginho",
+            "detail": "Veteran tempo"
+          },
+          {
+            "id": "zinchenko",
+            "label": "Zinchenko",
+            "detail": "Inverted full-back"
+          }
         ]
       }
     ]

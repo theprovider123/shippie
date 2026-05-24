@@ -8,11 +8,12 @@ interface ReadinessChipProps {
   pack: RoutePack;
   onShowStatus?: () => void;
   onReadinessChange?: (readiness: Readiness) => void;
+  visible?: boolean;
 }
 
 export type Readiness = 'checking' | 'ready' | 'needs-online' | 'unknown';
 
-export function ReadinessChip({ pack, onShowStatus, onReadinessChange }: ReadinessChipProps) {
+export function ReadinessChip({ pack, onShowStatus, onReadinessChange, visible = true }: ReadinessChipProps) {
   const [readiness, setReadiness] = useState<Readiness>('checking');
   const assets = useMemo(
     () => [
@@ -78,6 +79,8 @@ export function ReadinessChip({ pack, onShowStatus, onReadinessChange }: Readine
   }, [onReadinessChange, readiness]);
 
   const copy = readinessCopy(readiness);
+  if (!visible) return null;
+
   return (
     <button
       type="button"
@@ -93,10 +96,10 @@ export function ReadinessChip({ pack, onShowStatus, onReadinessChange }: Readine
 
 function readinessCopy(readiness: Readiness): { title: string; detail: string } {
   if (readiness === 'ready') {
-    return { title: 'Saved offline', detail: 'Map + fonts saved' };
+    return { title: 'Saved offline', detail: 'Map, route pack, fonts and app shell saved' };
   }
   if (readiness === 'needs-online') {
-    return { title: 'Open on Wi-Fi', detail: 'Finish saving this phone' };
+    return { title: 'Open on Wi-Fi', detail: 'Saving map, route pack, fonts and app shell' };
   }
   if (readiness === 'unknown') {
     return { title: 'Check limited', detail: 'Keep this page open before leaving' };

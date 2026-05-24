@@ -51,6 +51,15 @@ export interface RouteBanterChant {
   detail: string;
 }
 
+export interface RouteBanterTrivia {
+  id: string;
+  question: string;
+  answerId: string;
+  source: string;
+  explainer: string;
+  options: Array<{ id: string; label: string; detail?: string }>;
+}
+
 export interface RouteBanterPoll {
   id: string;
   question: string;
@@ -61,6 +70,7 @@ export interface RouteBanterPoll {
 export interface RouteBanter {
   chants: RouteBanterChant[];
   polls: RouteBanterPoll[];
+  trivia?: RouteBanterTrivia[];
 }
 
 export interface RoutePack {
@@ -104,7 +114,7 @@ export const CORRIDOR_EXTENT: MapExtent = {
 
 export const FALLBACK_ROUTE_PACK: RoutePack = {
   schemaVersion: 1,
-  packVersion: '2026-05-24T18:30:00+01:00',
+  packVersion: '2026-05-24T20:30:00+01:00',
   event: {
     title: 'Parade Companion — Islington',
     dateLabel: 'Sunday 31 May 2026',
@@ -264,9 +274,9 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
     },
   ],
   scheduleEstimate: [
-    { label: 'Parade starts at the stadium area', time: '14:00', note: 'Official start time.' },
-    { label: 'Expected movement along the corridor', time: '14:20-15:15', note: 'Estimated, not live.' },
-    { label: 'Crowds disperse toward stations and side streets', time: '15:30+', note: 'Leave extra time.' },
+    { label: 'Parade starts at the stadium area', time: '14:00', note: 'Official start time.', lng: -0.1086, lat: 51.5549 },
+    { label: 'Expected movement along the corridor', time: '14:20-15:15', note: 'Estimated, not live.', lng: -0.1027, lat: 51.5461 },
+    { label: 'Crowds disperse toward stations and side streets', time: '15:30+', note: 'Leave extra time.', lng: -0.1026, lat: 51.5421 },
   ],
   banter: {
     chants: [
@@ -274,121 +284,121 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
         id: 'north-london-forever',
         title: 'North London Forever',
         cue: 'North London forever / whatever the weather',
-        detail: 'North London forever / whatever the weather',
+        detail: 'Start: "North London forever".\nSlow anthem, scarves up, let the chorus breathe.\nBest moment: bus in sight, crowd already singing.',
       },
       {
         id: 'one-nil',
         title: 'One-nil to The Arsenal',
         cue: 'One-nil to The Arsenal',
-        detail: 'One-nil to The Arsenal',
+        detail: 'Start: "One-nil".\nShort, old-school, repeatable.\nUse after someone mentions clean sheets, Raya, Gabriel, or Saliba.',
       },
       {
         id: 'forty-nine',
         title: '49 undefeated',
         cue: '49, 49 undefeated',
-        detail: '49, 49 undefeated',
+        detail: 'Start: "49".\nKeep it punchy: call, clap, repeat.\nA history flex for the queue, the pub, or any Spurs-adjacent banter.',
       },
       {
         id: 'till-i-die',
         title: 'Arsenal till I die',
         cue: 'Arsenal till I die',
-        detail: 'Arsenal till I die',
+        detail: 'Start: "Arsenal".\nSimple loyalty chant.\nGood when the crowd needs one everyone can join without checking words.',
       },
       {
         id: 'greatest-team',
         title: 'Greatest team',
         cue: "We're by far the greatest team",
-        detail: "We're by far the greatest team",
+        detail: 'Start: "by far".\nBig grin energy, no subtlety.\nRepeat twice, clap on the gaps, keep it clean around families.',
       },
       {
         id: 'oh-to-be',
         title: 'Oh to be a Gooner',
         cue: 'Oh to be a Gooner',
-        detail: 'Oh to be a Gooner',
+        detail: 'Start: "Oh to be".\nFast chant, easy lift.\nWorks while walking between stations or waiting for the next bus glimpse.',
       },
       {
         id: 'allez',
         title: 'Allez Allez Allez',
         cue: 'Allez, allez, allez',
-        detail: 'Allez, allez, allez',
+        detail: 'Start: "Allez".\nEuropean-night rhythm.\nUse as a rolling chant when the street is moving and people can clap along.',
       },
       {
         id: 'set-piece',
         title: 'Set-piece again',
         cue: 'Set-piece again, ole ole',
-        detail: 'Set-piece again, ole ole',
+        detail: 'Start: "Set-piece".\nFor the corner-kick era and Gabriel chaos.\nShort enough to use as a joke every time someone points at a lamp post.',
       },
       {
         id: 'we-love-you',
         title: 'We love you Arsenal',
         cue: 'We love you Arsenal, we do',
-        detail: 'We love you Arsenal, we do',
+        detail: 'Start: "We love you".\nWarm, family-safe, simple.\nBest when the bus slows or players wave directly at your section.',
       },
       {
         id: 'north-bank-clock-end',
         title: 'North Bank / Clock End',
         cue: "We're the North Bank, Highbury",
-        detail: "We're the North Bank, Highbury / We're the Clock End, Highbury",
+        detail: 'Start: "North Bank".\nOld-ground call-and-response.\nLet one side answer the other if the street splits naturally.',
       },
       {
         id: 'come-on-you-reds',
         title: 'Come on you reds',
         cue: 'Come on you reds',
-        detail: 'Come on you reds',
+        detail: 'Start: "Come on".\nThe emergency chant: no setup, no memory test.\nUse when something needs to start right now.',
       },
       {
         id: 'up-the-arsenal',
         title: 'Up the Arsenal',
         cue: 'Up The Arsenal',
-        detail: 'Up The Arsenal',
+        detail: 'Start: "Up".\nTiny phrase, massive usefulness.\nA quick shout after a tap, photo, wave, or group reunion.',
       },
       {
         id: 'saliba',
         title: 'Saliba',
         cue: 'Da da da da da, Saliba',
-        detail: 'Da da da da da, Saliba',
+        detail: 'Start: rhythm first, then "Saliba".\nDefender chant, arms up, bouncing optional.\nKeep the beat more than the words.',
       },
       {
         id: 'rice-rice-baby',
         title: 'Rice Rice Baby',
         cue: 'Rice, Rice, Baby',
-        detail: 'Rice, Rice, Baby',
+        detail: 'Start: "Rice".\nMidfield engine chant.\nBest after trivia, player vote, or any mention of running forever.',
       },
       {
         id: 'bukayo-saka',
         title: 'Bukayo Saka',
         cue: 'Bukayo, Saka',
-        detail: 'Bukayo, Saka',
+        detail: 'Start: "Bukayo".\nKeep it bright and clean.\nShort player chant for families, kids, and shirts with number 7 everywhere.',
       },
       {
         id: 'odegaard-oi',
         title: 'Odegaard Oi Oi',
         cue: 'Martin Odegaard, oi oi oi',
-        detail: 'Martin Odegaard, oi oi oi',
+        detail: 'Start: "Martin".\nCaptain chant, clipped rhythm.\nGood for a quick lift without turning the whole street into a mosh pit.',
       },
       {
         id: 'super-mik',
         title: 'Super Mik Arteta',
         cue: "We've got Super Mik Arteta",
-        detail: "We've got Super Mik Arteta",
+        detail: 'Start: "Super Mik".\nManager appreciation, loud but tidy.\nUse after season-moment votes or when someone starts talking tactics.',
       },
       {
         id: 'kai-havertz',
         title: 'Kai Havertz scores again',
         cue: 'Kai Havertz scores again',
-        detail: 'Kai Havertz scores again',
+        detail: 'Start: "Kai".\nForward chant with a wink.\nGood when the crowd is playful and someone wants a proper terrace bit.',
       },
       {
         id: 'his-name-is-gabi',
         title: 'His name is Gabi',
         cue: 'His name is Gabi',
-        detail: 'His name is Gabi',
+        detail: 'Start: "Gabi".\nUse for Gabriel, Martinelli, or general Gabi confusion.\nIf in doubt: point at the shirt and laugh.',
       },
       {
         id: 'trossard-again',
         title: 'Trossard again',
         cue: 'Trossard again, ole ole',
-        detail: 'Trossard again, ole ole',
+        detail: 'Start: "Trossard".\nSuper-sub energy, quick repeat.\nSave it for the person who brought snacks out of nowhere.',
       },
     ],
     polls: [
@@ -422,6 +432,7 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
           { id: 'reiss-nelson', label: 'Reiss Nelson' },
           { id: 'kepa', label: 'Kepa' },
           { id: 'karl-hein', label: 'Karl Hein' },
+          { id: 'nwaneri', label: 'Ethan Nwaneri' },
           { id: 'lokonga', label: 'Lokonga' },
         ],
       },
@@ -445,6 +456,86 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
           { id: 'food', label: 'Food' },
           { id: 'home', label: 'Home' },
           { id: 'deciding', label: 'Still deciding' },
+        ],
+      },
+    ],
+    trivia: [
+      {
+        id: 'minutes-monster',
+        question: 'Who felt like the season workload monster?',
+        answerId: 'rice',
+        source: 'Season stats pack',
+        explainer: 'Rice was the obvious all-action answer in midfield: starts, minutes, set pieces, duels, everything.',
+        options: [
+          { id: 'rice', label: 'Declan Rice', detail: 'Midfield engine' },
+          { id: 'odegaard', label: 'Martin Odegaard', detail: 'Captain hub' },
+          { id: 'saka', label: 'Bukayo Saka', detail: 'Right-side threat' },
+          { id: 'havertz', label: 'Kai Havertz', detail: 'Forward graft' },
+        ],
+      },
+      {
+        id: 'pass-accuracy',
+        question: 'Who is the safest pass-accuracy shout?',
+        answerId: 'saliba',
+        source: 'Season stats pack',
+        explainer: 'Saliba is the calm centre-back answer: short exits, switches, and pressure-proof recycling.',
+        options: [
+          { id: 'saliba', label: 'William Saliba', detail: 'Calm distributor' },
+          { id: 'gabriel', label: 'Gabriel', detail: 'Left-sided outlet' },
+          { id: 'partey', label: 'Thomas Partey', detail: 'Midfield passer' },
+          { id: 'raya', label: 'David Raya', detail: 'Keeper build-up' },
+        ],
+      },
+      {
+        id: 'clean-sheet-core',
+        question: 'Who anchors the clean-sheet story?',
+        answerId: 'raya',
+        source: 'Season reports',
+        explainer: 'Raya is the keeper answer, with Gabriel and Saliba doing the heavy defensive lifting in front.',
+        options: [
+          { id: 'raya', label: 'David Raya', detail: 'Keeper platform' },
+          { id: 'saka', label: 'Bukayo Saka', detail: 'Right-wing spark' },
+          { id: 'merino', label: 'Mikel Merino', detail: 'Midfield depth' },
+          { id: 'trossard', label: 'Leandro Trossard', detail: 'Late-game threat' },
+        ],
+      },
+      {
+        id: 'set-piece-menace',
+        question: 'Who is the set-piece menace?',
+        answerId: 'gabriel',
+        source: 'Season reports',
+        explainer: 'Gabriel is the obvious box-crashing pick: corners, blocks, headers, panic.',
+        options: [
+          { id: 'gabriel', label: 'Gabriel', detail: 'Corner chaos' },
+          { id: 'white', label: 'Ben White', detail: 'Near-post nuisance' },
+          { id: 'timber', label: 'Jurrien Timber', detail: 'Duel machine' },
+          { id: 'jesus', label: 'Gabriel Jesus', detail: 'Pressing forward' },
+        ],
+      },
+      {
+        id: 'captain-creator',
+        question: 'Who is the captain-creator hub?',
+        answerId: 'odegaard',
+        source: 'Season reports',
+        explainer: 'Odegaard is the organiser answer: press trigger, right-half-space passing, captain energy.',
+        options: [
+          { id: 'odegaard', label: 'Martin Odegaard', detail: 'Captain' },
+          { id: 'rice', label: 'Declan Rice', detail: 'Runner' },
+          { id: 'saka', label: 'Bukayo Saka', detail: 'Final-third threat' },
+          { id: 'timber', label: 'Jurrien Timber', detail: 'Full-back power' },
+        ],
+      },
+      {
+        id: 'academy-spark',
+        question: 'Which young player gets the academy spark card?',
+        answerId: 'nwaneri',
+        source: 'Season reports',
+        explainer: 'Nwaneri is the local excitement answer: young, brave, and instantly chantable.',
+        options: [
+          { id: 'nwaneri', label: 'Ethan Nwaneri', detail: 'Academy spark' },
+          { id: 'raya', label: 'David Raya', detail: 'Keeper' },
+          { id: 'jorginho', label: 'Jorginho', detail: 'Veteran tempo' },
+          { id: 'zinchenko', label: 'Zinchenko', detail: 'Inverted full-back' },
         ],
       },
     ],
