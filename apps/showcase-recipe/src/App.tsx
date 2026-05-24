@@ -2248,7 +2248,10 @@ function ShoppingView({
   );
 }
 
-function groupByAisle(items: ShoppingItem[]): Array<{ key: string; label: string; items: ShoppingItem[] }> {
+function groupByAisle(
+  items: ShoppingItem[],
+  order: string[] = DEFAULT_AISLE_ORDER,
+): Array<{ key: string; label: string; items: ShoppingItem[] }> {
   const buckets = new Map<string, { label: string; items: ShoppingItem[] }>();
   const other = { label: 'Other', items: [] as ShoppingItem[] };
   for (const item of items) {
@@ -2261,17 +2264,25 @@ function groupByAisle(items: ShoppingItem[]): Array<{ key: string; label: string
       other.items.push(item);
     }
   }
-  const out = [...buckets.entries()].map(([key, value]) => ({ key, label: value.label, items: value.items }));
-  if (other.items.length > 0) out.push({ key: 'other', label: 'Other', items: other.items });
-  return out;
+  const all: Array<{ key: string; label: string; items: ShoppingItem[] }> = [
+    ...[...buckets.entries()].map(([key, value]) => ({ key, label: value.label, items: value.items })),
+  ];
+  if (other.items.length > 0) all.push({ key: 'other', label: 'Other', items: other.items });
+  // Sort by the persisted aisle order; unknown keys fall to the end.
+  const rank = new Map(order.map((key, idx) => [key, idx] as const));
+  return all.sort((a, b) => (rank.get(a.key) ?? 999) - (rank.get(b.key) ?? 999));
 }
 
 function DataView({
   state,
+  aisleOrder,
+  onAisleOrderChange,
   onWipe,
   backupStore,
 }: {
   state: KitchenState;
+  aisleOrder: string[];
+  onAisleOrderChange: (next: string[]) => void;
   onWipe: () => void;
   backupStore: ReturnType<typeof createPalateBackupStore>;
 }) {
@@ -2288,8 +2299,105 @@ function DataView({
         <div><strong>{state.pantry.length}</strong><span>pantry rows</span></div>
         <div><strong>{state.cooked.length}</strong><span>cooks logged</span></div>
       </section>
+      <AisleOrderSetting order={aisleOrder} onChange={onAisleOrderChange} />
       <BackupCard appSlug="palate" store={backupStore} />
       <button type="button" className="danger" onClick={onWipe}>Clear this device</button>
+    </section>
+  );
+}
+
+/**
+ * Settings pane: drag-reorder the shopping list aisles. Persists to
+ * localStorage via the AISLE_ORDER_KEY effect. Regex matchers in
+ * SHOP_AISLES are not touched — only the display order moves so the
+ * user can sort by their store's layout.
+ */
+function AisleOrderSetting({
+  order,
+  onChange,
+}: {
+  order: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const labelFor = (key: string): string => {
+    if (key === 'other') return 'Other';
+    return SHOP_AISLES.find((a) => a.key === key)?.label ?? key;
+  };
+  function move(key: string, delta: number): void {
+    const idx = order.indexOf(key);
+    if (idx < 0) return;
+    const next = idx + delta;
+    if (next < 0 || next >= order.length) return;
+    const reordered = [...order];
+    const [item] = reordered.splice(idx, 1);
+    if (item !== undefined) reordered.splice(next, 0, item);
+    onChange(reordered);
+  }
+  function reorderTo(sourceKey: string, targetKey: string): void {
+    if (sourceKey === targetKey) return;
+    const reordered = [...order];
+    const srcIdx = reordered.indexOf(sourceKey);
+    if (srcIdx < 0) return;
+    const [item] = reordered.splice(srcIdx, 1);
+    const targetIdx = reordered.indexOf(targetKey);
+    if (targetIdx < 0 || item === undefined) return;
+    reordered.splice(targetIdx, 0, item);
+    onChange(reordered);
+  }
+  function resetOrder(): void {
+    onChange(DEFAULT_AISLE_ORDER);
+  }
+  const isCustom = order.join(',') !== DEFAULT_AISLE_ORDER.join(',');
+  return (
+    <section className="aisle-order-setting" aria-label="Shopping aisle order">
+      <header className="aisle-order-head">
+        <div>
+          <p className="eyebrow">Shopping aisle order</p>
+          <small>Drag to match your store's layout.</small>
+        </div>
+        {isCustom ? (
+          <button type="button" className="text-action" onClick={resetOrder}>Reset</button>
+        ) : null}
+      </header>
+      <ol className="aisle-order-list">
+        {order.map((key, index) => (
+          <li
+            key={key}
+            className={`aisle-order-row${dragKey === key ? ' is-dragging' : ''}`}
+            draggable
+            onDragStart={() => setDragKey(key)}
+            onDragEnd={() => setDragKey(null)}
+            onDragOver={(event) => { event.preventDefault(); }}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (dragKey && dragKey !== key) reorderTo(dragKey, key);
+              setDragKey(null);
+            }}
+          >
+            <span className="aisle-order-grip" aria-hidden>⋮⋮</span>
+            <span className="aisle-order-label">{labelFor(key)}</span>
+            <div className="aisle-order-actions">
+              <button
+                type="button"
+                onClick={() => move(key, -1)}
+                disabled={index === 0}
+                aria-label={`Move ${labelFor(key)} up`}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => move(key, 1)}
+                disabled={index === order.length - 1}
+                aria-label={`Move ${labelFor(key)} down`}
+              >
+                ↓
+              </button>
+            </div>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
