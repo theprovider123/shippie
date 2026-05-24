@@ -2090,14 +2090,19 @@ body {
    discard affordance, hierarchy polish. */
 
 .hero-meal-prefix {
+  display: inline-block;
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 0.58em;
-  letter-spacing: 0.08em;
-  color: var(--cooking-deep);
+  font-size: 0.5em;
+  letter-spacing: 0.18em;
+  color: #fffaf0;
   text-transform: uppercase;
-  vertical-align: middle;
-  margin-right: 0.45em;
+  vertical-align: 0.45em;
+  margin-right: 0.6em;
+  padding: 0.32em 0.65em 0.28em;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--saffron), var(--saffron-deep));
+  box-shadow: 0 6px 18px rgba(178, 121, 17, 0.32);
 }
 
 .fit-sparkline {
@@ -2628,8 +2633,125 @@ body {
   }
 }
 
+/* ── Bolder recipe-tile photos — magazine treatment ────────────── */
+.recipe-tile {
+  position: relative;
+}
+
+.recipe-tile img {
+  aspect-ratio: 4 / 3;
+  filter: saturate(1.08) contrast(1.03);
+  transition: filter 200ms ease, transform 240ms cubic-bezier(0.22, 0.8, 0.36, 1);
+}
+
+.recipe-tile:hover img {
+  filter: saturate(1.14) contrast(1.05);
+  transform: scale(1.015);
+}
+
+.recipe-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 240, 0.45);
+}
+
+/* Today rail — first tile gets the saffron rim for "Tonight's pick". */
+.recipe-rail > :first-child {
+  position: relative;
+}
+
+.recipe-rail > :first-child::before {
+  content: 'tonight';
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 2;
+  padding: 0.22rem 0.5rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #fffaf0;
+  background: linear-gradient(180deg, var(--saffron), var(--saffron-deep));
+  box-shadow: 0 6px 14px rgba(178, 121, 17, 0.32);
+}
+
+/* ── Tabular numerals everywhere a number sits in a layout ─────── */
+.metric-strip strong,
+.taste-board-status strong,
+.decision-strip strong,
+.cook-history-list span,
+.pantry-qty,
+.recipe-tile-last,
+.plan-summary strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* First decision-strip cell — the "minutes" cell gets a warm-clay
+   accent so the first number reads as the headline metric. */
+.decision-strip > :first-child {
+  background: linear-gradient(180deg, rgba(230, 168, 46, 0.16), rgba(255, 250, 240, 0.72));
+  border-color: rgba(178, 121, 17, 0.32);
+}
+
+.decision-strip > :first-child strong {
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+}
+
+/* ── Sage-leaf decorative glyph for empty states + quiet panels ── */
+.shippie-empty-state {
+  position: relative;
+  overflow: hidden;
+}
+
+.shippie-empty-state::before {
+  content: '';
+  position: absolute;
+  top: -18px;
+  right: -22px;
+  width: 110px;
+  height: 110px;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M 50 8 Q 18 30 22 70 Q 36 88 50 92 Q 64 88 78 70 Q 82 30 50 8 Z' fill='none' stroke='%235d6e48' stroke-width='1.4'/%3E%3Cpath d='M 50 8 L 50 92' stroke='%235d6e48' stroke-width='1.2'/%3E%3Cpath d='M 50 28 L 36 38 M 50 38 L 32 50 M 50 48 L 34 60 M 50 58 L 38 70 M 50 28 L 64 38 M 50 38 L 68 50 M 50 48 L 66 60 M 50 58 L 62 70' stroke='%235d6e48' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+  transform: rotate(18deg);
+}
+
+.shippie-empty-state > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Quiet-panel headings — small leaf bullet anchored to the eyebrow */
+.quiet-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quiet-panel h2::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M 12 2 Q 4 8 5 17 Q 8 21 12 22 Q 16 21 19 17 Q 20 8 12 2 Z' fill='%238fa070' opacity='0.55'/%3E%3Cpath d='M 12 2 L 12 22' stroke='%235d6e48' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+  flex-shrink: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .recipe-tile,
+  .recipe-tile img,
   .cook-mode,
   .cook-step p,
   .pantry-row.is-low .pantry-qty .qty,
