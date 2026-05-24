@@ -109,6 +109,7 @@ interface Insight {
 
 const shippie = createShippieIframeSdk({ appId: 'app_chiwit' });
 const STORAGE_KEY = 'shippie.chiwit.daily-pulse.v1';
+const QUICK_ACTIONS_STORAGE_KEY = 'CUSTOM_QUICK_ACTIONS';
 const CHIWIT_LOGO_URL = `${import.meta.env.BASE_URL}brand/chiwit-logo.png`;
 const backupStore = createChiwitBackupStore();
 
@@ -155,6 +156,103 @@ const QUICK_ACTIONS: QuickAction[] = [
   { kind: 'mindful',   label: 'Mindful · 5 min',     helper: 'Recovery · breath',     value: 4, amount: 5, unit: 'min' },
   { kind: 'body',      label: 'Body · okay',         helper: 'Body · 3/5',            value: 3, note: 'okay' },
 ];
+
+/**
+ * Persisted quick-action customization. Each entry references a default
+ * action by (kind + amount + unit) signature with an optional `hidden`
+ * flag, OR describes a fully-custom user-created action (`custom: true`).
+ *
+ * Stored under localStorage key `CUSTOM_QUICK_ACTIONS` as an ordered list.
+ * When the user has never customised, the list is empty and the active
+ * grid falls back to `QUICK_ACTIONS` verbatim.
+ */
+interface CustomQuickAction {
+  kind: EntryKind;
+  amount?: number;
+  unit?: string;
+  label?: string;
+  /** When true, this default action is suppressed from the active grid. */
+  hidden?: boolean;
+  /** Marks an entirely user-created action (so the Customize pane offers remove). */
+  custom?: boolean;
+}
+
+/** Stable signature so customisations re-bind to default actions across reorders. */
+function quickActionSignature(action: Pick<QuickAction, 'kind' | 'amount' | 'unit'>): string {
+  return `${action.kind}|${action.amount ?? ''}|${action.unit ?? ''}`;
+}
+
+function readCustomQuickActions(): CustomQuickAction[] {
+  try {
+    const raw = localStorage.getItem(QUICK_ACTIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((row): row is CustomQuickAction => {
+      return typeof row === 'object' && row !== null && 'kind' in row && typeof (row as { kind: unknown }).kind === 'string';
+    });
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomQuickActions(rows: CustomQuickAction[]): void {
+  try {
+    localStorage.setItem(QUICK_ACTIONS_STORAGE_KEY, JSON.stringify(rows));
+  } catch {
+    /* localStorage may be full or unavailable — silently no-op. */
+  }
+}
+
+/**
+ * Merge default `QUICK_ACTIONS` with the user's customisation list.
+ *
+ * Resolution rules:
+ *   - An empty customisation list yields the defaults verbatim.
+ *   - A non-empty list defines the *order*; defaults missing from the list
+ *     get appended (so newly-shipped defaults appear even when a saved
+ *     customisation exists).
+ *   - Entries with `hidden: true` are filtered out of the active grid.
+ *   - Entries with `custom: true` are user-created (no default to match).
+ */
+function mergeQuickActions(custom: CustomQuickAction[]): QuickAction[] {
+  if (custom.length === 0) return QUICK_ACTIONS;
+  const defaultsBySig = new Map(QUICK_ACTIONS.map((action) => [quickActionSignature(action), action]));
+  const seen = new Set<string>();
+  const merged: QuickAction[] = [];
+
+  for (const row of custom) {
+    if (row.hidden) {
+      if (!row.custom) seen.add(quickActionSignature(row));
+      continue;
+    }
+    if (row.custom) {
+      merged.push({
+        kind: row.kind,
+        label: row.label ?? `${KIND_META[row.kind].label} · custom`,
+        helper: KIND_META[row.kind].helper,
+        value: 3,
+        amount: row.amount,
+        unit: row.unit ?? (row.amount !== undefined ? KIND_META[row.kind].unit : undefined),
+      });
+      continue;
+    }
+    const sig = quickActionSignature(row);
+    const base = defaultsBySig.get(sig);
+    if (!base) continue;
+    merged.push({ ...base, label: row.label ?? base.label });
+    seen.add(sig);
+  }
+
+  for (const action of QUICK_ACTIONS) {
+    const sig = quickActionSignature(action);
+    if (!seen.has(sig) && !custom.some((row) => !row.custom && quickActionSignature(row) === sig)) {
+      merged.push(action);
+    }
+  }
+
+  return merged;
+}
 
 function id(prefix: string): string {
   if ('randomUUID' in crypto) return `${prefix}_${crypto.randomUUID()}`;
@@ -589,6 +687,7 @@ function ambientEntryForKind(kind: string, signal: AmbientSignalKind, label: str
 
 export function App() {
   const [state, setState] = useState<ChiwitState>(() => readState());
+  const [customQuickActions, setCustomQuickActions] = useState<CustomQuickAction[]>(() => readCustomQuickActions());
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window === 'undefined') return 'today';
     const queryTab = new URL(window.location.href).searchParams.get('tab');
@@ -605,6 +704,14 @@ export function App() {
   const [qrUrl, setQrUrl] = useState<string>('');
   const [wipeOpen, setWipeOpen] = useState(false);
   const localNavigation = useMemo(() => createLocalNavigation<Tab>(tab, setTab), []);
+
+  const activeQuickActions = useMemo(() => mergeQuickActions(customQuickActions), [customQuickActions]);
+
+  function updateCustomQuickActions(next: CustomQuickAction[]): void {
+    setCustomQuickActions(next);
+    writeCustomQuickActions(next);
+    shippie.feel.texture('toggle');
+  }
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
@@ -670,6 +777,27 @@ export function App() {
       pulseAverage: pulseAvg,
     });
   }, [state, pulse]);
+
+  /**
+   * Per-day dominant-factor tone for the WeekContour dots — the kind that
+   * was logged most on that day picks the dot colour (via KIND_META, which
+   * reads from the `--kind-*` CSS tokens). Days with no entries get null
+   * and the dot falls back to the default sage. Tracks last7 ordering so
+   * the index lines up with the contour's value array.
+   */
+  const weekTones = useMemo<Array<string | null>>(() => {
+    const last7 = Array.from({ length: 7 }, (_, index) => addDays(-(6 - index)));
+    return last7.map((date) => {
+      const entries = entriesForDate(state.entries, date);
+      if (entries.length === 0) return null;
+      const counts = new Map<EntryKind, number>();
+      for (const entry of entries) counts.set(entry.kind, (counts.get(entry.kind) ?? 0) + 1);
+      let bestKind: EntryKind | null = null;
+      let bestN = 0;
+      for (const [kind, n] of counts) if (n > bestN) { bestKind = kind; bestN = n; }
+      return bestKind ? KIND_META[bestKind].color : null;
+    });
+  }, [state.entries]);
 
   function navigate(next: Tab): void {
     setTab(next);
@@ -855,8 +983,10 @@ export function App() {
           pulse={pulse}
           reading={reading}
           weekValues={weekKeepsake.ribbon.map((r) => r.value)}
+          weekTones={weekTones}
           entries={todayEntries}
           insights={insights}
+          quickActions={activeQuickActions}
           onQuickLog={quickLog}
           onDismissInsight={dismissInsight}
           onNavigate={navigate}
@@ -912,7 +1042,13 @@ export function App() {
       ) : null}
 
       {tab === 'data' ? (
-        <DataView state={state} onWipe={requestWipe} onShareWeek={openWeekShare} />
+        <DataView
+          state={state}
+          customQuickActions={customQuickActions}
+          onUpdateQuickActions={updateCustomQuickActions}
+          onWipe={requestWipe}
+          onShareWeek={openWeekShare}
+        />
       ) : null}
 
       {wipeOpen ? (
@@ -936,14 +1072,58 @@ export function App() {
 }
 
 /**
+ * FactorBar — replaces the native `<meter>` in Patterns so the visual
+ * register matches the rest of the field-journal voice. The browser-painted
+ * meter colours, corner radii, and bar weight are all out of our control,
+ * which leaves the bar looking like the only "OS widget" on a hand-set page.
+ *
+ * Variants:
+ *  - default      → factor row (sage gradient → coral cap on full)
+ *  - slim         → patterns-progress (short, slim, no tabular label slot)
+ *  - consistency  → wide, hairline ground rule, mono tick at 100
+ *
+ * The fill is a `--fill` CSS variable so the percent stays declarative.
+ */
+function FactorBar({
+  value,
+  variant = 'default',
+  ariaLabel,
+}: {
+  value: number;
+  variant?: 'default' | 'slim' | 'consistency';
+  ariaLabel: string;
+}) {
+  const pct = Math.max(0, Math.min(100, Math.round(value)));
+  return (
+    <span
+      className={`factor-bar factor-bar--${variant}`}
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+      aria-label={ariaLabel}
+      style={{ '--fill': `${pct}%` } as CSSProperties}
+    >
+      <span className="factor-bar__track" aria-hidden />
+      <span className="factor-bar__fill" aria-hidden />
+    </span>
+  );
+}
+
+/**
  * WeekContour — the shape of the week as a drawn line, not a grade.
  *
  * Chiwit's whole pitch is "the shape of the week"; a single 0-100 number
  * is a grade and invites achievement-chasing. The contour shows rhythm:
  * it can't be "won", only noticed. Values are the 7-day pulse series
  * (0-100); a 0 means a day with too few signals to score honestly.
+ *
+ * Optional `tones` is a colour-per-day array (CSS colours, e.g. the
+ * KIND_META `--kind-*` token for the dominant factor that day). When
+ * supplied, each dot picks up its day's tone — the contour line stays
+ * sage, the dots become a small ledger of "what carried this day".
  */
-function WeekContour({ values }: { values: number[] }) {
+function WeekContour({ values, tones }: { values: number[]; tones?: Array<string | null> }) {
   const W = 264;
   const H = 72;
   const p = 8;
@@ -968,9 +1148,24 @@ function WeekContour({ values }: { values: number[] }) {
           strokeDasharray="500"
           strokeDashoffset="500"
         />
-        {pts.map((v, i) => (
-          <circle key={i} cx={x(i)} cy={y(v)} r={i === lastIdx ? 3.6 : 2} className={i === lastIdx ? 'week-contour__today' : 'week-contour__dot'} />
-        ))}
+        {pts.map((v, i) => {
+          const tone = tones?.[i] ?? null;
+          // Today's dot keeps its coral halo (week-contour__today). Past-day
+          // dots tint to their dominant-factor colour when a `tones` array is
+          // supplied — surfacing "what carried this day" without a legend.
+          const isToday = i === lastIdx;
+          const style = !isToday && tone ? ({ fill: tone } as CSSProperties) : undefined;
+          return (
+            <circle
+              key={i}
+              cx={x(i)}
+              cy={y(v)}
+              r={isToday ? 3.6 : 2}
+              className={isToday ? 'week-contour__today' : 'week-contour__dot'}
+              style={style}
+            />
+          );
+        })}
       </svg>
       <figcaption>
         Last 7 days
@@ -984,8 +1179,10 @@ function TodayView({
   pulse,
   reading,
   weekValues,
+  weekTones,
   entries,
   insights,
+  quickActions,
   onQuickLog,
   onDismissInsight,
   onNavigate,
@@ -993,14 +1190,21 @@ function TodayView({
   pulse: PulseScore;
   reading: string;
   weekValues: number[];
+  weekTones?: Array<string | null>;
   entries: PulseEntry[];
   insights: Insight[];
+  quickActions?: QuickAction[];
   onQuickLog: (action: QuickAction) => void;
   onDismissInsight: (id: string) => void;
   onNavigate: (tab: Tab) => void;
 }) {
+  // Starter signals always pull from defaults — they're the onboarding
+  // tap-points and shouldn't disappear when a user customises the grid.
   const starterSignals = QUICK_ACTIONS.filter((action) => action.kind === 'mood' || action.kind === 'energy' || action.kind === 'hydration');
   const greeting = timeAwareGreeting();
+  // Fallback to the default action set when the call site hasn't yet wired
+  // the customisable list (work-in-progress prop from a sibling pass).
+  const resolvedQuickActions = quickActions ?? QUICK_ACTIONS;
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
@@ -1017,7 +1221,7 @@ function TodayView({
               </button>
             ))}
           </div>
-          <WeekContour values={weekValues} />
+          <WeekContour values={weekValues} tones={weekTones} />
           <div className="hero-actions">
             <button type="button" className="primary" onClick={() => onNavigate('track')}>Log now</button>
             <button type="button" onClick={() => onNavigate('patterns')}>Patterns</button>
@@ -1028,13 +1232,16 @@ function TodayView({
       <section className="quick-panel">
         <SectionHeading title="One-tap signals" action="Quick log" />
         <div className="quick-grid" aria-label="Quick log">
-          {QUICK_ACTIONS.map((action) => (
-            <button key={action.label} type="button" onClick={() => onQuickLog(action)}>
+          {resolvedQuickActions.map((action, index) => (
+            <button key={`${action.label}-${index}`} type="button" onClick={() => onQuickLog(action)}>
               <span style={{ background: KIND_META[action.kind].color }} />
               <strong>{action.label}</strong>
               <small className="factor-boost">{action.helper}</small>
             </button>
           ))}
+          {resolvedQuickActions.length === 0 ? (
+            <p className="quick-grid__empty">All quick actions hidden — restore them in Data → Customize quick log.</p>
+          ) : null}
         </div>
       </section>
       <section className="split-layout">
@@ -1217,12 +1424,12 @@ function PatternsView({
             <span className="patterns-progress" aria-label="Pattern progress">
               <span className="patterns-progress__row">
                 <strong>Signals</strong>
-                <meter min={0} max={100} value={signalsPct} />
+                <FactorBar value={signalsPct} variant="slim" ariaLabel={`Signals progress ${totalSignals} of 5`} />
                 <em>{totalSignals}/5</em>
               </span>
               <span className="patterns-progress__row">
                 <strong>Days covered</strong>
-                <meter min={0} max={100} value={daysPct} />
+                <FactorBar value={daysPct} variant="slim" ariaLabel={`Days covered ${daysCovered} of 3`} />
                 <em>{daysCovered}/3</em>
               </span>
             </span>
@@ -1263,7 +1470,7 @@ function PatternsView({
           </small>
           <small className="consistency-legend">Days with 3+ signals logged · last 7</small>
         </div>
-        <meter min={0} max={100} value={consistency} />
+        <FactorBar value={consistency} variant="consistency" ariaLabel={`Weekly consistency ${consistency} percent`} />
       </section>
       <section className="category-grid">
         {(Object.entries(pulse.breakdown) as Array<[keyof ScoreBreakdown, number]>).map(([key, value]) => (
@@ -1272,8 +1479,8 @@ function PatternsView({
               {FACTOR_NAMES[key]}
               <em className="factor-helper">{FACTOR_HELPER_TEXT[key]}</em>
             </strong>
-            <span>{value}</span>
-            <meter min={0} max={100} value={value} />
+            <span className="category-row__value">{value}</span>
+            <FactorBar value={value} ariaLabel={`${FACTOR_NAMES[key]} factor ${value} out of 100`} />
           </div>
         ))}
       </section>
@@ -1440,12 +1647,29 @@ function downloadCsv(state: ChiwitState): void {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Placeholder for the customisable quick-log editor that a sibling pass
+ * has started wiring through `DataView`. Until the full UI lands, this
+ * component renders nothing — keeps typecheck green and the Data page
+ * intact while the feature finishes baking.
+ */
+function CustomizeQuickLog(_props: {
+  customQuickActions: CustomQuickAction[];
+  onUpdate: (next: CustomQuickAction[]) => void;
+}): null {
+  return null;
+}
+
 function DataView({
   state,
+  customQuickActions,
+  onUpdateQuickActions,
   onWipe,
   onShareWeek,
 }: {
   state: ChiwitState;
+  customQuickActions: CustomQuickAction[];
+  onUpdateQuickActions: (next: CustomQuickAction[]) => void;
   onWipe: () => void;
   onShareWeek: () => void | Promise<void>;
 }) {
@@ -1464,6 +1688,11 @@ function DataView({
       </section>
 
       <BackupCard appSlug="chiwit" store={backupStore} />
+
+      <CustomizeQuickLog
+        customQuickActions={customQuickActions}
+        onUpdate={onUpdateQuickActions}
+      />
 
       <div className="data-share">
         <h2>Share this week</h2>
