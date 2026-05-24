@@ -2251,10 +2251,29 @@ body {
   background: rgba(180, 60, 45, 0.2);
 }
 
-/* CookMode entry — warm fade-in plus subtle title lift so the
-   transition feels like "the kitchen lights coming up". */
+/* CookMode entry — feels like "opening a cookbook": warm spotlight
+   blooms, the page lifts in from below, and a subtle paper-grain
+   overlay sits on top of the dark surface for kitchen atmosphere. */
 .cook-mode {
-  animation: cook-mode-enter 320ms cubic-bezier(0.22, 0.8, 0.36, 1) both;
+  position: relative;
+  animation: cook-mode-enter 420ms cubic-bezier(0.22, 0.8, 0.36, 1) both;
+}
+
+.cook-mode::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 250, 240, 0.025) 0 1px, transparent 1px 16px),
+    repeating-linear-gradient(-45deg, rgba(255, 250, 240, 0.02) 0 1px, transparent 1px 22px);
+  mix-blend-mode: screen;
+}
+
+.cook-mode > * {
+  position: relative;
+  z-index: 1;
 }
 
 .cook-mode header h1 {
@@ -2267,29 +2286,226 @@ body {
 @keyframes cook-mode-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px) scale(0.985);
     background:
-      radial-gradient(circle at 50% 40%, rgba(216, 105, 24, 0.4), transparent 32%),
+      radial-gradient(circle at 50% 60%, rgba(230, 168, 46, 0.5), transparent 28%),
       #15100c;
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     background:
       radial-gradient(circle at 50% 40%, rgba(216, 105, 24, 0.2), transparent 36%),
       #1f1712;
   }
 }
 
-/* CookMode step transition — slide-in the next step text so users feel
-   forward motion without losing context. */
+/* CookMode step transition — page-turn feel: the previous step
+   slides off as if the page is being turned. */
 .cook-step p {
-  animation: cook-step-in 240ms cubic-bezier(0.22, 0.8, 0.36, 1) both;
+  animation: cook-step-in 320ms cubic-bezier(0.22, 0.8, 0.36, 1) both;
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.014em;
 }
 
 @keyframes cook-step-in {
-  from { opacity: 0; transform: translateX(12px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(18px) rotateY(-4deg);
+    transform-origin: left center;
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) rotateY(0);
+  }
+}
+
+/* Step counter in CookMode header — mono fraction for "3 / 7". */
+.cook-mode header p {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+/* Cook-mode timer controls — subtle hint that 5/10/20 min preset
+   buttons are a row of saffron-glowing pills. */
+.cook-timer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+  margin-top: 1.1rem;
+}
+
+.cook-timer-btn {
+  min-height: 44px;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.cook-ingredient-name {
+  font-family: var(--font-body);
+}
+
+/* ── Plan board — today gets a saffron rail; day cards breathe ── */
+.plan-day-card {
+  border-radius: 10px;
+  transition: transform 200ms cubic-bezier(0.22, 0.8, 0.36, 1),
+    box-shadow 200ms cubic-bezier(0.22, 0.8, 0.36, 1);
+}
+
+.plan-day-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(44, 33, 24, 0.14);
+}
+
+.plan-day-card.is-today {
+  border-color: rgba(178, 121, 17, 0.45);
+  box-shadow: 0 18px 40px rgba(178, 121, 17, 0.14), inset 4px 0 0 var(--saffron);
+}
+
+.plan-day-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dashed rgba(101, 86, 70, 0.18);
+}
+
+.plan-day-header h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.plan-day-header .cook-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cooking-deep);
+  font-style: normal;
+}
+
+.plan-day-card.is-today .plan-day-header .cook-code {
+  color: var(--saffron-deep);
+}
+
+.meal-grid {
+  display: grid;
+  gap: 0.4rem;
+}
+
+/* Plan summary count — tabular feel */
+.plan-summary {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.plan-summary strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--cooking-deep);
+}
+
+/* ── Cook history weekday pills (the Today aside) ──────────────── */
+.cook-history-list .cook-code {
+  display: inline-block;
+  padding: 0.22rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(143, 160, 112, 0.18);
+  color: var(--sage-deep);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-right: 0.55rem;
+}
+
+/* Pantry name + qty hierarchy — display-serif name, mono qty */
+.pantry-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -0.012em;
+}
+
+.pantry-qty {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pantry-qty .qty {
+  font-size: 1.05rem;
+  color: var(--cooking-deep);
+  margin-right: 0.25rem;
+}
+
+.pantry-location-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(101, 86, 70, 0.1);
+}
+
+.pantry-location-fridge {
+  color: #2a5b6e;
+  background: rgba(70, 130, 160, 0.14);
+}
+
+.pantry-location-freezer {
+  color: #3d4d68;
+  background: rgba(80, 100, 140, 0.14);
+}
+
+.pantry-location-pantry {
+  color: var(--sage-deep);
+  background: rgba(143, 160, 112, 0.18);
+}
+
+/* Metric-strip + decision strip numbers — editorial italic */
+.metric-strip strong {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.metric-strip span {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.taste-board-status strong {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
 }
 
 /* Cook-along invite — friendly tab-style button in CookMode header. */
