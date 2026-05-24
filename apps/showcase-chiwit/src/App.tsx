@@ -624,7 +624,109 @@ function generateInsights(state: ChiwitState): Insight[] {
     });
   }
 
+  // Cross-app timing correlation — for any pair of intent-kinds A, B, if
+  // they've both been logged within 90 min of each other on ≥ 3 days in the
+  // last 14, surface a "X + Y · typically N min apart" note. Ranked by day-
+  // frequency; one per pair max. Neutral tone — it's a noticing, not a nudge.
+  insights.push(...correlationInsights(state));
+
   return insights.filter((insight) => !state.dismissedInsightIds.includes(insight.id));
+}
+
+/**
+ * Pair-wise temporal correlation across logged signals, including the
+ * ambient signals folded in from sibling apps (entries with a `source`
+ * starting with `app_`). Pairs are unordered; the earlier-logged kind in
+ * each day's pairing is treated as A.
+ *
+ * Window: last 14 days, paired events within 90 minutes, ≥ 3 days required.
+ * Median (not mean) of per-day deltas drives the headline number so a
+ * single 5-hour outlier doesn't drag the typical gap.
+ *
+ * Tracks in-memory only; no persistent state. Result count is capped at
+ * 2 so the insight panel doesn't drown the other cards.
+ */
+function correlationInsights(state: ChiwitState): Insight[] {
+  const WINDOW_MIN = 90;
+  const DAYS_REQUIRED = 3;
+  const LOOKBACK_DAYS = 14;
+  const cutoffDate = addDays(-(LOOKBACK_DAYS - 1));
+  const recent = state.entries.filter((entry) => entry.date >= cutoffDate);
+
+  // Group entries by date, sorted within each day by `createdAt` so the
+  // first occurrence of a kind wins for pairing.
+  const byDate = new Map<string, PulseEntry[]>();
+  for (const entry of recent) {
+    const bucket = byDate.get(entry.date);
+    if (bucket) bucket.push(entry);
+    else byDate.set(entry.date, [entry]);
+  }
+  for (const list of byDate.values()) list.sort((a, b) => a.createdAt - b.createdAt);
+
+  // Per-pair tally — key is the unordered pair "kindA|kindB" (alphabetical
+  // so {coffee, mood} and {mood, coffee} bucket together).
+  interface PairStats {
+    a: EntryKind;
+    b: EntryKind;
+    days: Set<string>;
+    deltas: number[];   // signed minutes from A → B in chronological order
+  }
+  const pairs = new Map<string, PairStats>();
+
+  for (const [date, list] of byDate) {
+    // First-occurrence per kind on this day — pairing the *first* events
+    // keeps the morning coffee → mood spike narrative intuitive (the
+    // user notices the pattern by recalling "the first sip of the day").
+    const firstByKind = new Map<EntryKind, PulseEntry>();
+    for (const entry of list) {
+      if (!firstByKind.has(entry.kind)) firstByKind.set(entry.kind, entry);
+    }
+    const kinds = Array.from(firstByKind.keys());
+    for (let i = 0; i < kinds.length; i += 1) {
+      for (let j = i + 1; j < kinds.length; j += 1) {
+        const k1 = kinds[i];
+        const k2 = kinds[j];
+        if (!k1 || !k2) continue;
+        const e1 = firstByKind.get(k1)!;
+        const e2 = firstByKind.get(k2)!;
+        const deltaMs = e2.createdAt - e1.createdAt;
+        const absMin = Math.abs(deltaMs) / 60000;
+        if (absMin > WINDOW_MIN) continue;
+        // Order the pair alphabetically by kind for stable keys, and orient
+        // the delta from the alphabetically-earlier kind to the later one.
+        const [a, b, signedMs] = k1 < k2 ? [k1, k2, deltaMs] : [k2, k1, -deltaMs];
+        const key = `${a}|${b}`;
+        const stats = pairs.get(key);
+        if (stats) {
+          stats.days.add(date);
+          stats.deltas.push(signedMs / 60000);
+        } else {
+          pairs.set(key, { a, b, days: new Set([date]), deltas: [signedMs / 60000] });
+        }
+      }
+    }
+  }
+
+  // Rank by day-frequency; cap at two cards so we don't drown the panel.
+  const ranked = Array.from(pairs.values())
+    .filter((stats) => stats.days.size >= DAYS_REQUIRED)
+    .sort((a, b) => b.days.size - a.days.size)
+    .slice(0, 2);
+
+  return ranked.map((stats) => {
+    const sorted = [...stats.deltas].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    const absMedian = Math.abs(Math.round(median));
+    const direction = median >= 0
+      ? `${KIND_META[stats.a].label.toLowerCase()} usually before ${KIND_META[stats.b].label.toLowerCase()}`
+      : `${KIND_META[stats.b].label.toLowerCase()} usually before ${KIND_META[stats.a].label.toLowerCase()}`;
+    return {
+      id: `correlation-${stats.a}-${stats.b}`,
+      title: `${KIND_META[stats.a].label} + ${KIND_META[stats.b].label}`,
+      body: `Typically ${absMedian} min apart on ${stats.days.size} of the last ${LOOKBACK_DAYS} days — ${direction}.`,
+      tone: 'neutral',
+    };
+  });
 }
 
 /**
