@@ -55,6 +55,13 @@ const SHOP_AISLES: Array<{ key: string; label: string; matchers: RegExp }> = [
   { key: 'frozen', label: 'Frozen', matchers: /\b(frozen|ice|berry)\b/i },
 ];
 
+/** Persisted shopping aisle order. Regex matchers stay hardcoded
+ * above — only the display order moves so the user can match their
+ * store's layout. 'other' is included so unmatched items can be
+ * positioned anywhere in the list. */
+const AISLE_ORDER_KEY = 'shippie.palate.aisle-order.v1';
+const DEFAULT_AISLE_ORDER: string[] = [...SHOP_AISLES.map((a) => a.key), 'other'];
+
 const SOURCE_BADGE: Record<ShoppingItem['source'], { label: string; tone: string }> = {
   manual: { label: 'manual', tone: 'badge-manual' },
   plan: { label: 'planned', tone: 'badge-plan' },
@@ -366,6 +373,32 @@ function writeState(state: KitchenState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function readAisleOrder(): string[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(AISLE_ORDER_KEY) : null;
+    if (!raw) return DEFAULT_AISLE_ORDER;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return DEFAULT_AISLE_ORDER;
+    const known = new Set(DEFAULT_AISLE_ORDER);
+    const filtered = parsed.filter((v): v is string => typeof v === 'string' && known.has(v));
+    // Append any missing keys so we never silently drop a category.
+    for (const key of DEFAULT_AISLE_ORDER) {
+      if (!filtered.includes(key)) filtered.push(key);
+    }
+    return filtered;
+  } catch {
+    return DEFAULT_AISLE_ORDER;
+  }
+}
+
+function writeAisleOrder(order: string[]): void {
+  try {
+    localStorage.setItem(AISLE_ORDER_KEY, JSON.stringify(order));
+  } catch {
+    // localStorage full / unavailable — silently skip.
+  }
+}
+
 function splitLines(value: string): string[] {
   return value
     .split(/\n|,/)
@@ -498,6 +531,7 @@ function recipePayload(recipe: Recipe) {
 
 export function App() {
   const [state, setState] = useState<KitchenState>(() => readState());
+  const [aisleOrder, setAisleOrder] = useState<string[]>(() => readAisleOrder());
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window === 'undefined') return 'today';
     const queryTab = new URL(window.location.href).searchParams.get('tab');
@@ -575,6 +609,10 @@ export function App() {
   useEffect(() => {
     localStorage.setItem(SEARCH_KEY, JSON.stringify(recentSearches.slice(0, 8)));
   }, [recentSearches]);
+
+  useEffect(() => {
+    writeAisleOrder(aisleOrder);
+  }, [aisleOrder]);
 
   useEffect(() => {
     if (state.pantry.length === 0) return;
@@ -1106,6 +1144,7 @@ export function App() {
       {tab === 'shop' ? (
         <ShoppingView
           shopping={shopping}
+          aisleOrder={aisleOrder}
           draft={shopDraft}
           onDraftChange={setShopDraft}
           onAdd={addShopping}
@@ -1115,7 +1154,13 @@ export function App() {
       ) : null}
 
       {tab === 'data' ? (
-        <DataView state={state} onWipe={wipeLocalData} backupStore={backupStore} />
+        <DataView
+          state={state}
+          aisleOrder={aisleOrder}
+          onAisleOrderChange={setAisleOrder}
+          onWipe={wipeLocalData}
+          backupStore={backupStore}
+        />
       ) : null}
 
       {selectedRecipe ? (
@@ -1575,12 +1620,49 @@ function RecipeImportSheet({
   onClose: () => void;
   onApply: (parsed: ParsedRecipe) => void;
 }) {
+  // Two entry modes: paste a text blob (the original flow) or paste a URL
+  // and let the schema.org / OG parser pull the recipe through the platform
+  // proxy. Both modes feed into the same preview pane so the apply path
+  // stays single.
+  const [mode, setMode] = useState<'text' | 'url'>('text');
   const [raw, setRaw] = useState('');
-  const [parsed, setParsed] = useState<ParsedRecipe | null>(null);
+  const [url, setUrl] = useState('');
+  const [parsed, setParsed] = useState<ParsedRecipe | UrlImportedRecipe | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  // Track where the parse came from so the preview can show the right hint
+  // ("from URL · schema.org" vs "from text").
+  const importedFrom = parsed && 'source' in parsed ? parsed.source : null;
+  const heroImage = parsed && 'imageUrl' in parsed ? parsed.imageUrl : undefined;
 
   function runParse(): void {
     if (!raw.trim()) return;
+    setImportError(null);
     setParsed(parseRecipeText(raw));
+  }
+
+  async function runImportFromUrl(): Promise<void> {
+    const trimmed = url.trim();
+    if (!trimmed || importing) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const result = await importRecipeFromUrl(trimmed);
+      setParsed(result);
+    } catch (err) {
+      if (err instanceof RecipeImportError) {
+        setImportError(err.message);
+      } else {
+        setImportError("Something went wrong fetching that page. Try pasting the text instead.");
+      }
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function resetForRepaste(): void {
+    setParsed(null);
+    setImportError(null);
   }
 
   return (
@@ -1594,34 +1676,111 @@ function RecipeImportSheet({
         <header className="recipe-picker-head">
           <div>
             <p className="eyebrow">Cookbook · import</p>
-            <h2>Paste a recipe</h2>
+            <h2>Import a recipe</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="recipe-sheet-close">×</button>
         </header>
         {parsed === null ? (
           <>
-            <p className="empty">
-              Copy a recipe off any website and paste the whole block below. Palate sorts
-              the title, ingredients and steps on your device — nothing is sent anywhere.
-            </p>
-            <textarea
-              className="recipe-import-input"
-              value={raw}
-              onChange={(event) => setRaw(event.target.value)}
-              placeholder={'Paste recipe text here…\n\nTitle\n2 tbsp olive oil\n1 onion, diced\n\nMethod\n1. Soften the onion…'}
-              rows={9}
-              autoFocus
-            />
-            <div className="recipe-import-actions">
-              <button type="button" onClick={onClose} className="text-action">Cancel</button>
-              <button type="button" className="primary" onClick={runParse} disabled={!raw.trim()}>
-                Parse recipe
+            <div className="recipe-import-tabs" role="tablist" aria-label="Import source">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'text'}
+                className={`recipe-import-tab${mode === 'text' ? ' is-active' : ''}`}
+                onClick={() => {
+                  setMode('text');
+                  setImportError(null);
+                }}
+              >
+                Paste text
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'url'}
+                className={`recipe-import-tab${mode === 'url' ? ' is-active' : ''}`}
+                onClick={() => {
+                  setMode('url');
+                  setImportError(null);
+                }}
+              >
+                From URL
               </button>
             </div>
+            {mode === 'text' ? (
+              <>
+                <p className="empty">
+                  Copy a recipe off any website and paste the whole block below. Palate sorts
+                  the title, ingredients and steps on your device — nothing is sent anywhere.
+                </p>
+                <textarea
+                  className="recipe-import-input"
+                  value={raw}
+                  onChange={(event) => setRaw(event.target.value)}
+                  placeholder={'Paste recipe text here…\n\nTitle\n2 tbsp olive oil\n1 onion, diced\n\nMethod\n1. Soften the onion…'}
+                  rows={9}
+                  autoFocus
+                />
+                <div className="recipe-import-actions">
+                  <button type="button" onClick={onClose} className="text-action">Cancel</button>
+                  <button type="button" className="primary" onClick={runParse} disabled={!raw.trim()}>
+                    Parse recipe
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="empty">
+                  Paste a recipe URL — Palate fetches the page through Shippie's privacy proxy
+                  and reads schema.org markup or the page's main list. Big recipe sites work
+                  best.
+                </p>
+                <input
+                  type="url"
+                  className="recipe-import-input recipe-import-url"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://example.com/recipes/lemon-roast-chicken"
+                  autoFocus
+                  inputMode="url"
+                  spellCheck={false}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && url.trim() && !importing) {
+                      event.preventDefault();
+                      void runImportFromUrl();
+                    }
+                  }}
+                />
+                {importError ? (
+                  <p className="recipe-import-error" role="alert">{importError}</p>
+                ) : null}
+                <div className="recipe-import-actions">
+                  <button type="button" onClick={onClose} className="text-action">Cancel</button>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => { void runImportFromUrl(); }}
+                    disabled={!url.trim() || importing}
+                  >
+                    {importing ? 'Importing…' : 'Import recipe'}
+                  </button>
+                </div>
+              </>
+            )}
           </>
         ) : (
           <>
-            <p className="empty">Check the parse below — you can fix anything in the editor after.</p>
+            <p className="empty">
+              {importedFrom === 'schema-org'
+                ? 'Pulled from the page\'s schema.org/Recipe markup. Tweak anything in the editor after.'
+                : importedFrom === 'opengraph-fallback'
+                ? 'No structured recipe on the page — we grabbed the title + ingredient list. Add steps in the editor.'
+                : 'Check the parse below — you can fix anything in the editor after.'}
+            </p>
+            {heroImage ? (
+              <img className="recipe-import-hero" src={heroImage} alt="" loading="lazy" />
+            ) : null}
             <div className="recipe-import-preview">
               <div className="recipe-import-field">
                 <span className="eyebrow">Title</span>
@@ -1653,7 +1812,9 @@ function RecipeImportSheet({
               </div>
             </div>
             <div className="recipe-import-actions">
-              <button type="button" onClick={() => setParsed(null)} className="text-action">Re-paste</button>
+              <button type="button" onClick={resetForRepaste} className="text-action">
+                {importedFrom ? 'Try another URL' : 'Re-paste'}
+              </button>
               <button type="button" className="primary" onClick={() => onApply(parsed)}>
                 Use this recipe
               </button>
@@ -2025,6 +2186,7 @@ function describeExpiry(expiresOn?: string): { label: string; urgent: boolean; e
 
 function ShoppingView({
   shopping,
+  aisleOrder,
   draft,
   onDraftChange,
   onAdd,
@@ -2032,13 +2194,14 @@ function ShoppingView({
   onNavigate,
 }: {
   shopping: ShoppingItem[];
+  aisleOrder: string[];
   draft: string;
   onDraftChange: (value: string) => void;
   onAdd: (event: FormEvent<HTMLFormElement>) => void;
   onToggle: (item: ShoppingItem) => void;
   onNavigate: (tab: Tab) => void;
 }) {
-  const grouped = useMemo(() => groupByAisle(shopping), [shopping]);
+  const grouped = useMemo(() => groupByAisle(shopping, aisleOrder), [shopping, aisleOrder]);
   return (
     <section className="page-shell">
       <div className="toolbar">
