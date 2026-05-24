@@ -76,13 +76,13 @@
       "Your saved group plan and meetup notes",
       "Your own bus sighting taps",
       "Your fan pulse taps and reports",
-      "Nearby fan signals you choose to import by QR",
+      "Nearby fan signals imported by QR or public parade relay when a connection appears",
       "Your local group quick-signal activity",
       "Your local Banter votes and season debate picks",
       "The latest validated route and live information pack",
       "An anonymous app action queue for admin health analytics"
     ],
-    "leaves_device": "The offline fan core sends no location or group content unless one fan shows a QR and another fan scans it. Anonymous app action events may sync to Shippie admin when connected. Banter is local-only in v1.",
+    "leaves_device": "The offline fan core works without sending anything. When the phone has internet, anonymous fan pulse taps (presence, bus, toilet, crowd, road, food) may sync through Shippie's short-lived public parade relay with no login, name, or group plan. Emergency/help taps stay local. Anonymous app action events may sync to Shippie admin when connected. Banter is local-only in v1.",
     "delete": "Use Shippie's app data controls, or clear the plan, sightings, and fan pulse data inside the tool."
   }
 }

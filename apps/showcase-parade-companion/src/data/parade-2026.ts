@@ -114,7 +114,7 @@ export const CORRIDOR_EXTENT: MapExtent = {
 
 export const FALLBACK_ROUTE_PACK: RoutePack = {
   schemaVersion: 1,
-  packVersion: '2026-05-24T21:30:00+01:00',
+  packVersion: '2026-05-24T22:15:00+01:00',
   event: {
     title: 'Parade Companion — Islington',
     dateLabel: 'Sunday 31 May 2026',
@@ -446,6 +446,7 @@ export const FALLBACK_ROUTE_PACK: RoutePack = {
           { id: 'derby-day', label: 'Derby day' },
           { id: 'late-winner', label: 'Late winner' },
           { id: 'clean-sheet-run', label: 'Clean sheet run' },
+          { id: 'west-ham-var', label: 'West Ham VAR decision' },
           { id: 'other', label: 'Other' },
         ],
       },

@@ -14,7 +14,7 @@ export type FanEventType =
   | 'food_open'
   | 'toilet_queue'
   | 'need_help';
-export type FanEventSource = 'local' | 'nearby_sync';
+export type FanEventSource = 'local' | 'nearby_sync' | 'relay';
 
 export interface FanEvent extends Record<string, unknown> {
   id: string;
@@ -119,7 +119,7 @@ export function createFanEvent(
 export function summarizeFanEvents(events: FanEvent[], now = Date.now()): FanPulseSummary {
   const active = sortEvents(dedupeFanEvents(events)).filter((event) => isActive(event, now));
   const presence = active.filter((event) => event.type === 'presence');
-  const carriedSourceIds = new Set(active.filter((event) => event.source === 'nearby_sync').map((event) => event.source_id));
+  const carriedSourceIds = new Set(active.filter((event) => event.source !== 'local').map((event) => event.source_id));
   const localPresenceSources = new Set(presence.map((event) => event.source_id));
   const latestBus = active.find((event) => event.type === 'bus_seen') ?? null;
   const lastSyncAt = active.find((event) => event.source === 'nearby_sync')?.created_at ?? null;
@@ -264,7 +264,7 @@ export function validateFanEvent(input: unknown): input is FanEvent {
   if (!isFanEventType(input.type)) return false;
   if (typeof input.id !== 'string' || input.id.length < 4 || input.id.length > 96) return false;
   if (typeof input.source_id !== 'string' || input.source_id.length < 4 || input.source_id.length > 64) return false;
-  if (input.source !== 'local' && input.source !== 'nearby_sync') return false;
+  if (input.source !== 'local' && input.source !== 'nearby_sync' && input.source !== 'relay') return false;
   const lng = Number(input.lng);
   const lat = Number(input.lat);
   if (!isInsideExtent({ lng, lat })) return false;

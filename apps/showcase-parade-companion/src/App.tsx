@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import packageInfo from '../package.json';
 import { AboutSheet } from './components/AboutSheet';
 import { ImportPreviewSheet, type ImportPreview } from './components/ImportPreviewSheet';
@@ -27,7 +27,13 @@ import {
 } from './lib/shippie-db';
 import { loadRoutePack, packFreshnessLabel, syncRoutePack } from './lib/route-pack';
 import type { BusMarker } from './lib/bus';
-import { decodeFanEventsSync, dedupeFanEvents, sortEvents, type FanEvent } from './lib/fan-events';
+import { decodeFanEventsSync, dedupeFanEvents, isActive, sortEvents, type FanEvent } from './lib/fan-events';
+import {
+  isPublishableFanEvent,
+  publishFanPulse,
+  pullFanPulse,
+  type LiveSyncStatus,
+} from './lib/live-sync';
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
 import { isOnboarded, markOnboarded } from './lib/onboarding';
 import { saveParadeOffline } from './lib/offline-save';
@@ -63,7 +69,16 @@ export function App() {
   const [sideTingDraft, setSideTingDraft] = useState('');
   const [aboutOpen, setAboutOpen] = useState(false);
   const [offlineReadiness, setOfflineReadiness] = useState<Readiness>('checking');
+  const [liveSyncStatus, setLiveSyncStatus] = useState<LiveSyncStatus>({
+    state: typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'idle',
+    lastSyncAt: null,
+    received: 0,
+    published: 0,
+  });
   const packRef = useRef(pack);
+  const fanEventsRef = useRef(fanEvents);
+  const liveSyncInFlight = useRef(false);
+  const publishedFanEventIds = useRef(new Set<string>());
   const menuRef = useRef<HTMLDivElement | null>(null);
   const screenHostRef = useRef<HTMLDivElement | null>(null);
   const online = useOnlineStatus();
@@ -74,10 +89,80 @@ export function App() {
   }, [pack]);
 
   useEffect(() => {
+    fanEventsRef.current = fanEvents;
+  }, [fanEvents]);
+
+  useEffect(() => {
     const stopAnalytics = installParadeAnalyticsFlush();
     trackParadeAction('parade_app_opened');
     return stopAnalytics;
   }, []);
+
+  const runCrowdSync = useCallback(
+    async (reason: 'timer' | 'online' | 'tap', immediateEvent?: FanEvent) => {
+      if (!online) {
+        setLiveSyncStatus((current) => ({ ...current, state: 'offline' }));
+        return;
+      }
+      if (liveSyncInFlight.current) return;
+      liveSyncInFlight.current = true;
+      setLiveSyncStatus((current) => ({ ...current, state: 'syncing' }));
+      try {
+        const route = packRef.current.route.coordinates;
+        const candidates = immediateEvent
+          ? [immediateEvent]
+          : fanEventsRef.current.filter((event) => isActive(event) && !publishedFanEventIds.current.has(event.id));
+        const publishable = candidates.filter(isPublishableFanEvent);
+        const published = await publishFanPulse(publishable, route);
+        if (published === publishable.length) {
+          for (const event of publishable) publishedFanEventIds.current.add(event.id);
+        }
+
+        const incoming = await pullFanPulse(route);
+        const existingIds = new Set(fanEventsRef.current.map((event) => event.id));
+        const freshIncoming = incoming.filter((event) => !existingIds.has(event.id));
+        if (freshIncoming.length > 0) {
+          await saveFanEvents(freshIncoming);
+          const merged = sortEvents(dedupeFanEvents([...freshIncoming, ...fanEventsRef.current]));
+          fanEventsRef.current = merged;
+          setFanEvents(merged);
+        }
+        const syncedAt = new Date().toISOString();
+        setLiveSyncStatus({
+          state: 'synced',
+          lastSyncAt: syncedAt,
+          received: freshIncoming.length,
+          published,
+        });
+        if (published > 0 || freshIncoming.length > 0) {
+          trackParadeAction('parade_crowd_sync_completed', {
+            reason,
+            published,
+            received: freshIncoming.length,
+          });
+        }
+      } catch {
+        setLiveSyncStatus((current) => ({
+          ...current,
+          state: 'failed',
+          lastSyncAt: current.lastSyncAt ?? new Date().toISOString(),
+        }));
+      } finally {
+        liveSyncInFlight.current = false;
+      }
+    },
+    [online],
+  );
+
+  useEffect(() => {
+    if (!online) {
+      setLiveSyncStatus((current) => ({ ...current, state: 'offline' }));
+      return undefined;
+    }
+    void runCrowdSync('online');
+    const id = window.setInterval(() => void runCrowdSync('timer'), 20_000);
+    return () => window.clearInterval(id);
+  }, [online, runCrowdSync, pack.packVersion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -347,7 +432,12 @@ export function App() {
 
   const onFanEvent = async (event: FanEvent) => {
     await saveFanEvent(event);
-    setFanEvents((current) => sortEvents(dedupeFanEvents([event, ...current])));
+    setFanEvents((current) => {
+      const next = sortEvents(dedupeFanEvents([event, ...current]));
+      fanEventsRef.current = next;
+      return next;
+    });
+    if (online) void runCrowdSync('tap', event);
   };
 
   const showOfflineStatus = () => {
@@ -580,6 +670,8 @@ export function App() {
             fanEvents={fanEvents}
             importStatus={importStatus}
             sideTingsRefresh={sideTingsRefresh}
+            liveSyncStatus={liveSyncStatus}
+            online={online}
             onBusMarker={onBusMarker}
             onFanEvent={onFanEvent}
             onTrack={trackParadeAction}

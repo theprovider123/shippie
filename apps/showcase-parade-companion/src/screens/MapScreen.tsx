@@ -1,8 +1,10 @@
 import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useEffect, useMemo, useState } from 'react';
 import { CorridorMap } from '../components/CorridorMap';
+import { CrowdCompass } from '../components/CrowdCompass';
 import { GoalPointer } from '../components/GoalPointer';
 import { LayerToggleRow, type MapLayerId } from '../components/LayerToggleRow';
+import { LiveSyncStrip } from '../components/LiveSyncStrip';
 import { PoiSheet } from '../components/PoiSheet';
 import { QuickFindChips, kindsForCategory, type QuickFindCategory } from '../components/QuickFindChips';
 import { StatusStrip } from '../components/StatusStrip';
@@ -25,6 +27,7 @@ import { formatAccuracy, formatGpsAge, isFreshGpsFix, isReportableGpsFix, watchG
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
 import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import { hapticConfirm, hapticWarn, hapticWow } from '../lib/haptic';
+import type { LiveSyncStatus } from '../lib/live-sync';
 import { busTimingPresentation } from '../lib/parade-time';
 import { listSideTings, type SideTing } from '../lib/side-tings';
 import { showToast, type ToastVariant } from '../lib/toast';
@@ -36,6 +39,8 @@ interface MapScreenProps {
   fanEvents: FanEvent[];
   importStatus: string;
   sideTingsRefresh: number;
+  liveSyncStatus: LiveSyncStatus;
+  online: boolean;
   onBusMarker: (marker: BusMarker) => void;
   onFanEvent: (event: FanEvent) => Promise<void>;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
@@ -43,7 +48,19 @@ interface MapScreenProps {
 
 const SECONDARY_REPORT_TYPES = REPORT_EVENT_TYPES.filter((type) => type !== 'toilet_queue');
 
-export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sideTingsRefresh, onBusMarker, onFanEvent, onTrack }: MapScreenProps) {
+export function MapScreen({
+  pack,
+  plan,
+  busMarkers,
+  fanEvents,
+  importStatus,
+  sideTingsRefresh,
+  liveSyncStatus,
+  online,
+  onBusMarker,
+  onFanEvent,
+  onTrack,
+}: MapScreenProps) {
   const [gpsFix, setGpsFix] = useState<GpsFix | null>(null);
   const [gpsError, setGpsError] = useState('');
   const [batterySaver, setBatterySaver] = useState(true);
@@ -289,6 +306,8 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         onToggle={(id) => setLayers((current) => ({ ...current, [id]: !current[id] }))}
       />
 
+      <LiveSyncStrip status={liveSyncStatus} online={online} />
+
       <CorridorMap
         pack={pack}
         gpsFix={gpsFix}
@@ -342,6 +361,16 @@ export function MapScreen({ pack, plan, busMarkers, fanEvents, importStatus, sid
         gpsFix={gpsFix}
         target={walkTarget}
         onClear={() => setWalkTarget(null)}
+      />
+
+      <CrowdCompass
+        gpsFix={gpsFix}
+        fanEvents={fanEvents}
+        onTarget={(target) => {
+          setWalkTarget(target);
+          showToast(`Crowd compass pointed to ${target.label}.`, 'success');
+          onTrack('parade_crowd_compass_targeted', { label: target.label });
+        }}
       />
 
       {showGpsHint && !gpsFix ? (

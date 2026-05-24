@@ -33,7 +33,9 @@ export type ParadeAnalyticsEvent =
   | 'parade_route_walk_to'
   | 'parade_quick_find_used'
   | 'parade_route_pack_updated'
-  | 'parade_start_prompt_shown';
+  | 'parade_start_prompt_shown'
+  | 'parade_crowd_sync_completed'
+  | 'parade_crowd_compass_targeted';
 
 type QueuedAnalyticsEvent = {
   event: ParadeAnalyticsEvent;

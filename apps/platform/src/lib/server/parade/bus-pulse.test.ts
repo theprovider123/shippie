@@ -2,8 +2,10 @@ import { describe, expect, test } from 'vitest';
 import {
   BusPulseSegment,
   busPulseObjectName,
+  fanPulseObjectName,
   summarizeBusPulse,
   validateBusPulsePacket,
+  validateFanPulsePacket,
   type StoredBusPulseSighting,
 } from './bus-pulse';
 
@@ -42,6 +44,59 @@ describe('Bus Pulse packet validation', () => {
 
   test('builds one Durable Object name per route segment', () => {
     expect(busPulseObjectName('seg-4')).toBe('parade:2026-05-31:seg-4');
+    expect(fanPulseObjectName('seg-4')).toBe('parade:2026-05-31:fan:seg-4');
+  });
+});
+
+describe('Fan Pulse packet validation', () => {
+  test('accepts an anonymous fan signal inside the corridor', () => {
+    const now = Date.parse('2026-05-31T13:45:00.000Z');
+    const result = validateFanPulsePacket(
+      {
+        id: 'presence_abc123',
+        type: 'presence',
+        sourceId: 'fan_abc123',
+        lng: -0.1048,
+        lat: 51.5487,
+        accuracyM: 24.4,
+        segmentId: 'seg-2',
+        eventSegmentId: 'seg-2',
+        eventSegmentIndex: 2,
+        snappedLng: -0.1047,
+        snappedLat: 51.5486,
+        createdAt: '2026-05-31T13:44:00.000Z',
+        expiresAt: '2026-05-31T15:44:00.000Z',
+      },
+      now,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.packet).toMatchObject({ type: 'presence', segmentId: 'seg-2', accuracyM: 24 });
+    }
+  });
+
+  test('rejects personal or unexpected fan signal fields', () => {
+    const now = Date.parse('2026-05-31T13:45:00.000Z');
+    const result = validateFanPulsePacket(
+      {
+        id: 'presence_abc123',
+        type: 'presence',
+        sourceId: 'fan_abc123',
+        lng: -0.1048,
+        lat: 51.5487,
+        accuracyM: 24,
+        segmentId: 'seg-2',
+        eventSegmentId: 'seg-2',
+        eventSegmentIndex: 2,
+        snappedLng: -0.1047,
+        snappedLat: 51.5486,
+        createdAt: '2026-05-31T13:44:00.000Z',
+        expiresAt: '2026-05-31T15:44:00.000Z',
+        displayName: 'Dev',
+      },
+      now,
+    );
+    expect(result).toEqual({ ok: false, reason: 'unexpected_fields' });
   });
 });
 
@@ -114,6 +169,39 @@ describe('BusPulseSegment Durable Object', () => {
     expect(read.status).toBe(200);
     const payload = (await read.json()) as { aggregate: { confidence: string; count: number } };
     expect(payload.aggregate).toMatchObject({ confidence: 'confirmed', count: 3 });
+  });
+
+  test('stores and returns short-lived fan signals per segment', async () => {
+    const room = new BusPulseSegment(makeState(), {});
+    const res = await room.fetch(
+      new Request('https://fan-pulse.local/fan?segment=seg-0', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.11' },
+        body: JSON.stringify({
+          id: 'toilet_queue_abc123',
+          type: 'toilet_queue',
+          sourceId: 'fan_abc123',
+          lng: -0.1048,
+          lat: 51.5487,
+          accuracyM: 18,
+          segmentId: 'seg-0',
+          eventSegmentId: null,
+          eventSegmentIndex: null,
+          snappedLng: null,
+          snappedLat: null,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    const read = await room.fetch(new Request('https://fan-pulse.local/fan?segment=seg-0'));
+    expect(read.status).toBe(200);
+    const payload = (await read.json()) as { segmentId: string; signals: Array<{ type: string; segmentId: string }> };
+    expect(payload.segmentId).toBe('seg-0');
+    expect(payload.signals).toHaveLength(1);
+    expect(payload.signals[0]).toMatchObject({ type: 'toilet_queue', segmentId: 'seg-0' });
   });
 });
 

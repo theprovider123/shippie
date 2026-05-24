@@ -85,6 +85,9 @@ describe('route pack', () => {
     expect(playerPoll?.options.some((option) => option.id === 'gabriel')).toBe(true);
     expect(playerPoll?.otherOptions?.some((option) => option.id === 'dowman')).toBe(true);
     expect(playerPoll?.otherOptions?.length).toBeGreaterThan(10);
+    const momentPoll = pack.banter?.polls.find((poll) => poll.id === 'moment-of-season');
+    expect(momentPoll?.options).toHaveLength(6);
+    expect(momentPoll?.options.some((option) => option.id === 'west-ham-var')).toBe(true);
     expect(pack.banter?.trivia?.length).toBeGreaterThanOrEqual(6);
     expect(pack.banter?.trivia?.every((card) => card.answerId === undefined)).toBe(true);
   });

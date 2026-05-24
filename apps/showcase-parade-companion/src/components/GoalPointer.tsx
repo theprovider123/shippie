@@ -2,6 +2,7 @@ import type { PlanPoint } from '../lib/group-plan';
 import type { LngLat } from '../data/parade-2026';
 import { bearingDeg, haversineMeters } from '../lib/geo';
 import type { GpsFix } from '../lib/gps';
+import { paradeGridCode } from '../lib/parade-grid';
 
 interface GoalPointerProps {
   gpsFix: GpsFix | null;
@@ -31,7 +32,7 @@ export function GoalPointer({ gpsFix, target, onClear }: GoalPointerProps) {
         <strong>{target.label}</strong>
         <small>
           {distance !== null && bearing !== null
-            ? `${formatDistance(distance)} · ${cardinal(bearing)}`
+            ? `${formatDistance(distance)} · ${cardinal(bearing)} · ${paradeGridCode(targetPoint)}`
             : 'Turn on Location to point from here'}
         </small>
       </div>
