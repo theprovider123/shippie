@@ -18,8 +18,10 @@ import {
   listUsage,
   rollupByOrigin,
   rollupByBackend,
+  rollupByTask,
   type UsageRollup,
   type BackendRollup,
+  type TaskRollup,
 } from './usage-log.ts';
 import {
   getStorageBreakdown,
@@ -86,6 +88,7 @@ export function App() {
 
   const rollup = useMemo<UsageRollup[]>(() => rollupByOrigin(usage), [usage]);
   const backendRollup = useMemo<BackendRollup[]>(() => rollupByBackend(usage), [usage]);
+  const taskRollup = useMemo<TaskRollup[]>(() => rollupByTask(usage), [usage]);
 
   const [currentBackend, setCurrentBackend] = useState<Backend | null>(null);
   useEffect(() => {
@@ -164,7 +167,30 @@ export function App() {
             {rollup.map((r) => (
               <li key={r.origin}>
                 <span className="origin">{prettyOrigin(r.origin)}</span>
-                <span className="count">{r.count} inferences</span>
+                <span className="count">
+                  {r.estimatedCount === r.count
+                    ? `${r.count} inferences`
+                    : `~${r.estimatedCount} inferences (${r.count} sampled)`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {taskRollup.length > 0 && (
+          <ul className="task-list" data-testid="task-breakdown">
+            {taskRollup.map((t) => (
+              <li key={t.task}>
+                <span className="label">{t.task}</span>
+                <span className="count">
+                  {t.estimatedCount === t.count
+                    ? `${t.count}`
+                    : `~${t.estimatedCount}`}
+                </span>
+                {t.samplingNote ? (
+                  <span className="sampling-note" title="Sampled to keep IndexedDB bounded">
+                    {t.samplingNote}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>

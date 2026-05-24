@@ -78,6 +78,17 @@ export interface UsageEntry {
   /** Hardware backend that ran the inference. Optional for back-compat
    *  with logs written before this field existed. */
   source?: Backend;
+  /**
+   * Per-task sampling rate that gated this row's insert. `1.0` means
+   * "every call is logged"; a row stamped `0.1` represents roughly
+   * ten real inferences. Optional for back-compat with rows written
+   * before sampling existed — treat absence as 1.0.
+   *
+   * High-volume tasks (sentiment-per-keystroke) default to 0.1 so the
+   * dashboard stays useful without bloating IndexedDB; see
+   * `TASK_SAMPLING_DEFAULTS` in `dashboard/usage-log.ts`.
+   */
+  samplingRate?: number;
 }
 
 export interface InstalledModelInfo {
