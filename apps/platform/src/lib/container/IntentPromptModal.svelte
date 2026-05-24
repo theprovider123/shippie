@@ -21,12 +21,25 @@
     prompt: PendingIntentPrompt | null;
     onApprove: () => void;
     onDeny: () => void;
+    /** 1-based position of this prompt in the combined pending queue. */
+    queueIndex?: number;
+    /** Total pending prompts (intents + transfers). Skip subtitle when <= 1. */
+    queueSize?: number;
   }
 
-  let { prompt, onApprove, onDeny }: Props = $props();
+  let { prompt, onApprove, onDeny, queueIndex = 1, queueSize = 1 }: Props = $props();
+
+  const queueSubtitle = $derived(
+    queueSize > 1 ? `Pending request — ${queueIndex} of ${queueSize}` : undefined,
+  );
 </script>
 
-<Sheet open={prompt !== null} onClose={onDeny} title="Cross-app permission">
+<Sheet
+  open={prompt !== null}
+  onClose={onDeny}
+  title="Cross-app permission"
+  subtitle={queueSubtitle}
+>
   {#if prompt}
     <div class="intent-prompt">
       {#if prompt.intents.length === 1}

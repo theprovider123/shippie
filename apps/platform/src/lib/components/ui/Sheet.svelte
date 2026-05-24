@@ -33,6 +33,9 @@
      *  heading inside the slot AND pass `label` so the dialog has an
      *  accessible name. */
     title?: string;
+    /** Optional small text rendered next to the title (e.g. "2 of 4" queue
+     *  position). Skipped when empty. */
+    subtitle?: string;
     /** Accessible name when no `title` is rendered. Falls back to "Dialog". */
     label?: string;
     dismissOnEscape?: boolean;
@@ -46,6 +49,7 @@
     open,
     onClose,
     title,
+    subtitle,
     label,
     dismissOnEscape = true,
     dismissOnBackdrop = true,
@@ -220,7 +224,12 @@
   >
     <div class="grab" aria-hidden="true"></div>
     {#if title}
-      <h3 id={titleId} class="sheet-title">{title}</h3>
+      <h3 id={titleId} class="sheet-title">
+        {title}
+        {#if subtitle}
+          <span class="sheet-subtitle">{subtitle}</span>
+        {/if}
+      </h3>
     {/if}
     {@render children?.()}
   </div>
@@ -276,6 +285,17 @@
     margin: 0;
     font-family: var(--font-heading);
     font-size: 1.05rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .sheet-subtitle {
+    font-family: var(--font-body, inherit);
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--text-light, var(--text-secondary));
+    letter-spacing: 0.01em;
   }
   /* Tablet+ — centred modal. Aligned to canonical {640, 1024} breakpoints. */
   @media (min-width: 641px) {

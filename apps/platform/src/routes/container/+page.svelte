@@ -278,6 +278,25 @@
     pendingTransferQueue.length > 0 ? pendingTransferQueue[0]! : null,
   );
   const transferRegistry = createTransferRegistry();
+
+  // Combined modal queue surface — intents are batched by consumerId so each
+  // unique consumer counts once; transfers are one prompt per item.
+  // Intents render first (the orchestrator dismisses them in that order), so
+  // the active intent batch is always index 1 of the combined queue.
+  const pendingIntentBatchCount = $derived.by(() => {
+    const seen = new Set<string>();
+    for (const p of pendingIntentQueue) seen.add(p.consumerId);
+    return seen.size;
+  });
+  const pendingPromptQueueSize = $derived(
+    pendingIntentBatchCount + pendingTransferQueue.length,
+  );
+  // The intent modal is always at position 1 when it's open; if it's closed,
+  // the transfer modal is at position 1 (no intents ahead of it).
+  const intentQueueIndex = $derived(pendingIntentPrompt ? 1 : 0);
+  const transferQueueIndex = $derived(
+    pendingTransferPrompt ? pendingIntentBatchCount + 1 : 0,
+  );
   let yourDataOpenForApp = $state<string | null>(null);
   const yourDataHost = createYourDataHost({
     onChange: (next) => {
@@ -2646,12 +2665,16 @@
   prompt={pendingIntentBatch}
   onApprove={approveIntentPrompt}
   onDeny={denyIntentPrompt}
+  queueIndex={intentQueueIndex}
+  queueSize={pendingPromptQueueSize}
 />
 <PushOptInToast />
 <TransferPromptModal
   prompt={pendingTransferPrompt}
   onApprove={approvePendingTransfer}
   onDeny={declinePendingTransfer}
+  queueIndex={transferQueueIndex}
+  queueSize={pendingPromptQueueSize}
 />
 
 {#if data.focused}
