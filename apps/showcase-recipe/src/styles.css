@@ -3515,3 +3515,101 @@ body {
   border-color: rgba(143, 160, 112, 0.6);
   color: var(--sage-deep);
 }
+
+/* --- Ingredient photo notes (RecipeSheet) --- */
+.ingredient-tile-body {
+  display: contents;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.ingredient-tile {
+  position: relative;
+}
+
+.ingredient-tile:hover {
+  background: rgba(143, 160, 112, 0.06);
+}
+
+.ingredient-note {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(101, 86, 70, 0.18);
+}
+
+.ingredient-note-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.ingredient-note-caption {
+  font-size: 0.82rem;
+  color: var(--ink-soft, #6b6358);
+  line-height: 1.3;
+}
+
+/* --- Ingredient note editor sheet --- */
+.ingredient-note-backdrop {
+  z-index: 80;
+}
+
+.ingredient-note-editor {
+  width: min(440px, 100%);
+  max-height: calc(100svh - 2rem);
+  overflow-y: auto;
+  background: var(--paper, #fffaf2);
+  border: 1px solid rgba(101, 86, 70, 0.18);
+  border-radius: 12px;
+  padding: 1rem 1.2rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ingredient-note-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ingredient-note-thumb-lg,
+.ingredient-note-thumb-fallback {
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.ingredient-note-caption-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ingredient-note-caption-field input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(101, 86, 70, 0.24);
+  border-radius: 8px;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.7);
+}
+

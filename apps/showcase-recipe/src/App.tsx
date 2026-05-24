@@ -22,7 +22,13 @@ import {
 import { CookRecapSheet } from './CookRecap.tsx';
 import { palateMatchers } from './IntentMatchers.ts';
 import { createPalateBackupStore } from './PalateBackupAdapter.ts';
-import { parseRecipeText, type ParsedRecipe } from './recipe-import.ts';
+import {
+  importRecipeFromUrl,
+  parseRecipeText,
+  RecipeImportError,
+  type ParsedRecipe,
+  type UrlImportedRecipe,
+} from './recipe-import.ts';
 
 type Tab = 'today' | 'cookbook' | 'plan' | 'pantry' | 'shop' | 'data';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -55,11 +61,18 @@ const SOURCE_BADGE: Record<ShoppingItem['source'], { label: string; tone: string
   pantry: { label: 'pantry gap', tone: 'badge-pantry' },
 };
 
+interface IngredientNote {
+  /** Either a blob: URL (IndexedDB) or a data: URL (fallback). */
+  photoUrl?: string;
+  caption?: string;
+}
+
 interface Ingredient {
   id: string;
   name: string;
   quantity: number;
   unit: string;
+  note?: IngredientNote;
 }
 
 interface Recipe {
@@ -376,6 +389,45 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('Could not read image'));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Persist an ingredient photo as a blob via IndexedDB and return a
+ * `blob:` URL valid for this page session. Falls back to an inline
+ * `data:` URL if IndexedDB is unavailable or errors out — both shapes
+ * are renderable by <img src>, so callers don't need to branch.
+ *
+ * Design tradeoff: blob: URLs are smaller in the JSON snapshot (just a
+ * UUID string) but they don't survive a reload — we'd need to re-mint
+ * them from IndexedDB on app start. For this showcase we accept that
+ * limitation; on reload the photo simply doesn't render and the user
+ * can re-attach. Data-URL fallback survives reloads but bloats
+ * localStorage. The "blob if possible, data otherwise" split keeps
+ * the common path lean.
+ */
+async function storeIngredientPhoto(file: File): Promise<string> {
+  if (typeof indexedDB === 'undefined' || typeof URL === 'undefined') {
+    return fileToDataUrl(file);
+  }
+  try {
+    const buffer = await file.arrayBuffer();
+    const blob = new Blob([buffer], { type: file.type || 'image/*' });
+    const key = id('ingphoto');
+    await new Promise<void>((resolve, reject) => {
+      const open = indexedDB.open('palate-ingredient-photos', 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('photos');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction('photos', 'readwrite');
+        tx.objectStore('photos').put(blob, key);
+        tx.oncomplete = () => { open.result.close(); resolve(); };
+        tx.onerror = () => { open.result.close(); reject(tx.error); };
+      };
+    });
+    return URL.createObjectURL(blob);
+  } catch {
+    return fileToDataUrl(file);
+  }
 }
 
 function recipeTotalTime(recipe: Recipe): number {
@@ -944,6 +996,27 @@ export function App() {
     setCookRecipeId(null);
   }
 
+  /**
+   * Update a single ingredient's note (photo + caption) for a recipe.
+   * If `note` is undefined the note is cleared. Wraps the recipes/
+   * ingredients spread plumbing so RecipeSheet stays presentational.
+   */
+  function updateIngredientNote(recipeId: string, ingredientId: string, note: IngredientNote | undefined): void {
+    setState((prev) => ({
+      ...prev,
+      recipes: prev.recipes.map((recipe) => {
+        if (recipe.id !== recipeId) return recipe;
+        return {
+          ...recipe,
+          updatedAt: Date.now(),
+          ingredients: recipe.ingredients.map((ing) =>
+            ing.id === ingredientId ? { ...ing, note } : ing,
+          ),
+        };
+      }),
+    }));
+  }
+
   return (
     <main className="palate-app">
       <header className="app-header">
@@ -1051,6 +1124,7 @@ export function App() {
           onClose={() => setSelectedRecipeId(null)}
           onCook={() => setCookRecipeId(selectedRecipe.id)}
           onShare={() => setShareRecipeId(selectedRecipe.id)}
+          onUpdateNote={(ingredientId, note) => updateIngredientNote(selectedRecipe.id, ingredientId, note)}
         />
       ) : null}
 
@@ -2107,7 +2181,23 @@ function RecipeRow({ recipe, onOpen, onCook }: { recipe: Recipe; onOpen: (recipe
   );
 }
 
-function RecipeSheet({ recipe, onClose, onCook, onShare }: { recipe: Recipe; onClose: () => void; onCook: () => void; onShare: () => void }) {
+function RecipeSheet({
+  recipe,
+  onClose,
+  onCook,
+  onShare,
+  onUpdateNote,
+}: {
+  recipe: Recipe;
+  onClose: () => void;
+  onCook: () => void;
+  onShare: () => void;
+  onUpdateNote: (ingredientId: string, note: IngredientNote | undefined) => void;
+}) {
+  const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
+  const editingIngredient = editingIngredientId
+    ? recipe.ingredients.find((i) => i.id === editingIngredientId) ?? null
+    : null;
   return (
     <div className="sheet-backdrop" onClick={onClose} role="presentation">
       <section className="recipe-sheet recipe-sheet-lifted" role="dialog" aria-label={recipe.title} onClick={(event) => event.stopPropagation()}>
@@ -2140,9 +2230,26 @@ function RecipeSheet({ recipe, onClose, onCook, onShare }: { recipe: Recipe; onC
             <ul className="ingredient-tile-list">
               {recipe.ingredients.map((ing) => (
                 <li key={ing.id} className="ingredient-tile">
-                  <span className="qty">{ing.quantity}</span>
-                  <small>{ing.unit}</small>
-                  <strong>{ing.name}</strong>
+                  <button
+                    type="button"
+                    className="ingredient-tile-body"
+                    onClick={() => setEditingIngredientId(ing.id)}
+                    aria-label={`Edit notes for ${ing.name}`}
+                  >
+                    <span className="qty">{ing.quantity}</span>
+                    <small>{ing.unit}</small>
+                    <strong>{ing.name}</strong>
+                  </button>
+                  {ing.note?.photoUrl || ing.note?.caption ? (
+                    <div className="ingredient-note">
+                      {ing.note.photoUrl ? (
+                        <img src={ing.note.photoUrl} alt="" className="ingredient-note-thumb" />
+                      ) : null}
+                      {ing.note.caption ? (
+                        <span className="ingredient-note-caption">{ing.note.caption}</span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -2163,6 +2270,109 @@ function RecipeSheet({ recipe, onClose, onCook, onShare }: { recipe: Recipe; onC
         <div className="recipe-sheet-actions">
           <button type="button" className="primary" onClick={onCook}>Start cooking</button>
           <button type="button" onClick={onShare}>Share via QR</button>
+        </div>
+      </section>
+      {editingIngredient ? (
+        <IngredientNoteEditor
+          ingredient={editingIngredient}
+          onSave={(note) => {
+            onUpdateNote(editingIngredient.id, note);
+            setEditingIngredientId(null);
+          }}
+          onClose={() => setEditingIngredientId(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Bottom-sheet editor for a single ingredient's photo + caption note.
+ * Photo upload goes through storeIngredientPhoto so it's persisted as
+ * a blob via IndexedDB (or data: URL fallback). Saving the empty form
+ * passes `undefined` upward so the note is cleared.
+ */
+function IngredientNoteEditor({
+  ingredient,
+  onSave,
+  onClose,
+}: {
+  ingredient: Ingredient;
+  onSave: (note: IngredientNote | undefined) => void;
+  onClose: () => void;
+}) {
+  const [photoUrl, setPhotoUrl] = useState(ingredient.note?.photoUrl ?? '');
+  const [caption, setCaption] = useState(ingredient.note?.caption ?? '');
+  const [busy, setBusy] = useState(false);
+
+  async function handleFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      const url = await storeIngredientPhoto(file);
+      setPhotoUrl(url);
+    } finally {
+      setBusy(false);
+      event.currentTarget.value = '';
+    }
+  }
+
+  function submit(): void {
+    const cleanCaption = caption.trim();
+    if (!photoUrl && !cleanCaption) {
+      onSave(undefined);
+      return;
+    }
+    onSave({
+      photoUrl: photoUrl || undefined,
+      caption: cleanCaption || undefined,
+    });
+  }
+
+  return (
+    <div className="sheet-backdrop ingredient-note-backdrop" onClick={onClose} role="presentation">
+      <section
+        className="ingredient-note-editor recipe-sheet-lifted"
+        role="dialog"
+        aria-label={`Notes for ${ingredient.name}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="recipe-picker-head">
+          <div>
+            <p className="eyebrow">Ingredient note</p>
+            <h2>{ingredient.name}</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="recipe-sheet-close">×</button>
+        </header>
+        <div className="ingredient-note-preview">
+          {photoUrl ? (
+            <img src={photoUrl} alt="" className="ingredient-note-thumb-lg" />
+          ) : (
+            <div className="ingredient-note-thumb-fallback" aria-hidden>
+              <span>📷</span>
+            </div>
+          )}
+          <label className="file-pill">
+            {photoUrl ? 'Replace photo' : 'Add a photo'}
+            <input type="file" accept="image/*" onChange={(event) => void handleFile(event)} disabled={busy} />
+          </label>
+          {photoUrl ? (
+            <button type="button" className="text-action" onClick={() => setPhotoUrl('')}>Remove photo</button>
+          ) : null}
+        </div>
+        <label className="ingredient-note-caption-field">
+          <span className="eyebrow">Caption</span>
+          <input
+            value={caption}
+            onChange={(event) => setCaption(event.target.value)}
+            placeholder="e.g. the firm green-stem kind"
+            maxLength={80}
+          />
+        </label>
+        <div className="recipe-import-actions">
+          <button type="button" onClick={onClose} className="text-action">Cancel</button>
+          <button type="button" className="primary" onClick={submit} disabled={busy}>Save note</button>
         </div>
       </section>
     </div>
