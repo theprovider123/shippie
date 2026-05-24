@@ -629,18 +629,44 @@
     if (!activeApp || typeof window === 'undefined') return '';
     return new URL(`/run/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
   });
+  // Dedupe QR generation by (activeApp.id, focusedToolOptionsOpen). The
+  // previous derivation re-fired whenever `focusedToolOptionsOpen`
+  // changed even if the URL was identical, briefly clearing
+  // `focusedQrMarkup` to null on fast open/close and producing a
+  // visible flicker. The key keeps the last completed generation
+  // pinned so re-opening the same tool reuses the same SVG.
+  const qrGenKey = $derived(
+    activeApp && focusedToolOptionsOpen
+      ? `${activeApp.id}:${focusedToolOptionsOpen}`
+      : '',
+  );
+  let lastQrGenKey = '';
   $effect(() => {
-    if (!focusedToolOptionsOpen || !activeToolUrl || typeof window === 'undefined') {
+    if (!qrGenKey || !activeToolUrl || typeof window === 'undefined') {
       focusedQrMarkup = null;
+      lastQrGenKey = '';
+      return;
+    }
+    if (qrGenKey === lastQrGenKey && focusedQrMarkup) {
+      // Same key, SVG already generated — skip the regeneration and
+      // hold the existing markup to avoid the open/close flicker.
       return;
     }
     let cancelled = false;
     const url = activeToolUrl;
+    const startedAppId = activeApp?.id ?? null;
+    const generationKey = qrGenKey;
     focusedQrMarkup = null;
     void import('@shippie/qr')
       .then(({ qrSvg }) => qrSvg(url, { ecc: 'M', size: 132 }))
       .then((svg) => {
-        if (!cancelled && activeToolUrl === url) focusedQrMarkup = svg;
+        if (cancelled) return;
+        // Race-safe bail: activeApp.id changed mid-generation, drop
+        // the result silently so the stale URL never paints.
+        if ((activeApp?.id ?? null) !== startedAppId) return;
+        if (activeToolUrl !== url) return;
+        lastQrGenKey = generationKey;
+        focusedQrMarkup = svg;
       })
       .catch(() => {
         if (!cancelled) focusedQrMarkup = null;
