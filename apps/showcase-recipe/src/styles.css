@@ -2335,11 +2335,306 @@ body {
   box-shadow: 0 0 0 3px rgba(216, 105, 24, 0.22);
 }
 
+/* ── 2026-05-24 visual standout pass ──────────────────────────────
+   The RecipeSheet hero, ingredient tiles, method steps, dietary
+   pills, and cuisine badge were referenced in JSX but had no
+   dedicated CSS — they fell back to generic .recipe-sheet rules.
+   This pass treats the sheet as the editorial centrepiece: a 4:3
+   photo with a paper-grain vignette and a saffron cuisine badge,
+   ingredient tiles laid out like recipe-card chits, and step
+   numbers sized like cookbook display type. Saffron + clay-deep
+   tones land on moments of emphasis ("Tonight", first decision
+   cell) without breaking the calm sage/cream voice. */
+
+:root {
+  --saffron: #e6a82e;
+  --saffron-deep: #b27911;
+  --clay-deep: #8b3520;
+  --paper-deep: #2c2118;
+}
+
+/* ── Recipe sheet — editorial cookbook page ────────────────────── */
+.recipe-sheet-hero {
+  position: relative;
+  margin: -1.2rem -1.2rem 1.1rem;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  background:
+    radial-gradient(circle at 20% 14%, rgba(255, 250, 240, 0.18), transparent 45%),
+    linear-gradient(135deg, rgba(216, 105, 24, 0.86), rgba(178, 121, 17, 0.86)),
+    var(--cooking);
+  box-shadow: inset 0 -30px 60px -20px rgba(44, 33, 24, 0.55);
+}
+
+.recipe-sheet-hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.09) contrast(1.04);
+}
+
+.recipe-sheet-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 95%, rgba(44, 33, 24, 0.42), transparent 58%),
+    linear-gradient(180deg, transparent 55%, rgba(44, 33, 24, 0.28) 100%);
+  mix-blend-mode: multiply;
+}
+
+.recipe-sheet-hero-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(5rem, 14vw, 9rem);
+  color: rgba(255, 250, 240, 0.92);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 250, 240, 0.06) 0 1px, transparent 1px 14px),
+    linear-gradient(140deg, rgba(216, 105, 24, 0.92), rgba(143, 160, 112, 0.78));
+  text-shadow: 0 6px 16px rgba(44, 33, 24, 0.32);
+}
+
+.cuisine-programme-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  padding: 0.4rem 0.7rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  color: var(--sage-deep);
+  background: rgba(255, 250, 240, 0.94);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(44, 33, 24, 0.22);
+  text-transform: uppercase;
+}
+
+.recipe-sheet-close {
+  position: absolute;
+  top: 0.85rem;
+  left: 0.85rem;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--ink);
+  background: rgba(255, 250, 240, 0.94);
+  box-shadow: 0 6px 18px rgba(44, 33, 24, 0.22);
+  cursor: pointer;
+}
+
+.recipe-sheet-close:hover {
+  background: #fff;
+}
+
+.recipe-sheet-meta {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dashed rgba(101, 86, 70, 0.22);
+}
+
+.recipe-sheet-meta .recipe-title {
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  letter-spacing: -0.022em;
+  line-height: 0.98;
+}
+
+.recipe-sheet-meta > p:last-of-type {
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.5;
+  max-width: 58ch;
+}
+
+.recipe-sheet-meta .eyebrow {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Dietary pills — sage-tinted chits ─────────────────────────── */
+.dietary-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dietary-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sage-deep);
+  background: rgba(143, 160, 112, 0.16);
+  border: 1px solid rgba(143, 160, 112, 0.32);
+}
+
+.dietary-pill-row-preview {
+  margin: 0.55rem 0 0;
+}
+
+/* ── Ingredient tiles — recipe-card chits with tabular qty ────── */
+.ingredient-tile-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ingredient-tile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 240, 0.92), rgba(244, 228, 193, 0.62)),
+    repeating-linear-gradient(180deg, transparent 0 22px, rgba(101, 86, 70, 0.06) 22px 23px);
+  border: 1px solid rgba(101, 86, 70, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 240, 0.5);
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.ingredient-tile:hover {
+  border-color: rgba(216, 105, 24, 0.35);
+  transform: translateY(-1px);
+}
+
+.ingredient-tile .qty {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums diagonal-fractions;
+  font-weight: 700;
+  font-size: 1.45rem;
+  line-height: 1;
+  color: var(--cooking-deep);
+}
+
+.ingredient-tile small {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  align-self: baseline;
+}
+
+.ingredient-tile strong {
+  grid-column: 1 / -1;
+  margin-top: 0.2rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+/* ── Method steps — large numbered, ritual rhythm ──────────────── */
+.method-step-list {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+  counter-reset: method-step;
+}
+
+.method-step {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 0.85rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.62);
+  border-left: 3px solid rgba(143, 160, 112, 0.5);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.method-step:hover {
+  background: rgba(255, 250, 240, 0.92);
+  border-left-color: var(--cooking);
+}
+
+.method-step .step-number {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--cooking-deep);
+  background: rgba(255, 250, 240, 0.92);
+  border: 1px solid rgba(216, 105, 24, 0.28);
+  box-shadow: 0 2px 6px rgba(216, 105, 24, 0.14);
+}
+
+.method-step p {
+  margin: 0.3rem 0 0;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* ── Recipe-sheet actions — anchored footer ────────────────────── */
+.recipe-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.3rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(101, 86, 70, 0.22);
+}
+
+.recipe-sheet-actions .primary {
+  flex: 1 1 220px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 700px) {
+  .recipe-sheet-hero {
+    aspect-ratio: 3 / 2;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .recipe-tile,
   .cook-mode,
   .cook-step p,
-  .pantry-row.is-low .pantry-qty .qty {
+  .pantry-row.is-low .pantry-qty .qty,
+  .ingredient-tile,
+  .method-step {
     animation: none;
     transition: none;
   }
