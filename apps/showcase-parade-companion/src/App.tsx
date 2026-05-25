@@ -25,7 +25,7 @@ import {
   saveFanEvents,
   saveGroupPlan,
 } from './lib/shippie-db';
-import { loadRoutePack, packFreshnessLabel, syncRoutePack } from './lib/route-pack';
+import { DEFAULT_PACK_ID, loadRoutePack, packFreshnessLabel, resolvePackId, syncRoutePack } from './lib/route-pack';
 import type { BusMarker } from './lib/bus';
 import { decodeFanEventsSync, dedupeFanEvents, isActive, sortEvents, type FanEvent } from './lib/fan-events';
 import {
@@ -572,6 +572,20 @@ export function App() {
     trackParadeAction('parade_display_name_saved', { display_name_set: saved !== 'Me' });
   };
 
+  const switchPack = useCallback(() => {
+    const ids = ['arsenal-islington', 'amsterdam-vondelpark', 'watford-vicarage'];
+    const current = resolvePackId();
+    const nextId = ids[(ids.indexOf(current) + 1) % ids.length] ?? DEFAULT_PACK_ID;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('pack', nextId);
+      window.location.assign(url.toString());
+    } catch {
+      // Fall back to a plain reload; localStorage already has the pack id.
+      window.location.reload();
+    }
+  }, []);
+
   const openMapSyncQr = () => {
     setActive('map');
     setMenuOpen(false);
@@ -585,7 +599,7 @@ export function App() {
       <header className="topbar">
         <div className="masthead-title">
           <strong>Parade Companion</strong>
-          <span>Islington · unofficial local tool</span>
+          <span>{topbarSubtitle(pack)}</span>
         </div>
         <div className="topbar-actions">
           <button
@@ -625,6 +639,13 @@ export function App() {
                   onClick={openMapSyncQr}
                 >
                   Sync QR
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={switchPack}
+                >
+                  Switch pack
                 </button>
                 <button
                   type="button"
@@ -867,6 +888,18 @@ function useOnlineStatus(): boolean {
     };
   }, []);
   return online;
+}
+
+/**
+ * Topbar subtitle — Arsenal pack gets the unofficial-tool tagline; remix
+ * packs surface their own event title so users know which corridor they're
+ * looking at (small but important when a friend tests Watford while you
+ * test Amsterdam).
+ */
+function topbarSubtitle(pack: { event: { title: string } }): string {
+  const title = pack.event.title.replace(/^Parade Companion\s*—\s*/i, '').trim();
+  if (!title || /islington/i.test(title)) return 'Islington · unofficial local tool';
+  return `${title} · test pack`;
 }
 
 function offlinePillState(readiness: Readiness, online: boolean): { label: string; className: string; ariaLabel: string } {

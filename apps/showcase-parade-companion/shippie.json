@@ -23,6 +23,9 @@
   "runtime_assets": [
     "basemap/corridor.webp",
     "route-pack.json",
+    "packs/index.json",
+    "packs/amsterdam-vondelpark.json",
+    "packs/watford-vicarage.json",
     "fonts/fraunces-roman.woff2",
     "fonts/fraunces-italic.woff2",
     "fonts/jetbrains-mono.woff2",
