@@ -40,6 +40,15 @@ interface LabelRect {
   height: number;
 }
 
+interface DetailLabel {
+  id: string;
+  kind: OfflineMapLabelKind;
+  label: string;
+  lng: number;
+  lat: number;
+  minScale: number;
+}
+
 /**
  * Place categories (toilet/water/atm) are filtered by their
  * corresponding LayerToggleRow toggle. Core categories (landmark, station,
@@ -106,6 +115,8 @@ export function CorridorMap({
   const basemapSrc = `${import.meta.env.BASE_URL}basemap/corridor.webp`;
   const useRasterBasemap = shouldUseRasterBasemap(pack);
   const offlineDetails = useMemo(() => offlineMapDetailsFor(pack), [pack]);
+  const renderDpr = typeof window === 'undefined' ? 1 : Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  const detailLabels = useMemo(() => buildDetailLabels(offlineDetails, extent, scale), [offlineDetails, extent, scale]);
   const fanClusters = useMemo(() => clusterFanEvents(fanEvents), [fanEvents]);
   const visibleFanClusters = useMemo(
     () => fanClusters.filter((cluster) => layerAllowsCluster(cluster.type, layers)),
@@ -182,9 +193,12 @@ export function CorridorMap({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    canvas.width = extent.pxWidth;
-    canvas.height = extent.pxHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = Math.round(extent.pxWidth * renderDpr);
+    canvas.height = Math.round(extent.pxHeight * renderDpr);
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    ctx.setTransform(renderDpr, 0, 0, renderDpr, 0, 0);
+    ctx.clearRect(0, 0, extent.pxWidth, extent.pxHeight);
 
     const labels: LabelRect[] = [];
     drawPinpointGrid(ctx, scale);
@@ -196,9 +210,8 @@ export function CorridorMap({
     drawPois(ctx, points, scale, labels);
     drawScheduleMarkers(ctx, pack.scheduleEstimate, extent, scale);
     if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent, scale, labels);
-    drawOfflineMapLabels(ctx, offlineDetails, extent, scale, labels);
     if (gpsFix) drawGps(ctx, gpsFix, extent, scale, !localPresencePulse, labels);
-  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale, extent, localPresencePulse, offlineDetails]);
+  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale, extent, localPresencePulse, offlineDetails, renderDpr]);
 
   const commitView = (next: MapView) => {
     viewRef.current = next;
@@ -373,7 +386,7 @@ export function CorridorMap({
         onDoubleClick={(event) => zoom(viewRef.current.scale < 2 ? 2.3 : 1, framePoint(event.clientX, event.clientY))}
       >
         <div
-          className={`corridor-map__world ${scale > 1.2 ? 'is-zoomed' : ''}`}
+          className={`corridor-map__world ${scale > 1.2 ? 'is-zoomed' : ''} ${scale > 1.9 ? 'is-detail' : ''}`}
           style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
         >
           {useRasterBasemap ? (
@@ -386,6 +399,24 @@ export function CorridorMap({
             </div>
           )}
           <canvas ref={canvasRef} aria-hidden />
+          <div className="map-label-layer" aria-hidden="true">
+            {detailLabels.map((item) => {
+              const p = lngLatToPixel(item, extent);
+              return (
+                <span
+                  key={item.id}
+                  className={`map-detail-label map-detail-label--${item.kind}`}
+                  style={{
+                    left: `${(p.x / extent.pxWidth) * 100}%`,
+                    top: `${(p.y / extent.pxHeight) * 100}%`,
+                    transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})`,
+                  }}
+                >
+                  {item.label}
+                </span>
+              );
+            })}
+          </div>
           {localPresencePulse ? (
             <div
               className="my-presence-pulse"
@@ -466,7 +497,11 @@ export function CorridorMap({
       </div>
       {scale > 1.05 ? <div className="map-zoom-pill" aria-hidden="true">{scale.toFixed(1)}×</div> : null}
       <p className="map-credit">
-        {useRasterBasemap ? 'Offline detail map. Verify official route before travel.' : `${pack.event.title} · offline test detail map`}
+        {scale > 1.2
+          ? 'Offline detail'
+          : useRasterBasemap
+            ? 'Offline detail map. Verify official route before travel.'
+            : `${pack.event.title} · offline test detail map`}
       </p>
     </div>
   );
@@ -548,13 +583,7 @@ function drawOfflineMapGeometry(ctx: CanvasRenderingContext2D, details: OfflineM
   ctx.restore();
 }
 
-function drawOfflineMapLabels(
-  ctx: CanvasRenderingContext2D,
-  details: OfflineMapDetails,
-  extent: MapExtent,
-  scale: number,
-  labels: LabelRect[],
-) {
+function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale: number): DetailLabel[] {
   const candidates = [
     ...details.areas
       .filter((area) => area.label && shouldShowAtScale(Math.max(1.35, area.minScale ?? 1), scale))
@@ -564,23 +593,34 @@ function drawOfflineMapLabels(
       })
       .filter((item): item is { id: string; kind: OfflineMapLabelKind; label: string; lng: number; lat: number; minScale: number } => Boolean(item)),
     ...details.lines
-      .filter((lineFeature) => lineFeature.label && shouldShowAtScale(Math.max(1.65, lineFeature.minScale ?? 1), scale))
+      .filter((lineFeature) => lineFeature.label && shouldShowAtScale(minScaleForLineLabel(lineFeature), scale))
       .map((lineFeature) => {
         const centre = lineMidpoint(lineFeature.coordinates);
-        return centre ? { id: `line-${lineFeature.id}`, kind: 'road' as OfflineMapLabelKind, label: lineFeature.label!, ...centre, minScale: Math.max(1.65, lineFeature.minScale ?? 1) } : null;
+        return centre ? { id: `line-${lineFeature.id}`, kind: 'road' as OfflineMapLabelKind, label: lineFeature.label!, ...centre, minScale: minScaleForLineLabel(lineFeature) } : null;
       })
       .filter((item): item is { id: string; kind: OfflineMapLabelKind; label: string; lng: number; lat: number; minScale: number } => Boolean(item)),
-    ...details.labels,
+    ...details.labels.map((item) => ({ ...item, minScale: item.minScale ?? 1 })),
   ]
     .filter((item) => shouldShowAtScale(item.minScale, scale))
     .sort((a, b) => labelPriority(b.kind) - labelPriority(a.kind));
 
-  ctx.save();
+  const labels: LabelRect[] = [];
+  const out: DetailLabel[] = [];
   for (const item of candidates) {
     const point = lngLatToPixel(item, extent);
-    drawMapDetailLabel(ctx, item.label, point.x, point.y, item.kind, scale, labels);
+    const width = estimatedDomLabelWidth(item) / Math.max(1, scale);
+    const height = estimatedDomLabelHeight(item.kind) / Math.max(1, scale);
+    const rect = {
+      x: point.x - width / 2,
+      y: point.y - height / 2,
+      width,
+      height,
+    };
+    if (!reserveLabel(labels, rect, 22 / Math.max(1, scale))) continue;
+    out.push(item);
+    if (out.length >= (scale >= 2.8 ? 14 : 9)) break;
   }
-  ctx.restore();
+  return out;
 }
 
 function shouldShowAtScale(minScale = 1, scale: number): boolean {
@@ -604,59 +644,34 @@ function lineStyle(kind: OfflineMapLineKind): { stroke: string; width: number; z
   return { stroke: 'rgba(94, 123, 92, 0.22)', width: 7, zoomBoost: 1 };
 }
 
-function drawMapDetailLabel(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  kind: OfflineMapLabelKind,
-  scale: number,
-  labels: LabelRect[],
-) {
-  const fixed = fixedSize(scale);
-  const displayText = text.length > 28 ? `${text.slice(0, 25)}...` : text;
-  const size = kind === 'district' ? 44 : kind === 'pinpoint' ? 36 : kind === 'road' ? 32 : 34;
-  ctx.font = `800 ${fixed(size)}px "JetBrains Mono", ui-monospace, monospace`;
-  const padded = fixed(displayText.length * (size * 0.58) + 22);
-  let labelX = x - padded / 2;
-  labelX = Math.max(18, Math.min(1782 - padded, labelX));
-  const labelY = Math.max(42, Math.min(1758, y));
-  const rect = { x: labelX - fixed(10), y: labelY - fixed(25), width: padded, height: fixed(50) };
-  if (!reserveLabel(labels, rect, fixed(5))) return;
-  ctx.fillStyle = mapDetailLabelBackground(kind);
-  roundRect(ctx, rect.x, rect.y, rect.width, rect.height, 0);
-  ctx.fill();
-  ctx.lineWidth = fixed(2);
-  ctx.strokeStyle = mapDetailLabelStroke(kind);
-  ctx.stroke();
-  ctx.fillStyle = mapDetailLabelInk(kind);
-  ctx.fillText(displayText, labelX, labelY + fixed(4));
-}
-
-function mapDetailLabelBackground(kind: OfflineMapLabelKind): string {
-  if (kind === 'pinpoint') return 'rgba(245, 239, 228, 0.92)';
-  if (kind === 'station') return 'rgba(245, 239, 228, 0.95)';
-  return 'rgba(237, 230, 213, 0.72)';
-}
-
-function mapDetailLabelStroke(kind: OfflineMapLabelKind): string {
-  if (kind === 'station') return 'rgba(20, 18, 15, 0.72)';
-  if (kind === 'pinpoint') return 'rgba(94, 123, 92, 0.62)';
-  return 'rgba(20, 18, 15, 0.28)';
-}
-
-function mapDetailLabelInk(kind: OfflineMapLabelKind): string {
-  if (kind === 'station') return '#14120F';
-  if (kind === 'pinpoint') return '#5E7B5C';
-  return '#6B6259';
-}
-
 function labelPriority(kind: OfflineMapLabelKind): number {
   if (kind === 'station') return 5;
   if (kind === 'pinpoint') return 4;
   if (kind === 'place') return 3;
   if (kind === 'district') return 2;
   return 1;
+}
+
+function minScaleForLineLabel(lineFeature: { kind: OfflineMapLineKind; minScale?: number }): number {
+  const base = lineFeature.minScale ?? 1;
+  if (lineFeature.kind === 'route-road') return Math.max(1.65, base);
+  if (lineFeature.kind === 'major-road') return Math.max(2.1, base);
+  if (lineFeature.kind === 'waterway') return Math.max(2.4, base);
+  if (lineFeature.kind === 'street') return Math.max(3.75, base);
+  if (lineFeature.kind === 'path') return Math.max(4.5, base);
+  return Math.max(4.75, base);
+}
+
+function estimatedDomLabelWidth(item: { kind: OfflineMapLabelKind; label: string }): number {
+  const max = item.kind === 'station' || item.kind === 'pinpoint' ? 190 : 170;
+  const min = item.kind === 'road' ? 62 : 82;
+  return Math.max(min, Math.min(max, item.label.length * (item.kind === 'road' ? 7.3 : 8.8) + 34));
+}
+
+function estimatedDomLabelHeight(kind: OfflineMapLabelKind): number {
+  if (kind === 'station') return 32;
+  if (kind === 'road') return 26;
+  return 30;
 }
 
 function averageCoords(coords: [number, number][]): { lng: number; lat: number } | null {
@@ -731,6 +746,7 @@ function drawPois(
       ctx.textAlign = 'start';
     }
     if (!shouldShowMarkerLabel(marker, style)) continue;
+    if (scale >= 1.7 && isNamedBaseMapPoi(marker.kind)) continue;
     // Hide small POI labels (water/atm/toilet) at the default zoom — their
     // glyph + dot is enough until the user zooms in. Keeps the schematic
     // readable instead of a wall of overlapping text at zoom 1.
@@ -744,6 +760,10 @@ function drawPois(
 
 function isSmallPoiKind(kind: string): boolean {
   return kind === 'toilet' || kind === 'water' || kind === 'atm' || kind === 'family' || kind === 'view';
+}
+
+function isNamedBaseMapPoi(kind: string): boolean {
+  return kind === 'station' || kind === 'tube-exit' || kind === 'landmark' || kind === 'meeting' || kind === 'exit';
 }
 
 /**

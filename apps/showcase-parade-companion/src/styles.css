@@ -650,7 +650,10 @@ textarea { resize: vertical; min-height: 64px; }
 }
 .corridor-map img { object-fit: cover; }
 .corridor-map__world.is-zoomed img {
-  opacity: .22;
+  opacity: .16;
+}
+.corridor-map__world.is-detail img {
+  opacity: 0;
 }
 .corridor-map__schematic-base {
   display: grid;
@@ -704,6 +707,59 @@ textarea { resize: vertical; min-height: 64px; }
 .corridor-map__world.is-zoomed .corridor-map__schematic-base strong,
 .corridor-map__world.is-zoomed .corridor-map__schematic-base span {
   opacity: 0;
+}
+.map-label-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.map-detail-label {
+  position: absolute;
+  max-width: 170px;
+  padding: 4px 7px;
+  border: 1px solid rgba(20, 18, 15, .36);
+  background: rgba(245, 239, 228, .94);
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .02em;
+  text-align: center;
+  text-transform: none;
+  white-space: nowrap;
+  transform-origin: center;
+  box-shadow: 0 0 0 1px rgba(245, 239, 228, .55);
+}
+.map-detail-label--station {
+  border-color: var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.map-detail-label--place {
+  border-color: rgba(20, 18, 15, .42);
+  background: rgba(245, 239, 228, .9);
+  color: var(--ink);
+}
+.map-detail-label--pinpoint {
+  border-color: rgba(94, 123, 92, .62);
+  color: var(--sage);
+}
+.map-detail-label--district {
+  border-color: rgba(239, 1, 7, .34);
+  color: var(--red);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.map-detail-label--road {
+  border-color: rgba(20, 18, 15, .22);
+  background: rgba(237, 230, 213, .82);
+  color: var(--ink-mute);
+  font-size: 9px;
 }
 .my-presence-pulse {
   position: absolute;
