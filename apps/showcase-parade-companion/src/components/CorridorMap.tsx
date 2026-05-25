@@ -11,10 +11,9 @@ import type { MapLayerId } from './LayerToggleRow';
 /**
  * Place categories (toilet/water/atm) are filtered by their
  * corresponding LayerToggleRow toggle. Core categories (landmark, station,
- * medical, exit, stewards, meeting) always render. Tube exits, family
- * pockets, and view suggestions stay out of the base canvas until a dedicated
- * find/search surface ships; otherwise first load becomes a field of unlabeled
- * dots.
+ * tube-exit, medical, exit, stewards, meeting) always render. Family pockets
+ * and view suggestions stay out of the base canvas until quick-find asks for
+ * them; otherwise first load becomes a field of unlabeled dots.
  */
 function placeLayerForKind(kind: RoutePoiKind): MapLayerId | null {
   if (kind === 'toilet') return 'toilets';
@@ -88,7 +87,7 @@ export function CorridorMap({
     const out: RoutePoi[] = [];
     for (const poi of pack.pois) {
       if (poi.kind === 'food' || poi.kind === 'pub') continue;
-      if (poi.kind === 'tube-exit' || poi.kind === 'family' || poi.kind === 'view') continue;
+      if (poi.kind === 'family' || poi.kind === 'view') continue;
       const layer = placeLayerForKind(poi.kind);
       if (layer && layers[layer] === false) continue;
       if (seen.has(poi.id)) continue;
@@ -288,8 +287,10 @@ function drawPois(ctx: CanvasRenderingContext2D, points: Array<{ id: string; lab
       ctx.fillText(style.glyph, marker.point.x, marker.point.y + style.glyphSize * 0.35);
       ctx.textAlign = 'start';
     }
-    if (style.showLabel) {
-      drawLabel(ctx, marker.label, marker.point.x + style.radius + 18, marker.point.y);
+    if (shouldShowMarkerLabel(marker, style)) {
+      const label = mapLabelText(marker);
+      if (style.smallLabel) drawMiniLabel(ctx, label, marker.point.x + style.radius + 14, marker.point.y, style.labelTone);
+      else drawLabel(ctx, label, marker.point.x + style.radius + 18, marker.point.y);
     }
   }
   ctx.restore();
@@ -309,6 +310,8 @@ function poiStyleForKind(kind: string): {
   glyphSize: number;
   glyphColor: string;
   showLabel: boolean;
+  smallLabel?: boolean;
+  labelTone?: 'default' | 'transit' | 'landmark';
 } {
   const base = {
     glyphSize: 22,
@@ -321,17 +324,36 @@ function poiStyleForKind(kind: string): {
   if (kind === 'fallback') {
     return { ...base, radius: 24, fill: '#14120F', stroke: '#14120F', lineWidth: 8, showLabel: true };
   }
-  if (kind === 'medical') return { ...base, radius: 22, fill: '#C40006', stroke: '#14120F', lineWidth: 6, glyph: '+', glyphSize: 26, glyphColor: '#F5EFE4' };
+  if (kind === 'medical') return { ...base, radius: 22, fill: '#C40006', stroke: '#14120F', lineWidth: 6, glyph: '+', glyphSize: 26, glyphColor: '#F5EFE4', showLabel: true, smallLabel: true, labelTone: 'landmark' };
   if (kind === 'stewards') return { ...base, radius: 22, fill: '#EDBB4A', stroke: '#14120F', lineWidth: 6, glyph: 'S', glyphSize: 22 };
-  if (kind === 'station' || kind === 'tube-exit') return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, glyph: '◉', glyphSize: 22 };
-  if (kind === 'exit') return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, glyph: '↗', glyphSize: 26 };
+  if (kind === 'station' || kind === 'tube-exit') return { ...base, radius: 24, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, glyph: '◉', glyphSize: 22, showLabel: kind === 'station', smallLabel: true, labelTone: 'transit' };
+  if (kind === 'exit') return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, glyph: '↗', glyphSize: 26, showLabel: true, smallLabel: true, labelTone: 'landmark' };
   if (kind === 'toilet') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#5E7B5C', lineWidth: 4, glyph: 'T', glyphSize: 14, glyphColor: '#5E7B5C' };
   if (kind === 'water') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#5E7B5C', lineWidth: 4, glyph: '~', glyphSize: 14, glyphColor: '#5E7B5C' };
   if (kind === 'atm') return { ...base, radius: 16, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 4, glyph: '$', glyphSize: 14 };
   if (kind === 'family') return { ...base, radius: 16, fill: '#EDE6D5', stroke: '#5E7B5C', lineWidth: 3 };
   if (kind === 'view') return { ...base, radius: 16, fill: '#EDE6D5', stroke: '#EDBB4A', lineWidth: 4, glyph: '◇', glyphSize: 18 };
-  // landmark + meeting + any unknown — neutral cream dot
+  if (kind === 'landmark' || kind === 'meeting') {
+    return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6, showLabel: true, smallLabel: true, labelTone: 'landmark' };
+  }
+  // any unknown — neutral cream dot
   return { ...base, radius: 22, fill: '#F5EFE4', stroke: '#14120F', lineWidth: 6 };
+}
+
+function shouldShowMarkerLabel(
+  marker: { id: string; label: string; kind: string },
+  style: { showLabel: boolean },
+): boolean {
+  if (style.showLabel) return true;
+  // Keep minor station exits as dots, but name actual Underground stations
+  // that are in the route pack as tube-exit POIs.
+  return marker.kind === 'tube-exit' && marker.label.toLowerCase().includes('station');
+}
+
+function mapLabelText(marker: { label: string; kind: string }): string {
+  if (marker.kind === 'tube-exit') return marker.label.replace(/\s*·\s*station$/i, '');
+  if (marker.kind === 'medical') return 'First aid';
+  return marker.label;
 }
 
 function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[]) {
@@ -437,7 +459,7 @@ function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix) {
   ctx.lineWidth = 3;
   ctx.strokeStyle = 'rgba(20, 18, 15, 0.7)';
   ctx.stroke();
-  drawLabel(ctx, 'You', p.x + 54, p.y);
+  drawLabel(ctx, 'You are here', p.x + 54, p.y);
   ctx.restore();
 }
 
@@ -525,6 +547,7 @@ function clusterRadius(cluster: FanEventCluster): number {
 }
 
 function clusterLabel(cluster: FanEventCluster): string {
+  if (cluster.type === 'bus_seen') return cluster.count > 1 ? `Bus here x${cluster.count}` : 'Bus here';
   const label = FAN_EVENT_LABELS[cluster.type];
   return cluster.count > 1 ? `${label} x${cluster.count}` : label;
 }
@@ -541,7 +564,7 @@ function buildMapSummary(gpsFix: GpsFix | null | undefined, clusters: FanEventCl
     : busMarkerCount > 0
       ? `${busMarkerCount} saved bus marker${busMarkerCount === 1 ? '' : 's'}`
       : 'No fan pulse markers are on the map yet.';
-  return `Offline parade corridor map. ${gps} Current carried signals: ${signals}.`;
+  return `Offline parade corridor map with the bus route, stations, exits, landmarks, and safety points. ${gps} Current carried signals: ${signals}.`;
 }
 
 function offsetClusterPoint(point: PixelPoint, type: FanEventType): PixelPoint {
@@ -570,6 +593,30 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   ctx.stroke();
   ctx.fillStyle = '#14120F';
   ctx.fillText(displayText, labelX, labelY + 4);
+}
+
+function drawMiniLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  tone: 'default' | 'transit' | 'landmark' = 'default',
+) {
+  const displayText = text.length > 22 ? `${text.slice(0, 19)}...` : text;
+  ctx.font = '800 54px "JetBrains Mono", ui-monospace, monospace';
+  const padded = displayText.length * 31 + 36;
+  let labelX = x;
+  if (labelX + padded > 1782) labelX = x - padded - 58;
+  labelX = Math.max(18, Math.min(1782 - padded, labelX));
+  const labelY = Math.max(42, Math.min(1758, y));
+  ctx.fillStyle = tone === 'transit' ? 'rgba(245, 239, 228, 0.96)' : 'rgba(237, 230, 213, 0.94)';
+  roundRect(ctx, labelX - 18, labelY - 41, padded, 82, 0);
+  ctx.fill();
+  ctx.lineWidth = tone === 'transit' ? 4 : 2;
+  ctx.strokeStyle = tone === 'transit' ? '#14120F' : 'rgba(20, 18, 15, 0.72)';
+  ctx.stroke();
+  ctx.fillStyle = tone === 'transit' ? '#14120F' : '#4C473F';
+  ctx.fillText(displayText, labelX, labelY + 5);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
