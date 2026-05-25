@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { RoutePack, RoutePoi, RoutePoiKind } from '../data/parade-2026';
+import type { MapExtent, RoutePack, RoutePoi, RoutePoiKind } from '../data/parade-2026';
 import type { BusMarker } from '../lib/bus';
 import {
   clusterFanEvents,
@@ -74,6 +74,10 @@ export function CorridorMap({
   const lastPinchDistance = useRef<number | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState<PixelPoint>({ x: 0, y: 0 });
+  // Every spatial calculation in this component projects via the *pack's*
+  // map extent — round 10's multi-pack support depends on this not falling
+  // back to the global Islington default.
+  const extent = pack.mapExtent;
   const basemapSrc = `${import.meta.env.BASE_URL}basemap/corridor.webp`;
   const fanClusters = useMemo(() => clusterFanEvents(fanEvents), [fanEvents]);
   const visibleFanClusters = useMemo(
@@ -86,12 +90,12 @@ export function CorridorMap({
       .filter((item) => item.type === 'presence' && item.source === 'local' && isActive(item))
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
     if (!event) return null;
-    const p = lngLatToPixel({ lng: event.lng, lat: event.lat });
+    const p = lngLatToPixel({ lng: event.lng, lat: event.lat }, extent);
     return {
-      left: `${(p.x / 1800) * 100}%`,
-      top: `${(p.y / 1800) * 100}%`,
+      left: `${(p.x / extent.pxWidth) * 100}%`,
+      top: `${(p.y / extent.pxHeight) * 100}%`,
     };
-  }, [fanEvents, layers]);
+  }, [fanEvents, layers, extent]);
   const hasFanBus = visibleFanClusters.some((cluster) => cluster.type === 'bus_seen');
   const summaryId = compact ? 'corridor-map-summary-compact' : 'corridor-map-summary';
   const mapSummary = useMemo(
@@ -128,35 +132,34 @@ export function CorridorMap({
   const points = useMemo(() => {
     const out: Array<{ id: string; label: string; kind: string; point: PixelPoint }> = [];
     for (const poi of visiblePois) {
-      out.push({ id: poi.id, label: poi.name, kind: poi.kind, point: lngLatToPixel(poi) });
+      out.push({ id: poi.id, label: poi.name, kind: poi.kind, point: lngLatToPixel(poi, extent) });
     }
     if (plan) {
-      out.push({ id: 'plan-primary', label: plan.primary.label, kind: 'primary', point: lngLatToPixel(plan.primary) });
-      out.push({ id: 'plan-fallback', label: plan.fallback.label, kind: 'fallback', point: lngLatToPixel(plan.fallback) });
+      out.push({ id: 'plan-primary', label: plan.primary.label, kind: 'primary', point: lngLatToPixel(plan.primary, extent) });
+      out.push({ id: 'plan-fallback', label: plan.fallback.label, kind: 'fallback', point: lngLatToPixel(plan.fallback, extent) });
     }
-    if (target) out.push({ id: 'target', label: target.label, kind: 'target', point: lngLatToPixel(target) });
+    if (target) out.push({ id: 'target', label: target.label, kind: 'target', point: lngLatToPixel(target, extent) });
     return out;
-  }, [visiblePois, plan, target]);
+  }, [visiblePois, plan, target, extent]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const { pxWidth, pxHeight } = { pxWidth: 1800, pxHeight: 1800 };
-    canvas.width = pxWidth;
-    canvas.height = pxHeight;
+    canvas.width = extent.pxWidth;
+    canvas.height = extent.pxHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    drawRoute(ctx, pack.route.coordinates);
-    if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters);
-    if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings);
-    if (gpsFix && target) drawWalkLine(ctx, gpsFix, target);
+    drawRoute(ctx, pack.route.coordinates, extent);
+    if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent);
+    if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings, extent);
+    if (gpsFix && target) drawWalkLine(ctx, gpsFix, target, extent);
     drawPois(ctx, points, scale);
-    drawScheduleMarkers(ctx, pack.scheduleEstimate);
-    if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers);
-    if (gpsFix) drawGps(ctx, gpsFix);
-  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale]);
+    drawScheduleMarkers(ctx, pack.scheduleEstimate, extent);
+    if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent);
+    if (gpsFix) drawGps(ctx, gpsFix, extent);
+  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale, extent]);
 
   const clampZoom = (value: number) => Math.max(1, Math.min(3.2, value));
 
@@ -228,9 +231,9 @@ export function CorridorMap({
           {onPoiTap ? (
             <div className="poi-hit-layer" aria-hidden>
               {visiblePois.map((poi) => {
-                const p = lngLatToPixel(poi);
-                const leftPct = (p.x / 1800) * 100;
-                const topPct = (p.y / 1800) * 100;
+                const p = lngLatToPixel(poi, extent);
+                const leftPct = (p.x / extent.pxWidth) * 100;
+                const topPct = (p.y / extent.pxHeight) * 100;
                 return (
                   <button
                     key={poi.id}
@@ -279,29 +282,29 @@ export function CorridorMap({
   );
 }
 
-function drawRoute(ctx: CanvasRenderingContext2D, route: readonly [number, number][]) {
+function drawRoute(ctx: CanvasRenderingContext2D, route: readonly [number, number][], extent: MapExtent) {
   if (route.length < 2) return;
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.lineWidth = 48;
   ctx.strokeStyle = 'rgba(245, 239, 228, 0.7)';
-  drawPolyline(ctx, route);
+  drawPolyline(ctx, route, extent);
   ctx.stroke();
   ctx.lineWidth = 34;
   ctx.strokeStyle = 'rgba(239, 1, 7, 0.22)';
-  drawPolyline(ctx, route);
+  drawPolyline(ctx, route, extent);
   ctx.stroke();
   ctx.lineWidth = 16;
   ctx.strokeStyle = '#EF0107';
-  drawPolyline(ctx, route);
+  drawPolyline(ctx, route, extent);
   ctx.stroke();
   ctx.restore();
 }
 
-function drawPolyline(ctx: CanvasRenderingContext2D, route: readonly [number, number][]) {
+function drawPolyline(ctx: CanvasRenderingContext2D, route: readonly [number, number][], extent: MapExtent) {
   route.forEach(([lng, lat], index) => {
-    const p = lngLatToPixel({ lng, lat });
+    const p = lngLatToPixel({ lng, lat }, extent);
     if (index === 0) ctx.moveTo(p.x, p.y);
     else ctx.lineTo(p.x, p.y);
   });
@@ -407,13 +410,13 @@ function mapLabelText(marker: { label: string; kind: string }): string {
   return marker.label;
 }
 
-function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[]) {
+function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[], extent: MapExtent) {
   const presence = clusters.filter((cluster) => cluster.type === 'presence').slice(0, 10);
   const reports = clusters.filter((cluster) => cluster.type !== 'presence').slice(0, 12);
 
   ctx.save();
   for (const cluster of presence) {
-    const p = offsetClusterPoint(lngLatToPixel(cluster.point), cluster.type);
+    const p = offsetClusterPoint(lngLatToPixel(cluster.point, extent), cluster.type);
     const radius = Math.min(44, 22 + cluster.count * 5);
     ctx.beginPath();
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
@@ -426,7 +429,7 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
   }
 
   for (const cluster of reports) {
-    const p = offsetClusterPoint(lngLatToPixel(cluster.point), cluster.type);
+    const p = offsetClusterPoint(lngLatToPixel(cluster.point, extent), cluster.type);
     const color = eventColor(cluster.type);
     const radius = clusterRadius(cluster);
     ctx.beginPath();
@@ -446,7 +449,7 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
   ctx.restore();
 }
 
-function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack['scheduleEstimate']) {
+function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack['scheduleEstimate'], extent: MapExtent) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -454,7 +457,7 @@ function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack[
   for (const row of schedule) {
     if (typeof row.lng !== 'number' || typeof row.lat !== 'number') continue;
     index += 1;
-    const p = lngLatToPixel({ lng: row.lng, lat: row.lat });
+    const p = lngLatToPixel({ lng: row.lng, lat: row.lat }, extent);
     // Slight up-shift so the marker sits above the route polyline.
     const y = p.y - 64;
     ctx.beginPath();
@@ -473,9 +476,9 @@ function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack[
   ctx.restore();
 }
 
-function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint) {
-  const a = lngLatToPixel(from);
-  const b = lngLatToPixel(to);
+function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint, extent: MapExtent) {
+  const a = lngLatToPixel(from, extent);
+  const b = lngLatToPixel(to, extent);
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
@@ -488,9 +491,9 @@ function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint
   ctx.restore();
 }
 
-function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix) {
-  const p = lngLatToPixel(gps);
-  const radius = metersToPixelRadius(gps, gps.accuracyM);
+function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix, extent: MapExtent) {
+  const p = lngLatToPixel(gps, extent);
+  const radius = metersToPixelRadius(gps, gps.accuracyM, extent);
   ctx.save();
   ctx.beginPath();
   ctx.arc(p.x, p.y, Math.max(10, Math.min(220, radius)), 0, Math.PI * 2);
@@ -515,7 +518,7 @@ function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix) {
   ctx.restore();
 }
 
-function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[]) {
+function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], extent: MapExtent) {
   ctx.save();
   for (const marker of markers) {
     const alpha = busMarkerAlpha(marker);
@@ -523,7 +526,7 @@ function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[]) {
       typeof marker.snapped_lng === 'number' && typeof marker.snapped_lat === 'number'
         ? { lng: marker.snapped_lng, lat: marker.snapped_lat }
         : { lng: marker.lng, lat: marker.lat };
-    const p = lngLatToPixel(point);
+    const p = lngLatToPixel(point, extent);
     ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.arc(p.x, p.y, 54, 0, Math.PI * 2);
@@ -551,11 +554,11 @@ function busMarkerAlpha(marker: Pick<BusMarker, 'created_at'>): number {
   return 1;
 }
 
-function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[]) {
+function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: MapExtent) {
   ctx.save();
   for (const row of rows.slice(0, 5)) {
     if (!row.primary) continue;
-    const p = lngLatToPixel(row.primary);
+    const p = lngLatToPixel(row.primary, extent);
     const ageSource = row.lastSeenAt ?? row.addedAt;
     const ageMin = (Date.now() - Date.parse(ageSource)) / 60_000;
     const stale = !Number.isFinite(ageMin) || ageMin > 10 || !row.lastSeenAt;
