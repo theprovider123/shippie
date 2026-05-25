@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-25T20:30:00+01:00",
-  "mapExtent": { "west": -0.420, "east": -0.385, "south": 51.645, "north": 51.668, "pxWidth": 1800, "pxHeight": 1800 },
+  "packVersion": "2026-05-25T21:30:00+01:00",
+  "mapExtent": { "west": -0.455, "east": -0.350, "south": 51.615, "north": 51.700, "pxWidth": 1800, "pxHeight": 1800 },
   "event": {
     "title": "Test Walk — Watford",
     "dateLabel": "Sunday 25 May 2026",
@@ -12,19 +12,23 @@
     {
       "label": "Local test pack",
       "url": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-parade-companion/public/packs",
-      "note": "Ad-hoc walk from Vicarage Road to Watford Junction. Friends-test only."
+      "note": "Town-wide Watford field-test pack for GPS, sync, POI, and offline map QA. Friends-test only."
     }
   ],
   "route": {
     "type": "LineString",
-    "label": "Vicarage Road → Watford Junction",
-    "note": "Stadium · High Street · Junction. ~2 km along the spine.",
+    "label": "Watford town test loop",
+    "note": "Wide test envelope across Vicarage Road, town centre, Junction, Garston, Cassiobury, Bushey, and Croxley.",
     "coordinates": [
       [-0.4019, 51.6498],
-      [-0.4015, 51.6520],
-      [-0.3995, 51.6555],
-      [-0.3960, 51.6580],
-      [-0.3935, 51.6605]
+      [-0.3960, 51.6555],
+      [-0.3935, 51.6605],
+      [-0.3810, 51.6860],
+      [-0.4135, 51.6725],
+      [-0.4285, 51.6545],
+      [-0.3865, 51.6430],
+      [-0.3960, 51.6555],
+      [-0.4019, 51.6498]
     ]
   },
   "pois": [
@@ -32,7 +36,15 @@
     { "id": "w-highst",     "kind": "landmark", "name": "High Street",           "lng": -0.3970, "lat": 51.6580 },
     { "id": "w-junction",   "kind": "station",  "name": "Watford Junction",      "lng": -0.3935, "lat": 51.6605, "note": "London Overground + National Rail." },
     { "id": "w-hs-tube",    "kind": "station",  "name": "Watford High Street",   "lng": -0.3960, "lat": 51.6555, "note": "Overground only." },
+    { "id": "w-garston",    "kind": "station",  "name": "Garston",               "lng": -0.3810, "lat": 51.6860 },
+    { "id": "w-bushey",     "kind": "station",  "name": "Bushey",                "lng": -0.3865, "lat": 51.6430 },
+    { "id": "w-croxley",    "kind": "station",  "name": "Croxley",               "lng": -0.4415, "lat": 51.6470 },
+    { "id": "w-north",      "kind": "landmark", "name": "North Watford",         "lng": -0.3890, "lat": 51.6770 },
     { "id": "w-cassiobury", "kind": "exit",     "name": "Cassiobury Park",       "lng": -0.4180, "lat": 51.6610, "note": "Large green space west of the route." },
+    { "id": "w-cassiobury-west", "kind": "landmark", "name": "Cassiobury west",  "lng": -0.4355, "lat": 51.6650 },
+    { "id": "w-intu",       "kind": "landmark", "name": "Town centre",           "lng": -0.3975, "lat": 51.6575 },
+    { "id": "w-croxley-green", "kind": "landmark", "name": "Croxley Green",      "lng": -0.4410, "lat": 51.6505 },
+    { "id": "w-bushey-town", "kind": "landmark", "name": "Bushey area",          "lng": -0.3655, "lat": 51.6450 },
     { "id": "w-atria",      "kind": "food",     "name": "Atria shopping",        "lng": -0.3965, "lat": 51.6575 },
     { "id": "w-wc",         "kind": "toilet",   "name": "High Street WC",        "lng": -0.3962, "lat": 51.6582 },
     { "id": "w-atm",        "kind": "atm",      "name": "High Street ATMs",      "lng": -0.3968, "lat": 51.6577 }
@@ -41,7 +53,10 @@
   "transport": {
     "stations": [
       { "name": "Watford Junction",     "status": "open-check", "note": "Main interchange." },
-      { "name": "Watford High Street",  "status": "open-check", "note": "Overground only; smaller." }
+      { "name": "Watford High Street",  "status": "open-check", "note": "Overground only; smaller." },
+      { "name": "Garston",              "status": "open-check", "note": "North-side rail anchor." },
+      { "name": "Bushey",               "status": "open-check", "note": "South-side rail anchor." },
+      { "name": "Croxley",              "status": "open-check", "note": "West-side Metropolitan line anchor." }
     ],
     "stepFreeRoutesOut": [
       { "label": "South via High Street", "via": "Lower High Street toward Bushey", "note": "Quieter alternative." }
@@ -49,15 +64,19 @@
   },
   "meetingLandmarks": [
     { "id": "w-vicarage", "label": "Stadium area", "lng": -0.4019, "lat": 51.6498 },
-    { "id": "w-junction", "label": "Watford Junction", "lng": -0.3935, "lat": 51.6605 }
+    { "id": "w-junction", "label": "Watford Junction", "lng": -0.3935, "lat": 51.6605 },
+    { "id": "w-cassiobury", "label": "Cassiobury Park", "lng": -0.4180, "lat": 51.6610 },
+    { "id": "w-garston", "label": "Garston", "lng": -0.3810, "lat": 51.6860 }
   ],
   "safety": [
     { "heading": "Test pack only", "body": "This is a local dev pack for friends to test offline UX. Not associated with any event." },
     { "heading": "If signal dies", "body": "Airplane mode is fine; keep Location on. The GPS dot still works without internet." }
   ],
   "scheduleEstimate": [
-    { "label": "Start at stadium", "time": "20:00", "note": "test start", "lng": -0.4019, "lat": 51.6498 },
-    { "label": "Town centre",      "time": "20:20", "note": "halfway",    "lng": -0.3970, "lat": 51.6580 },
-    { "label": "Watford Junction", "time": "20:35", "note": "test end",   "lng": -0.3935, "lat": 51.6605 }
+    { "label": "Stadium",          "time": "20:00", "note": "test start", "lng": -0.4019, "lat": 51.6498 },
+    { "label": "Junction",         "time": "20:20", "note": "north/east", "lng": -0.3935, "lat": 51.6605 },
+    { "label": "Garston",          "time": "20:40", "note": "north test", "lng": -0.3810, "lat": 51.6860 },
+    { "label": "Cassiobury",       "time": "21:00", "note": "west test",  "lng": -0.4180, "lat": 51.6610 },
+    { "label": "Bushey",           "time": "21:20", "note": "south test", "lng": -0.3865, "lat": 51.6430 }
   ]
 }

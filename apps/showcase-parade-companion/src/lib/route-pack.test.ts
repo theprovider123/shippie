@@ -233,11 +233,11 @@ describe('route pack — multi-pack registry (round 10)', () => {
   test('loadBakedRoutePack returns the requested pack', () => {
     const ams = loadBakedRoutePack('amsterdam-vondelpark');
     expect(ams.event.title).toMatch(/amsterdam/i);
-    expect(ams.mapExtent.west).toBeCloseTo(4.860, 3);
+    expect(ams.mapExtent.west).toBeCloseTo(4.730, 3);
 
     const wat = loadBakedRoutePack('watford-vicarage');
     expect(wat.event.title).toMatch(/watford/i);
-    expect(wat.mapExtent.west).toBeCloseTo(-0.420, 3);
+    expect(wat.mapExtent.west).toBeCloseTo(-0.455, 3);
   });
 
   test('every baked pack validates and declares its own mapExtent', () => {

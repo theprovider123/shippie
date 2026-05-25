@@ -10,15 +10,15 @@
     },
     {
       "id": "amsterdam-vondelpark",
-      "label": "Amsterdam · Vondelpark walk",
+      "label": "Amsterdam · city field test",
       "url": "/run/parade-companion/packs/amsterdam-vondelpark.json",
-      "description": "Dev test pack — 2.5 km loop through Vondelpark."
+      "description": "Dev test pack — wider Amsterdam envelope for GPS and offline sync testing."
     },
     {
       "id": "watford-vicarage",
-      "label": "Watford · Vicarage Road walk",
+      "label": "Watford · town field test",
       "url": "/run/parade-companion/packs/watford-vicarage.json",
-      "description": "Dev test pack — stadium to Watford Junction."
+      "description": "Dev test pack — wider Watford envelope for GPS and offline sync testing."
     }
   ]
 }

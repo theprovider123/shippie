@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-25T20:30:00+02:00",
-  "mapExtent": { "west": 4.860, "east": 4.890, "south": 52.353, "north": 52.366, "pxWidth": 1800, "pxHeight": 1800 },
+  "packVersion": "2026-05-25T22:30:00+02:00",
+  "mapExtent": { "west": 4.730, "east": 5.080, "south": 52.290, "north": 52.430, "pxWidth": 1800, "pxHeight": 1800 },
   "event": {
     "title": "Test Walk — Amsterdam",
     "dateLabel": "Sunday 25 May 2026",
@@ -12,22 +12,39 @@
     {
       "label": "Local test pack",
       "url": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-parade-companion/public/packs",
-      "note": "Ad-hoc walk through Vondelpark for offline UX testing. Not an event."
+      "note": "City-wide Amsterdam field-test pack for GPS, sync, POI, and offline map QA. Not an event."
     }
   ],
   "route": {
     "type": "LineString",
-    "label": "Vondelpark loop",
-    "note": "East gate → west tip → south path → back. Roughly 2.5 km.",
+    "label": "Amsterdam city test loop",
+    "note": "Wide test envelope across Noord, Centraal, Vondelpark, De Pijp, Amstel, Oost, and IJburg.",
     "coordinates": [
-      [4.8730, 52.3590],
-      [4.8680, 52.3580],
-      [4.8640, 52.3565],
-      [4.8680, 52.3555],
-      [4.8730, 52.3590]
+      [4.9020, 52.3790],
+      [4.8952, 52.3738],
+      [4.8728, 52.3590],
+      [4.8909, 52.3564],
+      [4.9100, 52.3460],
+      [4.9220, 52.3565],
+      [4.9200, 52.3635],
+      [4.9400, 52.3650],
+      [5.0000, 52.3555],
+      [4.9300, 52.3900],
+      [4.9020, 52.3790]
     ]
   },
   "pois": [
+    { "id": "ams-centraal", "kind": "station",  "name": "Amsterdam Centraal",       "lng": 4.9003, "lat": 52.3791, "note": "Main rail, metro, tram and ferry hub." },
+    { "id": "ams-sloterdijk", "kind": "station", "name": "Amsterdam Sloterdijk",     "lng": 4.8372, "lat": 52.3886 },
+    { "id": "ams-zuid",     "kind": "station",  "name": "Amsterdam Zuid",           "lng": 4.8728, "lat": 52.3389 },
+    { "id": "ams-amstel",   "kind": "station",  "name": "Amsterdam Amstel",         "lng": 4.9175, "lat": 52.3467 },
+    { "id": "ams-bijlmer",  "kind": "station",  "name": "Bijlmer ArenA",            "lng": 4.9479, "lat": 52.3122 },
+    { "id": "ams-noord",    "kind": "station",  "name": "Noord metro",              "lng": 4.9305, "lat": 52.4020 },
+    { "id": "ams-dam",      "kind": "landmark", "name": "Dam Square",               "lng": 4.8925, "lat": 52.3731 },
+    { "id": "ams-museum",   "kind": "landmark", "name": "Museumplein",              "lng": 4.8810, "lat": 52.3584 },
+    { "id": "ams-ooster",   "kind": "landmark", "name": "Oosterpark",               "lng": 4.9201, "lat": 52.3600 },
+    { "id": "ams-ndsm",     "kind": "landmark", "name": "NDSM",                     "lng": 4.8930, "lat": 52.4000 },
+    { "id": "ams-ijburg",   "kind": "landmark", "name": "IJburg",                   "lng": 5.0000, "lat": 52.3555 },
     { "id": "v-east",   "kind": "landmark", "name": "Park east gate",     "lng": 4.8731, "lat": 52.3590, "note": "Stadhouderskade entry; closest to Leidseplein." },
     { "id": "v-stage",  "kind": "landmark", "name": "Open-air theatre",   "lng": 4.8688, "lat": 52.3578, "note": "Midway landmark." },
     { "id": "v-cafe",   "kind": "food",     "name": "Vondeltuin café",    "lng": 4.8645, "lat": 52.3568 },
@@ -39,24 +56,29 @@
   "closures": [],
   "transport": {
     "stations": [
-      { "name": "Tram 2/12 · Hobbemastraat", "status": "open-check", "note": "Closest stop to east gate." },
-      { "name": "Amstelveenseweg",            "status": "open-check", "note": "South-west of the park." }
+      { "name": "Amsterdam Centraal", "status": "open-check", "note": "Main interchange for rail, metro, tram and ferries." },
+      { "name": "Amsterdam Zuid",     "status": "open-check", "note": "South-side rail and metro hub." },
+      { "name": "Amsterdam Sloterdijk", "status": "open-check", "note": "West-side rail and metro hub." },
+      { "name": "Noord metro",        "status": "open-check", "note": "North-side metro anchor." }
     ],
     "stepFreeRoutesOut": [
       { "label": "East exit toward city", "via": "Stadhouderskade", "note": "Pavement is wide; trams every few minutes." }
     ]
   },
   "meetingLandmarks": [
-    { "id": "v-east", "label": "East gate", "lng": 4.8731, "lat": 52.3590 },
-    { "id": "v-cafe", "label": "Vondeltuin café", "lng": 4.8645, "lat": 52.3568 }
+    { "id": "ams-centraal", "label": "Centraal", "lng": 4.9003, "lat": 52.3791 },
+    { "id": "ams-museum", "label": "Museumplein", "lng": 4.8810, "lat": 52.3584 },
+    { "id": "v-cafe", "label": "Vondeltuin café", "lng": 4.8645, "lat": 52.3568 },
+    { "id": "ams-noord", "label": "Noord metro", "lng": 4.9305, "lat": 52.4020 }
   ],
   "safety": [
     { "heading": "Test pack only", "body": "This is a local dev pack for offline UX testing. Not associated with any event." },
     { "heading": "If signal dies", "body": "Airplane mode is fine; keep Location on. The GPS dot still works without internet." }
   ],
   "scheduleEstimate": [
-    { "label": "Start at east gate", "time": "20:00", "note": "test start", "lng": 4.8730, "lat": 52.3590 },
-    { "label": "Halfway",            "time": "20:15", "note": "midpoint",   "lng": 4.8680, "lat": 52.3580 },
-    { "label": "Loop back",          "time": "20:30", "note": "test end",   "lng": 4.8730, "lat": 52.3590 }
+    { "label": "Centraal",      "time": "20:00", "note": "test start", "lng": 4.9020, "lat": 52.3790 },
+    { "label": "Vondelpark",    "time": "20:20", "note": "west test",  "lng": 4.8728, "lat": 52.3590 },
+    { "label": "Amstel / Oost", "time": "20:40", "note": "east test",  "lng": 4.9220, "lat": 52.3565 },
+    { "label": "Noord",         "time": "21:00", "note": "north test", "lng": 4.9300, "lat": 52.3900 }
   ]
 }
