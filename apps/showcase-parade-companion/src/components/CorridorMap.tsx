@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MapExtent, RoutePack, RoutePoi, RoutePoiKind } from '../data/parade-2026';
+import { CORRIDOR_EXTENT, type MapExtent, type RoutePack, type RoutePoi, type RoutePoiKind } from '../data/parade-2026';
 import type { BusMarker } from '../lib/bus';
 import {
   clusterFanEvents,
@@ -79,6 +79,7 @@ export function CorridorMap({
   // back to the global Islington default.
   const extent = pack.mapExtent;
   const basemapSrc = `${import.meta.env.BASE_URL}basemap/corridor.webp`;
+  const useRasterBasemap = shouldUseRasterBasemap(pack);
   const fanClusters = useMemo(() => clusterFanEvents(fanEvents), [fanEvents]);
   const visibleFanClusters = useMemo(
     () => fanClusters.filter((cluster) => layerAllowsCluster(cluster.type, layers)),
@@ -220,7 +221,15 @@ export function CorridorMap({
           className="corridor-map__world"
           style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
         >
-          <img src={basemapSrc} alt="Offline map of the central Islington parade corridor" draggable={false} />
+          {useRasterBasemap ? (
+            <img src={basemapSrc} alt="Offline map of the central Islington parade corridor" draggable={false} />
+          ) : (
+            <div className="corridor-map__schematic-base" aria-hidden="true">
+              <span className="corridor-map__schematic-kicker">Test pack</span>
+              <strong>{pack.event.title.replace(/^Test Walk\s+—\s+/i, '')}</strong>
+              <span>{pack.route.label}</span>
+            </div>
+          )}
           <canvas ref={canvasRef} aria-hidden />
           {localPresencePulse ? (
             <div className="my-presence-pulse" style={localPresencePulse} aria-hidden="true">
@@ -277,8 +286,22 @@ export function CorridorMap({
           </button>
         ) : null}
       </div>
-      <p className="map-credit">Offline schematic. Verify official route before travel.</p>
+      <p className="map-credit">
+        {useRasterBasemap ? 'Offline schematic. Verify official route before travel.' : `${pack.event.title} · offline test map`}
+      </p>
     </div>
+  );
+}
+
+function shouldUseRasterBasemap(pack: RoutePack): boolean {
+  const epsilon = 0.000_001;
+  const extent = pack.mapExtent;
+  return (
+    pack.event.title.toLowerCase().includes('islington') &&
+    Math.abs(extent.west - CORRIDOR_EXTENT.west) < epsilon &&
+    Math.abs(extent.east - CORRIDOR_EXTENT.east) < epsilon &&
+    Math.abs(extent.south - CORRIDOR_EXTENT.south) < epsilon &&
+    Math.abs(extent.north - CORRIDOR_EXTENT.north) < epsilon
   );
 }
 

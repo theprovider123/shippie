@@ -639,7 +639,7 @@ textarea { resize: vertical; min-height: 64px; }
   touch-action: none;
 }
 .corridor-map__world { position: absolute; inset: 0; transform-origin: 0 0; }
-.corridor-map img, .corridor-map canvas {
+.corridor-map img, .corridor-map canvas, .corridor-map__schematic-base {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -647,6 +647,55 @@ textarea { resize: vertical; min-height: 64px; }
   user-select: none;
 }
 .corridor-map img { object-fit: cover; }
+.corridor-map__schematic-base {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 24px;
+  background:
+    linear-gradient(rgba(94, 123, 92, .10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 123, 92, .10) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(237, 187, 74, .16), transparent 38%),
+    var(--paper-2);
+  background-size: 112px 112px, 112px 112px, 100% 100%, 100% 100%;
+  color: var(--ink);
+  pointer-events: none;
+}
+.corridor-map__schematic-base::after {
+  content: '';
+  position: absolute;
+  inset: 42px;
+  border: 1px solid rgba(94, 123, 92, .34);
+}
+.corridor-map__schematic-base strong,
+.corridor-map__schematic-base span {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  max-width: min(70%, 620px);
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  background: rgba(245, 239, 228, .86);
+}
+.corridor-map__schematic-base strong {
+  font-family: var(--serif);
+  font-size: clamp(32px, 5vw, 72px);
+  font-style: italic;
+  font-weight: 500;
+  line-height: .95;
+}
+.corridor-map__schematic-base span {
+  font-family: var(--mono);
+  font-size: clamp(14px, 1.9vw, 22px);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.corridor-map__schematic-base .corridor-map__schematic-kicker {
+  color: var(--red);
+  letter-spacing: .14em;
+}
 .my-presence-pulse {
   position: absolute;
   z-index: 4;

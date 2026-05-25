@@ -576,6 +576,20 @@ export function App() {
     const ids = ['arsenal-islington', 'amsterdam-vondelpark', 'watford-vicarage'];
     const current = resolvePackId();
     const nextId = ids[(ids.indexOf(current) + 1) % ids.length] ?? DEFAULT_PACK_ID;
+    setMenuOpen(false);
+    try {
+      const topWindow = window.parent;
+      if (topWindow !== window) {
+        const topUrl = new URL(topWindow.location.href);
+        if (topUrl.pathname.includes('/run/parade-companion')) {
+          topUrl.searchParams.set('pack', nextId);
+          topWindow.location.assign(topUrl.toString());
+          return;
+        }
+      }
+    } catch {
+      // Fall through to iframe / standalone navigation below.
+    }
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('pack', nextId);
