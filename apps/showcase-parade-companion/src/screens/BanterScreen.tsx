@@ -4,10 +4,14 @@ import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import {
   answerTrivia,
   banterFromPack,
+  debatePollId,
+  debatePollsFromTrivia,
   listBanterVotes,
+  listTriviaAttempts,
   pollOptionLabel,
   selectedOptionId,
   selectedTriviaAttempt,
+  triviaAttemptsAsBanterVotes,
   voteInPoll,
 } from '../lib/banter';
 import type { RouteBanterPoll, RouteBanterTrivia } from '../data/parade-2026';
@@ -44,10 +48,12 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
 
   const moodPoll = useMemo(() => banter.polls.find((poll) => poll.id === 'parade-mood') ?? null, [banter.polls]);
   const paradePolls = useMemo(() => banter.polls.filter((poll) => poll.id !== 'parade-mood'), [banter.polls]);
+  const debatePolls = useMemo(() => debatePollsFromTrivia(banter.trivia), [banter.trivia]);
+  const pulsePolls = useMemo(() => [...banter.polls, ...debatePolls], [banter.polls, debatePolls]);
   const aggregateByPoll = useMemo(() => new Map(pollAggregates.map((aggregate) => [aggregate.pollId, aggregate])), [pollAggregates]);
 
   useEffect(() => {
-    if (banter.polls.length === 0) return undefined;
+    if (pulsePolls.length === 0) return undefined;
     let cancelled = false;
 
     const sync = async () => {
@@ -57,16 +63,16 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
       }
       if (!cancelled) setPulseState('syncing');
       try {
-        const votes = listBanterVotes();
+        const votes = [...listBanterVotes(), ...triviaAttemptsAsBanterVotes(listTriviaAttempts())];
         const signature = votes
           .map((vote) => `${vote.pollId}:${vote.optionId}:${vote.updatedAt}`)
           .sort()
           .join('|');
         if (signature && signature !== lastPublishedVotes.current) {
-          const published = await publishBanterPulse(votes, banter.polls);
+          const published = await publishBanterPulse(votes, pulsePolls);
           if (published > 0) lastPublishedVotes.current = signature;
         }
-        const next = await pullBanterPulse(banter.polls);
+        const next = await pullBanterPulse(pulsePolls);
         if (cancelled) return;
         setPollAggregates(next);
         setLastPulseAt(new Date().toISOString());
@@ -84,7 +90,7 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
       window.clearInterval(interval);
       window.removeEventListener('online', sync);
     };
-  }, [banter.polls, voteVersion]);
+  }, [pulsePolls, voteVersion, triviaVersion]);
 
   const onChantToggle = (id: string) => {
     setOpenChantId((current) => {
@@ -119,11 +125,16 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
   };
 
   const onTriviaAnswer = (trivia: RouteBanterTrivia, optionId: string) => {
-    const attempt = answerTrivia(trivia, optionId);
+    const attempt = answerTrivia(trivia, optionId, {
+      sourceId: getOrCreateSourceId(),
+      displayName,
+      supporterTag,
+    });
     if (!attempt) return;
     setTriviaVersion((current) => current + 1);
     onTrack('parade_banter_trivia_answered', {
       trivia_id: trivia.id,
+      debate_poll_id: debatePollId(trivia.id),
       option_id: optionId,
       correct: attempt.correct,
     });
@@ -246,7 +257,60 @@ export function BanterScreen({ pack, displayName, supporterTag, onTrack }: Bante
           <p className="poll-footnote">Trivia cards arrive with the route pack.</p>
         )}
       </div>
+
+      <WrapUpCard
+        polls={banter.polls}
+        trivia={banter.trivia ?? []}
+        aggregates={pollAggregates}
+        localVotes={listBanterVotes()}
+        localAttempts={listTriviaAttempts()}
+      />
     </section>
+  );
+}
+
+function WrapUpCard({
+  polls,
+  trivia,
+  aggregates,
+  localVotes,
+  localAttempts,
+}: {
+  polls: RouteBanterPoll[];
+  trivia: RouteBanterTrivia[];
+  aggregates: BanterPollAggregate[];
+  localVotes: ReturnType<typeof listBanterVotes>;
+  localAttempts: ReturnType<typeof listTriviaAttempts>;
+}) {
+  const byPoll = new Map(aggregates.map((aggregate) => [aggregate.pollId, aggregate]));
+  const headlinePolls = ['parade-mood', 'player-of-season', 'moment-of-season']
+    .map((pollId) => {
+      const poll = polls.find((item) => item.id === pollId);
+      if (!poll) return null;
+      return topLineForPoll(poll, byPoll.get(poll.id) ?? null, localVotes.find((vote) => vote.pollId === poll.id)?.optionId ?? null);
+    })
+    .filter((item): item is string => Boolean(item));
+  const debateLine = topDebateLine(trivia, byPoll, localAttempts);
+  const syncedTotal = aggregates.reduce((sum, aggregate) => sum + Math.max(0, aggregate.total), 0);
+  const localTotal = localVotes.length + localAttempts.length;
+  const wrapLines = [...headlinePolls, debateLine].filter((line): line is string => Boolean(line));
+  return (
+    <div className="panel banter-card banter-card--wrap">
+      <div className="banter-card__head">
+        <h2>COYG wrap-up</h2>
+        <span>{syncedTotal > 0 ? `${syncedTotal} synced` : `${localTotal} saved`}</span>
+      </div>
+      <p className="wrap-copy">
+        This is building the positive end-of-parade recap: what fans picked, what carried the day, and the season moments everyone argued about.
+      </p>
+      <div className="wrap-lines" aria-label="Wrap-up preview">
+        {wrapLines.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        {wrapLines.length === 0 ? <p>Vote once in Banter and this turns into your parade story.</p> : null}
+      </div>
+      <p className="poll-footnote">Anonymous fixed choices only. At the end we can publish the good stuff: top picks, crowd mood, and COYG energy.</p>
+    </div>
   );
 }
 
@@ -398,6 +462,61 @@ function optionCount(poll: RouteBanterPoll, aggregate: BanterPollAggregate, opti
     aggregate.options.other ?? 0,
     ...(poll.otherOptions ?? []).map((option) => aggregate.options[option.id] ?? 0),
   ].reduce((sum, count) => sum + count, 0);
+}
+
+function topLineForPoll(poll: RouteBanterPoll, aggregate: BanterPollAggregate | null, localOptionId: string | null): string | null {
+  const prefix = poll.id === 'parade-mood'
+    ? 'Crowd mood'
+    : poll.id === 'player-of-season'
+      ? 'Player vote'
+      : poll.id === 'moment-of-season'
+        ? 'Moment vote'
+        : poll.question;
+  const top = topOption(poll, aggregate);
+  if (top) {
+    const percent = aggregate && aggregate.total > 0 ? Math.round((top.count / aggregate.total) * 100) : 0;
+    return `${prefix}: ${top.label} leads (${percent}% · ${top.count})`;
+  }
+  const localLabel = pollOptionLabel(poll, localOptionId);
+  return localLabel ? `${prefix}: your pick is ${localLabel}` : null;
+}
+
+function topDebateLine(
+  trivia: readonly RouteBanterTrivia[],
+  aggregateByPoll: Map<string, BanterPollAggregate>,
+  attempts: readonly ReturnType<typeof listTriviaAttempts>[number][],
+): string | null {
+  let best: { question: string; label: string; count: number; total: number } | null = null;
+  for (const card of trivia) {
+    const poll = {
+      id: debatePollId(card.id),
+      question: card.question,
+      options: card.options.map((option) => ({ id: option.id, label: option.label })),
+    };
+    const aggregate = aggregateByPoll.get(poll.id) ?? null;
+    const top = topOption(poll, aggregate);
+    if (top && (!best || top.count > best.count)) {
+      best = { question: card.question, label: top.label, count: top.count, total: aggregate?.total ?? top.count };
+    }
+  }
+  if (best) {
+    const percent = best.total > 0 ? Math.round((best.count / best.total) * 100) : 0;
+    return `Season debate: ${best.label} leads "${best.question}" (${percent}% · ${best.count})`;
+  }
+  const latest = [...attempts].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
+  if (!latest) return null;
+  const card = trivia.find((item) => item.id === latest.triviaId);
+  const label = card?.options.find((option) => option.id === latest.optionId)?.label;
+  return card && label ? `Season debate: your pick is ${label} for "${card.question}"` : null;
+}
+
+function topOption(poll: RouteBanterPoll, aggregate: BanterPollAggregate | null): { id: string; label: string; count: number } | null {
+  if (!aggregate || aggregate.total <= 0) return null;
+  const options = [...poll.options, ...(poll.otherOptions ?? [])]
+    .map((option) => ({ id: option.id, label: option.label, count: aggregate.options[option.id] ?? 0 }))
+    .filter((option) => option.count > 0)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  return options[0] ?? null;
 }
 
 function pulseLabel(state: BanterPulseState, lastPulseAt: string | null): string {

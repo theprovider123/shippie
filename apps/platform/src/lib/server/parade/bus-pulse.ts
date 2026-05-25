@@ -9,7 +9,7 @@ const MAX_RETURNED_FAN_SIGNALS = 80;
 const FAN_SIGNAL_WINDOW_MS = 4 * 60 * 60_000;
 const BANTER_SHARD_COUNT = 16;
 const BANTER_VOTE_WINDOW_MS = 12 * 60 * 60_000;
-const MAX_BANTER_BATCH = 8;
+const MAX_BANTER_BATCH = 16;
 const CORRIDOR_EXTENT = {
   west: -0.125,
   east: -0.085,
@@ -50,6 +50,12 @@ const BANTER_ALLOWED_OPTIONS: Record<string, readonly string[]> = {
   ],
   'moment-of-season': ['title-confirmed', 'derby-day', 'late-winner', 'clean-sheet-run', 'west-ham-var', 'other'],
   'after-parade': ['pub', 'park', 'food', 'home', 'deciding'],
+  'debate-minutes-monster': ['rice', 'saka', 'odegaard', 'saliba', 'gabriel', 'raya'],
+  'debate-replay-moment': ['dowman-everton', 'eze-goal', 'city-bournemouth', 'west-ham-var', 'derby-day', 'title-whistle'],
+  'debate-clean-sheet-core': ['raya', 'saliba', 'gabriel', 'timber', 'white', 'rice'],
+  'debate-set-piece-menace': ['gabriel', 'saliba', 'white', 'rice', 'saka', 'timber'],
+  'debate-captain-creator': ['odegaard', 'rice', 'saka', 'eze', 'timber', 'havertz'],
+  'debate-academy-spark': ['nwaneri', 'dowman', 'lewis-skelly', 'skelly-nwaneri', 'dowman-nwaneri', 'all-of-them'],
 };
 
 export const BUS_PULSE_EVENT_ID = EVENT_ID;

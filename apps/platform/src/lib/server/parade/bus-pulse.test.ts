@@ -120,12 +120,18 @@ describe('Banter Pulse packet validation', () => {
             sourceId: 'fan_abc123',
             updatedAt: '2026-05-31T13:44:10.000Z',
           },
+          {
+            pollId: 'debate-replay-moment',
+            optionId: 'dowman-everton',
+            sourceId: 'fan_abc123',
+            updatedAt: '2026-05-31T13:44:20.000Z',
+          },
         ],
       },
       now,
     );
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.packets).toHaveLength(2);
+    if (result.ok) expect(result.packets).toHaveLength(3);
   });
 
   test('rejects free text and unknown options', () => {

@@ -3,11 +3,14 @@ import type { RouteBanterPoll } from '../data/parade-2026';
 import {
   answerTrivia,
   banterFromPack,
+  debatePollId,
+  debatePollsFromTrivia,
   listBanterVotes,
   listTriviaAttempts,
   pollOptionLabel,
   selectedOptionId,
   selectedTriviaAttempt,
+  triviaAttemptsAsBanterVotes,
   voteInPoll,
 } from './banter';
 
@@ -98,8 +101,22 @@ describe('banter', () => {
   });
 
   test('answerTrivia treats debate cards as saved picks, not right or wrong', () => {
-    expect(answerTrivia(debateTrivia, 'rice')?.correct).toBeNull();
+    expect(answerTrivia(debateTrivia, 'rice', { sourceId: 'fan_123', displayName: 'Dev', supporterTag: 'C0YG' })?.correct).toBeNull();
     expect(selectedTriviaAttempt('workload')?.optionId).toBe('rice');
+    expect(selectedTriviaAttempt('workload')?.sourceId).toBe('fan_123');
+  });
+
+  test('debate attempts can be exported as fixed-choice pulse votes', () => {
+    const attempt = answerTrivia(debateTrivia, 'odegaard', { sourceId: 'fan_123', displayName: 'Dev', supporterTag: 'C0YG' });
+    expect(attempt).not.toBeNull();
+    expect(debatePollId('workload')).toBe('debate-workload');
+    expect(debatePollsFromTrivia([debateTrivia])[0]).toMatchObject({
+      id: 'debate-workload',
+      options: [{ id: 'rice', label: 'Rice' }, { id: 'odegaard', label: 'Odegaard' }],
+    });
+    expect(triviaAttemptsAsBanterVotes(listTriviaAttempts())).toMatchObject([
+      { pollId: 'debate-workload', optionId: 'odegaard', sourceId: 'fan_123' },
+    ]);
   });
 
   test('answerTrivia rejects unknown options', () => {

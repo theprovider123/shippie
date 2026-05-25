@@ -3,7 +3,7 @@ import type { BanterVote } from './banter';
 
 export const BANTER_PULSE_ENDPOINT = '/__shippie/parade/banter-pulse';
 const FETCH_TIMEOUT_MS = 5_000;
-const MAX_PUBLISH_VOTES = 8;
+const MAX_PUBLISH_VOTES = 16;
 
 export interface BanterPulseVotePacket {
   pollId: string;

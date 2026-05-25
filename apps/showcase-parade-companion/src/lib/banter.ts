@@ -23,6 +23,9 @@ export interface BanterTriviaAttempt {
   optionId: string;
   correct: boolean | null;
   updatedAt: string;
+  sourceId?: string;
+  displayName?: string;
+  supporterTag?: string;
 }
 
 export const FALLBACK_BANTER: RouteBanter = {
@@ -69,6 +72,38 @@ export function pollAllowsOption(poll: RouteBanterPoll, optionId: string): boole
   return [...poll.options, ...(poll.otherOptions ?? [])].some((option) => option.id === optionId);
 }
 
+export function debatePollId(triviaId: string): string {
+  const clean = triviaId
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+  return `debate-${clean || 'card'}`;
+}
+
+export function debatePollsFromTrivia(trivia: readonly RouteBanterTrivia[] | undefined): RouteBanterPoll[] {
+  return (trivia ?? []).map((card) => ({
+    id: debatePollId(card.id),
+    question: card.question,
+    options: card.options.map((option) => ({ id: option.id, label: option.label })),
+  }));
+}
+
+export function triviaAttemptsAsBanterVotes(attempts: readonly BanterTriviaAttempt[]): BanterVote[] {
+  return attempts.flatMap((attempt) => {
+    if (!attempt.sourceId) return [];
+    return [{
+      pollId: debatePollId(attempt.triviaId),
+      optionId: attempt.optionId,
+      updatedAt: attempt.updatedAt,
+      sourceId: attempt.sourceId,
+      displayName: attempt.displayName,
+      supporterTag: attempt.supporterTag,
+    }];
+  });
+}
+
 // pollOptionCount + totalPollVotes were removed in round 8 — they returned
 // 1/0 based purely on the local vote, so the UI bars used to read as
 // "100% for your pick", which lied to the user. Until a relay aggregator
@@ -83,13 +118,16 @@ export function selectedTriviaAttempt(triviaId: string): BanterTriviaAttempt | n
   return listTriviaAttempts().find((attempt) => attempt.triviaId === triviaId) ?? null;
 }
 
-export function answerTrivia(trivia: RouteBanterTrivia, optionId: string): BanterTriviaAttempt | null {
+export function answerTrivia(trivia: RouteBanterTrivia, optionId: string, voter?: BanterVoter): BanterTriviaAttempt | null {
   if (!trivia.options.some((option) => option.id === optionId)) return null;
   const attempt: BanterTriviaAttempt = {
     triviaId: trivia.id,
     optionId,
     correct: trivia.answerId ? optionId === trivia.answerId : null,
     updatedAt: new Date().toISOString(),
+    sourceId: voter?.sourceId,
+    displayName: voter?.displayName,
+    supporterTag: voter?.supporterTag,
   };
   const attempts = listTriviaAttempts().filter((item) => item.triviaId !== trivia.id);
   writeJson(TRIVIA_KEY, [attempt, ...attempts]);
