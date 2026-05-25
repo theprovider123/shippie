@@ -80,18 +80,35 @@ export function ReadinessChip({ pack, onShowStatus, onReadinessChange, visible =
 
   const copy = readinessCopy(readiness);
   if (!visible) return null;
+  const stale = isPackStale(pack.packVersion);
 
   return (
     <button
       type="button"
-      className={`readiness-chip ${readiness}`}
+      className={`readiness-chip ${readiness}${stale ? ' is-stale' : ''}`}
       onClick={onShowStatus}
       aria-live="polite"
     >
-      <strong>{copy.title}</strong>
-      <span>{copy.detail} · pack {packFreshnessLabel(pack)}</span>
+      <strong>{stale ? 'Pack stale' : copy.title}</strong>
+      <span>
+        {stale
+          ? `Open on Wi-Fi for the latest route · pack ${packFreshnessLabel(pack)}`
+          : `${copy.detail} · pack ${packFreshnessLabel(pack)}`}
+      </span>
     </button>
   );
+}
+
+/**
+ * Pack is "stale" once the route pack timestamp is more than 14 days old.
+ * The user should open on Wi-Fi before travelling so a live pack sync picks
+ * up any council route changes.
+ */
+function isPackStale(packVersion: string, now = Date.now()): boolean {
+  const ts = Date.parse(packVersion);
+  if (!Number.isFinite(ts)) return false;
+  const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+  return now - ts > fourteenDaysMs;
 }
 
 function readinessCopy(readiness: Readiness): { title: string; detail: string } {

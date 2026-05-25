@@ -8,7 +8,7 @@ import {
 
 interface BusPulseNamespace {
   idFromName(name: string): { toString(): string };
-  get(id: { toString(): string }): { fetch: (request: Request) => Promise<Response> };
+  get(id: { toString(): string }): { fetch: (input: string, init?: RequestInit) => Promise<Response> };
 }
 
 interface BusPulseEnv {
@@ -30,8 +30,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
   for (const segmentId of segments) {
     const id = env.BUS_PULSE.idFromName(busPulseObjectName(segmentId));
     const stub = env.BUS_PULSE.get(id);
-    const res = await stub.fetch(new Request(`https://bus-pulse.local/?segment=${encodeURIComponent(segmentId)}`));
-    if (!res.ok) continue;
+    const res = await stub
+      .fetch(`https://bus-pulse.local/?segment=${encodeURIComponent(segmentId)}`)
+      .catch(() => null);
+    if (!res || !res.ok) continue;
     const body = (await res.json()) as { aggregate?: BusPulseAggregate };
     if (body.aggregate) aggregates.push(body.aggregate);
   }
@@ -60,17 +62,22 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
   const id = env.BUS_PULSE.idFromName(busPulseObjectName(parsed.packet.segmentId));
   const stub = env.BUS_PULSE.get(id);
-  return await stub.fetch(
-    new Request(`https://bus-pulse.local/?segment=${encodeURIComponent(parsed.packet.segmentId)}`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'cf-connecting-ip': request.headers.get('cf-connecting-ip') ?? '',
-        'x-forwarded-for': request.headers.get('x-forwarded-for') ?? '',
+  try {
+    return await stub.fetch(
+      `https://bus-pulse.local/?segment=${encodeURIComponent(parsed.packet.segmentId)}`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'cf-connecting-ip': request.headers.get('cf-connecting-ip') ?? '',
+          'x-forwarded-for': request.headers.get('x-forwarded-for') ?? '',
+        },
+        body: JSON.stringify(raw),
       },
-      body: JSON.stringify(raw),
-    }),
-  );
+    );
+  } catch {
+    return Response.json({ error: 'bus_pulse_forward_failed' }, { status: 503 });
+  }
 };
 
 function parseSegments(raw: string | null): string[] {

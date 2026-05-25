@@ -80,6 +80,7 @@ describe('route pack', () => {
     const pack = loadRoutePack();
     expect(pack.banter?.chants).toHaveLength(20);
     expect(pack.banter?.chants.every((chant) => chant.detail.length > 0 && !chant.detail.includes('Start:'))).toBe(true);
+    expect(pack.banter?.chants.every((chant) => chant.detail.length <= 72)).toBe(true);
     const playerPoll = pack.banter?.polls.find((poll) => poll.id === 'player-of-season');
     expect(playerPoll?.options.some((option) => option.id === 'raya')).toBe(true);
     expect(playerPoll?.options.some((option) => option.id === 'gabriel')).toBe(true);

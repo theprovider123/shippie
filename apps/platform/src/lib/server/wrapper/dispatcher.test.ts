@@ -261,6 +261,88 @@ describe('dispatchMakerSubdomain', () => {
     expect(forwarded).toBe(true);
   });
 
+  test('/__shippie/checkpoints/{room} stores, returns, and deletes sealed checkpoints', async () => {
+    const env = envWith(fakeKv({}));
+    const put = await dispatchMakerSubdomain({
+      request: new Request('https://mevrouw.shippie.app/__shippie/checkpoints/mevrouw-room', {
+        method: 'PUT',
+        headers: { host: 'mevrouw.shippie.app', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          schema: 'shippie.sealed-checkpoint.v1',
+          update_bytes: 128,
+          payload: 'abc123_--',
+        }),
+      }),
+      env,
+    });
+    expect(put!.status).toBe(200);
+
+    const get = await dispatchMakerSubdomain({
+      request: new Request('https://mevrouw.shippie.app/__shippie/checkpoints/mevrouw-room', {
+        headers: { host: 'mevrouw.shippie.app' },
+      }),
+      env,
+    });
+    expect(get!.status).toBe(200);
+    const body = (await get!.json()) as {
+      exists: boolean;
+      update_bytes: number;
+      payload: string;
+    };
+    expect(body.exists).toBe(true);
+    expect(body.update_bytes).toBe(128);
+    expect(body.payload).toBe('abc123_--');
+
+    const del = await dispatchMakerSubdomain({
+      request: new Request('https://mevrouw.shippie.app/__shippie/checkpoints/mevrouw-room', {
+        method: 'DELETE',
+        headers: { host: 'mevrouw.shippie.app' },
+      }),
+      env,
+    });
+    expect(del!.status).toBe(200);
+
+    const missing = await dispatchMakerSubdomain({
+      request: new Request('https://mevrouw.shippie.app/__shippie/checkpoints/mevrouw-room', {
+        headers: { host: 'mevrouw.shippie.app' },
+      }),
+      env,
+    });
+    expect(((await missing!.json()) as { exists: boolean }).exists).toBe(false);
+  });
+
+  test('/__shippie/checkpoints/{room} rejects smaller replacement snapshots', async () => {
+    const env = envWith(fakeKv({}));
+    const url = 'https://mevrouw.shippie.app/__shippie/checkpoints/mevrouw-room';
+    const first = await dispatchMakerSubdomain({
+      request: new Request(url, {
+        method: 'PUT',
+        headers: { host: 'mevrouw.shippie.app', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          schema: 'shippie.sealed-checkpoint.v1',
+          update_bytes: 256,
+          payload: 'large',
+        }),
+      }),
+      env,
+    });
+    expect(first!.status).toBe(200);
+
+    const smaller = await dispatchMakerSubdomain({
+      request: new Request(url, {
+        method: 'PUT',
+        headers: { host: 'mevrouw.shippie.app', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          schema: 'shippie.sealed-checkpoint.v1',
+          update_bytes: 8,
+          payload: 'small',
+        }),
+      }),
+      env,
+    });
+    expect(smaller!.status).toBe(409);
+  });
+
   test('finalizeResponse echoes trace id', async () => {
     const env = envWith(fakeKv({}));
     const res = await dispatchMakerSubdomain({

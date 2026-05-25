@@ -1,28 +1,35 @@
-import { BatterySaverGlyph } from './BatterySaverGlyph';
 import { formatAccuracy, type GpsFix } from '../lib/gps';
+import type { LiveSyncStatus } from '../lib/live-sync';
 
 interface StatusStripProps {
   gpsFix: GpsFix | null;
   routeDistanceM: number | null;
-  batterySaver: boolean;
+  syncStatus?: LiveSyncStatus;
+  online?: boolean;
   onRoutePress?: () => void;
-  onToggleBatterySaver: () => void;
-  onOpenQr: () => void;
+  onSyncPress?: () => void;
 }
 
+/**
+ * Status strip — one row, all critical system state. Round 9 folded the
+ * standalone LiveSyncStrip into a fourth cell so the map gets back the
+ * vertical space the second strip used to take.
+ */
 export function StatusStrip({
   gpsFix,
   routeDistanceM,
-  batterySaver,
+  syncStatus,
+  online = true,
   onRoutePress,
-  onToggleBatterySaver,
-  onOpenQr,
+  onSyncPress,
 }: StatusStripProps) {
-  const routeLabel = routeDistanceM == null ? '—' : formatDistance(routeDistanceM);
+  const routeLabel = routeDistanceM == null ? '—' : formatRouteDistance(routeDistanceM);
   const routeAria =
     routeDistanceM != null
       ? `Distance to route ${Math.round(routeDistanceM)} metres. Tap to draw a walking line back to the route.`
       : 'Distance to route unknown';
+  const sync = syncCopy(syncStatus, online);
+
   return (
     <div className="status-strip" aria-label="Quick status and actions">
       <div
@@ -42,47 +49,48 @@ export function StatusStrip({
         <span className="status-strip__label">Route</span>
         <strong className="status-strip__value">{routeLabel}</strong>
       </button>
-      <button
-        type="button"
-        className="icon-toggle saver"
-        aria-pressed={batterySaver}
-        aria-label={`Battery saver ${batterySaver ? 'on' : 'off'}`}
-        onClick={onToggleBatterySaver}
-      >
-        <BatterySaverGlyph on={batterySaver} />
-      </button>
-      <button
-        type="button"
-        className="icon-toggle qr"
-        aria-label="Show share QR"
-        onClick={onOpenQr}
-      >
-        <QrGlyph />
-      </button>
+      {onSyncPress ? (
+        <button
+          type="button"
+          className={`status-strip__cell status-strip__button status-strip__sync sync-${sync.tone}`}
+          aria-label={`Crowd sync ${sync.detail}. Tap to check now.`}
+          onClick={onSyncPress}
+        >
+          <span className="status-strip__label">Sync</span>
+          <strong className="status-strip__value">{sync.short}</strong>
+        </button>
+      ) : (
+        <div
+          className={`status-strip__cell status-strip__sync sync-${sync.tone}`}
+          aria-label={`Crowd sync ${sync.detail}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="status-strip__label">Sync</span>
+          <strong className="status-strip__value">{sync.short}</strong>
+        </div>
+      )}
     </div>
   );
 }
 
-function QrGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="0.5" y="0.5" width="5" height="5" stroke="#14120F" strokeWidth="1" />
-      <rect x="2" y="2" width="2" height="2" fill="#14120F" />
-      <rect x="10.5" y="0.5" width="5" height="5" stroke="#14120F" strokeWidth="1" />
-      <rect x="12" y="2" width="2" height="2" fill="#14120F" />
-      <rect x="0.5" y="10.5" width="5" height="5" stroke="#14120F" strokeWidth="1" />
-      <rect x="2" y="12" width="2" height="2" fill="#14120F" />
-      <rect x="7" y="7" width="2" height="2" fill="#14120F" />
-      <rect x="11" y="9" width="2" height="2" fill="#14120F" />
-      <rect x="9" y="11" width="2" height="2" fill="#14120F" />
-      <rect x="13" y="13" width="2" height="2" fill="#14120F" />
-    </svg>
-  );
-}
-
-function formatDistance(m: number): string {
+function formatRouteDistance(m: number): string {
+  // "on route" reads better than "0 m" when the user is standing on the line.
+  if (m < 18) return 'on route';
   if (m > 50_000) return 'away';
-  if (m > 5_000) return 'off route';
+  if (m > 5_000) return '>5km';
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(1)} km`;
+}
+
+function syncCopy(status: LiveSyncStatus | undefined, online: boolean): { short: string; detail: string; tone: string } {
+  if (!status) return { short: '—', detail: 'idle', tone: 'idle' };
+  if (!online || status.state === 'offline') return { short: 'OFF', detail: 'offline · saving locally', tone: 'offline' };
+  if (status.state === 'syncing') return { short: '…', detail: 'syncing', tone: 'syncing' };
+  if (status.state === 'failed') return { short: 'RTRY', detail: 'patchy · will retry', tone: 'failed' };
+  if (status.state === 'synced') {
+    const minutes = status.lastSyncAt ? Math.max(0, Math.round((Date.now() - Date.parse(status.lastSyncAt)) / 60_000)) : 0;
+    return { short: minutes < 1 ? 'NOW' : `${minutes}M`, detail: `last synced ${minutes < 1 ? 'just now' : `${minutes} min ago`}`, tone: 'synced' };
+  }
+  return { short: 'RDY', detail: 'ready when signal appears', tone: 'idle' };
 }

@@ -17,6 +17,8 @@ import type {
 export interface WrapperEnv {
   DB: D1Database;
   APPS: R2Bucket;
+  // Sealed app data snapshots/checkpoints. Ciphertext only.
+  DOCUMENTS?: R2Bucket;
   // R2 bucket for icons, splashes, SDK js. Renamed from ASSETS because
   // SvelteKit's adapter-cloudflare claims the `ASSETS` binding name for
   // its static-content fetcher.

@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import {
   BusPulseSegment,
+  banterPulseShardForSource,
   busPulseObjectName,
   fanPulseObjectName,
   summarizeBusPulse,
+  validateBanterPulseBatch,
   validateBusPulsePacket,
   validateFanPulsePacket,
   type StoredBusPulseSighting,
@@ -97,6 +99,53 @@ describe('Fan Pulse packet validation', () => {
       now,
     );
     expect(result).toEqual({ ok: false, reason: 'unexpected_fields' });
+  });
+});
+
+describe('Banter Pulse packet validation', () => {
+  test('accepts fixed-choice anonymous votes only', () => {
+    const now = Date.parse('2026-05-31T13:45:00.000Z');
+    const result = validateBanterPulseBatch(
+      {
+        votes: [
+          {
+            pollId: 'player-of-season',
+            optionId: 'raya',
+            sourceId: 'fan_abc123',
+            updatedAt: '2026-05-31T13:44:00.000Z',
+          },
+          {
+            pollId: 'moment-of-season',
+            optionId: 'west-ham-var',
+            sourceId: 'fan_abc123',
+            updatedAt: '2026-05-31T13:44:10.000Z',
+          },
+        ],
+      },
+      now,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.packets).toHaveLength(2);
+  });
+
+  test('rejects free text and unknown options', () => {
+    const now = Date.parse('2026-05-31T13:45:00.000Z');
+    expect(
+      validateBanterPulseBatch(
+        {
+          votes: [
+            {
+              pollId: 'player-of-season',
+              optionId: 'write-in-abuse',
+              sourceId: 'fan_abc123',
+              updatedAt: '2026-05-31T13:44:00.000Z',
+              displayName: 'Nope',
+            },
+          ],
+        },
+        now,
+      ),
+    ).toEqual({ ok: false, reason: 'unexpected_fields' });
   });
 });
 
@@ -202,6 +251,42 @@ describe('BusPulseSegment Durable Object', () => {
     expect(payload.segmentId).toBe('seg-0');
     expect(payload.signals).toHaveLength(1);
     expect(payload.signals[0]).toMatchObject({ type: 'toilet_queue', segmentId: 'seg-0' });
+  });
+
+  test('stores one banter vote per phone per poll and updates counts', async () => {
+    const room = new BusPulseSegment(makeState(), {});
+    const sourceId = 'fan_abc123';
+    const shardId = banterPulseShardForSource(sourceId);
+    const post = async (optionId: string) =>
+      room.fetch(
+        new Request(`https://banter-pulse.local/banter?shard=${shardId}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.12' },
+          body: JSON.stringify({
+            votes: [
+              {
+                pollId: 'player-of-season',
+                optionId,
+                sourceId,
+                updatedAt: new Date().toISOString(),
+              },
+            ],
+          }),
+        }),
+      );
+
+    expect((await post('raya')).status).toBe(200);
+    expect((await post('gabriel')).status).toBe(200);
+
+    const read = await room.fetch(new Request(`https://banter-pulse.local/banter?shard=${shardId}`));
+    expect(read.status).toBe(200);
+    const payload = (await read.json()) as {
+      aggregates: Array<{ pollId: string; total: number; options: Record<string, number> }>;
+    };
+    const player = payload.aggregates.find((aggregate) => aggregate.pollId === 'player-of-season');
+    expect(player).toMatchObject({ total: 1 });
+    expect(player?.options.raya ?? 0).toBe(0);
+    expect(player?.options.gabriel).toBe(1);
   });
 });
 

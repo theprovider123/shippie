@@ -41,6 +41,7 @@ import {
   handleGroupChooser,
   handleGroupModerate
 } from './router/group-moderate';
+import { handleCheckpoint } from './router/checkpoints';
 
 const TRACE_ID_HEADER = 'x-shippie-trace-id';
 
@@ -212,6 +213,10 @@ export async function dispatchWrapperSystemRoute(
   if (signalMatch) {
     return handleSignal(ctx, signalMatch[1]!);
   }
+
+  // /__shippie/checkpoints/{roomId}
+  const checkpointMatch = path.match(/^\/__shippie\/checkpoints\/([^/]+)$/);
+  if (checkpointMatch) return handleCheckpoint(ctx, checkpointMatch[1]!);
 
   return null;
 }

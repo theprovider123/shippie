@@ -38,11 +38,14 @@ import {
 import { installParadeAnalyticsFlush, trackParadeAction } from './lib/analytics';
 import { isOnboarded, markOnboarded } from './lib/onboarding';
 import { saveParadeOffline } from './lib/offline-save';
-import { isParadeDay, isParadeEve, isStartPromptWindow, startPromptKey } from './lib/parade-time';
+import { isPackStale, isParadeDay, isParadeEve, isStartPromptWindow, startPromptKey } from './lib/parade-time';
 import { addSideTing } from './lib/side-tings';
+import { nextSyncDelayMs, resolveSyncMode } from './lib/sync-cadence';
 import { showToast } from './lib/toast';
 
 type Screen = 'map' | 'group' | 'banter' | 'safety';
+
+const BATTERY_SAVER_KEY = 'parade-companion:battery-saver:v1';
 
 const nav: Array<{ id: Screen; label: string }> = [
   { id: 'map', label: 'Map' },
@@ -76,14 +79,45 @@ export function App() {
     received: 0,
     published: 0,
   });
+  // Lifted from MapScreen so sync cadence can read the same source of truth.
+  // Persists across reloads — fans on day one will keep saver ON once chosen.
+  const [batterySaver, setBatterySaver] = useState(() => {
+    if (typeof localStorage === 'undefined') return true;
+    try {
+      const raw = localStorage.getItem(BATTERY_SAVER_KEY);
+      return raw === null ? true : raw === '1';
+    } catch {
+      return true;
+    }
+  });
+  const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  // Flips true once all async stores (plan / bus markers / fan events) have
+  // responded — used by MapScreen to show a tiny loading chip during the
+  // first ~1s instead of empty panels.
+  const [storesHydrated, setStoresHydrated] = useState(false);
   const packRef = useRef(pack);
   const fanEventsRef = useRef(fanEvents);
   const liveSyncInFlight = useRef(false);
+  const liveSyncFailures = useRef(0);
   const publishedFanEventIds = useRef(new Set<string>());
   const menuRef = useRef<HTMLDivElement | null>(null);
   const screenHostRef = useRef<HTMLDivElement | null>(null);
   const online = useOnlineStatus();
   const offlinePill = offlinePillState(offlineReadiness, online);
+
+  const onToggleBatterySaver = useCallback(() => {
+    setBatterySaver((current) => {
+      const next = !current;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(BATTERY_SAVER_KEY, next ? '1' : '0');
+        }
+      } catch {
+        // Preference only — refusing to persist must never break the toggle.
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     packRef.current = pack;
@@ -142,7 +176,9 @@ export function App() {
             received: freshIncoming.length,
           });
         }
+        liveSyncFailures.current = 0;
       } catch {
+        liveSyncFailures.current += 1;
         setLiveSyncStatus((current) => ({
           ...current,
           state: 'failed',
@@ -155,15 +191,59 @@ export function App() {
     [online],
   );
 
+  const onManualCrowdSync = useCallback(() => {
+    trackParadeAction('parade_manual_sync_tapped', { online });
+    if (!online) {
+      setLiveSyncStatus((current) => ({ ...current, state: 'offline' }));
+      showToast('Offline. Crowd pulses stay on this phone until signal appears.', 'warn');
+      return;
+    }
+    showToast('Checking crowd sync now.', 'default');
+    void runCrowdSync('tap');
+  }, [online, runCrowdSync]);
+
+  // Track document visibility so we can pause polling when the tab is hidden
+  // (background tabs shouldn't burn battery checking the relay).
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const update = () => setHidden(document.hidden);
+    document.addEventListener('visibilitychange', update);
+    return () => document.removeEventListener('visibilitychange', update);
+  }, []);
+
+  // Battery-aware sync loop. A recursive setTimeout (not setInterval) lets
+  // every tick re-read the current policy: 20s normal · 60s battery-saver ·
+  // paused when hidden/offline · 30/60/120s exponential backoff on failure.
   useEffect(() => {
     if (!online) {
       setLiveSyncStatus((current) => ({ ...current, state: 'offline' }));
       return undefined;
     }
-    void runCrowdSync('online');
-    const id = window.setInterval(() => void runCrowdSync('timer'), 20_000);
-    return () => window.clearInterval(id);
-  }, [online, runCrowdSync, pack.packVersion]);
+    let cancelled = false;
+    let timerId: number | null = null;
+
+    const schedule = (delayMs: number | null) => {
+      if (cancelled || delayMs === null) return;
+      timerId = window.setTimeout(async () => {
+        if (cancelled) return;
+        await runCrowdSync('timer');
+        const mode = resolveSyncMode({ online, hidden, batterySaver });
+        schedule(nextSyncDelayMs(mode, liveSyncFailures.current));
+      }, delayMs);
+    };
+
+    // Kick once on activation (online flip / battery-saver toggle / visibility
+    // resume), then settle into the tiered cadence.
+    void runCrowdSync('online').then(() => {
+      const mode = resolveSyncMode({ online, hidden, batterySaver });
+      schedule(nextSyncDelayMs(mode, liveSyncFailures.current));
+    });
+
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [online, hidden, batterySaver, runCrowdSync, pack.packVersion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -272,14 +352,18 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadGroupPlan().then((saved) => {
-      if (!cancelled) setPlan(saved);
-    });
-    void listBusMarkers().then((rows) => {
-      if (!cancelled) setBusMarkers(rows);
-    });
-    void listFanEvents().then((rows) => {
-      if (!cancelled) setFanEvents(rows);
+    void Promise.allSettled([
+      loadGroupPlan().then((saved) => {
+        if (!cancelled) setPlan(saved);
+      }),
+      listBusMarkers().then((rows) => {
+        if (!cancelled) setBusMarkers(rows);
+      }),
+      listFanEvents().then((rows) => {
+        if (!cancelled) setFanEvents(rows);
+      }),
+    ]).then(() => {
+      if (!cancelled) setStoresHydrated(true);
     });
     return () => {
       cancelled = true;
@@ -346,13 +430,18 @@ export function App() {
 
   const onJoinImport = async () => {
     if (!importPreview) return;
-    await saveGroupPlan(importPreview.plan);
-    setPlan(importPreview.plan);
+    const localMemberName = formatSupporterHandle(displayName || 'Me', supporterTag);
+    const joinedPlan = {
+      ...importPreview.plan,
+      members: ensureLocalMember(importPreview.plan.members, localMemberName),
+    };
+    await saveGroupPlan(joinedPlan);
+    setPlan(joinedPlan);
     setImportPreview(null);
     showToast('Group plan saved to this phone.', 'success');
     trackParadeAction('parade_plan_import_saved', {
-      members_count: importPreview.plan.members.length,
-      has_leave_plan: Boolean(importPreview.plan.leavePlan?.trim()),
+      members_count: joinedPlan.members.length,
+      has_leave_plan: Boolean(joinedPlan.leavePlan?.trim()),
     });
     setActive('group');
   };
@@ -483,6 +572,14 @@ export function App() {
     trackParadeAction('parade_display_name_saved', { display_name_set: saved !== 'Me' });
   };
 
+  const openMapSyncQr = () => {
+    setActive('map');
+    setMenuOpen(false);
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('parade-companion:open-sync-qr'));
+    }, 0);
+  };
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -511,6 +608,24 @@ export function App() {
             </button>
             {menuOpen ? (
               <div className="topbar-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  aria-pressed={batterySaver}
+                  onClick={() => {
+                    onToggleBatterySaver();
+                    setMenuOpen(false);
+                  }}
+                >
+                  {batterySaver ? 'Battery saver · ON' : 'Battery saver · off'}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={openMapSyncQr}
+                >
+                  Sync QR
+                </button>
                 <button
                   type="button"
                   role="menuitem"
@@ -557,6 +672,12 @@ export function App() {
         <div className="day-banner">Parade day. Keep Location on. Signal will be patchy.</div>
       ) : isParadeEve(pack.event.startTime) ? (
         <div className="day-banner">Parade is tomorrow. Open this page on Wi-Fi today so it works without signal.</div>
+      ) : null}
+
+      {isPackStale(pack.packVersion) ? (
+        <div className="day-banner day-banner--warn">
+          Saved pack is more than 2 weeks old. Open on Wi-Fi for the latest route.
+        </div>
       ) : null}
 
       <ReadinessChip
@@ -673,6 +794,9 @@ export function App() {
             sideTingsRefresh={sideTingsRefresh}
             liveSyncStatus={liveSyncStatus}
             online={online}
+            batterySaver={batterySaver}
+            storesHydrated={storesHydrated}
+            onManualSync={onManualCrowdSync}
             onBusMarker={onBusMarker}
             onFanEvent={onFanEvent}
             onTrack={trackParadeAction}
@@ -712,7 +836,15 @@ export function App() {
             type="button"
             key={item.id}
             className={active === item.id ? 'active' : ''}
-            onClick={() => setActive(item.id)}
+            onClick={() => {
+              if (item.id === active) {
+                // Common iOS pattern: re-tapping the active tab scrolls the
+                // current screen to the top.
+                screenHostRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+              }
+              setActive(item.id);
+            }}
             aria-current={active === item.id ? 'page' : undefined}
           >
             {item.label}
@@ -743,6 +875,13 @@ function offlinePillState(readiness: Readiness, online: boolean): { label: strin
       label: 'Saved',
       className: 'saved',
       ariaLabel: 'Offline pack saved on this phone',
+    };
+  }
+  if (readiness === 'checking' && online) {
+    return {
+      label: 'Saving',
+      className: 'checking',
+      ariaLabel: 'Saving offline pack on this phone',
     };
   }
   if (online) {
@@ -784,6 +923,13 @@ function clearShareHash(): void {
   } catch {
     // Cross-origin parents cannot be cleaned, but the import has already happened.
   }
+}
+
+function ensureLocalMember(members: string[], localMemberName: string): string[] {
+  const clean = members.map((member) => member.trim()).filter(Boolean).slice(0, 12);
+  const key = localMemberName.toLowerCase();
+  if (!clean.some((member) => member.toLowerCase() === key)) clean.push(localMemberName);
+  return clean.slice(0, 12);
 }
 
 function extractShareFragment(value: string): string {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-24T23:05:00+01:00",
+  "packVersion": "2026-05-25T20:15:00+01:00",
   "event": {
     "title": "Parade Companion — Islington",
     "dateLabel": "Sunday 31 May 2026",
@@ -332,7 +332,7 @@
   "closures": [
     {
       "label": "Road closures",
-      "note": "Closures are expected around the route. This pack will be updated as official details firm up."
+      "note": "Closures are expected around the route. This offline pack will be updated as official details firm up."
     },
     {
       "label": "Tube and rail access",
@@ -458,125 +458,155 @@
       {
         "id": "north-london-forever",
         "title": "North London Forever",
-        "cue": "North London forever / whatever the weather",
-        "detail": "North London forever, whatever the weather."
+        "cue": "Anthem",
+        "detail": "\"North London forever...\" · \"Whatever the weather...\""
+      },
+      {
+        "id": "good-old-arsenal",
+        "title": "Good Old Arsenal",
+        "cue": "Classic",
+        "detail": "\"Good old Arsenal...\" · \"We're proud to say...\""
       },
       {
         "id": "one-nil",
         "title": "One-nil to The Arsenal",
-        "cue": "One-nil to The Arsenal",
-        "detail": "One-nil to The Arsenal."
+        "cue": "Defensive classic",
+        "detail": "\"One-nil to The Arsenal...\""
       },
       {
         "id": "forty-nine",
-        "title": "49 undefeated",
-        "cue": "49, 49 undefeated",
-        "detail": "49, 49 undefeated."
+        "title": "49 Undefeated",
+        "cue": "Invincibles",
+        "detail": "\"Forty-nine, forty-nine undefeated...\""
       },
       {
         "id": "till-i-die",
-        "title": "Arsenal till I die",
-        "cue": "Arsenal till I die",
-        "detail": "Arsenal till I die."
+        "title": "Arsenal Till I Die",
+        "cue": "Loyalty",
+        "detail": "\"Arsenal till I die...\""
       },
       {
         "id": "greatest-team",
-        "title": "Greatest team",
-        "cue": "We're by far the greatest team",
-        "detail": "We're by far the greatest team."
+        "title": "By Far The Greatest Team",
+        "cue": "Terrace classic",
+        "detail": "\"By far the greatest team...\""
       },
       {
         "id": "oh-to-be",
-        "title": "Oh to be a Gooner",
-        "cue": "Oh to be a Gooner",
-        "detail": "Oh to be a Gooner."
+        "title": "Oh To Be A Gooner",
+        "cue": "Joy chant",
+        "detail": "\"Oh to be a Gooner...\""
       },
       {
-        "id": "allez",
-        "title": "Allez Allez Allez",
-        "cue": "Allez, allez, allez",
-        "detail": "Allez, allez, allez."
+        "id": "come-on-you-reds",
+        "title": "Come On You Reds",
+        "cue": "Quick roar",
+        "detail": "\"Come on you Reds...\""
       },
       {
-        "id": "set-piece",
-        "title": "Set-piece again",
-        "cue": "Set-piece again, ole ole",
-        "detail": "Set-piece again, ole ole."
+        "id": "up-the-arsenal",
+        "title": "Up The Arsenal",
+        "cue": "Terrace staple",
+        "detail": "\"Up The Arsenal...\""
       },
       {
         "id": "we-love-you",
-        "title": "We love you Arsenal",
-        "cue": "We love you Arsenal, we do",
-        "detail": "We love you Arsenal, we do."
+        "title": "We Love You Arsenal",
+        "cue": "Call-and-response",
+        "detail": "\"We love you Arsenal...\""
       },
       {
         "id": "north-bank-clock-end",
         "title": "North Bank / Clock End",
-        "cue": "We're the North Bank, Highbury",
-        "detail": "We're the North Bank, Highbury."
+        "cue": "Highbury heritage",
+        "detail": "\"North Bank...\" · \"Clock End...\""
       },
       {
-        "id": "come-on-you-reds",
-        "title": "Come on you reds",
-        "cue": "Come on you reds",
-        "detail": "Come on you reds."
-      },
-      {
-        "id": "up-the-arsenal",
-        "title": "Up the Arsenal",
-        "cue": "Up The Arsenal",
-        "detail": "Up The Arsenal."
-      },
-      {
-        "id": "saliba",
-        "title": "Saliba",
-        "cue": "Da da da da da, Saliba",
-        "detail": "Da da da da da, Saliba."
-      },
-      {
-        "id": "rice-rice-baby",
-        "title": "Rice Rice Baby",
-        "cue": "Rice, Rice, Baby",
-        "detail": "Rice, Rice, Baby."
-      },
-      {
-        "id": "bukayo-saka",
-        "title": "Bukayo Saka",
-        "cue": "Bukayo, Saka",
-        "detail": "Bukayo, Saka."
-      },
-      {
-        "id": "odegaard-oi",
-        "title": "Odegaard Oi Oi",
-        "cue": "Martin Odegaard, oi oi oi",
-        "detail": "Martin Odegaard, oi oi oi."
+        "id": "yellow-ribbon",
+        "title": "She Wore A Yellow Ribbon",
+        "cue": "Cup-day classic",
+        "detail": "\"She wore a yellow ribbon...\""
       },
       {
         "id": "super-mik",
         "title": "Super Mik Arteta",
-        "cue": "We've got Super Mik Arteta",
-        "detail": "We've got Super Mik Arteta."
+        "cue": "Manager chant",
+        "detail": "\"Super Mik Arteta...\""
+      },
+      {
+        "id": "saliba",
+        "title": "Saliba",
+        "cue": "Centre-back",
+        "detail": "\"Saliba...\" · then the bounce"
+      },
+      {
+        "id": "rice-rice-baby",
+        "title": "Rice Rice Baby",
+        "cue": "Midfield",
+        "detail": "\"Rice, Rice Baby...\""
+      },
+      {
+        "id": "bukayo-saka",
+        "title": "Bukayo Saka",
+        "cue": "Starboy",
+        "detail": "\"Bukayo Saka...\" · \"Starboy...\""
+      },
+      {
+        "id": "odegaard-oi",
+        "title": "Martin Odegaard",
+        "cue": "Captain",
+        "detail": "\"Martin Odegaard...\" · captain rhythm"
       },
       {
         "id": "kai-havertz",
         "title": "Kai Havertz scores again",
-        "cue": "Kai Havertz scores again",
-        "detail": "Kai Havertz scores again."
+        "cue": "Forward",
+        "detail": "\"Kai Havertz scores again...\""
       },
       {
-        "id": "his-name-is-gabi",
-        "title": "His name is Gabi",
-        "cue": "His name is Gabi",
-        "detail": "His name is Gabi."
+        "id": "gabi-martinelli",
+        "title": "Gabriel Martinelli",
+        "cue": "Left wing",
+        "detail": "\"Gabriel Martinelli...\""
       },
       {
         "id": "trossard-again",
         "title": "Trossard again",
-        "cue": "Trossard again, ole ole",
-        "detail": "Trossard again, ole ole."
+        "cue": "Clutch finisher",
+        "detail": "\"Trossard again...\""
       }
     ],
     "polls": [
+      {
+        "id": "parade-mood",
+        "question": "What is the parade feeling like?",
+        "options": [
+          {
+            "id": "limbs",
+            "label": "Limbs"
+          },
+          {
+            "id": "bus-watch",
+            "label": "Bus watch"
+          },
+          {
+            "id": "singing",
+            "label": "Singing"
+          },
+          {
+            "id": "packed",
+            "label": "Packed"
+          },
+          {
+            "id": "pub-later",
+            "label": "Pub later"
+          },
+          {
+            "id": "emotional",
+            "label": "Emotional"
+          }
+        ]
+      },
       {
         "id": "player-of-season",
         "question": "Player of the season",
@@ -812,7 +842,7 @@
           {
             "id": "city-bournemouth",
             "label": "Bournemouth hold City",
-            "detail": "Phones out everywhere"
+            "detail": "Title-race swing"
           },
           {
             "id": "west-ham-var",

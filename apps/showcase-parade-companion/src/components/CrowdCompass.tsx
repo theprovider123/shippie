@@ -1,7 +1,7 @@
 import type { RoutePack } from '../data/parade-2026';
 import type { PlanPoint } from '../lib/group-plan';
 import type { GpsFix } from '../lib/gps';
-import { FAN_EVENT_LABELS, eventAgeLabel, type FanEvent } from '../lib/fan-events';
+import { FAN_EVENT_BADGES, FAN_EVENT_LABELS, eventAgeLabel, reportConfidenceText, type FanEvent } from '../lib/fan-events';
 import { bearingDeg, haversineMeters } from '../lib/geo';
 import { crowdCompassTargets } from '../lib/live-sync';
 import { describeParadeLocation } from '../lib/location-labels';
@@ -38,13 +38,14 @@ export function CrowdCompass({ pack, gpsFix, fanEvents, onTarget }: CrowdCompass
                 className={`crowd-compass__target ${event.type}`}
                 onClick={() => onTarget({ ...point, label: `${FAN_EVENT_LABELS[event.type]} · ${place.title}` })}
               >
+                <span className="crowd-compass__badge" aria-hidden="true">{FAN_EVENT_BADGES[event.type]}</span>
                 <span className="crowd-compass__arrow" style={{ transform: `rotate(${bearing}deg)` }}>
                   ↑
                 </span>
                 <span>
                   <strong>{FAN_EVENT_LABELS[event.type]}</strong>
                   <small>
-                    {place.title} · {formatDistance(haversineMeters(gpsFix, point))} · {count} {count === 1 ? 'fan' : 'fans'} · {confidenceLabel(confidence)} · {eventAgeLabel(event)}
+                    {place.title} · {formatDistance(haversineMeters(gpsFix, point))} · {reportConfidenceText(confidence, count)} · {eventAgeLabel(event)}
                   </small>
                   <em>{place.detail} · {place.grid}</em>
                 </span>
@@ -60,10 +61,4 @@ export function CrowdCompass({ pack, gpsFix, fanEvents, onTarget }: CrowdCompass
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
-}
-
-function confidenceLabel(confidence: string): string {
-  if (confidence === 'strong') return 'confirmed';
-  if (confidence === 'likely') return 'likely';
-  return 'single';
 }

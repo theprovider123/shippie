@@ -9,6 +9,7 @@ import {
   eventSegmentLabel,
   isActive,
   PUBLIC_PULSE_CUTOFF_ISO,
+  reportConfidenceText,
   selectCarryFanEvents,
   summarizeFanEvents,
 } from './fan-events';
@@ -174,6 +175,22 @@ describe('fan events', () => {
 
     expect(selected.map((event) => event.id).sort()).toEqual([latestRepeat.id, otherFan.id].sort());
     expect(decoded.map((event) => event.id).sort()).toEqual([latestRepeat.id, otherFan.id].sort());
+  });
+
+  test('does not carry private help taps through QR sync', async () => {
+    const help = createFanEvent('need_help', position, route, 'fan_help');
+    const here = createFanEvent('presence', position, route, 'fan_here');
+    const selected = selectCarryFanEvents([help, here]);
+    const decoded = await decodeFanEventsSync(await encodeFanEventsForSync([help, here]));
+
+    expect(selected.map((event) => event.type)).toEqual(['presence']);
+    expect(decoded.map((event) => event.type)).toEqual(['presence']);
+  });
+
+  test('renders Waze-style confidence labels without exposing raw scoring', () => {
+    expect(reportConfidenceText('single', 1)).toBe('1 tap');
+    expect(reportConfidenceText('likely', 3)).toBe('3 taps');
+    expect(reportConfidenceText('strong', 8)).toBe('confirmed');
   });
 
   test('drops expired pings from live map clusters', () => {

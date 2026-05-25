@@ -6,8 +6,10 @@ interface GroupIdentityCardProps {
   displayName?: string;
   supporterTag?: string;
   onShowInvite: () => void;
+  onStartGroup?: () => void;
+  onJoinInvite?: () => void;
   onShareApp?: () => void;
-  onShareMyDot?: () => void;
+  onEditName?: () => void;
 }
 
 /**
@@ -23,30 +25,51 @@ export function GroupIdentityCard({
   displayName,
   supporterTag,
   onShowInvite,
+  onStartGroup,
+  onJoinInvite,
   onShareApp,
-  onShareMyDot,
+  onEditName,
 }: GroupIdentityCardProps) {
+  // "Me" is the default name when onboarding was skipped — surface a CTA so
+  // the user doesn't ship as `Me #ABCD` for the whole parade.
+  const nameNeedsAttention = (displayName ?? '').trim() === 'Me';
+
   if (solo) {
     return (
       <div className="panel group-identity group-identity--solo">
         <h2>Just you</h2>
         <p>
-          Share your dot so friends can find you on the day. They can watch on their map,
-          or join you so you see them too.
+          Start a parade group before you go, or join one from a link.
+          The plan saves to this phone for no-signal moments.
         </p>
         {supporterTag ? (
           <p className="identity-tag">
             You appear as <strong>{displayName || 'Me'} #{supporterTag}</strong>
+            {nameNeedsAttention && onEditName ? (
+              <>
+                {' · '}
+                <button type="button" className="identity-tag__cta" onClick={onEditName}>
+                  Set your name
+                </button>
+              </>
+            ) : null}
           </p>
         ) : null}
         <div className="group-identity__actions">
           <button
             type="button"
             className="primary-action"
-            onClick={onShareMyDot ?? onShowInvite}
+            onClick={onStartGroup ?? onShowInvite}
           >
-            Share my dot
+            Start group
           </button>
+          {onJoinInvite ? (
+            <button type="button" className="secondary-action" onClick={onJoinInvite}>
+              Join link
+            </button>
+          ) : null}
+        </div>
+        <div className="group-identity__actions group-identity__actions--secondary">
           {onShareApp ? (
             <button type="button" className="secondary-action" onClick={onShareApp}>
               Share app

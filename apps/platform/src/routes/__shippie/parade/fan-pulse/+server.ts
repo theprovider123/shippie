@@ -8,7 +8,7 @@ import {
 
 interface FanPulseNamespace {
   idFromName(name: string): { toString(): string };
-  get(id: { toString(): string }): { fetch: (request: Request) => Promise<Response> };
+  get(id: { toString(): string }): { fetch: (input: string, init?: RequestInit) => Promise<Response> };
 }
 
 interface FanPulseEnv {
@@ -42,8 +42,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
   for (const segmentId of segments) {
     const id = env.BUS_PULSE.idFromName(fanPulseObjectName(segmentId));
     const stub = env.BUS_PULSE.get(id);
-    const res = await stub.fetch(new Request(`https://fan-pulse.local/fan?segment=${encodeURIComponent(segmentId)}`));
-    if (!res.ok) continue;
+    const res = await stub
+      .fetch(`https://fan-pulse.local/fan?segment=${encodeURIComponent(segmentId)}`)
+      .catch(() => null);
+    if (!res || !res.ok) continue;
     const body = (await res.json()) as { segmentId?: string; signals?: FanPulsePacket[] };
     if (body.segmentId && Array.isArray(body.signals)) out.push({ segmentId: body.segmentId, signals: body.signals });
   }
@@ -81,17 +83,22 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
   const id = env.BUS_PULSE.idFromName(fanPulseObjectName(parsed.packet.segmentId));
   const stub = env.BUS_PULSE.get(id);
-  return await stub.fetch(
-    new Request(`https://fan-pulse.local/fan?segment=${encodeURIComponent(parsed.packet.segmentId)}`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'cf-connecting-ip': request.headers.get('cf-connecting-ip') ?? '',
-        'x-forwarded-for': request.headers.get('x-forwarded-for') ?? '',
+  try {
+    return await stub.fetch(
+      `https://fan-pulse.local/fan?segment=${encodeURIComponent(parsed.packet.segmentId)}`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'cf-connecting-ip': request.headers.get('cf-connecting-ip') ?? '',
+          'x-forwarded-for': request.headers.get('x-forwarded-for') ?? '',
+        },
+        body: JSON.stringify(raw),
       },
-      body: JSON.stringify(raw),
-    }),
-  );
+    );
+  } catch {
+    return Response.json({ error: 'fan_pulse_forward_failed' }, { status: 503 });
+  }
 };
 
 function parseSegments(raw: string | null): string[] {

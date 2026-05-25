@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RoutePack, RoutePoi, RoutePoiKind } from '../data/parade-2026';
 import type { BusMarker } from '../lib/bus';
-import { clusterFanEvents, FAN_EVENT_LABELS, type FanEvent, type FanEventCluster, type FanEventType } from '../lib/fan-events';
+import {
+  clusterFanEvents,
+  FAN_EVENT_BADGES,
+  FAN_EVENT_LABELS,
+  isActive,
+  reportConfidenceText,
+  type FanEvent,
+  type FanEventCluster,
+  type FanEventType,
+} from '../lib/fan-events';
 import { lngLatToPixel, metersToPixelRadius, type PixelPoint } from '../lib/geo';
 import type { GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
@@ -71,6 +80,18 @@ export function CorridorMap({
     () => fanClusters.filter((cluster) => layerAllowsCluster(cluster.type, layers)),
     [fanClusters, layers],
   );
+  const localPresencePulse = useMemo(() => {
+    if (layers['my-taps'] === false) return null;
+    const event = fanEvents
+      .filter((item) => item.type === 'presence' && item.source === 'local' && isActive(item))
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+    if (!event) return null;
+    const p = lngLatToPixel({ lng: event.lng, lat: event.lat });
+    return {
+      left: `${(p.x / 1800) * 100}%`,
+      top: `${(p.y / 1800) * 100}%`,
+    };
+  }, [fanEvents, layers]);
   const hasFanBus = visibleFanClusters.some((cluster) => cluster.type === 'bus_seen');
   const summaryId = compact ? 'corridor-map-summary-compact' : 'corridor-map-summary';
   const mapSummary = useMemo(
@@ -131,11 +152,11 @@ export function CorridorMap({
     if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters);
     if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings);
     if (gpsFix && target) drawWalkLine(ctx, gpsFix, target);
-    drawPois(ctx, points);
+    drawPois(ctx, points, scale);
     drawScheduleMarkers(ctx, pack.scheduleEstimate);
     if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers);
     if (gpsFix) drawGps(ctx, gpsFix);
-  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target]);
+  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale]);
 
   const clampZoom = (value: number) => Math.max(1, Math.min(3.2, value));
 
@@ -198,6 +219,12 @@ export function CorridorMap({
         >
           <img src={basemapSrc} alt="Offline map of the central Islington parade corridor" draggable={false} />
           <canvas ref={canvasRef} aria-hidden />
+          {localPresencePulse ? (
+            <div className="my-presence-pulse" style={localPresencePulse} aria-hidden="true">
+              <span />
+              <strong>Here</strong>
+            </div>
+          ) : null}
           {onPoiTap ? (
             <div className="poi-hit-layer" aria-hidden>
               {visiblePois.map((poi) => {
@@ -233,6 +260,19 @@ export function CorridorMap({
         <button type="button" className="icon-button" onClick={() => zoom(scale - 0.35)} aria-label="Zoom out">
           -
         </button>
+        {scale > 1 || offset.x !== 0 || offset.y !== 0 ? (
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => {
+              setScale(1);
+              setOffset({ x: 0, y: 0 });
+            }}
+            aria-label="Re-center map"
+          >
+            ⊙
+          </button>
+        ) : null}
       </div>
       <p className="map-credit">Offline schematic. Verify official route before travel.</p>
     </div>
@@ -267,7 +307,11 @@ function drawPolyline(ctx: CanvasRenderingContext2D, route: readonly [number, nu
   });
 }
 
-function drawPois(ctx: CanvasRenderingContext2D, points: Array<{ id: string; label: string; kind: string; point: PixelPoint }>) {
+function drawPois(
+  ctx: CanvasRenderingContext2D,
+  points: Array<{ id: string; label: string; kind: string; point: PixelPoint }>,
+  scale: number,
+) {
   ctx.save();
   ctx.font = '700 28px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
@@ -287,13 +331,20 @@ function drawPois(ctx: CanvasRenderingContext2D, points: Array<{ id: string; lab
       ctx.fillText(style.glyph, marker.point.x, marker.point.y + style.glyphSize * 0.35);
       ctx.textAlign = 'start';
     }
-    if (shouldShowMarkerLabel(marker, style)) {
-      const label = mapLabelText(marker);
-      if (style.smallLabel) drawMiniLabel(ctx, label, marker.point.x + style.radius + 14, marker.point.y, style.labelTone);
-      else drawLabel(ctx, label, marker.point.x + style.radius + 18, marker.point.y);
-    }
+    if (!shouldShowMarkerLabel(marker, style)) continue;
+    // Hide small POI labels (water/atm/toilet) at the default zoom — their
+    // glyph + dot is enough until the user zooms in. Keeps the schematic
+    // readable instead of a wall of overlapping text at zoom 1.
+    if (isSmallPoiKind(marker.kind) && scale < 1.5) continue;
+    const label = mapLabelText(marker);
+    if (style.smallLabel) drawMiniLabel(ctx, label, marker.point.x + style.radius + 14, marker.point.y, style.labelTone);
+    else drawLabel(ctx, label, marker.point.x + style.radius + 18, marker.point.y);
   }
   ctx.restore();
+}
+
+function isSmallPoiKind(kind: string): boolean {
+  return kind === 'toilet' || kind === 'water' || kind === 'atm' || kind === 'family' || kind === 'view';
 }
 
 /**
@@ -389,6 +440,7 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
     ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
     ctx.fillStyle = color.strong;
     ctx.fill();
+    drawEventBadge(ctx, cluster.type, p.x, p.y);
     drawLabel(ctx, clusterLabel(cluster), p.x + radius + 8, p.y);
   }
   ctx.restore();
@@ -547,9 +599,21 @@ function clusterRadius(cluster: FanEventCluster): number {
 }
 
 function clusterLabel(cluster: FanEventCluster): string {
-  if (cluster.type === 'bus_seen') return cluster.count > 1 ? `Bus here · ${cluster.count} fans` : 'Bus here';
+  const confidence = reportConfidenceText(cluster.confidence, cluster.count);
+  if (cluster.type === 'bus_seen') return cluster.count > 1 ? `Bus here · ${confidence}` : 'Bus here';
   const label = FAN_EVENT_LABELS[cluster.type];
-  return cluster.count > 1 ? `${label} · ${cluster.count} fans` : label;
+  return cluster.count > 1 ? `${label} · ${confidence}` : label;
+}
+
+function drawEventBadge(ctx: CanvasRenderingContext2D, type: FanEventType, x: number, y: number) {
+  const badge = FAN_EVENT_BADGES[type];
+  ctx.save();
+  ctx.fillStyle = type === 'crowd_dense' ? '#14120F' : '#F5EFE4';
+  ctx.font = `${badge.length > 2 ? '800 14px' : '800 17px'} "JetBrains Mono", ui-monospace, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(badge, x, y + 1);
+  ctx.restore();
 }
 
 function buildMapSummary(gpsFix: GpsFix | null | undefined, clusters: FanEventCluster[], busMarkerCount: number): string {

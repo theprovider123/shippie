@@ -4,7 +4,7 @@ import { CorridorMap } from '../components/CorridorMap';
 import { CrowdCompass } from '../components/CrowdCompass';
 import { GoalPointer } from '../components/GoalPointer';
 import { LayerToggleRow, type MapLayerId } from '../components/LayerToggleRow';
-import { LiveSyncStrip } from '../components/LiveSyncStrip';
+import { ParadersChip } from '../components/ParadersChip';
 import { PoiSheet } from '../components/PoiSheet';
 import { QuickFindChips, kindsForCategory, type QuickFindCategory } from '../components/QuickFindChips';
 import { StatusStrip } from '../components/StatusStrip';
@@ -14,10 +14,13 @@ import {
   createFanEvent,
   encodeFanEventsForSync,
   eventAgeLabel,
+  FAN_EVENT_BADGES,
+  FAN_EVENT_HINTS,
   FAN_EVENT_LABELS,
   REPORT_EVENT_TYPES,
   isActive,
   clusterFanEvents,
+  reportConfidenceText,
   type FanEvent,
   type FanEventCluster,
   type FanEventType,
@@ -30,6 +33,7 @@ import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import { hapticConfirm, hapticWarn, hapticWow } from '../lib/haptic';
 import type { LiveSyncStatus } from '../lib/live-sync';
 import { busTimingPresentation } from '../lib/parade-time';
+import { countActiveParaders } from '../lib/paraders';
 import { listSideTings, type SideTing } from '../lib/side-tings';
 import { showToast, type ToastVariant } from '../lib/toast';
 
@@ -42,6 +46,11 @@ interface MapScreenProps {
   sideTingsRefresh: number;
   liveSyncStatus: LiveSyncStatus;
   online: boolean;
+  /** Lifted to App so the sync cadence policy can read the same value. */
+  batterySaver: boolean;
+  /** False during the ~1 s window between mount and async stores settling. */
+  storesHydrated: boolean;
+  onManualSync: () => void;
   onBusMarker: (marker: BusMarker) => void;
   onFanEvent: (event: FanEvent) => Promise<void>;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
@@ -58,16 +67,18 @@ export function MapScreen({
   sideTingsRefresh,
   liveSyncStatus,
   online,
+  batterySaver,
+  storesHydrated,
+  onManualSync,
   onBusMarker,
   onFanEvent,
   onTrack,
 }: MapScreenProps) {
   const [gpsFix, setGpsFix] = useState<GpsFix | null>(null);
   const [gpsError, setGpsError] = useState('');
-  const [batterySaver, setBatterySaver] = useState(true);
   const [shareUrl, setShareUrl] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(true);
   const [sideTings, setSideTings] = useState<SideTing[]>(() => listSideTings());
   // Persistent "Turn on Location" hint above the tap panel — only after we've
   // waited a few seconds without a fix, so first-launch flicker doesn't shout
@@ -76,6 +87,7 @@ export function MapScreen({
   const [selectedPoi, setSelectedPoi] = useState<RoutePoi | null>(null);
   const [walkTarget, setWalkTarget] = useState<PlanPoint | null>(null);
   const [findCategory, setFindCategory] = useState<QuickFindCategory | null>(null);
+  const [mapToolsOpen, setMapToolsOpen] = useState(false);
   const [timingExpanded, setTimingExpanded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [layers, setLayers] = useState<Record<MapLayerId, boolean>>({
@@ -96,6 +108,24 @@ export function MapScreen({
   );
   const busInsight = publicInsightClusters.find((cluster) => cluster.type === 'bus_seen') ?? null;
   const reportInsights = publicInsightClusters.filter((cluster) => cluster.type !== 'bus_seen').slice(0, 3);
+
+  // Cull bus markers older than 4 hours so the canvas doesn't accumulate
+  // invisible-but-present markers over a long event. `now` ticks each minute.
+  const liveBusMarkers = useMemo(() => {
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+    return busMarkers.filter((marker) => {
+      const ageMs = now - Date.parse(marker.created_at);
+      return Number.isFinite(ageMs) && ageMs < FOUR_HOURS_MS;
+    });
+  }, [busMarkers, now]);
+
+  // Crowd mirror — unique active `presence` source_ids from local + relay.
+  // Recomputed when fan events or the user's GPS shifts; the chip hides
+  // entirely below 3 (see ParadersChip).
+  const paraders = useMemo(
+    () => countActiveParaders(fanEvents, gpsFix, now),
+    [fanEvents, gpsFix, now],
+  );
 
   // Nearest 3 POIs of the active quick-find category. Computed from GPS when
   // available, otherwise from the route's first coordinate as a stable
@@ -156,7 +186,10 @@ export function MapScreen({
   useEffect(() => {
     const rows = listSideTings();
     setSideTings(rows);
-    if (rows.length > 0) setLayers((current) => ({ ...current, 'side-tings': true }));
+    // Auto-flip the layer ON when the user adds a side-ting, and back OFF
+    // when the last one is removed so a dead "side-tings" pill doesn't sit
+    // active with nothing to render.
+    setLayers((current) => ({ ...current, 'side-tings': rows.length > 0 }));
   }, [sideTingsRefresh]);
 
   const nearestPoi = useMemo(() => {
@@ -198,13 +231,13 @@ export function MapScreen({
     if (type === 'bus_seen') {
       const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
       onBusMarker(marker);
-      feedback(`Bus saved at ${placeLabelForEvent(event, pack)} · ${formatMarkerTime(marker)}. Anonymous and short-lived.`, 'success');
+      feedback(`Bus signal added · ${placeLabelForEvent(event, pack)} · ${formatMarkerTime(marker)}.`, 'success');
     } else if (type === 'toilet_queue') {
-      feedback(`Toilet saved near ${placeLabelForEvent(event, pack)}. Anonymous pulse expires today.`, 'success');
+      feedback(`Toilet signal added · ${placeLabelForEvent(event, pack)}.`, 'success');
     } else if (type === 'need_help') {
       feedback('Move to a steward or call 999 now. Help taps stay on this phone.', 'warn');
     } else {
-      feedback(`${FAN_EVENT_LABELS[type]} saved near ${placeLabelForEvent(event, pack)}.`, 'success');
+      feedback(`${FAN_EVENT_LABELS[type]} signal added · ${placeLabelForEvent(event, pack)}.`, 'success');
     }
     onTrack(analyticsEventForSignal(type), {
       snapped: Boolean(event.segment_id),
@@ -237,29 +270,37 @@ export function MapScreen({
     }
   };
 
-  const aroundEmpty = !nearestPoi && !busInsight && reportInsights.length === 0;
+  useEffect(() => {
+    const openFromMenu = () => void openSync();
+    window.addEventListener('parade-companion:open-sync-qr', openFromMenu);
+    return () => window.removeEventListener('parade-companion:open-sync-qr', openFromMenu);
+  }, [fanEvents]);
+
   const tapPanel = (
     <div className="tap-panel" aria-label="Fast parade taps">
       <div className="tap-panel__head">
-        <span>Three fast taps</span>
+        <span>Quick tap</span>
         <small>saved on this phone first</small>
       </div>
       <div className="pulse-actions">
         <button type="button" className="fan-tap fan-tap--presence" onClick={() => void saveEvent('presence')}>
+          <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.presence}</span>
           <strong>I am here</strong>
-          <span>fan dot</span>
+          <span>{FAN_EVENT_HINTS.presence}</span>
         </button>
         <button type="button" className="fan-tap fan-tap--bus" onClick={() => void saveEvent('bus_seen')}>
-          <strong>Bus is here</strong>
-          <span>sighting</span>
+          <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.bus_seen}</span>
+          <strong>Bus here</strong>
+          <span>{FAN_EVENT_HINTS.bus_seen}</span>
         </button>
         <button
           type="button"
           className="fan-tap fan-tap--toilet"
           onClick={() => void saveEvent('toilet_queue')}
         >
+          <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.toilet_queue}</span>
           <strong>Toilet here</strong>
-          <span>found now</span>
+          <span>{FAN_EVENT_HINTS.toilet_queue}</span>
         </button>
       </div>
 
@@ -270,7 +311,7 @@ export function MapScreen({
         onClick={() => setReportsOpen((value) => !value)}
       >
         More reports {reportsOpen ? '▴' : '▾'}
-        <span>crowd · food · help</span>
+        <span>jam · blocked · food · help</span>
       </button>
 
       {reportsOpen ? (
@@ -282,7 +323,11 @@ export function MapScreen({
               data-kind={type}
               onClick={() => void saveEvent(type)}
             >
-              {FAN_EVENT_LABELS[type]}
+              <span className="report-chip__icon" aria-hidden="true">{FAN_EVENT_BADGES[type]}</span>
+              <span>
+                <strong>{FAN_EVENT_LABELS[type]}</strong>
+                <small>{FAN_EVENT_HINTS[type]}</small>
+              </span>
             </button>
           ))}
         </div>
@@ -290,39 +335,25 @@ export function MapScreen({
     </div>
   );
 
+  // One-line summary of what's on the map right now. Replaces the "Around
+  // you" panel — same information, dramatically less vertical space.
+  const mapStatusLine = (() => {
+    if (!storesHydrated) return 'LOADING SAVED DATA…';
+    if (walkTarget) return `FIND · ${walkTarget.label}`;
+    if (busInsight) return `BUS · ${placeLabelForCluster(busInsight, pack)} · ${insightMeta(busInsight)}`;
+    if (reportInsights[0]) return `${FAN_EVENT_LABELS[reportInsights[0].type].toUpperCase()} · ${placeLabelForCluster(reportInsights[0], pack)}`;
+    if (nearestPoi) return `NEAREST · ${nearestPoi.poi.name} · ${formatDistance(nearestPoi.distance)}`;
+    if (!gpsFix) return 'OFFLINE SCHEMATIC · TURN ON LOCATION';
+    return 'OFFLINE SCHEMATIC · QUIET FOR NOW';
+  })();
+
   return (
     <section className="screen map-screen">
-      {tapPanel}
-
-      <QuickFindChips
-        active={findCategory}
-        onPick={(category) => {
-          setFindCategory(category);
-          if (category) {
-            onTrack('parade_quick_find_used', { category });
-            // Auto-target the nearest match for an instant "where do I walk?"
-            // — recomputed inline (the memo doesn't update until next render).
-            const nearest = nearestPoiForCategory(category, pack, gpsFix);
-            if (nearest) {
-              setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
-            }
-          } else {
-            setWalkTarget(null);
-          }
-        }}
-      />
-
-      <LayerToggleRow
-        layers={layers}
-        onToggle={(id) => setLayers((current) => ({ ...current, [id]: !current[id] }))}
-      />
-
-      <LiveSyncStrip status={liveSyncStatus} online={online} />
-
       <StatusStrip
         gpsFix={gpsFix}
         routeDistanceM={routeDistance?.distanceM ?? null}
-        batterySaver={batterySaver}
+        syncStatus={liveSyncStatus}
+        online={online}
         onRoutePress={
           routeDistance
             ? () => {
@@ -336,32 +367,31 @@ export function MapScreen({
               }
             : undefined
         }
-        onToggleBatterySaver={() => setBatterySaver((current) => !current)}
-        onOpenQr={() => void openSync()}
+        onSyncPress={onManualSync}
       />
 
-      <GoalPointer
-        pack={pack}
-        gpsFix={gpsFix}
-        target={walkTarget}
-        onClear={() => setWalkTarget(null)}
-      />
+      <div className="map-stage">
+        <CorridorMap
+          pack={pack}
+          gpsFix={gpsFix}
+          plan={plan}
+          busMarkers={liveBusMarkers}
+          fanEvents={fanEvents}
+          sideTings={sideTings}
+          layers={layers}
+          target={walkTarget}
+          extraPois={findExtras}
+          onPoiTap={(poi) => {
+            setSelectedPoi(poi);
+            onTrack('parade_poi_tapped', { kind: poi.kind, id: poi.id });
+          }}
+        />
+        <ParadersChip count={paraders} />
+      </div>
 
-      <CorridorMap
-        pack={pack}
-        gpsFix={gpsFix}
-        plan={plan}
-        busMarkers={busMarkers}
-        fanEvents={fanEvents}
-        sideTings={sideTings}
-        layers={layers}
-        target={walkTarget}
-        extraPois={findExtras}
-        onPoiTap={(poi) => {
-          setSelectedPoi(poi);
-          onTrack('parade_poi_tapped', { kind: poi.kind, id: poi.id });
-        }}
-      />
+      <p className="map-status" role="status" aria-live="polite">
+        {mapStatusLine}
+      </p>
 
       <PoiSheet
         poi={selectedPoi}
@@ -375,52 +405,18 @@ export function MapScreen({
         }}
       />
 
-      <CrowdCompass
+      <GoalPointer
         pack={pack}
         gpsFix={gpsFix}
-        fanEvents={fanEvents}
-        onTarget={(target) => {
-          setWalkTarget(target);
-          showToast(`Crowd compass pointed to ${target.label}.`, 'success');
-          onTrack('parade_crowd_compass_targeted', { label: target.label });
-        }}
+        target={walkTarget}
+        onClear={() => setWalkTarget(null)}
       />
 
       {showGpsHint && !gpsFix ? (
         <p className="gps-hint" role="status">
-          Turn on Location. The dot appears once your phone gets a fix.
+          No GPS yet. The saved map still works; live taps need Location.
         </p>
       ) : null}
-
-      <div className="panel around-you">
-        <h2>Around you</h2>
-        <div className="pulse-list">
-          {nearestPoi ? (
-            <div className="pulse-row landmark">
-              <strong>Nearest</strong>
-              <span>{nearestPoi.poi.name}</span>
-              <small>{formatDistance(nearestPoi.distance)}</small>
-            </div>
-          ) : null}
-          {busInsight ? (
-            <div className="pulse-row confirmed">
-              <strong>Bus</strong>
-              <span>{placeLabelForCluster(busInsight, pack)}</span>
-              <small>{insightMeta(busInsight)}</small>
-            </div>
-          ) : null}
-          {reportInsights.map((cluster) => (
-            <div className={`pulse-row ${cluster.confidence}`} key={cluster.id}>
-              <strong>{FAN_EVENT_LABELS[cluster.type]}</strong>
-              <span>{placeLabelForCluster(cluster, pack)}</span>
-              <small>{insightMeta(cluster)}</small>
-            </div>
-          ))}
-          {aroundEmpty ? (
-            <p>Quiet for now. Turn on Location and tap what you can actually see.</p>
-          ) : null}
-        </div>
-      </div>
 
       {timing.collapsed ? (
         <button
@@ -450,6 +446,54 @@ export function MapScreen({
               </div>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {tapPanel}
+
+      <button
+        type="button"
+        className="map-tools-toggle"
+        aria-expanded={mapToolsOpen}
+        onClick={() => setMapToolsOpen((current) => !current)}
+      >
+        More map tools
+        <span>find toilets · stations · crowd compass {mapToolsOpen ? '▴' : '▾'}</span>
+      </button>
+
+      {mapToolsOpen ? (
+        <div className="map-tools-panel">
+          <QuickFindChips
+            active={findCategory}
+            onPick={(category) => {
+              setFindCategory(category);
+              if (category) {
+                onTrack('parade_quick_find_used', { category });
+                const nearest = nearestPoiForCategory(category, pack, gpsFix);
+                if (nearest) {
+                  setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
+                }
+              } else {
+                setWalkTarget(null);
+              }
+            }}
+          />
+
+          <LayerToggleRow
+            layers={layers}
+            onToggle={(id) => setLayers((current) => ({ ...current, [id]: !current[id] }))}
+          />
+
+          <CrowdCompass
+            pack={pack}
+            gpsFix={gpsFix}
+            fanEvents={fanEvents}
+            onTarget={(target) => {
+              setWalkTarget(target);
+              showToast(`Crowd compass pointed to ${target.label}.`, 'success');
+              onTrack('parade_crowd_compass_targeted', { label: target.label });
+            }}
+          />
         </div>
       ) : null}
 
@@ -491,8 +535,7 @@ function placeLabelForEvent(event: FanEvent, pack: RoutePack): string {
 }
 
 function insightMeta(cluster: FanEventCluster): string {
-  const confidence = cluster.confidence === 'strong' ? 'confirmed' : cluster.confidence === 'likely' ? 'likely' : 'single';
-  return `${cluster.count} ${cluster.count === 1 ? 'fan' : 'fans'} · ${confidence} · ${eventAgeLabel(cluster.latest)}`;
+  return `${reportConfidenceText(cluster.confidence, cluster.count)} · ${eventAgeLabel(cluster.latest)}`;
 }
 
 function analyticsEventForSignal(type: FanEventType): ParadeAnalyticsEvent {

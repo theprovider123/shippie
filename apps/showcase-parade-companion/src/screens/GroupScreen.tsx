@@ -16,6 +16,7 @@ import {
 } from '../lib/group-events';
 import {
   createDefaultGroupPlan,
+  decodePlan,
   encodePlan,
   ensurePlanRoom,
   pointFromLandmark,
@@ -71,6 +72,8 @@ export function GroupScreen({
   const [shareUrl, setShareUrl] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [shareMode, setShareMode] = useState<'group' | 'dot' | 'app'>('group');
+  const [joinSheetOpen, setJoinSheetOpen] = useState(false);
+  const [joinDraft, setJoinDraft] = useState('');
   const [showMore, setShowMore] = useState(false);
   const [events, setEvents] = useState<GroupEvent[]>(() => listGroupEvents());
   const landmarks = pack.meetingLandmarks;
@@ -92,6 +95,15 @@ export function GroupScreen({
       normalizeMembersForLocalDevice(parseMembers(current), localMemberName, supporterTag).join(', '),
     );
   }, [localMemberName, supporterTag]);
+
+  useEffect(() => {
+    if (!joinSheetOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setJoinSheetOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [joinSheetOpen]);
 
   useEffect(() => {
     if (!plan || !visiblePlan) return;
@@ -163,6 +175,56 @@ export function GroupScreen({
     hapticConfirm();
   };
 
+  const startGroup = async () => {
+    const base = createDefaultGroupPlan(pack);
+    const next = ensurePlanRoom({
+      ...base,
+      name: displayName && displayName !== 'Me' ? `${displayName}'s parade group` : base.name,
+      members: [localMemberName],
+      roleHint: 'join',
+      updatedAt: new Date().toISOString(),
+    });
+    await onSave(next);
+    setDraft(next);
+    setMembersText(localMemberName);
+    setDraftHydrated(true);
+    setShowMore(true);
+    onTrack('parade_plan_saved', {
+      members_count: 1,
+      has_leave_plan: Boolean(next.leavePlan?.trim()),
+      started_from_empty: true,
+    });
+    hapticConfirm();
+    showToast('Group started. Set the meeting point, then invite friends.', 'success');
+  };
+
+  const joinFromDraft = async () => {
+    const fragment = extractShareFragment(joinDraft);
+    const decoded = await decodePlan(fragment);
+    if (!decoded) {
+      showToast('Paste a Parade Companion group invite link.', 'warn');
+      return;
+    }
+    const next = addLocalMemberToPlan(
+      normalizePlanForLocalDevice(decoded, localMemberName, supporterTag),
+      localMemberName,
+    );
+    await onSave(next);
+    setDraft(next);
+    setMembersText(next.members.join(', '));
+    setDraftHydrated(true);
+    setJoinDraft('');
+    setJoinSheetOpen(false);
+    setShowMore(false);
+    onTrack('parade_plan_import_saved', {
+      members_count: next.members.length,
+      has_leave_plan: Boolean(next.leavePlan?.trim()),
+      pasted: true,
+    });
+    hapticConfirm();
+    showToast('Joined group. Plan saved to this phone.', 'success');
+  };
+
   const shareMyDot = async () => {
     const solo = ensurePlanRoom({
       ...createDefaultGroupPlan(pack),
@@ -223,25 +285,45 @@ export function GroupScreen({
           memberCount={0}
           solo
           onShowInvite={() => void shareMyDot()}
-          onShareMyDot={() => void shareMyDot()}
+          onStartGroup={() => void startGroup()}
+          onJoinInvite={() => setJoinSheetOpen(true)}
           onShareApp={shareApp}
           displayName={displayName}
           supporterTag={supporterTag}
+          onEditName={onEditName}
         />
-        {displayName === 'Me' ? (
-          <div className="panel set-name-card">
-            <h2>Set your name</h2>
-            <p>Friends will see this on group signals and invite cards.</p>
-            <button type="button" className="secondary-action" onClick={onEditName}>
-              Set name
-            </button>
-          </div>
-        ) : null}
         <SideTingsCard
           refreshKey={sideTingsRefresh}
           onChange={onSideTingsRefresh}
           onAdd={onAddSideTing}
         />
+        {joinSheetOpen ? (
+          <div className="side-ting-sheet" role="dialog" aria-modal="true" aria-labelledby="join-group-title" onClick={() => setJoinSheetOpen(false)}>
+            <div className="side-ting-sheet__surface" onClick={(event) => event.stopPropagation()}>
+              <h2 id="join-group-title">Join a group</h2>
+              <p className="side-ting-sheet__copy">
+                Paste a group invite link. It saves the meeting plan to this phone and adds your name locally.
+              </p>
+              <label className="name-field">
+                Invite link
+                <textarea
+                  rows={4}
+                  value={joinDraft}
+                  onChange={(event) => setJoinDraft(event.currentTarget.value)}
+                  placeholder="https://shippie.app/run/parade-companion/#..."
+                />
+              </label>
+              <div className="side-ting-sheet__actions">
+                <button type="button" className="secondary-action" onClick={() => setJoinSheetOpen(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="primary-action" onClick={() => void joinFromDraft()}>
+                  Join group
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <QrShareSheet
           open={sheetOpen}
           url={shareUrl}
@@ -452,6 +534,12 @@ function normalizeMembersForLocalDevice(
   return deduped.slice(0, 12);
 }
 
+function addLocalMemberToPlan(plan: GroupPlan, localMemberName: string): GroupPlan {
+  const key = localMemberName.toLowerCase();
+  if (plan.members.some((member) => member.toLowerCase() === key)) return plan;
+  return { ...plan, members: [...plan.members, localMemberName].slice(0, 12) };
+}
+
 function sameStringList(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -469,6 +557,12 @@ function planSignature(plan: GroupPlan): string {
     ifSeparated: plan.ifSeparated.trim(),
     leavePlan: (plan.leavePlan ?? '').trim(),
   });
+}
+
+function extractShareFragment(input: string): string {
+  const trimmed = input.trim();
+  const hashIndex = trimmed.indexOf('#');
+  return hashIndex === -1 ? trimmed.replace(/^#/, '') : trimmed.slice(hashIndex + 1);
 }
 
 function normalizePoint(point: PlanPoint) {

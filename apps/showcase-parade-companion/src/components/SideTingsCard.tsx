@@ -40,9 +40,16 @@ export function SideTingsCard({ onAdd, refreshKey, onChange }: SideTingsCardProp
         </button>
       </div>
       {rows.length === 0 ? (
-        <p className="side-tings-card__empty">
-          Add a friend's QR to watch their crew here.
-        </p>
+        <div className="side-tings-card__empty">
+          <p>Add a friend's QR to watch their crew here.</p>
+          <button
+            type="button"
+            className="primary-action side-tings-card__empty-cta"
+            onClick={onAdd}
+          >
+            + Add a crew
+          </button>
+        </div>
       ) : (
         <ul className="side-tings-card__list">
           {rows.map((row) => (

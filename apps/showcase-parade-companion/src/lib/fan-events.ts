@@ -81,12 +81,32 @@ const EVENT_TTL_MINUTES: Record<FanEventType, number> = {
 
 export const FAN_EVENT_LABELS: Record<FanEventType, string> = {
   presence: "I'm here",
-  bus_seen: 'Bus seen',
-  crowd_dense: 'Too crowded',
-  road_blocked: 'Road blocked',
+  bus_seen: 'Bus here',
+  crowd_dense: 'Crowd jam',
+  road_blocked: 'Blocked route',
   food_open: 'Food open',
   toilet_queue: 'Toilet here',
   need_help: 'Need help',
+};
+
+export const FAN_EVENT_BADGES: Record<FanEventType, string> = {
+  presence: 'ME',
+  bus_seen: 'BUS',
+  crowd_dense: 'JAM',
+  road_blocked: 'NO',
+  food_open: 'FD',
+  toilet_queue: 'WC',
+  need_help: 'SOS',
+};
+
+export const FAN_EVENT_HINTS: Record<FanEventType, string> = {
+  presence: 'fan dot',
+  bus_seen: 'sighting',
+  crowd_dense: 'slow moving',
+  road_blocked: 'no through',
+  food_open: 'open now',
+  toilet_queue: 'found now',
+  need_help: 'private',
 };
 
 export const REPORT_EVENT_TYPES: FanEventType[] = [
@@ -165,7 +185,7 @@ export function dedupeFanEvents(events: FanEvent[]): FanEvent[] {
 }
 
 export function sortEvents(events: FanEvent[]): FanEvent[] {
-  return [...events].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  return [...events].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.id.localeCompare(b.id));
 }
 
 export function clusterFanEvents(events: FanEvent[], now = Date.now()): FanEventCluster[] {
@@ -224,6 +244,8 @@ export function clusterFanEvents(events: FanEvent[], now = Date.now()): FanEvent
       if (priority !== 0) return priority;
       const count = b.count - a.count;
       if (count !== 0) return count;
+      const typeOrder = eventTypeSortIndex(a.type) - eventTypeSortIndex(b.type);
+      if (typeOrder !== 0) return typeOrder;
       return Date.parse(b.latest.created_at) - Date.parse(a.latest.created_at);
     });
 }
@@ -266,6 +288,7 @@ export function selectCarryFanEvents(events: FanEvent[], now = Date.now()): FanE
   const bySourceClaim = new Map<string, FanEvent>();
   for (const event of sortEvents(dedupeFanEvents(events))) {
     if (!isActive(event, now)) continue;
+    if (event.type === 'need_help') continue;
     const key = `${event.type}:${event.source_id}:${clusterKey(event)}`;
     if (!bySourceClaim.has(key)) bySourceClaim.set(key, event);
   }
@@ -298,6 +321,12 @@ export function eventSegmentLabel(event: Pick<FanEvent, 'segment_id' | 'segment_
   const index = segmentIndexForEvent(event);
   if (index !== null) return ROUTE_SEGMENT_LABELS[index] ?? `route stretch ${index + 1}`;
   return 'near route';
+}
+
+export function reportConfidenceText(confidence: ReportConfidence, count: number): string {
+  if (confidence === 'strong') return 'confirmed';
+  if (confidence === 'likely') return `${count} taps`;
+  return count <= 1 ? '1 tap' : `${count} taps`;
 }
 
 export function getFanSourceId(): string {
@@ -395,6 +424,11 @@ function eventPriority(type: FanEventType): number {
   if (type === 'crowd_dense') return 3;
   if (type === 'food_open' || type === 'toilet_queue') return 2;
   return 1;
+}
+
+function eventTypeSortIndex(type: FanEventType): number {
+  const index = REPORT_EVENT_TYPES.indexOf(type);
+  return index === -1 ? REPORT_EVENT_TYPES.length : index;
 }
 
 function stripHash(fragment: string): string {

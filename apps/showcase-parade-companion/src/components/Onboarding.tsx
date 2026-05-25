@@ -69,12 +69,12 @@ export function Onboarding({ open, initialName, supporterTag, onFinish, onSkip }
                 <span>Map, fonts, and route pack stay on this phone.</span>
               </li>
               <li>
-                <strong>Make a group</strong>
-                <span>Share the QR before signal drops.</span>
+                <strong>Start or join group</strong>
+                <span>Use the Group tab: start a plan or open an invite link.</span>
               </li>
               <li>
                 <strong>Tap the map</strong>
-                <span>I am here, Bus is here, or Toilet here.</span>
+                <span>I am here, Bus here, or Toilet here.</span>
               </li>
             </ol>
             <div className="onboarding__privacy" aria-label="What gets shared">

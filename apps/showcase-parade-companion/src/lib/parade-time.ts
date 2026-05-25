@@ -1,6 +1,19 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 const START_PROMPT_WINDOW_MS = 30 * 60 * 1000;
 const TIMING_COLLAPSE_AFTER_MS = 30 * 60 * 1000;
+const PACK_STALE_AFTER_MS = 14 * DAY_MS;
+
+/**
+ * The baked route pack ages — if a fan opens the app the morning of the
+ * parade and our latest cached pack is more than 14 days old, the route may
+ * have changed since. Surface a visible warning so they re-open on Wi-Fi
+ * before travelling.
+ */
+export function isPackStale(packVersion: string, now = Date.now()): boolean {
+  const ts = Date.parse(packVersion);
+  if (!Number.isFinite(ts)) return false;
+  return now - ts > PACK_STALE_AFTER_MS;
+}
 
 export function isParadeDay(startTime: string, now = Date.now()): boolean {
   const range = eventDayRange(startTime);

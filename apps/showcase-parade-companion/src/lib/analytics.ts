@@ -34,6 +34,7 @@ export type ParadeAnalyticsEvent =
   | 'parade_quick_find_used'
   | 'parade_route_pack_updated'
   | 'parade_start_prompt_shown'
+  | 'parade_manual_sync_tapped'
   | 'parade_crowd_sync_completed'
   | 'parade_crowd_compass_targeted';
 
