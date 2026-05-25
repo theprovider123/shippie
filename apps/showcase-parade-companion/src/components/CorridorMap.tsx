@@ -26,6 +26,13 @@ import {
 import { chipForGroupName, type SideTing } from '../lib/side-tings';
 import type { MapLayerId } from './LayerToggleRow';
 
+interface LabelRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
  * Place categories (toilet/water/atm) are filtered by their
  * corresponding LayerToggleRow toggle. Core categories (landmark, station,
@@ -171,15 +178,16 @@ export function CorridorMap({
     canvas.height = extent.pxHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const labels: LabelRect[] = [];
     drawRoute(ctx, pack.route.coordinates, extent, scale);
-    if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent, scale);
-    if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings, extent, scale);
+    if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent, scale, labels);
+    if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings, extent, scale, labels);
     if (gpsFix && target) drawWalkLine(ctx, gpsFix, target, extent, scale);
-    drawPois(ctx, points, scale);
+    drawPois(ctx, points, scale, labels);
     drawScheduleMarkers(ctx, pack.scheduleEstimate, extent, scale);
-    if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent, scale);
-    if (gpsFix) drawGps(ctx, gpsFix, extent, scale);
-  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale, extent]);
+    if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent, scale, labels);
+    if (gpsFix) drawGps(ctx, gpsFix, extent, scale, !localPresencePulse, labels);
+  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale, extent, localPresencePulse]);
 
   const commitView = (next: MapView) => {
     viewRef.current = next;
@@ -471,15 +479,15 @@ function drawRoute(ctx: CanvasRenderingContext2D, route: readonly [number, numbe
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = fixed(48);
+  ctx.lineWidth = fixed(38);
   ctx.strokeStyle = 'rgba(245, 239, 228, 0.7)';
   drawPolyline(ctx, route, extent);
   ctx.stroke();
-  ctx.lineWidth = fixed(34);
+  ctx.lineWidth = fixed(26);
   ctx.strokeStyle = 'rgba(239, 1, 7, 0.22)';
   drawPolyline(ctx, route, extent);
   ctx.stroke();
-  ctx.lineWidth = fixed(16);
+  ctx.lineWidth = fixed(11);
   ctx.strokeStyle = '#EF0107';
   drawPolyline(ctx, route, extent);
   ctx.stroke();
@@ -498,6 +506,7 @@ function drawPois(
   ctx: CanvasRenderingContext2D,
   points: Array<{ id: string; label: string; kind: string; point: PixelPoint }>,
   scale: number,
+  labels: LabelRect[],
 ) {
   ctx.save();
   const fixed = fixedSize(scale);
@@ -526,8 +535,8 @@ function drawPois(
     // readable instead of a wall of overlapping text at zoom 1.
     if (isSmallPoiKind(marker.kind) && scale < 1.5) continue;
     const label = mapLabelText(marker);
-    if (style.smallLabel) drawMiniLabel(ctx, label, marker.point.x + radius + fixed(14), marker.point.y, style.labelTone, scale);
-    else drawLabel(ctx, label, marker.point.x + radius + fixed(18), marker.point.y, scale);
+    if (style.smallLabel) drawMiniLabel(ctx, label, marker.point.x + radius + fixed(14), marker.point.y, style.labelTone, scale, labels);
+    else drawLabel(ctx, label, marker.point.x + radius + fixed(18), marker.point.y, scale, labels);
   }
   ctx.restore();
 }
@@ -596,7 +605,7 @@ function mapLabelText(marker: { label: string; kind: string }): string {
   return marker.label;
 }
 
-function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[], extent: MapExtent, scale: number) {
+function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[], extent: MapExtent, scale: number, labels: LabelRect[]) {
   const presence = clusters.filter((cluster) => cluster.type === 'presence').slice(0, 10);
   const reports = clusters.filter((cluster) => cluster.type !== 'presence').slice(0, 12);
   const fixed = fixedSize(scale);
@@ -612,7 +621,7 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
     ctx.lineWidth = fixed(3);
     ctx.strokeStyle = 'rgba(20, 18, 15, 0.62)';
     ctx.stroke();
-    if (cluster.count > 1) drawLabel(ctx, `${cluster.count} here`, p.x + radius + fixed(10), p.y, scale);
+    if (cluster.count > 1) drawLabel(ctx, `${cluster.count} here`, p.x + radius + fixed(10), p.y, scale, labels);
   }
 
   for (const cluster of reports) {
@@ -631,7 +640,7 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
     ctx.fillStyle = color.strong;
     ctx.fill();
     drawEventBadge(ctx, cluster.type, p.x, p.y, scale);
-    drawLabel(ctx, clusterLabel(cluster), p.x + radius + fixed(8), p.y, scale);
+    drawLabel(ctx, clusterLabel(cluster), p.x + radius + fixed(8), p.y, scale, labels);
   }
   ctx.restore();
 }
@@ -680,7 +689,14 @@ function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint
   ctx.restore();
 }
 
-function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix, extent: MapExtent, scale: number) {
+function drawGps(
+  ctx: CanvasRenderingContext2D,
+  gps: GpsFix,
+  extent: MapExtent,
+  scale: number,
+  showLabel: boolean,
+  labels: LabelRect[],
+) {
   const p = lngLatToPixel(gps, extent);
   const radius = metersToPixelRadius(gps, gps.accuracyM, extent);
   const fixed = fixedSize(scale);
@@ -704,11 +720,11 @@ function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix, extent: MapExtent, 
   ctx.lineWidth = fixed(3);
   ctx.strokeStyle = 'rgba(20, 18, 15, 0.7)';
   ctx.stroke();
-  drawLabel(ctx, 'You are here', p.x + fixed(54), p.y, scale);
+  if (showLabel) drawLabel(ctx, 'You are here', p.x + fixed(54), p.y, scale, labels, { force: true });
   ctx.restore();
 }
 
-function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], extent: MapExtent, scale: number) {
+function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], extent: MapExtent, scale: number, labels: LabelRect[]) {
   ctx.save();
   const fixed = fixedSize(scale);
   for (const marker of markers) {
@@ -730,7 +746,7 @@ function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], ext
     ctx.lineWidth = fixed(9);
     ctx.strokeStyle = '#F5EFE4';
     ctx.stroke();
-    drawLabel(ctx, alpha < 0.5 ? 'Old bus tap' : 'Bus tap', p.x + fixed(58), p.y, scale);
+    drawLabel(ctx, alpha < 0.5 ? 'Old bus tap' : 'Bus tap', p.x + fixed(58), p.y, scale, labels);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -745,7 +761,7 @@ function busMarkerAlpha(marker: Pick<BusMarker, 'created_at'>): number {
   return 1;
 }
 
-function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: MapExtent, scale: number) {
+function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: MapExtent, scale: number, labels: LabelRect[]) {
   ctx.save();
   const fixed = fixedSize(scale);
   for (const row of rows.slice(0, 5)) {
@@ -768,7 +784,7 @@ function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: 
       ctx.lineWidth = fixed(5);
       ctx.stroke();
     }
-    drawLabel(ctx, chipForGroupName(row.name), p.x + fixed(50), p.y, scale);
+    drawLabel(ctx, chipForGroupName(row.name), p.x + fixed(50), p.y, scale, labels);
   }
   ctx.restore();
 }
@@ -837,23 +853,34 @@ function offsetClusterPoint(point: PixelPoint, type: FanEventType): PixelPoint {
   return { x: point.x + 52, y: point.y - 52 };
 }
 
-function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, scale = 1) {
+function drawLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  scale = 1,
+  labels?: LabelRect[],
+  options: { force?: boolean } = {},
+) {
   const fixed = fixedSize(scale);
   const displayText = text.length > 30 ? `${text.slice(0, 27)}...` : text;
-  ctx.font = `700 ${fixed(52)}px "JetBrains Mono", ui-monospace, monospace`;
-  const padded = fixed(displayText.length * 30 + 38);
+  ctx.font = `700 ${fixed(40)}px "JetBrains Mono", ui-monospace, monospace`;
+  const padded = fixed(displayText.length * 24 + 30);
   let labelX = x;
   if (labelX + padded > 1782) labelX = x - padded - fixed(60);
   labelX = Math.max(18, Math.min(1782 - padded, labelX));
   const labelY = Math.max(42, Math.min(1758, y));
+  const rect = { x: labelX - fixed(14), y: labelY - fixed(32), width: padded, height: fixed(64) };
+  if (labels && !reserveLabel(labels, rect, fixed(8), Boolean(options.force))) return false;
   ctx.fillStyle = 'rgba(245, 239, 228, 0.94)';
-  roundRect(ctx, labelX - fixed(18), labelY - fixed(42), padded, fixed(84), 0);
+  roundRect(ctx, rect.x, rect.y, rect.width, rect.height, 0);
   ctx.fill();
   ctx.lineWidth = fixed(3);
   ctx.strokeStyle = 'rgba(20, 18, 15, 0.82)';
   ctx.stroke();
   ctx.fillStyle = '#14120F';
-  ctx.fillText(displayText, labelX, labelY + fixed(4));
+  ctx.fillText(displayText, labelX, labelY + fixed(3));
+  return true;
 }
 
 function drawMiniLabel(
@@ -863,23 +890,48 @@ function drawMiniLabel(
   y: number,
   tone: 'default' | 'transit' | 'landmark' = 'default',
   scale = 1,
+  labels?: LabelRect[],
 ) {
   const fixed = fixedSize(scale);
   const displayText = text.length > 22 ? `${text.slice(0, 19)}...` : text;
-  ctx.font = `800 ${fixed(54)}px "JetBrains Mono", ui-monospace, monospace`;
-  const padded = fixed(displayText.length * 31 + 36);
+  ctx.font = `800 ${fixed(38)}px "JetBrains Mono", ui-monospace, monospace`;
+  const padded = fixed(displayText.length * 23 + 30);
   let labelX = x;
   if (labelX + padded > 1782) labelX = x - padded - fixed(58);
   labelX = Math.max(18, Math.min(1782 - padded, labelX));
   const labelY = Math.max(42, Math.min(1758, y));
+  const rect = { x: labelX - fixed(14), y: labelY - fixed(30), width: padded, height: fixed(60) };
+  if (labels && !reserveLabel(labels, rect, fixed(8))) return false;
   ctx.fillStyle = tone === 'transit' ? 'rgba(245, 239, 228, 0.96)' : 'rgba(237, 230, 213, 0.94)';
-  roundRect(ctx, labelX - fixed(18), labelY - fixed(41), padded, fixed(82), 0);
+  roundRect(ctx, rect.x, rect.y, rect.width, rect.height, 0);
   ctx.fill();
   ctx.lineWidth = fixed(tone === 'transit' ? 4 : 2);
   ctx.strokeStyle = tone === 'transit' ? '#14120F' : 'rgba(20, 18, 15, 0.72)';
   ctx.stroke();
   ctx.fillStyle = tone === 'transit' ? '#14120F' : '#4C473F';
-  ctx.fillText(displayText, labelX, labelY + fixed(5));
+  ctx.fillText(displayText, labelX, labelY + fixed(4));
+  return true;
+}
+
+function reserveLabel(labels: LabelRect[], rect: LabelRect, padding: number, force = false): boolean {
+  if (!force && labels.some((existing) => rectsOverlap(expandRect(existing, padding), expandRect(rect, padding)))) {
+    return false;
+  }
+  labels.push(rect);
+  return true;
+}
+
+function expandRect(rect: LabelRect, padding: number): LabelRect {
+  return {
+    x: rect.x - padding,
+    y: rect.y - padding,
+    width: rect.width + padding * 2,
+    height: rect.height + padding * 2,
+  };
+}
+
+function rectsOverlap(a: LabelRect, b: LabelRect): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 function fixedSize(scale: number): (value: number) => number {
