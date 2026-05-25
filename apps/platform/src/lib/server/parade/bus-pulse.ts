@@ -511,7 +511,7 @@ export class BusPulseSegment {
 
     const ip = request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for') ?? 'unknown';
     const nowMs = Date.now();
-    if (!this.allowIp(ip, nowMs)) {
+    if (!this.allowRate(ip, nowMs)) {
       return Response.json({ error: 'rate_limited' }, { status: 429 });
     }
 
@@ -566,11 +566,7 @@ export class BusPulseSegment {
       return Response.json({ error: 'method_not_allowed' }, { status: 405 });
     }
 
-    const ip = request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for') ?? 'unknown';
     const nowMs = Date.now();
-    if (!this.allowIp(`fan:${ip}`, nowMs)) {
-      return Response.json({ error: 'rate_limited' }, { status: 429 });
-    }
 
     let raw: unknown;
     try {
@@ -583,6 +579,9 @@ export class BusPulseSegment {
     if (!parsed.ok) return Response.json({ error: parsed.reason }, { status: 400 });
     if (parsed.packet.segmentId !== segmentId) {
       return Response.json({ error: 'segment_mismatch' }, { status: 400 });
+    }
+    if (!this.allowRate(`fan:${parsed.packet.sourceId}`, nowMs)) {
+      return Response.json({ error: 'rate_limited' }, { status: 429 });
     }
 
     const signals = await this.loadFanSignals(nowMs);
@@ -629,11 +628,7 @@ export class BusPulseSegment {
       return Response.json({ error: 'method_not_allowed' }, { status: 405 });
     }
 
-    const ip = request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for') ?? 'unknown';
     const nowMs = Date.now();
-    if (!this.allowIp(`banter:${ip}`, nowMs)) {
-      return Response.json({ error: 'rate_limited' }, { status: 429 });
-    }
 
     let raw: unknown;
     try {
@@ -646,6 +641,11 @@ export class BusPulseSegment {
     if (!parsed.ok) return Response.json({ error: parsed.reason }, { status: 400 });
     if (parsed.packets.some((packet) => banterPulseShardForSource(packet.sourceId) !== shardId)) {
       return Response.json({ error: 'shard_mismatch' }, { status: 400 });
+    }
+    for (const sourceId of new Set(parsed.packets.map((packet) => packet.sourceId))) {
+      if (!this.allowRate(`banter:${sourceId}`, nowMs)) {
+        return Response.json({ error: 'rate_limited' }, { status: 429 });
+      }
     }
 
     const counts = await this.loadBanterCounts();
@@ -711,10 +711,10 @@ export class BusPulseSegment {
     return banterCountsToAggregates(await this.loadBanterCounts());
   }
 
-  private allowIp(ip: string, nowMs: number): boolean {
-    const bucket = this.rate.get(ip);
+  private allowRate(key: string, nowMs: number): boolean {
+    const bucket = this.rate.get(key);
     if (!bucket || nowMs - bucket.startedAt > RATE_WINDOW_MS) {
-      this.rate.set(ip, { startedAt: nowMs, count: 1 });
+      this.rate.set(key, { startedAt: nowMs, count: 1 });
       return true;
     }
     bucket.count += 1;

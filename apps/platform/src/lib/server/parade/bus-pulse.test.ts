@@ -259,6 +259,38 @@ describe('BusPulseSegment Durable Object', () => {
     expect(payload.signals[0]).toMatchObject({ type: 'toilet_queue', segmentId: 'seg-0' });
   });
 
+  test('fan pulse rate limit is per anonymous source, not shared carrier IP', async () => {
+    const room = new BusPulseSegment(makeState(), {});
+    const post = (sourceId: string) =>
+      room.fetch(
+        new Request('https://fan-pulse.local/fan?segment=seg-0', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.99' },
+          body: JSON.stringify({
+            id: `presence_${sourceId}`,
+            type: 'presence',
+            sourceId,
+            lng: -0.1048,
+            lat: 51.5487,
+            accuracyM: 18,
+            segmentId: 'seg-0',
+            eventSegmentId: 'seg-0',
+            eventSegmentIndex: 0,
+            snappedLng: -0.1048,
+            snappedLat: 51.5487,
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+          }),
+        }),
+      );
+
+    expect((await post('fan_same')).status).toBe(200);
+    expect((await post('fan_same')).status).toBe(200);
+    expect((await post('fan_same')).status).toBe(200);
+    expect((await post('fan_same')).status).toBe(429);
+    expect((await post('fan_other')).status).toBe(200);
+  });
+
   test('stores one banter vote per phone per poll and updates counts', async () => {
     const room = new BusPulseSegment(makeState(), {});
     const sourceId = 'fan_abc123';
@@ -293,6 +325,35 @@ describe('BusPulseSegment Durable Object', () => {
     expect(player).toMatchObject({ total: 1 });
     expect(player?.options.raya ?? 0).toBe(0);
     expect(player?.options.gabriel).toBe(1);
+  });
+
+  test('banter pulse rate limit is per anonymous source, not shared carrier IP', async () => {
+    const room = new BusPulseSegment(makeState(), {});
+    const post = (sourceId: string) => {
+      const shardId = banterPulseShardForSource(sourceId);
+      return room.fetch(
+        new Request(`https://banter-pulse.local/banter?shard=${shardId}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.88' },
+          body: JSON.stringify({
+            votes: [
+              {
+                pollId: 'parade-mood',
+                optionId: 'singing',
+                sourceId,
+                updatedAt: new Date().toISOString(),
+              },
+            ],
+          }),
+        }),
+      );
+    };
+
+    expect((await post('fan_one')).status).toBe(200);
+    expect((await post('fan_one')).status).toBe(200);
+    expect((await post('fan_one')).status).toBe(200);
+    expect((await post('fan_one')).status).toBe(429);
+    expect((await post('fan_two')).status).toBe(200);
   });
 });
 
