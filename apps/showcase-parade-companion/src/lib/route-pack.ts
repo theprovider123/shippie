@@ -1,4 +1,4 @@
-import { CORRIDOR_EXTENT, FALLBACK_ROUTE_PACK, type RoutePack } from '../data/parade-2026';
+import { CORRIDOR_EXTENT, FALLBACK_ROUTE_PACK, type MapExtent, type RoutePack } from '../data/parade-2026';
 import { isInsideExtent } from './geo';
 import bakedRoutePack from '../../public/route-pack.json';
 
