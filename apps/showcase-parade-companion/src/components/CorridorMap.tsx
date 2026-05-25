@@ -547,9 +547,9 @@ function clusterRadius(cluster: FanEventCluster): number {
 }
 
 function clusterLabel(cluster: FanEventCluster): string {
-  if (cluster.type === 'bus_seen') return cluster.count > 1 ? `Bus here x${cluster.count}` : 'Bus here';
+  if (cluster.type === 'bus_seen') return cluster.count > 1 ? `Bus here · ${cluster.count} fans` : 'Bus here';
   const label = FAN_EVENT_LABELS[cluster.type];
-  return cluster.count > 1 ? `${label} x${cluster.count}` : label;
+  return cluster.count > 1 ? `${label} · ${cluster.count} fans` : label;
 }
 
 function buildMapSummary(gpsFix: GpsFix | null | undefined, clusters: FanEventCluster[], busMarkerCount: number): string {

@@ -9,6 +9,7 @@ import {
   eventSegmentLabel,
   isActive,
   PUBLIC_PULSE_CUTOFF_ISO,
+  selectCarryFanEvents,
   summarizeFanEvents,
 } from './fan-events';
 
@@ -116,6 +117,63 @@ describe('fan events', () => {
     expect(blocked?.count).toBe(2);
     expect(blocked?.signalCount).toBe(3);
     expect(blocked?.confidence).toBe('single');
+  });
+
+  test('weights a clustered location by unique phones, not repeat taps', () => {
+    const oldRepeat = createFanEvent(
+      'toilet_queue',
+      { lng: -0.10499, lat: 51.54865, accuracyM: 18 },
+      route,
+      'fan_repeat',
+      new Date('2026-05-31T12:00:00+01:00'),
+    );
+    const latestRepeat = createFanEvent(
+      'toilet_queue',
+      { lng: -0.10476, lat: 51.54866, accuracyM: 18 },
+      route,
+      'fan_repeat',
+      new Date('2026-05-31T12:01:00+01:00'),
+    );
+    const otherFan = createFanEvent(
+      'toilet_queue',
+      { lng: -0.10477, lat: 51.54867, accuracyM: 18 },
+      route,
+      'fan_other',
+      new Date('2026-05-31T12:02:00+01:00'),
+    );
+
+    const toilet = clusterFanEvents([oldRepeat, latestRepeat, otherFan]).find((cluster) => cluster.type === 'toilet_queue');
+
+    expect(toilet?.count).toBe(2);
+    expect(toilet?.signalCount).toBe(3);
+    expect(toilet?.point.lng).toBeCloseTo((-0.10476 + -0.10477) / 2, 6);
+    expect(toilet?.latest.id).toBe(otherFan.id);
+  });
+
+  test('summaries cannot be boosted by repeat taps from one phone', () => {
+    const rows = [
+      createFanEvent('crowd_dense', position, route, 'fan_repeat', new Date('2026-05-31T12:00:00+01:00')),
+      createFanEvent('crowd_dense', position, route, 'fan_repeat', new Date('2026-05-31T12:01:00+01:00')),
+      createFanEvent('crowd_dense', position, route, 'fan_repeat', new Date('2026-05-31T12:02:00+01:00')),
+    ];
+
+    const summary = summarizeFanEvents(rows);
+
+    expect(summary.activeReports[0]?.type).toBe('crowd_dense');
+    expect(summary.activeReports[0]?.count).toBe(1);
+    expect(summary.activeReports[0]?.confidence).toBe('single');
+  });
+
+  test('carry sync exports only the latest claim per phone, type and place', async () => {
+    const oldRepeat = createFanEvent('bus_seen', position, route, 'fan_repeat', new Date('2026-05-31T12:00:00+01:00'));
+    const latestRepeat = createFanEvent('bus_seen', position, route, 'fan_repeat', new Date('2026-05-31T12:01:00+01:00'));
+    const otherFan = createFanEvent('bus_seen', position, route, 'fan_other', new Date('2026-05-31T12:02:00+01:00'));
+
+    const selected = selectCarryFanEvents([oldRepeat, latestRepeat, otherFan]);
+    const decoded = await decodeFanEventsSync(await encodeFanEventsForSync([oldRepeat, latestRepeat, otherFan]));
+
+    expect(selected.map((event) => event.id).sort()).toEqual([latestRepeat.id, otherFan.id].sort());
+    expect(decoded.map((event) => event.id).sort()).toEqual([latestRepeat.id, otherFan.id].sort());
   });
 
   test('drops expired pings from live map clusters', () => {

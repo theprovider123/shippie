@@ -135,14 +135,14 @@ export function summarizeFanEvents(events: FanEvent[], now = Date.now()): FanPul
   const localPresenceSources = new Set(presence.map((event) => event.source_id));
   const latestBus = active.find((event) => event.type === 'bus_seen') ?? null;
   const lastSyncAt = active.find((event) => event.source === 'nearby_sync')?.created_at ?? null;
-  const activeReports = REPORT_EVENT_TYPES
-    .map((type) => {
-      const rows = active.filter((event) => event.type === type);
-      const latest = rows[0];
-      if (!latest) return null;
-      return { type, count: rows.length, latest, confidence: confidenceFor(rows.length) };
-    })
-    .filter((row): row is NonNullable<typeof row> => Boolean(row));
+  const activeReports = clusterFanEvents(active, now)
+    .filter((cluster) => REPORT_EVENT_TYPES.includes(cluster.type))
+    .map((cluster) => ({
+      type: cluster.type,
+      count: cluster.count,
+      latest: cluster.latest,
+      confidence: cluster.confidence,
+    }));
 
   return {
     hereCount: localPresenceSources.size,
@@ -174,10 +174,7 @@ export function clusterFanEvents(events: FanEvent[], now = Date.now()): FanEvent
     {
       type: FanEventType;
       events: FanEvent[];
-      sources: Set<string>;
-      lngSum: number;
-      latSum: number;
-      accuracyM: number;
+      bySource: Map<string, FanEvent>;
       segmentId: string | null;
       segmentIndex: number | null;
     }
@@ -186,22 +183,18 @@ export function clusterFanEvents(events: FanEvent[], now = Date.now()): FanEvent
   for (const event of sortEvents(dedupeFanEvents(events))) {
     if (!isActive(event, now)) continue;
     const key = clusterKey(event);
-    const point = eventPoint(event);
     const existing = groups.get(key);
     if (existing) {
       existing.events.push(event);
-      existing.sources.add(event.source_id);
-      existing.lngSum += point.lng;
-      existing.latSum += point.lat;
-      existing.accuracyM = Math.max(existing.accuracyM, event.accuracy_m);
+      const current = existing.bySource.get(event.source_id);
+      if (!current || Date.parse(event.created_at) > Date.parse(current.created_at)) {
+        existing.bySource.set(event.source_id, event);
+      }
     } else {
       groups.set(key, {
         type: event.type,
         events: [event],
-        sources: new Set([event.source_id]),
-        lngSum: point.lng,
-        latSum: point.lat,
-        accuracyM: event.accuracy_m,
+        bySource: new Map([[event.source_id, event]]),
         segmentId: event.segment_id,
         segmentIndex: event.segment_index,
       });
@@ -210,18 +203,16 @@ export function clusterFanEvents(events: FanEvent[], now = Date.now()): FanEvent
 
   return [...groups.entries()]
     .map(([id, group]) => {
-      const latest = sortEvents(group.events)[0]!;
-      const count = group.sources.size;
+      const sourceEvents = [...group.bySource.values()];
+      const latest = sortEvents(sourceEvents)[0]!;
+      const count = sourceEvents.length;
       return {
         id,
         type: group.type,
         count,
         signalCount: group.events.length,
-        point: {
-          lng: group.lngSum / group.events.length,
-          lat: group.latSum / group.events.length,
-        },
-        accuracyM: group.accuracyM,
+        point: averageEventPoint(sourceEvents),
+        accuracyM: Math.max(...sourceEvents.map((sourceEvent) => sourceEvent.accuracy_m)),
         segmentId: group.segmentId,
         segmentIndex: group.segmentIndex,
         latest,
@@ -244,8 +235,7 @@ export function isActive(event: FanEvent, now = Date.now()): boolean {
 }
 
 export async function encodeFanEventsForSync(events: FanEvent[]): Promise<string> {
-  const payload = sortEvents(dedupeFanEvents(events))
-    .filter((event) => isActive(event))
+  const payload = selectCarryFanEvents(events)
     .slice(0, 36)
     .map(compactEvent);
   const fragment = await encodeShareFragment({ type: FAN_EVENTS_SHARE_TYPE, payload });
@@ -270,6 +260,16 @@ export async function decodeFanEventsSync(fragment: string): Promise<FanEvent[]>
   } catch {
     return [];
   }
+}
+
+export function selectCarryFanEvents(events: FanEvent[], now = Date.now()): FanEvent[] {
+  const bySourceClaim = new Map<string, FanEvent>();
+  for (const event of sortEvents(dedupeFanEvents(events))) {
+    if (!isActive(event, now)) continue;
+    const key = `${event.type}:${event.source_id}:${clusterKey(event)}`;
+    if (!bySourceClaim.has(key)) bySourceClaim.set(key, event);
+  }
+  return sortEvents([...bySourceClaim.values()]);
 }
 
 export function validateFanEvent(input: unknown): input is FanEvent {
@@ -369,6 +369,23 @@ function eventPoint(event: FanEvent): LngLat {
   return typeof event.snapped_lng === 'number' && typeof event.snapped_lat === 'number'
     ? { lng: event.snapped_lng, lat: event.snapped_lat }
     : { lng: event.lng, lat: event.lat };
+}
+
+function averageEventPoint(events: FanEvent[]): LngLat {
+  if (events.length === 0) return { lng: 0, lat: 0 };
+  const sum = events.reduce(
+    (acc, event) => {
+      const point = eventPoint(event);
+      acc.lng += point.lng;
+      acc.lat += point.lat;
+      return acc;
+    },
+    { lng: 0, lat: 0 },
+  );
+  return {
+    lng: sum.lng / events.length,
+    lat: sum.lat / events.length,
+  };
 }
 
 function eventPriority(type: FanEventType): number {

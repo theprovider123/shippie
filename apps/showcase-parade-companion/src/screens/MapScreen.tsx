@@ -491,7 +491,8 @@ function placeLabelForEvent(event: FanEvent, pack: RoutePack): string {
 }
 
 function insightMeta(cluster: FanEventCluster): string {
-  return `${cluster.count} ${cluster.count === 1 ? 'fan' : 'fans'} · ${cluster.confidence} · ${eventAgeLabel(cluster.latest)}`;
+  const confidence = cluster.confidence === 'strong' ? 'confirmed' : cluster.confidence === 'likely' ? 'likely' : 'single';
+  return `${cluster.count} ${cluster.count === 1 ? 'fan' : 'fans'} · ${confidence} · ${eventAgeLabel(cluster.latest)}`;
 }
 
 function analyticsEventForSignal(type: FanEventType): ParadeAnalyticsEvent {

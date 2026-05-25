@@ -20,12 +20,12 @@ export function CrowdCompass({ pack, gpsFix, fanEvents, onTarget }: CrowdCompass
     <section className="crowd-compass" aria-label="Crowd compass">
       <div className="crowd-compass__head">
         <span>Crowd compass</span>
-        <small>{gpsFix ? 'from live fan taps' : 'needs Location'}</small>
+        <small>{gpsFix ? 'from live fan signals' : 'needs Location'}</small>
       </div>
       {!gpsFix ? (
-        <p>Turn on Location. When signal flickers, nearby fan taps point you to the bus, toilets and blocked spots.</p>
+        <p>Turn on Location. When signal flickers, nearby fan signals point you to the bus, toilets and blocked spots.</p>
       ) : targets.length === 0 ? (
-        <p>Waiting for crowd taps. Your three fast taps help the next fan when the relay wakes up.</p>
+        <p>Waiting for crowd signals. Your three fast taps help the next fan when the relay wakes up.</p>
       ) : (
         <div className="crowd-compass__targets">
           {targets.map(({ event, point, count, confidence }) => {
@@ -44,7 +44,7 @@ export function CrowdCompass({ pack, gpsFix, fanEvents, onTarget }: CrowdCompass
                 <span>
                   <strong>{FAN_EVENT_LABELS[event.type]}</strong>
                   <small>
-                    {place.title} · {formatDistance(haversineMeters(gpsFix, point))} · {count} {count === 1 ? 'tap' : 'taps'} · {confidence} · {eventAgeLabel(event)}
+                    {place.title} · {formatDistance(haversineMeters(gpsFix, point))} · {count} {count === 1 ? 'fan' : 'fans'} · {confidenceLabel(confidence)} · {eventAgeLabel(event)}
                   </small>
                   <em>{place.detail} · {place.grid}</em>
                 </span>
@@ -60,4 +60,10 @@ export function CrowdCompass({ pack, gpsFix, fanEvents, onTarget }: CrowdCompass
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function confidenceLabel(confidence: string): string {
+  if (confidence === 'strong') return 'confirmed';
+  if (confidence === 'likely') return 'likely';
+  return 'single';
 }
