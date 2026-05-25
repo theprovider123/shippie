@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { FALLBACK_ROUTE_PACK } from '../data/parade-2026';
 import {
+  DEFAULT_PACK_ID,
   LIVE_ROUTE_PACK_STORAGE_KEY,
+  PACK_ID_STORAGE_KEY,
   clearCachedRoutePack,
+  listPackIds,
   loadBakedRoutePack,
   loadRoutePack,
   readCachedRoutePack,
+  resolvePackId,
   syncRoutePack,
   validateRoutePack,
   writeCachedRoutePack,
@@ -198,3 +202,57 @@ function setNavigatorOnline(onLine: boolean) {
     value: { onLine },
   });
 }
+
+describe('route pack — multi-pack registry (round 10)', () => {
+  beforeEach(() => {
+    installFakeLocalStorage();
+    setNavigatorOnline(true);
+  });
+
+  test('listPackIds exposes all three baked packs', () => {
+    const ids = listPackIds();
+    expect(ids).toContain('arsenal-islington');
+    expect(ids).toContain('amsterdam-vondelpark');
+    expect(ids).toContain('watford-vicarage');
+  });
+
+  test('default is arsenal-islington', () => {
+    expect(DEFAULT_PACK_ID).toBe('arsenal-islington');
+    expect(resolvePackId()).toBe('arsenal-islington');
+  });
+
+  test('explicit pack id wins and persists', () => {
+    expect(resolvePackId('amsterdam-vondelpark')).toBe('amsterdam-vondelpark');
+    expect(localStorage.getItem(PACK_ID_STORAGE_KEY)).toBe('amsterdam-vondelpark');
+  });
+
+  test('unknown pack id silently falls back to default', () => {
+    expect(resolvePackId('non-existent')).toBe('arsenal-islington');
+  });
+
+  test('loadBakedRoutePack returns the requested pack', () => {
+    const ams = loadBakedRoutePack('amsterdam-vondelpark');
+    expect(ams.event.title).toMatch(/amsterdam/i);
+    expect(ams.mapExtent.west).toBeCloseTo(4.860, 3);
+
+    const wat = loadBakedRoutePack('watford-vicarage');
+    expect(wat.event.title).toMatch(/watford/i);
+    expect(wat.mapExtent.west).toBeCloseTo(-0.420, 3);
+  });
+
+  test('every baked pack validates and declares its own mapExtent', () => {
+    for (const id of listPackIds()) {
+      const pack = loadBakedRoutePack(id);
+      expect(pack.mapExtent).toBeDefined();
+      expect(pack.mapExtent.east).toBeGreaterThan(pack.mapExtent.west);
+      expect(pack.mapExtent.north).toBeGreaterThan(pack.mapExtent.south);
+      // The pack's own coords should be inside its declared extent.
+      for (const [lng, lat] of pack.route.coordinates) {
+        expect(lng).toBeGreaterThanOrEqual(pack.mapExtent.west);
+        expect(lng).toBeLessThanOrEqual(pack.mapExtent.east);
+        expect(lat).toBeGreaterThanOrEqual(pack.mapExtent.south);
+        expect(lat).toBeLessThanOrEqual(pack.mapExtent.north);
+      }
+    }
+  });
+});

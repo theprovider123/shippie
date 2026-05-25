@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "packVersion": "2026-05-25T20:30:00+01:00",
+  "mapExtent": { "west": -0.420, "east": -0.385, "south": 51.645, "north": 51.668, "pxWidth": 1800, "pxHeight": 1800 },
+  "event": {
+    "title": "Test Walk — Watford",
+    "dateLabel": "Sunday 25 May 2026",
+    "startTime": "2026-05-25T20:00:00+01:00",
+    "status": "route-tbd"
+  },
+  "sources": [
+    {
+      "label": "Local test pack",
+      "url": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-parade-companion/public/packs",
+      "note": "Ad-hoc walk from Vicarage Road to Watford Junction. Friends-test only."
+    }
+  ],
+  "route": {
+    "type": "LineString",
+    "label": "Vicarage Road → Watford Junction",
+    "note": "Stadium · High Street · Junction. ~2 km along the spine.",
+    "coordinates": [
+      [-0.4019, 51.6498],
+      [-0.4015, 51.6520],
+      [-0.3995, 51.6555],
+      [-0.3960, 51.6580],
+      [-0.3935, 51.6605]
+    ]
+  },
+  "pois": [
+    { "id": "w-vicarage",   "kind": "landmark", "name": "Vicarage Road stadium", "lng": -0.4019, "lat": 51.6498, "note": "Watford FC home." },
+    { "id": "w-highst",     "kind": "landmark", "name": "High Street",           "lng": -0.3970, "lat": 51.6580 },
+    { "id": "w-junction",   "kind": "station",  "name": "Watford Junction",      "lng": -0.3935, "lat": 51.6605, "note": "London Overground + National Rail." },
+    { "id": "w-hs-tube",    "kind": "station",  "name": "Watford High Street",   "lng": -0.3960, "lat": 51.6555, "note": "Overground only." },
+    { "id": "w-cassiobury", "kind": "exit",     "name": "Cassiobury Park",       "lng": -0.4180, "lat": 51.6610, "note": "Large green space west of the route." },
+    { "id": "w-atria",      "kind": "food",     "name": "Atria shopping",        "lng": -0.3965, "lat": 51.6575 },
+    { "id": "w-wc",         "kind": "toilet",   "name": "High Street WC",        "lng": -0.3962, "lat": 51.6582 },
+    { "id": "w-atm",        "kind": "atm",      "name": "High Street ATMs",      "lng": -0.3968, "lat": 51.6577 }
+  ],
+  "closures": [],
+  "transport": {
+    "stations": [
+      { "name": "Watford Junction",     "status": "open-check", "note": "Main interchange." },
+      { "name": "Watford High Street",  "status": "open-check", "note": "Overground only; smaller." }
+    ],
+    "stepFreeRoutesOut": [
+      { "label": "South via High Street", "via": "Lower High Street toward Bushey", "note": "Quieter alternative." }
+    ]
+  },
+  "meetingLandmarks": [
+    { "id": "w-vicarage", "label": "Stadium area", "lng": -0.4019, "lat": 51.6498 },
+    { "id": "w-junction", "label": "Watford Junction", "lng": -0.3935, "lat": 51.6605 }
+  ],
+  "safety": [
+    { "heading": "Test pack only", "body": "This is a local dev pack for friends to test offline UX. Not associated with any event." },
+    { "heading": "If signal dies", "body": "Airplane mode is fine; keep Location on. The GPS dot still works without internet." }
+  ],
+  "scheduleEstimate": [
+    { "label": "Start at stadium", "time": "20:00", "note": "test start", "lng": -0.4019, "lat": 51.6498 },
+    { "label": "Town centre",      "time": "20:20", "note": "halfway",    "lng": -0.3970, "lat": 51.6580 },
+    { "label": "Watford Junction", "time": "20:35", "note": "test end",   "lng": -0.3935, "lat": 51.6605 }
+  ]
+}

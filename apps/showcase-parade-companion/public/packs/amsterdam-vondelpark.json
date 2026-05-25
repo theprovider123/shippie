@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "packVersion": "2026-05-25T20:30:00+02:00",
+  "mapExtent": { "west": 4.860, "east": 4.890, "south": 52.353, "north": 52.366, "pxWidth": 1800, "pxHeight": 1800 },
+  "event": {
+    "title": "Test Walk — Amsterdam",
+    "dateLabel": "Sunday 25 May 2026",
+    "startTime": "2026-05-25T20:00:00+02:00",
+    "status": "route-tbd"
+  },
+  "sources": [
+    {
+      "label": "Local test pack",
+      "url": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-parade-companion/public/packs",
+      "note": "Ad-hoc walk through Vondelpark for offline UX testing. Not an event."
+    }
+  ],
+  "route": {
+    "type": "LineString",
+    "label": "Vondelpark loop",
+    "note": "East gate → west tip → south path → back. Roughly 2.5 km.",
+    "coordinates": [
+      [4.8730, 52.3590],
+      [4.8680, 52.3580],
+      [4.8640, 52.3565],
+      [4.8680, 52.3555],
+      [4.8730, 52.3590]
+    ]
+  },
+  "pois": [
+    { "id": "v-east",   "kind": "landmark", "name": "Park east gate",     "lng": 4.8731, "lat": 52.3590, "note": "Stadhouderskade entry; closest to Leidseplein." },
+    { "id": "v-stage",  "kind": "landmark", "name": "Open-air theatre",   "lng": 4.8688, "lat": 52.3578, "note": "Midway landmark." },
+    { "id": "v-cafe",   "kind": "food",     "name": "Vondeltuin café",    "lng": 4.8645, "lat": 52.3568 },
+    { "id": "v-wc-n",   "kind": "toilet",   "name": "Park WC (north path)", "lng": 4.8682, "lat": 52.3578 },
+    { "id": "v-wc-s",   "kind": "toilet",   "name": "Park WC (south path)", "lng": 4.8685, "lat": 52.3559 },
+    { "id": "v-water",  "kind": "water",    "name": "Drinking fountain",  "lng": 4.8662, "lat": 52.3572 },
+    { "id": "v-exit-w", "kind": "exit",     "name": "West gate",          "lng": 4.8615, "lat": 52.3562, "note": "Quieter exit toward Amstelveenseweg." }
+  ],
+  "closures": [],
+  "transport": {
+    "stations": [
+      { "name": "Tram 2/12 · Hobbemastraat", "status": "open-check", "note": "Closest stop to east gate." },
+      { "name": "Amstelveenseweg",            "status": "open-check", "note": "South-west of the park." }
+    ],
+    "stepFreeRoutesOut": [
+      { "label": "East exit toward city", "via": "Stadhouderskade", "note": "Pavement is wide; trams every few minutes." }
+    ]
+  },
+  "meetingLandmarks": [
+    { "id": "v-east", "label": "East gate", "lng": 4.8731, "lat": 52.3590 },
+    { "id": "v-cafe", "label": "Vondeltuin café", "lng": 4.8645, "lat": 52.3568 }
+  ],
+  "safety": [
+    { "heading": "Test pack only", "body": "This is a local dev pack for offline UX testing. Not associated with any event." },
+    { "heading": "If signal dies", "body": "Airplane mode is fine; keep Location on. The GPS dot still works without internet." }
+  ],
+  "scheduleEstimate": [
+    { "label": "Start at east gate", "time": "20:00", "note": "test start", "lng": 4.8730, "lat": 52.3590 },
+    { "label": "Halfway",            "time": "20:15", "note": "midpoint",   "lng": 4.8680, "lat": 52.3580 },
+    { "label": "Loop back",          "time": "20:30", "note": "test end",   "lng": 4.8730, "lat": 52.3590 }
+  ]
+}

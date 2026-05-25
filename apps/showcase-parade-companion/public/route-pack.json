@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
-  "packVersion": "2026-05-25T20:15:00+01:00",
+  "packVersion": "2026-05-25T20:30:00+01:00",
+  "mapExtent": { "west": -0.125, "east": -0.085, "south": 51.531, "north": 51.566, "pxWidth": 1800, "pxHeight": 1800 },
   "event": {
     "title": "Parade Companion — Islington",
     "dateLabel": "Sunday 31 May 2026",

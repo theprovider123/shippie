@@ -1,8 +1,80 @@
 import { CORRIDOR_EXTENT, FALLBACK_ROUTE_PACK, type MapExtent, type RoutePack } from '../data/parade-2026';
+import { setActiveExtent } from './active-extent';
 import { isInsideExtent } from './geo';
 import bakedRoutePack from '../../public/route-pack.json';
+import amsterdamPack from '../../public/packs/amsterdam-vondelpark.json';
+import watfordPack from '../../public/packs/watford-vicarage.json';
 
 export const LIVE_ROUTE_PACK_STORAGE_KEY = 'parade-companion:live-route-pack:v1';
+export const PACK_ID_STORAGE_KEY = 'parade-companion:active-pack-id:v1';
+export const DEFAULT_PACK_ID = 'arsenal-islington';
+
+/**
+ * Registry of baked packs. Round 10 added Amsterdam and Watford for local /
+ * friends testing; Arsenal stays the default and the parade-day URL.
+ *
+ * URL `?pack=<id>` overrides the default. Selection persists to localStorage
+ * so a reload (or accidental URL strip after the iframe re-mounts) keeps the
+ * choice. Unknown ids fall back to Arsenal silently.
+ */
+export const PACK_REGISTRY: Record<string, unknown> = {
+  'arsenal-islington': bakedRoutePack,
+  'amsterdam-vondelpark': amsterdamPack,
+  'watford-vicarage': watfordPack,
+};
+
+export function listPackIds(): string[] {
+  return Object.keys(PACK_REGISTRY);
+}
+
+/**
+ * Resolve the active pack id from (in order): explicit arg → URL `?pack=` →
+ * localStorage → DEFAULT_PACK_ID. Side-effect: persists the resolved id
+ * so subsequent loads stay sticky.
+ */
+export function resolvePackId(explicit?: string): string {
+  const candidates = [
+    explicit,
+    readPackIdFromUrl(),
+    readStoredPackId(),
+  ].filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+  for (const id of candidates) {
+    if (id in PACK_REGISTRY) {
+      writeStoredPackId(id);
+      return id;
+    }
+  }
+  return DEFAULT_PACK_ID;
+}
+
+function readPackIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('pack');
+  } catch {
+    return null;
+  }
+}
+
+function readStoredPackId(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    return localStorage.getItem(PACK_ID_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredPackId(id: string): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(PACK_ID_STORAGE_KEY, id);
+  } catch {
+    // Persistence is advisory; URL takes precedence anyway.
+  }
+}
 
 export type RoutePackSyncResult =
   | { status: 'updated'; pack: RoutePack }
@@ -11,15 +83,26 @@ export type RoutePackSyncResult =
   | { status: 'invalid'; pack: RoutePack }
   | { status: 'failed'; pack: RoutePack; error?: unknown };
 
-export function loadRoutePack(): RoutePack {
-  const baked = loadBakedRoutePack();
+export function loadRoutePack(explicitPackId?: string): RoutePack {
+  const packId = resolvePackId(explicitPackId);
+  const baked = loadBakedRoutePack(packId);
+  // Only the Arsenal pack gets live-sync overrides (the relay endpoint serves
+  // route-pack.json). Test packs (Amsterdam / Watford) always use the baked
+  // version — no relay round-trip needed for local walks.
+  const pack = packId === DEFAULT_PACK_ID ? mergeWithLiveCache(baked) : baked;
+  setActiveExtent(pack.mapExtent);
+  return pack;
+}
+
+export function loadBakedRoutePack(packId: string = DEFAULT_PACK_ID): RoutePack {
+  const baked = PACK_REGISTRY[packId] ?? bakedRoutePack;
+  return validateRoutePack(baked) ?? validateRoutePack(FALLBACK_ROUTE_PACK) ?? FALLBACK_ROUTE_PACK;
+}
+
+function mergeWithLiveCache(baked: RoutePack): RoutePack {
   const live = readCachedRoutePack();
   if (live && comparePackVersions(live.packVersion, baked.packVersion) > 0) return live;
   return baked;
-}
-
-export function loadBakedRoutePack(): RoutePack {
-  return validateRoutePack(bakedRoutePack) ?? validateRoutePack(FALLBACK_ROUTE_PACK) ?? FALLBACK_ROUTE_PACK;
 }
 
 export async function syncRoutePack(url: string, current: RoutePack = loadRoutePack()): Promise<RoutePackSyncResult> {

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "default": "arsenal-islington",
+  "packs": [
+    {
+      "id": "arsenal-islington",
+      "label": "Arsenal · Islington parade",
+      "url": "/run/parade-companion/route-pack.json",
+      "description": "The real one — Arsenal victory parade through Islington."
+    },
+    {
+      "id": "amsterdam-vondelpark",
+      "label": "Amsterdam · Vondelpark walk",
+      "url": "/run/parade-companion/packs/amsterdam-vondelpark.json",
+      "description": "Dev test pack — 2.5 km loop through Vondelpark."
+    },
+    {
+      "id": "watford-vicarage",
+      "label": "Watford · Vicarage Road walk",
+      "url": "/run/parade-companion/packs/watford-vicarage.json",
+      "description": "Dev test pack — stadium to Watford Junction."
+    }
+  ]
+}
