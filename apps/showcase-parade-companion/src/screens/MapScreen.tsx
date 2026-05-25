@@ -32,8 +32,10 @@ import { describeParadeLocation } from '../lib/location-labels';
 import type { ParadeAnalyticsEvent } from '../lib/analytics';
 import { hapticConfirm, hapticWarn, hapticWow } from '../lib/haptic';
 import type { LiveSyncStatus } from '../lib/live-sync';
+import type { GroupLiveMember } from '../lib/group-live';
 import { busTimingPresentation } from '../lib/parade-time';
 import { countActiveParaders } from '../lib/paraders';
+import { buildShareRunUrl } from '../lib/share-url';
 import { listSideTings, type SideTing } from '../lib/side-tings';
 import { showToast, type ToastVariant } from '../lib/toast';
 
@@ -44,6 +46,7 @@ interface MapScreenProps {
   fanEvents: FanEvent[];
   importStatus: string;
   sideTingsRefresh: number;
+  groupLiveMembers: GroupLiveMember[];
   liveSyncStatus: LiveSyncStatus;
   online: boolean;
   /** Lifted to App so the sync cadence policy can read the same value. */
@@ -53,6 +56,7 @@ interface MapScreenProps {
   onManualSync: () => void;
   onBusMarker: (marker: BusMarker) => void;
   onFanEvent: (event: FanEvent) => Promise<void>;
+  onGpsFixChange: (fix: GpsFix | null) => void;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
 }
 
@@ -65,6 +69,7 @@ export function MapScreen({
   fanEvents,
   importStatus,
   sideTingsRefresh,
+  groupLiveMembers,
   liveSyncStatus,
   online,
   batterySaver,
@@ -72,13 +77,14 @@ export function MapScreen({
   onManualSync,
   onBusMarker,
   onFanEvent,
+  onGpsFixChange,
   onTrack,
 }: MapScreenProps) {
   const [gpsFix, setGpsFix] = useState<GpsFix | null>(null);
   const [gpsError, setGpsError] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(true);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const [sideTings, setSideTings] = useState<SideTing[]>(() => listSideTings());
   // Persistent "Turn on Location" hint above the tap panel — only after we've
   // waited a few seconds without a fix, so first-launch flicker doesn't shout
@@ -89,6 +95,7 @@ export function MapScreen({
   const [findCategory, setFindCategory] = useState<QuickFindCategory | null>(null);
   const [mapToolsOpen, setMapToolsOpen] = useState(false);
   const [timingExpanded, setTimingExpanded] = useState(false);
+  const [tapFeedback, setTapFeedback] = useState<{ type: FanEventType; place: string; at: number; online: boolean } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [layers, setLayers] = useState<Record<MapLayerId, boolean>>({
     bus: true,
@@ -162,6 +169,10 @@ export function MapScreen({
   }, [batterySaver]);
 
   useEffect(() => {
+    onGpsFixChange(gpsFix);
+  }, [gpsFix, onGpsFixChange]);
+
+  useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(id);
   }, []);
@@ -228,6 +239,7 @@ export function MapScreen({
     }
     const event = createFanEvent(type, gpsFix, pack.route.coordinates);
     await onFanEvent(event);
+    setTapFeedback({ type, place: placeLabelForEvent(event, pack), at: Date.now(), online });
     if (type === 'bus_seen') {
       const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
       onBusMarker(marker);
@@ -261,7 +273,7 @@ export function MapScreen({
     }
     try {
       const fragment = await encodeFanEventsForSync(activeEvents);
-      setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
+      setShareUrl(buildShareRunUrl({ fragment }));
       setSheetOpen(true);
       feedback('Show this QR to another fan. Their phone imports the carried pulse.', 'success');
       onTrack('parade_sync_qr_opened', { carried_count: Math.min(activeEvents.length, 36) });
@@ -385,6 +397,7 @@ export function MapScreen({
           plan={plan}
           busMarkers={liveBusMarkers}
           fanEvents={fanEvents}
+          groupMembers={groupLiveMembers}
           sideTings={sideTings}
           layers={layers}
           target={walkTarget}
@@ -393,6 +406,11 @@ export function MapScreen({
             setSelectedPoi(poi);
             onTrack('parade_poi_tapped', { kind: poi.kind, id: poi.id });
           }}
+          onRouteTap={(point) => {
+            setWalkTarget(point);
+            onTrack('parade_route_tapped', { label: point.label });
+            showToast(`${point.label} set as your goal. Follow the arrow.`, 'success');
+          }}
         />
         <ParadersChip count={paraders} />
       </div>
@@ -400,6 +418,16 @@ export function MapScreen({
       <p className="map-status" role="status" aria-live="polite">
         {mapStatusLine}
       </p>
+
+      {tapFeedback && now - tapFeedback.at < 5 * 60_000 ? (
+        <div className={`tap-feedback tap-feedback--${tapFeedback.type}`} role="status" aria-live="polite">
+          <span className="tap-feedback__badge" aria-hidden="true">{FAN_EVENT_BADGES[tapFeedback.type]}</span>
+          <strong>{FAN_EVENT_LABELS[tapFeedback.type]} sent</strong>
+          <span>{tapFeedback.place} · {tapFeedback.online ? 'syncing when signal allows' : 'saved offline'}</span>
+        </div>
+      ) : null}
+
+      {tapPanel}
 
       <PoiSheet
         poi={selectedPoi}
@@ -462,8 +490,6 @@ export function MapScreen({
           </div>
         </div>
       ) : null}
-
-      {tapPanel}
 
       <button
         type="button"

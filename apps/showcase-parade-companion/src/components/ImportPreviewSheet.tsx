@@ -48,6 +48,9 @@ export function ImportPreviewSheet({ preview, onJoin, onWatch, onDismiss }: Impo
         {preview.fallback ? (
           <p className="import-preview__fallback">Fallback: {preview.fallback.label}</p>
         ) : null}
+        <p className="import-preview__fallback">
+          Join adds you to the group. Your dot appears for friends when Location is on.
+        </p>
         <div className="import-preview__actions">
           <button
             type="button"

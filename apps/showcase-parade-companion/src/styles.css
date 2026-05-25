@@ -1195,6 +1195,55 @@ textarea { resize: vertical; min-height: 64px; }
   font-size: 12.5px;
   line-height: 1.35;
 }
+.tap-feedback {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 2px 9px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--sage);
+  background: var(--paper-2);
+}
+.tap-feedback__badge {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.tap-feedback strong {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.tap-feedback span:last-child {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.tap-feedback--bus_seen {
+  border-left-color: var(--red);
+}
+.tap-feedback--bus_seen .tap-feedback__badge {
+  background: var(--red);
+  color: var(--paper);
+  border-color: var(--red-deep);
+}
+.tap-feedback--toilet_queue {
+  border-left-color: var(--sage);
+}
 .tap-panel {
   display: grid;
   border: 1px solid var(--line-strong);
@@ -2428,6 +2477,31 @@ textarea { resize: vertical; min-height: 64px; }
 
 /* ----- Members card (live-roster scaffold) ----- */
 .group-members { padding: 14px 16px; }
+.group-members__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.group-live-chip {
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.group-live-chip--open {
+  border-color: var(--sage);
+  color: var(--sage);
+}
+.group-live-chip--connecting,
+.group-live-chip--failed {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
 .group-members__empty,
 .group-members__hint {
   margin: 0;
@@ -2480,6 +2554,10 @@ textarea { resize: vertical; min-height: 64px; }
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--ink-mute);
+}
+.member-row__status.is-live {
+  color: var(--sage);
+  font-weight: 800;
 }
 
 /* ----- Chat card (preset signals + activity feed) ----- */

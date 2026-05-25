@@ -17,6 +17,18 @@ import {
   setDisplayName as saveDisplayName,
 } from './lib/display-name';
 import { decodePlan, type GroupPlan } from './lib/group-plan';
+import type { GpsFix } from './lib/gps';
+import {
+  buildGroupSignalUrl,
+  decodeGroupLivePayload,
+  encodeGroupLivePayload,
+  groupLiveMembersForMap,
+  makeGroupLivePacket,
+  mergeGroupLiveMembers,
+  pruneGroupLiveMembers,
+  type GroupLiveMember,
+  type GroupLiveStatus,
+} from './lib/group-live';
 import {
   listBusMarkers,
   listFanEvents,
@@ -40,6 +52,7 @@ import { isOnboarded, markOnboarded } from './lib/onboarding';
 import { saveParadeOffline } from './lib/offline-save';
 import { isPackStale, isParadeDay, isParadeEve, isStartPromptWindow, startPromptKey } from './lib/parade-time';
 import { addSideTing } from './lib/side-tings';
+import { buildShareRunUrl } from './lib/share-url';
 import { nextSyncDelayMs, resolveSyncMode, stableSyncJitterMs } from './lib/sync-cadence';
 import { showToast } from './lib/toast';
 
@@ -78,6 +91,8 @@ export function App() {
   const [sideTingSheetOpen, setSideTingSheetOpen] = useState(false);
   const [sideTingDraft, setSideTingDraft] = useState('');
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [groupLiveMembers, setGroupLiveMembers] = useState<GroupLiveMember[]>([]);
+  const [groupLiveStatus, setGroupLiveStatus] = useState<GroupLiveStatus>('idle');
   const [offlineReadiness, setOfflineReadiness] = useState<Readiness>('checking');
   const [liveSyncStatus, setLiveSyncStatus] = useState<LiveSyncStatus>({
     state: typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'idle',
@@ -102,7 +117,14 @@ export function App() {
   // first ~1s instead of empty panels.
   const [storesHydrated, setStoresHydrated] = useState(false);
   const packRef = useRef(pack);
+  const planRef = useRef<GroupPlan | null>(plan);
+  const displayNameRef = useRef(displayName);
+  const supporterTagRef = useRef(supporterTag);
+  const latestGpsFixRef = useRef<GpsFix | null>(null);
   const fanEventsRef = useRef(fanEvents);
+  const groupWsRef = useRef<WebSocket | null>(null);
+  const groupReconnectTimer = useRef<number | null>(null);
+  const groupPeerId = useRef(getFanSourceId());
   const liveSyncInFlight = useRef(false);
   const liveSyncFailures = useRef(0);
   const liveSyncSeed = useRef<string | null>(null);
@@ -130,6 +152,18 @@ export function App() {
   useEffect(() => {
     packRef.current = pack;
   }, [pack]);
+
+  useEffect(() => {
+    planRef.current = plan;
+  }, [plan]);
+
+  useEffect(() => {
+    displayNameRef.current = displayName;
+  }, [displayName]);
+
+  useEffect(() => {
+    supporterTagRef.current = supporterTag;
+  }, [supporterTag]);
 
   useEffect(() => {
     fanEventsRef.current = fanEvents;
@@ -210,6 +244,59 @@ export function App() {
     void runCrowdSync('tap');
   }, [online, runCrowdSync]);
 
+  const mergeIncomingGroupPacket = useCallback((packet: ReturnType<typeof makeGroupLivePacket>) => {
+    setGroupLiveMembers((current) => mergeGroupLiveMembers(current, packet));
+    const currentPlan = planRef.current;
+    if (!currentPlan?.room) return;
+    const memberName = packet.member_name.trim();
+    if (!memberName) return;
+    if (currentPlan.members.some((member) => member.toLowerCase() === memberName.toLowerCase())) return;
+    const next = {
+      ...currentPlan,
+      members: [...currentPlan.members, memberName].slice(0, 12),
+      updatedAt: new Date().toISOString(),
+    };
+    planRef.current = next;
+    setPlan(next);
+    void saveGroupPlan(next);
+  }, []);
+
+  const sendGroupLivePacket = useCallback(async (packet: ReturnType<typeof makeGroupLivePacket>) => {
+    const room = planRef.current?.room;
+    const ws = groupWsRef.current;
+    if (!room || !ws || ws.readyState !== WebSocket.OPEN) return false;
+    try {
+      const payload = await encodeGroupLivePayload(room.roomKey, packet);
+      ws.send(JSON.stringify({ t: 'relay', payload }));
+      setGroupLiveMembers((current) => mergeGroupLiveMembers(current, packet));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const publishGroupLive = useCallback(
+    async (kind: 'join' | 'presence', point?: { lng: number; lat: number; accuracyM?: number | null } | null) => {
+      const currentPlan = planRef.current;
+      if (!currentPlan?.room) return false;
+      const memberName = formatSupporterHandle(displayNameRef.current || 'Me', supporterTagRef.current);
+      const packet = makeGroupLivePacket({
+        kind,
+        sourceId: groupPeerId.current,
+        displayName: displayNameRef.current || 'Me',
+        supporterTag: supporterTagRef.current,
+        memberName,
+        point,
+      });
+      return sendGroupLivePacket(packet);
+    },
+    [sendGroupLivePacket],
+  );
+
+  const onMapGpsFix = useCallback((fix: GpsFix | null) => {
+    latestGpsFixRef.current = fix;
+  }, []);
+
   // Track document visibility so we can pause polling when the tab is hidden
   // (background tabs shouldn't burn battery checking the relay).
   useEffect(() => {
@@ -265,6 +352,136 @@ export function App() {
       if (timerId !== null) window.clearTimeout(timerId);
     };
   }, [online, hidden, batterySaver, runCrowdSync, pack.packVersion]);
+
+  // Live group room. The invite QR carries a SignalRoom roomId + roomKey; once
+  // both phones have the plan, they fan out tiny encrypted join/presence
+  // packets. Offline-first still holds: the saved plan works without this, but
+  // any small pocket of internet turns the group into live dots.
+  useEffect(() => {
+    const room = plan?.room;
+    if (!room) {
+      setGroupLiveStatus('idle');
+      setGroupLiveMembers([]);
+      return undefined;
+    }
+    if (!online) {
+      setGroupLiveStatus('closed');
+      return undefined;
+    }
+    if (typeof WebSocket === 'undefined') {
+      setGroupLiveStatus('unsupported');
+      return undefined;
+    }
+
+    let cancelled = false;
+    let attempt = 0;
+    const url = buildGroupSignalUrl(room.roomId);
+
+    const closeCurrent = () => {
+      if (groupReconnectTimer.current !== null) {
+        window.clearTimeout(groupReconnectTimer.current);
+        groupReconnectTimer.current = null;
+      }
+      if (groupWsRef.current) {
+        try {
+          groupWsRef.current.close();
+        } catch {
+          // Closing best-effort only.
+        }
+        groupWsRef.current = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      const delay = Math.min(30_000, 1500 * 2 ** Math.min(5, attempt));
+      attempt += 1;
+      groupReconnectTimer.current = window.setTimeout(connect, delay);
+    };
+
+    const connect = () => {
+      if (cancelled) return;
+      setGroupLiveStatus('connecting');
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(url);
+      } catch {
+        setGroupLiveStatus('failed');
+        scheduleReconnect();
+        return;
+      }
+      groupWsRef.current = ws;
+      ws.addEventListener('open', () => {
+        attempt = 0;
+        setGroupLiveStatus('open');
+        trackParadeAction('parade_group_live_connected');
+        ws.send(JSON.stringify({ t: 'hello', peerId: groupPeerId.current }));
+        void publishGroupLive('join');
+        const fix = latestGpsFixRef.current;
+        if (fix) void publishGroupLive('presence', fix);
+      });
+      ws.addEventListener('message', (event) => {
+        void (async () => {
+          let msg: { t?: string; payload?: unknown } | null = null;
+          try {
+            msg = typeof event.data === 'string' ? JSON.parse(event.data) : null;
+          } catch {
+            return;
+          }
+          if (!msg) return;
+          if (msg.t === 'peer-joined') {
+            void publishGroupLive('join');
+            const fix = latestGpsFixRef.current;
+            if (fix) void publishGroupLive('presence', fix);
+            return;
+          }
+          if (msg.t !== 'relay' || typeof msg.payload !== 'string') return;
+          const packet = await decodeGroupLivePayload(room.roomKey, msg.payload);
+          if (!packet || packet.source_id === groupPeerId.current) return;
+          mergeIncomingGroupPacket(packet);
+          trackParadeAction('parade_group_live_member_seen', { kind: packet.kind });
+        })();
+      });
+      ws.addEventListener('close', () => {
+        if (groupWsRef.current === ws) groupWsRef.current = null;
+        if (!cancelled) {
+          setGroupLiveStatus('closed');
+          scheduleReconnect();
+        }
+      });
+      ws.addEventListener('error', () => {
+        if (!cancelled) setGroupLiveStatus('failed');
+      });
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      closeCurrent();
+    };
+  }, [mergeIncomingGroupPacket, online, plan?.room, publishGroupLive]);
+
+  // Publish the group's live dot on a gentle cadence while there is signal.
+  // Joining works with no GPS; location appears as soon as the map has a fix,
+  // and expires automatically eight hours later.
+  useEffect(() => {
+    if (!plan?.room || !online) return undefined;
+    const publish = () => {
+      const fix = latestGpsFixRef.current;
+      if (fix) void publishGroupLive('presence', fix);
+    };
+    publish();
+    const id = window.setInterval(publish, batterySaver ? 60_000 : 20_000);
+    return () => window.clearInterval(id);
+  }, [batterySaver, online, plan?.room, publishGroupLive]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setGroupLiveMembers((current) => pruneGroupLiveMembers(current));
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -459,12 +676,17 @@ export function App() {
     await saveGroupPlan(joinedPlan);
     setPlan(joinedPlan);
     setImportPreview(null);
-    showToast('Group plan saved to this phone.', 'success');
+    showToast('Joined group. Keep Location on so friends can see your live dot.', 'success');
     trackParadeAction('parade_plan_import_saved', {
       members_count: joinedPlan.members.length,
       has_leave_plan: Boolean(joinedPlan.leavePlan?.trim()),
     });
-    setActive('group');
+    setActive('map');
+    window.setTimeout(() => {
+      void publishGroupLive('join');
+      const fix = latestGpsFixRef.current;
+      if (fix) void publishGroupLive('presence', fix);
+    }, 0);
   };
 
   const onWatchImport = () => {
@@ -553,6 +775,13 @@ export function App() {
       if (now - lastTapSyncAt.current >= TAP_SYNC_COOLDOWN_MS) {
         lastTapSyncAt.current = now;
         void runCrowdSync('tap', event);
+      }
+      if (event.type === 'presence' && planRef.current?.room) {
+        void publishGroupLive('presence', {
+          lng: event.lng,
+          lat: event.lat,
+          accuracyM: event.accuracy_m,
+        });
       }
     }
   };
@@ -848,6 +1077,7 @@ export function App() {
             fanEvents={fanEvents}
             importStatus={importStatus}
             sideTingsRefresh={sideTingsRefresh}
+            groupLiveMembers={groupLiveMembersForMap(groupLiveMembers, groupPeerId.current)}
             liveSyncStatus={liveSyncStatus}
             online={online}
             batterySaver={batterySaver}
@@ -855,6 +1085,7 @@ export function App() {
             onManualSync={onManualCrowdSync}
             onBusMarker={onBusMarker}
             onFanEvent={onFanEvent}
+            onGpsFixChange={onMapGpsFix}
             onTrack={trackParadeAction}
           />
         ) : null}
@@ -864,6 +1095,8 @@ export function App() {
             plan={plan}
             displayName={displayName}
             supporterTag={supporterTag}
+            groupLiveMembers={groupLiveMembers}
+            groupLiveStatus={groupLiveStatus}
             onSave={onSavePlan}
             onTrack={trackParadeAction}
             sideTingsRefresh={sideTingsRefresh}

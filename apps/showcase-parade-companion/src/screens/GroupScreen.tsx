@@ -23,7 +23,9 @@ import {
   type GroupPlan,
   type PlanPoint,
 } from '../lib/group-plan';
+import type { GroupLiveMember, GroupLiveStatus } from '../lib/group-live';
 import { hapticConfirm } from '../lib/haptic';
+import { buildShareRunUrl } from '../lib/share-url';
 import { showToast } from '../lib/toast';
 
 interface GroupScreenProps {
@@ -31,6 +33,8 @@ interface GroupScreenProps {
   plan: GroupPlan | null;
   displayName: string;
   supporterTag: string;
+  groupLiveMembers: GroupLiveMember[];
+  groupLiveStatus: GroupLiveStatus;
   onSave: (plan: GroupPlan) => Promise<void>;
   onTrack: (event: ParadeAnalyticsEvent, props?: Record<string, string | number | boolean | null>) => void;
   sideTingsRefresh?: number;
@@ -49,6 +53,8 @@ export function GroupScreen({
   plan,
   displayName,
   supporterTag,
+  groupLiveMembers,
+  groupLiveStatus,
   onSave,
   onTrack,
   sideTingsRefresh,
@@ -165,7 +171,7 @@ export function GroupScreen({
     await onSave(next);
     setDraft(next);
     const fragment = await encodePlan(next);
-    setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
+    setShareUrl(buildShareRunUrl({ fragment }));
     setShareMode('group');
     setSheetOpen(true);
     onTrack('parade_plan_share_opened', {
@@ -188,7 +194,7 @@ export function GroupScreen({
     setDraft(next);
     setMembersText(localMemberName);
     setDraftHydrated(true);
-    setShowMore(true);
+    setShowMore(false);
     onTrack('parade_plan_saved', {
       members_count: 1,
       has_leave_plan: Boolean(next.leavePlan?.trim()),
@@ -238,7 +244,7 @@ export function GroupScreen({
     setMembersText(localMemberName);
     setDraftHydrated(true);
     const fragment = await encodePlan(solo);
-    setShareUrl(`${window.location.origin}/run/parade-companion/#${fragment}`);
+    setShareUrl(buildShareRunUrl({ fragment }));
     setShareMode('dot');
     setSheetOpen(true);
     onTrack('parade_plan_share_opened', {
@@ -250,7 +256,7 @@ export function GroupScreen({
   };
 
   const shareApp = () => {
-    setShareUrl(`${window.location.origin}/run/parade-companion/`);
+    setShareUrl(buildShareRunUrl());
     setShareMode('app');
     setSheetOpen(true);
     onTrack('parade_plan_share_opened', {
@@ -330,7 +336,7 @@ export function GroupScreen({
           title={shareMode === 'app' ? 'Share the app' : 'Share your dot'}
           body={shareMode === 'app'
             ? 'This opens the parade app only. It does not add anyone to your group.'
-            : 'This is your dot invite. Friends open it, tap Join, and your group plan saves to their phone.'}
+            : 'This is your dot invite. Friends tap Join to save it and see your live dot when signal appears.'}
           size={260}
           onClose={() => setSheetOpen(false)}
         />
@@ -444,7 +450,7 @@ export function GroupScreen({
         </div>
       </div>
 
-      <GroupMembersCard members={visiblePlan.members} />
+      <GroupMembersCard members={visiblePlan.members} liveMembers={groupLiveMembers} liveStatus={groupLiveStatus} />
 
       <GroupChatCard
         events={events}
@@ -466,7 +472,7 @@ export function GroupScreen({
         title={shareMode === 'app' ? 'Share the app' : 'Invite to your group'}
         body={shareMode === 'app'
           ? 'This opens the parade app only. It will not add anyone to your group.'
-          : 'Group invite. Friends open it, tap Join, and this plan saves to their phone for offline use.'}
+          : 'Group invite. Friends tap Join to save the plan and show their live dot when Location is on.'}
         size={260}
         onClose={() => setSheetOpen(false)}
       />

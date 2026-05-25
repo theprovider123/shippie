@@ -18,9 +18,10 @@ import {
   type FanEventCluster,
   type FanEventType,
 } from '../lib/fan-events';
-import { lngLatToPixel, metersToPixelRadius, type PixelPoint } from '../lib/geo';
+import { lngLatToPixel, metersToPixelRadius, pixelToLngLat, type PixelPoint } from '../lib/geo';
 import type { GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
+import type { GroupLiveMember } from '../lib/group-live';
 import {
   centerMapOnWorldPoint,
   clampMapOffset,
@@ -69,6 +70,7 @@ interface CorridorMapProps {
   plan?: GroupPlan | null;
   busMarkers?: BusMarker[];
   fanEvents?: FanEvent[];
+  groupMembers?: GroupLiveMember[];
   sideTings?: SideTing[];
   layers?: Partial<Record<MapLayerId, boolean>>;
   target?: PlanPoint | null;
@@ -84,6 +86,8 @@ interface CorridorMapProps {
    * uses this to open the POI bottom sheet.
    */
   onPoiTap?: (poi: RoutePoi) => void;
+  /** Optional: tap the red route line to set a walking goal. */
+  onRouteTap?: (point: PlanPoint) => void;
 }
 
 export function CorridorMap({
@@ -92,17 +96,21 @@ export function CorridorMap({
   plan,
   busMarkers = [],
   fanEvents = [],
+  groupMembers = [],
   sideTings = [],
   layers = {},
   target,
   compact = false,
   extraPois,
   onPoiTap,
+  onRouteTap,
 }: CorridorMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const pointers = useRef(new Map<number, PixelPoint>());
   const lastDrag = useRef<PixelPoint | null>(null);
+  const tapStart = useRef<PixelPoint | null>(null);
+  const tapMoved = useRef(false);
   const lastPinchDistance = useRef<number | null>(null);
   const viewRef = useRef<MapView>({ scale: 1, offset: { x: 0, y: 0 } });
   const [view, setView] = useState<MapView>(viewRef.current);
@@ -205,13 +213,14 @@ export function CorridorMap({
     drawOfflineMapGeometry(ctx, offlineDetails, extent, scale);
     drawRoute(ctx, pack.route.coordinates, extent, scale);
     if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent, scale, labels);
+    if (layers.friends !== false && groupMembers.length > 0) drawGroupMembers(ctx, groupMembers, extent, scale, labels);
     if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings, extent, scale, labels);
     if (gpsFix && target) drawWalkLine(ctx, gpsFix, target, extent, scale);
     drawPois(ctx, points, scale, labels);
     drawScheduleMarkers(ctx, pack.scheduleEstimate, extent, scale);
     if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent, scale, labels);
     if (gpsFix) drawGps(ctx, gpsFix, extent, scale, !localPresencePulse, labels);
-  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale, extent, localPresencePulse, offlineDetails, renderDpr]);
+  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, groupMembers, sideTings, target, scale, extent, localPresencePulse, offlineDetails, renderDpr]);
 
   const commitView = (next: MapView) => {
     viewRef.current = next;
@@ -330,11 +339,18 @@ export function CorridorMap({
     event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     lastDrag.current = { x: event.clientX, y: event.clientY };
+    tapStart.current = framePoint(event.clientX, event.clientY);
+    tapMoved.current = false;
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!pointers.current.has(event.pointerId)) return;
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const start = tapStart.current;
+    if (start) {
+      const current = framePoint(event.clientX, event.clientY);
+      if (Math.hypot(current.x - start.x, current.y - start.y) > 10) tapMoved.current = true;
+    }
     const active = [...pointers.current.values()];
     if (active.length >= 2) {
       const distance = Math.hypot(active[0]!.x - active[1]!.x, active[0]!.y - active[1]!.y);
@@ -362,9 +378,17 @@ export function CorridorMap({
   };
 
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const wasTap = !tapMoved.current && pointers.current.has(event.pointerId);
+    const point = framePoint(event.clientX, event.clientY);
     pointers.current.delete(event.pointerId);
     lastDrag.current = null;
     lastPinchDistance.current = null;
+    tapStart.current = null;
+    tapMoved.current = false;
+    if (wasTap && onRouteTap && !(event.target as HTMLElement | null)?.closest('[data-poi-hit]')) {
+      const routePoint = nearestRouteTapPoint(point, viewRef.current, frameSize(), pack.route.coordinates, extent);
+      if (routePoint) onRouteTap(routePoint);
+    }
   };
 
   return (
@@ -517,6 +541,60 @@ function shouldUseRasterBasemap(pack: RoutePack): boolean {
     Math.abs(extent.south - CORRIDOR_EXTENT.south) < epsilon &&
     Math.abs(extent.north - CORRIDOR_EXTENT.north) < epsilon
   );
+}
+
+function nearestRouteTapPoint(
+  screenPoint: PixelPoint,
+  view: MapView,
+  size: ViewportSize | null,
+  route: readonly [number, number][],
+  extent: MapExtent,
+): PlanPoint | null {
+  if (!size || route.length < 2) return null;
+  const world = {
+    x: (screenPoint.x - view.offset.x) / view.scale,
+    y: (screenPoint.y - view.offset.y) / view.scale,
+  };
+  const routeFramePoints = route.map(([lng, lat]) => {
+    const p = lngLatToPixel({ lng, lat }, extent);
+    return {
+      x: (p.x / extent.pxWidth) * size.width,
+      y: (p.y / extent.pxHeight) * size.height,
+    };
+  });
+
+  let best: { point: PixelPoint; distance: number; index: number } | null = null;
+  for (let i = 0; i < routeFramePoints.length - 1; i += 1) {
+    const a = routeFramePoints[i];
+    const b = routeFramePoints[i + 1];
+    if (!a || !b) continue;
+    const projected = projectScreenPointToSegment(world, a, b);
+    const distance = Math.hypot(world.x - projected.x, world.y - projected.y);
+    if (!best || distance < best.distance) best = { point: projected, distance, index: i };
+  }
+  const threshold = 34 / Math.max(1, Math.min(view.scale, 3));
+  if (!best || best.distance > threshold) return null;
+  const pixel = {
+    x: (best.point.x / size.width) * extent.pxWidth,
+    y: (best.point.y / size.height) * extent.pxHeight,
+  };
+  const lngLat = pixelToLngLat(pixel, extent);
+  return {
+    ...lngLat,
+    label: `Route stretch ${best.index + 1}`,
+  };
+}
+
+function projectScreenPointToSegment(point: PixelPoint, a: PixelPoint, b: PixelPoint): PixelPoint {
+  const vx = b.x - a.x;
+  const vy = b.y - a.y;
+  const lenSq = vx * vx + vy * vy;
+  const rawT = lenSq === 0 ? 0 : ((point.x - a.x) * vx + (point.y - a.y) * vy) / lenSq;
+  const t = Math.max(0, Math.min(1, rawT));
+  return {
+    x: a.x + vx * t,
+    y: a.y + vy * t,
+  };
 }
 
 function drawPinpointGrid(ctx: CanvasRenderingContext2D, scale: number) {
@@ -1010,6 +1088,44 @@ function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: 
   ctx.restore();
 }
 
+function drawGroupMembers(
+  ctx: CanvasRenderingContext2D,
+  members: GroupLiveMember[],
+  extent: MapExtent,
+  scale: number,
+  labels: LabelRect[],
+) {
+  ctx.save();
+  const fixed = fixedSize(scale);
+  for (const member of members.slice(0, 8)) {
+    if (!member.hasLocation) continue;
+    const p = lngLatToPixel(member, extent);
+    const ageMs = Date.now() - Date.parse(member.lastSeenAt);
+    const stale = !Number.isFinite(ageMs) || ageMs > 8 * 60_000;
+    const radius = fixed(stale ? 26 : 34);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius + fixed(12), 0, Math.PI * 2);
+    ctx.fillStyle = stale ? 'rgba(94, 123, 92, 0.10)' : 'rgba(94, 123, 92, 0.20)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = stale ? '#EDE6D5' : '#5E7B5C';
+    ctx.fill();
+    ctx.lineWidth = fixed(8);
+    ctx.strokeStyle = stale ? 'rgba(20, 18, 15, 0.58)' : '#14120F';
+    ctx.stroke();
+    ctx.fillStyle = stale ? '#14120F' : '#F5EFE4';
+    ctx.font = `800 ${fixed(17)}px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initialsOf(member.memberName), p.x, p.y + fixed(1));
+    drawLabel(ctx, memberLabel(member), p.x + radius + fixed(16), p.y, scale, labels);
+  }
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
 function layerAllowsCluster(type: FanEventType, layers: Partial<Record<MapLayerId, boolean>>): boolean {
   if (type === 'bus_seen') return layers.bus !== false;
   if (type === 'presence') return layers['my-taps'] !== false;
@@ -1072,6 +1188,23 @@ function offsetClusterPoint(point: PixelPoint, type: FanEventType): PixelPoint {
   if (type === 'food_open') return { x: point.x + 70, y: point.y - 76 };
   if (type === 'toilet_queue') return { x: point.x - 76, y: point.y + 78 };
   return { x: point.x + 52, y: point.y - 52 };
+}
+
+function memberLabel(member: GroupLiveMember): string {
+  const name = member.displayName.trim() || member.memberName;
+  const ageMs = Date.now() - Date.parse(member.lastSeenAt);
+  if (Number.isFinite(ageMs) && ageMs > 8 * 60_000) return `${name} · old`;
+  return `${name} · live`;
+}
+
+function initialsOf(name: string): string {
+  const cleaned = name.trim();
+  if (!cleaned) return '?';
+  const parts = cleaned.split(/\s+/);
+  if (parts.length >= 2 && parts[1]) {
+    return `${(parts[0]?.[0] ?? '').toUpperCase()}${(parts[1][0] ?? '').toUpperCase()}`;
+  }
+  return cleaned.slice(0, 2).toUpperCase();
 }
 
 function drawLabel(
