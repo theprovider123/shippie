@@ -748,13 +748,54 @@ textarea { resize: vertical; min-height: 64px; }
   100% { opacity: 0; transform: scale(2.2); }
 }
 
+.map-goal-pulse {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.map-goal-pulse span {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--sage);
+  background: rgba(94, 123, 92, .18);
+}
+.map-goal-pulse::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ink);
+  background: var(--sage);
+}
+.map-goal-pulse strong {
+  position: absolute;
+  left: 15px;
+  top: -13px;
+  padding: 3px 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--sage);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
 /* ----- POI hit-zone overlay (round 8: M2) ----- */
 .poi-hit-layer { position: absolute; inset: 0; pointer-events: none; }
 .poi-hit {
   position: absolute;
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   transform: translate(-50%, -50%);
   background: transparent;
   border: 0;
@@ -764,6 +805,11 @@ textarea { resize: vertical; min-height: 64px; }
   padding: 0;
 }
 .poi-hit:active { transform: translate(-50%, -50%) scale(0.95); }
+.poi-hit:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+  background: rgba(94, 123, 92, .08);
+}
 
 /* ----- POI bottom sheet ----- */
 .poi-sheet {
@@ -806,6 +852,14 @@ textarea { resize: vertical; min-height: 64px; }
   font-size: 10px;
   letter-spacing: .04em;
   color: var(--ink-mute);
+}
+.poi-sheet__hint {
+  margin: -2px 0 12px;
+  padding-left: 9px;
+  border-left: 2px solid var(--sage);
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.35;
 }
 .poi-sheet__actions {
   display: grid;

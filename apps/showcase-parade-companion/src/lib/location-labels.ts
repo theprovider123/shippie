@@ -26,12 +26,12 @@ const ANCHOR_KINDS = new Set<RoutePoi['kind']>([
 export function describeParadeLocation(point: LngLat, pack: RoutePack): ParadeLocationLabel {
   const nearest = nearestRouteSegment(point, pack.route.coordinates);
   const routeLabel = nearest
-    ? eventSegmentLabel({ segment_id: nearest.segmentId, segment_index: nearest.segmentIndex })
+    ? segmentLabelForPack(pack, nearest.segmentId, nearest.segmentIndex)
     : 'near route';
   const anchor = nearestAnchor(point, pack.pois);
   const grid = paradeGridCode(point);
   const side = nearest ? sideLabel(point, nearest.snapped, nearest.distanceM) : null;
-  const title = routeLabel === 'near route' && anchor ? anchor.poi.name : routeLabel;
+  const title = anchor && (routeLabel === 'near route' || anchor.distance <= 140) ? anchor.poi.name : routeLabel;
   const detailParts = [
     side,
     anchor && anchor.distance <= 260 ? `near ${anchor.poi.name}` : null,
@@ -44,6 +44,13 @@ export function describeParadeLocation(point: LngLat, pack: RoutePack): ParadeLo
     short: `${title} · ${grid}`,
     distanceToRouteM: nearest?.distanceM ?? null,
   };
+}
+
+function segmentLabelForPack(pack: RoutePack, segmentId: string, segmentIndex: number): string {
+  if (pack.event.title.toLowerCase().includes('islington')) {
+    return eventSegmentLabel({ segment_id: segmentId, segment_index: segmentIndex });
+  }
+  return `${pack.route.label} · stretch ${segmentIndex + 1}`;
 }
 
 function nearestAnchor(point: LngLat, pois: readonly RoutePoi[]): { poi: RoutePoi; distance: number } | null {

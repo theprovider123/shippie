@@ -395,13 +395,19 @@ export function MapScreen({
 
       <PoiSheet
         poi={selectedPoi}
+        pack={pack}
         gpsFix={gpsFix}
         onClose={() => setSelectedPoi(null)}
         onWalkTo={(poi) => {
           setWalkTarget({ lng: poi.lng, lat: poi.lat, label: poi.name });
           setSelectedPoi(null);
-          onTrack('parade_poi_walk_to', { kind: poi.kind, id: poi.id });
-          showToast(`Walking line drawn to ${poi.name}.`, 'success');
+          onTrack('parade_poi_walk_to', { kind: poi.kind, id: poi.id, has_gps: Boolean(gpsFix) });
+          showToast(
+            gpsFix
+              ? `Goal set · ${poi.name}. Follow the line and arrow.`
+              : `Goal set · ${poi.name}. Turn on Location for the arrow.`,
+            'success',
+          );
         }}
       />
 

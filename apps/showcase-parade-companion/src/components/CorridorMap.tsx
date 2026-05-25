@@ -108,6 +108,14 @@ export function CorridorMap({
       top: `${(p.y / extent.pxHeight) * 100}%`,
     };
   }, [fanEvents, layers, extent]);
+  const targetPulse = useMemo(() => {
+    if (!target) return null;
+    const p = lngLatToPixel(target, extent);
+    return {
+      left: `${(p.x / extent.pxWidth) * 100}%`,
+      top: `${(p.y / extent.pxHeight) * 100}%`,
+    };
+  }, [target, extent]);
   const hasFanBus = visibleFanClusters.some((cluster) => cluster.type === 'bus_seen');
   const summaryId = compact ? 'corridor-map-summary-compact' : 'corridor-map-summary';
   const mapSummary = useMemo(
@@ -218,6 +226,24 @@ export function CorridorMap({
     };
   };
 
+  const boundsForLngLat = (items: Array<{ lng: number; lat: number }>): WorldBounds | null => {
+    const size = frameSize();
+    if (!size || items.length === 0) return null;
+    const points = items.map((item) => {
+      const p = lngLatToPixel(item, extent);
+      return {
+        x: (p.x / extent.pxWidth) * size.width,
+        y: (p.y / extent.pxHeight) * size.height,
+      };
+    });
+    return {
+      minX: Math.min(...points.map((point) => point.x)),
+      maxX: Math.max(...points.map((point) => point.x)),
+      minY: Math.min(...points.map((point) => point.y)),
+      maxY: Math.max(...points.map((point) => point.y)),
+    };
+  };
+
   const fitRoute = () => {
     commitView(fitMapBounds(routeBounds(), frameSize(), 48));
   };
@@ -227,6 +253,27 @@ export function CorridorMap({
     if (!worldPoint) return;
     commitView(centerMapOnWorldPoint(worldPoint, zoom, frameSize()));
   };
+
+  const lastFramedTarget = useRef('');
+  useEffect(() => {
+    if (!target) {
+      lastFramedTarget.current = '';
+      return;
+    }
+    const targetKey = `${target.lng.toFixed(6)},${target.lat.toFixed(6)}`;
+    if (lastFramedTarget.current === targetKey) return;
+    lastFramedTarget.current = targetKey;
+
+    const id = window.requestAnimationFrame(() => {
+      const bounds = gpsFix ? boundsForLngLat([gpsFix, target]) : null;
+      if (bounds) commitView(fitMapBounds(bounds, frameSize(), 64));
+      else focusLngLat(target, 2.8);
+    });
+    return () => window.cancelAnimationFrame(id);
+    // The map should frame the destination only when the destination changes.
+    // GPS can continue to update without wrestling the user's pan/zoom.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.lng, target?.lat]);
 
   const zoom = (next: number, focal?: PixelPoint) => {
     const size = frameSize();
@@ -321,27 +368,50 @@ export function CorridorMap({
           )}
           <canvas ref={canvasRef} aria-hidden />
           {localPresencePulse ? (
-            <div className="my-presence-pulse" style={localPresencePulse} aria-hidden="true">
+            <div
+              className="my-presence-pulse"
+              style={{ ...localPresencePulse, transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})` }}
+              aria-hidden="true"
+            >
               <span />
               <strong>Here</strong>
             </div>
           ) : null}
+          {targetPulse ? (
+            <div
+              className="map-goal-pulse"
+              style={{ ...targetPulse, transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})` }}
+              aria-hidden="true"
+            >
+              <span />
+              <strong>Goal</strong>
+            </div>
+          ) : null}
           {onPoiTap ? (
-            <div className="poi-hit-layer" aria-hidden>
+            <div className="poi-hit-layer" role="group" aria-label="Map places">
               {visiblePois.map((poi) => {
                 const p = lngLatToPixel(poi, extent);
                 const leftPct = (p.x / extent.pxWidth) * 100;
                 const topPct = (p.y / extent.pxHeight) * 100;
+                const hitSize = `${Math.max(10, 44 / Math.max(1, scale))}px`;
                 return (
                   <button
                     key={poi.id}
                     type="button"
                     data-poi-hit
                     className="poi-hit"
-                    style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+                    style={{
+                      left: `${leftPct}%`,
+                      top: `${topPct}%`,
+                      width: hitSize,
+                      height: hitSize,
+                      minWidth: hitSize,
+                      minHeight: hitSize,
+                    }}
                     aria-label={`${poi.name} — open detail`}
                     onClick={(event) => {
                       event.stopPropagation();
+                      focusLngLat(poi, Math.max(scale, 2.25));
                       onPoiTap(poi);
                     }}
                   />

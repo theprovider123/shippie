@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-import type { RoutePoi } from '../data/parade-2026';
+import type { RoutePack, RoutePoi } from '../data/parade-2026';
 import { haversineMeters } from '../lib/geo';
 import type { GpsFix } from '../lib/gps';
+import { describeParadeLocation } from '../lib/location-labels';
 
 interface PoiSheetProps {
   poi: RoutePoi | null;
+  pack: RoutePack;
   gpsFix: GpsFix | null;
   onClose: () => void;
   onWalkTo: (poi: RoutePoi) => void;
@@ -17,7 +19,7 @@ interface PoiSheetProps {
  * dot to the POI in the corridor map. Food/pub "open now" does not live here:
  * those places change too quickly during a parade, so they are peer reports.
  */
-export function PoiSheet({ poi, gpsFix, onClose, onWalkTo }: PoiSheetProps) {
+export function PoiSheet({ poi, pack, gpsFix, onClose, onWalkTo }: PoiSheetProps) {
   useEffect(() => {
     if (!poi) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -31,6 +33,7 @@ export function PoiSheet({ poi, gpsFix, onClose, onWalkTo }: PoiSheetProps) {
 
   const distance = gpsFix ? haversineMeters(gpsFix, poi) : null;
   const distanceLabel = distance !== null ? formatDistance(distance) : null;
+  const place = describeParadeLocation(poi, pack);
 
   return (
     <div
@@ -50,10 +53,13 @@ export function PoiSheet({ poi, gpsFix, onClose, onWalkTo }: PoiSheetProps) {
           <span>
             {distanceLabel !== null
               ? `~${distanceLabel} from you`
-              : 'Turn on Location to see distance'}
+              : 'Distance appears when Location is on'}
           </span>
-          <span>{`${poi.lat.toFixed(4)}, ${poi.lng.toFixed(4)}`}</span>
+          <span>{`${place.detail} · ${place.grid}`}</span>
         </div>
+        <p className="poi-sheet__hint">
+          Sets this as your goal. The map frames the route, and the arrow works as soon as Location has a fix.
+        </p>
         <div className="poi-sheet__actions">
           <button type="button" className="secondary-action" onClick={onClose}>
             Close
@@ -62,8 +68,6 @@ export function PoiSheet({ poi, gpsFix, onClose, onWalkTo }: PoiSheetProps) {
             type="button"
             className="primary-action"
             onClick={() => onWalkTo(poi)}
-            disabled={!gpsFix}
-            title={gpsFix ? '' : 'Need a GPS fix to draw a walking line.'}
           >
             Walk this way
           </button>
