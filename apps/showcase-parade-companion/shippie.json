@@ -26,6 +26,8 @@
     "packs/index.json",
     "packs/amsterdam-vondelpark.json",
     "packs/watford-vicarage.json",
+    "manifest.webmanifest",
+    "icon.svg",
     "fonts/fraunces-roman.woff2",
     "fonts/fraunces-italic.woff2",
     "fonts/jetbrains-mono.woff2",

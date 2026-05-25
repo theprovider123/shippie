@@ -24,10 +24,17 @@ interface SwDoneMessage {
 type SwMessage = SwProgressMessage | SwDoneMessage;
 
 const NO_SW_RESULT: OfflineSaveResult = { state: 'unsupported', done: 0, total: 0 };
-const DETAIL_PACK_CACHE = 'parade-companion:islington-detail:v1';
-const DETAIL_PACK_ASSETS = [
+const DETAIL_PACK_CACHE = 'parade-companion:offline-runtime:v2';
+const OFFLINE_SAVE_TIMEOUT_MS = 45_000;
+
+export const PARADE_OFFLINE_ASSETS = [
   'basemap/corridor.webp',
   'route-pack.json',
+  'packs/index.json',
+  'packs/amsterdam-vondelpark.json',
+  'packs/watford-vicarage.json',
+  'manifest.webmanifest',
+  'icon.svg',
   'fonts/fraunces-roman.woff2',
   'fonts/fraunces-italic.woff2',
   'fonts/jetbrains-mono.woff2',
@@ -38,7 +45,7 @@ const DETAIL_PACK_ASSETS = [
 ];
 
 export async function saveParadeOffline(slug = 'parade-companion'): Promise<OfflineSaveResult> {
-  const detailPack = cacheIslingtonDetailPack();
+  const detailPack = cacheParadeRuntimePack();
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) {
     return (await detailPack) ?? NO_SW_RESULT;
   }
@@ -60,7 +67,7 @@ export async function saveParadeOffline(slug = 'parade-companion'): Promise<Offl
       const timer = window.setTimeout(() => {
         channel.port1.close();
         resolve({ ...last, state: last.done > 0 ? 'partial' : 'error', error: 'timeout' });
-      }, 20_000);
+      }, OFFLINE_SAVE_TIMEOUT_MS);
 
       channel.port1.onmessage = (event) => {
         const message = event.data as SwMessage;
@@ -108,9 +115,9 @@ export async function saveParadeOffline(slug = 'parade-companion'): Promise<Offl
   }
 }
 
-export async function cacheIslingtonDetailPack(): Promise<OfflineSaveResult | null> {
+export async function cacheParadeRuntimePack(): Promise<OfflineSaveResult | null> {
   if (typeof caches === 'undefined') return null;
-  const urls = DETAIL_PACK_ASSETS.map((asset) => `${import.meta.env.BASE_URL}${asset}`);
+  const urls = PARADE_OFFLINE_ASSETS.map((asset) => `${import.meta.env.BASE_URL}${asset}`);
   let done = 0;
   try {
     const cache = await caches.open(DETAIL_PACK_CACHE);

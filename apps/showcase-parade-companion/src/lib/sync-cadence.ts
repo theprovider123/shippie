@@ -36,3 +36,15 @@ export function resolveSyncMode(options: {
   if (!options.online || options.hidden) return 'pause';
   return options.batterySaver ? 'slow' : 'normal';
 }
+
+export function stableSyncJitterMs(seed: string, spreadMs: number, floorMs = 0): number {
+  const spread = Math.max(0, Math.floor(spreadMs));
+  const floor = Math.max(0, Math.floor(floorMs));
+  if (spread === 0) return floor;
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return floor + (Math.abs(hash) % (spread + 1));
+}

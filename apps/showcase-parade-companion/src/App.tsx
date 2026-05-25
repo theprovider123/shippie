@@ -27,7 +27,7 @@ import {
 } from './lib/shippie-db';
 import { DEFAULT_PACK_ID, loadRoutePack, packFreshnessLabel, resolvePackId, syncRoutePack } from './lib/route-pack';
 import type { BusMarker } from './lib/bus';
-import { decodeFanEventsSync, dedupeFanEvents, isActive, sortEvents, type FanEvent } from './lib/fan-events';
+import { decodeFanEventsSync, dedupeFanEvents, getFanSourceId, isActive, sortEvents, type FanEvent } from './lib/fan-events';
 import {
   isPublishableFanEvent,
   publishFanPulse,
@@ -40,12 +40,18 @@ import { isOnboarded, markOnboarded } from './lib/onboarding';
 import { saveParadeOffline } from './lib/offline-save';
 import { isPackStale, isParadeDay, isParadeEve, isStartPromptWindow, startPromptKey } from './lib/parade-time';
 import { addSideTing } from './lib/side-tings';
-import { nextSyncDelayMs, resolveSyncMode } from './lib/sync-cadence';
+import { nextSyncDelayMs, resolveSyncMode, stableSyncJitterMs } from './lib/sync-cadence';
 import { showToast } from './lib/toast';
 
 type Screen = 'map' | 'group' | 'banter' | 'safety';
 
 const BATTERY_SAVER_KEY = 'parade-companion:battery-saver:v1';
+const TAP_SYNC_COOLDOWN_MS = 12_000;
+const TIMER_SYNC_JITTER_MS = 5_000;
+const INITIAL_SYNC_JITTER_MS = {
+  normal: { floor: 2_000, spread: 14_000 },
+  slow: { floor: 5_000, spread: 30_000 },
+} as const;
 
 const nav: Array<{ id: Screen; label: string }> = [
   { id: 'map', label: 'Map' },
@@ -99,6 +105,8 @@ export function App() {
   const fanEventsRef = useRef(fanEvents);
   const liveSyncInFlight = useRef(false);
   const liveSyncFailures = useRef(0);
+  const liveSyncSeed = useRef<string | null>(null);
+  const lastTapSyncAt = useRef(0);
   const publishedFanEventIds = useRef(new Set<string>());
   const menuRef = useRef<HTMLDivElement | null>(null);
   const screenHostRef = useRef<HTMLDivElement | null>(null);
@@ -214,6 +222,8 @@ export function App() {
   // Battery-aware sync loop. A recursive setTimeout (not setInterval) lets
   // every tick re-read the current policy: 20s normal · 60s battery-saver ·
   // paused when hidden/offline · 30/60/120s exponential backoff on failure.
+  // Stable per-phone jitter prevents a million clients syncing on the same
+  // second after a deploy, phone unlock, or pocket of signal returning.
   useEffect(() => {
     if (!online) {
       setLiveSyncStatus((current) => ({ ...current, state: 'offline' }));
@@ -222,22 +232,33 @@ export function App() {
     let cancelled = false;
     let timerId: number | null = null;
 
+    const seed = liveSyncSeed.current ?? getFanSourceId();
+    liveSyncSeed.current = seed;
+
+    const cadenceDelay = () => {
+      const mode = resolveSyncMode({ online, hidden, batterySaver });
+      const base = nextSyncDelayMs(mode, liveSyncFailures.current);
+      if (base === null) return null;
+      return base + stableSyncJitterMs(`${seed}:timer:${pack.packVersion}:${base}`, TIMER_SYNC_JITTER_MS);
+    };
+
+    const firstSyncDelay = () => {
+      const profile = batterySaver ? INITIAL_SYNC_JITTER_MS.slow : INITIAL_SYNC_JITTER_MS.normal;
+      return stableSyncJitterMs(`${seed}:first:${pack.packVersion}:${batterySaver ? 'slow' : 'normal'}`, profile.spread, profile.floor);
+    };
+
     const schedule = (delayMs: number | null) => {
       if (cancelled || delayMs === null) return;
       timerId = window.setTimeout(async () => {
         if (cancelled) return;
         await runCrowdSync('timer');
-        const mode = resolveSyncMode({ online, hidden, batterySaver });
-        schedule(nextSyncDelayMs(mode, liveSyncFailures.current));
+        schedule(cadenceDelay());
       }, delayMs);
     };
 
-    // Kick once on activation (online flip / battery-saver toggle / visibility
-    // resume), then settle into the tiered cadence.
-    void runCrowdSync('online').then(() => {
-      const mode = resolveSyncMode({ online, hidden, batterySaver });
-      schedule(nextSyncDelayMs(mode, liveSyncFailures.current));
-    });
+    // Do not sync instantly on activation. The core is offline-first, so a
+    // short deterministic wait is safer than a thundering-herd relay spike.
+    schedule(firstSyncDelay());
 
     return () => {
       cancelled = true;
@@ -527,18 +548,24 @@ export function App() {
       fanEventsRef.current = next;
       return next;
     });
-    if (online) void runCrowdSync('tap', event);
+    if (online) {
+      const now = Date.now();
+      if (now - lastTapSyncAt.current >= TAP_SYNC_COOLDOWN_MS) {
+        lastTapSyncAt.current = now;
+        void runCrowdSync('tap', event);
+      }
+    }
   };
 
   const showOfflineStatus = () => {
     const packLabel = packFreshnessLabel(pack);
     trackParadeAction('parade_offline_status_checked', { readiness: offlineReadiness, online });
     if (offlineReadiness === 'ready') {
-      showToast(`Saved offline. Map, route pack, fonts and app shell are on this phone · pack ${packLabel}`, 'success');
+      showToast(`Saved offline. Map packs, route info, fonts and app shell are on this phone · pack ${packLabel}`, 'success');
       return;
     }
     if (offlineReadiness === 'needs-online') {
-      showToast(`Not fully saved yet. Open on Wi-Fi to save map, route pack, fonts and app shell · pack ${packLabel}`, 'warn');
+      showToast(`Not fully saved yet. Open on Wi-Fi to save map packs, route info, fonts and app shell · pack ${packLabel}`, 'warn');
       return;
     }
     if (offlineReadiness === 'checking') {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { nextSyncDelayMs, resolveSyncMode } from './sync-cadence';
+import { nextSyncDelayMs, resolveSyncMode, stableSyncJitterMs } from './sync-cadence';
 
 describe('sync-cadence', () => {
   test('resolves to pause when offline or hidden', () => {
@@ -38,5 +38,17 @@ describe('sync-cadence', () => {
 
   test('backoff applies regardless of cadence mode', () => {
     expect(nextSyncDelayMs('slow', 2)).toBe(60_000);
+  });
+
+  test('stable jitter is deterministic and bounded', () => {
+    const first = stableSyncJitterMs('fan-alpha', 30_000, 2_000);
+    const second = stableSyncJitterMs('fan-alpha', 30_000, 2_000);
+    expect(first).toBe(second);
+    expect(first).toBeGreaterThanOrEqual(2_000);
+    expect(first).toBeLessThanOrEqual(32_000);
+  });
+
+  test('stable jitter can return the floor when spread is zero', () => {
+    expect(stableSyncJitterMs('fan-alpha', 0, 5_000)).toBe(5_000);
   });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { RoutePack } from '../data/parade-2026';
+import { PARADE_OFFLINE_ASSETS } from '../lib/offline-save';
 import { packFreshnessLabel } from '../lib/route-pack';
 
 const READINESS_CHECK_DELAYS_MS = [0, 1200, 4000];
@@ -16,17 +17,7 @@ export type Readiness = 'checking' | 'ready' | 'needs-online' | 'unknown';
 export function ReadinessChip({ pack, onShowStatus, onReadinessChange, visible = true }: ReadinessChipProps) {
   const [readiness, setReadiness] = useState<Readiness>('checking');
   const assets = useMemo(
-    () => [
-      `${import.meta.env.BASE_URL}basemap/corridor.webp`,
-      `${import.meta.env.BASE_URL}route-pack.json`,
-      `${import.meta.env.BASE_URL}fonts/fraunces-roman.woff2`,
-      `${import.meta.env.BASE_URL}fonts/fraunces-italic.woff2`,
-      `${import.meta.env.BASE_URL}fonts/jetbrains-mono.woff2`,
-      `${import.meta.env.BASE_URL}fonts/general-sans-400.woff2`,
-      `${import.meta.env.BASE_URL}fonts/general-sans-500.woff2`,
-      `${import.meta.env.BASE_URL}fonts/general-sans-600.woff2`,
-      `${import.meta.env.BASE_URL}fonts/general-sans-700.woff2`,
-    ],
+    () => PARADE_OFFLINE_ASSETS.map((asset) => `${import.meta.env.BASE_URL}${asset}`),
     [],
   );
 
@@ -113,10 +104,10 @@ function isPackStale(packVersion: string, now = Date.now()): boolean {
 
 function readinessCopy(readiness: Readiness): { title: string; detail: string } {
   if (readiness === 'ready') {
-    return { title: 'Saved offline', detail: 'Map, route pack, fonts and app shell saved' };
+    return { title: 'Saved offline', detail: 'Map packs, route info, fonts and app shell saved' };
   }
   if (readiness === 'needs-online') {
-    return { title: 'Open on Wi-Fi', detail: 'Saving map, route pack, fonts and app shell' };
+    return { title: 'Open on Wi-Fi', detail: 'Saving map packs, route info, fonts and app shell' };
   }
   if (readiness === 'unknown') {
     return { title: 'Check limited', detail: 'Keep this page open before leaving' };
