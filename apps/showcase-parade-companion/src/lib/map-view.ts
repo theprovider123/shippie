@@ -18,7 +18,7 @@ export interface WorldBounds {
 }
 
 export const MIN_MAP_SCALE = 1;
-export const MAX_MAP_SCALE = 4.25;
+export const MAX_MAP_SCALE = 6;
 
 export function clampMapZoom(value: number): number {
   if (!Number.isFinite(value)) return MIN_MAP_SCALE;
@@ -84,4 +84,3 @@ export function fitMapBounds(bounds: WorldBounds | null, size: ViewportSize | nu
   };
   return centerMapOnWorldPoint(centre, scale, size);
 }
-

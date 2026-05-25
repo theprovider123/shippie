@@ -31,7 +31,10 @@ export function describeParadeLocation(point: LngLat, pack: RoutePack): ParadeLo
   const anchor = nearestAnchor(point, pack.pois);
   const grid = paradeGridCode(point);
   const side = nearest ? sideLabel(point, nearest.snapped, nearest.distanceM) : null;
-  const title = anchor && (routeLabel === 'near route' || anchor.distance <= 140) ? anchor.poi.name : routeLabel;
+  // In a crowd, "stretch 3" is not useful. Prefer a real landmark/station
+  // when the phone is within a walkable glance of one; fall back to the route
+  // segment only when there is no meaningful anchor nearby.
+  const title = anchor && (routeLabel === 'near route' || anchor.distance <= 420) ? anchor.poi.name : routeLabel;
   const detailParts = [
     side,
     anchor && anchor.distance <= 260 ? `near ${anchor.poi.name}` : null,

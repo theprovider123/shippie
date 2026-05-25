@@ -339,12 +339,20 @@ export function MapScreen({
   // you" panel — same information, dramatically less vertical space.
   const mapStatusLine = (() => {
     if (!storesHydrated) return 'LOADING SAVED DATA…';
-    if (walkTarget) return `FIND · ${walkTarget.label}`;
+    if (walkTarget) {
+      const targetLocation = describeParadeLocation(walkTarget, pack);
+      const distance = gpsFix ? ` · ${formatDistance(haversineMeters(gpsFix, walkTarget))}` : '';
+      return `FIND · ${walkTarget.label} · ${targetLocation.grid}${distance}`;
+    }
     if (busInsight) return `BUS · ${placeLabelForCluster(busInsight, pack)} · ${insightMeta(busInsight)}`;
     if (reportInsights[0]) return `${FAN_EVENT_LABELS[reportInsights[0].type].toUpperCase()} · ${placeLabelForCluster(reportInsights[0], pack)}`;
+    if (gpsFix) {
+      const location = describeParadeLocation(gpsFix, pack);
+      return `YOU · ${location.title} · ${location.grid} · ${formatAccuracy(gpsFix)}`;
+    }
     if (nearestPoi) return `NEAREST · ${nearestPoi.poi.name} · ${formatDistance(nearestPoi.distance)}`;
-    if (!gpsFix) return 'OFFLINE SCHEMATIC · TURN ON LOCATION';
-    return 'OFFLINE SCHEMATIC · QUIET FOR NOW';
+    if (!gpsFix) return 'OFFLINE MAP · TURN ON LOCATION';
+    return 'OFFLINE MAP · QUIET FOR NOW';
   })();
 
   return (

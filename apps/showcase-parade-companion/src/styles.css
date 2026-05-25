@@ -649,6 +649,9 @@ textarea { resize: vertical; min-height: 64px; }
   user-select: none;
 }
 .corridor-map img { object-fit: cover; }
+.corridor-map__world.is-zoomed img {
+  opacity: .22;
+}
 .corridor-map__schematic-base {
   display: grid;
   align-content: start;
