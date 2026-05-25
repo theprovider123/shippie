@@ -96,6 +96,9 @@ export function validateRoutePack(input: unknown): RoutePack | null {
   if (!isRecord(input)) return null;
   if (input.schemaVersion !== 1) return null;
   if (!isNonEmptyString(input.packVersion)) return null;
+  // mapExtent: validate the pack declares its own bounding box (round 10).
+  // Backwards-compat: if missing, fall back to the legacy Islington corridor.
+  const mapExtent = validateMapExtent(input.mapExtent) ?? CORRIDOR_EXTENT;
   if (!isRecord(input.event)) return null;
   if (!isNonEmptyString(input.event.title)) return null;
   if (!isNonEmptyString(input.event.dateLabel)) return null;
@@ -108,7 +111,9 @@ export function validateRoutePack(input: unknown): RoutePack | null {
     if (!Array.isArray(coord) || coord.length !== 2) return null;
     const lng = Number(coord[0]);
     const lat = Number(coord[1]);
-    if (!isInsideExtent({ lng, lat }, CORRIDOR_EXTENT)) return null;
+    // Validate against the pack's OWN declared extent — this is what makes
+    // remix work: an Amsterdam pack passes Amsterdam bounds.
+    if (!isInsideExtent({ lng, lat }, mapExtent)) return null;
     coords.push([lng, lat]);
   }
   if (input.event.status !== 'route-tbd' && coords.length < 2) return null;
@@ -125,18 +130,34 @@ export function validateRoutePack(input: unknown): RoutePack | null {
     if (!isNonEmptyString(poi.id) || !isNonEmptyString(poi.kind) || !isNonEmptyString(poi.name)) {
       return null;
     }
-    if (!isInsideExtent({ lng: Number(poi.lng), lat: Number(poi.lat) }, CORRIDOR_EXTENT)) return null;
+    if (!isInsideExtent({ lng: Number(poi.lng), lat: Number(poi.lat) }, mapExtent)) return null;
   }
 
   for (const landmark of input.meetingLandmarks) {
     if (!isRecord(landmark)) return null;
     if (!isNonEmptyString(landmark.id) || !isNonEmptyString(landmark.label)) return null;
-    if (!isInsideExtent({ lng: Number(landmark.lng), lat: Number(landmark.lat) }, CORRIDOR_EXTENT)) {
+    if (!isInsideExtent({ lng: Number(landmark.lng), lat: Number(landmark.lat) }, mapExtent)) {
       return null;
     }
   }
 
-  return input as unknown as RoutePack;
+  // Backfill the validated extent so the runtime always reads a complete pack.
+  const validated: RoutePack = { ...(input as unknown as RoutePack), mapExtent };
+  return validated;
+}
+
+function validateMapExtent(input: unknown): MapExtent | null {
+  if (!isRecord(input)) return null;
+  const west = Number(input.west);
+  const east = Number(input.east);
+  const south = Number(input.south);
+  const north = Number(input.north);
+  const pxWidth = Number(input.pxWidth);
+  const pxHeight = Number(input.pxHeight);
+  if (![west, east, south, north, pxWidth, pxHeight].every(Number.isFinite)) return null;
+  if (east <= west || north <= south) return null;
+  if (pxWidth <= 0 || pxHeight <= 0) return null;
+  return { west, east, south, north, pxWidth, pxHeight };
 }
 
 export function eventStartDate(pack: RoutePack): Date {

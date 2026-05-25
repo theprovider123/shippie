@@ -1,5 +1,6 @@
 import { decodeShareFragment, encodeShareFragment } from '@shippie/showcase-kit-v2';
 import type { LngLat } from '../data/parade-2026';
+import { getActiveExtent } from './active-extent';
 import { isInsideExtent, nearestRouteSegment } from './geo';
 
 export const FAN_EVENTS_SHARE_TYPE = 'parade.fan-events.v1';
@@ -303,7 +304,10 @@ export function validateFanEvent(input: unknown): input is FanEvent {
   if (input.source !== 'local' && input.source !== 'nearby_sync' && input.source !== 'relay') return false;
   const lng = Number(input.lng);
   const lat = Number(input.lat);
-  if (!isInsideExtent({ lng, lat })) return false;
+  // Validate against the active pack's extent — set by App.tsx on pack load.
+  // This is what lets an Amsterdam pack accept Amsterdam fan taps without
+  // a code rebuild.
+  if (!isInsideExtent({ lng, lat }, getActiveExtent())) return false;
   if (!Number.isFinite(Number(input.accuracy_m))) return false;
   if (!validDate(input.created_at) || !validDate(input.expires_at)) return false;
   return true;

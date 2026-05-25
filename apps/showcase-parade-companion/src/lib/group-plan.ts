@@ -1,5 +1,6 @@
 import { decodeShareFragment, encodeShareFragment } from '@shippie/showcase-kit-v2';
 import { CORRIDOR_EXTENT, type RoutePack } from '../data/parade-2026';
+import { getActiveExtent } from './active-extent';
 import { isInsideExtent } from './geo';
 
 export const PLAN_SHARE_TYPE = 'parade.group-plan.v1';
@@ -118,7 +119,9 @@ function validatePoint(input: unknown): PlanPoint | null {
   if (!isRecord(input) || !isNonEmpty(input.label)) return null;
   const lng = Number(input.lng);
   const lat = Number(input.lat);
-  if (!isInsideExtent({ lng, lat })) return null;
+  // Validate against the active pack's extent so an Amsterdam plan
+  // imported via QR doesn't get rejected by a stale Islington check.
+  if (!isInsideExtent({ lng, lat }, getActiveExtent())) return null;
   return {
     label: input.label.slice(0, 80),
     lng,

@@ -1,15 +1,21 @@
-import { CORRIDOR_EXTENT, type LngLat } from '../data/parade-2026';
+import type { LngLat, MapExtent } from '../data/parade-2026';
+import { getActiveExtent } from './active-extent';
 
 const CELL_M = 10;
 const LAT_M = 111_320;
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
-export function paradeGridCode(point: LngLat): string {
-  const latMeters = (point.lat - CORRIDOR_EXTENT.south) * LAT_M;
+/**
+ * 10-metre grid code (`A-014`) anchored to the pack's south-west corner.
+ * The extent defaults to the currently-active pack so callers don't need
+ * to thread it through — round 10's multi-pack support set this up.
+ */
+export function paradeGridCode(point: LngLat, extent: MapExtent = getActiveExtent()): string {
+  const latMeters = (point.lat - extent.south) * LAT_M;
   const lngMeters =
-    (point.lng - CORRIDOR_EXTENT.west) *
+    (point.lng - extent.west) *
     LAT_M *
-    Math.cos(((CORRIDOR_EXTENT.south + CORRIDOR_EXTENT.north) / 2) * (Math.PI / 180));
+    Math.cos(((extent.south + extent.north) / 2) * (Math.PI / 180));
   const row = Math.max(0, Math.floor(latMeters / CELL_M));
   const col = Math.max(0, Math.floor(lngMeters / CELL_M));
   return `${letters(row)}-${String(col).padStart(3, '0')}`;
