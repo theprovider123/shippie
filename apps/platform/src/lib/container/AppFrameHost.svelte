@@ -85,9 +85,24 @@
       parentHash = window.location.hash;
       postParentHashBurst();
     };
+    const updateRunQuery = (event: MessageEvent) => {
+      if (!activeFrame?.contentWindow || event.source !== activeFrame.contentWindow) return;
+      if (event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (!data || typeof data !== 'object' || data.kind !== 'shippie.run-query') return;
+      if (typeof data.pack !== 'string' || !/^[a-z0-9-]{1,80}$/.test(data.pack)) return;
+      const url = new URL(window.location.href);
+      if (!url.pathname.includes('/run/')) return;
+      url.searchParams.set('pack', data.pack);
+      window.history.replaceState(window.history.state, '', url);
+    };
     updateHash();
     window.addEventListener('hashchange', updateHash);
-    return () => window.removeEventListener('hashchange', updateHash);
+    window.addEventListener('message', updateRunQuery);
+    return () => {
+      window.removeEventListener('hashchange', updateHash);
+      window.removeEventListener('message', updateRunQuery);
+    };
   });
 
   function registerFrame(node: HTMLIFrameElement, appId: string) {

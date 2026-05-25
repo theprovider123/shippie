@@ -578,17 +578,11 @@ export function App() {
     const nextId = ids[(ids.indexOf(current) + 1) % ids.length] ?? DEFAULT_PACK_ID;
     setMenuOpen(false);
     try {
-      const topWindow = window.parent;
-      if (topWindow !== window) {
-        const topUrl = new URL(topWindow.location.href);
-        if (topUrl.pathname.includes('/run/parade-companion')) {
-          topUrl.searchParams.set('pack', nextId);
-          topWindow.location.assign(topUrl.toString());
-          return;
-        }
+      if (window.parent !== window) {
+        window.parent.postMessage({ kind: 'shippie.run-query', pack: nextId }, window.location.origin);
       }
     } catch {
-      // Fall through to iframe / standalone navigation below.
+      // Parent URL sync is a nicety; the iframe navigation below is the source of truth.
     }
     try {
       const url = new URL(window.location.href);
