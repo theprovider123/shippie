@@ -14,6 +14,15 @@ import {
 import { lngLatToPixel, metersToPixelRadius, type PixelPoint } from '../lib/geo';
 import type { GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
+import {
+  centerMapOnWorldPoint,
+  clampMapOffset,
+  fitMapBounds,
+  zoomMapAt,
+  type MapView,
+  type ViewportSize,
+  type WorldBounds,
+} from '../lib/map-view';
 import { chipForGroupName, type SideTing } from '../lib/side-tings';
 import type { MapLayerId } from './LayerToggleRow';
 
@@ -72,8 +81,10 @@ export function CorridorMap({
   const pointers = useRef(new Map<number, PixelPoint>());
   const lastDrag = useRef<PixelPoint | null>(null);
   const lastPinchDistance = useRef<number | null>(null);
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState<PixelPoint>({ x: 0, y: 0 });
+  const viewRef = useRef<MapView>({ scale: 1, offset: { x: 0, y: 0 } });
+  const [view, setView] = useState<MapView>(viewRef.current);
+  const scale = view.scale;
+  const offset = view.offset;
   // Every spatial calculation in this component projects via the *pack's*
   // map extent — round 10's multi-pack support depends on this not falling
   // back to the global Islington default.
@@ -152,25 +163,85 @@ export function CorridorMap({
     canvas.height = extent.pxHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    drawRoute(ctx, pack.route.coordinates, extent);
-    if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent);
-    if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings, extent);
-    if (gpsFix && target) drawWalkLine(ctx, gpsFix, target, extent);
+    drawRoute(ctx, pack.route.coordinates, extent, scale);
+    if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent, scale);
+    if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings, extent, scale);
+    if (gpsFix && target) drawWalkLine(ctx, gpsFix, target, extent, scale);
     drawPois(ctx, points, scale);
-    drawScheduleMarkers(ctx, pack.scheduleEstimate, extent);
-    if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent);
-    if (gpsFix) drawGps(ctx, gpsFix, extent);
+    drawScheduleMarkers(ctx, pack.scheduleEstimate, extent, scale);
+    if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent, scale);
+    if (gpsFix) drawGps(ctx, gpsFix, extent, scale);
   }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, sideTings, target, scale, extent]);
 
-  const clampZoom = (value: number) => Math.max(1, Math.min(3.2, value));
-
-  const zoom = (next: number) => {
-    setScale((current) => {
-      const clamped = clampZoom(next);
-      if (clamped === 1) setOffset({ x: 0, y: 0 });
-      return clamped;
-    });
+  const commitView = (next: MapView) => {
+    viewRef.current = next;
+    setView(next);
   };
+
+  const frameSize = (): ViewportSize | null => {
+    const frame = frameRef.current;
+    if (!frame) return null;
+    const rect = frame.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 ? { width: rect.width, height: rect.height } : null;
+  };
+
+  const framePoint = (clientX: number, clientY: number): PixelPoint => {
+    const rect = frameRef.current?.getBoundingClientRect();
+    return rect ? { x: clientX - rect.left, y: clientY - rect.top } : { x: clientX, y: clientY };
+  };
+
+  const worldPointForLngLat = (point: { lng: number; lat: number }): PixelPoint | null => {
+    const size = frameSize();
+    if (!size) return null;
+    const p = lngLatToPixel(point, extent);
+    return {
+      x: (p.x / extent.pxWidth) * size.width,
+      y: (p.y / extent.pxHeight) * size.height,
+    };
+  };
+
+  const routeBounds = (): WorldBounds | null => {
+    const size = frameSize();
+    if (!size || pack.route.coordinates.length === 0) return null;
+    const points = pack.route.coordinates.map(([lng, lat]) => {
+      const p = lngLatToPixel({ lng, lat }, extent);
+      return {
+        x: (p.x / extent.pxWidth) * size.width,
+        y: (p.y / extent.pxHeight) * size.height,
+      };
+    });
+    return {
+      minX: Math.min(...points.map((point) => point.x)),
+      maxX: Math.max(...points.map((point) => point.x)),
+      minY: Math.min(...points.map((point) => point.y)),
+      maxY: Math.max(...points.map((point) => point.y)),
+    };
+  };
+
+  const fitRoute = () => {
+    commitView(fitMapBounds(routeBounds(), frameSize(), 48));
+  };
+
+  const focusLngLat = (point: { lng: number; lat: number }, zoom = 2.45) => {
+    const worldPoint = worldPointForLngLat(point);
+    if (!worldPoint) return;
+    commitView(centerMapOnWorldPoint(worldPoint, zoom, frameSize()));
+  };
+
+  const zoom = (next: number, focal?: PixelPoint) => {
+    const size = frameSize();
+    const centre = size ? { x: size.width / 2, y: size.height / 2 } : { x: 0, y: 0 };
+    commitView(zoomMapAt(viewRef.current, next, focal ?? centre, size));
+  };
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(fitRoute);
+    return () => window.cancelAnimationFrame(id);
+    // Fit the currently selected route once its frame exists. This is what
+    // makes widened Amsterdam/Watford test packs open on the useful route
+    // instead of a tiny squiggle in a huge blank extent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pack.event.title, pack.packVersion]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     // POI hit zones live inside the frame; their click handler opens the
@@ -188,15 +259,27 @@ export function CorridorMap({
     const active = [...pointers.current.values()];
     if (active.length >= 2) {
       const distance = Math.hypot(active[0]!.x - active[1]!.x, active[0]!.y - active[1]!.y);
-      if (lastPinchDistance.current) zoom(scale * (distance / lastPinchDistance.current));
+      if (lastPinchDistance.current) {
+        const centre = framePoint((active[0]!.x + active[1]!.x) / 2, (active[0]!.y + active[1]!.y) / 2);
+        zoom(viewRef.current.scale * (distance / lastPinchDistance.current), centre);
+      }
       lastPinchDistance.current = distance;
+      lastDrag.current = null;
       return;
     }
-    if (scale <= 1 || !lastDrag.current) return;
+    if (viewRef.current.scale <= 1 || !lastDrag.current) return;
     const dx = event.clientX - lastDrag.current.x;
     const dy = event.clientY - lastDrag.current.y;
     lastDrag.current = { x: event.clientX, y: event.clientY };
-    setOffset((current) => clampOffset({ x: current.x + dx, y: current.y + dy }, scale, frameRef.current));
+    const size = frameSize();
+    commitView({
+      scale: viewRef.current.scale,
+      offset: clampMapOffset(
+        { x: viewRef.current.offset.x + dx, y: viewRef.current.offset.y + dy },
+        viewRef.current.scale,
+        size,
+      ),
+    });
   };
 
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -216,9 +299,15 @@ export function CorridorMap({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onWheel={(event) => {
+          event.preventDefault();
+          const delta = event.deltaY < 0 ? 1.18 : 0.84;
+          zoom(viewRef.current.scale * delta, framePoint(event.clientX, event.clientY));
+        }}
+        onDoubleClick={(event) => zoom(viewRef.current.scale < 2 ? 2.3 : 1, framePoint(event.clientX, event.clientY))}
       >
         <div
-          className="corridor-map__world"
+          className={`corridor-map__world ${scale > 1.2 ? 'is-zoomed' : ''}`}
           style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
         >
           {useRasterBasemap ? (
@@ -266,26 +355,27 @@ export function CorridorMap({
         {mapSummary}
       </p>
       <div className="corridor-map__controls" aria-label="Map controls">
-        <button type="button" className="icon-button" onClick={() => zoom(scale + 0.35)} aria-label="Zoom in">
+        <button type="button" className="icon-button" onClick={() => zoom(scale + 0.45)} aria-label="Zoom in">
           +
         </button>
-        <button type="button" className="icon-button" onClick={() => zoom(scale - 0.35)} aria-label="Zoom out">
+        <button type="button" className="icon-button" onClick={() => zoom(scale - 0.45)} aria-label="Zoom out">
           -
         </button>
-        {scale > 1 || offset.x !== 0 || offset.y !== 0 ? (
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => {
-              setScale(1);
-              setOffset({ x: 0, y: 0 });
-            }}
-            aria-label="Re-center map"
-          >
-            ⊙
+        <button type="button" className="icon-button icon-button--label" onClick={fitRoute} aria-label="Fit the route on the map">
+          Fit
+        </button>
+        {gpsFix ? (
+          <button type="button" className="icon-button icon-button--label" onClick={() => focusLngLat(gpsFix, 2.8)} aria-label="Centre the map on you">
+            Me
+          </button>
+        ) : null}
+        {target ? (
+          <button type="button" className="icon-button icon-button--label" onClick={() => focusLngLat(target, 2.8)} aria-label="Centre the map on your goal">
+            Goal
           </button>
         ) : null}
       </div>
+      {scale > 1.05 ? <div className="map-zoom-pill" aria-hidden="true">{scale.toFixed(1)}×</div> : null}
       <p className="map-credit">
         {useRasterBasemap ? 'Offline schematic. Verify official route before travel.' : `${pack.event.title} · offline test map`}
       </p>
@@ -305,20 +395,21 @@ function shouldUseRasterBasemap(pack: RoutePack): boolean {
   );
 }
 
-function drawRoute(ctx: CanvasRenderingContext2D, route: readonly [number, number][], extent: MapExtent) {
+function drawRoute(ctx: CanvasRenderingContext2D, route: readonly [number, number][], extent: MapExtent, scale: number) {
   if (route.length < 2) return;
+  const fixed = fixedSize(scale);
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = 48;
+  ctx.lineWidth = fixed(48);
   ctx.strokeStyle = 'rgba(245, 239, 228, 0.7)';
   drawPolyline(ctx, route, extent);
   ctx.stroke();
-  ctx.lineWidth = 34;
+  ctx.lineWidth = fixed(34);
   ctx.strokeStyle = 'rgba(239, 1, 7, 0.22)';
   drawPolyline(ctx, route, extent);
   ctx.stroke();
-  ctx.lineWidth = 16;
+  ctx.lineWidth = fixed(16);
   ctx.strokeStyle = '#EF0107';
   drawPolyline(ctx, route, extent);
   ctx.stroke();
@@ -339,22 +430,24 @@ function drawPois(
   scale: number,
 ) {
   ctx.save();
-  ctx.font = '700 28px system-ui, sans-serif';
+  const fixed = fixedSize(scale);
+  ctx.font = `700 ${fixed(28)}px system-ui, sans-serif`;
   ctx.textBaseline = 'middle';
   for (const marker of points) {
     const style = poiStyleForKind(marker.kind);
+    const radius = fixed(style.radius);
     ctx.beginPath();
-    ctx.arc(marker.point.x, marker.point.y, style.radius, 0, Math.PI * 2);
+    ctx.arc(marker.point.x, marker.point.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = style.fill;
     ctx.fill();
-    ctx.lineWidth = style.lineWidth;
+    ctx.lineWidth = fixed(style.lineWidth);
     ctx.strokeStyle = style.stroke;
     ctx.stroke();
     if (style.glyph) {
       ctx.fillStyle = style.glyphColor;
-      ctx.font = `700 ${style.glyphSize}px "JetBrains Mono", ui-monospace, monospace`;
+      ctx.font = `700 ${fixed(style.glyphSize)}px "JetBrains Mono", ui-monospace, monospace`;
       ctx.textAlign = 'center';
-      ctx.fillText(style.glyph, marker.point.x, marker.point.y + style.glyphSize * 0.35);
+      ctx.fillText(style.glyph, marker.point.x, marker.point.y + fixed(style.glyphSize * 0.35));
       ctx.textAlign = 'start';
     }
     if (!shouldShowMarkerLabel(marker, style)) continue;
@@ -363,8 +456,8 @@ function drawPois(
     // readable instead of a wall of overlapping text at zoom 1.
     if (isSmallPoiKind(marker.kind) && scale < 1.5) continue;
     const label = mapLabelText(marker);
-    if (style.smallLabel) drawMiniLabel(ctx, label, marker.point.x + style.radius + 14, marker.point.y, style.labelTone);
-    else drawLabel(ctx, label, marker.point.x + style.radius + 18, marker.point.y);
+    if (style.smallLabel) drawMiniLabel(ctx, label, marker.point.x + radius + fixed(14), marker.point.y, style.labelTone, scale);
+    else drawLabel(ctx, label, marker.point.x + radius + fixed(18), marker.point.y, scale);
   }
   ctx.restore();
 }
@@ -433,47 +526,49 @@ function mapLabelText(marker: { label: string; kind: string }): string {
   return marker.label;
 }
 
-function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[], extent: MapExtent) {
+function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[], extent: MapExtent, scale: number) {
   const presence = clusters.filter((cluster) => cluster.type === 'presence').slice(0, 10);
   const reports = clusters.filter((cluster) => cluster.type !== 'presence').slice(0, 12);
+  const fixed = fixedSize(scale);
 
   ctx.save();
   for (const cluster of presence) {
     const p = offsetClusterPoint(lngLatToPixel(cluster.point, extent), cluster.type);
-    const radius = Math.min(44, 22 + cluster.count * 5);
+    const radius = fixed(Math.min(44, 22 + cluster.count * 5));
     ctx.beginPath();
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(237, 187, 74, 0.62)';
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = fixed(3);
     ctx.strokeStyle = 'rgba(20, 18, 15, 0.62)';
     ctx.stroke();
-    if (cluster.count > 1) drawLabel(ctx, `${cluster.count} here`, p.x + radius + 10, p.y);
+    if (cluster.count > 1) drawLabel(ctx, `${cluster.count} here`, p.x + radius + fixed(10), p.y, scale);
   }
 
   for (const cluster of reports) {
     const p = offsetClusterPoint(lngLatToPixel(cluster.point, extent), cluster.type);
     const color = eventColor(cluster.type);
-    const radius = clusterRadius(cluster);
+    const radius = fixed(clusterRadius(cluster));
     ctx.beginPath();
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = color.soft;
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = fixed(3);
     ctx.strokeStyle = color.strong;
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, fixed(18), 0, Math.PI * 2);
     ctx.fillStyle = color.strong;
     ctx.fill();
-    drawEventBadge(ctx, cluster.type, p.x, p.y);
-    drawLabel(ctx, clusterLabel(cluster), p.x + radius + 8, p.y);
+    drawEventBadge(ctx, cluster.type, p.x, p.y, scale);
+    drawLabel(ctx, clusterLabel(cluster), p.x + radius + fixed(8), p.y, scale);
   }
   ctx.restore();
 }
 
-function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack['scheduleEstimate'], extent: MapExtent) {
+function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack['scheduleEstimate'], extent: MapExtent, scale: number) {
   ctx.save();
+  const fixed = fixedSize(scale);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   let index = 0;
@@ -482,67 +577,70 @@ function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack[
     index += 1;
     const p = lngLatToPixel({ lng: row.lng, lat: row.lat }, extent);
     // Slight up-shift so the marker sits above the route polyline.
-    const y = p.y - 64;
+    const y = p.y - fixed(64);
     ctx.beginPath();
-    ctx.arc(p.x, y, 26, 0, Math.PI * 2);
+    ctx.arc(p.x, y, fixed(26), 0, Math.PI * 2);
     ctx.fillStyle = '#F5EFE4';
     ctx.fill();
-    ctx.lineWidth = 5;
+    ctx.lineWidth = fixed(5);
     ctx.strokeStyle = '#EF0107';
     ctx.stroke();
     ctx.fillStyle = '#EF0107';
-    ctx.font = '700 28px "JetBrains Mono", ui-monospace, monospace';
-    ctx.fillText(String(index), p.x, y + 2);
+    ctx.font = `700 ${fixed(28)}px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.fillText(String(index), p.x, y + fixed(2));
   }
   ctx.textAlign = 'start';
   ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }
 
-function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint, extent: MapExtent) {
+function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint, extent: MapExtent, scale: number) {
   const a = lngLatToPixel(from, extent);
   const b = lngLatToPixel(to, extent);
+  const fixed = fixedSize(scale);
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
-  ctx.lineWidth = 8;
+  ctx.lineWidth = fixed(8);
   ctx.lineCap = 'round';
-  ctx.setLineDash([2, 18]);
+  ctx.setLineDash([fixed(2), fixed(18)]);
   ctx.strokeStyle = '#5E7B5C';
   ctx.stroke();
   ctx.restore();
 }
 
-function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix, extent: MapExtent) {
+function drawGps(ctx: CanvasRenderingContext2D, gps: GpsFix, extent: MapExtent, scale: number) {
   const p = lngLatToPixel(gps, extent);
   const radius = metersToPixelRadius(gps, gps.accuracyM, extent);
+  const fixed = fixedSize(scale);
   ctx.save();
   ctx.beginPath();
   ctx.arc(p.x, p.y, Math.max(10, Math.min(220, radius)), 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(239, 1, 7, 0.14)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(239, 1, 7, 0.5)';
-  ctx.lineWidth = 7;
+  ctx.lineWidth = fixed(7);
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(p.x, p.y, 34, 0, Math.PI * 2);
+  ctx.arc(p.x, p.y, fixed(34), 0, Math.PI * 2);
   ctx.fillStyle = '#EF0107';
   ctx.fill();
-  ctx.lineWidth = 12;
+  ctx.lineWidth = fixed(12);
   ctx.strokeStyle = '#F5EFE4';
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(p.x, p.y, 44, 0, Math.PI * 2);
-  ctx.lineWidth = 3;
+  ctx.arc(p.x, p.y, fixed(44), 0, Math.PI * 2);
+  ctx.lineWidth = fixed(3);
   ctx.strokeStyle = 'rgba(20, 18, 15, 0.7)';
   ctx.stroke();
-  drawLabel(ctx, 'You are here', p.x + 54, p.y);
+  drawLabel(ctx, 'You are here', p.x + fixed(54), p.y, scale);
   ctx.restore();
 }
 
-function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], extent: MapExtent) {
+function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], extent: MapExtent, scale: number) {
   ctx.save();
+  const fixed = fixedSize(scale);
   for (const marker of markers) {
     const alpha = busMarkerAlpha(marker);
     const point =
@@ -552,17 +650,17 @@ function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], ext
     const p = lngLatToPixel(point, extent);
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 54, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, fixed(54), 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(239, 1, 7, 0.2)';
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 24, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, fixed(24), 0, Math.PI * 2);
     ctx.fillStyle = '#EF0107';
     ctx.fill();
-    ctx.lineWidth = 9;
+    ctx.lineWidth = fixed(9);
     ctx.strokeStyle = '#F5EFE4';
     ctx.stroke();
-    drawLabel(ctx, alpha < 0.5 ? 'Old bus tap' : 'Bus tap', p.x + 58, p.y);
+    drawLabel(ctx, alpha < 0.5 ? 'Old bus tap' : 'Bus tap', p.x + fixed(58), p.y, scale);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -577,8 +675,9 @@ function busMarkerAlpha(marker: Pick<BusMarker, 'created_at'>): number {
   return 1;
 }
 
-function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: MapExtent) {
+function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: MapExtent, scale: number) {
   ctx.save();
+  const fixed = fixedSize(scale);
   for (const row of rows.slice(0, 5)) {
     if (!row.primary) continue;
     const p = lngLatToPixel(row.primary, extent);
@@ -586,20 +685,20 @@ function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: 
     const ageMin = (Date.now() - Date.parse(ageSource)) / 60_000;
     const stale = !Number.isFinite(ageMin) || ageMin > 10 || !row.lastSeenAt;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 34, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, fixed(34), 0, Math.PI * 2);
     ctx.fillStyle = stale ? 'rgba(237, 187, 74, 0.18)' : '#EDBB4A';
     ctx.fill();
-    ctx.lineWidth = stale ? 7 : 9;
+    ctx.lineWidth = fixed(stale ? 7 : 9);
     ctx.strokeStyle = stale ? 'rgba(20, 18, 15, 0.7)' : '#14120F';
     ctx.stroke();
     if (stale) {
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, fixed(20), 0, Math.PI * 2);
       ctx.strokeStyle = '#EDBB4A';
-      ctx.lineWidth = 5;
+      ctx.lineWidth = fixed(5);
       ctx.stroke();
     }
-    drawLabel(ctx, chipForGroupName(row.name), p.x + 50, p.y);
+    drawLabel(ctx, chipForGroupName(row.name), p.x + fixed(50), p.y, scale);
   }
   ctx.restore();
 }
@@ -631,14 +730,15 @@ function clusterLabel(cluster: FanEventCluster): string {
   return cluster.count > 1 ? `${label} · ${confidence}` : label;
 }
 
-function drawEventBadge(ctx: CanvasRenderingContext2D, type: FanEventType, x: number, y: number) {
+function drawEventBadge(ctx: CanvasRenderingContext2D, type: FanEventType, x: number, y: number, scale: number) {
   const badge = FAN_EVENT_BADGES[type];
+  const fixed = fixedSize(scale);
   ctx.save();
   ctx.fillStyle = type === 'crowd_dense' ? '#14120F' : '#F5EFE4';
-  ctx.font = `${badge.length > 2 ? '800 14px' : '800 17px'} "JetBrains Mono", ui-monospace, monospace`;
+  ctx.font = `${badge.length > 2 ? `800 ${fixed(14)}px` : `800 ${fixed(17)}px`} "JetBrains Mono", ui-monospace, monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(badge, x, y + 1);
+  ctx.fillText(badge, x, y + fixed(1));
   ctx.restore();
 }
 
@@ -667,22 +767,23 @@ function offsetClusterPoint(point: PixelPoint, type: FanEventType): PixelPoint {
   return { x: point.x + 52, y: point.y - 52 };
 }
 
-function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
+function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, scale = 1) {
+  const fixed = fixedSize(scale);
   const displayText = text.length > 30 ? `${text.slice(0, 27)}...` : text;
-  ctx.font = '700 52px "JetBrains Mono", ui-monospace, monospace';
-  const padded = displayText.length * 30 + 38;
+  ctx.font = `700 ${fixed(52)}px "JetBrains Mono", ui-monospace, monospace`;
+  const padded = fixed(displayText.length * 30 + 38);
   let labelX = x;
-  if (labelX + padded > 1782) labelX = x - padded - 60;
+  if (labelX + padded > 1782) labelX = x - padded - fixed(60);
   labelX = Math.max(18, Math.min(1782 - padded, labelX));
   const labelY = Math.max(42, Math.min(1758, y));
   ctx.fillStyle = 'rgba(245, 239, 228, 0.94)';
-  roundRect(ctx, labelX - 18, labelY - 42, padded, 84, 0);
+  roundRect(ctx, labelX - fixed(18), labelY - fixed(42), padded, fixed(84), 0);
   ctx.fill();
-  ctx.lineWidth = 3;
+  ctx.lineWidth = fixed(3);
   ctx.strokeStyle = 'rgba(20, 18, 15, 0.82)';
   ctx.stroke();
   ctx.fillStyle = '#14120F';
-  ctx.fillText(displayText, labelX, labelY + 4);
+  ctx.fillText(displayText, labelX, labelY + fixed(4));
 }
 
 function drawMiniLabel(
@@ -691,22 +792,29 @@ function drawMiniLabel(
   x: number,
   y: number,
   tone: 'default' | 'transit' | 'landmark' = 'default',
+  scale = 1,
 ) {
+  const fixed = fixedSize(scale);
   const displayText = text.length > 22 ? `${text.slice(0, 19)}...` : text;
-  ctx.font = '800 54px "JetBrains Mono", ui-monospace, monospace';
-  const padded = displayText.length * 31 + 36;
+  ctx.font = `800 ${fixed(54)}px "JetBrains Mono", ui-monospace, monospace`;
+  const padded = fixed(displayText.length * 31 + 36);
   let labelX = x;
-  if (labelX + padded > 1782) labelX = x - padded - 58;
+  if (labelX + padded > 1782) labelX = x - padded - fixed(58);
   labelX = Math.max(18, Math.min(1782 - padded, labelX));
   const labelY = Math.max(42, Math.min(1758, y));
   ctx.fillStyle = tone === 'transit' ? 'rgba(245, 239, 228, 0.96)' : 'rgba(237, 230, 213, 0.94)';
-  roundRect(ctx, labelX - 18, labelY - 41, padded, 82, 0);
+  roundRect(ctx, labelX - fixed(18), labelY - fixed(41), padded, fixed(82), 0);
   ctx.fill();
-  ctx.lineWidth = tone === 'transit' ? 4 : 2;
+  ctx.lineWidth = fixed(tone === 'transit' ? 4 : 2);
   ctx.strokeStyle = tone === 'transit' ? '#14120F' : 'rgba(20, 18, 15, 0.72)';
   ctx.stroke();
   ctx.fillStyle = tone === 'transit' ? '#14120F' : '#4C473F';
-  ctx.fillText(displayText, labelX, labelY + 5);
+  ctx.fillText(displayText, labelX, labelY + fixed(5));
+}
+
+function fixedSize(scale: number): (value: number) => number {
+  const factor = 1 / Math.max(1, scale);
+  return (value: number) => value * factor;
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
@@ -717,15 +825,4 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: n
   ctx.arcTo(x, y + height, x, y, radius);
   ctx.arcTo(x, y, x + width, y, radius);
   ctx.closePath();
-}
-
-function clampOffset(next: PixelPoint, scale: number, frame: HTMLDivElement | null): PixelPoint {
-  if (!frame || scale <= 1) return { x: 0, y: 0 };
-  const size = frame.getBoundingClientRect();
-  const minX = -size.width * (scale - 1);
-  const minY = -size.height * (scale - 1);
-  return {
-    x: Math.min(0, Math.max(minX, next.x)),
-    y: Math.min(0, Math.max(minY, next.y)),
-  };
 }

@@ -637,7 +637,9 @@ textarea { resize: vertical; min-height: 64px; }
   aspect-ratio: 1 / 1;
   overflow: hidden;
   touch-action: none;
+  cursor: grab;
 }
+.corridor-map__frame:active { cursor: grabbing; }
 .corridor-map__world { position: absolute; inset: 0; transform-origin: 0 0; }
 .corridor-map img, .corridor-map canvas, .corridor-map__schematic-base {
   position: absolute;
@@ -695,6 +697,10 @@ textarea { resize: vertical; min-height: 64px; }
 .corridor-map__schematic-base .corridor-map__schematic-kicker {
   color: var(--red);
   letter-spacing: .14em;
+}
+.corridor-map__world.is-zoomed .corridor-map__schematic-base strong,
+.corridor-map__world.is-zoomed .corridor-map__schematic-base span {
+  opacity: 0;
 }
 .my-presence-pulse {
   position: absolute;
@@ -812,6 +818,7 @@ textarea { resize: vertical; min-height: 64px; }
   right: 10px; top: 10px;
   display: grid;
   gap: 6px;
+  z-index: 7;
 }
 .icon-button {
   width: 38px; height: 38px;
@@ -822,6 +829,26 @@ textarea { resize: vertical; min-height: 64px; }
   font-family: var(--mono);
   font-size: 1.2rem;
   font-weight: 600;
+}
+.icon-button--label {
+  width: 46px;
+  font-size: .66rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.map-zoom-pill {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  z-index: 6;
+  padding: 4px 7px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .08em;
 }
 .map-credit {
   position: absolute;
