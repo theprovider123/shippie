@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { nextSyncDelayMs, resolveSyncMode, stableSyncJitterMs } from './sync-cadence';
+import { nextSyncDelayMs, resolveSyncMode, resumeSyncDelayMs, shouldResumeSync, stableSyncJitterMs } from './sync-cadence';
 
 describe('sync-cadence', () => {
   test('resolves to pause when offline or hidden', () => {
@@ -50,5 +50,24 @@ describe('sync-cadence', () => {
 
   test('stable jitter can return the floor when spread is zero', () => {
     expect(stableSyncJitterMs('fan-alpha', 0, 5_000)).toBe(5_000);
+  });
+
+  test('resume sync only runs after an offline period while visible', () => {
+    expect(shouldResumeSync({ online: true, hidden: false, hadOffline: true })).toBe(true);
+    expect(shouldResumeSync({ online: true, hidden: false, hadOffline: false })).toBe(false);
+    expect(shouldResumeSync({ online: false, hidden: false, hadOffline: true })).toBe(false);
+    expect(shouldResumeSync({ online: true, hidden: true, hadOffline: true })).toBe(false);
+  });
+
+  test('resume sync delay is short, deterministic, and jittered', () => {
+    const first = resumeSyncDelayMs('fan-alpha', 'pack-a');
+    const second = resumeSyncDelayMs('fan-alpha', 'pack-a');
+    const other = resumeSyncDelayMs('fan-beta', 'pack-a');
+
+    expect(first).toBe(second);
+    expect(first).toBeGreaterThanOrEqual(750);
+    expect(first).toBeLessThanOrEqual(3_000);
+    expect(other).toBeGreaterThanOrEqual(750);
+    expect(other).toBeLessThanOrEqual(3_000);
   });
 });

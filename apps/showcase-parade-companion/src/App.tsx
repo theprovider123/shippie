@@ -54,7 +54,7 @@ import { saveParadeOffline } from './lib/offline-save';
 import { isPackStale, isParadeDay, isParadeEve, isStartPromptWindow, startPromptKey } from './lib/parade-time';
 import { addSideTing } from './lib/side-tings';
 import { buildShareRunUrl } from './lib/share-url';
-import { nextSyncDelayMs, resolveSyncMode, stableSyncJitterMs } from './lib/sync-cadence';
+import { nextSyncDelayMs, resolveSyncMode, resumeSyncDelayMs, shouldResumeSync, stableSyncJitterMs } from './lib/sync-cadence';
 import { showToast } from './lib/toast';
 
 type Screen = 'map' | 'group' | 'banter' | 'safety';
@@ -132,11 +132,20 @@ export function App() {
   const liveSyncFailures = useRef(0);
   const liveSyncSeed = useRef<string | null>(null);
   const lastTapSyncAt = useRef(0);
+  const pendingResumeSync = useRef(false);
+  const resumeSyncTimer = useRef<number | null>(null);
+  const lastSignalToastAt = useRef(0);
   const publishedFanEventIds = useRef(new Set<string>());
   const menuRef = useRef<HTMLDivElement | null>(null);
   const screenHostRef = useRef<HTMLDivElement | null>(null);
   const online = useOnlineStatus();
   const offlinePill = offlinePillState(offlineReadiness, online);
+
+  const pendingFanPulseCount = useCallback(() => (
+    selectFanPulseEvents(
+      fanEventsRef.current.filter((event) => !publishedFanEventIds.current.has(event.id) && isPublishableFanEvent(event)),
+    ).length
+  ), []);
 
   const onToggleBatterySaver = useCallback(() => {
     setBatterySaver((current) => {
@@ -333,6 +342,9 @@ export function App() {
     };
 
     const firstSyncDelay = () => {
+      if (storesHydrated && pendingFanPulseCount() > 0) {
+        return resumeSyncDelayMs(seed, pack.packVersion);
+      }
       const profile = batterySaver ? INITIAL_SYNC_JITTER_MS.slow : INITIAL_SYNC_JITTER_MS.normal;
       return stableSyncJitterMs(`${seed}:first:${pack.packVersion}:${batterySaver ? 'slow' : 'normal'}`, profile.spread, profile.floor);
     };
@@ -354,7 +366,61 @@ export function App() {
       cancelled = true;
       if (timerId !== null) window.clearTimeout(timerId);
     };
-  }, [online, hidden, batterySaver, runCrowdSync, pack.packVersion]);
+  }, [online, hidden, batterySaver, runCrowdSync, pack.packVersion, pendingFanPulseCount, storesHydrated]);
+
+  // Fast resume path for patchy signal. The timer loop is deliberately
+  // jittered for a million phones, but after a real offline spell we still
+  // want to use tiny signal windows to flush saved taps quickly.
+  useEffect(() => {
+    if (!online) {
+      pendingResumeSync.current = true;
+      if (resumeSyncTimer.current !== null) {
+        window.clearTimeout(resumeSyncTimer.current);
+        resumeSyncTimer.current = null;
+      }
+      setLiveSyncStatus((current) => ({ ...current, state: 'offline' }));
+      return undefined;
+    }
+
+    if (!shouldResumeSync({ online, hidden, hadOffline: pendingResumeSync.current })) {
+      return undefined;
+    }
+
+    const seed = liveSyncSeed.current ?? getFanSourceId();
+    liveSyncSeed.current = seed;
+    const pendingCount = pendingFanPulseCount();
+    const delay = resumeSyncDelayMs(seed, pack.packVersion);
+
+    setLiveSyncStatus((current) => ({ ...current, state: 'syncing' }));
+    trackParadeAction('parade_crowd_sync_resume_scheduled', {
+      delay_ms: delay,
+      pending_count: pendingCount,
+    });
+
+    const now = Date.now();
+    if (now - lastSignalToastAt.current > 15_000) {
+      lastSignalToastAt.current = now;
+      showToast(
+        pendingCount > 0
+          ? `Signal back. Sending ${pendingCount} saved tap${pendingCount === 1 ? '' : 's'}.`
+          : 'Signal back. Checking the crowd pulse.',
+        'success',
+      );
+    }
+
+    resumeSyncTimer.current = window.setTimeout(() => {
+      resumeSyncTimer.current = null;
+      pendingResumeSync.current = false;
+      void runCrowdSync('online');
+    }, delay);
+
+    return () => {
+      if (resumeSyncTimer.current !== null) {
+        window.clearTimeout(resumeSyncTimer.current);
+        resumeSyncTimer.current = null;
+      }
+    };
+  }, [online, hidden, pack.packVersion, pendingFanPulseCount, runCrowdSync]);
 
   // Live group room. The invite QR carries a SignalRoom roomId + roomKey; once
   // both phones have the plan, they fan out tiny encrypted join/presence

@@ -18,6 +18,8 @@ export type SyncMode = 'pause' | 'slow' | 'normal';
 const NORMAL_MS = 20_000;
 const SLOW_MS = 60_000;
 const BACKOFF_STEPS_MS = [30_000, 60_000, 120_000] as const;
+const RESUME_SYNC_FLOOR_MS = 750;
+const RESUME_SYNC_SPREAD_MS = 2_250;
 
 export function nextSyncDelayMs(mode: SyncMode, failureCount: number): number | null {
   if (mode === 'pause') return null;
@@ -35,6 +37,18 @@ export function resolveSyncMode(options: {
 }): SyncMode {
   if (!options.online || options.hidden) return 'pause';
   return options.batterySaver ? 'slow' : 'normal';
+}
+
+export function shouldResumeSync(options: {
+  online: boolean;
+  hidden: boolean;
+  hadOffline: boolean;
+}): boolean {
+  return options.online && !options.hidden && options.hadOffline;
+}
+
+export function resumeSyncDelayMs(seed: string, packVersion: string): number {
+  return stableSyncJitterMs(`${seed}:resume:${packVersion}`, RESUME_SYNC_SPREAD_MS, RESUME_SYNC_FLOOR_MS);
 }
 
 export function stableSyncJitterMs(seed: string, spreadMs: number, floorMs = 0): number {
