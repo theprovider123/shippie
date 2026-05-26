@@ -473,28 +473,29 @@ export function MapScreen({
         />
         <ParadersChip count={paraders} />
         <GoalChip target={walkTarget} gpsFix={gpsFix} onClear={() => setWalkTarget(null)} />
-        <div className="map-find-bar">
-          <QuickFindChips
-            active={findCategory}
-            onPick={(category) => {
-              setFindCategory(category);
-              if (category) {
-                onTrack('parade_quick_find_used', { category });
-                const nearest = nearestPoiForCategory(category, pack, gpsFix);
-                if (nearest) {
-                  setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
-                }
-              } else {
-                setWalkTarget(null);
-              }
-            }}
-          />
-        </div>
       </div>
 
       <p className="map-status" role="status" aria-live="polite">
         {mapStatusLine}
       </p>
+
+      <div className="map-find-row">
+        <QuickFindChips
+          active={findCategory}
+          onPick={(category) => {
+            setFindCategory(category);
+            if (category) {
+              onTrack('parade_quick_find_used', { category });
+              const nearest = nearestPoiForCategory(category, pack, gpsFix);
+              if (nearest) {
+                setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
+              }
+            } else {
+              setWalkTarget(null);
+            }
+          }}
+        />
+      </div>
 
       {tapPanel}
 

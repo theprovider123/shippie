@@ -133,7 +133,11 @@ export function CorridorMap({
     const desired = scale >= 2.2 ? Math.max(device, 2) : device;
     return Math.min(cap, desired);
   }, [scale]);
-  const detailLabels = useMemo(() => buildDetailLabels(offlineDetails, extent, scale), [offlineDetails, extent, scale]);
+  const detailLabels = useMemo(
+    () => buildDetailLabels(offlineDetails, extent, scale)
+      .filter((item) => !gpsFix || haversineMeters(item, gpsFix) > 150),
+    [offlineDetails, extent, scale, gpsFix],
+  );
   const fanClusters = useMemo(() => clusterFanEvents(fanEvents), [fanEvents]);
   const visibleFanClusters = useMemo(
     () => fanClusters.filter((cluster) => layerAllowsCluster(cluster.type, layers)),
@@ -331,10 +335,13 @@ export function CorridorMap({
   };
 
   const fitRoute = () => {
-    commitView(fitMapBounds(routeBounds(), frameSize(), 48));
+    // First glance should read as a calm parade schematic, not a blown-up
+    // street atlas. More padding keeps the whole route in view and delays
+    // dense labels until the user intentionally zooms.
+    commitView(fitMapBounds(routeBounds(), frameSize(), 92));
   };
 
-  const focusLngLat = (point: { lng: number; lat: number }, zoom = 2.45) => {
+  const focusLngLat = (point: { lng: number; lat: number }, zoom = 2.2) => {
     const worldPoint = worldPointForLngLat(point);
     if (!worldPoint) return;
     commitView(centerMapOnWorldPoint(worldPoint, zoom, frameSize()));
@@ -352,8 +359,8 @@ export function CorridorMap({
 
     const id = window.requestAnimationFrame(() => {
       const bounds = gpsFix ? boundsForLngLat([gpsFix, target]) : null;
-      if (bounds) commitView(fitMapBounds(bounds, frameSize(), 64));
-      else focusLngLat(target, 2.8);
+      if (bounds) commitView(fitMapBounds(bounds, frameSize(), 92));
+      else focusLngLat(target, 2.35);
     });
     return () => window.cancelAnimationFrame(id);
     // The map should frame the destination only when the destination changes.
@@ -566,24 +573,12 @@ export function CorridorMap({
           Fit
         </button>
         {gpsFix ? (
-          <button type="button" className="icon-button icon-button--label" onClick={() => focusLngLat(gpsFix, 2.8)} aria-label="Centre the map on you">
+          <button type="button" className="icon-button icon-button--label" onClick={() => focusLngLat(gpsFix, 2.35)} aria-label="Centre the map on you">
             Me
           </button>
         ) : null}
-        {target ? (
-          <button type="button" className="icon-button icon-button--label" onClick={() => focusLngLat(target, 2.8)} aria-label="Centre the map on your goal">
-            Goal
-          </button>
-        ) : null}
       </div>
-      {scale > 1.05 ? <div className="map-zoom-pill" aria-hidden="true">{scale.toFixed(1)}×</div> : null}
-      <p className="map-credit">
-        {scale > 1.2
-          ? 'Offline detail'
-          : useRasterBasemap
-            ? 'Offline detail map. Verify official route before travel.'
-            : `${pack.event.title} · offline test detail map`}
-      </p>
+      {scale > 2.05 ? <div className="map-zoom-pill" aria-hidden="true">{scale.toFixed(1)}×</div> : null}
     </div>
   );
 }
@@ -698,6 +693,9 @@ function drawOfflineMapGeometry(ctx: CanvasRenderingContext2D, details: OfflineM
 
   for (const lineFeature of details.lines) {
     if (!shouldShowAtScale(lineFeature.minScale, scale)) continue;
+    if (scale < 1.7 && lineFeature.kind === 'major-road') continue;
+    if (scale < 2.05 && (lineFeature.kind === 'street' || lineFeature.kind === 'path' || lineFeature.kind === 'waterway')) continue;
+    if (scale < 1.55 && lineFeature.kind === 'rail') continue;
     const fixed = fixedSize(scale);
     ctx.beginPath();
     lineFeature.coordinates.forEach(([lng, lat], index) => {
@@ -745,6 +743,9 @@ function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale:
   const limit = labelLimitForScale(scale);
   const padding = labelPaddingForScale(scale);
   for (const item of candidates) {
+    if (scale < 1.85 && !isEssentialLowZoomLabel(item)) continue;
+    if (scale < 2.05 && item.kind === 'road') continue;
+    if (scale < 2 && item.kind === 'pinpoint') continue;
     const textKey = item.label.trim().toLowerCase();
     if (seenText.has(textKey)) continue;
     const point = lngLatToPixel(item, extent);
@@ -768,9 +769,11 @@ function labelLimitForScale(scale: number): number {
   if (scale >= 5) return 46;
   if (scale >= 4.1) return 38;
   if (scale >= 3.2) return 30;
-  if (scale >= 2.35) return 22;
-  if (scale >= 1.65) return 15;
-  return 9;
+  if (scale >= 2.35) return 18;
+  if (scale >= 2) return 12;
+  if (scale >= 1.65) return 8;
+  if (scale >= 1.35) return 6;
+  return 5;
 }
 
 function labelPaddingForScale(scale: number): number {
@@ -810,12 +813,19 @@ function labelPriority(kind: OfflineMapLabelKind): number {
 
 function minScaleForLineLabel(lineFeature: { kind: OfflineMapLineKind; minScale?: number }): number {
   const base = lineFeature.minScale ?? 1;
-  if (lineFeature.kind === 'route-road') return Math.max(1.65, base);
-  if (lineFeature.kind === 'major-road') return Math.max(1.75, base);
+  if (lineFeature.kind === 'route-road') return Math.max(2.2, base);
+  if (lineFeature.kind === 'major-road') return Math.max(2.4, base);
   if (lineFeature.kind === 'waterway') return Math.max(2, base);
   if (lineFeature.kind === 'street') return Math.max(2.55, base);
   if (lineFeature.kind === 'path') return Math.max(3.25, base);
   return Math.max(3.4, base);
+}
+
+function isEssentialLowZoomLabel(item: { kind: OfflineMapLabelKind; label: string }): boolean {
+  if (item.kind === 'station') {
+    return /^(arsenal|holloway road|drayton park|highbury & islington|angel|watford junction)$/i.test(item.label);
+  }
+  return /stadium|town hall|vicarage road|high street/i.test(item.label);
 }
 
 function estimatedDomLabelWidth(item: { kind: OfflineMapLabelKind; label: string }): number {
@@ -901,8 +911,8 @@ function drawPois(
       ctx.fillText(style.glyph, marker.point.x, marker.point.y + fixed(style.glyphSize * 0.35));
       ctx.textAlign = 'start';
     }
-    if (!shouldShowMarkerLabel(marker, style)) continue;
-    if (scale >= 1.7 && isNamedBaseMapPoi(marker.kind)) continue;
+    if (!shouldShowMarkerLabel(marker, style, scale)) continue;
+    if (isNamedBaseMapPoi(marker.kind) && scale < 2.45) continue;
     // Hide small POI labels (water/atm/toilet) at the default zoom — their
     // glyph + dot is enough until the user zooms in. Keeps the schematic
     // readable instead of a wall of overlapping text at zoom 1.
@@ -969,11 +979,16 @@ function poiStyleForKind(kind: string): {
 function shouldShowMarkerLabel(
   marker: { id: string; label: string; kind: string },
   style: { showLabel: boolean },
+  scale: number,
 ): boolean {
-  if (style.showLabel) return true;
+  if (marker.kind === 'target') return scale >= 2.6;
+  if (marker.kind === 'primary' || marker.kind === 'fallback') return scale >= 2.3;
+  if (isNamedBaseMapPoi(marker.kind)) return scale >= 2.45 && style.showLabel;
+  if (isSmallPoiKind(marker.kind)) return scale >= 2.4;
+  if (style.showLabel) return scale >= 2.15;
   // Keep minor station exits as dots, but name actual Underground stations
   // that are in the route pack as tube-exit POIs.
-  return marker.kind === 'tube-exit' && marker.label.toLowerCase().includes('station');
+  return marker.kind === 'tube-exit' && scale >= 2.45 && marker.label.toLowerCase().includes('station');
 }
 
 function mapLabelText(marker: { label: string; kind: string }): string {
