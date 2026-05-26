@@ -8,7 +8,7 @@ import {
 
 describe('offline map detail packs', () => {
   test('ships a vector detail pack for every baked parade pack', () => {
-    for (const id of ['arsenal-islington', 'amsterdam-vondelpark', 'watford-vicarage']) {
+    for (const id of ['arsenal-islington', 'watford-vicarage']) {
       expect(listOfflineMapDetailIds()).toContain(id);
       const pack = loadBakedRoutePack(id);
       const details = offlineMapDetailsFor(pack);

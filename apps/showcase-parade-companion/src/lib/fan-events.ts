@@ -305,8 +305,8 @@ export function validateFanEvent(input: unknown): input is FanEvent {
   const lng = Number(input.lng);
   const lat = Number(input.lat);
   // Validate against the active pack's extent — set by App.tsx on pack load.
-  // This is what lets an Amsterdam pack accept Amsterdam fan taps without
-  // a code rebuild.
+  // This is what lets the Watford test pack accept Watford fan taps without
+  // rebuilding the app.
   if (!isInsideExtent({ lng, lat }, getActiveExtent())) return false;
   if (!Number.isFinite(Number(input.accuracy_m))) return false;
   if (!validDate(input.created_at) || !validDate(input.expires_at)) return false;

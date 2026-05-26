@@ -2,7 +2,6 @@ import { CORRIDOR_EXTENT, FALLBACK_ROUTE_PACK, type MapExtent, type RoutePack } 
 import { setActiveExtent } from './active-extent';
 import { isInsideExtent } from './geo';
 import bakedRoutePack from '../../public/route-pack.json';
-import amsterdamPack from '../../public/packs/amsterdam-vondelpark.json';
 import watfordPack from '../../public/packs/watford-vicarage.json';
 
 export const LIVE_ROUTE_PACK_STORAGE_KEY = 'parade-companion:live-route-pack:v1';
@@ -10,8 +9,8 @@ export const PACK_ID_STORAGE_KEY = 'parade-companion:active-pack-id:v1';
 export const DEFAULT_PACK_ID = 'arsenal-islington';
 
 /**
- * Registry of baked packs. Round 10 added Amsterdam and Watford for local /
- * friends testing; Arsenal stays the default and the parade-day URL.
+ * Registry of baked packs. Arsenal stays the default and parade-day URL;
+ * Watford is the only alternate field-test pack.
  *
  * URL `?pack=<id>` overrides the default. Selection persists to localStorage
  * so a reload (or accidental URL strip after the iframe re-mounts) keeps the
@@ -19,7 +18,6 @@ export const DEFAULT_PACK_ID = 'arsenal-islington';
  */
 export const PACK_REGISTRY: Record<string, unknown> = {
   'arsenal-islington': bakedRoutePack,
-  'amsterdam-vondelpark': amsterdamPack,
   'watford-vicarage': watfordPack,
 };
 
@@ -87,8 +85,8 @@ export function loadRoutePack(explicitPackId?: string): RoutePack {
   const packId = resolvePackId(explicitPackId);
   const baked = loadBakedRoutePack(packId);
   // Only the Arsenal pack gets live-sync overrides (the relay endpoint serves
-  // route-pack.json). Test packs (Amsterdam / Watford) always use the baked
-  // version — no relay round-trip needed for local walks.
+  // route-pack.json). The Watford test pack always uses the baked version —
+  // no relay round-trip needed for local walks.
   const pack = packId === DEFAULT_PACK_ID ? mergeWithLiveCache(baked) : baked;
   setActiveExtent(pack.mapExtent);
   return pack;
@@ -195,7 +193,7 @@ export function validateRoutePack(input: unknown): RoutePack | null {
     const lng = Number(coord[0]);
     const lat = Number(coord[1]);
     // Validate against the pack's OWN declared extent — this is what makes
-    // remix work: an Amsterdam pack passes Amsterdam bounds.
+    // the Watford field-test pack pass Watford bounds.
     if (!isInsideExtent({ lng, lat }, mapExtent)) return null;
     coords.push([lng, lat]);
   }

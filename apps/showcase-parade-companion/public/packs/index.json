@@ -9,12 +9,6 @@
       "description": "The real one — Arsenal victory parade through Islington."
     },
     {
-      "id": "amsterdam-vondelpark",
-      "label": "Amsterdam · city field test",
-      "url": "/run/parade-companion/packs/amsterdam-vondelpark.json",
-      "description": "Dev test pack — wider Amsterdam envelope for GPS and offline sync testing."
-    },
-    {
       "id": "watford-vicarage",
       "label": "Watford · town field test",
       "url": "/run/parade-companion/packs/watford-vicarage.json",

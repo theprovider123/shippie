@@ -31,7 +31,6 @@ export const PARADE_OFFLINE_ASSETS = [
   'basemap/corridor.webp',
   'route-pack.json',
   'packs/index.json',
-  'packs/amsterdam-vondelpark.json',
   'packs/watford-vicarage.json',
   'manifest.webmanifest',
   'icon.svg',

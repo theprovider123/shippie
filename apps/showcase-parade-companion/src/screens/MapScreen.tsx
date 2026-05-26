@@ -61,6 +61,7 @@ interface MapScreenProps {
 }
 
 const SECONDARY_REPORT_TYPES = REPORT_EVENT_TYPES.filter((type) => type !== 'toilet_queue');
+const MAP_BRIEF_DISMISSED_KEY = 'parade-companion:map-brief-dismissed:v1';
 
 export function MapScreen({
   pack,
@@ -86,20 +87,25 @@ export function MapScreen({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [sideTings, setSideTings] = useState<SideTing[]>(() => listSideTings());
-  // Persistent "Turn on Location" hint above the tap panel — only after we've
-  // waited a few seconds without a fix, so first-launch flicker doesn't shout
-  // at someone who's about to grant permission.
-  const [showGpsHint, setShowGpsHint] = useState(false);
   const [selectedPoi, setSelectedPoi] = useState<RoutePoi | null>(null);
   const [walkTarget, setWalkTarget] = useState<PlanPoint | null>(null);
   const [findCategory, setFindCategory] = useState<QuickFindCategory | null>(null);
   const [mapToolsOpen, setMapToolsOpen] = useState(false);
   const [timingExpanded, setTimingExpanded] = useState(false);
   const [tapFeedback, setTapFeedback] = useState<{ type: FanEventType; place: string; at: number; online: boolean } | null>(null);
+  const [mapBriefOpen, setMapBriefOpen] = useState(() => {
+    try {
+      return localStorage.getItem(MAP_BRIEF_DISMISSED_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [now, setNow] = useState(() => Date.now());
   const [layers, setLayers] = useState<Record<MapLayerId, boolean>>({
     bus: true,
     friends: true,
+    // Anonymous density stays opt-in so the map opens calm.
+    crowd: false,
     'side-tings': listSideTings().length > 0,
     reports: true,
     'my-taps': true,
@@ -178,15 +184,6 @@ export function MapScreen({
   }, []);
 
   useEffect(() => {
-    if (gpsFix) {
-      setShowGpsHint(false);
-      return;
-    }
-    const id = window.setTimeout(() => setShowGpsHint(true), 5000);
-    return () => window.clearTimeout(id);
-  }, [gpsFix]);
-
-  useEffect(() => {
     if (importStatus) showToast(importStatus, 'success');
   }, [importStatus]);
 
@@ -218,8 +215,18 @@ export function MapScreen({
     () => busTimingPresentation(pack.event.startTime, pack.scheduleEstimate.length, now),
     [now, pack.event.startTime, pack.scheduleEstimate.length],
   );
+  const gpsLocation = gpsFix ? describeParadeLocation(gpsFix, pack) : null;
 
   const feedback = (message: string, variant: ToastVariant = 'default') => showToast(message, variant);
+
+  const dismissMapBrief = () => {
+    setMapBriefOpen(false);
+    try {
+      localStorage.setItem(MAP_BRIEF_DISMISSED_KEY, '1');
+    } catch {
+      // A dismissed hint is cosmetic; storage can fail in private mode.
+    }
+  };
 
   const saveEvent = async (type: FanEventType) => {
     if (!gpsFix) {
@@ -291,28 +298,39 @@ export function MapScreen({
   const tapPanel = (
     <div className="tap-panel" aria-label="Fast parade taps">
       <div className="tap-panel__head">
-        <span>Quick tap</span>
-        <small>saved on this phone first</small>
+        <span>What do you see?</span>
+        <small>one tap · saved offline</small>
       </div>
       <div className="pulse-actions">
-        <button type="button" className="fan-tap fan-tap--presence" onClick={() => void saveEvent('presence')}>
+        <button
+          type="button"
+          className="fan-tap fan-tap--presence"
+          aria-label="I am here. Share my spot with my group and the anonymous crowd pulse."
+          onClick={() => void saveEvent('presence')}
+        >
           <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.presence}</span>
-          <strong>I am here</strong>
-          <span>{FAN_EVENT_HINTS.presence}</span>
+          <strong>I’m here</strong>
+          <span>share my spot</span>
         </button>
-        <button type="button" className="fan-tap fan-tap--bus" onClick={() => void saveEvent('bus_seen')}>
+        <button
+          type="button"
+          className="fan-tap fan-tap--bus"
+          aria-label="Bus here. Report the bus passing this spot."
+          onClick={() => void saveEvent('bus_seen')}
+        >
           <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.bus_seen}</span>
           <strong>Bus here</strong>
-          <span>{FAN_EVENT_HINTS.bus_seen}</span>
+          <span>passing me</span>
         </button>
         <button
           type="button"
           className="fan-tap fan-tap--toilet"
+          aria-label="Toilet here. Report a toilet at this spot."
           onClick={() => void saveEvent('toilet_queue')}
         >
           <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.toilet_queue}</span>
           <strong>Toilet here</strong>
-          <span>{FAN_EVENT_HINTS.toilet_queue}</span>
+          <span>found here</span>
         </button>
       </div>
 
@@ -390,6 +408,47 @@ export function MapScreen({
         onSyncPress={onManualSync}
       />
 
+      {mapBriefOpen ? (
+        <div className="map-brief" role="note" aria-label="How to use the map">
+          <div>
+            <strong>Find yourself. Pick a goal. Tap what you see.</strong>
+            <span>Your dot works offline. Tap the route, a station, or a friend to get the compass arrow.</span>
+          </div>
+          <button type="button" onClick={dismissMapBrief}>
+            Got it
+          </button>
+        </div>
+      ) : null}
+
+      <div className={`location-strip ${gpsFix ? 'has-fix' : 'needs-fix'}`} role="status" aria-live="polite">
+        <span className="location-strip__badge">{gpsFix ? 'YOU' : 'GPS'}</span>
+        <div className="location-strip__body">
+          <strong>{gpsLocation ? gpsLocation.title : 'Turn on Location'}</strong>
+          <small>
+            {gpsLocation
+              ? `${gpsLocation.grid} · ${formatAccuracy(gpsFix)} · ${formatGpsAge(gpsFix)}`
+              : 'The saved map still works; your dot and taps need a GPS fix.'}
+          </small>
+        </div>
+        {routeDistance && routeDistance.distanceM >= 18 ? (
+          <button
+            type="button"
+            className="location-strip__action"
+            onClick={() => {
+              setWalkTarget({
+                lng: routeDistance.snapped.lng,
+                lat: routeDistance.snapped.lat,
+                label: 'Nearest route',
+              });
+              showToast('Arrow set back to the route.', 'success');
+              onTrack('parade_route_walk_to', { distance_m: Math.round(routeDistance.distanceM), source: 'location_strip' });
+            }}
+          >
+            Route arrow
+          </button>
+        ) : null}
+      </div>
+
       <div className="map-stage">
         <CorridorMap
           pack={pack}
@@ -419,6 +478,13 @@ export function MapScreen({
         {mapStatusLine}
       </p>
 
+      <GoalPointer
+        pack={pack}
+        gpsFix={gpsFix}
+        target={walkTarget}
+        onClear={() => setWalkTarget(null)}
+      />
+
       {tapFeedback && now - tapFeedback.at < 5 * 60_000 ? (
         <div className={`tap-feedback tap-feedback--${tapFeedback.type}`} role="status" aria-live="polite">
           <span className="tap-feedback__badge" aria-hidden="true">{FAN_EVENT_BADGES[tapFeedback.type]}</span>
@@ -446,19 +512,6 @@ export function MapScreen({
           );
         }}
       />
-
-      <GoalPointer
-        pack={pack}
-        gpsFix={gpsFix}
-        target={walkTarget}
-        onClear={() => setWalkTarget(null)}
-      />
-
-      {showGpsHint && !gpsFix ? (
-        <p className="gps-hint" role="status">
-          No GPS yet. The saved map still works; live taps need Location.
-        </p>
-      ) : null}
 
       {timing.collapsed ? (
         <button
@@ -498,7 +551,7 @@ export function MapScreen({
         onClick={() => setMapToolsOpen((current) => !current)}
       >
         More map tools
-        <span>find toilets · stations · crowd compass {mapToolsOpen ? '▴' : '▾'}</span>
+        <span>find places · crowd compass · crowd layer {mapToolsOpen ? '▴' : '▾'}</span>
       </button>
 
       {mapToolsOpen ? (
@@ -528,6 +581,7 @@ export function MapScreen({
             pack={pack}
             gpsFix={gpsFix}
             fanEvents={fanEvents}
+            groupMembers={groupLiveMembers}
             onTarget={(target) => {
               setWalkTarget(target);
               showToast(`Crowd compass pointed to ${target.label}.`, 'success');

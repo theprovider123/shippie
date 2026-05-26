@@ -20,12 +20,12 @@ describe('parade location labels', () => {
   });
 
   test('uses the active test-pack place names instead of Arsenal route labels', () => {
-    const pack = loadBakedRoutePack('amsterdam-vondelpark');
-    const station = pack.pois.find((poi) => poi.name === 'Amsterdam Centraal');
+    const pack = loadBakedRoutePack('watford-vicarage');
+    const station = pack.pois.find((poi) => poi.name === 'Watford Junction');
     expect(station).toBeDefined();
 
     const label = describeParadeLocation(station!, pack);
-    expect(label.title).toBe('Amsterdam Centraal');
+    expect(label.title).toBe('Watford Junction');
     expect(label.short).not.toContain('Drayton Park');
   });
 });

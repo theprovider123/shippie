@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   offlineMapDetailsFor,
   type OfflineMapAreaKind,
@@ -19,7 +19,7 @@ import {
   type FanEventType,
 } from '../lib/fan-events';
 import { lngLatToPixel, metersToPixelRadius, pixelToLngLat, type PixelPoint } from '../lib/geo';
-import type { GpsFix } from '../lib/gps';
+import { isFreshGpsFix, type GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
 import type { GroupLiveMember } from '../lib/group-live';
 import {
@@ -123,12 +123,27 @@ export function CorridorMap({
   const basemapSrc = `${import.meta.env.BASE_URL}basemap/corridor.webp`;
   const useRasterBasemap = shouldUseRasterBasemap(pack);
   const offlineDetails = useMemo(() => offlineMapDetailsFor(pack), [pack]);
-  const renderDpr = typeof window === 'undefined' ? 1 : Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  const renderDpr = useMemo(() => {
+    if (typeof window === 'undefined') return 1;
+    const device = Math.max(1, window.devicePixelRatio || 1);
+    // Deep zoom needs more backing pixels or the canvas feels like a blown-up
+    // poster. Keep the cap modest so old phones do not pay MapLibre-sized
+    // memory costs for an offline parade corridor.
+    const cap = scale >= 2.2 ? 3 : 2;
+    const desired = scale >= 2.2 ? Math.max(device, 2) : device;
+    return Math.min(cap, desired);
+  }, [scale]);
   const detailLabels = useMemo(() => buildDetailLabels(offlineDetails, extent, scale), [offlineDetails, extent, scale]);
   const fanClusters = useMemo(() => clusterFanEvents(fanEvents), [fanEvents]);
   const visibleFanClusters = useMemo(
     () => fanClusters.filter((cluster) => layerAllowsCluster(cluster.type, layers)),
     [fanClusters, layers],
+  );
+  const crowdHeatClusters = useMemo(
+    () => fanClusters
+      .filter((cluster) => cluster.type === 'presence' && cluster.count >= 2)
+      .slice(0, 14),
+    [fanClusters],
   );
   const localPresencePulse = useMemo(() => {
     if (layers['my-taps'] === false) return null;
@@ -142,6 +157,21 @@ export function CorridorMap({
       top: `${(p.y / extent.pxHeight) * 100}%`,
     };
   }, [fanEvents, layers, extent]);
+  const liveGpsPulse = useMemo(() => {
+    if (!gpsFix) return null;
+    const p = lngLatToPixel(gpsFix, extent);
+    const accuracyPx = metersToPixelRadius(gpsFix, gpsFix.accuracyM, extent);
+    return {
+      left: `${(p.x / extent.pxWidth) * 100}%`,
+      top: `${(p.y / extent.pxHeight) * 100}%`,
+      fresh: isFreshGpsFix(gpsFix),
+      wide: gpsFix.accuracyM > 80,
+      style: {
+        '--accuracy-size': `${Math.max(42, Math.min(220, accuracyPx * 2))}px`,
+        transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})`,
+      } as CSSProperties,
+    };
+  }, [gpsFix, extent, scale]);
   const targetPulse = useMemo(() => {
     if (!target) return null;
     const p = lngLatToPixel(target, extent);
@@ -208,10 +238,14 @@ export function CorridorMap({
     ctx.setTransform(renderDpr, 0, 0, renderDpr, 0, 0);
     ctx.clearRect(0, 0, extent.pxWidth, extent.pxHeight);
 
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     const labels: LabelRect[] = [];
-    drawPinpointGrid(ctx, scale);
+    drawPinpointGrid(ctx, extent, scale);
     drawOfflineMapGeometry(ctx, offlineDetails, extent, scale);
     drawRoute(ctx, pack.route.coordinates, extent, scale);
+    if (layers.crowd === true && crowdHeatClusters.length > 0) drawCrowdHeat(ctx, crowdHeatClusters, extent, scale);
     if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent, scale, labels);
     if (layers.friends !== false && groupMembers.length > 0) drawGroupMembers(ctx, groupMembers, extent, scale, labels);
     if (layers['side-tings'] !== false && sideTings.length > 0) drawSideTings(ctx, sideTings, extent, scale, labels);
@@ -219,8 +253,8 @@ export function CorridorMap({
     drawPois(ctx, points, scale, labels);
     drawScheduleMarkers(ctx, pack.scheduleEstimate, extent, scale);
     if (layers.bus !== false && busMarkers.length > 0 && !hasFanBus) drawBusMarkers(ctx, busMarkers, extent, scale, labels);
-    if (gpsFix) drawGps(ctx, gpsFix, extent, scale, !localPresencePulse, labels);
-  }, [pack, points, busMarkers, visibleFanClusters, gpsFix, hasFanBus, layers, groupMembers, sideTings, target, scale, extent, localPresencePulse, offlineDetails, renderDpr]);
+    if (gpsFix) drawGps(ctx, gpsFix, extent, scale, false, labels);
+  }, [pack, points, busMarkers, visibleFanClusters, crowdHeatClusters, gpsFix, hasFanBus, layers, groupMembers, sideTings, target, scale, extent, localPresencePulse, offlineDetails, renderDpr]);
 
   const commitView = (next: MapView) => {
     viewRef.current = next;
@@ -326,8 +360,8 @@ export function CorridorMap({
     const id = window.requestAnimationFrame(fitRoute);
     return () => window.cancelAnimationFrame(id);
     // Fit the currently selected route once its frame exists. This is what
-    // makes widened Amsterdam/Watford test packs open on the useful route
-    // instead of a tiny squiggle in a huge blank extent.
+    // makes the widened Watford test pack open on the useful route instead
+    // of a tiny squiggle in a huge blank extent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pack.event.title, pack.packVersion]);
 
@@ -441,6 +475,18 @@ export function CorridorMap({
               );
             })}
           </div>
+          {liveGpsPulse ? (
+            <div
+              className={`live-gps-pulse ${liveGpsPulse.fresh ? 'is-live' : 'is-stale'} ${liveGpsPulse.wide ? 'is-wide' : ''}`}
+              style={{ left: liveGpsPulse.left, top: liveGpsPulse.top, ...liveGpsPulse.style }}
+              aria-hidden="true"
+            >
+              <span className="live-gps-pulse__accuracy" />
+              <span className="live-gps-pulse__ring" />
+              <span className="live-gps-pulse__dot" />
+              <strong>{liveGpsPulse.fresh ? 'You' : 'Old'}</strong>
+            </div>
+          ) : null}
           {localPresencePulse ? (
             <div
               className="my-presence-pulse"
@@ -597,23 +643,23 @@ function projectScreenPointToSegment(point: PixelPoint, a: PixelPoint, b: PixelP
   };
 }
 
-function drawPinpointGrid(ctx: CanvasRenderingContext2D, scale: number) {
+function drawPinpointGrid(ctx: CanvasRenderingContext2D, extent: MapExtent, scale: number) {
   if (scale < 2.25) return;
   const fixed = fixedSize(scale);
-  const step = scale >= 3.35 ? 36 : 54;
+  const step = scale >= 4.5 ? 30 : scale >= 3.35 ? 36 : 54;
   ctx.save();
   ctx.lineWidth = fixed(1.2);
   ctx.strokeStyle = 'rgba(94, 123, 92, 0.14)';
-  for (let x = 0; x <= 1800; x += step) {
+  for (let x = 0; x <= extent.pxWidth; x += step) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, 1800);
+    ctx.lineTo(x, extent.pxHeight);
     ctx.stroke();
   }
-  for (let y = 0; y <= 1800; y += step) {
+  for (let y = 0; y <= extent.pxHeight; y += step) {
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(1800, y);
+    ctx.lineTo(extent.pxWidth, y);
     ctx.stroke();
   }
   ctx.restore();
@@ -684,7 +730,12 @@ function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale:
 
   const labels: LabelRect[] = [];
   const out: DetailLabel[] = [];
+  const seenText = new Set<string>();
+  const limit = labelLimitForScale(scale);
+  const padding = labelPaddingForScale(scale);
   for (const item of candidates) {
+    const textKey = item.label.trim().toLowerCase();
+    if (seenText.has(textKey)) continue;
     const point = lngLatToPixel(item, extent);
     const width = estimatedDomLabelWidth(item) / Math.max(1, scale);
     const height = estimatedDomLabelHeight(item.kind) / Math.max(1, scale);
@@ -694,11 +745,27 @@ function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale:
       width,
       height,
     };
-    if (!reserveLabel(labels, rect, 22 / Math.max(1, scale))) continue;
+    if (!reserveLabel(labels, rect, padding)) continue;
     out.push(item);
-    if (out.length >= (scale >= 2.8 ? 14 : 9)) break;
+    seenText.add(textKey);
+    if (out.length >= limit) break;
   }
   return out;
+}
+
+function labelLimitForScale(scale: number): number {
+  if (scale >= 5) return 46;
+  if (scale >= 4.1) return 38;
+  if (scale >= 3.2) return 30;
+  if (scale >= 2.35) return 22;
+  if (scale >= 1.65) return 15;
+  return 9;
+}
+
+function labelPaddingForScale(scale: number): number {
+  if (scale >= 4.2) return 6 / scale;
+  if (scale >= 3) return 10 / scale;
+  return 18 / Math.max(1, scale);
 }
 
 function shouldShowAtScale(minScale = 1, scale: number): boolean {
@@ -733,11 +800,11 @@ function labelPriority(kind: OfflineMapLabelKind): number {
 function minScaleForLineLabel(lineFeature: { kind: OfflineMapLineKind; minScale?: number }): number {
   const base = lineFeature.minScale ?? 1;
   if (lineFeature.kind === 'route-road') return Math.max(1.65, base);
-  if (lineFeature.kind === 'major-road') return Math.max(2.1, base);
-  if (lineFeature.kind === 'waterway') return Math.max(2.4, base);
-  if (lineFeature.kind === 'street') return Math.max(3.75, base);
-  if (lineFeature.kind === 'path') return Math.max(4.5, base);
-  return Math.max(4.75, base);
+  if (lineFeature.kind === 'major-road') return Math.max(1.75, base);
+  if (lineFeature.kind === 'waterway') return Math.max(2, base);
+  if (lineFeature.kind === 'street') return Math.max(2.55, base);
+  if (lineFeature.kind === 'path') return Math.max(3.25, base);
+  return Math.max(3.4, base);
 }
 
 function estimatedDomLabelWidth(item: { kind: OfflineMapLabelKind; label: string }): number {
@@ -902,6 +969,35 @@ function mapLabelText(marker: { label: string; kind: string }): string {
   if (marker.kind === 'tube-exit') return marker.label.replace(/\s*·\s*station$/i, '');
   if (marker.kind === 'medical') return 'First aid';
   return marker.label;
+}
+
+function drawCrowdHeat(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[], extent: MapExtent, scale: number) {
+  const fixed = fixedSize(scale);
+  ctx.save();
+  for (const cluster of clusters) {
+    const p = lngLatToPixel(cluster.point, extent);
+    const radius = fixed(Math.min(118, 38 + cluster.count * 12));
+    const alpha = Math.min(0.32, 0.08 + cluster.count * 0.035);
+
+    const gradient = ctx.createRadialGradient(p.x, p.y, fixed(12), p.x, p.y, radius);
+    gradient.addColorStop(0, `rgba(239, 1, 7, ${alpha})`);
+    gradient.addColorStop(0.48, `rgba(237, 187, 74, ${alpha * 0.62})`);
+    gradient.addColorStop(1, 'rgba(237, 187, 74, 0)');
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, fixed(Math.min(24, 10 + cluster.count * 2)), 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(239, 1, 7, 0.72)';
+    ctx.fill();
+    ctx.lineWidth = fixed(2);
+    ctx.strokeStyle = '#F5EFE4';
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[], extent: MapExtent, scale: number, labels: LabelRect[]) {

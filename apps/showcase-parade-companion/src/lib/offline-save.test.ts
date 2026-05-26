@@ -5,7 +5,6 @@ describe('offline-save', () => {
   test('offline bundle includes every route pack and registry', () => {
     expect(PARADE_OFFLINE_ASSETS).toContain('route-pack.json');
     expect(PARADE_OFFLINE_ASSETS).toContain('packs/index.json');
-    expect(PARADE_OFFLINE_ASSETS).toContain('packs/amsterdam-vondelpark.json');
     expect(PARADE_OFFLINE_ASSETS).toContain('packs/watford-vicarage.json');
   });
 

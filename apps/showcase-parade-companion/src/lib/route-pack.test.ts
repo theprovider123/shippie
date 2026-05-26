@@ -209,11 +209,9 @@ describe('route pack — multi-pack registry (round 10)', () => {
     setNavigatorOnline(true);
   });
 
-  test('listPackIds exposes all three baked packs', () => {
+  test('listPackIds exposes Arsenal plus the Watford test pack', () => {
     const ids = listPackIds();
-    expect(ids).toContain('arsenal-islington');
-    expect(ids).toContain('amsterdam-vondelpark');
-    expect(ids).toContain('watford-vicarage');
+    expect(ids).toEqual(['arsenal-islington', 'watford-vicarage']);
   });
 
   test('default is arsenal-islington', () => {
@@ -222,8 +220,8 @@ describe('route pack — multi-pack registry (round 10)', () => {
   });
 
   test('explicit pack id wins and persists', () => {
-    expect(resolvePackId('amsterdam-vondelpark')).toBe('amsterdam-vondelpark');
-    expect(localStorage.getItem(PACK_ID_STORAGE_KEY)).toBe('amsterdam-vondelpark');
+    expect(resolvePackId('watford-vicarage')).toBe('watford-vicarage');
+    expect(localStorage.getItem(PACK_ID_STORAGE_KEY)).toBe('watford-vicarage');
   });
 
   test('unknown pack id silently falls back to default', () => {
@@ -231,10 +229,6 @@ describe('route pack — multi-pack registry (round 10)', () => {
   });
 
   test('loadBakedRoutePack returns the requested pack', () => {
-    const ams = loadBakedRoutePack('amsterdam-vondelpark');
-    expect(ams.event.title).toMatch(/amsterdam/i);
-    expect(ams.mapExtent.west).toBeCloseTo(4.730, 3);
-
     const wat = loadBakedRoutePack('watford-vicarage');
     expect(wat.event.title).toMatch(/watford/i);
     expect(wat.mapExtent.west).toBeCloseTo(-0.455, 3);

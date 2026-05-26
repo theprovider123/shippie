@@ -31,7 +31,7 @@ describe('share url', () => {
         location: {
           hostname: 'localhost',
           origin: 'http://localhost:5252',
-          search: '?pack=amsterdam-vondelpark',
+          search: '?pack=watford-vicarage',
         },
         localStorage: {
           getItem: () => null,
@@ -41,8 +41,8 @@ describe('share url', () => {
       configurable: true,
     });
 
-    expect(buildShareRunUrl({ fragment: 'xyz', packId: 'amsterdam-vondelpark' })).toBe(
-      'https://shippie.app/run/parade-companion/?pack=amsterdam-vondelpark#xyz',
+    expect(buildShareRunUrl({ fragment: 'xyz', packId: 'watford-vicarage' })).toBe(
+      'https://shippie.app/run/parade-companion/?pack=watford-vicarage#xyz',
     );
   });
 });

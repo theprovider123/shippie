@@ -1,7 +1,7 @@
 /**
  * Active pack extent — the bounding box currently in use.
  *
- * Round 10 introduced multi-pack support (Arsenal / Amsterdam / Watford).
+ * Round 10 introduced multi-pack support (Arsenal / Watford).
  * Validators in `fan-events.ts`, `group-plan.ts`, and `parade-grid.ts` were
  * previously hard-coded to the Islington `CORRIDOR_EXTENT`. They now read
  * from this module instead — `App.tsx` sets the active extent the moment

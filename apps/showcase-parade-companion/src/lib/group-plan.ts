@@ -119,7 +119,7 @@ function validatePoint(input: unknown): PlanPoint | null {
   if (!isRecord(input) || !isNonEmpty(input.label)) return null;
   const lng = Number(input.lng);
   const lat = Number(input.lat);
-  // Validate against the active pack's extent so an Amsterdam plan
+  // Validate against the active pack's extent so a Watford test plan
   // imported via QR doesn't get rejected by a stale Islington check.
   if (!isInsideExtent({ lng, lat }, getActiveExtent())) return null;
   return {

@@ -13,6 +13,7 @@ export type MapLayerId =
   // People layers — fan signals, group positions, bus marker.
   | 'bus'
   | 'friends'
+  | 'crowd'
   | 'side-tings'
   | 'reports'
   | 'my-taps'
@@ -29,6 +30,7 @@ interface LayerToggleRowProps {
 const LAYER_LABEL: Record<MapLayerId, string> = {
   bus: 'Bus',
   friends: 'Friends',
+  crowd: 'Crowd',
   'side-tings': 'Side tings',
   reports: 'Reports',
   'my-taps': 'My taps',
@@ -37,7 +39,7 @@ const LAYER_LABEL: Record<MapLayerId, string> = {
   atm: 'ATM',
 };
 
-const PEOPLE_LAYERS: MapLayerId[] = ['bus', 'friends', 'side-tings', 'reports', 'my-taps'];
+const PEOPLE_LAYERS: MapLayerId[] = ['bus', 'friends', 'crowd', 'reports', 'my-taps', 'side-tings'];
 const PLACE_LAYERS: MapLayerId[] = ['toilets', 'water', 'atm'];
 
 export function LayerToggleRow({ layers, onToggle }: LayerToggleRowProps) {

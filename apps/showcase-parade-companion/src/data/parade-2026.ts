@@ -79,7 +79,7 @@ export interface RoutePack {
   /**
    * Bounding-box + canvas projection for this pack. Round 10 lifted this
    * from a single global constant so the app can host multiple corridors
-   * (arsenal-islington / amsterdam-vondelpark / watford-vicarage) via
+   * (arsenal-islington / watford-vicarage) via
    * `?pack=…` without code edits.
    */
   mapExtent: MapExtent;

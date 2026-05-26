@@ -829,7 +829,7 @@ export function App() {
   };
 
   const switchPack = useCallback(() => {
-    const ids = ['arsenal-islington', 'amsterdam-vondelpark', 'watford-vicarage'];
+    const ids = ['arsenal-islington', 'watford-vicarage'];
     const current = resolvePackId();
     const nextId = ids[(ids.indexOf(current) + 1) % ids.length] ?? DEFAULT_PACK_ID;
     setMenuOpen(false);
@@ -1161,8 +1161,7 @@ function useOnlineStatus(): boolean {
 /**
  * Topbar subtitle — Arsenal pack gets the unofficial-tool tagline; remix
  * packs surface their own event title so users know which corridor they're
- * looking at (small but important when a friend tests Watford while you
- * test Amsterdam).
+ * looking at during Watford field tests.
  */
 function topbarSubtitle(pack: { event: { title: string } }): string {
   const title = pack.event.title.replace(/^Parade Companion\s*—\s*/i, '').trim();
