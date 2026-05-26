@@ -133,6 +133,21 @@ async function cachedShellDocument(cache, req) {
   return null;
 }
 
+async function cachedRuntimeEntry(cache, slug) {
+  if (!slug) return null;
+  const encoded = encodeURIComponent(slug);
+  const keys = [
+    RUNTIME_PREFIX + '/' + encoded + '/?shippie_embed=1',
+    RUNTIME_PREFIX + '/' + encoded + '/index.html',
+    RUNTIME_PREFIX + '/' + encoded + '/',
+  ];
+  for (const key of keys) {
+    const hit = await cache.match(key);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 async function warmPlatformShell(cache, slug) {
   const urls = shellDocumentUrls(slug);
   let done = 0;
@@ -595,12 +610,17 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/run/')) {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
+      const slug = runSlugFromPath(url.pathname);
       try {
         const res = await fetch(req);
         if (expectedDocumentResponse(res)) cacheShellDocument(cache, req, res.clone()).catch(() => {});
         return res;
       } catch {
-        return (await cachedShellDocument(cache, req)) || offlineResponse();
+        return (
+          (await cachedShellDocument(cache, req)) ||
+          (await cachedRuntimeEntry(cache, slug)) ||
+          offlineResponse()
+        );
       }
     })());
     return;
