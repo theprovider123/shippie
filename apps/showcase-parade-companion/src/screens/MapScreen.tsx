@@ -2,12 +2,11 @@ import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useEffect, useMemo, useState } from 'react';
 import { CorridorMap } from '../components/CorridorMap';
 import { CrowdCompass } from '../components/CrowdCompass';
-import { GoalPointer } from '../components/GoalPointer';
+import { GoalChip } from '../components/GoalChip';
 import { LayerToggleRow, type MapLayerId } from '../components/LayerToggleRow';
 import { ParadersChip } from '../components/ParadersChip';
 import { PoiSheet } from '../components/PoiSheet';
 import { QuickFindChips, kindsForCategory, type QuickFindCategory } from '../components/QuickFindChips';
-import { StatusStrip } from '../components/StatusStrip';
 import type { RoutePack, RoutePoi } from '../data/parade-2026';
 import { recordSighting, formatMarkerTime, type BusMarker } from '../lib/bus';
 import {
@@ -92,7 +91,6 @@ export function MapScreen({
   const [findCategory, setFindCategory] = useState<QuickFindCategory | null>(null);
   const [mapToolsOpen, setMapToolsOpen] = useState(false);
   const [timingExpanded, setTimingExpanded] = useState(false);
-  const [tapFeedback, setTapFeedback] = useState<{ type: FanEventType; place: string; at: number; online: boolean } | null>(null);
   const [mapBriefOpen, setMapBriefOpen] = useState(() => {
     try {
       return localStorage.getItem(MAP_BRIEF_DISMISSED_KEY) !== '1';
@@ -101,6 +99,9 @@ export function MapScreen({
     }
   });
   const [now, setNow] = useState(() => Date.now());
+  // Bumped to force-remount the watchGps subscription so a user who denied
+  // permission then enabled it in OS settings can recover without a page reload.
+  const [gpsRetryNonce, setGpsRetryNonce] = useState(0);
   const [layers, setLayers] = useState<Record<MapLayerId, boolean>>({
     bus: true,
     friends: true,
@@ -172,7 +173,7 @@ export function MapScreen({
       onError: setGpsError,
     });
     return stop;
-  }, [batterySaver]);
+  }, [batterySaver, gpsRetryNonce]);
 
   useEffect(() => {
     onGpsFixChange(gpsFix);
@@ -246,7 +247,6 @@ export function MapScreen({
     }
     const event = createFanEvent(type, gpsFix, pack.route.coordinates);
     await onFanEvent(event);
-    setTapFeedback({ type, place: placeLabelForEvent(event, pack), at: Date.now(), online });
     if (type === 'bus_seen') {
       const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
       onBusMarker(marker);
@@ -387,27 +387,6 @@ export function MapScreen({
 
   return (
     <section className="screen map-screen">
-      <StatusStrip
-        gpsFix={gpsFix}
-        routeDistanceM={routeDistance?.distanceM ?? null}
-        syncStatus={liveSyncStatus}
-        online={online}
-        onRoutePress={
-          routeDistance
-            ? () => {
-                setWalkTarget({
-                  lng: routeDistance.snapped.lng,
-                  lat: routeDistance.snapped.lat,
-                  label: 'Nearest route',
-                });
-                showToast('Walking line drawn back to the route.', 'success');
-                onTrack('parade_route_walk_to', { distance_m: Math.round(routeDistance.distanceM) });
-              }
-            : undefined
-        }
-        onSyncPress={onManualSync}
-      />
-
       {mapBriefOpen ? (
         <div className="map-brief" role="note" aria-label="How to use the map">
           <div>
@@ -430,7 +409,19 @@ export function MapScreen({
               : 'The saved map still works; your dot and taps need a GPS fix.'}
           </small>
         </div>
-        {routeDistance && routeDistance.distanceM >= 18 ? (
+        {!gpsFix ? (
+          <button
+            type="button"
+            className="location-strip__action"
+            onClick={() => {
+              setGpsRetryNonce((current) => current + 1);
+              showToast('Asking the browser for Location again…', 'default');
+              onTrack('parade_gps_retry');
+            }}
+          >
+            Retry GPS
+          </button>
+        ) : routeDistance && routeDistance.distanceM >= 18 ? (
           <button
             type="button"
             className="location-strip__action"
@@ -447,7 +438,32 @@ export function MapScreen({
             Route arrow
           </button>
         ) : null}
+        <button
+          type="button"
+          className={`location-strip__sync sync-${syncCopy(liveSyncStatus, online).tone}`}
+          onClick={onManualSync}
+          aria-label={`Crowd sync ${syncCopy(liveSyncStatus, online).detail}. Tap to check now.`}
+        >
+          <span>SYNC</span>
+          <strong>{syncCopy(liveSyncStatus, online).short}</strong>
+        </button>
       </div>
+
+      <QuickFindChips
+        active={findCategory}
+        onPick={(category) => {
+          setFindCategory(category);
+          if (category) {
+            onTrack('parade_quick_find_used', { category });
+            const nearest = nearestPoiForCategory(category, pack, gpsFix);
+            if (nearest) {
+              setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
+            }
+          } else {
+            setWalkTarget(null);
+          }
+        }}
+      />
 
       <div className="map-stage">
         <CorridorMap
@@ -472,26 +488,12 @@ export function MapScreen({
           }}
         />
         <ParadersChip count={paraders} />
+        <GoalChip target={walkTarget} gpsFix={gpsFix} onClear={() => setWalkTarget(null)} />
       </div>
 
       <p className="map-status" role="status" aria-live="polite">
         {mapStatusLine}
       </p>
-
-      <GoalPointer
-        pack={pack}
-        gpsFix={gpsFix}
-        target={walkTarget}
-        onClear={() => setWalkTarget(null)}
-      />
-
-      {tapFeedback && now - tapFeedback.at < 5 * 60_000 ? (
-        <div className={`tap-feedback tap-feedback--${tapFeedback.type}`} role="status" aria-live="polite">
-          <span className="tap-feedback__badge" aria-hidden="true">{FAN_EVENT_BADGES[tapFeedback.type]}</span>
-          <strong>{FAN_EVENT_LABELS[tapFeedback.type]} sent</strong>
-          <span>{tapFeedback.place} · {tapFeedback.online ? 'syncing when signal allows' : 'saved offline'}</span>
-        </div>
-      ) : null}
 
       {tapPanel}
 
@@ -550,28 +552,12 @@ export function MapScreen({
         aria-expanded={mapToolsOpen}
         onClick={() => setMapToolsOpen((current) => !current)}
       >
-        More map tools
-        <span>find places · crowd compass · crowd layer {mapToolsOpen ? '▴' : '▾'}</span>
+        More layers
+        <span>crowd compass · map layers {mapToolsOpen ? '▴' : '▾'}</span>
       </button>
 
       {mapToolsOpen ? (
         <div className="map-tools-panel">
-          <QuickFindChips
-            active={findCategory}
-            onPick={(category) => {
-              setFindCategory(category);
-              if (category) {
-                onTrack('parade_quick_find_used', { category });
-                const nearest = nearestPoiForCategory(category, pack, gpsFix);
-                if (nearest) {
-                  setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
-                }
-              } else {
-                setWalkTarget(null);
-              }
-            }}
-          />
-
           <LayerToggleRow
             layers={layers}
             onToggle={(id) => setLayers((current) => ({ ...current, [id]: !current[id] }))}
@@ -600,6 +586,27 @@ export function MapScreen({
       />
     </section>
   );
+}
+
+function syncCopy(
+  status: LiveSyncStatus | undefined,
+  online: boolean,
+): { short: string; detail: string; tone: string } {
+  if (!status) return { short: '—', detail: 'idle', tone: 'idle' };
+  if (!online || status.state === 'offline') return { short: 'OFF', detail: 'offline · saving locally', tone: 'offline' };
+  if (status.state === 'syncing') return { short: '…', detail: 'syncing', tone: 'syncing' };
+  if (status.state === 'failed') return { short: 'RTRY', detail: 'patchy · will retry', tone: 'failed' };
+  if (status.state === 'synced') {
+    const minutes = status.lastSyncAt
+      ? Math.max(0, Math.round((Date.now() - Date.parse(status.lastSyncAt)) / 60_000))
+      : 0;
+    return {
+      short: minutes < 1 ? 'NOW' : `${minutes}M`,
+      detail: `last synced ${minutes < 1 ? 'just now' : `${minutes} min ago`}`,
+      tone: 'synced',
+    };
+  }
+  return { short: 'RDY', detail: 'ready when signal appears', tone: 'idle' };
 }
 
 function formatDistance(meters: number): string {

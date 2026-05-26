@@ -4,6 +4,7 @@ type AnalyticsProps = Record<string, AnalyticsPrimitive>;
 
 export type ParadeAnalyticsEvent =
   | 'parade_app_opened'
+  | 'parade_gps_retry'
   | 'parade_tab_viewed'
   | 'parade_plan_saved'
   | 'parade_plan_share_opened'

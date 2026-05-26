@@ -18,7 +18,7 @@ import {
   type FanEventCluster,
   type FanEventType,
 } from '../lib/fan-events';
-import { lngLatToPixel, metersToPixelRadius, pixelToLngLat, type PixelPoint } from '../lib/geo';
+import { haversineMeters, lngLatToPixel, metersToPixelRadius, pixelToLngLat, type PixelPoint } from '../lib/geo';
 import { isFreshGpsFix, type GpsFix } from '../lib/gps';
 import type { GroupPlan, PlanPoint } from '../lib/group-plan';
 import type { GroupLiveMember } from '../lib/group-live';
@@ -151,12 +151,23 @@ export function CorridorMap({
       .filter((item) => item.type === 'presence' && item.source === 'local' && isActive(item))
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
     if (!event) return null;
+    // Round 11 de-dup: when the live GPS pulse is fresh AND the user's last
+    // "I am here" tap is within 30 m of it, hide HERE — the YOU pulse already
+    // marks "you are here." Show HERE only when GPS is stale, missing, or
+    // they've walked away from the original tap.
+    if (gpsFix && isFreshGpsFix(gpsFix)) {
+      const drift = haversineMeters(
+        { lng: event.lng, lat: event.lat },
+        { lng: gpsFix.lng, lat: gpsFix.lat },
+      );
+      if (drift <= 30) return null;
+    }
     const p = lngLatToPixel({ lng: event.lng, lat: event.lat }, extent);
     return {
       left: `${(p.x / extent.pxWidth) * 100}%`,
       top: `${(p.y / extent.pxHeight) * 100}%`,
     };
-  }, [fanEvents, layers, extent]);
+  }, [fanEvents, layers, extent, gpsFix]);
   const liveGpsPulse = useMemo(() => {
     if (!gpsFix) return null;
     const p = lngLatToPixel(gpsFix, extent);
