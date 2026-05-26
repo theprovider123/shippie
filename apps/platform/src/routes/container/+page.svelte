@@ -1054,7 +1054,7 @@
     const app = appById.get(appId);
     if (frame && app && isInspectableRuntimeFrame(frame, app)) {
       window.requestAnimationFrame(() => {
-        if (frames.get(appId) !== frame || !canResolveFrameReady(appId)) return;
+        if (!isResolvableFrame(appId, frame) || !canResolveFrameReady(appId)) return;
         if (frameLifecycleByApp[appId]?.event === 'ready' || frameLifecycleByApp[appId]?.event === 'heartbeat') {
           markFrameReady(appId);
           return;
@@ -1064,7 +1064,7 @@
           return;
         }
         window.setTimeout(() => {
-          if (frames.get(appId) !== frame || !canResolveFrameReady(appId)) return;
+          if (!isResolvableFrame(appId, frame) || !canResolveFrameReady(appId)) return;
           if (frameLifecycleByApp[appId]?.event === 'ready' || frameLifecycleByApp[appId]?.event === 'heartbeat') {
             markFrameReady(appId);
             return;
@@ -1079,7 +1079,7 @@
           const lifecycleAware = Boolean(frameLifecycleByApp[appId]);
           const fallbackDelay = lifecycleAware ? 3_200 : 1_600;
           window.setTimeout(() => {
-            if (frames.get(appId) !== frame || !canResolveFrameReady(appId)) return;
+            if (!isResolvableFrame(appId, frame) || !canResolveFrameReady(appId)) return;
             if (frameLifecycleByApp[appId]?.event === 'ready' || frameLifecycleByApp[appId]?.event === 'heartbeat') {
               markFrameReady(appId);
               return;
@@ -1118,6 +1118,11 @@
   function canResolveFrameReady(appId: string): boolean {
     const status = frameStates[appId]?.status;
     return status === 'booting' || status === 'error';
+  }
+
+  function isResolvableFrame(appId: string, frame: HTMLIFrameElement): boolean {
+    if (frames.get(appId) === frame) return true;
+    return frame.isConnected && frame.dataset.shippieAppId === appId;
   }
 
   function isInspectableRuntimeFrame(frame: HTMLIFrameElement, app: ContainerApp): boolean {
