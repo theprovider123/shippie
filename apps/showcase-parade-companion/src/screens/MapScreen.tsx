@@ -390,8 +390,8 @@ export function MapScreen({
       {mapBriefOpen ? (
         <div className="map-brief" role="note" aria-label="How to use the map">
           <div>
-            <strong>Find yourself. Pick a goal. Tap what you see.</strong>
-            <span>Your dot works offline. Tap the route, a station, or a friend to get the compass arrow.</span>
+            <strong>Offline map. Live dot. Three taps.</strong>
+            <span>Pick a goal on the map, then follow the arrow. Taps save here first and sync when signal appears.</span>
           </div>
           <button type="button" onClick={dismissMapBrief}>
             Got it
@@ -449,22 +449,6 @@ export function MapScreen({
         </button>
       </div>
 
-      <QuickFindChips
-        active={findCategory}
-        onPick={(category) => {
-          setFindCategory(category);
-          if (category) {
-            onTrack('parade_quick_find_used', { category });
-            const nearest = nearestPoiForCategory(category, pack, gpsFix);
-            if (nearest) {
-              setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
-            }
-          } else {
-            setWalkTarget(null);
-          }
-        }}
-      />
-
       <div className="map-stage">
         <CorridorMap
           pack={pack}
@@ -489,6 +473,23 @@ export function MapScreen({
         />
         <ParadersChip count={paraders} />
         <GoalChip target={walkTarget} gpsFix={gpsFix} onClear={() => setWalkTarget(null)} />
+        <div className="map-find-bar">
+          <QuickFindChips
+            active={findCategory}
+            onPick={(category) => {
+              setFindCategory(category);
+              if (category) {
+                onTrack('parade_quick_find_used', { category });
+                const nearest = nearestPoiForCategory(category, pack, gpsFix);
+                if (nearest) {
+                  setWalkTarget({ lng: nearest.lng, lat: nearest.lat, label: nearest.name });
+                }
+              } else {
+                setWalkTarget(null);
+              }
+            }}
+          />
+        </div>
       </div>
 
       <p className="map-status" role="status" aria-live="polite">

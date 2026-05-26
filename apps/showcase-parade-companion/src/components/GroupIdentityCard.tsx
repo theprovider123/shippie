@@ -69,10 +69,16 @@ export function GroupIdentityCard({
             </button>
           ) : null}
         </div>
-        <div className="group-identity__actions group-identity__actions--secondary">
+        <div className="share-link-pair" aria-label="Share options">
+          <p className="share-link-pair__label">Share</p>
+          <button type="button" className="share-link-card" onClick={onShowInvite}>
+            <strong>Share my dot</strong>
+            <span>Lets a friend watch this phone</span>
+          </button>
           {onShareApp ? (
-            <button type="button" className="secondary-action" onClick={onShareApp}>
-              Share app
+            <button type="button" className="share-link-card share-link-card--app" onClick={onShareApp}>
+              <strong>Share app</strong>
+              <span>Opens the app only</span>
             </button>
           ) : null}
         </div>
@@ -84,23 +90,24 @@ export function GroupIdentityCard({
     <div className="panel group-identity">
       <div className="group-identity__head">
         <h2>{name}</h2>
-        <button
-          type="button"
-          className="primary-action group-identity__invite"
-          onClick={onShowInvite}
-        >
-          Invite group
-        </button>
       </div>
       <p className="group-identity__meta">
         {memberCount} {memberCount === 1 ? 'member' : 'members'}
         {updatedAtIso ? ` · saved ${agoLabel(updatedAtIso)}` : ''}
       </p>
-      {onShareApp ? (
-        <button type="button" className="secondary-action group-identity__app-share" onClick={onShareApp}>
-          Share app only
+      <div className="share-link-pair" aria-label="Share options">
+        <p className="share-link-pair__label">Share links</p>
+        <button type="button" className="share-link-card share-link-card--group" onClick={onShowInvite}>
+          <strong>Invite group</strong>
+          <span>Adds friends to this plan</span>
         </button>
-      ) : null}
+        {onShareApp ? (
+          <button type="button" className="share-link-card share-link-card--app" onClick={onShareApp}>
+            <strong>Share app</strong>
+            <span>Opens the app only</span>
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { QrShareSheet } from '@shippie/showcase-kit-v2';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import packageInfo from '../package.json';
 import { AboutSheet } from './components/AboutSheet';
@@ -91,6 +92,8 @@ export function App() {
   const [sideTingSheetOpen, setSideTingSheetOpen] = useState(false);
   const [sideTingDraft, setSideTingDraft] = useState('');
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [appShareOpen, setAppShareOpen] = useState(false);
+  const [appShareUrl, setAppShareUrl] = useState('');
   const [groupLiveMembers, setGroupLiveMembers] = useState<GroupLiveMember[]>([]);
   const [groupLiveStatus, setGroupLiveStatus] = useState<GroupLiveStatus>('idle');
   const [offlineReadiness, setOfflineReadiness] = useState<Readiness>('checking');
@@ -858,6 +861,18 @@ export function App() {
     }, 0);
   };
 
+  const openShareApp = () => {
+    setAppShareUrl(buildShareRunUrl());
+    setAppShareOpen(true);
+    setMenuOpen(false);
+    trackParadeAction('parade_plan_share_opened', {
+      members_count: 0,
+      has_leave_plan: false,
+      share_kind: 'app_menu',
+    });
+    showToast('App share QR ready. This does not add anyone to your group.', 'success');
+  };
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -903,6 +918,13 @@ export function App() {
                   onClick={openMapSyncQr}
                 >
                   Sync QR
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={openShareApp}
+                >
+                  Share app
                 </button>
                 <button
                   type="button"
@@ -976,6 +998,14 @@ export function App() {
         onJoin={() => void onJoinImport()}
         onWatch={onWatchImport}
         onDismiss={() => setImportPreview(null)}
+      />
+      <QrShareSheet
+        open={appShareOpen}
+        url={appShareUrl}
+        title="Share the app"
+        body="This opens Parade Companion only. It does not add anyone to your group."
+        size={260}
+        onClose={() => setAppShareOpen(false)}
       />
       <ToastHost />
       <Onboarding
