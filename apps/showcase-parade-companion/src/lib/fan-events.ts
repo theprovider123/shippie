@@ -6,6 +6,7 @@ import { isInsideExtent, nearestRouteSegment } from './geo';
 export const FAN_EVENTS_SHARE_TYPE = 'parade.fan-events.v1';
 export const MAX_FAN_EVENTS_FRAGMENT_LENGTH = 3600;
 export const ROUTE_SNAP_MAX_ACCURACY_M = 350;
+export const FAN_EVENT_EXTENT_MARGIN_DEG = 0.035;
 export const PUBLIC_PULSE_CUTOFF_ISO = '2026-05-31T22:00:00+01:00';
 
 export const ROUTE_SEGMENT_LABELS: Record<number, string> = {
@@ -327,10 +328,22 @@ export function validateFanEvent(input: unknown): input is FanEvent {
   // Validate against the active pack's extent — set by App.tsx on pack load.
   // This is what lets the Watford test pack accept Watford fan taps without
   // rebuilding the app.
-  if (!isInsideExtent({ lng, lat }, getActiveExtent())) return false;
+  if (!isInsideFanEventBounds({ lng, lat }, getActiveExtent())) return false;
   if (!Number.isFinite(Number(input.accuracy_m))) return false;
   if (!validDate(input.created_at) || !validDate(input.expires_at)) return false;
   return true;
+}
+
+export function isInsideFanEventBounds(point: LngLat, extent = getActiveExtent()): boolean {
+  if (isInsideExtent(point, extent)) return true;
+  return (
+    Number.isFinite(point.lng) &&
+    Number.isFinite(point.lat) &&
+    point.lng >= extent.west - FAN_EVENT_EXTENT_MARGIN_DEG &&
+    point.lng <= extent.east + FAN_EVENT_EXTENT_MARGIN_DEG &&
+    point.lat >= extent.south - FAN_EVENT_EXTENT_MARGIN_DEG &&
+    point.lat <= extent.north + FAN_EVENT_EXTENT_MARGIN_DEG
+  );
 }
 
 export function eventAgeLabel(event: Pick<FanEvent, 'created_at'>, now = Date.now()): string {

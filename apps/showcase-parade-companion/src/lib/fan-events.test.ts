@@ -12,6 +12,7 @@ import {
   reportConfidenceText,
   selectCarryFanEvents,
   summarizeFanEvents,
+  validateFanEvent,
 } from './fan-events';
 
 const route = FALLBACK_ROUTE_PACK.route.coordinates;
@@ -35,6 +36,24 @@ describe('fan events', () => {
     expect(event.snapped_lng).toBeNull();
     expect(event.snapped_lat).toBeNull();
     expect(eventSegmentLabel(event)).toBe('near route');
+  });
+
+  test('accepts nearby off-map taps so users outside the schematic still see their pulse', () => {
+    const nearbyOutside = createFanEvent(
+      'presence',
+      { lng: -0.139, lat: 51.5487, accuracyM: 24 },
+      route,
+      'fan_off_map',
+    );
+    const tooFar = createFanEvent(
+      'presence',
+      { lng: -0.22, lat: 51.5487, accuracyM: 24 },
+      route,
+      'fan_too_far',
+    );
+
+    expect(validateFanEvent(nearbyOutside)).toBe(true);
+    expect(validateFanEvent(tooFar)).toBe(false);
   });
 
   test('summarizes active presence, reports, and carried phones', () => {

@@ -1028,6 +1028,24 @@ textarea { resize: vertical; min-height: 64px; }
 .live-gps-pulse strong {
   display: none;
 }
+.live-gps-pulse.is-off-map strong {
+  position: absolute;
+  left: 17px;
+  top: -13px;
+  display: block;
+  padding: 3px 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.live-gps-pulse.is-off-map .live-gps-pulse__ring {
+  border-style: dashed;
+}
 .live-gps-pulse.is-wide .live-gps-pulse__accuracy {
   border-color: rgba(237, 187, 74, .62);
   background: rgba(237, 187, 74, .09);
@@ -1086,6 +1104,13 @@ textarea { resize: vertical; min-height: 64px; }
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+.my-presence-pulse.is-off-map span {
+  border-style: dashed;
+}
+.my-presence-pulse.is-off-map strong::after {
+  content: ' · edge';
+  color: var(--ink-mute);
+}
 @keyframes presence-pulse {
   0% { opacity: .95; transform: scale(.55); }
   70% { opacity: .16; transform: scale(1.9); }
@@ -1139,6 +1164,9 @@ textarea { resize: vertical; min-height: 64px; }
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+.map-goal-pulse.is-off-map span {
+  border-style: dashed;
 }
 
 /* ----- POI hit-zone overlay (round 8: M2) ----- */

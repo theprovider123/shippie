@@ -171,21 +171,23 @@ export function CorridorMap({
       );
       if (drift <= 30) return null;
     }
-    const p = lngLatToPixel({ lng: event.lng, lat: event.lat }, extent);
+    const projected = projectToVisibleMapPoint({ lng: event.lng, lat: event.lat }, extent);
     return {
-      left: `${(p.x / extent.pxWidth) * 100}%`,
-      top: `${(p.y / extent.pxHeight) * 100}%`,
+      left: `${(projected.point.x / extent.pxWidth) * 100}%`,
+      top: `${(projected.point.y / extent.pxHeight) * 100}%`,
+      offMap: projected.offMap,
     };
   }, [fanEvents, layers, extent, gpsFix]);
   const liveGpsPulse = useMemo(() => {
     if (!gpsFix) return null;
-    const p = lngLatToPixel(gpsFix, extent);
+    const projected = projectToVisibleMapPoint(gpsFix, extent);
     const accuracyPx = metersToPixelRadius(gpsFix, gpsFix.accuracyM, extent);
     return {
-      left: `${(p.x / extent.pxWidth) * 100}%`,
-      top: `${(p.y / extent.pxHeight) * 100}%`,
+      left: `${(projected.point.x / extent.pxWidth) * 100}%`,
+      top: `${(projected.point.y / extent.pxHeight) * 100}%`,
       fresh: isFreshGpsFix(gpsFix),
       wide: gpsFix.accuracyM > 80,
+      offMap: projected.offMap,
       style: {
         '--accuracy-size': `${Math.max(42, Math.min(220, accuracyPx * 2))}px`,
         transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})`,
@@ -194,10 +196,11 @@ export function CorridorMap({
   }, [gpsFix, extent, scale]);
   const targetPulse = useMemo(() => {
     if (!target) return null;
-    const p = lngLatToPixel(target, extent);
+    const projected = projectToVisibleMapPoint(target, extent);
     return {
-      left: `${(p.x / extent.pxWidth) * 100}%`,
-      top: `${(p.y / extent.pxHeight) * 100}%`,
+      left: `${(projected.point.x / extent.pxWidth) * 100}%`,
+      top: `${(projected.point.y / extent.pxHeight) * 100}%`,
+      offMap: projected.offMap,
     };
   }, [target, extent]);
   const hasFanBus = visibleFanClusters.some((cluster) => cluster.type === 'bus_seen');
@@ -502,19 +505,19 @@ export function CorridorMap({
           </div>
           {liveGpsPulse ? (
             <div
-              className={`live-gps-pulse ${liveGpsPulse.fresh ? 'is-live' : 'is-stale'} ${liveGpsPulse.wide ? 'is-wide' : ''}`}
+              className={`live-gps-pulse ${liveGpsPulse.fresh ? 'is-live' : 'is-stale'} ${liveGpsPulse.wide ? 'is-wide' : ''} ${liveGpsPulse.offMap ? 'is-off-map' : ''}`}
               style={{ left: liveGpsPulse.left, top: liveGpsPulse.top, ...liveGpsPulse.style }}
               aria-hidden="true"
             >
               <span className="live-gps-pulse__accuracy" />
               <span className="live-gps-pulse__ring" />
               <span className="live-gps-pulse__dot" />
-              <strong>{liveGpsPulse.fresh ? 'You' : 'Old'}</strong>
+              <strong>{liveGpsPulse.offMap ? 'Edge' : liveGpsPulse.fresh ? 'You' : 'Old'}</strong>
             </div>
           ) : null}
           {localPresencePulse ? (
             <div
-              className="my-presence-pulse"
+              className={`my-presence-pulse ${localPresencePulse.offMap ? 'is-off-map' : ''}`}
               style={{ ...localPresencePulse, transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})` }}
               aria-hidden="true"
             >
@@ -524,7 +527,7 @@ export function CorridorMap({
           ) : null}
           {targetPulse ? (
             <div
-              className="map-goal-pulse"
+              className={`map-goal-pulse ${targetPulse.offMap ? 'is-off-map' : ''}`}
               style={{ ...targetPulse, transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})` }}
               aria-hidden="true"
             >
@@ -600,6 +603,22 @@ function shouldUseRasterBasemap(pack: RoutePack): boolean {
     Math.abs(extent.south - CORRIDOR_EXTENT.south) < epsilon &&
     Math.abs(extent.north - CORRIDOR_EXTENT.north) < epsilon
   );
+}
+
+function projectToVisibleMapPoint(point: { lng: number; lat: number }, extent: MapExtent, inset = 58): { point: PixelPoint; offMap: boolean } {
+  const raw = lngLatToPixel(point, extent);
+  const clamped = clampPixelToCanvas(raw, extent, inset);
+  return {
+    point: clamped,
+    offMap: Math.abs(raw.x - clamped.x) > 0.001 || Math.abs(raw.y - clamped.y) > 0.001,
+  };
+}
+
+function clampPixelToCanvas(point: PixelPoint, extent: MapExtent, inset = 58): PixelPoint {
+  return {
+    x: Math.max(inset, Math.min(extent.pxWidth - inset, point.x)),
+    y: Math.max(inset, Math.min(extent.pxHeight - inset, point.y)),
+  };
 }
 
 function nearestRouteTapPoint(
@@ -1200,7 +1219,10 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
 
   ctx.save();
   for (const cluster of presence) {
-    const p = offsetClusterPoint(lngLatToPixel(cluster.point, extent), cluster.type);
+    const projected = projectToVisibleMapPoint(cluster.point, extent, fixed(120));
+    const p = projected.offMap
+      ? projected.point
+      : clampPixelToCanvas(offsetClusterPoint(projected.point, cluster.type), extent, fixed(92));
     const radius = fixed(Math.min(44, 22 + cluster.count * 5));
     ctx.beginPath();
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
@@ -1213,7 +1235,10 @@ function drawFanEvents(ctx: CanvasRenderingContext2D, clusters: FanEventCluster[
   }
 
   for (const cluster of reports) {
-    const p = offsetClusterPoint(lngLatToPixel(cluster.point, extent), cluster.type);
+    const projected = projectToVisibleMapPoint(cluster.point, extent, fixed(120));
+    const p = projected.offMap
+      ? projected.point
+      : clampPixelToCanvas(offsetClusterPoint(projected.point, cluster.type), extent, fixed(96));
     const color = eventColor(cluster.type);
     const radius = fixed(clusterRadius(cluster));
     ctx.beginPath();
@@ -1262,8 +1287,8 @@ function drawScheduleMarkers(ctx: CanvasRenderingContext2D, schedule: RoutePack[
 }
 
 function drawWalkLine(ctx: CanvasRenderingContext2D, from: GpsFix, to: PlanPoint, extent: MapExtent, scale: number) {
-  const a = lngLatToPixel(from, extent);
-  const b = lngLatToPixel(to, extent);
+  const a = projectToVisibleMapPoint(from, extent, 76).point;
+  const b = projectToVisibleMapPoint(to, extent, 76).point;
   const fixed = fixedSize(scale);
   ctx.save();
   ctx.beginPath();
@@ -1285,7 +1310,8 @@ function drawGps(
   showLabel: boolean,
   labels: LabelRect[],
 ) {
-  const p = lngLatToPixel(gps, extent);
+  const projected = projectToVisibleMapPoint(gps, extent, 82);
+  const p = projected.point;
   const radius = metersToPixelRadius(gps, gps.accuracyM, extent);
   const fixed = fixedSize(scale);
   ctx.save();
@@ -1308,7 +1334,9 @@ function drawGps(
   ctx.lineWidth = fixed(3);
   ctx.strokeStyle = 'rgba(20, 18, 15, 0.7)';
   ctx.stroke();
-  if (showLabel) drawLabel(ctx, 'You are here', p.x + fixed(54), p.y, scale, labels, { force: true });
+  if (showLabel || projected.offMap) {
+    drawLabel(ctx, projected.offMap ? 'You · off map' : 'You are here', p.x + fixed(54), p.y, scale, labels, { force: true });
+  }
   ctx.restore();
 }
 
@@ -1321,7 +1349,7 @@ function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], ext
       typeof marker.snapped_lng === 'number' && typeof marker.snapped_lat === 'number'
         ? { lng: marker.snapped_lng, lat: marker.snapped_lat }
         : { lng: marker.lng, lat: marker.lat };
-    const p = lngLatToPixel(point, extent);
+    const p = projectToVisibleMapPoint(point, extent, fixed(100)).point;
     ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.arc(p.x, p.y, fixed(54), 0, Math.PI * 2);
@@ -1354,7 +1382,7 @@ function drawSideTings(ctx: CanvasRenderingContext2D, rows: SideTing[], extent: 
   const fixed = fixedSize(scale);
   for (const row of rows.slice(0, 5)) {
     if (!row.primary) continue;
-    const p = lngLatToPixel(row.primary, extent);
+    const p = projectToVisibleMapPoint(row.primary, extent, fixed(96)).point;
     const ageSource = row.lastSeenAt ?? row.addedAt;
     const ageMin = (Date.now() - Date.parse(ageSource)) / 60_000;
     const stale = !Number.isFinite(ageMin) || ageMin > 10 || !row.lastSeenAt;
@@ -1388,7 +1416,7 @@ function drawGroupMembers(
   const fixed = fixedSize(scale);
   for (const member of members.slice(0, 8)) {
     if (!member.hasLocation) continue;
-    const p = lngLatToPixel(member, extent);
+    const p = projectToVisibleMapPoint(member, extent, fixed(96)).point;
     const ageMs = Date.now() - Date.parse(member.lastSeenAt);
     const stale = !Number.isFinite(ageMs) || ageMs > 8 * 60_000;
     const radius = fixed(stale ? 26 : 34);
