@@ -896,8 +896,9 @@ function buildDetailLabels(
     const textKey = item.label.trim().toLowerCase();
     if (seenText.has(textKey)) continue;
     const point = lngLatToPixel(item, extent);
-    const width = estimatedDomLabelWidth(item) / Math.max(1, scale);
-    const height = estimatedDomLabelHeight(item.kind) / Math.max(1, scale);
+    const collisionFactor = domLabelCollisionFactor(scale);
+    const width = (estimatedDomLabelWidth(item) * collisionFactor) / Math.max(1, scale);
+    const height = (estimatedDomLabelHeight(item.kind) * collisionFactor) / Math.max(1, scale);
     const renderPoint = clampLabelPoint(point, extent, width);
     const rect = {
       x: renderPoint.x - width / 2,
@@ -953,7 +954,7 @@ function lineStyle(kind: OfflineMapLineKind): { stroke: string; width: number; z
 }
 
 function labelPriority(kind: OfflineMapLabelKind): number {
-  if (kind === 'route') return 4;
+  if (kind === 'route') return 6;
   if (kind === 'station') return 5;
   if (kind === 'pinpoint') return 4;
   if (kind === 'place') return 3;
@@ -967,8 +968,8 @@ function detailLabelScore(item: { kind: OfflineMapLabelKind; label: string; lng:
   if (/route|station|green|fields|town hall|stadium/i.test(item.label)) score += 40;
   score += Math.max(0, 30 - (item.minScale ?? 1) * 8);
   if (item.kind === 'route') {
-    if (/holloway|seven sisters|blackstock|green lanes|essex|upper street/i.test(item.label)) score += 70;
-    if (/mountgrove|petherton|beresford/i.test(item.label)) score -= 35;
+    if (/holloway|seven sisters|blackstock|green lanes|essex|upper/i.test(item.label)) score += 120;
+    if (/mountgrove|petherton|beresford|newington green/i.test(item.label)) score -= 140;
   }
   if (focusPoints.length > 0) {
     const nearest = Math.min(...focusPoints.map((point) => haversineMeters(item, point)));
@@ -1011,8 +1012,30 @@ function estimatedDomLabelHeight(kind: OfflineMapLabelKind): number {
   return 30;
 }
 
+function domLabelCollisionFactor(scale: number): number {
+  // DOM labels are positioned in the 1800px map coordinate space, but they
+  // render at fixed screen size. Inflate their reservation rect so the first
+  // phone-sized view never starts with labels touching or sitting on top of
+  // each other.
+  if (scale < 1.35) return 4.8;
+  if (scale < 2) return 3.6;
+  if (scale < 3) return 2.4;
+  return 1.6;
+}
+
 function routeLabelText(label: string): string {
-  return label.replace(/\s+route$/i, '').replace(/\s*\/\s*/g, ' / ');
+  const clean = label.replace(/\s+route$/i, '').replace(/\s*\/\s*/g, ' / ');
+  // Keep the default mobile map readable. Fans need the road cue, not a
+  // council-style full label that collides with the next bend in the route.
+  return clean
+    .replace(/^Holloway Road$/i, 'Holloway Rd')
+    .replace(/^Seven Sisters Road$/i, 'Seven Sisters')
+    .replace(/^Blackstock Road$/i, 'Blackstock')
+    .replace(/^Essex Road$/i, 'Essex Rd')
+    .replace(/^Upper Street$/i, 'Upper St')
+    .replace(/^Mountgrove Road$/i, 'Mountgrove')
+    .replace(/^Petherton Road$/i, 'Petherton')
+    .replace(/^Beresford Road$/i, 'Beresford');
 }
 
 function averageCoords(coords: [number, number][]): { lng: number; lat: number } | null {
