@@ -2,7 +2,7 @@ import type { LngLat, MapExtent, RoutePack } from './parade-2026';
 
 export type OfflineMapAreaKind = 'park' | 'water' | 'stadium' | 'station-zone' | 'town-centre';
 export type OfflineMapLineKind = 'route-road' | 'major-road' | 'street' | 'path' | 'rail' | 'waterway';
-export type OfflineMapLabelKind = 'district' | 'road' | 'place' | 'station' | 'pinpoint';
+export type OfflineMapLabelKind = 'district' | 'road' | 'route' | 'place' | 'station' | 'pinpoint';
 
 export interface OfflineMapArea {
   id: string;

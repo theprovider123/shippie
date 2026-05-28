@@ -488,14 +488,18 @@ export function CorridorMap({
           <div className="map-label-layer" aria-hidden="true">
             {detailLabels.map((item) => {
               const p = lngLatToPixel(item, extent);
+              const width = estimatedDomLabelWidth(item) / Math.max(1, scale);
+              const renderPoint = clampLabelPoint(p, extent, width);
+              const leftPct = (renderPoint.x / extent.pxWidth) * 100;
+              const xAnchor = leftPct > 88 ? '-100%' : leftPct < 12 ? '0' : '-50%';
               return (
                 <span
                   key={item.id}
                   className={`map-detail-label map-detail-label--${item.kind}`}
                   style={{
-                    left: `${(p.x / extent.pxWidth) * 100}%`,
-                    top: `${(p.y / extent.pxHeight) * 100}%`,
-                    transform: `translate(-50%, -50%) scale(${1 / Math.max(1, scale)})`,
+                    left: `${leftPct}%`,
+                    top: `${(renderPoint.y / extent.pxHeight) * 100}%`,
+                    transform: `translate(${xAnchor}, -50%) scale(${1 / Math.max(1, scale)})`,
                   }}
                 >
                   {item.label}
@@ -512,7 +516,7 @@ export function CorridorMap({
               <span className="live-gps-pulse__accuracy" />
               <span className="live-gps-pulse__ring" />
               <span className="live-gps-pulse__dot" />
-              <strong>{liveGpsPulse.offMap ? 'Edge' : liveGpsPulse.fresh ? 'You' : 'Old'}</strong>
+              <strong>{liveGpsPulse.fresh || liveGpsPulse.offMap ? 'You' : 'Old'}</strong>
             </div>
           ) : null}
           {localPresencePulse ? (
@@ -618,6 +622,15 @@ function clampPixelToCanvas(point: PixelPoint, extent: MapExtent, inset = 58): P
   return {
     x: Math.max(inset, Math.min(extent.pxWidth - inset, point.x)),
     y: Math.max(inset, Math.min(extent.pxHeight - inset, point.y)),
+  };
+}
+
+function clampLabelPoint(point: PixelPoint, extent: MapExtent, width: number): PixelPoint {
+  const insetX = Math.min(extent.pxWidth / 2 - 8, width / 2 + 24);
+  const insetY = 48;
+  return {
+    x: Math.max(insetX, Math.min(extent.pxWidth - insetX, point.x)),
+    y: Math.max(insetY, Math.min(extent.pxHeight - insetY, point.y)),
   };
 }
 
@@ -859,7 +872,9 @@ function buildDetailLabels(
       .filter((lineFeature) => lineFeature.label && shouldShowAtScale(minScaleForLineLabel(lineFeature), scale))
       .map((lineFeature) => {
         const centre = lineMidpoint(lineFeature.coordinates);
-        return centre ? { id: `line-${lineFeature.id}`, kind: 'road' as OfflineMapLabelKind, label: lineFeature.label!, ...centre, minScale: minScaleForLineLabel(lineFeature) } : null;
+        const kind = lineFeature.kind === 'route-road' ? 'route' : 'road';
+        const label = lineFeature.kind === 'route-road' ? routeLabelText(lineFeature.label!) : lineFeature.label!;
+        return centre ? { id: `line-${lineFeature.id}`, kind: kind as OfflineMapLabelKind, label, ...centre, minScale: minScaleForLineLabel(lineFeature) } : null;
       })
       .filter((item): item is { id: string; kind: OfflineMapLabelKind; label: string; lng: number; lat: number; minScale: number } => Boolean(item)),
     ...details.labels.map((item) => ({ ...item, minScale: item.minScale ?? 1 })),
@@ -872,8 +887,10 @@ function buildDetailLabels(
   const seenText = new Set<string>();
   const limit = labelLimitForScale(scale);
   const padding = labelPaddingForScale(scale);
+  let lowZoomRouteLabels = 0;
   for (const item of candidates) {
-    if (scale < 1.85 && !isEssentialLowZoomLabel(item)) continue;
+    if (scale < 1.85 && item.kind !== 'route' && !isEssentialLowZoomLabel(item)) continue;
+    if (scale < 1.35 && item.kind === 'route' && lowZoomRouteLabels >= 5) continue;
     if (scale < 2.05 && item.kind === 'road') continue;
     if (scale < 2 && item.kind === 'pinpoint') continue;
     const textKey = item.label.trim().toLowerCase();
@@ -881,15 +898,17 @@ function buildDetailLabels(
     const point = lngLatToPixel(item, extent);
     const width = estimatedDomLabelWidth(item) / Math.max(1, scale);
     const height = estimatedDomLabelHeight(item.kind) / Math.max(1, scale);
+    const renderPoint = clampLabelPoint(point, extent, width);
     const rect = {
-      x: point.x - width / 2,
-      y: point.y - height / 2,
+      x: renderPoint.x - width / 2,
+      y: renderPoint.y - height / 2,
       width,
       height,
     };
     if (!reserveLabel(labels, rect, padding)) continue;
     out.push(item);
     seenText.add(textKey);
+    if (scale < 1.35 && item.kind === 'route') lowZoomRouteLabels += 1;
     if (out.length >= limit) break;
   }
   return out;
@@ -903,7 +922,7 @@ function labelLimitForScale(scale: number): number {
   if (scale >= 2) return 16;
   if (scale >= 1.65) return 8;
   if (scale >= 1.35) return 6;
-  return 5;
+  return 8;
 }
 
 function labelPaddingForScale(scale: number): number {
@@ -934,6 +953,7 @@ function lineStyle(kind: OfflineMapLineKind): { stroke: string; width: number; z
 }
 
 function labelPriority(kind: OfflineMapLabelKind): number {
+  if (kind === 'route') return 4;
   if (kind === 'station') return 5;
   if (kind === 'pinpoint') return 4;
   if (kind === 'place') return 3;
@@ -946,6 +966,10 @@ function detailLabelScore(item: { kind: OfflineMapLabelKind; label: string; lng:
   if (isEssentialLowZoomLabel(item)) score += 260;
   if (/route|station|green|fields|town hall|stadium/i.test(item.label)) score += 40;
   score += Math.max(0, 30 - (item.minScale ?? 1) * 8);
+  if (item.kind === 'route') {
+    if (/holloway|seven sisters|blackstock|green lanes|essex|upper street/i.test(item.label)) score += 70;
+    if (/mountgrove|petherton|beresford/i.test(item.label)) score -= 35;
+  }
   if (focusPoints.length > 0) {
     const nearest = Math.min(...focusPoints.map((point) => haversineMeters(item, point)));
     if (nearest <= 120) score += 180;
@@ -957,7 +981,7 @@ function detailLabelScore(item: { kind: OfflineMapLabelKind; label: string; lng:
 
 function minScaleForLineLabel(lineFeature: { kind: OfflineMapLineKind; minScale?: number }): number {
   const base = lineFeature.minScale ?? 1;
-  if (lineFeature.kind === 'route-road') return Math.max(2.2, base);
+  if (lineFeature.kind === 'route-road') return 1;
   if (lineFeature.kind === 'major-road') return Math.max(2.4, base);
   if (lineFeature.kind === 'waterway') return Math.max(2, base);
   if (lineFeature.kind === 'street') return Math.max(2.55, base);
@@ -966,6 +990,7 @@ function minScaleForLineLabel(lineFeature: { kind: OfflineMapLineKind; minScale?
 }
 
 function isEssentialLowZoomLabel(item: { kind: OfflineMapLabelKind; label: string }): boolean {
+  if (item.kind === 'route') return true;
   if (item.kind === 'station') {
     return /^(arsenal|holloway road|drayton park|highbury & islington|angel|watford junction)$/i.test(item.label);
   }
@@ -973,15 +998,21 @@ function isEssentialLowZoomLabel(item: { kind: OfflineMapLabelKind; label: strin
 }
 
 function estimatedDomLabelWidth(item: { kind: OfflineMapLabelKind; label: string }): number {
+  if (item.kind === 'route') return Math.max(92, Math.min(190, item.label.length * 8.1 + 34));
   const max = item.kind === 'station' || item.kind === 'pinpoint' ? 190 : 170;
   const min = item.kind === 'road' ? 62 : 82;
   return Math.max(min, Math.min(max, item.label.length * (item.kind === 'road' ? 7.3 : 8.8) + 34));
 }
 
 function estimatedDomLabelHeight(kind: OfflineMapLabelKind): number {
+  if (kind === 'route') return 28;
   if (kind === 'station') return 32;
   if (kind === 'road') return 26;
   return 30;
+}
+
+function routeLabelText(label: string): string {
+  return label.replace(/\s+route$/i, '').replace(/\s*\/\s*/g, ' / ');
 }
 
 function averageCoords(coords: [number, number][]): { lng: number; lat: number } | null {

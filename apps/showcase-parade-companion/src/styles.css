@@ -991,6 +991,16 @@ textarea { resize: vertical; min-height: 64px; }
   padding: 2px 4px;
   box-shadow: none;
 }
+.map-detail-label--route {
+  border-color: var(--red);
+  border-top-width: 2px;
+  background: rgba(245, 239, 228, .94);
+  color: var(--red);
+  font-size: 8.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 1px rgba(245, 239, 228, .72);
+}
 .live-gps-pulse {
   position: absolute;
   z-index: 5;
@@ -1026,9 +1036,6 @@ textarea { resize: vertical; min-height: 64px; }
   box-shadow: 0 0 0 1px var(--ink);
 }
 .live-gps-pulse strong {
-  display: none;
-}
-.live-gps-pulse.is-off-map strong {
   position: absolute;
   left: 17px;
   top: -13px;
@@ -1043,8 +1050,15 @@ textarea { resize: vertical; min-height: 64px; }
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+.live-gps-pulse.is-off-map strong::after {
+  content: ' · edge';
+  color: var(--ink-mute);
+}
 .live-gps-pulse.is-off-map .live-gps-pulse__ring {
   border-style: dashed;
+}
+.live-gps-pulse.is-stale:not(.is-off-map) strong {
+  color: var(--gold-deep);
 }
 .live-gps-pulse.is-wide .live-gps-pulse__accuracy {
   border-color: rgba(237, 187, 74, .62);
