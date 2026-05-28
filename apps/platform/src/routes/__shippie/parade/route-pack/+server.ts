@@ -4,11 +4,11 @@ import { readLiveRoutePack } from '$server/parade/route-pack-live';
 export const GET: RequestHandler = async ({ platform }) => {
   const body = await readLiveRoutePack(platform?.env.CACHE);
   if (!body) {
-    return new Response(JSON.stringify({ error: 'no_live_route_pack' }), {
-      status: 404,
+    return new Response(null, {
+      status: 204,
       headers: {
-        'content-type': 'application/json; charset=utf-8',
         'cache-control': 'no-store',
+        'access-control-allow-origin': '*',
       },
     });
   }

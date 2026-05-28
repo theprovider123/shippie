@@ -145,6 +145,28 @@ describe('route pack', () => {
     expect(readCachedRoutePack()).toBeNull();
   });
 
+  test('syncRoutePack treats an empty live endpoint as current', async () => {
+    const current = loadBakedRoutePack();
+    globalThis.fetch = mockEmptyFetch(204);
+
+    const result = await syncRoutePack('/__shippie/parade/route-pack', current);
+
+    expect(result.status).toBe('current');
+    expect(result.pack.packVersion).toBe(current.packVersion);
+    expect(readCachedRoutePack()).toBeNull();
+  });
+
+  test('syncRoutePack tolerates the legacy no-live-pack 404 without damaging the baked pack', async () => {
+    const current = loadBakedRoutePack();
+    globalThis.fetch = mockEmptyFetch(404);
+
+    const result = await syncRoutePack('/__shippie/parade/route-pack', current);
+
+    expect(result.status).toBe('current');
+    expect(result.pack.packVersion).toBe(current.packVersion);
+    expect(readCachedRoutePack()).toBeNull();
+  });
+
   test('syncRoutePack is quiet and non-destructive when offline or fetch fails', async () => {
     const current = loadBakedRoutePack();
 
@@ -174,6 +196,10 @@ function mockJsonFetch(payload: unknown): typeof fetch {
       status: 200,
       headers: { 'content-type': 'application/json' },
     })) as unknown as typeof fetch;
+}
+
+function mockEmptyFetch(status: number): typeof fetch {
+  return (async () => new Response(null, { status })) as unknown as typeof fetch;
 }
 
 function installFakeLocalStorage() {

@@ -113,6 +113,9 @@ export async function syncRoutePack(url: string, current: RoutePack = loadRouteP
       cache: 'no-store',
       headers: { accept: 'application/json' },
     });
+    if (response.status === 204 || response.status === 404) {
+      return { status: 'current', pack: current };
+    }
     if (!response.ok) return { status: 'failed', pack: current };
 
     const candidate = validateRoutePack(await response.json());
