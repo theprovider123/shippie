@@ -984,10 +984,12 @@ textarea { resize: vertical; min-height: 64px; }
   text-transform: uppercase;
 }
 .map-detail-label--road {
-  border-color: rgba(20, 18, 15, .18);
-  background: rgba(237, 230, 213, .72);
+  border-color: transparent;
+  background: rgba(245, 239, 228, .58);
   color: var(--ink-mute);
   font-size: 8px;
+  padding: 2px 4px;
+  box-shadow: none;
 }
 .live-gps-pulse {
   position: absolute;

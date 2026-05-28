@@ -24,7 +24,19 @@ describe('offline map detail packs', () => {
       ...details.lines.map((line) => line.label),
       ...details.labels.map((label) => label.label),
     ]);
-    for (const expected of ['Holloway Road route', 'Seven Sisters Road route', 'Blackstock Road', 'Green Lanes', 'Essex Road route', 'Upper Street route']) {
+    for (const expected of [
+      'Holloway Road route',
+      'Seven Sisters Road route',
+      'Blackstock Road',
+      'Green Lanes',
+      'Essex Road route',
+      'Upper Street route',
+      'St Thomas Road',
+      'Amber Road',
+      'Highbury New Park',
+      'Canonbury Street',
+      'Grosvenor Avenue',
+    ]) {
       expect(labels.has(expected)).toBe(true);
     }
   });

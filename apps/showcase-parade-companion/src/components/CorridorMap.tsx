@@ -134,9 +134,14 @@ export function CorridorMap({
     return Math.min(cap, desired);
   }, [scale]);
   const detailLabels = useMemo(
-    () => buildDetailLabels(offlineDetails, extent, scale)
-      .filter((item) => !gpsFix || haversineMeters(item, gpsFix) > 150),
-    [offlineDetails, extent, scale, gpsFix],
+    () => {
+      const focusPoints: Array<{ lng: number; lat: number }> = [];
+      if (gpsFix) focusPoints.push({ lng: gpsFix.lng, lat: gpsFix.lat });
+      if (target) focusPoints.push({ lng: target.lng, lat: target.lat });
+      return buildDetailLabels(offlineDetails, extent, scale, focusPoints)
+        .filter((item) => !gpsFix || haversineMeters(item, gpsFix) > 150);
+    },
+    [offlineDetails, extent, scale, gpsFix, target],
   );
   const fanClusters = useMemo(() => clusterFanEvents(fanEvents), [fanEvents]);
   const visibleFanClusters = useMemo(
@@ -261,6 +266,7 @@ export function CorridorMap({
     drawOfflineMapGeometry(ctx, offlineDetails, extent, scale);
     drawRestrictedZones(ctx, pack.restrictedZones ?? [], extent, scale, labels);
     drawRoute(ctx, pack.route.coordinates, extent, scale);
+    drawRouteDirectionArrows(ctx, pack.route.coordinates, extent, scale);
     if (layers.crowd === true && crowdHeatClusters.length > 0) drawCrowdHeat(ctx, crowdHeatClusters, extent, scale);
     if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent, scale, labels);
     if (layers.friends !== false && groupMembers.length > 0) drawGroupMembers(ctx, groupMembers, extent, scale, labels);
@@ -816,7 +822,12 @@ function averagePixelPoints(points: PixelPoint[]): PixelPoint | null {
   };
 }
 
-function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale: number): DetailLabel[] {
+function buildDetailLabels(
+  details: OfflineMapDetails,
+  extent: MapExtent,
+  scale: number,
+  focusPoints: Array<{ lng: number; lat: number }> = [],
+): DetailLabel[] {
   const candidates = [
     ...details.areas
       .filter((area) => area.label && shouldShowAtScale(Math.max(1.35, area.minScale ?? 1), scale))
@@ -835,7 +846,7 @@ function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale:
     ...details.labels.map((item) => ({ ...item, minScale: item.minScale ?? 1 })),
   ]
     .filter((item) => shouldShowAtScale(item.minScale, scale))
-    .sort((a, b) => labelPriority(b.kind) - labelPriority(a.kind));
+    .sort((a, b) => detailLabelScore(b, focusPoints) - detailLabelScore(a, focusPoints));
 
   const labels: LabelRect[] = [];
   const out: DetailLabel[] = [];
@@ -866,11 +877,11 @@ function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale:
 }
 
 function labelLimitForScale(scale: number): number {
-  if (scale >= 5) return 46;
-  if (scale >= 4.1) return 38;
-  if (scale >= 3.2) return 30;
-  if (scale >= 2.35) return 18;
-  if (scale >= 2) return 12;
+  if (scale >= 5) return 64;
+  if (scale >= 4.1) return 54;
+  if (scale >= 3.2) return 42;
+  if (scale >= 2.35) return 26;
+  if (scale >= 2) return 16;
   if (scale >= 1.65) return 8;
   if (scale >= 1.35) return 6;
   return 5;
@@ -909,6 +920,20 @@ function labelPriority(kind: OfflineMapLabelKind): number {
   if (kind === 'place') return 3;
   if (kind === 'district') return 2;
   return 1;
+}
+
+function detailLabelScore(item: { kind: OfflineMapLabelKind; label: string; lng: number; lat: number; minScale?: number }, focusPoints: Array<{ lng: number; lat: number }>): number {
+  let score = labelPriority(item.kind) * 100;
+  if (isEssentialLowZoomLabel(item)) score += 260;
+  if (/route|station|green|fields|town hall|stadium/i.test(item.label)) score += 40;
+  score += Math.max(0, 30 - (item.minScale ?? 1) * 8);
+  if (focusPoints.length > 0) {
+    const nearest = Math.min(...focusPoints.map((point) => haversineMeters(item, point)));
+    if (nearest <= 120) score += 180;
+    else if (nearest <= 260) score += 120;
+    else if (nearest <= 500) score += 60;
+  }
+  return score;
 }
 
 function minScaleForLineLabel(lineFeature: { kind: OfflineMapLineKind; minScale?: number }): number {
@@ -972,6 +997,48 @@ function drawRoute(ctx: CanvasRenderingContext2D, route: readonly [number, numbe
   ctx.lineWidth = fixed(11);
   ctx.strokeStyle = '#EF0107';
   drawPolyline(ctx, route, extent);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawRouteDirectionArrows(ctx: CanvasRenderingContext2D, route: readonly [number, number][], extent: MapExtent, scale: number) {
+  if (route.length < 2) return;
+  const fixed = fixedSize(scale);
+  const points = route.map(([lng, lat]) => lngLatToPixel({ lng, lat }, extent));
+  const stride = scale >= 2.8 ? 2 : 3;
+  ctx.save();
+  for (let index = 0; index < points.length - 1; index += 1) {
+    if (index % stride !== 0) continue;
+    const a = points[index];
+    const b = points[index + 1];
+    if (!a || !b) continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = Math.hypot(dx, dy);
+    if (length < fixed(52)) continue;
+    const t = 0.58;
+    const x = a.x + dx * t;
+    const y = a.y + dy * t;
+    const angle = Math.atan2(dy, dx);
+    drawArrowHead(ctx, x, y, angle, fixed(21));
+  }
+  ctx.restore();
+}
+
+function drawArrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, size: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(size, 0);
+  ctx.lineTo(-size * 0.68, -size * 0.56);
+  ctx.lineTo(-size * 0.38, 0);
+  ctx.lineTo(-size * 0.68, size * 0.56);
+  ctx.closePath();
+  ctx.fillStyle = '#F5EFE4';
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.5, size * 0.16);
+  ctx.strokeStyle = '#EF0107';
   ctx.stroke();
   ctx.restore();
 }

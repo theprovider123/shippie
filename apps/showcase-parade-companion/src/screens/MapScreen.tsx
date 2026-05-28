@@ -401,7 +401,7 @@ export function MapScreen({
         <div className="map-brief" role="note" aria-label="How to use the map">
           <div>
             <strong>Offline map. Live dot. Three taps.</strong>
-            <span>Pick a goal on the map, then follow the arrow. Taps save here first and sync when signal appears.</span>
+            <span>Pinch in for street detail. Pick a station, WC, or road on the route, then follow the arrow.</span>
           </div>
           <button type="button" onClick={dismissMapBrief}>
             Got it
