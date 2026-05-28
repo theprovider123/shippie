@@ -74,7 +74,7 @@ export function Onboarding({ open, initialName, supporterTag, onFinish, onSkip }
               </li>
               <li>
                 <strong>Tap the map</strong>
-                <span>I am here, Bus here, or Toilet here.</span>
+                <span>I am here, Convoy here, or WC nearby.</span>
               </li>
             </ol>
             <div className="onboarding__privacy" aria-label="What gets shared">

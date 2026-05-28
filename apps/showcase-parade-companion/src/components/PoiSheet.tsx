@@ -95,7 +95,7 @@ function labelForKind(kind: string): string {
     case 'exit':
       return 'Exit landmark';
     case 'toilet':
-      return 'Toilet';
+      return 'WC';
     case 'meeting':
       return 'Meeting point';
     case 'stewards':

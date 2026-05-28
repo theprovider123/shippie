@@ -259,6 +259,7 @@ export function CorridorMap({
     const labels: LabelRect[] = [];
     drawPinpointGrid(ctx, extent, scale);
     drawOfflineMapGeometry(ctx, offlineDetails, extent, scale);
+    drawRestrictedZones(ctx, pack.restrictedZones ?? [], extent, scale, labels);
     drawRoute(ctx, pack.route.coordinates, extent, scale);
     if (layers.crowd === true && crowdHeatClusters.length > 0) drawCrowdHeat(ctx, crowdHeatClusters, extent, scale);
     if (visibleFanClusters.length > 0) drawFanEvents(ctx, visibleFanClusters, extent, scale, labels);
@@ -633,8 +634,22 @@ function nearestRouteTapPoint(
   const lngLat = pixelToLngLat(pixel, extent);
   return {
     ...lngLat,
-    label: `Route stretch ${best.index + 1}`,
+    label: routeTapLabel(best.index, route.length),
   };
+}
+
+function routeTapLabel(index: number, routeLength: number): string {
+  if (routeLength < 20) return `Route point ${index + 1}`;
+  if (index <= 1 || index >= 24) return 'Holloway Road route';
+  if (index <= 4) return 'Seven Sisters Road route';
+  if (index <= 6) return 'Blackstock Road route';
+  if (index <= 8) return 'Mountgrove Road route';
+  if (index <= 10) return 'Green Lanes route';
+  if (index <= 12) return 'Petherton Road route';
+  if (index <= 14) return 'Newington Green route';
+  if (index <= 17) return 'Essex Road route';
+  if (index <= 21) return 'Upper Street route';
+  return 'Highbury Corner route';
 }
 
 function projectScreenPointToSegment(point: PixelPoint, a: PixelPoint, b: PixelPoint): PixelPoint {
@@ -714,6 +729,91 @@ function drawOfflineMapGeometry(ctx: CanvasRenderingContext2D, details: OfflineM
   }
   ctx.setLineDash([]);
   ctx.restore();
+}
+
+function drawRestrictedZones(
+  ctx: CanvasRenderingContext2D,
+  zones: NonNullable<RoutePack['restrictedZones']>,
+  extent: MapExtent,
+  scale: number,
+  labels: LabelRect[],
+) {
+  if (zones.length === 0) return;
+  const fixed = fixedSize(scale);
+  ctx.save();
+  for (const zone of zones) {
+    const points = zone.coordinates.map(([lng, lat]) => lngLatToPixel({ lng, lat }, extent));
+    if (points.length < 3) continue;
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    });
+    ctx.closePath();
+    const style = restrictedZoneStyle(zone.kind);
+    ctx.fillStyle = style.fill;
+    ctx.fill();
+    ctx.lineWidth = fixed(4);
+    ctx.strokeStyle = style.stroke;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = style.hatch;
+    ctx.lineWidth = fixed(3);
+    const bounds = boundsForPixels(points);
+    for (let x = bounds.minX - bounds.height; x < bounds.maxX + bounds.height; x += fixed(44)) {
+      ctx.beginPath();
+      ctx.moveTo(x, bounds.maxY + fixed(24));
+      ctx.lineTo(x + bounds.height + bounds.width, bounds.minY - fixed(24));
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    if (scale >= 1.3) {
+      const centre = averagePixelPoints(points);
+      if (centre) drawMiniLabel(ctx, zone.label, centre.x, centre.y, style.labelTone, scale, labels);
+    }
+  }
+  ctx.restore();
+}
+
+function restrictedZoneStyle(kind: NonNullable<RoutePack['restrictedZones']>[number]['kind']): {
+  fill: string;
+  stroke: string;
+  hatch: string;
+  labelTone: 'default' | 'transit' | 'landmark';
+} {
+  if (kind === 'no-view') {
+    return {
+      fill: 'rgba(237, 187, 74, 0.12)',
+      stroke: 'rgba(141, 101, 24, 0.54)',
+      hatch: 'rgba(141, 101, 24, 0.32)',
+      labelTone: 'landmark',
+    };
+  }
+  return {
+    fill: 'rgba(239, 1, 7, 0.10)',
+    stroke: 'rgba(196, 0, 6, 0.56)',
+    hatch: 'rgba(239, 1, 7, 0.30)',
+    labelTone: 'landmark',
+  };
+}
+
+function boundsForPixels(points: PixelPoint[]): { minX: number; maxX: number; minY: number; maxY: number; width: number; height: number } {
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+  return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+function averagePixelPoints(points: PixelPoint[]): PixelPoint | null {
+  if (points.length === 0) return null;
+  return {
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+  };
 }
 
 function buildDetailLabels(details: OfflineMapDetails, extent: MapExtent, scale: number): DetailLabel[] {
@@ -1167,7 +1267,7 @@ function drawBusMarkers(ctx: CanvasRenderingContext2D, markers: BusMarker[], ext
     ctx.lineWidth = fixed(9);
     ctx.strokeStyle = '#F5EFE4';
     ctx.stroke();
-    drawLabel(ctx, alpha < 0.5 ? 'Old bus tap' : 'Bus tap', p.x + fixed(58), p.y, scale, labels);
+    drawLabel(ctx, alpha < 0.5 ? 'Old convoy tap' : 'Convoy tap', p.x + fixed(58), p.y, scale, labels);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -1270,7 +1370,7 @@ function clusterRadius(cluster: FanEventCluster): number {
 
 function clusterLabel(cluster: FanEventCluster): string {
   const confidence = reportConfidenceText(cluster.confidence, cluster.count);
-  if (cluster.type === 'bus_seen') return cluster.count > 1 ? `Bus here · ${confidence}` : 'Bus here';
+  if (cluster.type === 'bus_seen') return cluster.count > 1 ? `Convoy here · ${confidence}` : 'Convoy here';
   const label = FAN_EVENT_LABELS[cluster.type];
   return cluster.count > 1 ? `${label} · ${confidence}` : label;
 }
@@ -1297,9 +1397,9 @@ function buildMapSummary(gpsFix: GpsFix | null | undefined, clusters: FanEventCl
         .map((cluster) => `${FAN_EVENT_LABELS[cluster.type]} ${cluster.count > 1 ? `from ${cluster.count} phones` : 'from 1 phone'}`)
         .join('; ')
     : busMarkerCount > 0
-      ? `${busMarkerCount} saved bus marker${busMarkerCount === 1 ? '' : 's'}`
+      ? `${busMarkerCount} saved convoy marker${busMarkerCount === 1 ? '' : 's'}`
       : 'No fan pulse markers are on the map yet.';
-  return `Offline parade corridor map with the bus route, stations, exits, landmarks, and safety points. ${gps} Current carried signals: ${signals}.`;
+  return `Offline parade corridor map with the confirmed route, stations, exits, landmarks, and safety points. ${gps} Current carried signals: ${signals}.`;
 }
 
 function offsetClusterPoint(point: PixelPoint, type: FanEventType): PixelPoint {

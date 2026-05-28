@@ -7,7 +7,7 @@ import { LayerToggleRow, type MapLayerId } from '../components/LayerToggleRow';
 import { ParadersChip } from '../components/ParadersChip';
 import { PoiSheet } from '../components/PoiSheet';
 import { QuickFindChips, kindsForCategory, type QuickFindCategory } from '../components/QuickFindChips';
-import type { RoutePack, RoutePoi } from '../data/parade-2026';
+import type { RoutePack, RoutePoi, RouteRestrictedZone } from '../data/parade-2026';
 import { recordSighting, formatMarkerTime, type BusMarker } from '../lib/bus';
 import {
   createFanEvent,
@@ -217,6 +217,7 @@ export function MapScreen({
     [now, pack.event.startTime, pack.scheduleEstimate.length],
   );
   const gpsLocation = gpsFix ? describeParadeLocation(gpsFix, pack) : null;
+  const restrictedZone = useMemo(() => (gpsFix ? restrictedZoneAt(gpsFix, pack) : null), [gpsFix, pack]);
 
   const feedback = (message: string, variant: ToastVariant = 'default') => showToast(message, variant);
 
@@ -241,7 +242,13 @@ export function MapScreen({
       return;
     }
     if (type !== 'presence' && !isReportableGpsFix(gpsFix)) {
-      feedback(`GPS is ${formatAccuracy(gpsFix)}. Wait for a tighter fix before placing a bus or safety report.`, 'warn');
+      feedback(`GPS is ${formatAccuracy(gpsFix)}. Wait for a tighter fix before placing a convoy or safety report.`, 'warn');
+      hapticWarn();
+      return;
+    }
+    const activeRestrictedZone = restrictedZoneAt(gpsFix, pack);
+    if (type === 'bus_seen' && activeRestrictedZone) {
+      feedback('Official route says the convoy will not be visible here. Move to the public route before reporting it.', 'warn');
       hapticWarn();
       return;
     }
@@ -250,11 +257,13 @@ export function MapScreen({
     if (type === 'bus_seen') {
       const marker = await recordSighting('here', gpsFix, pack.route.coordinates);
       onBusMarker(marker);
-      feedback(`Bus signal added · ${placeLabelForEvent(event, pack)} · ${formatMarkerTime(marker)}.`, 'success');
+      feedback(`Convoy signal added · ${placeLabelForEvent(event, pack)} · ${formatMarkerTime(marker)}.`, 'success');
     } else if (type === 'toilet_queue') {
-      feedback(`Toilet signal added · ${placeLabelForEvent(event, pack)}.`, 'success');
+      feedback(`WC signal added · ${placeLabelForEvent(event, pack)}.`, 'success');
     } else if (type === 'need_help') {
       feedback('Move to a steward or call 999 now. Help taps stay on this phone.', 'warn');
+    } else if (type === 'presence' && activeRestrictedZone?.kind === 'no-pedestrian') {
+      feedback('You may be in a closed area. Follow steward or police instructions and move to the route.', 'warn');
     } else {
       feedback(`${FAN_EVENT_LABELS[type]} signal added · ${placeLabelForEvent(event, pack)}.`, 'success');
     }
@@ -315,21 +324,21 @@ export function MapScreen({
         <button
           type="button"
           className="fan-tap fan-tap--bus"
-          aria-label="Bus here. Report the bus passing this spot."
+          aria-label="Convoy here. Report the parade buses passing this spot."
           onClick={() => void saveEvent('bus_seen')}
         >
           <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.bus_seen}</span>
-          <strong>Bus here</strong>
+          <strong>Convoy here</strong>
           <span>passing me</span>
         </button>
         <button
           type="button"
           className="fan-tap fan-tap--toilet"
-          aria-label="Toilet here. Report a toilet at this spot."
+          aria-label="WC nearby. Report a toilet at this spot."
           onClick={() => void saveEvent('toilet_queue')}
         >
           <span className="fan-tap__icon" aria-hidden="true">{FAN_EVENT_BADGES.toilet_queue}</span>
-          <strong>Toilet here</strong>
+          <strong>WC nearby</strong>
           <span>found here</span>
         </button>
       </div>
@@ -374,8 +383,9 @@ export function MapScreen({
       const distance = gpsFix ? ` · ${formatDistance(haversineMeters(gpsFix, walkTarget))}` : '';
       return `FIND · ${walkTarget.label} · ${targetLocation.grid}${distance}`;
     }
-    if (busInsight) return `BUS · ${placeLabelForCluster(busInsight, pack)} · ${insightMeta(busInsight)}`;
+    if (busInsight) return `CONVOY · ${placeLabelForCluster(busInsight, pack)} · ${insightMeta(busInsight)}`;
     if (reportInsights[0]) return `${FAN_EVENT_LABELS[reportInsights[0].type].toUpperCase()} · ${placeLabelForCluster(reportInsights[0], pack)}`;
+    if (restrictedZone) return `CAUTION · ${restrictedZone.label} · move to the public route`;
     if (gpsFix) {
       const location = describeParadeLocation(gpsFix, pack);
       return `YOU · ${location.title} · ${location.grid} · ${formatAccuracy(gpsFix)}`;
@@ -524,14 +534,14 @@ export function MapScreen({
           aria-expanded={timingExpanded}
           onClick={() => setTimingExpanded((current) => !current)}
         >
-          <strong>Bus timing</strong>
+          <strong>Convoy timing</strong>
           <span>{timing.currentIndex != null ? pack.scheduleEstimate[timing.currentIndex]?.time : 'estimate'} {timingExpanded ? '▴' : '▾'}</span>
         </button>
       ) : null}
 
       {!timing.collapsed || timingExpanded ? (
         <div className="panel timing-panel">
-          <h2>Bus timing estimate</h2>
+          <h2>Convoy timing estimate</h2>
           <div className="timeline">
             {pack.scheduleEstimate.map((item, index) => (
               <div
@@ -635,6 +645,27 @@ function placeLabelForEvent(event: FanEvent, pack: RoutePack): string {
       ? { lng: event.snapped_lng, lat: event.snapped_lat }
       : { lng: event.lng, lat: event.lat };
   return describeParadeLocation(point, pack).title;
+}
+
+function restrictedZoneAt(point: { lng: number; lat: number }, pack: RoutePack): RouteRestrictedZone | null {
+  for (const zone of pack.restrictedZones ?? []) {
+    if (pointInPolygon(point, zone.coordinates)) return zone;
+  }
+  return null;
+}
+
+function pointInPolygon(point: { lng: number; lat: number }, polygon: readonly [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const xi = polygon[i]![0];
+    const yi = polygon[i]![1];
+    const xj = polygon[j]![0];
+    const yj = polygon[j]![1];
+    const intersects = yi > point.lat !== yj > point.lat
+      && point.lng < ((xj - xi) * (point.lat - yi)) / (yj - yi || Number.EPSILON) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
 }
 
 function insightMeta(cluster: FanEventCluster): string {

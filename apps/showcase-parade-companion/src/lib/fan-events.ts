@@ -9,11 +9,31 @@ export const ROUTE_SNAP_MAX_ACCURACY_M = 350;
 export const PUBLIC_PULSE_CUTOFF_ISO = '2026-05-31T22:00:00+01:00';
 
 export const ROUTE_SEGMENT_LABELS: Record<number, string> = {
-  0: 'Stadium / Drayton Park',
-  1: 'Drayton Park / Aubert Park',
-  2: 'Highbury Grove',
-  3: "Highbury Fields / St Paul's Road",
-  4: 'Upper Street / Town Hall',
+  0: 'Holloway Road route',
+  1: 'Holloway / Seven Sisters',
+  2: 'Seven Sisters Road',
+  3: 'Seven Sisters Road',
+  4: 'Seven Sisters / Blackstock',
+  5: 'Blackstock Road',
+  6: 'Blackstock / Mountgrove',
+  7: 'Mountgrove Road',
+  8: 'Mountgrove / Green Lanes',
+  9: 'Green Lanes',
+  10: 'Green Lanes / Petherton',
+  11: 'Petherton Road',
+  12: 'Petherton / Beresford',
+  13: 'Beresford Road',
+  14: 'Newington Green Road',
+  15: 'Newington Green / Essex Road',
+  16: 'Essex Road',
+  17: 'Essex Road / Upper Street',
+  18: 'Upper Street',
+  19: 'Upper Street / Islington Green',
+  20: 'Upper Street / Town Hall',
+  21: 'Upper Street / Highbury Corner',
+  22: "Highbury Corner / St Paul's Road",
+  23: "St Paul's Road",
+  24: 'Holloway Road return',
 };
 
 export type FanEventType =
@@ -82,17 +102,17 @@ const EVENT_TTL_MINUTES: Record<FanEventType, number> = {
 
 export const FAN_EVENT_LABELS: Record<FanEventType, string> = {
   presence: "I'm here",
-  bus_seen: 'Bus here',
+  bus_seen: 'Convoy here',
   crowd_dense: 'Crowd jam',
   road_blocked: 'Blocked route',
   food_open: 'Food open',
-  toilet_queue: 'Toilet here',
+  toilet_queue: 'WC spotted',
   need_help: 'Need help',
 };
 
 export const FAN_EVENT_BADGES: Record<FanEventType, string> = {
   presence: 'ME',
-  bus_seen: 'BUS',
+  bus_seen: 'CVY',
   crowd_dense: 'JAM',
   road_blocked: 'NO',
   food_open: 'FD',
@@ -102,11 +122,11 @@ export const FAN_EVENT_BADGES: Record<FanEventType, string> = {
 
 export const FAN_EVENT_HINTS: Record<FanEventType, string> = {
   presence: 'fan dot',
-  bus_seen: 'sighting',
+  bus_seen: 'convoy sighting',
   crowd_dense: 'slow moving',
   road_blocked: 'no through',
   food_open: 'open now',
-  toilet_queue: 'found now',
+  toilet_queue: 'toilet nearby',
   need_help: 'private',
 };
 

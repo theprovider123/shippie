@@ -25,7 +25,7 @@ export const CHAT_PRESETS: readonly ChatPreset[] = [
 export const CHAT_PRESET_LABEL: Record<ChatPreset, string> = {
   on_my_way: 'on my way',
   at_meeting_point: 'at meeting point',
-  see_bus: 'see the bus',
+  see_bus: 'see the convoy',
   lost_signal: 'lost signal',
   hold_tight: 'hold tight',
   im_okay: "I'm okay",

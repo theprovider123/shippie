@@ -5,12 +5,12 @@ import { useState } from 'react';
  * sharp/paper/mono design language; no new colour. Each pill is a button
  * with `aria-pressed` reflecting the current visibility.
  *
- * Round 8 split the layers into two rows: People (bus / friends / side-tings
+ * Round 8 split the layers into two rows: People (convoy / friends / side-tings
  * / reports / my-taps) and Places (toilets / water / atm). Volatile food/pub
  * availability is peer-reported instead of baked as static "open" data.
  */
 export type MapLayerId =
-  // People layers — fan signals, group positions, bus marker.
+  // People layers — fan signals, group positions, convoy marker.
   | 'bus'
   | 'friends'
   | 'crowd'
@@ -28,13 +28,13 @@ interface LayerToggleRowProps {
 }
 
 const LAYER_LABEL: Record<MapLayerId, string> = {
-  bus: 'Bus',
+  bus: 'Convoy',
   friends: 'Friends',
   crowd: 'Crowd',
   'side-tings': 'Side tings',
   reports: 'Reports',
   'my-taps': 'My taps',
-  toilets: 'Toilets',
+  toilets: 'WC',
   water: 'Water',
   atm: 'ATM',
 };

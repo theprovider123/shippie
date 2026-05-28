@@ -200,6 +200,7 @@ export function validateRoutePack(input: unknown): RoutePack | null {
   if (input.event.status !== 'route-tbd' && coords.length < 2) return null;
   if (!Array.isArray(input.sources) || input.sources.length === 0) return null;
   if (!Array.isArray(input.pois)) return null;
+  if (input.restrictedZones !== undefined && !Array.isArray(input.restrictedZones)) return null;
   if (!Array.isArray(input.closures)) return null;
   if (!isRecord(input.transport)) return null;
   if (!Array.isArray(input.meetingLandmarks)) return null;
@@ -212,6 +213,19 @@ export function validateRoutePack(input: unknown): RoutePack | null {
       return null;
     }
     if (!isInsideExtent({ lng: Number(poi.lng), lat: Number(poi.lat) }, mapExtent)) return null;
+  }
+
+  for (const zone of (input.restrictedZones ?? []) as unknown[]) {
+    if (!isRecord(zone)) return null;
+    if (!isNonEmptyString(zone.id) || !isNonEmptyString(zone.kind) || !isNonEmptyString(zone.label) || !isNonEmptyString(zone.note)) {
+      return null;
+    }
+    if (!['no-pedestrian', 'no-view', 'closed-road'].includes(String(zone.kind))) return null;
+    if (!Array.isArray(zone.coordinates) || zone.coordinates.length < 3) return null;
+    for (const coord of zone.coordinates) {
+      if (!Array.isArray(coord) || coord.length !== 2) return null;
+      if (!isInsideExtent({ lng: Number(coord[0]), lat: Number(coord[1]) }, mapExtent)) return null;
+    }
   }
 
   for (const landmark of input.meetingLandmarks) {

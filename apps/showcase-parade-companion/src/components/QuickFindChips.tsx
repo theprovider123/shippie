@@ -13,7 +13,7 @@ interface QuickFindChipsProps {
 }
 
 const CHIP_LABEL: Record<QuickFindCategory, string> = {
-  toilet: 'Toilet',
+  toilet: 'WC',
   water: 'Water',
   station: 'Station',
   atm: 'ATM',

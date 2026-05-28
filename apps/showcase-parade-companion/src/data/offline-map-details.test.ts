@@ -24,7 +24,7 @@ describe('offline map detail packs', () => {
       ...details.lines.map((line) => line.label),
       ...details.labels.map((label) => label.label),
     ]);
-    for (const expected of ['Drayton Park', 'Aubert Park', 'Highbury Grove', "St Paul's Road", 'Upper Street']) {
+    for (const expected of ['Holloway Road route', 'Seven Sisters Road route', 'Blackstock Road', 'Green Lanes', 'Essex Road route', 'Upper Street route']) {
       expect(labels.has(expected)).toBe(true);
     }
   });

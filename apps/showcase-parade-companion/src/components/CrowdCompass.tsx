@@ -31,7 +31,7 @@ export function CrowdCompass({ pack, gpsFix, fanEvents, groupMembers = [], onTar
         <small>{gpsFix ? 'group + fan signals' : 'needs Location'}</small>
       </div>
       {!gpsFix ? (
-        <p>Turn on Location. When signal flickers, this points you to friends, the bus and useful fan reports.</p>
+        <p>Turn on Location. When signal flickers, this points you to friends, the convoy and useful fan reports.</p>
       ) : !hasTargets ? (
         <p>Waiting for your group or crowd signals. Your three taps help the next fan when the relay wakes up.</p>
       ) : (
