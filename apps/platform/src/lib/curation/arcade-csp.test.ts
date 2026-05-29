@@ -1,5 +1,11 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
-import { buildArcadeCsp, buildArcadeCspMetaTag } from './arcade-csp';
+import {
+  buildArcadeCsp,
+  buildArcadeCspMetaTag,
+  CONTAINER_LOCAL_DB_BRIDGE_SCRIPT,
+  CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH,
+} from './arcade-csp';
 
 describe('buildArcadeCsp', () => {
   const csp = buildArcadeCsp();
@@ -8,8 +14,10 @@ describe('buildArcadeCsp', () => {
     expect(csp).toMatch(/default-src 'self';/);
   });
 
-  test('allows wasm-unsafe-eval for Stockfish + future game wasm', () => {
-    expect(csp).toMatch(/script-src 'self' 'wasm-unsafe-eval';/);
+  test('allows same-origin bundles, wasm, and the hashed local DB bridge', () => {
+    const scriptDirective = csp.split('; ').find((directive) => directive.startsWith('script-src '));
+    expect(scriptDirective).toBe(`script-src 'self' 'wasm-unsafe-eval' ${CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH}`);
+    expect(scriptDirective).not.toContain("'unsafe-inline'");
   });
 
   test('allows blob: workers (Stockfish creates one)', () => {
@@ -44,6 +52,11 @@ describe('buildArcadeCsp', () => {
 
   test('output is stable (idempotent)', () => {
     expect(buildArcadeCsp()).toBe(csp);
+  });
+
+  test('local DB bridge hash matches the injected inline script body', () => {
+    const hash = createHash('sha256').update(CONTAINER_LOCAL_DB_BRIDGE_SCRIPT).digest('base64');
+    expect(CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH).toBe(`'sha256-${hash}'`);
   });
 });
 

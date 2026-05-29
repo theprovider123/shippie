@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FIRST_PARTY_CURATION } from '$lib/_generated/first-party-curation';
 import { SHOWCASE_PRECACHE, SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
+import { CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH } from '$lib/curation/arcade-csp';
 import { FIRST_PARTY_SHOWCASE_SLUGS } from '$lib/showcase-slugs';
 import { curatedApps } from '$lib/container/state';
 
@@ -65,8 +66,24 @@ describe('showcase catalog drift check', () => {
       const bridgeIndex = html.indexOf('data-shippie-container-local-db');
       const moduleIndex = html.indexOf('<script type="module"');
       expect(bridgeIndex, `${slug} should install container local DB bridge`).toBeGreaterThan(-1);
+      expect(html, `${slug} should store the app id outside the hashed script body`).toContain('data-app-id=');
       expect(moduleIndex, `${slug} should load a module bundle`).toBeGreaterThan(-1);
       expect(bridgeIndex, `${slug} bridge should run before app module`).toBeLessThan(moduleIndex);
+    }
+  });
+
+  test('arcade CSP permits the hashed local-db bridge without unsafe-inline', () => {
+    if (!existsSync(STATIC_RUNTIME_DIR)) return;
+
+    for (const slug of ['snake', 'invaders']) {
+      const indexPath = join(STATIC_RUNTIME_DIR, slug, 'index.html');
+      if (!existsSync(indexPath)) continue;
+      const html = readFileSync(indexPath, 'utf8');
+      expect(html, `${slug} should include the local DB bridge hash in CSP`).toContain(
+        CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH,
+      );
+      const scriptDirective = html.match(/script-src[^;"']*(?:'[^']*'|[^;"]*)*/)?.[0] ?? '';
+      expect(scriptDirective, `${slug} should not broadly allow inline scripts`).not.toContain("'unsafe-inline'");
     }
   });
 
