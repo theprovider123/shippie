@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { App } from "./App";
+import { Sweepstakes } from "./components/Sweepstakes";
 import { StoreProvider } from "./state";
 import { GROUPS } from "./data/tournament";
 
@@ -117,5 +118,24 @@ describe("App smoke", () => {
     expect(container.textContent).toContain("Mate");
     expect(container.textContent).toContain("Argentina");
     window.location.hash = "";
+  });
+
+  it("runs a sweepstake draw across the entered people", () => {
+    localStorage.clear();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => {
+      root.render(
+        <StoreProvider>
+          <Sweepstakes initialMembers={["Sam", "Mo"]} onBack={() => {}} />
+        </StoreProvider>,
+      );
+    });
+    clickButton("Draw for 2");
+    expect(container.textContent).toContain("The draw");
+    expect(container.textContent).toContain("Sam");
+    // All 48 nations dealt across the two people.
+    expect(container.querySelectorAll(".sweeps-team")).toHaveLength(48);
   });
 });

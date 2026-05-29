@@ -11,14 +11,22 @@ import type { Pool, PoolEntry, Prediction, Profile, Results } from "./lib/types"
 import { prunePicks } from "./lib/bracket";
 import * as store from "./lib/storage";
 import type { SharePayload } from "./lib/codec";
+import { makeSeed, type Sweep } from "./lib/sweeps";
+import { emptyFeed, fetchFeed, feedHasResults, type Feed } from "./lib/feed";
 
 interface Store {
   profile: Profile | null;
   prediction: Prediction;
   pools: Pool[];
   results: Results;
+  sweeps: Sweep[];
+  /** Tournament feed: news ticker + live scores. */
+  feed: Feed;
+  /** Whether the last feed fetch reached the network. */
+  online: boolean;
 
   setProfile: (name: string, favTeam?: string) => void;
+  setWatchZone: (zone: string | undefined) => void;
   setGroupOrder: (letter: GroupLetter, ids: string[]) => void;
   pickWinner: (slotId: string, teamId: string) => void;
   setTopScorer: (teamId: string | undefined) => void;
@@ -27,11 +35,15 @@ interface Store {
   createPool: (name: string) => Pool;
   joinPool: (code: string, name?: string) => Pool;
   addEntryToPool: (code: string, payload: SharePayload) => void;
+  renamePool: (code: string, name: string) => void;
   removePool: (code: string) => void;
 
   setGroupResult: (letter: GroupLetter, ids: string[]) => void;
   setKnockoutResult: (slotId: string, teamId: string) => void;
   clearResults: () => void;
+
+  createSweep: (name: string, members: string[]) => Sweep;
+  removeSweep: (id: string) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -49,10 +61,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
   const [pools, setPools] = useState<Pool[]>(() => store.loadPools());
   const [results, setResults] = useState<Results>(() => store.loadResults());
+  const [sweeps, setSweeps] = useState<Sweep[]>(() => store.loadSweeps());
+  const [feed, setFeed] = useState<Feed>(() => emptyFeed());
+  const [online, setOnline] = useState(false);
 
   useEffect(() => store.savePrediction(prediction), [prediction]);
   useEffect(() => store.savePools(pools), [pools]);
   useEffect(() => store.saveResults(results), [results]);
+  useEffect(() => store.saveSweeps(sweeps), [sweeps]);
+
+  // Pull the tournament feed once on launch. Official results (when present)
+  // flow into `results`, lighting up live scoring + pool leaderboards.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchFeed().then(({ feed: f, online: on }) => {
+      if (cancelled) return;
+      setFeed(f);
+      setOnline(on);
+      if (feedHasResults(f)) setResults(f.results);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const value = useMemo<Store>(() => {
     return {
@@ -60,12 +91,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       prediction,
       pools,
       results,
+      sweeps,
+      feed,
+      online,
 
       setProfile(name, favTeam) {
         const next: Profile =
           profile != null
             ? { ...profile, name: name.trim(), favTeam }
             : { name: name.trim(), favTeam, uid: uid() };
+        setProfileState(next);
+        store.saveProfile(next);
+      },
+
+      setWatchZone(zone) {
+        if (!profile) return;
+        const next: Profile = { ...profile, watchZone: zone };
         setProfileState(next);
         store.saveProfile(next);
       },
@@ -142,6 +183,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
       },
 
+      renamePool(code, name) {
+        const clean = name.trim();
+        if (!clean) return;
+        setPools((ps) =>
+          ps.map((p) => (p.code === code ? { ...p, name: clean } : p)),
+        );
+      },
+
       removePool(code) {
         setPools((ps) => ps.filter((p) => p.code !== code));
       },
@@ -163,8 +212,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearResults() {
         setResults({ groups: {}, knockout: {} });
       },
+
+      createSweep(name, members) {
+        const sweep: Sweep = {
+          id: uid(),
+          name: name.trim() || "Sweepstake",
+          seed: makeSeed(),
+          members: members.map((m) => m.trim()).filter(Boolean),
+          createdAt: Date.now(),
+        };
+        setSweeps((ss) => [sweep, ...ss]);
+        return sweep;
+      },
+
+      removeSweep(id) {
+        setSweeps((ss) => ss.filter((s) => s.id !== id));
+      },
     };
-  }, [profile, prediction, pools, results]);
+  }, [profile, prediction, pools, results, sweeps, feed, online]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

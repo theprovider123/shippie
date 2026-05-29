@@ -1,0 +1,9 @@
+{
+  "updatedAt": "2026-05-29T00:00:00Z",
+  "news": [
+    { "at": "2026-05-29T00:00:00Z", "text": "Build your bracket now — kick-off is June 11." },
+    { "at": "2026-05-29T00:00:00Z", "text": "Start a pool and share your link to fill the table." }
+  ],
+  "live": [],
+  "results": { "groups": {}, "knockout": {} }
+}

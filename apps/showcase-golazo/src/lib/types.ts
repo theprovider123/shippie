@@ -20,6 +20,8 @@ export interface Profile {
   favTeam?: string;
   /** Stable random id so a person can recognise their own entry in a pool. */
   uid: string;
+  /** IANA timezone (or "auto") the viewer is watching from. */
+  watchZone?: string;
 }
 
 /** A shared bracket received from a friend (decoded from a link). */
