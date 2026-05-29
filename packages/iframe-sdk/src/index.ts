@@ -988,19 +988,27 @@ function waitForPaintableDom(timeoutMs: number): Promise<void> {
   if (typeof document === 'undefined') return Promise.resolve();
   if (domLooksPaintable()) return afterAnimationFrame();
   return new Promise((resolve) => {
+    let observer: MutationObserver | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = () => {
       observer?.disconnect();
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       void afterAnimationFrame().then(resolve);
     };
-    const observer =
-      typeof MutationObserver === 'undefined'
-        ? null
-        : new MutationObserver(() => {
-            if (domLooksPaintable()) finish();
-          });
-    observer?.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-    const timer = setTimeout(finish, timeoutMs);
+    const target = document.documentElement ?? document.body;
+    const Observer = target?.ownerDocument?.defaultView?.MutationObserver;
+    if (target && typeof Observer === 'function') {
+      try {
+        observer = new Observer(() => {
+          if (domLooksPaintable()) finish();
+        });
+        observer.observe(target, { childList: true, subtree: true, characterData: true });
+      } catch {
+        observer?.disconnect();
+        observer = null;
+      }
+    }
+    timer = setTimeout(finish, timeoutMs);
     if (domLooksPaintable()) finish();
   });
 }

@@ -60,39 +60,52 @@ export function startDispatch(opts: DispatcherOptions): ActiveDispatch {
   let scheduled = false;
   const pending = new Set<Node>();
 
-  const observer = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      m.addedNodes.forEach((added) => {
-        if (added.nodeType === 1) pending.add(added);
-      });
-      m.removedNodes.forEach((removed) => {
-        if (removed.nodeType === 1) {
-          teardownSubtree(removed as Element, teardowns);
-        }
-      });
-      if (m.type === 'attributes' && m.target.nodeType === 1) {
-        pending.add(m.target);
-      }
-    }
-    if (pending.size > 0 && !scheduled) {
-      scheduled = true;
-      requestAnimationFrame(() => {
-        scheduled = false;
-        for (const node of pending) {
-          if (node.isConnected) {
-            scanAndApply(node as Element, compiled, applied, teardowns, overBudget, budget);
-          }
-        }
-        pending.clear();
-      });
-    }
-  });
+  const Observer = root.ownerDocument?.defaultView?.MutationObserver;
+  if (typeof Observer !== 'function') return { stop: () => {} };
 
-  observer.observe(root, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-  });
+  let observer: MutationObserver;
+  try {
+    observer = new Observer((mutations) => {
+      for (const m of mutations) {
+        m.addedNodes.forEach((added) => {
+          if (added.nodeType === 1) pending.add(added);
+        });
+        m.removedNodes.forEach((removed) => {
+          if (removed.nodeType === 1) {
+            teardownSubtree(removed as Element, teardowns);
+          }
+        });
+        if (m.type === 'attributes' && m.target.nodeType === 1) {
+          pending.add(m.target);
+        }
+      }
+      if (pending.size > 0 && !scheduled) {
+        scheduled = true;
+        requestAnimationFrame(() => {
+          scheduled = false;
+          for (const node of pending) {
+            if (node.isConnected) {
+              scanAndApply(node as Element, compiled, applied, teardowns, overBudget, budget);
+            }
+          }
+          pending.clear();
+        });
+      }
+    });
+  } catch {
+    return { stop: () => {} };
+  }
+
+  try {
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+  } catch {
+    observer.disconnect();
+    return { stop: () => {} };
+  }
 
   return {
     stop: () => {
