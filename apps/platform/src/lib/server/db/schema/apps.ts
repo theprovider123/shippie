@@ -28,6 +28,13 @@ export const apps = sqliteTable(
     type: text('type').notNull(), // 'app' | 'web_app' | 'website'
     category: text('category').notNull(),
     iconUrl: text('icon_url'),
+    /**
+     * Durable data-family identifier, locked on first deploy and never changed
+     * here after (renames must not shift it — that would break data-passport
+     * compatibility across the rename). Null until first deploy backfills it.
+     * See deploy/data-family.ts.
+     */
+    dataFamily: text('data_family'),
     themeColor: text('theme_color').default('#000000').notNull(),
     backgroundColor: text('background_color').default('#ffffff').notNull(),
 
