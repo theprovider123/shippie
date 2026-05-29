@@ -30,6 +30,7 @@ import { canonicalAppUrl, canonicalShowcaseTarget, isFirstPartyShowcase } from '
 import { curatedApps } from '$lib/container/state';
 import { normalizeCategory, VALID_CATEGORIES } from '$lib/curation/schema';
 import { recordSlugRename, resolveSlugAlias } from '$server/slug-aliases';
+import { migrateRuntimeSlug } from '$server/deploy/runtime-slug-migration';
 import { publicRemixInfoForSlug } from '$server/remix/eligibility';
 import {
   connectionBadgesFromConnections,
@@ -464,7 +465,12 @@ export const actions: Actions = {
     const updatedAt = new Date().toISOString();
 
     if (slugChanged && platform.env.CACHE && platform.env.APPS) {
-      await migrateRuntimeSlug({
+      // Idempotent, resumable: copy → verify → delete, with progress persisted
+      // to KV. On failure the old slug stays fully functional (old keys aren't
+      // deleted until the new slug verifies) and re-submitting the rename
+      // resumes from the saved stage. Only proceed to the DB slug swap once the
+      // runtime move is confirmed complete.
+      const migration = await migrateRuntimeSlug({
         kv: platform.env.CACHE,
         r2: platform.env.APPS,
         db,
@@ -473,6 +479,12 @@ export const actions: Actions = {
         to: nextSlug,
         name,
       });
+      if (migration.stage !== 'complete') {
+        return fail(503, {
+          profileError:
+            'Slug rename could not finish migrating runtime storage. Your app is unchanged — try saving again to resume.',
+        });
+      }
     }
 
     await db
@@ -548,83 +560,3 @@ function cleanUrl(value: FormDataEntryValue | null): string | null {
   }
 }
 
-async function migrateRuntimeSlug(input: {
-  kv: KVNamespace;
-  r2: R2Bucket;
-  db: ReturnType<typeof getDrizzleClient>;
-  appId: string;
-  from: string;
-  to: string;
-  name: string;
-}): Promise<void> {
-  await copyR2Prefix(input.r2, `apps/${input.from}/`, `apps/${input.to}/`);
-  await copyKvRuntimeKeys(input.kv, input.from, input.to, input.name);
-
-  const domains = await input.db
-    .select({
-      domain: schema.customDomains.domain,
-      isCanonical: schema.customDomains.isCanonical,
-      verifiedAt: schema.customDomains.verifiedAt,
-    })
-    .from(schema.customDomains)
-    .where(eq(schema.customDomains.appId, input.appId));
-
-  for (const domain of domains) {
-    if (!domain.verifiedAt) continue;
-    await input.kv.put(
-      `custom-domains:${domain.domain.toLowerCase()}`,
-      JSON.stringify({
-        slug: input.to,
-        is_canonical: domain.isCanonical,
-        canonical_domain: domains.find((row) => row.isCanonical)?.domain ?? domain.domain,
-      }),
-    );
-  }
-}
-
-async function copyR2Prefix(r2: R2Bucket, fromPrefix: string, toPrefix: string): Promise<void> {
-  let cursor: string | undefined;
-  do {
-    const listed = await r2.list({ prefix: fromPrefix, cursor });
-    for (const item of listed.objects) {
-      const source = await r2.get(item.key);
-      if (!source) continue;
-      const destination = toPrefix + item.key.slice(fromPrefix.length);
-      await r2.put(destination, source.body, {
-        httpMetadata: source.httpMetadata,
-        customMetadata: source.customMetadata,
-      });
-    }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-}
-
-async function copyKvRuntimeKeys(
-  kv: KVNamespace,
-  fromSlug: string,
-  toSlug: string,
-  name: string,
-): Promise<void> {
-  const keys = ['active', 'csp', 'wrap', 'profile', 'kind-profile', 'shippie-json', 'building'];
-  for (const suffix of keys) {
-    const fromKey = `apps:${fromSlug}:${suffix}`;
-    const value = await kv.get(fromKey);
-    if (!value) continue;
-    await kv.put(`apps:${toSlug}:${suffix}`, value);
-    await kv.delete(fromKey);
-  }
-
-  const metaKey = `apps:${fromSlug}:meta`;
-  const meta = await kv.get(metaKey);
-  if (meta) {
-    try {
-      await kv.put(
-        `apps:${toSlug}:meta`,
-        JSON.stringify({ ...(JSON.parse(meta) as Record<string, unknown>), slug: toSlug, name }),
-      );
-    } catch {
-      await kv.put(`apps:${toSlug}:meta`, meta);
-    }
-    await kv.delete(metaKey);
-  }
-}
