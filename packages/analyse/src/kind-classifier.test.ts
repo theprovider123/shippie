@@ -96,6 +96,24 @@ describe('classifyKind — Connected', () => {
       'api.openweathermap.org',
     ]);
   });
+
+  test('test fixtures and reference URLs do not make a local app connected', () => {
+    const files = bundle({
+      'src/app.ts': `
+        const placeholder = 'https://example.com/recipes/lemon-roast-chicken';
+        const schemaContext = 'https://schema.org';
+      `,
+      'src/app.test.ts': `
+        const fixture = 'https://api.vendor.test/fixture';
+      `,
+      'src/__fixtures__/sample.ts': `
+        const fixture = 'https://real-fixture-service.invalid/data';
+      `,
+    });
+    const result = classifyKind(files);
+    expect(result.detectedKind).toBe('local');
+    expect(result.externalDomains).toEqual([]);
+  });
 });
 
 describe('classifyKind — Cloud', () => {

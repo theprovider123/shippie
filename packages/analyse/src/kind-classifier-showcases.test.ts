@@ -5,7 +5,7 @@
  * `docs/superpowers/plans/2026-04-26-app-kinds-rollout.md`.
  *
  * Expected labels (verified against HEAD on 2026-04-26):
- *   - showcase-recipe     → connected (Open Food Facts API)
+ *   - showcase-recipe     → local (Palate imports from user-provided URLs through the same-origin proxy)
  *   - showcase-journal    → local
  *   - showcase-whiteboard → connected (multi-peer via SignalRoom DO)
  *   - showcase-live-room  → connected (guest/host quiz via SignalRoom DO)
@@ -51,12 +51,12 @@ function loadSrcFiles(showcaseRoot: string): Map<string, Uint8Array> {
 }
 
 describe('kind-classifier showcase smoke', () => {
-  test('showcase-recipe classifies as Connected (Open Food Facts API)', () => {
+  test('showcase-recipe classifies as Local', () => {
     const files = loadSrcFiles(join(REPO_ROOT, 'apps', 'showcase-recipe'));
     expect(files.size).toBeGreaterThan(0);
     const result = classifyKind(files);
-    expect(result.detectedKind).toBe('connected');
-    expect(result.externalDomains).toContain('world.openfoodfacts.org');
+    expect(result.detectedKind).toBe('local');
+    expect(result.externalDomains).toEqual([]);
     expect(result.backendProviders).toEqual([]);
   });
 

@@ -115,6 +115,17 @@ const SHIPPIE_HOST_SUFFIXES = [
   'shippie.dev',
 ];
 
+const REFERENCE_HOSTS = new Set([
+  'example.com',
+  'www.example.com',
+  'example.net',
+  'www.example.net',
+  'example.org',
+  'www.example.org',
+  'schema.org',
+  'www.schema.org',
+]);
+
 function isShippieHost(host: string): boolean {
   for (const suffix of SHIPPIE_HOST_SUFFIXES) {
     if (host === suffix || host.endsWith('.' + suffix)) return true;
@@ -122,15 +133,18 @@ function isShippieHost(host: string): boolean {
   return false;
 }
 
+function isReferenceHost(host: string): boolean {
+  return REFERENCE_HOSTS.has(host);
+}
+
 function shouldScanFile(path: string): boolean {
-  return (
-    path.endsWith('.js') ||
-    path.endsWith('.mjs') ||
-    path.endsWith('.cjs') ||
-    path.endsWith('.ts') ||
-    path.endsWith('.tsx') ||
-    path.endsWith('.jsx')
-  );
+  const normalised = path.replace(/\\/g, '/');
+  const basename = normalised.split('/').pop() ?? normalised;
+  if (/(^|\/)(__tests__|__fixtures__|fixtures|test|tests)(\/|$)/.test(normalised)) return false;
+  if (/\.(?:test|spec|stories|fixture)\.[cm]?[jt]sx?$/.test(basename)) return false;
+  if (/^(?:vitest|jest|playwright|cypress)\.config\.[cm]?[jt]s$/.test(basename)) return false;
+
+  return /\.(?:mjs|cjs|js|ts|tsx|jsx)$/.test(basename);
 }
 
 export function classifyKind(files: ReadonlyMap<string, Uint8Array>): AppKindDetection {
@@ -202,6 +216,7 @@ export function classifyKind(files: ReadonlyMap<string, Uint8Array>): AppKindDet
     }
     if (!host) continue;
     if (isShippieHost(host)) continue;
+    if (isReferenceHost(host)) continue;
     externalDomains.add(host);
   }
 
