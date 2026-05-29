@@ -4,7 +4,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FIRST_PARTY_CURATION } from '$lib/_generated/first-party-curation';
 import { SHOWCASE_PRECACHE, SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
-import { CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH } from '$lib/curation/arcade-csp';
+import {
+  ARCADE_CSP_INJECTION_MARKER,
+  CONTAINER_LOCAL_DB_BRIDGE_SCRIPT,
+  CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH,
+} from '$lib/curation/arcade-csp';
 import { FIRST_PARTY_SHOWCASE_SLUGS } from '$lib/showcase-slugs';
 import { curatedApps } from '$lib/container/state';
 
@@ -72,18 +76,31 @@ describe('showcase catalog drift check', () => {
     }
   });
 
-  test('arcade CSP permits the hashed local-db bridge without unsafe-inline', () => {
+  test('arcade CSP permits only the hashed local-db bridge inline script', () => {
     if (!existsSync(STATIC_RUNTIME_DIR)) return;
 
-    for (const slug of ['snake', 'invaders']) {
+    for (const slug of SHOWCASE_SLUGS) {
       const indexPath = join(STATIC_RUNTIME_DIR, slug, 'index.html');
       if (!existsSync(indexPath)) continue;
       const html = readFileSync(indexPath, 'utf8');
+      if (!html.includes(ARCADE_CSP_INJECTION_MARKER)) continue;
+
       expect(html, `${slug} should include the local DB bridge hash in CSP`).toContain(
         CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH,
       );
       const scriptDirective = html.match(/script-src[^;"']*(?:'[^']*'|[^;"]*)*/)?.[0] ?? '';
       expect(scriptDirective, `${slug} should not broadly allow inline scripts`).not.toContain("'unsafe-inline'");
+
+      const inlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+        .filter((match) => !/\bsrc\s*=/.test(match[1]))
+        .map((match) => ({ attrs: match[1], body: match[2] }));
+      expect(inlineScripts, `${slug} should only inline the container local DB bridge`).toHaveLength(1);
+      expect(inlineScripts[0].attrs, `${slug} should mark the allowed inline bridge`).toContain(
+        'data-shippie-container-local-db',
+      );
+      expect(inlineScripts[0].body, `${slug} should keep the hashed bridge body stable`).toBe(
+        CONTAINER_LOCAL_DB_BRIDGE_SCRIPT,
+      );
     }
   });
 
