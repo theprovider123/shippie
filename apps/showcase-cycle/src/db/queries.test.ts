@@ -2,8 +2,10 @@ import { describe, expect, it } from 'bun:test';
 import { MemoryLocalDb } from './runtime.ts';
 import {
   addDays,
+  correctCycleStart,
   cycleDayFor,
   daysBetween,
+  deleteCycle,
   getActiveCycle,
   getDayByDate,
   isoDate,
@@ -91,6 +93,31 @@ describe('days', () => {
     expect(all).toHaveLength(1);
     expect(all[0]!.flow).toBe(1);
     expect(parseSymptoms(all[0]!.symptoms_json ?? null)).toEqual(['backache']);
+  });
+});
+
+describe('manual correction', () => {
+  it('correctCycleStart moves the start and recomputes lengths', async () => {
+    const db = new MemoryLocalDb();
+    const a = await startCycle(db, '2025-01-01');
+    await startCycle(db, '2025-02-01'); // 31d after a
+    // Correct a's start later → the gap to the next cycle shrinks.
+    await correctCycleStart(db, a.id, '2025-01-10');
+    const cycles = await listCycles(db);
+    const corrected = cycles.find((c) => c.id === a.id)!;
+    expect(corrected.started_on).toBe('2025-01-10');
+    expect(corrected.length_days).toBe(22); // 2025-01-10 → 2025-02-01
+  });
+
+  it('deleteCycle removes the cycle and its days', async () => {
+    const db = new MemoryLocalDb();
+    const a = await startCycle(db, '2025-01-01');
+    await logDay(db, { cycle_id: a.id, date: '2025-01-02', flow: 2 });
+    const b = await startCycle(db, '2025-02-01');
+    await deleteCycle(db, a.id);
+    expect(await listCycles(db)).toHaveLength(1);
+    expect((await listCycles(db))[0]!.id).toBe(b.id);
+    expect(await listDays(db, a.id)).toHaveLength(0);
   });
 });
 

@@ -273,7 +273,7 @@ function CycleApp({ db }: { db: ShippieLocalDb }) {
             moodCorrelationHint={moodHint}
           />
         ) : null}
-        {route === 'history' ? <History db={db} refreshKey={refreshKey} /> : null}
+        {route === 'history' ? <History db={db} refreshKey={refreshKey} onChange={bumpRefresh} /> : null}
         {route === 'predict' ? <Predict db={db} refreshKey={refreshKey} /> : null}
         {route === 'settings' ? <Settings db={db} onChange={bumpRefresh} /> : null}
         {route === 'print' ? <PrintView db={db} refreshKey={refreshKey} /> : null}

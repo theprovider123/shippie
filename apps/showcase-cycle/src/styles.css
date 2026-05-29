@@ -465,3 +465,12 @@ button.secondary,
 .lock-input { text-align: center; letter-spacing: 0.4em; font-size: 1.3rem; }
 .lock-input.error { border-color: var(--cycle-accent); }
 .lock-error { color: var(--cycle-accent); font-size: 0.85rem; margin: 0; }
+
+/* ===== History manual correction ===== */
+.cycle-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+.cycle-row-head strong { font-size: 1rem; }
+.cycle-row-head small { color: var(--text-light); }
+.cycle-row-actions { display: flex; gap: 0.8rem; margin-left: auto; }
+.link-btn { appearance: none; background: none; border: 0; padding: 0; min-height: 0; margin: 0; cursor: pointer; color: var(--cycle-calm); font: inherit; font-size: 0.82rem; text-decoration: underline; text-underline-offset: 2px; }
+.link-btn:hover { color: var(--text); }
+.link-btn.danger { color: var(--cycle-accent); }

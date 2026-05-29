@@ -126,6 +126,22 @@ export async function updateCycle(
   await db.update<RowOf<Cycle>>(CYCLES_TABLE, id, asRow(patch));
 }
 
+/** Manual correction: delete a cycle and all its logged days, then recompute. */
+export async function deleteCycle(db: ShippieLocalDb, cycleId: string): Promise<void> {
+  await ensureSchema(db);
+  const days = await listDays(db, cycleId);
+  for (const d of days) await db.delete(DAYS_TABLE, d.id);
+  await db.delete(CYCLES_TABLE, cycleId);
+  await recomputeLengths(db);
+}
+
+/** Manual correction: move a cycle's start date, then recompute lengths. */
+export async function correctCycleStart(db: ShippieLocalDb, cycleId: string, startedOn: string): Promise<void> {
+  await ensureSchema(db);
+  await db.update<RowOf<Cycle>>(CYCLES_TABLE, cycleId, asRow({ started_on: startedOn }));
+  await recomputeLengths(db);
+}
+
 /** Backfill length_days for every cycle except the most recent (still open). */
 export async function recomputeLengths(db: ShippieLocalDb): Promise<void> {
   const cycles = await listCycles(db); // newest first
