@@ -1,11 +1,11 @@
 {
   "name": "Cycle",
   "short_name": "Cycle",
-  "description": "Local menstrual and fertility tracking with optional partner mesh.",
+  "description": "A private, local-only logbook for your cycle and body — honest predictions, no account, no servers.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#14120F",
-  "theme_color": "#3D3530",
+  "background_color": "#15120f",
+  "theme_color": "#15120f",
   "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }
