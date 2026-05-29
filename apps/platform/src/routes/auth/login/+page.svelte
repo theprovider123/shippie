@@ -175,7 +175,7 @@
     height: 48px;
     padding: 0 1.25rem;
     background: transparent;
-    border: 1px solid #C9C2B1;
+    border: 1px solid var(--border-paper-mid);
     color: inherit;
     font-size: var(--type-body-mobile, 16px);
     outline: none;
@@ -183,13 +183,13 @@
     box-sizing: border-box;
   }
   input[type='email']:focus {
-    border-color: #E8603C;
+    border-color: var(--sunset);
   }
   .btn-primary {
     width: 100%;
     min-height: var(--touch-min, 48px);
-    background: #E8603C;
-    color: #14120F;
+    background: var(--sunset);
+    color: var(--bg);
     border: none;
     font-weight: 700;
     font-size: 15px;
@@ -204,7 +204,7 @@
     min-height: var(--touch-min, 48px);
     background: transparent;
     color: inherit;
-    border: 1px solid #C9C2B1;
+    border: 1px solid var(--border-paper-mid);
     font-weight: 600;
     font-size: 15px;
     cursor: pointer;
@@ -224,18 +224,18 @@
   .divider::after {
     content: '';
     flex: 1;
-    border-top: 1px solid #E5DDC8;
+    border-top: 1px solid var(--paper-cream);
   }
   .divider span {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12px;
-    color: #8B847A;
+    color: var(--text-muted-warm);
   }
   .hint {
     text-align: center;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 11px;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     margin: 0;
   }
   .continue-link {
@@ -256,9 +256,9 @@
     line-height: 1.4;
     border: 1px solid;
   }
-  .error { border-color: #B43F2A; color: #B43F2A; background: rgba(180,63,42,0.05); }
-  .ok { border-color: #2E7D5B; color: #2E7D5B; background: rgba(46,125,91,0.05); }
-  .dim { color: #8B847A; font-size: 12px; }
+  .error { border-color: var(--danger); color: var(--danger); background: rgba(180,63,42,0.05); }
+  .ok { border-color: var(--success); color: var(--success); background: rgba(46,125,91,0.05); }
+  .dim { color: var(--text-muted-warm); font-size: 12px; }
   @media (min-width: 641px) {
     .shell {
       grid-template-columns: minmax(0, 1fr) minmax(19rem, 27rem);
@@ -293,10 +293,10 @@
   }
   @media (prefers-color-scheme: dark) {
     .page { background: var(--bg, #14120F); color: var(--text, #EDE4D3); }
-    .lede { color: #A39A8B; }
-    input[type='email'] { border-color: #3A352D; }
-    .btn-oauth { border-color: #3A352D; color: #EDE4D3; }
+    .lede { color: var(--text-muted-cool); }
+    input[type='email'] { border-color: var(--ink-warm-mid); }
+    .btn-oauth { border-color: var(--ink-warm-mid); color: var(--text); }
     .btn-oauth:hover { background: rgba(255,255,255,0.04); }
-    .divider::before, .divider::after { border-color: #2A251E; }
+    .divider::before, .divider::after { border-color: var(--ink-warm); }
   }
 </style>

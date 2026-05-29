@@ -1,0 +1,40 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Sleep",
+  "slug": "sleep",
+  "description": "Private sleep log and seven-night trend that feeds Chiwit.",
+  "icon": "/icon.svg",
+  "theme_color": "#6F73D2",
+  "background_color": "#16120F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "sleep-logged"
+    ],
+    "consumes": []
+  },
+  "data_schemas": {
+    "sleep_entries": {
+      "id": "text primary key",
+      "slept_on": "text not null",
+      "bed_time": "text not null",
+      "wake_time": "text not null",
+      "duration_minutes": "integer not null",
+      "quality": "integer",
+      "note": "text",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "health-fitness"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-sleep",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "sleep",
+    "schema": "sleep.v1"
+  }
+}

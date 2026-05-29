@@ -70,6 +70,7 @@ h1 {
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 
 .streak { color: #C97135; font-weight: 700; }

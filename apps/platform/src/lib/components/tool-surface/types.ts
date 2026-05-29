@@ -39,6 +39,18 @@ export type ToolRuntimeState = 'idle' | 'current' | 'live' | 'opening';
  */
 export type ToolDensity = 'dock' | 'drawer' | 'card';
 
+/**
+ * Precomputed display fields. The adapters do the work once per app so
+ * 60+ tiles don't each re-run titleCap / displayCategory /
+ * normaliseBlurb / connectionBadgesFromKind on every reactive tick.
+ */
+export interface ToolTileDisplay {
+  safeName: string;
+  categoryLabel: string;
+  blurb: string;
+  connectionBadges: readonly import('$lib/marketplace/connection-badges').ConnectionDisclosureBadge[];
+}
+
 export interface ToolTileApp {
   slug: string;
   name: string;
@@ -52,4 +64,10 @@ export interface ToolTileApp {
   kind?: AppKind | null;
   firstPartySigned?: boolean;
   badges?: PublicCapabilityBadge[];
+  /**
+   * Precomputed display strings. Optional — when omitted, ToolTile
+   * falls back to computing them inline. Adapters fill this in so tiles
+   * read from cache instead of recomputing per render.
+   */
+  display?: ToolTileDisplay;
 }

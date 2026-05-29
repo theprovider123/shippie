@@ -403,8 +403,8 @@
     display: grid;
     gap: 1rem;
     padding: 1.25rem;
-    border: 1px solid #E5DDC8;
-    border-left: 3px solid #E8603C;
+    border: 1px solid var(--paper-cream);
+    border-left: 3px solid var(--sunset);
   }
   .composer-copy {
     display: grid;
@@ -412,11 +412,11 @@
   }
   .lede {
     max-width: 68ch;
-    color: #5C5751;
+    color: var(--ink-soft-warm);
     margin: 0;
   }
   .status {
-    color: #8B847A;
+    color: var(--text-muted-warm);
     margin: 0;
   }
   .presets {
@@ -432,12 +432,12 @@
     gap: 0.25rem;
     text-align: left;
     padding: 0.75rem;
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     background: transparent;
     color: inherit;
   }
   .presets button.active {
-    border-color: #E8603C;
+    border-color: var(--sunset);
     background: rgba(232, 96, 60, 0.08);
   }
   .presets strong {
@@ -446,7 +446,7 @@
   .presets span {
     font-size: 12px;
     line-height: 1.35;
-    color: #8B847A;
+    color: var(--text-muted-warm);
   }
   .fields {
     display: flex;
@@ -464,7 +464,7 @@
   }
   label span {
     font-size: 11px;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -475,7 +475,7 @@
     width: 132px;
     box-sizing: border-box;
     padding: 0 0.75rem;
-    border: 1px solid #C9C2B1;
+    border: 1px solid var(--border-paper-mid);
     background: transparent;
     color: inherit;
     font-family: ui-monospace, monospace;
@@ -489,7 +489,7 @@
   }
   summary {
     cursor: pointer;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
     font-size: 12px;
   }
@@ -515,7 +515,7 @@
     cursor: wait;
   }
   .primary {
-    background: #14120F;
+    background: var(--bg);
     color: white;
     border: none;
     padding: 0 1.25rem;
@@ -538,7 +538,7 @@
   .url {
     font-family: ui-monospace, monospace;
     font-size: 13px;
-    color: #E8603C;
+    color: var(--sunset);
     margin: 0;
     word-break: break-all;
   }
@@ -547,7 +547,7 @@
   .meta {
     font-family: ui-monospace, monospace;
     font-size: 12px;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     margin: 0;
     word-break: break-all;
   }
@@ -557,7 +557,7 @@
     line-height: 1.45;
   }
   .host-url a {
-    color: #5C5751;
+    color: var(--ink-soft-warm);
   }
   .actions {
     display: flex;
@@ -587,7 +587,7 @@
     width: 224px;
     height: 224px;
     flex-shrink: 0;
-    background: #FAF7EF;
+    background: var(--paper-warm);
     padding: 8px;
   }
   .qr :global(svg) {
@@ -596,7 +596,7 @@
     display: block;
   }
   .error {
-    color: #B43F2A;
+    color: var(--danger);
     font-size: 13px;
     margin: 0;
   }
@@ -610,20 +610,20 @@
   }
   @media (prefers-color-scheme: dark) {
     .composer {
-      border-color: #2A251E;
+      border-color: var(--ink-warm);
     }
     .lede {
-      color: #CFC3AF;
+      color: var(--paper-cream-soft);
     }
     .presets button {
-      border-color: #2A251E;
+      border-color: var(--ink-warm);
     }
     input,
     select {
-      border-color: #3A352D;
+      border-color: var(--ink-warm-mid);
     }
     .primary {
-      background: #E8603C;
+      background: var(--sunset);
     }
   }
 </style>

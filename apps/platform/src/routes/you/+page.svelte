@@ -387,7 +387,7 @@
     margin-top: var(--space-lg);
     padding: var(--space-md) var(--space-lg);
     background: rgba(46, 125, 91, 0.05);
-    border-left: 3px solid #2E7D5B;
+    border-left: 3px solid var(--success);
   }
   .trust-band-title {
     margin: 0 0 0.5rem;
@@ -405,7 +405,7 @@
   .trust-band-list li { display: grid; grid-template-columns: 1.2rem 1fr; gap: 0.4rem; align-items: baseline; }
   .trust-band-list li span { font-family: ui-monospace, monospace; }
   .trust-band-more { margin-top: 0.6rem; }
-  .trust-band-more summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #2E7D5B; min-height: var(--touch-min, 44px); display: flex; align-items: center; }
+  .trust-band-more summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--success); min-height: var(--touch-min, 44px); display: flex; align-items: center; }
   .trust-band-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -417,7 +417,7 @@
   }
   .trust-band-grid article { padding: 0.6rem; background: rgba(255, 255, 255, 0.5); }
   .trust-band-grid strong { display: block; margin-bottom: 0.3rem; font-size: 0.92rem; }
-  .trust-band-grid ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; font-size: 0.9rem; color: #3F3A33; }
+  .trust-band-grid ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; font-size: 0.9rem; color: var(--ink-warm-line); }
 
   .summary {
     display: grid;

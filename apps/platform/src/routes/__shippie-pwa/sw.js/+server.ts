@@ -469,6 +469,9 @@ self.addEventListener('install', (e) => {
 async function cacheAddAll(cache, urls, onProgress) {
   // 3-at-a-time avoids hammering CF rate limits on bulk downloads.
   // Each fetch is best-effort; on failure the URL ends up in failed[].
+  // We hand the response directly to cache.put without clone() because
+  // the response body is not reused after — the previous clone roughly
+  // doubled in-flight memory on big bundles.
   let done = 0;
   const total = urls.length;
   const failed = [];
@@ -482,7 +485,7 @@ async function cacheAddAll(cache, urls, onProgress) {
           ? expectedRuntimeResponse(req, res)
           : expectedAssetResponse(req, res);
         if (shouldStore) {
-          await cache.put(url, res.clone()).catch(() => {});
+          await cache.put(url, res).catch(() => {});
         } else {
           failed.push(url);
         }
@@ -701,30 +704,35 @@ async function handleGetStatus(slug, port) {
 async function handleListSavedApps(port) {
   try {
     const pointers = await ShippieOfflineCapsule.listPointers().catch(() => []);
-    const apps = [];
-    for (const pointer of pointers) {
-      if (!pointer || pointer.state !== 'sealed') continue;
-      const manifest = await cachedCapsuleManifest(pointer);
-      if (!manifest) {
-        await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
-        continue;
-      }
-      const cache = await caches.open(pointer.cacheName).catch(() => null);
-      const entry = cache ? await cache.match(pointer.entryUrl) : null;
-      if (!entry) {
-        await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
-        continue;
-      }
-      apps.push({
-        slug: pointer.slug,
-        state: 'saved',
-        phase: 'sealed',
-        totalBytes: pointer.totalBytes || manifest.totalBytes || 0,
-        manifestHash: pointer.manifestHash,
-        sealedAt: pointer.sealedAt,
-      });
-    }
-    port.postMessage({ type: 'saved-apps', slugs: apps.map((app) => app.slug).sort(), apps: apps.sort((a, b) => a.slug.localeCompare(b.slug)) });
+    const sealed = pointers.filter((pointer) => pointer && pointer.state === 'sealed');
+    // Pointer integrity checks are independent; run them concurrently so
+    // a saved-tools list of 15+ apps doesn't take seconds to assemble on
+    // /you and SavedDock mount.
+    const results = await Promise.all(
+      sealed.map(async (pointer) => {
+        const manifest = await cachedCapsuleManifest(pointer);
+        if (!manifest) {
+          await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
+          return null;
+        }
+        const cache = await caches.open(pointer.cacheName).catch(() => null);
+        const entry = cache ? await cache.match(pointer.entryUrl) : null;
+        if (!entry) {
+          await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
+          return null;
+        }
+        return {
+          slug: pointer.slug,
+          state: 'saved',
+          phase: 'sealed',
+          totalBytes: pointer.totalBytes || manifest.totalBytes || 0,
+          manifestHash: pointer.manifestHash,
+          sealedAt: pointer.sealedAt,
+        };
+      }),
+    );
+    const apps = results.filter(Boolean).sort((a, b) => a.slug.localeCompare(b.slug));
+    port.postMessage({ type: 'saved-apps', slugs: apps.map((app) => app.slug), apps });
   } catch (err) {
     port.postMessage({ type: 'saved-apps', slugs: [], error: String(err && err.message || err) });
   }

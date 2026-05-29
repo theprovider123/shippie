@@ -534,6 +534,9 @@ p { margin: 0; }
   padding: 4px 10px;
   font-size: 0.78rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .live-strip i {
@@ -798,6 +801,9 @@ p { margin: 0; }
   text-decoration: none;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .mode-broadcast {
@@ -979,6 +985,9 @@ p { margin: 0; }
   padding: 6px 11px;
   font-size: 0.78rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* ========== Surprise shelf ========== */
@@ -1331,6 +1340,9 @@ p { margin: 0; }
   background: var(--paper-warm);
   color: var(--ink);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .memory-actions button:first-child {
@@ -1701,6 +1713,9 @@ p { margin: 0; }
   padding: 8px 12px;
   white-space: nowrap;
   font-family: var(--font-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .group-chip-row button.active {
@@ -1775,6 +1790,9 @@ p { margin: 0; }
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* Color swatches (per-theme curated) */
@@ -2865,6 +2883,9 @@ p { margin: 0; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .branding-preview {
@@ -4876,6 +4897,9 @@ p { margin: 0; }
 .planned-games-list em {
   font-style: normal;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .scoring-grid {
@@ -4948,6 +4972,12 @@ p { margin: 0; }
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--accent) 12%, var(--paper));
   white-space: nowrap;
+  /* Match names + locked event labels can be long ("Argentina vs.
+     Saudi Arabia"). Truncate with ellipsis rather than push the pill
+     past the viewport edge. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .match-pill {

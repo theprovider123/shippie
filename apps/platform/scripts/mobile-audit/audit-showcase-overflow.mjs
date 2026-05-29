@@ -118,6 +118,10 @@ function findNowrapNoEllipsis(text, filePath) {
     const hasEllipsis = /\btext-overflow\s*:\s*ellipsis\b/.test(block.body);
     const hidesOverflow = /\boverflow(?:-x)?\s*:\s*hidden\b/.test(block.body);
     if (hasEllipsis && hidesOverflow) continue;
+    // Explicit allowlist for badges/pills/sr-only elements whose
+    // contents are by design always short. Mark the rule with
+    // `/* mobile-audit-allow: nowrap-intentional */` to skip.
+    if (/mobile-audit-allow:\s*nowrap-intentional/i.test(block.body)) continue;
     findings.push({
       kind: 'nowrap-no-ellipsis',
       filePath,
@@ -154,6 +158,15 @@ function findFixedWidthOverflow(text, filePath) {
 function findTableNoScroll(text, filePath) {
   if (!/<table[\s>]/i.test(text)) return [];
   if (/\boverflow-x\s*:\s*(auto|scroll)\b/.test(text)) return [];
+  // Print-only views are media print and not phone-rendered; their tables
+  // are intentional fixed-format layouts. Skipping them here matches the
+  // report disclaimer ("print-only tables ... may be acceptable") and
+  // stops cluttering the punch list with non-bugs.
+  if (/PrintView\.(?:tsx|jsx|ts|js)$/i.test(filePath)) return [];
+  // A wrapper className containing "scroll" (e.g. `temp-table-scroll`)
+  // signals an external CSS class that handles overflow-x. We trust the
+  // wrapper rather than re-scanning every showcase's styles.css.
+  if (/className=["'`][^"'`]*-scroll\b[^"'`]*["'`][^>]*>\s*<table/i.test(text)) return [];
   return [
     {
       kind: 'table-without-overflow-x',

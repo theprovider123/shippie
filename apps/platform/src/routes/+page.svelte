@@ -22,6 +22,11 @@
 
   let { data }: PageProps = $props();
   let selectedSlug = $state<string | null>(null);
+  // A reactive heartbeat: bumps every minute so recency labels age in
+  // place instead of being stuck at "1m" for the whole session.
+  // We only tick when the document is visible — no point burning a
+  // wakeup on a backgrounded tab.
+  let recencyTick = $state(0);
 
   type LauncherApp = (typeof data.apps)[number];
 
@@ -39,10 +44,12 @@
       .map((recent) => appBySlug.get(recent.slug))
       .filter((app): app is LauncherApp => Boolean(app)),
   );
-  const continueApps = $derived.by(() => {
-    const source = recentApps.length > 0 ? recentApps : data.apps;
-    return source.slice(0, 4);
-  });
+  const starterApps = $derived.by(() =>
+    data.featured.length > 0 ? data.featured : data.apps.slice(0, 4),
+  );
+  const continueApps = $derived.by(() =>
+    recentApps.length > 0 ? recentApps.slice(0, 4) : starterApps,
+  );
   const continueDisplayApps = $derived(continueApps);
   const fallbackApps = $derived.by(() =>
     filtered && data.apps.length === 0 && data.query
@@ -58,6 +65,31 @@
   const browseApps = $derived.by(() =>
     data.apps.filter((app) => !continueSet.has(app.slug)),
   );
+  // Pre-build a slug→recency-label map so each tile reads in O(1) instead
+  // of doing Array.find against the recents list. With 60+ tiles and ~12
+  // recents the savings compound on every store tick.
+  const recentLabelBySlug = $derived.by(() => {
+    // Read recencyTick so this derived re-runs on the heartbeat above.
+    void recencyTick;
+    const out = new Map<string, string>();
+    const now = Date.now();
+    for (const item of $launcherMemory.recents) {
+      const opened = new Date(item.lastOpened).getTime();
+      if (Number.isNaN(opened)) {
+        out.set(item.slug, 'Recent');
+        continue;
+      }
+      const diff = now - opened;
+      const minutes = Math.max(1, Math.round(diff / 60000));
+      if (minutes < 60) out.set(item.slug, `${minutes}m`);
+      else {
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) out.set(item.slug, `${hours}h`);
+        else out.set(item.slug, `${Math.round(hours / 24)}d`);
+      }
+    }
+    return out;
+  });
   const isFirstVisit = $derived.by(() => {
     const totalLaunches = Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, n) => sum + n, 0);
     return totalLaunches === 0;
@@ -79,6 +111,34 @@
         }
       }
     });
+    // Pulse the recency-tick once a minute while the tab is visible.
+    // The derived label map reads it, so tiles re-display "2m" -> "3m"
+    // without keeping a per-tile timer.
+    let timer: ReturnType<typeof setInterval> | null = null;
+    function start() {
+      if (timer) return;
+      timer = setInterval(() => {
+        recencyTick += 1;
+      }, 60_000);
+    }
+    function stop() {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+    }
+    function onVisibility() {
+      if (document.hidden) stop();
+      else {
+        recencyTick += 1;
+        start();
+      }
+    }
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   });
 
   function inspectApp(app: LauncherApp) {
@@ -90,21 +150,21 @@
   }
 
   function onKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') closeInspector();
+    if (event.key !== 'Escape') return;
+    // Escape on the page closes the inspector, but only when no editable
+    // element owns the keystroke. Otherwise Escape clobbers typing
+    // flows (search bar, comment fields) with no visible reason.
+    if (selectedSlug === null) return;
+    const target = event.target;
+    if (target instanceof HTMLElement) {
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+    }
+    closeInspector();
   }
 
   function recentLabel(slug: string): string {
-    const recent = $launcherMemory.recents.find((item) => item.slug === slug);
-    if (!recent) return '';
-    const opened = new Date(recent.lastOpened);
-    if (Number.isNaN(opened.getTime())) return 'Recent';
-    const diff = Date.now() - opened.getTime();
-    const minutes = Math.max(1, Math.round(diff / 60000));
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.round(minutes / 60);
-    if (hours < 24) return `${hours}h`;
-    const days = Math.round(hours / 24);
-    return `${days}d`;
+    return recentLabelBySlug.get(slug) ?? '';
   }
 
   function pageHref(

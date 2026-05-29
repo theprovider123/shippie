@@ -195,6 +195,7 @@ button.small { height: 32px; padding: 0 10px; font-size: 12px; }
   padding: 2px 8px;
   border: 1px solid var(--pf-line-strong);
   white-space: nowrap;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 .status-drafting { color: var(--pf-muted); }
 .status-review { color: var(--pf-accent); border-color: var(--pf-accent); }

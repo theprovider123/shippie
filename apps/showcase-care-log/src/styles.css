@@ -262,6 +262,7 @@ textarea { resize: vertical; min-height: 5rem; font-family: inherit; }
   border: 1px solid currentColor;
   color: var(--cl-pill-a);
   white-space: nowrap;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 
 .cl-pill[data-role='b'] { color: var(--cl-pill-b); }

@@ -195,10 +195,10 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-  .status-success { background: rgba(122, 154, 110, 0.18); color: #A8C491; }
-  .status-failed { background: rgba(232, 96, 60, 0.18); color: #F47552; }
-  .status-building { background: rgba(232, 197, 71, 0.18); color: #E8C547; }
-  .status-archived { background: rgba(180, 63, 42, 0.25); color: #F47552; }
+  .status-success { background: rgba(122, 154, 110, 0.18); color: var(--sage-highlight); }
+  .status-failed { background: rgba(232, 96, 60, 0.18); color: var(--sunset-hover); }
+  .status-building { background: rgba(232, 197, 71, 0.18); color: var(--marigold); }
+  .status-archived { background: rgba(180, 63, 42, 0.25); color: var(--sunset-hover); }
   .mod-reason, .mod-susp {
     background: var(--surface, #1E1A15);
     color: var(--text, #EDE4D3);

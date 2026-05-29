@@ -70,7 +70,7 @@
     font-size: 1.0625rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    color: #14120F;
+    color: var(--bg);
   }
   .brand small {
     display: block;
@@ -78,27 +78,27 @@
     font-size: 10px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #E8603C;
+    color: var(--sunset);
     margin-top: 1px;
   }
   @media (prefers-color-scheme: dark) {
-    .brand strong { color: #EDE4D3; }
+    .brand strong { color: var(--text); }
   }
-  .user { font-size: 12px; color: #8B847A; margin: 0; }
+  .user { font-size: 12px; color: var(--text-muted-warm); margin: 0; }
   .nav { display: flex; flex-direction: column; gap: 0.25rem; }
   .nav a {
     text-decoration: none;
-    color: #14120F;
+    color: var(--bg);
     padding: 0.5rem 0.75rem;
     border-radius: 0;
     font-size: 14px;
   }
   .nav a:hover { background: rgba(0,0,0,0.04); }
-  .nav a.active { background: #E8603C; color: white; }
+  .nav a.active { background: var(--sunset); color: white; }
   .ship-btn {
     display: inline-block;
     text-align: center;
-    background: #14120F;
+    background: var(--bg);
     color: white;
     text-decoration: none;
     height: 40px;
@@ -113,7 +113,7 @@
     text-transform: uppercase;
     letter-spacing: 0.16em;
     font-size: 11px;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     margin: 0;
   }
   .row {
@@ -123,17 +123,17 @@
     padding: 0.4rem 0.75rem;
     border-radius: 0;
     text-decoration: none;
-    color: #14120F;
+    color: var(--bg);
     font-size: 13px;
   }
   .row:hover { background: rgba(0,0,0,0.04); }
   .dot { width: 10px; height: 10px; border-radius: 0; flex-shrink: 0; }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (prefers-color-scheme: dark) {
-    .sidebar { border-color: #2A251E; }
-    .nav a { color: #EDE4D3; }
+    .sidebar { border-color: var(--ink-warm); }
+    .nav a { color: var(--text); }
     .nav a:hover { background: rgba(255,255,255,0.04); }
-    .row { color: #EDE4D3; }
+    .row { color: var(--text); }
     .row:hover { background: rgba(255,255,255,0.04); }
   }
 </style>

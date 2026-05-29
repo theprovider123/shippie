@@ -220,6 +220,7 @@ textarea:focus-visible {
   white-space: nowrap;
   border-top: 1px solid var(--line);
   border-bottom: 1.5px solid var(--red);
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 .wordmark-band .mark {
   font-family: var(--mono);
@@ -959,6 +960,9 @@ textarea { resize: vertical; min-height: 64px; }
   white-space: nowrap;
   transform-origin: center;
   box-shadow: 0 0 0 1px rgba(245, 239, 228, .55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .map-detail-label--station {
   border-color: var(--ink);
@@ -1309,6 +1313,7 @@ textarea { resize: vertical; min-height: 64px; }
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 
 /* ----- Toggle ----- */
@@ -1641,6 +1646,9 @@ textarea { resize: vertical; min-height: 64px; }
   font-weight: 500;
   letter-spacing: .06em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .report-grid {
   display: grid;
@@ -2933,6 +2941,9 @@ textarea { resize: vertical; min-height: 64px; }
 .supporter-tag strong {
   color: var(--ink);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .side-ting-sheet__copy {
   margin: 0 0 12px;
@@ -3412,4 +3423,89 @@ textarea { resize: vertical; min-height: 64px; }
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
+}
+
+/* ============================================================
+   showcase-kit-v2 skin — Parade palette
+   Required when this app imports QrShareSheet from
+   @shippie/showcase-kit-v2. Without it, the sheet renders
+   unstyled at runtime (per packages/showcase-kit-v2 contract).
+   ============================================================ */
+.shippie-qr-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: end center;
+  padding: 0.75rem;
+  background: rgba(20, 18, 15, 0.42);
+  backdrop-filter: blur(8px);
+}
+@media (min-width: 480px) {
+  .shippie-qr-sheet { place-items: center; }
+}
+.shippie-qr-sheet__surface {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 1.4rem 1.3rem 1.2rem;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 24px 60px rgba(20, 18, 15, 0.18);
+  display: grid;
+  gap: 0.8rem;
+  font-family: var(--sans, 'General Sans', system-ui, sans-serif);
+}
+.shippie-qr-sheet__title {
+  margin: 0;
+  font-family: var(--display, 'Fraunces', Georgia, serif);
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: var(--ink);
+}
+.shippie-qr-sheet__body {
+  margin: 0;
+  color: var(--ink-dim);
+}
+.shippie-qr-sheet__qr {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: white;
+  border: 1px solid var(--line);
+}
+.shippie-qr-sheet__qr svg {
+  width: 100%;
+  height: auto;
+  max-width: 280px;
+}
+.shippie-qr-sheet__url {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  background: var(--paper-2);
+  font-family: var(--mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  word-break: break-all;
+  line-height: 1.35;
+}
+.shippie-qr-sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+.shippie-qr-sheet__actions button {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.shippie-qr-sheet__actions button:hover {
+  background: var(--paper-2);
 }

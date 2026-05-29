@@ -74,15 +74,15 @@
     gap: 0.75rem;
     align-items: flex-start;
     padding: 0.875rem 1rem;
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     border-radius: 0;
     cursor: pointer;
   }
-  label.active { border-color: #E8603C; background: rgba(232,96,60,0.04); }
-  label p { margin: 2px 0 0 0; font-size: 13px; color: #8B847A; }
-  .error { color: #B43F2A; font-size: 13px; margin: 0; }
+  label.active { border-color: var(--sunset); background: rgba(232,96,60,0.04); }
+  label p { margin: 2px 0 0 0; font-size: 13px; color: var(--text-muted-warm); }
+  .error { color: var(--danger); font-size: 13px; margin: 0; }
   input[type='radio'] { margin-top: 4px; }
   @media (prefers-color-scheme: dark) {
-    label { border-color: #2A251E; }
+    label { border-color: var(--ink-warm); }
   }
 </style>

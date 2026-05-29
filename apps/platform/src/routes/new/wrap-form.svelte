@@ -18,7 +18,7 @@
     padding: 1rem 1.25rem;
     border: 1px solid rgba(232, 96, 60, 0.4);
     background: rgba(232, 96, 60, 0.06);
-    color: #14120f;
+    color: var(--bg);
   }
   .head {
     margin: 0;
@@ -28,7 +28,7 @@
   }
   p {
     margin: 0;
-    color: #6f675e;
+    color: var(--ink-muted-warm);
     line-height: 1.55;
   }
   pre {
@@ -45,7 +45,7 @@
     font-size: 0.9rem;
   }
   a {
-    color: #b43f2a;
+    color: var(--danger);
     font-weight: 700;
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;

@@ -71,7 +71,18 @@ form {
   border-radius: 0;
   margin-bottom: 24px;
 }
-.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+/* 3-column row on tablet+ (≥481px); on phones we stack so iOS Safari's
+   wide intrinsic min-width on input[type=number] / type=date doesn't
+   push the third column off-screen (was +193px overflow on iPhone SE
+   class viewports per scripts/mobile-audit/showcase-runtime-overflow). */
+.row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+@media (min-width: 481px) {
+  .row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
 input[type='date'], input[type='number'], input[type='file'] {
   height: 40px;
@@ -79,7 +90,10 @@ input[type='date'], input[type='number'], input[type='file'] {
   border: 1px solid var(--line);
   background: #fff;
   padding: 0 10px;
-  font-size: 14px;
+  /* 16px floor per Apple HIG — under that iOS Safari zooms on focus,
+     which is jarring inside the Shippie iframe (zoom rebounds when
+     the input blurs). */
+  font-size: 16px;
   color: inherit;
   min-width: 0;
   width: 100%;

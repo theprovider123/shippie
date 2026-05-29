@@ -459,8 +459,8 @@
     border-radius: 0;
     background: var(--surface-alt);
   }
-  .status-success { background: rgba(61, 139, 92, 0.15); color: #3D8B5C; }
-  .status-failed  { background: rgba(200, 75, 75, 0.15); color: #C84B4B; }
+  .status-success { background: rgba(61, 139, 92, 0.15); color: var(--success-hover); }
+  .status-failed  { background: rgba(200, 75, 75, 0.15); color: var(--danger-soft); }
   .meta {
     color: var(--text-light);
     font-size: 0.9rem;
@@ -558,7 +558,7 @@
     font-size: 0.78rem;
   }
   .fix-row strong {
-    color: #3D8B5C;
+    color: var(--success-hover);
     font-weight: 500;
   }
   .big-number {
@@ -614,7 +614,7 @@
     border-bottom: 1px solid var(--border-light);
     font-size: 0.9rem;
   }
-  .deductions .delta { color: #C84B4B; font-weight: 600; }
+  .deductions .delta { color: var(--danger-soft); font-weight: 600; }
   .deductions .rule { color: var(--text-secondary); font-family: var(--font-mono); }
   .deductions .count { text-align: right; color: var(--text-light); }
   .findings {
@@ -629,8 +629,8 @@
     border-left: 3px solid var(--border-light);
     padding: 0.5rem 0.75rem;
   }
-  .finding-block { border-color: #C84B4B; }
-  .finding-warn  { border-color: #E8A547; }
+  .finding-block { border-color: var(--danger-soft); }
+  .finding-warn  { border-color: var(--warning); }
   .finding-info  { border-color: var(--text-light); }
   .finding-head {
     display: flex;

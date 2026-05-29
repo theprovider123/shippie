@@ -651,6 +651,7 @@ button, input, textarea { font: inherit; }
   inset: 0;
   background: rgba(20, 18, 14, 0.55);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   padding: 16px;
@@ -714,8 +715,17 @@ button, input, textarea { font: inherit; }
   margin: 6px 0;
 }
 .temps .lede { margin: 0 0 12px; color: var(--text-secondary); font-size: 14px; }
+/* Scroll wrapper keeps the protein table readable on phones — without
+   it the protein names (e.g. "Pork tenderloin (whole muscle)") force the
+   table wider than the iframe and bleed into a side scroll. */
+.temp-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .temp-table {
   width: 100%;
+  min-width: 320px;
   border-collapse: collapse;
   background: var(--surface);
   border: 1px solid var(--border);

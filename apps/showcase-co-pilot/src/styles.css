@@ -286,6 +286,7 @@ textarea {
   border: 1px solid currentColor;
   color: var(--co-pill-a);
   white-space: nowrap;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 
 .co-pill[data-role='b'] {

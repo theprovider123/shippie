@@ -180,6 +180,8 @@ function copyDist(distDir, slug) {
   injectArcadeCspIfArcade(target, slug);
   stripAppManifestLinks(target, slug);
   stripExternalFontReferences(target, slug);
+  ensureFaviconLink(target, slug);
+  ensureMetaDescription(target, slug);
   // Emit __shippie-assets.json — the per-showcase asset manifest the
   // marketplace SW reads when the user taps "Save for offline." Walks
   // the post-strip tree so wa-sqlite WASM is correctly excluded; the
@@ -238,6 +240,71 @@ function injectContainerLocalDbBridge(targetDir, slug) {
     ? html.replace(/<head([^>]*)>/i, `<head$1>${script}`)
     : html.replace(/<script/i, `${script}<script`);
   writeFileSync(indexPath, nextHtml);
+}
+
+/**
+ * Bake-time favicon backstop. ~36 of 66 showcases historically shipped
+ * index.html files without a <link rel="icon">, which meant tabs and
+ * the wrapper render with no brand icon. Each app's vite config is the
+ * right home for its own icon, but the bake should never silently
+ * deploy a faviconless surface — so we inject a fallback at prepare
+ * time when the app didn't set one. Prefers a co-located icon file
+ * (icon.svg / favicon.svg / icon-192.png / favicon.ico) before falling
+ * back to the platform Shippie mark at /__shippie-pwa/icon.svg.
+ */
+function ensureFaviconLink(targetDir, slug) {
+  const indexPath = join(targetDir, 'index.html');
+  if (!existsSync(indexPath)) return;
+  const html = readFileSync(indexPath, 'utf8');
+  if (/<link\b[^>]*\brel=["'](?:shortcut\s+)?icon["']/i.test(html)) return;
+  if (/<link\b[^>]*\brel=["']apple-touch-icon["']/i.test(html)) return;
+  if (!/<\/head>/i.test(html)) return;
+  const candidates = ['icon.svg', 'favicon.svg', 'icon-192.png', 'favicon.ico'];
+  let href = '/__shippie-pwa/icon.svg';
+  for (const f of candidates) {
+    if (existsSync(join(targetDir, f))) {
+      href = `${RUNTIME_BASE_PATH}/${slug}/${f}`;
+      break;
+    }
+  }
+  const type = href.endsWith('.svg') ? ' type="image/svg+xml"' : '';
+  const link = `<link rel="icon" href="${href}"${type} />`;
+  const next = html.replace(/<\/head>/i, `    ${link}\n  </head>`);
+  writeFileSync(indexPath, next);
+  console.log(`[prepare-showcases] injected favicon backstop into ${slug}`);
+}
+
+/**
+ * Bake-time meta-description backstop. Showcases without a description
+ * meta tag render bare in social previews, search snippets, and PWA
+ * onboarding screens. Source of truth is shippie.json#description; the
+ * showcase's own index.html overrides it when present.
+ */
+function ensureMetaDescription(targetDir, slug) {
+  const indexPath = join(targetDir, 'index.html');
+  if (!existsSync(indexPath)) return;
+  const html = readFileSync(indexPath, 'utf8');
+  if (/<meta\s+name=["']description["']/i.test(html)) return;
+  if (!/<\/head>/i.test(html)) return;
+  // Look up the description from the source showcase's shippie.json.
+  let desc = '';
+  for (const dir of readdirSync(APPS_DIR)) {
+    if (!dir.startsWith('showcase-')) continue;
+    const path = join(APPS_DIR, dir, 'shippie.json');
+    if (!existsSync(path)) continue;
+    try {
+      const cfg = JSON.parse(readFileSync(path, 'utf8'));
+      if ((cfg.slug ?? dir.replace(/^showcase-/, '')) === slug && typeof cfg.description === 'string') {
+        desc = cfg.description.trim();
+        break;
+      }
+    } catch { /* ignore malformed and try next */ }
+  }
+  if (!desc) return;
+  const tag = `<meta name="description" content="${desc.replace(/"/g, '&quot;')}" />`;
+  const next = html.replace(/<\/head>/i, `    ${tag}\n  </head>`);
+  writeFileSync(indexPath, next);
+  console.log(`[prepare-showcases] injected description backstop into ${slug}`);
 }
 
 function stripAppManifestLinks(targetDir, slug) {
@@ -571,11 +638,11 @@ function writeFirstPartyCuration(slugs) {
     `// showcase's shippie.json#curation block.\n` +
     `//\n` +
     `// surface: 'featured' | 'arcade' | 'labs' | 'archived'\n` +
-    `// category: 'food-drink' | 'health-fitness' | 'social' | 'games' | 'tools' | 'creative'\n` +
+    `// category: ${SHARED_VALID_CATEGORIES.map((c) => `'${c}'`).join(' | ')}\n` +
     `// subcategory: 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy' (optional)\n` +
     `// successor: alias target — only set when the named slug is in the current bake\n\n` +
     `export type CurationSurface = 'featured' | 'arcade' | 'labs' | 'archived';\n` +
-    `export type CurationCategory = 'food-drink' | 'health-fitness' | 'social' | 'games' | 'tools' | 'creative';\n` +
+    `export type CurationCategory = ${SHARED_VALID_CATEGORIES.map((c) => `'${c}'`).join(' | ')};\n` +
     `export type CurationSubcategory = 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy';\n\n` +
     `export interface CurationEntry {\n` +
     `  slug: string;\n` +

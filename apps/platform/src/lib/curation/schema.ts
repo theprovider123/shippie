@@ -38,6 +38,14 @@ export const VALID_CATEGORIES = [
   'games',
   'tools',
   'creative',
+  // `productivity` and `lifestyle` were already emitted by the marketplace
+  // bridge and rendered by display-text.ts, but weren't in the controlled
+  // vocab — so the "controlled" set didn't actually control them. Promoting
+  // them to first-class categories is lower-risk than forcing the existing
+  // concepts back into `tools`. No dedicated `finance`/`money` category yet —
+  // money apps map to `productivity` until volume justifies a migration.
+  'productivity',
+  'lifestyle',
 ] as const;
 export type Category = (typeof VALID_CATEGORIES)[number];
 
@@ -58,6 +66,55 @@ export type Subcategory = (typeof VALID_SUBCATEGORIES)[number];
 const SURFACE_SET = new Set<string>(VALID_SURFACES);
 const CATEGORY_SET = new Set<string>(VALID_CATEGORIES);
 const SUBCATEGORY_SET = new Set<string>(VALID_SUBCATEGORIES);
+
+// ---------------------------------------------------------------------
+// Category normalisation — the single write-boundary helper
+// ---------------------------------------------------------------------
+
+/**
+ * Legacy / freeform category strings that have appeared in the container
+ * specs (`container/state.ts`), older deploys, and the now-removed
+ * `marketplaceCategory()` bridges, mapped to the controlled vocab. Keep this
+ * the ONLY place that knows about retired category names.
+ */
+const LEGACY_CATEGORY_MAP: Record<string, Category> = {
+  cooking: 'food-drink',
+  coffee: 'food-drink',
+  fitness: 'health-fitness',
+  wellness: 'health-fitness',
+  health: 'health-fitness',
+  creativity: 'creative',
+  journal: 'productivity',
+  money: 'productivity',
+  finance: 'productivity',
+  memory: 'lifestyle',
+  home: 'lifestyle',
+  family: 'lifestyle',
+  travel: 'lifestyle',
+};
+
+export type CategoryNormalizeMode = 'strict' | 'lenient';
+
+/**
+ * Canonicalise a category string against the controlled vocab. This is the
+ * single chokepoint every write path (deploy, GitHub deploy, profile edits,
+ * generated fallbacks) must funnel through so `apps.category` can never hold
+ * a value outside `VALID_CATEGORIES`.
+ *
+ * - exact controlled value → returned as-is
+ * - known legacy/freeform alias → mapped to its controlled value
+ * - anything else:
+ *     - `'strict'` (maker-submitted input) → `null` so the caller can reject
+ *     - `'lenient'` (system defaults / generated rows with no maker intent)
+ *        → `'tools'` as the safe catch-all
+ */
+export function normalizeCategory(raw: unknown, mode: CategoryNormalizeMode = 'lenient'): Category | null {
+  const key = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  if (CATEGORY_SET.has(key)) return key as Category;
+  const mapped = LEGACY_CATEGORY_MAP[key];
+  if (mapped) return mapped;
+  return mode === 'lenient' ? 'tools' : null;
+}
 
 // ---------------------------------------------------------------------
 // First-party shape (full)

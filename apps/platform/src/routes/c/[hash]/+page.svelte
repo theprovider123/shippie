@@ -210,7 +210,7 @@
   }
   .badge-ok { color: var(--sunset); }
   .badge-warn { color: var(--marigold); }
-  .badge-err { color: #d65a3a; }
+  .badge-err { color: var(--sunset); }
 
   h1 {
     font-family: var(--font-heading);

@@ -338,6 +338,18 @@ function entriesForDate(entries: PulseEntry[], date: string): PulseEntry[] {
   return entries.filter((entry) => entry.date === date);
 }
 
+function checkinsForDate(checkins: Checkin[], date: string): Checkin[] {
+  return checkins.filter((checkin) => checkin.date === date);
+}
+
+function signalCountForDate(state: ChiwitState, date: string): number {
+  return entriesForDate(state.entries, date).length + checkinsForDate(state.checkins, date).length;
+}
+
+function signalDates(state: ChiwitState): Set<string> {
+  return new Set([...state.entries.map((entry) => entry.date), ...state.checkins.map((checkin) => checkin.date)]);
+}
+
 function average(values: number[]): number | null {
   if (values.length === 0) return null;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -383,7 +395,7 @@ const FACTOR_NAMES: Record<keyof ScoreBreakdown, string> = {
  */
 function consistencyPct(state: ChiwitState): number {
   const days = Array.from({ length: 7 }, (_, index) => addDays(-index));
-  const goodDays = days.filter((d) => entriesForDate(state.entries, d).length >= 3).length;
+  const goodDays = days.filter((d) => signalCountForDate(state, d) >= 3).length;
   return Math.round((goodDays / 7) * 100);
 }
 
@@ -406,6 +418,7 @@ function generateReading(state: ChiwitState, pulse: PulseScore, when: string = t
   const bottom = sorted[sorted.length - 1];
   const dayEntries = entriesForDate(state.entries, when);
   const externalToday = dayEntries.filter((entry) => entry.source && entry.source.startsWith('app_'));
+  const signalCount = pulse.signalCount;
 
   if (top && top[1] >= 72 && bottom && bottom[1] < 50 && top[0] !== bottom[0]) {
     sentences.push(`${FACTOR_NAMES[top[0]]} is leading at ${top[1]}; ${FACTOR_NAMES[bottom[0]].toLowerCase()} is the soft spot — a small move shifts the score.`);
@@ -415,7 +428,7 @@ function generateReading(state: ChiwitState, pulse: PulseScore, when: string = t
     sentences.push(`${FACTOR_NAMES[bottom[0]]} is the soft spot — a small move there shifts the whole reading.`);
   } else if (externalToday.length > 0) {
     sentences.push(`${externalToday.length} signal${externalToday.length === 1 ? '' : 's'} folded in from your other apps so far.`);
-  } else if (dayEntries.length === 0) {
+  } else if (signalCount === 0) {
     sentences.push('No signals yet — log one when you notice it, not by the clock.');
   } else {
     // Surface which factors are already in so the user knows what to log next.
@@ -425,7 +438,7 @@ function generateReading(state: ChiwitState, pulse: PulseScore, when: string = t
     const tail = loggedFactors.length > 0
       ? ` So far: ${loggedFactors.join(', ')}.`
       : '';
-    sentences.push(`${dayEntries.length} signal${dayEntries.length === 1 ? '' : 's'} logged so far.${tail}`);
+    sentences.push(`${signalCount} signal${signalCount === 1 ? '' : 's'} logged so far.${tail}`);
   }
 
   return sentences.join(' ');
@@ -446,7 +459,7 @@ function generateReading(state: ChiwitState, pulse: PulseScore, when: string = t
  */
 function computePulse(state: ChiwitState, date = today()): PulseScore {
   const dayEntries = entriesForDate(state.entries, date);
-  const dayCheckins = state.checkins.filter((checkin) => checkin.date === date);
+  const dayCheckins = checkinsForDate(state.checkins, date);
   const checkinMood = average(dayCheckins.map((checkin) => checkin.mood));
   const checkinEnergy = average(dayCheckins.map((checkin) => checkin.energy));
   const checkinBody = average(dayCheckins.map((checkin) => checkin.body));
@@ -553,7 +566,7 @@ function consistencyStreak(state: ChiwitState): number {
   let streak = 0;
   for (let offset = 0; offset < 60; offset += 1) {
     const date = addDays(-offset);
-    if (entriesForDate(state.entries, date).length >= 3) streak += 1;
+    if (signalCountForDate(state, date) >= 3) streak += 1;
     else break;
   }
   return streak;
@@ -842,6 +855,7 @@ export function App() {
   const consistency = useMemo(() => consistencyPct(state), [state]);
   const insights = useMemo(() => generateInsights(state), [state]);
   const todayEntries = entriesForDate(state.entries, today()).sort((a, b) => b.createdAt - a.createdAt);
+  const todayCheckins = checkinsForDate(state.checkins, today()).sort((a, b) => b.createdAt - a.createdAt);
   const days = useMemo(() => Array.from({ length: 28 }, (_, index) => addDays(-index)), []);
   const monthDays = useMemo(
     () => days.filter((date) => date.startsWith(timelineMonth)),
@@ -859,7 +873,7 @@ export function App() {
       const p = computePulse(state, date);
       // A day with too few signals has no honest number — render it flat
       // (0) in the ribbon rather than inventing a pulse.
-      return { date, pulse: p.overall ?? 0, signalCount: entriesForDate(state.entries, date).length };
+      return { date, pulse: p.overall ?? 0, signalCount: signalCountForDate(state, date) };
     });
     const factors: Array<{ label: string; value: number }> = [
       { label: 'Foundations', value: pulse.breakdown.foundations },
@@ -868,7 +882,7 @@ export function App() {
       { label: 'Mind',        value: pulse.breakdown.mind },
       { label: 'Body',        value: pulse.breakdown.body },
     ];
-    const totalSignals = last7.reduce((sum, d) => sum + entriesForDate(state.entries, d).length, 0);
+    const totalSignals = last7.reduce((sum, d) => sum + signalCountForDate(state, d), 0);
     const pulseAvg = average(dayShapes.map((d) => d.pulse)) ?? pulse.overall ?? 0;
     return buildWeekShape({
       days: dayShapes,
@@ -1087,6 +1101,7 @@ export function App() {
           weekValues={weekKeepsake.ribbon.map((r) => r.value)}
           weekTones={weekTones}
           entries={todayEntries}
+          checkins={todayCheckins}
           insights={insights}
           quickActions={activeQuickActions}
           onQuickLog={quickLog}
@@ -1283,6 +1298,7 @@ function TodayView({
   weekValues,
   weekTones,
   entries,
+  checkins,
   insights,
   quickActions,
   onQuickLog,
@@ -1294,19 +1310,37 @@ function TodayView({
   weekValues: number[];
   weekTones?: Array<string | null>;
   entries: PulseEntry[];
+  checkins: Checkin[];
   insights: Insight[];
   quickActions?: QuickAction[];
   onQuickLog: (action: QuickAction) => void;
   onDismissInsight: (id: string) => void;
   onNavigate: (tab: Tab) => void;
 }) {
-  // Starter signals always pull from defaults — they're the onboarding
-  // tap-points and shouldn't disappear when a user customises the grid.
-  const starterSignals = QUICK_ACTIONS.filter((action) => action.kind === 'mood' || action.kind === 'energy' || action.kind === 'hydration');
-  const greeting = timeAwareGreeting();
   // Fallback to the default action set when the call site hasn't yet wired
   // the customisable list (work-in-progress prop from a sibling pass).
   const resolvedQuickActions = quickActions ?? QUICK_ACTIONS;
+  const byKind = new Map<EntryKind, QuickAction>();
+  for (const action of resolvedQuickActions) {
+    if (!byKind.has(action.kind)) byKind.set(action.kind, action);
+  }
+  const starterSignals = ([
+    !pulse.logged.mind ? byKind.get('mood') : null,
+    !pulse.logged.foundations ? byKind.get('hydration') : null,
+    !pulse.logged.movement ? byKind.get('movement') : null,
+    !pulse.logged.recovery ? byKind.get('sleep') : null,
+    !pulse.logged.body ? byKind.get('body') : null,
+    byKind.get('energy'),
+    byKind.get('mindful'),
+    byKind.get('hydration'),
+    byKind.get('mood'),
+    ...resolvedQuickActions,
+  ] as Array<QuickAction | null | undefined>).filter((action, index, list): action is QuickAction => {
+    if (!action) return false;
+    return list.findIndex((candidate) => candidate?.kind === action.kind) === index;
+  }).slice(0, 3);
+  const greeting = timeAwareGreeting();
+  const hasTodaySignals = entries.length > 0 || checkins.length > 0;
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
@@ -1325,8 +1359,8 @@ function TodayView({
           </div>
           <WeekContour values={weekValues} tones={weekTones} />
           <div className="hero-actions">
-            <button type="button" className="primary" onClick={() => onNavigate('track')}>Log now</button>
-            <button type="button" onClick={() => onNavigate('patterns')}>Patterns</button>
+            <button type="button" className="primary" onClick={() => onNavigate('track')}>Full check-in</button>
+            <button type="button" onClick={() => onNavigate('patterns')}>See patterns</button>
           </div>
         </div>
         <PulseRing pulse={pulse} />
@@ -1348,15 +1382,18 @@ function TodayView({
       </section>
       <section className="split-layout">
         <div>
-          <SectionHeading title="Today" action={`${entries.length} signal${entries.length === 1 ? '' : 's'}`} />
-          {entries.length === 0 ? (
+          <SectionHeading title="Today" action={`${entries.length + checkins.length} signal${entries.length + checkins.length === 1 ? '' : 's'}`} />
+          {!hasTodaySignals ? (
             <EmptyState
               eyebrow="Today"
               headline="Today's empty. Start with the thing you noticed in the last hour."
               cta={{ label: 'Log now', onClick: () => onNavigate('track') }}
             />
           ) : (
-            <EntryList entries={entries.slice(0, 8)} />
+            <>
+              {checkins.length > 0 ? <CheckinList checkins={checkins.slice(0, 3)} /> : null}
+              {entries.length > 0 ? <EntryList entries={entries.slice(0, 8)} /> : null}
+            </>
           )}
         </div>
         <aside className="insight-panel">
@@ -1505,12 +1542,14 @@ function PatternsView({
   onDismissInsight: (id: string) => void;
 }) {
   // §4.4 — Patterns (insufficient).
-  const totalSignals = state.entries.length;
-  const daysCovered = new Set(state.entries.map((entry) => entry.date)).size;
+  const totalSignals = state.entries.length + state.checkins.length;
+  const daysCovered = signalDates(state).size;
   const insufficient = totalSignals < 5 || daysCovered < 3;
   if (insufficient) {
     const signalsPct = Math.min(100, Math.round((totalSignals / 5) * 100));
     const daysPct = Math.min(100, Math.round((daysCovered / 3) * 100));
+    const cappedSignals = Math.min(totalSignals, 5);
+    const cappedDays = Math.min(daysCovered, 3);
     return (
       <section className="page-shell">
         <div className="toolbar">
@@ -1526,13 +1565,13 @@ function PatternsView({
             <span className="patterns-progress" aria-label="Pattern progress">
               <span className="patterns-progress__row">
                 <strong>Signals</strong>
-                <FactorBar value={signalsPct} variant="slim" ariaLabel={`Signals progress ${totalSignals} of 5`} />
-                <em>{totalSignals}/5</em>
+                <FactorBar value={signalsPct} variant="slim" ariaLabel={`Signals progress ${cappedSignals} of 5`} />
+                <em>{cappedSignals}/5</em>
               </span>
               <span className="patterns-progress__row">
                 <strong>Days covered</strong>
-                <FactorBar value={daysPct} variant="slim" ariaLabel={`Days covered ${daysCovered} of 3`} />
-                <em>{daysCovered}/3</em>
+                <FactorBar value={daysPct} variant="slim" ariaLabel={`Days covered ${cappedDays} of 3`} />
+                <em>{cappedDays}/3</em>
               </span>
             </span>
           }
@@ -2030,6 +2069,26 @@ function EntryList({ entries, onRemove }: { entries: PulseEntry[]; onRemove?: (e
             </small>
           </div>
           {onRemove ? <button type="button" onClick={() => onRemove(entry.id)} aria-label={`Remove ${KIND_META[entry.kind].label} signal from ${formatDate(entry.date)}${entry.note ? ` — ${entry.note}` : ''}`}>×</button> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CheckinList({ checkins }: { checkins: Checkin[] }) {
+  if (checkins.length === 0) return null;
+  return (
+    <ul className="entry-list checkin-list" aria-label="Daily check-ins">
+      {checkins.map((checkin) => (
+        <li key={checkin.id}>
+          <span style={{ background: KIND_META.mood.color }} />
+          <div>
+            <strong>{checkin.window[0]!.toUpperCase()}{checkin.window.slice(1)} check-in</strong>
+            <small>
+              Mood {checkin.mood}/5 · Energy {checkin.energy}/5 · Body {checkin.body}/5
+              {checkin.note ? ` - ${checkin.note}` : ''}
+            </small>
+          </div>
         </li>
       ))}
     </ul>

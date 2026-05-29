@@ -148,7 +148,7 @@
     background: rgba(0,0,0,0.22);
     color: var(--text, #EDE4D3);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 12px;
+    font-size: 16px;
     line-height: 1.55;
     padding: 0.9rem;
     border-radius: 0;
@@ -186,7 +186,7 @@
     padding-top: 1rem;
     margin-top: 1rem;
   }
-  @media (max-width: 860px) {
+  @media (max-width: 1024px) {
     .layout { grid-template-columns: 1fr; }
     .status { flex-direction: column; }
   }

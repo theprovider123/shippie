@@ -201,8 +201,8 @@ shippie deploy ./dist</code></pre>
     width: 100%;
     max-width: 100vw;
     padding: calc(var(--safe-top, 0px) + 1rem) 1.25rem calc(var(--safe-bottom, 0px) + 4rem);
-    background: #FAF7EF;
-    color: #14120F;
+    background: var(--paper-warm);
+    color: var(--bg);
     overflow-x: hidden;
     overflow-x: clip;
     overscroll-behavior-x: none;
@@ -215,7 +215,7 @@ shippie deploy ./dist</code></pre>
     gap: 2rem;
     align-items: end;
     padding-bottom: 2rem;
-    border-bottom: 1px solid #E5DDC8;
+    border-bottom: 1px solid var(--paper-cream);
   }
   .header-mark { display: block; width: 56px; height: 56px; margin-bottom: 1rem; }
   .eyebrow {
@@ -223,7 +223,7 @@ shippie deploy ./dist</code></pre>
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.16em;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
   }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(2.35rem, 6vw, 4.75rem); line-height: 0.95; margin: 0; letter-spacing: -0.02em; max-width: 760px; }
@@ -234,24 +234,24 @@ shippie deploy ./dist</code></pre>
     margin: 0;
     letter-spacing: -0.01em;
   }
-  .lede { color: #6F675E; font-size: 18px; line-height: 1.55; max-width: 720px; }
+  .lede { color: var(--ink-muted-warm); font-size: 18px; line-height: 1.55; max-width: 720px; }
   .hero > *,
   .hero-status {
     min-width: 0;
   }
   .hero-status {
-    border-left: 2px solid #E8603C;
+    border-left: 2px solid var(--sunset);
     padding-left: 1rem;
   }
   .status-kicker {
     margin: 0 0 0.75rem;
     font-family: ui-monospace, monospace;
     font-size: 12px;
-    color: #E8603C;
+    color: var(--sunset);
     text-transform: uppercase;
   }
-  .hero-status ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.65rem; color: #6F675E; font-size: 14px; line-height: 1.35; }
-  .hero-status li::before { content: "✓"; color: #2E7D5B; margin-right: 0.5rem; }
+  .hero-status ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.65rem; color: var(--ink-muted-warm); font-size: 14px; line-height: 1.35; }
+  .hero-status li::before { content: "✓"; color: var(--success); margin-right: 0.5rem; }
 
   .remix-panel {
     display: grid;
@@ -259,16 +259,16 @@ shippie deploy ./dist</code></pre>
     gap: 1.5rem;
     align-items: center;
     padding: 1.25rem 0;
-    border-bottom: 1px solid #E5DDC8;
+    border-bottom: 1px solid var(--paper-cream);
   }
   .remix-panel h2 { font-size: 1.8rem; }
   .remix-panel p {
     margin: 0.55rem 0 0;
-    color: #6F675E;
+    color: var(--ink-muted-warm);
     line-height: 1.45;
   }
   .remix-panel .meta-line {
-    color: #8B847A;
+    color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
     font-size: 12px;
     overflow-wrap: anywhere;
@@ -286,17 +286,17 @@ shippie deploy ./dist</code></pre>
     min-height: 44px;
     align-items: center;
     padding: 0 1rem;
-    border: 1px solid #14120F;
-    color: #14120F;
+    border: 1px solid var(--bg);
+    color: var(--bg);
     text-decoration: none;
     font-weight: 700;
   }
   .remix-actions a:first-child {
-    background: #14120F;
-    color: #EDE4D3;
+    background: var(--bg);
+    color: var(--text);
   }
   .remix-panel.unavailable {
-    border-left: 2px solid #E8603C;
+    border-left: 2px solid var(--sunset);
     padding-left: 1rem;
   }
 
@@ -321,12 +321,12 @@ shippie deploy ./dist</code></pre>
     text-decoration: none;
     min-height: var(--touch-min, 44px);
   }
-  .starter-list a:hover { background: rgba(232, 96, 60, 0.08); border-color: #E8603C; }
+  .starter-list a:hover { background: rgba(232, 96, 60, 0.08); border-color: var(--sunset); }
   .starter-list strong { font-size: 14px; }
-  .starter-list span { font-size: 12px; color: #8B847A; overflow-wrap: anywhere; }
+  .starter-list span { font-size: 12px; color: var(--text-muted-warm); overflow-wrap: anywhere; }
   @media (prefers-color-scheme: dark) {
     .starter-list a { background: rgba(232, 96, 60, 0.06); border-color: rgba(232, 96, 60, 0.22); }
-    .starter-list span { color: #B8A88F; }
+    .starter-list span { color: var(--text-secondary); }
   }
 
   .primary-flow, .secondary-flow {
@@ -335,26 +335,26 @@ shippie deploy ./dist</code></pre>
     gap: 2rem;
     align-items: start;
     padding-top: 2rem;
-    border-top: 1px solid #E5DDC8;
+    border-top: 1px solid var(--paper-cream);
     min-width: 0;
   }
   .section-head { min-width: 0; }
-  .section-head p { color: #6F675E; font-size: 14px; margin: 0.8rem 0 0; line-height: 1.55; overflow-wrap: anywhere; }
+  .section-head p { color: var(--ink-muted-warm); font-size: 14px; margin: 0.8rem 0 0; line-height: 1.55; overflow-wrap: anywhere; }
   .form-surface { min-width: 0; max-width: 100%; }
 
   .next-tools {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     min-width: 0;
   }
-  .next-tools article { min-width: 0; padding: 1rem; border-right: 1px solid #E5DDC8; }
+  .next-tools article { min-width: 0; padding: 1rem; border-right: 1px solid var(--paper-cream); }
   .next-tools article:last-child { border-right: 0; }
   .next-tools h3 { margin: 0 0 0.65rem; font-size: 1rem; line-height: 1.2; }
-  .next-tools p { margin: 0.65rem 0 0; color: #6F675E; font-size: 13px; line-height: 1.45; }
+  .next-tools p { margin: 0.65rem 0 0; color: var(--ink-muted-warm); font-size: 13px; line-height: 1.45; }
   pre {
-    background: #14120F;
-    color: #EDE4D3;
+    background: var(--bg);
+    color: var(--text);
     padding: 0.75rem 1rem;
     border-radius: 0;
     font-size: 13px;
@@ -364,15 +364,15 @@ shippie deploy ./dist</code></pre>
     -webkit-overflow-scrolling: touch;
   }
   pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
-  a { color: #E8603C; }
+  a { color: var(--sunset); }
 
   .next {
     display: grid;
     grid-template-columns: 260px minmax(0, 1fr);
     gap: 1.5rem;
     padding: 1.5rem 0;
-    border-top: 1px solid #E5DDC8;
-    border-bottom: 1px solid #E5DDC8;
+    border-top: 1px solid var(--paper-cream);
+    border-bottom: 1px solid var(--paper-cream);
     background: rgba(232, 96, 60, 0.04);
     min-width: 0;
   }
@@ -382,20 +382,20 @@ shippie deploy ./dist</code></pre>
   .next ol {
     margin: 0;
     padding-left: 1.25rem;
-    color: #6F675E;
+    color: var(--ink-muted-warm);
     font-size: 14px;
     line-height: 1.55;
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  .footer { color: #8B847A; font-size: 13px; }
+  .footer { color: var(--text-muted-warm); font-size: 13px; }
   code { font-family: ui-monospace, monospace; font-size: 0.9em; }
   @media (max-width: 1024px) {
     .hero, .remix-panel, .primary-flow, .secondary-flow, .next { grid-template-columns: 1fr; }
     .next-tools { grid-template-columns: 1fr; }
-    .next-tools article { border-right: 0; border-bottom: 1px solid #E5DDC8; }
+    .next-tools article { border-right: 0; border-bottom: 1px solid var(--paper-cream); }
     .next-tools article:last-child { border-bottom: 0; }
-    .hero-status { border-left: 0; padding-left: 0; border-top: 1px solid #E5DDC8; padding-top: 1rem; }
+    .hero-status { border-left: 0; padding-left: 0; border-top: 1px solid var(--paper-cream); padding-top: 1rem; }
     .remix-actions { justify-content: flex-start; }
   }
   @media (max-width: 640px) {
@@ -425,19 +425,19 @@ shippie deploy ./dist</code></pre>
     }
   }
   @media (prefers-color-scheme: dark) {
-    .page { background: #14120F; color: #EDE4D3; }
-    .hero, .remix-panel, .primary-flow, .secondary-flow, .next-tools, .next-tools article, .next { border-color: #2A251E; }
-    pre { background: #0D0B09; }
+    .page { background: var(--bg); color: var(--text); }
+    .hero, .remix-panel, .primary-flow, .secondary-flow, .next-tools, .next-tools article, .next { border-color: var(--ink-warm); }
+    pre { background: var(--bg-pure); }
     .next { background: rgba(232, 96, 60, 0.06); }
-    .lede, .remix-panel p, .section-head p, .next-tools p, .hero-status ul, .next ol { color: #AFA693; }
+    .lede, .remix-panel p, .section-head p, .next-tools p, .hero-status ul, .next ol { color: var(--border-cream-soft); }
     .remix-actions a,
     .remix-panel.unavailable > a {
-      border-color: #EDE4D3;
-      color: #EDE4D3;
+      border-color: var(--text);
+      color: var(--text);
     }
     .remix-actions a:first-child {
-      background: #EDE4D3;
-      color: #14120F;
+      background: var(--text);
+      color: var(--bg);
     }
   }
 </style>

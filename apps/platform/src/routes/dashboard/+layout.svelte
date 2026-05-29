@@ -17,8 +17,8 @@
     display: grid;
     grid-template-columns: 240px 1fr;
     min-height: 100dvh;
-    background: #FAF7EF;
-    color: #14120F;
+    background: var(--paper-warm);
+    color: var(--bg);
   }
   .dashboard-main {
     padding: 2.5rem 3rem;
@@ -29,6 +29,6 @@
     .dashboard-main { padding: 1.5rem; }
   }
   @media (prefers-color-scheme: dark) {
-    .dashboard-shell { background: #14120F; color: #EDE4D3; }
+    .dashboard-shell { background: var(--bg); color: var(--text); }
   }
 </style>

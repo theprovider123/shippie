@@ -241,6 +241,20 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     },
   },
   {
+    slug: 'sleep',
+    name: 'Sleep',
+    shortName: 'Sleep',
+    description: 'Private sleep log and seven-night trend that feeds Chiwit.',
+    appKind: 'local',
+    icon: 'SL',
+    accent: '#6F73D2',
+    category: 'health',
+    port: 5253,
+    intents: {
+      provides: ['sleep-logged'],
+    },
+  },
+  {
     slug: 'journal',
     name: 'Journal',
     shortName: 'Journal',

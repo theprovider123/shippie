@@ -27,28 +27,28 @@
 
 <style>
   .header { margin-bottom: 1.5rem; }
-  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #E8603C; margin: 0; }
+  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
   .eyebrow a { color: inherit; text-decoration: none; }
   .eyebrow a:hover { text-decoration: underline; }
   .title { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
   .swatch { width: 24px; height: 24px; border-radius: 0; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0; letter-spacing: -0.02em; }
-  .lede { color: #8B847A; margin: 0.25rem 0 0 0; }
-  .tabs { display: flex; gap: 1rem; border-bottom: 1px solid #E5DDC8; margin-top: 1.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .lede { color: var(--text-muted-warm); margin: 0.25rem 0 0 0; }
+  .tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--paper-cream); margin-top: 1.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tabs::-webkit-scrollbar { height: 0; }
   .tabs a {
     padding: 0.625rem 0.25rem;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     text-decoration: none;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     font-size: 14px;
     font-weight: 500;
   }
-  .tabs a.active { color: #E8603C; border-bottom-color: #E8603C; }
-  .tabs a:hover { color: #14120F; }
+  .tabs a.active { color: var(--sunset); border-bottom-color: var(--sunset); }
+  .tabs a:hover { color: var(--bg); }
   @media (prefers-color-scheme: dark) {
-    .tabs { border-color: #2A251E; }
-    .tabs a:hover { color: #EDE4D3; }
+    .tabs { border-color: var(--ink-warm); }
+    .tabs a:hover { color: var(--text); }
   }
 </style>

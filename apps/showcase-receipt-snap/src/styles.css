@@ -544,6 +544,7 @@ button.ghost.danger:hover:not(:disabled) { background: rgba(182, 71, 45, 0.06); 
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 
 /* Accounting disclosure inside ReviewForm. */

@@ -160,7 +160,7 @@
     margin-top: 1.5rem;
   }
   .links a {
-    border: 1px solid var(--border, #3D3530);
+    border: 1px solid var(--border, var(--border));
     color: var(--text, #EDE4D3);
     text-decoration: none;
     padding: 0.5rem 0.75rem;
@@ -184,7 +184,7 @@
     display: grid;
     gap: 0.55rem;
     min-height: 220px;
-    border: 1px solid var(--border, #3D3530);
+    border: 1px solid var(--border, var(--border));
     background: var(--surface, #1E1A15);
     color: inherit;
     text-decoration: none;

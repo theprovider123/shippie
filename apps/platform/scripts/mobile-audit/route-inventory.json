@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-20T07:57:32.685Z",
+  "generatedAt": "2026-05-29T09:19:04.306Z",
   "counts": {
-    "total": 42,
+    "total": 43,
     "public": 16,
     "priority_P0": 3,
     "container": 1,
@@ -11,8 +11,8 @@
     "onboarding": 2,
     "priority_P2": 24,
     "showcase-wrapper": 1,
-    "admin": 6,
-    "priority_P3": 8,
+    "admin": 7,
+    "priority_P3": 9,
     "dev": 2
   },
   "rows": [
@@ -249,6 +249,12 @@
       "shell": "admin",
       "priority": "P3",
       "pageFile": "apps/platform/src/routes/admin/moderation/+page.svelte"
+    },
+    {
+      "urlPath": "/admin/parade",
+      "shell": "admin",
+      "priority": "P3",
+      "pageFile": "apps/platform/src/routes/admin/parade/+page.svelte"
     },
     {
       "urlPath": "/admin/profile",

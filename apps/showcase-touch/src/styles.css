@@ -55,13 +55,17 @@ button, input, textarea, select { font: inherit; }
   margin: 0;
 }
 
-/* Tabs */
+/* Tabs — horizontal scroll on overflow. Fade mask signals scrollability
+   and softens the rightmost tab that previously hung 5px past the
+   iPhone-SE viewport (audit-runtime-overflow). */
 .tabs {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid #DDD2C2;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 92%, transparent);
+  mask-image: linear-gradient(to right, #000 92%, transparent);
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
@@ -71,13 +75,19 @@ button, input, textarea, select { font: inherit; }
   color: #7E7570;
   flex: 0 0 auto;
   white-space: nowrap;
-  padding: 10px 12px;
+  /* Tighter horizontal padding on phones so the 5-tab row fits the
+     iPhone-SE viewport without overflow. Reverts at 401px+. */
+  padding: 10px 10px;
   font-family: var(--font-mono, monospace);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   margin-bottom: -1px;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
+}
+@media (min-width: 401px) {
+  .tab { padding: 10px 12px; }
 }
 .tab.active {
   color: #2A2522;

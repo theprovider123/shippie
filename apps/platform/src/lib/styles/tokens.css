@@ -59,6 +59,43 @@
   --cream-muted: #8A7A66;
   --cream-border: #C9B99A;
 
+  /* ── Status (across maker/dashboard surfaces) ──────────────────
+     Sage-leaning success / sunset-leaning error so the platform palette
+     stays consistent with the brand. Avoid generic web greens/reds. */
+  --success: #2E7D5B;
+  --success-hover: #3D8B5C;
+  --success-soft: #4FA487;
+  --danger: #B43F2A;
+  --danger-hover: #B44820;
+  --danger-soft: #C84B4B;
+  --warning: #E8A547;
+  --info: #4E7C9A;
+  --accent-violet: #7C5CC4;
+
+  /* ── Dashboard / auth paper variants ────────────────────────────
+     The maker control surfaces (auth, dashboard, admin) sit on a
+     warmer cream than the marketplace inversion. Pinned here so 200+
+     hexes in those routes can route through tokens. */
+  --paper-warm: #FAF7EF;
+  --paper-warm-strong: #F8F1E0;
+  --paper-warm-deep: #FAF5E9;
+  --paper-cream: #E5DDC8;
+  --paper-cream-soft: #CFC3AF;
+  --ink-warm: #2A251E;
+  --ink-warm-deep: #2A1F16;
+  --ink-warm-mid: #3A352D;
+  --ink-warm-line: #3F3A33;
+  --ink-soft-warm: #5C5751;
+  --ink-muted-warm: #6F675E;
+  --text-muted-warm: #8B847A;
+  --text-muted-cool: #A39A8B;
+  --border-cream-soft: #AFA693;
+  --border-paper-mid: #C9C2B1;
+
+  /* Misc canonical near-black used when the cream paper layout
+     contrasts with a deep neutral instead of the brand --bg. */
+  --ink-near-black: #1A1A1A;
+
   /* ── Type ───────────────────────────────────────────────────── */
   --font-heading: "Fraunces", "Georgia", serif;
   --font-body: "Inter", system-ui, sans-serif;

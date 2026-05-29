@@ -39,6 +39,7 @@
 | `/admin/audit` | admin | P3 | · | · | · | · | · |  |
 | `/admin/disputes` | admin | P3 | · | · | · | · | · |  |
 | `/admin/moderation` | admin | P3 | · | · | · | · | · |  |
+| `/admin/parade` | admin | P3 | · | · | · | · | · |  |
 | `/admin/profile` | admin | P3 | · | · | · | · | · |  |
 | `/dev/gesture-prototype` | dev | P3 | · | · | · | · | · |  |
 | `/dev/launcher-lab` | dev | P3 | · | · | · | · | · |  |

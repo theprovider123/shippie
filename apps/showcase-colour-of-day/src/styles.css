@@ -87,8 +87,15 @@ h2 {
 /* ── Palette wheel → Pantone-card grid ── */
 .wheel {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  /* 3-up on phones; 4-up at small-tablet; 5-up at tablet+. The label
+     under each swatch (e.g. "wheat") sets an intrinsic min-width that
+     pushed 4 columns ~60px off-screen at iPhone-SE width per
+     scripts/mobile-audit/showcase-runtime-overflow. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 420px) {
+  .wheel { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 }
 @media (min-width: 520px) {
   .wheel { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; }

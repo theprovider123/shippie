@@ -1,0 +1,30 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Golazo",
+  "slug": "golazo",
+  "description": "Call the 2026 World Cup, build your bracket, and share it by link.",
+  "icon": "/icon.svg",
+  "theme_color": "#16F08B",
+  "background_color": "#06140F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lifecycle": "manual",
+  "intents": {
+    "provides": [
+      "world-cup-bracket",
+      "share-card"
+    ],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "labs",
+    "category": "games"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-golazo",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "golazo",
+    "schema": "golazo.v1"
+  }
+}

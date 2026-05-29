@@ -15,7 +15,7 @@
   },
   "permissions": [],
   "curation": {
-    "surface": "featured",
+    "surface": "labs",
     "category": "social"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-mevrouw",

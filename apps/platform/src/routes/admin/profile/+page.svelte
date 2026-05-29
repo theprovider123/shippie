@@ -195,7 +195,7 @@
   button,
   .public-link {
     justify-self: start;
-    border: 1px solid var(--sunset, #E8603C);
+    border: 1px solid var(--sunset, var(--sunset));
     background: var(--sunset, #E8603C);
     color: white;
     padding: 0.75rem 1rem;

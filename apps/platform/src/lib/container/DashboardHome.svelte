@@ -269,7 +269,7 @@
     padding: 6px 12px;
     background: var(--sunset, #e8603c);
     color: var(--bg-pure, #fff);
-    border: 1px solid var(--sunset, #e8603c);
+    border: 1px solid var(--sunset, var(--sunset));
     cursor: pointer;
   }
   .error-text {

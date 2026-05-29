@@ -421,7 +421,7 @@
 
 <style>
   .hero {
-    color: #EDE4D3;
+    color: var(--text);
     padding: var(--space-2xl) 0;
   }
   .hero-wrap {
@@ -435,7 +435,7 @@
     font-size: var(--caption-size);
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #EDE4D3;
+    color: var(--text);
     opacity: 0.85;
     margin-bottom: var(--space-xl);
   }
@@ -453,13 +453,13 @@
     line-height: 1.1;
     letter-spacing: 0;
     margin: 0;
-    color: #EDE4D3;
+    color: var(--text);
   }
   .tagline {
     margin-top: 0.5rem;
     font-size: 1.125rem;
     opacity: 0.92;
-    color: #EDE4D3;
+    color: var(--text);
   }
   .kind {
     font-family: var(--font-mono);
@@ -484,7 +484,7 @@
     padding: 0 0.6rem;
     border: 1px solid rgba(237, 228, 211, 0.72);
     background: rgba(20, 18, 15, 0.2);
-    color: #EDE4D3;
+    color: var(--text);
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     letter-spacing: 0.08em;
@@ -513,7 +513,7 @@
     align-items: center;
     height: 44px;
     padding: 0 1.25rem;
-    background: #14120F;
+    background: var(--bg);
     color: var(--marigold);
     font-weight: 600;
     font-size: var(--small-size);
@@ -524,7 +524,7 @@
     margin-top: 0;
   }
   .cta-row :global(.local-actions.inline button) {
-    color: #EDE4D3;
+    color: var(--text);
   }
   .share-btn {
     display: inline-flex;

@@ -180,7 +180,7 @@
     gap: 8px;
     padding: 14px;
     background: #fff;
-    border: 1px solid var(--line, #C9B99A);
+    border: 1px solid var(--line, var(--cream-border));
     border-top: 3px solid var(--accent);
     color: inherit;
     text-decoration: none;
@@ -218,7 +218,7 @@
   }
 
   .empty {
-    border: 1px dashed var(--line, #C9B99A);
+    border: 1px dashed var(--line, var(--cream-border));
     padding: 40px 24px;
     text-align: center;
     border-radius: 0;

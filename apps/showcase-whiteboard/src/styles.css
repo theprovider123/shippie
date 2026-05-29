@@ -96,3 +96,21 @@
 .score-numeric.size-hero { font-size: clamp(2.8rem, 9vw, 5.6rem); }
 .score-numeric.size-card { font-size: clamp(1.6rem, 4vw, 2.4rem); }
 .score-numeric .unit { font-size: 0.45em; font-weight: 600; color: var(--muted); vertical-align: 0.35em; margin-left: 0.2em; }
+
+/* Join row — input + Join button. WebKit's intrinsic minimum on the
+   letter-spaced placeholder pushed Join 10px off the right edge at
+   iPhone-SE width per scripts/mobile-audit/showcase-runtime-overflow.
+   Stack below 380px so the field gets the full row to itself. */
+.join-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.join-row > input { min-width: 0; flex: 1 1 100%; }
+.join-row > button { flex: 0 0 auto; }
+@media (min-width: 381px) {
+  /* Keep min-width:0 — without it WebKit re-asserts the input's
+     intrinsic content size and the Join button slips off the right
+     edge again. */
+  .join-row > input { min-width: 0; flex: 1 1 auto; }
+}

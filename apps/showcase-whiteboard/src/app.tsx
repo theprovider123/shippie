@@ -135,7 +135,7 @@ function Lobby(props: {
           {props.busy ? 'Setting up…' : 'Start a board'}
         </button>
         <div style={{ height: 16 }} />
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="join-row">
           <input
             value={props.joinCode}
             onChange={(e) => props.onJoinCodeChange(e.target.value.toUpperCase())}

@@ -62,32 +62,32 @@
     font-size: 11px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #E8603C;
+    color: var(--sunset);
     margin: 0 0 0.25rem 0;
   }
   .eyebrow img { display: block; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.5rem; margin: 0; letter-spacing: -0.02em; }
-  .lede { color: #8B847A; }
+  .lede { color: var(--text-muted-warm); }
   .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
   .card {
     display: block;
     padding: 1.5rem;
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     text-decoration: none;
     color: inherit;
     border-radius: 0;
     transition: border-color 0.12s;
   }
-  .card:hover { border-color: #E8603C; }
+  .card:hover { border-color: var(--sunset); }
   .card.primary { border-color: rgba(232,96,60,0.3); background: rgba(232,96,60,0.04); }
   .card h2 { margin: 0.25rem 0; font-size: 1.25rem; }
-  .card p { color: #8B847A; margin: 0; font-size: 14px; }
+  .card p { color: var(--text-muted-warm); margin: 0; font-size: 14px; }
   .card-eyebrow {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 11px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #E8603C;
+    color: var(--sunset);
     margin: 0;
   }
   .recent ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem; }
@@ -101,20 +101,20 @@
   }
   .swatch { width: 12px; height: 12px; border-radius: 0; }
   .status { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; padding: 2px 8px; border-radius: 0; background: rgba(0,0,0,0.05); }
-  .status-success { background: rgba(46,125,91,0.15); color: #2E7D5B; }
-  .status-failed { background: rgba(180,63,42,0.15); color: #B43F2A; }
-  .vis { font-size: 12px; color: #8B847A; }
+  .status-success { background: rgba(46,125,91,0.15); color: var(--success); }
+  .status-failed { background: rgba(180,63,42,0.15); color: var(--danger); }
+  .vis { font-size: 12px; color: var(--text-muted-warm); }
   .section-title { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 1rem 0 0.5rem 0; }
   .logout { margin-top: 2rem; }
   .logout button {
-    background: transparent; border: 1px solid #E5DDC8; padding: 0.5rem 1.5rem;
+    background: transparent; border: 1px solid var(--paper-cream); padding: 0.5rem 1.5rem;
     border-radius: 0; font-size: 13px; cursor: pointer; color: inherit;
   }
   @media (prefers-color-scheme: dark) {
-    .card { border-color: #2A251E; }
+    .card { border-color: var(--ink-warm); }
     .card.primary { background: rgba(232,96,60,0.08); }
     .recent li { border-color: rgba(255,255,255,0.05); }
     .status { background: rgba(255,255,255,0.05); }
-    .logout button { border-color: #2A251E; }
+    .logout button { border-color: var(--ink-warm); }
   }
 </style>

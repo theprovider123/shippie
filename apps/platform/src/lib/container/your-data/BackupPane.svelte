@@ -291,7 +291,7 @@
     font-size: var(--small-size);
   }
   .error {
-    color: #B6472D;
+    color: var(--danger-hover);
     font-size: var(--small-size);
   }
   .status {

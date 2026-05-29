@@ -147,7 +147,7 @@
   .block { margin-bottom: 2.5rem; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: 0 0 0.75rem 0; }
   .muted,
-  .section-note { color: #8B847A; }
+  .section-note { color: var(--text-muted-warm); }
   .section-note {
     max-width: 64ch;
     margin: -0.25rem 0 0.875rem;
@@ -161,13 +161,13 @@
   }
   .metrics article {
     min-width: 0;
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     padding: 0.875rem;
     background: rgba(250, 247, 239, 0.52);
   }
   .metrics span {
     display: block;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -181,7 +181,7 @@
   }
   .metrics p {
     margin: 0.35rem 0 0;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     font-size: 12px;
   }
   .invite-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -191,7 +191,7 @@
     justify-content: space-between;
     gap: 1rem;
     align-items: center;
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     padding: 0.75rem;
   }
   .space-row.archived { opacity: 0.62; }
@@ -200,7 +200,7 @@
   .space-actions { display: flex; gap: 0.5rem; align-items: center; }
   .space-actions a,
   .space-actions button {
-    border: 1px solid #C9C2B1;
+    border: 1px solid var(--border-paper-mid);
     background: transparent;
     color: inherit;
     padding: 4px 12px;
@@ -209,13 +209,13 @@
     cursor: pointer;
   }
   ul { list-style: none; padding: 0; margin: 0; }
-  ul li { padding: 0.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-family: ui-monospace, monospace; font-size: 13px; color: #8B847A; }
+  ul li { padding: 0.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-family: ui-monospace, monospace; font-size: 13px; color: var(--text-muted-warm); }
   @media (prefers-color-scheme: dark) {
     ul li { border-color: rgba(255,255,255,0.05); }
-    .space-row { border-color: #2A251E; }
-    .metrics article { border-color: #2A251E; background: rgba(42, 37, 30, 0.48); }
+    .space-row { border-color: var(--ink-warm); }
+    .metrics article { border-color: var(--ink-warm); background: rgba(42, 37, 30, 0.48); }
     .space-actions a,
-    .space-actions button { border-color: #3A352D; }
+    .space-actions button { border-color: var(--ink-warm-mid); }
   }
   @media (max-width: 1024px) {
     .metrics { grid-template-columns: 1fr 1fr; }

@@ -2,10 +2,9 @@
    Ledger inherits the dark default. The accent is sage-leaf — green like
    a balance-sheet column heading, not the sunset orange of the food
    cluster. Spreadsheet voice; numbers feel like spreadsheet cells. */
-/* TODO: paint kit-v2 skin block (~56 rules from showcase-chiwit/src/styles.css)
-   when kit components (OnboardingFlow/IntentToastHost/QrShareSheet/BackupCard/
-   EmptyState) get adopted in JSX. Currently only mountShowcase() boot helper
-   is imported, so no skin selectors render. */
+/* Kit components are unstyled by default; Ledger paints them here so any
+   future onboarding, QR, backup, empty-state, or intent surfaces inherit
+   the same spreadsheet-sharp finance voice as the rest of the app. */
 @import "@shippie/design-tokens/tokens.css";
 
 :root {
@@ -1064,4 +1063,271 @@ input[type='week'] {
     -webkit-appearance: none;
     appearance: none;
   }
+}
+
+/* ── Showcase kit skin ─────────────────────────────────────────────── */
+.shippie-onboarding,
+.shippie-qr-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: max(16px, var(--safe-top)) 16px max(16px, var(--safe-bottom));
+  background: rgba(4, 8, 6, 0.68);
+  backdrop-filter: blur(12px);
+  animation: ledger-kit-in 180ms ease both;
+}
+
+@keyframes ledger-kit-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.shippie-onboarding__surface,
+.shippie-qr-sheet__surface {
+  width: min(520px, 100%);
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.32);
+}
+
+.shippie-onboarding__surface {
+  padding: 24px;
+}
+
+.shippie-onboarding__progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.shippie-onboarding__dot {
+  height: 4px;
+  background: var(--line);
+}
+
+.shippie-onboarding__dot.is-current {
+  background: var(--accent);
+}
+
+.shippie-onboarding__title,
+.shippie-empty-state__headline,
+.shippie-qr-sheet__title,
+.shippie-backup-card__title,
+.shippie-intent-toast__text strong {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+
+.shippie-onboarding__title {
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  line-height: 1.05;
+}
+
+.shippie-onboarding__body,
+.shippie-empty-state__body,
+.shippie-qr-sheet__body,
+.shippie-backup-card__body {
+  margin: 8px 0 0;
+  color: var(--muted-warm);
+  line-height: 1.5;
+}
+
+.shippie-onboarding__actions,
+.shippie-qr-sheet__actions,
+.shippie-backup-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.shippie-onboarding__skip,
+.shippie-onboarding__next,
+.shippie-empty-state__cta,
+.shippie-qr-sheet__actions button,
+.shippie-backup-card__actions button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.shippie-onboarding__next,
+.shippie-empty-state__cta,
+.shippie-qr-sheet__actions button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #0d130b;
+}
+
+.shippie-intent-toast {
+  position: fixed;
+  z-index: 90;
+  inset-inline: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-left-width: 4px;
+  border-radius: 0;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  animation: ledger-kit-in 180ms ease both;
+}
+
+.shippie-intent-toast--top { top: max(12px, var(--safe-top)); }
+.shippie-intent-toast--bottom { bottom: max(12px, var(--safe-bottom)); }
+
+@media (min-width: 560px) {
+  .shippie-intent-toast {
+    inset-inline: auto;
+    right: 16px;
+    width: min(420px, calc(100% - 32px));
+  }
+}
+
+.shippie-intent-toast__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: var(--surface-alt, var(--surface));
+  border: 1px solid var(--line);
+  color: var(--accent);
+}
+
+.shippie-intent-toast__text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.shippie-intent-toast__text span,
+.shippie-empty-state__eyebrow,
+.shippie-backup-card__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shippie-intent-toast__close,
+.shippie-qr-sheet__close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.shippie-intent-toast__close:hover,
+.shippie-qr-sheet__close:hover {
+  border-color: var(--line);
+  color: var(--fg);
+  opacity: 1;
+}
+
+.shippie-empty-state,
+.shippie-backup-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: 0;
+}
+
+.shippie-empty-state__headline {
+  font-size: clamp(1.2rem, 4vw, 1.55rem);
+}
+
+.shippie-empty-state__headline em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.shippie-empty-state__cta {
+  justify-self: start;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.shippie-qr-sheet {
+  place-items: end center;
+}
+
+@media (min-width: 560px) {
+  .shippie-qr-sheet {
+    place-items: center;
+  }
+}
+
+.shippie-qr-sheet__surface {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+}
+
+.shippie-qr-sheet__qr {
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.shippie-qr-sheet__qr svg {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+}
+
+.shippie-qr-sheet__url {
+  display: block;
+  padding: 10px;
+  background: var(--surface-alt, var(--surface));
+  border: 1px solid var(--line);
+  color: var(--muted-warm);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.shippie-qr-sheet__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.shippie-backup-card {
+  border-style: solid;
+}
+
+.shippie-backup-card__error {
+  margin: 0;
+  color: var(--negative);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
 }

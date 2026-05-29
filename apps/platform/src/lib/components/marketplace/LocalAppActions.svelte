@@ -130,7 +130,7 @@
   button {
     border: 1px solid rgba(20,18,15,0.25);
     background: transparent;
-    color: #14120F;
+    color: var(--bg);
     padding: 0.55rem 0.8rem;
     font: inherit;
     font-size: 0.9rem;
@@ -150,9 +150,9 @@
   }
   button.primary,
   button.active {
-    background: #14120F;
-    color: #EDE4D3;
-    border-color: #14120F;
+    background: var(--bg);
+    color: var(--text);
+    border-color: var(--bg);
   }
   .local-actions.inline button.primary,
   .local-actions.inline button.active {

@@ -61,7 +61,7 @@
   }
   header p {
     margin: 0 0 24px;
-    color: #5C5751;
+    color: var(--ink-soft-warm);
     font-size: 14px;
     line-height: 1.5;
   }

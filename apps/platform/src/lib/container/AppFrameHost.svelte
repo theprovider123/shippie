@@ -125,6 +125,10 @@
   }
 
   function postParentHashBurst(node = activeFrame) {
+    // Skip the burst entirely when there's no hash to post — the
+    // delayed retries would just no-op for every focus on a parent
+    // without a hash, which is the common case.
+    if (!parentHash) return;
     postParentHash(node);
     window.setTimeout(() => postParentHash(node), 50);
     window.setTimeout(() => postParentHash(node), 250);

@@ -101,7 +101,7 @@
     font-weight: 600;
   }
   .actions .danger {
-    color: #B6472D;
+    color: var(--danger-hover);
   }
   .disclosure {
     min-height: var(--touch-min);

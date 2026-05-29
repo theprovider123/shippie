@@ -711,38 +711,35 @@
   const launchVisibleAppBySlug = $derived(new Map(launchVisibleApps.map((app) => [app.slug, app])));
   const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
   const drawerPinnedApps = $derived.by(() => {
-    const seen = new Set<string>();
-    return $launcherMemory.pinned
-      .map((slug) => launchVisibleAppBySlug.get(slug))
-      .filter((app): app is ContainerApp => Boolean(app))
-      .filter((app) => {
-        if (seen.has(app.id)) return false;
-        seen.add(app.id);
-        return true;
-      });
+    // Pinned slugs are unique by construction (toggle prevents dupes),
+    // so we can resolve and filter in a single pass without a second
+    // dedup step.
+    const out: ContainerApp[] = [];
+    for (const slug of $launcherMemory.pinned) {
+      const app = launchVisibleAppBySlug.get(slug);
+      if (app) out.push(app);
+    }
+    return out;
   });
   const drawerRecentApps = $derived.by(() => {
-    const pinned = new Set($launcherMemory.pinned);
+    // Reuse the pinned set from `drawerPinnedSet`. Building a fresh
+    // Set per derive is wasted work for ~12 pinned slugs.
     const seen = new Set<string>();
-    return $launcherMemory.recents
-      .map((recent) => launchVisibleAppBySlug.get(recent.slug))
-      .filter((app): app is ContainerApp => {
-        if (!app) return false;
-        return !pinned.has(app.slug);
-      })
-      .filter((app) => {
-        if (seen.has(app.id)) return false;
-        seen.add(app.id);
-        return true;
-      });
+    const out: ContainerApp[] = [];
+    for (const recent of $launcherMemory.recents) {
+      if (drawerPinnedSet.has(recent.slug)) continue;
+      const app = launchVisibleAppBySlug.get(recent.slug);
+      if (!app || seen.has(app.id)) continue;
+      seen.add(app.id);
+      out.push(app);
+    }
+    return out;
   });
   const drawerQuickApps = $derived.by(() => {
-    const seen = new Set<string>();
-    return [...drawerPinnedApps, ...drawerRecentApps].filter((app) => {
-      if (seen.has(app.id)) return false;
-      seen.add(app.id);
-      return true;
-    });
+    // Pinned and recent are mutually exclusive by construction
+    // (drawerRecentApps filters by drawerPinnedSet), so concatenation is
+    // already deduplicated.
+    return [...drawerPinnedApps, ...drawerRecentApps];
   });
   const drawerPersonalized = $derived(drawerQuickApps.length > 0);
   const drawerRemainingApps = $derived.by(() => {
@@ -2916,7 +2913,16 @@
     {/if}
     <AppSwitcherGesture
       open={focusedDrawerOpen}
-      onOpenChange={(value) => (focusedDrawerOpen = value)}
+      onOpenChange={(value) => {
+        // Escape while the search input has text should clear the search,
+        // not close the drawer. The user almost always wants to widen
+        // the list back to the full Quick + Browse view before exiting.
+        if (!value && drawerSearchTrim) {
+          drawerSearchQuery = '';
+          return;
+        }
+        focusedDrawerOpen = value;
+      }}
       edge={focusedDrawerEdge}
       canGoBack={activeFrameCanGoBack}
       onBack={goBackInActiveFrame}
@@ -3764,7 +3770,7 @@
     padding: 10px 14px;
     border: 1px solid rgba(20, 18, 15, 0.14);
     background: rgba(255, 253, 247, 0.94);
-    color: #14120F;
+    color: var(--bg);
     box-shadow: 0 14px 34px rgba(20, 18, 15, 0.16);
     font-size: 13px;
     line-height: 1.35;
@@ -3777,7 +3783,7 @@
   }
   .private-join-toast[data-state='error'] {
     border-color: rgba(178, 58, 43, 0.34);
-    color: #7A2118;
+    color: var(--danger-hover);
   }
 
   .sr-only {
@@ -3917,7 +3923,7 @@
   }
   .focused-mark-letter {
     display: none;
-    color: #FAF7EF;
+    color: var(--paper-warm);
     font-family: var(--font-heading);
     font-size: 18px;
     font-weight: 700;
@@ -4029,7 +4035,7 @@
     height: 88px;
     padding: 6px;
     border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: #faf7ef;
+    background: var(--paper-warm);
   }
   .focused-share-qr-code :global(svg) {
     display: block;
@@ -4246,7 +4252,10 @@
     gap: 2px;
     margin-bottom: 6px;
   }
-  @media (min-width: 720px) {
+  /* Use the canonical 1025px shell breakpoint (mobile-first floor of
+     mobile-audit/audit-static-rules.mjs). The drawer is full-width on
+     phone + tablet, two-column only on real laptop widths. */
+  @media (min-width: 1025px) {
     .focused-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 4px;
@@ -4278,7 +4287,10 @@
     padding: 6px 0;
     color: inherit;
     font: inherit;
-    font-size: 14px;
+    /* Per tokens.css --type-body-mobile: iOS Safari zooms inputs whose
+       font-size is under 16px on focus. Keeping it at the floor avoids
+       the bounce when the drawer search opens. */
+    font-size: var(--type-body-mobile, 16px);
   }
   .focused-search input:focus {
     outline: none;
@@ -4379,7 +4391,7 @@
     padding: 8px 14px;
     border: 1px solid rgba(20, 18, 15, 0.14);
     background: rgba(255, 253, 247, 0.94);
-    color: #14120F;
+    color: var(--bg);
     box-shadow: 0 12px 28px rgba(20, 18, 15, 0.14);
     font-size: 12.5px;
     line-height: 1.3;

@@ -54,7 +54,7 @@
     color: var(--muted, #5C5751);
   }
   .empty {
-    border: 1px dashed var(--line, #C9B99A);
+    border: 1px dashed var(--line, var(--cream-border));
     padding: 40px 24px;
     text-align: center;
   }
@@ -74,7 +74,7 @@
     display: block;
     padding: 16px;
     background: #fff;
-    border: 1px solid var(--line, #C9B99A);
+    border: 1px solid var(--line, var(--cream-border));
     color: inherit;
     text-decoration: none;
   }

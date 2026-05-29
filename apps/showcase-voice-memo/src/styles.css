@@ -320,6 +320,9 @@ button, input, textarea, select { font: inherit; }
 }
 .vm-memo-meta {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .vm-memo-preview {
   margin: 0;

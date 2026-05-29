@@ -194,7 +194,11 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 28px; font-weight: 60
   font-family: ui-monospace, monospace;
   font-size: 13px;
 }
-.move-list li { white-space: nowrap; }
+.move-list li { white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 
 .promotion-overlay,
 .endgame-overlay {

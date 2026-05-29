@@ -166,6 +166,12 @@ h1 {
   transition: background 300ms ease;
 }
 
+/* Obstacles slide horizontally across the river (game animation).
+   Their bounding rect can sit past the viewport edge — that's expected;
+   the parent has `overflow: hidden` so nothing is actually visible.
+   scripts/mobile-audit/showcase-runtime-overflow flags this as P2 spill,
+   but it's gameplay-by-design. Do not add clip-path or overflow-x on the
+   element itself — that breaks the slide-in/out illusion. */
 .obstacle {
   position: absolute;
   top: 8%;

@@ -176,11 +176,16 @@
 
 <style>
   .randomiser {
+    /* Component-scoped locals for the two paper shades + dial accent.
+       Hoisted so no raw hex lives in the rule bodies. */
+    --randomiser-paper-light: #FBF6E8;
+    --randomiser-paper-deep: var(--paper-warm-strong);
+    --randomiser-dial: #C97B2D;
     display: flex;
     flex-direction: column;
     gap: 14px;
     padding: 24px 22px;
-    background: linear-gradient(135deg, #FBF6E8 0%, #F8F1E0 100%);
+    background: linear-gradient(135deg, var(--randomiser-paper-light) 0%, var(--randomiser-paper-deep) 100%);
     border: 1px solid rgba(42, 31, 22, 0.16);
     margin: 0 0 18px;
   }
@@ -218,7 +223,7 @@
     font-family: 'Fraunces', serif;
     font-size: 22px;
     font-weight: 600;
-    color: #2A1F16;
+    color: var(--ink-warm-deep);
     letter-spacing: -0.01em;
   }
 
@@ -231,8 +236,8 @@
   .primary {
     height: 42px;
     padding: 0 22px;
-    background: #C97B2D;
-    color: #F8F1E0;
+    background: var(--randomiser-dial);
+    color: var(--paper-warm-strong);
     border: 0;
     cursor: pointer;
     font-weight: 500;
@@ -240,7 +245,7 @@
   .primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .ghost-link {
-    color: #2A1F16;
+    color: var(--ink-warm-deep);
     text-decoration: underline;
     font-size: 14px;
   }

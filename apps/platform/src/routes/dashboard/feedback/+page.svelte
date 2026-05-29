@@ -123,48 +123,48 @@
 
 <style>
   header { margin-bottom: 1.5rem; }
-  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #E8603C; margin: 0; }
+  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
   .eyebrow a { color: inherit; text-decoration: none; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0.25rem 0; letter-spacing: -0.02em; }
-  .lede { color: #8B847A; margin: 0; }
+  .lede { color: var(--text-muted-warm); margin: 0; }
   .status-summary { display: flex; gap: 0.4rem; margin-top: 0.8rem; flex-wrap: wrap; }
   .chip {
     display: inline-flex; align-items: center; gap: 0.3rem;
     padding: 0.3rem 0.65rem; font-family: ui-monospace, monospace; font-size: 11px;
     text-transform: uppercase; letter-spacing: 0.06em;
     background: transparent; color: inherit;
-    border: 1px solid #E5DDC8; cursor: pointer; min-height: var(--touch-min, 44px);
+    border: 1px solid var(--paper-cream); cursor: pointer; min-height: var(--touch-min, 44px);
     border-radius: 0;
   }
   .chip:hover { background: rgba(232, 96, 60, 0.06); }
-  .chip.active { background: #1a1a1a; color: #FAF5E9; border-color: #1a1a1a; }
-  .chip.flagged { border-color: rgba(232, 96, 60, 0.45); color: #C84A2A; }
-  .chip.flagged.active { background: #C84A2A; color: #FAF5E9; }
+  .chip.active { background: var(--ink-near-black); color: var(--paper-warm-deep); border-color: var(--ink-near-black); }
+  .chip.flagged { border-color: rgba(232, 96, 60, 0.45); color: var(--sunset-dim); }
+  .chip.flagged.active { background: var(--sunset-dim); color: var(--paper-warm-deep); }
   .chip span { font-weight: 700; opacity: 0.8; }
   .reviewing-note {
     margin: 0.8rem 0 0;
     padding: 0.7rem 0.85rem;
     background: rgba(232, 96, 60, 0.06);
-    border-left: 3px solid #E8603C;
+    border-left: 3px solid var(--sunset);
     font-size: 0.9rem;
-    color: #5C5751;
+    color: var(--ink-soft-warm);
   }
-  .link-btn { background: none; border: 0; color: #E8603C; text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
-  .empty { padding: 4rem 2rem; text-align: center; border: 1px dashed #C9C2B1; border-radius: 0; }
+  .link-btn { background: none; border: 0; color: var(--sunset); text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
+  .empty { padding: 4rem 2rem; text-align: center; border: 1px dashed var(--border-paper-mid); border-radius: 0; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0.5rem 0; }
-  .feedback-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid #E5DDC8; }
-  article { padding: 1rem 0; border-bottom: 1px solid #E5DDC8; }
+  .feedback-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--paper-cream); }
+  article { padding: 1rem 0; border-bottom: 1px solid var(--paper-cream); }
   article h2 { font-size: 1.1rem; margin: 0.65rem 0 0.25rem; }
-  article p { margin: 0; color: #5C5751; max-width: 72ch; }
-  small { display: block; margin-top: 0.55rem; color: #8B847A; font-family: ui-monospace, monospace; font-size: 11px; }
+  article p { margin: 0; color: var(--ink-soft-warm); max-width: 72ch; }
+  small { display: block; margin-top: 0.55rem; color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: 11px; }
   .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-family: ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .row a { color: #E8603C; text-decoration: none; }
-  .row span, .row strong { border: 1px solid #E5DDC8; padding: 2px 7px; font-weight: 600; }
-  .row .open { border-color: rgba(46,125,91,0.35); color: #2E7D5B; }
+  .row a { color: var(--sunset); text-decoration: none; }
+  .row span, .row strong { border: 1px solid var(--paper-cream); padding: 2px 7px; font-weight: 600; }
+  .row .open { border-color: rgba(46,125,91,0.35); color: var(--success); }
   @media (prefers-color-scheme: dark) {
-    .empty { border-color: #3A352D; }
-    .feedback-list, article { border-color: #2A251E; }
-    article p { color: #B8A88F; }
-    .row span, .row strong { border-color: #3A352D; }
+    .empty { border-color: var(--ink-warm-mid); }
+    .feedback-list, article { border-color: var(--ink-warm); }
+    article p { color: var(--text-secondary); }
+    .row span, .row strong { border-color: var(--ink-warm-mid); }
   }
 </style>

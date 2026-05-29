@@ -1,0 +1,149 @@
+import { useState } from "react";
+import {
+  BRACKET_SHAPE,
+  ROUND_LABEL,
+  ROUNDS,
+  type RoundId,
+} from "../data/tournament";
+import { team } from "../data/teams";
+import { championOf, resolveBracket } from "../lib/bracket";
+import { useStore } from "../state";
+import { Confetti, Flag, teamVars } from "../ui/atoms";
+import { celebrate, tap } from "../lib/haptics";
+
+export function BracketView({ onChampion }: { onChampion?: () => void }) {
+  const { prediction, pickWinner } = useStore();
+  const [round, setRound] = useState<RoundId>("R32");
+  const [fire, setFire] = useState(0);
+
+  const { participants, r32 } = resolveBracket(
+    prediction.groups,
+    prediction.knockout,
+  );
+  const r32Ready = r32.filter(Boolean).length;
+  const champ = championOf(prediction);
+
+  function pick(slotId: string, teamId: string | null) {
+    if (!teamId) return;
+    const wasFinal = slotId === "F-0";
+    const before = prediction.knockout["F-0"];
+    pickWinner(slotId, teamId);
+    if (wasFinal && before !== teamId) {
+      celebrate();
+      setFire((f) => f + 1);
+      onChampion?.();
+    } else {
+      tap();
+    }
+  }
+
+  return (
+    <div className="bracket">
+      <Confetti fire={fire} />
+      <div className="section-head">
+        <div>
+          <h2 className="section-title">Knockout</h2>
+          <p className="section-hint">Tap a team to send them through.</p>
+        </div>
+      </div>
+
+      {r32Ready < 8 && (
+        <div className="lock-note">
+          Finish your groups to fill the knockout draw. {r32Ready}/32 spots set.
+        </div>
+      )}
+
+      {champ && (
+        <div className="champ-banner" style={teamVars(team(champ))}>
+          <span className="champ-banner-label">Your champion</span>
+          <span className="champ-banner-team">
+            <Flag id={champ} size={34} /> {team(champ).name}
+          </span>
+          <span className="champ-banner-cup" aria-hidden>🏆</span>
+        </div>
+      )}
+
+      <div className="round-rail">
+        {ROUNDS.map((r) => {
+          const slots = BRACKET_SHAPE[r];
+          const done = slots.filter((s) => prediction.knockout[s.id]).length;
+          return (
+            <button
+              key={r}
+              className={`round-chip ${r === round ? "is-sel" : ""}`}
+              onClick={() => {
+                tap();
+                setRound(r);
+              }}
+            >
+              <span className="round-chip-name">
+                {r === "F" ? "Final" : r}
+              </span>
+              <span className="round-chip-count">
+                {done}/{slots.length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <h3 className="round-title">{ROUND_LABEL[round]}</h3>
+
+      <div className={`match-list ${round === "F" ? "is-final" : ""}`}>
+        {BRACKET_SHAPE[round].map((slot) => {
+          const [a, b] = participants[slot.id] ?? [null, null];
+          const winner = prediction.knockout[slot.id];
+          return (
+            <div className="match" key={slot.id}>
+              <SlotSide
+                teamId={a}
+                picked={winner === a}
+                dimmed={Boolean(winner) && winner !== a}
+                onPick={() => pick(slot.id, a)}
+              />
+              <span className="match-v" aria-hidden>
+                v
+              </span>
+              <SlotSide
+                teamId={b}
+                picked={winner === b}
+                dimmed={Boolean(winner) && winner !== b}
+                onPick={() => pick(slot.id, b)}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SlotSide({
+  teamId,
+  picked,
+  dimmed,
+  onPick,
+}: {
+  teamId: string | null;
+  picked: boolean;
+  dimmed: boolean;
+  onPick: () => void;
+}) {
+  const t = teamId ? team(teamId) : null;
+  return (
+    <button
+      className={`slot ${picked ? "is-picked" : ""} ${dimmed ? "is-dim" : ""}`}
+      style={t ? teamVars(t) : undefined}
+      disabled={!teamId}
+      onClick={onPick}
+    >
+      <Flag id={teamId} size={30} />
+      <span className="slot-name">{t ? t.short : "TBD"}</span>
+      {picked && (
+        <span className="slot-check" aria-hidden>
+          ✓
+        </span>
+      )}
+    </button>
+  );
+}

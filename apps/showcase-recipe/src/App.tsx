@@ -499,6 +499,14 @@ function normaliseName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function missingIngredientsForRecipe(recipe: Recipe, pantry: PantryItem[]): Ingredient[] {
+  const stocked = new Set(pantry.filter((item) => item.quantity > 0).map((item) => normaliseName(item.name)));
+  return recipe.ingredients.filter((ing) => {
+    const key = normaliseName(ing.name);
+    return key.length > 0 && !stocked.has(key);
+  });
+}
+
 function planShopping(recipes: Recipe[], entries: MealPlanEntry[], pantry: PantryItem[]): ShoppingItem[] {
   const stocked = new Set(pantry.filter((item) => item.quantity > 0).map((item) => normaliseName(item.name)));
   const needed = new Map<string, ShoppingItem>();
@@ -900,6 +908,34 @@ export function App() {
     shippie.feel.texture('confirm');
   }
 
+  function addRecipeGapsToShopping(recipe: Recipe): void {
+    const missing = missingIngredientsForRecipe(recipe, state.pantry);
+    if (missing.length === 0) {
+      shippie.feel.texture('toggle');
+      return;
+    }
+    const visibleExisting = new Set(shopping.map((item) => normaliseName(item.name)));
+    setState((prev) => {
+      const existing = new Set([...visibleExisting, ...prev.shopping.map((item) => normaliseName(item.name))]);
+      const additions = missing
+        .filter((ing) => {
+          const key = normaliseName(ing.name);
+          return ![...existing].some((candidate) => candidate === key || candidate.endsWith(` ${key}`));
+        })
+        .map((ing): ShoppingItem => ({
+          id: id('shop'),
+          name: `${formatQuantity(ing.quantity)} ${ing.unit} ${ing.name}`.trim(),
+          checked: false,
+          source: 'pantry',
+          addedAt: Date.now(),
+        }));
+      return additions.length > 0 ? { ...prev, shopping: [...additions, ...prev.shopping] } : prev;
+    });
+    shippie.intent.broadcast('needs-restocking', missing.map((ing) => ({ name: ing.name })));
+    shippie.feel.texture('confirm');
+    navigate('shop');
+  }
+
   function toggleShopping(item: ShoppingItem): void {
     setState((prev) => ({
       ...prev,
@@ -1085,6 +1121,7 @@ export function App() {
           forYou={forYouRecipes}
           tonightPick={tonightPick}
           shoppingCount={shopping.filter((item) => !item.checked).length}
+          shopping={shopping}
           fitTrend={fitTrend}
           onOpenRecipe={setSelectedRecipeId}
           onCook={setCookRecipeId}
@@ -1092,6 +1129,7 @@ export function App() {
           onResetSkipped={() => setSkippedToday(new Set())}
           skippedCount={skippedToday.size}
           onNavigate={navigate}
+          onAddGaps={addRecipeGapsToShopping}
         />
       ) : null}
 
@@ -1259,6 +1297,7 @@ function TodayView({
   forYou,
   tonightPick,
   shoppingCount,
+  shopping,
   fitTrend,
   onOpenRecipe,
   onCook,
@@ -1266,11 +1305,13 @@ function TodayView({
   onResetSkipped,
   skippedCount,
   onNavigate,
+  onAddGaps,
 }: {
   state: KitchenState;
   forYou: Recipe[];
   tonightPick: { recipe: Recipe; have: number; total: number; pantryFraction: number } | null;
   shoppingCount: number;
+  shopping: ShoppingItem[];
   fitTrend: { values: number[]; average: number };
   onOpenRecipe: (recipeId: string) => void;
   onCook: (recipeId: string) => void;
@@ -1278,6 +1319,7 @@ function TodayView({
   onResetSkipped: () => void;
   skippedCount: number;
   onNavigate: (tab: Tab) => void;
+  onAddGaps: (recipe: Recipe) => void;
 }) {
   const cookedThisWeek = state.cooked.filter((meal) => Date.now() - meal.cookedAt < 7 * 24 * 60 * 60 * 1000).length;
   const todaysPlan = state.mealPlan.filter((entry) => entry.date === today());
@@ -1294,6 +1336,12 @@ function TodayView({
   const fitDelta = tonightPick && fitTrend.average > 0
     ? tonightPick.recipe.personalFit - fitTrend.average
     : 0;
+  const missingIngredients = tonightPick ? missingIngredientsForRecipe(tonightPick.recipe, state.pantry) : [];
+  const shoppingNames = new Set(shopping.map((item) => normaliseName(item.name)));
+  const missingNotListed = missingIngredients.filter((ing) => {
+    const key = normaliseName(ing.name);
+    return ![...shoppingNames].some((candidate) => candidate === key || candidate.endsWith(` ${key}`));
+  });
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
@@ -1348,6 +1396,16 @@ function TodayView({
             ) : null}
             {skippedCount > 0 ? (
               <button type="button" onClick={onResetSkipped}>Reset ({skippedCount} skipped)</button>
+            ) : null}
+            {tonightPick && missingIngredients.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => missingNotListed.length > 0 ? onAddGaps(tonightPick.recipe) : onNavigate('shop')}
+              >
+                {missingNotListed.length > 0
+                  ? `Add ${missingNotListed.length} gap${missingNotListed.length === 1 ? '' : 's'}`
+                  : 'Review list'}
+              </button>
             ) : null}
             <button type="button" onClick={() => onNavigate('plan')}>Plan week</button>
           </div>

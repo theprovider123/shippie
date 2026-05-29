@@ -156,39 +156,39 @@ shippie.feedback.submit({
 
 <style>
   header { margin-bottom: 1.5rem; }
-  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #E8603C; margin: 0; }
+  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
   .eyebrow a { color: inherit; text-decoration: none; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0.25rem 0; letter-spacing: -0.02em; }
-  .lede { color: #8B847A; margin: 0 0 0.5rem; max-width: 64ch; }
+  .lede { color: var(--text-muted-warm); margin: 0 0 0.5rem; max-width: 64ch; }
   .status-summary { display: flex; gap: 0.4rem; margin-top: 0.6rem; flex-wrap: wrap; }
   .chip {
     display: inline-flex; align-items: center; gap: 0.3rem;
     padding: 0.3rem 0.65rem; font-family: ui-monospace, monospace; font-size: 11px;
     text-transform: uppercase; letter-spacing: 0.06em;
     background: transparent; color: inherit;
-    border: 1px solid #E5DDC8; cursor: pointer; min-height: var(--touch-min, 44px);
+    border: 1px solid var(--paper-cream); cursor: pointer; min-height: var(--touch-min, 44px);
     border-radius: 0;
   }
   .chip:hover { background: rgba(232, 96, 60, 0.06); }
-  .chip.active { background: #1a1a1a; color: #FAF5E9; border-color: #1a1a1a; }
-  .chip.flagged { border-color: rgba(232, 96, 60, 0.45); color: #C84A2A; }
-  .chip.flagged.active { background: #C84A2A; color: #FAF5E9; }
+  .chip.active { background: var(--ink-near-black); color: var(--paper-warm-deep); border-color: var(--ink-near-black); }
+  .chip.flagged { border-color: rgba(232, 96, 60, 0.45); color: var(--sunset-dim); }
+  .chip.flagged.active { background: var(--sunset-dim); color: var(--paper-warm-deep); }
   .chip span { font-weight: 700; opacity: 0.8; }
-  .link-btn { background: none; border: 0; color: #E8603C; text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
-  .empty { padding: 2rem; text-align: center; border: 1px dashed #C9C2B1; border-radius: 0; }
+  .link-btn { background: none; border: 0; color: var(--sunset); text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
+  .empty { padding: 2rem; text-align: center; border: 1px dashed var(--border-paper-mid); border-radius: 0; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0.5rem 0; }
-  .feedback-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid #E5DDC8; }
-  article { padding: 1rem 0; border-bottom: 1px solid #E5DDC8; }
+  .feedback-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--paper-cream); }
+  article { padding: 1rem 0; border-bottom: 1px solid var(--paper-cream); }
   article h2 { font-size: 1.1rem; margin: 0.65rem 0 0.25rem; }
-  article p { margin: 0; color: #5C5751; max-width: 72ch; }
-  small { display: block; margin-top: 0.55rem; color: #8B847A; font-family: ui-monospace, monospace; font-size: 11px; }
+  article p { margin: 0; color: var(--ink-soft-warm); max-width: 72ch; }
+  small { display: block; margin-top: 0.55rem; color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: 11px; }
   .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-family: ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .row span, .row strong { border: 1px solid #E5DDC8; padding: 2px 7px; font-weight: 600; }
-  .row .open { border-color: rgba(46,125,91,0.35); color: #2E7D5B; }
-  .row .flagged { border-color: rgba(232,96,60,0.45); color: #C84A2A; }
-  .row .user { color: #8B847A; }
+  .row span, .row strong { border: 1px solid var(--paper-cream); padding: 2px 7px; font-weight: 600; }
+  .row .open { border-color: rgba(46,125,91,0.35); color: var(--success); }
+  .row .flagged { border-color: rgba(232,96,60,0.45); color: var(--sunset-dim); }
+  .row .user { color: var(--text-muted-warm); }
   .flags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.55rem 0 0; }
-  .flags span { border: 1px solid rgba(232,197,71,0.38); color: #B49100; padding: 2px 7px; font-family: ui-monospace, monospace; font-size: 11px; }
+  .flags span { border: 1px solid rgba(232,197,71,0.38); color: var(--warning); padding: 2px 7px; font-family: ui-monospace, monospace; font-size: 11px; }
   .item-actions {
     display: flex;
     flex-wrap: wrap;
@@ -197,9 +197,9 @@ shippie.feedback.submit({
   }
   .item-actions button {
     min-height: var(--touch-min, 44px);
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     background: transparent;
-    color: #E8603C;
+    color: var(--sunset);
     padding: 0 0.65rem;
     font-family: ui-monospace, monospace;
     font-size: 11px;
@@ -208,19 +208,19 @@ shippie.feedback.submit({
     cursor: pointer;
   }
   .item-actions button:disabled {
-    color: #8B847A;
+    color: var(--text-muted-warm);
     cursor: not-allowed;
     opacity: 0.65;
   }
-  .snippet { margin-top: 1rem; text-align: left; padding: 0.75rem 1rem; border: 1px dashed #C9C2B1; }
-  .snippet > summary { cursor: pointer; font-weight: 600; color: #E8603C; min-height: var(--touch-min, 44px); display: flex; align-items: center; }
+  .snippet { margin-top: 1rem; text-align: left; padding: 0.75rem 1rem; border: 1px dashed var(--border-paper-mid); }
+  .snippet > summary { cursor: pointer; font-weight: 600; color: var(--sunset); min-height: var(--touch-min, 44px); display: flex; align-items: center; }
   .snippet-tabs { display: grid; gap: 0.5rem; margin-top: 0.5rem; }
   .snippet-tabs > details > summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 12px; text-transform: uppercase; padding: 0.3rem 0; }
   pre { font-family: ui-monospace, monospace; font-size: 12px; padding: 0.6rem; background: rgba(0,0,0,0.04); margin: 0; overflow-x: auto; white-space: pre; }
   @media (prefers-color-scheme: dark) {
-    .empty, .feedback-list, article { border-color: #2A251E; }
-    .row span, .row strong { border-color: #3A352D; }
-    article p { color: #B8A88F; }
+    .empty, .feedback-list, article { border-color: var(--ink-warm); }
+    .row span, .row strong { border-color: var(--ink-warm-mid); }
+    article p { color: var(--text-secondary); }
     pre { background: rgba(255,255,255,0.04); }
   }
 </style>

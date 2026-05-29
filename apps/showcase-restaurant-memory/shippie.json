@@ -34,7 +34,7 @@
     }
   },
   "curation": {
-    "surface": "featured",
+    "surface": "labs",
     "category": "food-drink"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-restaurant-memory",

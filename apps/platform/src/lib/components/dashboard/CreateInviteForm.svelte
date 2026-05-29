@@ -124,11 +124,11 @@
 <style>
   .form { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
   label { display: flex; flex-direction: column; gap: 4px; }
-  label span { font-size: 11px; color: #8B847A; font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.12em; }
-  input { height: 40px; padding: 0 0.75rem; background: transparent; border: 1px solid #C9C2B1; font-family: ui-monospace, monospace; font-size: var(--type-body-mobile, 16px); width: 140px; box-sizing: border-box; color: inherit; }
+  label span { font-size: 11px; color: var(--text-muted-warm); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.12em; }
+  input { height: 40px; padding: 0 0.75rem; background: transparent; border: 1px solid var(--border-paper-mid); font-family: ui-monospace, monospace; font-size: var(--type-body-mobile, 16px); width: 140px; box-sizing: border-box; color: inherit; }
   button {
     min-height: var(--touch-min);
-    background: #14120F;
+    background: var(--bg);
     color: white;
     border: none;
     padding: 0 1.5rem;
@@ -139,7 +139,7 @@
   button:disabled { opacity: 0.6; }
   .result { display: flex; gap: 1.25rem; align-items: flex-start; flex-basis: 100%; padding: 1rem 0 0; }
   .result-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-  .url { font-family: ui-monospace, monospace; font-size: 13px; color: #E8603C; margin: 0; word-break: break-all; }
+  .url { font-family: ui-monospace, monospace; font-size: 13px; color: var(--sunset); margin: 0; word-break: break-all; }
   .actions { display: flex; gap: 0.5rem; }
   .ghost {
     height: 32px;
@@ -154,12 +154,12 @@
     font-weight: 500;
   }
   .ghost:hover { background: rgba(232, 96, 60, 0.08); }
-  .qr { width: 192px; height: 192px; flex-shrink: 0; background: #FAF7EF; padding: 8px; }
+  .qr { width: 192px; height: 192px; flex-shrink: 0; background: var(--paper-warm); padding: 8px; }
   .qr :global(svg) { width: 100%; height: 100%; display: block; }
-  .error { color: #B43F2A; font-size: 13px; }
+  .error { color: var(--danger); font-size: 13px; }
   @media (prefers-color-scheme: dark) {
-    input { border-color: #3A352D; }
-    button { background: #E8603C; }
-    .qr { background: #FAF7EF; }
+    input { border-color: var(--ink-warm-mid); }
+    button { background: var(--sunset); }
+    .qr { background: var(--paper-warm); }
   }
 </style>

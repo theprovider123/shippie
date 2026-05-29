@@ -53,6 +53,7 @@ export const SHOWCASE_SLUGS = [
   "show-and-tell",
   "sip-log",
   "site-visit",
+  "sleep",
   "snake",
   "snap-and-forget",
   "stack",

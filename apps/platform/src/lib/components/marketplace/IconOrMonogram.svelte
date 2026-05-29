@@ -55,7 +55,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #EDE4D3;
+    color: var(--text);
     font-family: var(--font-heading);
     font-weight: 600;
     text-transform: uppercase;

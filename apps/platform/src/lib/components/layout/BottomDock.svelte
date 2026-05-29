@@ -101,8 +101,8 @@
   .bottom-dock a span {
     display: grid;
     place-items: center;
-    width: var(--touch-min);
-    height: 28px;
+    inline-size: var(--touch-min);
+    block-size: 1.75rem;
     font-family: var(--font-mono);
     font-size: 17px;
     line-height: 1;
@@ -128,8 +128,8 @@
     content: '';
     position: absolute;
     top: 0;
-    width: 28px;
-    height: 2px;
+    inline-size: 1.75rem;
+    block-size: 0.125rem;
     background: var(--sunset);
   }
 

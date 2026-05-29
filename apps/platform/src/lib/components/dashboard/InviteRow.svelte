@@ -69,20 +69,20 @@
     gap: 0.75rem;
     align-items: center;
     padding: 0.625rem 0.75rem;
-    border: 1px solid #E5DDC8;
+    border: 1px solid var(--paper-cream);
     border-radius: 0;
     font-size: 13px;
   }
   .kind { font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 8px; background: rgba(0,0,0,0.05); border-radius: 0; }
-  .url { font-family: ui-monospace, monospace; color: #E8603C; text-decoration: none; }
+  .url { font-family: ui-monospace, monospace; color: var(--sunset); text-decoration: none; }
   .url:hover { text-decoration: underline; }
-  .meta { color: #8B847A; font-family: ui-monospace, monospace; font-size: 11px; }
-  button { background: transparent; border: 1px solid #C9C2B1; padding: 4px 12px; border-radius: 0; cursor: pointer; font-size: 12px; }
-  .error { color: #B43F2A; font-size: 12px; }
-  .warning { color: #B43F2A; font-size: 12px; grid-column: 1 / -1; }
+  .meta { color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: 11px; }
+  button { background: transparent; border: 1px solid var(--border-paper-mid); padding: 4px 12px; border-radius: 0; cursor: pointer; font-size: 12px; }
+  .error { color: var(--danger); font-size: 12px; }
+  .warning { color: var(--danger); font-size: 12px; grid-column: 1 / -1; }
   @media (prefers-color-scheme: dark) {
-    .row { border-color: #2A251E; }
+    .row { border-color: var(--ink-warm); }
     .kind { background: rgba(255,255,255,0.05); }
-    button { border-color: #3A352D; color: inherit; }
+    button { border-color: var(--ink-warm-mid); color: inherit; }
   }
 </style>

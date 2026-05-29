@@ -10,6 +10,7 @@
   the cream drawer and it skins itself.
 -->
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { preloadData } from '$app/navigation';
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
   import CapabilityBadges from '$lib/components/marketplace/CapabilityBadges.svelte';
@@ -86,7 +87,26 @@
   let copyState = $state<'idle' | 'copied' | 'error'>('idle');
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const safeName = $derived(titleCap(app.name));
+  onDestroy(() => {
+    if (copyTimer) {
+      clearTimeout(copyTimer);
+      copyTimer = null;
+    }
+  });
+
+  // Precomputed display fields land via the adapters. Fall back to
+  // computing them inline so legacy callers that build a raw
+  // ToolTileApp keep working — at the cost of recomputing per render.
+  const safeName = $derived(app.display?.safeName ?? titleCap(app.name));
+  const categoryLabel = $derived(
+    app.display?.categoryLabel ?? displayCategory(app.category ?? null),
+  );
+  const blurb = $derived(
+    app.display?.blurb ?? normaliseBlurb(app.blurb ?? `${safeName} on Shippie`),
+  );
+  const connectionBadges = $derived(
+    app.display?.connectionBadges ?? connectionBadgesFromKind(app.kind),
+  );
   const launchHref = $derived(href ?? `/run/${encodeURIComponent(app.slug)}`);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
@@ -111,11 +131,16 @@
     return 'Save';
   });
   const saveGlyph = $derived(isSaving ? '...' : isOffline ? '★' : '☆');
-  const categoryLabel = $derived(displayCategory(app.category ?? null));
-  const blurb = $derived(
-    normaliseBlurb(app.blurb ?? `${safeName} on Shippie`),
-  );
-  const connectionBadges = $derived(connectionBadgesFromKind(app.kind));
+  // Screen readers should hear the runtime/save state of the launch
+  // affordance — "Open Cycle, current tool" or "Open Ledger, saved
+  // offline" — not just "Open Cycle". Falls back to the bare name when
+  // no chip applies.
+  const launchAriaLabel = $derived.by(() => {
+    if (runtimeState === 'current') return `Open ${safeName}, current tool`;
+    if (runtimeState === 'live') return `Open ${safeName}, live in background`;
+    if (isOffline && density !== 'dock') return `Open ${safeName}, saved offline`;
+    return `Open ${safeName}`;
+  });
 
   /**
    * One-line state chip rendered in `card` and `drawer` densities:
@@ -146,7 +171,12 @@
 
   function addPrefetchLink(target: string) {
     if (typeof document === 'undefined') return;
-    if (document.head.querySelector(`link[rel="prefetch"][href="${target}"]`)) return;
+    // Escape so a URL with `"` or other CSS-meaningful characters can't
+    // throw SyntaxError or accidentally widen the selector to other
+    // elements. encodeURIComponent removes most risk in practice, but
+    // hardening the host call site keeps the trust boundary tight.
+    const safeHref = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(target) : target;
+    if (document.head.querySelector(`link[rel="prefetch"][href="${safeHref}"]`)) return;
     const link = document.createElement('link');
     link.rel = 'prefetch';
     link.href = target;
@@ -257,7 +287,7 @@
       onfocus={warmLaunch}
       data-sveltekit-preload-data="hover"
       data-sveltekit-preload-code="hover"
-      aria-label={`Open ${safeName}`}
+      aria-label={launchAriaLabel}
     >
       <span class="tile-icon">
         {#if density !== 'card' && app.glyph && !app.iconUrl}
@@ -321,7 +351,7 @@
       type="button"
       class="tile-launch"
       onclick={launchAndRemember}
-      aria-label={`Open ${safeName}`}
+      aria-label={launchAriaLabel}
     >
       <span class="tile-icon">
         {#if density !== 'card' && app.glyph && !app.iconUrl}
@@ -478,7 +508,7 @@
     display: inline-grid;
     place-items: center;
     background: var(--accent, var(--surface-alt));
-    color: #ede4d3;
+    color: var(--text);
     font-family: var(--font-heading);
     font-weight: 600;
     user-select: none;
@@ -616,7 +646,7 @@
     background: rgba(232, 96, 60, 0.08);
   }
   .conn-ai {
-    color: #7c5cc4;
+    color: var(--accent-violet);
     border-color: rgba(124, 92, 196, 0.42);
     background: rgba(124, 92, 196, 0.08);
   }

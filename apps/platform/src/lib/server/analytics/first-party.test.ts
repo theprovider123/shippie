@@ -8,7 +8,7 @@ describe('first-party analytics seed', () => {
       slug: 'parade-companion',
       name: 'Parade Companion',
       category: 'tools',
-      surface: 'featured',
+      surface: 'labs',
       visibilityScope: 'public',
     });
   });

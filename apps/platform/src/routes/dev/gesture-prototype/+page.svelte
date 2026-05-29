@@ -111,8 +111,8 @@
     margin: 0;
     padding: 0;
     height: 100%;
-    background: #faf7ef;
-    color: #14120f;
+    background: var(--paper-warm);
+    color: var(--bg);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
   }
   .fake-app {
@@ -211,7 +211,7 @@
     background: rgba(255, 255, 255, 0.85);
     cursor: pointer;
     text-align: left;
-    color: #14120f;
+    color: var(--bg);
     font: inherit;
   }
   .tile.active {

@@ -280,7 +280,7 @@
   }
 
   .error {
-    color: #B43F2A;
+    color: var(--danger);
     font-size: var(--small-size);
     margin: 8px 0 0;
   }
@@ -290,7 +290,7 @@
     margin: 8px 0 0;
   }
   .warn {
-    color: #B43F2A;
+    color: var(--danger);
     font-size: var(--small-size);
     margin: 8px 0 0;
   }

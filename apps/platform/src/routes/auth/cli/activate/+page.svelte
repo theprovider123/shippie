@@ -111,7 +111,7 @@
     height: 56px;
     padding: 0 1.25rem;
     background: transparent;
-    border: 1px solid #C9C2B1;
+    border: 1px solid var(--border-paper-mid);
     color: inherit;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 22px;
@@ -122,12 +122,12 @@
     border-radius: 0;
     box-sizing: border-box;
   }
-  input[type='text']:focus { border-color: #E8603C; }
+  input[type='text']:focus { border-color: var(--sunset); }
   .btn-primary {
     width: 100%;
     min-height: var(--touch-min, 48px);
-    background: #E8603C;
-    color: #14120F;
+    background: var(--sunset);
+    color: var(--bg);
     border: none;
     font-weight: 700;
     font-size: 15px;
@@ -140,7 +140,7 @@
     text-align: center;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 11px;
-    color: #8B847A;
+    color: var(--text-muted-warm);
     margin: 0;
   }
   .continue-link {
@@ -161,8 +161,8 @@
     line-height: 1.4;
     border: 1px solid;
   }
-  .error { border-color: #B43F2A; color: #B43F2A; background: rgba(180,63,42,0.05); }
-  .ok { border-color: #2E7D5B; color: #2E7D5B; background: rgba(46,125,91,0.05); }
+  .error { border-color: var(--danger); color: var(--danger); background: rgba(180,63,42,0.05); }
+  .ok { border-color: var(--success); color: var(--success); background: rgba(46,125,91,0.05); }
   .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
@@ -177,7 +177,7 @@
   }
   @media (prefers-color-scheme: dark) {
     .page { background: var(--bg, #14120F); color: var(--text, #EDE4D3); }
-    .lede { color: #A39A8B; }
-    input[type='text'] { border-color: #3A352D; }
+    .lede { color: var(--text-muted-cool); }
+    input[type='text'] { border-color: var(--ink-warm-mid); }
   }
 </style>

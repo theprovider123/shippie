@@ -225,6 +225,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   animation: toast-in 220ms cubic-bezier(0.18, 0.89, 0.32, 1.28),
              toast-out 220ms ease-in 1.28s forwards;
   white-space: nowrap;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 .toast-tetris  { background: linear-gradient(135deg, #C97B2D, #E84A2D); }
 .toast-tspin   { background: linear-gradient(135deg, #7E5B96, #3F8AA8); }

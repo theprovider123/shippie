@@ -22,28 +22,59 @@ import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 
 const PER_PAGE = 48;
 
+type LauncherPhase = 'prelaunch' | 'world-cup';
+
+const WORLD_CUP_PHASE_START_MS = Date.UTC(2026, 5, 11);
+
 /**
- * The 8 tools featured on the launcher's first-visit shelf. Curated by hand
- * — we want the strongest demos first, not whatever sorts to the top.
- * Replace freely as new polished tools come online.
+ * Featured shelf by launch phase. Pre-launch leads with the privacy story;
+ * the World Cup window rotates the event app in without making the privacy
+ * slate a permanent casualty.
  */
-const LAUNCHER_FEATURED_SLUGS = [
-  'crewtrip',
-  'palate',
-  'coffee',
-  'dough',
-  'cooking',
-  'sip-log',
-  'quiet',
-  'habit-tracker',
-] as const;
+const LAUNCHER_FEATURED_SLUGS_BY_PHASE = {
+  prelaunch: [
+    'cycle',         // your cycle, never on a server
+    'sleep',         // your sleep pattern, logged locally
+    'tab',           // split a bill, no accounts
+    'ledger',        // money that stays yours
+    'chiwit',        // how does today feel?
+    'voice-memo',    // thoughts you do not want anywhere else
+    'palate',        // recipes that work offline at 6pm
+    'journal',       // the log of everything that ran today
+    'quiet',         // five-minute reset, no subscription
+    'habit-tracker', // streaks fed by the tools you already use
+  ],
+  'world-cup': [
+    'golazo',        // launch-week traffic hook
+    'chiwit',        // daily pulse and retention habit
+    'tab',           // no-account bill splitting demo
+    'cycle',         // privacy anchor stays visible
+    'sleep',         // local daily ritual
+    'ledger',        // money that stays yours
+    'voice-memo',    // private thoughts
+    'palate',        // offline dinner utility
+    'quiet',         // reset without a subscription
+    'habit-tracker', // intent-fed streaks
+  ],
+} as const satisfies Record<LauncherPhase, readonly string[]>;
 
 // WIP apps can exist in production DB before their hosted runtime is ready.
 // Keep them out of launcher/mobile surfaces until explicitly shipped.
-const LAUNCHER_HIDDEN_SLUGS = new Set(['golazo']);
+const PRELAUNCH_HIDDEN_SLUGS = new Set(['golazo']);
 
-function launcherVisible<T extends { slug: string }>(apps: T[]): T[] {
-  return apps.filter((app) => !LAUNCHER_HIDDEN_SLUGS.has(app.slug));
+function launcherPhase(now: Date): LauncherPhase {
+  return now.getTime() >= WORLD_CUP_PHASE_START_MS ? 'world-cup' : 'prelaunch';
+}
+
+function launcherVisible<T extends { slug: string }>(apps: T[], phase: LauncherPhase): T[] {
+  if (phase === 'world-cup') return apps;
+  return apps.filter((app) => !PRELAUNCH_HIDDEN_SLUGS.has(app.slug));
+}
+
+function orderedFeatured<T extends { slug: string }>(apps: T[], slugs: readonly string[]): T[] {
+  return slugs
+    .map((slug) => apps.find((app) => app.slug === slug))
+    .filter((app): app is T => Boolean(app));
 }
 
 function marketplaceCategory(category: string | undefined): string {
@@ -54,7 +85,7 @@ function marketplaceCategory(category: string | undefined): string {
   return category ?? 'tools';
 }
 
-function fallbackApps() {
+function fallbackApps(phase: LauncherPhase) {
   // Marketplace home shows featured + arcade together so "games" sits
   // alongside "tools" / "social" as a normal category chip. Archived
   // (e.g. live-room → matchday) and labs entries still live on their
@@ -78,18 +109,22 @@ function fallbackApps() {
     kind: app.appKind,
     kindStatus: 'confirmed' as PublicKindStatus,
     firstPartySigned: true,
-  })));
+  })), phase);
 }
 
 function filteredFallbackApps(
   query: string,
   categoryFilter: string | null,
+  phase: LauncherPhase,
   remixableFilter = false,
 ) {
-  const fallback = fallbackApps();
+  const fallback = fallbackApps(phase);
+  // Hoist `query.toLowerCase()` out of the per-app loop — it's stable
+  // for the lifetime of this filter.
+  const lowerQuery = query.toLowerCase();
   const filtered = fallback.filter((app) => {
     const haystack = `${app.name} ${app.tagline ?? ''} ${app.category}`.toLowerCase();
-    const matchesQuery = !query || haystack.includes(query.toLowerCase());
+    const matchesQuery = !query || haystack.includes(lowerQuery);
     const matchesCategory = !categoryFilter || app.category === categoryFilter;
     const matchesRemixable = !remixableFilter || isFirstPartyShowcase(app.slug);
     return matchesQuery && matchesCategory && matchesRemixable;
@@ -105,10 +140,11 @@ function mergeWithBundledApps(
   query: string,
   categoryFilter: string | null,
   remixableFilter: boolean,
+  phase: LauncherPhase,
 ) {
-  const visibleRows = launcherVisible(rows);
+  const visibleRows = launcherVisible(rows, phase);
   const seen = new Set(visibleRows.map((app) => app.slug));
-  const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter).apps.filter((app) => !seen.has(app.slug));
+  const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter).apps.filter((app) => !seen.has(app.slug));
   return [...visibleRows, ...fallback];
 }
 
@@ -122,13 +158,18 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   const offset = (page - 1) * PER_PAGE;
   const categoryFilter = (url.searchParams.get('category') ?? '').trim() || null;
   const remixableFilter = url.searchParams.get('remixable') === '1';
+  const isDefaultBrowse = !query && !categoryFilter && !remixableFilter && page === 1;
+  const phase = launcherPhase(new Date());
+  const featuredSlugs = LAUNCHER_FEATURED_SLUGS_BY_PHASE[phase];
   if (!platform?.env.DB) {
-    const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
+    const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter);
+    const visible = fallback.apps.slice(offset, offset + PER_PAGE);
+    const featured = isDefaultBrowse ? orderedFeatured(visible, featuredSlugs) : [];
     return {
-      apps: fallback.apps.slice(offset, offset + PER_PAGE),
-      featured: [],
-      topFourSlugs: [] as string[],
-      suggestionPool: fallbackApps().slice(0, 12),
+      apps: visible,
+      featured,
+      topFourSlugs: featured.slice(0, 4).map((app) => app.slug),
+      suggestionPool: fallbackApps(phase).slice(0, 12),
       query,
       page,
       hasMore: fallback.apps.length > offset + PER_PAGE,
@@ -145,7 +186,6 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   // fastest route to "Something went wrong" because they can reference
   // chunks from an older deploy. Cache the immutable assets aggressively;
   // keep the document itself network-first.
-  const isDefaultBrowse = !query && !categoryFilter && !remixableFilter && page === 1;
   setHeaders({ 'cache-control': 'no-store' });
 
   // Filter pushed into the DB query so pagination is correct.
@@ -159,23 +199,14 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
       listCategories(db),
     ]);
   } catch {
-    const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
+    const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter);
     const visible = fallback.apps.slice(offset, offset + PER_PAGE);
+    const featured = isDefaultBrowse ? orderedFeatured(visible, featuredSlugs) : [];
     return {
       apps: visible,
-      featured: isDefaultBrowse
-        ? LAUNCHER_FEATURED_SLUGS
-            .map((slug) => visible.find((app) => app.slug === slug))
-            .filter((app): app is (typeof visible)[number] => Boolean(app))
-        : [],
-      topFourSlugs: isDefaultBrowse
-        ? LAUNCHER_FEATURED_SLUGS
-            .map((slug) => visible.find((app) => app.slug === slug))
-            .filter((app): app is (typeof visible)[number] => Boolean(app))
-            .slice(0, 4)
-            .map((app) => app.slug)
-        : [],
-      suggestionPool: fallbackApps().slice(0, 12),
+      featured,
+      topFourSlugs: featured.slice(0, 4).map((app) => app.slug),
+      suggestionPool: fallbackApps(phase).slice(0, 12),
       query,
       page,
       hasMore: fallback.apps.length > offset + PER_PAGE,
@@ -186,19 +217,19 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
     };
   }
 
-  const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
+  const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter);
   const categories = [...new Set([...dbCategories, ...fallback.categories])].sort();
   const appRows =
     offset === 0
-      ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter)
-      : launcherVisible(dbRows);
+      ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter, phase)
+      : launcherVisible(dbRows, phase);
 
   if (appRows.length === 0) {
     return {
       apps: fallback.apps.slice(offset, offset + PER_PAGE),
       featured: [],
       topFourSlugs: [] as string[],
-      suggestionPool: fallbackApps().slice(0, 12),
+      suggestionPool: fallbackApps(phase).slice(0, 12),
       query,
       page,
       hasMore: fallback.apps.length > offset + PER_PAGE,
@@ -268,16 +299,14 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   // cache-control decision; reuse it. Filter is defensive — missing slugs
   // (e.g. retired showcases) silently drop out rather than crash.
   const featured = isDefaultBrowse
-    ? LAUNCHER_FEATURED_SLUGS
-        .map((slug) => decorated.find((app) => app.slug === slug))
-        .filter((app): app is (typeof decorated)[number] => Boolean(app))
+    ? orderedFeatured(decorated, featuredSlugs)
     : [];
   const topFourSlugs = featured.slice(0, 4).map((app) => app.slug);
 
   // Suggestion pool for the empty-search fallback. Always populated so
   // the client-side resolver has something to score against, even on
   // queries that hit zero rows from the DB filter.
-  const suggestionPool = fallbackApps().slice(0, 12);
+  const suggestionPool = fallbackApps(phase).slice(0, 12);
 
   return {
     apps: decorated,

@@ -36,6 +36,13 @@ export interface Toast extends Required<Omit<ToastInput, 'action' | 'secondaryAc
 }
 
 const DEFAULT_DURATION_MS = 4000;
+/**
+ * Hard cap on simultaneous toasts. Past this we drop the oldest
+ * non-sticky entry to make room — sticky toasts (durationMs === 0)
+ * stay because they're usually user-action prompts that the caller
+ * expects to outlive throughput bursts.
+ */
+const MAX_VISIBLE_TOASTS = 6;
 
 interface ToastApi extends Readable<Toast[]> {
   push: (input: ToastInput) => string;
@@ -71,7 +78,22 @@ function createToastStore(): ToastApi {
       secondaryAction: input.secondaryAction ?? null,
       createdAt: Date.now()
     };
-    inner.update((list) => [...list, toast]);
+    inner.update((list) => {
+      const next = [...list, toast];
+      if (next.length <= MAX_VISIBLE_TOASTS) return next;
+      // Evict the oldest non-sticky toast to keep the screen calm
+      // under burst load. Sticky toasts (durationMs === 0) usually
+      // gate a user action and shouldn't disappear silently.
+      const dropIndex = next.findIndex((t, i) => i < next.length - 1 && t.durationMs > 0);
+      if (dropIndex < 0) return next;
+      const dropped = next[dropIndex];
+      const evictTimer = timers.get(dropped.id);
+      if (evictTimer) {
+        clearTimeout(evictTimer);
+        timers.delete(dropped.id);
+      }
+      return [...next.slice(0, dropIndex), ...next.slice(dropIndex + 1)];
+    });
     if (durationMs > 0) {
       const handle = setTimeout(() => dismiss(id), durationMs);
       timers.set(id, handle);

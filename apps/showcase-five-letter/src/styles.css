@@ -61,6 +61,13 @@ h2 { font-size: 18px; }
   flex-wrap: wrap;
 }
 .head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+/* Below 401px the 7 action buttons (stats + archive + settings + mute + 3
+   languages) at 36px each can't share a row with the title. Drop the
+   actions row onto its own line so they wrap cleanly. Mobile-audit
+   runtime overflow was +69px at 360px without this. */
+@media (max-width: 400px) {
+  .head-actions { width: 100%; justify-content: flex-start; }
+}
 
 .lang-row { display: flex; gap: 4px; flex-wrap: wrap; }
 .lang {

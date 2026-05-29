@@ -106,7 +106,7 @@
   }
   .intent-allow {
     background: var(--sunset, #e8603c);
-    border: 1px solid var(--sunset, #e8603c);
+    border: 1px solid var(--sunset, var(--sunset));
     color: var(--bg-pure, #fff);
     font-weight: 600;
   }

@@ -408,7 +408,7 @@
     background: rgba(232, 96, 60, 0.08);
   }
   .connection-ai {
-    color: #7c5cc4;
+    color: var(--accent-violet);
     border-color: rgba(124, 92, 196, 0.42);
     background: rgba(124, 92, 196, 0.08);
   }

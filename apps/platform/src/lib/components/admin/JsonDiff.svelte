@@ -95,8 +95,8 @@
   .diff td.before { color: var(--text-light, #7A6B58); text-decoration: line-through; }
   .diff td.after { color: var(--text, #EDE4D3); }
   tr.changed td.after { color: var(--marigold, #E8C547); }
-  tr.added td.after { color: #A8C491; }
+  tr.added td.after { color: var(--sage-highlight); }
   tr.added td.before { color: var(--text-light, #7A6B58); }
-  tr.removed td.before { color: #F47552; text-decoration: line-through; }
+  tr.removed td.before { color: var(--sunset-hover); text-decoration: line-through; }
   tr.unchanged { opacity: 0.5; }
 </style>

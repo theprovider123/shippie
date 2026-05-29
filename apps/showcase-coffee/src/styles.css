@@ -526,6 +526,7 @@ button, input, textarea, select { font: inherit; }
   border: 1px solid var(--border);
   border-radius: 0;
   white-space: nowrap;
+  /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 .freshness-tag.inline { display: inline-block; margin-top: 4px; }
 .tag-rest { color: var(--text-light); border-color: var(--text-light); }
