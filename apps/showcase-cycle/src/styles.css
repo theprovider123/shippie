@@ -324,3 +324,78 @@ button.secondary,
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
+
+/* ===== Daily log + page surfaces ===== */
+.quick-log { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.chip-scale,
+.symptom-toggles { margin: 0; }
+
+.chip-scale-hint {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-light);
+  opacity: 0.8;
+}
+
+.chip-row,
+.symptom-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.chip-row .chip,
+.symptom-row .chip {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.note-field { display: flex; flex-direction: column; gap: 0.45rem; }
+.note-field > span { padding: 0; }
+
+.actions,
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.saved-flag {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--cycle-calm);
+}
+
+/* Soft cross-app hint (mood correlation) */
+.hint {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cycle-calm);
+  background: var(--cycle-calm-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.hint small { display: block; margin-top: 0.3rem; color: var(--text-light); }
+
+/* Prediction banner */
+.predict-banner {
+  margin-top: 1.6rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.predict-banner .muted { margin: 0.6rem 0 0; font-size: 0.88rem; }
+.muted-banner { background: transparent; border-style: dashed; }
+
+/* Section spacing between pages' blocks */
+.page > * + * { margin-top: 0.2rem; }
+.page-head { margin-bottom: 1.2rem; }

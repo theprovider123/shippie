@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { resolveLocalDb } from './db/runtime.ts';
-import { Today } from './pages/Today.tsx';
+import { Today, type LoggedEntry } from './pages/Today.tsx';
 import { History } from './pages/History.tsx';
 import { Predict } from './pages/Predict.tsx';
 import { Settings } from './pages/Settings.tsx';
@@ -73,25 +73,29 @@ export function App() {
 
   useEffect(() => () => localNavigation.destroy(), [localNavigation]);
 
-  // Provide cycle-logged on every save. We pass an entry payload so
-  // downstream consumers (Body Metrics, Mood) can correlate.
-  const onLogged = useCallback(
-    (entry: {
-      cycle_id: string;
-      date: string;
-      flow: number | null;
-      symptoms: string[];
-      note: string | null;
-    }) => {
-      shippie.intent.broadcast('cycle-logged', [
-        {
-          source: 'cycle',
-          ...entry,
-        },
+  // Provide cycle-logged on every save (and period-started when the save opens
+  // a fresh cycle). The payload carries flow/symptoms so sibling apps can
+  // correlate — but never the freeform note or intimacy detail, which stay
+  // strictly on-device.
+  const onLogged = useCallback((entry: LoggedEntry) => {
+    shippie.intent.broadcast('cycle-logged', [
+      {
+        source: 'cycle',
+        cycle_id: entry.cycle_id,
+        date: entry.date,
+        flow: entry.flow,
+        pain: entry.pain,
+        mood: entry.mood,
+        energy: entry.energy,
+        symptoms: entry.symptoms,
+      },
+    ]);
+    if (entry.fresh_cycle) {
+      shippie.intent.broadcast('period-started', [
+        { source: 'cycle', date: entry.date, flow: entry.flow },
       ]);
-    },
-    [],
-  );
+    }
+  }, []);
 
   // Recompute the prediction once per refreshKey bump. Broadcast
   // cycle-window-predicted only when the predicted-start range
