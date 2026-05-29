@@ -456,3 +456,12 @@ button.secondary,
 .insight-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; margin-top: 0.5rem; background: var(--cycle-calm); }
 .insight-high .insight-dot { background: var(--cycle-accent); }
 .insight-low .insight-dot { background: var(--text-light); }
+
+/* ===== Lock screen ===== */
+.lock-screen { display: flex; align-items: center; justify-content: center; min-height: 90svh; }
+.lock-card { width: min(100%, 360px); display: flex; flex-direction: column; gap: 0.7rem; text-align: center; }
+.lock-card h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; margin: 0; }
+.lock-card .muted { margin: 0 0 0.4rem; }
+.lock-input { text-align: center; letter-spacing: 0.4em; font-size: 1.3rem; }
+.lock-input.error { border-color: var(--cycle-accent); }
+.lock-error { color: var(--cycle-accent); font-size: 0.85rem; margin: 0; }

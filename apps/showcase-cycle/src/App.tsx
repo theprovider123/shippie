@@ -20,9 +20,11 @@
  * dynamic import keeps Yjs out of the bundle for solo-only users.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createLocalNavigation } from '@shippie/sdk/wrapper';
 import { resolveLocalDb } from './db/runtime.ts';
+import { LockGate } from './components/LockGate.tsx';
 import { Today, type LoggedEntry } from './pages/Today.tsx';
 import { History } from './pages/History.tsx';
 import { Predict } from './pages/Predict.tsx';
@@ -59,8 +61,18 @@ interface PartnerHandle {
   publish: (projection: PartnerProjection) => void;
 }
 
+/** Gated entry point: the lock screen mounts BEFORE CycleApp, so no DB reads
+ *  or partner-mesh binding happen until the PIN is entered (when a lock is set). */
 export function App() {
   const db = useMemo(() => resolveLocalDb(), []);
+  return (
+    <LockGate db={db}>
+      <CycleApp db={db} />
+    </LockGate>
+  );
+}
+
+function CycleApp({ db }: { db: ShippieLocalDb }) {
   const [route, setRoute] = useState<Route>('today');
   const localNavigation = useMemo(
     () => createLocalNavigation<Route>('today', setRoute),
