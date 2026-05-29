@@ -9,6 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDrizzleClient } from '$server/db/client';
 import { remixEligibilityForSlug } from '$server/remix/eligibility';
+import { describeRemixDataCompatibility } from '$server/remix/compatibility';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
   if (!platform?.env.DB) {
@@ -27,6 +28,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
   const app = eligibility.app;
   const targetSlug = `${app.slug}-remix`;
+  const dataCompatibility = describeRemixDataCompatibility({ family: app.dataFamily });
 
   return json({
     remix: {
@@ -37,6 +39,13 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       license: app.license,
       latestVersion: app.latestVersion,
       forkUrl: githubForkUrl(app.sourceRepo),
+      // Data Passport: the family the remix inherits + whether it can read the
+      // parent's data. Keep the family/schema to retain data; change to start fresh.
+      data: {
+        family: app.dataFamily,
+        compatibility: dataCompatibility.status,
+        note: dataCompatibility.summary,
+      },
       deploy: {
         cli: `shippie deploy ./dist --slug ${targetSlug} --remix ${app.slug}`,
         mcp: {

@@ -48,6 +48,7 @@ describe('remixEligibilityForSlug', () => {
         sourceRepo: 'https://github.com/theprovider123/shippie/tree/main/apps/showcase-coffee',
         license: 'AGPL-3.0-or-later',
         latestVersion: null,
+        dataFamily: null,
       },
     });
   });
@@ -82,6 +83,7 @@ describe('remixEligibilityForSlug', () => {
         sourceRepo: 'https://github.com/theprovider123/shippie/tree/main/apps/showcase-coffee',
         license: 'AGPL-3.0-or-later',
         latestVersion: null,
+        dataFamily: null,
       },
     });
   });
@@ -118,6 +120,7 @@ describe('remixEligibilityForSlug', () => {
         sourceRepo: 'https://github.com/theprovider123/shippie/tree/main/apps/showcase-snake',
         license: 'AGPL-3.0-or-later',
         latestVersion: null,
+        dataFamily: null,
       },
     });
   });

@@ -12,6 +12,13 @@ export interface RemixableApp {
   sourceRepo: string;
   license: string;
   latestVersion: string | null;
+  /**
+   * The parent app's durable data family (apps.data_family, locked on first
+   * deploy — see deploy/data-family.ts). Surfaced so a remix can tell whether
+   * it can read the parent's saved data. Null when unknown (e.g. a first-party
+   * catalog entry with no DB row yet).
+   */
+  dataFamily: string | null;
 }
 
 export type RemixEligibility =
@@ -34,6 +41,7 @@ export async function remixEligibilityForSlug(
       visibilityScope: schema.apps.visibilityScope,
       isArchived: schema.apps.isArchived,
       githubRepo: schema.apps.githubRepo,
+      dataFamily: schema.apps.dataFamily,
       sourceRepo: schema.appLineage.sourceRepo,
       license: schema.appLineage.license,
       remixAllowed: schema.appLineage.remixAllowed,
@@ -71,6 +79,7 @@ export async function remixEligibilityForSlug(
           sourceRepo: firstPartySourceRepo(row.slug),
           license: 'AGPL-3.0-or-later',
           latestVersion: null,
+          dataFamily: row.dataFamily ?? null,
         },
       };
     }
@@ -98,6 +107,7 @@ export async function remixEligibilityForSlug(
       sourceRepo,
       license: row.license,
       latestVersion: pkg?.version ?? null,
+      dataFamily: row.dataFamily ?? null,
     },
   };
 }
@@ -119,6 +129,8 @@ export interface PublicRemixInfo {
   license: string | null;
   remixAvailable: boolean;
   remixVia: 'cli' | 'web';
+  /** Parent app's durable data family, so the remix CTA can explain inheritance. */
+  dataFamily: string | null;
 }
 
 export async function publicRemixInfoForSlug(
@@ -133,6 +145,7 @@ export async function publicRemixInfoForSlug(
       license: null,
       remixAvailable: false,
       remixVia: firstParty ? 'cli' : 'web',
+      dataFamily: null,
     };
   }
   return {
@@ -140,6 +153,7 @@ export async function publicRemixInfoForSlug(
     license: eligibility.app.license,
     remixAvailable: true,
     remixVia: firstParty ? 'cli' : 'web',
+    dataFamily: eligibility.app.dataFamily,
   };
 }
 
@@ -157,6 +171,7 @@ function firstPartyCatalogRemix(slug: string): RemixableApp | null {
     sourceRepo: firstPartySourceRepo(canonical),
     license: 'AGPL-3.0-or-later',
     latestVersion: null,
+    dataFamily: null,
   };
 }
 
