@@ -703,7 +703,11 @@
   .tile-card:hover { background: var(--surface-alt); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14); }
   .tile-card .tile-launch {
     grid-area: 1 / 1 / 2 / 3;
-    display: contents;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-areas: 'icon body';
+    gap: 16px;
+    align-items: start;
   }
   .tile-card .tile-icon {
     grid-area: icon;
@@ -722,6 +726,7 @@
   }
   @container (max-width: 19rem) {
     .tile-card { grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; padding: 14px; }
+    .tile-card .tile-launch { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; }
     .tile-card .tile-icon { width: 52px; height: 52px; }
     .tile-card .tile-icon :global(.shippie-icon) { width: 52px !important; height: 52px !important; }
     .tile-card .tile-name { font-size: 1rem; }
