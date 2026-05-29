@@ -188,7 +188,7 @@ const PATTERN_RULES: PatternRule[] = [
 ];
 
 const SHIPPIE_HOST_RE = /(^|\.)shippie\.app$/i;
-const SHIPPIE_PATH_RE = /\/__shippie\/(?:signal|relay|backup|intent|proof|meta|sdk|sw|local)\b/i;
+const SHIPPIE_PATH_RE = /\/__shippie\/(?:signal|relay|backup|checkpoints|intent|proof|meta|sdk|sw|local)\b/i;
 const EXTERNAL_URL_RE = /https:\/\/[^\s"'`)<>]+/gi;
 const FETCH_RE =
   /\bfetch\s*\(\s*([`'"])(https:\/\/[^`'"]+)\1\s*(?:,\s*(\{[\s\S]{0,700}?\}))?\s*\)/gi;
@@ -278,7 +278,7 @@ function scanCapabilities(body: string, hints: LocalToolCapabilityHints): void {
   hints.localDb ||= /shippie\.local\.db|@shippie\/local-db|indexedDB|localStorage/i.test(body);
   hints.localFiles ||= /shippie\.local\.files|@shippie\/local-files|getDirectory\s*\(/i.test(body);
   hints.localAi ||= /shippie\.local\.ai|@shippie\/local-ai|task:\s*['"](?:classify|embed|sentiment|moderate)['"]/i.test(body);
-  hints.secureBackup ||= /shippie\.backup|data\.mode\s*[:=]\s*['"]shippie-documents|recovery\s*[:=]\s*['"]inherited/i.test(body);
+  hints.secureBackup ||= /shippie\.backup|__shippie\/checkpoints|data\.mode\s*[:=]\s*['"]shippie-documents|recovery\s*[:=]\s*['"]inherited/i.test(body);
   hints.privateRelay ||= /__shippie\/(?:signal|relay)|shippie\.local\.group|@shippie\/proximity|createGroup\s*\(|joinGroup\s*\(/i.test(body);
   hints.sharesIntents ||= /shippie\.intent|intent\.(?:provide|consume|broadcast)|intents\s*[:=]/i.test(body);
   hints.worksOffline ||= /serviceWorker|caches\.open|navigator\.storage|getDirectory\s*\(|localStorage|indexedDB|shippie\.local/i.test(body);

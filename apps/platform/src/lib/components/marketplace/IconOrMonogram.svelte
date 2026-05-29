@@ -59,7 +59,7 @@
     font-family: var(--font-heading);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     user-select: none;
   }
 </style>

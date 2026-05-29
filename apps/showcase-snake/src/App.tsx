@@ -71,6 +71,7 @@ export function App() {
   const [world, setWorld] = useState<World>(() => createWorld('classic'));
   const [stored, setStored] = useState<Stored>(() => loadStored());
   const [muted, setMutedState] = useState(() => isMuted());
+  const [armed, setArmed] = useState(false);
   const [, force] = useState(0);
   const [hopCount, setHopCount] = useState(0);
   const [resultRecorded, setResultRecorded] = useState(false);
@@ -86,6 +87,7 @@ export function App() {
     setWorld(createWorld(nextMode));
     lastFrameRef.current = performance.now();
     lastStepAtRef.current = 0;
+    setArmed(false);
     setHopCount(0);
     setResultRecorded(false);
   }, []);
@@ -121,6 +123,7 @@ export function App() {
 
   const hopOrSetDir = useCallback((dir: Direction) => {
     queueDirection(world, dir);
+    setArmed(true);
     haptic('tap');
     sfx.play('tap', { volume: 0.3, pitch: 1.1 });
     setHopCount((n) => n + 1);
@@ -132,7 +135,7 @@ export function App() {
   // sub-cell interpolation, which keeps the render path dead simple
   // and predictable across viewports.
   useEffect(() => {
-    if (world.state !== 'playing') return;
+    if (world.state !== 'playing' || !armed) return;
     let raf = 0;
     const loop = (now: number) => {
       const dtMs = Math.min(60, now - lastFrameRef.current);
@@ -160,13 +163,18 @@ export function App() {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [world]);
+  }, [armed, world]);
 
   // Keyboard.
   useEffect(() => {
     function down(e: KeyboardEvent) {
       if (world.state === 'over' && (e.key === ' ' || e.key === 'Enter')) {
         startGame(mode);
+        return;
+      }
+      if (!armed && world.state === 'playing' && (e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault();
+        setArmed(true);
         return;
       }
       switch (e.key) {
@@ -178,7 +186,7 @@ export function App() {
     }
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [hopOrSetDir, mode, startGame, world.state]);
+  }, [armed, hopOrSetDir, mode, startGame, world.state]);
 
   // Touch swipe.
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -313,6 +321,16 @@ export function App() {
             <button type="button" className="ghost share-score" onClick={shareResult}>Share</button>
           </div>
           {shareNote ? <p className="muted small">{shareNote}</p> : null}
+        </section>
+      ) : null}
+
+      {world.state === 'playing' && !armed ? (
+        <section className="overlay ready-overlay" aria-live="polite">
+          <p className="finish-line">Ready</p>
+          <p className="muted small">Choose a direction or press Start.</p>
+          <div className="overlay-actions">
+            <button type="button" className="primary" onClick={() => setArmed(true)}>Start</button>
+          </div>
         </section>
       ) : null}
     </main>

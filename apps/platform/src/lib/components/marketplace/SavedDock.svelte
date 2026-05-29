@@ -1,17 +1,16 @@
 <script lang="ts">
-  import { preloadData } from '$app/navigation';
-  import IconOrMonogram from './IconOrMonogram.svelte';
   import SavedManageSheet from './SavedManageSheet.svelte';
+  import {
+    ToolTile,
+    launcherAppToToolTile,
+  } from '$lib/components/tool-surface';
   import {
     cachedSlugs,
     ensureAppOffline,
     offlineStatuses,
     removeAppAndTrack,
   } from '$lib/stores/cached-slugs';
-  import {
-    recordAppLaunch,
-    togglePinnedApp,
-  } from '$lib/stores/launcher-memory';
+  import { togglePinnedApp } from '$lib/stores/launcher-memory';
   import { toast } from '$lib/stores/toast';
 
   interface DockApp {
@@ -28,22 +27,9 @@
 
   let { apps }: Props = $props();
   let manageOpen = $state(false);
-  const prewarmed = new Set<string>();
-
-  function warm(slug: string) {
-    if (prewarmed.has(slug)) return;
-    prewarmed.add(slug);
-    const href = `/run/${encodeURIComponent(slug)}`;
-    void preloadData(href).catch(() => {});
-  }
-
-  function onLaunch(slug: string) {
-    recordAppLaunch(slug);
-  }
-
-  function offlineFor(slug: string) {
-    return $cachedSlugs.has(slug) || $offlineStatuses[slug]?.state === 'saved';
-  }
+  const sealedApps = $derived(
+    apps.filter((app) => $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved'),
+  );
 
   function onUnpin(slug: string) {
     togglePinnedApp(slug);
@@ -59,80 +45,54 @@
   }
 </script>
 
-<section class="dock-section" aria-labelledby="saved-dock-title">
-  <header class="dock-header">
-    <h2 id="saved-dock-title">Saved</h2>
-    <button
-      type="button"
-      class="manage-btn"
-      aria-label="Manage saved tools"
-      onclick={() => (manageOpen = true)}
-      disabled={apps.length === 0}
-    >
-      manage →
-    </button>
-  </header>
+{#if sealedApps.length > 0}
+  <section class="dock-section" aria-labelledby="saved-dock-title">
+    <header class="dock-header">
+      <h2 id="saved-dock-title">Saved</h2>
+      <button
+        type="button"
+        class="manage-btn"
+        aria-label="Manage saved tools"
+        onclick={() => (manageOpen = true)}
+      >
+        manage →
+      </button>
+    </header>
 
-  {#if apps.length === 0}
-    <p class="empty">
-      <span>Tap the ★ on a tool to keep it ready here, offline.</span>
-      <span class="empty-hint">no downloads, no signups</span>
-    </p>
-  {:else}
     <ul
       class="rail"
       aria-label="Saved tools"
-      class:single={apps.length === 1}
+      class:single={sealedApps.length === 1}
     >
-      {#each apps as app (app.slug)}
-        <li class="tile-item">
-          <a
-            class="tile"
-            href={`/run/${encodeURIComponent(app.slug)}`}
-            aria-label={`Open ${app.name}`}
-            onpointerenter={() => warm(app.slug)}
-            onfocus={() => warm(app.slug)}
-            onclick={() => onLaunch(app.slug)}
-          >
-            <span class="tile-icon">
-              <IconOrMonogram
-                name={app.name}
-                slug={app.slug}
-                iconUrl={app.iconUrl}
-                themeColor={app.themeColor}
-                size={72}
-              />
-              {#if app.firstPartySigned}
-                <span class="dot dot-signed" aria-hidden="true" title="Shippie-signed"></span>
-              {/if}
-              {#if offlineFor(app.slug)}
-                <span class="dot dot-offline" aria-hidden="true" title="Saved offline"></span>
-              {/if}
-            </span>
-            <span class="tile-name">{app.name}</span>
-          </a>
+      {#each sealedApps as app (app.slug)}
+        <li class="rail-item">
+          <ToolTile
+            app={launcherAppToToolTile(app)}
+            density="dock"
+            pinned={true}
+          />
         </li>
       {/each}
-      {#if apps.length > 2}
-        <li class="tile-item">
+      {#if sealedApps.length > 2}
+        <li class="rail-item">
           <button
             type="button"
-            class="tile manage"
+            class="rail-manage"
             aria-label="Manage all saved tools"
             onclick={() => (manageOpen = true)}
           >
-            <span class="tile-icon manage-icon" aria-hidden="true">＋</span>
-            <span class="tile-name">All saved</span>
+            <span class="manage-icon" aria-hidden="true">＋</span>
+            <span class="manage-label">All saved</span>
           </button>
         </li>
       {/if}
     </ul>
-  {/if}
-</section>
+  </section>
+{/if}
 
 {#if manageOpen}
   <SavedManageSheet
-    apps={apps}
+    apps={sealedApps}
     onClose={() => (manageOpen = false)}
     {onUnpin}
     {onSaveOffline}
@@ -175,36 +135,13 @@
     outline-offset: 2px;
     color: var(--text);
   }
-  .manage-btn[disabled] {
-    color: var(--text-light);
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .empty {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    align-items: center;
-    padding: 14px 16px;
-    margin: 0;
-    border: 1px dashed var(--border);
-    color: var(--text-secondary);
-    font-size: 14px;
-  }
-  .empty-hint {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-light);
-  }
-
   .rail {
     list-style: none;
     margin: 0;
     display: flex;
-    gap: 12px;
+    gap: 10px;
     overflow-x: auto;
-    padding: 8px 0 12px;
+    padding: 6px 0 10px;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -webkit-mask-image: linear-gradient(to right, #000 92%, transparent);
@@ -216,84 +153,56 @@
     mask-image: none;
   }
 
-  .tile-item {
+  .rail-item {
     flex: 0 0 auto;
-    width: 72px;
+    width: 76px;
     scroll-snap-align: start;
   }
-  .tile {
-    width: 100%;
+  .rail-manage {
+    width: 76px;
     display: grid;
     gap: 6px;
     justify-items: center;
-    color: inherit;
-    text-decoration: none;
-    background: none;
+    color: var(--text-light);
+    background: transparent;
     border: 0;
     padding: 0;
     cursor: pointer;
     font-family: inherit;
+    transition: color 0.15s var(--ease-out);
   }
-  .tile:focus-visible { outline: none; }
-  .tile:focus-visible .tile-icon {
+  .rail-manage .manage-icon {
+    width: 66px;
+    height: 66px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px dashed var(--border);
+    color: inherit;
+    font-family: var(--font-mono);
+    font-size: 22px;
+    transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  }
+  .rail-manage:hover { color: var(--text); }
+  .rail-manage:hover .manage-icon { border-color: var(--sunset); color: var(--text); }
+  .rail-manage:focus-visible .manage-icon {
     outline: 2px solid var(--sunset);
     outline-offset: 3px;
   }
-  .tile-icon {
-    position: relative;
-    width: 72px;
-    height: 72px;
-    display: inline-grid;
-    place-items: center;
-    transition: transform 0.15s var(--spring, ease);
-  }
-  .tile:hover .tile-icon { transform: scale(1.04); }
-  .tile-icon :global(.shippie-icon) {
-    width: 72px !important;
-    height: 72px !important;
-  }
-  .dot {
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    border: 2px solid var(--bg);
-    border-radius: 50%;
-  }
-  .dot-signed { top: -3px; right: -3px; background: var(--sage-leaf); }
-  .dot-offline { bottom: -3px; right: -3px; background: var(--text-secondary); }
-  .tile-name {
+  .rail-manage .manage-label {
     font-family: var(--font-body);
     font-size: 12px;
     line-height: 1.2;
-    color: var(--text-secondary);
     text-align: center;
-    max-width: 72px;
+    max-width: 76px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .tile.manage .manage-icon {
-    background: transparent;
-    color: var(--text-light);
-    border: 1px dashed var(--border);
-    font-family: var(--font-mono);
-    font-size: 22px;
-    width: 72px;
-    height: 72px;
-    transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
-  }
-  .tile.manage:hover .manage-icon {
-    color: var(--text);
-    border-color: var(--sunset);
-  }
-
-  /* Density: container queries below the standard width drop tile size */
   @container (max-width: 22rem) {
-    .tile-item { width: 64px; }
-    .tile-icon { width: 64px; height: 64px; }
-    .tile-icon :global(.shippie-icon) { width: 64px !important; height: 64px !important; }
-    .tile.manage .manage-icon { width: 64px; height: 64px; font-size: 20px; }
-    .tile-name { max-width: 64px; font-size: 11px; }
+    .rail-item { width: 74px; }
+    .rail-manage,
+    .rail-manage .manage-label { width: 74px; max-width: 74px; }
+    .rail-manage .manage-icon { width: 64px; height: 64px; font-size: 20px; }
   }
 </style>

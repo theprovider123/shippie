@@ -67,7 +67,7 @@ const WASM_DIR = resolve(PLATFORM_DIR, 'static', '__shippie', 'wasm');
 // onto models.shippie.app is a follow-up hardening step.
 const AI_RUNTIME_ASSETS = ['https://esm.sh/@huggingface/transformers@3.0.0'];
 
-const SKIP = new Set(['platform', 'shippie-ai']);
+const SKIP = new Set(['platform', 'shippie-ai', 'showcase-golazo']);
 
 function buildSdkRuntime() {
   const sdkDir = join(REPO_ROOT, 'packages', 'sdk');
@@ -80,7 +80,9 @@ function listShowcases() {
     if (!name.startsWith('showcase-')) return false;
     if (SKIP.has(name)) return false;
     const pkgPath = join(APPS_DIR, name, 'package.json');
+    const mainPath = join(APPS_DIR, name, 'src', 'main.tsx');
     if (!existsSync(pkgPath)) return false;
+    if (!existsSync(mainPath)) return false;
     try {
       const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
       return Boolean(pkg.scripts?.build);
@@ -176,6 +178,8 @@ function copyDist(distDir, slug) {
   // the per-showcase shippie.json#curation.surface so non-arcade
   // bakes are untouched.
   injectArcadeCspIfArcade(target, slug);
+  stripAppManifestLinks(target, slug);
+  stripExternalFontReferences(target, slug);
   // Emit __shippie-assets.json — the per-showcase asset manifest the
   // marketplace SW reads when the user taps "Save for offline." Walks
   // the post-strip tree so wa-sqlite WASM is correctly excluded; the
@@ -236,6 +240,39 @@ function injectContainerLocalDbBridge(targetDir, slug) {
   writeFileSync(indexPath, nextHtml);
 }
 
+function stripAppManifestLinks(targetDir, slug) {
+  const indexPath = join(targetDir, 'index.html');
+  if (!existsSync(indexPath)) return;
+  const source = readFileSync(indexPath, 'utf8');
+  const next = source.replace(
+    /<link\b(?=[^>]*\brel=(["'])[^"']*\bmanifest\b[^"']*\1)[^>]*>\s*/gi,
+    '',
+  );
+  if (next === source) return;
+  writeFileSync(indexPath, next);
+  console.log(`[prepare-showcases] stripped app manifest link from ${slug}`);
+}
+
+function stripExternalFontReferences(targetDir, slug) {
+  let changed = 0;
+  for (const file of listAssetsRecursive(targetDir)) {
+    if (!/\.(?:html|css)$/i.test(file.rel)) continue;
+    const path = join(targetDir, file.rel);
+    const source = readFileSync(path, 'utf8');
+    let next = source
+      .replace(/<link\b[^>]*href=["']https:\/\/fonts\.(?:googleapis|gstatic)\.com[^"']*["'][^>]*>\s*/gi, '')
+      .replace(/<link\b[^>]*href=["']\/\/fonts\.(?:googleapis|gstatic)\.com[^"']*["'][^>]*>\s*/gi, '')
+      .replace(/@font-face\s*{[^}]*fonts\.gstatic\.com[^}]*}\s*/gi, '');
+    if (next !== source) {
+      writeFileSync(path, next);
+      changed += 1;
+    }
+  }
+  if (changed > 0) {
+    console.log(`[prepare-showcases] stripped external Google font references from ${slug} (${changed} file(s))`);
+  }
+}
+
 function runtimeLocalBridgeScript(appId) {
   return `<script data-shippie-container-local-db>(function(){var appId=${JSON.stringify(appId)};var protocol='shippie.bridge.v1';var seq=0;var pending=new Map();function postPending(id){var entry=pending.get(id);if(!entry)return;window.parent.postMessage(entry.message,window.location.origin);}function settle(id){var entry=pending.get(id);if(!entry)return null;pending.delete(id);clearTimeout(entry.timer);clearInterval(entry.interval);return entry;}function request(capability,method,payload){var id='local_db_'+(++seq);var message={protocol:protocol,id:id,appId:appId,capability:capability,method:method,payload:payload};return new Promise(function(resolve,reject){var entry={resolve:resolve,reject:reject,message:message,timer:0,interval:0};entry.timer=setTimeout(function(){var timedOut=settle(id);if(timedOut)timedOut.reject(new Error('Shippie local DB request timed out.'));},5000);entry.interval=setInterval(function(){postPending(id);},100);pending.set(id,entry);postPending(id);});}window.addEventListener('message',function(event){if(event.origin!==window.location.origin)return;var data=event.data;if(!data||data.protocol!==protocol||!pending.has(data.id))return;var entry=settle(data.id);if(!entry)return;if(data.ok){entry.resolve(data.result);return;}entry.reject(new Error(data.error&&data.error.message?data.error.message:'Shippie local DB request failed.'));});function rows(result){var list=result&&Array.isArray(result.rows)?result.rows:[];return list.map(function(row){return row&&row.payload&&typeof row.payload==='object'?row.payload:row;});}var shippie=window.shippie||{};var local=shippie.local||{};local.db={create:function(table,schema){return request('db.insert','create',{table:table,schema:schema}).then(function(){});},insert:function(table,value){return request('db.insert','insert',{table:table,value:value}).then(function(){});},query:function(table,opts){return request('db.query','query',Object.assign({table:table},opts||{})).then(rows);},search:function(table,query,opts){return request('db.query','search',Object.assign({table:table,query:query},opts||{})).then(rows);},vectorSearch:function(table,vector,opts){var v=Array.prototype.slice.call(vector||[]);return request('db.query','vectorSearch',{table:table,vector:v,opts:opts||{}}).then(function(result){return rows(result).map(function(row,index){var source=result&&result.rows&&result.rows[index];return Object.assign({},row,{score:source&&typeof source.score==='number'?source.score:0});});});},update:function(table,id,patch){return request('db.insert','update',{table:table,id:id,patch:patch}).then(function(){});},delete:function(table,id){return request('db.insert','delete',{table:table,id:id}).then(function(){});},count:function(table,opts){return request('db.query','count',Object.assign({table:table},opts||{})).then(function(result){return result&&typeof result.count==='number'?result.count:0;});},export:function(table,opts){return request('db.query','export',Object.assign({table:table},opts||{})).then(function(result){return new Blob([JSON.stringify(result)],{type:'application/json'});});},restore:function(){return Promise.resolve({createdAt:new Date().toISOString(),appId:appId,schemaVersion:1,encrypted:false});},lastBackup:function(){return request('db.query','lastBackup',{});},usage:function(){return request('storage.getUsage','usage',{}).then(function(result){return {usedBytes:result&&typeof result.bytes==='number'?result.bytes:0,warningLevel:'none',persisted:true};});},requestPersistence:function(){return Promise.resolve(true);}};shippie.local=local;window.shippie=shippie;})();</script>`;
 }
@@ -254,6 +291,16 @@ function listAssetsRecursive(dir, prefix = '') {
   return out;
 }
 
+function stableStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  return `{${Object.keys(value)
+    .filter((key) => value[key] !== undefined)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+    .join(',')}}`;
+}
+
 function writeAssetManifest(targetDir, slug) {
   // Skip the manifest file itself — emit AFTER the walk so it never
   // self-references, but the safety belt below also filters it out in
@@ -262,19 +309,38 @@ function writeAssetManifest(targetDir, slug) {
   const files = listAssetsRecursive(targetDir).filter((f) => f.rel !== MANIFEST_NAME);
   // Sort by path so the buildId hash is order-stable across runs.
   files.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
-  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
-  const hash = createHash('sha256');
-  for (const f of files) hash.update(`${f.rel}:${f.size}\n`);
-  const buildId = hash.digest('hex').slice(0, 16);
-  const manifest = {
-    slug,
-    buildId,
-    totalBytes,
-    assets: files.map((f) =>
+  const entries = files.map((f) => {
+    const bytes = readFileSync(join(targetDir, f.rel));
+    const url =
       f.rel === 'index.html'
         ? `${RUNTIME_BASE_PATH}/${slug}/?shippie_embed=1`
-        : `${RUNTIME_BASE_PATH}/${slug}/${f.rel}`,
-    ),
+        : `${RUNTIME_BASE_PATH}/${slug}/${f.rel}`;
+    return {
+      url,
+      size: bytes.byteLength,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    };
+  });
+  const totalBytes = entries.reduce((sum, f) => sum + f.size, 0);
+  const hash = createHash('sha256');
+  for (const entry of entries) hash.update(`${entry.url}:${entry.size}:${entry.sha256}\n`);
+  const buildId = hash.digest('hex').slice(0, 16);
+  const entryUrl = `${RUNTIME_BASE_PATH}/${slug}/?shippie_embed=1`;
+  const hashableManifest = {
+    protocolVersion: 1,
+    slug,
+    version: buildId,
+    buildId,
+    entryUrl,
+    assets: entries,
+    totalBytes,
+  };
+  const manifestHash = createHash('sha256').update(stableStringify(hashableManifest)).digest('hex');
+  const manifest = {
+    ...hashableManifest,
+    manifestHash,
+    assets: entries.map((entry) => entry.url),
+    entries,
   };
   writeFileSync(join(targetDir, MANIFEST_NAME), JSON.stringify(manifest, null, 2) + '\n');
 }
@@ -580,7 +646,7 @@ function main() {
       );
     }
     writeShowcaseCatalog(hostedSlugs);
-    writeFirstPartyCuration(slugs);
+    writeFirstPartyCuration(hostedSlugs);
     writeRuntimePrecache(hostedSlugs);
     writePrecacheList();
     console.log(

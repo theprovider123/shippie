@@ -42,12 +42,8 @@
     app: LauncherApp;
     pinned?: boolean;
     recentLabel?: string;
-    /** Accepted for backward-compatibility with the v1 grid. v2 sizes
-        itself via container queries, so this is a no-op. */
+    /** Dense card treatment for launcher grids. */
     compact?: boolean;
-    /** Adds a thin sunset ribbon along the left edge. Used by the
-        first-visit spotlight in PR-D. */
-    spotlight?: boolean;
     onInspect?: (app: LauncherApp) => void;
     onTogglePin?: (slug: string) => void;
   }
@@ -56,7 +52,7 @@
     app,
     pinned = false,
     recentLabel = '',
-    spotlight = false,
+    compact = false,
     onInspect,
     onTogglePin,
   }: Props = $props();
@@ -72,7 +68,23 @@
   const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
+  const isSaving = $derived(
+    offlineStatus?.state === 'requested' ||
+      offlineStatus?.state === 'downloading' ||
+      offlineStatus?.state === 'verifying',
+  );
   const connectionBadges = $derived(connectionBadgesFromKind(app.kind));
+  const saveActionLabel = $derived.by(() => {
+    if (isSaving) return `Saving ${safeName}`;
+    if (isOffline) return `Remove ${safeName} from saved tools`;
+    return `Save ${safeName}`;
+  });
+  const saveActionTitle = $derived.by(() => {
+    if (isSaving) return 'Saving offline copy';
+    if (isOffline) return 'Saved offline';
+    return 'Save';
+  });
+  const saveActionGlyph = $derived(isSaving ? '...' : isOffline ? '★' : '☆');
 
   const cornerSummary = $derived.by(() => {
     const parts: string[] = [];
@@ -81,23 +93,38 @@
     return parts.length ? parts.join(', ') + '.' : '';
   });
 
-  function save(event: MouseEvent) {
+  async function save(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    const shouldSave = !pinned;
-    if (onTogglePin) {
-      onTogglePin(app.slug);
-    } else {
-      togglePinnedApp(app.slug);
-    }
-    if (shouldSave) {
-      void ensureAppOffline(app.slug).catch(() => {
-        toast.push({ kind: 'error', message: 'Could not save this tool yet.' });
-      });
-    } else {
-      void removeAppAndTrack(app.slug).catch(() => {
+    if (isSaving) return;
+
+    if (isOffline) {
+      try {
+        if (pinned) {
+          if (onTogglePin) onTogglePin(app.slug);
+          else togglePinnedApp(app.slug);
+        }
+        if (isOffline || offlineStatus?.state === 'partial' || offlineStatus?.state === 'evicted') {
+          await removeAppAndTrack(app.slug);
+        }
+      } catch {
         toast.push({ kind: 'error', message: 'Could not remove saved copy yet.' });
-      });
+      }
+      return;
+    }
+
+    try {
+      const result = await ensureAppOffline(app.slug);
+      if (result.state === 'saved') {
+        if (!pinned) {
+          if (onTogglePin) onTogglePin(app.slug);
+          else togglePinnedApp(app.slug);
+        }
+      } else {
+        toast.push({ kind: 'error', message: 'Saved copy needs a refresh before it can launch offline.' });
+      }
+    } catch {
+      toast.push({ kind: 'error', message: 'Could not save this tool yet.' });
     }
   }
 
@@ -134,8 +161,8 @@
 
 <article
   class="card"
+  class:compact
   class:launching
-  class:spotlight
   aria-busy={launching}
 >
   <a
@@ -187,13 +214,14 @@
     <button
       type="button"
       class="icon-btn"
-      class:pressed={pinned}
-      aria-pressed={pinned}
-      aria-label={pinned ? `Remove ${safeName} from saved tools` : `Save ${safeName}`}
-      title={pinned ? 'Saved' : 'Save'}
+      class:pressed={isOffline}
+      aria-pressed={isOffline}
+      aria-label={saveActionLabel}
+      title={saveActionTitle}
+      disabled={isSaving}
       onclick={save}
     >
-      {pinned ? '★' : '☆'}
+      {saveActionGlyph}
     </button>
     <button
       type="button"
@@ -224,6 +252,7 @@
     transition:
       border-color 0.15s var(--ease-out),
       background 0.15s var(--ease-out),
+      box-shadow 0.15s var(--ease-out),
       transform 0.15s var(--ease-out);
     isolation: isolate;
   }
@@ -231,17 +260,11 @@
     border-color: var(--sunset);
     background: var(--surface-alt);
     transform: translateY(-1px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
   }
   .card:focus-within {
     outline: 2px solid var(--sunset);
     outline-offset: 2px;
-  }
-  .card.spotlight::before {
-    content: '';
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    background: var(--sunset);
   }
   .card.launching {
     border-color: var(--sunset);
@@ -309,6 +332,44 @@
     display: grid;
     gap: 4px;
     align-content: start;
+  }
+
+  .card.compact {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 12px;
+    min-height: 116px;
+    padding: 12px;
+  }
+  .card.compact .icon {
+    width: 52px;
+    height: 52px;
+  }
+  .card.compact .icon :global(.shippie-icon) {
+    width: 52px !important;
+    height: 52px !important;
+  }
+  .card.compact .copy {
+    gap: 3px;
+  }
+  .card.compact h3 {
+    font-size: 1.02rem;
+    line-height: 1.12;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+  .card.compact .blurb {
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .card.compact .recency,
+  .card.compact .launching-label {
+    margin-top: 2px;
+  }
+  .card.compact .connection-pill {
+    padding: 1px 5px;
   }
   .eyebrow {
     margin: 0;
@@ -447,6 +508,11 @@
     background: rgba(232, 197, 71, 0.08);
     border-color: rgba(232, 197, 71, 0.35);
   }
+  .icon-btn:disabled {
+    cursor: progress;
+    color: var(--text-light);
+    opacity: 0.58;
+  }
 
   /* Narrow container: drop the icon size, condense padding */
   @container (max-width: 19rem) {
@@ -463,6 +529,41 @@
     h3 { font-size: 1rem; }
   }
 
+  @container (max-width: 18rem) {
+    .card.compact {
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+      gap: 10px;
+      min-height: 108px;
+      padding: 10px;
+    }
+    .card.compact .icon,
+    .card.compact .icon :global(.shippie-icon) {
+      width: 48px !important;
+      height: 48px !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .card.compact {
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      gap: 10px;
+      min-height: 104px;
+      padding: 10px;
+    }
+    .card.compact .icon,
+    .card.compact .icon :global(.shippie-icon) {
+      width: 44px !important;
+      height: 44px !important;
+    }
+    .card.compact h3 {
+      font-size: 1rem;
+    }
+    .card.compact .blurb {
+      -webkit-line-clamp: 1;
+      line-clamp: 1;
+    }
+  }
+
   /* Accessibility helper */
   .sr-only {
     position: absolute;
@@ -477,7 +578,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .card, .card:hover, .card.launching { transform: none; }
+    .card, .card:hover, .card.launching { transform: none; box-shadow: none; }
     .card.launching::after { animation: none; transform: none; }
   }
 </style>

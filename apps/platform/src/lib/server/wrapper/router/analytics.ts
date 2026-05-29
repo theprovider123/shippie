@@ -25,6 +25,28 @@ function normalize(e: SdkEvent): PlatformEvent | null {
   return sanitizeAnalyticsEvent(e);
 }
 
+function isMissingAnalyticsSchemaError(err: unknown): boolean {
+  const message = String(err instanceof Error ? err.message : err);
+  return /(?:D1_ERROR: )?no such table: (?:users|apps|analytics_events)/i.test(message);
+}
+
+function skippedForMissingSchema(ctx: WrapperContext, received: number, dropped: number, err: unknown): Response {
+  const reason = err instanceof Error ? err.message : String(err);
+  console.warn('[wrapper:analytics] analytics schema missing; accepting batch without persistence', { slug: ctx.slug, reason });
+  return Response.json(
+    {
+      success: true,
+      slug: ctx.slug,
+      received,
+      ingested: 0,
+      dropped,
+      skipped: 'analytics_schema_missing',
+      traceId: ctx.traceId,
+    },
+    { status: 202 },
+  );
+}
+
 export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
   if (ctx.request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
@@ -60,18 +82,26 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
   // viewport mode, SW update, keyboard signals). Self-heal the synthetic
   // shell user + app row so the FK resolves on fresh D1 instances where
   // migration 0034 hasn't applied yet.
-  if (ctx.slug === SHELL_APP_SLUG) {
-    await ensureShellAppSeeded(ctx.env.DB);
-  }
-  let app = await db.query.apps.findFirst({
-    where: eq(schema.apps.slug, ctx.slug),
-    columns: { id: true },
-  });
-  if (!app && (await ensureFirstPartyAnalyticsApp(ctx.env.DB, ctx.slug))) {
+  let app: { id: string } | undefined;
+  try {
+    if (ctx.slug === SHELL_APP_SLUG) {
+      await ensureShellAppSeeded(ctx.env.DB);
+    }
     app = await db.query.apps.findFirst({
       where: eq(schema.apps.slug, ctx.slug),
       columns: { id: true },
     });
+    if (!app && (await ensureFirstPartyAnalyticsApp(ctx.env.DB, ctx.slug))) {
+      app = await db.query.apps.findFirst({
+        where: eq(schema.apps.slug, ctx.slug),
+        columns: { id: true },
+      });
+    }
+  } catch (err) {
+    if (isMissingAnalyticsSchemaError(err)) {
+      return skippedForMissingSchema(ctx, raw.length, events.length, err);
+    }
+    throw err;
   }
   if (!app) return Response.json({ success: false, error: 'unknown_app', slug: ctx.slug }, { status: 404 });
 
@@ -90,6 +120,9 @@ export async function handleAnalytics(ctx: WrapperContext): Promise<Response> {
     );
     ingested = events.length;
   } catch (err) {
+    if (isMissingAnalyticsSchemaError(err)) {
+      return skippedForMissingSchema(ctx, raw.length, events.length, err);
+    }
     console.error('[wrapper:analytics] insert failed', { slug: ctx.slug, err });
     return Response.json({ success: false, error: 'insert_failed' }, { status: 500 });
   }

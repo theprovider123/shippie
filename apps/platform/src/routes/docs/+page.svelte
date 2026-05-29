@@ -75,7 +75,7 @@
       <p class="paper-eyebrow">Whitepaper · the long read</p>
       <h2>Build on Shippie</h2>
       <p class="paper-blurb">
-        The category: Vercel deploys cloud apps, Netlify deploys static sites,
+        The category: cloud platforms deploy cloud apps, Netlify deploys static sites,
         Shippie deploys local tools. Start here if you want the why before the how.
       </p>
     </div>

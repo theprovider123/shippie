@@ -16,13 +16,17 @@
  * tabs do not keep using stale cache-manifest paths after a deploy.
  */
 
-export type AppDownloadState = 'idle' | 'downloading' | 'partial' | 'saved' | 'error';
+export type AppDownloadState = 'idle' | 'requested' | 'downloading' | 'verifying' | 'partial' | 'saved' | 'evicted' | 'error';
+export type AppDownloadPhase = 'idle' | 'requested' | 'downloading' | 'verifying' | 'sealed' | 'partial' | 'evicted' | 'error';
 
 export interface AppDownloadProgress {
   slug: string;
   state: AppDownloadState;
+  phase?: AppDownloadPhase;
   done: number;
   total: number;
+  totalBytes?: number;
+  manifestHash?: string;
   failedUrls?: string[];
   error?: string;
 }
@@ -83,6 +87,7 @@ async function refreshMarketplaceSw(registration: ServiceWorkerRegistration): Pr
 interface SwProgressMessage {
   type: 'progress';
   slug: string;
+  phase?: AppDownloadPhase;
   done: number;
   total: number;
 }
@@ -94,6 +99,8 @@ interface SwDoneMessage {
   done?: number;
   total?: number;
   count?: number;
+  totalBytes?: number;
+  manifestHash?: string;
   failedUrls?: string[];
   error?: string;
 }
@@ -102,17 +109,30 @@ interface SwStatusMessage {
   type: 'status';
   slug: string;
   state: AppDownloadState;
+  phase?: AppDownloadPhase;
   done: number;
   total: number;
+  totalBytes?: number;
+  manifestHash?: string;
 }
 
 interface SwSavedAppsMessage {
   type: 'saved-apps';
   slugs: string[];
+  apps?: SavedOfflineApp[];
   error?: string;
 }
 
 type SwMessage = SwProgressMessage | SwDoneMessage | SwStatusMessage | SwSavedAppsMessage;
+
+export interface SavedOfflineApp {
+  slug: string;
+  state: 'saved' | 'partial' | 'evicted';
+  phase?: AppDownloadPhase;
+  totalBytes?: number;
+  manifestHash?: string;
+  sealedAt?: string;
+}
 
 export async function downloadApp(
   slug: string,
@@ -125,7 +145,13 @@ export async function downloadApp(
     channel.port1.onmessage = (event) => {
       const msg = event.data as SwMessage;
       if (msg.type === 'progress') {
-        last = { slug, state: 'downloading', done: msg.done, total: msg.total };
+        last = {
+          slug,
+          state: msg.phase === 'verifying' ? 'verifying' : msg.phase === 'requested' ? 'requested' : 'downloading',
+          phase: msg.phase ?? 'downloading',
+          done: msg.done,
+          total: msg.total,
+        };
         onProgress?.(last);
         return;
       }
@@ -135,8 +161,11 @@ export async function downloadApp(
         const p: AppDownloadProgress = {
           slug,
           state: 'saved',
+          phase: 'sealed',
           done: msg.total ?? last.total,
           total: msg.total ?? last.total,
+          totalBytes: msg.totalBytes,
+          manifestHash: msg.manifestHash,
         };
         onProgress?.(p);
         resolve(p);
@@ -144,8 +173,11 @@ export async function downloadApp(
         const p: AppDownloadProgress = {
           slug,
           state: 'partial',
+          phase: msg.state === 'partial' ? 'partial' : 'error',
           done: msg.done ?? last.done,
           total: msg.total ?? last.total,
+          totalBytes: msg.totalBytes,
+          manifestHash: msg.manifestHash,
           failedUrls: msg.failedUrls,
         };
         onProgress?.(p);
@@ -155,6 +187,7 @@ export async function downloadApp(
         const p: AppDownloadProgress = {
           slug,
           state: 'error',
+          phase: 'error',
           done: last.done,
           total: last.total,
           error: err.message,
@@ -194,8 +227,11 @@ export async function getAppStatus(slug: string): Promise<AppDownloadProgress> {
       resolve({
         slug,
         state: msg.state ?? 'idle',
+        phase: msg.phase ?? (msg.state === 'saved' ? 'sealed' : msg.state ?? 'idle'),
         done: msg.done ?? 0,
         total: msg.total ?? 0,
+        totalBytes: msg.totalBytes,
+        manifestHash: msg.manifestHash,
       });
     };
     sw.postMessage({ type: 'GET_APP_STATUS', slug }, [channel.port2]);
@@ -203,6 +239,11 @@ export async function getAppStatus(slug: string): Promise<AppDownloadProgress> {
 }
 
 export async function listSavedApps(): Promise<string[]> {
+  const details = await listSavedAppDetails();
+  return details.map((app) => app.slug);
+}
+
+export async function listSavedAppDetails(): Promise<SavedOfflineApp[]> {
   const sw = await getActiveSw();
   return new Promise((resolve) => {
     const channel = new MessageChannel();
@@ -214,7 +255,11 @@ export async function listSavedApps(): Promise<string[]> {
       window.clearTimeout(timer);
       channel.port1.close();
       const msg = event.data as SwSavedAppsMessage;
-      resolve(Array.isArray(msg.slugs) ? msg.slugs : []);
+      if (Array.isArray(msg.apps)) {
+        resolve(msg.apps);
+        return;
+      }
+      resolve(Array.isArray(msg.slugs) ? msg.slugs.map((slug) => ({ slug, state: 'saved' })) : []);
     };
     sw.postMessage({ type: 'LIST_SAVED_APPS' }, [channel.port2]);
   });
@@ -235,4 +280,28 @@ export async function clearOfflineApps(): Promise<{ count: number }> {
     };
     sw.postMessage({ type: 'CLEAR_OFFLINE' }, [channel.port2]);
   });
+}
+
+export async function requestPersistentOfflineStorage(): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.storage?.persist) return false;
+  try {
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+export async function getOfflineStorageEstimate(): Promise<{ usage: number; quota: number; persisted: boolean }> {
+  if (typeof navigator === 'undefined' || !navigator.storage?.estimate) {
+    return { usage: 0, quota: 0, persisted: false };
+  }
+  const [estimate, persisted] = await Promise.all([
+    navigator.storage.estimate().catch(() => ({ usage: 0, quota: 0 })),
+    navigator.storage.persisted?.().catch(() => false) ?? Promise.resolve(false),
+  ]);
+  return {
+    usage: estimate.usage ?? 0,
+    quota: estimate.quota ?? 0,
+    persisted,
+  };
 }

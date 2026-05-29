@@ -2,6 +2,10 @@
   import LauncherCard from '$lib/components/marketplace/LauncherCard.svelte';
   import LauncherCardV2 from '$lib/components/marketplace/LauncherCardV2.svelte';
   import {
+    ToolTile,
+    launcherAppToToolTile,
+  } from '$lib/components/tool-surface';
+  import {
     displayCategory,
     formatRecency,
     normaliseBlurb,
@@ -9,7 +13,7 @@
   } from '$lib/marketplace/display-text';
   import { LAB_FIXTURES } from './fixtures';
 
-  let variant = $state<'v1' | 'v2' | 'split'>('split');
+  let variant = $state<'v1' | 'v2' | 'v3' | 'split'>('split');
   let containerWidth = $state<'narrow' | 'standard' | 'wide'>('standard');
 
   const widthPx = $derived(
@@ -34,9 +38,10 @@
     <div class="controls">
       <fieldset>
         <legend>Variant</legend>
-        <label><input type="radio" bind:group={variant} value="v1" /> v1 (current)</label>
-        <label><input type="radio" bind:group={variant} value="v2" /> v2 (new)</label>
-        <label><input type="radio" bind:group={variant} value="split" /> split</label>
+        <label><input type="radio" bind:group={variant} value="v1" /> v1 (legacy)</label>
+        <label><input type="radio" bind:group={variant} value="v2" /> v2 (interim)</label>
+        <label><input type="radio" bind:group={variant} value="v3" /> v3 (ToolTile)</label>
+        <label><input type="radio" bind:group={variant} value="split" /> split (all)</label>
       </fieldset>
       <fieldset>
         <legend>Container width</legend>
@@ -93,6 +98,40 @@
                 app={displayed}
                 pinned={fixture.pinned}
                 recentLabel={fixture.recentLabel || ''}
+              />
+            </div>
+          </figure>
+        {/if}
+        {#if variant === 'v3' || variant === 'split'}
+          <figure class="frame v3" style="--frame-w: {widthPx}px">
+            <figcaption>v3 — ToolTile (card density)</figcaption>
+            <div class="frame-body">
+              <ToolTile
+                app={launcherAppToToolTile(displayed)}
+                density="card"
+                pinned={fixture.pinned}
+                recentLabel={fixture.recentLabel || ''}
+              />
+            </div>
+          </figure>
+          <figure class="frame v3-drawer" style="--frame-w: {widthPx}px">
+            <figcaption>v3 — ToolTile (drawer density)</figcaption>
+            <div class="frame-body cream">
+              <ToolTile
+                app={launcherAppToToolTile(displayed)}
+                density="drawer"
+                pinned={fixture.pinned}
+                runtimeState="current"
+              />
+            </div>
+          </figure>
+          <figure class="frame v3-dock" style="--frame-w: 120px">
+            <figcaption>v3 — ToolTile (dock)</figcaption>
+            <div class="frame-body">
+              <ToolTile
+                app={launcherAppToToolTile(displayed)}
+                density="dock"
+                pinned={fixture.pinned}
               />
             </div>
           </figure>
@@ -220,5 +259,20 @@
     outline-offset: 4px;
     padding: 0;
     background: var(--bg);
+  }
+  .frame-body.cream {
+    /* Mirror the focused-mode drawer palette so v3 drawer
+       density is readable against its real backdrop, not the
+       dark launcher. */
+    background: var(--cream-bg, #faf7ef);
+    color: var(--cream-text, #14120f);
+    --bg: var(--cream-bg, #faf7ef);
+    --surface: var(--cream-bg, #faf7ef);
+    --surface-alt: rgba(0, 0, 0, 0.04);
+    --text: var(--cream-text, #14120f);
+    --text-secondary: rgba(0, 0, 0, 0.6);
+    --text-light: rgba(0, 0, 0, 0.48);
+    --border: rgba(0, 0, 0, 0.12);
+    --border-light: rgba(0, 0, 0, 0.08);
   }
 </style>

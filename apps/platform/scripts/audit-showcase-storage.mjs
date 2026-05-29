@@ -13,6 +13,7 @@ const GENERATED_CATALOG = join(PLATFORM_DIR, 'src', 'lib', '_generated', 'showca
 const SOURCE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.svelte']);
 const IGNORED_DIRS = new Set(['.svelte-kit', 'dist', 'node_modules', 'coverage']);
 const DATA_INHERITANCE_SKIP = new Set(['crewtrip']);
+const SOURCE_APP_SKIP = new Set(['showcase-golazo']);
 
 const storagePatterns = {
   localDb: /\bshippie\s*\.\s*local\s*\.\s*db\b|\blocal\s*\.\s*db\b|window\.shippie\?\.\s*local\?\.\s*db/,
@@ -75,6 +76,13 @@ function readManifest(appDir) {
   } catch {
     return null;
   }
+}
+
+function hasHostedEntrypoint(appDir) {
+  // Keep source eligibility aligned with prepare-showcases.mjs. A
+  // showcase folder without src/main.tsx is work-in-progress source,
+  // not a deployable runtime, and should not block the platform build.
+  return existsSync(join(appDir, 'src', 'main.tsx'));
 }
 
 function dataPolicyState(app) {
@@ -154,7 +162,11 @@ function formatList(items) {
 }
 
 const sourceApps = listDirs(APPS_DIR)
-  .filter((dir) => dir.split('/').at(-1)?.startsWith('showcase-'))
+  .filter((dir) => {
+    const name = dir.split('/').at(-1);
+    return name?.startsWith('showcase-') && !SOURCE_APP_SKIP.has(name);
+  })
+  .filter(hasHostedEntrypoint)
   .map((dir) => {
     const slug = sourceSlug(dir);
     return {

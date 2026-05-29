@@ -19,6 +19,7 @@ import { useRelayState } from '@/sync/useRelayState.ts';
 
 interface Props {
   relay: RelayProvider | null;
+  onSyncNow?: () => void;
 }
 
 function fmtAgo(at: number | null): string {
@@ -30,7 +31,7 @@ function fmtAgo(at: number | null): string {
   return `${Math.round(ms / 3_600_000)}h ago`;
 }
 
-export function SyncStatus({ relay }: Props) {
+export function SyncStatus({ relay, onSyncNow }: Props) {
   const state = useRelayState(relay);
 
   if (!relay || !state) {
@@ -88,7 +89,10 @@ export function SyncStatus({ relay }: Props) {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => relay.resync()}
+          onClick={() => {
+            if (onSyncNow) onSyncNow();
+            else relay.resync();
+          }}
         >
           Sync now
         </Button>

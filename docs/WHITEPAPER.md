@@ -35,7 +35,7 @@ For the world:
 
 ## The Category
 
-Vercel deploys cloud apps.
+Cloud platforms deploy cloud apps.
 
 Netlify deploys static sites.
 
@@ -181,7 +181,7 @@ Local AI depends on device capability and model availability. Some tasks will ne
 
 Data Passport v0 is metadata, not migration magic. Compatibility checks and migration runners come later.
 
-The policy will reject some apps that could technically be useful. That is the trade. Shippie is not trying to be a worse Vercel. Shippie is trying to make local tools a category of their own.
+The policy will reject some apps that could technically be useful. That is the trade. Shippie is not trying to be a worse cloud platform. Shippie is trying to make local tools a category of their own.
 
 ---
 

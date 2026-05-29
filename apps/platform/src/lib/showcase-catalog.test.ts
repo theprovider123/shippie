@@ -109,7 +109,12 @@ function showcaseDirNames(): string[] {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .filter((name) => name.startsWith('showcase-'))
+    .filter(isCompleteShowcaseDir)
     .sort();
+}
+
+function isCompleteShowcaseDir(name: string): boolean {
+  return existsSync(join(APPS_DIR, name, 'shippie.json')) && existsSync(join(APPS_DIR, name, 'src', 'main.tsx'));
 }
 
 function hasBuildScript(name: string): boolean {
@@ -136,6 +141,7 @@ function portsFromShowcaseDirs(): Array<[string, number]> {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .filter((name) => name.startsWith('showcase-'))
+    .filter(isCompleteShowcaseDir)
     .filter((name) => hasBuildScript(name))
     .map((name) => {
       const slug = slugFor(name);

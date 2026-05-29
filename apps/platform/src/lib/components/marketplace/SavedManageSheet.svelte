@@ -1,7 +1,15 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import Sheet from '$lib/components/ui/Sheet.svelte';
-  import IconOrMonogram from './IconOrMonogram.svelte';
-  import { recordAppLaunch } from '$lib/stores/launcher-memory';
+  import {
+    getOfflineStorageEstimate,
+    requestPersistentOfflineStorage,
+  } from '$lib/offline/download-app';
+  import { offlineStatuses } from '$lib/stores/cached-slugs';
+  import {
+    ToolTile,
+    launcherAppToToolTile,
+  } from '$lib/components/tool-surface';
 
   interface SheetApp {
     slug: string;
@@ -19,10 +27,47 @@
   }
 
   let { apps, onClose, onUnpin, onSaveOffline }: Props = $props();
+  let storageUsage = $state(0);
+  let storageQuota = $state(0);
+  let persisted = $state(false);
+  let pinning = $state(false);
 
-  function launch(slug: string) {
-    recordAppLaunch(slug);
-    onClose();
+  onMount(() => {
+    void refreshStorageEstimate();
+  });
+
+  async function refreshStorageEstimate() {
+    const estimate = await getOfflineStorageEstimate();
+    storageUsage = estimate.usage;
+    storageQuota = estimate.quota;
+    persisted = estimate.persisted;
+  }
+
+  async function pinStorage() {
+    pinning = true;
+    try {
+      persisted = await requestPersistentOfflineStorage();
+      await refreshStorageEstimate();
+    } finally {
+      pinning = false;
+    }
+  }
+
+  function bytesFor(slug: string) {
+    return $offlineStatuses[slug]?.totalBytes ?? 0;
+  }
+
+  function formatBytes(value: number | undefined) {
+    const bytes = Number(value ?? 0);
+    if (!Number.isFinite(bytes) || bytes <= 0) return 'size pending';
+    if (bytes < 1024) return `${bytes} B`;
+    const units = ['KB', 'MB', 'GB'];
+    let current = bytes / 1024;
+    for (const unit of units) {
+      if (current < 1024 || unit === 'GB') return `${current < 10 ? current.toFixed(1) : Math.round(current)} ${unit}`;
+      current /= 1024;
+    }
+    return `${Math.round(current)} GB`;
   }
 </script>
 
@@ -32,7 +77,7 @@
       <p class="eyebrow">Manage</p>
       <h2 id="manage-saved-title">Saved tools</h2>
       <p class="lede">
-        Tools kept ready on this device. Open one to launch it; unsave to remove the offline copy.
+        Sealed offline capsules on this device. Open one to launch it; unsave to remove the local copy.
       </p>
     </div>
     <button
@@ -45,29 +90,43 @@
     </button>
   </header>
 
+  <section class="storage-budget" aria-label="Offline storage budget">
+    <div>
+      <span class="budget-label">Offline storage</span>
+      <strong>{formatBytes(storageUsage)}</strong>
+      {#if storageQuota > 0}
+        <span>{formatBytes(storageQuota)} available to this browser profile</span>
+      {:else}
+        <span>Browser quota unavailable</span>
+      {/if}
+    </div>
+    <button
+      type="button"
+      class:pinned={persisted}
+      disabled={pinning || persisted}
+      onclick={pinStorage}
+      title="Ask the browser to protect saved capsules from eviction"
+    >
+      {persisted ? 'Pinned' : pinning ? 'Pinning' : 'Pin'}
+    </button>
+  </section>
+
   {#if apps.length === 0}
     <p class="empty">No saved tools yet. Tap the ★ on any tool to keep it ready here.</p>
   {:else}
     <ul class="list" role="list">
       {#each apps as app (app.slug)}
         <li class="row">
-          <a
-            class="row-launch"
-            href={`/run/${encodeURIComponent(app.slug)}`}
-            aria-label={`Open ${app.name}`}
-            onclick={() => launch(app.slug)}
-          >
-            <span class="row-icon">
-              <IconOrMonogram
-                name={app.name}
-                slug={app.slug}
-                iconUrl={app.iconUrl}
-                themeColor={app.themeColor}
-                size={48}
-              />
-            </span>
-            <span class="row-name">{app.name}</span>
-          </a>
+          <div class="row-tile">
+            <ToolTile
+              app={launcherAppToToolTile(app)}
+              density="drawer"
+              href={`/run/${encodeURIComponent(app.slug)}`}
+              captionLabel={formatBytes(bytesFor(app.slug))}
+              noActions
+              onOpen={onClose}
+            />
+          </div>
           <span class="row-actions">
             <button
               type="button"
@@ -140,6 +199,58 @@
     outline-offset: 2px;
   }
 
+  .storage-budget {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: var(--space-md);
+    padding: 12px;
+    border: 1px solid var(--border-light);
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .storage-budget div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .budget-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+  .storage-budget strong {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    color: var(--text);
+  }
+  .storage-budget span:last-child {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .storage-budget button {
+    min-width: 70px;
+    min-height: var(--touch-min);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .storage-budget button:hover:not(:disabled) {
+    border-color: var(--sunset);
+    color: var(--sunset);
+  }
+  .storage-budget button.pinned {
+    border-color: var(--sage-leaf);
+    color: var(--sage-leaf);
+  }
+  .storage-budget button:disabled {
+    cursor: default;
+    opacity: 0.75;
+  }
+
   .empty {
     color: var(--text-secondary);
     padding: var(--space-md);
@@ -155,38 +266,13 @@
   }
   .row {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--space-md);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-sm);
     align-items: center;
-    padding: 12px 0;
     border-bottom: 1px solid var(--border-light);
   }
-  .row-launch {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    color: inherit;
-    text-decoration: none;
+  .row-tile {
     min-width: 0;
-  }
-  .row-icon {
-    display: inline-grid;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    flex-shrink: 0;
-  }
-  .row-icon :global(.shippie-icon) {
-    width: 48px !important;
-    height: 48px !important;
-  }
-  .row-name {
-    font-family: var(--font-heading);
-    font-size: 1rem;
-    color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .row-actions {
     display: inline-flex;

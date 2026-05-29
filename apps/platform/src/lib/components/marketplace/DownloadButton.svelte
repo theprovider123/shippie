@@ -9,7 +9,7 @@
 
   let { slug }: Props = $props();
 
-  type LocalState = 'idle' | 'downloading' | 'partial' | 'saved' | 'error';
+  type LocalState = 'idle' | 'downloading' | 'verifying' | 'partial' | 'saved' | 'error';
 
   let buttonState = $state<LocalState>('idle');
   let progress = $state({ done: 0, total: 0 });
@@ -21,7 +21,12 @@
   onMount(async () => {
     try {
       const status = await getAppStatus(slug);
-      buttonState = status.state === 'downloading' ? 'idle' : status.state;
+      buttonState =
+        status.state === 'requested' ? 'downloading'
+          : status.state === 'evicted' ? 'partial'
+            : status.state === 'verifying' ? 'verifying'
+              : status.state === 'downloading' ? 'idle'
+                : status.state;
       progress = { done: status.done, total: status.total };
     } catch {
       // SW not active yet — leave idle. Store-driven derivation below
@@ -34,7 +39,7 @@
   // downloading the same slug, or "Clear all" wiping every slug).
   $effect(() => {
     const inStore = $cachedSlugs.has(slug);
-    if (inStore && buttonState !== 'saved' && buttonState !== 'downloading') {
+    if (inStore && buttonState !== 'saved' && buttonState !== 'downloading' && buttonState !== 'verifying') {
       buttonState = 'saved';
     } else if (!inStore && buttonState === 'saved') {
       buttonState = 'idle';
@@ -45,12 +50,13 @@
   async function onSaveClick(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    if (buttonState === 'downloading') return;
+    if (buttonState === 'downloading' || buttonState === 'verifying') return;
     buttonState = 'downloading';
     errorMsg = null;
     try {
       const result = await downloadAppAndTrack(slug, (p: AppDownloadProgress) => {
         progress = { done: p.done, total: p.total };
+        if (p.state === 'verifying') buttonState = 'verifying';
       });
       buttonState = result.state === 'saved' ? 'saved' : 'partial';
       progress = { done: result.done, total: result.total };
@@ -92,7 +98,7 @@
     >
       ↓ Save
     </button>
-  {:else if buttonState === 'downloading'}
+  {:else if buttonState === 'downloading' || buttonState === 'verifying'}
     <button
       type="button"
       class="dl-btn downloading"
@@ -100,7 +106,7 @@
       aria-label="Saving {slug}, {progress.done} of {progress.total}"
     >
       <span class="spinner" aria-hidden="true"></span>
-      {progress.total > 0 ? `${progress.done}/${progress.total}` : '...'}
+      {buttonState === 'verifying' ? 'Verify' : progress.total > 0 ? `${progress.done}/${progress.total}` : '...'}
     </button>
   {:else if buttonState === 'partial'}
     <button

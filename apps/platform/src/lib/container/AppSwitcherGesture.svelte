@@ -86,6 +86,8 @@
   // Detect reduced-motion preference once at mount; respect it for
   // every transition.
   let reducedMotion = $state(false);
+  let documentVisible = $state(true);
+  let drawerSettled = $state(false);
   $effect(() => {
     if (typeof window === 'undefined') return;
     const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -95,6 +97,26 @@
     };
     mql.addEventListener('change', listener);
     return () => mql.removeEventListener('change', listener);
+  });
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    const updateVisibility = () => {
+      documentVisible = !document.hidden;
+    };
+    updateVisibility();
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  });
+  $effect(() => {
+    if (!open || typeof window === 'undefined') {
+      drawerSettled = false;
+      return;
+    }
+    drawerSettled = false;
+    const timer = window.setTimeout(() => {
+      drawerSettled = true;
+    }, ENTRY_DURATION_MS + 60);
+    return () => window.clearTimeout(timer);
   });
 
   // One-shot pulse on the (invisible) back-edge grabber the first time
@@ -276,8 +298,9 @@
   });
   const dimmedAppTransform = $derived(open ? `scale(${APP_SCALE_AT_OPEN})` : 'scale(1)');
   const dimmedAppOpacity = $derived(open ? APP_OPACITY_AT_OPEN : 1);
+  const instantTransition = $derived(reducedMotion || !documentVisible || drawerSettled);
   const transitionDuration = $derived(
-    reducedMotion ? '0ms' : open ? `${ENTRY_DURATION_MS}ms` : `${EXIT_DURATION_MS}ms`,
+    instantTransition ? '0ms' : open ? `${ENTRY_DURATION_MS}ms` : `${EXIT_DURATION_MS}ms`,
   );
   const transitionEase = $derived(
     reducedMotion
@@ -321,7 +344,7 @@
 <div
   class="backdrop"
   class:open
-  style:transition="opacity {transitionDuration} {transitionEase}"
+  style:transition="opacity {transitionDuration} {transitionEase}, backdrop-filter {transitionDuration} {transitionEase}"
   style:--app-scale={dimmedAppTransform}
   style:--app-opacity={dimmedAppOpacity}
   onclick={handleBackdropTap}
@@ -331,6 +354,7 @@
 <aside
   class="drawer"
   class:open
+  class:settled={drawerSettled && open}
   class:from-left={edge === 'left'}
   class:from-bottom={edge === 'bottom'}
   style:transform={drawerTransform}
@@ -407,29 +431,36 @@
     pointer-events: none;
     z-index: 50;
     opacity: 0;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
   }
   .backdrop.open {
     background: rgba(20, 18, 15, 0.35);
     pointer-events: auto;
     opacity: 1;
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
   }
 
   /* Drawer: the app-switcher panel itself. Slides in from the
      declared edge. Parent slot fills the panel. */
   .drawer {
     position: fixed;
-    z-index: 60;
+    z-index: 64;
     background: var(--cream-bg, #faf7ef);
     color: var(--cream-text, #14120f);
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
     will-change: transform;
+    contain: layout paint;
+    backface-visibility: hidden;
     overscroll-behavior: contain;
   }
   .drawer.from-left {
     top: 0;
     left: 0;
     bottom: 0;
-    width: min(360px, 90vw);
+    width: min(520px, 44vw);
+    min-width: min(360px, 92vw);
     border-right: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     overflow-y: auto;
   }
@@ -437,11 +468,48 @@
     left: 0;
     right: 0;
     bottom: 0;
-    max-height: 80vh;
+    max-height: min(86dvh, 760px);
     border-top: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     overflow-y: auto;
   }
   .drawer:not(.open) {
     pointer-events: none;
+  }
+  .drawer.open {
+    transform: translate(0, 0) !important;
+  }
+  .drawer.open.settled {
+    transition: none !important;
+    transform: translate(0, 0) !important;
+  }
+  .drawer.from-left:not(.open) {
+    transform: translateX(-100%) !important;
+  }
+  .drawer.from-bottom:not(.open) {
+    transform: translateY(100%) !important;
+  }
+
+  @media (max-width: 1024px) {
+    .drawer.from-left {
+      width: min(480px, 58vw);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .drawer.from-left {
+      width: min(100vw, 430px);
+      min-width: 0;
+    }
+    .drawer.from-bottom {
+      max-height: min(88dvh, 760px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .backdrop,
+    .backdrop.open {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 </style>

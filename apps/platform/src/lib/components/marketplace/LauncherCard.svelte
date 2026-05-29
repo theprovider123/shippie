@@ -63,21 +63,38 @@
   const proofCount = $derived((app.badges ?? []).filter((badge) => badge.proven).length);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
+  const isSaving = $derived(
+    offlineStatus?.state === 'requested' ||
+      offlineStatus?.state === 'downloading' ||
+      offlineStatus?.state === 'verifying',
+  );
   const offlineLabel = $derived.by(() => {
-    if (offlineStatus?.state === 'downloading') {
-      return offlineStatus.total > 0 ? `${offlineStatus.done}/${offlineStatus.total}` : 'Saving';
+    if (isSaving) {
+      if (offlineStatus?.state === 'verifying') return 'Verify';
+      return offlineStatus && offlineStatus.total > 0 ? `${offlineStatus.done}/${offlineStatus.total}` : 'Saving';
     }
     if (isOffline) return 'Offline';
-    if (pinned && (offlineStatus?.state === 'partial' || offlineStatus?.state === 'error')) return 'Refresh';
+    if (pinned && (offlineStatus?.state === 'partial' || offlineStatus?.state === 'evicted' || offlineStatus?.state === 'error')) return 'Refresh';
     if (pinned) return 'Keep ready';
     return '';
   });
   const offlineTone = $derived.by(() => {
-    if (offlineStatus?.state === 'downloading') return 'saving';
+    if (isSaving) return 'saving';
     if (isOffline) return 'saved';
-    if (offlineStatus?.state === 'partial' || offlineStatus?.state === 'error') return 'warn';
+    if (offlineStatus?.state === 'partial' || offlineStatus?.state === 'evicted' || offlineStatus?.state === 'error') return 'warn';
     return 'idle';
   });
+  const saveActionLabel = $derived.by(() => {
+    if (isSaving) return `Saving ${app.name}`;
+    if (isOffline) return `Remove ${app.name} from saved tools`;
+    return `Save ${app.name}`;
+  });
+  const saveActionTitle = $derived.by(() => {
+    if (isSaving) return 'Saving offline copy';
+    if (isOffline) return 'Saved offline';
+    return 'Save';
+  });
+  const saveActionGlyph = $derived(isSaving ? '...' : isOffline ? '★' : '☆');
   const connectionBadges = $derived(connectionBadgesFromKind(app.kind));
 
   async function copyAppLink(event: MouseEvent) {
@@ -105,23 +122,36 @@
     onInspect?.(app);
   }
 
-  function save(event: MouseEvent) {
+  async function save(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    const shouldSave = !pinned;
-    if (onTogglePin) {
-      onTogglePin(app.slug);
-    } else {
-      togglePinnedApp(app.slug);
-    }
-    if (shouldSave) {
-      void ensureAppOffline(app.slug).catch(() => {
-        toast.push({ kind: 'error', message: 'Could not save this tool yet.' });
-      });
-    } else {
-      void removeAppAndTrack(app.slug).catch(() => {
+    if (isSaving) return;
+
+    if (isOffline) {
+      try {
+        if (pinned) {
+          if (onTogglePin) onTogglePin(app.slug);
+          else togglePinnedApp(app.slug);
+        }
+        if (isOffline || offlineStatus?.state === 'partial' || offlineStatus?.state === 'evicted') {
+          await removeAppAndTrack(app.slug);
+        }
+      } catch {
         toast.push({ kind: 'error', message: 'Could not remove saved copy yet.' });
-      });
+      }
+      return;
+    }
+
+    try {
+      const result = await ensureAppOffline(app.slug);
+      if (result.state === 'saved') {
+        if (onTogglePin) onTogglePin(app.slug);
+        else togglePinnedApp(app.slug);
+      } else {
+        toast.push({ kind: 'error', message: 'Saved copy needs a refresh before it can launch offline.' });
+      }
+    } catch {
+      toast.push({ kind: 'error', message: 'Could not save this tool yet.' });
     }
   }
 
@@ -218,13 +248,14 @@
   >
     <button
       type="button"
-      class:active={pinned}
+      class:active={isOffline}
       onclick={save}
-      title={pinned ? 'Saved' : 'Save'}
-      aria-label={pinned ? `Remove ${app.name} from saved tools` : `Save ${app.name}`}
-      aria-pressed={pinned}
+      title={saveActionTitle}
+      aria-label={saveActionLabel}
+      aria-pressed={isOffline}
+      disabled={isSaving}
     >
-      {pinned ? '★' : '☆'}
+      {saveActionGlyph}
     </button>
     <button
       type="button"

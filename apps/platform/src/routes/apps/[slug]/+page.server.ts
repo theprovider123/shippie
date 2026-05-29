@@ -60,7 +60,15 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
   }
 
   const db = getDrizzleClient(platform.env.DB);
-  const app = await findBySlug(db, params.slug);
+  let app: Awaited<ReturnType<typeof findBySlug>>;
+  try {
+    app = await findBySlug(db, params.slug);
+  } catch (err) {
+    const bundled = bundledAppDetail(params.slug);
+    if (bundled) return bundled;
+    console.error('[app-detail] failed to read app record', err);
+    throw error(503, 'Database unavailable');
+  }
   if (!app) {
     const bundled = bundledAppDetail(params.slug);
     if (bundled) return bundled;

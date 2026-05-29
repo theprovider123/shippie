@@ -15,6 +15,11 @@
 -->
 <script lang="ts">
   import InsightStrip from '$lib/container/InsightStrip.svelte';
+  import {
+    ToolTile,
+    containerAppToToolTile,
+    type ToolRuntimeState,
+  } from '$lib/components/tool-surface';
   import type { ContainerApp, UpdateCard } from '$lib/container/state';
   import type { Insight } from '@shippie/agent';
   import type { MeshStatus } from '$lib/container/mesh-status';
@@ -59,12 +64,8 @@
   let showMineOnly = $state(false);
   const visibleApps = $derived(showMineOnly ? apps.filter((app) => app.owned || app.visibility === 'local') : apps);
 
-  function tierLabel(app: ContainerApp): string {
-    if (app.visibility === 'private') return 'Private';
-    if (app.visibility === 'team') return 'Team';
-    if (app.visibility === 'local') return 'On device';
-    if (app.visibility === 'unlisted') return 'Unlisted';
-    return '';
+  function runtimeStateFor(app: ContainerApp): ToolRuntimeState {
+    return openAppIds.includes(app.id) ? 'live' : 'idle';
   }
 </script>
 
@@ -123,15 +124,12 @@
 </div>
 <div class="app-grid">
   {#each visibleApps as app (app.id)}
-    {@const installed = openAppIds.includes(app.id)}
-    <button class="app-tile" class:installable={!installed} onclick={() => onOpenApp(app.id)}>
-      <span class="app-icon" style={`--accent:${app.accent}`}>{app.icon}</span>
-      {#if tierLabel(app)}
-        <span class={`tier-badge tier-${app.visibility ?? 'public'}`}>{tierLabel(app)}</span>
-      {/if}
-      <strong>{app.name}</strong>
-      <small>{installed ? app.labelKind : 'Install'}</small>
-    </button>
+    <ToolTile
+      app={containerAppToToolTile(app)}
+      density="card"
+      runtimeState={runtimeStateFor(app)}
+      onOpen={() => onOpenApp(app.id)}
+    />
   {/each}
 </div>
 <div class="nearby-panel">
@@ -229,45 +227,9 @@
   }
   .app-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--space-sm);
     margin-bottom: var(--space-md);
-  }
-  .app-tile {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: var(--space-sm);
-    border: 1px solid var(--border);
-    background: var(--bg);
-    cursor: pointer;
-    text-align: left;
-  }
-  .app-tile:hover {
-    border-color: var(--sunset);
-    background: var(--surface);
-  }
-  .app-tile.installable {
-    border-style: dashed;
-  }
-  .app-tile strong {
-    font-size: 0.95rem;
-  }
-  .app-tile small {
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-  }
-  .app-icon {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent, var(--surface-alt));
-    color: var(--bg-pure, #fff);
-    font-weight: 600;
   }
   .nearby-panel {
     border: 1px solid var(--border-light);
@@ -290,29 +252,6 @@
   .mesh-actions span {
     color: var(--text-secondary);
     font-size: 0.85rem;
-  }
-  .tier-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 3px 6px;
-    border: 1px solid var(--border-light);
-    color: var(--text-secondary);
-    background: var(--surface);
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-  .tier-private,
-  .tier-local {
-    color: var(--text);
-    border-color: var(--border);
-  }
-  .tier-team {
-    color: #355f49;
-    border-color: rgba(53, 95, 73, 0.35);
-    background: rgba(94, 167, 119, 0.08);
   }
   .mesh-code-input {
     flex: 1;
@@ -373,20 +312,8 @@
       flex: 1;
     }
     .app-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 8px;
-    }
-    .app-tile {
-      min-height: 116px;
-      padding: 12px;
-      background: var(--surface);
-    }
-    .app-tile strong {
-      display: -webkit-box;
-      overflow: hidden;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      line-height: 1.15;
     }
     .nearby-panel {
       padding: var(--space-md);

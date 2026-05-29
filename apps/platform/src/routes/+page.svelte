@@ -2,8 +2,11 @@
   import { onMount } from 'svelte';
   import type { PageProps } from './$types';
   import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
-  import LauncherCard from '$lib/components/marketplace/LauncherCardV2.svelte';
   import SavedDock from '$lib/components/marketplace/SavedDock.svelte';
+  import {
+    ToolTile,
+    launcherAppToToolTile,
+  } from '$lib/components/tool-surface';
   import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
   import { displayCategory } from '$lib/marketplace/display-text';
   import { suggestApps, suggestCategories } from '$lib/marketplace/search-fallback';
@@ -42,23 +45,7 @@
     const source = recentApps.length > 0 ? recentApps : data.apps;
     return source.slice(0, 4);
   });
-  /** First-run spotlight. Picks the strongest featured demo when the
-      user has nothing in Continue yet. Renders inside Start as a v2
-      card with spotlight=true. */
-  const spotlightApp = $derived.by(() => {
-    if (!isFirstVisit || recentApps.length > 0) return null;
-    const preferred = ['snake', 'palate', 'crewtrip'];
-    for (const slug of preferred) {
-      const found = appBySlug.get(slug);
-      if (found) return found;
-    }
-    return (data.featured ?? [])[0] ?? null;
-  });
-  const continueDisplayApps = $derived.by(() =>
-    spotlightApp
-      ? continueApps.filter((app) => app.slug !== spotlightApp.slug)
-      : continueApps,
-  );
+  const continueDisplayApps = $derived(continueApps);
   const fallbackApps = $derived.by(() =>
     filtered && data.apps.length === 0 && data.query
       ? suggestApps(data.query, data.suggestionPool ?? [], 4)
@@ -70,20 +57,9 @@
       : [],
   );
   const continueSet = $derived.by(() => new Set(continueApps.map((app) => app.slug)));
-  const featuredApps = $derived.by(() =>
-    (data.featured ?? []).filter((app) => !continueSet.has(app.slug)),
+  const browseApps = $derived.by(() =>
+    data.apps.filter((app) => !continueSet.has(app.slug)),
   );
-  const featuredSet = $derived.by(() => new Set(featuredApps.map((app) => app.slug)));
-  const localApps = $derived.by(() =>
-    data.apps
-      .filter((app) =>
-        (app.kind === 'local' || app.kind === 'connected')
-        && !continueSet.has(app.slug)
-        && !featuredSet.has(app.slug),
-      )
-      .slice(0, 8),
-  );
-  const exploreApps = $derived(data.apps);
   const isFirstVisit = $derived.by(() => {
     const totalLaunches = Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, n) => sum + n, 0);
     return totalLaunches === 0;
@@ -256,7 +232,7 @@
             {/each}
             <li>
               <a class="cat-chip cat-chip-link" href="/docs#getting-started">
-                Build a tool →
+                Build →
               </a>
             </li>
           </ul>
@@ -288,10 +264,10 @@
           <ul class="launcher-grid compact-grid" role="list">
             {#each data.apps as app (app.slug)}
               <li>
-                <LauncherCard
-                  {app}
+                <ToolTile
+                  app={launcherAppToToolTile(app)}
+                  density="card"
                   pinned={pinnedSet.has(app.slug)}
-                  compact
                   recentLabel={recentLabel(app.slug)}
                   onInspect={() => inspectApp(app)}
                   onTogglePin={togglePinnedApp}
@@ -304,9 +280,9 @@
             <p class="empty-lede">
               Nothing in the catalogue matches that yet.
               {#if fallbackApps.length > 0}
-                Try one of these, or browse a category:
+                Try one of these or browse a category.
               {:else}
-                Try a different word, or browse a category:
+                Try another word or a category.
               {/if}
               <a class="empty-clear" href={pageHref('', 1, data.categoryFilter, false)}>clear search →</a>
             </p>
@@ -314,10 +290,10 @@
               <ul class="launcher-grid compact-grid" role="list">
                 {#each fallbackApps as app (app.slug)}
                   <li>
-                    <LauncherCard
-                      {app}
+                    <ToolTile
+                      app={launcherAppToToolTile(app)}
+                      density="card"
                       pinned={pinnedSet.has(app.slug)}
-                      compact
                       recentLabel={recentLabel(app.slug)}
                       onInspect={() => inspectApp(app)}
                       onTogglePin={togglePinnedApp}
@@ -360,24 +336,15 @@
         <div class="section-head">
           <h2 id="continue-title">{recentApps.length > 0 ? 'Continue' : 'Start'}</h2>
           <span class="section-hint">
-            {recentApps.length > 0 ? 'most recent' : 'no signup · offline · open source'}
+            {recentApps.length > 0 ? 'recent' : 'ready now'}
           </span>
         </div>
-        {#if spotlightApp}
-          <LauncherCard
-            app={spotlightApp}
-            pinned={pinnedSet.has(spotlightApp.slug)}
-            spotlight
-            recentLabel="Start here"
-            onInspect={() => inspectApp(spotlightApp)}
-            onTogglePin={togglePinnedApp}
-          />
-        {/if}
         <ul class="launcher-grid featured" role="list">
           {#each continueDisplayApps as app (app.slug)}
             <li>
-              <LauncherCard
-                {app}
+              <ToolTile
+                app={launcherAppToToolTile(app)}
+                density="card"
                 pinned={pinnedSet.has(app.slug)}
                 recentLabel={recentLabel(app.slug)}
                 onInspect={() => inspectApp(app)}
@@ -388,19 +355,19 @@
         </ul>
       </section>
 
-      {#if featuredApps.length > 0}
-        <section class="launcher-section" aria-labelledby="featured-title">
+      {#if browseApps.length > 0}
+        <section class="launcher-section" aria-labelledby="browse-title">
           <div class="section-head">
-            <h2 id="featured-title">Featured</h2>
-            <span class="section-hint">strongest demos</span>
+            <h2 id="browse-title">Browse</h2>
+            <span class="section-hint">{browseApps.length} tools</span>
           </div>
           <ul class="launcher-grid compact-grid" role="list">
-            {#each featuredApps as app (app.slug)}
+            {#each browseApps as app (app.slug)}
               <li>
-                <LauncherCard
-                  {app}
+                <ToolTile
+                  app={launcherAppToToolTile(app)}
+                  density="card"
                   pinned={pinnedSet.has(app.slug)}
-                  compact
                   recentLabel={recentLabel(app.slug)}
                   onInspect={() => inspectApp(app)}
                   onTogglePin={togglePinnedApp}
@@ -410,50 +377,6 @@
           </ul>
         </section>
       {/if}
-
-      {#if localApps.length > 0}
-        <section class="launcher-section" aria-labelledby="local-title">
-          <div class="section-head">
-            <h2 id="local-title">Local</h2>
-            <span class="section-hint">runs on your device</span>
-          </div>
-          <ul class="launcher-grid compact-grid" role="list">
-            {#each localApps as app (app.slug)}
-              <li>
-                <LauncherCard
-                  {app}
-                  pinned={pinnedSet.has(app.slug)}
-                  compact
-                  recentLabel={recentLabel(app.slug)}
-                  onInspect={() => inspectApp(app)}
-                  onTogglePin={togglePinnedApp}
-                />
-              </li>
-            {/each}
-          </ul>
-        </section>
-      {/if}
-
-      <section class="launcher-section" aria-labelledby="explore-title">
-        <div class="section-head">
-          <h2 id="explore-title">Explore</h2>
-          <span class="section-hint">all tools</span>
-        </div>
-        <ul class="launcher-grid compact-grid" role="list">
-          {#each exploreApps as app (app.slug)}
-            <li>
-              <LauncherCard
-                {app}
-                pinned={pinnedSet.has(app.slug)}
-                compact
-                recentLabel={recentLabel(app.slug)}
-                onInspect={() => inspectApp(app)}
-                onTogglePin={togglePinnedApp}
-              />
-            </li>
-          {/each}
-        </ul>
-      </section>
 
       {#if data.page > 1 || data.hasMore}
         <nav class="pager" aria-label="Pagination">
@@ -470,14 +393,6 @@
     {/if}
   </section>
 
-  <section class="builder-strip wrap" aria-labelledby="builder-strip-title">
-    <div>
-      <p class="eyebrow">For builders</p>
-      <h2 id="builder-strip-title">Ship a tool.</h2>
-      <p>One-line local database. Zero backend setup. Shippie adds offline, haptics, secure backup, and proof.</p>
-    </div>
-    <a class="builder-strip-cta" href="/build">Start building →</a>
-  </section>
 </div>
 
 <AppInspector
@@ -488,20 +403,20 @@
 
 <style>
   .page {
-    padding-top: var(--space-xl);
+    padding-top: clamp(1.35rem, 2.6vw, var(--space-xl));
     /* Bottom padding includes the iOS home-indicator safe area so the
        last row of cards never clips. max() keeps the existing visual
        breathing room as the floor. */
     padding-bottom: max(var(--space-3xl), env(safe-area-inset-bottom, 0px));
   }
   .head {
-    padding-bottom: var(--space-lg);
+    padding-bottom: clamp(1rem, 2.1vw, var(--space-lg));
     border-bottom: 1px solid var(--border-light);
   }
   .head-grid {
     display: grid;
     grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.72fr);
-    gap: var(--space-xl);
+    gap: clamp(1.25rem, 3vw, var(--space-xl));
     align-items: end;
   }
   .eyebrow {
@@ -527,14 +442,14 @@
   }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2.45rem, 5vw, 4.5rem);
+    font-size: clamp(2.35rem, 4.4vw, 4.2rem);
     letter-spacing: 0;
     line-height: 0.94;
     margin: 0;
   }
   .lede {
     color: var(--text-secondary);
-    margin: var(--space-md) 0 0;
+    margin: clamp(0.65rem, 1.6vw, var(--space-md)) 0 0;
     max-width: 34rem;
     font-size: var(--small-size);
     line-height: 1.55;
@@ -591,27 +506,30 @@
     border-color: var(--sunset);
   }
   .cats .cat-chip-link:hover { background: var(--sunset); color: var(--bg-pure); }
-  .results { padding-top: var(--space-lg); }
+  .results { padding-top: clamp(1rem, 2vw, var(--space-lg)); }
   .launcher-section {
     display: grid;
-    gap: var(--space-md);
-    margin-bottom: var(--space-xl);
+    gap: clamp(0.75rem, 1.5vw, var(--space-md));
+    margin-bottom: clamp(1.45rem, 3vw, var(--space-xl));
   }
   .launcher-section.primary {
-    margin-bottom: var(--space-xl);
+    margin-bottom: clamp(1.45rem, 3vw, var(--space-xl));
   }
   .section-head {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: var(--space-md);
+    min-width: 0;
   }
   .section-head h2 {
+    min-width: 0;
     margin: 0;
     font-family: var(--font-heading);
     font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: 0;
+    overflow-wrap: anywhere;
   }
   .section-hint {
     font-family: var(--font-mono);
@@ -625,19 +543,19 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--space-md);
+    gap: clamp(0.7rem, 1.35vw, var(--space-md));
   }
   .launcher-grid.featured {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   }
   /* Wide-viewport progression — only meaningful inside .wrap-wide;
      the apex page upgrades its container to wrap-wide so these
      queries actually have room to expand. */
-  @media (min-width: 1280px) { .launcher-grid.featured { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (min-width: 1536px) { .launcher-grid.featured { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  @media (min-width: 1920px) { .launcher-grid.featured { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+  @media (min-width: 1280px) { .launcher-grid.featured { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (min-width: 1536px) { .launcher-grid.featured { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+  @media (min-width: 1920px) { .launcher-grid.featured { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
   .compact-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
   }
   .pager {
     margin-top: var(--space-2xl);
@@ -669,38 +587,43 @@
   }
   @media (max-width: 640px) {
     .section-head {
-      align-items: start;
-      flex-direction: column;
+      align-items: baseline;
+      flex-direction: row;
+      gap: 10px;
+    }
+    .section-hint {
+      max-width: min(68%, 18rem);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .compact-grid {
       grid-template-columns: 1fr;
     }
     .page {
-      padding-top: var(--space-md);
+      padding-top: 10px;
     }
     .head {
-      padding-bottom: var(--space-md);
+      padding-bottom: 10px;
     }
     .head-grid {
-      gap: var(--space-md);
+      gap: 10px;
     }
     .head-tools {
-      gap: 0.75rem;
+      gap: 8px;
     }
     .hero-eyebrow {
-      margin-bottom: 0.4rem;
+      display: none;
     }
     .lede {
+      display: none;
       margin-top: 0.75rem;
       font-size: 1rem;
       line-height: 1.45;
     }
     .title {
-      font-size: clamp(2.2rem, 12vw, 2.8rem);
+      font-size: clamp(2rem, 10vw, 2.35rem);
       line-height: 1;
-    }
-    .head.compact .lede {
-      display: none;
     }
     .head.compact .title {
       font-size: clamp(1.9rem, 9vw, 2.35rem);
@@ -712,10 +635,11 @@
       gap: 0.85rem;
     }
     .results {
-      padding-top: var(--space-md);
+      padding-top: 10px;
     }
     .cats {
       flex-wrap: nowrap;
+      gap: 6px;
       overflow-x: auto;
       padding-bottom: 2px;
       scrollbar-width: none;
@@ -757,46 +681,4 @@
     gap: 8px;
   }
 
-  /* Builder strip — quiet maker CTA at the bottom of the launcher */
-  .builder-strip {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-md);
-    align-items: end;
-    margin-top: var(--space-2xl);
-    padding: var(--space-xl) var(--space-lg);
-    background: var(--surface);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-  }
-  @media (min-width: 641px) {
-    .builder-strip {
-      grid-template-columns: 1fr auto;
-    }
-  }
-  .builder-strip h2 {
-    font-family: var(--font-heading);
-    font-size: 1.75rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin: var(--space-xs) 0;
-    color: var(--text);
-  }
-  .builder-strip p {
-    margin: 0;
-    color: var(--text-secondary);
-    max-width: 40rem;
-  }
-  .builder-strip-cta {
-    display: inline-block;
-    padding: var(--space-md) var(--space-lg);
-    background: var(--sunset);
-    color: var(--bg);
-    font-family: var(--font-body);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .builder-strip-cta:hover {
-    background: var(--sunset-hover);
-  }
 </style>

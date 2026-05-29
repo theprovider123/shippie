@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repoRoot = new URL('../../../../../', import.meta.url);
@@ -10,6 +10,7 @@ describe('first-party showcase remix metadata', () => {
     const missing: string[] = [];
     const showcaseDirs = readdirSync(appsDir)
       .filter((name) => name.startsWith('showcase-'))
+      .filter((name) => isCompleteShowcaseDir(name))
       .sort();
 
     for (const dir of showcaseDirs) {
@@ -25,3 +26,10 @@ describe('first-party showcase remix metadata', () => {
     expect(missing).toEqual([]);
   });
 });
+
+function isCompleteShowcaseDir(name: string): boolean {
+  return (
+    existsSync(join(appsDir.pathname, name, 'shippie.json')) &&
+    existsSync(join(appsDir.pathname, name, 'src', 'main.tsx'))
+  );
+}

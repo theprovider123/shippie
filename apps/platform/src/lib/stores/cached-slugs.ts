@@ -16,7 +16,7 @@ import {
   clearOfflineApps,
   downloadApp,
   getAppStatus,
-  listSavedApps,
+  listSavedAppDetails,
   removeApp,
 } from '$lib/offline/download-app';
 
@@ -43,12 +43,20 @@ export async function refreshCachedSlugs(slugs: readonly string[]): Promise<void
   // tiny candidate sets where a user-facing state needs proof.
   if (slugs.length > 12) {
     const allowed = new Set(slugs);
-    const saved = (await listSavedApps()).filter((slug) => allowed.has(slug));
-    cachedSlugs.set(new Set(saved));
+    const saved = (await listSavedAppDetails()).filter((app) => allowed.has(app.slug) && app.state === 'saved');
+    cachedSlugs.set(new Set(saved.map((app) => app.slug)));
     offlineStatuses.update((statuses) => {
       const next = { ...statuses };
-      for (const slug of saved) {
-        next[slug] = { slug, state: 'saved', done: 0, total: 0 };
+      for (const app of saved) {
+        next[app.slug] = {
+          slug: app.slug,
+          state: 'saved',
+          phase: 'sealed',
+          done: 0,
+          total: 0,
+          totalBytes: app.totalBytes,
+          manifestHash: app.manifestHash,
+        };
       }
       return next;
     });

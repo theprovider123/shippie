@@ -19,6 +19,7 @@ import {
 import { Avatar } from '@/components/Avatar.tsx';
 import { useYjs } from '@/sync/useYjs.ts';
 import { clearPairing, roomIdFor, type Pairing } from '@/sync/pairing.ts';
+import type { CheckpointProvider } from '@/sync/checkpoint.ts';
 import type { Route } from '@/router.ts';
 
 interface Props {
@@ -26,17 +27,29 @@ interface Props {
   myDeviceId: string;
   pairing: Pairing;
   relay: RelayProvider | null;
+  checkpoint: CheckpointProvider | null;
   onNavigate: (r: Route) => void;
   onUnpair: () => void;
+  onSyncNow: () => void;
 }
 
-export function MorePage({ doc, myDeviceId, pairing, relay, onNavigate, onUnpair }: Props) {
+export function MorePage({
+  doc,
+  myDeviceId,
+  pairing,
+  relay,
+  checkpoint,
+  onNavigate,
+  onUnpair,
+  onSyncNow,
+}: Props) {
   const meta = useYjs(doc, readCoupleMeta);
   const partner = partnerOf(meta, myDeviceId);
   const me = resolveMyName(meta, myDeviceId);
 
   const [meDraft, setMeDraft] = useState<string>(me === 'me' ? '' : me);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [checkpointFlash, setCheckpointFlash] = useState<string | null>(null);
 
   function saveMyName() {
     const trimmed = meDraft.trim();
@@ -80,16 +93,29 @@ export function MorePage({ doc, myDeviceId, pairing, relay, onNavigate, onUnpair
     })();
   }
 
+  async function deleteSealedCheckpoint() {
+    if (
+      !window.confirm(
+        "Delete the encrypted cloud checkpoint for this couple code? Phones keep their local copies, but new devices can't restore until a phone syncs again.",
+      )
+    ) {
+      return;
+    }
+    const result = await checkpoint?.deleteNow();
+    setCheckpointFlash(result?.ok ? 'Deleted sealed checkpoint.' : result?.error ?? 'Could not delete checkpoint.');
+    window.setTimeout(() => setCheckpointFlash(null), 2500);
+  }
+
   return (
     <div className="flex flex-col gap-4 px-4 pb-8">
       <ScreenHeader eyebrow="More" title="Settings & spaces." />
 
       <Section title="Sync">
-        <SyncStatus relay={relay} />
+        <SyncStatus relay={relay} onSyncNow={onSyncNow} />
         <p className="text-xs text-[var(--muted-foreground)] pt-2">
           Couple code: <span className="font-mono text-[var(--foreground)]">{pairing.coupleCode}</span>
           <br />
-          If sync isn't working, check this code matches your partner's. If it does and the dot still isn't green, tap "Sync now" — that force-reconnects and pushes your full state across.
+          This code joins the live room and unlocks your sealed checkpoint. If a new phone looks empty, open Mevrouw on the phone with your data and tap "Sync now" on both devices.
         </p>
       </Section>
 
@@ -286,16 +312,29 @@ export function MorePage({ doc, myDeviceId, pairing, relay, onNavigate, onUnpair
           Wipe every letter, journal entry, surprise, memory, and game on this
           device. Your partner's phone keeps its copy.
         </p>
-        <Button variant="destructive" size="sm" onClick={nukeLocal} className="self-start">
-          Delete all my local data
-        </Button>
+        <div className="flex flex-col gap-2 items-start">
+          <Button variant="destructive" size="sm" onClick={nukeLocal}>
+            Delete all my local data
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={deleteSealedCheckpoint}
+            disabled={!checkpoint}
+          >
+            Delete sealed checkpoint
+          </Button>
+        </div>
+        {checkpointFlash ? (
+          <p className="text-xs font-mono text-[var(--muted-foreground)]">{checkpointFlash}</p>
+        ) : null}
       </Section>
 
       <Section title="About">
         <p className="text-xs font-mono text-[var(--muted-foreground)] leading-relaxed">
           mevrouw-local · Shippie-native couple PWA. Your data lives on this device.
-          Two phones with the same couple code stay in sync — no server holds anything
-          between you.
+          Live sync moves encrypted updates between open phones, and sealed checkpoints
+          help a new device catch up without Shippie being able to read the contents.
         </p>
       </Section>
     </div>

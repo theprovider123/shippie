@@ -89,12 +89,16 @@ describe('local-tool-policy scan', () => {
     expect(report.findings[0]?.id).toBe('reference-query-risk');
   });
 
-  test('treats Shippie relay and backup endpoints as allowed transport', () => {
+  test('treats Shippie relay and checkpoint endpoints as allowed transport', () => {
     const report = runLocalToolPolicyScan(files({
       'room.js': `
         await fetch('https://shippie.app/__shippie/signal/room-1', {
           method: 'POST',
           body: encryptedEnvelope
+        });
+        await fetch('https://shippie.app/__shippie/checkpoints/room-1', {
+          method: 'PUT',
+          body: encryptedCheckpoint
         });
       `,
     }));
@@ -102,6 +106,7 @@ describe('local-tool-policy scan', () => {
     expect(report.passed).toBe(true);
     expect(report.blocks).toBe(0);
     expect(report.capabilityHints.privateRelay).toBe(true);
+    expect(report.capabilityHints.secureBackup).toBe(true);
   });
 
   test('ignores source metadata URLs when deriving runtime reference domains', () => {

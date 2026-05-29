@@ -145,7 +145,7 @@
     font-family: var(--font-heading);
     font-size: 1.375rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
   .nav-link {
     font-size: var(--small-size);

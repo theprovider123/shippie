@@ -451,7 +451,7 @@
     font-family: var(--font-heading);
     font-size: clamp(2rem, 5vw, 3rem);
     line-height: 1.1;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     margin: 0;
     color: #EDE4D3;
   }
@@ -556,7 +556,7 @@
     font-family: var(--font-heading);
     font-size: 1.25rem;
     margin: 0 0 var(--space-md);
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
   .section-intro h2 { margin-bottom: 0.35rem; }
   .section-intro p {
@@ -574,7 +574,7 @@
     font-family: var(--font-heading);
     font-size: 1.2rem;
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
   .trust-details[open] summary {
     margin-bottom: var(--space-md);

@@ -47,18 +47,27 @@
   const launchHref = $derived(app ? `/run/${encodeURIComponent(app.slug)}` : '/apps');
   const offlineStatus = $derived(app ? $offlineStatuses[app.slug] : undefined);
   const isOffline = $derived(Boolean(app && ($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved')));
-  const isSaving = $derived(offlineStatus?.state === 'downloading');
-  const isSaved = $derived(Boolean(app && (pinned || isOffline)));
+  const isSaving = $derived(
+    offlineStatus?.state === 'requested' ||
+      offlineStatus?.state === 'downloading' ||
+      offlineStatus?.state === 'verifying',
+  );
+  const isSaved = $derived(Boolean(app && isOffline));
   const connectionBadges = $derived(connectionBadgesFromKind(app?.kind));
   const offlineLabel = $derived.by(() => {
     if (!app) return '';
-    if (offlineStatus?.state === 'downloading') {
+    if (
+      offlineStatus?.state === 'requested' ||
+      offlineStatus?.state === 'downloading' ||
+      offlineStatus?.state === 'verifying'
+    ) {
+      if (offlineStatus.state === 'verifying') return 'Verifying capsule';
       return offlineStatus.total > 0
         ? `Saving ${offlineStatus.done}/${offlineStatus.total}`
         : 'Saving';
     }
     if (isOffline) return 'Ready offline';
-    if (offlineStatus?.state === 'partial') return 'Needs refresh';
+    if (offlineStatus?.state === 'partial' || offlineStatus?.state === 'evicted') return 'Needs refresh';
     if (offlineStatus?.state === 'error') return 'Save failed';
     return 'Not saved on this device';
   });
@@ -109,8 +118,8 @@
         return;
       }
 
-      togglePinnedApp(app.slug);
       const result = await ensureAppOffline(app.slug);
+      if (result.state === 'saved' && !pinned) togglePinnedApp(app.slug);
       toast.push(
         result.state === 'saved'
           ? { kind: 'success', message: 'Saved to your tools.' }
@@ -218,6 +227,7 @@
     inset: 0;
     z-index: 210;
     background: rgba(10, 9, 7, 0.58);
+    animation: scrim-in 0.16s var(--ease-out);
   }
   .inspector {
     position: fixed;
@@ -411,6 +421,10 @@
     from { transform: translateX(16px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
   }
+  @keyframes scrim-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
   @media (max-width: 640px) {
     .inspector {
       padding: var(--space-lg) var(--space-lg) calc(var(--space-lg) + var(--safe-bottom));
@@ -421,7 +435,8 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .inspector {
+    .inspector,
+    .scrim {
       animation: none;
     }
   }

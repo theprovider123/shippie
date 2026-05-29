@@ -97,6 +97,11 @@
   import TransferPromptModal from '$lib/container/TransferPromptModal.svelte';
   import AppFrameHost from '$lib/container/AppFrameHost.svelte';
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
+  import {
+    ToolTile,
+    containerAppToToolTile,
+    type ToolRuntimeState,
+  } from '$lib/components/tool-surface';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
@@ -616,14 +621,6 @@
     dismissedInsightIds = { ...dismissedInsightIds, [insight.id]: Date.now() };
   }
 
-  function tierLabel(app: ContainerApp): string {
-    if (app.visibility === 'private') return 'Private';
-    if (app.visibility === 'team') return 'Team';
-    if (app.visibility === 'local') return 'On device';
-    if (app.visibility === 'unlisted') return 'Unlisted';
-    return '';
-  }
-
   const activeApp = $derived(activeAppId ? appById.get(activeAppId) : null);
   const activeToolUrl = $derived.by(() => {
     if (!activeApp || typeof window === 'undefined') return '';
@@ -739,15 +736,49 @@
         return true;
       });
   });
-  const drawerPersonalized = $derived(drawerPinnedApps.length > 0 || drawerRecentApps.length > 0);
+  const drawerQuickApps = $derived.by(() => {
+    const seen = new Set<string>();
+    return [...drawerPinnedApps, ...drawerRecentApps].filter((app) => {
+      if (seen.has(app.id)) return false;
+      seen.add(app.id);
+      return true;
+    });
+  });
+  const drawerPersonalized = $derived(drawerQuickApps.length > 0);
   const drawerRemainingApps = $derived.by(() => {
     if (!drawerPersonalized) return launchVisibleApps;
-    const shown = new Set([
-      ...drawerPinnedApps.map((app) => app.id),
-      ...drawerRecentApps.map((app) => app.id),
-    ]);
+    const shown = new Set(drawerQuickApps.map((app) => app.id));
     return launchVisibleApps.filter((app) => !shown.has(app.id));
   });
+  // Drawer search — surfaces a lightweight filter once the visible
+  // tool set is large enough to need it. Below ~12 apps a search box
+  // is just noise; above it, scrolling the drawer becomes the slowest
+  // path to the tool you want.
+  let drawerSearchQuery = $state('');
+  const drawerSearchActive = $derived(
+    drawerQuickApps.length + drawerRemainingApps.length > 12,
+  );
+  const drawerSearchTrim = $derived(drawerSearchQuery.trim().toLowerCase());
+  function matchesDrawerSearch(app: ContainerApp): boolean {
+    if (!drawerSearchTrim) return true;
+    return (
+      app.name.toLowerCase().includes(drawerSearchTrim) ||
+      app.slug.toLowerCase().includes(drawerSearchTrim) ||
+      (app.shortName ?? '').toLowerCase().includes(drawerSearchTrim) ||
+      (app.category ?? '').toLowerCase().includes(drawerSearchTrim)
+    );
+  }
+  const drawerQuickAppsFiltered = $derived(
+    drawerSearchTrim ? drawerQuickApps.filter(matchesDrawerSearch) : drawerQuickApps,
+  );
+  const drawerRemainingAppsFiltered = $derived(
+    drawerSearchTrim ? drawerRemainingApps.filter(matchesDrawerSearch) : drawerRemainingApps,
+  );
+  function drawerRuntimeStateFor(app: ContainerApp): ToolRuntimeState {
+    if (activeAppId === app.id) return 'current';
+    if (openAppIds.includes(app.id)) return 'live';
+    return 'idle';
+  }
   const recoveredReceipts = $derived(recoveredReceiptsFor(receiptsByApp, appById));
   const totalRows = $derived(Object.values(rowsByApp).reduce((sum, rows) => sum + rows.length, 0));
   const updateCards = $derived(
@@ -990,8 +1021,7 @@
   function prewarmLikelyNextApps() {
     const seen = new Set<string>();
     const candidates = [
-      ...drawerPinnedApps,
-      ...drawerRecentApps,
+      ...drawerQuickApps,
       ...installedApps,
     ].filter((app) => {
       if (!app || app.id === activeAppId || seen.has(app.id)) return false;
@@ -2497,6 +2527,7 @@
 
   onMount(() => {
     hydrateLauncherMemory();
+    viewportWidth = window.innerWidth;
     const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
     const saved = loadContainerState(localStorage);
     if (saved) {
@@ -2906,72 +2937,66 @@
           </nav>
         </header>
         {#snippet focusedToolTile(app: ContainerApp)}
-          <div
-            class="focused-tile"
-            class:active={activeAppId === app.id}
-            style:--accent={app.accent}
-          >
-            <button
-              class="focused-open-tool"
-              type="button"
-              onclick={() => switchFocusedApp(app)}
-              aria-label={`Open ${app.name}`}
-            >
-              <span class="focused-dot" aria-hidden="true">{app.icon}</span>
-              <strong>{app.name}</strong>
-              <small>{tierLabel(app) || (activeAppId === app.id ? 'Current' : openAppIds.includes(app.id) ? 'Live' : 'Open')}</small>
-            </button>
-            <button
-              class="focused-pin"
-              class:active={drawerPinnedSet.has(app.slug)}
-              type="button"
-              aria-label={drawerPinnedSet.has(app.slug) ? `Unpin ${app.name}` : `Pin ${app.name}`}
-              aria-pressed={drawerPinnedSet.has(app.slug)}
-              title={drawerPinnedSet.has(app.slug) ? 'Unpin' : 'Pin'}
-              onclick={(event) => {
-                event.stopPropagation();
-                toggleDrawerPin(app);
-              }}
-            >
-              {drawerPinnedSet.has(app.slug) ? '★' : '☆'}
-            </button>
-          </div>
+          <ToolTile
+            app={containerAppToToolTile(app)}
+            density="drawer"
+            pinned={drawerPinnedSet.has(app.slug)}
+            runtimeState={drawerRuntimeStateFor(app)}
+            onOpen={() => switchFocusedApp(app)}
+            onTogglePin={() => toggleDrawerPin(app)}
+          />
         {/snippet}
 
-        {#if drawerPinnedApps.length > 0}
+        {#if drawerSearchActive}
+          <label class="focused-search" aria-label="Search tools">
+            <span class="focused-search-icon" aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Search tools…"
+              bind:value={drawerSearchQuery}
+            />
+            {#if drawerSearchQuery}
+              <button
+                type="button"
+                class="focused-search-clear"
+                aria-label="Clear search"
+                onclick={() => (drawerSearchQuery = '')}
+              >✕</button>
+            {/if}
+          </label>
+        {/if}
+
+        {#if drawerQuickAppsFiltered.length > 0}
           <div class="focused-section-head">
-            <h2>Pinned</h2>
-            <span>{drawerPinnedApps.length}</span>
+            <h2>Quick</h2>
+            <span>{drawerQuickAppsFiltered.length}</span>
           </div>
           <div class="focused-grid">
-            {#each drawerPinnedApps as app (app.id)}
+            {#each drawerQuickAppsFiltered as app (app.id)}
               {@render focusedToolTile(app)}
             {/each}
           </div>
         {/if}
 
-        {#if drawerRecentApps.length > 0}
+        {#if drawerRemainingAppsFiltered.length > 0}
           <div class="focused-section-head">
-            <h2>Recent</h2>
-            <span>{drawerRecentApps.length}</span>
+            <h2>{drawerPersonalized ? 'Browse' : 'Tools'}</h2>
+            <span>{drawerRemainingAppsFiltered.length}</span>
           </div>
           <div class="focused-grid">
-            {#each drawerRecentApps as app (app.id)}
+            {#each drawerRemainingAppsFiltered as app (app.id)}
               {@render focusedToolTile(app)}
             {/each}
           </div>
         {/if}
 
-        {#if drawerRemainingApps.length > 0}
-          <div class="focused-section-head">
-            <h2>{drawerPersonalized ? 'All tools' : 'Tools'}</h2>
-            <span>{drawerRemainingApps.length} ready</span>
-          </div>
-          <div class="focused-grid">
-            {#each drawerRemainingApps as app (app.id)}
-              {@render focusedToolTile(app)}
-            {/each}
-          </div>
+        {#if drawerSearchTrim && drawerQuickAppsFiltered.length === 0 && drawerRemainingAppsFiltered.length === 0}
+          <p class="focused-search-empty">
+            Nothing matches “{drawerSearchQuery}” yet.
+            <button type="button" onclick={() => (drawerSearchQuery = '')}>Clear search</button>
+          </p>
         {/if}
         {#if agentInsights.length > 0}
           <h2 class="focused-insights-heading">Insights</h2>
@@ -3801,12 +3826,12 @@
       transform 0.18s ease;
   }
   .focused-chrome-tools {
-    left: calc(env(safe-area-inset-left, 0px) - 18px);
+    left: calc(env(safe-area-inset-left, 0px) - 12px);
     border-left: 0;
     border-radius: 0 16px 16px 0;
   }
   .focused-chrome-options {
-    right: calc(env(safe-area-inset-right, 0px) - 18px);
+    right: calc(env(safe-area-inset-right, 0px) - 12px);
     border-right: 0;
     border-radius: 16px 0 0 16px;
   }
@@ -3916,11 +3941,11 @@
       -webkit-backdrop-filter: none;
     }
     .focused-chrome-tools {
-      left: calc(env(safe-area-inset-left, 0px) - 16px);
+      left: calc(env(safe-area-inset-left, 0px) - 10px);
       border-radius: 0 18px 18px 0;
     }
     .focused-chrome-options {
-      right: calc(env(safe-area-inset-right, 0px) - 16px);
+      right: calc(env(safe-area-inset-right, 0px) - 10px);
       border-radius: 18px 0 0 18px;
     }
     .focused-chrome-tools.input-region-bottom,
@@ -3940,6 +3965,7 @@
     border: 0;
     background: rgba(20, 18, 15, 0.28);
     cursor: default;
+    animation: focused-fade-in 160ms var(--ease-out);
   }
   .focused-options-panel {
     position: fixed;
@@ -3955,6 +3981,7 @@
     color: var(--cream-text, #14120f);
     box-shadow: 0 18px 54px rgba(20, 18, 15, 0.24);
     transform: translateY(-50%);
+    animation: focused-options-in 180ms var(--spring);
   }
   .focused-options-head {
     display: grid;
@@ -4060,23 +4087,23 @@
     .focused-options-panel {
       top: auto;
       right: 0;
-      bottom: 0;
+      bottom: max(16px, env(safe-area-inset-bottom, 0px));
       left: 0;
       width: auto;
-      max-height: 72dvh;
-      padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+      max-height: calc(100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 16px);
+      padding: 10px 16px 16px;
       border-right: 0;
-      border-bottom: 0;
       border-left: 0;
       transform: none;
+      animation: focused-options-sheet-in 180ms var(--spring);
     }
   }
 
   .focused-drawer {
-    padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     color: var(--cream-text, #14120f);
   }
   .focused-drawer-grip {
@@ -4087,12 +4114,16 @@
     background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
   .focused-drawer-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 14px;
-    padding-bottom: 14px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: var(--cream-bg, #faf7ef);
   }
   .focused-home {
     display: inline-flex;
@@ -4212,103 +4243,98 @@
   .focused-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 2px;
+    margin-bottom: 6px;
   }
-  .focused-tile {
+  @media (min-width: 720px) {
+    .focused-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+    }
+  }
+  .focused-search {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 34px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    min-height: 48px;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 0 0 12px;
+    background: rgba(0, 0, 0, 0.03);
     border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
-    background: transparent;
-    color: inherit;
-    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
   }
-  .focused-tile:hover {
+  .focused-search:focus-within {
     border-color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.07);
-    transform: translateX(2px);
+    background: rgba(232, 96, 60, 0.04);
   }
-  .focused-tile.active {
-    border-color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.1);
-    box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
+  .focused-search-icon {
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    font-size: 16px;
+    line-height: 1;
   }
-  .focused-open-tool {
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
+  .focused-search input {
     min-width: 0;
-    min-height: 48px;
-    padding: 7px 9px;
+    background: transparent;
     border: 0;
-    background: transparent;
+    padding: 6px 0;
     color: inherit;
-    cursor: pointer;
-    text-align: left;
     font: inherit;
+    font-size: 14px;
   }
-  .focused-open-tool strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-heading);
-    font-size: 15px;
-    line-height: 1.1;
+  .focused-search input:focus {
+    outline: none;
   }
-  .focused-open-tool small {
+  .focused-search-clear {
+    background: transparent;
+    border: 0;
+    padding: 4px 6px;
     color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-  .focused-pin {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    align-self: stretch;
-    min-width: 34px;
-    border: 0;
-    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
-    background: transparent;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    font-size: 11px;
     cursor: pointer;
-    font-size: 15px;
     line-height: 1;
-    transition: color 150ms ease, background 150ms ease;
   }
-  .focused-pin:hover,
-  .focused-pin:focus-visible,
-  .focused-pin.active {
+  .focused-search-clear:hover { color: var(--sunset, #e8603c); }
+  .focused-search-empty {
+    margin: 6px 0;
+    padding: 12px;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    font-size: 13px;
+    text-align: center;
+  }
+  .focused-search-empty button {
+    margin-left: 6px;
+    background: transparent;
+    border: 0;
+    padding: 0;
     color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.08);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
   }
-  .focused-dot {
-    width: 32px;
-    height: 32px;
-    background: var(--accent);
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 15px;
+
+  @keyframes focused-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes focused-options-in {
+    from { opacity: 0; transform: translateY(-50%) translateX(12px); }
+    to { opacity: 1; transform: translateY(-50%); }
+  }
+  @keyframes focused-options-sheet-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   @media (max-width: 640px) {
     .focused-drawer {
-      padding-top: 10px;
-      gap: 12px;
+      padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
+      gap: 10px;
     }
     .focused-drawer-grip {
       display: block;
     }
     .focused-drawer-head {
-      padding-bottom: 12px;
+      gap: 10px;
+      padding-bottom: 10px;
     }
     .focused-brand-copy strong {
       font-size: 20px;
@@ -4320,6 +4346,20 @@
       min-height: 32px;
       padding: 0 9px;
       font-size: 10px;
+    }
+    .focused-section-head {
+      gap: 8px;
+    }
+    .focused-grid {
+      grid-template-columns: 1fr;
+      gap: 2px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .focused-options-backdrop,
+    .focused-options-panel {
+      animation: none;
     }
   }
 

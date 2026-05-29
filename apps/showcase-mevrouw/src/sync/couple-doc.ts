@@ -26,6 +26,10 @@ import {
   unpackFrame,
 } from './crypto.ts';
 import { bindRelayProvider, type RelayProvider } from './relay-provider.ts';
+import {
+  bindCheckpointProvider,
+  type CheckpointProvider,
+} from './checkpoint.ts';
 
 export interface BoundCoupleDoc {
   doc: Y.Doc;
@@ -33,6 +37,8 @@ export interface BoundCoupleDoc {
   whenSynced: Promise<void>;
   /** Live cross-device relay status — exposed for UI surfacing. */
   relay: RelayProvider | null;
+  /** Durable sealed checkpoint restore/save path. */
+  checkpoint: CheckpointProvider | null;
   destroy: () => void;
 }
 
@@ -119,13 +125,26 @@ export function bindCoupleDoc(roomId: string, coupleCode?: string): BoundCoupleD
     relay = bindRelayProvider({ doc, roomId, coupleCode });
   }
 
+  let checkpoint: CheckpointProvider | null = null;
+  if (coupleCode) {
+    checkpoint = bindCheckpointProvider(doc, roomId, coupleCode);
+  }
+
+  const ready = (keyReady ? Promise.all([whenSynced, keyReady]).then(() => {}) : whenSynced)
+    .then(async () => {
+      await checkpoint?.restoreNow();
+      await checkpoint?.saveNow();
+    });
+
   return {
     doc,
     persistence,
     relay,
-    whenSynced: keyReady ? Promise.all([whenSynced, keyReady]).then(() => {}) : whenSynced,
+    checkpoint,
+    whenSynced: ready,
     destroy: () => {
       relay?.destroy();
+      checkpoint?.destroy();
       channel?.close();
       void persistence.destroy();
       doc.destroy();

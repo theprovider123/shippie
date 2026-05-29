@@ -24,6 +24,9 @@ import { GlimpsesPage } from '@/pages/GlimpsesPage.tsx';
 import { AfterHoursPage } from '@/pages/AfterHoursPage.tsx';
 import { bindCoupleDoc } from '@/sync/couple-doc.ts';
 import type { RelayProvider } from '@/sync/relay-provider.ts';
+import type { CheckpointProvider } from '@/sync/checkpoint.ts';
+import { hasMeaningfulCoupleData } from '@/sync/checkpoint.ts';
+import { useRelayState } from '@/sync/useRelayState.ts';
 import {
   loadPairing,
   type Pairing,
@@ -54,6 +57,7 @@ export function App() {
   const [pairing, setPairingState] = useState<Pairing | null>(() => loadPairing());
   const [doc, setDoc] = useState<Y.Doc | null>(null);
   const [relay, setRelay] = useState<RelayProvider | null>(null);
+  const [checkpoint, setCheckpoint] = useState<CheckpointProvider | null>(null);
   const [synced, setSynced] = useState(false);
   const [route, setRoute] = useState<Route>('home');
   const localNavigation = useMemo(
@@ -71,12 +75,14 @@ export function App() {
     if (!pairing) {
       setDoc(null);
       setRelay(null);
+      setCheckpoint(null);
       setSynced(false);
       return;
     }
     const bound = bindCoupleDoc(roomIdFor(pairing.coupleCode), pairing.coupleCode);
     setDoc(bound.doc);
     setRelay(bound.relay);
+    setCheckpoint(bound.checkpoint);
     setSynced(false);
     void bound.whenSynced.then(() => setSynced(true));
     return () => {
@@ -110,6 +116,7 @@ export function App() {
       pairing={pairing}
       doc={doc}
       relay={relay}
+      checkpoint={checkpoint}
       route={route}
       onRoute={navigate}
       onUnpair={() => setPairingState(null)}
@@ -121,6 +128,7 @@ function Bound({
   pairing,
   doc,
   relay,
+  checkpoint,
   route,
   onRoute,
   onUnpair,
@@ -128,6 +136,7 @@ function Bound({
   pairing: Pairing;
   doc: Y.Doc;
   relay: RelayProvider | null;
+  checkpoint: CheckpointProvider | null;
   route: Route;
   onRoute: (r: Route) => void;
   onUnpair: () => void;
@@ -135,6 +144,7 @@ function Bound({
   // Heartbeat presence — pings every 5s while visible.
   usePresenceHeartbeat(doc, pairing.deviceId);
   const dock = useViewportDock();
+  const relayState = useRelayState(relay);
 
   // Detect a #shippie-import=… fragment carrying a single memory shared
   // from outside this couple-doc. Verifies the signature, previews the
@@ -180,6 +190,7 @@ function Bound({
   }, [meta.anniversary_date]);
 
   const partner = partnerOf(meta, pairing.deviceId);
+  const hasData = useYjs(doc, hasMeaningfulCoupleData);
   const surprises = useYjs(doc, readSurprises);
   const unread = surprises.filter(
     (s) =>
@@ -190,13 +201,48 @@ function Bound({
 
   const tabActive: Route = TOP_LEVEL_ROUTES.includes(route) ? route : 'more';
 
+  function syncNow(): void {
+    relay?.resync();
+    const cp = checkpoint;
+    if (cp) void cp.restoreNow().then(() => cp.saveNow());
+  }
+
+  useEffect(() => {
+    if (!relay && !checkpoint) return;
+    let last = 0;
+    const trigger = () => {
+      const now = Date.now();
+      if (now - last < 3_000) return;
+      last = now;
+      syncNow();
+    };
+    const onVisibility = () => {
+      if (!document.hidden) trigger();
+    };
+    window.addEventListener('online', trigger);
+    window.addEventListener('focus', trigger);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('online', trigger);
+      window.removeEventListener('focus', trigger);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [relay, checkpoint]);
+
+  const showEmptySyncNotice = !hasData && (relayState?.peerCount ?? 0) === 0;
+
   return (
     <div className={`min-h-dvh flex flex-col ${dock.className}`} style={dock.style}>
       <PullToRefresh
-        onRefresh={() => relay?.resync()}
-        disabled={!relay}
+        onRefresh={syncNow}
+        disabled={!relay && !checkpoint}
       />
       <main className="flex-1 mx-auto w-full max-w-md pb-[var(--dock-reserve)]">
+        {showEmptySyncNotice ? (
+          <div className="mx-4 mt-4 rounded-xl border border-[var(--gold-glow)] bg-[var(--card)] p-3 text-xs text-[var(--muted-foreground)] leading-relaxed">
+            This phone has the couple code but has not received your shared data yet. Open Mevrouw on the phone with the data, then tap Sync now in More on both devices.
+          </div>
+        ) : null}
         {route === 'home' && (
           <HomePage doc={doc} myDeviceId={pairing.deviceId} onNavigate={onRoute} />
         )}
@@ -209,8 +255,10 @@ function Bound({
             myDeviceId={pairing.deviceId}
             pairing={pairing}
             relay={relay}
+            checkpoint={checkpoint}
             onNavigate={onRoute}
             onUnpair={onUnpair}
+            onSyncNow={syncNow}
           />
         )}
         {route === 'gifts' && <GiftsPage doc={doc} myDeviceId={pairing.deviceId} />}
