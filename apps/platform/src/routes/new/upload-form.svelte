@@ -168,7 +168,7 @@
     <label>
       <span class="label">Slug</span>
       <div class="slug-row">
-        <input bind:value={slug} pattern="[a-z0-9][a-z0-9\-]*" required class="slug-input" />
+        <input id="ship-slug" name="slug" bind:value={slug} pattern="[a-z0-9][a-z0-9\-]*" required class="slug-input" />
         <span class="suffix">.shippie.app</span>
       </div>
     </label>
@@ -183,12 +183,12 @@
 
   <label>
     <span class="label">Zip (built output)</span>
-    <input type="file" accept=".zip,application/zip" onchange={handleFile} required class="file-input" />
+    <input id="ship-zip" name="zip" type="file" accept=".zip,application/zip" onchange={handleFile} required class="file-input" />
   </label>
 
   <label>
     <span class="label">Where it lives</span>
-    <select bind:value={surfaceChoice} class="surface-select">
+    <select id="ship-surface" name="surface" bind:value={surfaceChoice} class="surface-select">
       <option value="auto">Auto (use shippie.json or existing setting)</option>
       <option value="featured">App — appears on /apps</option>
       <option value="arcade">Game — appears on /arcade (no ads / tracking / IAP)</option>
@@ -269,7 +269,7 @@
           <a class="claim-link" href={result.claimUrl}>Sign in to claim it</a>
         {:else}
           <div class="share-row">
-            <input type="text" readonly value={shareUrl} class="share-input" />
+            <input id="ship-share-url" name="share_url" type="text" readonly value={shareUrl} class="share-input" />
             <button type="button" onclick={onCopy} class="copy-btn">{copied ? 'Copied' : 'Copy'}</button>
           </div>
         {/if}

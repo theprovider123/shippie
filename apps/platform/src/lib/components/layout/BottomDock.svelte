@@ -67,23 +67,23 @@
     display: none;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
-    min-height: calc(62px + var(--safe-bottom));
+    min-height: calc(56px + var(--safe-bottom));
     padding:
-      5px
-      max(12px, calc(12px + var(--safe-right)))
-      calc(6px + var(--safe-bottom))
-      max(12px, calc(12px + var(--safe-left)));
+      3px
+      max(8px, calc(8px + var(--safe-right)))
+      calc(4px + var(--safe-bottom))
+      max(8px, calc(8px + var(--safe-left)));
     border-top: 1px solid rgba(237, 228, 211, 0.12);
-    background: rgba(20, 18, 15, 0.94);
-    box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.24);
+    background: rgba(20, 18, 15, 0.9);
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
 
   :global([data-theme='light']) .bottom-dock {
     border-color: rgba(44, 31, 20, 0.12);
-    background: rgba(245, 239, 228, 0.94);
-    box-shadow: 0 -10px 34px rgba(44, 31, 20, 0.12);
+    background: rgba(245, 239, 228, 0.9);
+    box-shadow: 0 -8px 28px rgba(44, 31, 20, 0.1);
   }
 
   .bottom-dock a {
@@ -92,17 +92,21 @@
     place-items: center;
     gap: 2px;
     min-width: 0;
-    min-height: 50px;
+    min-height: var(--touch-min);
+    padding-top: 2px;
     color: var(--text-secondary);
     text-decoration: none;
-    transition: color 0.15s var(--ease-out, ease), background 0.15s var(--ease-out, ease);
+    box-shadow: inset 0 2px 0 transparent;
+    transition:
+      color 0.15s var(--ease-out, ease),
+      background 0.15s var(--ease-out, ease),
+      box-shadow 0.15s var(--ease-out, ease);
   }
 
   .bottom-dock a span {
     display: grid;
     place-items: center;
-    inline-size: var(--touch-min);
-    block-size: 1.75rem;
+    min-inline-size: var(--touch-min);
     font-family: var(--font-mono);
     font-size: 17px;
     line-height: 1;
@@ -122,15 +126,7 @@
   .bottom-dock a.active {
     color: var(--text);
     background: transparent;
-  }
-
-  .bottom-dock a.active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    inline-size: 1.75rem;
-    block-size: 0.125rem;
-    background: var(--sunset);
+    box-shadow: inset 0 2px 0 var(--sunset);
   }
 
   .bottom-dock a.active span {

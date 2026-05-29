@@ -146,6 +146,18 @@ describe('showcase catalog drift check', () => {
     );
     expect(tileSource).not.toMatch(/\\.tile-card \\.tile-launch\\s*{[^}]*display:\\s*contents/s);
   });
+
+  test('tool tiles can recover from stalled enhanced navigation', () => {
+    const tileSource = readFileSync(
+      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'ToolTile.svelte'),
+      'utf8',
+    );
+    expect(tileSource).toContain('scheduleHardLaunchFallback(event)');
+    expect(tileSource).toContain('window.location.assign(target)');
+    expect(tileSource).toContain('onpointerdown={warmLaunch}');
+    expect(tileSource).toContain('ontouchstart={warmLaunch}');
+    expect(tileSource).not.toContain('defaultPrevented');
+  });
 });
 
 function slugsFromShowcaseDirs(): string[] {

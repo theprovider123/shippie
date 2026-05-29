@@ -129,8 +129,8 @@
     main.with-bottom-dock {
       min-height: 100svh;
       min-height: 100dvh;
-      padding-bottom: calc(78px + var(--safe-bottom));
-      scroll-padding-bottom: calc(78px + var(--safe-bottom));
+      padding-bottom: calc(66px + var(--safe-bottom));
+      scroll-padding-bottom: calc(66px + var(--safe-bottom));
     }
   }
 </style>

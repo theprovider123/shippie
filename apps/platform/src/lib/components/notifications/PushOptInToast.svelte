@@ -37,6 +37,35 @@
     }
   }
 
+  function hasBlockingDialog(): boolean {
+    return Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
+  }
+
+  function waitForPromptSlot(run: () => void): void {
+    const waitForModalToClear = () => {
+      if (!hasBlockingDialog()) {
+        run();
+        return;
+      }
+
+      const observer = new MutationObserver(() => {
+        if (hasBlockingDialog()) return;
+        window.clearTimeout(timeout);
+        observer.disconnect();
+        run();
+      });
+      const timeout = window.setTimeout(() => observer.disconnect(), 12_000);
+
+      observer.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    };
+
+    window.setTimeout(waitForModalToClear, 150);
+  }
+
   async function subscribePush(slug: string, name: string): Promise<void> {
     if (!('Notification' in window)) return;
     if (Notification.permission !== 'default') return;
@@ -90,17 +119,22 @@
     if (Notification.permission !== 'default') return;
     if (alreadyAsked(slug)) return;
 
-    markAsked(slug);
-    toast.push({
-      kind: 'info',
-      message: `Want updates from ${name}?`,
-      durationMs: 10_000,
-      action: {
-        label: 'Turn on',
-        run: () => {
-          void subscribePush(slug, name);
+    waitForPromptSlot(() => {
+      if (Notification.permission !== 'default') return;
+      if (alreadyAsked(slug)) return;
+
+      markAsked(slug);
+      toast.push({
+        kind: 'info',
+        message: `Want updates from ${name}?`,
+        durationMs: 10_000,
+        action: {
+          label: 'Turn on',
+          run: () => {
+            void subscribePush(slug, name);
+          },
         },
-      },
+      });
     });
   }
 

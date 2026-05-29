@@ -84,10 +84,15 @@
 
   let launching = $state(false);
   let prewarmed = false;
+  let launchFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   let copyState = $state<'idle' | 'copied' | 'error'>('idle');
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
   onDestroy(() => {
+    if (launchFallbackTimer) {
+      clearTimeout(launchFallbackTimer);
+      launchFallbackTimer = null;
+    }
     if (copyTimer) {
       clearTimeout(copyTimer);
       copyTimer = null;
@@ -192,13 +197,36 @@
     addPrefetchLink(`/__shippie-run/${encodeURIComponent(app.slug)}/?shippie_embed=1`);
   }
 
+  function scheduleHardLaunchFallback(event?: MouseEvent) {
+    if (!href || typeof window === 'undefined') return;
+    if (event && (event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)) {
+      return;
+    }
+
+    const link = event?.currentTarget instanceof HTMLAnchorElement ? event.currentTarget : null;
+    if (link?.target && link.target !== '_self') return;
+
+    const startedAt = window.location.href;
+    const target = new URL(launchHref, window.location.href).href;
+    if (target === startedAt) return;
+
+    if (launchFallbackTimer) clearTimeout(launchFallbackTimer);
+    launchFallbackTimer = setTimeout(() => {
+      launchFallbackTimer = null;
+      if (window.location.href !== startedAt) return;
+      window.location.assign(target);
+    }, 900);
+  }
+
   function launchAndRemember(event?: MouseEvent) {
     launching = true;
     recordAppLaunch(app.slug);
     if (!href && onOpen) {
       event?.preventDefault();
       onOpen(app);
+      return;
     }
+    scheduleHardLaunchFallback(event);
   }
 
   function handlePin(event: MouseEvent) {
@@ -283,6 +311,8 @@
       class="tile-launch"
       href={launchHref}
       onclick={launchAndRemember}
+      onpointerdown={warmLaunch}
+      ontouchstart={warmLaunch}
       onpointerenter={warmLaunch}
       onfocus={warmLaunch}
       data-sveltekit-preload-data="hover"
