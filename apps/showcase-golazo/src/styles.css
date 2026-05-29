@@ -6,28 +6,38 @@
 ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --bg: #070b14;
+  --bg: #06090f;
   --bg-1: #0a0e1a;
-  --surface: rgba(255, 255, 255, 0.045);
+  --surface: rgba(255, 255, 255, 0.04);
   --surface-2: rgba(255, 255, 255, 0.07);
-  --line: rgba(255, 255, 255, 0.09);
-  --line-2: rgba(255, 255, 255, 0.16);
-  --text: #f4f7fb;
-  --muted: rgba(244, 247, 251, 0.58);
-  --faint: rgba(244, 247, 251, 0.38);
+  --hi: rgba(255, 255, 255, 0.06); /* top-edge highlight on cards */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.15);
+  --text: #f6f8fc;
+  --muted: rgba(246, 248, 252, 0.6);
+  --faint: rgba(246, 248, 252, 0.36);
   --accent: #16f08b;
   --accent-2: #58f0a8;
-  --gold: #ffd24a;
+  /* Championship gold — the trophy. Used for the champion + the Final. */
+  --gold: #ffd34d;
+  --gold-2: #f0a93b;
+  --gold-soft: rgba(255, 211, 77, 0.16);
   --amber: #ffae3b;
   --danger: #ff5d6c;
-  --r: 18px;
   --r-sm: 12px;
+  --r: 18px;
+  --r-lg: 24px;
   --pad: 18px;
+  /* Motion — one spring for entrances, one ease for state. */
+  --spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --font-display: "SF Pro Display", system-ui, -apple-system, "Segoe UI",
     "Helvetica Neue", Arial, sans-serif;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
-  --shadow: 0 18px 50px -18px rgba(0, 0, 0, 0.7);
+  --shadow: 0 16px 44px -20px rgba(0, 0, 0, 0.75);
+  --shadow-lg: 0 30px 70px -28px rgba(0, 0, 0, 0.85);
+  --shadow-gold: 0 20px 60px -22px rgba(240, 169, 59, 0.45);
 }
 
 * {
@@ -73,22 +83,40 @@ input {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(120% 80% at 50% -10%, rgba(22, 240, 139, 0.1), transparent 60%),
-    radial-gradient(90% 60% at 90% 8%, rgba(70, 130, 255, 0.08), transparent 55%),
+    /* twin floodlights from above */
+    radial-gradient(80% 50% at 22% -8%, rgba(120, 180, 255, 0.1), transparent 60%),
+    radial-gradient(80% 50% at 78% -8%, rgba(22, 240, 139, 0.1), transparent 60%),
+    /* warm trophy glow rising from the floor */
+    radial-gradient(120% 60% at 50% 118%, rgba(240, 169, 59, 0.14), transparent 65%),
+    /* edge vignette for stadium depth */
+    radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.55)),
     var(--bg);
   overflow: hidden;
 }
 
-/* faint pitch grid overlay */
+/* faint pitch grid */
 .app::before {
   content: "";
   position: absolute;
   inset: 0;
   background-image: repeating-linear-gradient(
     0deg,
-    rgba(255, 255, 255, 0.022) 0 1px,
-    transparent 1px 84px
+    rgba(255, 255, 255, 0.018) 0 1px,
+    transparent 1px 92px
   );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* film grain — premium stadium-broadcast texture (inline SVG, offline-safe) */
+.app::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
   pointer-events: none;
   z-index: 0;
 }
@@ -97,17 +125,29 @@ input {
   position: relative;
   z-index: 1;
   flex: 1;
+  min-width: 0; /* let the flex item shrink to viewport; kills horizontal bleed */
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: calc(env(safe-area-inset-top) + 22px) var(--pad)
-    calc(env(safe-area-inset-bottom) + 96px);
-  animation: screen-in 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  padding: calc(env(safe-area-inset-top) + 26px) var(--pad)
+    calc(env(safe-area-inset-bottom) + 100px);
 }
 
-@keyframes screen-in {
+/* Staggered "broadcast lower-third" reveal of each screen's top-level blocks. */
+.screen > * > * {
+  animation: rise-in 0.5s var(--spring) both;
+}
+.screen > * > *:nth-child(1) { animation-delay: 0.02s; }
+.screen > * > *:nth-child(2) { animation-delay: 0.06s; }
+.screen > * > *:nth-child(3) { animation-delay: 0.1s; }
+.screen > * > *:nth-child(4) { animation-delay: 0.14s; }
+.screen > * > *:nth-child(5) { animation-delay: 0.18s; }
+.screen > * > *:nth-child(n + 6) { animation-delay: 0.22s; }
+
+@keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px);
   }
 }
 
@@ -172,23 +212,52 @@ input {
 
 /* ── Buttons / fields ──────────────────────────────────────────────────── */
 .cta {
+  position: relative;
   width: 100%;
-  background: linear-gradient(180deg, var(--accent), #0fcf76);
-  color: #042312;
+  background: linear-gradient(180deg, #2bf79a, #0fce75);
+  color: #032012;
   font-weight: 850;
   font-size: 16.5px;
   letter-spacing: -0.01em;
-  padding: 16px 20px;
-  border-radius: 14px;
+  padding: 17px 20px;
+  border-radius: 15px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 12px 30px -10px rgba(22, 240, 139, 0.6);
-  transition: transform 0.12s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  overflow: hidden;
+  box-shadow: 0 14px 34px -12px rgba(22, 240, 139, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.14s var(--spring), box-shadow 0.2s var(--ease),
+    opacity 0.2s var(--ease);
+}
+/* glide sheen across the primary button only (not small inline CTAs) */
+.cta:not(.sm)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  transform: skewX(-18deg);
+  animation: cta-sheen 4.5s var(--ease) infinite;
+}
+@keyframes cta-sheen {
+  0%, 60% {
+    left: -60%;
+  }
+  85%, 100% {
+    left: 130%;
+  }
 }
 .cta:active {
-  transform: scale(0.975);
+  transform: scale(0.97);
 }
 .cta:disabled {
   opacity: 0.35;
@@ -547,8 +616,12 @@ input {
 }
 .rank-name {
   flex: 1;
+  min-width: 0;
   font-weight: 700;
   font-size: 15.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .rank-tag {
   font-size: 9.5px;
@@ -897,18 +970,31 @@ input {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 30px 20px 24px;
-  border-radius: 22px;
+  padding: 36px 22px 26px;
+  border-radius: var(--r-lg);
   background:
-    radial-gradient(120% 90% at 50% 0, color-mix(in srgb, var(--tc1, var(--accent)) 34%, transparent), transparent 70%),
+    radial-gradient(120% 90% at 50% 0, color-mix(in srgb, var(--tc1, var(--accent)) 30%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(255, 211, 77, 0.05), transparent 40%),
     var(--surface);
-  border: 1px solid color-mix(in srgb, var(--tc1, var(--accent)) 45%, var(--line));
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--line));
+  box-shadow: var(--shadow-gold), inset 0 1px 0 var(--hi);
   overflow: hidden;
-  margin-bottom: 16px;
-  transition: transform 0.14s ease;
+  margin-bottom: 18px;
+  transition: transform 0.18s var(--spring);
+}
+/* a thin gold plinth line across the top — the trophy's gleam */
+.champ-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.8;
 }
 .champ-hero:active {
-  transform: scale(0.99);
+  transform: scale(0.985);
 }
 .champ-hero-glow {
   position: absolute;
@@ -939,17 +1025,56 @@ input {
 }
 .champ-hero-flag {
   position: relative;
-  font-size: 92px;
+  font-size: 96px;
   line-height: 1.1;
-  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.45));
+  margin-top: 6px;
+  filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.5));
+  animation: trophy-float 4.5s var(--ease) infinite;
+}
+/* golden pedestal glow under the champion flag */
+.champ-hero-flag::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, var(--gold-soft), transparent 70%);
+  filter: blur(6px);
+}
+@keyframes trophy-float {
+  50% {
+    transform: translateY(-7px);
+  }
 }
 .champ-hero-name {
   position: relative;
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: clamp(28px, 9vw, 38px);
-  letter-spacing: -0.03em;
-  margin-top: 4px;
+  font-size: clamp(30px, 9.5vw, 42px);
+  letter-spacing: -0.035em;
+  margin-top: 10px;
+  /* white→gold sheen — celebratory but legible */
+  background: linear-gradient(
+    100deg,
+    #ffffff 0%,
+    var(--gold) 28%,
+    #fff7e0 48%,
+    var(--gold) 68%,
+    #ffffff 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: name-sheen 6s linear infinite;
+}
+@keyframes name-sheen {
+  to {
+    background-position: -250% 0;
+  }
 }
 .champ-hero-cta {
   position: relative;
@@ -1734,36 +1859,60 @@ input {
   display: flex;
   justify-content: space-around;
   align-items: stretch;
-  background: rgba(8, 11, 20, 0.82);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  gap: 4px;
+  background: rgba(7, 10, 17, 0.72);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
   border-top: 1px solid var(--line);
-  padding: 8px 6px calc(env(safe-area-inset-bottom) + 8px);
+  box-shadow: 0 -1px 0 var(--hi) inset;
+  padding: 9px 8px calc(env(safe-area-inset-bottom) + 9px);
 }
 .nav-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 6px 0;
+  padding: 9px 0 7px;
+  border-radius: 14px;
   color: var(--faint);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  transition: color 0.16s ease, transform 0.12s ease;
+  transition: color 0.2s var(--ease), transform 0.14s var(--spring);
+}
+/* sliding active pill */
+.nav-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: rgba(22, 240, 139, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(22, 240, 139, 0.25);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.2s var(--ease), transform 0.24s var(--spring);
 }
 .nav-item:active {
-  transform: scale(0.92);
+  transform: scale(0.94);
 }
 .nav-item.is-active {
   color: var(--accent);
 }
+.nav-item.is-active::before {
+  opacity: 1;
+  transform: scale(1);
+}
 .nav-item svg {
-  transition: transform 0.16s ease;
+  position: relative;
+  transition: transform 0.24s var(--spring);
 }
 .nav-item.is-active svg {
-  transform: translateY(-1px) scale(1.06);
+  transform: translateY(-2px) scale(1.08);
+}
+.nav-item span {
+  position: relative;
 }
 
 /* ── Watch-from (timezone) ─────────────────────────────────────────────── */
@@ -1841,12 +1990,13 @@ input {
 /* ── Next-match strip (Home) ───────────────────────────────────────────── */
 .next-match {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 12px 16px;
+  padding: 13px 16px;
   margin-bottom: 16px;
 }
 .next-match-label {
@@ -1860,10 +2010,9 @@ input {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 15px;
+  font-size: 17px;
 }
 .next-match-teams i {
   font-style: italic;
@@ -2083,6 +2232,48 @@ input {
   font-size: 11.5px;
   margin-right: 7px;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Premium polish: lit cards + dimensional rows ──────────────────────── */
+.countdown,
+.next-match,
+.progress-card,
+.score-card,
+.group-card,
+.live-stage,
+.news,
+.final-strip,
+.champ-empty,
+.pool-detail .board,
+.sheet {
+  box-shadow: var(--shadow), inset 0 1px 0 var(--hi);
+}
+.pool-row,
+.board-row,
+.sweeps-row,
+.fixture-chip,
+.round-chip,
+.name-chip,
+.watch-chip,
+.team-pill,
+.rank-row,
+.zone-row {
+  box-shadow: inset 0 1px 0 var(--hi);
+}
+/* Unify the larger surfaces on the modern radius for a cleaner silhouette. */
+.countdown,
+.next-match,
+.progress-card,
+.score-card,
+.group-card,
+.live-stage,
+.news,
+.final-strip,
+.pool-row,
+.board-row,
+.match,
+.sweeps-row {
+  border-radius: var(--r);
 }
 
 @media (prefers-reduced-motion: reduce) {
