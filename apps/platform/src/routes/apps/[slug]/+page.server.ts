@@ -29,6 +29,7 @@ import { readAppMeta, readAppProfile } from '$server/deploy/kv-write';
 import { canonicalAppUrl, canonicalShowcaseTarget, isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { curatedApps } from '$lib/container/state';
 import { normalizeCategory, VALID_CATEGORIES } from '$lib/curation/schema';
+import { recordSlugRename, resolveSlugAlias } from '$server/slug-aliases';
 import { publicRemixInfoForSlug } from '$server/remix/eligibility';
 import {
   connectionBadgesFromConnections,
@@ -73,6 +74,12 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
   if (!app) {
     const bundled = bundledAppDetail(params.slug);
     if (bundled) return bundled;
+    // A maker may have renamed this app — 302 old slug → current slug so
+    // bookmarks, shared links, and installed PWAs keep working.
+    const aliasTarget = await resolveSlugAlias(db, params.slug);
+    if (aliasTarget) {
+      throw redirect(302, `/apps/${encodeURIComponent(aliasTarget)}${url.search}`);
+    }
     throw error(404, 'Not found');
   }
 
@@ -500,6 +507,8 @@ export const actions: Actions = {
       });
 
     if (slugChanged) {
+      // Persist the old slug as an alias so existing links 302 instead of 404.
+      await recordSlugRename(db, { appId: app.id, fromSlug: app.slug, toSlug: nextSlug });
       throw redirect(303, `/apps/${encodeURIComponent(nextSlug)}`);
     }
 

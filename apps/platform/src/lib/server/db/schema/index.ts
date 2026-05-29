@@ -9,6 +9,7 @@ export * from './auth';
 export * from './organizations';
 export * from './audit-log';
 export * from './apps';
+export * from './app-slug-aliases';
 export * from './deploys';
 export * from './app-packages';
 export * from './deploy-scan-outcomes';
