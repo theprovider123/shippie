@@ -13,7 +13,7 @@
   // Randomiser hero retired from the home page — too prominent + the
   // wheel mostly read empty for first-visit users. Lives at /today
   // (or wherever a "your other apps" surface lands later) instead.
-  import { ensureAppOffline, refreshCachedSlugs } from '$lib/stores/cached-slugs';
+  import { refreshCachedSlugs } from '$lib/stores/cached-slugs';
   import {
     hydrateLauncherMemory,
     launcherMemory,
@@ -22,8 +22,6 @@
 
   let { data }: PageProps = $props();
   let selectedSlug = $state<string | null>(null);
-  const autoSaving = new Set<string>();
-  let scheduledSavedWarm = false;
 
   type LauncherApp = (typeof data.apps)[number];
 
@@ -83,37 +81,12 @@
     });
   });
 
-  $effect(() => {
-    if (scheduledSavedWarm || $launcherMemory.pinned.length === 0) return;
-    scheduledSavedWarm = true;
-    const run = () => {
-      for (const slug of $launcherMemory.pinned.slice(0, 4)) {
-        keepReady(slug);
-      }
-    };
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(run, { timeout: 5000 });
-    } else {
-      globalThis.setTimeout(run, 2500);
-    }
-  });
-
   function inspectApp(app: LauncherApp) {
     selectedSlug = app.slug;
   }
 
   function closeInspector() {
     selectedSlug = null;
-  }
-
-  function keepReady(slug: string) {
-    if (!appBySlug.has(slug) || autoSaving.has(slug)) return;
-    autoSaving.add(slug);
-    void ensureAppOffline(slug)
-      .catch(() => {})
-      .finally(() => {
-        autoSaving.delete(slug);
-      });
   }
 
   function onKeydown(event: KeyboardEvent) {

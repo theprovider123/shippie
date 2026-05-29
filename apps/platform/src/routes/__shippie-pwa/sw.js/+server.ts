@@ -15,8 +15,6 @@
  * body changes when we deploy.
  */
 import type { RequestHandler } from './$types';
-import { SHOWCASE_PRECACHE } from '$lib/_generated/precache-list';
-import { RUNTIME_PRECACHE } from '$lib/_generated/runtime-precache';
 import { AI_RUNTIME_URLS } from '$lib/container/ai-runtime';
 import { OFFLINE_CAPSULE_SW_HELPERS } from '@shippie/offline-capsule';
 
@@ -450,34 +448,14 @@ async function warmAiRuntime(urls = AI_RUNTIME_URLS) {
   }
 }
 
-// Precache the raw showcase entry HTMLs so a fresh PWA install can open
-// any showcase iframe offline without first having visited it. These live
-// under /__shippie-run so bare /run/<slug>/ stays the focused shell. The list is
-// substituted at request time from the build-time-generated
-// SHOWCASE_PRECACHE constant. Caching is best-effort per entry; a network,
-// 404, or wrong content-type on one slug never blocks install.
-const SHOWCASE_PRECACHE = __SHOWCASE_PRECACHE__;
-// Heavy bundled runtimes (Stockfish.wasm, word banks, puzzle PGNs).
-// Empty unless an arcade showcase declares shippie.json#runtime_assets.
-// Precached at install time — NOT lazy on first fetch — so the
-// "100% offline" arcade gate holds up. A first-visit airplane-mode
-// open of e.g. Chess will find Stockfish in the cache.
-const RUNTIME_PRECACHE = __RUNTIME_PRECACHE__;
-
+// Install stays intentionally tiny. Showcase runtimes cache on first
+// open and sealed offline capsules cache only when the user taps Save.
+// This keeps the PWA quick to activate and avoids hundreds of MB of
+// surprise storage before the user has chosen which tools matter.
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await warmKernel(cache);
-    await cacheAddAll(cache, SHOWCASE_PRECACHE, () => {});
-    await warmPlatformShell(cache);
-    if (RUNTIME_PRECACHE.length > 0) {
-      // Same best-effort path as SHOWCASE_PRECACHE — failures land in
-      // the failed[] return value but don't block install. Heavy
-      // assets that miss precache will still warm on first request
-      // via the existing stale-while-revalidate fetch handler.
-      await cacheAddAll(cache, RUNTIME_PRECACHE, () => {});
-    }
-    await warmAiRuntime();
     self.skipWaiting();
   })());
 });
@@ -855,7 +833,6 @@ self.addEventListener('activate', (e) => {
           reqs.map(async (req) => {
             const path = new URL(req.url).pathname;
             const safeToMigrate =
-              path.startsWith(RUNTIME_PREFIX + '/') ||
               path.startsWith('/_app/immutable/') ||
               path.startsWith('/__shippie/wasm/');
             if (!safeToMigrate) return;
@@ -1073,9 +1050,7 @@ export const GET: RequestHandler = async ({ platform }) => {
   const body = SW_BODY
     .replace(/__SHIPPIE_BUILD__/g, buildId)
     .replace('__OFFLINE_CAPSULE_SW_HELPERS__', OFFLINE_CAPSULE_SW_HELPERS)
-    .replace('__AI_RUNTIME_URLS__', JSON.stringify(AI_RUNTIME_URLS))
-    .replace('__SHOWCASE_PRECACHE__', JSON.stringify(SHOWCASE_PRECACHE))
-    .replace('__RUNTIME_PRECACHE__', JSON.stringify(RUNTIME_PRECACHE));
+    .replace('__AI_RUNTIME_URLS__', JSON.stringify(AI_RUNTIME_URLS));
   return new Response(body, {
     status: 200,
     headers: {

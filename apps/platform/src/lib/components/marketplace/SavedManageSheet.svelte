@@ -31,6 +31,7 @@
   let storageQuota = $state(0);
   let persisted = $state(false);
   let pinning = $state(false);
+  const savedBytes = $derived(apps.reduce((sum, app) => sum + bytesFor(app.slug), 0));
 
   onMount(() => {
     void refreshStorageEstimate();
@@ -92,12 +93,12 @@
 
   <section class="storage-budget" aria-label="Offline storage budget">
     <div>
-      <span class="budget-label">Offline storage</span>
-      <strong>{formatBytes(storageUsage)}</strong>
+      <span class="budget-label">Saved copies</span>
+      <strong>{formatBytes(savedBytes)}</strong>
       {#if storageQuota > 0}
-        <span>{formatBytes(storageQuota)} available to this browser profile</span>
+        <span>{formatBytes(storageUsage)} used by Shippie in this browser, of {formatBytes(storageQuota)} quota</span>
       {:else}
-        <span>Browser quota unavailable</span>
+        <span>{formatBytes(storageUsage)} used by Shippie in this browser</span>
       {/if}
     </div>
     <button
@@ -201,7 +202,7 @@
 
   .storage-budget {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px;
     align-items: center;
     margin-bottom: var(--space-md);
@@ -266,8 +267,8 @@
   }
   .row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-sm);
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 8px;
     align-items: center;
     border-bottom: 1px solid var(--border-light);
   }
@@ -276,7 +277,7 @@
   }
   .row-actions {
     display: inline-flex;
-    gap: 4px;
+    gap: 6px;
   }
   .row-btn {
     width: var(--touch-min);

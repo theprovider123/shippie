@@ -70,4 +70,4 @@ export const SHOWCASE_SLUGS = [
   "would-you-rather"
 ] as const;
 
-export const SHOWCASE_PRECACHE: readonly string[] = SHOWCASE_SLUGS.map((slug) => `/__shippie-run/${slug}/?shippie_embed=1`);
+export const SHOWCASE_PRECACHE: readonly string[] = [];

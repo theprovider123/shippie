@@ -60,45 +60,51 @@
 <style>
   .bottom-dock {
     position: fixed;
-    left: calc(12px + var(--safe-left));
-    right: calc(12px + var(--safe-right));
-    bottom: calc(10px + var(--safe-bottom));
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 120;
     display: none;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 4px;
-    min-height: 64px;
-    padding: 6px;
-    border: 1px solid rgba(237, 228, 211, 0.14);
-    background: rgba(20, 18, 15, 0.9);
-    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    gap: 0;
+    min-height: calc(62px + var(--safe-bottom));
+    padding:
+      5px
+      max(12px, calc(12px + var(--safe-right)))
+      calc(6px + var(--safe-bottom))
+      max(12px, calc(12px + var(--safe-left)));
+    border-top: 1px solid rgba(237, 228, 211, 0.12);
+    background: rgba(20, 18, 15, 0.94);
+    box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
   :global([data-theme='light']) .bottom-dock {
-    border-color: rgba(44, 31, 20, 0.14);
-    background: rgba(245, 239, 228, 0.92);
-    box-shadow: 0 18px 60px rgba(44, 31, 20, 0.18);
+    border-color: rgba(44, 31, 20, 0.12);
+    background: rgba(245, 239, 228, 0.94);
+    box-shadow: 0 -10px 34px rgba(44, 31, 20, 0.12);
   }
 
   .bottom-dock a {
+    position: relative;
     display: grid;
     place-items: center;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
-    min-height: var(--touch-min);
+    min-height: 50px;
     color: var(--text-secondary);
     text-decoration: none;
+    transition: color 0.15s var(--ease-out, ease), background 0.15s var(--ease-out, ease);
   }
 
   .bottom-dock a span {
     display: grid;
     place-items: center;
     width: var(--touch-min);
-    height: var(--touch-min);
+    height: 28px;
     font-family: var(--font-mono);
-    font-size: 18px;
+    font-size: 17px;
     line-height: 1;
   }
 
@@ -108,14 +114,23 @@
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1;
     white-space: nowrap;
   }
 
   .bottom-dock a.active {
     color: var(--text);
-    background: rgba(232, 96, 60, 0.14);
+    background: transparent;
+  }
+
+  .bottom-dock a.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 28px;
+    height: 2px;
+    background: var(--sunset);
   }
 
   .bottom-dock a.active span {
@@ -130,15 +145,6 @@
   @media (max-width: 640px), (display-mode: standalone) {
     .bottom-dock {
       display: grid;
-      background: rgba(20, 18, 15, 0.96);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
-
-    :global([data-theme='light']) .bottom-dock {
-      background: rgba(245, 239, 228, 0.97);
-      box-shadow: 0 10px 28px rgba(44, 31, 20, 0.14);
     }
   }
 </style>

@@ -164,7 +164,6 @@
 
   function launchAndRemember(event?: MouseEvent) {
     launching = true;
-    warmLaunch();
     recordAppLaunch(app.slug);
     if (!href && onOpen) {
       event?.preventDefault();
@@ -256,9 +255,8 @@
       onclick={launchAndRemember}
       onpointerenter={warmLaunch}
       onfocus={warmLaunch}
-      ontouchstart={warmLaunch}
-      data-sveltekit-preload-data="tap"
-      data-sveltekit-preload-code="eager"
+      data-sveltekit-preload-data="hover"
+      data-sveltekit-preload-code="hover"
       aria-label={`Open ${safeName}`}
     >
       <span class="tile-icon">
@@ -760,11 +758,13 @@
     100% { background: rgba(232, 96, 60, 0.06); }
   }
   .tile-drawer .tile-launch {
+    grid-area: 1 / 1 / 2 / 3;
     grid-template-columns: 52px minmax(0, 1fr);
     grid-template-areas: 'icon body';
     gap: 12px;
     align-items: center;
   }
+  .tile-drawer .tile-actions { grid-area: 1 / 3 / 2 / 4; }
   .tile-drawer .tile-icon {
     grid-area: icon;
     width: 52px;
@@ -841,5 +841,75 @@
     .tile, .tile:hover, .tile.launching { transform: none; box-shadow: none; }
     .tile.launching::after { animation: none; transform: none; }
     .tile-drawer.current { animation: none; }
+  }
+
+  @media (max-width: 640px) {
+    .tile-card {
+      grid-template-columns: 54px minmax(0, 1fr) auto;
+      gap: 12px;
+      padding: 12px;
+      min-height: 96px;
+    }
+    .tile-card .tile-icon {
+      width: 54px;
+      height: 54px;
+    }
+    .tile-card .tile-icon :global(.shippie-icon) {
+      width: 54px !important;
+      height: 54px !important;
+    }
+    .tile-card .tile-name {
+      font-size: 1.03rem;
+      line-height: 1.18;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      white-space: normal;
+    }
+    .tile-card .tile-eyebrow,
+    .tile-card .tile-blurb,
+    .tile-card .tile-badges {
+      display: none;
+    }
+    .tile-card .tile-meta {
+      margin-top: 2px;
+    }
+    .tile-card .tile-actions {
+      gap: 2px;
+      align-self: center;
+    }
+    .tile-card .tile-body { align-content: center; }
+    .tile-card .tile-actions .icon-btn:nth-child(2) {
+      display: none;
+    }
+    .tile-card .icon-btn {
+      width: var(--touch-min, 44px);
+      min-width: var(--touch-min, 44px);
+      height: var(--touch-min, 44px);
+      min-height: var(--touch-min, 44px);
+    }
+
+    .tile-drawer {
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 9px 0;
+    }
+    .tile-drawer .tile-launch {
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 10px;
+    }
+    .tile-drawer .tile-icon,
+    .tile-drawer .tile-glyph {
+      width: 48px;
+      height: 48px;
+    }
+    .tile-drawer .tile-icon :global(.shippie-icon) {
+      width: 48px !important;
+      height: 48px !important;
+    }
+    .tile-drawer .tile-name {
+      font-size: 1rem;
+    }
   }
 </style>

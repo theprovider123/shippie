@@ -82,10 +82,8 @@ describe('showcase catalog drift check', () => {
     }
   });
 
-  test('precache entries are derived from every generated slug', () => {
-    expect(SHOWCASE_PRECACHE).toEqual(
-      SHOWCASE_SLUGS.map((slug) => `/__shippie-run/${slug}/?shippie_embed=1`),
-    );
+  test('showcase install precache stays empty', () => {
+    expect(SHOWCASE_PRECACHE).toEqual([]);
   });
 });
 
