@@ -155,15 +155,15 @@
       The intent stream is stored in IndexedDB on this device. It never leaves. Shippie has no copy, no aggregator, no cron job that reads it. If you clear it, it's gone.
     </p>
     {#if !confirmingClear}
-      <button type="button" class="today-btn-ghost" onclick={() => (confirmingClear = true)}>
+      <button type="button" class="btn btn--ghost" onclick={() => (confirmingClear = true)}>
         Clear /today history
       </button>
     {:else}
       <p class="today-foot-note">This drops every intent event from this device. Your apps' own data isn't touched.</p>
-      <button type="button" class="today-btn-primary" onclick={() => void doClear()}>
+      <button type="button" class="btn btn--danger" onclick={() => void doClear()}>
         Yes, clear it
       </button>
-      <button type="button" class="today-btn-ghost" onclick={() => (confirmingClear = false)}>
+      <button type="button" class="btn btn--ghost" onclick={() => (confirmingClear = false)}>
         Cancel
       </button>
     {/if}
@@ -338,24 +338,7 @@
     margin: 0 0 16px;
   }
 
-  .today-btn-ghost,
-  .today-btn-primary {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px 16px;
-    cursor: pointer;
-    font: inherit;
-    margin-right: 8px;
-  }
-
-  .today-btn-primary {
-    background: var(--text);
-    color: var(--bg, #14120F);
-    border-color: var(--text);
-  }
-
-  .today-btn-ghost:hover {
-    background: var(--surface, transparent);
-  }
+  /* Footer action buttons use canonical .btn .btn--ghost / .btn--danger.
+     Only the layout spacing override stays local. */
+  .today-footer .btn + .btn { margin-left: 0.5rem; }
 </style>

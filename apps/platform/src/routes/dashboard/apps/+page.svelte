@@ -23,7 +23,7 @@
     <p class="emoji">🍳</p>
     <h2>Ship your first app</h2>
     <p>Upload a static zip — your app is live at <code>{'{slug}'}.shippie.app</code> in under a minute.</p>
-    <a class="btn-primary" href="/new">Get started</a>
+    <a class="btn btn--primary" href="/new">Get started</a>
   </div>
 {:else}
   <div class="table-wrap">
@@ -86,7 +86,7 @@
   .empty { text-align: center; padding: 4rem 2rem; border: 1px dashed var(--border-paper-mid); border-radius: 0; }
   .emoji { font-size: 48px; margin: 0; }
   .empty h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.75rem; margin: 0.5rem 0; }
-  .btn-primary { display: inline-block; background: var(--sunset); color: white; padding: 0 2rem; height: 48px; line-height: 48px; border-radius: 0; text-decoration: none; font-weight: 700; }
+  /* "Get started" uses canonical .btn .btn--primary from tokens.css. */
   .table-wrap { border: 1px solid var(--paper-cream); border-radius: 0; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th { text-align: left; padding: 0.75rem 1rem; background: rgba(0,0,0,0.03); font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted-warm); }

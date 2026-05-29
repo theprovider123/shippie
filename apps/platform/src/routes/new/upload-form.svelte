@@ -202,7 +202,7 @@
   <button
     type="submit"
     disabled={result.kind === 'submitting' || !file || (!trialMode && !slug)}
-    class="btn-primary"
+    class="btn btn--primary"
   >
     {result.kind === 'submitting' ? 'Shipping…' : trialMode ? 'Ship trial →' : 'Ship it →'}
   </button>
@@ -385,19 +385,9 @@
     font-size: 13px;
     line-height: 1.45;
   }
-  .btn-primary {
-    height: 48px;
-    background: var(--sunset);
-    color: white;
-    border: none;
-    padding: 0 2rem;
-    border-radius: 0;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    align-self: flex-start;
-  }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Submit uses .btn .btn--primary from tokens.css; only the
+     left-align override stays local for the form layout. */
+  form > .btn { align-self: flex-start; padding: 0 2rem; }
   .success {
     min-width: 0;
     max-width: 100%;
@@ -541,7 +531,7 @@
     .qr, .qr-placeholder { background: var(--paper-warm); }
   }
   @media (max-width: 640px) {
-    .btn-primary,
+    form > .btn,
     .copy-btn,
     .claim-link {
       width: 100%;

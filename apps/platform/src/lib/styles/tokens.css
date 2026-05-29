@@ -338,6 +338,102 @@ select {
   gap: var(--section-gap);
 }
 
+/* ── Buttons ─────────────────────────────────────────────────────
+   Canonical button primitives. Pages opt in via `class="btn btn--…"`.
+   Per-feature one-off buttons (`.mesh-create`, `.upvote`, etc.) keep
+   their semantic names but can compose `.btn --primary` styling by
+   extending here rather than redefining shape, size, focus, hover.
+
+   Defaults:
+     - 44px tap floor (Apple HIG)
+     - sharp corners (brand)
+     - 15px label / weight 600
+     - 0.15s ease-out for color + background transitions
+     - explicit focus ring (sunset outline, 2px offset)
+
+   Variants:
+     .btn--primary  Sunset fill on the brand-dark bg. The "ship it" CTA.
+     .btn--ghost    Transparent with --border outline. Secondary action.
+     .btn--danger   Marigold/warning tone. Destructive intent.
+     .btn--link     Looks like inline text; same tap floor.
+     .btn--block    Stretches to its container width.
+*/
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--touch-min, 44px);
+  padding: 0 1.25rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 0;
+  transition:
+    background 0.15s var(--ease-out),
+    color 0.15s var(--ease-out),
+    border-color 0.15s var(--ease-out),
+    filter 0.15s var(--ease-out);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--sunset);
+  outline-offset: 2px;
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: progress;
+  opacity: 0.55;
+}
+
+.btn--primary {
+  background: var(--sunset);
+  color: var(--bg);
+  border-color: var(--sunset);
+  font-weight: 700;
+}
+.btn--primary:hover:not(:disabled) { filter: brightness(1.05); }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn--ghost:hover:not(:disabled) {
+  border-color: var(--sunset);
+  color: var(--sunset);
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--bg);
+}
+
+.btn--link {
+  padding: 0 0.25rem;
+  min-height: var(--touch-min, 44px);
+  border-color: transparent;
+  color: var(--sunset);
+  font-weight: 500;
+}
+.btn--link:hover:not(:disabled) {
+  color: var(--sunset-hover);
+  text-decoration: underline;
+}
+
+.btn--block { width: 100%; }
+
 /* ── Square icons (Shippie hallmark) ─────────────────────────── */
 .shippie-icon {
   border-radius: 0;

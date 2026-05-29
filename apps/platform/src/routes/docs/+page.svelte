@@ -462,23 +462,30 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     .paper-cta { justify-self: stretch; justify-content: center; }
   }
 
+  /* Pillars are principles, not navigation. Drop the card chrome so
+     they read as content blocks (label + body) separated by space, not
+     as four clickable tiles. The big serif label + sunset accent does
+     the visual work — no border needed. */
   .pillars {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-md);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-lg);
     margin-bottom: var(--space-2xl);
+    padding: var(--space-lg) 0;
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
   }
   .pillar {
-    padding: var(--space-md);
-    background: var(--surface);
-    border: 1px solid var(--border-light);
+    padding: 0;
+    background: transparent;
+    border: 0;
   }
   .pillar-eyebrow {
     margin: 0 0 8px;
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 600;
-    letter-spacing: 0;
+    letter-spacing: -0.01em;
     color: var(--sunset);
   }
   .pillar-blurb {
@@ -488,6 +495,10 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     line-height: 1.55;
   }
 
+  /* Nav-cards are navigation. Keep the card chrome; add an arrow
+     glyph + hover translate so the link affordance reads at a glance.
+     Pillars vs nav-cards now resolve in <100ms: pillars = open block,
+     nav-cards = bordered tile with an arrow pulling toward its anchor. */
   .nav-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -495,14 +506,33 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     margin-bottom: var(--space-3xl);
   }
   .nav-card {
-    padding: var(--space-md);
+    position: relative;
+    padding: var(--space-md) var(--space-md);
     background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text);
-    transition: border-color 0.15s var(--ease-out);
+    transition: border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
     min-height: var(--touch-min);
+    text-decoration: none;
   }
-  .nav-card:hover { border-color: var(--sunset); }
+  .nav-card::after {
+    content: '↘';
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--text-light);
+    transition: color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+  }
+  .nav-card:hover {
+    border-color: var(--sunset);
+    transform: translateY(-1px);
+  }
+  .nav-card:hover::after {
+    color: var(--sunset);
+    transform: translate(2px, -2px);
+  }
   .nav-card:focus-visible {
     outline: 2px solid var(--sunset);
     outline-offset: 2px;

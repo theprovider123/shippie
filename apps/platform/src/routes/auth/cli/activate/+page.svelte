@@ -54,7 +54,7 @@
           placeholder="BCDF-GHJK"
         />
       </label>
-      <button type="submit" class="btn-primary" disabled={submitting}>
+      <button type="submit" class="btn btn--primary btn--block" disabled={submitting}>
         {submitting ? 'Approving…' : 'Approve CLI'}
       </button>
     </form>
@@ -123,19 +123,9 @@
     box-sizing: border-box;
   }
   input[type='text']:focus { border-color: var(--sunset); }
-  .btn-primary {
-    width: 100%;
-    min-height: var(--touch-min, 48px);
-    background: var(--sunset);
-    color: var(--bg);
-    border: none;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    border-radius: 0;
-    margin-top: 0.5rem;
-  }
-  .btn-primary:disabled { opacity: 0.6; cursor: progress; }
+  /* Submit button uses canonical .btn .btn--primary .btn--block; only
+     the form-flow spacing override stays local. */
+  form button.btn { margin-top: 0.5rem; }
   .hint {
     text-align: center;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

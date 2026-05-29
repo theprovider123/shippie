@@ -72,7 +72,7 @@
             placeholder="you@example.com"
           />
         </label>
-        <button type="submit" class="btn-primary" disabled={submitting}>
+        <button type="submit" class="btn btn--primary btn--block" disabled={submitting}>
           {submitting ? 'Sending…' : 'Send magic link'}
         </button>
       </form>
@@ -185,20 +185,9 @@
   input[type='email']:focus {
     border-color: var(--sunset);
   }
-  .btn-primary {
-    width: 100%;
-    min-height: var(--touch-min, 48px);
-    background: var(--sunset);
-    color: var(--bg);
-    border: none;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    border-radius: 0;
-    margin-top: 0.5rem;
-  }
-  .btn-primary:hover { filter: brightness(1.05); }
-  .btn-primary:disabled { opacity: 0.6; cursor: progress; }
+  /* Submit button uses the canonical `.btn .btn--primary .btn--block`
+     primitives from tokens.css. Only spacing override stays local. */
+  form button.btn { margin-top: 0.5rem; }
   .btn-oauth {
     width: 100%;
     min-height: var(--touch-min, 48px);

@@ -77,8 +77,8 @@
           {/if}
 
           <div class="actions">
-            <button class="btn-secondary" disabled>View full diff (coming soon)</button>
-            <button class="btn-primary" disabled>Apply transform (coming soon)</button>
+            <button class="btn btn--ghost" disabled>View full diff (coming soon)</button>
+            <button class="btn btn--primary" disabled>Apply transform (coming soon)</button>
           </div>
           <p class="caveat">
             Apply-side workflow lands once we wire the writeable git/zip step. Today this is preview-only.
@@ -184,23 +184,8 @@
     gap: 0.5rem;
     margin-top: 1rem;
   }
-  .btn-secondary, .btn-primary {
-    padding: 0.5rem 1rem;
-    border-radius: 0;
-    font-size: 0.9rem;
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  .btn-secondary {
-    background: var(--surface-alt);
-    color: var(--text);
-    border: 1px solid var(--border-light);
-  }
-  .btn-primary {
-    background: var(--sunset);
-    color: var(--bg-pure);
-    border: 1px solid var(--sunset);
-  }
+  /* Actions use canonical .btn .btn--ghost / .btn--primary from
+     tokens.css. Disabled cursor + opacity defaults match the design. */
   .caveat {
     margin-top: 0.5rem;
     font-size: 0.8rem;
