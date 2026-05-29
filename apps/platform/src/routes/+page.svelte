@@ -42,7 +42,7 @@
       .filter((app): app is LauncherApp => Boolean(app)),
   );
   const continueApps = $derived.by(() => {
-    const source = recentApps.length > 0 ? recentApps : data.apps;
+    const source = recentApps.length > 0 ? recentApps : data.featured.length > 0 ? data.featured : data.apps;
     return source.slice(0, 4);
   });
   const continueDisplayApps = $derived(continueApps);
