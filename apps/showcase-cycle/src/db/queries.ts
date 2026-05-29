@@ -11,18 +11,25 @@ import type { LocalDbRecord, ShippieLocalDb } from '@shippie/local-runtime-contr
 import {
   CYCLES_TABLE,
   DAYS_TABLE,
+  DEFAULT_CLINICIAN_SHARE,
   DEFAULT_PARTNER_SEEN,
   PREFS_TABLE,
   PREFS_SINGLETON_ID,
   cyclesSchema,
   daysSchema,
   prefsSchema,
+  type ClinicianShare,
   type Cycle,
   type Day,
+  type Discharge,
   type Flow,
+  type Mode,
+  type Pain,
   type PartnerSeenFields,
   type Prefs,
   type PrefsView,
+  type Scale5,
+  type SexEntry,
   type SymptomKey,
 } from './schema.ts';
 
@@ -155,30 +162,43 @@ export interface DayInput {
   cycle_id: string;
   date: string;
   flow?: Flow | null;
+  pain?: Pain | null;
+  mood?: Scale5 | null;
+  energy?: Scale5 | null;
+  discharge?: Discharge | null;
+  meds?: string[];
+  sex?: SexEntry[];
   symptoms?: SymptomKey[];
   note?: string | null;
+}
+
+function dayFieldsFromInput(input: DayInput): Partial<Day> {
+  return {
+    flow: input.flow ?? null,
+    pain: input.pain ?? null,
+    mood: input.mood ?? null,
+    energy: input.energy ?? null,
+    discharge: input.discharge ?? null,
+    meds_json: input.meds && input.meds.length ? JSON.stringify(input.meds) : null,
+    sex_json: input.sex && input.sex.length ? JSON.stringify(input.sex) : null,
+    symptoms_json: input.symptoms && input.symptoms.length ? JSON.stringify(input.symptoms) : null,
+    note: input.note ?? null,
+  };
 }
 
 export async function logDay(db: ShippieLocalDb, input: DayInput): Promise<Day> {
   await ensureSchema(db);
   const existing = await getDayByDate(db, input.date);
-  const symptoms_json = input.symptoms ? JSON.stringify(input.symptoms) : null;
+  const fields = dayFieldsFromInput(input);
   if (existing) {
-    const patch: Partial<Day> = {
-      flow: input.flow ?? null,
-      symptoms_json,
-      note: input.note ?? null,
-    };
-    await db.update<RowOf<Day>>(DAYS_TABLE, existing.id, asRow(patch));
-    return { ...existing, ...patch };
+    await db.update<RowOf<Day>>(DAYS_TABLE, existing.id, asRow(fields));
+    return { ...existing, ...fields };
   }
   const day: Day = {
     id: newId(),
     cycle_id: input.cycle_id,
     date: input.date,
-    flow: input.flow ?? null,
-    symptoms_json,
-    note: input.note ?? null,
+    ...fields,
     created_at: new Date().toISOString(),
   };
   await db.insert(DAYS_TABLE, asRow(day));
@@ -186,10 +206,14 @@ export async function logDay(db: ShippieLocalDb, input: DayInput): Promise<Day> 
 }
 
 export function parseSymptoms(json: string | null | undefined): SymptomKey[] {
+  return parseStringArray(json) as SymptomKey[];
+}
+
+export function parseStringArray(json: string | null | undefined): string[] {
   if (!json) return [];
   try {
     const parsed = JSON.parse(json) as unknown;
-    if (Array.isArray(parsed)) return parsed.filter((x): x is SymptomKey => typeof x === 'string');
+    if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === 'string');
   } catch {
     /* ignore */
   }
@@ -244,26 +268,42 @@ export async function loadPrefs(db: ShippieLocalDb): Promise<PrefsView> {
   await ensureSchema(db);
   const rows = await db.query<RowOf<Prefs>>(PREFS_TABLE, { where: { id: PREFS_SINGLETON_ID }, limit: 1 });
   const row = rows[0];
-  if (!row) {
-    return {
-      share_with_partner: false,
-      partner_pair_code: null,
-      partner_seen_fields: { ...DEFAULT_PARTNER_SEEN },
-    };
-  }
+  const base: PrefsView = {
+    mode: 'period-only',
+    gender_neutral: false,
+    lock_pin: null,
+    decoy_pin: null,
+    share_with_partner: false,
+    partner_pair_code: null,
+    partner_seen_fields: { ...DEFAULT_PARTNER_SEEN },
+    clinician_share: { ...DEFAULT_CLINICIAN_SHARE },
+  };
+  if (!row) return base;
   let seen: PartnerSeenFields = { ...DEFAULT_PARTNER_SEEN };
   if (row.partner_seen_fields_json) {
     try {
-      const parsed = JSON.parse(row.partner_seen_fields_json) as Partial<PartnerSeenFields>;
-      seen = { ...seen, ...parsed };
+      seen = { ...seen, ...(JSON.parse(row.partner_seen_fields_json) as Partial<PartnerSeenFields>) };
     } catch {
       /* ignore — fall back to defaults */
     }
   }
+  let clinician: ClinicianShare = { ...DEFAULT_CLINICIAN_SHARE };
+  if (row.clinician_share_json) {
+    try {
+      clinician = { ...clinician, ...(JSON.parse(row.clinician_share_json) as Partial<ClinicianShare>) };
+    } catch {
+      /* ignore */
+    }
+  }
   return {
+    mode: (row.mode as Mode) ?? 'period-only',
+    gender_neutral: Boolean(row.gender_neutral),
+    lock_pin: row.lock_pin ?? null,
+    decoy_pin: row.decoy_pin ?? null,
     share_with_partner: Boolean(row.share_with_partner),
     partner_pair_code: row.partner_pair_code ?? null,
     partner_seen_fields: seen,
+    clinician_share: clinician,
   };
 }
 
@@ -272,9 +312,14 @@ export async function savePrefs(db: ShippieLocalDb, view: PrefsView): Promise<vo
   const existing = await db.query<RowOf<Prefs>>(PREFS_TABLE, { where: { id: PREFS_SINGLETON_ID }, limit: 1 });
   const row: Prefs = {
     id: PREFS_SINGLETON_ID,
+    mode: view.mode,
+    gender_neutral: view.gender_neutral ? 1 : 0,
+    lock_pin: view.lock_pin,
+    decoy_pin: view.decoy_pin,
     share_with_partner: view.share_with_partner ? 1 : 0,
     partner_pair_code: view.partner_pair_code,
     partner_seen_fields_json: JSON.stringify(view.partner_seen_fields),
+    clinician_share_json: JSON.stringify(view.clinician_share),
   };
   if (existing[0]) {
     await db.update<RowOf<Prefs>>(PREFS_TABLE, PREFS_SINGLETON_ID, asRow(row));

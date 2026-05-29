@@ -2,23 +2,12 @@
  * SymptomToggles — chip-set with the symptoms the voice doc names
  * directly. Plain words, no euphemisms.
  */
-import { SYMPTOM_KEYS, type SymptomKey } from '../db/schema.ts';
+import { SYMPTOM_KEYS, SYMPTOM_LABELS, type SymptomKey } from '../db/schema.ts';
 
 export interface SymptomTogglesProps {
   selected: ReadonlyArray<SymptomKey>;
   onChange: (next: SymptomKey[]) => void;
 }
-
-const SYMPTOM_LABELS: Record<SymptomKey, string> = {
-  cramps: 'cramps',
-  bloating: 'bloating',
-  mood: 'mood',
-  sleep: 'sleep',
-  headache: 'headache',
-  'breast-tenderness': 'breast tenderness',
-  fatigue: 'fatigue',
-  acne: 'acne',
-};
 
 export function SymptomToggles({ selected, onChange }: SymptomTogglesProps) {
   function toggle(key: SymptomKey): void {
