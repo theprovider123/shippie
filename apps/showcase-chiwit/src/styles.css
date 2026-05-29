@@ -141,7 +141,7 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   padding: max(0.85rem, env(safe-area-inset-top)) 1rem 0.85rem;
-  background: rgba(251, 246, 232, 0.92);
+  background: rgba(251, 253, 254, 0.92);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(18px);
 }
@@ -166,7 +166,7 @@ textarea {
   height: 44px;
   border-radius: 6px;
   object-fit: cover;
-  box-shadow: 0 8px 22px rgba(31, 42, 36, 0.14);
+  box-shadow: 0 8px 22px rgba(22, 34, 46, 0.14);
 }
 
 .brand-lockup strong {
@@ -415,7 +415,7 @@ button.branded.primary:hover {
   background:
     radial-gradient(circle at center, rgba(255, 250, 248, 0.98) 0 48%, transparent 49%),
     conic-gradient(var(--coral) calc(var(--score) * 1%), var(--sage-soft) 0);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 22px 58px rgba(31, 42, 36, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 22px 58px rgba(22, 34, 46, 0.16);
 }
 
 .pulse-ring img {
@@ -950,36 +950,42 @@ meter {
     align-items: center;
     gap: 0.7rem;
     padding: max(0.65rem, env(safe-area-inset-top)) 0.75rem 0.65rem;
-    background: rgba(251, 246, 232, 0.98);
+    background: rgba(251, 253, 254, 0.98);
     backdrop-filter: none;
   }
 
   .app-header nav {
     position: fixed;
-    right: max(0.5rem, env(safe-area-inset-right));
-    bottom: max(0.5rem, env(safe-area-inset-bottom));
-    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.6rem, env(safe-area-inset-right));
+    bottom: max(0.6rem, env(safe-area-inset-bottom));
+    left: max(0.6rem, env(safe-area-inset-left));
     z-index: 60;
     display: grid;
     width: auto;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.25rem;
-    padding: 0.35rem;
+    gap: 0.2rem;
+    padding: 0.4rem;
     overflow: visible;
     border: 1px solid var(--line);
-    border-radius: 8px;
-    background: rgba(251, 246, 232, 0.98);
-    box-shadow: 0 10px 28px rgba(31, 42, 36, 0.16);
+    border-radius: var(--radius-lg);
+    background: rgba(251, 253, 254, 0.86);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: var(--shadow-lift);
   }
 
   .app-header nav button {
     min-width: 0;
-    min-height: 48px;
-    padding: 0.35rem 0.2rem;
+    min-height: 52px;
+    padding: 0.4rem 0.2rem;
     overflow: hidden;
+    border-radius: var(--radius-md);
     font-size: 0.72rem;
     font-weight: 750;
+    letter-spacing: 0.01em;
     text-overflow: ellipsis;
+    color: var(--muted);
+    transition: color 140ms ease, background 140ms ease;
   }
 
   .brand-lockup img {
@@ -1135,7 +1141,7 @@ meter {
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgba(31, 42, 36, 0.42);
+  background: rgba(22, 34, 46, 0.42);
   backdrop-filter: blur(10px);
   animation: shippie-onboarding-fade 220ms ease both;
 }
@@ -1149,7 +1155,7 @@ meter {
   border: 1px solid var(--line-strong);
   border-radius: 12px;
   padding: 1.75rem 1.6rem 1.4rem;
-  box-shadow: 0 22px 60px rgba(31, 42, 36, 0.18);
+  box-shadow: 0 22px 60px rgba(22, 34, 46, 0.18);
 }
 .shippie-onboarding__progress {
   display: flex;
@@ -1225,7 +1231,7 @@ meter {
   border: 1px solid var(--sage);
   border-left: 4px solid var(--sage);
   border-radius: 10px;
-  box-shadow: 0 18px 44px rgba(31, 42, 36, 0.16);
+  box-shadow: 0 18px 44px rgba(22, 34, 46, 0.16);
   cursor: pointer;
   animation: shippie-intent-toast-in 240ms ease both;
 }
@@ -1340,7 +1346,7 @@ meter {
   display: grid;
   place-items: end center;
   padding: 0.75rem;
-  background: rgba(31, 42, 36, 0.42);
+  background: rgba(22, 34, 46, 0.42);
   backdrop-filter: blur(8px);
 }
 @media (min-width: 561px) {
@@ -1353,7 +1359,7 @@ meter {
   background: var(--paper);
   border: 1px solid var(--line-strong);
   border-radius: 14px 14px 6px 6px;
-  box-shadow: 0 24px 60px rgba(31, 42, 36, 0.2);
+  box-shadow: 0 24px 60px rgba(22, 34, 46, 0.2);
   display: grid;
   gap: 0.8rem;
 }
@@ -1920,11 +1926,11 @@ meter {
   --lotus: #ef6f55;
   --sage-shadow:   rgba(47, 86, 64, 0.16);   /* deep-sage cast for cards */
   --sage-shadow-strong: rgba(47, 86, 64, 0.22);
-  --ink-quiet:     rgba(31, 42, 36, 0.46);   /* tertiary copy */
-  --shadow-paper:  0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 1px 2px rgba(31, 42, 36, 0.04);
-  --shadow-soft:   0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 14px 38px rgba(31, 42, 36, 0.07), 0 2px 6px rgba(31, 42, 36, 0.04);
-  --shadow-lift:   0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 30px 70px rgba(31, 42, 36, 0.14), 0 6px 14px rgba(31, 42, 36, 0.06);
-  --shadow-float:  0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 38px 90px rgba(47, 86, 64, 0.16), 0 10px 24px rgba(31, 42, 36, 0.08);
+  --ink-quiet:     rgba(22, 34, 46, 0.46);   /* tertiary copy */
+  --shadow-paper:  0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 1px 2px rgba(22, 34, 46, 0.04);
+  --shadow-soft:   0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 14px 38px rgba(22, 34, 46, 0.07), 0 2px 6px rgba(22, 34, 46, 0.04);
+  --shadow-lift:   0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 30px 70px rgba(22, 34, 46, 0.14), 0 6px 14px rgba(22, 34, 46, 0.06);
+  --shadow-float:  0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 38px 90px rgba(47, 86, 64, 0.16), 0 10px 24px rgba(22, 34, 46, 0.08);
   /* Motion scale — every transition in chiwit should pick from these. */
   --dur-1: 120ms;     /* tap, micro */
   --dur-2: 220ms;     /* hover, lift */
@@ -1939,7 +1945,7 @@ meter {
 body {
   background:
     linear-gradient(90deg, rgba(31, 143, 136, 0.035) 1px, transparent 1px),
-    repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(31, 42, 36, 0.025) 31px, rgba(31, 42, 36, 0.025) 32px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(22, 34, 46, 0.025) 31px, rgba(22, 34, 46, 0.025) 32px),
     linear-gradient(160deg, #fffdf6 0%, #f5eedf 56%, #e7f0e8 100%);
   background-size: 44px 44px, auto, auto;
 }
@@ -1947,7 +1953,7 @@ body {
 .app-header {
   min-height: 70px;
   background: rgba(255, 253, 246, 0.9);
-  box-shadow: 0 10px 34px rgba(31, 42, 36, 0.06);
+  box-shadow: 0 10px 34px rgba(22, 34, 46, 0.06);
 }
 
 .brand-lockup img {
@@ -2040,7 +2046,7 @@ button.branded.primary {
 .data-share,
 .shippie-backup-card {
   background: var(--surface-glass);
-  border-color: rgba(31, 42, 36, 0.1);
+  border-color: rgba(22, 34, 46, 0.1);
   box-shadow: var(--shadow-soft);
 }
 
@@ -2092,7 +2098,7 @@ button.branded.primary {
     border-radius: 8px;
     padding: 0.28rem;
     background: rgba(255, 253, 246, 0.97);
-    box-shadow: 0 16px 36px rgba(31, 42, 36, 0.18);
+    box-shadow: 0 16px 36px rgba(22, 34, 46, 0.18);
   }
 
   .app-header nav button {
@@ -2464,7 +2470,7 @@ button.branded.primary {
 .wipe-sheet__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(31, 42, 36, 0.42);
+  background: rgba(22, 34, 46, 0.42);
   backdrop-filter: blur(8px);
 }
 .wipe-sheet__panel {
@@ -2474,7 +2480,7 @@ button.branded.primary {
   border: 1px solid var(--line-strong);
   border-radius: 12px;
   padding: 1.5rem 1.4rem 1.2rem;
-  box-shadow: 0 28px 70px rgba(31, 42, 36, 0.22);
+  box-shadow: 0 28px 70px rgba(22, 34, 46, 0.22);
   display: grid;
   gap: 0.55rem;
 }
@@ -2706,7 +2712,7 @@ button.branded.primary {
 .data-share,
 .shippie-backup-card {
   background: var(--paper-warm);
-  border-color: rgba(31, 42, 36, 0.08);
+  border-color: rgba(22, 34, 46, 0.08);
   box-shadow: var(--shadow-soft);
   transition:
     transform var(--dur-2) var(--ease-lift),
@@ -3013,7 +3019,7 @@ button.branded.primary {
   width: 8px;
   height: 8px;
   margin-top: 0.55rem;
-  box-shadow: 0 0 0 3px rgba(255, 253, 246, 1), 0 0 0 4px rgba(31, 42, 36, 0.08);
+  box-shadow: 0 0 0 3px rgba(255, 253, 246, 1), 0 0 0 4px rgba(22, 34, 46, 0.08);
 }
 .entry-list strong {
   font-family: var(--font-display);
@@ -3425,10 +3431,10 @@ button.branded.primary {
   inset: 0;
   border-radius: inherit;
   background:
-    linear-gradient(180deg, rgba(31, 42, 36, 0.04) 0%, rgba(31, 42, 36, 0.08) 100%),
+    linear-gradient(180deg, rgba(22, 34, 46, 0.04) 0%, rgba(22, 34, 46, 0.08) 100%),
     var(--paper-warm, #fdf8ea);
   box-shadow:
-    inset 0 1px 0 rgba(31, 42, 36, 0.06),
+    inset 0 1px 0 rgba(22, 34, 46, 0.06),
     inset 0 -1px 0 rgba(255, 255, 255, 0.55);
 }
 .factor-bar__fill {
@@ -3506,7 +3512,7 @@ button.branded.primary {
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(31, 42, 36, 0.08);
+    inset 0 -1px 0 rgba(22, 34, 46, 0.08);
 }
 /* WebKit / Blink thumb */
 .tracking-form input[type="range"]::-webkit-slider-thumb {
@@ -3554,7 +3560,7 @@ button.branded.primary {
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(31, 42, 36, 0.08);
+    inset 0 -1px 0 rgba(22, 34, 46, 0.08);
 }
 /* Firefox progress (left of thumb) — deepens to coral as the value
  * climbs, so a high score reads as warmer ink. */
