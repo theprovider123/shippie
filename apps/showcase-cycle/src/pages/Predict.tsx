@@ -12,9 +12,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
 import { RangePill } from '../components/RangePill.tsx';
-import { listCycles } from '../db/queries.ts';
+import { listCycles, listDays } from '../db/queries.ts';
 import { fertileWindowFor, predictNextCycle } from '../lib/predict.ts';
-import type { Cycle } from '../db/schema.ts';
+import { detectPatterns } from '../lib/insights.ts';
+import type { Cycle, Day } from '../db/schema.ts';
 
 export interface PredictProps {
   db: ShippieLocalDb;
@@ -23,10 +24,13 @@ export interface PredictProps {
 
 export function Predict({ db, refreshKey }: PredictProps) {
   const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [days, setDays] = useState<Day[]>([]);
   useEffect(() => {
     let cancelled = false;
-    void listCycles(db).then((rows) => {
-      if (!cancelled) setCycles(rows);
+    void Promise.all([listCycles(db), listDays(db)]).then(([c, d]) => {
+      if (cancelled) return;
+      setCycles(c);
+      setDays(d);
     });
     return () => {
       cancelled = true;
@@ -35,31 +39,45 @@ export function Predict({ db, refreshKey }: PredictProps) {
 
   const prediction = useMemo(() => predictNextCycle(cycles), [cycles]);
   const fertile = useMemo(() => fertileWindowFor(prediction), [prediction]);
-
-  if (!prediction) {
-    return (
-      <section className="page predict">
-        <header className="page-head">
-          <p className="eyebrow">Predict</p>
-          <h1>Not enough data</h1>
-        </header>
-        <p>
-          Predictions kick in once three full cycles are logged. Until then, this page would just be making
-          guesses on too little signal.
-        </p>
-      </section>
-    );
-  }
+  const patterns = useMemo(() => detectPatterns(cycles, days), [cycles, days]);
 
   return (
     <section className="page predict">
       <header className="page-head">
-        <p className="eyebrow">Predict</p>
-        <h1>Next windows</h1>
+        <p className="eyebrow">Predict & patterns</p>
+        <h1>What your logs show</h1>
         <p className="muted">
-          Cycles vary. The app shows ranges, not single dates. This is a tool, not an oracle.
+          Patterns from your own records, on this device. Co-occurrence, not cause. Predictions are ranges,
+          never single dates — a tool, not an oracle.
         </p>
       </header>
+
+      {patterns.length > 0 ? (
+        <article className="predict-card insights-card">
+          <h2>Your patterns</h2>
+          <ul className="insight-list">
+            {patterns.map((p) => (
+              <li key={p.id} className={`insight insight-${p.confidence}`}>
+                <span className="insight-dot" aria-hidden="true" />
+                <span>{p.text}</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : (
+        <article className="predict-card muted-banner">
+          <h2>Patterns build with time</h2>
+          <p className="muted">A couple of logged cycles and a few symptom days, and personal patterns appear here — pain and mood by cycle day, variability, and more.</p>
+        </article>
+      )}
+
+      {!prediction ? (
+        <article className="predict-card muted-banner">
+          <h2>Predictions need a few cycles</h2>
+          <p className="muted">Log a few period starts and a predicted range appears here. Until then, predicting would just be guessing on too little signal.</p>
+        </article>
+      ) : (
+        <>
 
       <article className="predict-card">
         <h2>Next period</h2>
@@ -90,6 +108,8 @@ export function Predict({ db, refreshKey }: PredictProps) {
           and a hundred other things move the date around. Use this as one input, not the input.
         </p>
       </article>
+        </>
+      )}
     </section>
   );
 }

@@ -2,21 +2,37 @@
   "$schema": "https://shippie.app/schemas/app.json",
   "name": "Cycle",
   "slug": "cycle",
-  "description": "Local menstrual and fertility tracking with optional partner mesh.",
+  "description": "A private, local-only logbook for your cycle and body — honest predictions, no account, no servers.",
   "icon": "/icon.svg",
-  "theme_color": "#3D3530",
-  "background_color": "#14120F",
+  "theme_color": "#15120f",
+  "background_color": "#15120f",
   "display": "standalone",
   "orientation": "portrait",
+  "ai": [],
+  "permissions": [],
   "intents": {
     "provides": [
       "cycle-logged",
-      "cycle-window-predicted"
+      "period-started",
+      "cycle-window-predicted",
+      "symptom-pattern-detected"
     ],
     "consumes": [
+      "mood-logged",
+      "sleep-logged",
+      "hydration-logged",
+      "caffeine-logged",
       "body-metrics-logged",
-      "mood-logged"
+      "workout-completed"
     ]
+  },
+  "data": {
+    "mode": "local-db",
+    "tables": ["cycles", "days", "prefs"],
+    "attachments": false,
+    "recovery": "inherited",
+    "realtime": "opt-in-partner-mesh",
+    "media": "none"
   },
   "data_schemas": {
     "cycles": {
@@ -32,15 +48,26 @@
       "cycle_id": "text not null",
       "date": "text not null",
       "flow": "integer",
+      "pain": "integer",
+      "mood": "integer",
+      "energy": "integer",
+      "discharge": "text",
+      "meds_json": "text",
+      "sex_json": "text",
       "symptoms_json": "text",
       "note": "text",
       "created_at": "datetime"
     },
     "prefs": {
       "id": "text primary key",
+      "mode": "text",
+      "gender_neutral": "integer",
+      "lock_pin": "text",
+      "decoy_pin": "text",
       "share_with_partner": "integer",
       "partner_pair_code": "text",
-      "partner_seen_fields_json": "text"
+      "partner_seen_fields_json": "text",
+      "clinician_share_json": "text"
     }
   },
   "curation": {
@@ -52,6 +79,6 @@
   "remix_allowed": true,
   "data_passport": {
     "family": "cycle",
-    "schema": "cycle.v1"
+    "schema": "cycle.v2"
   }
 }

@@ -35,9 +35,11 @@ import {
   getDayByDate,
   isoDate,
   listCycles,
+  listDays,
   loadPrefs,
 } from './db/queries.ts';
 import { fertileWindowFor, predictNextCycle } from './lib/predict.ts';
+import { detectPatterns } from './lib/insights.ts';
 import type { PartnerProjection } from './sync/partner-doc.ts';
 
 type Route = 'today' | 'history' | 'predict' | 'settings' | 'print';
@@ -68,6 +70,7 @@ export function App() {
   const [moodHint, setMoodHint] = useState<string | null>(null);
   const partnerRef = useRef<PartnerHandle | null>(null);
   const lastPredictedRef = useRef<string>('');
+  const lastPatternRef = useRef<string>('');
 
   const bumpRefresh = useCallback(() => setRefreshKey((n) => n + 1), []);
 
@@ -106,20 +109,34 @@ export function App() {
       const cycles = await listCycles(db);
       if (cancelled) return;
       const prediction = predictNextCycle(cycles);
-      if (!prediction) return;
-      const sig = `${prediction.range[0]}|${prediction.range[1]}|${prediction.confidence}`;
-      if (sig === lastPredictedRef.current) return;
-      lastPredictedRef.current = sig;
-      shippie.intent.broadcast('cycle-window-predicted', [
-        {
-          predicted_start: prediction.predictedStart,
-          range: prediction.range,
-          confidence: prediction.confidence,
-          mean_days: prediction.mean,
-          stddev_days: prediction.stddev,
-          sample_size: prediction.sampleSize,
-        },
-      ]);
+      if (prediction) {
+        const sig = `${prediction.range[0]}|${prediction.range[1]}|${prediction.confidence}`;
+        if (sig !== lastPredictedRef.current) {
+          lastPredictedRef.current = sig;
+          shippie.intent.broadcast('cycle-window-predicted', [
+            {
+              predicted_start: prediction.predictedStart,
+              range: prediction.range,
+              confidence: prediction.confidence,
+              mean_days: prediction.mean,
+              stddev_days: prediction.stddev,
+              sample_size: prediction.sampleSize,
+            },
+          ]);
+        }
+      }
+      // symptom-pattern-detected: broadcast a compact, non-sensitive summary of
+      // detected patterns (no notes, no intimacy) when it changes.
+      const days = await listDays(db);
+      if (cancelled) return;
+      const patterns = detectPatterns(cycles, days);
+      const psig = patterns.map((p) => `${p.id}:${p.confidence}`).join('|');
+      if (patterns.length > 0 && psig !== lastPatternRef.current) {
+        lastPatternRef.current = psig;
+        shippie.intent.broadcast('symptom-pattern-detected', [
+          { source: 'cycle', count: patterns.length, patterns: patterns.map((p) => ({ kind: p.kind, confidence: p.confidence })) },
+        ]);
+      }
     })();
     return () => {
       cancelled = true;
@@ -131,7 +148,11 @@ export function App() {
   // doc: explicit "this might be a coincidence" caveat.
   useEffect(() => {
     shippie.requestIntent('mood-logged');
+    shippie.requestIntent('sleep-logged');
+    shippie.requestIntent('hydration-logged');
+    shippie.requestIntent('caffeine-logged');
     shippie.requestIntent('body-metrics-logged');
+    shippie.requestIntent('workout-completed');
     const offMood = shippie.intent.subscribe('mood-logged', async ({ rows }) => {
       const lows = rows
         .map((r) => r as { value?: number; mood?: number; score?: number; createdAt?: number })

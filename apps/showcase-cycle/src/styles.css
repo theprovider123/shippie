@@ -446,3 +446,13 @@ button.secondary,
   border: 1px dashed var(--line-strong); border-radius: var(--radius-sm);
   font-size: 0.86rem; color: var(--text-light); line-height: 1.5;
 }
+
+/* ===== Predict & insights ===== */
+.predict-card { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); padding: 1.1rem 1.2rem; margin: 0 0 1rem; }
+.predict-card h2 { font-family: var(--font-display); margin: 0 0 0.6rem; font-size: 1.15rem; color: var(--text); }
+.predict-card.disclaimer { background: transparent; border-style: dashed; }
+.insight-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+.insight { display: flex; gap: 0.65rem; align-items: flex-start; line-height: 1.45; }
+.insight-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; margin-top: 0.5rem; background: var(--cycle-calm); }
+.insight-high .insight-dot { background: var(--cycle-accent); }
+.insight-low .insight-dot { background: var(--text-light); }
