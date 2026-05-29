@@ -20,11 +20,14 @@ import { capabilityBadges } from './capability-badges';
 import { kindRollup } from './kind-rollup';
 import { runCron } from './run';
 import { opsMaintenance } from './ops-maintenance';
+import { golazoFeed } from './golazo-feed';
 
 export interface CronEnv {
   DB: import('@cloudflare/workers-types').D1Database;
   CACHE: import('@cloudflare/workers-types').KVNamespace;
   APPS?: import('@cloudflare/workers-types').R2Bucket;
+  /** Golazo live-feed upstream URL (optional; see golazo-feed.ts). */
+  GOLAZO_FEED_UPSTREAM?: string;
 }
 
 /**
@@ -41,6 +44,7 @@ export interface CronHandlers {
   capabilityBadges?: (env: CronEnv) => Promise<unknown>;
   kindRollup?: (env: CronEnv) => Promise<unknown>;
   opsMaintenance?: (env: CronEnv) => Promise<unknown>;
+  golazoFeed?: (env: CronEnv) => Promise<unknown>;
 }
 
 export async function handleScheduled(
@@ -57,13 +61,23 @@ export async function handleScheduled(
     capabilityBadges: handlers.capabilityBadges ?? capabilityBadges,
     kindRollup: handlers.kindRollup ?? kindRollup,
     opsMaintenance: handlers.opsMaintenance ?? opsMaintenance,
+    golazoFeed: handlers.golazoFeed ?? golazoFeed,
   };
   console.log(`[cron] firing cron='${cron}' scheduled_time=${controller.scheduledTime}`);
 
   try {
     switch (cron) {
       case '*/5 * * * *': {
-        await runCron(env, { cronString: cron, handler: 'reconcileKv', run: h.reconcileKv });
+        // KV reconcile + refresh the Golazo live feed (fresh scores during matches).
+        const settled = await Promise.allSettled([
+          runCron(env, { cronString: cron, handler: 'reconcileKv', run: h.reconcileKv }),
+          runCron(env, { cronString: cron, handler: 'golazoFeed', run: h.golazoFeed }),
+        ]);
+        for (const r of settled) {
+          if (r.status === 'rejected') {
+            console.error('[cron] */5 handler rejected', r.reason);
+          }
+        }
         return;
       }
       case '0 * * * *': {

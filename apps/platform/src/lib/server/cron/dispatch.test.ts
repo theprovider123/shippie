@@ -16,6 +16,7 @@ interface CallCounts {
   capabilityBadges: number;
   kindRollup: number;
   opsMaintenance: number;
+  golazoFeed: number;
 }
 
 function makeHandlers(counts: CallCounts): CronHandlers {
@@ -54,6 +55,10 @@ function makeHandlers(counts: CallCounts): CronHandlers {
         markedCronRunsFailed: 0,
       };
     },
+    golazoFeed: async () => {
+      counts.golazoFeed += 1;
+      return { updated: false };
+    },
   };
 }
 
@@ -66,6 +71,7 @@ function makeCounts(): CallCounts {
     capabilityBadges: 0,
     kindRollup: 0,
     opsMaintenance: 0,
+    golazoFeed: 0,
   };
 }
 
@@ -80,6 +86,7 @@ describe('handleScheduled', () => {
     const counts = makeCounts();
     await handleScheduled(controller('*/5 * * * *'), env, makeHandlers(counts));
     expect(counts.reconcileKv).toBe(1);
+    expect(counts.golazoFeed).toBe(1);
     expect(counts.reapTrials).toBe(0);
     expect(counts.rollups).toBe(0);
     expect(counts.retention).toBe(0);

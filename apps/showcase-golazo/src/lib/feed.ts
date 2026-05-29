@@ -92,25 +92,36 @@ function readCache(): Feed | null {
   }
 }
 
+// Sources, in priority order:
+//  1) the platform live endpoint (KV-backed, refreshed by the */5 cron) — same
+//     origin, so it works when the showcase is wrapped at shippie.app;
+//  2) the bundled static feed.json — works standalone + in local Vite dev;
+//  3) the last cached feed (offline cold start); then an empty feed.
+const SOURCES = ["/__shippie/golazo/feed", "./feed.json"] as const;
+
 /**
- * Fetch the bundled feed. On any failure (offline cold start, etc.) fall back
- * to the last cached feed, then to an empty feed. Returns `{ feed, online }`.
+ * Fetch the freshest feed available. Tries the live endpoint, then the bundled
+ * file, caching the first good response for offline use. Returns
+ * `{ feed, online }` — `online` is false only when every network source fails.
  */
 export async function fetchFeed(): Promise<{ feed: Feed; online: boolean }> {
-  try {
-    const res = await fetch("./feed.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`feed ${res.status}`);
-    const json = await res.json();
-    const feed = normalizeFeed(json);
+  for (const url of SOURCES) {
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(json));
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const feed = normalizeFeed(json);
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(json));
+      } catch {
+        /* quota — ignore */
+      }
+      return { feed, online: true };
     } catch {
-      /* quota — ignore */
+      /* try the next source */
     }
-    return { feed, online: true };
-  } catch {
-    return { feed: readCache() ?? emptyFeed(), online: false };
   }
+  return { feed: readCache() ?? emptyFeed(), online: false };
 }
 
 /** Has the feed actually published anything yet? */

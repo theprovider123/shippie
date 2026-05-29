@@ -59,6 +59,11 @@ declare global {
         GOOGLE_CLIENT_ID?: string;
         GOOGLE_CLIENT_SECRET?: string;
         FOOTBALL_DATA_TOKEN?: string;
+        // Golazo live feed: a URL returning the showcase feed shape
+        // ({ updatedAt, news, live, results }). The */5 cron pulls it into
+        // KV (golazo:feed:v1); /__shippie/golazo/feed serves it. Optional —
+        // unset means the endpoint serves the bundled fallback.
+        GOLAZO_FEED_UPSTREAM?: string;
         SEALED_DOCS_ENABLED?: string;
         SEALED_DOC_CHANGE_STREAM_ENABLED?: string;
         SEALED_DOC_DAILY_EVENT_LIMIT?: string;
