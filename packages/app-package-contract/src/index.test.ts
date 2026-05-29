@@ -21,6 +21,9 @@ import {
   isSha256Hash,
   isNetworkDomainAllowed,
   isSystemCapability,
+  legacyPackageId,
+  packageIdCandidates,
+  packageIdMatchesApp,
   systemPermissions,
   systemTaskFor,
   type AppCollectionManifest,
@@ -28,6 +31,27 @@ import {
 } from './index.ts';
 
 const HASH = `sha256:${'a'.repeat(64)}`;
+
+describe('package identity bridge (Phase 4 de-slug)', () => {
+  const app = { id: '550e8400-e29b-41d4-a716-446655440000', slug: 'recipe-saver' };
+
+  test('legacyPackageId reproduces the old app_${slug} format', () => {
+    expect(legacyPackageId('recipe-saver')).toBe('app_recipe-saver');
+  });
+
+  test('packageIdCandidates offers the canonical id and the legacy id', () => {
+    expect(packageIdCandidates(app)).toEqual([
+      '550e8400-e29b-41d4-a716-446655440000',
+      'app_recipe-saver',
+    ]);
+  });
+
+  test('packageIdMatchesApp matches both the new UUID id and the legacy id', () => {
+    expect(packageIdMatchesApp('550e8400-e29b-41d4-a716-446655440000', app)).toBe(true);
+    expect(packageIdMatchesApp('app_recipe-saver', app)).toBe(true);
+    expect(packageIdMatchesApp('app_something-else', app)).toBe(false);
+  });
+});
 
 describe('@shippie/app-package-contract', () => {
   test('validates package manifests', () => {

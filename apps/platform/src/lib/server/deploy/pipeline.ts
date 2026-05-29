@@ -47,6 +47,7 @@ import {
 } from '@shippie/app-package-contract';
 import { getDrizzleClient, schema } from '../db/client';
 import { extractZipSafe } from './zip-extract';
+import { resolveStableDataFamily } from './data-family';
 import { normalizeDeployOutput } from './output-normalize';
 import { deriveManifest, type ShippieJsonLite } from './manifest';
 import { runPreflight, type PreflightReport } from './preflight';
@@ -1308,9 +1309,19 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
     const packagePermissions = packagePermissionsFromManifest(input.manifest, input.slug, input.localToolPolicy);
     const packageTrustReport = packageTrustReportFromDeployReport(report);
     const packageDomains = await packageDomainsForApp(input.db, input.appId, input.slug);
+    // Lock the data family to the immutable app id on first deploy so renames
+    // never fork it (data-passport compatibility stays stable across renames).
+    const stableDataFamily = await resolveStableDataFamily(
+      input.db,
+      input.appId,
+      input.manifest.data_passport?.family,
+    );
     const builtPackage = await buildShippiePackage({
       app: {
-        id: `app_${input.slug}`,
+        // Package identity is the immutable DB app id — NOT `app_${slug}`, which
+        // would change on rename. Legacy packages still carry the old id; reconcile
+        // via packageIdCandidates() in @shippie/app-package-contract.
+        id: input.appId,
         slug: input.slug,
         name: input.manifest.name,
         description: input.manifest.description ?? input.manifest.tagline,
@@ -1343,7 +1354,7 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
         },
         data: {
           schemaVersion: input.manifest.version ?? 1,
-          family: input.manifest.data_passport?.family,
+          family: stableDataFamily,
           schema: input.manifest.data_passport?.schema,
         },
       },

@@ -171,6 +171,34 @@ export interface AppPackageManifest {
   spaces?: PackageSpaces;
 }
 
+/**
+ * Legacy package-identity format. Before identity was de-slugged, the deploy
+ * pipeline minted the package `id` as `app_${slug}`, which forked on rename.
+ * New packages use the immutable DB app id; this reproduces the old id so old
+ * packages can still be reconciled to their app.
+ */
+export function legacyPackageId(slug: string): string {
+  return `app_${slug}`;
+}
+
+/**
+ * Candidate identities for matching an installed package's manifest `id` to a
+ * DB app: the canonical immutable app id, plus the legacy `app_${slug}` id that
+ * packages built before the de-slug change still carry. Use when reconciling a
+ * portable package against a known app instead of comparing `id` directly.
+ */
+export function packageIdCandidates(app: { id: string; slug: string }): string[] {
+  return [app.id, legacyPackageId(app.slug)];
+}
+
+/** True if a package manifest `id` refers to the given app (canonical or legacy). */
+export function packageIdMatchesApp(
+  manifestId: string,
+  app: { id: string; slug: string },
+): boolean {
+  return packageIdCandidates(app).includes(manifestId);
+}
+
 export interface AppVersionRecord {
   code: {
     version: string;
