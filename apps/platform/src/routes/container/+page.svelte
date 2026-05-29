@@ -42,6 +42,12 @@
     visibleContainerApps,
   } from '$lib/container/app-registry';
   import {
+    buildToolShelf as drawerBuildToolShelf,
+    mergeCatalog as drawerMergeCatalog,
+    type LauncherPhase as DrawerLauncherPhase,
+  } from '$lib/launcher';
+  import { canonicalShowcaseSlug as drawerCanonical } from '$lib/showcase-slugs';
+  import {
     buildLocalRow,
     computeStorageUsage,
     createAppHandlers,
@@ -164,7 +170,46 @@
   let importedApps = $state<ContainerApp[]>([]);
   const merged = $derived(mergeApps(baseApps, importedApps));
   const apps = $derived(merged.apps);
-  const launchVisibleApps = $derived(visibleContainerApps(apps));
+  /**
+   * Per-phase promotion of upcoming slugs to live. Mirrors the value
+   * in `+page.server.ts` so both surfaces apply the same rule.
+   */
+  const DRAWER_PROMOTIONS_BY_PHASE = {
+    prelaunch: { promote: [] as readonly string[] },
+    'world-cup': { promote: ['golazo'] as readonly string[] },
+  } as const satisfies Record<DrawerLauncherPhase, { promote: readonly string[] }>;
+  const DRAWER_WORLD_CUP_PHASE_START_MS = Date.UTC(2026, 5, 11);
+  function drawerLauncherPhase(now: Date): DrawerLauncherPhase {
+    return now.getTime() >= DRAWER_WORLD_CUP_PHASE_START_MS ? 'world-cup' : 'prelaunch';
+  }
+
+  /**
+   * Drawer's visible app set. Replaces the old `visibleContainerApps`
+   * filter, which only knew about archived showcases. The shared
+   * launcher shelf applies the same canonicalisation (SLUG_ALIASES),
+   * upcoming-promotion (PROMOTIONS_BY_PHASE), and archived rules that
+   * `/+page.server.ts` uses for the homepage. Result: both surfaces
+   * resolve to the same canonical app set. See the convergence test in
+   * `$lib/launcher/convergence.test.ts`.
+   */
+  const launchVisibleApps = $derived.by(() => {
+    const phase = drawerLauncherPhase(new Date());
+    const catalog = drawerMergeCatalog(visibleContainerApps(apps), []);
+    const shelf = drawerBuildToolShelf({
+      catalog,
+      phase,
+      promotions: DRAWER_PROMOTIONS_BY_PHASE[phase],
+    });
+    const allowed = new Set(shelf.visibleSlugs);
+    // Drop apps whose raw slug is an alias source — only display the
+    // canonical entry, never the legacy slug, even when the container
+    // bundle still ships it for /run/<old-slug>/ resolution.
+    return apps.filter((app) => {
+      const canonical = drawerCanonical(app.slug);
+      if (canonical !== app.slug) return false;
+      return allowed.has(canonical);
+    });
+  });
   const appById = $derived(merged.appById);
   const defaultAppId = $derived(merged.defaultAppId);
   const hosts = new Map<string, ContainerBridgeHost>();

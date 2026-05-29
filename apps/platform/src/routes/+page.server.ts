@@ -13,16 +13,19 @@
  */
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
-import { curatedAppsBySurface } from '$lib/container/state';
-import { isFirstPartyShowcase } from '$lib/showcase-slugs';
+import { curatedApps, curatedAppsBySurface } from '$lib/container/state';
+import { canonicalShowcaseSlug, isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
 import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
+import {
+  buildToolShelf,
+  mergeCatalog,
+  type LauncherPhase,
+} from '$lib/launcher';
 
 const PER_PAGE = 48;
-
-type LauncherPhase = 'prelaunch' | 'world-cup';
 
 const WORLD_CUP_PHASE_START_MS = Date.UTC(2026, 5, 11);
 
@@ -40,7 +43,7 @@ const LAUNCHER_FEATURED_SLUGS_BY_PHASE = {
     'chiwit',        // how does today feel?
     'voice-memo',    // thoughts you do not want anywhere else
     'palate',        // recipes that work offline at 6pm
-    'journal',       // the log of everything that ran today
+    'therapy-notes', // private thoughts under your control
     'quiet',         // five-minute reset, no subscription
     'habit-tracker', // streaks fed by the tools you already use
   ],
@@ -58,17 +61,50 @@ const LAUNCHER_FEATURED_SLUGS_BY_PHASE = {
   ],
 } as const satisfies Record<LauncherPhase, readonly string[]>;
 
-// WIP apps can exist in production DB before their hosted runtime is ready.
-// Keep them out of launcher/mobile surfaces until explicitly shipped.
-const PRELAUNCH_HIDDEN_SLUGS = new Set(['golazo']);
-
 function launcherPhase(now: Date): LauncherPhase {
   return now.getTime() >= WORLD_CUP_PHASE_START_MS ? 'world-cup' : 'prelaunch';
 }
 
+/**
+ * Per-phase promotion of upcoming slugs to live. Golazo is the only
+ * upcoming entry today; it flips during the World Cup window.
+ *
+ * This pair (PROMOTIONS_BY_PHASE + the upcoming flag in
+ * lib/launcher/adapters.ts) replaces the old special-case
+ * PRELAUNCH_HIDDEN_SLUGS that lived only on the homepage. Both
+ * surfaces now respect the same rule.
+ */
+const PROMOTIONS_BY_PHASE = {
+  prelaunch: { promote: [] as readonly string[] },
+  'world-cup': { promote: ['golazo'] as readonly string[] },
+} as const satisfies Record<LauncherPhase, { promote: readonly string[] }>;
+
+/**
+ * Build the set of canonical slugs that should appear on launcher
+ * surfaces in the given phase, applying SLUG_ALIASES, archived rules,
+ * and upcoming-promotion. Both `+page.server.ts` and the focused-mode
+ * drawer pass through this same gate so they cannot drift.
+ */
+function visibleLauncherSlugs(phase: LauncherPhase): Set<string> {
+  const catalog = mergeCatalog(curatedApps, []);
+  const shelf = buildToolShelf({
+    catalog,
+    phase,
+    promotions: PROMOTIONS_BY_PHASE[phase],
+  });
+  return new Set(shelf.visibleSlugs);
+}
+
 function launcherVisible<T extends { slug: string }>(apps: T[], phase: LauncherPhase): T[] {
-  if (phase === 'world-cup') return apps;
-  return apps.filter((app) => !PRELAUNCH_HIDDEN_SLUGS.has(app.slug));
+  const allowed = visibleLauncherSlugs(phase);
+  // Drop alias-source entries so /run/<old-slug>/ never appears as its
+  // own tile. The router still 302s old links, but the marketplace
+  // should only ever surface canonical app names.
+  return apps.filter((app) => {
+    const canonical = canonicalShowcaseSlug(app.slug);
+    if (canonical !== app.slug) return false;
+    return allowed.has(canonical);
+  });
 }
 
 function orderedFeatured<T extends { slug: string }>(apps: T[], slugs: readonly string[]): T[] {
