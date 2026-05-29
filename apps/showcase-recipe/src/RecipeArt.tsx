@@ -149,7 +149,7 @@ export function RecipeArt({
           <stop offset="1" stopColor="#f3e8d2" />
         </radialGradient>
         <filter id={`${gid}-soft`}>
-          <feGaussianBlur stdDeviation="1.1" />
+          <feGaussianBlur stdDeviation="0.5" />
         </filter>
       </defs>
 

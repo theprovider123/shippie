@@ -193,6 +193,10 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'shop', label: 'Shop' },
   { id: 'data', label: 'Data' },
 ];
+
+// The primary bar stays to the five core jobs; "Data" (backup/export/settings)
+// lives behind a quiet header link so the nav isn't six-wide and confusing.
+const PRIMARY_TABS = TABS.filter((t) => t.id !== 'data');
 const PALATE_LOGO_URL = `${import.meta.env.BASE_URL}brand/palate-logo.png`;
 
 const seedRecipes: Recipe[] = [
@@ -1164,7 +1168,7 @@ export function App() {
           </span>
         </button>
         <nav aria-label="Palate sections">
-          {TABS.map((item) => (
+          {PRIMARY_TABS.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -1175,6 +1179,15 @@ export function App() {
             </button>
           ))}
         </nav>
+        <button
+          type="button"
+          className={`app-header-data${tab === 'data' ? ' active' : ''}`}
+          onClick={() => navigate('data')}
+          aria-label="Data, backup and export"
+          title="Data, backup & export"
+        >
+          ⚙
+        </button>
       </header>
 
       {tab === 'today' ? (
@@ -1384,7 +1397,6 @@ function TodayView({
   onNavigate: (tab: Tab) => void;
   onAddGaps: (recipe: Recipe) => void;
 }) {
-  const cookedThisWeek = state.cooked.filter((meal) => Date.now() - meal.cookedAt < 7 * 24 * 60 * 60 * 1000).length;
   const todaysPlan = state.mealPlan.filter((entry) => entry.date === today());
   const pantryLow = state.pantry.filter((item) => item.quantity <= 1);
   const firstPick = tonightPick?.recipe ?? state.recipes[0];
@@ -1408,13 +1420,10 @@ function TodayView({
   return (
     <section className="page-shell today-shell">
       <div className="hero-plane">
-        <TasteBoard recipes={forYou} pantryLow={pantryLow.length} shoppingCount={shoppingCount} onCook={onCook} />
+        <TasteBoard recipe={firstPick} />
         <div className="hero-copy">
-          <p className="eyebrow">{mealLabel} · {weekday}</p>
-          <h1>
-            {mealLabel === 'Tonight' && firstPick ? <span className="hero-meal-prefix">Tonight: </span> : null}
-            {firstPick ? firstPick.title : 'Add a recipe to begin'}
-          </h1>
+          <p className="eyebrow">{firstPick ? `${mealLabel} · ${weekday}` : 'Your kitchen'}</p>
+          <h1>{firstPick ? firstPick.title : 'Add a recipe to begin'}</h1>
           {tonightPick ? (
             <p className="hero-status">
               <strong>{tonightPick.have}/{tonightPick.total}</strong> ingredients ready ·{' '}
@@ -1478,18 +1487,11 @@ function TodayView({
         </div>
       </div>
 
-      <section className="metric-strip" aria-label="Kitchen status">
-        <div><strong>{state.recipes.length}</strong><span>recipes saved</span></div>
-        <div><strong>{cookedThisWeek}</strong><span>cooks this week</span></div>
-        <div><strong>{todaysPlan.length}</strong><span>meals today</span></div>
-        <div><strong>{shoppingCount}</strong><span>shop items</span></div>
-      </section>
-
       <section className="split-layout">
         <div>
-          <SectionHeading title="What tastes right" action="Fit score" />
+          <SectionHeading title="More for tonight" action={`${forYou.length} ideas`} />
           <div className="recipe-rail">
-            {forYou.map((recipe) => (
+            {forYou.slice(1).map((recipe) => (
               <RecipeTile key={recipe.id} recipe={recipe} onOpen={onOpenRecipe} onCook={onCook} />
             ))}
           </div>
@@ -1512,24 +1514,6 @@ function TodayView({
           {pantryLow.length > 0 ? (
             <p className="soft-warning">{pantryLow.length} pantry item{pantryLow.length === 1 ? '' : 's'} running low.</p>
           ) : null}
-          <div className="cook-history">
-            <p className="eyebrow">Cook history</p>
-            {state.cooked.length === 0 ? (
-              <EmptyState
-                eyebrow="History"
-                headline={<>Cook your first dish and it'll live here.</>}
-              />
-            ) : (
-              <ul className="plain-list cook-history-list">
-                {state.cooked.slice(0, 4).map((entry) => (
-                  <li key={entry.id}>
-                    <span className="cook-code">{new Date(entry.cookedAt).toLocaleDateString(undefined, { weekday: 'short' })}</span>
-                    <strong>{entry.title}</strong>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </aside>
       </section>
     </section>
@@ -1560,24 +1544,21 @@ function FitSparkline({ values }: { values: number[] }) {
   );
 }
 
-function TasteBoard({
-  recipes,
-  pantryLow,
-  shoppingCount,
-  onCook,
-}: {
-  recipes: Recipe[];
-  pantryLow: number;
-  shoppingCount: number;
-  onCook: (recipeId: string) => void;
-}) {
-  const featured = recipes[0];
-  /**
-   * Flavour notes — reorder so users see the dish's character first:
-   * spices/aromatics → proteins/dairy → fresh produce. Caps at 5 so
-   * the chip row doesn't wrap into a wall.
-   */
-  const allNames = [...new Set((featured?.ingredients ?? []).map((ing) => ing.name))];
+/**
+ * The hero visual for tonight's pick — a big, appetising, dish-specific image
+ * (the recipe's photo, or its ingredient-led generative art). Purely visual:
+ * the title, "why", and Cook button live in the hero copy beside it, so there's
+ * no duplication. A few flavour-note chips sit at the foot for texture.
+ */
+function TasteBoard({ recipe }: { recipe: Recipe | undefined }) {
+  if (!recipe) {
+    return (
+      <section className="taste-board taste-board-empty" aria-hidden>
+        <img src={PALATE_LOGO_URL} alt="" />
+      </section>
+    );
+  }
+  const allNames = [...new Set(recipe.ingredients.map((ing) => ing.name))];
   const FLAVOUR_ORDER: Array<{ rx: RegExp; rank: number }> = [
     { rx: /\b(cardamom|sage|cinnamon|chilli|chili|cumin|garlic|ginger|pepper|spice|herb|parsley|basil|coriander)\b/i, rank: 0 },
     { rx: /\b(salmon|chicken|tofu|beef|pork|prawn|fish|egg|yog?hurt|cheese|milk|butter)\b/i, rank: 1 },
@@ -1586,26 +1567,26 @@ function TasteBoard({
   const notes = allNames
     .map((name) => ({ name, rank: FLAVOUR_ORDER.find((entry) => entry.rx.test(name))?.rank ?? 3 }))
     .sort((a, b) => a.rank - b.rank)
-    .slice(0, 5)
+    .slice(0, 4)
     .map((entry) => entry.name);
   return (
-    <section className="taste-board" aria-label="Taste board">
-      <div className="taste-board-plate">
-        <img src={PALATE_LOGO_URL} alt="" />
-      </div>
-      <div className="taste-board-content">
-        <p className="eyebrow">Next flavour</p>
-        <h2>{featured?.title ?? 'Start with a recipe'}</h2>
+    <section className="taste-board" aria-label={`${recipe.title}, illustrated`}>
+      {recipe.photoDataUrl ? (
+        <img className="taste-board-photo" src={recipe.photoDataUrl} alt="" />
+      ) : (
+        <RecipeArt
+          className="taste-board-art"
+          id={recipe.id}
+          title={recipe.title}
+          cuisine={recipe.cuisine}
+          ingredients={recipe.ingredients.map((i) => i.name)}
+        />
+      )}
+      {notes.length > 0 ? (
         <div className="flavour-notes" aria-label="Flavour notes">
-          {(notes.length > 0 ? notes : ['citrus', 'sage', 'apple']).map((note) => <span key={note}>{note}</span>)}
+          {notes.map((note) => <span key={note}>{note}</span>)}
         </div>
-        <div className="taste-board-status">
-          <span><strong>{featured ? recipeTotalTime(featured) : 0}</strong> min</span>
-          <span><strong>{pantryLow}</strong> low</span>
-          <span><strong>{shoppingCount}</strong> shop</span>
-        </div>
-        <button type="button" className="primary" onClick={() => featured ? onCook(featured.id) : undefined} disabled={!featured}>Start cooking</button>
-      </div>
+      ) : null}
     </section>
   );
 }
@@ -1644,9 +1625,9 @@ function CookbookView({
   onApplyImport: (parsed: ParsedRecipe) => void;
 }) {
   const showEmpty = recipes.length === 0 && !query.trim();
-  const scrollToEditor = () => {
-    document.getElementById('palate-recipe-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  // The editor is opt-in. By default the cookbook IS the list — tapping
+  // "Add recipe" reveals the form, so the list is never buried behind it.
+  const [editorOpen, setEditorOpen] = useState(false);
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -1656,7 +1637,9 @@ function CookbookView({
           <p className="toolbar-subcopy">The recipes you actually cook, saved here instead of scattered through screenshots and tabs.</p>
         </div>
         <button type="button" className="text-action toolbar-action" onClick={onOpenImport}>Import</button>
-        <button type="button" className="primary toolbar-action" onClick={scrollToEditor}>Add recipe</button>
+        <button type="button" className="primary toolbar-action" onClick={() => setEditorOpen((v) => !v)}>
+          {editorOpen ? 'Close editor' : 'Add recipe'}
+        </button>
         <label className="search-box">
           <span>Search</span>
           <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="ingredient, cuisine, tag" />
@@ -1669,7 +1652,7 @@ function CookbookView({
           ))}
         </div>
       ) : null}
-      <div className="cookbook-grid">
+      <div className={`cookbook-grid${editorOpen ? '' : ' cookbook-grid-list-only'}`}>
         <div className="recipe-list">
           {showEmpty ? (
             <EmptyState
@@ -1684,7 +1667,8 @@ function CookbookView({
             ))
           )}
         </div>
-        <form id="palate-recipe-editor" className="recipe-editor recipe-editor-lifted" onSubmit={onSaveRecipe}>
+        {editorOpen ? (
+        <form id="palate-recipe-editor" className="recipe-editor recipe-editor-lifted" onSubmit={(event) => { onSaveRecipe(event); setEditorOpen(false); }}>
           <div className="recipe-editor-hero">
             {draft.photoDataUrl ? (
               <img src={draft.photoDataUrl} alt="" />
@@ -1721,8 +1705,12 @@ function CookbookView({
             </ul>
           ) : null}
           <textarea value={draft.notes} onChange={(event) => onDraftChange({ ...draft, notes: event.target.value })} placeholder="Private notes" />
-          <button type="submit" className="primary">Save recipe</button>
+          <div className="recipe-editor-actions">
+            <button type="button" className="text-action" onClick={() => setEditorOpen(false)}>Cancel</button>
+            <button type="submit" className="primary">Save recipe</button>
+          </div>
         </form>
+        ) : null}
       </div>
       {importOpen ? (
         <RecipeImportSheet onClose={onCloseImport} onApply={onApplyImport} />
