@@ -149,6 +149,10 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // listens at the shell level).
   'puzzle.cleared',
   'wave.cleared',
+  // Golazo — brackets and share cards are exported for off-platform
+  // friends via encoded links/images; no curated iframe consumes them.
+  'world-cup-bracket',
+  'share-card',
 ]);
 
 /**

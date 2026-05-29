@@ -67,7 +67,7 @@ const WASM_DIR = resolve(PLATFORM_DIR, 'static', '__shippie', 'wasm');
 // onto models.shippie.app is a follow-up hardening step.
 const AI_RUNTIME_ASSETS = ['https://esm.sh/@huggingface/transformers@3.0.0'];
 
-const SKIP = new Set(['platform', 'shippie-ai', 'showcase-golazo']);
+const SKIP = new Set(['platform', 'shippie-ai']);
 
 function buildSdkRuntime() {
   const sdkDir = join(REPO_ROOT, 'packages', 'sdk');
