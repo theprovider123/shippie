@@ -504,10 +504,54 @@ h2 {
 }
 
 .recipe-tile img,
+.recipe-tile .recipe-art,
 .recipe-mark {
   width: 100%;
   aspect-ratio: 1.45;
   object-fit: cover;
+  display: block;
+}
+
+/* media slot wrapper — positions the favourite star over the art */
+.recipe-tile-art {
+  position: relative;
+  display: block;
+}
+.tile-fav {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  color: #ffd24a;
+  font-size: 1.05rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+/* the "why this dish" line — Palate's trust signal under the hero headline */
+.hero-why {
+  display: flex;
+  gap: 0.45rem;
+  align-items: baseline;
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--cooking);
+  letter-spacing: 0.01em;
+}
+.hero-why span {
+  opacity: 0.65;
+}
+
+/* Cooklang export card on the Data tab */
+.export-card {
+  margin: 1.1rem 0;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid rgba(40, 26, 15, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.42);
+}
+.export-card h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.08rem;
 }
 
 .recipe-mark {
@@ -632,6 +676,7 @@ h2 {
 }
 
 .recipe-row img,
+.recipe-row .recipe-art,
 .recipe-row .recipe-mark {
   width: 72px;
   height: 72px;
@@ -2707,6 +2752,38 @@ body {
 
 .recipe-sheet-close:hover {
   background: #fff;
+}
+
+.recipe-sheet-hero-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.recipe-sheet-fav {
+  position: absolute;
+  z-index: 2;
+  bottom: 0.85rem;
+  right: 0.95rem;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #c98318;
+  background: rgba(255, 250, 240, 0.94);
+  box-shadow: 0 6px 18px rgba(40, 26, 15, 0.22);
+  transition: transform 140ms ease;
+}
+.recipe-sheet-fav.is-fav {
+  color: #f0a93b;
+}
+.recipe-sheet-fav:active {
+  transform: scale(0.9);
 }
 
 .recipe-sheet-meta {
