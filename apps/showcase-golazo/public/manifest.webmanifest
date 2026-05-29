@@ -1,0 +1,14 @@
+{
+  "name": "Golazo — Call the World Cup",
+  "short_name": "Golazo",
+  "description": "Call the 2026 World Cup. Build your bracket, share it by link, settle it with your mates. No login. Works offline.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060a14",
+  "theme_color": "#060a14",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

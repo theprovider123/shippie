@@ -211,6 +211,19 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
 
 const curatedAppSpecs: CuratedAppSpec[] = [
   {
+    slug: 'golazo',
+    name: 'Golazo',
+    shortName: 'Golazo',
+    description:
+      'Call the 2026 World Cup. Build your bracket, share it by link, and settle it with your mates. No login, works offline.',
+    appKind: 'local',
+    icon: 'GO',
+    accent: '#16F08B',
+    category: 'games',
+    port: 5253,
+    intents: { provides: ['world-cup-bracket', 'share-card'] },
+  },
+  {
     slug: 'palate',
     name: 'Palate',
     shortName: 'Palate',

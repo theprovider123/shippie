@@ -23,11 +23,13 @@ import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 const PER_PAGE = 48;
 
 /**
- * The 8 tools featured on the launcher's first-visit shelf. Curated by hand
+ * The tools featured on the launcher's first-visit shelf. Curated by hand
  * — we want the strongest demos first, not whatever sorts to the top.
- * Replace freely as new polished tools come online.
+ * Replace freely as new polished tools come online. `golazo` leads for the
+ * 2026 World Cup launch window (it also fills the hero top-four).
  */
 const LAUNCHER_FEATURED_SLUGS = [
+  'golazo',
   'crewtrip',
   'palate',
   'coffee',

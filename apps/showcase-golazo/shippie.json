@@ -1,0 +1,35 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Golazo",
+  "slug": "golazo",
+  "description": "Call the 2026 World Cup, share your bracket by link, and settle it with friends. No login, works offline.",
+  "icon": "/icon.svg",
+  "start_url": "/run/golazo/",
+  "scope": "/run/golazo/",
+  "theme_color": "#0A0E1A",
+  "background_color": "#0A0E1A",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lifecycle": "manual",
+  "data": {
+    "mode": "localStorage",
+    "localStorage": {
+      "prefixes": ["golazo:"]
+    }
+  },
+  "intents": {
+    "provides": ["world-cup-bracket", "matchday-prediction", "share-card"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "social"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-golazo",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "golazo",
+    "schema": "golazo.v1"
+  }
+}
