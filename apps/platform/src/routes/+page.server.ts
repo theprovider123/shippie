@@ -38,6 +38,14 @@ const LAUNCHER_FEATURED_SLUGS = [
   'habit-tracker',
 ] as const;
 
+// WIP apps can exist in production DB before their hosted runtime is ready.
+// Keep them out of launcher/mobile surfaces until explicitly shipped.
+const LAUNCHER_HIDDEN_SLUGS = new Set(['golazo']);
+
+function launcherVisible<T extends { slug: string }>(apps: T[]): T[] {
+  return apps.filter((app) => !LAUNCHER_HIDDEN_SLUGS.has(app.slug));
+}
+
 function marketplaceCategory(category: string | undefined): string {
   if (category === 'cooking') return 'food-drink';
   if (category === 'fitness' || category === 'wellness' || category === 'health') return 'health-fitness';
@@ -51,7 +59,7 @@ function fallbackApps() {
   // alongside "tools" / "social" as a normal category chip. Archived
   // (e.g. live-room → matchday) and labs entries still live on their
   // own routes.
-  return [...curatedAppsBySurface('featured'), ...curatedAppsBySurface('arcade')].map((app) => ({
+  return launcherVisible([...curatedAppsBySurface('featured'), ...curatedAppsBySurface('arcade')].map((app) => ({
     id: app.id,
     slug: app.slug,
     name: app.name,
@@ -70,7 +78,7 @@ function fallbackApps() {
     kind: app.appKind,
     kindStatus: 'confirmed' as PublicKindStatus,
     firstPartySigned: true,
-  }));
+  })));
 }
 
 function filteredFallbackApps(
@@ -98,9 +106,10 @@ function mergeWithBundledApps(
   categoryFilter: string | null,
   remixableFilter: boolean,
 ) {
-  const seen = new Set(rows.map((app) => app.slug));
+  const visibleRows = launcherVisible(rows);
+  const seen = new Set(visibleRows.map((app) => app.slug));
   const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter).apps.filter((app) => !seen.has(app.slug));
-  return [...rows, ...fallback];
+  return [...visibleRows, ...fallback];
 }
 
 export const load: PageServerLoad = async ({ platform, url, depends, locals, setHeaders }) => {
@@ -179,7 +188,10 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
 
   const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
   const categories = [...new Set([...dbCategories, ...fallback.categories])].sort();
-  const appRows = offset === 0 ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter) : dbRows;
+  const appRows =
+    offset === 0
+      ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter)
+      : launcherVisible(dbRows);
 
   if (appRows.length === 0) {
     return {
