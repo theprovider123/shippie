@@ -2,6 +2,7 @@
 // offline and reloads. All keys namespaced under `golazo:`.
 
 import type { Pool, Prediction, Profile, Results } from "./types";
+import type { Sweep } from "./sweeps";
 import { SCHEMA_VERSION } from "./types";
 
 const K = {
@@ -9,6 +10,7 @@ const K = {
   prediction: "golazo:prediction",
   pools: "golazo:pools",
   results: "golazo:results",
+  sweeps: "golazo:sweeps",
 } as const;
 
 function read<T>(key: string, fallback: T): T {
@@ -61,6 +63,14 @@ export function loadResults(): Results {
 }
 export function saveResults(r: Results): void {
   write(K.results, r);
+}
+
+// ── Sweepstakes ──
+export function loadSweeps(): Sweep[] {
+  return read<Sweep[]>(K.sweeps, []);
+}
+export function saveSweeps(sweeps: Sweep[]): void {
+  write(K.sweeps, sweeps);
 }
 
 /** Short, friendly, uppercase pool/uid codes. Avoids ambiguous chars. */

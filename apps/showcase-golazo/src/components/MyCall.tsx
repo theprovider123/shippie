@@ -1,19 +1,28 @@
 import { useState } from "react";
 import { team } from "../data/teams";
+import { GROUP_FIXTURES } from "../data/tournament";
 import { championOf, completion, resolveBracket } from "../lib/bracket";
 import { hasResults, scorePrediction } from "../lib/scoring";
+import { formatKickoff } from "../lib/zones";
 import { useStore } from "../state";
 import { Flag, pad2, teamVars, useCountdown } from "../ui/atoms";
 import { ShareSheet } from "./ShareSheet";
+import { WatchFrom } from "./WatchFrom";
+import { News } from "./News";
 
 const KICKOFF = "2026-06-11T16:00:00Z";
 
 export function MyCall({ onContinue }: { onContinue: () => void }) {
-  const { profile, prediction, results } = useStore();
+  const { profile, prediction, results, setWatchZone, feed, online } = useStore();
   const [share, setShare] = useState(false);
   const c = useCountdown(KICKOFF);
 
   if (!profile) return null;
+  const now = Date.now();
+  const nextFixture =
+    GROUP_FIXTURES.find((f) => new Date(f.kickoff).getTime() > now) ??
+    GROUP_FIXTURES[0];
+  const nk = formatKickoff(nextFixture.kickoff, profile.watchZone);
   const champId = championOf(prediction);
   const champ = champId ? team(champId) : null;
   const pct = Math.round(completion(prediction) * 100);
@@ -36,6 +45,10 @@ export function MyCall({ onContinue }: { onContinue: () => void }) {
         )}
       </header>
 
+      <div className="watch-row">
+        <WatchFrom value={profile.watchZone} onChange={(z) => setWatchZone(z)} />
+      </div>
+
       {!c.done ? (
         <div className="countdown">
           <span className="countdown-label">Kick-off in</span>
@@ -51,6 +64,22 @@ export function MyCall({ onContinue }: { onContinue: () => void }) {
           <span className="countdown-label">The World Cup is live</span>
         </div>
       )}
+
+      <div className="next-match">
+        <span className="next-match-label">Next match</span>
+        <span className="next-match-teams">
+          <Flag id={nextFixture.home} size={20} />
+          {team(nextFixture.home).short}
+          <i>v</i>
+          {team(nextFixture.away).short}
+          <Flag id={nextFixture.away} size={20} />
+        </span>
+        <span className="next-match-when">
+          {nk.day} · {nk.time}
+        </span>
+      </div>
+
+      <News items={feed.news} online={online} />
 
       {champ ? (
         <button

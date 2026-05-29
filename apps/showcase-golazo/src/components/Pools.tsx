@@ -7,7 +7,8 @@ import { shareBracket } from "../lib/share";
 import { useStore } from "../state";
 import type { Pool, Prediction } from "../lib/types";
 import { Flag, teamVars } from "../ui/atoms";
-import { tap } from "../lib/haptics";
+import { confirmBuzz, tap } from "../lib/haptics";
+import { Sweepstakes } from "./Sweepstakes";
 
 interface Row {
   uid: string;
@@ -23,10 +24,26 @@ export function Pools() {
   const [open, setOpen] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [sweepMembers, setSweepMembers] = useState<string[] | null>(null);
+
+  if (sweepMembers) {
+    return (
+      <Sweepstakes
+        initialMembers={sweepMembers}
+        onBack={() => setSweepMembers(null)}
+      />
+    );
+  }
 
   const selected = pools.find((p) => p.code === open) ?? null;
   if (selected) {
-    return <PoolDetail pool={selected} onBack={() => setOpen(null)} />;
+    return (
+      <PoolDetail
+        pool={selected}
+        onBack={() => setOpen(null)}
+        onSweep={(members) => setSweepMembers(members)}
+      />
+    );
   }
 
   function create() {
@@ -107,6 +124,14 @@ export function Pools() {
         </div>
       </div>
 
+      <button
+        className="ghost-btn wide"
+        style={{ marginTop: 18 }}
+        onClick={() => { tap(); setSweepMembers([]); }}
+      >
+        🎲 Run a sweepstake
+      </button>
+
       {profile && (
         <p className="pools-tip">
           Tip: a pool is your private table — add friends by pasting the link
@@ -117,11 +142,27 @@ export function Pools() {
   );
 }
 
-function PoolDetail({ pool, onBack }: { pool: Pool; onBack: () => void }) {
+function PoolDetail({
+  pool,
+  onBack,
+  onSweep,
+}: {
+  pool: Pool;
+  onBack: () => void;
+  onSweep: (members: string[]) => void;
+}) {
   const store = useStore();
   const { profile, prediction, results } = store;
   const [link, setLink] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [rename, setRename] = useState(pool.name);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const memberNames = [
+    ...(profile ? [profile.name] : []),
+    ...pool.entries.map((e) => e.name),
+  ];
 
   const rows: Row[] = [
     ...(profile
@@ -249,6 +290,70 @@ function PoolDetail({ pool, onBack }: { pool: Pool; onBack: () => void }) {
           </button>
         </div>
         {err && <p className="form-err">{err}</p>}
+      </div>
+
+      <div className="pool-manage">
+        <button
+          className="ghost-btn wide"
+          onClick={() => { tap(); onSweep(memberNames); }}
+        >
+          🎲 Sweepstake this group
+        </button>
+
+        {renaming ? (
+          <div className="pool-form-row">
+            <input
+              className="field-input"
+              autoFocus
+              value={rename}
+              onChange={(e) => setRename(e.target.value.slice(0, 28))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  store.renamePool(pool.code, rename);
+                  setRenaming(false);
+                }
+              }}
+            />
+            <button
+              className="cta sm"
+              onClick={() => {
+                store.renamePool(pool.code, rename);
+                setRenaming(false);
+                tap();
+              }}
+            >
+              Save
+            </button>
+          </div>
+        ) : (
+          <div className="pool-detail-actions">
+            <button
+              className="ghost-btn"
+              onClick={() => { tap(); setRename(pool.name); setRenaming(true); }}
+            >
+              Rename
+            </button>
+            {confirmDelete ? (
+              <button
+                className="danger-btn"
+                onClick={() => {
+                  confirmBuzz();
+                  store.removePool(pool.code);
+                  onBack();
+                }}
+              >
+                Tap again to delete
+              </button>
+            ) : (
+              <button
+                className="danger-btn"
+                onClick={() => { tap(); setConfirmDelete(true); }}
+              >
+                Delete group
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
