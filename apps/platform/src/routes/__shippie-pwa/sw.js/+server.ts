@@ -26,7 +26,10 @@ const MODEL_CACHE = 'shippie.models.v1';
 const APPS_PREFIX = '/apps';
 const RUNTIME_PREFIX = '/__shippie-run';
 const SHELL_DOCUMENTS = ['/', '/container', '/you'];
-const KERNEL_URLS = ['/__shippie/launcher.html', '/__shippie/launcher.js'];
+const KERNEL_HTML_URL = '/__shippie/launcher';
+const KERNEL_HTML_ALIASES = [KERNEL_HTML_URL, '/__shippie/launcher.html'];
+const KERNEL_SCRIPT_URL = '/__shippie/launcher.js';
+const KERNEL_URLS = [...KERNEL_HTML_ALIASES, KERNEL_SCRIPT_URL];
 __OFFLINE_CAPSULE_SW_HELPERS__
 // Phase 2: same-origin /__esm/<pkg> proxy serves the pinned
 // Transformers runtime + its transitive graph through our own zone.
@@ -244,7 +247,19 @@ function capsuleManifestKey(slug, manifestHash) {
 }
 
 function launcherUrlForSlug(slug) {
-  return '/__shippie/launcher.html' + (slug ? '?slug=' + encodeURIComponent(slug) : '');
+  return KERNEL_HTML_URL + (slug ? '?slug=' + encodeURIComponent(slug) : '');
+}
+
+function responseInit(res) {
+  return { status: res.status, statusText: res.statusText, headers: new Headers(res.headers) };
+}
+
+function responseFromBytes(bytes, res) {
+  return new Response(bytes.slice(0), responseInit(res));
+}
+
+function navigationSafeResponse(res) {
+  return new Response(res.body, responseInit(res));
 }
 
 function shellKeysForRequest(req) {
@@ -337,12 +352,20 @@ async function cachedCapsuleManifest(pointer) {
 }
 
 async function warmKernel(cache) {
-  for (const url of KERNEL_URLS) {
+  for (const url of [KERNEL_HTML_URL, KERNEL_SCRIPT_URL]) {
     try {
       const req = new Request(url);
       const res = await fetch(req);
-      const ok = url.endsWith('.html') ? expectedDocumentResponse(res) : expectedAssetResponse(req, res);
-      if (ok) await cache.put(url, res.clone()).catch(() => {});
+      const ok = url === KERNEL_HTML_URL ? expectedDocumentResponse(res) : expectedAssetResponse(req, res);
+      if (!ok) continue;
+      if (url === KERNEL_HTML_URL) {
+        const bytes = await res.clone().arrayBuffer();
+        await Promise.allSettled(
+          KERNEL_HTML_ALIASES.map((alias) => cache.put(alias, responseFromBytes(bytes, res))),
+        );
+      } else {
+        await cache.put(url, res.clone()).catch(() => {});
+      }
     } catch {
       /* best effort — next online visit can repair the kernel */
     }
@@ -350,13 +373,18 @@ async function warmKernel(cache) {
 }
 
 async function cachedLauncher(cache, slug) {
-  const hit = await cache.match('/__shippie/launcher.html');
-  if (hit) return hit;
+  for (const alias of KERNEL_HTML_ALIASES) {
+    const hit = await cache.match(alias);
+    if (hit) return navigationSafeResponse(hit);
+  }
   try {
-    const res = await fetch('/__shippie/launcher.html');
+    const res = await fetch(KERNEL_HTML_URL);
     if (expectedDocumentResponse(res)) {
-      await cache.put('/__shippie/launcher.html', res.clone()).catch(() => {});
-      return res;
+      const bytes = await res.clone().arrayBuffer();
+      await Promise.allSettled(
+        KERNEL_HTML_ALIASES.map((alias) => cache.put(alias, responseFromBytes(bytes, res))),
+      );
+      return responseFromBytes(bytes, res);
     }
   } catch {
     /* fall through */
@@ -891,15 +919,20 @@ self.addEventListener('fetch', (e) => {
   if (KERNEL_URLS.includes(url.pathname)) {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
-      const cached = await cache.match(url.pathname);
+      if (KERNEL_HTML_ALIASES.includes(url.pathname)) {
+        const cached = await cachedLauncher(cache);
+        if (cached) return cached;
+        return offlineResponse();
+      }
+      const cached = await cache.match(KERNEL_SCRIPT_URL);
       if (cached) return cached;
       try {
         const res = await fetch(req);
-        const ok = url.pathname.endsWith('.html') ? expectedDocumentResponse(res) : expectedAssetResponse(req, res);
-        if (ok) cache.put(url.pathname, res.clone()).catch(() => {});
+        const ok = expectedAssetResponse(req, res);
+        if (ok) cache.put(KERNEL_SCRIPT_URL, res.clone()).catch(() => {});
         return res;
       } catch {
-        return url.pathname.endsWith('.html') ? offlineResponse() : new Response('', { status: 504 });
+        return new Response('', { status: 504 });
       }
     })());
     return;

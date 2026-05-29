@@ -72,6 +72,7 @@ async function purgePlatformDocuments(page) {
             path.startsWith('/_app/immutable/') ||
             path.startsWith('/__shippie-run/') ||
             path.startsWith('/__shippie/wasm/') ||
+            path === '/__shippie/launcher' ||
             path === '/__shippie/launcher.html' ||
             path === '/__shippie/launcher.js' ||
             path.startsWith('/__esm/') ||
