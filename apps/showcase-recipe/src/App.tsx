@@ -2259,7 +2259,12 @@ function ShoppingView({
   onToggle: (item: ShoppingItem) => void;
   onNavigate: (tab: Tab) => void;
 }) {
-  const grouped = useMemo(() => groupByAisle(shopping, aisleOrder), [shopping, aisleOrder]);
+  // "Checked items disappear from the noise" — make that literally true: only
+  // active (unchecked) items are grouped by aisle; checked items collect in a
+  // quiet "Got it" tray at the bottom (still tappable to undo).
+  const active = useMemo(() => shopping.filter((item) => !item.checked), [shopping]);
+  const done = useMemo(() => shopping.filter((item) => item.checked), [shopping]);
+  const grouped = useMemo(() => groupByAisle(active, aisleOrder), [active, aisleOrder]);
   return (
     <section className="page-shell">
       <div className="toolbar">
@@ -2282,6 +2287,9 @@ function ShoppingView({
         />
       ) : (
         <div className="shopping-list shop-grouped">
+          {active.length === 0 ? (
+            <p className="shop-allclear">All checked off — your list is clear. 🛒</p>
+          ) : null}
           {grouped.map((group) => (
             <section key={group.key} className="shop-aisle">
               <header className="shop-aisle-header">
@@ -2291,7 +2299,7 @@ function ShoppingView({
               {group.items.map((item) => {
                 const badge = SOURCE_BADGE[item.source];
                 return (
-                  <button key={item.id} type="button" className={item.checked ? 'checked' : ''} onClick={() => onToggle(item)}>
+                  <button key={item.id} type="button" onClick={() => onToggle(item)}>
                     <span>{item.checked ? '✓' : ''}</span>
                     <strong>{item.name}</strong>
                     <small className={`shop-source-badge ${badge.tone}`}>{badge.label}</small>
@@ -2300,6 +2308,18 @@ function ShoppingView({
               })}
             </section>
           ))}
+          {done.length > 0 ? (
+            <details className="shop-done">
+              <summary>Got it · {done.length}</summary>
+              {done.map((item) => (
+                <button key={item.id} type="button" className="checked" onClick={() => onToggle(item)}>
+                  <span>✓</span>
+                  <strong>{item.name}</strong>
+                  <small className="shop-undo">undo</small>
+                </button>
+              ))}
+            </details>
+          ) : null}
         </div>
       )}
     </section>

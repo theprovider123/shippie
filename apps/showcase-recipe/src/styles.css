@@ -835,6 +835,53 @@ h2 {
   text-decoration: line-through;
 }
 
+.shop-allclear {
+  margin: 0.5rem 0 1rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--sage-deep);
+}
+
+/* Quiet "Got it" tray — checked items collapse out of the active list. */
+.shop-done {
+  margin-top: 1.4rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.8rem;
+}
+
+.shop-done > summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.3rem 0;
+}
+
+.shop-done > summary::-webkit-details-marker {
+  display: none;
+}
+
+.shop-done > summary::before {
+  content: '▸ ';
+}
+
+.shop-done[open] > summary::before {
+  content: '▾ ';
+}
+
+.shop-undo {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--cooking);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
 .empty,
 .measure {
   color: #655646;
