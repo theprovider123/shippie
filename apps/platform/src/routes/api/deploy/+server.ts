@@ -123,6 +123,11 @@ export const POST: RequestHandler = async (event) => {
             parentAppId: remixApp.id,
             parentVersion: remixApp.latestVersion,
             license: remixApp.license,
+            // Remix-depth policy: a child of a remix is NOT itself remixable by
+            // default (closed). This is a deliberate choice, not an accident —
+            // the maker re-opens remixing explicitly from the app profile, which
+            // requires publishing source + license first. Keeps clone chains
+            // opt-in instead of propagating automatically.
             remixAllowed: false,
           }
         : undefined,
