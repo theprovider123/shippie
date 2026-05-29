@@ -28,6 +28,7 @@ import { publicCapabilityBadgesWithProven } from '$server/marketplace/capability
 import { readAppMeta, readAppProfile } from '$server/deploy/kv-write';
 import { canonicalAppUrl, canonicalShowcaseTarget, isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { curatedApps } from '$lib/container/state';
+import { normalizeCategory, VALID_CATEGORIES } from '$lib/curation/schema';
 import { publicRemixInfoForSlug } from '$server/remix/eligibility';
 import {
   connectionBadgesFromConnections,
@@ -238,7 +239,7 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
       tagline: app.tagline,
       description: app.description,
       type: app.type,
-      category: app.category,
+      category: normalizeCategory(app.category, 'lenient'),
       iconUrl: app.iconUrl,
       themeColor: app.themeColor,
       upvoteCount: app.upvoteCount,
@@ -328,7 +329,7 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
 function bundledAppDetail(slug: string) {
   const app = curatedApps.find((item) => item.slug === slug);
   if (!app || !isFirstPartyShowcase(slug)) return null;
-  const category = app.category ?? 'tools';
+  const category = normalizeCategory(app.category, 'lenient');
   return {
     app: {
       slug: app.slug,
@@ -425,13 +426,17 @@ export const actions: Actions = {
     const nextSlug = cleanSlug(form.get('slug'));
     const name = clean(form.get('name'), 80);
     const tagline = clean(form.get('tagline'), 160);
-    const category = clean(form.get('category'), 48);
+    // Maker-submitted: normalise strict so freeform/legacy values are rejected.
+    const category = normalizeCategory(clean(form.get('category'), 48), 'strict');
     const sourceRepo = cleanUrl(form.get('sourceRepo'));
     const license = clean(form.get('license'), 80);
     const remixAllowed = Boolean(sourceRepo && license && form.get('remixAllowed') === 'on');
 
-    if (!nextSlug || !name || !category) {
-      return fail(400, { profileError: 'Slug, name, and category are required.' });
+    if (!nextSlug || !name) {
+      return fail(400, { profileError: 'Slug and name are required.' });
+    }
+    if (!category) {
+      return fail(400, { profileError: `Category must be one of: ${VALID_CATEGORIES.join(', ')}.` });
     }
 
     const slugChanged = nextSlug !== app.slug;

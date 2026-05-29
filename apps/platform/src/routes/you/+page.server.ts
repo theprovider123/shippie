@@ -1,20 +1,13 @@
 import { desc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { curatedAppsBySurface } from '$lib/container/state';
+import { normalizeCategory } from '$lib/curation/schema';
 import { isFirstPartyShowcase } from '$lib/showcase-slugs';
 import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic } from '$server/db/queries/apps';
 
 const CATALOG_LIMIT = 120;
-
-function marketplaceCategory(category: string | undefined): string {
-  if (category === 'cooking') return 'food-drink';
-  if (category === 'fitness' || category === 'wellness' || category === 'health') return 'health-fitness';
-  if (category === 'journal' || category === 'money') return 'productivity';
-  if (category === 'memory' || category === 'home' || category === 'family' || category === 'travel') return 'lifestyle';
-  return category ?? 'tools';
-}
 
 function fallbackApps() {
   return [...curatedAppsBySurface('featured'), ...curatedAppsBySurface('arcade')].map((app) => ({
@@ -24,7 +17,7 @@ function fallbackApps() {
     tagline: app.description,
     description: app.description,
     type: 'app',
-    category: marketplaceCategory(app.category),
+    category: normalizeCategory(app.category, 'lenient'),
     iconUrl: null,
     themeColor: app.accent,
     upvoteCount: 0,

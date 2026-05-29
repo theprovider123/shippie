@@ -7,16 +7,21 @@
 
 import type { AppKind } from '$lib/types/app-kind';
 
+// One label per controlled category in VALID_CATEGORIES, plus a few
+// surface/legacy aliases that still surface in older data. `displayCategory`
+// title-cases anything missing, so this only needs the friendlier names.
 export const CATEGORY_LABELS: Record<string, string> = {
-  arcade: 'Arcade',
-  creativity: 'Creativity',
+  // Controlled vocab (keep in sync with curation/schema.ts VALID_CATEGORIES)
   'food-drink': 'Food & drink',
-  games: 'Games',
   'health-fitness': 'Health & fitness',
-  lifestyle: 'Lifestyle',
-  productivity: 'Productivity',
   social: 'Social',
+  games: 'Games',
   tools: 'Tools',
+  creative: 'Creative',
+  productivity: 'Productivity',
+  lifestyle: 'Lifestyle',
+  // Surface alias (the /arcade rail labels its surface this way)
+  arcade: 'Arcade',
 };
 
 /**

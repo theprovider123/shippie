@@ -1,7 +1,12 @@
 <script lang="ts">
+  import { VALID_CATEGORIES, normalizeCategory } from '$lib/curation/schema';
+  import { displayCategory } from '$lib/marketplace/display-text';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const cover = $derived(data.app.screenshotUrls?.[0] ?? '');
+  // Coerce the stored value (which may be a pre-migration legacy string) onto
+  // the controlled vocab so the select has a valid default selection.
+  const selectedCategory = $derived(normalizeCategory(data.app.category, 'lenient'));
 </script>
 
 <svelte:head><title>Profile · {data.app.name}</title></svelte:head>
@@ -27,7 +32,11 @@
     </label>
     <label>
       Category
-      <input name="category" value={data.app.category} maxlength="48" required />
+      <select name="category" required>
+        {#each VALID_CATEGORIES as cat}
+          <option value={cat} selected={cat === selectedCategory}>{displayCategory(cat)}</option>
+        {/each}
+      </select>
     </label>
     <label class="wide">
       Description

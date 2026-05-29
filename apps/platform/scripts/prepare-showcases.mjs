@@ -571,11 +571,11 @@ function writeFirstPartyCuration(slugs) {
     `// showcase's shippie.json#curation block.\n` +
     `//\n` +
     `// surface: 'featured' | 'arcade' | 'labs' | 'archived'\n` +
-    `// category: 'food-drink' | 'health-fitness' | 'social' | 'games' | 'tools' | 'creative'\n` +
+    `// category: ${SHARED_VALID_CATEGORIES.map((c) => `'${c}'`).join(' | ')}\n` +
     `// subcategory: 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy' (optional)\n` +
     `// successor: alias target — only set when the named slug is in the current bake\n\n` +
     `export type CurationSurface = 'featured' | 'arcade' | 'labs' | 'archived';\n` +
-    `export type CurationCategory = 'food-drink' | 'health-fitness' | 'social' | 'games' | 'tools' | 'creative';\n` +
+    `export type CurationCategory = ${SHARED_VALID_CATEGORIES.map((c) => `'${c}'`).join(' | ')};\n` +
     `export type CurationSubcategory = 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy';\n\n` +
     `export interface CurationEntry {\n` +
     `  slug: string;\n` +

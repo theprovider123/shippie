@@ -6,7 +6,7 @@
  *   - Otherwise, look for shippie.json in the zip.
  *   - Otherwise auto-draft from defaults + local-data passport metadata.
  */
-import { parseMakerCuration, type MakerCuration } from '$lib/curation/schema';
+import { normalizeCategory, parseMakerCuration, type MakerCuration } from '$lib/curation/schema';
 
 export interface ShippieJsonLite {
   version?: number;
@@ -211,7 +211,9 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         name: typeof m.name === 'string' ? m.name : titleCase(input.slug),
         tagline: typeof m.tagline === 'string' ? m.tagline : undefined,
         description: typeof m.description === 'string' ? m.description : undefined,
-        category: typeof m.category === 'string' ? m.category : 'tools',
+        // Normalise to the controlled vocab so apps.category can never persist
+        // a freeform/legacy value. Lenient: unknown maker strings → 'tools'.
+        category: normalizeCategory(m.category, 'lenient'),
         theme_color: typeof m.theme_color === 'string' ? m.theme_color : '#E8603C',
         background_color: typeof m.background_color === 'string' ? m.background_color : '#ffffff',
         icon: typeof m.icon === 'string' ? m.icon : undefined,

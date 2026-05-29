@@ -27,6 +27,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, desc, eq } from 'drizzle-orm';
 import { getDrizzleClient, schema } from '$server/db/client';
+import { DEFAULT_CATEGORY } from '$lib/curation/schema';
 import { resolveRequestUserId } from '$server/auth/resolve-user';
 import { getInstallationToken, generateAppJwt } from '$server/github/app';
 import type { GithubInstallation } from '$server/db/schema/github-installations';
@@ -173,7 +174,9 @@ export const POST: RequestHandler = async (event) => {
         slug: parsed.slug,
         name: parsed.slug,
         type: 'web_app',
-        category: 'other',
+        // GitHub deploys have no maker-chosen category at create time; default
+        // to the controlled catch-all instead of the out-of-vocab 'other'.
+        category: DEFAULT_CATEGORY,
         sourceType: 'github',
         makerId: who.userId,
         githubRepo: parsed.repo_full_name,

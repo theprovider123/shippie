@@ -7,6 +7,7 @@
  */
 import { eq } from 'drizzle-orm';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import { normalizeCategory } from '$lib/curation/schema';
 import { getDrizzleClient, schema } from '../db/client';
 import { writeWrapMeta, writeAppMeta } from './kv-write';
 import { resolveLiveUrl, type DeployLineageOverride } from './pipeline';
@@ -69,7 +70,7 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
       name: input.name,
       tagline: input.tagline ?? null,
       type: input.type,
-      category: input.category,
+      category: normalizeCategory(input.category, 'lenient'),
       makerId: input.makerId,
       organizationId: input.organizationId ?? null,
       sourceType: 'zip',

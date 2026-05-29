@@ -14,6 +14,7 @@
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
 import { curatedAppsBySurface } from '$lib/container/state';
+import { normalizeCategory } from '$lib/curation/schema';
 import { isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
@@ -46,14 +47,6 @@ function launcherVisible<T extends { slug: string }>(apps: T[]): T[] {
   return apps.filter((app) => !LAUNCHER_HIDDEN_SLUGS.has(app.slug));
 }
 
-function marketplaceCategory(category: string | undefined): string {
-  if (category === 'cooking') return 'food-drink';
-  if (category === 'fitness' || category === 'wellness' || category === 'health') return 'health-fitness';
-  if (category === 'journal' || category === 'money') return 'productivity';
-  if (category === 'memory' || category === 'home' || category === 'family' || category === 'travel') return 'lifestyle';
-  return category ?? 'tools';
-}
-
 function fallbackApps() {
   // Marketplace home shows featured + arcade together so "games" sits
   // alongside "tools" / "social" as a normal category chip. Archived
@@ -66,7 +59,7 @@ function fallbackApps() {
     tagline: app.description,
     description: app.description,
     type: 'app',
-    category: marketplaceCategory(app.category),
+    category: normalizeCategory(app.category, 'lenient'),
     iconUrl: null,
     themeColor: app.accent,
     upvoteCount: 0,
@@ -187,7 +180,11 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   }
 
   const fallback = filteredFallbackApps(query, categoryFilter, remixableFilter);
-  const categories = [...new Set([...dbCategories, ...fallback.categories])].sort();
+  // Normalise DB-derived chips to the controlled vocab so the chip rail can't
+  // surface a stray legacy value (e.g. a pre-migration 'cooking' row). The
+  // 0040 data migration remaps existing rows; this is the defensive net.
+  const normalizedDbCategories = dbCategories.map((c) => normalizeCategory(c, 'lenient'));
+  const categories = [...new Set([...normalizedDbCategories, ...fallback.categories])].sort();
   const appRows =
     offset === 0
       ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter)

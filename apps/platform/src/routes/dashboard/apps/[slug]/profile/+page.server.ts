@@ -2,6 +2,7 @@ import { fail, redirect, error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
+import { normalizeCategory, VALID_CATEGORIES } from '$lib/curation/schema';
 import type { App as AppRow } from '$server/db/schema/apps';
 
 export const load: PageServerLoad = async ({ parent, platform }) => {
@@ -29,7 +30,9 @@ export const actions: Actions = {
     const name = clean(form.get('name'), 80);
     const tagline = clean(form.get('tagline'), 160);
     const description = clean(form.get('description'), 2000);
-    const category = clean(form.get('category'), 48);
+    // Maker-submitted: normalise strict so an invalid/freeform value is
+    // rejected rather than persisted outside the controlled vocab.
+    const category = normalizeCategory(clean(form.get('category'), 48), 'strict');
     const iconUrl = cleanUrl(form.get('iconUrl'));
     const coverUrl = cleanUrl(form.get('coverUrl'));
     const sourceRepo = cleanUrl(form.get('sourceRepo'));
@@ -39,7 +42,10 @@ export const actions: Actions = {
     const license = clean(form.get('license'), 80);
     const remixAllowed = form.get('remixAllowed') === 'on';
 
-    if (!name || !category) return fail(400, { error: 'Name and category are required.' });
+    if (!name) return fail(400, { error: 'Name is required.' });
+    if (!category) {
+      return fail(400, { error: `Category must be one of: ${VALID_CATEGORIES.join(', ')}.` });
+    }
 
     const db = getDrizzleClient(platform.env.DB);
     await db

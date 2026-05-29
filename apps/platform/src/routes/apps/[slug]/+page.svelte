@@ -6,9 +6,13 @@
   import LocalAppActions from '$lib/components/marketplace/LocalAppActions.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { toast } from '$lib/stores/toast';
+  import { VALID_CATEGORIES, normalizeCategory } from '$lib/curation/schema';
+  import { displayCategory } from '$lib/marketplace/display-text';
 
   let { data, form }: PageProps = $props();
   let savingProfile = $state(false);
+  // Coerce stored value (may be a pre-migration legacy string) for the select.
+  const selectedCategory = $derived(normalizeCategory(data.app.category, 'lenient'));
 
   // Share copy varies by viewer:
   //   public app, any viewer → public marketplace URL
@@ -106,7 +110,7 @@
         <h1 class="title">{data.app.name}</h1>
         <p class="tagline">{data.app.tagline ?? data.app.description ?? ''}</p>
         <div class="hero-tags">
-          <p class="kind">{typeLabel} · {data.app.category}</p>
+          <p class="kind">{typeLabel} · {displayCategory(data.app.category)}</p>
           {#each data.connectionBadges as badge (badge.label)}
             <span class="connection-badge connection-{badge.tone}" title={badge.title}>{badge.label}</span>
           {/each}
@@ -351,7 +355,11 @@
           </label>
           <label>
             Category
-            <input name="category" value={data.app.category} maxlength="48" required />
+            <select name="category" required>
+              {#each VALID_CATEGORIES as cat}
+                <option value={cat} selected={cat === selectedCategory}>{displayCategory(cat)}</option>
+              {/each}
+            </select>
           </label>
           <label>
             Source repo
