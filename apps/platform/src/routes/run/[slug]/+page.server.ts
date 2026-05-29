@@ -1,9 +1,15 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { canonicalShowcaseTarget, containerSlugForRequest } from '$lib/showcase-slugs';
+import {
+  canonicalShowcaseTarget,
+  containerSlugForRequest,
+  isFirstPartyShowcase,
+} from '$lib/showcase-slugs';
+import { getDrizzleClient } from '$server/db/client';
+import { resolveSlugAlias } from '$server/slug-aliases';
 import { loadContainerPageData } from '$server/container-page-data';
 
-export const load: PageServerLoad = ({ platform, params, url, setHeaders }) => {
+export const load: PageServerLoad = async ({ platform, params, url, setHeaders }) => {
   // If the URL slug differs from its canonical (i.e. user hit an old
   // alias like /run/live-room), 302 to /run/<canonical> so the URL
   // bar tells the truth and shareable URLs canonicalise. Matches the
@@ -20,6 +26,17 @@ export const load: PageServerLoad = ({ platform, params, url, setHeaders }) => {
     const query = search.toString();
     const target = `/run/${encodeURIComponent(canonical.slug)}${query ? `?${query}` : ''}`;
     throw redirect(302, target);
+  }
+
+  // Third-party rename fallback. First-party aliases are handled above by
+  // canonicalShowcaseTarget (zero-DB); for maker apps, a retired slug 302s to
+  // the current slug. Scoped to non-first-party so the showcase hot path is
+  // untouched — one indexed PK lookup only for maker-app runtime URLs.
+  if (platform?.env.DB && !isFirstPartyShowcase(canonical.slug)) {
+    const aliasTarget = await resolveSlugAlias(getDrizzleClient(platform.env.DB), canonical.slug);
+    if (aliasTarget && aliasTarget !== canonical.slug) {
+      throw redirect(302, `/run/${encodeURIComponent(aliasTarget)}${url.search}`);
+    }
   }
 
   setHeaders({

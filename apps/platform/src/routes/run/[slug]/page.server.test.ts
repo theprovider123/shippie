@@ -46,9 +46,9 @@ describe('/run/[slug]/+page.server load', () => {
     ['meal-planner', '/run/palate?tab=plan&from=meal-planner'],
     ['pantry-scanner', '/run/palate?tab=pantry&from=pantry-scanner'],
   ] as const) {
-    test(`/run/${oldSlug} throws redirect(302) to canonical successor`, () => {
+    test(`/run/${oldSlug} throws redirect(302) to canonical successor`, async () => {
       try {
-        callLoad({ slug: oldSlug });
+        await callLoad({ slug: oldSlug });
         throw new Error('expected redirect to be thrown');
       } catch (err) {
         // SvelteKit's `redirect()` throws an object with status + location.
@@ -64,9 +64,9 @@ describe('/run/[slug]/+page.server load', () => {
     ['memory-grid', 'memory-grid'],
     ['reaction', 'reaction'],
   ] as const) {
-    test(`/run/${oldSlug} throws mode-aware redirect to Daily Puzzle`, () => {
+    test(`/run/${oldSlug} throws mode-aware redirect to Daily Puzzle`, async () => {
       try {
-        callLoad({ slug: oldSlug });
+        await callLoad({ slug: oldSlug });
         throw new Error('expected redirect to be thrown');
       } catch (err) {
         const r = err as { status?: number; location?: string };
@@ -76,13 +76,13 @@ describe('/run/[slug]/+page.server load', () => {
     });
   }
 
-  test('canonical /run/palate does NOT redirect (proceeds to load container data)', () => {
+  test('canonical /run/palate does NOT redirect (proceeds to load container data)', async () => {
     // Canonical slug → no redirect thrown. Without platform bindings
     // the load will fail differently (calling loadContainerPageData
     // with platform=undefined), but it should NOT throw a 302 first.
     let threwRedirect = false;
     try {
-      callLoad({ slug: 'palate' });
+      await callLoad({ slug: 'palate' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       if (r.status === 302) threwRedirect = true;
@@ -90,9 +90,9 @@ describe('/run/[slug]/+page.server load', () => {
     expect(threwRedirect).toBe(false);
   });
 
-  test('redirect preserves query string', () => {
+  test('redirect preserves query string', async () => {
     try {
-      callLoad({ slug: 'live-room', search: '?invite=abc' });
+      await callLoad({ slug: 'live-room', search: '?invite=abc' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
@@ -101,9 +101,9 @@ describe('/run/[slug]/+page.server load', () => {
     }
   });
 
-  test('mode-aware redirect preserves existing query and injects target params', () => {
+  test('mode-aware redirect preserves existing query and injects target params', async () => {
     try {
-      callLoad({ slug: 'sudoku', search: '?invite=abc' });
+      await callLoad({ slug: 'sudoku', search: '?invite=abc' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
@@ -111,9 +111,9 @@ describe('/run/[slug]/+page.server load', () => {
     }
   });
 
-  test('mode-aware redirect target params win over conflicting query params', () => {
+  test('mode-aware redirect target params win over conflicting query params', async () => {
     try {
-      callLoad({ slug: 'reaction', search: '?mode=sudoku&from=old' });
+      await callLoad({ slug: 'reaction', search: '?mode=sudoku&from=old' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
@@ -121,9 +121,9 @@ describe('/run/[slug]/+page.server load', () => {
     }
   });
 
-  test('palate tab redirects preserve existing query and inject tab params', () => {
+  test('palate tab redirects preserve existing query and inject tab params', async () => {
     try {
-      callLoad({ slug: 'shopping-list', search: '?invite=abc' });
+      await callLoad({ slug: 'shopping-list', search: '?invite=abc' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
