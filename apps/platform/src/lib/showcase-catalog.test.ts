@@ -85,6 +85,33 @@ describe('showcase catalog drift check', () => {
   test('showcase install precache stays empty', () => {
     expect(SHOWCASE_PRECACHE).toEqual([]);
   });
+
+  test('homepage launcher tiles have real launch targets', () => {
+    const homeSource = readFileSync(join(REPO_ROOT, 'apps', 'platform', 'src', 'routes', '+page.svelte'), 'utf8');
+    const homepageTiles = [...homeSource.matchAll(/<ToolTile[\s\S]*?\/>/g)].map((match) => match[0]);
+    expect(homepageTiles.length).toBeGreaterThan(0);
+    for (const tile of homepageTiles) {
+      expect(tile, 'homepage ToolTile must navigate to its /run route').toContain('href={runHref(app.slug)}');
+    }
+
+    const savedDockSource = readFileSync(
+      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'marketplace', 'SavedDock.svelte'),
+      'utf8',
+    );
+    const savedDockTiles = [...savedDockSource.matchAll(/<ToolTile[\s\S]*?\/>/g)].map((match) => match[0]);
+    expect(savedDockTiles.length).toBeGreaterThan(0);
+    for (const tile of savedDockTiles) {
+      expect(tile, 'saved dock ToolTile must navigate to its /run route').toContain('href={runHref(app.slug)}');
+    }
+  });
+
+  test('card launch controls keep a clickable box', () => {
+    const tileSource = readFileSync(
+      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'ToolTile.svelte'),
+      'utf8',
+    );
+    expect(tileSource).not.toMatch(/\\.tile-card \\.tile-launch\\s*{[^}]*display:\\s*contents/s);
+  });
 });
 
 function slugsFromShowcaseDirs(): string[] {

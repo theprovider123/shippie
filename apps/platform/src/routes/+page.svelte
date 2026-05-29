@@ -202,6 +202,10 @@
     const qs = params.toString();
     return qs ? `/?${qs}` : '/';
   }
+
+  function runHref(slug: string): string {
+    return `/run/${encodeURIComponent(slug)}`;
+  }
 </script>
 
 <svelte:head>
@@ -300,6 +304,7 @@
                 <ToolTile
                   app={launcherAppToToolTile(app)}
                   density="card"
+                  href={runHref(app.slug)}
                   pinned={pinnedSet.has(app.slug)}
                   recentLabel={recentLabel(app.slug)}
                   onInspect={() => inspectApp(app)}
@@ -326,6 +331,7 @@
                     <ToolTile
                       app={launcherAppToToolTile(app)}
                       density="card"
+                      href={runHref(app.slug)}
                       pinned={pinnedSet.has(app.slug)}
                       recentLabel={recentLabel(app.slug)}
                       onInspect={() => inspectApp(app)}
@@ -378,6 +384,7 @@
               <ToolTile
                 app={launcherAppToToolTile(app)}
                 density="card"
+                href={runHref(app.slug)}
                 pinned={pinnedSet.has(app.slug)}
                 recentLabel={recentLabel(app.slug)}
                 onInspect={() => inspectApp(app)}
@@ -400,6 +407,7 @@
                 <ToolTile
                   app={launcherAppToToolTile(app)}
                   density="card"
+                  href={runHref(app.slug)}
                   pinned={pinnedSet.has(app.slug)}
                   recentLabel={recentLabel(app.slug)}
                   onInspect={() => inspectApp(app)}

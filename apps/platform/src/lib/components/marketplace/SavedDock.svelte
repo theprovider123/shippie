@@ -43,6 +43,10 @@
       toast.push({ kind: 'error', message: 'Could not save this tool yet.' });
     });
   }
+
+  function runHref(slug: string): string {
+    return `/run/${encodeURIComponent(slug)}`;
+  }
 </script>
 
 {#if sealedApps.length > 0}
@@ -69,6 +73,7 @@
           <ToolTile
             app={launcherAppToToolTile(app)}
             density="dock"
+            href={runHref(app.slug)}
             pinned={true}
           />
         </li>
