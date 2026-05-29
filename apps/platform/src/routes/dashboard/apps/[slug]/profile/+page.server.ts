@@ -2,6 +2,8 @@ import { fail, redirect, error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
+import { normalizeCategory } from '$lib/curation/schema';
+import { ingestIcon, isIngestableIconUrl } from '$server/icons/ingest';
 import type { App as AppRow } from '$server/db/schema/apps';
 
 export const load: PageServerLoad = async ({ parent, platform }) => {
@@ -29,8 +31,9 @@ export const actions: Actions = {
     const name = clean(form.get('name'), 80);
     const tagline = clean(form.get('tagline'), 160);
     const description = clean(form.get('description'), 2000);
-    const category = clean(form.get('category'), 48);
-    const iconUrl = cleanUrl(form.get('iconUrl'));
+    // Maker-submitted: normalise strict so an invalid/freeform value is
+    // rejected rather than persisted outside the controlled vocab.
+    const category = normalizeCategory(clean(form.get('category'), 48), 'strict');
     const coverUrl = cleanUrl(form.get('coverUrl'));
     const sourceRepo = cleanUrl(form.get('sourceRepo'));
     const supportEmail = clean(form.get('supportEmail'), 180);
@@ -40,6 +43,27 @@ export const actions: Actions = {
     const remixAllowed = form.get('remixAllowed') === 'on';
 
     if (!name || !category) return fail(400, { error: 'Name and category are required.' });
+
+    // Icons are ingested to R2 and served same-origin — never hotlinked. http
+    // and SVG are rejected (mixed-content / tracking-beacon / XSS). An already
+    // same-origin value is kept as-is.
+    const rawIcon = clean(form.get('iconUrl'), 500);
+    let iconUrl: string | null = null;
+    if (rawIcon) {
+      if (rawIcon.startsWith('/__shippie/app-icons/')) {
+        iconUrl = rawIcon;
+      } else if (isIngestableIconUrl(rawIcon) && platform.env.APPS) {
+        const ingested = await ingestIcon({ r2: platform.env.APPS, appId: app.id, url: rawIcon });
+        if (!ingested.ok) {
+          return fail(400, {
+            error: `Icon could not be used (${ingested.reason}). Provide an https PNG, WebP, or JPEG under 512 KB.`,
+          });
+        }
+        iconUrl = ingested.url;
+      } else {
+        return fail(400, { error: 'Icon URL must be an https image (http and SVG are not allowed).' });
+      }
+    }
 
     const db = getDrizzleClient(platform.env.DB);
     await db
