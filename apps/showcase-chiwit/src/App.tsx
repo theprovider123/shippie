@@ -1324,17 +1324,17 @@ function TodayView({
   for (const action of resolvedQuickActions) {
     if (!byKind.has(action.kind)) byKind.set(action.kind, action);
   }
+  // Contextual "finish your day" suggestions: ONLY the factors not yet logged
+  // today, in factor order. When the day is complete this is empty and the
+  // composer hides entirely — so it reads as a to-do nudge, not a second
+  // logger competing with the full palette below. (Was: always 3, padded with
+  // arbitrary fills, which made it look like a duplicate of the quick grid.)
   const starterSignals = ([
     !pulse.logged.mind ? byKind.get('mood') : null,
+    !pulse.logged.recovery ? byKind.get('sleep') : null,
     !pulse.logged.foundations ? byKind.get('hydration') : null,
     !pulse.logged.movement ? byKind.get('movement') : null,
-    !pulse.logged.recovery ? byKind.get('sleep') : null,
     !pulse.logged.body ? byKind.get('body') : null,
-    byKind.get('energy'),
-    byKind.get('mindful'),
-    byKind.get('hydration'),
-    byKind.get('mood'),
-    ...resolvedQuickActions,
   ] as Array<QuickAction | null | undefined>).filter((action, index, list): action is QuickAction => {
     if (!action) return false;
     return list.findIndex((candidate) => candidate?.kind === action.kind) === index;
@@ -1348,15 +1348,20 @@ function TodayView({
           <p className="eyebrow">Today · Daily Pulse</p>
           <h1>{greeting}</h1>
           <p className="reading">{reading}</p>
-          <div className="signal-composer" aria-label="Start a check-in">
-            {starterSignals.map((action) => (
-              <button key={action.label} type="button" onClick={() => onQuickLog(action)}>
-                <span style={{ background: KIND_META[action.kind].color }} />
-                <strong>{action.label.replace(' · ', ' ')}</strong>
-                <small className="factor-boost">{action.helper}</small>
-              </button>
-            ))}
-          </div>
+          {starterSignals.length > 0 ? (
+            <div className="signal-composer-group">
+              <p className="signal-composer-label">Still open today — tap to log</p>
+              <div className="signal-composer" aria-label="Factors not yet logged today">
+                {starterSignals.map((action) => (
+                  <button key={action.label} type="button" onClick={() => onQuickLog(action)}>
+                    <span style={{ background: KIND_META[action.kind].color }} />
+                    <strong>{action.label.replace(' · ', ' ')}</strong>
+                    <small className="factor-boost">{action.helper}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <WeekContour values={weekValues} tones={weekTones} />
           <div className="hero-actions">
             <button type="button" className="primary" onClick={() => onNavigate('track')}>Full check-in</button>
@@ -1366,8 +1371,8 @@ function TodayView({
         <PulseRing pulse={pulse} />
       </div>
       <section className="quick-panel">
-        <SectionHeading title="One-tap signals" action="Quick log" />
-        <div className="quick-grid" aria-label="Quick log">
+        <SectionHeading title="Log anything" action="your full signal set" />
+        <div className="quick-grid" aria-label="Log any signal">
           {resolvedQuickActions.map((action, index) => (
             <button key={`${action.label}-${index}`} type="button" onClick={() => onQuickLog(action)}>
               <span style={{ background: KIND_META[action.kind].color }} />

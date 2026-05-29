@@ -1995,12 +1995,26 @@ button.branded.primary {
   line-height: 0.9;
 }
 
+.signal-composer-group {
+  margin: 1.25rem 0 1rem;
+}
+
+.signal-composer-label {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--coral);
+}
+
 .signal-composer {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
   width: min(100%, 620px);
-  margin: 1.25rem 0 1rem;
+  margin: 0;
 }
 
 .signal-composer button {
