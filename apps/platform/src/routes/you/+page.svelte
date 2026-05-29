@@ -113,20 +113,54 @@
     </div>
   </header>
 
-  <aside class="trust-band wrap" aria-labelledby="trust-band-title">
-    <p id="trust-band-title" class="trust-band-title">Your data on Shippie</p>
-    <ul class="trust-band-list">
-      <li><span aria-hidden="true">✓</span> Tools run on your device, offline by default.</li>
-      <li><span aria-hidden="true">✓</span> Saved tools, recents, and app data stay on this device unless you back them up.</li>
-      <li><span aria-hidden="true">✓</span> Backups are encrypted; only you have the key.</li>
-      <li><span aria-hidden="true">✖</span> Shippie has no copy of your app data.</li>
-      <li><span aria-hidden="true">✖</span> Shippie doesn't track you across apps.</li>
-    </ul>
-    <details class="trust-band-more">
-      <summary>What gets recorded vs. what doesn't</summary>
+  <!-- Summary first: the user's own state is the headline. Trust band
+       drops below as a quiet expander. First-visit users (all stats 0)
+       see a quiet "Nothing saved yet" hint instead of four big zeros. -->
+  {#if hasLocalData}
+    <section class="summary wrap" aria-label="Local Shippie summary">
+      <div class="stat">
+        <span>Saved</span>
+        <strong>{savedApps.length}</strong>
+      </div>
+      <div class="stat">
+        <span>Recent</span>
+        <strong>{recentApps.length}</strong>
+      </div>
+      <div class="stat">
+        <span>Offline</span>
+        <strong>{offlineApps.length}</strong>
+      </div>
+      <div class="stat">
+        <span>Launches</span>
+        <strong>{totalLaunches}</strong>
+      </div>
+    </section>
+  {:else}
+    <p class="summary-empty wrap">
+      Nothing saved yet — tap the ★ on any tool to keep it ready here.
+    </p>
+  {/if}
+
+  <div class="content wrap">
+    <SavedDock apps={savedApps} />
+
+    <details class="trust-band wrap" aria-labelledby="trust-band-title">
+      <summary>
+        <span class="eyebrow">Your data on Shippie</span>
+        <span class="trust-band-summary">
+          Local by default, encrypted backups, no cross-app tracking. <em>Tap for the full list.</em>
+        </span>
+      </summary>
+      <ul class="trust-band-list">
+        <li><span aria-hidden="true">✓</span> Tools run on your device, offline by default.</li>
+        <li><span aria-hidden="true">✓</span> Saved tools, recents, and app data stay on this device unless you back them up.</li>
+        <li><span aria-hidden="true">✓</span> Backups are encrypted; only you have the key.</li>
+        <li><span aria-hidden="true">✖</span> Shippie has no copy of your app data.</li>
+        <li><span aria-hidden="true">✖</span> Shippie doesn't track you across apps.</li>
+      </ul>
       <div class="trust-band-grid">
         <article>
-          <strong>Recorded (aggregate)</strong>
+          <strong id="trust-band-title">Recorded (aggregate)</strong>
           <ul>
             <li>Which tools you opened (count only)</li>
             <li>App slug + version for compatibility</li>
@@ -143,29 +177,6 @@
         </article>
       </div>
     </details>
-  </aside>
-
-  <section class="summary wrap" aria-label="Local Shippie summary">
-    <div class="stat">
-      <span>Saved</span>
-      <strong>{savedApps.length}</strong>
-    </div>
-    <div class="stat">
-      <span>Recent</span>
-      <strong>{recentApps.length}</strong>
-    </div>
-    <div class="stat">
-      <span>Offline</span>
-      <strong>{offlineApps.length}</strong>
-    </div>
-    <div class="stat">
-      <span>Launches</span>
-      <strong>{totalLaunches}</strong>
-    </div>
-  </section>
-
-  <div class="content wrap">
-    <SavedDock apps={savedApps} />
 
     <section class="panel" aria-labelledby="recent-title">
       <div class="section-head">
@@ -383,19 +394,41 @@
     border-color: var(--sunset);
   }
 
+  /* Trust band as <details> — quiet by default; closed state shows
+     just the eyebrow + one-line summary. The full list expands on tap.
+     Designed to fit BELOW the user's saved/recent data so a returning
+     user reads their content first. */
   .trust-band {
-    margin-top: var(--space-lg);
+    margin-top: var(--space-xl);
     padding: var(--space-md) var(--space-lg);
     background: rgba(46, 125, 91, 0.05);
     border-left: 3px solid var(--success);
   }
-  .trust-band-title {
-    margin: 0 0 0.5rem;
-    font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: 1.05rem;
+  .trust-band > summary {
+    cursor: pointer;
+    list-style: none;
+    display: grid;
+    gap: 0.2rem;
+    min-height: var(--touch-min, 44px);
+    padding: 0.25rem 0;
   }
+  .trust-band > summary::-webkit-details-marker { display: none; }
+  .trust-band-summary {
+    font-size: 0.92rem;
+    color: var(--ink-soft-warm);
+  }
+  .trust-band-summary em {
+    font-style: normal;
+    color: var(--success);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-left: 0.3rem;
+  }
+  .trust-band[open] > summary .trust-band-summary em { display: none; }
   .trust-band-list {
-    margin: 0;
+    margin: 0.6rem 0 0;
     padding: 0;
     list-style: none;
     display: grid;
@@ -404,8 +437,6 @@
   }
   .trust-band-list li { display: grid; grid-template-columns: 1.2rem 1fr; gap: 0.4rem; align-items: baseline; }
   .trust-band-list li span { font-family: ui-monospace, monospace; }
-  .trust-band-more { margin-top: 0.6rem; }
-  .trust-band-more summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--success); min-height: var(--touch-min, 44px); display: flex; align-items: center; }
   .trust-band-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -423,12 +454,15 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
-    padding-top: var(--space-lg);
+    padding-top: var(--space-md);
   }
 
+  /* Compact stat tile. The previous 104px height made the four boxes
+     dominate above-the-fold even for users with content below; halved
+     so the saved/recent surfaces lead. */
   .stat {
-    min-height: 104px;
-    padding: 14px;
+    min-height: 76px;
+    padding: 12px 14px;
     display: grid;
     align-content: space-between;
     border: 1px solid var(--border-light);
@@ -443,9 +477,18 @@
 
   .stat strong {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 7vw, 3.2rem);
-    line-height: 0.9;
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    line-height: 0.95;
     color: var(--text);
+  }
+
+  /* First-visit empty state — a quiet hint, not four big zeros. */
+  .summary-empty {
+    margin: var(--space-md) 0 0;
+    padding: 14px 16px;
+    border: 1px dashed var(--border-light);
+    color: var(--text-secondary);
+    font-size: 0.95rem;
   }
 
   .content {

@@ -96,6 +96,22 @@
      contrasts with a deep neutral instead of the brand --bg. */
   --ink-near-black: #1A1A1A;
 
+  /* ── Eyebrow + section rhythm ───────────────────────────────────
+     Eyebrows label the page or section above the heading. Every page
+     used to redefine these with slightly different font sizes,
+     letter-spacing, and colors. Centralised so the look is one
+     decision, not 16 drift-prone ones. */
+  --eyebrow-family: var(--font-mono);
+  --eyebrow-size: 0.75rem;
+  --eyebrow-tracking: 0.12em;
+  --eyebrow-weight: 500;
+  --eyebrow-color: var(--text-light);
+  --eyebrow-color-accent: var(--sunset);
+  --eyebrow-gap: 0.45rem;
+  /* Vertical rhythm between top-level page sections. Used by
+     `.section-gap` utility and any page that wants the canonical pulse. */
+  --section-gap: clamp(2rem, 5vw, 3.5rem);
+
   /* ── Type ───────────────────────────────────────────────────── */
   --font-heading: "Fraunces", "Georgia", serif;
   --font-body: "Inter", system-ui, sans-serif;
@@ -288,13 +304,38 @@ select {
   outline-offset: -4px;
 }
 
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: var(--caption-size);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-light);
+/* Single eyebrow primitive — every page label above an h1/h2/h3 routes
+   through this. Variants:
+     `.eyebrow.eyebrow--accent`  → tinted (`/new` "Ship", paper cards)
+     `.eyebrow.eyebrow--inline`  → flows alongside hero metadata
+   Per-page redeclarations (.paper-eyebrow, .pillar-eyebrow, .card-eyebrow,
+   .status-kicker, .hero-eyebrow) inherit from this via :is() below.
+   That lets pages migrate without touching markup. */
+.eyebrow,
+:is(.paper-eyebrow, .pillar-eyebrow, .card-eyebrow, .hero-eyebrow, .status-kicker, .head-kicker) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--eyebrow-gap);
   margin: 0;
+  font-family: var(--eyebrow-family);
+  font-size: var(--eyebrow-size);
+  font-weight: var(--eyebrow-weight);
+  letter-spacing: var(--eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--eyebrow-color);
+}
+.eyebrow.eyebrow--accent,
+:is(.paper-eyebrow, .status-kicker) {
+  color: var(--eyebrow-color-accent);
+}
+
+/* Canonical page-section vertical rhythm. Pages opt in by setting
+   .section-gap on a containing element or use `gap: var(--section-gap)`
+   directly. Single source of truth so every page breathes the same. */
+.section-gap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
 }
 
 /* ── Square icons (Shippie hallmark) ─────────────────────────── */

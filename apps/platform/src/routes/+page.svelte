@@ -231,9 +231,11 @@
           <span>Tool launcher</span>
         </p>
         <h1 class="title">Shippie</h1>
-        <p class="lede">
-          Tap a tool to use it. Local by default, offline-ready, and clear when something connects.
-        </p>
+        {#if !hasLauncherHistory}
+          <p class="lede">
+            Tap a tool to use it. Local by default, offline-ready, and clear when something connects.
+          </p>
+        {/if}
       </div>
       <div class="head-tools">
         <SearchBar initial={data.query} placeholder="Search tools..." remixable={data.remixableFilter} />
@@ -487,6 +489,18 @@
     letter-spacing: 0;
     line-height: 0.94;
     margin: 0;
+  }
+  /* Compact-mode title shrinks for returning users — when they already
+     know what Shippie is, the brand mark can stand down so the search
+     and tools row are the visual focus. */
+  .head.compact .title {
+    font-size: clamp(1.6rem, 3vw, 2.5rem);
+    line-height: 0.98;
+  }
+  .head.compact .hero-eyebrow {
+    /* Eyebrow loses its icon prefix margin in compact mode — the brand
+       is already established by the small mark + name combo above. */
+    opacity: 0.7;
   }
   .lede {
     color: var(--text-secondary);

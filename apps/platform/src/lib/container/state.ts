@@ -460,6 +460,20 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     },
   },
   {
+    slug: 'golazo',
+    name: 'Golazo',
+    shortName: 'Golazo',
+    description: 'Call the 2026 World Cup, build your bracket, and share it by link.',
+    appKind: 'local',
+    icon: 'GZ',
+    accent: '#16F08B',
+    category: 'games',
+    port: 5254,
+    intents: {
+      provides: ['world-cup-bracket', 'share-card'],
+    },
+  },
+  {
     slug: 'quiet',
     name: 'Quiet',
     shortName: 'Quiet',

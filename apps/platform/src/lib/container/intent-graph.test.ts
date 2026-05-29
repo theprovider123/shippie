@@ -149,6 +149,10 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // listens at the shell level).
   'puzzle.cleared',
   'wave.cleared',
+  // Golazo — bracket/share signals are intended for links, pools, and
+  // future match-day surfaces. No curated iframe app consumes them yet.
+  'world-cup-bracket',
+  'share-card',
 ]);
 
 /**

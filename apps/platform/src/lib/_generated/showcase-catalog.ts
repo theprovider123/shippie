@@ -24,6 +24,7 @@ export const SHOWCASE_SLUGS = [
   "drawing-telephone",
   "drift",
   "five-letter",
+  "golazo",
   "habit-tracker",
   "hearth",
   "invaders",
