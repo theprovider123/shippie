@@ -80,7 +80,7 @@ export function containerAppToToolEntry(app: ContainerApp): ToolEntry {
   };
 }
 
-interface LauncherRowShape {
+export interface LauncherRowShape {
   slug: string;
   name: string;
   tagline?: string | null;

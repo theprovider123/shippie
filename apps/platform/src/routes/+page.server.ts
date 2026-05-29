@@ -14,20 +14,21 @@
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
 import { curatedApps, curatedAppsBySurface } from '$lib/container/state';
-import { canonicalShowcaseSlug, isFirstPartyShowcase } from '$lib/showcase-slugs';
+import { isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
 import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 import {
-  buildToolShelf,
+  buildLauncherVisibleSlugSet,
+  filterCanonicalLauncherItems,
+  launcherPhase,
   mergeCatalog,
   type LauncherPhase,
+  type LauncherRowShape,
 } from '$lib/launcher';
 
 const PER_PAGE = 48;
-
-const WORLD_CUP_PHASE_START_MS = Date.UTC(2026, 5, 11);
 
 /**
  * Featured shelf by launch phase. Pre-launch leads with the privacy story;
@@ -61,50 +62,21 @@ const LAUNCHER_FEATURED_SLUGS_BY_PHASE = {
   ],
 } as const satisfies Record<LauncherPhase, readonly string[]>;
 
-function launcherPhase(now: Date): LauncherPhase {
-  return now.getTime() >= WORLD_CUP_PHASE_START_MS ? 'world-cup' : 'prelaunch';
-}
-
-/**
- * Per-phase promotion of upcoming slugs to live. Golazo is the only
- * upcoming entry today; it flips during the World Cup window.
- *
- * This pair (PROMOTIONS_BY_PHASE + the upcoming flag in
- * lib/launcher/adapters.ts) replaces the old special-case
- * PRELAUNCH_HIDDEN_SLUGS that lived only on the homepage. Both
- * surfaces now respect the same rule.
- */
-const PROMOTIONS_BY_PHASE = {
-  prelaunch: { promote: [] as readonly string[] },
-  'world-cup': { promote: ['golazo'] as readonly string[] },
-} as const satisfies Record<LauncherPhase, { promote: readonly string[] }>;
-
 /**
  * Build the set of canonical slugs that should appear on launcher
  * surfaces in the given phase, applying SLUG_ALIASES, archived rules,
  * and upcoming-promotion. Both `+page.server.ts` and the focused-mode
  * drawer pass through this same gate so they cannot drift.
  */
-function visibleLauncherSlugs(phase: LauncherPhase): Set<string> {
-  const catalog = mergeCatalog(curatedApps, []);
-  const shelf = buildToolShelf({
-    catalog,
-    phase,
-    promotions: PROMOTIONS_BY_PHASE[phase],
-  });
-  return new Set(shelf.visibleSlugs);
+function visibleLauncherSlugs(
+  phase: LauncherPhase,
+  rows: readonly LauncherRowShape[] = [],
+): Set<string> {
+  return buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, rows), phase);
 }
 
-function launcherVisible<T extends { slug: string }>(apps: T[], phase: LauncherPhase): T[] {
-  const allowed = visibleLauncherSlugs(phase);
-  // Drop alias-source entries so /run/<old-slug>/ never appears as its
-  // own tile. The router still 302s old links, but the marketplace
-  // should only ever surface canonical app names.
-  return apps.filter((app) => {
-    const canonical = canonicalShowcaseSlug(app.slug);
-    if (canonical !== app.slug) return false;
-    return allowed.has(canonical);
-  });
+function launcherVisible<T extends LauncherRowShape>(apps: T[], phase: LauncherPhase): T[] {
+  return filterCanonicalLauncherItems(apps, visibleLauncherSlugs(phase, apps));
 }
 
 function orderedFeatured<T extends { slug: string }>(apps: T[], slugs: readonly string[]): T[] {
