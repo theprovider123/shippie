@@ -29,6 +29,7 @@ import {
 } from '$lib/showcase-slugs';
 import { curationFor } from '$lib/_generated/first-party-curation';
 import { buildArcadeCsp } from '$lib/curation/arcade-csp';
+import { withShippieRuntimeCsp } from '$lib/trust-ledger/runtime-csp';
 
 const PLATFORM_HOSTS = new Set([
   'next.shippie.app',
@@ -214,9 +215,9 @@ async function runtimeAssetTarget(event: Parameters<Handle>[0]['event']): Promis
   if (response.status === 404 && !assetPath.includes('.')) {
     const fallbackUrl = new URL(event.url);
     fallbackUrl.pathname = `/__shippie-run/${slug}/index.html`;
-    return withArcadeCspIfArcade(slug, await assets.fetch(fallbackUrl));
+    return withShippieRuntimeCsp(withArcadeCspIfArcade(slug, await assets.fetch(fallbackUrl)));
   }
-  return withArcadeCspIfArcade(slug, response);
+  return withShippieRuntimeCsp(withArcadeCspIfArcade(slug, response));
 }
 
 /**

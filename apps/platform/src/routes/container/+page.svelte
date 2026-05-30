@@ -4,6 +4,8 @@
   import { page } from '$app/stores';
   import { readShippiePackageArchive } from '@shippie/app-package-builder';
   import { ContainerBridgeHost, createWindowBridgeTransport } from '@shippie/container-bridge';
+  import { postWrapperAnalyticsViaRegistry } from '$lib/telemetry/egress-registry';
+  import { emitBridgeLedgerRow, withRevocationGate } from '$lib/trust-ledger/host';
   import {
     SHIPPIE_BACKUP_SCHEMA,
     assertValidPackageManifest,
@@ -156,6 +158,7 @@
     loadImportedPackage,
     saveImportedPackage,
   } from '$lib/container/local-package-store';
+  import { startCatalogSync } from '$lib/client/catalog-sync';
 
   let { data }: { data: PageData } = $props();
   type PrivateJoinData = NonNullable<PageData['privateJoin']>;
@@ -794,6 +797,15 @@
   const drawerRemainingAppsFiltered = $derived(
     drawerSearchTrim ? drawerRemainingApps.filter(matchesDrawerSearch) : drawerRemainingApps,
   );
+  const drawerSearchResults = $derived.by(() => {
+    if (!drawerSearchTrim) return [];
+    const seen = new Set<string>();
+    return [...drawerQuickAppsFiltered, ...drawerRemainingAppsFiltered].filter((app) => {
+      if (seen.has(app.id)) return false;
+      seen.add(app.id);
+      return true;
+    });
+  });
   function drawerRuntimeStateFor(app: ContainerApp): ToolRuntimeState {
     if (activeAppId === app.id) return 'current';
     if (openAppIds.includes(app.id)) return 'live';
@@ -863,17 +875,32 @@
 
   function switchFocusedApp(app: ContainerApp) {
     openApp(app.id);
-    focusedDrawerOpen = false;
+    closeFocusedDrawer();
     focusedToolOptionsOpen = false;
     if (data.focused && typeof window !== 'undefined') {
-      const href = `/run/${encodeURIComponent(app.slug)}`;
-      void goto(href, { replaceState: true, noScroll: true, keepFocus: true });
+      replaceFocusedRunUrl(app);
+      window.requestAnimationFrame(() => frames.get(app.id)?.focus());
+    }
+  }
+
+  function replaceFocusedRunUrl(app: ContainerApp) {
+    if (!data.focused || typeof window === 'undefined') return;
+    const href = `/run/${encodeURIComponent(app.slug)}`;
+    if (window.location.pathname === href && !window.location.search) return;
+    try {
+      window.history.replaceState(
+        { ...window.history.state, shippieFocused: true },
+        '',
+        href,
+      );
+    } catch {
+      replaceState(href, { ...window.history.state, shippieFocused: true });
     }
   }
 
   function exitFocusedMode(targetSection: ContainerSection = 'home') {
     dismissTransientPrompts();
-    focusedDrawerOpen = false;
+    closeFocusedDrawer();
     focusedToolOptionsOpen = false;
     activeAppId = null;
     section = targetSection;
@@ -881,13 +908,23 @@
     void goto(href, { noScroll: true, keepFocus: true });
   }
 
+  function closeFocusedDrawer() {
+    drawerSearchQuery = '';
+    focusedDrawerOpen = false;
+  }
+
   function toggleFocusedDrawer() {
     focusedToolOptionsOpen = false;
-    focusedDrawerOpen = !focusedDrawerOpen;
+    if (focusedDrawerOpen) {
+      closeFocusedDrawer();
+      return;
+    }
+    drawerSearchQuery = '';
+    focusedDrawerOpen = true;
   }
 
   function toggleFocusedToolOptions() {
-    focusedDrawerOpen = false;
+    closeFocusedDrawer();
     focusedToolOptionsOpen = !focusedToolOptionsOpen;
   }
 
@@ -1256,7 +1293,18 @@
         // Keep a bounded bridge limit, but don't make builders batch around
         // infrastructure just to persist starter data.
         rateLimit: { maxRequests: 500, windowMs: 10_000 },
-        handlers: createAppHandlers({
+        onCommitLedger: (event) =>
+          emitBridgeLedgerRow(event, {
+            resolveApp: (id) => {
+              const a = appById.get(id);
+              if (!a) return null;
+              return {
+                appSlug: a.slug,
+                egressVisibility: ledgerEgressVisibilityFor(a),
+              };
+            },
+          }),
+        handlers: withRevocationGate(createAppHandlers({
           appId,
           app,
           spaceContext: currentSpaceContextFor(app),
@@ -1288,7 +1336,7 @@
             startTransferDrop(sourceId, kind, preview),
           commitTransferDrop: (sourceId, targetSlug, kind, payload) =>
             trackedCommitTransferDrop(sourceId, targetSlug, kind, payload),
-        }),
+        }), app.slug),
       }),
     );
 
@@ -1385,6 +1433,7 @@
   function openFocusedDrawerAsBackFallback() {
     if (!data.focused) return;
     focusedToolOptionsOpen = false;
+    drawerSearchQuery = '';
     focusedDrawerOpen = true;
     restoreFocusedHistorySentinel();
   }
@@ -2336,24 +2385,8 @@
       };
     }
 
-    try {
-      const res = await fetch(`/__shippie/analytics?slug=${encodeURIComponent(app.slug)}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ events: [event] }),
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        ingested?: number;
-        error?: string;
-      };
-      return {
-        accepted: res.ok,
-        mode: 'aggregate-only' as const,
-        persisted: res.ok,
-        ingested: typeof body.ingested === 'number' ? body.ingested : undefined,
-        reason: res.ok ? undefined : analyticsFailureReason(body.error),
-      };
-    } catch {
+    const result = await postWrapperAnalyticsViaRegistry(app.slug, event);
+    if (result.reason === 'network_error') {
       return {
         accepted: false,
         mode: 'aggregate-only' as const,
@@ -2361,6 +2394,22 @@
         reason: 'network_error' as const,
       };
     }
+    if (!result.accepted && !result.mirrored) {
+      return {
+        accepted: false,
+        mode: 'aggregate-only' as const,
+        persisted: false,
+        reason: 'analytics_unavailable' as const,
+      };
+    }
+    const body = (result.body ?? {}) as { ingested?: number; error?: string };
+    return {
+      accepted: result.accepted,
+      mode: 'aggregate-only' as const,
+      persisted: result.accepted,
+      ingested: typeof body.ingested === 'number' ? body.ingested : undefined,
+      reason: result.accepted ? undefined : analyticsFailureReason(body.error),
+    };
   }
 
   function analyticsFailureReason(error: string | undefined) {
@@ -2525,7 +2574,7 @@
       return;
     }
 
-    focusedDrawerOpen = false;
+    closeFocusedDrawer();
     focusedToolOptionsOpen = false;
     notFoundSlug = null;
     if (
@@ -2547,6 +2596,11 @@
 
   onMount(() => {
     hydrateLauncherMemory();
+    const stopCatalogSync = startCatalogSync({
+      onUpdate: () => {
+        prewarmLikelyNextApps();
+      },
+    });
     viewportWidth = window.innerWidth;
     const requestedApp = findRequestedApp(apps, data.requestedAppSlug);
     const saved = loadContainerState(localStorage);
@@ -2648,6 +2702,7 @@
       window.addEventListener('message', handleToolKeyboardMessage);
     }
     void loadCollection();
+    return () => stopCatalogSync();
   });
 
   function expectedOriginForActiveApp(): string | null {
@@ -2719,7 +2774,7 @@
       return;
     }
     if (focusedDrawerOpen) {
-      focusedDrawerOpen = false;
+      closeFocusedDrawer();
       restoreFocusedHistorySentinel();
       return;
     }
@@ -2759,6 +2814,27 @@
       ? focusedRuntimeParams(currentUrl.searchParams)
       : undefined;
     return resolveRuntimeSrc(app, currentUrl.hostname, { preferDevUrl, searchParams: forwardedParams });
+  }
+
+  /**
+   * Trust Ledger egress visibility for an app.
+   *
+   * `full` — iframe runs on a Shippie-controlled runtime path
+   *   (/__shippie-run/<slug>/ or /run/<slug>/), so the CSP + bridge
+   *   gate can enforce egress accounting.
+   *
+   * `bridge-only` — iframe runs on an absolute external URL (custom
+   *   domain or app subdomain), so the bridge can only observe what
+   *   passes through it. Direct iframe fetches are not enumerable.
+   *
+   * See spec §9.3 and runtime-src.ts:34.
+   */
+  function ledgerEgressVisibilityFor(app: ContainerApp): 'full' | 'bridge-only' {
+    const url = app.standaloneUrl;
+    if (!url) return 'full';
+    if (url.startsWith('/run/')) return 'full';
+    if (/^https?:\/\//i.test(url)) return 'bridge-only';
+    return 'full';
   }
 
   function focusedRuntimeParams(params: URLSearchParams): URLSearchParams {
@@ -2937,11 +3013,8 @@
     <AppSwitcherGesture
       open={focusedDrawerOpen}
       onOpenChange={(value) => {
-        // Escape while the search input has text should clear the search,
-        // not close the drawer. The user almost always wants to widen
-        // the list back to the full Quick + Browse view before exiting.
-        if (!value && drawerSearchTrim) {
-          drawerSearchQuery = '';
+        if (!value) {
+          closeFocusedDrawer();
           return;
         }
         focusedDrawerOpen = value;
@@ -2952,8 +3025,17 @@
       gestureEnabled={false}
     >
       <div class="focused-drawer">
-        <div class="focused-drawer-grip" aria-hidden="true"></div>
-        <header class="focused-drawer-head">
+        <button
+          type="button"
+          class="focused-drawer-grip"
+          data-drawer-drag-handle
+          data-drawer-grip
+          aria-label="Close Shippie tools"
+          onclick={() => {
+            closeFocusedDrawer();
+          }}
+        ></button>
+        <header class="focused-drawer-head" data-drawer-drag-handle>
           <a class="focused-home" href="/" aria-label="Shippie tools">
             <span class="focused-brand-copy">
               <strong>Shippie</strong>
@@ -2963,6 +3045,9 @@
           <nav class="focused-drawer-actions" aria-label="Drawer actions">
             <button class="focused-action" type="button" onclick={() => exitFocusedMode('home')}>Tools</button>
             <button class="focused-action focused-action-data" type="button" onclick={() => exitFocusedMode('data')}>Data</button>
+            <button class="focused-action focused-action-close" type="button" aria-label="Close Shippie tools" onclick={() => {
+              closeFocusedDrawer();
+            }}>×</button>
           </nav>
         </header>
         {#snippet focusedToolTile(app: ContainerApp)}
@@ -2997,7 +3082,24 @@
           </label>
         {/if}
 
-        {#if drawerQuickAppsFiltered.length > 0}
+        {#if drawerSearchTrim}
+          {#if drawerSearchResults.length > 0}
+            <div class="focused-section-head focused-search-results-head">
+              <h2>Results</h2>
+              <span>{drawerSearchResults.length}</span>
+            </div>
+            <div class="focused-grid focused-search-results">
+              {#each drawerSearchResults as app (app.id)}
+                {@render focusedToolTile(app)}
+              {/each}
+            </div>
+          {:else}
+            <p class="focused-search-empty">
+              Nothing matches “{drawerSearchQuery}” yet.
+              <button type="button" onclick={() => (drawerSearchQuery = '')}>Clear search</button>
+            </p>
+          {/if}
+        {:else if drawerQuickAppsFiltered.length > 0}
           <div class="focused-section-head">
             <h2>Quick</h2>
             <span>{drawerQuickAppsFiltered.length}</span>
@@ -3009,7 +3111,7 @@
           </div>
         {/if}
 
-        {#if drawerRemainingAppsFiltered.length > 0}
+        {#if !drawerSearchTrim && drawerRemainingAppsFiltered.length > 0}
           <div class="focused-section-head">
             <h2>{drawerPersonalized ? 'Browse' : 'Tools'}</h2>
             <span>{drawerRemainingAppsFiltered.length}</span>
@@ -3021,12 +3123,6 @@
           </div>
         {/if}
 
-        {#if drawerSearchTrim && drawerQuickAppsFiltered.length === 0 && drawerRemainingAppsFiltered.length === 0}
-          <p class="focused-search-empty">
-            Nothing matches “{drawerSearchQuery}” yet.
-            <button type="button" onclick={() => (drawerSearchQuery = '')}>Clear search</button>
-          </p>
-        {/if}
         {#if agentInsights.length > 0}
           <h2 class="focused-insights-heading">Insights</h2>
           <ul class="focused-insights">
@@ -4137,8 +4233,21 @@
   }
   .focused-drawer-grip {
     display: none;
+    position: relative;
     align-self: center;
     width: 44px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: grab;
+  }
+  .focused-drawer-grip::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 10px;
     height: 3px;
     background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
@@ -4210,6 +4319,16 @@
     background: rgba(20, 18, 15, 0.04);
   }
   .focused-action-data {
+    color: var(--sunset, #e8603c);
+  }
+  .focused-action-close {
+    min-width: 34px;
+    padding: 0 10px;
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+  .focused-action-close:hover,
+  .focused-action-close:focus-visible {
     color: var(--sunset, #e8603c);
   }
   .focused-section-head {
@@ -4294,6 +4413,12 @@
     background: rgba(0, 0, 0, 0.03);
     border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
   }
+  .focused-search-results-head {
+    margin-top: -4px;
+  }
+  .focused-search-results {
+    padding-bottom: 18px;
+  }
   .focused-search:focus-within {
     border-color: var(--sunset, #e8603c);
     background: rgba(232, 96, 60, 0.04);
@@ -4366,10 +4491,12 @@
     }
     .focused-drawer-grip {
       display: block;
+      touch-action: none;
     }
     .focused-drawer-head {
       gap: 10px;
       padding-bottom: 10px;
+      touch-action: none;
     }
     .focused-brand-copy strong {
       font-size: 20px;
@@ -4381,6 +4508,10 @@
       min-height: 32px;
       padding: 0 9px;
       font-size: 10px;
+    }
+    .focused-action-close {
+      min-width: 32px;
+      font-size: 16px;
     }
     .focused-section-head {
       gap: 8px;

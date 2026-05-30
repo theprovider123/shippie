@@ -15,7 +15,16 @@
  * Re-queues on non-2xx responses (404 unknown_app, 429 rate_limited,
  * 500 insert_failed all reach the !res.ok branch without throwing,
  * which would otherwise lose telemetry silently).
+ *
+ * Trust Ledger mirror invariant (spec §8):
+ *   Every event is first mirrored to the local ledger via
+ *   `emitTelemetry`. The fetch only includes events whose ledger
+ *   write succeeded — we never send what we cannot log. On the
+ *   sendBeacon unload path the mirror is fire-and-forget; that is an
+ *   acknowledged gap until 5B introduces a synchronous outbox.
  */
+
+import { emitTelemetry } from '$lib/telemetry/egress-registry';
 
 export type EventName =
   | 'install_nudge_eligible'
@@ -27,7 +36,8 @@ export type EventName =
   | 'sw_update_skipped'
   | 'sw_update_refreshed'
   | 'viewport_mode'
-  | 'keyboard_open_in_tool';
+  | 'keyboard_open_in_tool'
+  | 'ledger_retention_swept';
 
 interface ShellEvent {
   event_name: EventName;
@@ -38,6 +48,7 @@ interface ShellEvent {
 const ENDPOINT = '/__shippie/analytics?slug=__shippie_shell__';
 const BATCH_DEBOUNCE_MS = 2000;
 const QUEUE_CAP = 200;
+const SHELL_APP = '__shippie_shell__';
 
 const queue: ShellEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -59,21 +70,42 @@ async function flush(): Promise<void> {
   flushTimer = null;
   if (queue.length === 0) return;
   const batch = queue.splice(0);
+
+  // Mirror invariant: ledger write happens before egress. Events whose
+  // mirror fails are dropped on the floor so we never send what we
+  // could not also log on-device.
+  const mirrored: ShellEvent[] = [];
+  for (const event of batch) {
+    const payload_bytes = jsonBytes(event);
+    const result = await emitTelemetry({
+      channel: 'shell-analytics',
+      event_name: event.event_name,
+      app: SHELL_APP,
+      payload_bytes,
+    });
+    if (result.mirrored || result.reason === 'idb-unavailable') {
+      // idb-unavailable is the SSR / test path where there is no
+      // device ledger to mirror to. Treat as best-effort.
+      mirrored.push(event);
+    }
+  }
+  if (mirrored.length === 0) return;
+
   try {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events: batch }),
+      body: JSON.stringify({ events: mirrored }),
       keepalive: true,
     });
     if (!res.ok) {
       // 404 unknown_app / 429 rate_limited / 500 insert_failed all reach
       // here without throwing. Re-queue (capped) so events aren't silently
       // lost — e.g. if the shell-app seed migration hasn't applied yet.
-      requeue(batch, `non-2xx ${res.status}`);
+      requeue(mirrored, `non-2xx ${res.status}`);
     }
   } catch (err) {
-    requeue(batch, `network ${String(err)}`);
+    requeue(mirrored, `network ${String(err)}`);
   }
 }
 
@@ -97,9 +129,21 @@ function bindBeaconOnce(): void {
   // sendBeacon on visibility-change covers the cases fetch can't:
   // PWA close, tab close, navigation. The body must be a Blob with the
   // correct content-type so the server-side JSON parser accepts it.
+  //
+  // Mirror invariant gap: we cannot await emitTelemetry on the unload
+  // path. Fire-and-forget the mirror writes, then send the beacon.
+  // 5B introduces a synchronous outbox that closes this gap.
   window.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden' || queue.length === 0) return;
     const batch = queue.splice(0);
+    for (const event of batch) {
+      void emitTelemetry({
+        channel: 'shell-analytics',
+        event_name: event.event_name,
+        app: SHELL_APP,
+        payload_bytes: jsonBytes(event),
+      });
+    }
     try {
       const blob = new Blob([JSON.stringify({ events: batch })], { type: 'application/json' });
       const ok = navigator.sendBeacon?.(ENDPOINT, blob) ?? false;
@@ -108,4 +152,12 @@ function bindBeaconOnce(): void {
       requeue(batch, `beacon ${String(err)}`);
     }
   });
+}
+
+function jsonBytes(value: unknown): number {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength;
+  } catch {
+    return 0;
+  }
 }
