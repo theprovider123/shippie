@@ -14,11 +14,11 @@
  * This test asserts the contract by running the shelf builder twice
  * with the same inputs and proving the visible sets match. It also
  * locks in that PRELAUNCH_HIDDEN_SLUGS is no longer a homepage-only
- * concept: the upcoming availability hides golazo from *both*
- * surfaces until the world-cup phase promotes it.
+ * concept: Golazo is phase-promoted into both surfaces together.
  */
 import { describe, expect, it } from 'vitest';
 import {
+  LAUNCHER_PROMOTIONS_BY_PHASE,
   containerAppToToolEntry,
   mergeCatalog,
   buildToolShelf,
@@ -36,7 +36,7 @@ function homepageShelf(opts?: {
   return buildToolShelf({
     catalog,
     phase,
-    promotions: opts?.promote ? { promote: opts.promote } : undefined,
+    promotions: opts?.promote ? { promote: opts.promote } : LAUNCHER_PROMOTIONS_BY_PHASE[phase],
     pinnedSlugs: opts?.pinned ?? [],
   });
 }
@@ -53,7 +53,7 @@ function drawerShelf(opts?: {
   return buildToolShelf({
     catalog,
     phase,
-    promotions: opts?.promote ? { promote: opts.promote } : undefined,
+    promotions: opts?.promote ? { promote: opts.promote } : LAUNCHER_PROMOTIONS_BY_PHASE[phase],
     pinnedSlugs: opts?.pinned ?? [],
     activeSlug: opts?.activeSlug,
     liveSlugs: opts?.liveSlugs,
@@ -75,11 +75,11 @@ describe('homepage ⇔ drawer convergence', () => {
     expect(drawer.visibleSlugs).toContain('golazo');
   });
 
-  it('hides golazo on BOTH surfaces during prelaunch (was: drawer-only leak)', () => {
+  it('shows golazo on BOTH surfaces during prelaunch', () => {
     const home = homepageShelf({ phase: 'prelaunch' });
     const drawer = drawerShelf({ phase: 'prelaunch' });
-    expect(home.visibleSlugs).not.toContain('golazo');
-    expect(drawer.visibleSlugs).not.toContain('golazo');
+    expect(home.visibleSlugs).toContain('golazo');
+    expect(drawer.visibleSlugs).toContain('golazo');
   });
 
   it('hides aliased slugs on BOTH surfaces (recipe, cooking, sip-log…)', () => {

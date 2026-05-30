@@ -1097,6 +1097,38 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     port: 5248,
     intents: { provides: ['game.completed'] },
   },
+  {
+    slug: 'mise',
+    name: 'Mise',
+    shortName: 'Mise',
+    description:
+      'A fast, food-literate nutrition log. Recents, meals, free-text, and copy-yesterday make logging quick; neutral patterns make it useful. Imports cooked + planned meals from Palate.',
+    appKind: 'local',
+    icon: 'MI',
+    accent: '#6E4A6B',
+    category: 'health-fitness',
+    port: 5255,
+    intents: {
+      provides: [
+        'nutrition-logged',
+        'meal-logged',
+        'protein-target-hit',
+        'hydration-logged',
+        'caffeine-logged',
+        'macro-target-updated',
+      ],
+      consumes: [
+        'cooked-meal',
+        'meal-planned',
+        'shopping-list',
+        'pantry-inventory',
+        'workout-completed',
+        'cycle-logged',
+        'body-metrics-logged',
+        'mood-logged',
+      ],
+    },
+  },
 ];
 
 // Build the curated app list, then enrich each entry with its

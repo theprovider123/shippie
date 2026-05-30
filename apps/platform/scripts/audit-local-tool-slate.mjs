@@ -27,7 +27,6 @@ const SCANNABLE_EXTENSIONS = new Set([
   '.js',
   '.jsx',
   '.json',
-  '.md',
   '.mjs',
   '.svelte',
   '.ts',
@@ -72,6 +71,7 @@ function walkFiles(root) {
         continue;
       }
       if (!entry.isFile()) continue;
+      if (/\.(?:test|spec)\.[a-z0-9]+$/i.test(entry.name)) continue;
       if (SCANNABLE_EXTENSIONS.has(extname(entry.name).toLowerCase())) files.push(child);
     }
   }

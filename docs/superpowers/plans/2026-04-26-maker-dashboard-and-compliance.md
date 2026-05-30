@@ -435,34 +435,35 @@ import type { Metadata } from 'next';
 import { PricingTier } from '@/components/marketing/PricingTier';
 
 export const metadata: Metadata = {
-  title: 'Shippie for Professionals — AI that never sees your data',
+  title: 'Shippie for Professionals — local-first tools with explicit data controls',
   description:
     'Compliance-grade local-first apps for solicitors, therapists, financial advisors, and teachers. ' +
-    'AI inference runs on the device. Data never leaves the device.',
+    'Inference prefers local runtimes, and backup, sync, export, and relay paths are explicit.',
 };
 
 export default function Page() {
   return (
     <main className="professionals">
       <header>
-        <h1>AI that never sees your data.</h1>
+        <h1>Local-first tools with explicit data controls.</h1>
         <p>
           Built for solicitors, therapists, financial advisors, and teachers
-          — everyone who can't send client data to American clouds.
+          — people who need a clear, reviewable data-flow story.
         </p>
       </header>
 
       <section>
-        <h2>Compliant by architecture, not by policy</h2>
+        <h2>Reviewable by architecture and policy</h2>
         <p>
           Shippie's local AI runs in a sandboxed iframe on the user's
-          device, on the device's own neural processor. Data goes in.
-          Inference happens. Result comes out. Nothing leaves.
+          device where the runtime supports it. Data goes in, inference
+          happens locally, and any backup, sync, export, or relay path is
+          disclosed at the point of use.
         </p>
         <p>
-          That's not a privacy promise — it's a network architecture. Your
-          firm's compliance team can audit the egress logs and see the
-          same thing every time: nothing.
+          That's a product boundary and a reviewable network posture. Your
+          firm's compliance team can inspect the app's declared capabilities,
+          runtime assets, and egress behavior before approving a workflow.
         </p>
       </section>
 
@@ -487,9 +488,9 @@ export default function Page() {
             featured
             features={[
               'Everything in Pro',
-              'GDPR + HIPAA compatibility statement',
+              'Regulated-workflow review materials',
               'On-device inference audit log (exportable)',
-              'Architectural data-residency guarantee',
+              'Architectural data-flow notes',
               'Priority support + SLA',
             ]}
           />
@@ -511,15 +512,16 @@ export default function Page() {
       <section>
         <h2>What stays local</h2>
         <ul>
-          <li>Every AI inference call.</li>
-          <li>Every database row.</li>
-          <li>Every backup (encrypted to your own Drive — Shippie cannot read it).</li>
-          <li>Every cross-device sync (peer-to-peer, end-to-end encrypted).</li>
+          <li>Primary app data by default.</li>
+          <li>Supported AI inference paths when the local runtime is used.</li>
+          <li>Optional backups as sealed content.</li>
+          <li>Optional cross-device sync through encrypted relay or peer paths.</li>
         </ul>
         <p>
-          The only thing Shippie's servers ever see is which apps you've
-          installed and the encrypted blobs they relay between your
-          devices. We can't read those blobs because we don't have the keys.
+          Shippie services may process account metadata, app metadata,
+          operational logs, and sealed backup or relay payloads. The product
+          should make those categories visible rather than hiding them behind
+          broad promises.
         </p>
       </section>
     </main>

@@ -107,8 +107,8 @@ export function SettingsPage({ doc, pairing, onLeaveRoom }: Props) {
         <h3 className="cl-section-title">Privacy</h3>
         <div className="cl-privacy-block">
           <p>
-            <strong>Care records stay on the paired devices.</strong> We can't read what you write here.
-            There's no admin to subpoena.
+            <strong>Care records stay on the paired devices.</strong> Sync uses sealed relay traffic,
+            so Shippie does not have readable access to what you write here.
           </p>
         </div>
       </div>

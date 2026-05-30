@@ -167,7 +167,7 @@ export function App() {
 
   function onNoteSaved(): void {
     // Provider broadcast — let other apps know a journal entry happened.
-    // Keep the row payload minimal: kind only. Body never leaves the app.
+    // Keep the row payload minimal: kind only. Body stays inside this app's storage.
     shippie.intent.broadcast('journal-entry', [{ kind: 'therapy-note', occurredAt: new Date().toISOString() }]);
     setRefreshKey((n) => n + 1);
     closeTo('home');

@@ -6,6 +6,7 @@
   import BottomDock from '$lib/components/layout/BottomDock.svelte';
   import Footer from '$lib/components/layout/Footer.svelte';
   import Toast from '$lib/components/ui/Toast.svelte';
+  import { installOfflineRepairLoop } from '$lib/stores/cached-slugs';
   import { matchesStandalone } from '$lib/util/standalone';
   import { track } from '$lib/util/track';
   import type { LayoutData } from './$types';
@@ -55,6 +56,7 @@
 
   onMount(() => {
     document.body.dataset.appReady = 'true';
+    installOfflineRepairLoop();
 
     // Per-session telemetry. Gated by sessionStorage so each event
     // fires once per tab/PWA session.
@@ -79,19 +81,6 @@
 <svelte:head>
   <title>Shippie — small tools that work on your device</title>
   <meta name="theme-color" content="#14120F" />
-  <link
-    rel="preconnect"
-    href="https://fonts.googleapis.com"
-  />
-  <link
-    rel="preconnect"
-    href="https://fonts.gstatic.com"
-    crossorigin="anonymous"
-  />
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap"
-  />
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>

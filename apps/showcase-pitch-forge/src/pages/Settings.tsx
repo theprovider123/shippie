@@ -35,8 +35,7 @@ export function SettingsPage({ identity, pitches, onSaveIdentity, onClearAll }: 
       <div className="privacy-banner">
         <h3>Pitches stay on this phone.</h3>
         <p>
-          The AI runs in your browser. Your text never leaves the device. There&apos;s no admin to
-          subpoena.
+          The AI runs in your browser. Drafts stay on this device unless you export them.
         </p>
       </div>
 

@@ -1,0 +1,32 @@
+{
+  "name": "@shippie/showcase-mise",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mise — a fast, food-literate nutrition log. Recents, meals, free-text, and copy-yesterday make logging quick; neutral patterns make it useful.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "bun test src",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@shippie/design-tokens": "workspace:*",
+    "@shippie/iframe-sdk": "workspace:*",
+    "@shippie/sdk": "workspace:*",
+    "@shippie/showcase-kit": "workspace:*",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.12",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

@@ -185,7 +185,7 @@ function CycleApp({ db }: { db: ShippieLocalDb }) {
         // Auto-fade after 12s — long enough to read, gone before it becomes
         // permanent first-screen weight. Plan key: cycle:onboarding:moodHint:v1.
         // 2026-05-23 review: extended from 8s; explicit close button tracked
-        // as a TODO inside Today.tsx where the hint is rendered.
+        // as a follow-up inside Today.tsx where the hint is rendered.
         window.setTimeout(() => setMoodHint(null), 12000);
       }
     });

@@ -59,7 +59,7 @@ export function LogTouchSheet({ personName, kindHint, summaryHint, onCancel, onS
           Link (optional)
           <input
             type="text"
-            placeholder="https://..."
+            placeholder="Paste a link"
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />

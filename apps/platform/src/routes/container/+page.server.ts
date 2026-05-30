@@ -2,10 +2,11 @@ import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { loadContainerPageData } from '$server/container-page-data';
 
-export const load: PageServerLoad = ({ platform, url, locals, request, setHeaders }) => {
+export const load: PageServerLoad = ({ platform, url, locals, request, setHeaders, depends }) => {
   if (!url.search && url.pathname === '/container') {
     throw redirect(307, '/');
   }
+  depends('app:apps');
   // The container is the PWA shell. Never edge/browser-cache the HTML:
   // a stale shell can point at a stale chunk graph and strand the user
   // on the generic SvelteKit error screen after a deploy.

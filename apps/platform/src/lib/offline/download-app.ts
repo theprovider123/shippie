@@ -18,6 +18,14 @@
 
 export type AppDownloadState = 'idle' | 'requested' | 'downloading' | 'verifying' | 'partial' | 'saved' | 'evicted' | 'error';
 export type AppDownloadPhase = 'idle' | 'requested' | 'downloading' | 'verifying' | 'sealed' | 'partial' | 'evicted' | 'error';
+export type OfflineHealthState =
+  | 'not_saved'
+  | 'saving'
+  | 'repairing'
+  | 'ready'
+  | 'needs_connection'
+  | 'needs_refresh'
+  | 'failed';
 
 export interface AppDownloadProgress {
   slug: string;
@@ -29,6 +37,9 @@ export interface AppDownloadProgress {
   manifestHash?: string;
   failedUrls?: string[];
   error?: string;
+  repairing?: boolean;
+  updatedAt?: string;
+  sealedAt?: string;
 }
 
 const NO_SW_ERROR =
@@ -163,11 +174,97 @@ type SwMessage = SwProgressMessage | SwDoneMessage | SwStatusMessage | SwSavedAp
 
 export interface SavedOfflineApp {
   slug: string;
-  state: 'saved' | 'partial' | 'evicted';
+  state: 'saved' | 'partial' | 'evicted' | 'downloading' | 'error';
   phase?: AppDownloadPhase;
   totalBytes?: number;
   manifestHash?: string;
   sealedAt?: string;
+  updatedAt?: string;
+  error?: string;
+}
+
+export interface OfflineHealth {
+  state: OfflineHealthState;
+  label: string;
+  detail: string;
+  actionable: boolean;
+}
+
+export function describeOfflineHealth(
+  progress: AppDownloadProgress | SavedOfflineApp | undefined,
+  opts: { cached?: boolean; online?: boolean } = {},
+): OfflineHealth {
+  const cached = Boolean(opts.cached);
+  const online = opts.online ?? true;
+  const state = progress?.state;
+  const done = 'done' in (progress ?? {}) ? Number((progress as AppDownloadProgress).done ?? 0) : 0;
+  const total = 'total' in (progress ?? {}) ? Number((progress as AppDownloadProgress).total ?? 0) : 0;
+  const repairing = 'repairing' in (progress ?? {}) && Boolean((progress as AppDownloadProgress).repairing);
+
+  if (repairing) {
+    return {
+      state: 'repairing',
+      label: 'Repairing offline copy',
+      detail: total > 0 ? `${done}/${total} files verified` : 'Re-sealing this tool.',
+      actionable: false,
+    };
+  }
+
+  if (state === 'requested' || state === 'downloading' || state === 'verifying') {
+    return {
+      state: 'saving',
+      label: state === 'verifying' ? 'Verifying offline copy' : 'Saving for offline',
+      detail: total > 0 ? `${done}/${total} files ready` : 'Preparing files.',
+      actionable: false,
+    };
+  }
+
+  if (state === 'saved' || cached) {
+    return {
+      state: 'ready',
+      label: 'Ready offline',
+      detail: formatOfflineBytes(progress?.totalBytes) || 'Cold-launchable on this device.',
+      actionable: false,
+    };
+  }
+
+  if (state === 'partial' || state === 'evicted') {
+    return {
+      state: online ? 'needs_refresh' : 'needs_connection',
+      label: online ? 'Repair offline copy' : 'Needs connection',
+      detail: online ? 'A saved file is missing. Shippie can re-seal it now.' : 'Reconnect once to re-seal this tool.',
+      actionable: online,
+    };
+  }
+
+  if (state === 'error') {
+    return {
+      state: online ? 'failed' : 'needs_connection',
+      label: online ? 'Save failed' : 'Needs connection',
+      detail: progress?.error || (online ? 'Try saving again.' : 'Reconnect and Shippie will retry.'),
+      actionable: online,
+    };
+  }
+
+  return {
+    state: 'not_saved',
+    label: 'Not saved',
+    detail: 'Save this tool to cold-launch offline.',
+    actionable: true,
+  };
+}
+
+export function formatOfflineBytes(value: number | undefined): string {
+  const bytes = Number(value ?? 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let current = bytes / 1024;
+  for (const unit of units) {
+    if (current < 1024 || unit === 'GB') return `${current < 10 ? current.toFixed(1) : Math.round(current)} ${unit}`;
+    current /= 1024;
+  }
+  return `${Math.round(current)} GB`;
 }
 
 export async function downloadApp(
@@ -284,7 +381,7 @@ export async function getAppStatus(slug: string): Promise<AppDownloadProgress> {
 
 export async function listSavedApps(): Promise<string[]> {
   const details = await listSavedAppDetails();
-  return details.map((app) => app.slug);
+  return details.filter((app) => app.state === 'saved').map((app) => app.slug);
 }
 
 export async function listSavedAppDetails(): Promise<SavedOfflineApp[]> {

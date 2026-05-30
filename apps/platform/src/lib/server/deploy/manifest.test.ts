@@ -193,6 +193,42 @@ describe('deriveManifest', () => {
     });
   });
 
+  it('parses flagship local-first app manifests without downgrading sealed recovery', () => {
+    const palateRaw = readFileSync(
+      new URL('../../../../../showcase-recipe/shippie.json', import.meta.url),
+      'utf8',
+    );
+    const chiwitRaw = readFileSync(
+      new URL('../../../../../showcase-chiwit/shippie.json', import.meta.url),
+      'utf8',
+    );
+
+    const palate = deriveManifest({ slug: 'palate', files: new Map([['shippie.json', enc(palateRaw)]]) });
+    const chiwit = deriveManifest({ slug: 'chiwit', files: new Map([['shippie.json', enc(chiwitRaw)]]) });
+
+    expect(palate.manifest.data).toMatchObject({
+      mode: 'shippie-documents',
+      documents: ['recipe-book'],
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      realtime: 'inherited',
+    });
+    expect(palate.manifest.data?.localStorage.keys).toContain('shippie.palate.recipe-hub.v1');
+    expect(palate.manifest.data?.localStorage.keys).toContain('shippie.palate.aisle-order.v1');
+
+    expect(chiwit.manifest.data).toMatchObject({
+      mode: 'shippie-documents',
+      documents: ['daily-pulse'],
+      recovery: 'inherited',
+      migrations: 'snapshot-v0',
+      snapshots: 'inherited',
+      realtime: 'inherited',
+    });
+    expect(chiwit.manifest.data?.localStorage.keys).toContain('shippie.chiwit.daily-pulse.v1');
+    expect(chiwit.manifest.data?.localStorage.keys).toContain('CUSTOM_QUICK_ACTIONS');
+  });
+
   it('preserves explicit local-only data policy', () => {
     const json = JSON.stringify({
       name: 'Scratchpad',

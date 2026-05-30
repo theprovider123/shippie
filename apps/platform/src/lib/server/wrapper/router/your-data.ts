@@ -95,10 +95,10 @@ function renderHtml(slug: string): string {
     </section>
 
     <section>
-      <h2>Backup</h2>
+      <h2>Move data</h2>
       <div class="row">
-        <button id="export">Download as encrypted file</button>
-        <button id="import">Restore from file</button>
+        <button id="export">Show export options</button>
+        <button id="import">Show restore options</button>
       </div>
     </section>
 
@@ -256,10 +256,10 @@ function clientScript(slug: string): string {
   }
 
   document.getElementById('export').addEventListener('click', () => {
-    setStatus('Encrypted export is coming soon. For now, your data stays here on this device.', '');
+    setStatus('Generic export depends on the app data adapter. If this app supports sealed export, open the app-specific Your Data panel; otherwise this page can still show storage, connections, and device wipe controls.', '');
   });
   document.getElementById('import').addEventListener('click', () => {
-    setStatus('Restore from file is coming soon.', '');
+    setStatus('Generic restore depends on the app data adapter. Open the app-specific Your Data panel when the app supports sealed restore or device handover.', '');
   });
   document.getElementById('add-device').addEventListener('click', () => {
     openInheritedPanel('add-device');

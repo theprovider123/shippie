@@ -24,6 +24,8 @@ export const cachedSlugs = writable<Set<string>>(new Set());
 export const offlineStatuses = writable<Record<string, AppDownloadProgress>>({});
 
 const inFlight = new Map<string, Promise<AppDownloadProgress>>();
+const repairQueue = new Set<string>();
+let repairLoopInstalled = false;
 
 function setOfflineStatus(slug: string, progress: AppDownloadProgress): void {
   offlineStatuses.update((statuses) => ({ ...statuses, [slug]: progress }));
@@ -43,19 +45,23 @@ export async function refreshCachedSlugs(slugs: readonly string[]): Promise<void
   // tiny candidate sets where a user-facing state needs proof.
   if (slugs.length > 12) {
     const allowed = new Set(slugs);
-    const saved = (await listSavedAppDetails()).filter((app) => allowed.has(app.slug) && app.state === 'saved');
+    const details = (await listSavedAppDetails()).filter((app) => allowed.has(app.slug));
+    const saved = details.filter((app) => app.state === 'saved');
     cachedSlugs.set(new Set(saved.map((app) => app.slug)));
     offlineStatuses.update((statuses) => {
       const next = { ...statuses };
-      for (const app of saved) {
+      for (const app of details) {
         next[app.slug] = {
           slug: app.slug,
-          state: 'saved',
-          phase: 'sealed',
+          state: app.state,
+          phase: app.phase ?? (app.state === 'saved' ? 'sealed' : app.state),
           done: 0,
           total: 0,
           totalBytes: app.totalBytes,
           manifestHash: app.manifestHash,
+          error: app.error,
+          sealedAt: app.sealedAt,
+          updatedAt: app.updatedAt,
         };
       }
       return next;
@@ -82,13 +88,16 @@ export async function refreshCachedSlugs(slugs: readonly string[]): Promise<void
 export async function downloadAppAndTrack(
   slug: string,
   onProgress?: (p: AppDownloadProgress) => void,
+  options: { repairing?: boolean } = {},
 ): Promise<AppDownloadProgress> {
-  setOfflineStatus(slug, { slug, state: 'downloading', done: 0, total: 0 });
+  setOfflineStatus(slug, { slug, state: 'downloading', phase: 'downloading', done: 0, total: 0, repairing: options.repairing });
   const result = await downloadApp(slug, (progress) => {
-    setOfflineStatus(slug, progress);
-    onProgress?.(progress);
+    const next = { ...progress, repairing: options.repairing };
+    setOfflineStatus(slug, next);
+    onProgress?.(next);
   });
-  setOfflineStatus(slug, result);
+  const trackedResult = { ...result, repairing: options.repairing && result.state !== 'saved' };
+  setOfflineStatus(slug, trackedResult);
   if (result.state === 'saved') {
     cachedSlugs.update((s) => {
       if (s.has(slug)) return s;
@@ -97,7 +106,7 @@ export async function downloadAppAndTrack(
       return next;
     });
   }
-  return result;
+  return trackedResult;
 }
 
 export function ensureAppOffline(slug: string): Promise<AppDownloadProgress> {
@@ -112,6 +121,75 @@ export function ensureAppOffline(slug: string): Promise<AppDownloadProgress> {
   });
   inFlight.set(slug, run);
   return run;
+}
+
+export function repairAppOffline(slug: string): Promise<AppDownloadProgress> {
+  const existing = inFlight.get(slug);
+  if (existing) return existing;
+  const run = downloadAppAndTrack(slug, undefined, { repairing: true }).finally(() => {
+    inFlight.delete(slug);
+  });
+  inFlight.set(slug, run);
+  return run;
+}
+
+export function installOfflineRepairLoop(): void {
+  if (repairLoopInstalled || typeof window === 'undefined' || typeof navigator === 'undefined') return;
+  repairLoopInstalled = true;
+
+  const markRepairable = (slug: string, url?: string) => {
+    setOfflineStatus(slug, {
+      slug,
+      state: navigator.onLine ? 'partial' : 'evicted',
+      phase: navigator.onLine ? 'partial' : 'evicted',
+      done: 0,
+      total: 0,
+      error: url ? `Missing ${url}` : 'Offline capsule incomplete',
+    });
+    cachedSlugs.update((slugs) => {
+      if (!slugs.has(slug)) return slugs;
+      const next = new Set(slugs);
+      next.delete(slug);
+      return next;
+    });
+  };
+
+  const enqueueRepair = (slug: string, url?: string) => {
+    if (!slug) return;
+    markRepairable(slug, url);
+    repairQueue.add(slug);
+    if (navigator.onLine) void flushRepairQueue();
+  };
+
+  const onMessage = (event: MessageEvent) => {
+    const data = event.data as { type?: string; slug?: string; url?: string } | undefined;
+    if (data?.type === 'OFFLINE_CAPSULE_INCOMPLETE' && data.slug) enqueueRepair(data.slug, data.url);
+  };
+
+  navigator.serviceWorker?.addEventListener('message', onMessage);
+  window.addEventListener('online', () => {
+    void flushRepairQueue();
+  });
+}
+
+async function flushRepairQueue(): Promise<void> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  const slugs = [...repairQueue];
+  repairQueue.clear();
+  for (const slug of slugs) {
+    try {
+      await repairAppOffline(slug);
+    } catch (err) {
+      setOfflineStatus(slug, {
+        slug,
+        state: 'error',
+        phase: 'error',
+        done: 0,
+        total: 0,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 }
 
 export function forgetCachedSlug(slug: string): void {

@@ -38,6 +38,7 @@ export const SHOWCASE_SLUGS = [
   "meal-planner",
   "memory-grid",
   "mevrouw",
+  "mise",
   "move",
   "palate",
   "pantry-scanner",

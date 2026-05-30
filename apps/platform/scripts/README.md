@@ -7,6 +7,9 @@ deploy helpers, and CI secret rotation reference.
 |---|---|
 | `prepare-showcases.mjs` | Builds every `apps/showcase-*` and copies the dists into `static/__shippie-run/<slug>/`. Wired into the platform `build` script. Use `--generated-only` to refresh typed manifests without rebuilding showcases for typecheck. |
 | `audit-showcase-storage.mjs` | Audits every hosted showcase runtime and fails the build if persistence is not installed before app code. Warns when a source app uses the local DB contract but is not hosted. |
+| `prove-offline-conformance.mjs` | Browser proof for sealed capsules: online first visit, save, close tab, relaunch `/run/<slug>` offline, reload offline, and fail if the generic offline page appears. Use `SLUGS=palate,chiwit` to narrow scope. `ENGINE=webkit` uses WebKit; `ORIGIN_KILLED=1` prints `READY_TO_KILL_ORIGIN`, waits `KILL_WAIT_MS` (default 8000), verifies the dev origin is unreachable from Node, then cold-launches from the saved capsules. |
+| `prove-local-data-contract.mjs` | User-style proof for Palate and Chiwit local data: write data, track localStorage keys, encrypted backup/restore drill, reload, and offline reload. |
+| `ios-offline-checklist.md` | Real-device iOS Safari checklist for Add to Home Screen, storage pressure, seven-day return, eviction repair, and persistence prompt behavior. |
 | `prepare-whitepaper.mjs` | Renders `docs/WHITEPAPER.md` into the static whitepaper page. |
 | `new-showcase.mjs` | Scaffolds a new showcase from `templates/showcase-template/`. Invoked via `bun run new:showcase <slug>`. |
 | `upload-sdk-bundle.mjs` | Builds + uploads `@shippie/sdk` to `https://shippie.app/sdk/v1.latest.js`. |

@@ -19,6 +19,7 @@
     launcherMemory,
     togglePinnedApp,
   } from '$lib/stores/launcher-memory';
+  import { startCatalogSync } from '$lib/client/catalog-sync';
 
   let { data }: PageProps = $props();
   let selectedSlug = $state<string | null>(null);
@@ -98,6 +99,7 @@
 
   onMount(() => {
     hydrateLauncherMemory();
+    const stopCatalogSync = startCatalogSync();
     void refreshCachedSlugs(data.apps.map((app) => app.slug));
     // Active category chip auto-centers in the horizontal scroll rail
     // on mobile so the user can see which filter they're on.
@@ -137,6 +139,7 @@
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       stop();
+      stopCatalogSync();
       document.removeEventListener('visibilitychange', onVisibility);
     };
   });

@@ -31,12 +31,13 @@ import {
 const PER_PAGE = 48;
 
 /**
- * Featured shelf by launch phase. Pre-launch leads with the privacy story;
- * the World Cup window rotates the event app in without making the privacy
- * slate a permanent casualty.
+ * Featured shelf by launch phase. Golazo is live now as the event hook;
+ * the privacy slate stays close behind so the homepage still explains
+ * why these tools belong together.
  */
 const LAUNCHER_FEATURED_SLUGS_BY_PHASE = {
   prelaunch: [
+    'golazo',        // launch-week traffic hook
     'cycle',         // your cycle, never on a server
     'sleep',         // your sleep pattern, logged locally
     'tab',           // split a bill, no accounts

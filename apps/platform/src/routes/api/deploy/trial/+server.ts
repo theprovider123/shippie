@@ -106,6 +106,7 @@ export const POST: RequestHandler = async (event) => {
           }
         : undefined,
       reservedSlugs,
+      visibilityScope: 'unlisted',
       db: env.DB,
       r2: env.APPS,
       kv: env.CACHE,

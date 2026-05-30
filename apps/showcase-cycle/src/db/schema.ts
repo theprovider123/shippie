@@ -6,8 +6,8 @@
  *   - days: one row per logged day inside a cycle (flow + symptoms + note).
  *   - prefs: a singleton row holding privacy + partner-share state.
  *
- * All data lives in wa-sqlite + OPFS via @shippie/local-db. Nothing leaves
- * the device unless the user explicitly opts in to partner sharing.
+ * All data lives in wa-sqlite + OPFS via @shippie/local-db. Data stays
+ * on the device unless the user explicitly opts in to partner sharing.
  */
 import type { LocalDbSchema } from '@shippie/local-runtime-contract';
 

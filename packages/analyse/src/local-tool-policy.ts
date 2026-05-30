@@ -189,6 +189,11 @@ const PATTERN_RULES: PatternRule[] = [
 
 const SHIPPIE_HOST_RE = /(^|\.)shippie\.app$/i;
 const SHIPPIE_PATH_RE = /\/__shippie\/(?:signal|relay|backup|checkpoints|intent|proof|meta|sdk|sw|local)\b/i;
+const IGNORED_URL_HOSTS = new Set([
+  'example.com',
+  'www.example.com',
+  'schema.org',
+]);
 const EXTERNAL_URL_RE = /https:\/\/[^\s"'`)<>]+/gi;
 const FETCH_RE =
   /\bfetch\s*\(\s*([`'"])(https:\/\/[^`'"]+)\1\s*(?:,\s*(\{[\s\S]{0,700}?\}))?\s*\)/gi;
@@ -303,6 +308,7 @@ function scanExternalNetwork(
       if (SHIPPIE_PATH_RE.test(url.pathname)) hints.privateRelay = true;
       continue;
     }
+    if (isIgnoredUrlReference(url)) continue;
     const method = METHOD_RE.exec(options)?.[2]?.toUpperCase() ?? 'GET';
     referenceDomains.add(url.hostname);
     if (method !== 'GET' && method !== 'HEAD') {
@@ -337,6 +343,7 @@ function scanExternalNetwork(
   while ((urlMatch = EXTERNAL_URL_RE.exec(body))) {
     const url = parseHttpsUrl(urlMatch[0] ?? '');
     if (!url || isAllowedShippieUrl(url)) continue;
+    if (isIgnoredUrlReference(url)) continue;
     if (isMetadataUrlReference(body, urlMatch.index)) continue;
     if (isStaticAssetUrl(url)) continue;
     if (isLikelyAlreadyRecordedFetch(body, urlMatch.index)) continue;
@@ -363,6 +370,10 @@ function parseHttpsUrl(raw: string): URL | null {
 
 function isAllowedShippieUrl(url: URL): boolean {
   return SHIPPIE_HOST_RE.test(url.hostname) || url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+}
+
+function isIgnoredUrlReference(url: URL): boolean {
+  return IGNORED_URL_HOSTS.has(url.hostname);
 }
 
 function isStaticAssetUrl(url: URL): boolean {

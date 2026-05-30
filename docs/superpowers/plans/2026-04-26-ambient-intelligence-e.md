@@ -228,7 +228,7 @@ self.addEventListener('periodicsync', (event) => {
 - [ ] PBS fires on Chrome installed-PWAs; visibilitychange fallback fires on Safari
 - [ ] Insight card renders on app open, dismissible
 - [ ] Journal showcase shows a mood-trend insight after declining-mood entries
-- [ ] Privacy invariant preserved: input text never leaves device
+- [ ] Privacy invariant preserved: local insight input is not sent to a network service
 
 ## NOT in this plan (deferred)
 

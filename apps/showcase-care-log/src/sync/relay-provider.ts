@@ -3,7 +3,7 @@
  * relay fan-out. Two caregivers' phones, same pair code, same Y.Doc state.
  *
  * Encryption is end-to-end. The DO sees ciphertext + nonce only; the
- * pair code never leaves the two phones.
+ * raw pair code is not sent to the relay.
  */
 import * as Y from 'yjs';
 import { decrypt, deriveKey, encrypt, packFrame, unpackFrame } from './crypto.ts';

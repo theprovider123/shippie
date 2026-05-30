@@ -15,7 +15,7 @@ The user iterated through three rounds (dark mode → red/white → full paper m
 
 ## 2. Two things to fix from the mockup (important)
 
-1. **Fonts must be self-hosted — the mockup CDN-links them, which breaks offline.** `index.html` pulls Fraunces/General Sans/JetBrains Mono from `fonts.googleapis.com` and `api.fontshare.com`. The app's #1 rule is offline-first; a CDN font fails on first offline load. Bundle the `woff2` files into `public/fonts/`, `@font-face` them locally (§6 CSS), and add them to `shippie.json#runtime_assets` alongside the basemap. All three families are free to self-host (Fraunces & JetBrains Mono are OFL; General Sans is free from Fontshare).
+1. **Fonts must be self-hosted — the mockup CDN-links them, which breaks offline.** The app's #1 rule is offline-first; a remote font CDN fails on first offline load. Bundle the `woff2` files into `public/fonts/`, `@font-face` them locally (§6 CSS), and add them to `shippie.json#runtime_assets` alongside the basemap. All three families are free to self-host (Fraunces & JetBrains Mono are OFL; General Sans is free from Fontshare).
 2. **The mockup's dates are placeholders.** It shows "24/25", "2024/25", "25·05·2025". The real event is **Sunday 31 May 2026**, season **2025/26**. The design must hardcode **no** dates — every date/time renders from the route pack at runtime (plan Part 7). The "Champions" wording and the "ARSENAL" wordmark are also trademark-exposed: the artwork is original (abstract trophy, no cannon, no crest — keep it that way), but the literal club name carries risk. Keep the app unmistakably **unofficial / fan-made** (persistent disclaimer, per the main plan). This is the user's call — flag it, don't block.
 
 ---

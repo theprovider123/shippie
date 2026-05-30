@@ -9,7 +9,7 @@ import { getDrizzleClient } from '$server/db/client';
 import { resolveSlugAlias } from '$server/slug-aliases';
 import { loadContainerPageData } from '$server/container-page-data';
 
-export const load: PageServerLoad = async ({ platform, params, url, setHeaders }) => {
+export const load: PageServerLoad = async ({ platform, params, url, setHeaders, depends }) => {
   // If the URL slug differs from its canonical (i.e. user hit an old
   // alias like /run/live-room), 302 to /run/<canonical> so the URL
   // bar tells the truth and shareable URLs canonicalise. Matches the
@@ -42,6 +42,7 @@ export const load: PageServerLoad = async ({ platform, params, url, setHeaders }
   setHeaders({
     'cache-control': 'no-store',
   });
+  depends('app:apps');
   return loadContainerPageData({
     platform,
     url,

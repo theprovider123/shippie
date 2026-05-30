@@ -152,7 +152,7 @@
   <footer class="today-footer">
     <h3>Privacy</h3>
     <p>
-      The intent stream is stored in IndexedDB on this device. It never leaves. Shippie has no copy, no aggregator, no cron job that reads it. If you clear it, it's gone.
+      The intent stream is stored in IndexedDB on this device. Shippie does not aggregate or read it, and clearing this history removes it from this browser.
     </p>
     {#if !confirmingClear}
       <button type="button" class="btn btn--ghost" onclick={() => (confirmingClear = true)}>

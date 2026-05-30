@@ -18,4 +18,4 @@
 - Add action: `Mark dose given`
 - Symptom: `Mum reported headache 4/5 at 11am.`
 - Handover: `Sara — GP appointment Friday at 2pm, fasting from midnight.`
-- Privacy note: `Care records stay on the paired devices. We can't read what you write here. There's no admin to subpoena.`
+- Privacy note: `Care records stay on the paired devices. Sync uses sealed relay traffic, so Shippie does not have readable access to what you write here.`

@@ -21,7 +21,7 @@
  *   7. On disconnect: exponential backoff reconnect.
  *
  * Encryption is end-to-end. The DO sees ciphertext + nonce only; the
- * encryption phrase never leaves the diners' phones.
+ * raw encryption phrase is not sent to the relay.
  */
 import * as Y from 'yjs';
 import { decrypt, deriveKey, encrypt, packFrame, unpackFrame } from './crypto.ts';

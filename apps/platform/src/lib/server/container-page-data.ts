@@ -54,6 +54,8 @@ type ContainerPageDataInput = {
   request?: Request | null;
 };
 
+const CONTAINER_PACKAGE_LIMIT = 100;
+
 export async function loadContainerPageData({
   platform,
   url,
@@ -143,7 +145,7 @@ export async function loadContainerPageData({
         ),
       )
       .orderBy(desc(schema.appPackages.createdAt))
-      .limit(requestedAppSlug ? 50 : 12);
+      .limit(CONTAINER_PACKAGE_LIMIT);
   } catch {
     return {
       packages: [] as ContainerPackageSummary[],
@@ -188,7 +190,7 @@ export async function loadContainerPageData({
       } satisfies ContainerPackageSummary;
     }),
   );
-  const packages = packageResults.filter(Boolean) as ContainerPackageSummary[];
+  const packages = dedupeNewestPackages(packageResults.filter(Boolean) as ContainerPackageSummary[]);
 
   return {
     packages,
@@ -201,6 +203,17 @@ export async function loadContainerPageData({
       inviteGrantForRequestedApp: inviteGrantsRequestedApp,
     }),
   };
+}
+
+function dedupeNewestPackages(packages: readonly ContainerPackageSummary[]): ContainerPackageSummary[] {
+  const seen = new Set<string>();
+  const out: ContainerPackageSummary[] = [];
+  for (const pkg of packages) {
+    if (seen.has(pkg.slug)) continue;
+    seen.add(pkg.slug);
+    out.push(pkg);
+  }
+  return out;
 }
 
 export function packageDownloadUrl(slug: string, packageHash: string): string {

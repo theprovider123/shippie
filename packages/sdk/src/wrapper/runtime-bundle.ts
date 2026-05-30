@@ -31,6 +31,7 @@ import {
 import { installAppLifecycleReporter } from './lifecycle.ts';
 import { installRuntimeConnectionMonitor } from './runtime-connections.ts';
 import { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
+import { installLocalStorageKeyTracker } from './local-storage-tracker.ts';
 
 interface AppMetaPayload {
   slug: string;
@@ -212,6 +213,7 @@ async function bootstrap(): Promise<void> {
 
   installAppLifecycleReporter({ appId: meta.slug, source: 'sdk' });
   installRuntimeConnectionMonitor({ slug: meta.slug, version: meta.version ?? null });
+  installLocalStorageKeyTracker(meta.slug);
   installConnectionNotice(meta);
 
   configureProof({ appSlug: meta.slug });

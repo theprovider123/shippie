@@ -2,10 +2,12 @@
   import { onMount } from 'svelte';
   import Sheet from '$lib/components/ui/Sheet.svelte';
   import {
+    describeOfflineHealth,
+    formatOfflineBytes,
     getOfflineStorageEstimate,
     requestPersistentOfflineStorage,
   } from '$lib/offline/download-app';
-  import { offlineStatuses } from '$lib/stores/cached-slugs';
+  import { cachedSlugs, offlineStatuses } from '$lib/stores/cached-slugs';
   import {
     ToolTile,
     launcherAppToToolTile,
@@ -59,16 +61,14 @@
   }
 
   function formatBytes(value: number | undefined) {
-    const bytes = Number(value ?? 0);
-    if (!Number.isFinite(bytes) || bytes <= 0) return 'size pending';
-    if (bytes < 1024) return `${bytes} B`;
-    const units = ['KB', 'MB', 'GB'];
-    let current = bytes / 1024;
-    for (const unit of units) {
-      if (current < 1024 || unit === 'GB') return `${current < 10 ? current.toFixed(1) : Math.round(current)} ${unit}`;
-      current /= 1024;
-    }
-    return `${Math.round(current)} GB`;
+    return formatOfflineBytes(value) || 'size pending';
+  }
+
+  function healthFor(slug: string) {
+    return describeOfflineHealth($offlineStatuses[slug], {
+      cached: $cachedSlugs.has(slug),
+      online: typeof navigator === 'undefined' ? true : navigator.onLine,
+    });
   }
 </script>
 
@@ -117,16 +117,18 @@
   {:else}
     <ul class="list" role="list">
       {#each apps as app (app.slug)}
+        {@const health = healthFor(app.slug)}
         <li class="row">
           <div class="row-tile">
             <ToolTile
               app={launcherAppToToolTile(app)}
               density="drawer"
               href={`/run/${encodeURIComponent(app.slug)}`}
-              captionLabel={formatBytes(bytesFor(app.slug))}
+              captionLabel={`${health.label}${bytesFor(app.slug) > 0 ? ` · ${formatBytes(bytesFor(app.slug))}` : ''}`}
               noActions
               onOpen={onClose}
             />
+            <small class:warn={health.state !== 'ready'}>{health.detail}</small>
           </div>
           <span class="row-actions">
             <button
@@ -274,6 +276,18 @@
   }
   .row-tile {
     min-width: 0;
+    display: grid;
+    gap: 2px;
+    padding: 4px 0;
+  }
+  .row-tile small {
+    color: var(--text-light);
+    font-size: 11px;
+    line-height: 1.3;
+    padding-left: 2px;
+  }
+  .row-tile small.warn {
+    color: var(--marigold);
   }
   .row-actions {
     display: inline-flex;

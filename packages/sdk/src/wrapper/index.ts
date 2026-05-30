@@ -192,7 +192,17 @@ export {
   type SoundRecipe,
   type VisualRecipe,
 } from './textures/index.ts';
-export { openYourData, type YourDataPanelOptions } from './your-data-panel.ts';
+export { openYourData, type InheritedSyncMode, type YourDataPanelOptions } from './your-data-panel.ts';
+export {
+  installLocalStorageKeyTracker,
+  readTrackedLocalStorageKeys,
+  rememberTouchedLocalStorageKey,
+  trackedLocalStorageKey,
+} from './local-storage-tracker.ts';
+export {
+  openAppDocument,
+  type OpenAppDocumentOptions,
+} from './app-document.ts';
 export {
   migrateLocalDbTablesToDocument,
   reduceLocalDbSnapshot,
@@ -212,6 +222,7 @@ export {
   type ShippieDataRealtime,
   type ShippieDataSnapshots,
   type ShippieDataMedia,
+  type ShippieDataStorageScope,
 } from '../data-standard.ts';
 export {
   openGroupModerationPanel,

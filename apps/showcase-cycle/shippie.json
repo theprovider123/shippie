@@ -27,12 +27,16 @@
     ]
   },
   "data": {
-    "mode": "local-db",
-    "tables": ["cycles", "days", "prefs"],
+    "mode": "shippie-documents",
+    "documents": [
+      "cycle-logbook"
+    ],
     "attachments": false,
     "recovery": "inherited",
-    "realtime": "opt-in-partner-mesh",
-    "media": "none"
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited"
   },
   "data_schemas": {
     "cycles": {

@@ -40,13 +40,17 @@
 import { createServer } from 'node:http';
 import { readdir, stat, writeFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { dirname, join, normalize, relative } from 'node:path';
+import { dirname, isAbsolute, join, normalize, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..', '..');
 const APPS = join(ROOT, 'apps');
-const REPORT = join(HERE, 'showcase-runtime-overflow-report.md');
+const REPORT = process.env.REPORT_PATH
+  ? isAbsolute(process.env.REPORT_PATH)
+    ? process.env.REPORT_PATH
+    : join(ROOT, process.env.REPORT_PATH)
+  : join(HERE, 'showcase-runtime-overflow-report.md');
 
 const WIDTHS = (process.env.WIDTHS ?? '360,390,430')
   .split(',')
@@ -60,6 +64,11 @@ const ENGINES = (process.env.ENGINES ?? 'chromium,webkit')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+const RUN_TIMEOUT_MS = (() => {
+  const value = Number(process.env.RUN_TIMEOUT_MS ?? 45_000);
+  return Number.isFinite(value) && value > 0 ? value : 45_000;
+})();
+const CLOSE_TIMEOUT_MS = 5_000;
 const BAKED_RUNTIME_PREFIX = new RegExp('^/__shippie-run/[^/]+/');
 
 const MIME = {
@@ -325,6 +334,17 @@ async function inspectWithInteraction(page) {
   return worst;
 }
 
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      promise.catch(() => {});
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function main() {
   let playwright;
   try {
@@ -338,7 +358,7 @@ async function main() {
 
   const slugs = await showcaseSlugs();
   console.log(
-    `[runtime-audit] ${slugs.length} showcases, engines ${ENGINES.join('+')}, widths ${WIDTHS.join('/')}`,
+    `[runtime-audit] ${slugs.length} showcases, engines ${ENGINES.join('+')}, widths ${WIDTHS.join('/')}, timeout ${RUN_TIMEOUT_MS}ms`,
   );
 
   // Verify each requested engine launches once, then close the probe.
@@ -352,8 +372,12 @@ async function main() {
       continue;
     }
     try {
-      const probe = await engine.launch();
-      await probe.close();
+      const probe = await withTimeout(
+        engine.launch({ timeout: RUN_TIMEOUT_MS }),
+        RUN_TIMEOUT_MS,
+        `${engineName} launch probe`,
+      );
+      await withTimeout(probe.close(), CLOSE_TIMEOUT_MS, `${engineName} probe close`);
       enginesUsed.push(engineName);
     } catch (err) {
       console.warn(
@@ -399,7 +423,14 @@ async function main() {
     const browsers = [];
     for (const name of enginesUsed) {
       try {
-        browsers.push({ name, browser: await playwright[name].launch() });
+        browsers.push({
+          name,
+          browser: await withTimeout(
+            playwright[name].launch({ timeout: RUN_TIMEOUT_MS }),
+            RUN_TIMEOUT_MS,
+            `${slug} ${name} launch`,
+          ),
+        });
       } catch (err) {
         console.warn(`[runtime-audit] ${slug}: ${name} relaunch failed (${err.message})`);
       }
@@ -407,15 +438,9 @@ async function main() {
 
     for (const { name: engineName, browser } of browsers) {
       for (const width of WIDTHS) {
-        const context = await browser.newContext({
-          viewport: { width, height: 844 },
-          deviceScaleFactor: 2,
-          isMobile: true,
-          hasTouch: true,
-        });
-        const page = await context.newPage();
+        let context;
+        let page;
         const consoleErrors = [];
-        page.on('pageerror', (e) => consoleErrors.push(e.message));
         const run = {
           engine: engineName,
           width,
@@ -425,42 +450,70 @@ async function main() {
         };
 
         try {
-          const response = await page.goto(url, {
-            waitUntil: 'networkidle',
-            timeout: 30_000,
-          });
-          if (response && response.status() >= 400) {
-            throw new Error(`HTTP ${response.status()}`);
-          }
-          await page.waitForTimeout(700); // fonts / wasm / lazy layout settle
-          // render sanity: did the SPA actually mount real content?
-          const rendered = await page.evaluate(() => {
-            const b = document.body;
-            return {
-              textLen: (b.innerText || '').trim().length,
-              elCount: b.querySelectorAll('*').length,
-              bodyH: Math.round(b.getBoundingClientRect().height),
-            };
-          });
-          // An app that mounts nothing (empty body, ~0 height) trivially
-          // "has no overflow" — that is a false clean, so flag it instead.
-          if (rendered.elCount < 3 && rendered.textLen === 0 && rendered.bodyH < 4) {
-            run.loaded = false;
-            run.note = consoleErrors.length
-              ? `did not render; pageerror: ${consoleErrors[0]}`
-              : 'did not render (empty body)';
-          } else {
-            // landing + bounded interaction sweep; keeps worst state seen
-            run.inspect = await inspectWithInteraction(page);
-          }
+          context = await withTimeout(
+            browser.newContext({
+              viewport: { width, height: 844 },
+              deviceScaleFactor: 2,
+              isMobile: true,
+              hasTouch: true,
+            }),
+            RUN_TIMEOUT_MS,
+            `${slug} ${engineName}/${width} context`,
+          );
+          page = await withTimeout(
+            context.newPage(),
+            RUN_TIMEOUT_MS,
+            `${slug} ${engineName}/${width} page`,
+          );
+          page.on('pageerror', (e) => consoleErrors.push(e.message));
+          await withTimeout(
+            (async () => {
+              const response = await page.goto(url, {
+                waitUntil: 'networkidle',
+                timeout: 30_000,
+              });
+              if (response && response.status() >= 400) {
+                throw new Error(`HTTP ${response.status()}`);
+              }
+              await page.waitForTimeout(700); // fonts / wasm / lazy layout settle
+              // render sanity: did the SPA actually mount real content?
+              const rendered = await page.evaluate(() => {
+                const b = document.body;
+                return {
+                  textLen: (b.innerText || '').trim().length,
+                  elCount: b.querySelectorAll('*').length,
+                  bodyH: Math.round(b.getBoundingClientRect().height),
+                };
+              });
+              // An app that mounts nothing (empty body, ~0 height) trivially
+              // "has no overflow" — that is a false clean, so flag it instead.
+              if (rendered.elCount < 3 && rendered.textLen === 0 && rendered.bodyH < 4) {
+                run.loaded = false;
+                run.note = consoleErrors.length
+                  ? `did not render; pageerror: ${consoleErrors[0]}`
+                  : 'did not render (empty body)';
+              } else {
+                // landing + bounded interaction sweep; keeps worst state seen
+                run.inspect = await inspectWithInteraction(page);
+              }
+            })(),
+            RUN_TIMEOUT_MS,
+            `${slug} ${engineName}/${width}`,
+          );
         } catch (err) {
           run.loaded = false;
           run.note = `nav error: ${err.message}`;
         } finally {
-          try {
-            await context.close();
-          } catch {
-            /* browser/context already gone — webkit crash mid-app */
+          if (context) {
+            try {
+              await withTimeout(
+                context.close(),
+                CLOSE_TIMEOUT_MS,
+                `${slug} ${engineName}/${width} context close`,
+              );
+            } catch {
+              /* browser/context already gone — webkit crash mid-app */
+            }
           }
         }
 
@@ -470,7 +523,7 @@ async function main() {
 
     for (const { browser } of browsers) {
       try {
-        await browser.close();
+        await withTimeout(browser.close(), CLOSE_TIMEOUT_MS, `${slug} browser close`);
       } catch {
         /* already gone */
       }
@@ -656,6 +709,7 @@ async function main() {
   console.log('');
   console.log(`[runtime-audit] P0=${buckets.P0.length} P1=${buckets.P1.length} P2=${buckets.P2.length} clean=${buckets.clean.length} load-failed=${buckets.loadFailed.length}`);
   console.log(`[runtime-audit] wrote ${relative(ROOT, REPORT)}`);
+  process.exit(buckets.P0.length || buckets.P1.length || buckets.loadFailed.length ? 1 : 0);
 }
 
 main().catch((err) => {

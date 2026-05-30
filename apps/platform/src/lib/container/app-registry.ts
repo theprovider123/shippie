@@ -148,10 +148,34 @@ export function visibleContainerApps(apps: readonly ContainerApp[]): ContainerAp
 }
 
 /**
- * Pick the base app list. When a deploy registry has packages, those win;
- * otherwise fall back to curated showcases shipped with the container.
+ * Pick the base app list. Curated showcases are always present so the
+ * launcher never loses first-party tools just because the deploy registry
+ * returned a partial package set. A package with the same canonical slug
+ * replaces the curated runtime payload, preserving the curated ordering.
  */
 export function pickBaseApps(packages: PackageSummary[]): ContainerApp[] {
   if (packages.length === 0) return curatedApps;
-  return packages.map(packageToContainerApp);
+  const packageApps = packages.map(packageToContainerApp);
+  const packagesBySlug = new Map<string, ContainerApp>();
+  for (const app of packageApps) {
+    const key = containerSlugForRequest(app.slug);
+    if (!packagesBySlug.has(key)) packagesBySlug.set(key, app);
+  }
+
+  const seen = new Set<string>();
+  const merged: ContainerApp[] = [];
+  for (const curated of curatedApps) {
+    const key = containerSlugForRequest(curated.slug);
+    const app = packagesBySlug.get(key) ?? curated;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(app);
+  }
+  for (const app of packageApps) {
+    const key = containerSlugForRequest(app.slug);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(app);
+  }
+  return merged;
 }

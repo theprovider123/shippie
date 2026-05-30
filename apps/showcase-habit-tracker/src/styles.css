@@ -479,34 +479,6 @@ button.ghost.danger { color: var(--danger); border-color: rgba(177, 84, 58, 0.4)
    Fraunces display serif, mono eyebrow, big numeric primitive (streak
    days / completion %), italic-mono code primitive (habit slug / day
    label). Sage-moss "on-track" atmosphere preserved. */
-@font-face {
-  font-family: 'Fraunces';
-  font-style: italic;
-  font-weight: 500;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NVf8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9vIVYX9G37lvd9sPEKsxx664UJf1h5Tf7W.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf') format('truetype');
-}
 
 :root {
   --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
@@ -554,4 +526,216 @@ button.ghost.danger { color: var(--danger); border-color: rgba(177, 84, 58, 0.4)
   letter-spacing: 0.08em;
   color: var(--accent);
   text-transform: uppercase;
+}
+
+/* ==========================================================
+   Cadence brand polish — layered onto the existing palette so
+   nothing here re-flows the habit list. Adds a paper-warm field
+   wash, a marigold "today" accent for the 10-second check-in,
+   and the Patterns surface. No font CDN — system display fallbacks.
+   ========================================================== */
+:root {
+  --paper-wash-1: #FBF6E9;
+  --paper-wash-2: #F8F0DD;
+  --marigold: #C58A1D;
+  --marigold-soft: rgba(197, 138, 29, 0.10);
+  --marigold-line: rgba(197, 138, 29, 0.32);
+  --observatory-ink: #2D261C;
+}
+
+body {
+  /* A soft field-journal paper wash so the app reads like an open
+     notebook rather than a flat card sheet. */
+  background:
+    radial-gradient(180% 70% at 6% -8%, rgba(111, 155, 110, 0.08) 0%, transparent 48%),
+    radial-gradient(160% 60% at 96% 0%, rgba(197, 138, 29, 0.06) 0%, transparent 52%),
+    linear-gradient(178deg, var(--paper-wash-1) 0%, var(--bg) 64%, var(--paper-wash-2) 100%);
+  background-attachment: fixed;
+}
+
+/* Check-in card ----------------------------------------------------- */
+.checkin-card {
+  margin-bottom: 16px;
+  padding: 16px 16px 14px;
+  background: rgba(255, 253, 248, 0.78);
+  border: 1px solid var(--marigold-line);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(67, 50, 28, 0.04), 0 24px 40px -32px rgba(67, 50, 28, 0.18);
+}
+.checkin-card.checkin-card-compact {
+  padding: 10px 14px;
+  background: var(--marigold-soft);
+  border-color: var(--marigold-line);
+}
+.checkin-head { margin-bottom: 12px; }
+.checkin-head .eyebrow { color: var(--marigold); }
+.checkin-head h2 {
+  margin: 4px 0 2px;
+  font-family: var(--font-display, var(--font-body, system-ui));
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--observatory-ink);
+}
+.checkin-helper {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.checkin-sliders {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.checkin-slider { display: grid; gap: 6px; }
+.checkin-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.checkin-slider-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.checkin-slider-value {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--observatory-ink);
+}
+.checkin-slider-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.checkin-sleep-row {
+  grid-template-columns: repeat(5, 1fr);
+}
+.checkin-slider-anchor {
+  font-size: 11px;
+  color: var(--muted);
+}
+.checkin-slider-anchor-high { text-align: right; }
+.checkin-slider-stops {
+  display: inline-grid;
+  grid-template-columns: repeat(5, 36px);
+  gap: 4px;
+  justify-content: center;
+}
+.checkin-stop {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  background: rgba(255, 253, 248, 0.7);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.checkin-stop:hover { color: var(--observatory-ink); border-color: var(--marigold-line); }
+.checkin-stop.is-active {
+  background: var(--marigold);
+  border-color: var(--marigold);
+  color: #fff;
+}
+.checkin-note {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255, 253, 248, 0.6);
+  border: 1px dashed var(--line);
+  color: var(--observatory-ink);
+  font: inherit;
+  font-size: 13.5px;
+  resize: vertical;
+  border-radius: 8px;
+}
+.checkin-collapse {
+  margin-top: 10px;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.checkin-collapse:hover { color: var(--observatory-ink); }
+.checkin-collapsed-summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.checkin-collapsed-eyebrow {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--marigold);
+}
+.checkin-collapsed-line {
+  font-size: 14px;
+  color: var(--observatory-ink);
+}
+.checkin-collapsed-edit {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Patterns page ----------------------------------------------------- */
+.patterns { padding-bottom: 30px; }
+.patterns .page-head h1 {
+  font-family: var(--font-display, var(--font-body, system-ui));
+  letter-spacing: -0.012em;
+}
+.patterns-grid {
+  display: grid;
+  gap: 12px;
+}
+.pattern-card {
+  padding: 14px 16px;
+  background: rgba(255, 253, 248, 0.78);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+}
+.pattern-tone-sleep { border-left-color: #7C6BE0; }
+.pattern-tone-mood { border-left-color: var(--marigold); }
+.pattern-tone-energy { border-left-color: #FF9800; }
+.pattern-tone-stress { border-left-color: #B07A57; }
+.pattern-tone-movement { border-left-color: var(--accent); }
+.pattern-tone-hydration { border-left-color: #2BA6F0; }
+.pattern-headline {
+  margin: 0 0 4px;
+  font-family: var(--font-display, var(--font-body, system-ui));
+  font-size: 15.5px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--observatory-ink);
+}
+.pattern-body { margin: 0; line-height: 1.45; }
+.pattern-sample { margin: 6px 0 0; color: var(--muted); }
+.pattern-empty {
+  padding: 18px 16px;
+  background: var(--marigold-soft);
+  border: 1px dashed var(--marigold-line);
+  color: var(--observatory-ink);
+  border-radius: 10px;
 }

@@ -27,8 +27,11 @@
 
   let { apps }: Props = $props();
   let manageOpen = $state(false);
-  const sealedApps = $derived(
-    apps.filter((app) => $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved'),
+  const managedApps = $derived(
+    apps.filter((app) => {
+      const state = $offlineStatuses[app.slug]?.state;
+      return $cachedSlugs.has(app.slug) || state === 'saved' || state === 'partial' || state === 'evicted' || state === 'error';
+    }),
   );
 
   function onUnpin(slug: string) {
@@ -49,7 +52,7 @@
   }
 </script>
 
-{#if sealedApps.length > 0}
+{#if managedApps.length > 0}
   <section class="dock-section" aria-labelledby="saved-dock-title">
     <header class="dock-header">
       <h2 id="saved-dock-title">Saved</h2>
@@ -66,9 +69,9 @@
     <ul
       class="rail"
       aria-label="Saved tools"
-      class:single={sealedApps.length === 1}
+      class:single={managedApps.length === 1}
     >
-      {#each sealedApps as app (app.slug)}
+      {#each managedApps as app (app.slug)}
         <li class="rail-item">
           <ToolTile
             app={launcherAppToToolTile(app)}
@@ -78,7 +81,7 @@
           />
         </li>
       {/each}
-      {#if sealedApps.length > 2}
+      {#if managedApps.length > 2}
         <li class="rail-item">
           <button
             type="button"
@@ -97,7 +100,7 @@
 
 {#if manageOpen}
   <SavedManageSheet
-    apps={sealedApps}
+    apps={managedApps}
     onClose={() => (manageOpen = false)}
     {onUnpin}
     {onSaveOffline}

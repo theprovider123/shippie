@@ -12,9 +12,9 @@
  *   - Simpler to reason about + test than wa-sqlite + OPFS for a
  *     single-table single-user app.
  *
- * Photos never leave the device. The model never leaves the device.
- * The OCR'd text never leaves the device unless the user taps Export
- * (which writes a CSV to the user's Downloads).
+ * Photos and OCR text stay in this browser unless the user taps Export
+ * (which writes a CSV to the user's Downloads). Model files are fetched
+ * as runtime assets and inference runs locally.
  */
 
 const STORAGE_KEY = 'shippie.receipt-snap.v1';

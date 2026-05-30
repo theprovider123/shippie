@@ -14,7 +14,7 @@ type DocsPage = {
   links?: Array<{ href: string; label: string }>;
 };
 
-const updated = 'May 18, 2026';
+const updated = 'May 30, 2026';
 
 const pages: Record<string, DocsPage> = {
   privacy: {
@@ -26,14 +26,21 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'The short version',
         body: [
-          'Shippie is built around local-first tools. Most app data is created and stored inside your browser or home-screen app on your device. Shippie does not need that content to list or launch tools.',
-          'We collect only the platform data needed to run Shippie: account identity if you sign in, app/deploy metadata for makers, operational logs, security events, and product telemetry such as launches or home-screen guide interactions.',
+          'Shippie is built around local-first tools. Primary app data is created and stored inside your browser or home-screen app on your device by default. Shippie does not need that content to list or launch tools.',
+          'We collect the platform data needed to run Shippie: account identity if you sign in, app/deploy metadata for makers, operational logs, security events, product telemetry such as launches or home-screen guide interactions, and optional encrypted backup, sync, relay, or private-space payloads when those features are enabled.',
+        ],
+      },
+      {
+        title: 'Controller and contact',
+        body: [
+          'For launch, Shippie is the controller for platform account, marketplace, deploy, analytics, support, and operational data it decides to collect. Makers may be responsible for their own app content, external services, and private workflows.',
+          'Contact privacy@shippie.app for privacy questions, access, correction, export, deletion, or objection requests about data Shippie servers hold.',
         ],
       },
       {
         title: 'What stays on your device',
         body: [
-          'Tool content such as recipes, trip notes, journals, counters, drawings, and local files belongs to the tool and the device where you created it unless the tool clearly asks to connect, share, export, sync, or back up.',
+          'Tool content such as recipes, trip notes, journals, counters, drawings, and local files belongs to the tool and the device where you created it unless the tool clearly asks to connect, share, export, sync, relay, or back up.',
         ],
         bullets: [
           'Local storage, IndexedDB, Cache Storage, OPFS, and service-worker caches are controlled by your browser.',
@@ -51,6 +58,20 @@ const pages: Record<string, DocsPage> = {
           'Maker app metadata, package hashes, scan results, deploy status, visibility settings, and public listing content.',
           'Operational logs, abuse-prevention signals, rate-limit events, and aggregate usage signals needed to keep the service reliable.',
           'Capability proof events when a tool or wrapper reports that a feature worked, such as home-screen launch, offline load, or local data export.',
+          'Encrypted backup, sealed document, relay, or private-space payloads and their technical metadata when you choose features that need Shippie to store or relay sealed data.',
+        ],
+      },
+      {
+        title: 'Your controls',
+        body: [
+          'You can use local tools without signing in. When a tool exposes Your Data, use that panel to inspect local storage, disclosed connections, available export or restore options, and device-only wipe controls.',
+          'For account deletion, access, correction, export, or privacy questions about data Shippie servers hold, contact privacy@shippie.app from the email tied to the account.',
+        ],
+      },
+      {
+        title: 'Children',
+        body: [
+          'Shippie is not directed to children under 13. If you believe a child under 13 has provided account information to Shippie, contact privacy@shippie.app so we can review and remove it where required.',
         ],
       },
       {
@@ -83,6 +104,7 @@ const pages: Record<string, DocsPage> = {
         body: [
           'You can browse and run many Shippie tools without an account. You need an account to ship apps, manage private access, publish listings, or use maker dashboard features.',
           'Do not use Shippie to harm people, distribute malware, exfiltrate data, spam users, violate law, or bypass platform security boundaries.',
+          'Shippie is not directed to children under 13. Do not create an account or deploy tools if you are not old enough to do so under the laws that apply to you.',
         ],
       },
       {
@@ -101,7 +123,14 @@ const pages: Record<string, DocsPage> = {
         title: 'Local data and backups',
         body: [
           'Shippie provides local-first platform features, but local data can still be lost if a device is cleared, a browser profile is deleted, storage is evicted, or a user removes the home-screen app.',
-          'Use export, transfer, or backup flows for important data.',
+          'Use export, transfer, or backup flows for important data. Backup, sync, relay, and private spaces are optional features that may store or move sealed data plus technical metadata.',
+        ],
+      },
+      {
+        title: 'Paid plans during launch',
+        body: [
+          'Paid professional and team plans are handled manually during launch. Prices, scope, support levels, and billing cadence must be confirmed in writing before work starts.',
+          'If something is wrong with a paid launch engagement, contact support@shippie.app. We will review refund or credit requests case by case unless a written order form says otherwise.',
         ],
       },
       {
@@ -140,7 +169,7 @@ const pages: Record<string, DocsPage> = {
           'The platform scans deploys and generated packages for device support, external domains, local-data signals, security posture, and container compatibility. Runtime proof badges are earned only after Shippie observes a capability working on real devices.',
         ],
         bullets: [
-          'Package hashes and signed metadata help users identify the version they opened.',
+          'Package hashes and package metadata help users identify the version they opened.',
           'External domains and declared permissions are surfaced on app detail pages where available.',
           'Private-space invites and app grants are scoped rather than global account permissions.',
         ],
@@ -155,7 +184,8 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Current launch posture',
         body: [
-          'Shippie is a web app platform. Browser isolation, Cloudflare Workers, signed package metadata, local storage boundaries, and user-visible capability surfaces are the core protections. Native app-store review is not part of the launch model.',
+          'Shippie is a web app platform. Browser isolation, Cloudflare Workers, package metadata, local storage boundaries, and user-visible capability surfaces are the core protections. Native app-store review is not part of the launch model.',
+          'No platform can guarantee absolute security. Shippie reduces default cloud exposure, makes data movement visible, and treats vulnerability reports as launch-critical.',
         ],
       },
     ],
@@ -337,19 +367,28 @@ const pages: Record<string, DocsPage> = {
   pro: {
     title: 'Shippie Pro',
     eyebrow: 'For teams',
-    description: 'A launch placeholder for professional and regulated workflows.',
+    description: 'Local-first tools for sensitive work, with explicit backup, sync, relay, and service boundaries.',
     updated,
     sections: [
       {
         title: 'Launch posture',
         body: [
           'Pro is handled manually during launch. If your team needs private deployment support, regulated workflow review, or a custom rollout, contact support@shippie.app.',
+          'The promise is not magic compliance. It is a reviewable data-flow story: primary app data is local-first by default, and any backup, sync, relay, external AI, or hosted service use should be visible before a team relies on it.',
+        ],
+      },
+      {
+        title: 'What teams can review',
+        body: [
+          'App runtime assets, declared capabilities, connection badges, storage behavior, sealed backup and sync posture, and export/delete paths.',
+          'Where a workflow is regulated, Shippie materials are review inputs, not legal advice or a substitute for your own compliance assessment.',
         ],
       },
     ],
     links: [
       { href: '/new', label: 'Ship an app' },
       { href: '/docs/security', label: 'Security' },
+      { href: '/docs/privacy', label: 'Privacy' },
     ],
   },
   labs: {

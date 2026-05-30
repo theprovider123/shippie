@@ -60,14 +60,16 @@
     ],
     "attachments": false,
     "recovery": "inherited",
-    "migrations": "snapshot-v1-palate",
+    "migrations": "snapshot-v0",
     "snapshots": "inherited",
-    "media": "local-device",
+    "media": "none",
     "realtime": "inherited",
     "localStorage": {
       "keys": [
         "shippie.palate.recipe-hub.v1",
         "shippie.palate.recent-searches.v1",
+        "shippie.palate.aisle-order.v1",
+        "shippie.palate.last-tab.v1",
         "shippie.meal-planner.v2",
         "shippie.shopping-list.v1",
         "shippie.pantry-scanner.v1"

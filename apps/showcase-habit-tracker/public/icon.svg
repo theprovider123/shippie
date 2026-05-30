@@ -1,14 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#5EA777"/>
-  <text
-    x="256" y="256"
-    fill="#EDE4D3"
-    font-family="Fraunces, Georgia, 'Times New Roman', serif"
-    font-size="280"
-    font-weight="600"
-    text-anchor="middle"
-    dominant-baseline="central"
-    letter-spacing="-2"
-  >H</text>
+  <!-- Cadence — a personal life observatory.
+       A warm paper field with a sage curve returning, and a single
+       marigold dot for today's pulse. Brand mark is the curve, not the
+       letterform. -->
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBF6E9"/>
+      <stop offset="1" stop-color="#F1E6CC"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#paper)"/>
+  <g stroke="#C9B99A" stroke-width="1" opacity="0.55">
+    <line x1="0" y1="120" x2="512" y2="120"/>
+    <line x1="0" y1="200" x2="512" y2="200"/>
+    <line x1="0" y1="280" x2="512" y2="280"/>
+    <line x1="0" y1="360" x2="512" y2="360"/>
+    <line x1="0" y1="440" x2="512" y2="440"/>
+  </g>
+  <path
+    d="M 60 360 C 130 360 150 280 200 280 C 260 280 280 220 340 220 C 400 220 420 160 470 160"
+    stroke="#6F9B6E"
+    stroke-width="22"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <circle cx="470" cy="160" r="22" fill="#C58A1D"/>
+  <circle cx="200" cy="280" r="10" fill="#6F9B6E" opacity="0.55"/>
+  <circle cx="340" cy="220" r="10" fill="#6F9B6E" opacity="0.75"/>
+  <circle cx="60" cy="360" r="10" fill="#C9B99A"/>
 </svg>

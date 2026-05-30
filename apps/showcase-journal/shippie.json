@@ -2,7 +2,7 @@
   "$schema": "https://shippie.app/schemas/app.json",
   "name": "Journal",
   "slug": "journal",
-  "description": "A private journal with on-device AI. Nothing leaves the device.",
+  "description": "A private journal with on-device AI, local storage, and optional export.",
   "icon": "/icon.png",
   "theme_color": "#3F6EE0",
   "background_color": "#0E0E11",

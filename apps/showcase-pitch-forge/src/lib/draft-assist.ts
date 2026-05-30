@@ -14,7 +14,8 @@
  *
  * Privacy: the runtime fetches from same-origin (the platform's
  * `/__esm/` route), the model files are cached in the browser, and
- * inference runs locally. The brief never leaves the device.
+ * inference runs locally. This path does not send the brief to a
+ * network service.
  */
 
 import { extractKeySentences } from './extract-fallback.ts';

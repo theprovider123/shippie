@@ -7,6 +7,11 @@ export type ShippieDataSnapshots = 'inherited' | 'none';
 export type ShippieDataMedia = 'encrypted-chunked' | 'none';
 export type ShippieDataRealtime = 'inherited' | 'none';
 
+export interface ShippieDataStorageScope {
+  keys: string[];
+  prefixes: string[];
+}
+
 export interface ShippieDataPolicy {
   mode: ShippieDataMode;
   documents: string[];
@@ -16,6 +21,7 @@ export interface ShippieDataPolicy {
   snapshots: ShippieDataSnapshots;
   media: ShippieDataMedia;
   realtime: ShippieDataRealtime;
+  localStorage: ShippieDataStorageScope;
 }
 
 export const defaultShippieDataPolicy: ShippieDataPolicy = {
@@ -27,6 +33,7 @@ export const defaultShippieDataPolicy: ShippieDataPolicy = {
   snapshots: 'inherited',
   media: 'none',
   realtime: 'inherited',
+  localStorage: { keys: [], prefixes: [] },
 };
 
 export function createShippieDataPolicy(
@@ -55,5 +62,9 @@ export function createShippieDataPolicy(
         : 'none'),
     realtime:
       overrides.realtime ?? (mode === 'shippie-documents' ? 'inherited' : 'none'),
+    localStorage: {
+      keys: [...(overrides.localStorage?.keys ?? defaultShippieDataPolicy.localStorage.keys)],
+      prefixes: [...(overrides.localStorage?.prefixes ?? defaultShippieDataPolicy.localStorage.prefixes)],
+    },
   };
 }

@@ -166,6 +166,48 @@
   let backPointerStartY = 0;
   let backPointerActive = false;
   let lastBackPointerDx = 0;
+  let drawerNode: HTMLElement | null = null;
+  let dismissPointerId: number | null = null;
+  let dismissStartX = 0;
+  let dismissStartY = 0;
+  let dismissStartTime = 0;
+  let drawerDragY = $state(0);
+  let drawerDismissActive = $state(false);
+  let keyboardInset = $state(0);
+
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'contain';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  });
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const viewport = window.visualViewport;
+    const update = () => {
+      if (!viewport) {
+        keyboardInset = 0;
+        return;
+      }
+      keyboardInset = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+    };
+    update();
+    viewport?.addEventListener('resize', update);
+    viewport?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      viewport?.removeEventListener('resize', update);
+      viewport?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  });
 
   function handlePointerDown(event: PointerEvent) {
     if (open) return;
@@ -275,6 +317,44 @@
     lastBackPointerDx = 0;
   }
 
+  function handleDrawerDismissPointerDown(event: PointerEvent) {
+    if (!open || edge !== 'bottom' || !drawerNode) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const grip = target.closest('[data-drawer-grip]');
+    const handle = target.closest('[data-drawer-drag-handle]');
+    if (!handle) return;
+    if (!grip && target.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+    dismissPointerId = event.pointerId;
+    dismissStartX = event.clientX;
+    dismissStartY = event.clientY;
+    dismissStartTime = performance.now();
+    drawerDragY = 0;
+    drawerDismissActive = true;
+    drawerNode.setPointerCapture?.(event.pointerId);
+  }
+
+  function handleDrawerDismissPointerMove(event: PointerEvent) {
+    if (dismissPointerId !== event.pointerId || !drawerDismissActive) return;
+    const dx = event.clientX - dismissStartX;
+    const dy = event.clientY - dismissStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 18) return;
+    drawerDragY = Math.max(0, dy);
+    if (drawerDragY > 0) event.preventDefault();
+  }
+
+  function handleDrawerDismissPointerUp(event: PointerEvent) {
+    if (dismissPointerId !== event.pointerId) return;
+    const dy = Math.max(0, event.clientY - dismissStartY);
+    const elapsed = Math.max(1, performance.now() - dismissStartTime);
+    const velocity = dy / elapsed;
+    dismissPointerId = null;
+    drawerDismissActive = false;
+    drawerNode?.releasePointerCapture?.(event.pointerId);
+    drawerDragY = 0;
+    if (dy > 96 || velocity > 0.65) onOpenChange(false);
+  }
+
   // Backdrop tap → close.
   function handleBackdropTap(event: MouseEvent) {
     if (event.target === event.currentTarget) {
@@ -293,6 +373,7 @@
   // Animation values driven by `open`. We compute them as derived
   // CSS variables so the underlying iframe can transform.
   const drawerTransform = $derived.by(() => {
+    if (open && edge === 'bottom' && drawerDragY > 0) return `translate3d(0, ${drawerDragY}px, 0)`;
     if (open) return 'translate(0, 0)';
     return edge === 'left' ? 'translateX(-100%)' : 'translateY(100%)';
   });
@@ -352,15 +433,23 @@
 ></div>
 
 <aside
+  bind:this={drawerNode}
   class="drawer"
   class:open
-  class:settled={drawerSettled && open}
+  class:dragging={drawerDismissActive}
+  class:settled={drawerSettled && open && !drawerDismissActive}
   class:from-left={edge === 'left'}
   class:from-bottom={edge === 'bottom'}
   style:transform={drawerTransform}
+  style:--drawer-keyboard-inset={`${keyboardInset}px`}
   style:transition="transform {transitionDuration} {transitionEase}"
+  onpointerdown={handleDrawerDismissPointerDown}
+  onpointermove={handleDrawerDismissPointerMove}
+  onpointerup={handleDrawerDismissPointerUp}
+  onpointercancel={handleDrawerDismissPointerUp}
   aria-label="App switcher"
   aria-hidden={!open}
+  inert={!open}
 >
   {@render children()}
 </aside>
@@ -461,6 +550,7 @@
     contain: layout paint;
     backface-visibility: hidden;
     overscroll-behavior: contain;
+    --drawer-keyboard-inset: 0px;
   }
   .drawer.from-left {
     top: 0;
@@ -474,16 +564,20 @@
   .drawer.from-bottom {
     left: 0;
     right: 0;
-    bottom: 0;
-    max-height: min(86dvh, 760px);
+    bottom: var(--drawer-keyboard-inset);
+    max-height: min(calc(100dvh - var(--drawer-keyboard-inset) - 12px), 760px);
     border-top: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     overflow-y: auto;
+    touch-action: pan-y;
   }
   .drawer:not(.open) {
     pointer-events: none;
   }
   .drawer.open {
-    transform: translate(0, 0) !important;
+    transform: translate(0, 0);
+  }
+  .drawer.dragging {
+    transition: none !important;
   }
   .drawer.open.settled {
     transition: none !important;
@@ -508,7 +602,7 @@
       min-width: 0;
     }
     .drawer.from-bottom {
-      max-height: min(88dvh, 760px);
+      max-height: min(calc(100dvh - var(--drawer-keyboard-inset) - 8px), 760px);
     }
   }
 

@@ -39,9 +39,9 @@ describe('launcher visibility helpers', () => {
     expect(filtered).toEqual(['palate']);
   });
 
-  it('keeps upcoming tools hidden until the launch phase promotes them', () => {
+  it('promotes Golazo in the current prelaunch slate and the World Cup phase', () => {
     const catalog = mergeCatalog(curatedApps, []);
-    expect(buildLauncherVisibleSlugSet(catalog, 'prelaunch').has('golazo')).toBe(false);
+    expect(buildLauncherVisibleSlugSet(catalog, 'prelaunch').has('golazo')).toBe(true);
     expect(buildLauncherVisibleSlugSet(catalog, 'world-cup').has('golazo')).toBe(true);
   });
 

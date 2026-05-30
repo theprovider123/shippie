@@ -77,11 +77,11 @@
           {/if}
 
           <div class="actions">
-            <button class="btn btn--ghost" disabled>View full diff (coming soon)</button>
-            <button class="btn btn--primary" disabled>Apply transform (coming soon)</button>
+            <button class="btn btn--ghost" disabled>Diff preview unavailable</button>
+            <button class="btn btn--primary" disabled>Manual review required</button>
           </div>
           <p class="caveat">
-            Apply-side workflow lands once we wire the writeable git/zip step. Today this is preview-only.
+            This launch view is preview-only. Rebuild the app locally after reviewing the suggested changes.
           </p>
         </article>
       {/each}

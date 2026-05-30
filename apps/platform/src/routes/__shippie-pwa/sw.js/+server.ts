@@ -24,8 +24,8 @@ const MODEL_CACHE = 'shippie.models.v1';
 const APPS_PREFIX = '/apps';
 const RUNTIME_PREFIX = '/__shippie-run';
 const SHELL_DOCUMENTS = ['/', '/container', '/you'];
-const KERNEL_HTML_URL = '/__shippie/launcher';
-const KERNEL_HTML_ALIASES = [KERNEL_HTML_URL, '/__shippie/launcher.html'];
+const KERNEL_HTML_URL = '/__shippie/launcher.html';
+const KERNEL_HTML_ALIASES = [KERNEL_HTML_URL, '/__shippie/launcher'];
 const KERNEL_SCRIPT_URL = '/__shippie/launcher.js';
 const KERNEL_URLS = [...KERNEL_HTML_ALIASES, KERNEL_SCRIPT_URL];
 __OFFLINE_CAPSULE_SW_HELPERS__
@@ -704,35 +704,55 @@ async function handleGetStatus(slug, port) {
 async function handleListSavedApps(port) {
   try {
     const pointers = await ShippieOfflineCapsule.listPointers().catch(() => []);
-    const sealed = pointers.filter((pointer) => pointer && pointer.state === 'sealed');
     // Pointer integrity checks are independent; run them concurrently so
     // a saved-tools list of 15+ apps doesn't take seconds to assemble on
-    // /you and SavedDock mount.
+    // /you and SavedDock mount. Return unhealthy pointers too: hiding a
+    // partial or evicted capsule makes "saved" feel dishonest.
     const results = await Promise.all(
-      sealed.map(async (pointer) => {
+      pointers.filter(Boolean).map(async (pointer) => {
+        const base = {
+          slug: pointer.slug,
+          totalBytes: pointer.totalBytes || 0,
+          manifestHash: pointer.manifestHash,
+          sealedAt: pointer.sealedAt,
+          updatedAt: pointer.updatedAt,
+          error: pointer.error,
+        };
+        if (pointer.state !== 'sealed') {
+          return {
+            ...base,
+            state:
+              pointer.state === 'downloading'
+                ? 'downloading'
+                : pointer.state === 'evicted'
+                  ? 'evicted'
+                  : pointer.state === 'error'
+                    ? 'error'
+                    : 'partial',
+            phase: pointer.state || 'partial',
+          };
+        }
         const manifest = await cachedCapsuleManifest(pointer);
         if (!manifest) {
           await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
-          return null;
+          return { ...base, state: 'evicted', phase: 'evicted' };
         }
         const cache = await caches.open(pointer.cacheName).catch(() => null);
         const entry = cache ? await cache.match(pointer.entryUrl) : null;
         if (!entry) {
           await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
-          return null;
+          return { ...base, state: 'evicted', phase: 'evicted', totalBytes: pointer.totalBytes || manifest.totalBytes || 0 };
         }
         return {
-          slug: pointer.slug,
+          ...base,
           state: 'saved',
           phase: 'sealed',
           totalBytes: pointer.totalBytes || manifest.totalBytes || 0,
-          manifestHash: pointer.manifestHash,
-          sealedAt: pointer.sealedAt,
         };
       }),
     );
     const apps = results.filter(Boolean).sort((a, b) => a.slug.localeCompare(b.slug));
-    port.postMessage({ type: 'saved-apps', slugs: apps.map((app) => app.slug), apps });
+    port.postMessage({ type: 'saved-apps', slugs: apps.filter((app) => app.state === 'saved').map((app) => app.slug), apps });
   } catch (err) {
     port.postMessage({ type: 'saved-apps', slugs: [], error: String(err && err.message || err) });
   }

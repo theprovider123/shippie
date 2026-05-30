@@ -222,7 +222,7 @@ Then `apps/platform/src/routes/apps/[slug]/+page.svelte` ownership-actions secti
 
 **What's missing**:
 - ❌ Trust card is buried mid-page. Should be above-the-fold for users (just below hero, just before action buttons)
-- ❌ App Kind is rendered as bare metadata, not the headline of trust ("Local — your data never leaves this device")
+- ❌ App Kind is rendered as bare metadata, not the headline of trust ("Runs on this device — backup and sharing are opt-in")
 - ❌ External domains list not shown
 - ❌ Permissions list (camera/mic/notifications/files) not shown to user before install
 
@@ -262,7 +262,7 @@ Your data on Shippie
 ✓ Apps run on your device
 ✓ Storage stays here unless you back up
 ✓ Backups are encrypted, only you have the key
-✖ Shippie has no copy of your app data
+✖ Shippie has no readable copy of sealed backup/sync content
 ✖ Shippie doesn't track you across apps
 ```
 

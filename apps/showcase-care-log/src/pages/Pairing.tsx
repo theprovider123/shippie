@@ -83,7 +83,7 @@ export function PairingScreen({ onPaired }: Props) {
           </button>
         </div>
         <p className="cl-pair-role-note">
-          The pair code never leaves these phones. The relay sees a hash of it, nothing more.
+          The pair code is not sent directly. The relay sees a hash of it, nothing more.
         </p>
       </div>
     );

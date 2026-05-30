@@ -192,7 +192,7 @@ A user who installs Recipe → uses it for 5 minutes → closes has never read t
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(self), microphone=(self), geolocation=(), interest-cohort=()`
-- `Content-Security-Policy:` — needs careful design given Fraunces/Inter from fonts.googleapis.com, esm proxy at `/__esm/*`, showcase iframes, etc.
+- `Content-Security-Policy:` — needs careful design given sealed runtime assets, the esm proxy at `/__esm/*`, showcase iframes, etc.
 
 ### M2. Mobile-audit token report has 11 input-zoom hazards
 
@@ -372,7 +372,7 @@ Cherry-pick by user feedback frequency. None are launch-blocking.
 Things I cannot verify from source + curl, that need a real human + browser:
 
 - **Pixel-level layout breaks**: I read `<style>` blocks and grep for known anti-patterns, but cannot see a sidebar visually pushing content off-screen at 390px.
-- **Font load failures**: Fraunces + Inter via Google Fonts — if Google blocks our origin in the user's network, the fallback chain looks different.
+- **Font load failures**: custom font files must be bundled or avoided; the current launch posture blocks remote font dependencies.
 - **iOS Safari ITP eviction**: the 7-day rule was flagged on 2026-05-09. We tested the mitigation (install-nudge + Drive backup) but never observed the actual 7-day eviction on a real device.
 - **PWA install prompts**: do iPhone Safari and Android Chrome show the install affordance the moment they should?
 - **Wake locks, haptics, permissions**: showcase Lift and Mevrouw both depend on these. Tested in dev but unverified on the deployed worker.

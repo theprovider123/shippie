@@ -64,7 +64,7 @@ function InfoScreen() {
             This app is cached on your phone. Map tiles, group plan, and the celebrate button — everything you see — works offline.
           </p>
           <p style={{ ...pStyle, color: 'var(--ink-mute)' }}>
-            Nothing leaves your device until you choose to share your card.
+            Your card stays on your device until you choose to share it.
           </p>
         </Section>
 

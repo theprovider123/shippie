@@ -16,22 +16,16 @@
 These four moves carry the "unmistakably Shippie" signature without
 forcing a palette:
 
-### 1. Fraunces display serif for headlines
+### 1. Local display serif for headlines
 
-Load via the four-weight Google Fonts subset (Italic 500, Regular 500,
-Bold 600, Bold 700). `font-display: swap` so first paint never blocks.
+Use a self-hosted display face only when the font files are part of the
+runtime assets and sealed with the capsule. Otherwise use a local serif
+stack that gives the same editorial feel without adding a network
+dependency.
 
 ```css
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('https://fonts.gstatic.com/s/fraunces/v38/...') format('truetype');
-}
-
 :root {
-  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Hoefler Text', 'New York', Georgia, ui-serif, serif;
 }
 
 .recipe-title, .page-hero h1, .dish-name {
@@ -159,7 +153,7 @@ sin.
 
 ### Type pairing
 
-Fraunces is universal. The body font is the showcase's choice:
+A strong editorial serif is universal. The body font is the showcase's choice:
 
 - Inter — Crewtrip, Match Room, WC Fantasy, Chiwit, Recipe
 - IBM Plex Sans — Lift (engineering / strength club)
@@ -191,7 +185,7 @@ Every showcase has one. Make it large and confident:
 
 Before merging a showcase, run this:
 
-1. ☐ Fraunces loaded via `@font-face`, used on at least one display heading
+1. ☐ Display headings use a local/system-backed editorial serif
 2. ☐ `.eyebrow` uses mono caps with 0.16em letter-spacing
 3. ☐ One numeric primitive (`.big-numeric`, `.pulse-numeric`, etc.) exists for the showcase's key moments
 4. ☐ One italic-mono "code" primitive for fixtures / recipes / sessions
@@ -199,8 +193,8 @@ Before merging a showcase, run this:
 6. ☐ Texture / background is intentional (sand paper / pitch grid / journal rule / etc.)
 7. ☐ Corner radius is consistent across the app (sharp throughout OR rounded throughout)
 8. ☐ Focus ring uses the showcase's structural accent, not browser default blue
-9. ☐ Hero heading uses Fraunces + display weight, ≥2.4rem, with `letter-spacing: -0.022em`
-10. ☐ Body builds cleanly at <12 KB gzipped CSS; no Google Fonts CSS imports (only direct `@font-face`)
+9. ☐ Hero heading uses display weight, ≥2.4rem, with tight but readable rhythm
+10. ☐ Body builds cleanly at <12 KB gzipped CSS; no remote font stylesheets or font files
 
 A showcase that hits 9/10 is shippable. Below 7/10 looks like a generic
 SaaS starter and undermines the platform's design story.
@@ -216,17 +210,17 @@ What NOT to do:
 - **Don't put a 12px corner radius on buttons and a 4px corner on cards.** Pick a consistent scale.
 - **Don't make every text element a different size.** Display / heading / body / small / mono is the entire scale you need.
 - **Don't use box-shadow for depth on cards if the rest of the showcase uses 1px borders.** Pick a depth language and stick to it.
-- **Don't lazy-load Fraunces from `fonts.googleapis.com/css2`.** That's a render-blocking stylesheet. Use the four direct `@font-face` declarations against `fonts.gstatic.com/s/fraunces/...` instead — same fonts, no extra round trip.
+- **Don't load display fonts from a remote CDN.** If a showcase needs a custom face, vendor the files at build time, list them as runtime assets, and verify the sealed capsule can cold-launch offline.
 - **Don't import the platform's design-tokens.css and then override every variable.** Either fully inherit (most generic showcases) or fully invent (Crewtrip-style). Half-inheriting is the worst of both.
 
 ---
 
 ## Quickstart for the next showcase
 
-1. Copy the `:root` + `@font-face` block from `showcase-chiwit/src/styles.css` (smallest reference).
+1. Copy the `:root` font variables from `showcase-chiwit/src/styles.css` (smallest reference).
 2. Replace `--coral` / `--sage` / `--coral-soft` with your showcase's warm + structural pair.
 3. Adjust the body background gradient to match the atmosphere.
-4. Use the 4 shared moves (Fraunces / mono eyebrow / big numeric / italic code).
+4. Use the 4 shared moves (display serif / mono eyebrow / big numeric / italic code).
 5. Run the 10-point check.
 
 Reference files to crib from:

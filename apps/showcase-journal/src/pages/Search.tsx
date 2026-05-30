@@ -65,7 +65,7 @@ export function Search() {
         </button>
       </form>
       <p className="muted small">
-        Semantic search runs entirely on-device using local embeddings. Your query never leaves the device.
+        Semantic search runs on-device using local embeddings, without sending this query to a network service.
       </p>
       {results === null ? null : results.length === 0 ? (
         <p className="muted">No entries with embeddings yet — write a few entries first.</p>

@@ -4,7 +4,7 @@
  * same Y.Doc state.
  *
  * Encryption is end-to-end. The DO sees ciphertext + nonce only; the
- * pair code never leaves the two phones.
+ * raw pair code is not sent to the relay.
  *
  * Architecture:
  *   1. Open WebSocket to `${origin}/__shippie/signal/<roomId>`.

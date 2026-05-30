@@ -135,7 +135,7 @@ export function Pools() {
       {profile && (
         <p className="pools-tip">
           Tip: a pool is your private table — add friends by pasting the link
-          they send you. Nothing leaves your phone.
+          they send you. Your picks stay on this phone until you choose to share.
         </p>
       )}
     </div>

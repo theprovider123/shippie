@@ -48,13 +48,15 @@
     ],
     "attachments": false,
     "recovery": "inherited",
-    "migrations": "snapshot-v1-chiwit",
+    "migrations": "snapshot-v0",
     "snapshots": "inherited",
     "media": "none",
     "realtime": "inherited",
     "localStorage": {
       "keys": [
-        "shippie.chiwit.daily-pulse.v1"
+        "shippie.chiwit.daily-pulse.v1",
+        "shippie.chiwit.last-tab.v1",
+        "CUSTOM_QUICK_ACTIONS"
       ],
       "prefixes": [
         "shippie.chiwit."
@@ -85,8 +87,9 @@
     }
   },
   "curation": {
-    "surface": "featured",
-    "category": "health-fitness"
+    "surface": "archived",
+    "category": "health-fitness",
+    "successor": "habit-tracker"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-chiwit",
   "license": "AGPL-3.0-or-later",

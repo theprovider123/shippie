@@ -32,7 +32,7 @@ Use Shippie itself for marketplace work:
 
 Maintainers optimize for the Shippie promise:
 
-> Local tools that keep user data visible, private by architecture, installable, and useful without accounts.
+> Local tools that keep user data visible, local-first by default, installable, and useful without accounts.
 
 PRs are accepted when they improve the product, preserve the Local Tool policy, and are maintainable. Maintainers may decline good ideas when they expand scope, weaken privacy guarantees, or make the hosted platform harder to moderate.
 

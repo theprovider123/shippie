@@ -52,7 +52,7 @@ That insight is **impossible from any combination of Fitbit + MyFitnessPal + Sle
 - One text input. Single submit. Local SQLite log row per entry.
 - Local AI (`shippie.ai.run`) categorizes: meal kind, rough macro split, novel ingredient detection.
 - Weekly card: *"You ate rice with 4 of 7 dinners. Saturday's takeaway was your highest-calorie day. No fruit Tue/Wed."*
-- **Privacy claim**: text never leaves the device. AI runs in the platform's `/__esm/`-loaded Transformers runtime.
+- **Privacy posture**: drafting runs locally in the browser. If an export, backup, sync, or relay is added later, the UI must say so at the point of use.
 - Showcase path: `apps/showcase-meal-log/`. Slug: `meal-log`. Surface: `featured`. Category: `food-drink`.
 
 #### D2 — Move
@@ -216,7 +216,7 @@ Post on personal blog, share on X/Twitter, submit to HN as a separate post **aft
 | Subreddit | Members | Angle | Lead with |
 |---|---|---|---|
 | **r/selfhosted** | 970K | "Open-source alternative to app subscriptions — runs on your phone, no server" | the architecture |
-| **r/privacy** | 2.2M | "Apps that can't see your data" — be ready with technical sealed-cloud details | the privacy proof |
+| **r/privacy** | 2.2M | "Local-first apps with explicit cloud choices" — be ready with technical sealed-cloud details | the privacy proof |
 | **r/degoogle** | 250K | "Replaced 5 Google apps with local-first tools" | the anti-Big-Tech story |
 | **r/soccer** (if World Cup tools ready) | 5.5M | "Free prediction game, no ads, no account" | the **tool** — don't mention Shippie |
 
@@ -226,7 +226,7 @@ Post on personal blog, share on X/Twitter, submit to HN as a separate post **aft
 
 Six-tweet thread, video-led:
 
-1. **Tweet 1** (hook): *"I built an app platform where the user's phone IS the server. No cloud database. No auth service. No API calls. SQLite on the phone. AI on the phone. Encryption on the phone. Here's how it works: 🧵"*
+1. **Tweet 1** (hook): *"I built an app platform where small tools start on the user's phone: local storage, local AI where possible, optional encrypted continuity when people ask for it. Here's how it works: 🧵"*
 2. **Tweet 2**: architecture diagram (simple, visual)
 3. **Tweet 3**: **15-second screen recording** of haptic + spring on Shippie buttons. **This is the crucial tweet.** People retweet videos. They don't retweet architecture descriptions.
 4. **Tweet 4**: cross-tool intelligence demo (30s screen recording — Meal Log → Move → weekly insight card)

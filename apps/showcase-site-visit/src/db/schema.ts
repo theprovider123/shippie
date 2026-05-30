@@ -4,7 +4,7 @@
  * (wa-sqlite + OPFS, in-memory fallback). Photos live in
  * @shippie/local-files (OPFS); the DB only carries their paths.
  *
- * Nothing leaves the device unless the inspector explicitly exports a
+ * Data stays on the device unless the inspector explicitly exports a
  * PDF or a CSV. That's the whole point — site staff often work where
  * there is no signal.
  */

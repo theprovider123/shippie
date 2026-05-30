@@ -9,7 +9,7 @@
       id: 'wrap',
       label: 'Local',
       blurb:
-        'Every public Shippie tool keeps user data on the device. No external login, no third-party user-data store, no trackers.',
+        'Public Shippie tools are expected to keep primary user data on the device by default, with no hidden login, tracker, or third-party user-data store.',
     },
     {
       id: 'run',
@@ -30,13 +30,13 @@
       id: 'what-local-means',
       title: 'Where data lives',
       blurb:
-        'On Shippie, user data stays on the device by default. Reference data can come in, but user data does not go out unless you explicitly export, back up, or join an encrypted relay.',
+        'On Shippie, primary user data stays on the device by default. Reference data can come in, and user data should not go out unless you explicitly export, back up, sync, join an encrypted relay, or connect a disclosed service.',
     },
     {
       id: 'your-data',
       title: 'Your data — where it lives, who sees it',
       blurb:
-        'Tap "Your data" inside any tool to see what is stored on this device, export it as an encrypted archive, restore it to a new device, or wipe it. Backups go to your own Google Drive (more providers coming). Shippie never stores your app data on Shippie’s servers.',
+        'Tap "Your data" inside any tool to see what is stored on this device, what connections are disclosed, and which export, restore, backup, or wipe controls that tool supports. The default local path does not store app content on Shippie servers; optional backup, sync, relay, and private spaces are shown separately.',
     },
     {
       id: 'no-signup',

@@ -61,11 +61,11 @@ describe('buildToolShelf', () => {
       activeSlug: 'tab',
       liveSlugs: ['cycle'],
       pinnedSlugs: ['ledger'],
-      recentSlugs: ['chiwit'],
+      recentSlugs: ['palate'],
     });
     const quick = shelf.sections.find((s) => s.id === 'quick');
     expect(quick).toBeDefined();
-    expect(quick!.tools.map((t) => t.slug)).toEqual(['tab', 'cycle', 'ledger', 'chiwit']);
+    expect(quick!.tools.map((t) => t.slug)).toEqual(['tab', 'cycle', 'ledger', 'palate']);
   });
 
   it('canonicalises pinned/recent slugs before lookup', () => {
@@ -74,10 +74,11 @@ describe('buildToolShelf', () => {
     const shelf = buildToolShelf({
       catalog,
       pinnedSlugs: ['recipe'],
+      recentSlugs: ['chiwit'],
     });
     const quick = shelf.sections.find((s) => s.id === 'quick');
     expect(quick).toBeDefined();
-    expect(quick!.tools.map((t) => t.slug)).toEqual(['palate']);
+    expect(quick!.tools.map((t) => t.slug)).toEqual(['palate', 'chiwit']);
   });
 
   it('omits Quick when nothing is pinned, recent, active, or live', () => {

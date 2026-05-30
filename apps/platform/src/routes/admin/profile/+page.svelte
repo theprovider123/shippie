@@ -77,7 +77,7 @@
         </label>
         <label>
           X
-          <input name="x" value={data.profile.xUrl ?? ''} placeholder="@username or https://x.com/username" />
+          <input name="x" value={data.profile.xUrl ?? ''} placeholder="@username or full URL" />
         </label>
         <label>
           Bluesky

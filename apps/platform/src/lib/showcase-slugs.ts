@@ -24,11 +24,11 @@ const SLUG_ALIASES: Record<string, string> = {
   pace: 'lift',
   'sleep-logger': 'lift',
   'workout-logger': 'lift',
-  pomodoro: 'chiwit',
-  'mood-pulse': 'chiwit',
+  pomodoro: 'habit-tracker',
+  'mood-pulse': 'habit-tracker',
   // daily-briefing demoted to platform-side `/today` surface; until
-  // that's fully discoverable, alias into Chiwit's daily pulse.
-  'daily-briefing': 'chiwit',
+  // that's fully discoverable, alias into Cadence's daily pulse.
+  'daily-briefing': 'habit-tracker',
   // Palate absorbed the standalone temperature helper for launch.
   cooking: 'palate',
 
@@ -47,9 +47,9 @@ const SLUG_ALIASES: Record<string, string> = {
   journal: 'therapy-notes',
   move: 'lift',
 
-  // Chiwit now owns hydration and caffeine context, so old one-tap
-  // sip links open the wellness tracker instead of a narrow mirror.
-  'sip-log': 'chiwit',
+  // Mise now owns hydration and caffeine context, so old one-tap
+  // sip links open the food-literate nutrition tracker.
+  'sip-log': 'mise',
   // Launch slate Phase 2 — standalone brain games now open as modes
   // inside Daily Puzzle. The target search params below preserve which
   // retired app the person intended to launch.
@@ -63,11 +63,14 @@ const SLUG_ALIASES: Record<string, string> = {
   'meal-planner': 'palate',
   'pantry-scanner': 'palate',
   'photo-a-day': 'snap-and-forget',
-  'body-metrics': 'chiwit',
-  breath: 'chiwit',
-  'habit-tracker': 'chiwit',
-  quiet: 'chiwit',
-  'colour-of-day': 'chiwit',
+  'body-metrics': 'habit-tracker',
+  breath: 'habit-tracker',
+  // Habit Tracker is its own flagship as of the Cadence relaunch — it
+  // ships mood + feeling + correlation + weekly review beyond Chiwit's
+  // pulse remit and provides distinct intents (habit-logged,
+  // feeling-logged, weekly-review-created). Chiwit remains canonical.
+  quiet: 'habit-tracker',
+  'colour-of-day': 'habit-tracker',
 };
 
 const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
@@ -84,7 +87,6 @@ const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
   'photo-a-day': { from: 'photo-a-day' },
   'body-metrics': { tab: 'track', from: 'body-metrics' },
   breath: { tab: 'track', from: 'breath' },
-  'habit-tracker': { tab: 'track', from: 'habit-tracker' },
   quiet: { tab: 'track', from: 'quiet' },
   'colour-of-day': { tab: 'track', from: 'colour-of-day' },
   'daily-briefing': { tab: 'today', from: 'daily-briefing' },

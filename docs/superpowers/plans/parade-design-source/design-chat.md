@@ -14,7 +14,7 @@ Current date is now May 22, 2026
 
 <default aesthetic>
 If no references, art direction or design systems were provided, use this default professional modern, minimal aesthetic as a base. Declare your choice out loud so you stick to it. Guidance:
-- Choose a type pairing from web-safe set or Google Fonts. Helvetica is a good choice. Avoid hard-to-read or overly stylized fonts. Use 1-3 fonts only.
+- Choose a type pairing from web-safe or bundled local fonts. Helvetica is a good choice. Avoid hard-to-read or overly stylized fonts. Use 1-3 fonts only.
 - Foreground and background: choose a color tone (warm, cool, neutral, something in-between). Use subtly-toned whites and blacks; avoid saturations above 0.02 for whites.
 - Accents: choose 0-2 additional accent colors using oklch. All accents should share same chroma and lightness; vary hue.
 - NEVER write out an SVG yourself that's more complicated than a square, circle, diamond, etc.
@@ -489,4 +489,3 @@ Polish pass — focused on the share-card DNA leaking into every screen:
 - **Group card metas** rewritten to fit on one line: "completed · 5/5 arrived" → "5 / 5 arrived", with explicit nowrap so the countdown doesn't push the label onto two lines
 
 Visually consistent with the share card now: every screen has the same red rule treatment, the same italic Fraunces + mono caps + ink hairline rhythm.
-

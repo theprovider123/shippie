@@ -6,7 +6,7 @@
  * for the load × reps numerals. Worn-journal hatching at very low
  * opacity, plate-cutout notch only on hero panels.
  *
- * TODO: converge on @shippie/design-tokens for cross-app consistency.
+ * Review note: converge on @shippie/design-tokens for cross-app consistency.
  * Currently uses bespoke iron/chalk/clay/signal theme map (data-theme
  * driven). Migration should map --lift-* vars onto canonical tokens
  * (--text, --bg, --sunset, --sage-leaf, etc.) while preserving the

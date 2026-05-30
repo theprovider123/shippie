@@ -235,7 +235,7 @@ export function Settings({ db, onChange }: SettingsProps) {
           <article className="setting-row">
             <div>
               <h2>Pair code</h2>
-              <p className="muted">Both phones enter the same code. It never leaves either device — it derives the key locally.</p>
+              <p className="muted">Both phones enter the same code. It derives the key locally; the relay only sees sealed sync traffic.</p>
             </div>
             <div className="pair-input-row">
               <input
@@ -253,7 +253,7 @@ export function Settings({ db, onChange }: SettingsProps) {
           <article className="setting-row">
             <div>
               <h2>What a partner sees</h2>
-              <p className="muted">Pick the smallest set. Anything off here never leaves the phone, even while sharing is on.</p>
+              <p className="muted">Pick the smallest set. Fields left off stay only on this phone, even while sharing is on.</p>
             </div>
             <ul className="field-list">
               {(Object.keys(FIELD_COPY) as Array<keyof PartnerSeenFields>).map((key) => (

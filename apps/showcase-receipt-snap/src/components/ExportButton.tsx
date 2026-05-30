@@ -1,8 +1,8 @@
 /**
  * Export button. Renders a select with the 5 presets (simple CSV, wide
  * accountant CSV, FreeAgent expenses JSON, FreeAgent bank CSV, ZIP
- * everything) and triggers a download. The file never leaves the
- * browser unless the user shares / uploads it themselves.
+ * everything) and triggers a download. The file is written locally
+ * unless the user shares / uploads it themselves.
  *
  * Marketing-claim discipline: the labels here say "FreeAgent-ready",
  * never "imports in one tap." The export is a file; importing is

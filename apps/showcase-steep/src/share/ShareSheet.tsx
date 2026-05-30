@@ -3,9 +3,9 @@
  * a Copy button, a brand-styled QR (when the blob fits in a QR), and
  * "Share via…" via the Web Share API when available.
  *
- * Privacy posture: the blob is encoded into the URL fragment so it
- * never leaves the browser. The recipient's app reads the fragment,
- * verifies the signature, and offers an Import card.
+ * Privacy posture: the blob is encoded into the URL fragment, which is
+ * not sent to Shippie servers during navigation. The recipient's app
+ * reads the fragment, verifies the signature, and offers an Import card.
  */
 import { useEffect, useState } from 'react';
 import { qrSvg } from '@shippie/qr';

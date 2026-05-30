@@ -1,7 +1,7 @@
 /**
  * Touch — local-first schema for the 30-people Rolodex.
  *
- * Five tables, all owned by this app. Nothing leaves the device unless
+ * Five tables, all owned by this app. Data stays on the device unless
  * the human pulls the CSV export trigger themselves.
  */
 import type { LocalDbSchema } from '@shippie/local-runtime-contract';

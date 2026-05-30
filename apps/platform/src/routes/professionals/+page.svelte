@@ -3,33 +3,33 @@
 </script>
 
 <svelte:head>
-  <title>Shippie for Professionals — AI that never sees your data</title>
+  <title>Shippie for Professionals — local-first tools for sensitive work</title>
   <meta
     name="description"
-    content="Compliance-grade local-first apps for solicitors, therapists, financial advisors, and teachers. AI inference runs on the device. Data never leaves the device."
+    content="Local-first tools for sensitive work. App data stays on the device by default; backup, sync, relay, and external services are explicit and visible."
   />
 </svelte:head>
 
 <main>
   <header class="hero">
-    <h1>AI that never sees your data.</h1>
+    <h1>Local-first tools for sensitive work.</h1>
     <p class="lede">
-      Built for solicitors, therapists, financial advisors, and teachers — everyone
-      who can&rsquo;t send client data to American clouds.
+      Built for people who need clear data boundaries, fast tools, and fewer hidden
+      cloud dependencies before a workflow can be trusted.
     </p>
   </header>
 
   <section>
-    <h2>Compliant by architecture, not by policy</h2>
+    <h2>Privacy by architecture, backed by disclosure</h2>
     <p>
-      Shippie&rsquo;s local AI runs in a sandboxed iframe on the user&rsquo;s device,
-      on the device&rsquo;s own neural processor. Data goes in. Inference happens.
-      Result comes out. Nothing leaves.
+      Shippie tools are designed to keep primary working data on the user&rsquo;s
+      device. When local AI is available, inference runs in the browser sandbox
+      on the device using the best supported runtime for that browser and hardware.
     </p>
     <p>
-      That&rsquo;s not a privacy promise — it&rsquo;s a network architecture. Your
-      firm&rsquo;s compliance team can audit the egress logs and see the same thing
-      every time: nothing.
+      If a workflow needs backup, sync, relay, external AI, or another service,
+      that movement should be explicit, encrypted where the feature requires it,
+      and visible in Shippie surfaces before users rely on it with sensitive data.
     </p>
   </section>
 
@@ -54,9 +54,9 @@
         featured
         features={[
           'Everything in Pro',
-          'GDPR + HIPAA compatibility statement',
-          'On-device inference audit log (exportable)',
-          'Architectural data-residency guarantee',
+          'Regulated-workflow review materials',
+          'Local inference and connection review logs',
+          'Data-residency architecture review',
           'Priority support + SLA'
         ]}
       />
@@ -68,7 +68,7 @@
           'Everything in Professional',
           'On-prem Shippie Hub',
           'SSO + device management',
-          'Custom fine-tuned models in the AI app',
+          'Private AI deployment planning',
           'Dedicated support'
         ]}
       />
@@ -78,15 +78,16 @@
   <section>
     <h2>What stays local</h2>
     <ul class="checklist">
-      <li>Every AI inference call.</li>
-      <li>Every database row.</li>
-      <li>Every backup (encrypted to your own Drive — Shippie cannot read it).</li>
-      <li>Every cross-device sync (peer-to-peer, end-to-end encrypted).</li>
+      <li>Primary app data by default.</li>
+      <li>Local AI inputs and outputs when a local model/runtime is used.</li>
+      <li>Offline app packages and saved launcher state on the device.</li>
+      <li>Encrypted backup, sync, and relay payloads when those features are enabled.</li>
     </ul>
     <p>
-      The only thing Shippie&rsquo;s servers ever see is which apps you&rsquo;ve
-      installed and the encrypted blobs they relay between your devices. We
-      can&rsquo;t read those blobs because we don&rsquo;t have the keys.
+      Shippie servers may still see account details, app metadata, operational logs,
+      install or saved-tool signals, and encrypted backup or relay payloads when
+      users enable those features. Tool content should not move to Shippie unless
+      the user explicitly exports, backs up, syncs, relays, or connects a service.
     </p>
   </section>
 </main>

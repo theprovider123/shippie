@@ -2,7 +2,7 @@
  * Local-DB schema for Ledger.
  *
  * Three tables: entries, categories, recurring. All data lives in
- * wa-sqlite + OPFS via @shippie/local-db. Nothing leaves the device
+ * wa-sqlite + OPFS via @shippie/local-db. Data stays on the device
  * unless the user explicitly exports CSV or backs up.
  *
  * Money is stored as integer cents to avoid float drift on aggregates.

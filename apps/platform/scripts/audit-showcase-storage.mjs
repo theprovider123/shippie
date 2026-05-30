@@ -121,11 +121,14 @@ function bridgeState(slug) {
 
   const html = readText(indexPath);
   const bridgeIndex = html.indexOf('data-shippie-container-local-db');
+  const trackerIndex = html.indexOf('touched-local-storage');
   const moduleIndex = html.indexOf('<script type="module"');
 
   if (moduleIndex === -1) return { ok: false, reason: 'missing app module script' };
   if (bridgeIndex === -1) return { ok: false, reason: 'missing local-db bridge' };
   if (bridgeIndex > moduleIndex) return { ok: false, reason: 'local-db bridge loads after app module' };
+  if (trackerIndex === -1) return { ok: false, reason: 'missing localStorage key tracker' };
+  if (trackerIndex > moduleIndex) return { ok: false, reason: 'localStorage key tracker loads after app module' };
   return { ok: true };
 }
 

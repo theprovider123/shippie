@@ -62,8 +62,8 @@
 
   {#if data.shelves.length === 0 && data.featured.length === 0}
     <section class="empty">
-      <h2>Coming soon</h2>
-      <p>The Arcade surface is live. Games land here once they pass the quality gates.</p>
+      <h2>No games match yet</h2>
+      <p>Games appear here after they pass the quality gates.</p>
     </section>
   {/if}
 </main>

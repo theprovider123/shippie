@@ -160,7 +160,7 @@ export function App() {
           type="url"
           value={draftUrl}
           onChange={(e) => setDraftUrl(e.target.value)}
-          placeholder="https://example.com/article"
+          placeholder="Paste article URL"
           aria-label="Article URL"
           disabled={busy}
         />

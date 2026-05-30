@@ -1,20 +1,20 @@
 {
-  "name": "Habit Tracker",
-  "short_name": "Habits",
-  "description": "Daily habits that auto-check when you complete activities in other Shippie apps. Workout logged → exercise habit ticked. Recipe cooked → cooked-dinner habit ticked.",
+  "name": "Cadence",
+  "short_name": "Cadence",
+  "description": "A personal life observatory. Daily habits and feelings in one shame-free log that returns gently after a missed day.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FAF7EF",
-  "theme_color": "#5EA777",
+  "background_color": "#F8F2E6",
+  "theme_color": "#6F9B6E",
   "orientation": "portrait",
   "scope": "/",
   "icons": [
     {
-      "src": "/icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ],
-  "categories": ["health", "fitness", "lifestyle", "utilities"]
+  "categories": ["health", "fitness", "lifestyle"]
 }

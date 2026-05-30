@@ -45,6 +45,10 @@ describe('/run/[slug]/+page.server load', () => {
     ['shopping-list', '/run/palate?tab=shop&from=shopping-list'],
     ['meal-planner', '/run/palate?tab=plan&from=meal-planner'],
     ['pantry-scanner', '/run/palate?tab=pantry&from=pantry-scanner'],
+    ['body-metrics', '/run/habit-tracker?tab=track&from=body-metrics'],
+    ['breath', '/run/habit-tracker?tab=track&from=breath'],
+    ['colour-of-day', '/run/habit-tracker?tab=track&from=colour-of-day'],
+    ['sip-log', '/run/mise?tab=track&from=sip-log'],
   ] as const) {
     test(`/run/${oldSlug} throws redirect(302) to canonical successor`, async () => {
       try {
@@ -83,6 +87,17 @@ describe('/run/[slug]/+page.server load', () => {
     let threwRedirect = false;
     try {
       await callLoad({ slug: 'palate' });
+    } catch (err) {
+      const r = err as { status?: number; location?: string };
+      if (r.status === 302) threwRedirect = true;
+    }
+    expect(threwRedirect).toBe(false);
+  });
+
+  test('canonical /run/chiwit does NOT redirect to Habit Tracker', async () => {
+    let threwRedirect = false;
+    try {
+      await callLoad({ slug: 'chiwit' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       if (r.status === 302) threwRedirect = true;

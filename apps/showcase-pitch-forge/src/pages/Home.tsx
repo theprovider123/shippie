@@ -31,7 +31,7 @@ export function HomePage({ pitches, onOpen, onNew }: HomePageProps) {
 
       {sorted.length === 0 ? (
         <p className="empty">
-          Nothing yet. Start a grant proposal, RFP response, or sponsorship ask — your text never leaves this phone.
+          Nothing yet. Start a grant proposal, RFP response, or sponsorship ask — your drafts stay local unless you export them.
         </p>
       ) : (
         <ul className="pitch-list">

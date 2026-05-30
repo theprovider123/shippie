@@ -29,7 +29,7 @@
   "curation": {
     "surface": "archived",
     "category": "health-fitness",
-    "successor": "chiwit"
+    "successor": "habit-tracker"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-body-metrics",
   "license": "AGPL-3.0-or-later",

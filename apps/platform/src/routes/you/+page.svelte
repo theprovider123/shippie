@@ -3,8 +3,14 @@
   import type { PageData } from './$types';
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
   import SavedDock from '$lib/components/marketplace/SavedDock.svelte';
+  import {
+    describeOfflineHealth,
+    formatOfflineBytes,
+    getOfflineStorageEstimate,
+    requestPersistentOfflineStorage,
+  } from '$lib/offline/download-app';
   import { displayCategory, titleCap } from '$lib/marketplace/display-text';
-  import { cachedSlugs, offlineStatuses, refreshCachedSlugs } from '$lib/stores/cached-slugs';
+  import { cachedSlugs, offlineStatuses, refreshCachedSlugs, repairAppOffline } from '$lib/stores/cached-slugs';
   import {
     clearLauncherMemory,
     hydrateLauncherMemory,
@@ -13,6 +19,10 @@
   } from '$lib/stores/launcher-memory';
 
   let { data }: { data: PageData } = $props();
+  let storageUsage = $state(0);
+  let storageQuota = $state(0);
+  let storagePinned = $state(false);
+  let storagePinning = $state(false);
 
   type YouApp = (typeof data.apps)[number];
 
@@ -34,6 +44,12 @@
   const offlineApps = $derived.by(() =>
     data.apps.filter((app) => $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved'),
   );
+  const offlineAttentionCount = $derived.by(() =>
+    data.apps.filter((app) => {
+      const state = $offlineStatuses[app.slug]?.state;
+      return state === 'partial' || state === 'evicted' || state === 'error';
+    }).length,
+  );
   const totalLaunches = $derived.by(() =>
     Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, count) => sum + count, 0),
   );
@@ -43,14 +59,22 @@
         const recent = $launcherMemory.recents.find((item) => item.slug === app.slug);
         const launches = $launcherMemory.launchCounts?.[app.slug] ?? 0;
         const saved = $launcherMemory.pinned.includes(app.slug);
-        const offline = $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved';
+        const offlineStatus = $offlineStatuses[app.slug];
+        const health = describeOfflineHealth(offlineStatus, {
+          cached: $cachedSlugs.has(app.slug),
+          online: typeof navigator === 'undefined' ? true : navigator.onLine,
+        });
+        const offline = health.state === 'ready';
+        const offlineAttention = health.state === 'needs_refresh' || health.state === 'needs_connection' || health.state === 'failed';
         return {
           app,
           saved,
           recent,
           launches,
           offline,
-          hasLocalSignal: saved || Boolean(recent) || launches > 0 || offline,
+          offlineAttention,
+          health,
+          hasLocalSignal: saved || Boolean(recent) || launches > 0 || offline || offlineAttention,
         };
       })
       .filter((row) => row.hasLocalSignal)
@@ -67,7 +91,25 @@
   onMount(() => {
     hydrateLauncherMemory();
     void refreshCachedSlugs(data.apps.map((app) => app.slug));
+    void refreshStorageEstimate();
   });
+
+  async function refreshStorageEstimate() {
+    const estimate = await getOfflineStorageEstimate();
+    storageUsage = estimate.usage;
+    storageQuota = estimate.quota;
+    storagePinned = estimate.persisted;
+  }
+
+  async function pinStorage() {
+    storagePinning = true;
+    try {
+      storagePinned = await requestPersistentOfflineStorage();
+      await refreshStorageEstimate();
+    } finally {
+      storagePinning = false;
+    }
+  }
 
   function theme(app: YouApp): string {
     return app.themeColor || '#E8603C';
@@ -88,6 +130,10 @@
     if (!hasLocalData) return;
     const ok = window.confirm('Clear saved and recent launcher memory on this device? Offline app files stay saved.');
     if (ok) clearLauncherMemory();
+  }
+
+  function repairOfflineCopy(slug: string) {
+    void repairAppOffline(slug).then(refreshStorageEstimate).catch(() => {});
   }
 </script>
 
@@ -148,14 +194,14 @@
       <summary>
         <span class="eyebrow">Your data on Shippie</span>
         <span class="trust-band-summary">
-          Local by default, encrypted backups, no cross-app tracking. <em>Tap for the full list.</em>
+          Local by default, sealed optional cloud, no cross-app tracking. <em>Tap for the full list.</em>
         </span>
       </summary>
       <ul class="trust-band-list">
         <li><span aria-hidden="true">✓</span> Tools run on your device, offline by default.</li>
         <li><span aria-hidden="true">✓</span> Saved tools, recents, and app data stay on this device unless you back them up.</li>
-        <li><span aria-hidden="true">✓</span> Backups are encrypted; only you have the key.</li>
-        <li><span aria-hidden="true">✖</span> Shippie has no copy of your app data.</li>
+        <li><span aria-hidden="true">✓</span> Backup, sync, and relay are optional and should be sealed when used.</li>
+        <li><span aria-hidden="true">✖</span> Shippie does not read local app content.</li>
         <li><span aria-hidden="true">✖</span> Shippie doesn't track you across apps.</li>
       </ul>
       <div class="trust-band-grid">
@@ -165,6 +211,7 @@
             <li>Which tools you opened (count only)</li>
             <li>App slug + version for compatibility</li>
             <li>Failed-deploy / error signals so makers can fix things</li>
+            <li>Technical metadata for sealed backup, sync, relay, or private spaces when enabled</li>
           </ul>
         </article>
         <article>
@@ -232,12 +279,26 @@
         </div>
         <div>
           <strong>Offline copies</strong>
-          <p>{offlineApps.length} {offlineApps.length === 1 ? 'tool is' : 'tools are'} currently ready without the network.</p>
+          <p>
+            {offlineApps.length} {offlineApps.length === 1 ? 'tool is' : 'tools are'} ready without the network{offlineAttentionCount > 0 ? ` · ${offlineAttentionCount} need repair` : ''}.
+          </p>
+        </div>
+        <div>
+          <strong>Storage budget</strong>
+          <p>
+            {formatOfflineBytes(storageUsage) || 'Measuring'} used{storageQuota > 0 ? ` of ${formatOfflineBytes(storageQuota)}` : ''}.
+            {storagePinned ? ' Browser storage is pinned.' : ' Pinning asks the browser to protect saved tools.'}
+          </p>
         </div>
       </div>
-      <button type="button" class="text-danger" disabled={!hasLocalData} onclick={clearLocalMemory}>
-        Clear local launcher memory
-      </button>
+      <div class="data-actions">
+        <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
+          {storagePinned ? 'Storage pinned' : storagePinning ? 'Pinning storage' : 'Pin offline storage'}
+        </button>
+        <button type="button" class="text-danger" disabled={!hasLocalData} onclick={clearLocalMemory}>
+          Clear local launcher memory
+        </button>
+      </div>
     </section>
 
     <section class="panel app-data-panel" aria-labelledby="app-data-title">
@@ -259,12 +320,16 @@
               <span>
                 {[
                   row.saved ? 'saved' : '',
-                  row.offline ? 'offline copy' : '',
+                  row.offline ? 'ready offline' : row.offlineAttention ? row.health.label.toLowerCase() : '',
                   row.launches > 0 ? `${row.launches} launch${row.launches === 1 ? '' : 'es'}` : '',
                 ].filter(Boolean).join(' · ')}
               </span>
               <span>{row.recent ? openedLabel(row.recent.lastOpened) : 'not opened recently'}</span>
-              <a href={`/run/${encodeURIComponent(row.app.slug)}`} onclick={() => recordAppLaunch(row.app.slug)}>Open</a>
+              {#if row.health.actionable && row.offlineAttention}
+                <button type="button" class="table-action" onclick={() => repairOfflineCopy(row.app.slug)}>Repair</button>
+              {:else}
+                <a href={`/run/${encodeURIComponent(row.app.slug)}`} onclick={() => recordAppLaunch(row.app.slug)}>Open</a>
+              {/if}
             </div>
           {/each}
         </div>
@@ -615,7 +680,7 @@
 
   .data-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1px;
     background: var(--border-light);
   }
@@ -672,6 +737,7 @@
   }
 
   .app-data-row a,
+  .app-data-row .table-action,
   .move-row a {
     min-height: var(--touch-min);
     display: inline-flex;
@@ -685,6 +751,12 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     text-decoration: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .app-data-row .table-action {
+    color: var(--marigold);
   }
 
   .move-row {
@@ -703,9 +775,32 @@
     font-size: var(--small-size);
   }
 
+  .data-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .secondary-action {
+    min-height: var(--touch-min);
+    padding: 0 12px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .secondary-action:disabled {
+    cursor: default;
+    color: var(--text-light);
+    opacity: 0.7;
+  }
+
   .text-danger {
     min-height: var(--touch-min);
-    margin-top: 10px;
     padding: 0 12px;
     border: 1px solid rgba(232, 96, 60, 0.35);
     background: transparent;

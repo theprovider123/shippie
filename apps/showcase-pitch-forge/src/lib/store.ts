@@ -7,10 +7,10 @@
  * full document fits comfortably under the localStorage budget if we
  * keep version history bounded (we cap at 20 per pitch).
  *
- * Privacy posture: every byte stays on this device. The only network
- * call this app makes is the `/__esm/` runtime fetch (same-origin,
- * proxied through the platform service worker — see DraftAssistant).
- * Nothing is sent to a server. There is no admin to subpoena.
+ * Privacy posture: draft content stays in this browser unless the user
+ * exports it. The only network call this app makes is the `/__esm/`
+ * runtime fetch (same-origin, proxied through the platform service
+ * worker — see DraftAssistant).
  */
 
 import type { PitchType, SectionKind } from './templates.ts';

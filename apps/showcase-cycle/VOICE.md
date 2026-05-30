@@ -21,4 +21,4 @@
 - Title bar: `Cycle`
 - Log action: `Log today`
 - Symptom add: `Add cramping`, `Add bleeding`, `Add mood`
-- Privacy banner (settings): `Cycle stores on this phone. Nothing leaves unless you share it.`
+- Privacy banner (settings): `Cycle stores on this phone. Data stays here unless you share it.`

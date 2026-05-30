@@ -1,9 +1,9 @@
 /**
  * Crypto helpers — thin wrappers around `@shippie/local-db/backup`.
  *
- * The local-db package already implements Argon2id-equivalent KDF
- * (PBKDF2-SHA256 at 210k iterations in this build) + AES-256-GCM for
- * its own backup format. We delegate to it for both directions so the
+ * The local-db package implements the current portable WebCrypto backup
+ * envelope: PBKDF2-SHA256 at 210k iterations + AES-256-GCM. We delegate
+ * to it for both directions so the
  * on-disk and over-the-wire ciphertexts share one tested code path.
  *
  * NEVER add a "log" parameter that includes the passphrase or token

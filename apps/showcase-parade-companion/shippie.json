@@ -75,6 +75,8 @@
     }
   },
   "data_passport": {
+    "family": "parade-companion",
+    "schema": "parade-companion.v1",
     "stores": [
       "Your display name for local group signals",
       "Your saved group plan and meetup notes",

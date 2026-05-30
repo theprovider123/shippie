@@ -5,7 +5,7 @@ import type { LauncherPhase, ToolEntry } from './tool-entry';
 export const LAUNCHER_WORLD_CUP_PHASE_START_MS = Date.UTC(2026, 5, 11);
 
 export const LAUNCHER_PROMOTIONS_BY_PHASE = {
-  prelaunch: { promote: [] as readonly string[] },
+  prelaunch: { promote: ['golazo'] as readonly string[] },
   'world-cup': { promote: ['golazo'] as readonly string[] },
 } as const satisfies Record<LauncherPhase, { promote: readonly string[] }>;
 

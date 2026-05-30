@@ -1,4 +1,4 @@
-// TODO(2026-05-23 review, batch_B): App.tsx is ~3400 lines. Split into feature modules
+// Review note (2026-05-23, batch_B): App.tsx is ~3400 lines. Split into feature modules
 // with a shared state provider (timeline, inbox, tournaments, host setup, wrap, chat).
 // Tracked in docs/reviews/_batch_B.md (showcase-crewtrip → UI polish).
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';

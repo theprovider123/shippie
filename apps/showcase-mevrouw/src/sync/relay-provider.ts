@@ -27,7 +27,7 @@
  * by the in-app SyncStatus panel + the manual "Sync now" affordance.
  *
  * Encryption is end-to-end. The DO sees ciphertext + nonce only; the
- * couple code never leaves the two phones.
+ * raw couple code is not sent to the relay.
  */
 import * as Y from 'yjs';
 import { decrypt, deriveKey, encrypt, packFrame, unpackFrame } from './crypto.ts';

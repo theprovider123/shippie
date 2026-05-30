@@ -323,7 +323,7 @@ This way the cross-tool insight surface can demonstrate immediately to anyone ta
 
 Receipt Snap with the accounting widening fits the "lead with the tool, not the platform" rule:
 
-- For freelancers: *"Snap a receipt. The AI reads it on your phone. Export a FreeAgent-ready bundle when you need to. Nothing leaves the device until you choose."*
+- For freelancers: *"Snap a receipt. The AI reads it on your phone. Export a FreeAgent-ready bundle when you need to. The receipt stays on your device until you choose."*
 - For Ltd company owners: *"Quarterly VAT review without quarterly admin. Snap as you go, export when HMRC asks."*
 - For privacy-conscious folks: *"Most receipt scanners send your spending to a server. This one doesn't."*
 - For makers: *"OCR runs on your device. The model is open. The code is open. The receipts stay yours."*

@@ -145,7 +145,7 @@
             URL wrapping is retired for the marketplace. If a tool depends on a hosted backend,
             move user data to <code>shippie.local.db</code> and publish the built bundle.
           {:else}
-            Shippie tools must be private by architecture. Try the zip flow above, then sign in
+            Shippie tools are local-first by default. Try the zip flow above, then sign in
             when you want to keep the deploy.
           {/if}
         </p>

@@ -2,7 +2,7 @@
 
 **Local tools that know each other.**
 
-Draft v2 · 2026-05-19 · Devante Providence
+Draft v3 · 2026-05-30 · Devante Providence
 
 ---
 
@@ -14,11 +14,11 @@ For users:
 
 For makers:
 
-> Build on Shippie. One-line database. Zero config. Deploy in under a minute. Your tool connects to every other tool in the ecosystem automatically.
+> Build on Shippie. One-line database. Zero config. Deploy in under a minute. Your tool can connect to other Shippie tools through user-controlled primitives.
 
 For enterprises:
 
-> Every tool starts from the device. Every outside connection is scanned and disclosed. No per-tool guesswork required.
+> Every tool starts from the device. Outside connections are scanned, disclosed, and visible. Less per-tool guesswork required.
 
 For the world:
 
@@ -71,7 +71,7 @@ Blocked:
 - leaked API keys or secrets,
 - cloud apps reverse-proxied into a Shippie costume.
 
-This is not purity for its own sake. It is the product. The value is that a user never has to inspect code to know what a Shippie tool can connect to.
+This is not purity for its own sake. It is the product. The value is that a user should not have to inspect code to know what a Shippie tool can connect to.
 
 ---
 
@@ -97,7 +97,7 @@ shippie deploy ./dist
 
 The platform handles installability, offline shell, local runtime, proof events, Your Data, secure backup, portable packages, and marketplace discovery.
 
-No database provisioning. No auth flow. No server bill. No privacy policy gymnastics.
+No database provisioning. No auth flow. No server bill for the default local path. Any outside connection still needs clear disclosure.
 
 ---
 
@@ -165,11 +165,11 @@ For individuals, Shippie makes useful software feel lighter: no account, no uplo
 
 For makers, Shippie makes local-first easier than cloud-first: one-line database, zero setup, deploy from the browser, CLI, or MCP.
 
-For schools, hospitals, teams, and privacy-sensitive organizations, Shippie gives a stronger security story than per-app auditing:
+For schools, teams, and privacy-sensitive organizations, Shippie gives a simpler starting point for security review than ad-hoc cloud apps:
 
-> Every tool starts local, and every outside connection is visible.
+> Every tool starts local, and outside connections are visible.
 
-The narrower marketplace is the moat. Fewer tools, clearer guarantee, deeper trust.
+The narrower marketplace is the moat. Fewer tools, clearer claims, deeper trust.
 
 ---
 

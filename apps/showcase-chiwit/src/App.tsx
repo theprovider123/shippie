@@ -110,6 +110,7 @@ interface Insight {
 const shippie = createShippieIframeSdk({ appId: 'app_chiwit' });
 const STORAGE_KEY = 'shippie.chiwit.daily-pulse.v1';
 const QUICK_ACTIONS_STORAGE_KEY = 'CUSTOM_QUICK_ACTIONS';
+const LAST_TAB_KEY = 'shippie.chiwit.last-tab.v1';
 const CHIWIT_LOGO_URL = `${import.meta.env.BASE_URL}brand/chiwit-logo.png`;
 const backupStore = createChiwitBackupStore();
 
@@ -120,6 +121,35 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'timeline', label: 'Timeline' },
   { id: 'data', label: 'Data' },
 ];
+
+function isTab(value: string | null): value is Tab {
+  return TABS.some((candidate) => candidate.id === value);
+}
+
+function normaliseTab(value: string | null): Tab | null {
+  if (value === 'mood' || value === 'breath' || value === 'body') return 'track';
+  return isTab(value) ? value : null;
+}
+
+function readInitialTab(): Tab {
+  if (typeof window === 'undefined') return 'today';
+  try {
+    const queryTab = normaliseTab(new URL(window.location.href).searchParams.get('tab'));
+    if (queryTab) return queryTab;
+    const savedTab = normaliseTab(localStorage.getItem(LAST_TAB_KEY));
+    return savedTab ?? 'today';
+  } catch {
+    return 'today';
+  }
+}
+
+function rememberTab(next: Tab): void {
+  try {
+    localStorage.setItem(LAST_TAB_KEY, next);
+  } catch {
+    // localStorage unavailable/full: navigation should still work.
+  }
+}
 
 /**
  * Per-kind metadata. `color` resolves through a CSS variable so the
@@ -803,12 +833,7 @@ function ambientEntryForKind(kind: string, signal: AmbientSignalKind, label: str
 export function App() {
   const [state, setState] = useState<ChiwitState>(() => readState());
   const [customQuickActions, setCustomQuickActions] = useState<CustomQuickAction[]>(() => readCustomQuickActions());
-  const [tab, setTab] = useState<Tab>(() => {
-    if (typeof window === 'undefined') return 'today';
-    const queryTab = new URL(window.location.href).searchParams.get('tab');
-    if (queryTab === 'mood' || queryTab === 'breath' || queryTab === 'body') return 'track';
-    return TABS.some((candidate) => candidate.id === queryTab) ? (queryTab as Tab) : 'today';
-  });
+  const [tab, setTab] = useState<Tab>(() => readInitialTab());
   const [manualKind, setManualKind] = useState<EntryKind>('mood');
   const [manualValue, setManualValue] = useState('4');
   const [manualAmount, setManualAmount] = useState('');
@@ -917,6 +942,7 @@ export function App() {
 
   function navigate(next: Tab): void {
     setTab(next);
+    rememberTab(next);
     void localNavigation.navigate(next, { kind: 'crossfade', history: 'none' });
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -1879,14 +1905,14 @@ function DataView({
   const bytes = new Blob([JSON.stringify(state)]).size;
   return (
     <section className="page-shell data-page">
-      <p className="eyebrow">Local data</p>
+      <p className="eyebrow">Local-first data</p>
       <h1>Your Chiwit data.</h1>
       <div className="data-hero">
         <div>
           <p className="measure">
-            Chiwit stores your Daily Pulse on this device. Shippie hosts the app package and recovery wrapper; your entries do not live in a Chiwit or Shippie app database.
+            Chiwit stores your Daily Pulse on this device first. The Shippie data panel can keep an encrypted sealed copy for recovery and handoff without exposing the contents.
           </p>
-          <p className="data-hero__tagline">A device. A vault. Nothing in between.</p>
+          <p className="data-hero__tagline">Local first. Sealed when you choose recovery.</p>
         </div>
         {/* Inline SVG pictogram — device + vault/lock in sage hairline strokes. */}
         <svg className="data-hero__art" viewBox="0 0 220 140" role="img" aria-label="Your data lives on this device" preserveAspectRatio="xMidYMid meet">

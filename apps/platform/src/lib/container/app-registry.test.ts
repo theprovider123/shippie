@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { findRequestedApp, visibleContainerApps } from './app-registry';
+import { findRequestedApp, pickBaseApps, visibleContainerApps } from './app-registry';
 import { curatedApps } from './state';
 
 describe('findRequestedApp', () => {
@@ -40,3 +40,46 @@ describe('visibleContainerApps', () => {
     expect(app?.id).toBe(curatedApps[0].id);
   });
 });
+
+describe('pickBaseApps', () => {
+  test('keeps curated first-party apps when the package registry is partial', () => {
+    const apps = pickBaseApps([
+      packageSummary({ slug: 'palate', name: 'Packaged Palate' }),
+    ]);
+    const slugs = new Set(apps.map((app) => app.slug));
+
+    expect(slugs.has('palate')).toBe(true);
+    expect(slugs.has('habit-tracker')).toBe(true);
+    expect(slugs.has('cycle')).toBe(true);
+    expect(apps.find((app) => app.slug === 'palate')?.name).toBe('Packaged Palate');
+  });
+
+  test('appends compatible maker packages that are not in the curated catalogue', () => {
+    const apps = pickBaseApps([
+      packageSummary({ slug: 'maker-tool', name: 'Maker Tool' }),
+    ]);
+
+    expect(apps.at(-1)?.slug).toBe('maker-tool');
+    expect(apps.find((app) => app.slug === 'palate')).toBeDefined();
+  });
+});
+
+function packageSummary(input: { slug: string; name: string }) {
+  return {
+    id: `app_${input.slug.replaceAll('-', '_')}`,
+    slug: input.slug,
+    name: input.name,
+    description: `${input.name} package`,
+    appKind: 'local',
+    entry: 'index.html',
+    version: '1.0.0',
+    packageHash: 'sha256:test',
+    standaloneUrl: `https://${input.slug}.shippie.app`,
+    visibility: 'public',
+    owned: false,
+    permissions: {
+      schema: 'shippie.permissions.v1',
+      capabilities: {},
+    },
+  } as Parameters<typeof pickBaseApps>[0][number];
+}

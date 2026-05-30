@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { curatedAppsBySurface } from '$lib/container/state';
 import { normalizeCategory } from '$lib/curation/schema';
@@ -65,7 +65,7 @@ export const load: PageServerLoad = async ({ parent, platform, setHeaders }) => 
               updatedAt: schema.apps.updatedAt,
             })
             .from(schema.apps)
-            .where(eq(schema.apps.makerId, user.id))
+            .where(and(eq(schema.apps.makerId, user.id), eq(schema.apps.isArchived, false)))
             .orderBy(desc(schema.apps.updatedAt))
         : Promise.resolve([]),
     ]);

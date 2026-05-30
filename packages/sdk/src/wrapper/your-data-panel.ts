@@ -1,4 +1,5 @@
 // packages/sdk/src/wrapper/your-data-panel.ts
+import { readTrackedLocalStorageKeys } from './local-storage-tracker.ts';
 /**
  * "Your Data" panel — universal trust signal injected into every
  * Shippie app. Reachable two ways:
@@ -149,6 +150,7 @@ export interface PrivateSyncPanelState {
   safeCopies: PrivateSyncCopy[];
   lastSyncedAt?: string | null;
   sealedCloud?: 'on' | 'off' | 'setting-up';
+  mode?: InheritedSyncMode;
 }
 
 export interface YourDataAccessBundle {
@@ -204,10 +206,10 @@ export function openYourData(opts: YourDataPanelOptions = {}): PanelHandle {
 
   root.getElementById('shippie-data-close')?.addEventListener('click', close);
   root.getElementById('shippie-data-export')?.addEventListener('click', () => {
-    void doExport(root);
+    void doExport(root, opts);
   });
   root.getElementById('shippie-data-import')?.addEventListener('click', () => {
-    void doImport(root);
+    void doImport(root, opts);
   });
   root.getElementById('shippie-data-delete')?.addEventListener('click', () => {
     void doDelete(root, refresh);
@@ -246,6 +248,11 @@ export function openYourData(opts: YourDataPanelOptions = {}): PanelHandle {
     if (opts.onManageCopies) opts.onManageCopies();
     else void defaultManageCopies(opts, root);
   });
+  for (const mode of ['local-only', 'private-backup', 'private-sync'] as const) {
+    root.getElementById(`shippie-sync-${mode}`)?.addEventListener('click', () => {
+      void setInheritedSyncModeFromPanel(root, opts, mode, refresh);
+    });
+  }
 
   void refresh();
   const incomingTransferId = readIncomingTransferId();
@@ -275,6 +282,27 @@ async function runInitialTransferAction(opts: YourDataPanelOptions, root: Shadow
     if (opts.onShowRecoveryCard) opts.onShowRecoveryCard();
     else await defaultShowRecoveryCard(opts, root);
   }
+}
+
+async function setInheritedSyncModeFromPanel(
+  root: ShadowRoot,
+  opts: YourDataPanelOptions,
+  mode: InheritedSyncMode,
+  refresh: () => Promise<void>,
+): Promise<void> {
+  const appSlug = opts.appSlug ?? readShippieMetaSlug();
+  if (!appSlug) {
+    setPanelStatus(root, 'Sync preference is unavailable because this app has no slug.', 'error');
+    return;
+  }
+  writeInheritedSyncMode(appSlug, mode);
+  const messages: Record<InheritedSyncMode, string> = {
+    'local-only': 'Local only. Nothing leaves this device unless you export or transfer it.',
+    'private-backup': 'Private backup enabled. Shippie stores sealed recovery copies only.',
+    'private-sync': 'Private sync enabled. Data can update across your devices while staying sealed.',
+  };
+  setPanelStatus(root, messages[mode], 'success');
+  await refresh();
 }
 
 interface Stats {
@@ -330,6 +358,7 @@ async function collectPrivateSync(opts: YourDataPanelOptions): Promise<PrivateSy
     safeCopies: [{ label: 'This device', detail: 'Local app data', status: 'ready' }],
     lastSyncedAt: null,
     sealedCloud: 'setting-up',
+    mode: 'local-only',
   };
 }
 
@@ -340,6 +369,7 @@ function renderPrivateSync(root: ShadowRoot, sync: PrivateSyncPanelState): void 
   const copies = root.getElementById('shippie-private-sync-copies');
   const badge = root.getElementById('shippie-private-sync-badge');
   const count = root.getElementById('shippie-safe-copy-count');
+  const mode = sync.mode ?? (sync.sealedCloud === 'on' ? 'private-backup' : 'local-only');
 
   const copyCount = sync.safeCopies.length;
   if (title) title.textContent = sync.headline ?? (sync.enabled ? 'Private sync is on.' : 'Private sync is available.');
@@ -353,8 +383,21 @@ function renderPrivateSync(root: ShadowRoot, sync: PrivateSyncPanelState): void 
   if (last) last.textContent = sync.lastSyncedAt ? `Last synced ${formatRelativeTime(sync.lastSyncedAt)}` : 'No sealed sync yet';
   if (count) count.textContent = `${copyCount} safe ${copyCount === 1 ? 'copy' : 'copies'}`;
   if (badge) {
-    badge.textContent = sync.sealedCloud === 'on' ? 'Sealed copy on' : sync.sealedCloud === 'off' ? 'Sealed copy off' : 'Setting up';
+    badge.textContent =
+      mode === 'local-only'
+        ? 'Local only'
+        : sync.sealedCloud === 'on'
+          ? 'Sealed copy on'
+          : sync.sealedCloud === 'off'
+            ? 'Sealed copy off'
+            : 'Setting up';
     badge.setAttribute('data-state', sync.enabled ? 'ready' : 'setup');
+  }
+  for (const key of ['local-only', 'private-backup', 'private-sync'] as const) {
+    const button = root.getElementById(`shippie-sync-${key}`);
+    if (!button) continue;
+    button.setAttribute('aria-pressed', key === mode ? 'true' : 'false');
+    button.toggleAttribute('data-active', key === mode);
   }
   if (copies) {
     copies.innerHTML = sync.safeCopies.map((copy) => `
@@ -391,15 +434,96 @@ function setPanelStatus(
   el.removeAttribute('hidden');
 }
 
-async function doExport(root: ShadowRoot): Promise<void> {
-  // Delegated to @shippie/local-db backup primitives — they already
-  // exist; wiring them into a download Blob happens in the
-  // backup-providers package (week 8). For week 1 this is a stub.
-  setPanelStatus(root, 'Encrypted file export is not wired in this build yet.', 'info');
+async function doExport(root: ShadowRoot, opts: YourDataPanelOptions): Promise<void> {
+  const appSlug = opts.appSlug ?? readShippieMetaSlug();
+  if (!appSlug) {
+    setPanelStatus(root, 'Export is unavailable because this app has no data scope.', 'error');
+    return;
+  }
+  const passphrase = window.prompt('Choose a passphrase. You will need this to restore.');
+  if (!passphrase?.trim()) return;
+
+  try {
+    const backup = await import('@shippie/backup-providers');
+    const scope = inheritedStorageScope(appSlug, opts.inheritedStorage);
+    const snapshot = snapshotLocalStorage(appSlug, scope);
+    const payload = {
+      schema: 'shippie.inherited-local-storage.backup.v1',
+      appSlug,
+      createdAt: new Date().toISOString(),
+      snapshot,
+    };
+    const encrypted = await backup.encryptBackup({
+      appSlug,
+      schemaVersion: 1,
+      tables: ['local-storage'],
+      plaintext: new TextEncoder().encode(JSON.stringify(payload)),
+      passphrase: passphrase.trim(),
+    });
+    const blob = new Blob([encrypted.bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${appSlug}-your-data-${new Date().toISOString().slice(0, 10)}.shippiebak`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setPanelStatus(root, `Encrypted export ready (${snapshot.entries.length} item${snapshot.entries.length === 1 ? '' : 's'}).`, 'success');
+  } catch (err) {
+    console.error('shippie:your-data export failed', err);
+    setPanelStatus(root, err instanceof Error ? err.message : 'Encrypted export failed.', 'error');
+  }
 }
 
-async function doImport(root: ShadowRoot): Promise<void> {
-  setPanelStatus(root, 'Restore from a .shippie-backup file is not wired in this build yet.', 'info');
+async function doImport(root: ShadowRoot, opts: YourDataPanelOptions): Promise<void> {
+  const appSlug = opts.appSlug ?? readShippieMetaSlug();
+  if (!appSlug) {
+    setPanelStatus(root, 'Restore is unavailable because this app has no data scope.', 'error');
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.shippiebak,application/octet-stream';
+  input.addEventListener('change', () => {
+    void restoreEncryptedFile(root, opts, input.files?.[0] ?? null);
+  });
+  input.click();
+}
+
+async function restoreEncryptedFile(
+  root: ShadowRoot,
+  opts: YourDataPanelOptions,
+  file: File | Blob | null,
+): Promise<void> {
+  if (!file) return;
+  const appSlug = opts.appSlug ?? readShippieMetaSlug();
+  if (!appSlug) return;
+  const passphrase = window.prompt('Enter the passphrase used when exporting.');
+  if (!passphrase?.trim()) return;
+
+  try {
+    const backup = await import('@shippie/backup-providers');
+    const decrypted = await backup.decryptBackup(new Uint8Array(await file.arrayBuffer()), passphrase.trim());
+    if (decrypted.appSlug !== appSlug) {
+      setPanelStatus(root, `That backup is for ${decrypted.appSlug}, not ${appSlug}.`, 'error');
+      return;
+    }
+    const payload = JSON.parse(new TextDecoder().decode(decrypted.plaintext)) as {
+      schema?: string;
+      appSlug?: string;
+      snapshot?: InheritedSnapshotPayload;
+    };
+    if (payload.schema !== 'shippie.inherited-local-storage.backup.v1' || payload.appSlug !== appSlug || !payload.snapshot) {
+      setPanelStatus(root, 'That file is not a compatible Shippie app-data export.', 'error');
+      return;
+    }
+    const scope = inheritedStorageScope(appSlug, opts.inheritedStorage);
+    restoreLocalStorageSnapshot(payload.snapshot, scope);
+    window.dispatchEvent(new CustomEvent('shippie:data-restored', { detail: { appSlug } }));
+    setPanelStatus(root, `Restored ${payload.snapshot.entries.length} item${payload.snapshot.entries.length === 1 ? '' : 's'} on this device. Reload the app to see restored state.`, 'success');
+  } catch (err) {
+    console.error('shippie:your-data restore failed', err);
+    setPanelStatus(root, err instanceof Error ? err.message : 'Restore failed. Check the file and passphrase.', 'error');
+  }
 }
 
 /**
@@ -633,7 +757,7 @@ async function applyReceivedAccessBundle(
 async function defaultManageCopies(opts: YourDataPanelOptions, root: ShadowRoot): Promise<void> {
   const sync = await collectPrivateSync(opts);
   const dialog = renderTransferDialog(root, 'Storage health');
-  setTransferProgress(dialog, sync.sealedCloud === 'on' ? 100 : sync.sealedCloud === 'setting-up' ? 48 : 12);
+  setTransferProgress(dialog, sync.mode === 'local-only' ? 20 : sync.sealedCloud === 'on' ? 100 : sync.sealedCloud === 'setting-up' ? 48 : 12);
   const qrSlot = dialog.querySelector('[data-shippie-transfer-qr]') as HTMLDivElement | null;
   if (qrSlot) {
     qrSlot.innerHTML = `
@@ -653,7 +777,14 @@ async function defaultManageCopies(opts: YourDataPanelOptions, root: ShadowRoot)
       </div>
     `;
   }
-  setTransferStatus(dialog, sync.lastSyncedAt ? `Last saved privately ${formatRelativeTime(sync.lastSyncedAt)}.` : 'This app is ready to save privately when data changes.');
+  setTransferStatus(
+    dialog,
+    sync.mode === 'local-only'
+      ? 'Local-only mode is on. Choose Private backup or Private sync before Shippie stores sealed copies.'
+      : sync.lastSyncedAt
+        ? `Last saved privately ${formatRelativeTime(sync.lastSyncedAt)}.`
+        : 'This app is ready to save privately when data changes.',
+  );
 }
 
 async function defaultShowRecoveryCard(opts: YourDataPanelOptions, root: ShadowRoot): Promise<void> {
@@ -1149,6 +1280,7 @@ function readShippieMetaSlug(): string | null {
 
 const INHERITED_DATA_PREFIX = 'shippie.inherited-data.v0';
 const INHERITED_LOCAL_STORAGE_BYTE_LIMIT = 512 * 1024;
+export type InheritedSyncMode = 'local-only' | 'private-backup' | 'private-sync';
 
 interface InheritedAccessRecord {
   schema: 'shippie.inherited-data.access.v0';
@@ -1190,17 +1322,40 @@ function withInheritedDataDefaults(opts: YourDataPanelOptions): YourDataPanelOpt
 }
 
 async function inheritedPrivateSync(appSlug: string, storageScope: InheritedStorageScope): Promise<PrivateSyncPanelState> {
-  const runtime = await checkpointInheritedSafetyDocument(appSlug, storageScope);
+  const mode = readInheritedSyncMode(appSlug);
+  const runtime = await checkpointInheritedSafetyDocument(appSlug, storageScope, mode);
   const record = runtime?.record ?? readInheritedAccessRecord(appSlug);
   const copiedItems = record?.lastEntryCount ?? 0;
+  if (mode === 'local-only') {
+    return {
+      enabled: true,
+      headline: 'Local only.',
+      detail: copiedItems > 0
+        ? 'This app keeps its working data on this device. Export or add a private copy when you choose.'
+        : 'This app will stay local until you choose backup, sync, export, or transfer.',
+      safeCopies: [
+        {
+          label: 'This device',
+          detail: copiedItems > 0 ? `${copiedItems} saved item${copiedItems === 1 ? '' : 's'}` : 'Ready',
+          status: 'ready',
+        },
+      ],
+      lastSyncedAt: null,
+      sealedCloud: 'off',
+      mode,
+    };
+  }
   return {
     enabled: true,
-    headline: record?.lastSyncedAt ? 'Private copy ready.' : 'Private recovery is available.',
+    headline:
+      mode === 'private-sync'
+        ? record?.lastSyncedAt ? 'Private sync ready.' : 'Private sync is setting up.'
+        : record?.lastSyncedAt ? 'Private backup ready.' : 'Private backup is setting up.',
     detail: record
       ? copiedItems > 0
-        ? 'This app can move to another device without Shippie seeing inside.'
-        : 'This app is ready to move when it has local data to save.'
-      : 'Local state stays on this device until you add another device or create a sealed copy.',
+        ? 'Shippie can store sealed copies, but cannot read the app data inside.'
+        : 'This app is ready to seal a copy when it has local data.'
+      : 'Local state stays on this device until a sealed copy is created.',
     safeCopies: [
       {
         label: 'This device',
@@ -1213,15 +1368,16 @@ async function inheritedPrivateSync(appSlug: string, storageScope: InheritedStor
             detail: record.lastTruncated ? 'Saved up to this app’s safety limit' : 'Ready for another device',
             status: record.lastSyncedAt ? 'ready' : 'syncing',
           }
-        : { label: 'Sealed copy', detail: 'Created automatically', status: 'syncing' },
+        : { label: 'Sealed copy', detail: 'Waiting for first local checkpoint', status: 'syncing' },
     ],
     lastSyncedAt: record?.lastSyncedAt ?? null,
     sealedCloud: record?.lastSyncedAt ? 'on' : record ? 'setting-up' : 'off',
+    mode,
   };
 }
 
 async function buildInheritedAccessBundle(appSlug: string, storageScope: InheritedStorageScope): Promise<YourDataAccessBundle | null> {
-  const runtime = await checkpointInheritedSafetyDocument(appSlug, storageScope);
+  const runtime = await checkpointInheritedSafetyDocument(appSlug, storageScope, readInheritedSyncMode(appSlug));
   if (!runtime) return null;
   return {
     schema: 'shippie.document.access-bundle.v1',
@@ -1236,7 +1392,11 @@ async function buildInheritedAccessBundle(appSlug: string, storageScope: Inherit
   };
 }
 
-async function checkpointInheritedSafetyDocument(appSlug: string, storageScope: InheritedStorageScope): Promise<{
+async function checkpointInheritedSafetyDocument(
+  appSlug: string,
+  storageScope: InheritedStorageScope,
+  mode: InheritedSyncMode = readInheritedSyncMode(appSlug),
+): Promise<{
   record: InheritedAccessRecord;
   handle: import('@shippie/doc').DocumentHandle<InheritedSnapshotState, InheritedSnapshotPayload>;
 } | null> {
@@ -1257,14 +1417,16 @@ async function checkpointInheritedSafetyDocument(appSlug: string, storageScope: 
   runtime.record.lastEntryCount = snapshot.entries.length;
   runtime.record.lastTruncated = snapshot.truncated;
   writeInheritedAccessRecord(runtime.record);
-  try {
-    const result = await runtime.handle.sync();
-    if (result.pushed > 0 || result.pulled > 0 || runtime.handle.pendingEventIds().length === 0) {
-      runtime.record.lastSyncedAt = new Date().toISOString();
-      writeInheritedAccessRecord(runtime.record);
+  if (mode !== 'local-only') {
+    try {
+      const result = await runtime.handle.sync();
+      if (result.pushed > 0 || result.pulled > 0 || runtime.handle.pendingEventIds().length === 0) {
+        runtime.record.lastSyncedAt = new Date().toISOString();
+        writeInheritedAccessRecord(runtime.record);
+      }
+    } catch {
+      // Local outbox remains intact; sealed cloud might be unavailable in dev.
     }
-  } catch {
-    // Local outbox remains intact; sealed cloud might be unavailable in dev.
   }
   return runtime;
 }
@@ -1314,7 +1476,7 @@ async function receiveInheritedAccessBundle(
   restoreLocalStorageSnapshot(handle.state().latest, storageScope);
 }
 
-async function openInheritedSafetyDocument(appSlug: string): Promise<{
+async function openInheritedSafetyDocument(appSlug: string, mode: InheritedSyncMode = readInheritedSyncMode(appSlug)): Promise<{
   record: InheritedAccessRecord;
   handle: import('@shippie/doc').DocumentHandle<InheritedSnapshotState, InheritedSnapshotPayload>;
 } | null> {
@@ -1334,13 +1496,14 @@ async function openInheritedSafetyDocument(appSlug: string): Promise<{
   };
   writeInheritedAccessRecord(record);
   const signing = await inheritedSigningFor(appSlug);
+  const sync = mode === 'local-only' ? undefined : doc.createSealedSyncClient();
   const handle = await doc.openDocument<InheritedSnapshotState, InheritedSnapshotPayload>({
     documentId: record.documentId,
     documentKey: record.documentKey,
     signing,
     store: createInheritedDocumentStore(doc, `${INHERITED_DATA_PREFIX}:doc`),
-    sync: doc.createSealedSyncClient(),
-    realtime: inheritedRealtimeSyncOptions(),
+    sync,
+    realtime: sync && mode === 'private-sync' ? inheritedRealtimeSyncOptions() : false,
     initialState: { latest: null },
     reducer: reduceInheritedSnapshot,
   });
@@ -1467,6 +1630,24 @@ function writeInheritedAccessRecord(record: InheritedAccessRecord): void {
   }
 }
 
+function readInheritedSyncMode(appSlug: string): InheritedSyncMode {
+  try {
+    const raw = localStorage.getItem(inheritedSyncModeKey(appSlug));
+    if (raw === 'private-backup' || raw === 'private-sync') return raw;
+  } catch {
+    // Local-only is the privacy-preserving fallback.
+  }
+  return 'local-only';
+}
+
+function writeInheritedSyncMode(appSlug: string, mode: InheritedSyncMode): void {
+  try {
+    localStorage.setItem(inheritedSyncModeKey(appSlug), mode);
+  } catch {
+    // Best-effort.
+  }
+}
+
 async function inheritedSigningFor(appSlug: string): Promise<import('@shippie/doc').DeviceSigningKeyPair> {
   const doc = await import('@shippie/doc');
   const key = `${INHERITED_DATA_PREFIX}:${appSlug}:signing`;
@@ -1499,6 +1680,10 @@ function inheritedAccessKey(appSlug: string): string {
   return `${INHERITED_DATA_PREFIX}:${appSlug}:access`;
 }
 
+function inheritedSyncModeKey(appSlug: string): string {
+  return `${INHERITED_DATA_PREFIX}:${appSlug}:sync-mode`;
+}
+
 function inheritedStorageScope(
   appSlug: string,
   overrides: YourDataPanelOptions['inheritedStorage'] = {},
@@ -1523,8 +1708,9 @@ function inheritedStorageScope(
     prefixes.add(`shippie-${token}-`);
     prefixes.add(`@shippie/${token}:`);
   }
+  const trackedKeys = readTrackedLocalStorageKeys(appSlug);
   return {
-    keys: new Set(overrides.keys ?? []),
+    keys: new Set([...(overrides.keys ?? []), ...trackedKeys]),
     prefixes: [...prefixes].filter((prefix) => prefix && !prefix.startsWith(INHERITED_DATA_PREFIX)),
   };
 }
@@ -1695,6 +1881,26 @@ const SHELL_HTML = `
   .copy-dot[data-state="syncing"] { background: #D9972F; box-shadow: 0 0 0 3px rgba(217,151,47,0.16); }
   .copy-dot[data-state="offline"] { background: #8A8173; }
   .copy-dot[data-state="attention"] { background: #B23A2B; box-shadow: 0 0 0 3px rgba(178,58,43,0.15); }
+  .mode-choice {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .mode-choice button {
+    height: auto;
+    min-height: 40px;
+    border-color: #D7C8B1;
+    background: #FFFDF7;
+    border-radius: 10px;
+    padding: 8px 7px;
+    line-height: 1.15;
+  }
+  .mode-choice button[data-active] {
+    border-color: #E8603C;
+    background: #FFE9DF;
+    color: #14120F;
+  }
   details.private-details {
     margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(20,18,15,0.08);
     color: #5C5751; font-size: 12px; line-height: 1.5;
@@ -1726,7 +1932,7 @@ const SHELL_HTML = `
 <div class="panel" role="dialog" aria-labelledby="shippie-data-title" data-shippie-data-body>
   <button class="close" id="shippie-data-close" aria-label="Close">×</button>
   <h1 id="shippie-data-title">Your Data</h1>
-  <p class="subtitle">Saved privately, easy to move, recoverable when browsers forget.</p>
+  <p class="subtitle">Local first. Private backup or sync only when you choose it.</p>
 
   <section class="sync-card" aria-labelledby="shippie-private-sync-title">
     <div class="sync-top">
@@ -1746,9 +1952,14 @@ const SHELL_HTML = `
     <ul class="copy-list" id="shippie-private-sync-copies">
       <li><span class="copy-dot" data-state="ready"></span><span><strong>This device</strong><small>Local app data</small></span></li>
     </ul>
+    <div class="mode-choice" role="group" aria-label="Private cloud preference">
+      <button id="shippie-sync-local-only" aria-pressed="true">Local only</button>
+      <button id="shippie-sync-private-backup" aria-pressed="false">Private backup</button>
+      <button id="shippie-sync-private-sync" aria-pressed="false">Private sync</button>
+    </div>
     <details class="private-details">
       <summary>How private sync works</summary>
-      <p>Your data is sealed on this device before Shippie stores a recovery copy. Shippie can move and recover the sealed copy, but cannot open what is inside.</p>
+      <p>Your data starts on this device. If you choose backup or sync, it is sealed here before Shippie stores or relays a copy. Shippie can move and recover the sealed copy, but cannot open what is inside.</p>
     </details>
   </section>
 

@@ -17,8 +17,8 @@ on reproductive-data privacy, cycle prediction accuracy, and inclusive design.
 5. **"Support my situation."** TTC, contraception, pregnancy/postpartum,
    perimenopause, irregular/no-cycle, or simply period-only — without being
    forced into a fertility/baby frame.
-6. **"Keep it private and mine."** Especially post-Roe: data that cannot be
-   subpoenaed, sold, or weaponized. A growing, non-negotiable job.
+6. **"Keep it private and mine."** Especially post-Roe: clear user control,
+   minimal disclosure, and no secondary use. A growing, non-negotiable job.
 7. **"Share *some* of it, on my terms."** With a partner or clinician — selected
    fields, revocable, never the whole diary.
 
@@ -86,8 +86,8 @@ inclusivity — none of the privacy leaders do all three.
   Shippie hosts only the tool package. No account, no analytics SDK, no ad
   network — the leak vectors simply aren't present. This is the post-Roe story.
 - **Offline after first load.** No hidden network dependency = no server that can
-  be compelled. (Action: the current app loads Google Fonts from a CDN — that is
-  a hidden dependency and must become local/system fonts.)
+  be compelled. Remote font dependencies were removed; keep typography local or
+  system-backed.
 - **Open source (AGPL).** Auditable privacy claims, like Drip/Euki.
 - **Optional sealed/encrypted backup & private cloud** — portability without a
   honeypot; passphrase-encrypted, app-scoped.

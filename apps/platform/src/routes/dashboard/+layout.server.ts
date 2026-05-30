@@ -6,7 +6,7 @@
  * without re-querying.
  */
 import { redirect } from '@sveltejs/kit';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { claimTrialAppForMaker } from '$server/deploy/trial-claim';
@@ -42,7 +42,7 @@ export const load: LayoutServerLoad = async ({ locals, platform, url }) => {
       lastDeployedAt: schema.apps.lastDeployedAt,
     })
     .from(schema.apps)
-    .where(eq(schema.apps.makerId, locals.user.id))
+    .where(and(eq(schema.apps.makerId, locals.user.id), eq(schema.apps.isArchived, false)))
     .orderBy(desc(schema.apps.updatedAt));
 
   return { user: locals.user, myApps };

@@ -31,7 +31,7 @@ export function Settings({ shippie, store }: SettingsProps) {
     <main className="page page-settings">
       <header>
         <h1>Settings</h1>
-        <p>Privacy: every item lives on this device. Nothing leaves.</p>
+        <p>Privacy: every item lives on this device unless you export it.</p>
       </header>
 
       <section>

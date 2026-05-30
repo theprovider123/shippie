@@ -1,7 +1,7 @@
 {
   "name": "Journal",
   "short_name": "Journal",
-  "description": "A private journal with on-device AI. Nothing leaves the device.",
+  "description": "A private journal with on-device AI, local storage, and optional export.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0E0E11",

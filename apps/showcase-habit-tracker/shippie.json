@@ -1,31 +1,71 @@
 {
   "$schema": "https://shippie.app/schemas/app.json",
-  "name": "Habit Tracker",
+  "name": "Cadence",
   "slug": "habit-tracker",
-  "description": "Daily habits that auto-check when you complete activities in other Shippie apps.",
+  "description": "A personal life observatory. Daily habits and feelings in one shame-free log that returns gently after a missed day.",
   "icon": "/icon.svg",
-  "theme_color": "#5EA777",
-  "background_color": "#FAF7EF",
+  "theme_color": "#6F9B6E",
+  "background_color": "#F8F2E6",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
+    "provides": [
+      "habit-logged",
+      "mood-logged",
+      "feeling-logged",
+      "weekly-review-created"
+    ],
     "consumes": [
       "cooked-meal",
-      "workout-completed"
+      "workout-completed",
+      "sleep-logged",
+      "caffeine-logged",
+      "hydration-logged",
+      "body-metrics-logged",
+      "cycle-logged",
+      "meal-logged"
     ]
   },
   "data_schemas": {
     "habits": {
       "id": "text primary key",
       "name": "text not null",
+      "difficulty": "text",
+      "reward": "text",
       "intent": "text",
-      "created_at": "datetime"
+      "cue_anchor": "text",
+      "cue_auto_check": "integer",
+      "cadence": "text",
+      "minimum_viable": "text",
+      "created_at": "datetime",
+      "archived_at": "datetime"
     },
     "checks": {
       "id": "text primary key",
       "habit_id": "text not null",
       "checked_at": "datetime",
-      "source": "text"
+      "status": "text",
+      "source": "text",
+      "note": "text"
+    },
+    "checkins": {
+      "id": "text primary key",
+      "date": "text not null",
+      "mood": "integer",
+      "energy": "integer",
+      "stress": "integer",
+      "sleep_hours": "real",
+      "body": "integer",
+      "note": "text",
+      "created_at": "datetime"
+    },
+    "reviews": {
+      "id": "text primary key",
+      "iso_week": "text not null",
+      "helped": "text",
+      "drained": "text",
+      "next": "text",
+      "created_at": "datetime"
     }
   },
   "curation": {
@@ -37,6 +77,6 @@
   "remix_allowed": true,
   "data_passport": {
     "family": "habit-tracker",
-    "schema": "habit-tracker.v1"
+    "schema": "habit-tracker.v2"
   }
 }

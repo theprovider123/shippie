@@ -10,6 +10,7 @@
     offlineStatuses,
     removeAppAndTrack,
   } from '$lib/stores/cached-slugs';
+  import { describeOfflineHealth } from '$lib/offline/download-app';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
   import { connectionBadgesFromKind } from '$lib/marketplace/connection-badges';
@@ -47,6 +48,7 @@
   const launchHref = $derived(app ? `/run/${encodeURIComponent(app.slug)}` : '/apps');
   const offlineStatus = $derived(app ? $offlineStatuses[app.slug] : undefined);
   const isOffline = $derived(Boolean(app && ($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved')));
+  const offlineHealth = $derived(app ? describeOfflineHealth(offlineStatus, { cached: $cachedSlugs.has(app.slug), online: typeof navigator === 'undefined' ? true : navigator.onLine }) : null);
   const isSaving = $derived(
     offlineStatus?.state === 'requested' ||
       offlineStatus?.state === 'downloading' ||
@@ -55,21 +57,8 @@
   const isSaved = $derived(Boolean(app && isOffline));
   const connectionBadges = $derived(connectionBadgesFromKind(app?.kind));
   const offlineLabel = $derived.by(() => {
-    if (!app) return '';
-    if (
-      offlineStatus?.state === 'requested' ||
-      offlineStatus?.state === 'downloading' ||
-      offlineStatus?.state === 'verifying'
-    ) {
-      if (offlineStatus.state === 'verifying') return 'Verifying capsule';
-      return offlineStatus.total > 0
-        ? `Saving ${offlineStatus.done}/${offlineStatus.total}`
-        : 'Saving';
-    }
-    if (isOffline) return 'Ready offline';
-    if (offlineStatus?.state === 'partial' || offlineStatus?.state === 'evicted') return 'Needs refresh';
-    if (offlineStatus?.state === 'error') return 'Save failed';
-    return 'Not saved on this device';
+    if (!app || !offlineHealth) return '';
+    return offlineHealth.label;
   });
   const dataLabel = $derived.by(() => {
     if (!app?.kind) return 'Not scanned yet';
