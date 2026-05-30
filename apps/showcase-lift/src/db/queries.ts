@@ -17,6 +17,9 @@ import {
   TEMPLATE_STEPS_TABLE,
   VARIANTS_TABLE,
   WORKOUTS_TABLE,
+  PROGRAMS_TABLE,
+  PROGRAM_WEEKS_TABLE,
+  PROGRAM_SESSIONS_TABLE,
   exercisesSchema,
   lineagesSchema,
   plateInventoriesSchema,
@@ -27,10 +30,16 @@ import {
   templatesSchema,
   variantsSchema,
   workoutsSchema,
+  programsSchema,
+  programWeeksSchema,
+  programSessionsSchema,
   type Exercise,
   type Lineage,
   type PlateInventory,
   type Pr,
+  type Program,
+  type ProgramSession,
+  type ProgramWeek,
   type SetRow,
   type Template,
   type TemplateStep,
@@ -59,6 +68,9 @@ export async function ensureSchema(db: ShippieLocalDb): Promise<void> {
       await db.create(TEMPLATE_STEPS_TABLE, templateStepsSchema);
       await db.create(PRS_TABLE, prsSchema);
       await db.create(PLATE_INVENTORIES_TABLE, plateInventoriesSchema);
+      await db.create(PROGRAMS_TABLE, programsSchema);
+      await db.create(PROGRAM_WEEKS_TABLE, programWeeksSchema);
+      await db.create(PROGRAM_SESSIONS_TABLE, programSessionsSchema);
     })();
     initCache.set(db, pending);
   }
@@ -89,6 +101,77 @@ export async function insertLineage(db: ShippieLocalDb, lineage: Lineage): Promi
 
 export async function insertVariant(db: ShippieLocalDb, variant: Variant): Promise<void> {
   await db.insert(VARIANTS_TABLE, asRow(variant));
+}
+
+/**
+ * Create a user-defined exercise with its own lineage + variant so PR
+ * scoping and progression work exactly like the builtin lifts. Returns
+ * the new exercise id.
+ */
+export async function insertCustomExercise(
+  db: ShippieLocalDb,
+  input: {
+    name: string;
+    muscleGroup: Exercise['muscle_group'];
+    unit: Exercise['default_unit'];
+    equipment?: string | null;
+    cues?: string | null;
+    isBodyweight?: boolean;
+  },
+): Promise<string> {
+  const lineage: Lineage = { id: newId('ln'), name: input.name };
+  await insertLineage(db, lineage);
+  const variant: Variant = {
+    id: newId('va'),
+    lineage_id: lineage.id,
+    name: input.equipment ?? 'Custom',
+    equipment: input.equipment ?? null,
+  };
+  await insertVariant(db, variant);
+  const exercise: Exercise = {
+    id: newId('ex'),
+    name: input.name,
+    muscle_group: input.muscleGroup,
+    lineage_id: lineage.id,
+    variant_id: variant.id,
+    default_unit: input.unit,
+    notes: null,
+    cues: input.cues ?? null,
+    equipment: input.equipment ?? null,
+    is_bodyweight: input.isBodyweight ? 1 : 0,
+    source: 'custom',
+  };
+  await insertExercise(db, exercise);
+  return exercise.id;
+}
+
+/** Gather every row across all tables — backs the data-passport export. */
+export async function gatherAllData(db: ShippieLocalDb): Promise<{
+  lineages: Lineage[];
+  variants: Variant[];
+  exercises: Exercise[];
+  workouts: Workout[];
+  steps: WorkoutStep[];
+  sets: SetRow[];
+  templates: Template[];
+  templateSteps: TemplateStep[];
+  prs: Pr[];
+  inventories: PlateInventory[];
+}> {
+  const [lineages, variants, exercises, workouts, steps, sets, templates, templateSteps, prs, inventories] =
+    await Promise.all([
+      db.query<Lineage & LocalDbRecord>(LINEAGES_TABLE),
+      db.query<Variant & LocalDbRecord>(VARIANTS_TABLE),
+      db.query<Exercise & LocalDbRecord>(EXERCISES_TABLE),
+      db.query<Workout & LocalDbRecord>(WORKOUTS_TABLE),
+      db.query<WorkoutStep & LocalDbRecord>(STEPS_TABLE),
+      db.query<SetRow & LocalDbRecord>(SETS_TABLE),
+      db.query<Template & LocalDbRecord>(TEMPLATES_TABLE),
+      db.query<TemplateStep & LocalDbRecord>(TEMPLATE_STEPS_TABLE),
+      db.query<Pr & LocalDbRecord>(PRS_TABLE),
+      db.query<PlateInventory & LocalDbRecord>(PLATE_INVENTORIES_TABLE),
+    ]);
+  return { lineages, variants, exercises, workouts, steps, sets, templates, templateSteps, prs, inventories };
 }
 
 // ── Templates ───────────────────────────────────────────────────────────
@@ -156,9 +239,148 @@ export async function startWorkoutFromTemplate(
     template_step_id: s.id,
     target_sets: s.target_sets,
     target_reps: s.target_reps,
+    superset_group: s.superset_group ?? null,
   }));
   for (const step of steps) await db.insert(STEPS_TABLE, asRow(step));
   return { workout, steps };
+}
+
+/** Swap a live step's exercise/variant — the substitution path. */
+export async function swapStepVariant(
+  db: ShippieLocalDb,
+  stepId: string,
+  exerciseId: string,
+  variantId: string | null,
+): Promise<void> {
+  await db.update<WorkoutStep & LocalDbRecord>(STEPS_TABLE, stepId, {
+    exercise_id: exerciseId,
+    variant_id: variantId,
+  });
+}
+
+/** Link a step into a superset group (steps sharing a group alternate). */
+export async function setStepSuperset(
+  db: ShippieLocalDb,
+  stepId: string,
+  group: string | null,
+): Promise<void> {
+  await db.update<WorkoutStep & LocalDbRecord>(STEPS_TABLE, stepId, { superset_group: group });
+}
+
+// ── Programs ────────────────────────────────────────────────────────────
+
+export async function listPrograms(db: ShippieLocalDb): Promise<Program[]> {
+  return db.query<Program & LocalDbRecord>(PROGRAMS_TABLE, { orderBy: { created_at: 'desc' } });
+}
+
+export async function getProgramWeeks(db: ShippieLocalDb, programId: string): Promise<ProgramWeek[]> {
+  return db.query<ProgramWeek & LocalDbRecord>(PROGRAM_WEEKS_TABLE, {
+    where: { program_id: programId },
+    orderBy: { week_index: 'asc' },
+  });
+}
+
+export async function getProgramSessions(
+  db: ShippieLocalDb,
+  programId: string,
+): Promise<ProgramSession[]> {
+  return db.query<ProgramSession & LocalDbRecord>(PROGRAM_SESSIONS_TABLE, {
+    where: { program_id: programId },
+    orderBy: { day_index: 'asc' },
+  });
+}
+
+export async function insertProgram(
+  db: ShippieLocalDb,
+  program: Program,
+  weeks: ProgramWeek[],
+  sessions: ProgramSession[],
+): Promise<void> {
+  await db.insert(PROGRAMS_TABLE, asRow(program));
+  for (const w of weeks) await db.insert(PROGRAM_WEEKS_TABLE, asRow(w));
+  for (const s of sessions) await db.insert(PROGRAM_SESSIONS_TABLE, asRow(s));
+}
+
+/**
+ * Repeat the most recent completed workout: clone its steps into a fresh
+ * workout so the lifter can re-run yesterday's session with one tap.
+ * Returns null when there's nothing to repeat.
+ */
+export async function repeatLastWorkout(
+  db: ShippieLocalDb,
+): Promise<{ workout: Workout; steps: WorkoutStep[] } | null> {
+  const recents = await db.query<Workout & LocalDbRecord>(WORKOUTS_TABLE, {
+    orderBy: { started_at: 'desc' },
+    limit: 20,
+  });
+  const last = recents.find((w) => w.completed_at);
+  if (!last) return null;
+  const sourceSteps = await listWorkoutSteps(db, last.id);
+  if (sourceSteps.length === 0) return null;
+
+  const workout: Workout = {
+    id: newId('w'),
+    started_at: new Date().toISOString(),
+    completed_at: null,
+    template_id: last.template_id ?? null,
+    source: 'manual',
+    notes: null,
+  };
+  await db.insert(WORKOUTS_TABLE, asRow(workout));
+  const steps: WorkoutStep[] = sourceSteps.map((s) => ({
+    id: newId('ws'),
+    workout_id: workout.id,
+    exercise_id: s.exercise_id,
+    variant_id: s.variant_id ?? null,
+    order_index: s.order_index,
+    template_step_id: s.template_step_id ?? null,
+    target_sets: s.target_sets ?? null,
+    target_reps: s.target_reps ?? null,
+    superset_group: s.superset_group ?? null,
+  }));
+  for (const step of steps) await db.insert(STEPS_TABLE, asRow(step));
+  return { workout, steps };
+}
+
+/**
+ * Working sets from the most recent *completed* session that included a
+ * given exercise, plus that session's date. Feeds the progression engine.
+ */
+export async function lastSessionWorkingSets(
+  db: ShippieLocalDb,
+  exerciseId: string,
+): Promise<{ sets: SetRow[]; startedAt: string } | null> {
+  const steps = await db.query<WorkoutStep & LocalDbRecord>(STEPS_TABLE, {
+    where: { exercise_id: exerciseId },
+  });
+  if (steps.length === 0) return null;
+
+  // Group steps by workout, resolve each workout's completion + start.
+  const byWorkout = new Map<string, WorkoutStep[]>();
+  for (const s of steps) {
+    const list = byWorkout.get(s.workout_id) ?? [];
+    list.push(s);
+    byWorkout.set(s.workout_id, list);
+  }
+  let best: { sets: SetRow[]; startedAt: string } | null = null;
+  for (const [workoutId, wSteps] of byWorkout) {
+    const w = (
+      await db.query<Workout & LocalDbRecord>(WORKOUTS_TABLE, { where: { id: workoutId } })
+    )[0];
+    if (!w || !w.completed_at) continue;
+    const working: SetRow[] = [];
+    for (const st of wSteps) {
+      const ss = await db.query<SetRow & LocalDbRecord>(SETS_TABLE, {
+        where: { step_id: st.id, set_type: 'working' },
+      });
+      working.push(...ss);
+    }
+    if (working.length === 0) continue;
+    if (!best || w.started_at > best.startedAt) {
+      best = { sets: working, startedAt: w.started_at };
+    }
+  }
+  return best;
 }
 
 export async function getOpenWorkout(db: ShippieLocalDb): Promise<Workout | null> {

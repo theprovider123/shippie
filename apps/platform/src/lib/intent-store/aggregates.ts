@@ -88,6 +88,12 @@ export const INTENT_LABELS: Record<string, string> = {
   'workout-completed': 'finished a workout',
   'run-planned': 'planned a run',
   'sleep-logged': 'logged sleep',
+  // Lift
+  'workout-started': 'started a workout',
+  'set-logged': 'logged a set',
+  'pr-broken': 'set a PR',
+  'training-load-updated': 'training load updated',
+  'deload-recommended': 'deload recommended',
   // Quiet
   'mood-logged': 'logged mood',
   'focus-session': 'focus session',

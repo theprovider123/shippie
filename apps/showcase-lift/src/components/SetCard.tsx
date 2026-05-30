@@ -16,11 +16,18 @@ interface SetCardProps {
   initialWeight: number;
   initialReps: number;
   setType: SetType;
-  onSave: (entry: { weight: number; reps: number; setType: SetType }) => Promise<void>;
+  onSave: (entry: {
+    weight: number;
+    reps: number;
+    setType: SetType;
+    rpe: number | null;
+  }) => Promise<void>;
   /** A previous reference set ("last session: 80kg × 5") to show below. */
   reference?: { weight: number; reps: number; daysAgo: number } | null;
   /** Plate inventory + bar for the breakdown chip; null hides it. */
   plateContext?: { plates: readonly number[]; bar: number } | null;
+  /** Bodyweight exercise — the weight value is *added* load (0 = bodyweight). */
+  bodyweight?: boolean;
 }
 
 const WEIGHT_STEP_SMALL = 1;
@@ -38,16 +45,19 @@ export function SetCard({
   onSave,
   reference,
   plateContext,
+  bodyweight = false,
 }: SetCardProps) {
   const [weight, setWeight] = useState(initialWeight);
   const [reps, setReps] = useState(initialReps);
   const [type, setTypeState] = useState<SetType>(setType);
+  const [rpe, setRpe] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setWeight(initialWeight);
     setReps(initialReps);
     setTypeState(setType);
+    setRpe(null);
   }, [initialWeight, initialReps, setType]);
 
   function bump(value: number, delta: number, min = 0): number {
@@ -64,7 +74,7 @@ export function SetCard({
       } catch {
         // ignore
       }
-      await onSave({ weight, reps, setType: type });
+      await onSave({ weight, reps, setType: type, rpe });
     } finally {
       setSaving(false);
     }
@@ -82,8 +92,10 @@ export function SetCard({
 
       <div className="lift-set-card__hero">
         <div className="lift-set-card__metric">
-          <span className="lift-set-card__numeral">{formatWeight(weight)}</span>
-          <span className="lift-set-card__unit">{unit}</span>
+          <span className="lift-set-card__numeral">
+            {bodyweight && weight > 0 ? `+${formatWeight(weight)}` : bodyweight ? 'BW' : formatWeight(weight)}
+          </span>
+          <span className="lift-set-card__unit">{bodyweight && weight === 0 ? '' : unit}</span>
         </div>
         <div className="lift-set-card__times">×</div>
         <div className="lift-set-card__metric">
@@ -176,6 +188,23 @@ export function SetCard({
           </button>
         ))}
       </div>
+
+      {type !== 'warmup' ? (
+        <div className="lift-set-card__rpe-row" aria-label="Effort (RPE), optional">
+          <span className="lift-pill__label lift-set-card__rpe-label">RPE</span>
+          {[6, 7, 8, 9, 10].map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={`lift-chip lift-chip--rpe ${rpe === v ? 'lift-chip--active' : ''}`}
+              onClick={() => setRpe((cur) => (cur === v ? null : v))}
+              aria-pressed={rpe === v}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <button
         type="button"

@@ -12,7 +12,13 @@ import { EDIT_WINDOW_MS } from '../lib/constants.ts';
 interface EditSetSheetProps {
   set: SetRow | null;
   exerciseName: string;
-  onSave: (patch: { weight: number; reps: number; setType: SetType }) => Promise<void>;
+  onSave: (patch: {
+    weight: number;
+    reps: number;
+    setType: SetType;
+    note: string | null;
+    durationSeconds: number | null;
+  }) => Promise<void>;
   onDelete: () => Promise<void>;
   onClose: () => void;
 }
@@ -21,6 +27,8 @@ export function EditSetSheet({ set, exerciseName, onSave, onDelete, onClose }: E
   const [weight, setWeight] = useState(set?.weight ?? 0);
   const [reps, setReps] = useState(set?.reps ?? 0);
   const [type, setType] = useState<SetType>(set?.set_type ?? 'working');
+  const [note, setNote] = useState(set?.note ?? '');
+  const [duration, setDuration] = useState(set?.duration_seconds ?? 0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -28,6 +36,8 @@ export function EditSetSheet({ set, exerciseName, onSave, onDelete, onClose }: E
       setWeight(set.weight);
       setReps(set.reps);
       setType(set.set_type);
+      setNote(set.note ?? '');
+      setDuration(set.duration_seconds ?? 0);
     }
   }, [set?.id]);
 
@@ -83,6 +93,33 @@ export function EditSetSheet({ set, exerciseName, onSave, onDelete, onClose }: E
           </label>
         </div>
 
+        <label className="lift-sheet__note-label">
+          <span className="lift-sheet__label">Time under tension (s) — for planks / carries</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            step="1"
+            min="0"
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            disabled={!editable}
+            placeholder="0 = rep-based"
+            className="lift-sheet__input lift-sheet__note-input"
+          />
+        </label>
+
+        <label className="lift-sheet__note-label">
+          <span className="lift-sheet__label">Note</span>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            disabled={!editable}
+            placeholder="e.g. paused, left elbow tweaky"
+            className="lift-sheet__input lift-sheet__note-input"
+          />
+        </label>
+
         <div className="lift-sheet__type-row">
           {(['warmup', 'working', 'failure', 'drop', 'backoff'] as const).map((t) => (
             <button
@@ -130,7 +167,13 @@ export function EditSetSheet({ set, exerciseName, onSave, onDelete, onClose }: E
               if (!editable) return;
               setBusy(true);
               try {
-                await onSave({ weight, reps, setType: type });
+                await onSave({
+                  weight,
+                  reps,
+                  setType: type,
+                  note: note.trim() || null,
+                  durationSeconds: duration > 0 ? duration : null,
+                });
               } finally {
                 setBusy(false);
               }

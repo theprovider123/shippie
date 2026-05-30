@@ -1,8 +1,27 @@
 /**
- * Settings — theme switcher, default unit, plate inventory edit, about.
+ * Settings — theme switcher, default unit, data export, coach access, about.
  */
+import { useState } from 'react';
 import { useLift, type ThemeName } from '../state/lift-state.tsx';
+import { gatherAllData } from '../db/queries.ts';
+import { buildPassport, buildSetsCsv } from '../utils/export.ts';
 import type { Unit } from '../db/schema.ts';
+
+function downloadFile(name: string, mime: string, contents: string): void {
+  try {
+    const blob = new Blob([contents], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch {
+    // download blocked (sandboxed iframe) — best-effort only
+  }
+}
 
 const THEMES: { id: ThemeName; label: string; hint: string }[] = [
   { id: 'iron', label: 'Iron', hint: 'Default — barbell halogen' },
@@ -13,6 +32,40 @@ const THEMES: { id: ThemeName; label: string; hint: string }[] = [
 
 export function SettingsPage() {
   const lift = useLift();
+  const [exporting, setExporting] = useState(false);
+
+  async function exportPassport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const all = await gatherAllData(lift.db);
+      const passport = buildPassport({ ...all, exportedAt: new Date().toISOString() });
+      const stamp = new Date().toISOString().slice(0, 10);
+      downloadFile(`lift-data-${stamp}.json`, 'application/json', JSON.stringify(passport, null, 2));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function exportCsv() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const all = await gatherAllData(lift.db);
+      const stepWorkout = new Map(all.steps.map((s) => [s.id, s.workout_id]));
+      const exerciseName = new Map(all.exercises.map((e) => [e.id, e.name]));
+      const stepExercise = new Map(all.steps.map((s) => [s.id, exerciseName.get(s.exercise_id) ?? s.exercise_id]));
+      const csv = buildSetsCsv(
+        all.sets,
+        (stepId) => stepWorkout.get(stepId) ?? '',
+        (stepId) => stepExercise.get(stepId) ?? '',
+      );
+      const stamp = new Date().toISOString().slice(0, 10);
+      downloadFile(`lift-sets-${stamp}.csv`, 'text/csv', csv);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="lift-page">
@@ -72,6 +125,46 @@ export function SettingsPage() {
         <p className="lift-settings__hint">
           Current bests and a 6-week trend, formatted for print or save-as-PDF.
         </p>
+      </section>
+
+      <section className="lift-settings__section">
+        <p className="lift-section-label">Your data</p>
+        <div className="lift-settings__export-row">
+          <button type="button" className="lift-secondary-btn" onClick={exportPassport} disabled={exporting}>
+            Export all (JSON)
+          </button>
+          <button type="button" className="lift-secondary-btn" onClick={exportCsv} disabled={exporting}>
+            Export sets (CSV)
+          </button>
+        </div>
+        <p className="lift-settings__hint">
+          A complete <code>lift.v1</code> data passport, or a flat CSV of every set.
+          It's your training history — take it anywhere.
+        </p>
+      </section>
+
+      <section className="lift-settings__section">
+        <p className="lift-section-label">Coach access</p>
+        <p className="lift-settings__hint">
+          Optional. You can share a <strong>read-only</strong> view with a coach through a
+          private sealed-cloud space — they see your sessions and PRs, never edit them, and
+          you can revoke it any time. Lift works fully without this; nothing syncs unless you
+          turn it on.
+        </p>
+        <button
+          type="button"
+          className="lift-secondary-btn"
+          onClick={() => {
+            try {
+              // The sealed-cloud space panel is container-mediated.
+              (window as unknown as { shippie?: { data?: { openPanel?: () => void } } }).shippie?.data?.openPanel?.();
+            } catch {
+              // standalone / no container — no-op
+            }
+          }}
+        >
+          Manage sharing
+        </button>
       </section>
 
       <section className="lift-settings__section lift-settings__about">

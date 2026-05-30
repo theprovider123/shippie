@@ -17,17 +17,30 @@ import {
   completeWorkout,
   deleteSet,
   insertPr,
+  lastSessionWorkingSets,
   lastWorkingSetForExercise,
   listSetsForWorkout,
   logSet,
+  repeatLastWorkout,
+  setStepSuperset,
   startBlankWorkout,
   startWorkoutFromTemplate,
+  swapStepVariant,
   updateSet,
   workingSetsForLineage,
   workingSetsForVariant,
 } from '../db/queries.ts';
 import { detectPrCandidates } from '../utils/pr-detect.ts';
 import { evaluateStrain } from '../utils/strain.ts';
+import { computeTrainingLoad } from '../utils/training-load.ts';
+import { recommendProgression, type ProgressionRecommendation } from '../utils/progression.ts';
+import { applyWeekLoad } from '../utils/program.ts';
+import {
+  getActiveProgram,
+  incrementCompleted,
+  setActiveProgram,
+  type ActiveProgram,
+} from '../lib/program-progress.ts';
 import { newId } from '../utils/ids.ts';
 import { createWakeLock } from '../utils/wake-lock.ts';
 import { recomputePrsForExercise } from '../lib/recompute-prs.ts';
@@ -35,8 +48,11 @@ import {
   emitDeloadRecommended,
   emitPrBroken,
   emitSetLogged,
+  emitTrainingLoadUpdated,
   emitWorkoutCompleted,
+  emitWorkoutStarted,
 } from '../lib/intent-bus.ts';
+import { ReadinessBanner } from '../components/ReadinessBanner.tsx';
 import type { SetRow, SetType, Unit } from '../db/schema.ts';
 
 export function TodayPage() {
@@ -44,8 +60,17 @@ export function TodayPage() {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [restTrigger, setRestTrigger] = useState(0);
   const [defaults, setDefaults] = useState<{ weight: number; reps: number; ref: { weight: number; reps: number; daysAgo: number } | null } | null>(null);
+  const [suggestion, setSuggestion] = useState<ProgressionRecommendation | null>(null);
   const [prBurst, setPrBurst] = useState<PRBurstEvent | null>(null);
   const [editingSet, setEditingSet] = useState<SetRow | null>(null);
+  const [activeProgram, setActiveProgramState] = useState<ActiveProgram | null>(null);
+  const [showSwap, setShowSwap] = useState(false);
+
+  // Read the live program context (week label + load multiplier) when a
+  // workout opens, so live mode can banner it and scale loads.
+  useEffect(() => {
+    setActiveProgramState(lift.openWorkout ? getActiveProgram() : null);
+  }, [lift.openWorkout?.id]);
 
   const activeStep = lift.openWorkoutSteps[activeStepIndex] ?? null;
   const exercise = useMemo(
@@ -98,18 +123,51 @@ export function TodayPage() {
       return;
     }
     (async () => {
-      const last = await lastWorkingSetForExercise(lift.db, exercise.id);
+      const targetReps = activeStep?.target_reps ?? 5;
+      const targetSets = activeStep?.target_sets ?? 3;
+      const increment = (exercise.default_unit as Unit) === 'lb' ? 5 : 2.5;
+
+      const [last, lastSession] = await Promise.all([
+        lastWorkingSetForExercise(lift.db, exercise.id),
+        lastSessionWorkingSets(lift.db, exercise.id),
+      ]);
       if (cancelled) return;
+
+      // Progression suggestion from the last completed session.
+      let rec: ProgressionRecommendation | null = null;
+      if (lastSession) {
+        const daysSinceLast = Math.max(
+          0,
+          Math.floor((Date.now() - Date.parse(lastSession.startedAt)) / 86_400_000),
+        );
+        rec = recommendProgression({
+          targetReps,
+          targetSets,
+          increment,
+          lastSessionSets: lastSession.sets.map((s) => ({ weight: s.weight, reps: s.reps })),
+          daysSinceLast,
+        });
+      }
+      setSuggestion(rec);
+
       if (!last) {
-        setDefaults({ weight: 0, reps: 5, ref: null });
+        // No history: seed from the suggestion if we somehow have one, else blank.
+        setDefaults({ weight: rec?.nextWeight ?? 0, reps: targetReps, ref: null });
         return;
       }
       const daysAgo = Math.max(
         0,
         Math.floor((Date.now() - Date.parse(last.completed_at)) / 86_400_000),
       );
+      // Pre-fill with the coached next weight when it's a real suggestion.
+      let seedWeight = rec && rec.nextWeight > 0 ? rec.nextWeight : last.weight;
+      // A program deload week scales the seed down to the prescribed %.
+      const prog = getActiveProgram();
+      if (prog && prog.loadPct < 1 && seedWeight > 0) {
+        seedWeight = applyWeekLoad(seedWeight, prog.loadPct, increment);
+      }
       setDefaults({
-        weight: last.weight,
+        weight: seedWeight,
         reps: last.reps,
         ref: { weight: last.weight, reps: last.reps, daysAgo },
       });
@@ -144,7 +202,12 @@ export function TodayPage() {
   const exerciseLabel = variant ? `${exercise.name} — ${variant.name}` : exercise.name;
   const targetSets = activeStep.target_sets ?? 0;
 
-  async function handleSave(entry: { weight: number; reps: number; setType: SetType }) {
+  async function handleSave(entry: {
+    weight: number;
+    reps: number;
+    setType: SetType;
+    rpe: number | null;
+  }) {
     if (!lift.openWorkout || !activeStep) return;
     const unit: Unit = (exercise?.default_unit as Unit | undefined) ?? lift.defaultUnit;
     const set: SetRow = {
@@ -155,8 +218,9 @@ export function TodayPage() {
       reps: entry.reps,
       unit,
       set_type: entry.setType,
-      rpe: null,
-      rir: null,
+      // RPE is optional; RIR is its complement (reps in reserve ≈ 10 − RPE).
+      rpe: entry.rpe,
+      rir: entry.rpe != null ? Math.max(0, 10 - entry.rpe) : null,
       bar_weight: inventory?.bar_weight ?? null,
       plate_inventory_id: inventory?.id ?? null,
       completed_at: new Date().toISOString(),
@@ -220,12 +284,20 @@ export function TodayPage() {
     setRestTrigger((t) => t + 1);
   }
 
-  async function handleEditSave(patch: { weight: number; reps: number; setType: SetType }) {
+  async function handleEditSave(patch: {
+    weight: number;
+    reps: number;
+    setType: SetType;
+    note: string | null;
+    durationSeconds: number | null;
+  }) {
     if (!editingSet) return;
     await updateSet(lift.db, editingSet.id, {
       weight: patch.weight,
       reps: patch.reps,
       set_type: patch.setType,
+      note: patch.note,
+      duration_seconds: patch.durationSeconds,
     });
     if (exercise) {
       await recomputePrsForExercise(
@@ -292,13 +364,67 @@ export function TodayPage() {
       if (strain.recommendDeload) {
         emitDeloadRecommended(strain.reason);
       }
+
+      // Training load — acute:chronic workload ratio across all history,
+      // broadcast so recovery-aware apps can react.
+      const load = computeTrainingLoad({ workingSets: allSets, sessionSets: workingSets });
+      emitTrainingLoadUpdated(load);
     } catch {
-      // strain check is advisory only; never block the finish flow
+      // strain + load checks are advisory only; never block the finish flow
+    }
+
+    // Advance the program pointer if this session came from one.
+    const prog = getActiveProgram();
+    if (prog) {
+      incrementCompleted(prog.programId);
+      setActiveProgram(null);
+      setActiveProgramState(null);
     }
 
     await lift.refresh();
     lift.setTab('history');
   }
+
+  async function handleSwap(toExerciseId: string, toVariantId: string | null) {
+    if (!activeStep) return;
+    await swapStepVariant(lift.db, activeStep.id, toExerciseId, toVariantId);
+    setShowSwap(false);
+    await lift.refresh();
+  }
+
+  async function toggleSupersetWithNext() {
+    if (!activeStep) return;
+    const next = lift.openWorkoutSteps[activeStepIndex + 1];
+    if (!next) return;
+    if (activeStep.superset_group && activeStep.superset_group === next.superset_group) {
+      // Unlink both.
+      await setStepSuperset(lift.db, activeStep.id, null);
+      await setStepSuperset(lift.db, next.id, null);
+    } else {
+      const group = newId('ss');
+      await setStepSuperset(lift.db, activeStep.id, group);
+      await setStepSuperset(lift.db, next.id, group);
+    }
+    await lift.refresh();
+  }
+
+  // Sibling exercises in the same lineage = substitution alternatives.
+  const alternatives = exercise?.lineage_id
+    ? lift.exercises.filter((e) => e.lineage_id === exercise.lineage_id && e.id !== exercise.id)
+    : [];
+
+  // The paired step when the active exercise is in a superset.
+  const supersetPartnerIndex =
+    activeStep?.superset_group != null
+      ? lift.openWorkoutSteps.findIndex(
+          (s, i) => i !== activeStepIndex && s.superset_group === activeStep.superset_group,
+        )
+      : -1;
+  const supersetPartner =
+    supersetPartnerIndex >= 0 ? lift.openWorkoutSteps[supersetPartnerIndex] : null;
+  const partnerExercise = supersetPartner
+    ? lift.exercises.find((e) => e.id === supersetPartner.exercise_id)
+    : null;
 
   const completedThisStep = stepSets.length;
   const allDone = targetSets > 0 && completedThisStep >= targetSets;
@@ -312,7 +438,75 @@ export function TodayPage() {
         <p className="lift-workout-head__title">{exerciseLabel}</p>
       </header>
 
+      {activeProgram ? (
+        <p className={`lift-program-banner ${activeProgram.isDeload ? 'lift-program-banner--deload' : ''}`}>
+          {activeProgram.programName} · {activeProgram.weekLabel}
+          {activeProgram.loadPct < 1 ? ` · ${Math.round(activeProgram.loadPct * 100)}% loads` : ''}
+        </p>
+      ) : null}
+
+      {partnerExercise ? (
+        <div className="lift-superset-row">
+          <span className="lift-superset-row__tag">superset</span>
+          <button
+            type="button"
+            className="lift-secondary-btn lift-superset-row__switch"
+            onClick={() => setActiveStepIndex(supersetPartnerIndex)}
+          >
+            ⇄ Switch to {partnerExercise.name}
+          </button>
+        </div>
+      ) : null}
+
+      <div className="lift-workout-actions">
+        <button
+          type="button"
+          className="lift-text-btn"
+          onClick={() => setShowSwap((s) => !s)}
+          disabled={alternatives.length === 0}
+          aria-expanded={showSwap}
+        >
+          {alternatives.length === 0 ? 'No substitutes' : showSwap ? '× Close' : '⇆ Substitute'}
+        </button>
+        {activeStepIndex < lift.openWorkoutSteps.length - 1 ? (
+          <button type="button" className="lift-text-btn" onClick={toggleSupersetWithNext}>
+            {activeStep.superset_group &&
+            lift.openWorkoutSteps[activeStepIndex + 1]?.superset_group === activeStep.superset_group
+              ? 'Unlink superset'
+              : '⇄ Superset w/ next'}
+          </button>
+        ) : null}
+      </div>
+
+      {showSwap ? (
+        <ul className="lift-swap-list" aria-label="Substitute exercise">
+          {alternatives.map((alt) => (
+            <li key={alt.id}>
+              <button
+                type="button"
+                className="lift-swap-list__item"
+                onClick={() => handleSwap(alt.id, alt.variant_id ?? null)}
+              >
+                {alt.name}
+                {alt.equipment ? <span className="lift-swap-list__equip"> · {alt.equipment}</span> : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       <PRBurst event={prBurst} onDismiss={() => setPrBurst(null)} />
+
+      {exercise?.cues ? (
+        <p className="lift-workout-cues">{exercise.cues}</p>
+      ) : null}
+
+      {suggestion && suggestion.action !== 'hold' && suggestion.nextWeight > 0 ? (
+        <p className={`lift-suggestion lift-suggestion--${suggestion.action}`}>
+          <span className="lift-suggestion__tag">{suggestion.action}</span>
+          <span className="lift-suggestion__text">{suggestion.reason}</span>
+        </p>
+      ) : null}
 
       <SetCard
         exerciseName={exerciseLabel}
@@ -322,10 +516,11 @@ export function TodayPage() {
         initialWeight={defaults?.weight ?? 0}
         initialReps={defaults?.reps ?? 5}
         setType="working"
+        bodyweight={Boolean(exercise?.is_bodyweight)}
         onSave={handleSave}
         reference={defaults?.ref ?? null}
         plateContext={
-          inventory
+          inventory && !exercise?.is_bodyweight
             ? { plates: platesParsed, bar: inventory.bar_weight }
             : null
         }
@@ -368,12 +563,7 @@ export function TodayPage() {
           <button
             type="button"
             className="lift-primary-btn"
-            onClick={async () => {
-              if (!lift.openWorkout) return;
-              await completeWorkout(lift.db, lift.openWorkout.id);
-              await lift.refresh();
-              lift.setTab('history');
-            }}
+            onClick={handleFinishWorkout}
           >
             Finish workout
           </button>
@@ -410,7 +600,9 @@ function PreviousSetsList({
               <span className="lift-prev-sets__numerals">
                 {s.weight}
                 {unit} × {s.reps}
+                {s.duration_seconds ? ` · ${s.duration_seconds}s` : ''}
               </span>
+              {s.note ? <span className="lift-prev-sets__note">{s.note}</span> : null}
               {s.set_type !== 'working' ? (
                 <span className="lift-prev-sets__type">{s.set_type}</span>
               ) : (
@@ -426,6 +618,22 @@ function PreviousSetsList({
 
 function StartWorkoutScreen() {
   const lift = useLift();
+
+  function announceStart(
+    workoutId: string,
+    source: string,
+    templateId: string | null,
+    exerciseCount: number,
+  ) {
+    emitWorkoutStarted({
+      workoutId,
+      source,
+      templateId,
+      exerciseCount,
+      startedAt: new Date().toISOString(),
+    });
+  }
+
   return (
     <div className="lift-page lift-page--start">
       <header className="lift-start__head">
@@ -433,8 +641,25 @@ function StartWorkoutScreen() {
         <p className="lift-start__sub">Pick a template or start blank.</p>
       </header>
 
+      <ReadinessBanner />
       <StrainBanner />
       <WeekSummary />
+
+      {lift.recentWorkouts.some((w) => w.completed_at) ? (
+        <button
+          type="button"
+          className="lift-start__repeat"
+          onClick={async () => {
+            const result = await repeatLastWorkout(lift.db);
+            if (result) {
+              announceStart(result.workout.id, 'manual', result.workout.template_id ?? null, result.steps.length);
+              await lift.refresh();
+            }
+          }}
+        >
+          ↻ Repeat last workout
+        </button>
+      ) : null}
 
       <ul className="lift-start__templates">
         {lift.templates.map((tpl) => (
@@ -443,7 +668,8 @@ function StartWorkoutScreen() {
               type="button"
               className="lift-template-card"
               onClick={async () => {
-                await startWorkoutFromTemplate(lift.db, tpl.id);
+                const { workout, steps } = await startWorkoutFromTemplate(lift.db, tpl.id);
+                announceStart(workout.id, 'template', tpl.id, steps.length);
                 await lift.refresh();
               }}
             >
@@ -460,7 +686,8 @@ function StartWorkoutScreen() {
         type="button"
         className="lift-start__blank"
         onClick={async () => {
-          await startBlankWorkout(lift.db);
+          const w = await startBlankWorkout(lift.db);
+          announceStart(w.id, 'manual', null, 0);
           await lift.refresh();
         }}
       >

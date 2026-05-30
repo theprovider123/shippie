@@ -7,10 +7,12 @@
  *   - Sharing is OFF by default and structural (no relay opens when off).
  *   - Medical words, no euphemisms; predictions are tools, not oracles.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ShippieLocalDb } from '@shippie/local-runtime-contract';
+import { BackupCard } from '@shippie/showcase-kit-v2';
 import { isoDate, loadPrefs, savePrefs } from '../db/queries.ts';
 import { deleteAllData, downloadExport, exportAll, exportForClinician } from '../lib/data-ops.ts';
+import { createCycleBackupStore } from '../backup-store.ts';
 import { generatePairCode } from '../sync/crypto.ts';
 import {
   MODES,
@@ -50,6 +52,7 @@ export function Settings({ db, onChange }: SettingsProps) {
   const [pinInput, setPinInput] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const backupStore = useMemo(() => createCycleBackupStore(db), [db]);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +211,11 @@ export function Settings({ db, onChange }: SettingsProps) {
             <button type="button" className="secondary" onClick={() => setConfirmDelete(false)}>Cancel</button>
           ) : null}
         </div>
+        <p className="muted" style={{ marginTop: '0.4rem' }}>
+          Or keep an encrypted backup you can restore on a new device. The passphrase is the only key — lose it
+          and the file is unreadable. That's the point.
+        </p>
+        <BackupCard appSlug="cycle" store={backupStore} />
       </article>
 
       {/* ── Partner sharing ── */}

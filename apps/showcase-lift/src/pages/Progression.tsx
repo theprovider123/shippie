@@ -19,7 +19,9 @@ import {
 } from '../db/queries.ts';
 import { buildProgressSummary } from '../utils/plain-progress.ts';
 import { repRange, REP_RANGES } from '../utils/pr-detect.ts';
+import { bestEstimatedOneRepMax } from '../utils/one-rep-max.ts';
 import { StrainBanner, MonthSummary } from '../components/glance-cards.tsx';
+import { TrainingAnalytics } from '../components/analytics-cards.tsx';
 import type { Exercise, Pr, RepRange, SetRow } from '../db/schema.ts';
 
 export function ProgressionPage() {
@@ -61,6 +63,7 @@ export function ProgressionPage() {
 
       <StrainBanner />
       <MonthSummary />
+      <TrainingAnalytics />
 
       {tracked.length === 0 ? (
         <p className="lift-empty">
@@ -158,6 +161,16 @@ function ExerciseDrillDown({ exercise }: ExerciseDrillDownProps) {
 
       <section className="lift-progression__hero">
         <p className="lift-progression__headline">{summary.headline}</p>
+        {(() => {
+          const e1rm = bestEstimatedOneRepMax(variantSets);
+          return e1rm > 0 ? (
+            <p className="lift-progression__e1rm">
+              Est. 1RM ≈ {formatWeight(e1rm)}
+              {exercise.default_unit}
+              <span className="lift-progression__e1rm-note"> · estimate, not a max attempt</span>
+            </p>
+          ) : null;
+        })()}
         {recentVariantPr ? (
           <p className="lift-progression__recent-pr">
             Recent best: {formatWeight(recentVariantPr.weight)}

@@ -14,12 +14,14 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/backup-providers": "workspace:*",
     "@shippie/design-tokens": "workspace:*",
     "@shippie/iframe-sdk": "workspace:*",
     "@shippie/local-db": "workspace:*",
     "@shippie/local-runtime-contract": "workspace:*",
     "@shippie/sdk": "workspace:*",
     "@shippie/showcase-kit": "workspace:*",
+    "@shippie/showcase-kit-v2": "workspace:*",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "y-indexeddb": "^9.0.12",

@@ -10,10 +10,66 @@
   "orientation": "portrait",
   "intents": {
     "provides": [
+      "workout-started",
+      "set-logged",
       "workout-completed",
       "pr-broken",
-      "set-logged"
+      "training-load-updated",
+      "deload-recommended"
+    ],
+    "consumes": [
+      "sleep-logged",
+      "nutrition-logged",
+      "protein-target-hit",
+      "hydration-logged",
+      "caffeine-logged",
+      "cycle-logged",
+      "body-metrics-logged"
     ]
+  },
+  "data_schemas": {
+    "exercises": {
+      "id": "text primary key",
+      "name": "text not null",
+      "muscle_group": "text not null",
+      "lineage_id": "text",
+      "variant_id": "text",
+      "default_unit": "text not null",
+      "notes": "text"
+    },
+    "workouts": {
+      "id": "text primary key",
+      "started_at": "text not null",
+      "completed_at": "text",
+      "template_id": "text",
+      "source": "text not null",
+      "notes": "text"
+    },
+    "sets": {
+      "id": "text primary key",
+      "step_id": "text not null",
+      "set_index": "integer not null",
+      "weight": "real not null",
+      "reps": "integer not null",
+      "unit": "text not null",
+      "set_type": "text not null",
+      "rpe": "real",
+      "rir": "integer",
+      "bar_weight": "real",
+      "completed_at": "text not null",
+      "source": "text not null"
+    },
+    "prs": {
+      "id": "text primary key",
+      "kind": "text not null",
+      "variant_id": "text",
+      "lineage_id": "text",
+      "rep_range": "text",
+      "weight": "real not null",
+      "reps": "integer not null",
+      "set_id": "text not null",
+      "achieved_at": "text not null"
+    }
   },
   "spaces": {
     "enabled": true,

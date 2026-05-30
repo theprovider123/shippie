@@ -20,7 +20,8 @@ import {
   type Cycle,
   type Day,
 } from '../db/schema.ts';
-import { listCycles, listDays, parseStringArray, parseSymptoms } from '../db/queries.ts';
+import { ensureSchema, listCycles, listDays, parseStringArray, parseSymptoms, recomputeLengths } from '../db/queries.ts';
+import type { LocalDbRecord } from '@shippie/local-runtime-contract';
 
 export interface CycleExport {
   app: 'cycle';
@@ -92,6 +93,31 @@ export async function exportForClinician(
 ): Promise<CycleExport> {
   const [cycles, days] = await Promise.all([listCycles(db), listDays(db)]);
   return filterForClinician(cycles, days, share, exportedAtIso);
+}
+
+/**
+ * Restore records from a full export (used by the encrypted backup). Replaces
+ * cycles + days; leaves prefs/settings (and the lock PIN) untouched. Only a
+ * full-scope export can be restored — a field-filtered clinician export is
+ * lossy by design and would silently drop data.
+ */
+export async function importAll(
+  db: ShippieLocalDb,
+  data: CycleExport,
+): Promise<{ ok: boolean; error?: string }> {
+  if (data.app !== 'cycle') return { ok: false, error: 'Not a Cycle export.' };
+  if (data.scope !== 'full') return { ok: false, error: 'A clinician export is partial and cannot be restored.' };
+  await ensureSchema(db);
+  for (const table of [DAYS_TABLE, CYCLES_TABLE]) {
+    const rows = await db.query<{ id: string }>(table);
+    for (const row of rows) if (row.id) await db.delete(table, row.id);
+  }
+  for (const c of data.cycles) await db.insert(CYCLES_TABLE, c as unknown as LocalDbRecord);
+  for (const d of data.days) {
+    if (d.id && d.cycle_id) await db.insert(DAYS_TABLE, d as unknown as LocalDbRecord);
+  }
+  await recomputeLengths(db);
+  return { ok: true };
 }
 
 /** Delete every record across all tables. Irreversible. */

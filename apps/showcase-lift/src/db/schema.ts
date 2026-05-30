@@ -20,6 +20,9 @@ export const TEMPLATES_TABLE = 'templates';
 export const TEMPLATE_STEPS_TABLE = 'template_steps';
 export const PRS_TABLE = 'prs';
 export const PLATE_INVENTORIES_TABLE = 'plate_inventories';
+export const PROGRAMS_TABLE = 'programs';
+export const PROGRAM_WEEKS_TABLE = 'program_weeks';
+export const PROGRAM_SESSIONS_TABLE = 'program_sessions';
 
 export type Unit = 'kg' | 'lb';
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure' | 'backoff';
@@ -45,6 +48,11 @@ export const exercisesSchema: LocalDbSchema = {
   variant_id: 'text',
   default_unit: 'text not null',
   notes: 'text',
+  // Additive (schema v2): coaching cues, equipment, bodyweight flag, custom marker.
+  cues: 'text',
+  equipment: 'text',
+  is_bodyweight: 'integer',
+  source: 'text',
 };
 
 export const lineagesSchema: LocalDbSchema = {
@@ -77,6 +85,8 @@ export const stepsSchema: LocalDbSchema = {
   template_step_id: 'text',
   target_sets: 'integer',
   target_reps: 'integer',
+  // Additive (schema v2): steps sharing a group id are a superset.
+  superset_group: 'text',
 };
 
 export const setsSchema: LocalDbSchema = {
@@ -93,6 +103,9 @@ export const setsSchema: LocalDbSchema = {
   plate_inventory_id: 'text',
   completed_at: 'text not null',
   source: 'text not null',
+  // Additive (schema v2): free-text note + timed-set duration.
+  note: 'text',
+  duration_seconds: 'integer',
 };
 
 export const templatesSchema: LocalDbSchema = {
@@ -112,6 +125,8 @@ export const templateStepsSchema: LocalDbSchema = {
   target_sets: 'integer not null',
   target_reps: 'integer not null',
   target_load_pct: 'real',
+  // Additive (schema v2): steps sharing a group id are a superset.
+  superset_group: 'text',
 };
 
 export const prsSchema: LocalDbSchema = {
@@ -131,6 +146,38 @@ export const plateInventoriesSchema: LocalDbSchema = {
   name: 'text not null',
   plates_json: 'text not null',
   bar_weight: 'real not null',
+};
+
+// ── Programs (blocks → weeks → sessions) ─────────────────────────────────
+
+export const programsSchema: LocalDbSchema = {
+  id: 'text primary key',
+  name: 'text not null',
+  /** Number of weeks in the block. */
+  weeks: 'integer not null',
+  source: 'text not null',
+  created_at: 'text not null',
+  notes: 'text',
+};
+
+/** Per-week load/volume modifiers — this is how a block periodises + deloads. */
+export const programWeeksSchema: LocalDbSchema = {
+  id: 'text primary key',
+  program_id: 'text not null',
+  week_index: 'integer not null',
+  label: 'text',
+  /** Fraction of prescribed load to use this week (1 = as written, 0.6 = deload). */
+  load_pct: 'real not null',
+  is_deload: 'integer not null',
+};
+
+/** The rotation of sessions inside a week (Day A / B / C → template ids). */
+export const programSessionsSchema: LocalDbSchema = {
+  id: 'text primary key',
+  program_id: 'text not null',
+  day_index: 'integer not null',
+  label: 'text not null',
+  template_id: 'text not null',
 };
 
 export interface Lineage {
@@ -153,6 +200,14 @@ export interface Exercise {
   variant_id?: string | null;
   default_unit: Unit;
   notes?: string | null;
+  /** Coaching cues — short, imperative ("brace, knees out, drive the floor away"). */
+  cues?: string | null;
+  /** Equipment label ("barbell", "dumbbell", "cable", "bodyweight"). */
+  equipment?: string | null;
+  /** 1 when the lift is bodyweight-based (weight = added load). */
+  is_bodyweight?: number | null;
+  /** 'builtin' | 'custom' — distinguishes user-added exercises. */
+  source?: string | null;
 }
 
 export interface Workout {
@@ -175,6 +230,8 @@ export interface WorkoutStep {
   target_sets?: number | null;
   /** Copied from template_steps.target_reps at workout creation; undefined for blank workouts. */
   target_reps?: number | null;
+  /** Steps sharing a group id are performed as a superset (alternating). */
+  superset_group?: string | null;
 }
 
 export interface SetRow {
@@ -191,6 +248,10 @@ export interface SetRow {
   plate_inventory_id?: string | null;
   completed_at: string;
   source: WorkoutSource;
+  /** Optional free-text note on the set ("left elbow tweaky", "paused"). */
+  note?: string | null;
+  /** Duration for timed sets (planks, carries); null for rep-based sets. */
+  duration_seconds?: number | null;
 }
 
 export interface Template {
@@ -210,6 +271,34 @@ export interface TemplateStep {
   target_sets: number;
   target_reps: number;
   target_load_pct?: number | null;
+  /** Steps sharing a group id are performed as a superset. */
+  superset_group?: string | null;
+}
+
+export interface Program {
+  id: string;
+  name: string;
+  weeks: number;
+  source: TemplateSource;
+  created_at: string;
+  notes?: string | null;
+}
+
+export interface ProgramWeek {
+  id: string;
+  program_id: string;
+  week_index: number;
+  label?: string | null;
+  load_pct: number;
+  is_deload: number;
+}
+
+export interface ProgramSession {
+  id: string;
+  program_id: string;
+  day_index: number;
+  label: string;
+  template_id: string;
 }
 
 export interface Pr {

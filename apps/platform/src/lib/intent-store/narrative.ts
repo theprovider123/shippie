@@ -107,6 +107,10 @@ function countPhrase(intent: string, count: number): string {
       return `${count} ${count === 1 ? 'meal' : 'meals'} cooked`;
     case 'workout-completed':
       return `${count} ${count === 1 ? 'workout' : 'workouts'}`;
+    case 'set-logged':
+      return `${count} ${count === 1 ? 'set' : 'sets'} logged`;
+    case 'pr-broken':
+      return count === 1 ? 'a new PR' : `${count} PRs`;
     case 'run-planned':
       return `${count} ${count === 1 ? 'run' : 'runs'} planned`;
     case 'sleep-logged':

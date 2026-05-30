@@ -22,6 +22,7 @@ import {
   listExercises,
   listLineages,
   listPlateInventories,
+  listPrograms,
   listRecentWorkouts,
   listSetsForWorkout,
   listTemplates,
@@ -33,6 +34,7 @@ import type {
   Exercise,
   Lineage,
   PlateInventory,
+  Program,
   SetRow,
   Template,
   Unit,
@@ -51,6 +53,9 @@ import {
   TEMPLATE_STEPS_TABLE,
   VARIANTS_TABLE,
   WORKOUTS_TABLE,
+  PROGRAMS_TABLE,
+  PROGRAM_WEEKS_TABLE,
+  PROGRAM_SESSIONS_TABLE,
   exercisesSchema,
   lineagesSchema,
   plateInventoriesSchema,
@@ -61,6 +66,9 @@ import {
   templateStepsSchema,
   variantsSchema,
   workoutsSchema,
+  programsSchema,
+  programWeeksSchema,
+  programSessionsSchema,
 } from '../db/schema.ts';
 
 export type ThemeName = 'iron' | 'chalk' | 'clay' | 'signal';
@@ -80,6 +88,7 @@ interface LiftStateValue {
   lineages: Lineage[];
   variants: Variant[];
   templates: Template[];
+  programs: Program[];
   inventories: PlateInventory[];
   openWorkout: Workout | null;
   openWorkoutSteps: WorkoutStep[];
@@ -103,7 +112,7 @@ const Ctx = createContext<LiftStateValue | null>(null);
 
 const THEME_KEY = 'shippie:lift:theme';
 const UNIT_KEY = 'shippie:lift:default-unit';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export function LiftStateProvider({ children }: { children: ReactNode }) {
   const dbRef = useRef<ShippieLocalDb | null>(null);
@@ -112,6 +121,7 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
   const [lineages, setLineages] = useState<Lineage[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [inventories, setInventories] = useState<PlateInventory[]>([]);
   const [openWorkout, setOpenWorkout] = useState<Workout | null>(null);
   const [openWorkoutSteps, setOpenWorkoutSteps] = useState<WorkoutStep[]>([]);
@@ -163,6 +173,7 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
       lins,
       vars,
       tpls,
+      progs,
       invs,
       open,
       recents,
@@ -171,6 +182,7 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
       listLineages(db),
       listVariants(db),
       listTemplates(db),
+      listPrograms(db),
       listPlateInventories(db),
       getOpenWorkout(db),
       listRecentWorkouts(db, 30),
@@ -179,6 +191,7 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
     setLineages(lins);
     setVariants(vars);
     setTemplates(tpls);
+    setPrograms(progs);
     setInventories(invs);
     setOpenWorkout(open);
     if (open) {
@@ -213,6 +226,9 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
           { name: TEMPLATE_STEPS_TABLE, schema: templateStepsSchema },
           { name: PRS_TABLE, schema: prsSchema },
           { name: PLATE_INVENTORIES_TABLE, schema: plateInventoriesSchema },
+          { name: PROGRAMS_TABLE, schema: programsSchema },
+          { name: PROGRAM_WEEKS_TABLE, schema: programWeeksSchema },
+          { name: PROGRAM_SESSIONS_TABLE, schema: programSessionsSchema },
         ],
       });
       if (cancelled) return;
@@ -251,6 +267,7 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
       lineages,
       variants,
       templates,
+      programs,
       inventories,
       openWorkout,
       openWorkoutSteps,
@@ -275,6 +292,7 @@ export function LiftStateProvider({ children }: { children: ReactNode }) {
       lineages,
       variants,
       templates,
+      programs,
       inventories,
       openWorkout,
       openWorkoutSteps,

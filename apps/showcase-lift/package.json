@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Lift — a private strength tracker for the minute between sets. Two taps to log. One line to see you're stronger. Provides workout-completed, pr-broken, set-logged.",
+  "description": "Lift — a private strength tracker for the minute between sets. Two taps to log. One line to see you're stronger. Provides workout-started, set-logged, workout-completed, pr-broken, training-load-updated; consumes sleep/nutrition/hydration/caffeine/cycle/body-metrics signals for on-device readiness.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -1617,3 +1617,373 @@ html, body {
 .lift-bottom-nav__btn--utility:hover {
   color: var(--fg, inherit);
 }
+
+/* --- Readiness banner ------------------------------------------------ */
+/* Cross-app recovery → one honest verdict, surfaced before you start.   */
+.lift-readiness {
+  background: var(--lift-surface);
+  border: 1px solid var(--lift-border);
+  border-left-width: 4px;
+  border-radius: var(--lift-radius);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.lift-readiness--primed,
+.lift-readiness--ready { border-left-color: var(--lift-good); }
+.lift-readiness--hold { border-left-color: var(--lift-accent); }
+.lift-readiness--caution {
+  border-left-color: var(--lift-bad);
+  background: var(--lift-accent-soft);
+}
+.lift-readiness--unknown { border-left-color: var(--lift-text-muted); border-left-style: dashed; }
+
+.lift-readiness__head {
+  font-family: var(--lift-serif);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--lift-text);
+}
+.lift-readiness__hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--lift-text-soft);
+}
+
+.lift-readiness__top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.lift-readiness__score {
+  font-family: var(--lift-mono);
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--lift-text);
+  font-variant-numeric: tabular-nums;
+}
+.lift-readiness--caution .lift-readiness__score { color: var(--lift-bad); }
+.lift-readiness--primed .lift-readiness__score,
+.lift-readiness--ready .lift-readiness__score { color: var(--lift-good); }
+.lift-readiness__headline {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--lift-text);
+}
+
+.lift-readiness__factors {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lift-readiness__factor {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: var(--lift-radius-sm);
+  background: var(--lift-surface-2);
+  border: 1px solid var(--lift-border);
+}
+.lift-readiness__factor--up { border-color: var(--lift-good); }
+.lift-readiness__factor--down { border-color: var(--lift-bad); }
+.lift-readiness__factor-label {
+  font-family: var(--lift-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lift-text-muted);
+}
+.lift-readiness__factor-detail { color: var(--lift-text-soft); }
+.lift-readiness__advice {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lift-accent);
+}
+.lift-readiness--caution .lift-readiness__advice { color: var(--lift-bad); }
+
+/* --- Optional RPE chips on the set card ----------------------------- */
+.lift-set-card__rpe-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 12px;
+  flex-wrap: wrap;
+}
+.lift-set-card__rpe-label { margin-right: 2px; }
+.lift-chip--rpe {
+  min-width: 40px;
+  font-family: var(--lift-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Progression suggestion + cues (live workout) ------------------- */
+.lift-workout-cues {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--lift-text-soft);
+  font-style: italic;
+}
+.lift-suggestion {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: var(--lift-radius-sm);
+  background: var(--lift-surface-2);
+  border-left: 3px solid var(--lift-accent);
+  font-size: 13px;
+  color: var(--lift-text-soft);
+}
+.lift-suggestion--deload { border-left-color: var(--lift-bad); }
+.lift-suggestion--advance { border-left-color: var(--lift-good); }
+.lift-suggestion__tag {
+  font-family: var(--lift-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--lift-accent);
+  flex-shrink: 0;
+}
+.lift-suggestion--deload .lift-suggestion__tag { color: var(--lift-bad); }
+.lift-suggestion--advance .lift-suggestion__tag { color: var(--lift-good); }
+
+/* --- Repeat last workout -------------------------------------------- */
+.lift-start__repeat {
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: var(--lift-surface-2);
+  border: 1px solid var(--lift-border);
+  border-radius: var(--lift-radius);
+  color: var(--lift-text);
+  font-family: var(--lift-sans);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lift-start__repeat:hover { border-color: var(--lift-accent); }
+
+/* --- e1RM line ------------------------------------------------------- */
+.lift-progression__e1rm {
+  margin: 4px 0 0;
+  font-family: var(--lift-mono);
+  font-size: 14px;
+  color: var(--lift-text);
+}
+.lift-progression__e1rm-note {
+  font-family: var(--lift-sans);
+  font-size: 11px;
+  color: var(--lift-text-muted);
+}
+
+/* --- Training analytics --------------------------------------------- */
+.lift-analytics { margin-bottom: 22px; }
+.lift-analytics__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.lift-analytics__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 4px;
+  background: var(--lift-surface);
+  border: 1px solid var(--lift-border);
+  border-radius: var(--lift-radius-sm);
+}
+.lift-analytics__stat-value {
+  font-family: var(--lift-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lift-text);
+}
+.lift-analytics__stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--lift-text-muted);
+  margin-top: 2px;
+}
+.lift-analytics__weekly {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 60px;
+  margin-bottom: 14px;
+}
+.lift-analytics__week-col { flex: 1; display: flex; align-items: flex-end; justify-content: center; }
+.lift-analytics__week-bar {
+  width: 100%;
+  background: var(--lift-accent);
+  border-radius: 2px 2px 0 0;
+}
+.lift-analytics__week-bar[data-empty='true'] { background: var(--lift-border); }
+.lift-analytics__muscles { list-style: none; margin: 0; padding: 0; }
+.lift-analytics__muscle-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.lift-analytics__muscle-name { color: var(--lift-text-soft); text-transform: capitalize; }
+.lift-analytics__muscle-bar-track {
+  height: 8px;
+  background: var(--lift-surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.lift-analytics__muscle-bar { display: block; height: 100%; background: var(--lift-accent); }
+.lift-analytics__muscle-pct {
+  font-family: var(--lift-mono);
+  text-align: right;
+  color: var(--lift-text-muted);
+}
+
+/* --- Settings export + custom exercise ------------------------------ */
+.lift-settings__export-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.lift-library__add-custom { margin: 8px 0; }
+.lift-custom-form {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--lift-surface);
+  border: 1px solid var(--lift-border);
+  border-radius: var(--lift-radius);
+}
+.lift-custom-form__select {
+  padding: 10px;
+  background: var(--lift-surface-2);
+  color: var(--lift-text);
+  border: 1px solid var(--lift-border);
+  border-radius: var(--lift-radius-sm);
+  font-family: var(--lift-sans);
+  font-size: 14px;
+}
+.lift-custom-form__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--lift-text-soft);
+}
+.lift-library__exercise-cues {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--lift-text-muted);
+}
+.lift-library__custom-tag {
+  margin-left: 6px;
+  font-family: var(--lift-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lift-accent);
+  vertical-align: middle;
+}
+.lift-sheet__note-label { display: block; margin-bottom: 12px; }
+.lift-sheet__note-input { width: 100%; }
+
+.lift-prev-sets__note {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--lift-text-muted);
+  margin-left: 8px;
+}
+
+/* --- Programs (blocks → weeks) -------------------------------------- */
+.lift-programs { margin-bottom: 22px; }
+.lift-programs__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lift-programs__card {
+  padding: 14px 16px;
+  background: var(--lift-surface);
+  border: 1px solid var(--lift-border);
+  border-radius: var(--lift-radius);
+}
+.lift-programs__card-head { display: flex; justify-content: space-between; align-items: baseline; }
+.lift-programs__name { font-family: var(--lift-serif); font-size: 16px; font-weight: 600; color: var(--lift-text); }
+.lift-programs__weeks { font-size: 11px; color: var(--lift-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.lift-programs__progress-track {
+  height: 6px;
+  background: var(--lift-surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 10px 0 8px;
+}
+.lift-programs__progress-bar { display: block; height: 100%; background: var(--lift-accent); }
+.lift-programs__next { margin: 0 0 10px; font-size: 13px; color: var(--lift-text-soft); }
+.lift-programs__start { width: 100%; }
+
+/* --- Live: program banner + superset + substitute ------------------- */
+.lift-program-banner {
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border-radius: var(--lift-radius-sm);
+  background: var(--lift-accent-soft);
+  border-left: 3px solid var(--lift-accent);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lift-text);
+}
+.lift-program-banner--deload { border-left-color: var(--lift-bad); }
+.lift-superset-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.lift-superset-row__tag {
+  font-family: var(--lift-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--lift-accent);
+}
+.lift-superset-row__switch { flex: 1; }
+.lift-workout-actions { display: flex; gap: 14px; margin-bottom: 10px; }
+.lift-text-btn {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  color: var(--lift-accent);
+  font-family: var(--lift-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lift-text-btn:disabled { color: var(--lift-text-muted); cursor: default; }
+.lift-swap-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 6px;
+  background: var(--lift-surface);
+  border: 1px solid var(--lift-border);
+  border-radius: var(--lift-radius);
+}
+.lift-swap-list__item {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  color: var(--lift-text);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--lift-radius-sm);
+}
+.lift-swap-list__item:hover { background: var(--lift-surface-2); }
+.lift-swap-list__equip { color: var(--lift-text-muted); font-size: 12px; }
