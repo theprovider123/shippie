@@ -62,6 +62,42 @@ export interface BridgeHostOptions {
     maxRequests: number;
     windowMs: number;
   };
+  /**
+   * Trust Ledger commit hook. Called for every handled bridge request,
+   * BEFORE the host posts the response. The returned promise MUST
+   * resolve before the host posts the response.
+   *
+   * Behaviour:
+   *  - resolves → the original handler result/error is posted as the
+   *    response.
+   *  - throws → the host posts a fail-closed error response using
+   *    the thrown `code` (defaults to `ledger-unavailable`) instead of
+   *    the original result. The handler's side effects already
+   *    happened — there is no rollback semantic — but the caller
+   *    receives a failure so it can surface the trust banner.
+   *
+   * Implementers (the container) are responsible for the fail-open
+   * allow-list: if a capability may complete on commit failure, the
+   * host should resolve (so original response is posted) and queue
+   * the row for later commit. See trust-ledger's classifyFailure.
+   */
+  onCommitLedger?: (event: BridgeLedgerEvent) => Promise<void>;
+}
+
+export interface BridgeLedgerEvent {
+  request: BridgeRequest;
+  capability: BridgeCapability;
+  method: string;
+  payload: unknown;
+  /**
+   * `ok`     — handler resolved cleanly; `result` is set.
+   * `denied` — request rejected before/at the capability gate; `errorCode` set.
+   * `handler_error` — handler threw; `errorCode` set.
+   */
+  outcome: 'ok' | 'denied' | 'handler_error';
+  result?: unknown;
+  errorCode?: string;
+  durationMs: number;
 }
 
 interface PendingRequest {
@@ -159,6 +195,11 @@ export class ContainerBridgeHost {
       return;
     }
 
+    const start = Date.now();
+    let outcome: BridgeLedgerEvent['outcome'] = 'ok';
+    let result: unknown;
+    let handlerError: unknown;
+
     try {
       this.assertWithinPayloadLimit(message);
       this.assertWithinRateLimit();
@@ -175,13 +216,48 @@ export class ContainerBridgeHost {
         });
       }
 
-      const result = await handler({
+      result = await handler({
         request: message,
         capability: message.capability,
         method: message.method,
         payload: message.payload,
       });
+    } catch (error) {
+      handlerError = error;
+      outcome = isCapabilityGateError(error) ? 'denied' : 'handler_error';
+    }
 
+    const errorPayload = handlerError !== undefined ? bridgeErrorPayload(handlerError) : undefined;
+    const event: BridgeLedgerEvent = {
+      request: message,
+      capability: message.capability,
+      method: message.method,
+      payload: message.payload,
+      outcome,
+      result: handlerError === undefined ? result : undefined,
+      errorCode: errorPayload?.code,
+      durationMs: Date.now() - start,
+    };
+
+    // Durable-commit invariant: await the ledger hook BEFORE posting
+    // the response so no audit row is lost if the page dies between
+    // bridge response and ledger write.
+    if (this.options.onCommitLedger) {
+      try {
+        await this.options.onCommitLedger(event);
+      } catch (commitError) {
+        this.options.transport.post(
+          createBridgeResponse({
+            id: message.id,
+            ok: false,
+            error: ledgerFailureErrorPayload(commitError),
+          }),
+        );
+        return;
+      }
+    }
+
+    if (handlerError === undefined) {
       this.options.transport.post(
         createBridgeResponse({
           id: message.id,
@@ -189,12 +265,12 @@ export class ContainerBridgeHost {
           result,
         }),
       );
-    } catch (error) {
+    } else {
       this.options.transport.post(
         createBridgeResponse({
           id: message.id,
           ok: false,
-          error: bridgeErrorPayload(error),
+          error: errorPayload!,
         }),
       );
     }
@@ -288,6 +364,27 @@ export function createWindowBridgeTransport(options: WindowBridgeTransportOption
       options.currentWindow.addEventListener('message', listener);
       return () => options.currentWindow.removeEventListener('message', listener);
     },
+  };
+}
+
+function isCapabilityGateError(error: unknown): boolean {
+  return error instanceof AppPackageContractError;
+}
+
+function ledgerFailureErrorPayload(error: unknown): NonNullable<BridgeResponse['error']> {
+  if (error instanceof BridgeRpcError) {
+    return { code: error.code, message: error.message };
+  }
+  if (error instanceof Error) {
+    const code = (error as Error & { code?: unknown }).code;
+    return {
+      code: typeof code === 'string' ? code : 'ledger-unavailable',
+      message: error.message || 'Trust Ledger could not record this action — paused for safety.',
+    };
+  }
+  return {
+    code: 'ledger-unavailable',
+    message: 'Trust Ledger could not record this action — paused for safety.',
   };
 }
 

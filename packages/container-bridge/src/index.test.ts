@@ -373,6 +373,163 @@ describe('@shippie/container-bridge', () => {
     client.dispose();
     host.dispose();
   });
+  test('onCommitLedger fires on success and is awaited before the response is posted', async () => {
+    const transports = createMemoryBridgeTransports();
+    const events: string[] = [];
+    let commitResolve: (() => void) | null = null;
+    const commitPromise = new Promise<void>((r) => {
+      commitResolve = r;
+    });
+
+    const host = new ContainerBridgeHost({
+      appId: 'app_recipe_saver',
+      permissions,
+      transport: transports.host,
+      handlers: {
+        'db.insert': () => {
+          events.push('handler');
+          return { id: 'r1' };
+        },
+      },
+      onCommitLedger: async (event) => {
+        events.push(`commit:${event.outcome}`);
+        await commitPromise;
+        events.push('commit:done');
+      },
+    });
+    const client = new ContainerBridgeClient({
+      appId: 'app_recipe_saver',
+      transport: transports.client,
+    });
+
+    const callPromise = client.call('db.insert', 'insert', { table: 'recipes' });
+
+    // Yield until the commit hook is in flight.
+    for (let i = 0; i < 5 && !events.includes('commit:ok'); i++) {
+      await new Promise((r) => queueMicrotask(() => r(undefined)));
+    }
+    expect(events).toEqual(['handler', 'commit:ok']);
+
+    // Release the commit; the call should resolve only now.
+    commitResolve!();
+    const result = await callPromise;
+    expect(result).toEqual({ id: 'r1' });
+    expect(events[events.length - 1]).toBe('commit:done');
+
+    client.dispose();
+    host.dispose();
+  });
+
+  test('onCommitLedger throwing produces a fail-closed ledger-unavailable response', async () => {
+    const transports = createMemoryBridgeTransports();
+    const host = new ContainerBridgeHost({
+      appId: 'app_recipe_saver',
+      permissions,
+      transport: transports.host,
+      handlers: {
+        'db.insert': () => ({ id: 'r1' }),
+      },
+      onCommitLedger: async () => {
+        throw new Error('IDB quota exceeded');
+      },
+    });
+    const client = new ContainerBridgeClient({
+      appId: 'app_recipe_saver',
+      transport: transports.client,
+    });
+
+    await expect(client.call('db.insert', 'insert', { table: 'recipes' })).rejects.toMatchObject({
+      message: 'IDB quota exceeded',
+    });
+
+    client.dispose();
+    host.dispose();
+  });
+
+  test('onCommitLedger throwing BridgeRpcError preserves the code in the response', async () => {
+    const transports = createMemoryBridgeTransports();
+    const host = new ContainerBridgeHost({
+      appId: 'app_recipe_saver',
+      permissions,
+      transport: transports.host,
+      handlers: {
+        'db.insert': () => ({ id: 'r1' }),
+      },
+      onCommitLedger: async () => {
+        throw new BridgeRpcError(
+          'Trust Ledger could not record this action — paused for safety.',
+          'key-unavailable',
+        );
+      },
+    });
+    const client = new ContainerBridgeClient({
+      appId: 'app_recipe_saver',
+      transport: transports.client,
+    });
+
+    await expect(client.call('db.insert', 'insert', { table: 'recipes' })).rejects.toMatchObject({
+      code: 'key-unavailable',
+    });
+
+    client.dispose();
+    host.dispose();
+  });
+
+  test('onCommitLedger receives the denied outcome when capability gate rejects', async () => {
+    const transports = createMemoryBridgeTransports();
+    const seen: Array<{ outcome: string; errorCode?: string }> = [];
+    const host = new ContainerBridgeHost({
+      appId: 'app_recipe_saver',
+      permissions,
+      transport: transports.host,
+      handlers: {
+        'files.write': () => ({ ok: true }),
+      },
+      onCommitLedger: async (event) => {
+        seen.push({ outcome: event.outcome, errorCode: event.errorCode });
+      },
+    });
+    const client = new ContainerBridgeClient({
+      appId: 'app_recipe_saver',
+      transport: transports.client,
+    });
+
+    await expect(client.call('files.write', 'write', { path: 'x.txt' })).rejects.toThrow(/Capability is not granted/);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.outcome).toBe('denied');
+
+    client.dispose();
+    host.dispose();
+  });
+
+  test('onCommitLedger receives handler_error when handler throws an unrelated error', async () => {
+    const transports = createMemoryBridgeTransports();
+    const seen: Array<{ outcome: string; errorCode?: string }> = [];
+    const host = new ContainerBridgeHost({
+      appId: 'app_recipe_saver',
+      permissions,
+      transport: transports.host,
+      handlers: {
+        'db.insert': () => {
+          throw new Error('handler exploded');
+        },
+      },
+      onCommitLedger: async (event) => {
+        seen.push({ outcome: event.outcome, errorCode: event.errorCode });
+      },
+    });
+    const client = new ContainerBridgeClient({
+      appId: 'app_recipe_saver',
+      transport: transports.client,
+    });
+
+    await expect(client.call('db.insert', 'insert', { table: 'recipes' })).rejects.toThrow(/handler exploded/);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.outcome).toBe('handler_error');
+
+    client.dispose();
+    host.dispose();
+  });
 });
 
 class FakeWindow {
