@@ -29,6 +29,13 @@ import { curatedApps } from './state';
  * dined-out, walked) will gain consumers in P7+ as more apps land.
  */
 const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
+  // Mise — nutrition log. These publish for /today + future maker
+  // dashboards; no curated in-tree iframe app consumes them yet.
+  // (Its hydration-logged + caffeine-logged DO have consumers via Chiwit.)
+  'nutrition-logged',
+  'meal-logged',
+  'protein-target-hit',
+  'macro-target-updated',
   // Field Kitchen — fermentation has no current consumer (was Bake's
   // outbound signal for a future "fermentation tracker" sibling).
   'dough-ferment-started',
@@ -46,6 +53,11 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // Cycle — predicted-window publishes for body-metrics / mood
   // correlation surfaces that aren't curated yet.
   'cycle-window-predicted',
+  // Cycle — period-started + symptom-pattern-detected publish for
+  // /today + future correlation surfaces; no curated in-tree iframe app
+  // consumes them yet (cycle-logged itself IS consumed, by Mise).
+  'period-started',
+  'symptom-pattern-detected',
   // Story Studio — creation-only; share signals don't have curated
   // consumers (the recipient's grandparent device is the consumer).
   'story-made',
