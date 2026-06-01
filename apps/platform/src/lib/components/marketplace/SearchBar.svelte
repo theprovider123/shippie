@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * Search input that posts back to /apps?q=. Plain GET form so the
+   * Search input that posts back to /tools?q=. Plain GET form so the
    * URL stays bookmarkable; SvelteKit's load() reads the query string.
    */
   interface Props {
@@ -17,7 +17,7 @@
   });
 </script>
 
-<form action="/" method="get" class="search-form" role="search">
+<form action="/tools" method="get" class="search-form" role="search">
   <input
     type="search"
     name="q"
