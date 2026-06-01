@@ -113,6 +113,7 @@
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
+  import { buildRailGroups, type RailTool } from '$lib/container/rail-groups';
   import {
     hydrateLauncherMemory,
     launcherMemory,
@@ -735,6 +736,37 @@
   });
   const appBySlug = $derived(new Map(apps.map((app) => [app.slug, app])));
   const launchVisibleAppBySlug = $derived(new Map(launchVisibleApps.map((app) => [app.slug, app])));
+
+  // Workspace rail (Phase 1). Open = running tools, Pinned/Recent from
+  // launcher-memory. openAppIds holds app *ids*; map to slugs for the
+  // pure selector. cached-slugs is intentionally not a source.
+  const railCatalog: RailTool[] = $derived(
+    launchVisibleApps.map((a) => ({
+      slug: a.slug,
+      name: a.name,
+      icon: a.icon ?? a.shortName ?? a.name.slice(0, 2),
+      accent: a.accent,
+      category: a.category,
+    })),
+  );
+  const railOpenSlugs: string[] = $derived(
+    openAppIds
+      .map((id) => launchVisibleApps.find((a) => a.id === id)?.slug)
+      .filter((s): s is string => Boolean(s)),
+  );
+  const railGroups = $derived(
+    buildRailGroups({
+      catalog: railCatalog,
+      openSlugs: railOpenSlugs,
+      pinned: $launcherMemory.pinned,
+      recents: $launcherMemory.recents,
+    }),
+  );
+
+  function openRailTool(slug: string) {
+    const app = launchVisibleAppBySlug.get(slug);
+    if (app) openApp(app.id);
+  }
   const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
   const drawerPinnedApps = $derived.by(() => {
     // Pinned slugs are unique by construction (toggle prevents dupes),
@@ -3187,29 +3219,49 @@
 {:else}
 <section class="shell">
   <aside class="sidebar">
-    <div class="sidebar-intro">
-      <p class="eyebrow">Shippie</p>
-      <h1>Your tools, ready where you left them.</h1>
-      <p class="lede">
-        Open tools, keep them available offline, and manage the data they store
-        on this device.
-      </p>
+    <div class="rail-head">
+      <span class="rail-mark">⌘</span> Workspace
     </div>
 
-    <div class="status-panel">
-      <span class="status" class:ready={bridgeStatus === 'ready'}>{bridgeStatus}</span>
-      <p>{installedApps.length} saved tools · {totalRows} local records</p>
-      <p>{Object.keys(receiptsByApp).length} saved versions · local data controls ready.</p>
-    </div>
+    {#if railGroups.open.length > 0}
+      <p class="rail-label">Open</p>
+      {#each railGroups.open as t (t.slug)}
+        <button class="rail-item active" onclick={() => openRailTool(t.slug)}>
+          <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>
+          {t.name}<span class="rail-live"></span>
+        </button>
+      {/each}
+    {/if}
 
-    <nav class="tabs" aria-label="Shippie sections">
-      <button class:active={section === 'home'} onclick={() => showSection('home')}>Home</button>
-      <button class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
-      <button class:active={section === 'data'} onclick={() => showSection('data')}>
-        <span class="desktop-label">Your Data</span>
-        <span class="mobile-label">Data</span>
-      </button>
-      <button class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
+    {#if railGroups.pinned.length > 0}
+      <p class="rail-label">Pinned</p>
+      {#each railGroups.pinned as t (t.slug)}
+        <button class="rail-item" onclick={() => openRailTool(t.slug)}>
+          <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
+        </button>
+      {/each}
+    {/if}
+
+    {#if railGroups.recent.length > 0}
+      <p class="rail-label">Recent</p>
+      {#each railGroups.recent as t (t.slug)}
+        <button class="rail-item muted" onclick={() => openRailTool(t.slug)}>
+          <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
+        </button>
+      {/each}
+    {/if}
+
+    {#if railGroups.open.length === 0 && railGroups.pinned.length === 0 && railGroups.recent.length === 0}
+      <p class="rail-label">Tools</p>
+      <p class="rail-empty">No tools yet</p>
+    {/if}
+
+    <nav class="rail-foot" aria-label="Workspace sections">
+      <a class="foot-item" href="/tools">＋ Add tools</a>
+      <button class="foot-item" class:active={section === 'data'} onclick={() => showSection('data')}>Data</button>
+      <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
+      <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
+      <a class="foot-item" href="/you">○ Sign in to sync</a>
     </nav>
   </aside>
 
@@ -4566,4 +4618,19 @@
   @media (prefers-reduced-motion: reduce) {
     .transfer-pending-spinner { animation: none; }
   }
+
+  /* Workspace rail (Phase 1) — reuses tokens; sharp corners, no new language. */
+  .rail-head { font-family: var(--font-heading); font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
+  .rail-mark { color: var(--sunset); }
+  .rail-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: var(--space-md) 0 var(--space-xs); }
+  .rail-item { display: flex; align-items: center; gap: var(--space-sm); width: 100%; background: none; border: 0; color: var(--text); font-size: 0.85rem; padding: 0.4rem 0.4rem; text-align: left; cursor: pointer; }
+  .rail-item:hover { background: var(--surface-alt); }
+  .rail-item.active { background: var(--surface-alt); border-left: 2px solid var(--sunset); padding-left: calc(0.4rem - 2px); }
+  .rail-item.muted { color: var(--text-secondary); }
+  .rail-icon { width: 20px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 0.6rem; color: var(--bg); }
+  .rail-live { width: 6px; height: 6px; border-radius: 50%; background: var(--success-soft); margin-left: auto; }
+  .rail-empty { color: var(--text-light); font-size: 0.8rem; font-style: italic; }
+  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-xs); border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
+  .foot-item { font-size: 0.8rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.2rem 0; }
+  .foot-item.active, .foot-item:hover { color: var(--text); }
 </style>
