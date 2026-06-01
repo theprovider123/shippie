@@ -705,9 +705,11 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 0;
-    color: var(--text-light);
+    /* Higher-contrast at rest so star / share / save are actually visible
+       (was --text-light, too dim against the tile). */
+    color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     cursor: pointer;
     transition:
       color 0.15s var(--ease-out, ease),

@@ -88,8 +88,8 @@
   <p>Open tools stay warm. Switch away and come back without a reload.</p>
 </div>
 {#if updateCards.length > 0}
-  <div class="updates">
-    <h3>Updates</h3>
+  <details class="updates">
+    <summary>{updateCards.length} tool update{updateCards.length === 1 ? '' : 's'} available</summary>
     {#each updateCards as card (card.app.id)}
       <article>
         <div>
@@ -113,12 +113,12 @@
           </p>
         </div>
         <div class="row-actions">
-          <button onclick={() => onStayOnCurrent(card.app.id)}>Stay</button>
-          <button onclick={() => onAcceptUpdate(card.app.id)}>Update</button>
+          <button onclick={() => onStayOnCurrent(card.app.id)}>Keep current</button>
+          <button onclick={() => onAcceptUpdate(card.app.id)}>Install update</button>
         </div>
       </article>
     {/each}
-  </div>
+  </details>
 {/if}
 <div class="app-grid">
   {#each visibleApps as app (app.id)}
@@ -131,19 +131,19 @@
   {/each}
 </div>
 <div class="nearby-panel">
-  <h3>Nearby</h3>
+  <h3>Share nearby</h3>
   {#if meshStatus.state === 'connected'}
     <p>
-      In a local room. Join code <code>{meshStatus.joinCode}</code> · {meshStatus.peerCount} other device{meshStatus.peerCount === 1 ? '' : 's'} connected.
+      Sharing with nearby devices. Join code <code>{meshStatus.joinCode}</code> · {meshStatus.peerCount} other device{meshStatus.peerCount === 1 ? '' : 's'} connected.
     </p>
-    <button class="mesh-leave" onclick={onLeaveMeshRoom}>Leave room</button>
+    <button class="mesh-leave" onclick={onLeaveMeshRoom}>Leave session</button>
   {:else if meshStatus.state === 'connecting'}
     <p>Connecting locally…</p>
   {:else}
-    <p>Connect with nearby people. App content stays peer-to-peer when possible, with encrypted relay fallback.</p>
+    <p>Share a tool with people on the same Wi-Fi, or connect another of your own devices. Stays peer-to-peer when possible, with encrypted relay fallback.</p>
     <div class="mesh-actions">
-      <button class="mesh-create" onclick={onCreateMeshRoom}>Start a room</button>
-      <span>or</span>
+      <button class="mesh-create" onclick={onCreateMeshRoom}>Create a nearby session</button>
+      <span>or join with a code</span>
       <input
         class="mesh-code-input"
         id="mesh-join-code"
@@ -203,13 +203,18 @@
   .updates {
     margin-bottom: var(--space-md);
   }
-  .updates h3 {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+  .updates > summary {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
     color: var(--text-secondary);
-    margin: 0 0 0.5rem;
+    cursor: pointer;
+    padding: 0.35rem 0;
+    list-style: none;
   }
+  .updates > summary::-webkit-details-marker { display: none; }
+  .updates > summary::before { content: '▸ '; color: var(--sunset); }
+  .updates[open] > summary::before { content: '▾ '; }
   .updates article {
     display: flex;
     gap: var(--space-md);
@@ -292,9 +297,6 @@
     }
     .updates {
       margin-bottom: var(--space-sm);
-    }
-    .updates h3 {
-      font-size: 11px;
     }
     .updates article {
       align-items: stretch;

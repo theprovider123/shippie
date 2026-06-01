@@ -3379,6 +3379,12 @@
   <aside class="sidebar">
     <div class="rail-head">
       <span class="rail-mark">⌘</span> Workspace
+      <nav class="rail-quick" aria-label="Quick actions">
+        <a class="rail-quick-btn" href="/tools" title="Add tools" aria-label="Add tools">＋</a>
+        <a class="rail-quick-btn" href="/tools" title="Browse tools" aria-label="Browse tools">⌕</a>
+        <button class="rail-quick-btn" class:active={section === 'data'} title="Your data" aria-label="Your data" onclick={() => showSection('data')}>⊞</button>
+        <button class="rail-quick-btn" class:active={section === 'access'} title="Access" aria-label="Access" onclick={() => showSection('access')}>⚿</button>
+      </nav>
     </div>
 
     {#if railGroups.open.length > 0}
@@ -3424,25 +3430,22 @@
   </aside>
 
   <main class="workspace">
-    <div class="topbar" class:section-mode={!activeApp}>
-      <button class="home-button" onclick={goHome}>Home</button>
+    <div class="topbar section-mode">
+      {#if section !== 'home'}
+        <button class="home-button" onclick={goHome}>← Workspace</button>
+      {/if}
       <div>
-        <p class="mini-label">Open in Shippie</p>
-        <h2>{activeApp?.name ?? sectionTitle(section)}</h2>
+        <h2>{sectionTitle(section)}</h2>
       </div>
       {#if meshBadgeLabel(meshStatus)}
         <button
           class="mesh-badge"
           class:active={meshStatus.state === 'connected'}
           onclick={() => showSection('home')}
-          title="Nearby devices"
+          title="Share nearby"
         >
           {meshBadgeLabel(meshStatus)}
         </button>
-      {/if}
-      {#if activeApp}
-        {@const standaloneHref = runtimeSrcFor(activeApp) ?? activeApp.standaloneUrl}
-        <a href={standaloneHref} target="_blank" rel="noopener" class="open-link" data-sveltekit-preload-data="off">Open in new tab</a>
       {/if}
     </div>
 
@@ -3946,7 +3949,6 @@
       align-items: center;
       justify-content: space-between;
     }
-    .topbar .mini-label,
     .home-button {
       display: none;
     }
@@ -4779,6 +4781,11 @@
   /* Workspace rail (Phase 1) — reuses tokens; sharp corners, no new language. */
   .rail-head { font-family: var(--font-heading); font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
   .rail-mark { color: var(--sunset); }
+  .rail-quick { margin-left: auto; display: flex; gap: 2px; }
+  .rail-quick-btn { display: inline-grid; place-items: center; width: 30px; height: 30px; background: none; border: 1px solid transparent; color: var(--text-secondary); font-size: 0.95rem; text-decoration: none; cursor: pointer; }
+  .rail-quick-btn:hover { color: var(--text); border-color: var(--border); }
+  .rail-quick-btn.active { color: var(--sunset); border-color: var(--border); }
+  .rail-quick-btn:focus-visible { outline: 2px solid var(--sunset); outline-offset: -2px; }
   .rail-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: var(--space-md) 0 var(--space-xs); }
   .rail-item { display: flex; align-items: center; gap: var(--space-sm); width: 100%; background: none; border: 0; color: var(--text); font-size: 0.85rem; padding: 0.4rem 0.4rem; text-align: left; cursor: pointer; }
   .rail-item:hover { background: var(--surface-alt); }
