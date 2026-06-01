@@ -1,21 +1,11 @@
-import type { PageServerLoad } from './$types';
+/**
+ * Back-compat: the workspace moved to /workspace. Preserve the query so
+ * deep-links (?app=…&focused=1, ?section=data, ?open=…, ?import=package)
+ * still resolve.
+ */
 import { redirect } from '@sveltejs/kit';
-import { loadContainerPageData } from '$server/container-page-data';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ platform, url, locals, request, setHeaders, depends }) => {
-  if (!url.search && url.pathname === '/container') {
-    throw redirect(307, '/');
-  }
-  depends('app:apps');
-  // The container is the PWA shell. Never edge/browser-cache the HTML:
-  // a stale shell can point at a stale chunk graph and strand the user
-  // on the generic SvelteKit error screen after a deploy.
-  setHeaders({ 'cache-control': 'no-store' });
-  return loadContainerPageData({
-    platform,
-    url,
-    userId: locals.user?.id ?? null,
-    userEmail: locals.user?.email ?? null,
-    request,
-  });
+export const load: PageServerLoad = ({ url }) => {
+  redirect(308, `/workspace${url.search ?? ''}`);
 };
