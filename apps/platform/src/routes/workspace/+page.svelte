@@ -116,6 +116,9 @@
   import { buildRailGroups, type RailTool } from '$lib/container/rail-groups';
   import CanvasStrip from '$lib/container/CanvasStrip.svelte';
   import { selectCanvasStripItem, type CanvasStripItem } from '$lib/container/canvas-strip';
+  import WorkspaceEmptyState from '$lib/container/WorkspaceEmptyState.svelte';
+  import { pickStarters } from '$lib/container/starters';
+  import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
   import {
     hydrateLauncherMemory,
     launcherMemory,
@@ -195,7 +198,6 @@
     return drawerFilterCanonicalLauncherItems(apps, allowed);
   });
   const appById = $derived(merged.appById);
-  const defaultAppId = $derived(merged.defaultAppId);
   const hosts = new Map<string, ContainerBridgeHost>();
   const frames = new Map<string, HTMLIFrameElement>();
   // Eviction queue — a pending eviction won't dispose its target's
@@ -803,6 +805,15 @@
     stripDismissed = new Set([...stripDismissed, item.id]);
     stripCollapsed = true;
   }
+
+  // Phase 3 — first-run empty state. `launcherHydrated` gates the empty/
+  // populated decision so returning users don't flash the first-run hero
+  // before launcher-memory hydrates in onMount.
+  let launcherHydrated = $state(false);
+  const workspaceEmpty = $derived(
+    railGroups.open.length === 0 && railGroups.pinned.length === 0 && railGroups.recent.length === 0,
+  );
+  const starterApps = $derived(pickStarters(launchVisibleApps, PUBLIC_FLAGSHIP_SLUGS, 4));
   const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
   const drawerPinnedApps = $derived.by(() => {
     // Pinned slugs are unique by construction (toggle prevents dupes),
@@ -2664,6 +2675,7 @@
 
   onMount(() => {
     hydrateLauncherMemory();
+    launcherHydrated = true;
     const stopCatalogSync = startCatalogSync({
       onUpdate: () => {
         prewarmLikelyNextApps();
@@ -2680,7 +2692,7 @@
       const savedOpenApps = saved.openAppIds.filter((appId) => knownAppIds.has(appId));
       openAppIds = data.focused
         ? (requestedApp ? [requestedApp.id] : [])
-        : savedOpenApps.length > 0 ? savedOpenApps : defaultAppId ? [defaultAppId] : [];
+        : savedOpenApps.length > 0 ? savedOpenApps : [];
       receiptsByApp = {
         ...Object.fromEntries(openAppIds.map((appId) => [appId, createReceiptFor(appById.get(appId)!)])),
         ...saved.receiptsByApp,
@@ -2689,12 +2701,11 @@
       intentGrants = saved.intentGrants ?? {};
       transferGrants = saved.transferGrants ?? {};
       dismissedInsightIds = saved.dismissedInsightIds ?? {};
-    } else if (defaultAppId) {
-      const defaultApp = appById.get(defaultAppId);
-      openAppIds = [defaultAppId];
-      receiptsByApp = defaultApp ? { [defaultAppId]: createReceiptFor(defaultApp) } : {};
-      activeAppId = defaultAppId;
     }
+    // Organic first-run (no saved state, non-focused, no ?app=) intentionally
+    // leaves openAppIds=[] / activeAppId=null so the workspace lands on the
+    // first-run empty state instead of auto-opening a default tool. Focused
+    // /run, ?app= requests, and saved-open restore are handled above/below.
     if (requestedApp) {
       if (activeAppId === requestedApp.id) {
         rememberAppLaunch(requestedApp);
@@ -3333,24 +3344,37 @@
     {#if !activeApp}
       <section class="panel">
         {#if section === 'home'}
-          <DashboardHome
-            insights={agentInsights}
-            apps={launchVisibleApps}
-            {openAppIds}
-            {updateCards}
-            {meshStatus}
-            {meshJoinCodeInput}
-            {meshError}
-            onOpenInsight={openInsight}
-            onDismissInsight={dismissInsight}
-            onOpenApp={openApp}
-            onStayOnCurrent={stayOnCurrent}
-            onAcceptUpdate={acceptUpdate}
-            onCreateMeshRoom={createMeshRoom}
-            onJoinMeshRoom={joinMeshRoom}
-            onLeaveMeshRoom={leaveMeshRoom}
-            onMeshJoinCodeChange={(value) => (meshJoinCodeInput = value)}
-          />
+          {#if !launcherHydrated}
+            <!-- brief neutral panel until local tool state hydrates; prevents a
+                 first-run-hero flash for returning users (launcherMemory is empty
+                 on first paint until hydrateLauncherMemory runs in onMount) -->
+            <div class="hydrating-panel" aria-busy="true"></div>
+          {:else if workspaceEmpty}
+            <WorkspaceEmptyState
+              starters={starterApps}
+              totalCount={launchVisibleApps.length}
+              onOpen={(app) => openApp(app.id)}
+            />
+          {:else}
+            <DashboardHome
+              insights={agentInsights}
+              apps={launchVisibleApps}
+              {openAppIds}
+              {updateCards}
+              {meshStatus}
+              {meshJoinCodeInput}
+              {meshError}
+              onOpenInsight={openInsight}
+              onDismissInsight={dismissInsight}
+              onOpenApp={openApp}
+              onStayOnCurrent={stayOnCurrent}
+              onAcceptUpdate={acceptUpdate}
+              onCreateMeshRoom={createMeshRoom}
+              onJoinMeshRoom={joinMeshRoom}
+              onLeaveMeshRoom={leaveMeshRoom}
+              onMeshJoinCodeChange={(value) => (meshJoinCodeInput = value)}
+            />
+          {/if}
         {:else if section === 'create'}
           <div class="collection-panel">
             <div>
@@ -4676,4 +4700,5 @@
   .foot-item { font-size: 0.8rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.2rem 0; }
   .foot-item.active, .foot-item:hover { color: var(--text); }
   .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
+  .hydrating-panel { min-height: 240px; }
 </style>
