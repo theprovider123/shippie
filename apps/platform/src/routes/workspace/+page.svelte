@@ -114,6 +114,8 @@
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import { buildRailGroups, type RailTool } from '$lib/container/rail-groups';
+  import CanvasStrip from '$lib/container/CanvasStrip.svelte';
+  import { selectCanvasStripItem, type CanvasStripItem } from '$lib/container/canvas-strip';
   import {
     hydrateLauncherMemory,
     launcherMemory,
@@ -766,6 +768,40 @@
   function openRailTool(slug: string) {
     const app = launchVisibleAppBySlug.get(slug);
     if (app) openApp(app.id);
+  }
+
+  // Phase 2 — resume/insight strip above the active tool. One item,
+  // actionable-only; dismiss collapses it to a small badge.
+  let stripDismissed = $state<Set<string>>(new Set());
+  let stripCollapsed = $state(false);
+  const canvasStripItem = $derived(
+    selectCanvasStripItem({
+      insights: agentInsights,
+      recents: $launcherMemory.recents,
+      catalog: railCatalog.map((t) => ({ slug: t.slug, name: t.name })),
+      activeSlug: activeApp?.slug ?? null,
+      openSlugs: railOpenSlugs,
+      dismissedIds: stripDismissed,
+      now: Date.now(),
+    }),
+  );
+  function openStrip(item: CanvasStripItem) {
+    if (item.kind === 'insight') {
+      const ins = agentInsights.find((i) => i.id === item.id);
+      if (ins) {
+        openInsight(ins);
+        return;
+      }
+    }
+    openRailTool(item.targetSlug);
+  }
+  function dismissStrip(item: CanvasStripItem) {
+    if (item.kind === 'insight') {
+      const ins = agentInsights.find((i) => i.id === item.id);
+      if (ins) dismissInsight(ins);
+    }
+    stripDismissed = new Set([...stripDismissed, item.id]);
+    stripCollapsed = true;
   }
   const drawerPinnedSet = $derived(new Set($launcherMemory.pinned));
   const drawerPinnedApps = $derived.by(() => {
@@ -3288,6 +3324,12 @@
       {/if}
     </div>
 
+    {#if activeApp && canvasStripItem && !stripCollapsed}
+      <CanvasStrip item={canvasStripItem} onOpen={openStrip} onDismiss={dismissStrip} />
+    {:else if activeApp && canvasStripItem && stripCollapsed}
+      <button class="canvas-strip-badge" onclick={() => (stripCollapsed = false)} aria-label="Show suggestion">●</button>
+    {/if}
+
     {#if !activeApp}
       <section class="panel">
         {#if section === 'home'}
@@ -4633,4 +4675,5 @@
   .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-xs); border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
   .foot-item { font-size: 0.8rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.2rem 0; }
   .foot-item.active, .foot-item:hover { color: var(--text); }
+  .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
 </style>
