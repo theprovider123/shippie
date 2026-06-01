@@ -182,7 +182,7 @@
     if (category) params.set('category', category);
     if (remixable) params.set('remixable', '1');
     const qs = params.toString();
-    return qs ? `/?${qs}` : '/';
+    return qs ? `/tools?${qs}` : '/tools';
   }
 
   // Categories are a proper toggle: clicking the active chip removes
@@ -194,7 +194,7 @@
     if (cat) params.set('category', cat);
     if (data.remixableFilter) params.set('remixable', '1');
     const qs = params.toString();
-    return qs ? `/?${qs}` : '/';
+    return qs ? `/tools?${qs}` : '/tools';
   }
 
   function remixableHref(active: boolean): string {
@@ -203,7 +203,7 @@
     if (data.categoryFilter) params.set('category', data.categoryFilter);
     if (!active) params.set('remixable', '1');
     const qs = params.toString();
-    return qs ? `/?${qs}` : '/';
+    return qs ? `/tools?${qs}` : '/tools';
   }
 
   function runHref(slug: string): string {
@@ -231,7 +231,7 @@
             class="hero-mark"
             aria-hidden="true"
           />
-          <span>Tool launcher</span>
+          <span>Browse tools</span>
         </p>
         <h1 class="title">Shippie</h1>
         {#if !hasLauncherHistory}
