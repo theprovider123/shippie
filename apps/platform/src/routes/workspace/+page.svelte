@@ -131,6 +131,8 @@
   import {
     consumeEviction,
     focusApp,
+    DEFAULT_MAX_MOUNTED,
+    MOBILE_MAX_MOUNTED,
     queueEviction,
     type PendingEvictions,
   } from '$lib/container/iframe-lifecycle';
@@ -986,7 +988,10 @@
     // can't destroy an iframe still mid-boot. queue + supersede flow
     // (see iframe-lifecycle.ts) handles the case where the user
     // clicks past the queued frame before it settles.
-    const decision = focusApp(openAppIds, appId);
+    // Cap warm iframes tighter on phones (Phase F) — fewer live documents,
+    // less mobile lag. Roomier on desktop.
+    const mountCap = viewportWidth > 0 && viewportWidth <= 640 ? MOBILE_MAX_MOUNTED : DEFAULT_MAX_MOUNTED;
+    const decision = focusApp(openAppIds, appId, mountCap);
     openAppIds = [...decision.openAppIds];
     if (decision.evicted) {
       const queued = queueEviction(pendingEvictions, appId, decision.evicted);

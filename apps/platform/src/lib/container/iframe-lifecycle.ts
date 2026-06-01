@@ -19,6 +19,13 @@
 
 export const DEFAULT_MAX_MOUNTED = 8;
 
+/**
+ * Tighter cap on phones (≤640px): more than a few warm iframes is the main
+ * source of mobile lag (each is a live document + JS heap). Desktop keeps the
+ * roomier default. The page passes this based on viewport width.
+ */
+export const MOBILE_MAX_MOUNTED = 3;
+
 export interface LruDecision<T = string> {
   /** New ordered list, most-recently-focused first. */
   openAppIds: readonly T[];

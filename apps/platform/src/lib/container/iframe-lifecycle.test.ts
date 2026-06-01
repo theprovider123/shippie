@@ -10,6 +10,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   DEFAULT_MAX_MOUNTED,
+  MOBILE_MAX_MOUNTED,
   consumeEviction,
   focusApp,
   queueEviction,
@@ -32,6 +33,15 @@ describe('iframe-lifecycle — focusApp', () => {
   test('evicts the oldest when crossing the cap', () => {
     const out = focusApp(['a', 'b', 'c'], 'd', 3);
     expect(out.openAppIds).toEqual(['d', 'a', 'b']);
+    expect(out.evicted).toBe('c');
+  });
+
+  test('mobile cap keeps at most MOBILE_MAX_MOUNTED warm iframes', () => {
+    expect(MOBILE_MAX_MOUNTED).toBe(3);
+    expect(MOBILE_MAX_MOUNTED).toBeLessThan(DEFAULT_MAX_MOUNTED);
+    const open = ['a', 'b', 'c']; // already at the mobile cap
+    const out = focusApp(open, 'd', MOBILE_MAX_MOUNTED);
+    expect(out.openAppIds).toHaveLength(MOBILE_MAX_MOUNTED);
     expect(out.evicted).toBe('c');
   });
 
