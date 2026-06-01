@@ -4,7 +4,7 @@
 
 **Goal:** When the device has no tools yet, the workspace canvas shows a **small, operational** first-run state — a slim hero band, a few curated starters, and "Browse all N tools →" — instead of the populated dashboard. This completes the new front door for first-time users (the catalog already moved to `/tools` in Phase 1).
 
-**Architecture:** A pure `pickStarters` selector chooses the curated starter set; a `WorkspaceEmptyState.svelte` component renders the hero + starters + browse link; `workspace/+page.svelte` renders it instead of `<DashboardHome>` when the home section is shown and the workspace is empty (reusing the Phase 1 `railGroups` empty condition).
+**Architecture:** A pure `pickStarters` selector chooses the curated starter set; a `WorkspaceEmptyState.svelte` component renders the hero + starters + browse link; `workspace/+page.svelte` renders it instead of `<DashboardHome>` when the home section is shown and the workspace is empty (reusing the Phase 1 `railGroups` empty condition). **Critically, the boot path is changed first** so an organic (non-focused, unrequested) first-run leaves no active tool open — otherwise the shell's `defaultAppId` auto-open makes the empty state unreachable.
 
 **Tech Stack:** SvelteKit, Svelte 5 runes, vitest (apps/platform vitest-only). Builds on the merged `9501b7db` (Phase 1+2 + codex coherence).
 
@@ -23,7 +23,7 @@
 | `src/lib/container/starters.ts` | Pure: pick the curated starter set | Create |
 | `src/lib/container/starters.test.ts` | Unit tests | Create |
 | `src/lib/container/WorkspaceEmptyState.svelte` | Hero + starters + browse-all | Create |
-| `src/routes/workspace/+page.svelte` | Render empty state when home + empty | Modify |
+| `src/routes/workspace/+page.svelte` | Boot path (organic first-run = no active tool) + render empty state when home + empty | Modify |
 
 ---
 
@@ -179,7 +179,42 @@ Slim hero band (eyebrow + title + one line; `--paper-warm` — the one place spe
 
 ---
 
-### Task 3: Wire into the workspace home
+### Task 3: Boot path — organic first-run lands empty (UNBLOCKS the empty state)
+
+**Files:** Modify `src/routes/workspace/+page.svelte` (`onMount`, ≈lines 2681–2697).
+
+**Why this is required:** the empty state lives inside `{#if !activeApp}`, but the current shell auto-opens `defaultAppId` (`= merged.defaultAppId`, line 198) on a fresh device, so `activeApp` is always set and the empty state is unreachable. The redesign's premise is first-run = empty workspace, so the `defaultAppId` auto-open is exactly the legacy behavior to drop — **only** for the organic (non-focused, non-requested, no-saved-open) case. Preserve focused `/run`, `?app=` requested, and saved-open restore.
+
+Two edits:
+
+- [ ] **Step 1:** In the saved-state branch, drop the `defaultAppId` fallback. Change:
+  ```ts
+        : savedOpenApps.length > 0 ? savedOpenApps : defaultAppId ? [defaultAppId] : [];
+  ```
+  to:
+  ```ts
+        : savedOpenApps.length > 0 ? savedOpenApps : [];
+  ```
+  (Focused still maps to `requestedApp ? [requestedApp.id] : []`; a returning user's saved open apps still restore.)
+
+- [ ] **Step 2:** Remove the no-saved-state default-open block so a fresh device starts empty. Delete:
+  ```ts
+    } else if (defaultAppId) {
+      const defaultApp = appById.get(defaultAppId);
+      openAppIds = [defaultAppId];
+      receiptsByApp = defaultApp ? { [defaultAppId]: createReceiptFor(defaultApp) } : {};
+      activeAppId = defaultAppId;
+    }
+  ```
+  Leave the `if (saved) { … }` with no `else`. A fresh device then keeps `openAppIds = []` (its `$state` initial) and `activeAppId = null`; the existing `else if (!activeAppId || !appById.has(activeAppId)) { activeAppId = openAppIds[0] ?? null; }` (≈line 2711) resolves `activeAppId` to `null`. The `if (requestedApp) { … openApp(requestedApp.id); }` block (≈2698) still opens `?app=`/`/run` requests, so those paths are unaffected.
+
+- [ ] **Step 3:** `bun run typecheck` PASS. If `defaultAppId` becomes unused after these edits, leave the `$derived` (it's cheap) or remove it if svelte-check flags it unused.
+
+- [ ] **Step 4:** commit `fix(workspace): organic first-run lands on the empty workspace, not a default tool`.
+
+---
+
+### Task 4: Wire into the workspace home
 
 **Files:** Modify `src/routes/workspace/+page.svelte`.
 
@@ -188,7 +223,6 @@ Slim hero band (eyebrow + title + one line; `--paper-warm` — the one place spe
 ```ts
   import WorkspaceEmptyState from '$lib/container/WorkspaceEmptyState.svelte';
   import { pickStarters } from '$lib/container/starters';
-  import { curatedAppsByTier } from '$lib/container/state';
   import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
 
   const workspaceEmpty = $derived(
@@ -196,7 +230,7 @@ Slim hero band (eyebrow + title + one line; `--paper-warm` — the one place spe
   );
   const starterApps = $derived(pickStarters(launchVisibleApps, PUBLIC_FLAGSHIP_SLUGS, 4));
 ```
-(`launchVisibleApps` and `railGroups` already exist from Phase 1. If `curatedAppsByTier` is preferred over `launchVisibleApps` as the starter pool, swap the first arg — but `launchVisibleApps` already excludes hidden/private apps and is what the rail uses, so keep it for consistency.)
+(`launchVisibleApps` and `railGroups` already exist from Phase 1. Use `launchVisibleApps` as the starter pool — it already excludes hidden/private apps and is what the rail uses. Do **not** import `curatedAppsByTier`; it's unused here.)
 
 - [ ] **Step 2: markup** — replace the `{#if section === 'home'}` → `<DashboardHome … />` block's open so the empty state wins when there are no tools:
 
@@ -235,10 +269,14 @@ Slim hero band (eyebrow + title + one line; `--paper-warm` — the one place spe
 
 ---
 
-### Task 4: Verify
+### Task 5: Verify
 - [ ] `bunx vitest run src/lib/container/starters.test.ts` → 5/5.
 - [ ] Full suite: failures unchanged from the merged baseline (no-bake set only); no new failures attributable to these files.
-- [ ] CDP (worktree dev server, fresh `--user-data-dir` so launcher-memory is empty → workspace is empty): screenshot `/workspace?section=home` desktop + mobile — confirm the hero band + starters + "Browse all" render, slim and operational, and that opening a starter focuses the tool (rail flips to Open). Note: in an un-baked worktree, `launchVisibleApps` is sparse but non-empty (D1 seeds), so starters fall back to the catalog head — enough to verify layout.
+- [ ] **Boot-path proof (both state sources must be clear).** First-run depends on *two* localStorage keys: `shippie:launcher:v1` (launcher-memory — pinned/recents) and `shippie.container.v1` (`STORAGE_KEY`, `state.ts:135` — saved open apps). A fresh `--user-data-dir` clears both. CDP against the worktree dev server, `/workspace?section=home`:
+  - **Assert BEFORE screenshot** (via `Runtime.evaluate`): the page has **no active-tool iframe and no `OPEN IN SHIPPIE` topbar** (e.g. `document.querySelector('iframe') === null` and the topbar shows the section title, not an app name) **and** the empty-state hero is present (`document.querySelector('.ws-empty .hero-title') !== null`). If an iframe/app topbar is present, the boot-path fix (Task 3) regressed — stop and fix.
+  - Then screenshot desktop + mobile — confirm hero band + "Start with these" starters + "Browse all N tools →" render slim and operational; confirm clicking a starter focuses the tool (rail flips to Open, hero replaced by the tool).
+  - (Returning-user check: with a non-empty `shippie:launcher:v1` but empty open apps, `workspaceEmpty` is false → `DashboardHome` shows, not the hero. Confirm the newcomer hero is genuinely first-run-only.)
+  - Note: in an un-baked worktree `launchVisibleApps` is sparse but non-empty (D1 seeds), so starters fall back to the catalog head — enough to verify layout.
 
 ## Notes
 - This is the only place spec §8 sanctions `--paper-warm` (the hero band); the rest of the workspace stays dark.
