@@ -1,5 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { switcherOpen } from '$lib/stores/switcher';
   import type { AppUser } from '$server/auth/lucia';
 
   interface Props {
@@ -8,44 +10,34 @@
 
   let { user }: Props = $props();
 
-  function isHome(pathname: string): boolean {
-    return pathname === '/'
-      || pathname === '/container'
-      || pathname.startsWith('/apps')
-      || pathname === '/arcade'
-      || pathname === '/leaderboards'
-      || pathname === '/glance'
-      || pathname === '/today'
-      || pathname === '/whitepaper';
-  }
-
-  function isDocs(pathname: string): boolean {
-    return pathname === '/docs'
-      || pathname.startsWith('/docs/')
-      || pathname === '/build'
-      || pathname === '/why'
-      || pathname === '/professionals'
-      || pathname === '/labs';
+  // Phase 4 mobile dock: Today · Tools · You. Today = the workspace home;
+  // Tools opens the switcher sheet (on /workspace or /run; elsewhere it
+  // navigates there first and the sheet opens on arrival via the store);
+  // You holds account / settings / docs / ship.
+  function isToday(pathname: string): boolean {
+    return pathname === '/' || pathname === '/workspace' || pathname.startsWith('/run');
   }
 
   function isYou(pathname: string): boolean {
     return pathname === '/you';
   }
+
+  function openTools() {
+    switcherOpen.set(true);
+    const p = $page.url.pathname;
+    if (!p.startsWith('/workspace') && !p.startsWith('/run')) void goto('/workspace');
+  }
 </script>
 
 <nav class="bottom-dock" aria-label="Primary">
-  <a href="/" class:active={isHome($page.url.pathname)} aria-current={isHome($page.url.pathname) ? 'page' : undefined}>
+  <a href="/workspace" class:active={isToday($page.url.pathname)} aria-current={isToday($page.url.pathname) ? 'page' : undefined}>
     <span aria-hidden="true">◐</span>
-    <strong>Home</strong>
+    <strong>Today</strong>
   </a>
-  <a href="/docs" class:active={isDocs($page.url.pathname)} aria-current={isDocs($page.url.pathname) ? 'page' : undefined}>
-    <span aria-hidden="true">▤</span>
-    <strong>Docs</strong>
-  </a>
-  <a href="/new" class:active={$page.url.pathname === '/new'} aria-current={$page.url.pathname === '/new' ? 'page' : undefined}>
-    <span aria-hidden="true">+</span>
-    <strong>Ship</strong>
-  </a>
+  <button type="button" class="dock-btn" onclick={openTools}>
+    <span aria-hidden="true">▦</span>
+    <strong>Tools</strong>
+  </button>
   <a
     href="/you"
     class:active={isYou($page.url.pathname)}
@@ -65,7 +57,7 @@
     bottom: 0;
     z-index: 120;
     display: none;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
     min-height: calc(56px + var(--safe-bottom));
     padding:
@@ -86,7 +78,8 @@
     box-shadow: 0 -8px 28px rgba(44, 31, 20, 0.1);
   }
 
-  .bottom-dock a {
+  .bottom-dock a,
+  .bottom-dock .dock-btn {
     position: relative;
     display: grid;
     place-items: center;
@@ -96,6 +89,10 @@
     padding-top: 2px;
     color: var(--text-secondary);
     text-decoration: none;
+    background: none;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
     box-shadow: inset 0 2px 0 transparent;
     transition:
       color 0.15s var(--ease-out, ease),
@@ -103,7 +100,8 @@
       box-shadow 0.15s var(--ease-out, ease);
   }
 
-  .bottom-dock a span {
+  .bottom-dock a span,
+  .bottom-dock .dock-btn span {
     display: grid;
     place-items: center;
     min-inline-size: var(--touch-min);
@@ -112,7 +110,8 @@
     line-height: 1;
   }
 
-  .bottom-dock a strong {
+  .bottom-dock a strong,
+  .bottom-dock .dock-btn strong {
     display: block;
     max-width: 100%;
     overflow: hidden;
@@ -133,7 +132,8 @@
     color: var(--sunset);
   }
 
-  .bottom-dock a:focus-visible {
+  .bottom-dock a:focus-visible,
+  .bottom-dock .dock-btn:focus-visible {
     outline: 2px solid var(--sunset);
     outline-offset: -2px;
   }
