@@ -1,13 +1,13 @@
 import { redirect } from '@sveltejs/kit';
 
 export const RETIRED_PUBLIC_ROUTES = {
-  '/arcade': '/?category=games',
+  '/arcade': '/tools?category=games',
   // '/leaderboards' un-retired 2026-05-18 (P0.7) — now wired to aggregate
-  // shelves (New / Trending / Top-rated). The /?sort=trending fallback
+  // shelves (New / Trending / Top-rated). The /tools?sort=trending fallback
   // stayed in place until the page server hooked into the leaderboard
   // helpers; it's restored as a live route now.
-  '/glance': '/container?section=home',
-  '/today': '/container?section=home',
+  '/glance': '/workspace?section=home',
+  '/today': '/workspace?section=home',
   '/build': '/docs/build',
   '/why': '/docs/why',
   '/professionals': '/docs/pro',

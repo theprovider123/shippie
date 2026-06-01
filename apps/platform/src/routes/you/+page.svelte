@@ -341,9 +341,9 @@
       <div class="move-row">
         <div>
           <strong>Move to another phone</strong>
-          <p>Use Your Data in the container to export, back up, or restore app data when you choose.</p>
+          <p>Use Your Data in the workspace to export, back up, or restore app data when you choose.</p>
         </div>
-        <a href="/container?section=data">Open Your Data →</a>
+        <a href="/workspace?section=data">Open Your Data →</a>
       </div>
     </section>
 
