@@ -119,6 +119,8 @@
   import WorkspaceEmptyState from '$lib/container/WorkspaceEmptyState.svelte';
   import { pickStarters } from '$lib/container/starters';
   import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
+  import ToolSwitcherSheet from '$lib/container/ToolSwitcherSheet.svelte';
+  import { switcherOpen } from '$lib/stores/switcher';
   import {
     hydrateLauncherMemory,
     launcherMemory,
@@ -3264,6 +3266,13 @@
     {/if}
   </section>
 {:else}
+<ToolSwitcherSheet
+  open={$switcherOpen}
+  groups={railGroups}
+  allApps={railCatalog}
+  onOpen={openRailTool}
+  onClose={() => switcherOpen.set(false)}
+/>
 <section class="shell">
   <aside class="sidebar">
     <div class="rail-head">
