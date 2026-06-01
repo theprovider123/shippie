@@ -87,9 +87,9 @@
   </div>
   <p>Open tools stay warm. Switch away and come back without a reload.</p>
 </div>
-<div class="updates">
-  <h3>Updates</h3>
-  {#if updateCards.length > 0}
+{#if updateCards.length > 0}
+  <div class="updates">
+    <h3>Updates</h3>
     {#each updateCards as card (card.app.id)}
       <article>
         <div>
@@ -118,10 +118,8 @@
         </div>
       </article>
     {/each}
-  {:else}
-    <p>All installed apps match their latest package receipt.</p>
-  {/if}
-</div>
+  </div>
+{/if}
 <div class="app-grid">
   {#each visibleApps as app (app.id)}
     <ToolTile
