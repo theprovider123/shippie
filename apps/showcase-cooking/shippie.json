@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#E8603C",
   "background_color": "#14120F",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "permissions": [
@@ -39,6 +40,7 @@
   "curation": {
     "surface": "archived",
     "category": "food-drink",
+    "tier": "legacy",
     "successor": "palate"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-cooking",

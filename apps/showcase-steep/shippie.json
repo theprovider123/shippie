@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#2F4A3A",
   "background_color": "#F8F1E0",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "ai": [],
@@ -84,7 +85,8 @@
   },
   "curation": {
     "surface": "featured",
-    "category": "food-drink"
+    "category": "food-drink",
+    "tier": "supported"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-steep",
   "license": "AGPL-3.0-or-later",

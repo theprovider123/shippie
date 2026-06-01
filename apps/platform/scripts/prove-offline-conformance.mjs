@@ -108,8 +108,9 @@ async function capsuleStatus(page, slug) {
 }
 
 async function gotoOffline(page, url) {
+  const target = new URL(url).href;
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 });
+    await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 20_000 });
   } catch (err) {
     const message = String(err?.message || err);
     const tolerated =
@@ -118,14 +119,45 @@ async function gotoOffline(page, url) {
       message.includes('NS_ERROR_OFFLINE') ||
       message.includes('WebKit encountered an internal error') ||
       message.includes('Could not connect') ||
+      message.includes('interrupted by another navigation') ||
       message.includes('Timeout');
     if (!tolerated) throw err;
+  }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const current = page.url();
+    if (current === target || current.replace(/\/$/, '') === target.replace(/\/$/, '')) break;
+    try {
+      await page.evaluate((nextUrl) => {
+        location.assign(nextUrl);
+      }, target);
+      await page.waitForURL(
+        (url) => url.href === target || url.href.replace(/\/$/, '') === target.replace(/\/$/, ''),
+        { timeout: 8_000 },
+      ).catch(() => {});
+      await page.waitForLoadState('domcontentloaded', { timeout: 8_000 }).catch(() => {});
+    } catch {
+      // WebKit can report offline SW navigations as failed while the
+      // document still commits. Assertions below decide whether it worked.
+    }
   }
 }
 
 async function assertOfflineLaunch(page, slug) {
-  await page.waitForSelector('iframe', { timeout: 20_000 });
   const text = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '');
+  const iframeVisible = await page.waitForSelector('iframe', { timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  const debug = iframeVisible
+    ? ''
+    : await page.evaluate(() => ({
+        href: location.href,
+        title: document.title,
+        html: document.documentElement?.outerHTML?.slice(0, 500) ?? '',
+      })).catch((err) => ({ href: '', title: '', html: String(err?.message || err) }));
+  assert(
+    iframeVisible,
+    `${slug}: offline launcher iframe did not appear; body=${JSON.stringify(text.slice(0, 500))}; debug=${JSON.stringify(debug)}`,
+  );
   assert(!text.includes('You are offline'), `${slug}: generic marketplace offline screen appeared`);
   assert(!text.includes('Saved copy missing'), `${slug}: launcher reported missing saved copy`);
   assert(!text.includes('Saved copy was evicted'), `${slug}: launcher reported evicted saved copy`);
@@ -150,20 +182,30 @@ function savedResult(slug, saved, status) {
   };
 }
 
-async function coldLaunch(context, slug) {
-  const coldPage = await context.newPage();
+async function coldLaunchPage(coldPage, slug) {
   await gotoOffline(coldPage, `${origin}/run/${encodeURIComponent(slug)}`);
+  if (!new URL(coldPage.url()).pathname.startsWith(`/run/${encodeURIComponent(slug)}`)) {
+    await coldPage.locator(`a[href="/run/${encodeURIComponent(slug)}/"]`).click({ timeout: 3000 }).catch(() => {});
+  }
   await assertOfflineLaunch(coldPage, slug);
   await coldPage.reload({ waitUntil: 'domcontentloaded', timeout: 20_000 }).catch(() => {});
   await assertOfflineLaunch(coldPage, slug);
   await coldPage.close().catch(() => {});
 }
 
+async function coldLaunch(context, slug) {
+  const coldPage = await context.newPage();
+  await coldLaunchPage(coldPage, slug);
+}
+
 async function proveSlug(browser, slug) {
   const context = await browser.newContext(contextOptions);
   const { saved, status } = await sealSlug(context, slug);
+  const coldPage = await context.newPage();
+  await coldPage.goto(`${origin}/`, { waitUntil: 'load', timeout: 45_000 });
+  await waitForSwControl(coldPage);
   await context.setOffline(true);
-  await coldLaunch(context, slug);
+  await coldLaunchPage(coldPage, slug);
   await context.close();
 
   return savedResult(slug, saved, status);

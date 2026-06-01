@@ -18,44 +18,36 @@ export interface CanonicalShowcaseTarget {
 const SLUG_ALIASES: Record<string, string> = {
   recipe: 'palate',
   'recipe-saver': 'palate',
-  // Phase 2 cleanup — Chiwit absorbs the loose daily wellness mirrors.
-  // Move remains routed to Lift because strength/workout logging has a
-  // sharper standalone home there.
+  // Phase 2 cleanup — Chiwit and Quiet absorb the loose daily wellness
+  // mirrors. Move and body metrics route to Lift because training/body
+  // logging has a sharper standalone home there.
   pace: 'lift',
   'sleep-logger': 'lift',
   'workout-logger': 'lift',
-  pomodoro: 'habit-tracker',
-  'mood-pulse': 'habit-tracker',
+  pomodoro: 'chiwit',
+  'mood-pulse': 'chiwit',
   // daily-briefing demoted to platform-side `/today` surface; until
-  // that's fully discoverable, alias into Cadence's daily pulse.
-  'daily-briefing': 'habit-tracker',
+  // that's fully discoverable, alias into Chiwit's daily pulse.
+  'daily-briefing': 'chiwit',
   // Palate absorbed the standalone temperature helper for launch.
   cooking: 'palate',
 
   // Slate v4 Phase 0 consolidations. Each successor app is a current
-  // first-party showcase (match-room, co-pilot, therapy-notes, lift) so
-  // the alias is safe to ship now. The retired apps' bundles continue
+  // first-party showcase so the alias is safe to ship now. The retired
+  // apps' bundles continue
   // to be baked — their shippie.json declares
   // `curation.surface: 'archived'` so the marketplace hides them, but
   // old direct URLs hit the alias and resolve to the canonical
   // successor via the explicit 302 in /run/[slug]/+page.server.ts.
   'live-room': 'match-room',
   'show-and-tell': 'whiteboard',
-  'would-you-rather': 'drawing-telephone',
   matchday: 'match-room',
-  'care-log': 'co-pilot',
-  journal: 'therapy-notes',
   move: 'lift',
+  'habit-tracker': 'chiwit',
 
   // Mise now owns hydration and caffeine context, so old one-tap
   // sip links open the food-literate nutrition tracker.
   'sip-log': 'mise',
-  // Launch slate Phase 2 — standalone brain games now open as modes
-  // inside Daily Puzzle. The target search params below preserve which
-  // retired app the person intended to launch.
-  sudoku: 'daily-puzzle',
-  'memory-grid': 'daily-puzzle',
-  reaction: 'daily-puzzle',
 
   // Launch slate Phase 4 — food utilities now live as tabs inside
   // Palate so the cooking workflow has one mobile home.
@@ -63,36 +55,27 @@ const SLUG_ALIASES: Record<string, string> = {
   'meal-planner': 'palate',
   'pantry-scanner': 'palate',
   'photo-a-day': 'snap-and-forget',
-  'body-metrics': 'habit-tracker',
-  breath: 'habit-tracker',
-  // Habit Tracker is its own flagship as of the Cadence relaunch — it
-  // ships mood + feeling + correlation + weekly review beyond Chiwit's
-  // pulse remit and provides distinct intents (habit-logged,
-  // feeling-logged, weekly-review-created). Chiwit remains canonical.
-  quiet: 'habit-tracker',
-  'colour-of-day': 'habit-tracker',
+  'body-metrics': 'lift',
+  breath: 'quiet',
+  'colour-of-day': 'chiwit',
 };
 
 const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
   'live-room': { from: 'live-room' },
   'show-and-tell': { mode: 'show-and-tell', from: 'show-and-tell' },
-  'would-you-rather': { pack: 'would-you-rather', from: 'would-you-rather' },
-  sudoku: { mode: 'sudoku', from: 'sudoku' },
-  'memory-grid': { mode: 'memory-grid', from: 'memory-grid' },
-  reaction: { mode: 'reaction', from: 'reaction' },
   'shopping-list': { tab: 'shop', from: 'shopping-list' },
   'meal-planner': { tab: 'plan', from: 'meal-planner' },
   'pantry-scanner': { tab: 'pantry', from: 'pantry-scanner' },
   cooking: { tab: 'cookbook', from: 'cooking' },
   'photo-a-day': { from: 'photo-a-day' },
-  'body-metrics': { tab: 'track', from: 'body-metrics' },
-  breath: { tab: 'track', from: 'breath' },
-  quiet: { tab: 'track', from: 'quiet' },
+  'body-metrics': { from: 'body-metrics' },
+  breath: { from: 'breath' },
   'colour-of-day': { tab: 'track', from: 'colour-of-day' },
   'daily-briefing': { tab: 'today', from: 'daily-briefing' },
   'mood-pulse': { tab: 'track', from: 'mood-pulse' },
   pomodoro: { tab: 'track', from: 'pomodoro' },
   'sip-log': { tab: 'track', from: 'sip-log' },
+  'habit-tracker': { tab: 'track', from: 'habit-tracker' },
 };
 
 export const FIRST_PARTY_SHOWCASE_SLUGS = new Set<string>(

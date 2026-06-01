@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#74A57F",
   "background_color": "#F5EFE4",
+  "visibility": "private",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -25,9 +26,9 @@
     }
   },
   "curation": {
-    "surface": "archived",
+    "surface": "labs",
     "category": "health-fitness",
-    "successor": "co-pilot"
+    "tier": "private-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-care-log",
   "license": "AGPL-3.0-or-later",

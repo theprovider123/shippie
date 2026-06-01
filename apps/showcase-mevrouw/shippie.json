@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#1F2A24",
   "background_color": "#1F2A24",
+  "visibility": "private",
   "display": "standalone",
   "orientation": "portrait",
   "ai": [],
@@ -16,7 +17,8 @@
   "permissions": [],
   "curation": {
     "surface": "labs",
-    "category": "social"
+    "category": "social",
+    "tier": "private-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-mevrouw",
   "license": "AGPL-3.0-or-later",

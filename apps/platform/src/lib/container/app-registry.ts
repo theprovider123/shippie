@@ -89,7 +89,7 @@ export function manifestToContainerApp(
     packageHash: manifest.packageHash,
     data,
     standaloneUrl: manifest.domains.canonical,
-    visibility: 'local',
+    visibility: manifest.visibility ?? 'local',
     owned: true,
     permissions: permissions ?? localPermissions(manifest.slug),
     spaces: manifest.spaces,
@@ -100,6 +100,7 @@ export function manifestToContainerApp(
   // (`featured`) by leaving the field undefined — the bridge denies
   // analytics.track only on explicit `'arcade'`.
   if (manifest.surface) app.surface = manifest.surface;
+  if (manifest.tier) app.tier = manifest.tier;
   return app;
 }
 
@@ -144,7 +145,12 @@ export function findRequestedApp(
  * should not appear as choices in the current launch slate.
  */
 export function visibleContainerApps(apps: readonly ContainerApp[]): ContainerApp[] {
-  return apps.filter((app) => (app.surface ?? 'featured') !== 'archived');
+  return apps.filter((app) => {
+    if ((app.surface ?? 'featured') === 'archived') return false;
+    const visibility = app.visibility ?? 'public';
+    if ((visibility === 'private' || visibility === 'team') && app.owned !== true) return false;
+    return true;
+  });
 }
 
 /**

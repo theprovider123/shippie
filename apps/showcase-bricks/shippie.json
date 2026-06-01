@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#E84A2D",
   "background_color": "#15131F",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -17,6 +18,7 @@
   "curation": {
     "surface": "arcade",
     "category": "games",
+    "tier": "arcade",
     "subcategory": "arcade-cabinet"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-bricks",

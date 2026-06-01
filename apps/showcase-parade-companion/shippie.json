@@ -9,16 +9,26 @@
   "scope": "/run/parade-companion/",
   "theme_color": "#EF0107",
   "background_color": "#F5EFE4",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "license": "AGPL-3.0-or-later",
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-parade-companion",
   "remix_allowed": true,
   "curation": {
+    "tags": [
+      "offline",
+      "maps",
+      "safety",
+      "local-first"
+    ],
+    "capabilities": [
+      "worksOffline",
+      "localDb"
+    ],
     "surface": "labs",
     "category": "tools",
-    "tags": ["offline", "maps", "safety", "local-first"],
-    "capabilities": ["worksOffline", "localDb"]
+    "tier": "labs"
   },
   "runtime_assets": [
     "basemap/corridor.webp",

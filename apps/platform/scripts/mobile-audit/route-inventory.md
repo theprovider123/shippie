@@ -30,6 +30,7 @@
 | `/leaderboards` | public | P2 | · | · | · | · | · |  |
 | `/professionals` | public | P2 | · | · | · | · | · |  |
 | `/run/[slug]` | showcase-wrapper | P2 | · | · | · | · | · |  |
+| `/safe` | public | P2 | · | · | · | · | · |  |
 | `/trust-preview` | public | P2 | · | · | · | · | · |  |
 | `/whitepaper` | public | P2 | · | · | · | · | · |  |
 | `/why` | public | P2 | · | · | · | · | · |  |

@@ -23,7 +23,7 @@ import type { ToolAvailability, ToolEntry } from './tool-entry';
  * the homepage hid it. Now the rule is part of the ToolEntry, so both
  * surfaces respect it.
  */
-const UPCOMING_SLUGS: ReadonlySet<string> = new Set(['golazo']);
+const UPCOMING_SLUGS: ReadonlySet<string> = new Set();
 
 /** Slugs that should display at all times even if curation says archived. */
 const FORCED_LIVE: ReadonlySet<string> = new Set();
@@ -34,19 +34,26 @@ const FORCED_LIVE: ReadonlySet<string> = new Set();
  */
 function curationFor(slug: string): {
   surface: 'featured' | 'arcade' | 'labs' | 'archived';
+  visibility: 'public' | 'unlisted' | 'private' | 'team' | 'local';
   successor?: string;
 } {
   const entry = FIRST_PARTY_CURATION.find((c) => c.slug === slug);
-  if (!entry) return { surface: 'featured' };
-  return { surface: entry.surface, successor: entry.successor };
+  if (!entry) return { surface: 'featured', visibility: 'public' };
+  return { surface: entry.surface, visibility: entry.visibility, successor: entry.successor };
 }
 
-function availabilityFor(rawSlug: string, surface: string, successor?: string): ToolAvailability {
+function availabilityFor(
+  rawSlug: string,
+  surface: string,
+  visibility: string,
+  successor?: string,
+): ToolAvailability {
   if (FORCED_LIVE.has(rawSlug)) return 'live';
   // Aliased slugs are router-only; never display.
   const canonical = canonicalShowcaseSlug(rawSlug);
   if (canonical !== rawSlug) return 'redirect';
   if (successor) return 'redirect';
+  if (visibility !== 'public') return 'archived';
   if (UPCOMING_SLUGS.has(canonical)) return 'upcoming';
   if (surface === 'archived') return 'archived';
   return 'live';
@@ -70,7 +77,7 @@ export function containerAppToToolEntry(app: ContainerApp): ToolEntry {
     category: app.category ?? 'tools',
     kind: app.appKind,
     surface: cur.surface,
-    availability: availabilityFor(app.slug, cur.surface, cur.successor),
+    availability: availabilityFor(app.slug, cur.surface, cur.visibility, cur.successor),
     intents: {
       provides: app.permissions?.capabilities?.crossAppIntents?.provides ?? [],
       consumes: app.permissions?.capabilities?.crossAppIntents?.consumes ?? [],
@@ -115,7 +122,7 @@ export function launcherRowToToolEntry(row: LauncherRowShape): ToolEntry {
     category: row.category ?? 'tools',
     kind: row.kind ?? 'local',
     surface: cur.surface,
-    availability: availabilityFor(row.slug, cur.surface, cur.successor),
+    availability: availabilityFor(row.slug, cur.surface, cur.visibility, cur.successor),
     intents: { provides: [], consumes: [] },
     firstPartySigned: row.firstPartySigned ?? false,
     upvoteCount: row.upvoteCount,

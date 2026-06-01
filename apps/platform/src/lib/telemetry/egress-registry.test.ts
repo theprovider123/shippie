@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   TELEMETRY_CHANNELS,
   getChannel,
   mirrorTelemetryToLedgerRow,
 } from './egress-registry';
 import { assertRowIsRedacted } from '@shippie/trust-ledger';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 describe('TELEMETRY_CHANNELS', () => {
   it('covers every in-tree Shippie-egress source', () => {
@@ -103,5 +108,19 @@ describe('mirrorTelemetryToLedgerRow', () => {
       payload_bytes: 10,
     });
     expect(a.id).not.toBe(b.id);
+  });
+});
+
+describe('telemetry ledger-first invariant', () => {
+  it('does not allow idb-unavailable to bypass the mirror gate', () => {
+    const source = readFileSync(resolve(HERE, 'egress-registry.ts'), 'utf8');
+    expect(source).not.toContain("reason !== 'idb-unavailable'");
+    expect(source).not.toContain("reason === 'idb-unavailable'");
+  });
+
+  it('does not use sendBeacon because unload paths cannot await ledger commits', () => {
+    const source = readFileSync(resolve(HERE, '..', 'util', 'track.ts'), 'utf8');
+    expect(source).not.toContain('navigator.sendBeacon');
+    expect(source).not.toContain('sendBeacon?.(');
   });
 });

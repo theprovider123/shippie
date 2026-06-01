@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#0E5C3A",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -28,8 +29,9 @@
     }
   },
   "curation": {
-    "surface": "archived",
-    "category": "games"
+    "surface": "arcade",
+    "category": "games",
+    "tier": "arcade"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-world-cup-fantasy",
   "license": "AGPL-3.0-or-later",

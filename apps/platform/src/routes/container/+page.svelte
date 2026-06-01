@@ -2420,8 +2420,8 @@
 
   function normalizeAnalyticsEvent(payload: unknown):
     | {
-        event: string;
-        props?: Record<string, unknown>;
+        event_name: string;
+        properties?: Record<string, unknown>;
         ts: number;
         session_id?: string;
       }
@@ -2432,8 +2432,8 @@
     if (typeof event !== 'string' || event.length === 0 || event.length > 128) return null;
     const props = record.props ?? record.properties;
     return {
-      event,
-      props: props && typeof props === 'object' && !Array.isArray(props)
+      event_name: event,
+      properties: props && typeof props === 'object' && !Array.isArray(props)
         ? (props as Record<string, unknown>)
         : undefined,
       ts: typeof record.ts === 'number' ? record.ts : Date.now(),

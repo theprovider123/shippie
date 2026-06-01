@@ -278,8 +278,8 @@ export function isActive(event: FanEvent, now = Date.now()): boolean {
   return Number.isFinite(expires) && expires > now && now < paradeCutoff;
 }
 
-export async function encodeFanEventsForSync(events: FanEvent[]): Promise<string> {
-  const payload = selectCarryFanEvents(events)
+export async function encodeFanEventsForSync(events: FanEvent[], now = Date.now()): Promise<string> {
+  const payload = selectCarryFanEvents(events, now)
     .slice(0, 36)
     .map(compactEvent);
   const fragment = await encodeShareFragment({ type: FAN_EVENTS_SHARE_TYPE, payload });

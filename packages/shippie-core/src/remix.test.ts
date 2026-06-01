@@ -15,8 +15,34 @@ describe('fetchRemixInfo', () => {
                 slug: 'recipe-saver',
                 name: 'Recipe Saver',
                 sourceRepo: 'https://github.com/acme/recipe-saver',
+                source: {
+                  webUrl: 'https://github.com/acme/recipe-saver',
+                  cloneUrl: 'https://github.com/acme/recipe-saver.git',
+                  forkUrl: 'https://github.com/acme/recipe-saver/fork',
+                  owner: 'acme',
+                  repo: 'recipe-saver',
+                  ref: null,
+                  path: null,
+                },
                 license: 'MIT',
                 forkUrl: 'https://github.com/acme/recipe-saver/fork',
+                targetSlug: 'recipe-saver-remix-2',
+                deploy: {
+                  cli: 'shippie deploy ./dist --slug recipe-saver-remix-2 --remix recipe-saver',
+                  workspace: {
+                    slug: 'recipe-saver-remix-2',
+                    directory: 'dist',
+                    remixFrom: 'recipe-saver',
+                  },
+                  mcp: {
+                    tool: 'deploy',
+                    arguments: {
+                      directory: '/absolute/path/to/dist',
+                      slug: 'recipe-saver-remix-2',
+                      remix_from: 'recipe-saver',
+                    },
+                  },
+                },
               },
             }),
             { headers: { 'content-type': 'application/json' } },
@@ -27,10 +53,12 @@ describe('fetchRemixInfo', () => {
     );
 
     expect(calls).toEqual(['https://example.com/api/apps/recipe-saver/remix']);
-    expect(remix.deploy.cli).toBe('shippie deploy ./dist --slug recipe-saver-remix --remix recipe-saver');
+    expect(remix.targetSlug).toBe('recipe-saver-remix-2');
+    expect(remix.source?.cloneUrl).toBe('https://github.com/acme/recipe-saver.git');
+    expect(remix.deploy.cli).toBe('shippie deploy ./dist --slug recipe-saver-remix-2 --remix recipe-saver');
     expect(remix.deploy.mcp.arguments.remix_from).toBe('recipe-saver');
     expect(remix.deploy.workspace).toEqual({
-      slug: 'recipe-saver-remix',
+      slug: 'recipe-saver-remix-2',
       directory: 'dist',
       remixFrom: 'recipe-saver',
     });

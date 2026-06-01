@@ -35,19 +35,17 @@ describe('/run/[slug]/+page.server load', () => {
   for (const [oldSlug, location] of [
     ['live-room', '/run/match-room?from=live-room'],
     ['show-and-tell', '/run/whiteboard?mode=show-and-tell&from=show-and-tell'],
-    ['would-you-rather', '/run/drawing-telephone?pack=would-you-rather&from=would-you-rather'],
     ['matchday', 'match-room'],
-    ['care-log', 'co-pilot'],
-    ['journal', 'therapy-notes'],
     ['move', 'lift'],
+    ['habit-tracker', '/run/chiwit?tab=track&from=habit-tracker'],
     ['recipe', 'palate'],
     ['recipe-saver', 'palate'],
     ['shopping-list', '/run/palate?tab=shop&from=shopping-list'],
     ['meal-planner', '/run/palate?tab=plan&from=meal-planner'],
     ['pantry-scanner', '/run/palate?tab=pantry&from=pantry-scanner'],
-    ['body-metrics', '/run/habit-tracker?tab=track&from=body-metrics'],
-    ['breath', '/run/habit-tracker?tab=track&from=breath'],
-    ['colour-of-day', '/run/habit-tracker?tab=track&from=colour-of-day'],
+    ['body-metrics', '/run/lift?from=body-metrics'],
+    ['breath', '/run/quiet?from=breath'],
+    ['colour-of-day', '/run/chiwit?tab=track&from=colour-of-day'],
     ['sip-log', '/run/mise?tab=track&from=sip-log'],
   ] as const) {
     test(`/run/${oldSlug} throws redirect(302) to canonical successor`, async () => {
@@ -59,23 +57,6 @@ describe('/run/[slug]/+page.server load', () => {
         const r = err as { status?: number; location?: string };
         expect(r.status).toBe(302);
         expect(r.location).toBe(location.startsWith('/run/') ? location : `/run/${location}`);
-      }
-    });
-  }
-
-  for (const [oldSlug, mode] of [
-    ['sudoku', 'sudoku'],
-    ['memory-grid', 'memory-grid'],
-    ['reaction', 'reaction'],
-  ] as const) {
-    test(`/run/${oldSlug} throws mode-aware redirect to Daily Puzzle`, async () => {
-      try {
-        await callLoad({ slug: oldSlug });
-        throw new Error('expected redirect to be thrown');
-      } catch (err) {
-        const r = err as { status?: number; location?: string };
-        expect(r.status).toBe(302);
-        expect(r.location).toBe(`/run/daily-puzzle?mode=${mode}&from=${oldSlug}`);
       }
     });
   }
@@ -116,23 +97,23 @@ describe('/run/[slug]/+page.server load', () => {
     }
   });
 
-  test('mode-aware redirect preserves existing query and injects target params', async () => {
+  test('successor redirect preserves existing query and injects target params', async () => {
     try {
-      await callLoad({ slug: 'sudoku', search: '?invite=abc' });
+      await callLoad({ slug: 'habit-tracker', search: '?invite=abc' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
-      expect(r.location).toBe('/run/daily-puzzle?invite=abc&mode=sudoku&from=sudoku');
+      expect(r.location).toBe('/run/chiwit?invite=abc&tab=track&from=habit-tracker');
     }
   });
 
-  test('mode-aware redirect target params win over conflicting query params', async () => {
+  test('successor redirect target params win over conflicting query params', async () => {
     try {
-      await callLoad({ slug: 'reaction', search: '?mode=sudoku&from=old' });
+      await callLoad({ slug: 'colour-of-day', search: '?tab=old&from=old' });
     } catch (err) {
       const r = err as { status?: number; location?: string };
       expect(r.status).toBe(302);
-      expect(r.location).toBe('/run/daily-puzzle?mode=reaction&from=reaction');
+      expect(r.location).toBe('/run/chiwit?tab=track&from=colour-of-day');
     }
   });
 

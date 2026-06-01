@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#4E7C9A",
   "background_color": "#EDF3F1",
+  "visibility": "private",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -25,8 +26,9 @@
     }
   },
   "curation": {
-    "surface": "featured",
-    "category": "health-fitness"
+    "surface": "labs",
+    "category": "health-fitness",
+    "tier": "private-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-co-pilot",
   "license": "AGPL-3.0-or-later",

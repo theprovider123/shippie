@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#A86060",
   "background_color": "#F5EFE4",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -61,8 +62,9 @@
     }
   },
   "curation": {
-    "surface": "archived",
-    "category": "social"
+    "surface": "labs",
+    "category": "social",
+    "tier": "labs"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-touch",
   "license": "AGPL-3.0-or-later",

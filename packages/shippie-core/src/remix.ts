@@ -1,8 +1,10 @@
 export interface RemixHandoff {
   slug: string;
+  targetSlug: string;
   name: string;
   tagline?: string | null;
   sourceRepo: string;
+  source?: RemixSourceInfo | null;
   license: string;
   latestVersion?: string | null;
   forkUrl?: string | null;
@@ -22,6 +24,16 @@ export interface RemixHandoff {
       remixFrom: string;
     };
   };
+}
+
+export interface RemixSourceInfo {
+  webUrl: string;
+  cloneUrl: string | null;
+  forkUrl: string | null;
+  owner: string | null;
+  repo: string | null;
+  ref: string | null;
+  path: string | null;
 }
 
 interface InternalCtx {
@@ -58,11 +70,14 @@ export async function fetchRemixInfo(ctx: InternalCtx, slug: string): Promise<Re
     throw new Error('invalid_remix_response');
   }
 
+  const deploy = normalizeDeployHints(remix.deploy, remix.slug);
   return {
     slug: remix.slug,
+    targetSlug: typeof remix.targetSlug === 'string' ? remix.targetSlug : deploy.workspace.slug,
     name: typeof remix.name === 'string' ? remix.name : remix.slug,
     tagline: typeof remix.tagline === 'string' || remix.tagline === null ? remix.tagline : null,
     sourceRepo: remix.sourceRepo,
+    source: normalizeSourceInfo(remix.source),
     license: remix.license,
     latestVersion:
       typeof remix.latestVersion === 'string' || remix.latestVersion === null
@@ -72,7 +87,22 @@ export async function fetchRemixInfo(ctx: InternalCtx, slug: string): Promise<Re
       typeof remix.forkUrl === 'string' || remix.forkUrl === null
         ? remix.forkUrl
         : null,
-    deploy: normalizeDeployHints(remix.deploy, remix.slug),
+    deploy,
+  };
+}
+
+function normalizeSourceInfo(value: unknown): RemixSourceInfo | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.webUrl !== 'string') return null;
+  return {
+    webUrl: raw.webUrl,
+    cloneUrl: typeof raw.cloneUrl === 'string' || raw.cloneUrl === null ? raw.cloneUrl : null,
+    forkUrl: typeof raw.forkUrl === 'string' || raw.forkUrl === null ? raw.forkUrl : null,
+    owner: typeof raw.owner === 'string' || raw.owner === null ? raw.owner : null,
+    repo: typeof raw.repo === 'string' || raw.repo === null ? raw.repo : null,
+    ref: typeof raw.ref === 'string' || raw.ref === null ? raw.ref : null,
+    path: typeof raw.path === 'string' || raw.path === null ? raw.path : null,
   };
 }
 

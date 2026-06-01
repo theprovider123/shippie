@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#15120f",
   "background_color": "#15120f",
+  "visibility": "private",
   "display": "standalone",
   "orientation": "portrait",
   "ai": [],
@@ -75,8 +76,9 @@
     }
   },
   "curation": {
-    "surface": "featured",
-    "category": "health-fitness"
+    "surface": "labs",
+    "category": "health-fitness",
+    "tier": "private-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-cycle",
   "license": "AGPL-3.0-or-later",

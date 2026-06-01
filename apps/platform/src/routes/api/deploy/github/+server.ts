@@ -100,6 +100,12 @@ export const POST: RequestHandler = async (event) => {
 
   const parsed = parseInput(raw);
   if ('error' in parsed) return json({ error: parsed.error }, { status: 400 });
+  if (parsed.remix_from && parsed.remix_from === parsed.slug) {
+    return json(
+      { error: 'self_remix_not_allowed', reason: 'An app cannot be deployed as a remix of itself.' },
+      { status: 400 },
+    );
+  }
 
   const db = getDrizzleClient(env.DB);
   const remix = parsed.remix_from ? await remixEligibilityForSlug(db, parsed.remix_from) : null;

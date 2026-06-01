@@ -13,10 +13,10 @@
  * users launch; /__shippie-run/<slug>/ is the internal runtime HTML/JS/CSS
  * the container iframes load.
  *
- * Skip behaviour: a showcase whose package.json is missing a build
- * script, or whose vite.config.ts won't compile, is logged and
- * skipped — never blocks the platform deploy. Per-showcase failures
- * are visible in the build log so the maker can repair them.
+ * Skip behaviour: helper packages under apps/showcase-* that do not
+ * declare a shippie.json are ignored. Any directory with a shippie.json
+ * is a real app and must have src/main.tsx plus a build script, otherwise
+ * the platform build fails before that app silently falls out of launch.
  */
 
 import { execSync } from 'node:child_process';
@@ -38,6 +38,8 @@ import { fileURLToPath } from 'node:url';
 import {
   parseFirstPartyCurationEntry,
   VALID_SURFACES as SHARED_VALID_SURFACES,
+  VALID_VISIBILITIES as SHARED_VALID_VISIBILITIES,
+  VALID_TIERS as SHARED_VALID_TIERS,
   VALID_CATEGORIES as SHARED_VALID_CATEGORIES,
 } from '../src/lib/curation/schema.ts';
 import {
@@ -61,12 +63,27 @@ const SHELL_ASSETS_OUT = resolve(PLATFORM_DIR, 'static', '__shippie-pwa', 'shell
 // Re-derived from the shared schema so this file stays a single
 // source of truth — change values in src/lib/curation/schema.ts.
 const VALID_SURFACES = new Set(SHARED_VALID_SURFACES);
+const VALID_VISIBILITIES = new Set(SHARED_VALID_VISIBILITIES);
 const VALID_CATEGORIES = new Set(SHARED_VALID_CATEGORIES);
 const WASM_DIR = resolve(PLATFORM_DIR, 'static', '__shippie', 'wasm');
 // Keep this in sync with src/lib/container/ai-runtime.ts. Today the
 // pinned esm.sh runtime is the working, cacheable source; mirroring it
 // onto models.shippie.app is a follow-up hardening step.
 const AI_RUNTIME_ASSETS = ['https://esm.sh/@huggingface/transformers@3.0.0'];
+const PUBLIC_FLAGSHIP_ORDER = [
+  'palate',
+  'chiwit',
+  'mise',
+  'symptom-diary',
+  'lift',
+  'golazo',
+  'tab',
+  'receipt-snap',
+  'voice-memo',
+  'journal',
+  'read-later',
+  'match-room',
+];
 
 const SKIP = new Set(['platform', 'shippie-ai']);
 
@@ -77,20 +94,31 @@ function buildSdkRuntime() {
 }
 
 function listShowcases() {
-  return readdirSync(APPS_DIR).filter((name) => {
-    if (!name.startsWith('showcase-')) return false;
-    if (SKIP.has(name)) return false;
+  const malformed = [];
+  const showcases = [];
+  for (const name of readdirSync(APPS_DIR)) {
+    if (!name.startsWith('showcase-')) continue;
+    if (SKIP.has(name)) continue;
     const pkgPath = join(APPS_DIR, name, 'package.json');
     const mainPath = join(APPS_DIR, name, 'src', 'main.tsx');
-    if (!existsSync(pkgPath)) return false;
-    if (!existsSync(mainPath)) return false;
+    const manifestPath = join(APPS_DIR, name, 'shippie.json');
+    const hasManifest = existsSync(manifestPath);
+    if (!existsSync(pkgPath) || !existsSync(mainPath)) {
+      if (hasManifest) malformed.push(`${name} (missing ${!existsSync(pkgPath) ? 'package.json' : 'src/main.tsx'})`);
+      continue;
+    }
     try {
       const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-      return Boolean(pkg.scripts?.build);
+      if (pkg.scripts?.build) showcases.push(name);
+      else if (hasManifest) malformed.push(`${name} (missing package.json scripts.build)`);
     } catch {
-      return false;
+      if (hasManifest) malformed.push(`${name} (invalid package.json)`);
     }
-  }).sort();
+  }
+  if (malformed.length > 0) {
+    throw new Error(`manifest-bearing showcase app(s) are not hostable: ${malformed.join(', ')}`);
+  }
+  return showcases.sort();
 }
 
 function slugFor(showcaseDir) {
@@ -571,7 +599,9 @@ function writeShowcaseCatalog(slugs) {
  * Validation rules (fail the build on violation — orphan aliases or
  * unknown surfaces would silently break the marketplace later):
  *   - `surface` must be one of VALID_SURFACES
+ *   - top-level `visibility` must be one of VALID_VISIBILITIES
  *   - `category` must be one of VALID_CATEGORIES
+ *   - `tier` must be one of VALID_TIERS
  *   - `successor`, when set, must reference a slug in the built set
  *     (so we never alias to a target that doesn't exist in the bake)
  */
@@ -600,6 +630,13 @@ function writeFirstPartyCuration(slugs) {
       errors.push(`${slug}: shippie.json not found (built but unsourced)`);
       continue;
     }
+    const visibility = cfg.visibility;
+    if (typeof visibility !== 'string' || !VALID_VISIBILITIES.has(visibility)) {
+      errors.push(
+        `${slug}: visibility=${JSON.stringify(visibility)} (must be one of ${SHARED_VALID_VISIBILITIES.join(', ')})`,
+      );
+      continue;
+    }
     const curation = cfg.curation;
     if (!curation || typeof curation !== 'object') {
       errors.push(`${slug}: missing 'curation' block in shippie.json`);
@@ -612,7 +649,11 @@ function writeFirstPartyCuration(slugs) {
       for (const e of parsed.errors) errors.push(`${slug}: ${e}`);
       continue;
     }
-    entries.push({ slug, ...parsed.value });
+    if (visibility !== 'public' && parsed.value.surface === 'featured') {
+      errors.push(`${slug}: private/unlisted/team/local apps must not use curation.surface="featured"`);
+      continue;
+    }
+    entries.push({ slug, visibility, ...parsed.value });
   }
 
   if (errors.length > 0) {
@@ -640,6 +681,15 @@ function writeFirstPartyCuration(slugs) {
       .map((e) => e.slug)
       .sort(),
   }));
+  const flagshipRank = new Map(PUBLIC_FLAGSHIP_ORDER.map((slug, index) => [slug, index]));
+  const publicFlagshipSlugs = entries
+    .filter((e) => e.visibility === 'public' && e.surface === 'featured' && e.tier === 'public-flagship')
+    .map((e) => e.slug)
+    .sort((a, b) => {
+      const rankA = flagshipRank.get(a) ?? Number.MAX_SAFE_INTEGER;
+      const rankB = flagshipRank.get(b) ?? Number.MAX_SAFE_INTEGER;
+      return rankA - rankB || a.localeCompare(b);
+    });
 
   const body =
     `// Generated by scripts/prepare-showcases.mjs. Do not edit by hand.\n` +
@@ -647,15 +697,21 @@ function writeFirstPartyCuration(slugs) {
     `// showcase's shippie.json#curation block.\n` +
     `//\n` +
     `// surface: 'featured' | 'arcade' | 'labs' | 'archived'\n` +
+    `// visibility: ${SHARED_VALID_VISIBILITIES.map((v) => `'${v}'`).join(' | ')}\n` +
+    `// tier: ${SHARED_VALID_TIERS.map((t) => `'${t}'`).join(' | ')}\n` +
     `// category: ${SHARED_VALID_CATEGORIES.map((c) => `'${c}'`).join(' | ')}\n` +
     `// subcategory: 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy' (optional)\n` +
     `// successor: alias target — only set when the named slug is in the current bake\n\n` +
     `export type CurationSurface = 'featured' | 'arcade' | 'labs' | 'archived';\n` +
+    `export type CurationVisibility = ${SHARED_VALID_VISIBILITIES.map((v) => `'${v}'`).join(' | ')};\n` +
+    `export type CurationTier = ${SHARED_VALID_TIERS.map((t) => `'${t}'`).join(' | ')};\n` +
     `export type CurationCategory = ${SHARED_VALID_CATEGORIES.map((c) => `'${c}'`).join(' | ')};\n` +
     `export type CurationSubcategory = 'daily-brain' | 'arcade-cabinet' | 'room' | 'strategy';\n\n` +
     `export interface CurationEntry {\n` +
     `  slug: string;\n` +
     `  surface: CurationSurface;\n` +
+    `  visibility: CurationVisibility;\n` +
+    `  tier: CurationTier;\n` +
     `  category: CurationCategory;\n` +
     `  subcategory?: CurationSubcategory;\n` +
     `  successor?: string;\n` +
@@ -667,6 +723,7 @@ function writeFirstPartyCuration(slugs) {
     `  slugs: readonly string[];\n` +
     `}\n\n` +
     `export const FIRST_PARTY_CURATION: readonly CurationEntry[] = ${JSON.stringify(entries, null, 2)} as const;\n\n` +
+    `export const PUBLIC_FLAGSHIP_SLUGS: readonly string[] = ${JSON.stringify(publicFlagshipSlugs, null, 2)} as const;\n\n` +
     `export const SHELVES: readonly ArcadeShelf[] = ${JSON.stringify(shelves, null, 2)} as const;\n\n` +
     `const BY_SLUG = new Map(FIRST_PARTY_CURATION.map((e) => [e.slug, e]));\n\n` +
     `export function curationFor(slug: string): CurationEntry | undefined {\n` +
@@ -674,6 +731,15 @@ function writeFirstPartyCuration(slugs) {
     `}\n\n` +
     `export function showcasesBySurface(surface: CurationSurface): readonly CurationEntry[] {\n` +
     `  return FIRST_PARTY_CURATION.filter((e) => e.surface === surface);\n` +
+    `}\n\n` +
+    `export function publicShowcasesBySurface(surface: CurationSurface): readonly CurationEntry[] {\n` +
+    `  return FIRST_PARTY_CURATION.filter((e) => e.visibility === 'public' && e.surface === surface);\n` +
+    `}\n\n` +
+    `export function showcasesByTier(tier: CurationTier): readonly CurationEntry[] {\n` +
+    `  return FIRST_PARTY_CURATION.filter((e) => e.tier === tier);\n` +
+    `}\n\n` +
+    `export function showcasesByVisibility(visibility: CurationVisibility): readonly CurationEntry[] {\n` +
+    `  return FIRST_PARTY_CURATION.filter((e) => e.visibility === visibility);\n` +
     `}\n`;
   writeFileSync(CURATION_OUT, body);
   console.log(`[prepare-showcases] wrote ${CURATION_OUT} (${entries.length} entries)`);

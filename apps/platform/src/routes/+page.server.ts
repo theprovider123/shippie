@@ -14,6 +14,7 @@
 import type { PageServerLoad } from './$types';
 import { inArray } from 'drizzle-orm';
 import { curatedApps, curatedAppsBySurface } from '$lib/container/state';
+import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
 import { isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
@@ -30,38 +31,10 @@ import {
 
 const PER_PAGE = 48;
 
-/**
- * Featured shelf by launch phase. Golazo is live now as the event hook;
- * the privacy slate stays close behind so the homepage still explains
- * why these tools belong together.
- */
-const LAUNCHER_FEATURED_SLUGS_BY_PHASE = {
-  prelaunch: [
-    'golazo',        // launch-week traffic hook
-    'cycle',         // your cycle, never on a server
-    'sleep',         // your sleep pattern, logged locally
-    'tab',           // split a bill, no accounts
-    'ledger',        // money that stays yours
-    'chiwit',        // how does today feel?
-    'voice-memo',    // thoughts you do not want anywhere else
-    'palate',        // recipes that work offline at 6pm
-    'therapy-notes', // private thoughts under your control
-    'quiet',         // five-minute reset, no subscription
-    'habit-tracker', // streaks fed by the tools you already use
-  ],
-  'world-cup': [
-    'golazo',        // launch-week traffic hook
-    'chiwit',        // daily pulse and retention habit
-    'tab',           // no-account bill splitting demo
-    'cycle',         // privacy anchor stays visible
-    'sleep',         // local daily ritual
-    'ledger',        // money that stays yours
-    'voice-memo',    // private thoughts
-    'palate',        // offline dinner utility
-    'quiet',         // reset without a subscription
-    'habit-tracker', // intent-fed streaks
-  ],
-} as const satisfies Record<LauncherPhase, readonly string[]>;
+const LAUNCHER_FEATURED_SLUGS_BY_PHASE: Record<LauncherPhase, readonly string[]> = {
+  prelaunch: PUBLIC_FLAGSHIP_SLUGS,
+  'world-cup': PUBLIC_FLAGSHIP_SLUGS,
+};
 
 /**
  * Build the set of canonical slugs that should appear on launcher

@@ -31,6 +31,43 @@ describe('deriveManifest', () => {
     expect(result.error).toBeUndefined();
   });
 
+  it('normalizes maker-provided source repository URLs', () => {
+    const result = deriveManifest({
+      slug: 'snake-remix',
+      shippieJson: {
+        slug: 'snake-remix',
+        type: 'app',
+        name: 'Snake Remix',
+        category: 'games',
+        source_repo: 'https://token@github.com/theprovider123/shippie/tree/main/apps/showcase-snake?x=1',
+      },
+      files: new Map(),
+    });
+
+    expect(result.manifest.source_repo).toBe(
+      'https://github.com/theprovider123/shippie/tree/main/apps/showcase-snake',
+    );
+  });
+
+  it('drops unsafe source repository URLs from maker manifests', () => {
+    const result = deriveManifest({
+      slug: 'bad-source',
+      shippieJson: {
+        slug: 'bad-source',
+        type: 'app',
+        name: 'Bad Source',
+        category: 'tools',
+        source_repo: 'javascript:alert(1)',
+        license: 'MIT',
+        remix_allowed: true,
+      },
+      files: new Map(),
+    });
+
+    expect(result.manifest.source_repo).toBeUndefined();
+    expect(result.manifest.remix_allowed).toBe(true);
+  });
+
   it('normalizes explicit data policy in maker-provided manifest', () => {
     const result = deriveManifest({
       slug: 'whiteboard',
@@ -122,6 +159,19 @@ describe('deriveManifest', () => {
       syncMode: 'gossip',
       archivable: true,
     });
+  });
+
+  it('normalizes source repository URLs from zipped shippie.json', () => {
+    const json = JSON.stringify({
+      name: 'Source App',
+      source_repo: 'https://github.com/acme/source-app.git',
+      license: 'MIT',
+      remix_allowed: true,
+    });
+
+    const r = deriveManifest({ slug: 'source-app', files: new Map([['shippie.json', enc(json)]]) });
+
+    expect(r.manifest.source_repo).toBe('https://github.com/acme/source-app');
   });
 
   it('auto-drafts a default manifest when nothing is provided', () => {

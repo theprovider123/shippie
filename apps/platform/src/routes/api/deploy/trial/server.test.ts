@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { POST } from './+server';
 
 const mocks = vi.hoisted(() => ({
@@ -65,9 +65,13 @@ vi.mock('drizzle-orm', () => ({
   gte: () => ({}),
 }));
 
-function eventFor(file = new File(['hello'], 'app.zip', { type: 'application/zip' })) {
+function eventFor(
+  file = new File(['hello'], 'app.zip', { type: 'application/zip' }),
+  fields: Record<string, string> = {},
+) {
   const form = new FormData();
   form.set('zip', file);
+  for (const [key, value] of Object.entries(fields)) form.set(key, value);
   return {
     request: new Request('https://shippie.app/api/deploy/trial', {
       method: 'POST',
@@ -87,9 +91,13 @@ function eventFor(file = new File(['hello'], 'app.zip', { type: 'application/zip
 }
 
 describe('POST /api/deploy/trial', () => {
-  test('deploys anonymously and returns a claim URL that preserves return_to', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
     mocks.dbState.updates = [];
     mocks.dbState.recentCount = 0;
+  });
+
+  test('deploys anonymously and returns a claim URL that preserves return_to', async () => {
     mocks.deployStatic.mockResolvedValueOnce({
       success: true,
       appId: 'app-1',
@@ -121,5 +129,18 @@ describe('POST /api/deploy/trial', () => {
       isTrial: true,
       visibilityScope: 'unlisted',
     });
+  });
+
+  test('rejects self-remix parity when a trial request includes a source slug', async () => {
+    const response = await POST(eventFor(
+      new File(['hello'], 'app.zip', { type: 'application/zip' }),
+      { slug: 'recipe-saver', remix_from: 'recipe-saver' },
+    ));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'self_remix_not_allowed',
+    });
+    expect(mocks.deployStatic).not.toHaveBeenCalled();
   });
 });

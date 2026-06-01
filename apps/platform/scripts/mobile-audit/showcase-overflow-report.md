@@ -1,8 +1,8 @@
 # Showcase mobile-overflow report
 
-_Generated 2026-05-29T20:45:13.032Z_
+_Generated 2026-06-01T08:52:47.982Z_
 
-Scanned 68 showcases / 1335 source files.
+Scanned 68 showcases / 1337 source files.
 
 Findings are review prompts, not automatic failures. Intentional short chips, icon-only controls, print-only tables, and fixed-format canvases may be acceptable.
 

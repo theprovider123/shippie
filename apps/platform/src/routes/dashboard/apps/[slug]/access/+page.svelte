@@ -100,7 +100,11 @@
 
 <section class="block">
   <h2>Visibility</h2>
-  <VisibilityPicker slug={data.app.slug} initial={data.app.visibilityScope as 'public' | 'unlisted' | 'private'} />
+  <VisibilityPicker
+    slug={data.app.slug}
+    initial={data.app.visibilityScope as 'public' | 'unlisted' | 'private' | 'team'}
+    organizationId={data.app.organizationId}
+  />
 </section>
 
 {#if data.app.visibilityScope !== 'private'}

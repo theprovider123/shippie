@@ -101,21 +101,21 @@ describe('homepage ⇔ drawer convergence', () => {
   });
 
   it('drawer Quick can carry activeSlug + live, homepage cannot (runtime distinction)', () => {
-    const home = homepageShelf({ pinned: ['cycle'] });
+    const home = homepageShelf({ pinned: ['sleep'] });
     const drawer = drawerShelf({
-      pinned: ['cycle'],
+      pinned: ['sleep'],
       activeSlug: 'tab',
       liveSlugs: ['ledger'],
     });
     // Homepage Quick: pinned only
     const homeQuick = home.sections.find((s) => s.id === 'quick');
-    expect(homeQuick!.tools.map((t) => t.slug)).toEqual(['cycle']);
+    expect(homeQuick!.tools.map((t) => t.slug)).toEqual(['sleep']);
     // Drawer Quick: active first, then live, then pinned
     const drawerQuick = drawer.sections.find((s) => s.id === 'quick');
     expect(drawerQuick!.tools.slice(0, 3).map((t) => t.slug)).toEqual([
       'tab',
       'ledger',
-      'cycle',
+      'sleep',
     ]);
     // But visible sets must still match.
     expect(home.visibleSlugs).toEqual(drawer.visibleSlugs);

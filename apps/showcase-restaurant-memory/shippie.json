@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#A86060",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "permissions": [
@@ -35,7 +36,8 @@
   },
   "curation": {
     "surface": "labs",
-    "category": "food-drink"
+    "category": "food-drink",
+    "tier": "labs"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-restaurant-memory",
   "license": "AGPL-3.0-or-later",

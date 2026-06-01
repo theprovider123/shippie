@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#3F8AA8",
   "background_color": "#F8F1E0",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -15,10 +16,10 @@
     "consumes": []
   },
   "curation": {
-    "surface": "archived",
+    "surface": "arcade",
     "category": "games",
-    "subcategory": "daily-brain",
-    "successor": "daily-puzzle"
+    "tier": "arcade",
+    "subcategory": "daily-brain"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-sudoku",
   "license": "AGPL-3.0-or-later",

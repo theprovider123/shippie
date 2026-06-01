@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   containerEligibilityFromDeployReport,
   injectEssentials,
+  isSelfRemixLineage,
   packageDomainsFromVerifiedRows,
   preflightWithConnectionGuardBlocks,
   preflightWithSecurityBlocks,
@@ -185,6 +186,14 @@ describe('injectEssentials', () => {
     const out = injectEssentials('<html><head></head></html>', CSP_META, noName);
     expect(out).toContain('name="apple-mobile-web-app-title"');
     expect(out).toContain('content="my-tool"');
+  });
+});
+
+describe('isSelfRemixLineage', () => {
+  test('blocks an app from recording itself as its remix parent', () => {
+    expect(isSelfRemixLineage('app_1', 'app_1')).toBe(true);
+    expect(isSelfRemixLineage('app_2', 'app_1')).toBe(false);
+    expect(isSelfRemixLineage(null, 'app_1')).toBe(false);
   });
 });
 

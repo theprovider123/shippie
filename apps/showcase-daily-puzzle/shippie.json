@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#4FA487",
   "background_color": "#F8F1E0",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -42,6 +43,7 @@
   "curation": {
     "surface": "arcade",
     "category": "games",
+    "tier": "arcade",
     "subcategory": "daily-brain"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-daily-puzzle",

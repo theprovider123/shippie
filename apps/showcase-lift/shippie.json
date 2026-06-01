@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#1a1a1a",
   "background_color": "#1a1a1a",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -100,7 +101,8 @@
   },
   "curation": {
     "surface": "featured",
-    "category": "health-fitness"
+    "category": "health-fitness",
+    "tier": "public-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-lift",
   "license": "AGPL-3.0-or-later",

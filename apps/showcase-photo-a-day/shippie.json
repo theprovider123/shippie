@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#F0734A",
   "background_color": "#F8F1E0",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -17,6 +18,7 @@
   "curation": {
     "surface": "archived",
     "category": "creative",
+    "tier": "legacy",
     "successor": "snap-and-forget"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-photo-a-day",

@@ -91,9 +91,9 @@ describe('remixEligibilityForSlug', () => {
   test('does not expose archived first-party showcases for remix', async () => {
     await expect(
       remixEligibilityForSlug(dbReturning({
-        id: 'app-atlas',
-        slug: 'atlas',
-        name: 'Atlas',
+        id: 'app-habit-tracker',
+        slug: 'habit-tracker',
+        name: 'Cadence',
         tagline: null,
         visibilityScope: 'public',
         isArchived: false,
@@ -101,7 +101,7 @@ describe('remixEligibilityForSlug', () => {
         sourceRepo: null,
         license: null,
         remixAllowed: false,
-      }), 'atlas'),
+      }), 'habit-tracker'),
     ).resolves.toEqual({
       ok: false,
       reason: 'The maker has not published source, license, and remix terms.',
@@ -126,9 +126,29 @@ describe('remixEligibilityForSlug', () => {
   });
 
   test('does not expose archived catalog-only apps', async () => {
-    await expect(remixEligibilityForSlug(dbReturning(undefined), 'atlas')).resolves.toEqual({
+    await expect(remixEligibilityForSlug(dbReturning(undefined), 'habit-tracker')).resolves.toEqual({
       ok: false,
       reason: 'This app is not publicly remixable.',
+    });
+  });
+
+  test('rejects maker apps with unsafe source repo URLs', async () => {
+    await expect(
+      remixEligibilityForSlug(dbReturning({
+        id: 'app-bad-source',
+        slug: 'bad-source',
+        name: 'Bad Source',
+        tagline: null,
+        visibilityScope: 'public',
+        isArchived: false,
+        githubRepo: null,
+        sourceRepo: 'javascript:alert(1)',
+        license: 'MIT',
+        remixAllowed: true,
+      }), 'bad-source'),
+    ).resolves.toEqual({
+      ok: false,
+      reason: 'The maker has not published source, license, and remix terms.',
     });
   });
 });

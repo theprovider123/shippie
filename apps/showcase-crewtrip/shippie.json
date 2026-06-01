@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#1a1d19",
   "background_color": "#1a1d19",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "any",
   "intents": {
@@ -227,8 +228,9 @@
     }
   },
   "curation": {
-    "surface": "labs",
-    "category": "social"
+    "surface": "featured",
+    "category": "social",
+    "tier": "supported"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-crewtrip",
   "license": "AGPL-3.0-or-later",

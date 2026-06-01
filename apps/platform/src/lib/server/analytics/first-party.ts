@@ -11,20 +11,21 @@ export interface FirstPartyAnalyticsSeed {
   name: string;
   category: string;
   surface: string;
-  visibilityScope: 'public' | 'unlisted';
+  visibilityScope: 'public' | 'unlisted' | 'private' | 'team' | 'local';
 }
 
 export function firstPartyAnalyticsSeed(slug: string): FirstPartyAnalyticsSeed | null {
   if (!FIRST_PARTY_SLUGS.has(slug)) return null;
   const curation = FIRST_PARTY_CURATION.find((entry) => entry.slug === slug);
   const surface = curation?.surface ?? 'featured';
+  const visibilityScope = curation?.visibility ?? (surface === 'archived' ? 'unlisted' : 'public');
   return {
     id: `app_first_party_${slug.replace(/[^a-z0-9]+/g, '_')}`,
     slug,
     name: titleFromSlug(slug),
     category: curation?.category ?? 'tools',
     surface,
-    visibilityScope: surface === 'archived' ? 'unlisted' : 'public',
+    visibilityScope: surface === 'archived' && visibilityScope === 'public' ? 'unlisted' : visibilityScope,
   };
 }
 

@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#74A57F",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "permissions": [
@@ -29,7 +30,8 @@
   "curation": {
     "surface": "archived",
     "category": "health-fitness",
-    "successor": "habit-tracker"
+    "tier": "legacy",
+    "successor": "lift"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-body-metrics",
   "license": "AGPL-3.0-or-later",
