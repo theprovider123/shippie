@@ -120,8 +120,10 @@ describe('showcase catalog drift check', () => {
     expect(SHOWCASE_PRECACHE).toEqual([]);
   });
 
-  test('homepage launcher tiles have real launch targets', () => {
-    const homeSource = readFileSync(join(REPO_ROOT, 'apps', 'platform', 'src', 'routes', '+page.svelte'), 'utf8');
+  test('catalog launcher tiles have real launch targets', () => {
+    // The catalog moved from `/` to `/tools` in the Workspace redesign;
+    // root is now a redirect stub. Tiles live on the catalog page.
+    const homeSource = readFileSync(join(REPO_ROOT, 'apps', 'platform', 'src', 'routes', 'tools', '+page.svelte'), 'utf8');
     const homepageTiles = [...homeSource.matchAll(/<ToolTile[\s\S]*?\/>/g)].map((match) => match[0]);
     expect(homepageTiles.length).toBeGreaterThan(0);
     for (const tile of homepageTiles) {
