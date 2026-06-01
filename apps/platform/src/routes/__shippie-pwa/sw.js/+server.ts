@@ -21,9 +21,12 @@ import { OFFLINE_CAPSULE_SW_HELPERS } from '@shippie/offline-capsule';
 const SW_BODY = `// shippie-marketplace SW
 const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
 const MODEL_CACHE = 'shippie.models.v1';
-const APPS_PREFIX = '/apps';
+const CATALOG_PREFIX = '/tools';
 const RUNTIME_PREFIX = '/__shippie-run';
-const SHELL_DOCUMENTS = ['/', '/container', '/you'];
+// '/workspace' is the front door; '/tools' is the catalog. '/' and
+// '/container' remain so already-installed clients still resolve while
+// they pick up the new shell.
+const SHELL_DOCUMENTS = ['/workspace', '/tools', '/you', '/', '/container'];
 const KERNEL_HTML_URL = '/__shippie/launcher.html';
 const KERNEL_HTML_ALIASES = [KERNEL_HTML_URL, '/__shippie/launcher'];
 const KERNEL_SCRIPT_URL = '/__shippie/launcher.js';
@@ -264,12 +267,15 @@ function shellKeysForRequest(req) {
   const url = new URL(req.url);
   const keys = [url.toString()];
   if (url.pathname === '/') keys.push(absoluteUrl('/'));
+  if (url.pathname === '/workspace') keys.push(absoluteUrl('/workspace'));
   if (url.pathname === '/container') keys.push(absoluteUrl('/container'));
   const slug = runSlugFromPath(url.pathname);
   if (slug) {
     keys.push(absoluteUrl('/run/' + encodeURIComponent(slug) + '/'));
+    keys.push(absoluteUrl('/workspace?app=' + encodeURIComponent(slug) + '&focused=1'));
     keys.push(absoluteUrl('/container?app=' + encodeURIComponent(slug) + '&focused=1'));
   }
+  keys.push(absoluteUrl('/workspace'));
   keys.push(absoluteUrl('/container'));
   keys.push(absoluteUrl('/'));
   return Array.from(new Set(keys));
@@ -279,6 +285,7 @@ function shellDocumentUrls(slug) {
   const urls = [...SHELL_DOCUMENTS];
   if (slug) {
     urls.push('/run/' + encodeURIComponent(slug) + '/');
+    urls.push('/workspace?app=' + encodeURIComponent(slug) + '&focused=1');
     urls.push('/container?app=' + encodeURIComponent(slug) + '&focused=1');
   }
   return urls.map(absoluteUrl);
@@ -1032,9 +1039,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  if (url.pathname.startsWith(APPS_PREFIX)) {
-    // Legacy marketplace route. Route HTML is network-only; app assets
-    // are handled by the immutable/runtime branches above.
+  if (url.pathname.startsWith(CATALOG_PREFIX)) {
+    // Catalog route (/tools). Route HTML is network-first + shell-cached;
+    // app assets are handled by the immutable/runtime branches above.
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
       if (browserReportsOffline()) return offlineResponse();
