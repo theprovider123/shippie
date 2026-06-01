@@ -12,13 +12,16 @@
  *   2. Picks the next free port from 5191+ by scanning every existing
  *      `apps/showcase-* /vite.config.ts` for `port: NNNN`.
  *   3. Relies on `prepare-showcases.mjs` to regenerate the first-party
- *      showcase catalog from apps/showcase-*.
- *   4. Appends a curated-apps entry to
- *      `apps/platform/src/lib/container/state.ts` (with TODO comments
- *      for intents — the maker fills these in once the surface exists).
+ *      showcase catalog from apps/showcase-* (curation surface/visibility/
+ *      tier come from each app's `shippie.json#curation`, not state.ts).
+ *   4. PRINTS a ready-to-paste `curatedAppSpecs` entry. The scaffold no
+ *      longer string-splices `state.ts` — that hand-edit collided badly
+ *      under concurrent agents (last-write-wins squashed registry edits).
+ *      The maker pastes the snippet into the array once, deliberately.
  *   5. Writes a NEW migration `apps/platform/drizzle/<NNNN>_seed_<slug>.sql`
- *      so `db:migrate` picks it up next run. We never mutate an
- *      already-applied migration.
+ *      using `nextMigrationNumber()` (the same allocator CI enforces), so
+ *      the file can never collide with an existing number. We never mutate
+ *      an already-applied migration.
  *
  * Substitution placeholders:
  *   __SLUG__     — `widgets`
@@ -40,20 +43,19 @@
 import {
   cpSync,
   existsSync,
-  mkdirSync,
   readFileSync,
   readdirSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { nextMigrationNumber } from './check-migrations.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLATFORM_DIR = resolve(__dirname, '..');
 const REPO_ROOT = resolve(PLATFORM_DIR, '..', '..');
 const APPS_DIR = resolve(REPO_ROOT, 'apps');
 const TEMPLATE_DIR = resolve(REPO_ROOT, 'templates', 'showcase-template');
-const STATE_FILE = resolve(PLATFORM_DIR, 'src', 'lib', 'container', 'state.ts');
 const DRIZZLE_DIR = resolve(PLATFORM_DIR, 'drizzle');
 
 const args = process.argv.slice(2);
@@ -98,19 +100,26 @@ copyTemplate(TEMPLATE_DIR, targetDir, {
 
 console.log('→ showcase catalog will refresh on next prepare-showcases/build run');
 
-console.log('→ adding curated-apps entry to state.ts');
-patchCuratedApps(slug, name, short, desc, accent, port);
-
 console.log('→ writing seed migration');
 const migrationName = writeSeedMigration(slug, name, desc, accent);
 
+const specSnippet = curatedAppSpec(slug, name, short, desc, accent, port);
+
 console.log(`\n✓ Scaffold complete: apps/showcase-${slug}/`);
 console.log(`✓ Migration: drizzle/${migrationName} (run \`bun run db:migrate:local\` to apply)`);
+console.log('\n' + '─'.repeat(72));
+console.log('PASTE this into `curatedAppSpecs` in src/lib/container/state.ts:');
+console.log('(left as a manual paste on purpose — auto-splicing collided under');
+console.log(' concurrent agents. One deliberate edit beats a silent clobber.)');
+console.log('─'.repeat(72));
+console.log(specSnippet);
+console.log('─'.repeat(72));
 console.log('\nNext:');
-console.log('  1. cd apps/showcase-' + slug + ' && bun install (or `bun install` at the root)');
-console.log('  2. bun run dev:apps  # to bring up all showcases');
-console.log('  3. Open http://localhost:4101/container — the new app appears in the curated list');
-console.log('  4. Edit src/App.tsx, declare intents in shippie.json, fill in TODOs in state.ts');
+console.log('  1. Paste the snippet above into curatedAppSpecs (one place, once).');
+console.log('  2. cd apps/showcase-' + slug + ' && bun install (or `bun install` at the root)');
+console.log('  3. bun run dev:apps  # to bring up all showcases');
+console.log('  4. Open http://localhost:4101/container — the new app appears in the curated list');
+console.log('  5. Edit src/App.tsx, declare curation + intents in shippie.json.');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -167,40 +176,36 @@ function walkAndReplace(dir, replacements) {
   }
 }
 
-function patchCuratedApps(slug, name, short, desc, accent, port) {
-  const text = readFileSync(STATE_FILE, 'utf8');
-  if (text.includes(`'/run/${slug}'`)) {
-    console.log(`  ${slug} already in curatedApps — skipping`);
-    return;
-  }
-  // Insert just before the closing `];` of the curatedApps array.
-  const arrayStart = text.indexOf('export const curatedApps:');
-  if (arrayStart < 0) fail('Could not find curatedApps array in state.ts.');
-  const closeIdx = text.indexOf('\n];', arrayStart);
-  if (closeIdx < 0) fail('Could not find closing `];` of curatedApps.');
-  const idLiteral = `app_${slug.replace(/-/g, '_')}`;
-  const entry = `  {
-    id: '${idLiteral}',
+/**
+ * Build the `curatedAppSpecs` entry to paste into state.ts.
+ *
+ * Returns a string — it deliberately does NOT write the file. The previous
+ * version string-spliced state.ts, which (a) targeted the old `curatedApps`
+ * array shape that no longer exists after the curation refactor, and (b)
+ * collided destructively when two agents scaffolded apps at once
+ * (last-commit-wins squashed each other's registry edits). A printed snippet
+ * the maker pastes once is both correct and conflict-free.
+ *
+ * The shape mirrors the `CuratedAppSpec` type in state.ts: slug, name,
+ * shortName, description, appKind, icon, accent, category, port, intents.
+ */
+function curatedAppSpec(slug, name, short, desc, accent, port) {
+  return `  {
     slug: '${slug}',
     name: ${jsonString(name)},
     shortName: ${jsonString(short)},
     description: ${jsonString(desc)},
     appKind: 'local',
-    entry: 'app/index.html',
-    labelKind: 'Local',
     icon: ${jsonString(short.slice(0, 2).toUpperCase())},
     accent: '${accent}',
-    version: '1',
-    // TODO: rotate to a real packageHash once the showcase has a
-    // deploy pipeline; the placeholder lets the container load the
-    // dev URL without rejecting the manifest.
-    packageHash: \`sha256:\${'b'.repeat(64)}\`,
-    standaloneUrl: '/run/${slug}',
+    category: 'utilities',
+    port: ${port},
     // TODO: declare provides/consumes intents once the surface exists.
-    permissions: localPermissions('${slug}'),
-    devUrl: 'http://localhost:${port}/',
-  },\n`;
-  writeFileSync(STATE_FILE, text.slice(0, closeIdx + 1) + entry + text.slice(closeIdx + 1), 'utf8');
+    // Use the local intent vocabulary (e.g. 'meal-planned'); the manifest
+    // contract resolves these to canonical @shippie/intents via
+    // canonicalIntentFor. Leave omitted until the app actually emits.
+    // intents: { provides: [], consumes: [] },
+  },`;
 }
 
 function jsonString(value) {
@@ -209,12 +214,9 @@ function jsonString(value) {
 }
 
 function writeSeedMigration(slug, name, desc, accent) {
-  const existing = readdirSync(DRIZZLE_DIR)
-    .filter((f) => /^\d{4}_/.test(f))
-    .sort();
-  const last = existing[existing.length - 1] ?? '0000_init.sql';
-  const lastNum = Number(last.slice(0, 4));
-  const next = String(lastNum + 1).padStart(4, '0');
+  // Use the same allocator CI enforces (check-migrations.mjs) so the
+  // scaffold can never mint a duplicate number. max+1, zero-padded.
+  const next = nextMigrationNumber(DRIZZLE_DIR);
   const filename = `${next}_seed_showcase_${slug.replace(/-/g, '_')}.sql`;
   const path = resolve(DRIZZLE_DIR, filename);
   const sql = `-- Auto-generated by scripts/new-showcase.mjs.
