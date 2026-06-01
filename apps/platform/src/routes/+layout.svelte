@@ -20,7 +20,7 @@
 
   function showBottomDock(url: URL): boolean {
     const pathname = url.pathname;
-    if (pathname === '/container' && url.searchParams.get('focused') !== '1') return true;
+    if ((pathname === '/container' || pathname === '/workspace') && url.searchParams.get('focused') !== '1') return true;
 
     return ![
       '/admin',
@@ -28,6 +28,7 @@
       '/auth',
       '/c/',
       '/container',
+      '/workspace',
       '/dashboard',
       '/dev',
       '/invite',
@@ -44,7 +45,7 @@
       || url.pathname.startsWith('/c/')
       || url.pathname === '/new'
       || url.pathname.startsWith('/run')
-      || (url.pathname === '/container' && url.searchParams.get('focused') === '1');
+      || ((url.pathname === '/container' || url.pathname === '/workspace') && url.searchParams.get('focused') === '1');
   }
 
   $effect(() => {

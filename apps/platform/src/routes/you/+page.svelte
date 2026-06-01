@@ -262,7 +262,7 @@
       {:else}
         <div class="empty-block">
           <p>Open a tool from Home and it will appear here.</p>
-          <a href="/">Explore tools →</a>
+          <a href="/tools">Explore tools →</a>
         </div>
       {/if}
     </section>

@@ -3012,7 +3012,7 @@
             title="We couldn't find that tool."
             body={`No tool found at /${notFoundSlug}. It may have been unpublished, made private, or the link is wrong.`}
             actionLabel="Browse tools"
-            actionHref="/apps"
+            actionHref="/tools"
           />
         </div>
       {:else}
