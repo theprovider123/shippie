@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#5EA777",
   "background_color": "#14120F",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -26,6 +27,7 @@
   "curation": {
     "surface": "archived",
     "category": "health-fitness",
+    "tier": "legacy",
     "successor": "mise"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-sip-log",

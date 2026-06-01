@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#17694D",
   "background_color": "#151A17",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -48,7 +49,8 @@
   },
   "curation": {
     "surface": "featured",
-    "category": "tools"
+    "category": "tools",
+    "tier": "supported"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-ledger",
   "license": "AGPL-3.0-or-later",

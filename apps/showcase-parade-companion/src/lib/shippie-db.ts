@@ -132,13 +132,13 @@ export async function saveFanEvents(events: FanEvent[]): Promise<void> {
   await Promise.all(events.map((event) => resolveDb().insert('fan_event', event as unknown as Record<string, unknown>)));
 }
 
-export async function listFanEvents(): Promise<FanEvent[]> {
+export async function listFanEvents(now = Date.now()): Promise<FanEvent[]> {
   await ensureParadeTables();
   const db = resolveDb();
   const rows = await db.query<Record<string, unknown>>('fan_event', {
     orderBy: { created_at: 'desc' },
   });
-  const active = sortEvents(dedupeFanEvents(rows.filter(validateFanEvent).filter((event) => isActive(event)))).slice(
+  const active = sortEvents(dedupeFanEvents(rows.filter(validateFanEvent).filter((event) => isActive(event, now)))).slice(
     0,
     MAX_STORED_FAN_EVENTS,
   );

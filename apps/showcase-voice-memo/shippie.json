@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#A86060",
   "background_color": "#F5EFE4",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -16,7 +17,8 @@
   },
   "curation": {
     "surface": "featured",
-    "category": "tools"
+    "category": "tools",
+    "tier": "public-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-voice-memo",
   "license": "AGPL-3.0-or-later",

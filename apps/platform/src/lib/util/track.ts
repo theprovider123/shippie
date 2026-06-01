@@ -11,7 +11,6 @@
  *   { events: [{ event_name, properties, session_id?, url?, ts? }] }
  * NOT { name, props } — the normalize function would drop those.
  *
- * Survives offline via navigator.sendBeacon fallback on page-hide.
  * Re-queues on non-2xx responses (404 unknown_app, 429 rate_limited,
  * 500 insert_failed all reach the !res.ok branch without throwing,
  * which would otherwise lose telemetry silently).
@@ -20,8 +19,9 @@
  *   Every event is first mirrored to the local ledger via
  *   `emitTelemetry`. The fetch only includes events whose ledger
  *   write succeeded — we never send what we cannot log. On the
- *   sendBeacon unload path the mirror is fire-and-forget; that is an
- *   acknowledged gap until 5B introduces a synchronous outbox.
+ *   unload path does not send a beacon because async ledger commits
+ *   cannot be awaited there. Better to lose telemetry than violate the
+ *   ledger-first rule.
  */
 
 import { emitTelemetry } from '$lib/telemetry/egress-registry';
@@ -83,11 +83,7 @@ async function flush(): Promise<void> {
       app: SHELL_APP,
       payload_bytes,
     });
-    if (result.mirrored || result.reason === 'idb-unavailable') {
-      // idb-unavailable is the SSR / test path where there is no
-      // device ledger to mirror to. Treat as best-effort.
-      mirrored.push(event);
-    }
+    if (result.mirrored) mirrored.push(event);
   }
   if (mirrored.length === 0) return;
 
@@ -126,31 +122,17 @@ function bindBeaconOnce(): void {
   if (beaconBound) return;
   if (typeof window === 'undefined') return;
   beaconBound = true;
-  // sendBeacon on visibility-change covers the cases fetch can't:
-  // PWA close, tab close, navigation. The body must be a Blob with the
-  // correct content-type so the server-side JSON parser accepts it.
-  //
-  // Mirror invariant gap: we cannot await emitTelemetry on the unload
-  // path. Fire-and-forget the mirror writes, then send the beacon.
-  // 5B introduces a synchronous outbox that closes this gap.
+  // We intentionally do not call sendBeacon on visibility-change:
+  // ledger commits are async, and the invariant is stricter than
+  // telemetry retention. Requeue so tab-hide/tab-show can still flush.
   window.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden' || queue.length === 0) return;
+    if (document.visibilityState !== 'hidden') {
+      scheduleFlush();
+      return;
+    }
+    if (queue.length === 0) return;
     const batch = queue.splice(0);
-    for (const event of batch) {
-      void emitTelemetry({
-        channel: 'shell-analytics',
-        event_name: event.event_name,
-        app: SHELL_APP,
-        payload_bytes: jsonBytes(event),
-      });
-    }
-    try {
-      const blob = new Blob([JSON.stringify({ events: batch })], { type: 'application/json' });
-      const ok = navigator.sendBeacon?.(ENDPOINT, blob) ?? false;
-      if (!ok) requeue(batch, 'beacon-rejected');
-    } catch (err) {
-      requeue(batch, `beacon ${String(err)}`);
-    }
+    requeue(batch, 'hidden-ledger-first');
   });
 }
 

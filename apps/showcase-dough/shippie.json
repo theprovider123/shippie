@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#E8C547",
   "background_color": "#14120F",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "permissions": [
@@ -39,7 +40,8 @@
   },
   "curation": {
     "surface": "featured",
-    "category": "food-drink"
+    "category": "food-drink",
+    "tier": "supported"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-dough",
   "license": "AGPL-3.0-or-later",

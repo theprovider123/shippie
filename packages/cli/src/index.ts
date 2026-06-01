@@ -129,6 +129,7 @@ program
   .description('Show source, license, fork URL, and redeploy commands for a remixable app')
   .option('--api <url>', 'Platform API URL', 'https://shippie.app')
   .option('--json', 'Emit JSON instead of human-readable output')
+  .option('--clone [dir]', 'Clone the source locally and write shippie-workspace.json')
   .action(remixCommand);
 
 program

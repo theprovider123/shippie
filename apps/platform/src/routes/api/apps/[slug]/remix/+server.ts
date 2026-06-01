@@ -8,8 +8,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDrizzleClient } from '$server/db/client';
-import { remixEligibilityForSlug } from '$server/remix/eligibility';
-import { describeRemixDataCompatibility } from '$server/remix/compatibility';
+import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
+import { remixHandoffForSlug } from '$server/remix/handoff';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
   if (!platform?.env.DB) {
@@ -21,57 +21,11 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     return json({ error: 'invalid_slug' }, { status: 400 });
   }
 
-  const eligibility = await remixEligibilityForSlug(getDrizzleClient(platform.env.DB), slug);
-  if (!eligibility.ok) {
-    return json({ error: 'remix_unavailable', reason: eligibility.reason }, { status: 400 });
+  const reservedSlugs = await loadReservedSlugs(platform.env.DB);
+  const handoff = await remixHandoffForSlug(getDrizzleClient(platform.env.DB), slug, { reservedSlugs });
+  if (!handoff.ok) {
+    return json({ error: 'remix_unavailable', reason: handoff.reason }, { status: 400 });
   }
 
-  const app = eligibility.app;
-  const targetSlug = `${app.slug}-remix`;
-  const dataCompatibility = describeRemixDataCompatibility({ family: app.dataFamily });
-
-  return json({
-    remix: {
-      slug: app.slug,
-      name: app.name,
-      tagline: app.tagline,
-      sourceRepo: app.sourceRepo,
-      license: app.license,
-      latestVersion: app.latestVersion,
-      forkUrl: githubForkUrl(app.sourceRepo),
-      // Data Passport: the family the remix inherits + whether it can read the
-      // parent's data. Keep the family/schema to retain data; change to start fresh.
-      data: {
-        family: app.dataFamily,
-        compatibility: dataCompatibility.status,
-        note: dataCompatibility.summary,
-      },
-      deploy: {
-        cli: `shippie deploy ./dist --slug ${targetSlug} --remix ${app.slug}`,
-        mcp: {
-          tool: 'deploy',
-          arguments: {
-            directory: '/absolute/path/to/dist',
-            slug: targetSlug,
-            remix_from: app.slug,
-          },
-        },
-        workspace: {
-          slug: targetSlug,
-          directory: 'dist',
-          remixFrom: app.slug,
-        },
-      },
-    },
-  });
+  return json({ remix: handoff.remix });
 };
-
-function githubForkUrl(sourceRepo: string): string | null {
-  try {
-    const url = new URL(sourceRepo);
-    if (url.hostname !== 'github.com' && url.hostname !== 'www.github.com') return null;
-    return `${sourceRepo.replace(/\/$/, '').replace(/\.git$/, '')}/fork`;
-  } catch {
-    return null;
-  }
-}

@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#4E7C9A",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "any",
   "groups": {
@@ -13,9 +14,9 @@
   },
   "data_schemas": {},
   "curation": {
-    "surface": "arcade",
+    "surface": "labs",
     "category": "games",
-    "subcategory": "room"
+    "tier": "labs"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-whiteboard",
   "license": "AGPL-3.0-or-later",

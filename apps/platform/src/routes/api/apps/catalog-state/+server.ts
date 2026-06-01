@@ -11,7 +11,7 @@ type CatalogRow = {
 export const GET: RequestHandler = async ({ platform }) => {
   const staticVersion = stableHash(
     FIRST_PARTY_CURATION
-      .map((entry) => `${entry.slug}:${entry.surface}:${entry.successor ?? ''}`)
+      .map((entry) => `${entry.slug}:${entry.visibility}:${entry.surface}:${entry.tier}:${entry.successor ?? ''}`)
       .sort()
       .join('|'),
   );
@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ platform }) => {
     return json(
       {
         version: `static:${staticVersion}`,
-        live_count: FIRST_PARTY_CURATION.filter((entry) => entry.surface !== 'archived').length,
+        live_count: FIRST_PARTY_CURATION.filter((entry) => entry.visibility === 'public' && entry.surface !== 'archived').length,
       },
       { headers: { 'cache-control': 'no-store' } },
     );

@@ -2,6 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { schema, type ShippieDb } from '$server/db/client';
 import { curationFor } from '$lib/_generated/first-party-curation';
 import { canonicalShowcaseSlug, isFirstPartyShowcase } from '$lib/showcase-slugs';
+import { normalizeSourceRepo } from './source-repo';
 
 export interface RemixableApp {
   id: string | null;
@@ -67,7 +68,7 @@ export async function remixEligibilityForSlug(
   // is in the first-party catalog and isn't archived.
   if (isFirstPartyShowcase(row.slug)) {
     const curation = curationFor(row.slug);
-    if (curation?.surface !== 'archived') {
+    if (curation?.surface !== 'archived' && curation?.visibility === 'public') {
       return {
         ok: true,
         app: {
@@ -85,7 +86,7 @@ export async function remixEligibilityForSlug(
     }
   }
 
-  const sourceRepo = row.sourceRepo ?? row.githubRepo;
+  const sourceRepo = normalizeSourceRepo(row.sourceRepo ?? row.githubRepo)?.webUrl;
   if (!row.remixAllowed || !sourceRepo || !row.license) {
     return { ok: false, reason: 'The maker has not published source, license, and remix terms.' };
   }
@@ -159,9 +160,11 @@ export async function publicRemixInfoForSlug(
 
 function firstPartyCatalogRemix(slug: string): RemixableApp | null {
   if (!isFirstPartyShowcase(slug)) return null;
+  const requested = curationFor(slug);
+  if (requested && (requested.surface === 'archived' || requested.visibility !== 'public')) return null;
   const canonical = canonicalShowcaseSlug(slug);
   const curation = curationFor(canonical);
-  if (curation?.surface === 'archived') return null;
+  if (curation?.surface === 'archived' || curation?.visibility !== 'public') return null;
   return {
     id: null,
     slug: canonical,

@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#6F9B6E",
   "background_color": "#F8F2E6",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -69,8 +70,10 @@
     }
   },
   "curation": {
-    "surface": "featured",
-    "category": "health-fitness"
+    "surface": "archived",
+    "category": "health-fitness",
+    "tier": "legacy",
+    "successor": "chiwit"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-habit-tracker",
   "license": "AGPL-3.0-or-later",

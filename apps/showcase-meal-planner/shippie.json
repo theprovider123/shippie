@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#E8603C",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -36,6 +37,7 @@
   "curation": {
     "surface": "archived",
     "category": "food-drink",
+    "tier": "legacy",
     "successor": "palate"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-meal-planner",

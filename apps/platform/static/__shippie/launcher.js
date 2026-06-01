@@ -90,6 +90,37 @@
     }
   }
 
+  function storedUrl(value) {
+    const url = new URL(String(value || ''), window.location.origin);
+    return url.origin === window.location.origin ? url.pathname + url.search : url.href;
+  }
+
+  function responseFromAssetCopy(pointer, value) {
+    const key = storedUrl(value);
+    const copies = Array.isArray(pointer && pointer.assetCopies) ? pointer.assetCopies : [];
+    const copy = copies.find((item) => item && item.url === key);
+    if (!copy || !copy.body) return null;
+    const body = copy.body instanceof ArrayBuffer
+      ? copy.body.slice(0)
+      : ArrayBuffer.isView(copy.body)
+        ? copy.body.buffer.slice(copy.body.byteOffset, copy.body.byteOffset + copy.body.byteLength)
+        : null;
+    if (!body) return null;
+    return new Response(body, {
+      status: copy.status || 200,
+      statusText: copy.statusText || 'OK',
+      headers: new Headers(Array.isArray(copy.headers) ? copy.headers : []),
+    });
+  }
+
+  function manifestResponseFromPointer(pointer, slug) {
+    const fromShadow = responseFromAssetCopy(pointer, capsuleManifestKey(slug, pointer.manifestHash));
+    if (fromShadow) return fromShadow;
+    return pointer && pointer.manifest
+      ? new Response(JSON.stringify(pointer.manifest), { headers: { 'content-type': 'application/json' } })
+      : null;
+  }
+
   function withBase(html, slug) {
     if (/<base\s/i.test(html)) return html;
     const base = '<base href="/__shippie-run/' + encodeURIComponent(slug) + '/">';
@@ -118,8 +149,10 @@
       return;
     }
     const cache = await caches.open(pointer.cacheName).catch(() => null);
-    const entry = cache ? await cache.match(pointer.entryUrl) : null;
-    const manifest = cache ? await cache.match(capsuleManifestKey(slug, pointer.manifestHash)) : null;
+    const entry = (cache ? await cache.match(pointer.entryUrl) : null) || responseFromAssetCopy(pointer, pointer.entryUrl);
+    const manifest =
+      (cache ? await cache.match(capsuleManifestKey(slug, pointer.manifestHash)) : null) ||
+      manifestResponseFromPointer(pointer, slug);
     if (!entry || !manifest) {
       if (navigator.onLine) {
         await repair(slug, 'The saved capsule was evicted. Re-sealing it now.');

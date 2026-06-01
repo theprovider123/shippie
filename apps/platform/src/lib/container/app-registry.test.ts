@@ -14,10 +14,10 @@ describe('findRequestedApp', () => {
     expect(app?.slug).toBe('palate');
   });
 
-  test('keeps retired mode slugs resolvable through their consolidated homes', () => {
-    expect(findRequestedApp(curatedApps, 'sudoku')?.slug).toBe('daily-puzzle');
+  test('keeps retired slugs resolvable through their consolidated homes', () => {
     expect(findRequestedApp(curatedApps, 'live-room')?.slug).toBe('match-room');
-    expect(findRequestedApp(curatedApps, 'would-you-rather')?.slug).toBe('drawing-telephone');
+    expect(findRequestedApp(curatedApps, 'habit-tracker')?.slug).toBe('chiwit');
+    expect(findRequestedApp(curatedApps, 'body-metrics')?.slug).toBe('lift');
   });
 });
 
@@ -27,12 +27,14 @@ describe('visibleContainerApps', () => {
     const visibleSlugs = new Set(visible.map((app) => app.slug));
     const allSlugs = new Set(curatedApps.map((app) => app.slug));
 
-    expect(allSlugs.has('sudoku')).toBe(true);
+    expect(allSlugs.has('habit-tracker')).toBe(true);
     expect(allSlugs.has('live-room')).toBe(true);
-    expect(visibleSlugs.has('sudoku')).toBe(false);
+    expect(visibleSlugs.has('habit-tracker')).toBe(false);
     expect(visibleSlugs.has('live-room')).toBe(false);
+    expect(visibleSlugs.has('sudoku')).toBe(true);
     expect(visibleSlugs.has('daily-puzzle')).toBe(true);
     expect(visibleSlugs.has('match-room')).toBe(true);
+    expect(visibleSlugs.has('mevrouw')).toBe(false);
   });
 
   test('keeps imported apps visible when they do not declare a launch surface', () => {
@@ -49,7 +51,7 @@ describe('pickBaseApps', () => {
     const slugs = new Set(apps.map((app) => app.slug));
 
     expect(slugs.has('palate')).toBe(true);
-    expect(slugs.has('habit-tracker')).toBe(true);
+    expect(slugs.has('habit-tracker')).toBe(false);
     expect(slugs.has('cycle')).toBe(true);
     expect(apps.find((app) => app.slug === 'palate')?.name).toBe('Packaged Palate');
   });

@@ -9,6 +9,7 @@
   "scope": "/run/match-room/",
   "theme_color": "#0E5C3A",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "groups": {
@@ -80,8 +81,9 @@
   },
   "data_schemas": {},
   "curation": {
-    "surface": "labs",
-    "category": "social"
+    "surface": "featured",
+    "category": "social",
+    "tier": "public-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-match-room",
   "license": "AGPL-3.0-or-later",

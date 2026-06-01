@@ -85,6 +85,12 @@ export const POST: RequestHandler = async (event) => {
   if (!(zip instanceof File)) {
     return json({ error: 'missing zip file' }, { status: 400 });
   }
+  if (remixFrom && remixFrom === slug) {
+    return json(
+      { error: 'self_remix_not_allowed', reason: 'An app cannot be deployed as a remix of itself.' },
+      { status: 400 },
+    );
+  }
   if (visibility === 'invalid') {
     return json({ error: 'invalid_visibility_scope' }, { status: 400 });
   }

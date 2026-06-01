@@ -6,13 +6,14 @@
   "icon": "/icon.svg",
   "theme_color": "#E0B345",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "data_schemas": {},
   "curation": {
     "surface": "archived",
     "category": "games",
-    "subcategory": "room",
+    "tier": "legacy",
     "successor": "whiteboard"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-show-and-tell",

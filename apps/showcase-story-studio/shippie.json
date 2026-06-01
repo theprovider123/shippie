@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#E8C547",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -35,8 +36,9 @@
     }
   },
   "curation": {
-    "surface": "archived",
-    "category": "creative"
+    "surface": "labs",
+    "category": "creative",
+    "tier": "labs"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-story-studio",
   "license": "AGPL-3.0-or-later",

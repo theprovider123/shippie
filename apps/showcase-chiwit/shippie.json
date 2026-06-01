@@ -6,6 +6,7 @@
   "icon": "/icon-512.png",
   "theme_color": "#F97066",
   "background_color": "#FFFAF8",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "ai": [],
@@ -87,9 +88,9 @@
     }
   },
   "curation": {
-    "surface": "archived",
+    "surface": "featured",
     "category": "health-fitness",
-    "successor": "habit-tracker"
+    "tier": "public-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-chiwit",
   "license": "AGPL-3.0-or-later",

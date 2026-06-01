@@ -67,6 +67,7 @@
     if (!trialMode) fd.append('slug', slug);
     if (remixFrom) fd.append('remix_from', remixFrom);
     fd.append('zip', file);
+    if (!trialMode) fd.append('visibility_scope', visibility);
     // Only send surface when the user explicitly picked one. The
     // server-side resolver order is: manifest > form > existing >
     // 'featured'; sending nothing here lets manifest + existing-row
@@ -80,6 +81,11 @@
       });
       const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       if (res.ok && j.success) {
+        const responseVisibility =
+          j.visibility_scope === 'private' || j.visibility_scope === 'unlisted' || j.visibility_scope === 'public'
+            ? j.visibility_scope
+            : visibility;
+        visibility = responseVisibility;
         result = {
           kind: 'success',
           slug: String(j.slug),
@@ -198,6 +204,33 @@
       Auto is best: your shippie.json's <code>curation.surface</code> wins, falling back to the existing app row's surface, then "featured".
     </span>
   </label>
+
+  {#if !trialMode}
+    <fieldset class="choice-set">
+      <legend class="label">Visibility</legend>
+      <label>
+        <input type="radio" name="visibility_choice" value="public" bind:group={visibility} />
+        <span>
+          <strong>Public</strong>
+          <small>Listed in Shippie surfaces after policy checks pass.</small>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="visibility_choice" value="unlisted" bind:group={visibility} />
+        <span>
+          <strong>Unlisted</strong>
+          <small>Share by link, without appearing in public browse.</small>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="visibility_choice" value="private" bind:group={visibility} />
+        <span>
+          <strong>Private</strong>
+          <small>Visible only to you until you create invites.</small>
+        </span>
+      </label>
+    </fieldset>
+  {/if}
 
   <button
     type="submit"
@@ -374,6 +407,43 @@
     overflow-wrap: anywhere;
   }
   .hint code { font-family: ui-monospace, monospace; font-size: 11px; }
+  .choice-set {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .choice-set > label {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 0.65rem;
+    align-items: start;
+    padding: 0.75rem;
+    border: 1px solid var(--border-paper-mid);
+    background: rgba(255,255,255,0.34);
+  }
+  .choice-set input {
+    width: 16px;
+    height: 16px;
+    margin: 2px 0 0;
+    accent-color: var(--sunset);
+  }
+  .choice-set strong,
+  .choice-set small {
+    display: block;
+    line-height: 1.35;
+  }
+  .choice-set strong {
+    color: var(--bg);
+    font-size: 14px;
+  }
+  .choice-set small {
+    margin-top: 0.15rem;
+    color: var(--ink-muted-warm);
+    font-size: 12px;
+  }
   .trial-note {
     min-width: 0;
     border-left: 2px solid var(--sunset);
@@ -527,6 +597,9 @@
     .vis-toggle { background: rgba(255,255,255,0.05); }
     .share-input { background: var(--surface); }
     .trial-note p { color: var(--border-cream-soft); }
+    .choice-set > label { background: rgba(255,255,255,0.03); border-color: var(--ink-warm-mid); }
+    .choice-set strong { color: var(--text); }
+    .choice-set small { color: var(--border-cream-soft); }
     .action-row a { background: rgba(255,255,255,0.04); }
     .qr, .qr-placeholder { background: var(--paper-warm); }
   }

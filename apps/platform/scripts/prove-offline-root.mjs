@@ -91,6 +91,7 @@ async function gotoOffline(page, url) {
     const message = String(err?.message || err);
     const browserOfflineAbort =
       message.includes('net::ERR_ABORTED') ||
+      message.includes('interrupted by another navigation') ||
       message.includes('NS_ERROR_OFFLINE') ||
       message.includes('WebKit encountered an internal error') ||
       message.includes('Timeout');
@@ -110,6 +111,43 @@ async function deleteCapsuleCaches(page, slug) {
         .filter((name) => name.startsWith(`capsule:${targetSlug}:`))
         .map((name) => caches.delete(name)),
     );
+  }, slug);
+}
+
+async function deleteCapsuleShadowCopies(page, slug) {
+  await page.evaluate(async (targetSlug) => {
+    const db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('shippie.offline-capsules.v1', 1);
+      req.onupgradeneeded = () => {
+        const database = req.result;
+        if (!database.objectStoreNames.contains('pointers')) {
+          database.createObjectStore('pointers', { keyPath: 'slug' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('idb_open_failed'));
+    });
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('pointers', 'readwrite');
+        const store = tx.objectStore('pointers');
+        const get = store.get(targetSlug);
+        get.onsuccess = () => {
+          const pointer = get.result;
+          if (pointer) {
+            delete pointer.assetCopies;
+            pointer.updatedAt = new Date().toISOString();
+            store.put(pointer);
+          }
+        };
+        get.onerror = () => reject(get.error || new Error('idb_get_failed'));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error('idb_tx_failed'));
+        tx.onabort = () => reject(tx.error || new Error('idb_tx_aborted'));
+      });
+    } finally {
+      db.close();
+    }
   }, slug);
 }
 
@@ -162,24 +200,39 @@ async function proveSavedAndEvictedFallbacks() {
 
   await page.goto(origin + '/run/snake', { waitUntil: 'load' });
   await page.frameLocator('iframe').getByText('Ready', { exact: true }).waitFor({ timeout: 15000 });
+  await page.close();
 
-  await purgePlatformDocuments(page);
+  const readyPage = await context.newPage();
+  await readyPage.goto(origin + '/', { waitUntil: 'load' });
+  await waitForSwControl(readyPage);
+  await purgePlatformDocuments(readyPage);
   await context.setOffline(true);
-  await gotoOffline(page, origin + '/?offline-proof=ready');
-  await page.getByText('Ready offline', { exact: true }).waitFor({ timeout: 15000 });
-  await page.getByRole('link', { name: /Snake/ }).waitFor({ timeout: 15000 });
-  await page.screenshot({ path: screenshotPath('ready'), fullPage: true });
+  await gotoOffline(readyPage, origin + '/?offline-proof=ready');
+  await readyPage.getByText('Ready offline', { exact: true }).waitFor({ timeout: 15000 });
+  await readyPage.getByRole('link', { name: /Snake/ }).waitFor({ timeout: 15000 });
+  await readyPage.screenshot({ path: screenshotPath('ready'), fullPage: true });
 
-  await page.getByRole('link', { name: /Snake/ }).click();
-  await page.frameLocator('iframe').getByText('Ready', { exact: true }).waitFor({ timeout: 15000 });
-  await page.screenshot({ path: screenshotPath('launch'), fullPage: true });
+  await readyPage.getByRole('link', { name: /Snake/ }).click();
+  await readyPage.frameLocator('iframe').getByText('Ready', { exact: true }).waitFor({ timeout: 15000 });
+  await readyPage.screenshot({ path: screenshotPath('launch'), fullPage: true });
 
-  await deleteCapsuleCaches(page, 'snake');
-  await purgePlatformDocuments(page);
-  await gotoOffline(page, origin + '/?offline-proof=evicted');
-  await page.getByText('Saved tools need refresh', { exact: true }).waitFor({ timeout: 15000 });
-  await page.getByText('Needs refresh', { exact: false }).waitFor({ timeout: 15000 });
-  await page.screenshot({ path: screenshotPath('evicted'), fullPage: true });
+  await deleteCapsuleCaches(readyPage, 'snake');
+  await purgePlatformDocuments(readyPage);
+  await readyPage.close();
+  const shadowPage = await context.newPage();
+  await gotoOffline(shadowPage, origin + '/?offline-proof=shadow');
+  await shadowPage.getByText('Ready offline', { exact: true }).waitFor({ timeout: 15000 });
+  await shadowPage.getByRole('link', { name: /Snake/ }).waitFor({ timeout: 15000 });
+  await shadowPage.screenshot({ path: screenshotPath('shadow'), fullPage: true });
+  await deleteCapsuleShadowCopies(shadowPage, 'snake');
+  await shadowPage.close();
+
+  const evictedPage = await context.newPage();
+  await gotoOffline(evictedPage, origin + '/?offline-proof=evicted');
+  await evictedPage.getByText('Saved tools need refresh', { exact: true }).waitFor({ timeout: 15000 });
+  await evictedPage.getByText('Needs refresh', { exact: false }).waitFor({ timeout: 15000 });
+  await evictedPage.screenshot({ path: screenshotPath('evicted'), fullPage: true });
+  await evictedPage.close();
   await context.close();
   return slugs;
 }

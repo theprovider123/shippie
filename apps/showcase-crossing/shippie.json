@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#2A1F16",
   "background_color": "#F8F1E0",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -13,8 +14,9 @@
     "consumes": []
   },
   "curation": {
-    "surface": "archived",
+    "surface": "arcade",
     "category": "games",
+    "tier": "arcade",
     "subcategory": "arcade-cabinet"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-crossing",

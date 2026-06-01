@@ -6,6 +6,7 @@
   "icon": "/icon-512.png",
   "theme_color": "#D86918",
   "background_color": "#F4E4C1",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "ai": [],
@@ -119,7 +120,8 @@
   },
   "curation": {
     "surface": "featured",
-    "category": "food-drink"
+    "category": "food-drink",
+    "tier": "public-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-recipe",
   "license": "AGPL-3.0-or-later",

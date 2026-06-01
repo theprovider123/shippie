@@ -22,6 +22,9 @@ export interface PackageAppIdentity {
   maker: AppPackageManifest['maker'];
   domains: AppPackageManifest['domains'];
   runtime: AppPackageManifest['runtime'];
+  surface?: AppPackageManifest['surface'];
+  visibility?: AppPackageManifest['visibility'];
+  tier?: AppPackageManifest['tier'];
   spaces?: AppPackageManifest['spaces'];
 }
 
@@ -85,6 +88,9 @@ export async function buildShippiePackage(input: BuildShippiePackageInput): Prom
     maker: input.app.maker,
     domains: input.app.domains,
     runtime: input.app.runtime,
+    surface: input.app.surface,
+    visibility: input.app.visibility,
+    tier: input.app.tier,
     spaces: input.app.spaces,
   };
 

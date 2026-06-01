@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#4FA487",
   "background_color": "#F8F1E0",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -16,7 +17,8 @@
   },
   "curation": {
     "surface": "labs",
-    "category": "tools"
+    "category": "tools",
+    "tier": "labs"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-snap-and-forget",
   "license": "AGPL-3.0-or-later",

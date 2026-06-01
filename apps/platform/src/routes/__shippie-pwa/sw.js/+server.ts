@@ -17,6 +17,8 @@
 import type { RequestHandler } from './$types';
 import { AI_RUNTIME_URLS } from '$lib/container/ai-runtime';
 import { OFFLINE_CAPSULE_SW_HELPERS } from '@shippie/offline-capsule';
+import LAUNCHER_HTML from '../../../../static/__shippie/launcher.html?raw';
+import LAUNCHER_SCRIPT from '../../../../static/__shippie/launcher.js?raw';
 
 const SW_BODY = `// shippie-marketplace SW
 const CACHE = 'shippie-marketplace-__SHIPPIE_BUILD__';
@@ -31,6 +33,8 @@ const KERNEL_HTML_URL = '/__shippie/launcher.html';
 const KERNEL_HTML_ALIASES = [KERNEL_HTML_URL, '/__shippie/launcher'];
 const KERNEL_SCRIPT_URL = '/__shippie/launcher.js';
 const KERNEL_URLS = [...KERNEL_HTML_ALIASES, KERNEL_SCRIPT_URL];
+const STATIC_LAUNCHER_HTML = __STATIC_LAUNCHER_HTML__;
+const STATIC_LAUNCHER_SCRIPT = __STATIC_LAUNCHER_SCRIPT__;
 __OFFLINE_CAPSULE_SW_HELPERS__
 // Phase 2: same-origin /__esm/<pkg> proxy serves the pinned
 // Transformers runtime + its transitive graph through our own zone.
@@ -126,7 +130,7 @@ async function offlineHomeApps() {
       continue;
     }
     const cache = await caches.open(pointer.cacheName).catch(() => null);
-    const entry = cache ? await cache.match(pointer.entryUrl) : null;
+    const entry = (cache ? await cache.match(pointer.entryUrl) : null) || responseFromAssetCopy(pointer, pointer.entryUrl);
     if (!entry) {
       await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
       apps.push({
@@ -259,8 +263,105 @@ function responseFromBytes(bytes, res) {
   return new Response(bytes.slice(0), responseInit(res));
 }
 
-function navigationSafeResponse(res) {
-  return new Response(res.body, responseInit(res));
+async function navigationSafeResponse(res) {
+  return responseFromBytes(await res.clone().arrayBuffer(), res);
+}
+
+function storedUrl(value) {
+  const url = new URL(typeof value === 'string' ? value : value && value.url, self.location.origin);
+  return url.origin === self.location.origin ? url.pathname + url.search : url.href;
+}
+
+function headersToPairs(headers) {
+  return Array.from(headers.entries()).filter(([name]) => !/^(content-encoding|content-length|transfer-encoding)$/i.test(name));
+}
+
+function responseFromAssetCopy(pointer, value) {
+  const key = storedUrl(value);
+  const copies = Array.isArray(pointer && pointer.assetCopies) ? pointer.assetCopies : [];
+  const copy = copies.find((item) => item && item.url === key);
+  if (!copy || !copy.body) return null;
+  const body = copy.body instanceof ArrayBuffer
+    ? copy.body.slice(0)
+    : ArrayBuffer.isView(copy.body)
+      ? copy.body.buffer.slice(copy.body.byteOffset, copy.body.byteOffset + copy.body.byteLength)
+      : null;
+  if (!body) return null;
+  return new Response(body, {
+    status: copy.status || 200,
+    statusText: copy.statusText || 'OK',
+    headers: new Headers(Array.isArray(copy.headers) ? copy.headers : []),
+  });
+}
+
+async function shadowCopiesFromCache(cache, manifest) {
+  const copies = [];
+  for (const asset of manifest.assets) {
+    const hit = await cache.match(asset.url);
+    if (!hit) continue;
+    copies.push({
+      url: asset.url,
+      status: hit.status,
+      statusText: hit.statusText,
+      headers: headersToPairs(hit.headers),
+      body: await hit.clone().arrayBuffer(),
+    });
+  }
+  const manifestBody = new TextEncoder().encode(JSON.stringify(manifest)).buffer;
+  copies.push({
+    url: capsuleManifestKey(manifest.slug, manifest.manifestHash),
+    status: 200,
+    statusText: 'OK',
+    headers: [['content-type', 'application/json']],
+    body: manifestBody,
+  });
+  return copies;
+}
+
+async function shadowEntriesComplete(pointer, manifest) {
+  let done = 0;
+  const failed = [];
+  for (const asset of manifest.assets) {
+    const hit = responseFromAssetCopy(pointer, asset.url);
+    if (!hit) {
+      failed.push(asset.url);
+      continue;
+    }
+    if (typeof asset.size === 'number') {
+      const bytes = await hit.clone().arrayBuffer();
+      if (bytes.byteLength !== asset.size) {
+        failed.push(asset.url);
+        continue;
+      }
+    }
+    done += 1;
+  }
+  return { complete: failed.length === 0, done, total: manifest.assets.length, failed };
+}
+
+function inlineLauncherHtml() {
+  const script = STATIC_LAUNCHER_SCRIPT.replace(/<\\/script/gi, '<\\\\/script');
+  const inline = '<script>' + script + '</script>';
+  return STATIC_LAUNCHER_HTML.replace('<script src="/__shippie/launcher.js"></script>', inline);
+}
+
+async function inlineLauncherResponse(slug) {
+  if (!slug) return null;
+  const pointer = await ShippieOfflineCapsule.getPointer(slug).catch(() => null);
+  if (!pointer || pointer.state !== 'sealed') return null;
+  const manifest = await cachedCapsuleManifest(pointer);
+  if (!manifest) return null;
+  const cache = pointer.cacheName ? await caches.open(pointer.cacheName).catch(() => null) : null;
+  const entry =
+    (cache ? await cache.match(pointer.entryUrl) : null) ||
+    (cache ? await cache.match(manifest.entryUrl) : null) ||
+    responseFromAssetCopy(pointer, pointer.entryUrl) ||
+    responseFromAssetCopy(pointer, manifest.entryUrl);
+  if (!entry) return null;
+  return new Response(inlineLauncherHtml(), {
+    status: 200,
+    headers: { 'content-type': 'text/html; charset=utf-8' },
+  });
 }
 
 function shellKeysForRequest(req) {
@@ -320,6 +421,8 @@ async function cachedRuntimeEntry(cache, slug) {
     const capsule = await caches.open(pointer.cacheName).catch(() => null);
     const hit = capsule ? await capsule.match(pointer.entryUrl) : null;
     if (hit) return hit;
+    const shadow = responseFromAssetCopy(pointer, pointer.entryUrl);
+    if (shadow) return shadow;
   }
   const encoded = encodeURIComponent(slug);
   const keys = [
@@ -339,21 +442,37 @@ async function cachedCapsuleResponse(req, slug) {
   const pointer = await ShippieOfflineCapsule.getPointer(slug).catch(() => null);
   if (!pointer || pointer.state !== 'sealed' || !pointer.cacheName) return null;
   const capsule = await caches.open(pointer.cacheName).catch(() => null);
-  if (!capsule) return null;
-  return (await capsule.match(req)) || (await capsule.match(new URL(req.url).pathname + new URL(req.url).search));
+  const pathKey = new URL(req.url).pathname + new URL(req.url).search;
+  if (capsule) {
+    const cached = (await capsule.match(req)) || (await capsule.match(pathKey));
+    if (cached) return cached;
+  }
+  return responseFromAssetCopy(pointer, pathKey);
 }
 
 async function cachedCapsuleManifest(pointer) {
   if (!pointer || !pointer.cacheName || !pointer.manifestHash || !pointer.slug) return null;
   const cache = await caches.open(pointer.cacheName).catch(() => null);
-  if (!cache) return null;
-  const hit = await cache.match(capsuleManifestKey(pointer.slug, pointer.manifestHash));
-  if (!hit) return null;
-  try {
-    return await hit.json();
-  } catch {
-    return null;
+  if (cache) {
+    const hit = await cache.match(capsuleManifestKey(pointer.slug, pointer.manifestHash));
+    if (hit) {
+      try {
+        return await hit.json();
+      } catch {
+        /* fall through to the IDB pointer copy */
+      }
+    }
   }
+  const fallback = pointer.manifest;
+  if (
+    fallback &&
+    fallback.slug === pointer.slug &&
+    fallback.manifestHash === pointer.manifestHash &&
+    Array.isArray(fallback.assets)
+  ) {
+    return fallback;
+  }
+  return null;
 }
 
 async function warmKernel(cache) {
@@ -394,7 +513,7 @@ async function cachedLauncher(cache, slug) {
   } catch {
     /* fall through */
   }
-  return cachedRuntimeEntry(cache, slug);
+  return (await inlineLauncherResponse(slug)) || cachedRuntimeEntry(cache, slug);
 }
 
 async function warmPlatformShell(cache, slug) {
@@ -553,15 +672,16 @@ async function handleDownloadApp(slug, port) {
     const manifest = await ShippieOfflineCapsule.sealManifest(await res.json(), self.location.origin);
     const capsuleCacheName = ShippieOfflineCapsule.cacheName(manifest.slug, manifest.manifestHash);
     const capsuleCache = await caches.open(capsuleCacheName);
-    await ShippieOfflineCapsule.putPointer({
-      slug: manifest.slug,
-      manifestHash: manifest.manifestHash,
-      cacheName: capsuleCacheName,
-      entryUrl: manifest.entryUrl,
-      state: 'downloading',
-      totalBytes: manifest.totalBytes,
-      updatedAt: new Date().toISOString(),
-    });
+      await ShippieOfflineCapsule.putPointer({
+        slug: manifest.slug,
+        manifestHash: manifest.manifestHash,
+        cacheName: capsuleCacheName,
+        entryUrl: manifest.entryUrl,
+        state: 'downloading',
+        totalBytes: manifest.totalBytes,
+        manifest,
+        updatedAt: new Date().toISOString(),
+      });
     await warmShell(cache);
     await cacheAddAll(capsuleCache, manifest.assets.map((asset) => asset.url), (done, total) => {
       port.postMessage({ type: 'progress', phase: 'downloading', slug, done, total });
@@ -576,6 +696,7 @@ async function handleDownloadApp(slug, port) {
         capsuleManifestKey(manifest.slug, manifest.manifestHash),
         new Response(JSON.stringify(manifest), { headers: { 'content-type': 'application/json' } }),
       ).catch(() => {});
+      const assetCopies = await shadowCopiesFromCache(capsuleCache, manifest).catch(() => []);
       await ShippieOfflineCapsule.putPointer({
         slug: manifest.slug,
         manifestHash: manifest.manifestHash,
@@ -583,6 +704,8 @@ async function handleDownloadApp(slug, port) {
         entryUrl: manifest.entryUrl,
         state: 'sealed',
         totalBytes: manifest.totalBytes,
+        manifest,
+        assetCopies,
         sealedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -608,6 +731,7 @@ async function handleDownloadApp(slug, port) {
         entryUrl: manifest.entryUrl,
         state: 'partial',
         totalBytes: manifest.totalBytes,
+        manifest,
         error: failed.slice(0, 5).join(', '),
         updatedAt: new Date().toISOString(),
       });
@@ -658,8 +782,12 @@ async function handleGetStatus(slug, port) {
     if (pointer && pointer.state === 'sealed') {
       const manifest = await cachedCapsuleManifest(pointer);
       if (manifest) {
-        const cache = await caches.open(pointer.cacheName);
-        const check = await ShippieOfflineCapsule.verifyCacheEntries(cache, manifest);
+        const cache = await caches.open(pointer.cacheName).catch(() => null);
+        const cacheCheck = cache
+          ? await ShippieOfflineCapsule.verifyCacheEntries(cache, manifest)
+          : { complete: false, done: 0, total: manifest.assets.length, failed: manifest.assets.map((asset) => asset.url) };
+        const shadowCheck = cacheCheck.complete ? cacheCheck : await shadowEntriesComplete(pointer, manifest);
+        const check = cacheCheck.complete ? cacheCheck : shadowCheck;
         const state = check.complete ? 'saved' : 'partial';
         if (!check.complete) {
           await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
@@ -745,7 +873,7 @@ async function handleListSavedApps(port) {
           return { ...base, state: 'evicted', phase: 'evicted' };
         }
         const cache = await caches.open(pointer.cacheName).catch(() => null);
-        const entry = cache ? await cache.match(pointer.entryUrl) : null;
+        const entry = (cache ? await cache.match(pointer.entryUrl) : null) || responseFromAssetCopy(pointer, pointer.entryUrl);
         if (!entry) {
           await ShippieOfflineCapsule.putPointer({ ...pointer, state: 'evicted', updatedAt: new Date().toISOString() }).catch(() => {});
           return { ...base, state: 'evicted', phase: 'evicted', totalBytes: pointer.totalBytes || manifest.totalBytes || 0 };
@@ -1084,6 +1212,8 @@ export const GET: RequestHandler = async ({ platform }) => {
     (platform?.env as { CF_VERSION_METADATA?: { id?: string } } | undefined)?.CF_VERSION_METADATA?.id ?? 'dev';
   const body = SW_BODY
     .replace(/__SHIPPIE_BUILD__/g, buildId)
+    .replace('__STATIC_LAUNCHER_HTML__', JSON.stringify(LAUNCHER_HTML))
+    .replace('__STATIC_LAUNCHER_SCRIPT__', JSON.stringify(LAUNCHER_SCRIPT))
     .replace('__OFFLINE_CAPSULE_SW_HELPERS__', OFFLINE_CAPSULE_SW_HELPERS)
     .replace('__AI_RUNTIME_URLS__', JSON.stringify(AI_RUNTIME_URLS));
   return new Response(body, {

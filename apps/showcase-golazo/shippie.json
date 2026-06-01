@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#16F08B",
   "background_color": "#06140F",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "lifecycle": "manual",
@@ -17,8 +18,9 @@
     "consumes": []
   },
   "curation": {
-    "surface": "labs",
-    "category": "games"
+    "surface": "featured",
+    "category": "games",
+    "tier": "public-flagship"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-golazo",
   "license": "AGPL-3.0-or-later",

@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#E8603C",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "groups": {
@@ -15,6 +16,7 @@
   "curation": {
     "surface": "archived",
     "category": "social",
+    "tier": "legacy",
     "successor": "match-room"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-live-room",

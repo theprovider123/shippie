@@ -44,18 +44,22 @@ export interface LiveFanPulseResponse {
   segments?: Array<{ segmentId: string; signals?: LiveFanPulsePacket[] }>;
 }
 
-export function isPublishableFanEvent(event: FanEvent): boolean {
-  return event.source === 'local' && isActive(event) && PUBLISHABLE_TYPES.includes(event.type);
+export function isPublishableFanEvent(event: FanEvent, now = Date.now()): boolean {
+  return event.source === 'local' && isActive(event, now) && PUBLISHABLE_TYPES.includes(event.type);
 }
 
 export function routeSegmentIds(route: readonly [number, number][]): string[] {
   return route.slice(0, -1).map((_, index) => `seg-${index}`);
 }
 
-export function selectFanPulseEvents(events: readonly FanEvent[], limit = MAX_PUBLISH_PER_SYNC): FanEvent[] {
+export function selectFanPulseEvents(
+  events: readonly FanEvent[],
+  limit = MAX_PUBLISH_PER_SYNC,
+  now = Date.now(),
+): FanEvent[] {
   const byKey = new Map<string, FanEvent>();
   for (const event of events) {
-    if (!isPublishableFanEvent(event)) continue;
+    if (!isPublishableFanEvent(event, now)) continue;
     const key = `${event.type}:${event.segment_id ?? quantizedGridKey(event)}:${event.source_id}`;
     const current = byKey.get(key);
     if (!current || Date.parse(event.created_at) > Date.parse(current.created_at)) byKey.set(key, event);
@@ -69,8 +73,12 @@ export function selectFanPulseEvents(events: readonly FanEvent[], limit = MAX_PU
     .slice(0, limit);
 }
 
-export function fanEventToPulsePacket(event: FanEvent, route: readonly [number, number][]): LiveFanPulsePacket | null {
-  if (!isPublishableFanEvent(event)) return null;
+export function fanEventToPulsePacket(
+  event: FanEvent,
+  route: readonly [number, number][],
+  now = Date.now(),
+): LiveFanPulsePacket | null {
+  if (!isPublishableFanEvent(event, now)) return null;
   const relaySegmentId = event.segment_id ?? nearestRouteSegment(event, route)?.segmentId ?? null;
   if (!relaySegmentId) return null;
   const publicPoint = publicPulsePoint(event);
@@ -115,11 +123,12 @@ export async function publishFanPulse(
   route: readonly [number, number][],
   endpoint = FAN_PULSE_ENDPOINT,
   fetchImpl: typeof fetch = fetch,
+  now = Date.now(),
 ): Promise<number> {
   if (events.length === 0) return 0;
   let published = 0;
-  const packets = selectFanPulseEvents(events)
-    .map((event) => fanEventToPulsePacket(event, route))
+  const packets = selectFanPulseEvents(events, MAX_PUBLISH_PER_SYNC, now)
+    .map((event) => fanEventToPulsePacket(event, route, now))
     .filter((packet): packet is LiveFanPulsePacket => Boolean(packet));
 
   for (const packet of packets) {

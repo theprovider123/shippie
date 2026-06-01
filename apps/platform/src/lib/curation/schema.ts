@@ -31,6 +31,20 @@
 export const VALID_SURFACES = ['featured', 'arcade', 'labs', 'archived'] as const;
 export type Surface = (typeof VALID_SURFACES)[number];
 
+export const VALID_VISIBILITIES = ['public', 'unlisted', 'private', 'team', 'local'] as const;
+export type Visibility = (typeof VALID_VISIBILITIES)[number];
+
+export const VALID_TIERS = [
+  'public-flagship',
+  'private-flagship',
+  'supported',
+  'arcade',
+  'labs',
+  'legacy',
+  'production',
+] as const;
+export type CurationTier = (typeof VALID_TIERS)[number];
+
 export const VALID_CATEGORIES = [
   'food-drink',
   'health-fitness',
@@ -64,6 +78,8 @@ export const VALID_SUBCATEGORIES = [
 export type Subcategory = (typeof VALID_SUBCATEGORIES)[number];
 
 const SURFACE_SET = new Set<string>(VALID_SURFACES);
+const VISIBILITY_SET = new Set<string>(VALID_VISIBILITIES);
+const TIER_SET = new Set<string>(VALID_TIERS);
 const CATEGORY_SET = new Set<string>(VALID_CATEGORIES);
 const SUBCATEGORY_SET = new Set<string>(VALID_SUBCATEGORIES);
 
@@ -123,6 +139,8 @@ export function normalizeCategory(raw: unknown, mode: CategoryNormalizeMode = 'l
 export interface FirstPartyCurationEntry {
   surface: Surface;
   category: Category;
+  /** Product role: why this app exists in the slate. Independent from visibility and surface. */
+  tier: CurationTier;
   /** Optional arcade-shelf grouping (Daily Brain / Arcade Cabinet / Room / Strategy). */
   subcategory?: Subcategory;
   /** Successor slug for redirect chains (alias from this slug → that). */
@@ -136,6 +154,8 @@ export interface FirstPartyCurationEntry {
 export interface MakerCuration {
   surface: Surface;
   category: Category;
+  /** Optional maker role. Absent maker tiers default to `production` in deploy surfaces. */
+  tier?: CurationTier;
   subcategory?: Subcategory;
 }
 
@@ -188,6 +208,35 @@ function checkSurfaceCategory(
   return { surface: resolvedSurface, category: resolvedCategory, subcategory: resolvedSubcategory };
 }
 
+export function isVisibility(raw: unknown): raw is Visibility {
+  return typeof raw === 'string' && VISIBILITY_SET.has(raw);
+}
+
+export function isCurationTier(raw: unknown): raw is CurationTier {
+  return typeof raw === 'string' && TIER_SET.has(raw);
+}
+
+function checkTier(
+  raw: Record<string, unknown>,
+  errors: string[],
+  opts: { required: boolean },
+): CurationTier | null {
+  const tier = raw.tier;
+  if (tier === undefined || tier === null) {
+    if (opts.required) {
+      errors.push(`curation.tier missing (must be one of ${VALID_TIERS.join(', ')})`);
+    }
+    return null;
+  }
+  if (!isCurationTier(tier)) {
+    errors.push(
+      `curation.tier=${JSON.stringify(tier)} (must be one of ${VALID_TIERS.join(', ')})`,
+    );
+    return null;
+  }
+  return tier;
+}
+
 /**
  * Parse a maker-supplied curation block (e.g. from an uploaded
  * `shippie.json`). Strips `successor` defence-in-depth.
@@ -201,12 +250,17 @@ export function parseMakerCuration(raw: unknown): ValidationResult<MakerCuration
   }
   const errors: string[] = [];
   const { surface, category, subcategory } = checkSurfaceCategory(raw, errors);
+  const tier = checkTier(raw, errors, { required: false });
+  if (tier && tier !== 'production') {
+    errors.push(`curation.tier=${JSON.stringify(tier)} (maker uploads may only declare production)`);
+  }
   // Maker uploads MUST NOT carry successor; ignored if present (the
   // pipeline scrubs it before any persistence).
   if (errors.length > 0 || !surface || !category) {
     return { ok: false, errors };
   }
   const value: MakerCuration = { surface, category };
+  if (tier) value.tier = tier;
   if (subcategory) value.subcategory = subcategory;
   return { ok: true, value };
 }
@@ -226,6 +280,7 @@ export function parseFirstPartyCurationEntry(
   }
   const errors: string[] = [];
   const { surface, category, subcategory } = checkSurfaceCategory(raw, errors);
+  const tier = checkTier(raw, errors, { required: true });
   let successor: string | undefined;
   if (raw.successor !== undefined && raw.successor !== null) {
     if (typeof raw.successor !== 'string') {
@@ -238,10 +293,10 @@ export function parseFirstPartyCurationEntry(
       successor = raw.successor;
     }
   }
-  if (errors.length > 0 || !surface || !category) {
+  if (errors.length > 0 || !surface || !category || !tier) {
     return { ok: false, errors };
   }
-  const value: FirstPartyCurationEntry = { surface, category };
+  const value: FirstPartyCurationEntry = { surface, category, tier };
   if (subcategory) value.subcategory = subcategory;
   if (successor !== undefined) value.successor = successor;
   return { ok: true, value };
@@ -249,4 +304,4 @@ export function parseFirstPartyCurationEntry(
 
 // Re-exports for the prepare-showcases.mjs script which still uses the
 // raw Sets in some places — keep them stable so behaviour matches.
-export { SURFACE_SET, CATEGORY_SET, SUBCATEGORY_SET };
+export { SURFACE_SET, VISIBILITY_SET, TIER_SET, CATEGORY_SET, SUBCATEGORY_SET };

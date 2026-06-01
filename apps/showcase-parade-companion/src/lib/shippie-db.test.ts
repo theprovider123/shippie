@@ -5,6 +5,8 @@ import { clearFanEvents, listFanEvents, saveFanEvents } from './shippie-db';
 
 const route = FALLBACK_ROUTE_PACK.route.coordinates;
 const position = { lng: -0.1048, lat: 51.5487, accuracyM: 18 };
+const ACTIVE_NOW = new Date('2026-05-31T14:00:00+01:00');
+const ACTIVE_NOW_MS = ACTIVE_NOW.getTime();
 
 describe('shippie db fan events', () => {
   beforeEach(() => {
@@ -13,15 +15,15 @@ describe('shippie db fan events', () => {
 
   test('prunes expired fan events and caps stored active rows', async () => {
     const active = Array.from({ length: 130 }, (_, index) =>
-      createFanEvent('presence', { ...position, lng: position.lng + index * 0.000001 }, route, `fan_${index}`),
+      createFanEvent('presence', { ...position, lng: position.lng + index * 0.000001 }, route, `fan_${index}`, ACTIVE_NOW),
     );
     const expired = {
-      ...createFanEvent('bus_seen', position, route, 'fan_expired'),
-      expires_at: new Date(Date.now() - 1_000).toISOString(),
+      ...createFanEvent('bus_seen', position, route, 'fan_expired', ACTIVE_NOW),
+      expires_at: new Date(ACTIVE_NOW_MS - 1_000).toISOString(),
     };
 
     await saveFanEvents([...active, expired]);
-    const rows = await listFanEvents();
+    const rows = await listFanEvents(ACTIVE_NOW_MS);
 
     expect(rows).toHaveLength(120);
     expect(rows.every((event) => event.id !== expired.id)).toBe(true);
@@ -29,12 +31,12 @@ describe('shippie db fan events', () => {
   });
 
   test('clear removes stored fan events', async () => {
-    await saveFanEvents([createFanEvent('road_blocked', position, route, 'fan_block')]);
-    expect(await listFanEvents()).toHaveLength(1);
+    await saveFanEvents([createFanEvent('road_blocked', position, route, 'fan_block', ACTIVE_NOW)]);
+    expect(await listFanEvents(ACTIVE_NOW_MS)).toHaveLength(1);
 
     await clearFanEvents();
 
-    expect(await listFanEvents()).toHaveLength(0);
+    expect(await listFanEvents(ACTIVE_NOW_MS)).toHaveLength(0);
   });
 });
 

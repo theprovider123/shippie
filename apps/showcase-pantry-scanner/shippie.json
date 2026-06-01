@@ -6,6 +6,7 @@
   "icon": "/icon.svg",
   "theme_color": "#74A57F",
   "background_color": "#FAF7EF",
+  "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
@@ -30,6 +31,7 @@
   "curation": {
     "surface": "archived",
     "category": "tools",
+    "tier": "legacy",
     "successor": "palate"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-pantry-scanner",

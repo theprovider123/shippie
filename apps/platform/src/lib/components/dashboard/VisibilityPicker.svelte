@@ -2,9 +2,9 @@
   import { invalidate } from '$app/navigation';
   import { toast } from '$lib/stores/toast';
 
-  type Scope = 'public' | 'unlisted' | 'private';
+  type Scope = 'public' | 'unlisted' | 'private' | 'team';
 
-  let { slug, initial }: { slug: string; initial: Scope } = $props();
+  let { slug, initial, organizationId = null }: { slug: string; initial: Scope; organizationId?: string | null } = $props();
 
   let scope = $state<Scope>('public');
   let saving = $state(false);
@@ -14,11 +14,14 @@
     scope = initial;
   });
 
-  const OPTIONS: Array<{ value: Scope; label: string; blurb: string }> = [
+  const options = $derived([
     { value: 'public', label: 'Public', blurb: 'Listed on /apps and /leaderboards.' },
     { value: 'unlisted', label: 'Unlisted', blurb: 'Anyone with the URL can open. Not listed.' },
     { value: 'private', label: 'Private', blurb: 'Invitees only. Hidden from search.' },
-  ];
+    ...((organizationId || scope === 'team' || initial === 'team')
+      ? [{ value: 'team' as const, label: 'Team', blurb: 'Visible to members of the owning team.' }]
+      : []),
+  ] satisfies Array<{ value: Scope; label: string; blurb: string }>);
 
   async function onChange(next: Scope) {
     if (next === scope) return;
@@ -27,7 +30,10 @@
     const res = await fetch(`/api/apps/${encodeURIComponent(slug)}/visibility`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ visibility_scope: next }),
+      body: JSON.stringify({
+        visibility_scope: next,
+        ...(next === 'team' && organizationId ? { organization_id: organizationId } : {}),
+      }),
     });
     saving = false;
     if (!res.ok) {
@@ -46,7 +52,7 @@
 </script>
 
 <div class="picker">
-  {#each OPTIONS as opt (opt.value)}
+  {#each options as opt (opt.value)}
     <label class:active={scope === opt.value}>
       <input
         type="radio"

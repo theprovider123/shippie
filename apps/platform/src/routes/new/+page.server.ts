@@ -6,15 +6,18 @@
  */
 import type { PageServerLoad } from './$types';
 import { getDrizzleClient } from '$server/db/client';
-import { remixEligibilityForSlug } from '$server/remix/eligibility';
+import { loadReservedSlugs } from '$server/deploy/reserved-slugs';
+import { remixHandoffForSlug } from '$server/remix/handoff';
 
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
   const remixSlug = url.searchParams.get('remix')?.trim() || null;
-  let remix: Awaited<ReturnType<typeof remixEligibilityForSlug>> | null = null;
+  let remix: Awaited<ReturnType<typeof remixHandoffForSlug>> | null = null;
 
   if (remixSlug) {
     remix = platform?.env.DB
-      ? await remixEligibilityForSlug(getDrizzleClient(platform.env.DB), remixSlug)
+      ? await remixHandoffForSlug(getDrizzleClient(platform.env.DB), remixSlug, {
+          reservedSlugs: await loadReservedSlugs(platform.env.DB),
+        })
       : { ok: false, reason: 'Database binding unavailable.' };
   }
 

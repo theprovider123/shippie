@@ -203,7 +203,7 @@ export async function postWrapperAnalyticsViaRegistry(
   });
 
   // Mirror invariant: if the ledger could not record this, don't send.
-  if (!mirror.mirrored && mirror.reason !== 'idb-unavailable') {
+  if (!mirror.mirrored) {
     return {
       accepted: false,
       mirrored: false,

@@ -336,6 +336,8 @@ export const load: PageServerLoad = async ({ platform, params, cookies, locals, 
 function bundledAppDetail(slug: string) {
   const app = curatedApps.find((item) => item.slug === slug);
   if (!app || !isFirstPartyShowcase(slug)) return null;
+  const visibility = app.visibility ?? 'public';
+  if (visibility !== 'public' && visibility !== 'unlisted') return null;
   const category = app.category ?? 'tools';
   return {
     app: {
@@ -349,7 +351,7 @@ function bundledAppDetail(slug: string) {
       themeColor: app.accent,
       upvoteCount: 0,
       installCount: 0,
-      visibility: 'public' as const,
+      visibility,
       pwaReadiness: {
         status: 'confirmed' as const,
         reasons: ['first-party-showcase'],
@@ -554,4 +556,3 @@ function cleanUrl(value: FormDataEntryValue | null): string | null {
     return null;
   }
 }
-

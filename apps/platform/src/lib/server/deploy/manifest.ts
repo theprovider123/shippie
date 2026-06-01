@@ -6,7 +6,8 @@
  *   - Otherwise, look for shippie.json in the zip.
  *   - Otherwise auto-draft from defaults + local-data passport metadata.
  */
-import { parseMakerCuration, type MakerCuration } from '$lib/curation/schema';
+import { isVisibility, parseMakerCuration, type MakerCuration, type Visibility } from '$lib/curation/schema';
+import { normalizeSourceRepo } from '$server/remix/source-repo';
 
 export interface ShippieJsonLite {
   version?: number;
@@ -18,6 +19,7 @@ export interface ShippieJsonLite {
   category: string;
   theme_color?: string;
   background_color?: string;
+  visibility?: Visibility;
   icon?: string;
   permissions?: {
     auth?: boolean;
@@ -182,18 +184,21 @@ export interface DerivedManifest {
 export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
   // Maker-provided manifest always wins
   if (input.shippieJson) {
+    const raw = input.shippieJson as unknown as Record<string, unknown>;
     return {
       manifest: {
         ...input.shippieJson,
         slug: input.slug,
-        data: hasObjectDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
-          ? parseDataPolicy((input.shippieJson as unknown as Record<string, unknown>).data)
+        visibility: parseManifestVisibility(raw.visibility),
+        source_repo: normalizedSourceRepo(raw.source_repo),
+        data: hasObjectDataPolicy(raw.data)
+          ? parseDataPolicy(raw.data)
           : undefined,
         data_passport: parseDataPassport(
-          (input.shippieJson as unknown as Record<string, unknown>).data_passport,
+          raw.data_passport,
           input.slug,
         ),
-        spaces: parseSpaces((input.shippieJson as unknown as Record<string, unknown>).spaces),
+        spaces: parseSpaces(raw.spaces),
       },
       notes: [],
     };
@@ -214,6 +219,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         category: typeof m.category === 'string' ? m.category : 'tools',
         theme_color: typeof m.theme_color === 'string' ? m.theme_color : '#E8603C',
         background_color: typeof m.background_color === 'string' ? m.background_color : '#ffffff',
+        visibility: parseManifestVisibility(m.visibility),
         icon: typeof m.icon === 'string' ? m.icon : undefined,
         permissions: typeof m.permissions === 'object' && m.permissions !== null
           ? (m.permissions as ShippieJsonLite['permissions'])
@@ -236,7 +242,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         data_passport: parseDataPassport(m.data_passport, input.slug),
         spaces: parseSpaces(m.spaces),
         intents: parseIntents(m.intents),
-        source_repo: typeof m.source_repo === 'string' ? m.source_repo : undefined,
+        source_repo: normalizedSourceRepo(m.source_repo),
         license: typeof m.license === 'string' ? m.license : undefined,
         remix_allowed: typeof m.remix_allowed === 'boolean' ? m.remix_allowed : undefined,
         template_id: typeof m.template_id === 'string' ? m.template_id : undefined,
@@ -281,6 +287,10 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
   return { manifest: base, notes };
 }
 
+function normalizedSourceRepo(raw: unknown): string | undefined {
+  return normalizeSourceRepo(raw)?.webUrl;
+}
+
 function defaultManifest(slug: string): ShippieJsonLite {
   return {
     version: 1,
@@ -290,9 +300,14 @@ function defaultManifest(slug: string): ShippieJsonLite {
     category: 'tools',
     theme_color: '#E8603C',
     background_color: '#ffffff',
+    visibility: 'public',
     data: defaultDataPolicy(slug),
     data_passport: defaultDataPassport(slug),
   };
+}
+
+export function parseManifestVisibility(raw: unknown): Visibility | undefined {
+  return isVisibility(raw) ? raw : undefined;
 }
 
 export function defaultDataPassport(slug: string): ShippieDataPassport {

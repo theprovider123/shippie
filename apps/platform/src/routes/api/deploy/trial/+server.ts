@@ -58,6 +58,12 @@ export const POST: RequestHandler = async (event) => {
   if (!(zip instanceof File)) {
     return json({ error: 'missing_zip' }, { status: 400 });
   }
+  if (remixFrom && remixFrom === String(form.get('slug') ?? '').trim()) {
+    return json(
+      { error: 'self_remix_not_allowed', reason: 'An app cannot be deployed as a remix of itself.' },
+      { status: 400 },
+    );
+  }
   if (zip.size > TRIAL_MAX_ZIP_BYTES) {
     return json(
       { error: 'zip_too_large', limit_bytes: TRIAL_MAX_ZIP_BYTES },

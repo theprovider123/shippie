@@ -349,6 +349,8 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     formOverride: input.surfaceOverride,
     existingSurface: appRow?.surface,
   });
+  const resolvedVisibilityScope =
+    input.visibilityScope ?? normalizeVisibilityScope(manifest.visibility ?? appRow?.visibilityScope ?? 'public');
 
   if (!appRow) {
     const [inserted] = await db
@@ -366,7 +368,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
         sourceType: 'zip',
         makerId: input.makerId,
         organizationId: input.organizationId ?? null,
-        visibilityScope: input.visibilityScope ?? 'public',
+        visibilityScope: resolvedVisibilityScope,
         currentPwaReadiness: pwaReadiness.status,
         currentPwaReadinessReasons: pwaReadiness.reasons,
         currentPwaReadinessCheckedAt: pwaReadiness.checkedAt,
@@ -403,6 +405,9 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     existingLineage ?? null,
     appRow.githubRepo,
   );
+  if (isSelfRemixLineage(resolvedLineage.parentAppId, appRow.id)) {
+    return failReport(input.slug, 'An app cannot be deployed as a remix of itself.');
+  }
   const sourceMetadata = sourceMetadataFromLineage(resolvedLineage);
 
   // Determine next version
@@ -497,7 +502,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       activeDeployId: deployRow.id,
       latestDeployId: deployRow.id,
       latestDeployStatus: 'success',
-      visibilityScope: input.visibilityScope ?? appRow.visibilityScope,
+      visibilityScope: resolvedVisibilityScope,
       organizationId: input.organizationId ?? appRow.organizationId,
       lastDeployedAt: completedAt,
       firstPublishedAt: appRow.firstPublishedAt ?? completedAt,
@@ -518,7 +523,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       slug: input.slug,
       deployId: deployRow.id,
       version,
-      visibilityScope: input.visibilityScope ?? appRow.visibilityScope,
+      visibilityScope: resolvedVisibilityScope,
       sourceType: 'zip',
     },
   });
@@ -568,7 +573,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     theme_color: manifest.theme_color ?? '#E8603C',
     background_color: manifest.background_color ?? '#ffffff',
     version,
-    visibility_scope: input.visibilityScope ?? appRow.visibilityScope,
+    visibility_scope: resolvedVisibilityScope,
     organization_id: input.organizationId ?? appRow.organizationId ?? undefined,
     permissions: manifest.permissions ?? {
       auth: false,
@@ -688,7 +693,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     totalBytes: upload.totalBytes,
     preflight,
     liveUrl,
-    visibilityScope: input.visibilityScope ?? normalizeVisibilityScope(appRow.visibilityScope),
+    visibilityScope: resolvedVisibilityScope,
     appId: appRow.id,
     deployId: deployRow.id,
     notes: manifestResult.notes.length > 0 ? manifestResult.notes : undefined,
@@ -730,7 +735,9 @@ function failReport(slug: string, reason: string): DeployStaticResult {
 }
 
 function normalizeVisibilityScope(value: string): NonNullable<DeployStaticResult['visibilityScope']> {
-  return value === 'private' || value === 'unlisted' || value === 'team' ? value : 'public';
+  if (value === 'private' || value === 'unlisted' || value === 'team') return value;
+  if (value === 'local') return 'private';
+  return 'public';
 }
 
 function appHostFromPublicOrigin(publicOrigin: string, slug: string): string | null {
@@ -1339,6 +1346,9 @@ async function writeDeployReport(input: WriteDeployReportInput): Promise<void> {
           hub: true,
           minimumSdk: '1.0.0',
         },
+        surface: input.manifest.curation?.surface,
+        visibility: input.manifest.visibility,
+        tier: input.manifest.curation?.tier ?? 'production',
         spaces: input.manifest.spaces,
       },
       appFiles: input.files,
@@ -1624,6 +1634,10 @@ function resolveLineageValues(
     license: manifest.license ?? override?.license ?? existing?.license ?? null,
     remixAllowed: manifest.remix_allowed ?? override?.remixAllowed ?? existing?.remixAllowed ?? false,
   };
+}
+
+export function isSelfRemixLineage(parentAppId: string | null | undefined, appId: string): boolean {
+  return Boolean(parentAppId && parentAppId === appId);
 }
 
 function sourceMetadataFromLineage(lineage: ResolvedLineageValues): SourceMetadata {

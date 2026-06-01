@@ -17,10 +17,13 @@ import {
 
 const route = FALLBACK_ROUTE_PACK.route.coordinates;
 const position = { lng: -0.1048, lat: 51.5487, accuracyM: 18 };
+const ACTIVE_NOW = new Date('2026-05-31T14:00:00+01:00');
+const ACTIVE_NOW_MS = ACTIVE_NOW.getTime();
+const MIDDAY_NOW_MS = Date.parse('2026-05-31T12:05:00+01:00');
 
 describe('fan events', () => {
   test('creates a route-snapped local signal', () => {
-    const event = createFanEvent('bus_seen', position, route, 'fan_test');
+    const event = createFanEvent('bus_seen', position, route, 'fan_test', ACTIVE_NOW);
     expect(event.type).toBe('bus_seen');
     expect(event.source).toBe('local');
     expect(event.segment_id).toMatch(/^seg-/);
@@ -30,7 +33,7 @@ describe('fan events', () => {
   });
 
   test('keeps very wide GPS snapshots unsnapped instead of inventing a precise route point', () => {
-    const event = createFanEvent('presence', { ...position, accuracyM: 900 }, route, 'fan_wide');
+    const event = createFanEvent('presence', { ...position, accuracyM: 900 }, route, 'fan_wide', ACTIVE_NOW);
 
     expect(event.segment_id).toBeNull();
     expect(event.snapped_lng).toBeNull();
@@ -44,12 +47,14 @@ describe('fan events', () => {
       { lng: -0.139, lat: 51.5487, accuracyM: 24 },
       route,
       'fan_off_map',
+      ACTIVE_NOW,
     );
     const tooFar = createFanEvent(
       'presence',
       { lng: -0.22, lat: 51.5487, accuracyM: 24 },
       route,
       'fan_too_far',
+      ACTIVE_NOW,
     );
 
     expect(validateFanEvent(nearbyOutside)).toBe(true);
@@ -57,10 +62,10 @@ describe('fan events', () => {
   });
 
   test('summarizes active presence, reports, and carried phones', () => {
-    const here = createFanEvent('presence', position, route, 'fan_a');
-    const carried = { ...createFanEvent('presence', position, route, 'fan_b'), source: 'nearby_sync' as const };
-    const report = createFanEvent('crowd_dense', position, route, 'fan_c');
-    const summary = summarizeFanEvents([here, carried, report]);
+    const here = createFanEvent('presence', position, route, 'fan_a', ACTIVE_NOW);
+    const carried = { ...createFanEvent('presence', position, route, 'fan_b', ACTIVE_NOW), source: 'nearby_sync' as const };
+    const report = createFanEvent('crowd_dense', position, route, 'fan_c', ACTIVE_NOW);
+    const summary = summarizeFanEvents([here, carried, report], ACTIVE_NOW_MS);
 
     expect(summary.hereCount).toBe(2);
     expect(summary.carriedPhones).toBe(1);
@@ -71,11 +76,11 @@ describe('fan events', () => {
 
   test('round-trips through QR fragment and imports as nearby sync', async () => {
     const events = [
-      createFanEvent('presence', position, route, 'fan_a'),
-      createFanEvent('road_blocked', position, route, 'fan_b'),
-      createFanEvent('food_open', { ...position, lng: -0.1042, lat: 51.5421 }, route, 'fan_c'),
+      createFanEvent('presence', position, route, 'fan_a', ACTIVE_NOW),
+      createFanEvent('road_blocked', position, route, 'fan_b', ACTIVE_NOW),
+      createFanEvent('food_open', { ...position, lng: -0.1042, lat: 51.5421 }, route, 'fan_c', ACTIVE_NOW),
     ];
-    const fragment = await encodeFanEventsForSync(events);
+    const fragment = await encodeFanEventsForSync(events, ACTIVE_NOW_MS);
     const decoded = await decodeFanEventsSync(fragment);
 
     expect(decoded).toHaveLength(3);
@@ -84,9 +89,9 @@ describe('fan events', () => {
   });
 
   test('open food and toilet-here reports stay at the GPS point instead of snapping to the route', () => {
-    const food = createFanEvent('food_open', position, route, 'fan_food');
-    const queue = createFanEvent('toilet_queue', position, route, 'fan_toilet');
-    const summary = summarizeFanEvents([food, queue]);
+    const food = createFanEvent('food_open', position, route, 'fan_food', ACTIVE_NOW);
+    const queue = createFanEvent('toilet_queue', position, route, 'fan_toilet', ACTIVE_NOW);
+    const summary = summarizeFanEvents([food, queue], ACTIVE_NOW_MS);
 
     expect(food.segment_id).toBeNull();
     expect(food.snapped_lng).toBeNull();
@@ -95,14 +100,14 @@ describe('fan events', () => {
   });
 
   test('ignores expired events and dedupes by id', () => {
-    const fresh = createFanEvent('need_help', position, route, 'fan_a');
+    const fresh = createFanEvent('need_help', position, route, 'fan_a', ACTIVE_NOW);
     const expired = {
-      ...createFanEvent('bus_seen', position, route, 'fan_b'),
-      expires_at: new Date(Date.now() - 1000).toISOString(),
+      ...createFanEvent('bus_seen', position, route, 'fan_b', ACTIVE_NOW),
+      expires_at: new Date(ACTIVE_NOW_MS - 1000).toISOString(),
     };
-    const duplicate = { ...fresh, created_at: new Date(Date.now() - 1000).toISOString() };
+    const duplicate = { ...fresh, created_at: new Date(ACTIVE_NOW_MS - 1000).toISOString() };
     const deduped = dedupeFanEvents([fresh, expired, duplicate]);
-    const summary = summarizeFanEvents(deduped);
+    const summary = summarizeFanEvents(deduped, ACTIVE_NOW_MS);
 
     expect(deduped).toHaveLength(2);
     expect(summary.latestBus).toBeNull();
@@ -111,11 +116,11 @@ describe('fan events', () => {
 
   test('groups nearby pings into one live map location per route stretch and type', () => {
     const events = [
-      createFanEvent('presence', position, route, 'fan_a'),
-      createFanEvent('presence', { ...position, lng: -0.10481, lat: 51.54871 }, route, 'fan_b'),
-      createFanEvent('crowd_dense', position, route, 'fan_c'),
+      createFanEvent('presence', position, route, 'fan_a', ACTIVE_NOW),
+      createFanEvent('presence', { ...position, lng: -0.10481, lat: 51.54871 }, route, 'fan_b', ACTIVE_NOW),
+      createFanEvent('crowd_dense', position, route, 'fan_c', ACTIVE_NOW),
     ];
-    const clusters = clusterFanEvents(events);
+    const clusters = clusterFanEvents(events, ACTIVE_NOW_MS);
     const presence = clusters.find((cluster) => cluster.type === 'presence');
     const crowd = clusters.find((cluster) => cluster.type === 'crowd_dense');
 
@@ -128,11 +133,11 @@ describe('fan events', () => {
 
   test('does not let one phone inflate a grouped live location', () => {
     const events = [
-      createFanEvent('road_blocked', position, route, 'fan_repeat'),
-      createFanEvent('road_blocked', { ...position, lng: -0.10482 }, route, 'fan_repeat'),
-      createFanEvent('road_blocked', { ...position, lng: -0.10483 }, route, 'fan_other'),
+      createFanEvent('road_blocked', position, route, 'fan_repeat', ACTIVE_NOW),
+      createFanEvent('road_blocked', { ...position, lng: -0.10482 }, route, 'fan_repeat', ACTIVE_NOW),
+      createFanEvent('road_blocked', { ...position, lng: -0.10483 }, route, 'fan_other', ACTIVE_NOW),
     ];
-    const blocked = clusterFanEvents(events).find((cluster) => cluster.type === 'road_blocked');
+    const blocked = clusterFanEvents(events, ACTIVE_NOW_MS).find((cluster) => cluster.type === 'road_blocked');
 
     expect(blocked?.count).toBe(2);
     expect(blocked?.signalCount).toBe(3);
@@ -162,7 +167,9 @@ describe('fan events', () => {
       new Date('2026-05-31T12:02:00+01:00'),
     );
 
-    const toilet = clusterFanEvents([oldRepeat, latestRepeat, otherFan]).find((cluster) => cluster.type === 'toilet_queue');
+    const toilet = clusterFanEvents([oldRepeat, latestRepeat, otherFan], MIDDAY_NOW_MS).find(
+      (cluster) => cluster.type === 'toilet_queue',
+    );
 
     expect(toilet?.count).toBe(2);
     expect(toilet?.signalCount).toBe(3);
@@ -177,7 +184,7 @@ describe('fan events', () => {
       createFanEvent('crowd_dense', position, route, 'fan_repeat', new Date('2026-05-31T12:02:00+01:00')),
     ];
 
-    const summary = summarizeFanEvents(rows);
+    const summary = summarizeFanEvents(rows, MIDDAY_NOW_MS);
 
     expect(summary.activeReports[0]?.type).toBe('crowd_dense');
     expect(summary.activeReports[0]?.count).toBe(1);
@@ -189,18 +196,20 @@ describe('fan events', () => {
     const latestRepeat = createFanEvent('bus_seen', position, route, 'fan_repeat', new Date('2026-05-31T12:01:00+01:00'));
     const otherFan = createFanEvent('bus_seen', position, route, 'fan_other', new Date('2026-05-31T12:02:00+01:00'));
 
-    const selected = selectCarryFanEvents([oldRepeat, latestRepeat, otherFan]);
-    const decoded = await decodeFanEventsSync(await encodeFanEventsForSync([oldRepeat, latestRepeat, otherFan]));
+    const selected = selectCarryFanEvents([oldRepeat, latestRepeat, otherFan], MIDDAY_NOW_MS);
+    const decoded = await decodeFanEventsSync(
+      await encodeFanEventsForSync([oldRepeat, latestRepeat, otherFan], MIDDAY_NOW_MS),
+    );
 
     expect(selected.map((event) => event.id).sort()).toEqual([latestRepeat.id, otherFan.id].sort());
     expect(decoded.map((event) => event.id).sort()).toEqual([latestRepeat.id, otherFan.id].sort());
   });
 
   test('does not carry private help taps through QR sync', async () => {
-    const help = createFanEvent('need_help', position, route, 'fan_help');
-    const here = createFanEvent('presence', position, route, 'fan_here');
-    const selected = selectCarryFanEvents([help, here]);
-    const decoded = await decodeFanEventsSync(await encodeFanEventsForSync([help, here]));
+    const help = createFanEvent('need_help', position, route, 'fan_help', ACTIVE_NOW);
+    const here = createFanEvent('presence', position, route, 'fan_here', ACTIVE_NOW);
+    const selected = selectCarryFanEvents([help, here], ACTIVE_NOW_MS);
+    const decoded = await decodeFanEventsSync(await encodeFanEventsForSync([help, here], ACTIVE_NOW_MS));
 
     expect(selected.map((event) => event.type)).toEqual(['presence']);
     expect(decoded.map((event) => event.type)).toEqual(['presence']);
@@ -213,13 +222,13 @@ describe('fan events', () => {
   });
 
   test('drops expired pings from live map clusters', () => {
-    const fresh = createFanEvent('need_help', position, route, 'fan_a');
+    const fresh = createFanEvent('need_help', position, route, 'fan_a', ACTIVE_NOW);
     const expired = {
-      ...createFanEvent('need_help', position, route, 'fan_b'),
-      expires_at: new Date(Date.now() - 1_000).toISOString(),
+      ...createFanEvent('need_help', position, route, 'fan_b', ACTIVE_NOW),
+      expires_at: new Date(ACTIVE_NOW_MS - 1_000).toISOString(),
     };
 
-    const help = clusterFanEvents([fresh, expired]).find((cluster) => cluster.type === 'need_help');
+    const help = clusterFanEvents([fresh, expired], ACTIVE_NOW_MS).find((cluster) => cluster.type === 'need_help');
 
     expect(help?.count).toBe(1);
     expect(help?.latest.id).toBe(fresh.id);

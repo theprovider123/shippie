@@ -3,11 +3,9 @@
   import WrapForm from './wrap-form.svelte';
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
-  const remixApp = $derived(data.remix?.ok ? data.remix.app : null);
-  const remixSlug = $derived(remixApp ? `${remixApp.slug}-remix` : 'recipes');
-  const forkUrl = $derived(
-    remixApp?.sourceRepo.includes('github.com/') ? `${remixApp.sourceRepo.replace(/\/$/, '')}/fork` : null,
-  );
+  const remixApp = $derived(data.remix?.ok ? data.remix.remix : null);
+  const remixSlug = $derived(remixApp?.targetSlug ?? 'recipes');
+  const forkUrl = $derived(remixApp?.forkUrl ?? null);
 
   const checks = [
     'Detects local-tool capabilities',

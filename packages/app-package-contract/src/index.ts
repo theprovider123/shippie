@@ -140,6 +140,28 @@ export interface PackageSpaces {
   archivable: boolean;
 }
 
+export type PackageVisibility = 'public' | 'unlisted' | 'private' | 'team' | 'local';
+export type PackageCurationTier =
+  | 'public-flagship'
+  | 'private-flagship'
+  | 'supported'
+  | 'arcade'
+  | 'labs'
+  | 'legacy'
+  | 'production';
+
+const PACKAGE_SURFACES = ['featured', 'arcade', 'labs', 'archived'] as const;
+const PACKAGE_VISIBILITIES = ['public', 'unlisted', 'private', 'team', 'local'] as const;
+const PACKAGE_CURATION_TIERS = [
+  'public-flagship',
+  'private-flagship',
+  'supported',
+  'arcade',
+  'labs',
+  'legacy',
+  'production',
+] as const;
+
 export interface AppPackageManifest {
   schema: typeof SHIPPIE_PACKAGE_SCHEMA;
   id: string;
@@ -162,6 +184,10 @@ export interface AppPackageManifest {
    * (those default to 'featured').
    */
   surface?: 'featured' | 'arcade' | 'labs' | 'archived';
+  /** Access scope for imported/re-installed packages. Optional for legacy manifests. */
+  visibility?: PackageVisibility;
+  /** Product role for curation and maker dashboards. Optional for legacy manifests. */
+  tier?: PackageCurationTier;
   /**
    * Private Spaces declaration copied from shippie.json. This is metadata,
    * not access control: invite grants and app code still enforce joins.
@@ -484,6 +510,24 @@ export function assertValidPackageManifest(manifest: AppPackageManifest): void {
   if (!isHttpUrl(manifest.domains.canonical)) {
     throw new AppPackageContractError('Canonical domain must be an HTTPS or local URL.', 'invalid_canonical_domain', {
       canonical: manifest.domains.canonical,
+    });
+  }
+
+  if (manifest.surface && !(PACKAGE_SURFACES as readonly string[]).includes(manifest.surface)) {
+    throw new AppPackageContractError('Package surface is invalid.', 'invalid_surface', {
+      surface: manifest.surface,
+    });
+  }
+
+  if (manifest.visibility && !(PACKAGE_VISIBILITIES as readonly string[]).includes(manifest.visibility)) {
+    throw new AppPackageContractError('Package visibility is invalid.', 'invalid_visibility', {
+      visibility: manifest.visibility,
+    });
+  }
+
+  if (manifest.tier && !(PACKAGE_CURATION_TIERS as readonly string[]).includes(manifest.tier)) {
+    throw new AppPackageContractError('Package curation tier is invalid.', 'invalid_curation_tier', {
+      tier: manifest.tier,
     });
   }
 

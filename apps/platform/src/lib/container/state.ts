@@ -66,6 +66,11 @@ export type ContainerApp = {
    */
   surface?: import('$lib/_generated/first-party-curation').CurationSurface;
   /**
+   * Product role for first-party curation. This is deliberately separate
+   * from `surface` (where it appears) and `visibility` (who may see it).
+   */
+  tier?: import('$lib/_generated/first-party-curation').CurationTier;
+  /**
    * Dev-only URL for the showcase's Vite dev server. When set, the
    * container loads this URL in the iframe instead of synthesising a
    * fixture page via `appSrcdoc`. Leave undefined in production.
@@ -1135,12 +1140,23 @@ const curatedAppSpecs: CuratedAppSpec[] = [
 // curation `surface` from the generated first-party manifest. Apps
 // without a manifest entry default to `featured` so third-party
 // additions or pre-manifest specs don't silently disappear.
-import { curationFor, showcasesBySurface as _showcasesBySurface } from '$lib/_generated/first-party-curation';
-import type { CurationSurface as _CurationSurface } from '$lib/_generated/first-party-curation';
+import { curationFor } from '$lib/_generated/first-party-curation';
+import type {
+  CurationSurface as _CurationSurface,
+  CurationTier as _CurationTier,
+} from '$lib/_generated/first-party-curation';
 
 export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp).map((app) => {
   const entry = curationFor(app.slug);
-  return entry ? { ...app, surface: entry.surface } : app;
+  return entry
+    ? {
+        ...app,
+        surface: entry.surface,
+        visibility: entry.visibility,
+        tier: entry.tier,
+        category: entry.category,
+      }
+    : app;
 });
 
 /**
@@ -1149,7 +1165,11 @@ export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp).map((
  * listings (the main marketplace, /arcade, /labs).
  */
 export function curatedAppsBySurface(surface: _CurationSurface): ContainerApp[] {
-  return curatedApps.filter((app) => (app.surface ?? 'featured') === surface);
+  return curatedApps.filter((app) => (app.visibility ?? 'public') === 'public' && (app.surface ?? 'featured') === surface);
+}
+
+export function curatedAppsByTier(tier: _CurationTier): ContainerApp[] {
+  return curatedApps.filter((app) => (app.visibility ?? 'public') === 'public' && app.tier === tier);
 }
 
 // ---------------------------------------------------------------------------

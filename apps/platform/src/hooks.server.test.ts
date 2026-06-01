@@ -133,24 +133,21 @@ describe('hooks.server first-party showcase routing', () => {
     expect(resolve).not.toHaveBeenCalled();
   });
 
-  // Slate v4 Phase 0 alias coverage. Each consolidation pair has an
-  // entry in SLUG_ALIASES (live-room→match-room, care-log→co-pilot,
-  // journal→therapy-notes, move→lift). A request to the OLD slug's
-  // subdomain must 302 to the CANONICAL `/run/<successor>/` so old
-  // shortcuts visibly migrate. The bare `/run/<old>/` 302 lives in
-  // routes/run/[slug]/+page.server.ts (covered by its own test); this
-  // covers the subdomain-edge path.
+  // Slate alias coverage. Retired-but-baked apps keep explicit
+  // redirects so old shortcuts visibly migrate. Private flagships and
+  // live arcade games stay canonical and are not aliased here.
   for (const [oldSlug, location] of [
     ['live-room', 'https://shippie.app/run/match-room/?from=live-room'],
     ['show-and-tell', 'https://shippie.app/run/whiteboard/?mode=show-and-tell&from=show-and-tell'],
-    ['would-you-rather', 'https://shippie.app/run/drawing-telephone/?pack=would-you-rather&from=would-you-rather'],
     ['matchday', 'match-room'],
-    ['care-log', 'co-pilot'],
-    ['journal', 'therapy-notes'],
     ['move', 'lift'],
+    ['habit-tracker', 'https://shippie.app/run/chiwit/?tab=track&from=habit-tracker'],
     ['shopping-list', 'https://shippie.app/run/palate/?tab=shop&from=shopping-list'],
     ['meal-planner', 'https://shippie.app/run/palate/?tab=plan&from=meal-planner'],
     ['pantry-scanner', 'https://shippie.app/run/palate/?tab=pantry&from=pantry-scanner'],
+    ['body-metrics', 'https://shippie.app/run/lift/?from=body-metrics'],
+    ['breath', 'https://shippie.app/run/quiet/?from=breath'],
+    ['colour-of-day', 'https://shippie.app/run/chiwit/?tab=track&from=colour-of-day'],
   ] as const) {
     test(`subdomain ${oldSlug}.shippie.app/ 302s to canonical successor`, async () => {
       const resolve = vi.fn(async () => new Response('fallthrough'));
@@ -162,26 +159,6 @@ describe('hooks.server first-party showcase routing', () => {
       expect(res.status).toBe(302);
       expect(res.headers.get('location')).toBe(
         location.startsWith('https://') ? location : `https://shippie.app/run/${location}/`,
-      );
-      expect(resolve).not.toHaveBeenCalled();
-    });
-  }
-
-  for (const [oldSlug, mode] of [
-    ['sudoku', 'sudoku'],
-    ['memory-grid', 'memory-grid'],
-    ['reaction', 'reaction'],
-  ] as const) {
-    test(`subdomain ${oldSlug}.shippie.app/ 302s to Daily Puzzle mode`, async () => {
-      const resolve = vi.fn(async () => new Response('fallthrough'));
-      const res = await handle({
-        event: eventFor(`https://${oldSlug}.shippie.app/?invite=abc`) as never,
-        resolve,
-      });
-
-      expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe(
-        `https://shippie.app/run/daily-puzzle/?invite=abc&mode=${mode}&from=${oldSlug}`,
       );
       expect(resolve).not.toHaveBeenCalled();
     });
