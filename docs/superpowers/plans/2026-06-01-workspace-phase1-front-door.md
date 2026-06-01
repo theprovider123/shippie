@@ -195,16 +195,37 @@ git mv src/routes/+page.server.ts src/routes/tools/+page.server.ts
 
 The catalog page renders an eyebrow reading "TOOL LAUNCHER". In `src/routes/tools/+page.svelte`, find the hero eyebrow text and change it to `Browse tools` (search the file for `TOOL LAUNCHER` / `Tool launcher`, case-insensitive, and replace the visible label only).
 
-- [ ] **Step 3: Typecheck**
+- [ ] **Step 3: Repoint the page's internal URL helpers to `/tools`**
+
+The moved page has three helpers that build pagination / category / remixable / clear-search links and currently emit `/?${qs}` (or `/`) — which would bounce a browsing user to root → `/workspace`. In `src/routes/tools/+page.svelte`, change each helper's return from the `/` base to `/tools`:
+
+`pageHref` (≈L185), `categoryHref` (≈L197), and `remixableHref` (≈L206) each end with:
+
+```ts
+    return qs ? `/?${qs}` : '/';
+```
+
+Change all three to:
+
+```ts
+    return qs ? `/tools?${qs}` : '/tools';
+```
+
+(The `clear search →` link uses `pageHref(...)`, and the "All" chip uses `categoryHref(null)`, so both are fixed by this change. `runHref(app.slug)` builds `/run/...` and stays as-is; `/docs#getting-started` stays.) Re-grep to confirm no remaining catalog link targets bare `/`:
+
+Run: `grep -nE "\`/\?|: '/'|\"/\"" src/routes/tools/+page.svelte`
+Expected: no pagination/category/remixable helper still returns bare `/`.
+
+- [ ] **Step 4: Typecheck**
 
 Run: `cd apps/platform && bun run typecheck`
 Expected: PASS (no import breakage from the move). If `svelte-kit sync` complains the root route is missing a page, that is expected and resolved in Task 6.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add apps/platform/src/routes/tools
-git commit -m "refactor(workspace): relocate catalog from / to /tools"
+git commit -m "refactor(workspace): relocate catalog to /tools, repoint internal links"
 ```
 
 ---
@@ -440,7 +461,13 @@ In the manifest object, make these exact replacements:
 ```
 (Keep `scope: '/'` — the workspace is at root level and `/run/...` must stay in scope.)
 
-Shortcuts and protocol handler — replace `/container` with `/workspace`:
+First shortcut currently reads `{ name: 'Open tools', url: '/', short_name: 'Tools' }` — point it directly at the workspace (don't rely on the `/` redirect from an installed shortcut):
+
+```ts
+      { name: 'Open workspace', url: '/workspace', short_name: 'Workspace' },
+```
+
+Saved-data shortcut and protocol/file handlers — replace `/container` with `/workspace`:
 
 ```ts
       { name: 'Saved data', url: '/workspace?section=data', short_name: 'Data' },
@@ -621,7 +648,7 @@ Swap the `.sidebar-intro` + `.status-panel` + `.tabs` block for:
     {#if railGroups.open.length > 0}
       <p class="rail-label">Open</p>
       {#each railGroups.open as t (t.slug)}
-        <button class="rail-item active" onclick={() => openApp(t.slug)}>
+        <button class="rail-item active" onclick={() => openRailTool(t.slug)}>
           <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>
           {t.name}<span class="rail-live"></span>
         </button>
@@ -631,7 +658,7 @@ Swap the `.sidebar-intro` + `.status-panel` + `.tabs` block for:
     {#if railGroups.pinned.length > 0}
       <p class="rail-label">Pinned</p>
       {#each railGroups.pinned as t (t.slug)}
-        <button class="rail-item" onclick={() => openApp(t.slug)}>
+        <button class="rail-item" onclick={() => openRailTool(t.slug)}>
           <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
         </button>
       {/each}
@@ -640,7 +667,7 @@ Swap the `.sidebar-intro` + `.status-panel` + `.tabs` block for:
     {#if railGroups.recent.length > 0}
       <p class="rail-label">Recent</p>
       {#each railGroups.recent as t (t.slug)}
-        <button class="rail-item muted" onclick={() => openApp(t.slug)}>
+        <button class="rail-item muted" onclick={() => openRailTool(t.slug)}>
           <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
         </button>
       {/each}
@@ -656,19 +683,25 @@ Swap the `.sidebar-intro` + `.status-panel` + `.tabs` block for:
       <button class="foot-item" class:active={section === 'data'} onclick={() => showSection('data')}>Data</button>
       <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
       <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
+      {#if data.user}
+        <a class="foot-item" href="/you">{data.user.email ?? 'Your account'}</a>
+      {:else}
+        <a class="foot-item" href="/you">○ Sign in to sync</a>
+      {/if}
     </nav>
   </aside>
 ```
 
-`openApp(slug)` — reuse the existing handler the page already uses to focus a tool. Grep for how `DashboardHome`'s open callback or the existing tile click opens an app (e.g. `onOpen`, `openApp`, `showApp`, or a `goto('/workspace?app='+slug)`); call that. If only a `?app=` navigation exists, define:
+**`openRailTool(slug)` — the rail emits slugs, but the existing `openApp(appId: string)` (workspace page ≈L822) takes an app *id* and resolves through `appById`.** Do NOT call `openApp(t.slug)`. The page already derives a slug→app map at ≈L737 (`launchVisibleAppBySlug`). Add the thin wrapper:
 
 ```ts
-  function openApp(slug: string) {
-    showSection('home');
-    goto(`/workspace?app=${encodeURIComponent(slug)}`);
+  function openRailTool(slug: string) {
+    const app = launchVisibleAppBySlug.get(slug);
+    if (app) openApp(app.id);
   }
 ```
-(using the page's existing `goto` import).
+
+If `data.user` is not a field on this page's data (grep `data.user` / `locals.user` in `+page.server.ts` → `loadContainerPageData`), fall back to always rendering the signed-out `○ Sign in to sync` link to `/you`; sign-in detection polish can move to Phase 2. Do not block on it.
 
 - [ ] **Step 3: Add minimal styles (reuse tokens; sharp corners, no new language)**
 
@@ -743,6 +776,7 @@ No new code. Confirm `git status` shows only the intended files; hand the branch
 - **Spec coverage:** §4 routing → Tasks 2,3,5,6,7; state sources → Task 1 (selector) + Task 11 (wiring, cached-slugs excluded); §5 adaptive rail → Tasks 1,11; §10 Phase 1 incl. PWA → Tasks 8,9,10; `/apps`+SearchBar compat → Tasks 3,4. (Empty-state hero, resume strip, mobile posture, category colors = Phases 2–5, out of scope here — by design.)
 - **Placeholder scan:** none. Where a local identifier can't be known without reading the 3,800-line page (`launchVisibleApps`, `openApp`, `goto`), the step gives the exact grep to resolve it and a concrete fallback — not a "TODO".
 - **Type consistency:** `RailTool` / `RailGroups` / `buildRailGroups` signatures match between Task 1 and Task 11; `launcher-memory` fields (`pinned`, `recents[].lastOpened`) match the real store.
+- **Review round 2 (verified against HEAD):** (1) rail uses `openRailTool(slug)` → `launchVisibleAppBySlug.get(slug)` → `openApp(app.id)`, since `openApp` takes an id not a slug (workspace page ≈L822); (2) catalog move repoints `pageHref`/`categoryHref`/`remixableHref` to `/tools` (Task 2 Step 3), not just SearchBar; (3) rail foot includes Sign in / account (`/you`); (4) manifest first shortcut points directly at `/workspace` ("Open workspace").
 
 ## Out of scope (later phases, separate plans)
 - Phase 2: resume/insight strip + collapse-to-badge.
