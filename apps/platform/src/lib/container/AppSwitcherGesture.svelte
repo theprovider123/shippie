@@ -151,6 +151,34 @@
     return () => window.clearTimeout(timer);
   });
 
+  // First-run "Tools" label on the bottom switcher handle. The handle is a
+  // quiet grabber by design; a one-time label makes it discoverable. Shown
+  // until the user opens the switcher once, then persisted off (and stays
+  // quiet thereafter, per the design tuning note).
+  const TOOLS_HANDLE_HINT_KEY = 'shippie:platform:tools-handle-seen-v1';
+  let toolsHintVisible = $state(false);
+  let toolsHintInitialized = false;
+  $effect(() => {
+    if (toolsHintInitialized || typeof window === 'undefined') return;
+    toolsHintInitialized = true;
+    if (edge !== 'bottom' || !gestureEnabled) return;
+    try {
+      if (!localStorage.getItem(TOOLS_HANDLE_HINT_KEY)) toolsHintVisible = true;
+    } catch {
+      toolsHintVisible = true;
+    }
+  });
+  $effect(() => {
+    if (open && toolsHintVisible) {
+      toolsHintVisible = false;
+      try {
+        localStorage.setItem(TOOLS_HANDLE_HINT_KEY, '1');
+      } catch {
+        // localStorage blocked — re-cue next session, benign.
+      }
+    }
+  });
+
   // Pointer state for the edge-swipe.
   let pointerStartX = 0;
   let pointerStartY = 0;
@@ -403,7 +431,11 @@
     onpointerup={handlePointerUp}
     onpointercancel={handlePointerUp}
     role="presentation"
-  ></div>
+  >
+    {#if toolsHintVisible && edge === 'bottom'}
+      <span class="tools-hint">Tools</span>
+    {/if}
+  </div>
 {/if}
 
 {#if gestureEnabled && !open && canGoBack}
@@ -477,6 +509,23 @@
     transform: translateX(-50%);
     touch-action: none;
     cursor: ns-resize;
+  }
+  /* First-run discoverability label on the bottom switcher handle. */
+  .tools-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sunset);
+    background: var(--surface);
+    border: 1px solid var(--sunset);
+    padding: 2px 10px;
+    pointer-events: none;
   }
   .edge-grabber.back-edge {
     top: 0;
