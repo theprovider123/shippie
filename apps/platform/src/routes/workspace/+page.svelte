@@ -3555,16 +3555,10 @@
     flex-direction: column;
     gap: var(--space-xl);
   }
-  h1,
   h2,
   h3 {
     font-family: var(--font-heading);
     letter-spacing: 0;
-  }
-  h1 {
-    margin: 0;
-    font-size: clamp(2rem, 4vw, 3.1rem);
-    line-height: 1;
   }
   h2,
   h3,
@@ -3629,12 +3623,6 @@
     cursor: pointer;
     font: inherit;
   }
-  .tabs button {
-    padding: 0.7rem 0.8rem;
-    text-align: left;
-    color: var(--text-secondary);
-  }
-  .tabs button.active,
   .home-button {
     background: var(--text);
     color: var(--bg-pure);
@@ -3837,24 +3825,6 @@
       gap: 1px;
       border: 1px solid var(--border-light);
       background: var(--border-light);
-    }
-    .tabs button {
-      min-height: var(--touch-min);
-      padding: 0 6px;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background: var(--bg);
-      text-align: center;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--text-secondary);
-      white-space: nowrap;
-    }
-    .tabs button.active {
-      background: var(--text);
-      color: var(--bg-pure);
-      border-color: var(--text);
     }
     .desktop-label {
       display: none;

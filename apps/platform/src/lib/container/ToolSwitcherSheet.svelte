@@ -22,9 +22,13 @@
   }
 </script>
 
+<svelte:window onkeydown={(e) => { if (open && e.key === 'Escape') onClose(); }} />
+
 {#if open}
-  <div class="sheet-scrim" role="presentation" onclick={onClose}>
-    <div class="sheet" role="dialog" aria-label="Switch tools" onclick={(e) => e.stopPropagation()}>
+  <!-- Backdrop dismiss; Escape (svelte:window) is the keyboard equivalent. -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="sheet-scrim" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Switch tools" tabindex="-1">
       <div class="grab" aria-hidden="true"></div>
 
       {#if groups.open.length > 0}
