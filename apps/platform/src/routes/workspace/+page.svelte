@@ -114,6 +114,7 @@
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import { buildRailGroups, type RailTool } from '$lib/container/rail-groups';
+  import { categoryColorFamily } from '$lib/container/category-color';
   import CanvasStrip from '$lib/container/CanvasStrip.svelte';
   import { selectCanvasStripItem, type CanvasStripItem } from '$lib/container/canvas-strip';
   import WorkspaceEmptyState from '$lib/container/WorkspaceEmptyState.svelte';
@@ -751,7 +752,7 @@
       slug: a.slug,
       name: a.name,
       icon: a.icon ?? a.shortName ?? a.name.slice(0, 2),
-      accent: a.accent,
+      accent: categoryColorFamily(a.category),
       category: a.category,
     })),
   );

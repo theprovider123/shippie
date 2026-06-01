@@ -7,6 +7,7 @@
 <script lang="ts">
   import type { ContainerApp } from './state';
   import { initials } from './state';
+  import { categoryColorFamily } from './category-color';
 
   interface Props {
     starters: ContainerApp[];
@@ -28,7 +29,7 @@
     <div class="starters">
       {#each starters as app (app.slug)}
         <button class="starter" onclick={() => onOpen(app)}>
-          <span class="starter-icon" style="background:{app.accent}">{app.icon ?? initials(app.name)}</span>
+          <span class="starter-icon" style="background:{categoryColorFamily(app.category)}">{app.icon ?? initials(app.name)}</span>
           <span class="starter-text">
             <span class="starter-name">{app.name}</span>
             {#if app.description}<span class="starter-blurb">{app.description}</span>{/if}
