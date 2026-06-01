@@ -11,6 +11,7 @@
  * lives here and can be unit-tested without a DOM.
  */
 
+import type { AppLayout } from './app-stage';
 import {
   SHIPPIE_BACKUP_SCHEMA,
   SHIPPIE_PERMISSIONS_SCHEMA,
@@ -55,6 +56,10 @@ export type ContainerApp = {
   trust?: Pick<TrustReport, 'containerEligibility' | 'privacy' | 'security'>;
   /** AppProfile category, used by C1 agent strategies. Optional. */
   category?: string;
+  /** Maker viewport contract (Phase E). Default behaviour is 'responsive'. */
+  layout?: AppLayout;
+  /** Aspect ratio (e.g. '16/9') for layout: 'fixedAspect'. */
+  aspectRatio?: string;
   /**
    * Slate-curation surface. Comes from the per-showcase shippie.json
    * `curation.surface` block via the generated first-party manifest.
@@ -172,6 +177,8 @@ type CuratedAppSpec = {
   icon?: string;
   accent: string;
   category?: string;
+  layout?: AppLayout;
+  aspectRatio?: string;
   port: number;
   intents?: Parameters<typeof localPermissions>[1];
 };
@@ -210,6 +217,8 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
     visibility: 'public',
     permissions: localPermissions(spec.slug, spec.intents),
     category: spec.category,
+    layout: spec.layout,
+    aspectRatio: spec.aspectRatio,
     devUrl: `http://localhost:${spec.port}/`,
   };
 }
@@ -736,6 +745,7 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     icon: 'TB',
     accent: '#E8C547',
     category: 'money',
+    layout: 'mobilePreferred',
     port: 5218,
     intents: {
       provides: ['tab-item-added', 'tab-settled'],

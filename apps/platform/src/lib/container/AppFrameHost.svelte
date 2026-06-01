@@ -18,6 +18,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { ContainerApp } from '$lib/container/state';
+  import { stageStyleFor } from '$lib/container/app-stage';
   import type { FrameStates } from '$lib/container/frame-runtime';
   import RocketLoader from '$lib/components/ui/RocketLoader.svelte';
 
@@ -152,7 +153,7 @@
   }
 </script>
 
-<div class="frame-stage" class:active>
+<div class="frame-stage" class:active style={stageStyleFor(app.layout, app.aspectRatio)}>
   {#key `${app.id}:${reloadNonce}`}
     {#if runtimeSrcWithHash}
       <iframe
