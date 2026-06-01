@@ -14,7 +14,8 @@
 
 ## Pre-flight
 - At implementation time, branch from the **current** `review-implementation-2026-05-23` tip (codex may have advanced it). Build in the worktree; reconcile/FF as in prior phases. Commit each task with scoped `git add`.
-- Reuse from earlier phases: `railGroups` (Phase 1, gives open/pinned/recent), `openApp(appId)` / `openRailTool(slug)`, `launchVisibleApps` (ContainerApp[]), `curatedAppsByTier` (`state.ts:1171`), `PUBLIC_FLAGSHIP_SLUGS` (`_generated/first-party-curation.ts` — the flagship slate; empty only in an un-baked worktree).
+- Reuse from earlier phases: `railGroups` (Phase 1, gives open/pinned/recent), `openApp(appId)` / `openRailTool(slug)`, `launchVisibleApps` (ContainerApp[]), `PUBLIC_FLAGSHIP_SLUGS` (`_generated/first-party-curation.ts` — the flagship slate; empty only in an un-baked worktree).
+- **Hydration-flicker guard:** `launcherMemory` is `DEFAULT_MEMORY` (empty) until `hydrateLauncherMemory()` runs in `onMount`, so `workspaceEmpty` is briefly true on first paint even for returning users → would flash the first-run hero. Gate the home content on a `launcherHydrated` flag so the empty/populated decision only renders after local state settles.
 - The empty condition is exactly the rail's "No tools yet" branch: `railGroups.open.length === 0 && railGroups.pinned.length === 0 && railGroups.recent.length === 0`.
 
 ## File structure
@@ -225,18 +226,24 @@ Two edits:
   import { pickStarters } from '$lib/container/starters';
   import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
 
+  let launcherHydrated = $state(false);
   const workspaceEmpty = $derived(
     railGroups.open.length === 0 && railGroups.pinned.length === 0 && railGroups.recent.length === 0,
   );
   const starterApps = $derived(pickStarters(launchVisibleApps, PUBLIC_FLAGSHIP_SLUGS, 4));
 ```
-(`launchVisibleApps` and `railGroups` already exist from Phase 1. Use `launchVisibleApps` as the starter pool — it already excludes hidden/private apps and is what the rail uses. Do **not** import `curatedAppsByTier`; it's unused here.)
+Then in the existing `onMount`, set the flag right after the existing `hydrateLauncherMemory()` call (line ≈2666): add `launcherHydrated = true;`. (`launchVisibleApps` and `railGroups` already exist from Phase 1. Use `launchVisibleApps` as the starter pool — it already excludes hidden/private apps and is what the rail uses. Do **not** import `curatedAppsByTier`; it's unused here.)
 
 - [ ] **Step 2: markup** — replace the `{#if section === 'home'}` → `<DashboardHome … />` block's open so the empty state wins when there are no tools:
 
 ```svelte
         {#if section === 'home'}
-          {#if workspaceEmpty}
+          {#if !launcherHydrated}
+            <!-- brief neutral panel until local tool state hydrates; prevents a
+                 first-run-hero flash for returning users (launcherMemory is empty
+                 on first paint until hydrateLauncherMemory runs in onMount) -->
+            <div class="hydrating-panel" aria-busy="true"></div>
+          {:else if workspaceEmpty}
             <WorkspaceEmptyState
               starters={starterApps}
               totalCount={launchVisibleApps.length}
