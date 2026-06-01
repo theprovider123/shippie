@@ -656,6 +656,63 @@
   }
 
   const activeApp = $derived(activeAppId ? appById.get(activeAppId) : null);
+  // Workspace 1.1 — immersive active-tool. A tool open in the workspace (not
+  // /run focused mode) borrows the full-bleed focused PRESENTATION so the app
+  // owns the viewport, while keeping /workspace route semantics (no /run
+  // rewrite — switchFocusedApp/replaceFocusedRunUrl stay gated on data.focused).
+  const immersiveActive = $derived(!data.focused && !!activeApp);
+  // Tell the layout to drop the mobile dock / chrome while a tool owns the
+  // screen (the full-bleed shell already covers it; this also hides it in the
+  // DOM so it can't peek under safe-area or steal taps).
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (immersiveActive) root.dataset.shippieImmersive = 'true';
+    else delete root.dataset.shippieImmersive;
+    return () => {
+      if (typeof document !== 'undefined') delete document.documentElement.dataset.shippieImmersive;
+    };
+  });
+
+  // Keep the URL in sync with the immersive active tool: /workspace?app=<slug>.
+  // Entering immersive from home pushes a history entry so browser-back closes
+  // the tool; switching tools replaces (no history stacking). Route stays
+  // /workspace (never /run). Native history mirrors replaceFocusedRunUrl; the
+  // popstate handler (registered in onMount) closes the tool on back.
+  let prevImmersiveSlug: string | null = null;
+  $effect(() => {
+    if (typeof window === 'undefined' || data.focused) return;
+    const slug = activeApp?.slug ?? null;
+    if (slug === prevImmersiveSlug) return;
+    const prev = prevImmersiveSlug;
+    prevImmersiveSlug = slug;
+    const currentApp = new URL(window.location.href).searchParams.get('app');
+    if (slug) {
+      if (currentApp === slug) return; // already deep-linked here (e.g. boot)
+      const target = `/workspace?app=${encodeURIComponent(slug)}`;
+      if (prev) window.history.replaceState(window.history.state, '', target);
+      else window.history.pushState(window.history.state, '', target);
+    } else if (prev && currentApp) {
+      window.history.replaceState(window.history.state, '', '/workspace');
+    }
+  });
+
+  function handleImmersivePopstate() {
+    if (data.focused) return;
+    const appParam = new URL(window.location.href).searchParams.get('app');
+    if (!appParam && activeAppId) {
+      // Back removed the tool from the URL → close it, return to the workspace.
+      activeAppId = null;
+      section = 'home';
+      prevImmersiveSlug = null;
+    } else if (appParam) {
+      const app = launchVisibleAppBySlug.get(appParam);
+      if (app && app.id !== activeAppId) {
+        prevImmersiveSlug = appParam; // forward/restored — don't re-push
+        openApp(app.id);
+      }
+    }
+  }
   const activeToolUrl = $derived.by(() => {
     if (!activeApp || typeof window === 'undefined') return '';
     return new URL(`/run/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
@@ -2529,12 +2586,14 @@
     window.addEventListener('message', recordFrameNavigation);
     window.addEventListener('message', recordFrameNavigationBackResult);
     window.addEventListener('message', recordSafeEdgesDeclaration);
+    window.addEventListener('popstate', handleImmersivePopstate);
     return () => {
       window.removeEventListener('message', recordFromEvent);
       window.removeEventListener('message', recordAppLifecycle);
       window.removeEventListener('message', recordFrameNavigation);
       window.removeEventListener('message', recordFrameNavigationBackResult);
       window.removeEventListener('message', recordSafeEdgesDeclaration);
+      window.removeEventListener('popstate', handleImmersivePopstate);
     };
   });
 
@@ -3009,9 +3068,12 @@
   </div>
 {/if}
 
-{#if data.focused}
+{#if data.focused || immersiveActive}
   <!--
-    Focused mode — entered directly via /run/<slug>/ or via /container?app=&focused=1.
+    Full-bleed presentation. Used by focused mode (/run/<slug>/ or
+    ?app=&focused=1) AND by immersive workspace active-tool mode
+    (immersiveActive: a tool open at /workspace). Presentation branch only —
+    route behaviours (/run URL rewrites) stay gated on data.focused.
     Render the requested app full-bleed, no sidebar / topbar / tabs.
     The app-switcher gesture component sits as a fixed overlay; the
     drawer (when open) shows a compact app grid for instant switching.

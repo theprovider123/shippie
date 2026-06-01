@@ -107,6 +107,14 @@
     min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
   }
 
+  /* Workspace 1.1 — when a tool owns the screen (immersive active-tool), the
+     full-bleed shell covers everything; drop the dock + global nav from the
+     DOM so they can't peek under safe-area or steal taps. */
+  :global(html[data-shippie-immersive] .bottom-dock),
+  :global(html[data-shippie-immersive] .nav-shell) {
+    display: none;
+  }
+
   @media (max-width: 640px), (display-mode: standalone) {
     .nav-shell.mobile-app-chrome {
       display: none;
