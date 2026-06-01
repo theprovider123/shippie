@@ -1072,12 +1072,51 @@
   }
 
   function handleFocusedChromeKeydown(event: KeyboardEvent) {
-    if (!data.focused || event.key !== 'Escape') return;
-    if (focusedToolOptionsOpen) {
+    if (!(data.focused || immersiveActive)) return;
+    // ⌘K / Ctrl+K — summon (toggle) the tool switcher from inside a tool.
+    if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')) {
+      event.preventDefault();
+      toggleFocusedDrawer();
+      return;
+    }
+    if (event.key === 'Escape' && focusedToolOptionsOpen) {
       event.preventDefault();
       focusedToolOptionsOpen = false;
     }
   }
+
+  // Auto-dim the in-tool Shippie chrome after ~1.5s idle so the app feels
+  // immersive; any pointer/key/touch activity brings it back. Dimmed-but-
+  // tappable (not removed) so it's always summonable — the invisible
+  // edge-swipe stays gated for now (safe-edge contract), per the plan.
+  let chromeIdle = $state(false);
+  $effect(() => {
+    if (typeof window === 'undefined' || !(data.focused || immersiveActive)) {
+      chromeIdle = false;
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    const arm = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => (chromeIdle = true), 1500);
+    };
+    const wake = () => {
+      if (chromeIdle) chromeIdle = false;
+      arm();
+    };
+    arm();
+    window.addEventListener('pointermove', wake, { passive: true });
+    window.addEventListener('pointerdown', wake, { passive: true });
+    window.addEventListener('keydown', wake);
+    window.addEventListener('touchstart', wake, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', wake);
+      window.removeEventListener('pointerdown', wake);
+      window.removeEventListener('keydown', wake);
+      window.removeEventListener('touchstart', wake);
+    };
+  });
 
   async function copyActiveToolLink() {
     if (!activeToolUrl) return;
@@ -3083,7 +3122,7 @@
     by the surrounding script block. Focused mode is a presentation
     branch, not a behaviour branch.
   -->
-  <section class="focused-shell">
+  <section class="focused-shell" data-chrome-idle={chromeIdle}>
     <button
       type="button"
       class="focused-chrome-button focused-chrome-tools"
@@ -4088,6 +4127,7 @@
     width: var(--touch-min);
     height: 46px;
     padding: 0;
+    transition: opacity 0.35s var(--ease-out, ease);
     background: rgba(20, 18, 15, 0.65);
     border: 1px solid rgba(168, 196, 145, 0.35);
     color: var(--text);
@@ -4162,6 +4202,15 @@
   @media (prefers-reduced-motion: reduce) {
     .focused-chrome-button.first-run { animation: none; }
   }
+  /* Immersive idle — dim (but keep tappable) the in-tool chrome after ~1.5s
+     of no activity; any pointer/key/touch restores it. Motion-only so
+     reduced-motion users keep the chrome fully visible. */
+  @media (prefers-reduced-motion: no-preference) {
+    .focused-shell[data-chrome-idle='true'] .focused-chrome-button {
+      opacity: 0.16;
+    }
+  }
+
   /* Keyboard open inside the running tool — hide the chrome so it
      doesn't float over the keyboard area. The :global selector matches
      the data attribute set on <html> by handleToolKeyboardMessage. */
