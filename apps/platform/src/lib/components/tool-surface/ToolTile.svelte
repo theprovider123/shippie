@@ -407,9 +407,14 @@
       </span>
       <span class="tile-body">
         <span class="tile-name">{safeName}</span>
-        {#if stateChip}
+        {#if stateChip || captionLabel}
           <span class="tile-meta">
-            <span class="chip chip-{stateChip.tone}">{stateChip.label}</span>
+            {#if stateChip}
+              <span class="chip chip-{stateChip.tone}">{stateChip.label}</span>
+            {/if}
+            {#if captionLabel}
+              <span class="caption">{captionLabel}</span>
+            {/if}
           </span>
         {/if}
       </span>
@@ -959,22 +964,22 @@
     }
 
     .tile-drawer {
-      grid-template-columns: 48px minmax(0, 1fr) auto;
+      grid-template-columns: 52px minmax(0, 1fr) auto;
       gap: 10px;
-      padding: 9px 0;
+      padding: 10px 12px;
     }
     .tile-drawer .tile-launch {
-      grid-template-columns: 48px minmax(0, 1fr);
+      grid-template-columns: 52px minmax(0, 1fr);
       gap: 10px;
     }
     .tile-drawer .tile-icon,
     .tile-drawer .tile-glyph {
-      width: 48px;
-      height: 48px;
+      width: 52px;
+      height: 52px;
     }
     .tile-drawer .tile-icon :global(.shippie-icon) {
-      width: 48px !important;
-      height: 48px !important;
+      width: 52px !important;
+      height: 52px !important;
     }
     .tile-drawer .tile-name {
       font-size: 1rem;

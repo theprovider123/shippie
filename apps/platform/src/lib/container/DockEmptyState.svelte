@@ -5,9 +5,11 @@
   marketing page — "a Dock that happens to be empty".
 -->
 <script lang="ts">
+  import {
+    ToolTile,
+    containerAppToToolTile,
+  } from '$lib/components/tool-surface';
   import type { ContainerApp } from './state';
-  import { initials } from './state';
-  import { categoryColorFamily } from './category-color';
 
   interface Props {
     starters: ContainerApp[];
@@ -28,13 +30,13 @@
     <p class="starters-label">Start with these</p>
     <div class="starters">
       {#each starters as app (app.slug)}
-        <button class="starter" onclick={() => onOpen(app)}>
-          <span class="starter-icon" style="background:{categoryColorFamily(app.category)}">{app.icon ?? initials(app.name)}</span>
-          <span class="starter-text">
-            <span class="starter-name">{app.name}</span>
-            {#if app.description}<span class="starter-blurb">{app.description}</span>{/if}
-          </span>
-        </button>
+        <ToolTile
+          app={containerAppToToolTile(app)}
+          density="drawer"
+          captionLabel={app.category ?? 'Tool'}
+          noActions
+          onOpen={() => onOpen(app)}
+        />
       {/each}
     </div>
   {/if}
@@ -49,12 +51,20 @@
   .hero-title { font-family: var(--font-heading); font-size: 1.25rem; color: var(--ink-warm, #2a251e); margin: 0; }
   .hero-sub { font-size: 0.8rem; color: var(--text-muted-warm, #8b847a); margin: var(--space-xs) 0 0; }
   .starters-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 0; }
-  .starters { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-sm); }
-  .starter { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); border: 1px solid var(--border); background: var(--surface); text-align: left; cursor: pointer; }
-  .starter:hover { background: var(--surface-alt); }
-  .starter-icon { width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 0.8rem; color: var(--bg); }
-  .starter-text { display: flex; flex-direction: column; min-width: 0; }
-  .starter-name { color: var(--text); font-size: 0.85rem; }
-  .starter-blurb { color: var(--text-light); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .starters {
+    --dock-tool-row-height: 64px;
+    display: grid;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+  .starters :global(.tile-drawer) {
+    min-height: var(--dock-tool-row-height);
+    border: 0;
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+  }
+  .starters :global(.tile-drawer:last-child) {
+    border-bottom: 0;
+  }
   .browse-all { color: var(--sunset); font-size: 0.85rem; }
 </style>

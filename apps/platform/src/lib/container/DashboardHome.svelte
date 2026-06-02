@@ -18,6 +18,7 @@
   import {
     ToolTile,
     containerAppToToolTile,
+    type ToolTileApp,
     type ToolRuntimeState,
   } from '$lib/components/tool-surface';
   import type { ContainerApp, UpdateCard } from '$lib/container/state';
@@ -77,6 +78,7 @@
   );
   const browsePreview = $derived(visibleApps.filter((app) => !quickSlugs.has(app.slug)).slice(0, 12));
   const hasDockRows = $derived(dockGroups.open.length > 0 || dockGroups.saved.length > 0 || dockGroups.recent.length > 0);
+  const appBySlug = $derived(new Map(apps.map((app) => [app.slug, app])));
 
   function runtimeStateFor(app: ContainerApp): ToolRuntimeState {
     return openAppIds.includes(app.id) ? 'live' : 'idle';
@@ -84,6 +86,31 @@
 
   function sectionRuntimeState(section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
     return section === 'open' ? 'live' : 'idle';
+  }
+
+  function railToolToTile(tool: RailTool): ToolTileApp {
+    return {
+      slug: tool.slug,
+      name: tool.name,
+      category: tool.category ?? null,
+      iconUrl: null,
+      themeColor: tool.accent,
+      glyph: tool.icon,
+      firstPartySigned: false,
+      badges: [],
+    };
+  }
+
+  function openToolSlug(slug: string) {
+    const app = appBySlug.get(slug);
+    if (app) onOpenApp(app.id);
+  }
+
+  function captionFor(label: string, category: string | undefined): string {
+    if (label === 'Running') return category ?? 'Running';
+    if (label === 'Saved') return 'Saved to Dock';
+    if (label === 'Recent') return 'Recent';
+    return category ?? 'Tool';
   }
 </script>
 
@@ -170,13 +197,14 @@
       </div>
       <a href="/tools">All tools</a>
     </div>
-    <div class="app-grid">
+    <div class="dock-row-list">
       {#each browsePreview as app (app.id)}
         <ToolTile
           app={containerAppToToolTile(app)}
-          density="card"
-          href={`/dock?app=${encodeURIComponent(app.slug)}`}
+          density="drawer"
+          captionLabel={app.category ?? 'Tool'}
           runtimeState={runtimeStateFor(app)}
+          noActions
           onOpen={() => onOpenApp(app.id)}
         />
       {/each}
@@ -244,17 +272,17 @@
     </div>
     <div class="dock-row-list">
       {#each tools as tool (tool.slug)}
-        <div class="dock-row">
-          <a class="dock-row-main" href={`/dock?app=${encodeURIComponent(tool.slug)}`}>
-            <span class="dock-row-icon" style="background:{tool.accent}">{tool.icon}</span>
-            <span class="dock-row-copy">
-              <strong>{tool.name}</strong>
-              <small>{tool.category ?? 'tool'}</small>
-            </span>
-            <span class="dock-row-state">{state === 'live' ? 'Running' : 'Open'}</span>
-          </a>
+        <div class="dock-tool-row" class:with-close={onClose}>
+          <ToolTile
+            app={railToolToTile(tool)}
+            density="drawer"
+            runtimeState={state}
+            captionLabel={captionFor(label, tool.category)}
+            noActions
+            onOpen={() => openToolSlug(tool.slug)}
+          />
           {#if onClose}
-            <a class="dock-row-close" href={`/dock?close=${encodeURIComponent(tool.slug)}`} aria-label={`Close ${tool.name}`}>×</a>
+            <button class="dock-row-close" type="button" aria-label={`Close ${tool.name}`} onclick={() => onClose(tool.slug)}>×</button>
           {/if}
         </div>
       {/each}
@@ -332,70 +360,28 @@
     text-decoration: none;
   }
   .dock-row-list {
+    --dock-tool-row-height: 64px;
     display: grid;
-    gap: 8px;
-  }
-  .dock-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 64px;
     border: 1px solid var(--border-light);
     background: var(--surface);
   }
-  .dock-row-main {
+  .dock-tool-row {
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-    padding: 10px 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: var(--dock-tool-row-height);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .dock-tool-row:last-child { border-bottom: 0; }
+  .dock-tool-row :global(.tile-drawer) {
+    min-height: var(--dock-tool-row-height);
     border: 0;
     background: transparent;
-    color: var(--text);
-    text-decoration: none;
-    text-align: left;
-    cursor: pointer;
-  }
-  .dock-row-main:hover {
-    background: var(--surface-alt);
-  }
-  .dock-row-icon {
-    width: 38px;
-    aspect-ratio: 1;
-    display: grid;
-    place-items: center;
-    color: var(--bg-pure);
-    font-family: var(--font-heading);
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-  .dock-row-copy {
-    min-width: 0;
-    display: grid;
-    gap: 3px;
-  }
-  .dock-row-copy strong {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-heading);
-    font-size: 1rem;
-    line-height: 1.15;
-  }
-  .dock-row-copy small,
-  .dock-row-state {
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-  }
-  .dock-row-state {
-    color: var(--text-light);
   }
   .dock-row-close {
     display: grid;
     place-items: center;
-    width: 48px;
+    width: 52px;
     min-height: 100%;
     border: 0;
     border-left: 1px solid var(--border-light);
@@ -437,12 +423,6 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-  }
-  .app-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-sm);
-    margin-bottom: var(--space-md);
   }
   .nearby-panel {
     border: 1px solid var(--border-light);
@@ -521,18 +501,11 @@
       min-height: var(--touch-min);
       flex: 1;
     }
-    .app-grid {
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
     .dock-section-head {
       align-items: flex-start;
     }
-    .dock-row-main {
-      grid-template-columns: 40px minmax(0, 1fr);
-    }
-    .dock-row-state {
-      display: none;
+    .dock-tool-row :global(.tile-drawer) {
+      padding: 10px 12px;
     }
     .nearby-panel {
       padding: var(--space-md);
