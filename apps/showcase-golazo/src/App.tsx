@@ -92,7 +92,7 @@ export function App() {
           <BottomNav active={tab} onChange={setTab} />
         </>
       ) : (
-        <Onboarding />
+        <Onboarding onComplete={(nextTab) => setTab(nextTab ?? "predict")} />
       )}
 
       {incoming && (

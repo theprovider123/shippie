@@ -53,7 +53,17 @@ describe("App smoke", () => {
     mount();
     expect(container.textContent).toContain("GOLAZO");
     expect(container.textContent).toContain("Call the");
+    expect(container.textContent).toContain("Play now");
     expect(container.querySelector(".team-grid")).not.toBeNull();
+  });
+
+  it("lets a fresh visitor jump straight into arcade play", () => {
+    localStorage.clear();
+    mount();
+    clickButton("Play now");
+    expect(container.textContent).toContain("Keepy Uppy");
+    expect(container.textContent).toContain("Top Bins");
+    expect(localStorage.getItem("golazo:profile")).toContain("Player");
   });
 
   it("renders the main shell + every tab once a profile exists", () => {

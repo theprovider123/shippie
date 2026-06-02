@@ -5,7 +5,11 @@ import { useStore } from "../state";
 import { Flag, teamVars } from "../ui/atoms";
 import { confirmBuzz, tap } from "../lib/haptics";
 
-export function Onboarding() {
+interface OnboardingProps {
+  onComplete?: (tab?: "predict" | "play") => void;
+}
+
+export function Onboarding({ onComplete }: OnboardingProps) {
   const { setProfile } = useStore();
   const [name, setName] = useState("");
   const [fav, setFav] = useState<string | undefined>(undefined);
@@ -17,6 +21,13 @@ export function Onboarding() {
     if (!canGo) return;
     confirmBuzz();
     setProfile(name, fav);
+    onComplete?.("predict");
+  }
+
+  function playNow() {
+    confirmBuzz();
+    setProfile(name.trim() || "Player", fav);
+    onComplete?.("play");
   }
 
   return (
@@ -33,6 +44,16 @@ export function Onboarding() {
           Build your bracket. Share it by link. Settle it with your mates.
         </p>
       </header>
+
+      <section className="arcade-entry" aria-label="Arcade">
+        <div>
+          <span className="arcade-kicker">Arcade is live</span>
+          <h2>Keepy Uppy + Top Bins</h2>
+        </div>
+        <button className="arcade-play" type="button" onClick={playNow}>
+          Play now
+        </button>
+      </section>
 
       <label className="field">
         <span className="field-label">What do they call you?</span>
