@@ -29,4 +29,16 @@ describe('/__shippie-pwa/sw.js', () => {
       runtimeBranch.indexOf('const cached = await cache.match(req);'),
     );
   });
+
+  test('turns interrupted offline saves into errors instead of permanent downloading state', async () => {
+    const response = await GET({
+      platform: { env: { CF_VERSION_METADATA: { id: 'test-build' } } },
+    } as never);
+    const body = await response.text();
+
+    expect(body).toContain('DOWNLOAD_POINTER_STALE_MS');
+    expect(body).toContain('function staleDownloadPointer(pointer)');
+    expect(body).toContain("state: 'error'");
+    expect(body).toContain("error: pointer.error || 'download_interrupted'");
+  });
 });

@@ -161,6 +161,7 @@ interface SwStatusMessage {
   total: number;
   totalBytes?: number;
   manifestHash?: string;
+  error?: string;
 }
 
 interface SwSavedAppsMessage {
@@ -275,8 +276,36 @@ export async function downloadApp(
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     let last: AppDownloadProgress = { slug, state: 'downloading', done: 0, total: 0 };
+    let settled = false;
+    const finish = (value: AppDownloadProgress) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      channel.port1.close();
+      resolve(value);
+    };
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      channel.port1.close();
+      const p: AppDownloadProgress = {
+        slug,
+        state: 'error',
+        phase: 'error',
+        done: last.done,
+        total: last.total,
+        error: error.message,
+      };
+      onProgress?.(p);
+      reject(error);
+    };
+    const timer = window.setTimeout(() => {
+      fail(new Error('sw_timeout_download'));
+    }, 90000);
     channel.port1.onmessage = (event) => {
       const msg = event.data as SwMessage;
+      if (settled) return;
       if (msg.type === 'progress') {
         last = {
           slug,
@@ -289,7 +318,6 @@ export async function downloadApp(
         return;
       }
       if (msg.type !== 'done') return;
-      channel.port1.close();
       if (msg.state === 'saved') {
         const p: AppDownloadProgress = {
           slug,
@@ -301,7 +329,7 @@ export async function downloadApp(
           manifestHash: msg.manifestHash,
         };
         onProgress?.(p);
-        resolve(p);
+        finish(p);
       } else if (msg.state === 'partial') {
         const p: AppDownloadProgress = {
           slug,
@@ -314,22 +342,17 @@ export async function downloadApp(
           failedUrls: msg.failedUrls,
         };
         onProgress?.(p);
-        resolve(p);
+        finish(p);
       } else {
         const err = new Error(msg.error ?? 'download_failed');
-        const p: AppDownloadProgress = {
-          slug,
-          state: 'error',
-          phase: 'error',
-          done: last.done,
-          total: last.total,
-          error: err.message,
-        };
-        onProgress?.(p);
-        reject(err);
+        fail(err);
       }
     };
-    sw.postMessage({ type: 'DOWNLOAD_APP', slug }, [channel.port2]);
+    try {
+      sw.postMessage({ type: 'DOWNLOAD_APP', slug }, [channel.port2]);
+    } catch (err) {
+      fail(err instanceof Error ? err : new Error(String(err)));
+    }
   });
 }
 
@@ -370,6 +393,7 @@ export async function getAppStatus(slug: string): Promise<AppDownloadProgress> {
           total: msg.total ?? 0,
           totalBytes: msg.totalBytes,
           manifestHash: msg.manifestHash,
+          error: msg.error,
         });
       };
       sw.postMessage({ type: 'GET_APP_STATUS', slug }, [channel.port2]);

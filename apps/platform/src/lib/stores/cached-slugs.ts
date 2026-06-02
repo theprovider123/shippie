@@ -91,22 +91,40 @@ export async function downloadAppAndTrack(
   options: { repairing?: boolean } = {},
 ): Promise<AppDownloadProgress> {
   setOfflineStatus(slug, { slug, state: 'downloading', phase: 'downloading', done: 0, total: 0, repairing: options.repairing });
-  const result = await downloadApp(slug, (progress) => {
-    const next = { ...progress, repairing: options.repairing };
-    setOfflineStatus(slug, next);
-    onProgress?.(next);
-  });
-  const trackedResult = { ...result, repairing: options.repairing && result.state !== 'saved' };
-  setOfflineStatus(slug, trackedResult);
-  if (result.state === 'saved') {
-    cachedSlugs.update((s) => {
-      if (s.has(slug)) return s;
-      const next = new Set(s);
-      next.add(slug);
-      return next;
+  try {
+    const result = await downloadApp(slug, (progress) => {
+      const next = { ...progress, repairing: options.repairing };
+      setOfflineStatus(slug, next);
+      onProgress?.(next);
     });
+    const trackedResult = { ...result, repairing: options.repairing && result.state !== 'saved' };
+    setOfflineStatus(slug, trackedResult);
+    if (result.state === 'saved') {
+      cachedSlugs.update((s) => {
+        if (s.has(slug)) return s;
+        const next = new Set(s);
+        next.add(slug);
+        return next;
+      });
+    }
+    return trackedResult;
+  } catch (err) {
+    const last = get(offlineStatuses)[slug];
+    const failed: AppDownloadProgress = {
+      slug,
+      state: 'error',
+      phase: 'error',
+      done: last?.done ?? 0,
+      total: last?.total ?? 0,
+      totalBytes: last?.totalBytes,
+      manifestHash: last?.manifestHash,
+      repairing: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+    setOfflineStatus(slug, failed);
+    onProgress?.(failed);
+    throw err;
   }
-  return trackedResult;
 }
 
 export function ensureAppOffline(slug: string): Promise<AppDownloadProgress> {

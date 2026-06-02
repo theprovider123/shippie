@@ -36,6 +36,7 @@ const KERNEL_URLS = [...KERNEL_HTML_ALIASES, KERNEL_SCRIPT_URL];
 const STATIC_LAUNCHER_HTML = __STATIC_LAUNCHER_HTML__;
 const STATIC_LAUNCHER_SCRIPT = __STATIC_LAUNCHER_SCRIPT__;
 __OFFLINE_CAPSULE_SW_HELPERS__
+const DOWNLOAD_POINTER_STALE_MS = 2 * 60 * 1000;
 // Phase 2: same-origin /__esm/<pkg> proxy serves the pinned
 // Transformers runtime + its transitive graph through our own zone.
 // The proxy rewrites every absolute import in the JS bodies back into
@@ -87,6 +88,12 @@ function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return '';
   if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0) + ' MB';
+}
+
+function staleDownloadPointer(pointer) {
+  if (!pointer || pointer.state !== 'downloading') return false;
+  const updated = Date.parse(pointer.updatedAt || '');
+  return !Number.isFinite(updated) || Date.now() - updated > DOWNLOAD_POINTER_STALE_MS;
 }
 
 function iconUrlFromManifest(manifest) {
@@ -743,7 +750,17 @@ async function handleDownloadApp(slug, port) {
       });
     }
   } catch (err) {
-    port.postMessage({ type: 'done', state: 'error', slug, error: String(err && err.message || err) });
+    const error = String(err && err.message || err);
+    const pointer = await ShippieOfflineCapsule.getPointer(slug).catch(() => null);
+    if (pointer && pointer.state === 'downloading') {
+      await ShippieOfflineCapsule.putPointer({
+        ...pointer,
+        state: 'error',
+        error,
+        updatedAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
+    port.postMessage({ type: 'done', state: 'error', slug, error });
   }
 }
 
@@ -817,6 +834,28 @@ async function handleGetStatus(slug, port) {
       });
       return;
     }
+    if (pointer && (pointer.state === 'error' || staleDownloadPointer(pointer))) {
+      if (staleDownloadPointer(pointer)) {
+        await ShippieOfflineCapsule.putPointer({
+          ...pointer,
+          state: 'error',
+          error: pointer.error || 'download_interrupted',
+          updatedAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      port.postMessage({
+        type: 'status',
+        slug,
+        state: 'error',
+        phase: 'error',
+        done: 0,
+        total: 0,
+        totalBytes: pointer.totalBytes || 0,
+        manifestHash: pointer.manifestHash,
+        error: pointer.error || 'download_interrupted',
+      });
+      return;
+    }
     if (pointer && (pointer.state === 'downloading' || pointer.state === 'partial' || pointer.state === 'evicted')) {
       port.postMessage({
         type: 'status',
@@ -854,10 +893,21 @@ async function handleListSavedApps(port) {
           error: pointer.error,
         };
         if (pointer.state !== 'sealed') {
+          const staleDownload = staleDownloadPointer(pointer);
+          if (staleDownload) {
+            await ShippieOfflineCapsule.putPointer({
+              ...pointer,
+              state: 'error',
+              error: pointer.error || 'download_interrupted',
+              updatedAt: new Date().toISOString(),
+            }).catch(() => {});
+          }
           return {
             ...base,
             state:
-              pointer.state === 'downloading'
+              staleDownload
+                ? 'error'
+                : pointer.state === 'downloading'
                 ? 'downloading'
                 : pointer.state === 'evicted'
                   ? 'evicted'
