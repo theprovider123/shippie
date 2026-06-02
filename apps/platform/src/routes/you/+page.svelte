@@ -23,13 +23,14 @@
   let storagePinned = $state(false);
   let storagePinning = $state(false);
 
-  const savedCount = $derived($launcherMemory.saved.length);
-  const recentCount = $derived($launcherMemory.recents.length);
+  const dockToolCount = $derived.by(() => {
+    const slugs = new Set<string>();
+    for (const slug of $launcherMemory.saved) slugs.add(slug);
+    for (const recent of $launcherMemory.recents) slugs.add(recent.slug);
+    return slugs.size;
+  });
   const totalLaunches = $derived(
     Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, count) => sum + count, 0),
-  );
-  const makerToolsLabel = $derived(
-    data.makerApps.length === 0 ? 'Make tools' : `${data.makerApps.length} made`,
   );
   const offlineApps = $derived.by(() =>
     data.apps.filter((app) => $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved'),
@@ -46,7 +47,7 @@
       })
       .filter(({ health }) => health.state === 'needs_refresh' || health.state === 'needs_connection' || health.state === 'failed'),
   );
-  const hasLocalData = $derived(savedCount > 0 || recentCount > 0 || offlineApps.length > 0 || totalLaunches > 0);
+  const hasLocalData = $derived(dockToolCount > 0 || offlineApps.length > 0 || totalLaunches > 0);
 
   onMount(() => {
     hydrateLauncherMemory();
@@ -73,7 +74,7 @@
 
   function clearLocalMemory() {
     if (!hasLocalData) return;
-    const ok = window.confirm('Clear saved and recent launcher memory on this device? Offline app files stay saved.');
+    const ok = window.confirm('Clear Dock memory on this device? Offline app files stay available.');
     if (ok) clearLauncherMemory();
   }
 
@@ -96,7 +97,7 @@
     <div class="head-row">
       <div>
         <h1>You</h1>
-        <p class="lede">Account, local data, offline storage, and builder tools. Your apps live in Dock and Tools.</p>
+        <p class="lede">Account, device storage, local data, and builder tools. Dock is for launching; Tools is for browsing.</p>
       </div>
       <a class="home-link" href="/dock">Dock →</a>
     </div>
@@ -105,44 +106,21 @@
   <main class="content wrap">
     <section class="overview-grid" aria-label="This device summary">
       <div>
-        <span>Saved</span>
-        <strong>{savedCount}</strong>
-      </div>
-      <div>
-        <span>Recent</span>
-        <strong>{recentCount}</strong>
+        <span>Dock</span>
+        <strong>{dockToolCount}</strong>
       </div>
       <div>
         <span>Offline</span>
         <strong>{offlineApps.length}</strong>
       </div>
       <div>
+        <span>Storage</span>
+        <strong>{formatOfflineBytes(storageUsage) || '...'}</strong>
+      </div>
+      <div>
         <span>Launches</span>
         <strong>{totalLaunches}</strong>
       </div>
-    </section>
-
-    <section class="nav-grid" aria-label="Shippie places">
-      <a href="/dock">
-        <span>Dock</span>
-        <strong>Saved + recent</strong>
-        <small>Your running, saved, and recent tools.</small>
-      </a>
-      <a href="/tools">
-        <span>Tools</span>
-        <strong>Catalog</strong>
-        <small>Search, view details, save, and open new tools.</small>
-      </a>
-      <a href="/dock?section=data">
-        <span>Data</span>
-        <strong>{offlineApps.length} offline</strong>
-        <small>Export, restore, repair, and move local app data.</small>
-      </a>
-      <a href="/new">
-        <span>Ship</span>
-        <strong>{makerToolsLabel}</strong>
-        <small>Publish or manage tools you build.</small>
-      </a>
     </section>
 
     <section class="panel account-panel" aria-labelledby="account-title">
@@ -194,6 +172,7 @@
         </div>
       </div>
       <div class="data-actions">
+        <a href="/dock?section=data" class="secondary-action">Manage data</a>
         <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
           {storagePinned ? 'Storage protected' : storagePinning ? 'Protecting storage' : 'Protect offline storage'}
         </button>
@@ -373,7 +352,6 @@
   .account-row,
   .overview-grid,
   .device-grid,
-  .nav-grid,
   .repair-list,
   .trust-band,
   .link-list {
@@ -416,29 +394,6 @@
     color: var(--sunset);
   }
 
-  .nav-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1px;
-    background: var(--border-light);
-  }
-
-  .nav-grid a {
-    min-width: 0;
-    display: grid;
-    gap: 0.35rem;
-    min-height: 132px;
-    padding: var(--space-md);
-    background: var(--surface);
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .nav-grid a:hover {
-    background: var(--surface-alt);
-  }
-
-  .nav-grid span,
   .overview-grid span,
   .device-grid span {
     color: var(--text-light);
@@ -446,18 +401,6 @@
     font-size: 11px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-  }
-
-  .nav-grid strong {
-    font-family: var(--font-heading);
-    font-size: 1.12rem;
-    color: var(--text);
-  }
-
-  .nav-grid small {
-    color: var(--text-secondary);
-    font-size: var(--small-size);
-    line-height: 1.4;
   }
 
   .overview-grid,
@@ -585,22 +528,12 @@
       padding-top: var(--space-md);
     }
 
-    .nav-grid,
     .overview-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .device-grid {
       grid-template-columns: 1fr;
-    }
-
-    .nav-grid a {
-      min-height: 86px;
-      padding: var(--space-sm);
-    }
-
-    .nav-grid small {
-      display: none;
     }
 
     .section-head {
