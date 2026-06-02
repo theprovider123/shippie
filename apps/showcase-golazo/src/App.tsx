@@ -6,8 +6,10 @@ import { BracketView } from "./components/BracketView";
 import { Pools } from "./components/Pools";
 import { Live } from "./components/Live";
 import { IncomingShare } from "./components/IncomingShare";
+import { IncomingSweep } from "./components/IncomingSweep";
 import { BottomNav, type Tab } from "./components/BottomNav";
-import { readShareFromHash, type SharePayload } from "./lib/codec";
+import { readShareFromHash, readSweepFromHash, type SharePayload } from "./lib/codec";
+import type { Sweep } from "./lib/sweeps";
 import { completion } from "./lib/bracket";
 import { useStore } from "./state";
 
@@ -19,19 +21,24 @@ export function App() {
   const [incoming, setIncoming] = useState<SharePayload | null>(() =>
     typeof location !== "undefined" ? readShareFromHash(location.hash) : null,
   );
+  const [incomingSweep, setIncomingSweep] = useState<Sweep | null>(() =>
+    typeof location !== "undefined" ? readSweepFromHash(location.hash) : null,
+  );
 
-  // Capture shared brackets from the URL hash — directly (standalone /run)
-  // and via the container's posted parent hash (embedded surface).
+  // Capture shared brackets + sweepstake draws from the URL hash — directly
+  // (standalone /run) and via the container's posted parent hash (embedded).
   useEffect(() => {
-    const fromHash = () => {
-      const p = readShareFromHash(location.hash);
+    const ingest = (hash: string) => {
+      const p = readShareFromHash(hash);
       if (p) setIncoming(p);
+      const s = readSweepFromHash(hash);
+      if (s) setIncomingSweep(s);
     };
+    const fromHash = () => ingest(location.hash);
     const onMsg = (e: MessageEvent) => {
       const d = e.data;
       if (d && typeof d === "object" && d.kind === "shippie.parent-hash") {
-        const p = readShareFromHash(String(d.hash ?? ""));
-        if (p) setIncoming(p);
+        ingest(String(d.hash ?? ""));
       }
     };
     window.addEventListener("hashchange", fromHash);
@@ -42,13 +49,20 @@ export function App() {
     };
   }, []);
 
-  function dismissIncoming() {
-    setIncoming(null);
+  function clearHash() {
     try {
       history.replaceState(null, "", location.pathname + location.search);
     } catch {
       /* ignore */
     }
+  }
+  function dismissIncoming() {
+    setIncoming(null);
+    clearHash();
+  }
+  function dismissSweep() {
+    setIncomingSweep(null);
+    clearHash();
   }
 
   return (
@@ -69,6 +83,9 @@ export function App() {
 
       {incoming && (
         <IncomingShare payload={incoming} onClose={dismissIncoming} />
+      )}
+      {!incoming && incomingSweep && profile && (
+        <IncomingSweep sweep={incomingSweep} onClose={dismissSweep} />
       )}
     </div>
   );

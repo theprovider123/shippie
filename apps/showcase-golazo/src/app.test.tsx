@@ -133,9 +133,10 @@ describe("App smoke", () => {
       );
     });
     clickButton("Draw for 2");
-    expect(container.textContent).toContain("The draw");
+    // Default mode is the classic office sweep: one nation each.
     expect(container.textContent).toContain("Sam");
-    // All 48 nations dealt across the two people.
-    expect(container.querySelectorAll(".sweeps-team")).toHaveLength(48);
+    expect(container.textContent).toContain("Mo");
+    expect(container.textContent).toContain("One nation each");
+    expect(container.querySelectorAll(".sweeps-team")).toHaveLength(2);
   });
 });

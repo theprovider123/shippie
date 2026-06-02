@@ -11,7 +11,14 @@ import type { Pool, PoolEntry, Prediction, Profile, Results } from "./lib/types"
 import { prunePicks } from "./lib/bracket";
 import * as store from "./lib/storage";
 import type { SharePayload } from "./lib/codec";
-import { makeSeed, type Sweep } from "./lib/sweeps";
+import { makeSeed, type Sweep, type SweepMode, type SweepScope } from "./lib/sweeps";
+
+export interface SweepOpts {
+  mode?: SweepMode;
+  scope?: SweepScope;
+  stake?: number;
+  currency?: string;
+}
 import { emptyFeed, fetchFeed, feedHasResults, type Feed } from "./lib/feed";
 
 interface Store {
@@ -42,7 +49,8 @@ interface Store {
   setKnockoutResult: (slotId: string, teamId: string) => void;
   clearResults: () => void;
 
-  createSweep: (name: string, members: string[]) => Sweep;
+  createSweep: (name: string, members: string[], opts?: SweepOpts) => Sweep;
+  importSweep: (sweep: Sweep) => Sweep;
   removeSweep: (id: string) => void;
 }
 
@@ -213,15 +221,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setResults({ groups: {}, knockout: {} });
       },
 
-      createSweep(name, members) {
+      createSweep(name, members, opts) {
         const sweep: Sweep = {
           id: uid(),
           name: name.trim() || "Sweepstake",
           seed: makeSeed(),
           members: members.map((m) => m.trim()).filter(Boolean),
           createdAt: Date.now(),
+          mode: opts?.mode ?? "classic",
+          scope: opts?.scope ?? "all48",
+          stake: opts?.stake,
+          currency: opts?.currency,
         };
         setSweeps((ss) => [sweep, ...ss]);
+        return sweep;
+      },
+
+      importSweep(sweep) {
+        setSweeps((ss) => {
+          const without = ss.filter((s) => s.seed !== sweep.seed);
+          return [sweep, ...without];
+        });
         return sweep;
       },
 
