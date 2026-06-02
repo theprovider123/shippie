@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://shippie.app/schemas/app.json",
+  "title": "Shippie app manifest (shippie.json)",
+  "description": "The maker-facing manifest that turns a build into a Shippie tool. Identity + capabilities + data + source/provenance. The deploy pipeline reads a lenient subset (ShippieJsonLite in apps/platform/src/lib/server/deploy/manifest.ts); this schema documents the full maker surface. additionalProperties is permitted so richer showcase manifests validate.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["name"],
+  "properties": {
+    "$schema": { "type": "string", "format": "uri" },
+    "version": { "type": "integer", "minimum": 1, "description": "Manifest/data schema version. Defaults to 1." },
+    "slug": { "type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", "description": "Lowercase URL slug. Becomes <slug>.shippie.app." },
+    "name": { "type": "string", "description": "Human display name." },
+    "type": { "enum": ["app", "web_app", "website"], "description": "Runtime kind. Defaults to 'app'." },
+    "tagline": { "type": "string" },
+    "description": { "type": "string" },
+    "category": { "type": "string", "description": "Marketplace category, e.g. 'tools'." },
+    "icon": { "type": "string", "description": "Path to an icon within the bundle, e.g. /icon-512.png." },
+    "theme_color": { "type": "string", "description": "CSS color; drives the address-bar / splash tint." },
+    "background_color": { "type": "string" },
+    "visibility": { "enum": ["public", "unlisted", "private", "team"], "description": "Who can discover/run the tool." },
+    "display": { "enum": ["standalone", "fullscreen", "minimal-ui", "browser"] },
+    "orientation": { "enum": ["portrait", "landscape", "any"] },
+    "kind": { "enum": ["local", "connected", "cloud"], "description": "Maker-declared kind. Detection is public truth; declared kind is private." },
+    "ai": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Local AI task types the tool uses, e.g. ['classify','embed']. Runs on-device via WebGPU/WASM."
+    },
+    "offline": { "type": "boolean", "description": "Tool works after first load with no network." },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Declared capabilities. Anything not declared is denied by the wrapper/CSP.",
+      "properties": {
+        "auth": { "type": "boolean" },
+        "storage": { "enum": ["none", "r", "rw"], "description": "Local on-device storage access." },
+        "files": { "type": "boolean" },
+        "notifications": { "type": "boolean" },
+        "analytics": { "type": "boolean" },
+        "external_network": { "type": "boolean", "description": "If true, allowed_connect_domains must enumerate every host." }
+      }
+    },
+    "allowed_connect_domains": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Explicit allowlist of outbound hosts. Empty/absent = no external connections (local-first default)."
+    },
+    "allowed_resource_domains": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "intents": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Cross-tool intent wiring. See @shippie/intents CANONICAL_INTENTS for the catalog.",
+      "properties": {
+        "provides": { "type": "array", "items": { "type": "string" } },
+        "consumes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "source_repo": { "type": "string", "description": "Provenance: source URL (e.g. a GitHub repo or tree URL). Normalized server-side; only http(s) accepted." },
+    "source_commit": { "type": "string", "description": "Provenance: exact commit SHA this build came from. Pin a build to a commit, not just a branch." },
+    "license": { "type": "string", "description": "SPDX license id. Required (with source_repo) for remix_allowed to take effect." },
+    "remix_allowed": { "type": "boolean", "description": "Opt-in: allow others to fork/clone + redeploy with lineage preserved." },
+    "template_id": { "type": "string" },
+    "parent_app_id": { "type": "string", "description": "Lineage: the app this was remixed from. An app may not be its own parent." },
+    "parent_version": { "type": "string" }
+  }
+}

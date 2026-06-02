@@ -32,6 +32,18 @@ npx @shippie/cli remix recipe-saver
 npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
 ```
 
+## Show it from a repo
+
+GitHub keeps the code. Shippie makes it usable. Drop these in any README so a visitor
+can try the tool before reading a single setup instruction — GitHub is one first-class
+source into the marketplace, never a requirement.
+
+```markdown
+[Try on Shippie](https://shippie.app/run/your-app) ·
+[Remix on Shippie](https://shippie.app/new?remix=your-app) ·
+[Source](https://github.com/you/your-app)
+```
+
 ## How Shippie compares
 
 | | Shippie | App Store | Generic Hosting | No-Code App Builders |
@@ -56,6 +68,8 @@ npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
 - [Remixable tools](https://shippie.app/?remixable=1) — production tools to clone
 - [Getting started](docs/getting-started.md)
 - [SDK reference](docs/sdk-reference.md)
+- [What's open source here](docs/open-core.md) — the core/internal/publishable boundary
+- [Contracts](docs/contracts/) — manifest, intents, permissions, provenance & lineage
 - [Self-hosting](docs/self-hosting.md)
 - [Architecture](docs/architecture.md)
 - [Contributing](CONTRIBUTING.md)
