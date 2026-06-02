@@ -37,6 +37,7 @@ function requireTransferId(value: string | undefined): string {
 
 function statusFor(err: unknown): number {
   const message = messageFor(err);
+  if (message.includes('claimed')) return 409;
   if (message.includes('unavailable')) return 503;
   if (message.includes('large')) return 413;
   return 400;

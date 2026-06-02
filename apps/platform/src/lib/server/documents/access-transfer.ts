@@ -116,7 +116,15 @@ export async function storeAccessTransferRequest(
   assertTransferId(transferId);
   ensureAccessTransferEnabled(env);
   if (!env.CACHE) throw new Error('access transfer relay unavailable');
-  await env.CACHE.put(transferRequestKey(transferId), JSON.stringify(request), { expirationTtl: TRANSFER_TTL_SECONDS });
+  const key = transferRequestKey(transferId);
+  const existing = await env.CACHE.get(key);
+  if (existing) {
+    const claimed = validateAccessTransferRequest(JSON.parse(existing));
+    if (claimed.recipientPublicKey !== request.recipientPublicKey) {
+      throw new Error('access transfer already claimed');
+    }
+  }
+  await env.CACHE.put(key, JSON.stringify(request), { expirationTtl: TRANSFER_TTL_SECONDS });
   return { transferId, stored: true, expiresIn: TRANSFER_TTL_SECONDS };
 }
 

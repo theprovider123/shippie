@@ -48,6 +48,29 @@ describe('document access transfer relay', () => {
     expect(await readWrappedAccessBundle(env, 'transfer_123')).toBeNull();
   });
 
+  it('allows the same receiver to retry a transfer request idempotently', async () => {
+    const env = fakeEnv();
+    const request = transferRequest();
+    await storeAccessTransferRequest(env, 'transfer_retry', request);
+
+    await expect(storeAccessTransferRequest(env, 'transfer_retry', {
+      ...request,
+      createdAt: '2026-05-11T12:01:00.000Z',
+      deviceLabel: 'New phone retry',
+    })).resolves.toMatchObject({ transferId: 'transfer_retry', stored: true });
+  });
+
+  it('rejects a second receiver trying to claim the same transfer code', async () => {
+    const env = fakeEnv();
+    await storeAccessTransferRequest(env, 'transfer_claimed', transferRequest());
+
+    await expect(storeAccessTransferRequest(env, 'transfer_claimed', {
+      ...transferRequest(),
+      recipientPublicKey: 'another_recipient_pub',
+      deviceLabel: 'Tablet',
+    })).rejects.toThrow(/already claimed/);
+  });
+
   it('rejects raw document fields on transfer requests', () => {
     expect(() => validateAccessTransferRequest({ ...transferRequest(), documentKey: 'secret' })).toThrow(/plaintext field/);
     expect(() => validateAccessTransferRequest({ ...transferRequest(), documents: [] })).toThrow(/plaintext field/);

@@ -718,12 +718,23 @@ async function defaultStartAccessBundleReceiver(
 
   const relay = doc.createAccessTransferRelayClient({ origin: opts.transferRelayOrigin });
   const keys = await doc.generateAccessTransferKeyPair();
-  await relay.putRequest(transferId, {
-    schema: 'shippie.document.access-transfer-request.v1',
-    recipientPublicKey: keys.publicKeySpki,
-    createdAt: new Date().toISOString(),
-    deviceLabel: deviceLabel(),
-  });
+  try {
+    await relay.putRequest(transferId, {
+      schema: 'shippie.document.access-transfer-request.v1',
+      recipientPublicKey: keys.publicKeySpki,
+      createdAt: new Date().toISOString(),
+      deviceLabel: deviceLabel(),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    setTransferStatus(
+      dialog,
+      message.includes('claimed') || message.includes('409')
+        ? 'That transfer code is already being used by another device. Start a new Add device transfer for this device.'
+        : 'Could not start restore on this device. Check the transfer code and try again.',
+    );
+    return;
+  }
   setTransferStatus(dialog, 'Request sent. Keep both devices open while access is sealed.');
   setTransferProgress(dialog, 35);
 
