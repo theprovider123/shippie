@@ -220,17 +220,18 @@
   // Focused-mode app-switcher drawer open state. Only meaningful when
   // `data.focused === true`; ignored in dashboard mode.
   let focusedDrawerOpen = $state(false);
+  let focusedChromeOpen = $state(false);
   let focusedToolOptionsOpen = $state(false);
   let focusedShareFeedback = $state('');
   let focusedQrMarkup = $state<string | null>(null);
   // Safe-edges contract: each iframe-mounted app can declare which
   // part of the viewport its own touch input owns via the
-  // @shippie/iframe-sdk safe-edges API. Host honours this by shrinking
-  // its own chrome (focused-chrome-tools + focused-chrome-options
-  // buttons) so a tap meant for a game doesn't open container UI.
-  // 'none' keeps the chrome at full size; 'bottom' is a placeholder
-  // for future bottom-grabber suppression; 'all' shrinks the chrome
-  // to a 12px edge sliver that's still tappable but stops bleeding
+  // @shippie/iframe-sdk safe-edges API. Host honours this by keeping
+  // its own focused Dock nub small and edge-bound so a tap meant for
+  // a game doesn't open container UI.
+  // 'none' keeps the nub at full size; 'bottom' is a placeholder
+  // for future bottom-grabber suppression; 'all' keeps the nub compact
+  // and discoverable but stops bleeding
   // into game touch targets.
   type InputRegionOwns = 'none' | 'bottom' | 'all';
   let inputRegionByAppId = $state<Record<string, InputRegionOwns>>({});
@@ -1079,6 +1080,7 @@
   }
 
   function toggleFocusedDrawer() {
+    focusedChromeOpen = false;
     focusedToolOptionsOpen = false;
     if (focusedDrawerOpen) {
       closeFocusedDrawer();
@@ -1089,30 +1091,54 @@
   }
 
   function toggleFocusedToolOptions() {
+    focusedChromeOpen = false;
     closeFocusedDrawer();
     focusedToolOptionsOpen = !focusedToolOptionsOpen;
   }
 
-  function handleFocusedToolsPress(event: Event) {
-    event.preventDefault();
-    event.stopPropagation();
-    exitFocusedMode('home');
+  function toggleFocusedChrome(event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const next = !focusedChromeOpen;
+    focusedChromeOpen = next;
+    if (next) {
+      closeFocusedDrawer();
+      focusedToolOptionsOpen = false;
+    }
   }
 
-  function handleFocusedOptionsPress(event: Event) {
-    event.preventDefault();
-    event.stopPropagation();
+  function returnToDockFromTool(event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    focusedChromeOpen = false;
+    if (data.focused) exitFocusedMode('home');
+    else goHome();
+  }
+
+  function openFocusedSwitcher(event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    focusedChromeOpen = false;
+    toggleFocusedDrawer();
+  }
+
+  function saveActiveToolFromChrome(event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (activeApp) void saveDrawerTool(activeApp);
+    focusedChromeOpen = false;
+  }
+
+  function openFocusedOptionsFromChrome(event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    focusedChromeOpen = false;
     toggleFocusedToolOptions();
   }
 
-  function handleFocusedToolsKeydown(event: KeyboardEvent) {
+  function handleFocusedChromeButtonKeydown(event: KeyboardEvent) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
-    handleFocusedToolsPress(event);
-  }
-
-  function handleFocusedOptionsKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    handleFocusedOptionsPress(event);
+    toggleFocusedChrome(event);
   }
 
   function closeFocusedToolOptions() {
@@ -1124,7 +1150,13 @@
     // ⌘K / Ctrl+K — summon (toggle) the tool switcher from inside a tool.
     if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')) {
       event.preventDefault();
+      focusedChromeOpen = false;
       toggleFocusedDrawer();
+      return;
+    }
+    if (event.key === 'Escape' && focusedChromeOpen) {
+      event.preventDefault();
+      focusedChromeOpen = false;
       return;
     }
     if (event.key === 'Escape' && focusedToolOptionsOpen) {
@@ -1141,6 +1173,7 @@
   $effect(() => {
     if (typeof window === 'undefined' || !(data.focused || immersiveActive)) {
       chromeIdle = false;
+      focusedChromeOpen = false;
       return;
     }
     let timer: ReturnType<typeof setTimeout>;
@@ -3339,43 +3372,46 @@
     by the surrounding script block. Focused mode is a presentation
     branch, not a behaviour branch.
   -->
-  <section class="focused-shell" data-chrome-idle={chromeIdle}>
-    <a
-      href="/dock"
-      class="focused-chrome-button focused-chrome-tools"
-      class:first-run={firstRunHint}
+  <section class="focused-shell" data-chrome-idle={chromeIdle} data-chrome-open={focusedChromeOpen}>
+    <div
+      class="focused-dock-nub-wrap"
       class:input-region-bottom={activeInputRegion === 'bottom'}
       class:input-region-all={activeInputRegion === 'all'}
-      aria-label="Return to Shippie Dock"
-      data-sveltekit-reload
-      onmousedown={handleFocusedToolsPress}
-      ontouchstart={handleFocusedToolsPress}
-      onkeydown={handleFocusedToolsKeydown}
     >
-      <img
-        src="/__shippie-pwa/icon.svg"
-        alt=""
-        width="22"
-        height="22"
-        aria-hidden="true"
-      />
-      <span class="sr-only">Return to Shippie Dock</span>
-    </a>
-    {#if activeApp}
       <button
         type="button"
-        class="focused-chrome-button focused-chrome-options"
-        class:input-region-all={activeInputRegion === 'all'}
-        aria-label={`Share and options for ${activeApp.name}`}
-        aria-expanded={focusedToolOptionsOpen}
-        onmousedown={handleFocusedOptionsPress}
-        ontouchstart={handleFocusedOptionsPress}
-        onkeydown={handleFocusedOptionsKeydown}
+        class="focused-dock-nub"
+        class:first-run={firstRunHint}
+        aria-label={focusedChromeOpen ? 'Hide Shippie controls' : 'Show Shippie controls'}
+        aria-expanded={focusedChromeOpen}
+        onclick={toggleFocusedChrome}
+        onkeydown={handleFocusedChromeButtonKeydown}
       >
-        <span aria-hidden="true">↗</span>
-        <span class="sr-only">Share and options</span>
+        <img
+          src="/__shippie-pwa/icon.svg"
+          alt=""
+          width="22"
+          height="22"
+          aria-hidden="true"
+        />
       </button>
-    {/if}
+      {#if focusedChromeOpen}
+        <div class="focused-command-strip" role="toolbar" aria-label="Shippie controls">
+          <button type="button" onclick={returnToDockFromTool}>Dock</button>
+          <button type="button" onclick={openFocusedSwitcher}>Switcher</button>
+          {#if activeApp}
+            <button
+              type="button"
+              class:saved={drawerSavedSet.has(activeApp.slug)}
+              onclick={saveActiveToolFromChrome}
+            >
+              {drawerSavedSet.has(activeApp.slug) ? 'Saved' : 'Save'}
+            </button>
+            <button type="button" onclick={openFocusedOptionsFromChrome}>More</button>
+          {/if}
+        </div>
+      {/if}
+    </div>
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -4390,36 +4426,37 @@
     white-space: nowrap;
   }
 
-  /* Thin focused-mode chrome. Shippie owns two small marks only:
-     tools/data on the left, current-tool share/options on the right.
-     No hidden hit-zones are active in focused mode, so app builders
-     keep their own headers, nav, inputs, swipes, and edge targets. */
-  .focused-chrome-button {
+  /* Immersive Dock nub. The host keeps one small, spatially polite
+     escape hatch; tapping it reveals temporary commands instead of
+     keeping large chrome over the running tool. */
+  .focused-dock-nub-wrap {
     position: fixed;
     top: 50%;
     z-index: 62;
-    display: inline-flex;
+    left: max(0px, env(safe-area-inset-left, 0px));
+    display: flex;
     align-items: center;
-    justify-content: center;
-    width: var(--touch-min);
-    height: 46px;
+    gap: 7px;
+    transform: translateY(-50%);
+    transition:
+      opacity 0.22s ease,
+      transform 0.22s ease;
+  }
+  .focused-dock-nub {
+    width: 34px;
+    height: 42px;
+    display: grid;
+    place-items: center;
     padding: 0;
-    transition: opacity 0.35s var(--ease-out, ease);
-    background: rgba(20, 18, 15, 0.65);
-    border: 1px solid rgba(168, 196, 145, 0.35);
+    border: 1px solid rgba(168, 196, 145, 0.34);
+    border-left: 0;
+    border-radius: 0 15px 15px 0;
+    background: rgba(20, 18, 15, 0.62);
     color: var(--text);
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: 18px;
-    line-height: 1;
-    letter-spacing: 0;
-    text-decoration: none;
     cursor: pointer;
+    box-shadow: 0 8px 24px rgba(20, 18, 15, 0.14);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    opacity: 0.72;
-    transform: translateY(-50%);
-    box-shadow: 0 8px 28px rgba(20, 18, 15, 0.16);
     transition:
       opacity 0.18s ease,
       background 0.18s ease,
@@ -4427,144 +4464,138 @@
       box-shadow 0.18s ease,
       transform 0.18s ease;
   }
-  .focused-chrome-tools {
-    left: calc(env(safe-area-inset-left, 0px) - 12px);
-    border-left: 0;
-    border-radius: 0 16px 16px 0;
+  .focused-dock-nub img {
+    display: block;
+    width: 19px;
+    height: 19px;
+    object-fit: contain;
+    pointer-events: none;
   }
-  .focused-chrome-options {
-    right: calc(env(safe-area-inset-right, 0px) - 12px);
-    border-right: 0;
-    border-radius: 16px 0 0 16px;
+  .focused-dock-nub:hover,
+  .focused-dock-nub:focus-visible,
+  .focused-dock-nub[aria-expanded='true'] {
+    background: rgba(20, 18, 15, 0.86);
+    border-color: var(--sage-leaf);
+    box-shadow: 0 10px 28px rgba(20, 18, 15, 0.22);
+    outline: none;
+    transform: translateX(8px);
   }
-  /* Safe-edges contract: when the active app declares it owns the
-     bottom or the entire viewport via @shippie/iframe-sdk
-     `safeEdges.declareInputRegion()`, compact the chrome buttons so
-     their hit area stays at the edge of game controls. Keep them
-     visibly identifiable, though: a too-thin sliver reads as "missing"
-     in launch games like Snake and prevents people finding share/data.
-
-     'bottom' suppresses just the left tools pill (the one that
-     overlaps Stack's leftmost touch button). 'all' shrinks both. */
-  .focused-chrome-button.input-region-bottom.focused-chrome-tools,
-  .focused-chrome-button.input-region-all {
-    width: var(--touch-min);
-    opacity: 0.82;
-    background: rgba(20, 18, 15, 0.74);
-  }
-  .focused-chrome-tools.input-region-bottom,
-  .focused-chrome-tools.input-region-all {
-    left: calc(env(safe-area-inset-left, 0px) - 2px);
-  }
-  .focused-chrome-options.input-region-all {
-    right: calc(env(safe-area-inset-right, 0px) - 2px);
-  }
-  .focused-chrome-button.input-region-bottom.focused-chrome-tools:hover,
-  .focused-chrome-button.input-region-bottom.focused-chrome-tools:focus-visible,
-  .focused-chrome-button.input-region-all:hover,
-  .focused-chrome-button.input-region-all:focus-visible {
-    width: var(--touch-min);
-    opacity: 1;
-  }
-
-  .focused-chrome-button.first-run {
+  .focused-dock-nub.first-run {
     animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
   }
   @keyframes shippie-mark-pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.72; }
+    0%   { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0.55); opacity: 0.76; }
     35%  { box-shadow: 0 0 0 6px rgba(232, 96, 60, 0.30); opacity: 1; }
     70%  { box-shadow: 0 0 0 14px rgba(232, 96, 60, 0); opacity: 1; }
-    100% { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.72; }
+    100% { box-shadow: 0 0 0 0 rgba(232, 96, 60, 0); opacity: 0.76; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .focused-chrome-button.first-run { animation: none; }
+    .focused-dock-nub.first-run { animation: none; }
+  }
+  .focused-command-strip {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    max-width: min(460px, calc(100vw - 64px));
+    border: 1px solid rgba(168, 196, 145, 0.32);
+    background: rgba(20, 18, 15, 0.86);
+    box-shadow: 0 14px 38px rgba(20, 18, 15, 0.24);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: focused-command-in 150ms var(--ease-out, ease);
+  }
+  .focused-command-strip button {
+    min-height: 40px;
+    padding: 0 0.85rem;
+    border: 0;
+    border-right: 1px solid rgba(168, 196, 145, 0.16);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .focused-command-strip button:last-child {
+    border-right: 0;
+  }
+  .focused-command-strip button:hover,
+  .focused-command-strip button:focus-visible {
+    color: var(--sunset);
+    background: rgba(255, 253, 247, 0.06);
+    outline: none;
+  }
+  .focused-command-strip button.saved {
+    color: var(--sage-leaf);
+  }
+  @keyframes focused-command-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
   }
   /* Immersive idle — dim (but keep tappable) the in-tool chrome after ~1.5s
      of no activity; any pointer/key/touch restores it. Motion-only so
      reduced-motion users keep the chrome fully visible. */
   @media (prefers-reduced-motion: no-preference) {
-    .focused-shell[data-chrome-idle='true'] .focused-chrome-button {
-      opacity: 0.34;
+    .focused-shell[data-chrome-idle='true'][data-chrome-open='false'] .focused-dock-nub-wrap {
+      opacity: 0.38;
+      transform: translateY(-50%) translateX(-16px);
     }
   }
 
   /* Keyboard open inside the running tool — hide the chrome so it
      doesn't float over the keyboard area. The :global selector matches
      the data attribute set on <html> by handleToolKeyboardMessage. */
-  :global(html[data-keyboard-open="true"]) .focused-chrome-button {
+  :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.18s ease, transform 0.18s ease;
-  }
-  :global(html[data-keyboard-open="true"]) .focused-chrome-tools {
     transform: translateY(-50%) translateX(-100%);
   }
-  :global(html[data-keyboard-open="true"]) .focused-chrome-options {
-    transform: translateY(-50%) translateX(100%);
-  }
-  .focused-chrome-button:hover,
-  .focused-chrome-button:focus-visible,
-  .focused-chrome-button[aria-expanded='true'] {
-    opacity: 1;
-    background: rgba(20, 18, 15, 0.85);
-    border-color: var(--sage-leaf);
-  }
-  .focused-chrome-tools:hover,
-  .focused-chrome-tools:focus-visible {
-    transform: translateY(-50%) translateX(18px);
-  }
-  .focused-chrome-options:hover,
-  .focused-chrome-options:focus-visible,
-  .focused-chrome-options[aria-expanded='true'] {
-    transform: translateY(-50%) translateX(-18px);
-  }
-  .focused-chrome-button img {
-    display: block;
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-    pointer-events: none;
-  }
   @media (max-width: 640px) {
-    .focused-chrome-button {
+    .focused-dock-nub-wrap {
       top: auto;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
-      width: var(--touch-min);
-      height: 48px;
-      background: rgba(20, 18, 15, 0.82);
-      box-shadow: 0 6px 18px rgba(20, 18, 15, 0.14);
+      left: 50%;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      align-items: flex-end;
+      flex-direction: column-reverse;
+      transform: translateX(-50%);
+    }
+    .focused-dock-nub {
+      width: 58px;
+      height: 24px;
+      border: 1px solid rgba(168, 196, 145, 0.30);
+      border-radius: 999px;
+      background: rgba(20, 18, 15, 0.72);
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-      opacity: 0.88;
-      transform: none;
+      box-shadow: 0 6px 18px rgba(20, 18, 15, 0.14);
     }
-    .focused-chrome-tools {
-      left: calc(env(safe-area-inset-left, 0px) + 12px);
-      border-left: 1px solid rgba(168, 196, 145, 0.35);
-      border-radius: 18px;
+    .focused-dock-nub img {
+      width: 15px;
+      height: 15px;
     }
-    .focused-chrome-options {
-      right: calc(env(safe-area-inset-right, 0px) + 12px);
-      border-right: 1px solid rgba(168, 196, 145, 0.35);
-      border-radius: 18px;
-    }
-    .focused-chrome-tools.input-region-bottom,
-    .focused-chrome-tools.input-region-all {
-      left: calc(env(safe-area-inset-left, 0px) + 8px);
-    }
-    .focused-chrome-options.input-region-all {
-      right: calc(env(safe-area-inset-right, 0px) + 8px);
-    }
-    .focused-chrome-tools:hover,
-    .focused-chrome-tools:focus-visible,
-    .focused-chrome-options:hover,
-    .focused-chrome-options:focus-visible,
-    .focused-chrome-options[aria-expanded='true'] {
+    .focused-dock-nub:hover,
+    .focused-dock-nub:focus-visible,
+    .focused-dock-nub[aria-expanded='true'] {
       transform: translateY(-2px);
     }
-    :global(html[data-keyboard-open="true"]) .focused-chrome-tools,
-    :global(html[data-keyboard-open="true"]) .focused-chrome-options {
+    .focused-command-strip {
+      width: min(360px, calc(100vw - 28px));
+      justify-content: stretch;
+    }
+    .focused-command-strip button {
+      flex: 1;
+      min-width: 0;
+      padding: 0 0.45rem;
+      font-size: 0.62rem;
+    }
+    .focused-shell[data-chrome-idle='true'][data-chrome-open='false'] .focused-dock-nub-wrap {
+      opacity: 0.34;
+      transform: translateX(-50%) translateY(12px);
+    }
+    :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
       transform: translateY(140%);
     }
   }
