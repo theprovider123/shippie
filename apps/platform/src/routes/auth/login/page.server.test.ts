@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { actions } from './+page.server';
+import { actions, load } from './+page.server';
 
 const mocks = vi.hoisted(() => ({
   mintVerificationToken: vi.fn(),
@@ -55,6 +55,22 @@ function emailActionEvent(returnTo = '/dashboard?claim_trial=trial-abcd1234') {
 }
 
 describe('/auth/login email action', () => {
+  test('continues local browsing from protected dashboard urls', async () => {
+    const url = new URL('https://shippie.app/auth/login');
+    url.searchParams.set('return_to', '/dashboard?smoke=footer2');
+
+    const result = await load({
+      locals: {},
+      platform: { env: { SHIPPIE_ENV: 'production' } },
+      url,
+    } as never);
+
+    expect(result).toMatchObject({
+      returnTo: '/dashboard?smoke=footer2',
+      continueTo: '/dock',
+    });
+  });
+
   test('preserves return_to in the magic link', async () => {
     mocks.mintVerificationToken.mockResolvedValueOnce({ token: 'token-123' });
 

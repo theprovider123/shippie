@@ -26,11 +26,12 @@ function normaliseReturnTo(value: string | null): string {
 }
 
 function localContinueTarget(returnTo: string): string {
+  const pathname = returnTo.split(/[?#]/, 1)[0] || '/dock';
   if (
-    returnTo === '/dashboard'
-    || returnTo.startsWith('/dashboard/')
-    || returnTo === '/admin'
-    || returnTo.startsWith('/admin/')
+    pathname === '/dashboard'
+    || pathname.startsWith('/dashboard/')
+    || pathname === '/admin'
+    || pathname.startsWith('/admin/')
   ) {
     return '/dock';
   }
