@@ -3,6 +3,7 @@ import {
   BRACKET_SHAPE,
   ROUND_LABEL,
   ROUNDS,
+  TEAMS,
   type RoundId,
 } from "../data/tournament";
 import { team } from "../data/teams";
@@ -12,7 +13,7 @@ import { Confetti, Flag, teamVars } from "../ui/atoms";
 import { celebrate, tap } from "../lib/haptics";
 
 export function BracketView({ onChampion }: { onChampion?: () => void }) {
-  const { prediction, pickWinner } = useStore();
+  const { prediction, pickWinner, setTopScorer } = useStore();
   const [round, setRound] = useState<RoundId>("R32");
   const [fire, setFire] = useState(0);
 
@@ -61,6 +62,13 @@ export function BracketView({ onChampion }: { onChampion?: () => void }) {
           </span>
           <span className="champ-banner-cup" aria-hidden>🏆</span>
         </div>
+      )}
+
+      {champ && (
+        <GoldenBoot
+          selected={prediction.topScorer}
+          onPick={(id) => { tap(); setTopScorer(prediction.topScorer === id ? undefined : id); }}
+        />
       )}
 
       <div className="round-rail">
@@ -113,6 +121,45 @@ export function BracketView({ onChampion }: { onChampion?: () => void }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function GoldenBoot({
+  selected,
+  onPick,
+}: {
+  selected?: string;
+  onPick: (id: string) => void;
+}) {
+  const teams = [...TEAMS].sort((a, b) => a.seed - b.seed);
+  const picked = selected ? team(selected) : null;
+  return (
+    <div className="golden-boot">
+      <div className="golden-boot-head">
+        <span className="golden-boot-cap">⚽️ Golden Boot</span>
+        <span className="golden-boot-sub">
+          {picked ? (
+            <>Your pick: <strong>{picked.flag} {picked.name}</strong></>
+          ) : (
+            "Which nation's striker tops the charts?"
+          )}
+        </span>
+      </div>
+      <div className="boot-rail">
+        {teams.map((t) => (
+          <button
+            key={t.id}
+            className={`boot-chip${selected === t.id ? " is-sel" : ""}`}
+            style={teamVars(t)}
+            onClick={() => onPick(t.id)}
+            aria-pressed={selected === t.id}
+          >
+            <Flag id={t.id} size={22} />
+            <span>{t.short}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
