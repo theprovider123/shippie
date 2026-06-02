@@ -358,13 +358,6 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     </p>
   </section>
 
-  <footer class="docs-footer">
-    <p>
-      Still reading? <a href="/whitepaper">The whitepaper</a> goes deeper on the thesis and the
-      composition. <a href="https://github.com/theprovider123/shippie">The repo</a> goes deeper on the
-      code. <a href="/new">Ship something</a> goes deeper on first-hand evidence.
-    </p>
-  </footer>
 </main>
 
 <style>
@@ -652,17 +645,4 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     white-space: nowrap;
   }
 
-  .docs-footer {
-    margin-top: var(--space-2xl);
-    padding-top: var(--space-lg);
-    border-top: 1px solid var(--border-light);
-    color: var(--text-light);
-    font-size: var(--small-size);
-    line-height: 1.6;
-  }
-  .docs-footer a {
-    color: var(--sunset);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
 </style>
