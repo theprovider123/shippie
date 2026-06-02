@@ -32,7 +32,7 @@ export const GET: RequestHandler = async ({ url }) => {
     short_name: 'Shippie',
     description: 'Small tools that work on your device.',
     id: '/',
-    start_url: '/workspace',
+    start_url: '/dock',
     scope: '/',
     display: 'standalone',
     display_override: ['standalone', 'minimal-ui'],
@@ -48,20 +48,20 @@ export const GET: RequestHandler = async ({ url }) => {
       { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
-      { name: 'Open workspace', url: '/workspace', short_name: 'Workspace' },
-      { name: 'Saved data', url: '/workspace?section=data', short_name: 'Data' },
+      { name: 'Open Dock', url: '/dock', short_name: 'Dock' },
+      { name: 'Saved data', url: '/dock?section=data', short_name: 'Data' },
       { name: 'Deploy an app', url: '/new', short_name: 'Deploy' },
     ],
     file_handlers: [
       {
-        action: '/workspace?import=package',
+        action: '/dock?import=package',
         accept: {
           'application/vnd.shippie.package': ['.shippie'],
           'application/json': ['.json'],
         },
       },
     ],
-    protocol_handlers: [{ protocol: 'web+shippie', url: '/workspace?open=%s' }],
+    protocol_handlers: [{ protocol: 'web+shippie', url: '/dock?open=%s' }],
   };
 
   return new Response(JSON.stringify(manifest), {

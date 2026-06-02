@@ -1,8 +1,8 @@
 // src/lib/container/rail-groups.ts
 /**
- * Adaptive workspace-rail grouping (spec §4/§5). Pure + framework-free so
+ * Adaptive Dock rail grouping (spec §4/§5). Pure + framework-free so
  * it can be unit-tested. Sources are kept distinct: Open = running tools,
- * Pinned = launcher-memory.pinned, Recent = unpinned/un-open recents.
+ * Saved = launcher-memory.saved, Recent = unsaved/un-open recents.
  * `cached-slugs` (offline state) is deliberately NOT an input.
  */
 export interface RailTool {
@@ -15,14 +15,16 @@ export interface RailTool {
 
 export interface RailGroups {
   open: RailTool[];
-  pinned: RailTool[];
+  saved: RailTool[];
   recent: RailTool[];
 }
 
 export function buildRailGroups(input: {
   catalog: RailTool[];
   openSlugs: string[];
-  pinned: string[];
+  saved?: string[];
+  /** Deprecated compat alias for saved. */
+  pinned?: string[];
   recents: { slug: string; lastOpened: string }[];
   recentCap?: number;
 }): RailGroups {
@@ -33,16 +35,19 @@ export function buildRailGroups(input: {
   const open = input.openSlugs.map(pick).filter((t): t is RailTool => Boolean(t));
   const openSet = new Set(open.map((t) => t.slug));
 
-  const pinned = input.pinned
+  const savedSlugs = [...(input.saved ?? []), ...(input.pinned ?? [])].filter(
+    (slug, index, all) => all.indexOf(slug) === index,
+  );
+  const saved = savedSlugs
     .map(pick)
     .filter((t): t is RailTool => Boolean(t) && !openSet.has(t!.slug));
-  const pinnedSet = new Set(pinned.map((t) => t.slug));
+  const savedSet = new Set(saved.map((t) => t.slug));
 
   const recent = [...input.recents]
     .sort((a, b) => (a.lastOpened < b.lastOpened ? 1 : -1)) // newest first
     .map((r) => pick(r.slug))
-    .filter((t): t is RailTool => Boolean(t) && !openSet.has(t!.slug) && !pinnedSet.has(t!.slug))
+    .filter((t): t is RailTool => Boolean(t) && !openSet.has(t!.slug) && !savedSet.has(t!.slug))
     .slice(0, cap);
 
-  return { open, pinned, recent };
+  return { open, saved, recent };
 }

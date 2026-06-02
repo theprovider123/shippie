@@ -3,12 +3,11 @@
   import CapabilityBadges from './CapabilityBadges.svelte';
   import { toast } from '$lib/stores/toast';
   import { copyText } from '$lib/utils/copy-link';
-  import { recordAppLaunch, togglePinnedApp } from '$lib/stores/launcher-memory';
+  import { recordAppLaunch, saveAppToDock } from '$lib/stores/launcher-memory';
   import {
     cachedSlugs,
     ensureAppOffline,
     offlineStatuses,
-    removeAppAndTrack,
   } from '$lib/stores/cached-slugs';
   import { describeOfflineHealth } from '$lib/offline/download-app';
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
@@ -95,29 +94,25 @@
 
   async function toggleSaved() {
     if (!app || isSaving) return;
-    const currentlySaved = isSaved;
-    const hasOfflineCopy =
-      isOffline || offlineStatus?.state === 'partial' || offlineStatus?.state === 'error';
-
+    if (isSaved && isOffline) {
+      toast.push({ kind: 'info', message: `${app.name} is already saved to Dock and available offline.` });
+      return;
+    }
     try {
-      if (currentlySaved) {
-        if (pinned) togglePinnedApp(app.slug);
-        if (hasOfflineCopy) await removeAppAndTrack(app.slug);
-        toast.push({ kind: 'success', message: 'Removed from saved tools.' });
-        return;
+      if (!pinned) {
+        saveAppToDock(app.slug);
+        toast.push({ kind: 'info', message: `Saving ${app.name} to Dock...` });
       }
-
       const result = await ensureAppOffline(app.slug);
-      if (result.state === 'saved' && !pinned) togglePinnedApp(app.slug);
       toast.push(
         result.state === 'saved'
-          ? { kind: 'success', message: 'Saved to your tools.' }
-          : { kind: 'error', message: 'Saved, but offline copy needs a refresh.' },
+          ? { kind: 'success', message: `${app.name} saved to Dock - available offline.` }
+          : { kind: 'error', message: `${app.name} is in Dock, but the offline copy needs a refresh.` },
       );
     } catch {
       toast.push({
         kind: 'error',
-        message: currentlySaved ? 'Could not remove saved copy.' : 'Could not save this tool yet.',
+        message: `${app.name} is in Dock, but could not finish the offline copy yet.`,
       });
     }
   }

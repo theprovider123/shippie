@@ -21,12 +21,14 @@
     type ToolRuntimeState,
   } from '$lib/components/tool-surface';
   import type { ContainerApp, UpdateCard } from '$lib/container/state';
+  import type { RailGroups, RailTool } from '$lib/container/rail-groups';
   import type { Insight } from '@shippie/agent';
   import type { MeshStatus } from '$lib/container/mesh-status';
 
   interface Props {
     insights: readonly Insight[];
     apps: readonly ContainerApp[];
+    dockGroups: RailGroups;
     openAppIds: readonly string[];
     updateCards: readonly UpdateCard[];
     meshStatus: MeshStatus;
@@ -35,6 +37,7 @@
     onOpenInsight: (insight: Insight) => void;
     onDismissInsight: (insight: Insight) => void;
     onOpenApp: (appId: string) => void;
+    onCloseTool?: (slug: string) => void;
     onStayOnCurrent: (appId: string) => void;
     onAcceptUpdate: (appId: string) => void;
     onCreateMeshRoom: () => void;
@@ -46,6 +49,7 @@
   let {
     insights,
     apps,
+    dockGroups,
     openAppIds,
     updateCards,
     meshStatus,
@@ -54,6 +58,7 @@
     onOpenInsight,
     onDismissInsight,
     onOpenApp,
+    onCloseTool,
     onStayOnCurrent,
     onAcceptUpdate,
     onCreateMeshRoom,
@@ -63,9 +68,22 @@
   }: Props = $props();
   let showMineOnly = $state(false);
   const visibleApps = $derived(showMineOnly ? apps.filter((app) => app.owned || app.visibility === 'local') : apps);
+  const quickSlugs = $derived(
+    new Set([
+      ...dockGroups.open.map((tool) => tool.slug),
+      ...dockGroups.saved.map((tool) => tool.slug),
+      ...dockGroups.recent.map((tool) => tool.slug),
+    ]),
+  );
+  const browsePreview = $derived(visibleApps.filter((app) => !quickSlugs.has(app.slug)).slice(0, 12));
+  const hasDockRows = $derived(dockGroups.open.length > 0 || dockGroups.saved.length > 0 || dockGroups.recent.length > 0);
 
   function runtimeStateFor(app: ContainerApp): ToolRuntimeState {
     return openAppIds.includes(app.id) ? 'live' : 'idle';
+  }
+
+  function sectionRuntimeState(section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
+    return section === 'open' ? 'live' : 'idle';
   }
 </script>
 
@@ -74,7 +92,7 @@
 {/if}
 <div class="section-head">
   <div class="section-title-row">
-    <h2>Tools</h2>
+    <h2>Dock</h2>
     <button
       class="mine-toggle"
       class:active={showMineOnly}
@@ -85,7 +103,7 @@
       My tools
     </button>
   </div>
-  <p>Open tools stay warm. Switch away and come back without a reload.</p>
+  <p>Running, saved, and recent tools stay close. Browse when you need something new.</p>
 </div>
 {#if updateCards.length > 0}
   <details class="updates">
@@ -120,15 +138,50 @@
     {/each}
   </details>
 {/if}
-<div class="app-grid">
-  {#each visibleApps as app (app.id)}
-    <ToolTile
-      app={containerAppToToolTile(app)}
-      density="card"
-      runtimeState={runtimeStateFor(app)}
-      onOpen={() => onOpenApp(app.id)}
-    />
-  {/each}
+<div class="dock-sections">
+  {#if dockGroups.open.length > 0}
+    {@render DockSection({
+      label: 'Running',
+      tools: dockGroups.open,
+      state: sectionRuntimeState('open'),
+      onClose: onCloseTool,
+    })}
+  {/if}
+  {#if dockGroups.saved.length > 0}
+    {@render DockSection({
+      label: 'Saved',
+      tools: dockGroups.saved,
+      state: sectionRuntimeState('saved'),
+    })}
+  {/if}
+  {#if dockGroups.recent.length > 0}
+    {@render DockSection({
+      label: 'Recent',
+      tools: dockGroups.recent,
+      state: sectionRuntimeState('recent'),
+    })}
+  {/if}
+
+  <section class="dock-section">
+    <div class="dock-section-head">
+      <div>
+        <h3>Browse</h3>
+        <p>{hasDockRows ? 'More tools from the catalog.' : 'Start with a few tools, then save your favorites to Dock.'}</p>
+      </div>
+      <a href="/tools">All tools</a>
+    </div>
+    <div class="app-grid">
+      {#each browsePreview as app (app.id)}
+        <ToolTile
+          app={containerAppToToolTile(app)}
+          density="card"
+          href={`/dock?app=${encodeURIComponent(app.slug)}`}
+          runtimeState={runtimeStateFor(app)}
+          onOpen={() => onOpenApp(app.id)}
+        />
+      {/each}
+    </div>
+  </section>
 </div>
 <div class="nearby-panel">
   <h3>Share nearby</h3>
@@ -163,6 +216,52 @@
   {/if}
 </div>
 
+{#snippet DockSection({
+  label,
+  tools,
+  state,
+  onClose,
+}: {
+  label: string;
+  tools: readonly RailTool[];
+  state: ToolRuntimeState;
+  onClose?: (slug: string) => void;
+})}
+  <section class="dock-section">
+    <div class="dock-section-head">
+      <div>
+        <h3>{label}</h3>
+        <p>
+          {#if label === 'Running'}
+            Still warm in the background.
+          {:else if label === 'Saved'}
+            In your Dock and kept ready offline.
+          {:else}
+            Recently opened on this device.
+          {/if}
+        </p>
+      </div>
+    </div>
+    <div class="dock-row-list">
+      {#each tools as tool (tool.slug)}
+        <div class="dock-row">
+          <a class="dock-row-main" href={`/dock?app=${encodeURIComponent(tool.slug)}`}>
+            <span class="dock-row-icon" style="background:{tool.accent}">{tool.icon}</span>
+            <span class="dock-row-copy">
+              <strong>{tool.name}</strong>
+              <small>{tool.category ?? 'tool'}</small>
+            </span>
+            <span class="dock-row-state">{state === 'live' ? 'Running' : 'Open'}</span>
+          </a>
+          {#if onClose}
+            <a class="dock-row-close" href={`/dock?close=${encodeURIComponent(tool.slug)}`} aria-label={`Close ${tool.name}`}>×</a>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  </section>
+{/snippet}
+
 <style>
   /* Inherits container-shell variables (--space-md, --bg, --border, etc).
      The shell loads them at :root, so component-scoped CSS can use them. */
@@ -177,7 +276,7 @@
   }
   .section-head h2 {
     margin: 0 0 4px;
-    font-size: 1.1rem;
+    font-size: 1.25rem;
   }
   .section-head p {
     margin: 0;
@@ -199,6 +298,117 @@
   .mine-toggle:hover {
     color: var(--text);
     border-color: var(--sunset);
+  }
+  .dock-sections {
+    display: grid;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+  }
+  .dock-section {
+    display: grid;
+    gap: var(--space-sm);
+  }
+  .dock-section-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-md);
+  }
+  .dock-section-head h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    letter-spacing: 0;
+  }
+  .dock-section-head p {
+    margin: 3px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+  }
+  .dock-section-head a {
+    flex: none;
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    text-decoration: none;
+  }
+  .dock-row-list {
+    display: grid;
+    gap: 8px;
+  }
+  .dock-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 64px;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+  .dock-row-main {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
+  }
+  .dock-row-main:hover {
+    background: var(--surface-alt);
+  }
+  .dock-row-icon {
+    width: 38px;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    color: var(--bg-pure);
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .dock-row-copy {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+  .dock-row-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    line-height: 1.15;
+  }
+  .dock-row-copy small,
+  .dock-row-state {
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+  }
+  .dock-row-state {
+    color: var(--text-light);
+  }
+  .dock-row-close {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    min-height: 100%;
+    border: 0;
+    border-left: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .dock-row-close:hover,
+  .dock-row-close:focus-visible {
+    color: var(--sunset);
+    background: rgba(232, 96, 60, 0.08);
   }
   .updates {
     margin-bottom: var(--space-md);
@@ -285,7 +495,7 @@
       margin: 0 0 var(--space-sm);
     }
     .section-title-row h2 {
-      font-size: clamp(2rem, 10vw, 3rem);
+      font-size: clamp(2.05rem, 10vw, 3rem);
       line-height: 0.96;
     }
     .section-head p {
@@ -314,6 +524,15 @@
     .app-grid {
       grid-template-columns: 1fr;
       gap: 8px;
+    }
+    .dock-section-head {
+      align-items: flex-start;
+    }
+    .dock-row-main {
+      grid-template-columns: 40px minmax(0, 1fr);
+    }
+    .dock-row-state {
+      display: none;
     }
     .nearby-panel {
       padding: var(--space-md);

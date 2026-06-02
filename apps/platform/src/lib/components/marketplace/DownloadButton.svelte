@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { cachedSlugs, downloadAppAndTrack, removeAppAndTrack } from '$lib/stores/cached-slugs';
+  import { cachedSlugs, downloadAppAndTrack } from '$lib/stores/cached-slugs';
+  import { hydrateLauncherMemory, saveAppToDock } from '$lib/stores/launcher-memory';
   import { getAppStatus, type AppDownloadProgress } from '$lib/offline/download-app';
 
   interface Props {
@@ -13,12 +14,12 @@
 
   let buttonState = $state<LocalState>('idle');
   let progress = $state({ done: 0, total: 0 });
-  let showRemove = $state(false);
   let errorMsg = $state<string | null>(null);
 
   // Reconcile with the store on mount; the store is populated by the
   // /apps page-level refreshCachedSlugs after first hydration.
   onMount(async () => {
+    hydrateLauncherMemory();
     try {
       const status = await getAppStatus(slug);
       buttonState =
@@ -51,6 +52,7 @@
     event.preventDefault();
     event.stopPropagation();
     if (buttonState === 'downloading' || buttonState === 'verifying') return;
+    saveAppToDock(slug);
     buttonState = 'downloading';
     errorMsg = null;
     try {
@@ -66,24 +68,10 @@
     }
   }
 
-  async function onRemoveClick(event: MouseEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    showRemove = false;
-    try {
-      await removeAppAndTrack(slug);
-      buttonState = 'idle';
-      progress = { done: 0, total: 0 };
-    } catch (err) {
-      buttonState = 'error';
-      errorMsg = err instanceof Error ? err.message : 'remove_failed';
-    }
-  }
-
   function onSavedClick(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    showRemove = !showRemove;
+    saveAppToDock(slug);
   }
 </script>
 
@@ -93,8 +81,8 @@
       type="button"
       class="dl-btn idle"
       onclick={onSaveClick}
-      title="Save for offline use"
-      aria-label="Save {slug} for offline use"
+      title="Save to Dock and make available offline"
+      aria-label="Save {slug} to Dock and make available offline"
     >
       ↓ Save
     </button>
@@ -123,21 +111,10 @@
       type="button"
       class="dl-btn saved"
       onclick={onSavedClick}
-      aria-label="Saved offline. Tap to remove."
-      aria-expanded={showRemove}
+      aria-label="{slug} saved to Dock and available offline"
     >
-      ✓ Offline
+      ✓ Saved
     </button>
-    {#if showRemove}
-      <button
-        type="button"
-        class="dl-remove"
-        onclick={onRemoveClick}
-        aria-label="Remove {slug} from offline"
-      >
-        Remove
-      </button>
-    {/if}
   {:else if buttonState === 'error'}
     <button
       type="button"
@@ -210,20 +187,6 @@
   .dl-btn.error {
     border-color: var(--sunset);
     color: var(--sunset);
-  }
-  .dl-remove {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    padding: 4px 10px;
-    border: 1px solid var(--sunset);
-    background: var(--surface);
-    color: var(--sunset);
-    cursor: pointer;
-    transition: background 0.15s var(--ease-out);
-  }
-  .dl-remove:hover {
-    background: rgba(232, 96, 60, 0.08);
   }
   .spinner {
     width: 8px;

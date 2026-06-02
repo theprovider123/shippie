@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     getLocalApp,
     localProfileAvailable,
@@ -9,6 +10,7 @@
     type LocalAppState,
   } from '$lib/client/local-profile';
   import { cachedSlugs, ensureAppOffline, offlineStatuses } from '$lib/stores/cached-slugs';
+  import { hydrateLauncherMemory, saveAppToDock } from '$lib/stores/launcher-memory';
 
   let {
     slug,
@@ -30,6 +32,10 @@
   let saving = $state(false);
   let message = $state('');
 
+  onMount(() => {
+    hydrateLauncherMemory();
+  });
+
   $effect(() => {
     if (!localProfileAvailable()) return;
     void (async () => {
@@ -50,6 +56,7 @@
     saving = true;
     message = 'Saving';
     try {
+      saveAppToDock(slug);
       const state = await saveOfflineState();
       profile = await markSaved(slug, state);
       message = state === 'offline_ready' ? 'Saved' : 'Saved';

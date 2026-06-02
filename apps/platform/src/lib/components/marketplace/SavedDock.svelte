@@ -5,12 +5,10 @@
     launcherAppToToolTile,
   } from '$lib/components/tool-surface';
   import {
-    cachedSlugs,
     ensureAppOffline,
-    offlineStatuses,
     removeAppAndTrack,
   } from '$lib/stores/cached-slugs';
-  import { togglePinnedApp } from '$lib/stores/launcher-memory';
+  import { removeSavedApp } from '$lib/stores/launcher-memory';
   import { toast } from '$lib/stores/toast';
 
   interface DockApp {
@@ -27,15 +25,10 @@
 
   let { apps }: Props = $props();
   let manageOpen = $state(false);
-  const managedApps = $derived(
-    apps.filter((app) => {
-      const state = $offlineStatuses[app.slug]?.state;
-      return $cachedSlugs.has(app.slug) || state === 'saved' || state === 'partial' || state === 'evicted' || state === 'error';
-    }),
-  );
+  const managedApps = $derived(apps);
 
-  function onUnpin(slug: string) {
-    togglePinnedApp(slug);
+  function onRemoveSaved(slug: string) {
+    removeSavedApp(slug);
     void removeAppAndTrack(slug).catch(() => {
       toast.push({ kind: 'error', message: 'Could not remove saved copy yet.' });
     });
@@ -102,7 +95,7 @@
   <SavedManageSheet
     apps={managedApps}
     onClose={() => (manageOpen = false)}
-    {onUnpin}
+    {onRemoveSaved}
     {onSaveOffline}
   />
 {/if}

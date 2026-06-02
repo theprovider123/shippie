@@ -2,7 +2,7 @@
   ToolTile — single tool primitive, three densities.
 
   See ./types.ts for the rationale. This file owns the markup +
-  density-specific CSS. State (saved / saving / pinned) is read from
+  density-specific CSS. State (saved / saving) is read from
   the same stores the LauncherCard used, so every surface reflects the
   same truth without prop drilling.
 
@@ -18,11 +18,10 @@
     cachedSlugs,
     ensureAppOffline,
     offlineStatuses,
-    removeAppAndTrack,
   } from '$lib/stores/cached-slugs';
   import {
     recordAppLaunch,
-    togglePinnedApp,
+    saveAppToDock,
   } from '$lib/stores/launcher-memory';
   import { toast } from '$lib/stores/toast';
   import { copyText } from '$lib/utils/copy-link';
@@ -58,7 +57,7 @@
     /** Card-density-only; drawer/dock hide the copy-link affordance. */
     onCopyLink?: (app: ToolTileApp) => void;
     /**
-     * Suppress the built-in pin/save/copy/inspect column. Use when the
+     * Suppress the built-in save/copy/inspect column. Use when the
      * parent surface needs its own action set (e.g. the
      * SavedManageSheet renders refresh + unsave instead of pin).
      */
@@ -125,17 +124,20 @@
       offlineStatus?.state === 'evicted' ||
       offlineStatus?.state === 'error',
   );
+  const isSavedToDock = $derived(pinned);
   const saveActionLabel = $derived.by(() => {
     if (isSaving) return `Saving ${safeName}`;
-    if (isOffline) return `Remove ${safeName} from saved tools`;
-    return `Save ${safeName}`;
+    if (isSavedToDock && isOffline) return `${safeName} saved to Dock and available offline`;
+    if (isSavedToDock) return `${safeName} saved to Dock; offline copy pending`;
+    return `Save ${safeName} to Dock`;
   });
   const saveActionTitle = $derived.by(() => {
     if (isSaving) return 'Saving offline copy';
-    if (isOffline) return 'Saved offline';
-    return 'Save';
+    if (isSavedToDock && isOffline) return 'Saved to Dock - available offline';
+    if (isSavedToDock) return 'Saved to Dock - repair offline copy';
+    return 'Save to Dock and make available offline';
   });
-  const saveGlyph = $derived(isSaving ? '...' : isOffline ? '★' : '☆');
+  const saveGlyph = $derived(isSaving ? '...' : isSavedToDock ? '✓' : '+');
   // Screen readers should hear the runtime/save state of the launch
   // affordance — "Open Cycle, current tool" or "Open Ledger, saved
   // offline" — not just "Open Cycle". Falls back to the bare name when
@@ -143,7 +145,7 @@
   const launchAriaLabel = $derived.by(() => {
     if (runtimeState === 'current') return `Open ${safeName}, current tool`;
     if (runtimeState === 'live') return `Open ${safeName}, live in background`;
-    if (isOffline && density !== 'dock') return `Open ${safeName}, saved offline`;
+    if (isSavedToDock && isOffline && density !== 'dock') return `Open ${safeName}, saved offline`;
     return `Open ${safeName}`;
   });
 
@@ -160,7 +162,8 @@
       if (runtimeState === 'opening') return { label: 'Opening', tone: 'live' };
     }
     if (isSaving) return { label: 'Saving', tone: 'saving' };
-    if (isOffline) return { label: density === 'dock' ? '' : 'Saved', tone: 'saved' };
+    if (isSavedToDock && isOffline) return { label: density === 'dock' ? '' : 'Saved', tone: 'saved' };
+    if (isSavedToDock) return { label: 'Saving offline', tone: 'saving' };
     if (offlineWarn) return { label: 'Refresh', tone: 'warn' };
     if (app.tier && app.tier !== 'public') {
       const map: Record<string, string> = {
@@ -232,38 +235,36 @@
   function handlePin(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
+    if (pinned) {
+      toast.push({ kind: 'info', message: `${safeName} is already saved to Dock.` });
+      return;
+    }
     if (onTogglePin) onTogglePin(app.slug);
-    else togglePinnedApp(app.slug);
+    else saveAppToDock(app.slug);
   }
 
   async function handleSave(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
     if (isSaving) return;
-    if (isOffline) {
-      try {
-        if (pinned) {
-          if (onTogglePin) onTogglePin(app.slug);
-          else togglePinnedApp(app.slug);
-        }
-        await removeAppAndTrack(app.slug);
-      } catch {
-        toast.push({ kind: 'error', message: 'Could not remove saved copy yet.' });
-      }
+    if (isSavedToDock && isOffline && !offlineWarn) {
+      toast.push({ kind: 'info', message: `${safeName} is already saved to Dock and available offline.` });
       return;
     }
     try {
+      if (!isSavedToDock) {
+        if (onTogglePin) onTogglePin(app.slug);
+        else saveAppToDock(app.slug);
+        toast.push({ kind: 'info', message: `Saving ${safeName} to Dock...` });
+      }
       const result = await ensureAppOffline(app.slug);
       if (result.state === 'saved') {
-        if (!pinned) {
-          if (onTogglePin) onTogglePin(app.slug);
-          else togglePinnedApp(app.slug);
-        }
+        toast.push({ kind: 'success', message: `${safeName} saved to Dock - available offline.` });
       } else {
-        toast.push({ kind: 'error', message: 'Saved copy needs a refresh before it can launch offline.' });
+        toast.push({ kind: 'error', message: `${safeName} is in Dock, but the offline copy still needs a refresh.` });
       }
     } catch {
-      toast.push({ kind: 'error', message: 'Could not save this tool yet.' });
+      toast.push({ kind: 'error', message: `${safeName} is in Dock, but could not finish the offline copy yet.` });
     }
   }
 
@@ -303,7 +304,7 @@
   class="tile tile-{density}"
   class:launching
   class:current={runtimeState === 'current'}
-  class:saved={isOffline}
+  class:saved={isSavedToDock}
   aria-busy={launching}
 >
   {#if href}
@@ -421,8 +422,8 @@
         <button
           type="button"
           class="icon-btn"
-          class:pressed={isOffline}
-          aria-pressed={isOffline}
+          class:pressed={isSavedToDock}
+          aria-pressed={isSavedToDock}
           aria-label={saveActionLabel}
           title={saveActionTitle}
           disabled={isSaving}
@@ -457,12 +458,12 @@
           type="button"
           class="icon-btn"
           class:pressed={pinned}
-          aria-label={pinned ? `Unpin ${safeName}` : `Pin ${safeName}`}
+          aria-label={pinned ? `${safeName} saved to Dock` : `Save ${safeName} to Dock`}
           aria-pressed={pinned}
-          title={pinned ? 'Unpin' : 'Pin'}
+          title={pinned ? 'Saved to Dock' : 'Save to Dock'}
           onclick={handlePin}
         >
-          {pinned ? '★' : '☆'}
+          {pinned ? '✓' : '+'}
         </button>
       {/if}
     </div>

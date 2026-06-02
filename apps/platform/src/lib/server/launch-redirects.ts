@@ -6,8 +6,8 @@ export const RETIRED_PUBLIC_ROUTES = {
   // shelves (New / Trending / Top-rated). The /tools?sort=trending fallback
   // stayed in place until the page server hooked into the leaderboard
   // helpers; it's restored as a live route now.
-  '/glance': '/workspace?section=home',
-  '/today': '/workspace?section=home',
+  '/glance': '/dock?section=home',
+  '/today': '/dock?section=home',
   '/build': '/docs/build',
   '/why': '/docs/why',
   '/professionals': '/docs/pro',

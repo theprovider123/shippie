@@ -1,8 +1,8 @@
 <!--
-  Phase 3 — first-run workspace empty state. Shown in the home canvas when
-  the device has no tools yet (no open/pinned/recent). Small + operational:
+  Phase 3 — first-run Dock empty state. Shown in the home canvas when
+  the device has no tools yet (no open/saved/recent). Small + operational:
   a slim hero band, a few curated starters, and a browse-all link. Not a
-  marketing page — "a workspace that happens to be empty".
+  marketing page — "a Dock that happens to be empty".
 -->
 <script lang="ts">
   import type { ContainerApp } from './state';
@@ -17,10 +17,10 @@
   let { starters, totalCount, onOpen }: Props = $props();
 </script>
 
-<div class="ws-empty">
+<div class="dock-empty">
   <div class="hero">
     <p class="hero-eyebrow">Wrap · Run · Connect</p>
-    <h2 class="hero-title">Your private workspace for local tools</h2>
+    <h2 class="hero-title">Your private Dock for local tools</h2>
     <p class="hero-sub">Everything local. No account needed.</p>
   </div>
 
@@ -43,7 +43,7 @@
 </div>
 
 <style>
-  .ws-empty { display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg) 0; }
+  .dock-empty { display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg) 0; }
   .hero { background: var(--paper-warm, #faf7ef); border: 1px solid var(--border-light); padding: var(--space-md) var(--space-lg); }
   .hero-eyebrow { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0 0 var(--space-xs); }
   .hero-title { font-family: var(--font-heading); font-size: 1.25rem; color: var(--ink-warm, #2a251e); margin: 0; }

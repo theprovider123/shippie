@@ -565,7 +565,7 @@ function writeShellAssets(slugs) {
   const manifest = {
     wasm: wasmAssets,
     aiRuntime: AI_RUNTIME_ASSETS,
-    routes: ['/workspace', '/tools', '/'],
+    routes: ['/dock', '/tools', '/'],
     runtimes: runtimeAssets.perSlug,
     totalWasmBytes,
   };

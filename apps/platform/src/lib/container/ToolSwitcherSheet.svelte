@@ -44,9 +44,9 @@
 >
   <div class="switcher">
     <div class="switcher-actions" aria-label="Tool actions">
-      <a href="/tools" onclick={onClose}>Add</a>
-      <a href="/tools" onclick={onClose}>Explore</a>
-      <a href="/workspace?section=data" onclick={onClose}>Data</a>
+      <a href="/tools" onclick={onClose}>Browse</a>
+      <a href="/dock?section=data" onclick={onClose}>Your data</a>
+      <a href="/dock?section=access" onclick={onClose}>Permissions</a>
     </div>
 
     {#if searchable}
@@ -75,15 +75,15 @@
           <div class="tool-list">
             {#each section.tools as tool (tool.slug)}
               <div class="tool-row" class:running={section.id === 'open'}>
-                <button type="button" class="tool-open" onclick={() => pick(tool.slug)}>
+                <a class="tool-open" href={`/dock?app=${encodeURIComponent(tool.slug)}`} onclick={() => pick(tool.slug)}>
                   <span class="tool-icon" style="background:{tool.accent}">{tool.icon}</span>
                   <span class="tool-copy">
                     <strong>{tool.name}</strong>
                     <small>
                       {#if section.id === 'open'}
                         Running now
-                      {:else if section.id === 'pinned'}
-                        Pinned
+                      {:else if section.id === 'saved'}
+                        Saved to Dock
                       {:else if section.id === 'recent'}
                         Recent
                       {:else}
@@ -94,15 +94,18 @@
                   {#if section.id === 'open'}
                     <span class="live-dot" aria-hidden="true"></span>
                   {/if}
-                </button>
+                </a>
                 {#if section.id === 'open' && onCloseTool}
-                  <button
-                    type="button"
+                  <a
                     class="tool-close"
+                    href={`/dock?close=${encodeURIComponent(tool.slug)}`}
                     aria-label={`Close ${tool.name}`}
                     title="Close"
-                    onclick={() => closeRunning(tool.slug)}
-                  >×</button>
+                    onclick={() => {
+                      closeRunning(tool.slug);
+                      onClose();
+                    }}
+                  >×</a>
                 {/if}
               </div>
             {/each}
@@ -240,6 +243,7 @@
     gap: 10px;
     padding: 8px 10px;
     text-align: left;
+    text-decoration: none;
     cursor: pointer;
   }
   .tool-open:hover,
@@ -284,6 +288,8 @@
     background: var(--success-soft);
   }
   .tool-close {
+    display: grid;
+    place-items: center;
     width: var(--touch-min);
     min-height: 58px;
     border: 0;
@@ -291,6 +297,7 @@
     background: transparent;
     color: var(--text-secondary);
     font-size: 1.1rem;
+    text-decoration: none;
     cursor: pointer;
   }
   .tool-close:hover,

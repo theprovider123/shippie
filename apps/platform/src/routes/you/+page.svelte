@@ -28,7 +28,7 @@
 
   const appBySlug = $derived.by(() => new Map(data.apps.map((app) => [app.slug, app])));
   const savedApps = $derived.by(() =>
-    $launcherMemory.pinned
+    $launcherMemory.saved
       .map((slug) => appBySlug.get(slug))
       .filter((app): app is YouApp => Boolean(app)),
   );
@@ -58,7 +58,7 @@
       .map((app) => {
         const recent = $launcherMemory.recents.find((item) => item.slug === app.slug);
         const launches = $launcherMemory.launchCounts?.[app.slug] ?? 0;
-        const saved = $launcherMemory.pinned.includes(app.slug);
+        const saved = $launcherMemory.saved.includes(app.slug);
         const offlineStatus = $offlineStatuses[app.slug];
         const health = describeOfflineHealth(offlineStatus, {
           cached: $cachedSlugs.has(app.slug),
@@ -155,7 +155,7 @@
           Saved tools, recent launches, and offline copies live here. Sign-in is optional.
         </p>
       </div>
-      <a class="home-link" href="/">Home →</a>
+      <a class="home-link" href="/dock">Dock →</a>
     </div>
   </header>
 
@@ -183,7 +183,7 @@
     </section>
   {:else}
     <p class="summary-empty wrap">
-      Nothing saved yet — tap the ★ on any tool to keep it ready here.
+      Nothing saved yet — tap Save on any tool to keep it ready here.
     </p>
   {/if}
 
@@ -287,13 +287,13 @@
           <strong>Storage budget</strong>
           <p>
             {formatOfflineBytes(storageUsage) || 'Measuring'} used{storageQuota > 0 ? ` of ${formatOfflineBytes(storageQuota)}` : ''}.
-            {storagePinned ? ' Browser storage is pinned.' : ' Pinning asks the browser to protect saved tools.'}
+            {storagePinned ? ' Browser storage is protected.' : ' Protection asks the browser to keep saved tools.'}
           </p>
         </div>
       </div>
       <div class="data-actions">
         <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
-          {storagePinned ? 'Storage pinned' : storagePinning ? 'Pinning storage' : 'Pin offline storage'}
+          {storagePinned ? 'Storage protected' : storagePinning ? 'Protecting storage' : 'Protect offline storage'}
         </button>
         <button type="button" class="text-danger" disabled={!hasLocalData} onclick={clearLocalMemory}>
           Clear local launcher memory
@@ -341,9 +341,9 @@
       <div class="move-row">
         <div>
           <strong>Move to another phone</strong>
-          <p>Use Your Data in the workspace to export, back up, or restore app data when you choose.</p>
+          <p>Use Your Data in the Dock to export, back up, or restore app data when you choose.</p>
         </div>
-        <a href="/workspace?section=data">Open Your Data →</a>
+        <a href="/dock?section=data">Open Your Data →</a>
       </div>
     </section>
 

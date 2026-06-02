@@ -24,11 +24,11 @@
   interface Props {
     apps: SheetApp[];
     onClose: () => void;
-    onUnpin: (slug: string) => void;
+    onRemoveSaved: (slug: string) => void;
     onSaveOffline: (slug: string) => void;
   }
 
-  let { apps, onClose, onUnpin, onSaveOffline }: Props = $props();
+  let { apps, onClose, onRemoveSaved, onSaveOffline }: Props = $props();
   let storageUsage = $state(0);
   let storageQuota = $state(0);
   let persisted = $state(false);
@@ -78,7 +78,7 @@
       <p class="eyebrow">Manage</p>
       <h2 id="manage-saved-title">Saved tools</h2>
       <p class="lede">
-        Sealed offline capsules on this device. Open one to launch it; unsave to remove the local copy.
+        Saved Dock tools on this device. Remove one to take it out of Dock and delete its offline copy.
       </p>
     </div>
     <button
@@ -106,14 +106,14 @@
       class:pinned={persisted}
       disabled={pinning || persisted}
       onclick={pinStorage}
-      title="Ask the browser to protect saved capsules from eviction"
+      title="Ask the browser to protect saved offline copies from eviction"
     >
-      {persisted ? 'Pinned' : pinning ? 'Pinning' : 'Pin'}
+      {persisted ? 'Protected' : pinning ? 'Protecting' : 'Protect'}
     </button>
   </section>
 
   {#if apps.length === 0}
-    <p class="empty">No saved tools yet. Tap the ★ on any tool to keep it ready here.</p>
+    <p class="empty">No saved tools yet. Tap Save on any tool to keep it ready here.</p>
   {:else}
     <ul class="list" role="list">
       {#each apps as app (app.slug)}
@@ -143,11 +143,11 @@
             <button
               type="button"
               class="row-btn danger"
-              aria-label={`Remove ${app.name} from saved`}
-              title="Unsave"
-              onclick={() => onUnpin(app.slug)}
+              aria-label={`Remove ${app.name} from Dock and delete its offline copy`}
+              title="Remove from Dock"
+              onclick={() => onRemoveSaved(app.slug)}
             >
-              ★
+              ×
             </button>
           </span>
         </li>

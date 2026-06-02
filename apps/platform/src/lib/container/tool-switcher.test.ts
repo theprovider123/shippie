@@ -12,7 +12,7 @@ const tool = (slug: string, category = 'tools'): RailTool => ({
 
 const groups: RailGroups = {
   open: [tool('palate', 'cooking')],
-  pinned: [tool('journal', 'personal')],
+  saved: [tool('journal', 'personal')],
   recent: [tool('lift', 'fitness')],
 };
 
@@ -22,7 +22,8 @@ describe('buildToolSwitcherSections', () => {
       groups,
       allApps: [tool('palate'), tool('journal'), tool('lift'), tool('sleep')],
     });
-    expect(sections.map((s) => s.id)).toEqual(['open', 'pinned', 'recent', 'browse']);
+    expect(sections.map((s) => s.id)).toEqual(['open', 'saved', 'recent', 'browse']);
+    expect(sections[1]?.label).toBe('Saved');
     expect(sections.at(-1)?.tools.map((t) => t.slug)).toEqual(['sleep']);
   });
 
@@ -40,7 +41,7 @@ describe('buildToolSwitcherSections', () => {
   it('caps large sections and reports hidden count', () => {
     const many = Array.from({ length: 120 }, (_, i) => tool(`app-${i}`));
     const sections = buildToolSwitcherSections({
-      groups: { open: [], pinned: [], recent: [] },
+      groups: { open: [], saved: [], recent: [] },
       allApps: many,
       maxPerSection: 40,
     });

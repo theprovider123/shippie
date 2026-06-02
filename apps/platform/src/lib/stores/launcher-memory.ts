@@ -10,12 +10,19 @@ export interface LauncherRecent {
 }
 
 export interface LauncherMemory {
+  /** Product source of truth: tools saved to Dock. Saved also means
+   * "try to keep an offline capsule"; offline-ready is still derived
+   * from cached-slugs / SW state, not this flag. */
+  saved: string[];
+  /** Deprecated compat alias. Kept so old cookies/localStorage and older
+   * callers do not break during the Dock migration. Mirrors `saved`. */
   pinned: string[];
   recents: LauncherRecent[];
   launchCounts: Record<string, number>;
 }
 
 const DEFAULT_MEMORY: LauncherMemory = {
+  saved: [],
   pinned: [],
   recents: [],
   launchCounts: {},
@@ -68,18 +75,17 @@ function writeStoredMemory(next: LauncherMemory): void {
 function normalize(raw: unknown): LauncherMemory {
   if (!raw || typeof raw !== 'object') return DEFAULT_MEMORY;
   const value = raw as Partial<LauncherMemory>;
-  const pinned = Array.isArray(value.pinned)
-    ? value.pinned.filter((slug): slug is string => typeof slug === 'string')
-    : [];
+  const rawSaved = [
+    ...(Array.isArray(value.saved) ? value.saved : []),
+    ...(Array.isArray(value.pinned) ? value.pinned : []),
+  ];
+  const saved = rawSaved
+    .filter((slug): slug is string => typeof slug === 'string')
+    .filter((slug, index, all) => all.indexOf(slug) === index);
   const recents = Array.isArray(value.recents)
     ? value.recents
-        .filter(
-          (item): item is LauncherRecent =>
-            !!item &&
-            typeof item === 'object' &&
-            typeof (item as LauncherRecent).slug === 'string' &&
-            typeof (item as LauncherRecent).lastOpened === 'string',
-        )
+        .map(normalizeRecent)
+        .filter((item): item is LauncherRecent => Boolean(item))
         .slice(0, MAX_RECENTS)
     : [];
   const launchCounts =
@@ -90,12 +96,33 @@ function normalize(raw: unknown): LauncherMemory {
           ),
         )
       : {};
-  return { pinned, recents, launchCounts };
+  return { saved, pinned: saved, recents, launchCounts };
+}
+
+function normalizeRecent(raw: unknown): LauncherRecent | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const value = raw as { slug?: unknown; lastOpened?: unknown; launchedAt?: unknown };
+  if (typeof value.slug !== 'string' || !value.slug) return null;
+  if (typeof value.lastOpened === 'string' && value.lastOpened) {
+    return { slug: value.slug, lastOpened: value.lastOpened };
+  }
+  if (typeof value.launchedAt === 'number' && Number.isFinite(value.launchedAt)) {
+    return { slug: value.slug, lastOpened: new Date(value.launchedAt).toISOString() };
+  }
+  if (typeof value.launchedAt === 'string' && value.launchedAt) {
+    const numeric = Number(value.launchedAt);
+    return {
+      slug: value.slug,
+      lastOpened: Number.isFinite(numeric) ? new Date(numeric).toISOString() : value.launchedAt,
+    };
+  }
+  return null;
 }
 
 function persist(next: LauncherMemory): void {
-  launcherMemory.set(next);
-  writeStoredMemory(next);
+  const normalized = normalize(next);
+  launcherMemory.set(normalized);
+  writeStoredMemory(normalized);
 }
 
 export function hydrateLauncherMemory(): void {
@@ -108,12 +135,36 @@ export function hydrateLauncherMemory(): void {
 }
 
 export function togglePinnedApp(slug: string): void {
+  toggleSavedApp(slug);
+}
+
+export function saveAppToDock(slug: string): void {
   launcherMemory.update((memory) => {
-    const exists = memory.pinned.includes(slug);
-    const pinned = exists
-      ? memory.pinned.filter((item) => item !== slug)
-      : [slug, ...memory.pinned];
-    const next = { ...memory, pinned };
+    if (memory.saved.includes(slug)) return memory;
+    const saved = [slug, ...memory.saved];
+    const next = { ...memory, saved, pinned: saved };
+    writeStoredMemory(next);
+    return next;
+  });
+}
+
+export function removeSavedApp(slug: string): void {
+  launcherMemory.update((memory) => {
+    if (!memory.saved.includes(slug) && !memory.pinned.includes(slug)) return memory;
+    const saved = memory.saved.filter((item) => item !== slug);
+    const next = { ...memory, saved, pinned: saved };
+    writeStoredMemory(next);
+    return next;
+  });
+}
+
+export function toggleSavedApp(slug: string): void {
+  launcherMemory.update((memory) => {
+    const exists = memory.saved.includes(slug) || memory.pinned.includes(slug);
+    const saved = exists
+      ? memory.saved.filter((item) => item !== slug)
+      : [slug, ...memory.saved];
+    const next = { ...memory, saved, pinned: saved };
     writeStoredMemory(next);
     return next;
   });

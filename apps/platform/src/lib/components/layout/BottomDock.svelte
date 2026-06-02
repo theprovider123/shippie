@@ -10,12 +10,12 @@
 
   let { user }: Props = $props();
 
-  // Phase 4 mobile dock: Today · Tools · You. Today = the workspace home;
-  // Tools opens the switcher sheet (on /workspace or /run; elsewhere it
+  // Mobile Dock contract: Dock · Tools · You. Dock = local tools home;
+  // Tools opens the switcher sheet (on /dock or /run; elsewhere it
   // navigates there first and the sheet opens on arrival via the store);
   // You holds account / settings / docs / ship.
-  function isToday(pathname: string): boolean {
-    return pathname === '/' || pathname === '/workspace' || pathname.startsWith('/run');
+  function isDock(pathname: string): boolean {
+    return pathname === '/' || pathname === '/dock' || pathname.startsWith('/run');
   }
 
   function isYou(pathname: string): boolean {
@@ -25,14 +25,14 @@
   function openTools() {
     switcherOpen.set(true);
     const p = $page.url.pathname;
-    if (!p.startsWith('/workspace') && !p.startsWith('/run')) void goto('/workspace');
+    if (!p.startsWith('/dock') && !p.startsWith('/run')) void goto('/dock');
   }
 </script>
 
 <nav class="bottom-dock" aria-label="Primary">
-  <a href="/workspace" class:active={isToday($page.url.pathname)} aria-current={isToday($page.url.pathname) ? 'page' : undefined}>
+  <a href="/dock" class:active={isDock($page.url.pathname)} aria-current={isDock($page.url.pathname) ? 'page' : undefined}>
     <span aria-hidden="true">◐</span>
-    <strong>Today</strong>
+    <strong>Dock</strong>
   </a>
   <button type="button" class="dock-btn" onclick={openTools}>
     <span aria-hidden="true">▦</span>

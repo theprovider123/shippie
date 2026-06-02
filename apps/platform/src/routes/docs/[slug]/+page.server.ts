@@ -90,7 +90,7 @@ const pages: Record<string, DocsPage> = {
     ],
     links: [
       { href: '/docs/security', label: 'Security model' },
-      { href: '/workspace?section=data', label: 'Open Your Data' },
+      { href: '/dock?section=data', label: 'Open Your Data' },
     ],
   },
   terms: {

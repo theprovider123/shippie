@@ -14,6 +14,7 @@
 
   function isHomePath(pathname: string): boolean {
     return pathname === '/'
+      || pathname === '/dock'
       || pathname.startsWith('/apps')
       || pathname === '/arcade'
       || pathname === '/leaderboards'
@@ -30,7 +31,7 @@
 <nav class="navbar" aria-label="Primary">
   <div class="nav-inner">
     <div class="nav-left">
-      <a href="/" class="nav-logo">
+      <a href="/dock" class="nav-logo">
         <img
           src="/__shippie-pwa/icon.svg"
           alt=""
@@ -44,7 +45,7 @@
     </div>
 
     <div class="nav-center">
-      <a href="/" class="nav-link" class:active={isHomePath($page.url.pathname)} aria-current={isHomePath($page.url.pathname) ? 'page' : undefined}>Home</a>
+      <a href="/dock" class="nav-link" class:active={isHomePath($page.url.pathname)} aria-current={isHomePath($page.url.pathname) ? 'page' : undefined}>Dock</a>
       <a href="/docs" class="nav-link" class:active={isDocsPath($page.url.pathname)} aria-current={isDocsPath($page.url.pathname) ? 'page' : undefined}>Docs</a>
     </div>
 
@@ -78,7 +79,7 @@
 
   {#if mobileOpen}
     <div id="mobile-menu" class="mobile-menu">
-      <a href="/" onclick={() => (mobileOpen = false)}>Home</a>
+      <a href="/dock" onclick={() => (mobileOpen = false)}>Dock</a>
       <a href="/docs" onclick={() => (mobileOpen = false)}>Docs</a>
       {#if user}
         <a href="/you" onclick={() => (mobileOpen = false)}>You</a>

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import ContainerPage from '../../workspace/+page.svelte';
-  import type { PageData as ContainerPageData } from '../../workspace/$types';
+  import ContainerPage from '../../dock/+page.svelte';
+  import type { PageData as ContainerPageData } from '../../dock/$types';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();

@@ -20,7 +20,7 @@
 
   function showBottomDock(url: URL): boolean {
     const pathname = url.pathname;
-    if ((pathname === '/container' || pathname === '/workspace') && url.searchParams.get('focused') !== '1') return true;
+    if ((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') !== '1') return true;
 
     return ![
       '/admin',
@@ -28,7 +28,7 @@
       '/auth',
       '/c/',
       '/container',
-      '/workspace',
+      '/dock',
       '/dashboard',
       '/dev',
       '/invite',
@@ -45,7 +45,7 @@
       || url.pathname.startsWith('/c/')
       || url.pathname === '/new'
       || url.pathname.startsWith('/run')
-      || ((url.pathname === '/container' || url.pathname === '/workspace') && url.searchParams.get('focused') === '1');
+      || ((url.pathname === '/container' || url.pathname === '/dock') && url.searchParams.get('focused') === '1');
   }
 
   $effect(() => {
@@ -107,7 +107,7 @@
     min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
   }
 
-  /* Workspace 1.1 — when a tool owns the screen (immersive active-tool), the
+  /* Dock 1.1 — when a tool owns the screen (immersive active-tool), the
      full-bleed shell covers everything; drop the dock + global nav from the
      DOM so they can't peek under safe-area or steal taps. */
   :global(html[data-shippie-immersive] .bottom-dock),

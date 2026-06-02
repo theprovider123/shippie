@@ -1214,7 +1214,7 @@ export function readPayloadTable(payload: unknown): string {
 }
 
 export function sectionTitle(section: ContainerSection): string {
-  if (section === 'home') return 'Home';
+  if (section === 'home') return 'Dock';
   if (section === 'create') return 'Create';
   if (section === 'access') return 'Access';
   return 'Your Data';

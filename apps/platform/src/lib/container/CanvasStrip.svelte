@@ -1,5 +1,5 @@
 <!--
-  Phase 2 — slim resume/insight strip, shown in the workspace canvas
+  Phase 2 — slim resume/insight strip, shown in the Dock canvas
   directly above the active tool. One item, actionable-only (the selector
   returns null when nothing is worth acting on). Tap opens; × dismisses
   (and the parent collapses it to a small badge).

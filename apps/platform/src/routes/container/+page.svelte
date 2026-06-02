@@ -1,1 +1,1 @@
-<!-- Intentionally empty: +page.server.ts redirects to /workspace. -->
+<!-- Intentionally empty: +page.server.ts redirects to /dock. -->

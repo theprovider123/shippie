@@ -12,39 +12,56 @@ const catalog: RailTool[] = ['palate', 'chiwit', 'lift', 'golazo', 'tab'].map(to
 
 describe('buildRailGroups', () => {
   it('hides Open when nothing is running', () => {
-    const g = buildRailGroups({ catalog, openSlugs: [], pinned: ['palate'], recents: [] });
+    const g = buildRailGroups({ catalog, openSlugs: [], saved: ['palate'], recents: [] });
     expect(g.open).toEqual([]);
-    expect(g.pinned.map((t) => t.slug)).toEqual(['palate']);
+    expect(g.saved.map((t) => t.slug)).toEqual(['palate']);
   });
 
-  it('orders Open by openSlugs order and keeps Pinned/Recent disjoint from Open', () => {
+  it('orders Open by openSlugs order and keeps Saved/Recent disjoint from Open', () => {
     const g = buildRailGroups({
       catalog,
       openSlugs: ['chiwit', 'palate'],
-      pinned: ['palate', 'lift'],
+      saved: ['palate', 'lift'],
       recents: [{ slug: 'chiwit', lastOpened: '2026-06-01T09:00:00Z' }],
     });
     expect(g.open.map((t) => t.slug)).toEqual(['chiwit', 'palate']);
-    // palate is open, so it must NOT also appear under pinned
-    expect(g.pinned.map((t) => t.slug)).toEqual(['lift']);
+    // palate is open, so it must NOT also appear under saved
+    expect(g.saved.map((t) => t.slug)).toEqual(['lift']);
     expect(g.recent).toEqual([]);
   });
 
-  it('Recent excludes pinned + open, sorts newest-first, caps at 5', () => {
+  it('Recent excludes saved + open, sorts newest-first, caps at 5', () => {
     const recents = [
-      { slug: 'palate', lastOpened: '2026-06-01T08:00:00Z' }, // pinned -> excluded
+      { slug: 'palate', lastOpened: '2026-06-01T08:00:00Z' }, // saved -> excluded
       { slug: 'chiwit', lastOpened: '2026-06-01T07:00:00Z' },
       { slug: 'lift', lastOpened: '2026-06-01T09:00:00Z' },
       { slug: 'golazo', lastOpened: '2026-06-01T06:00:00Z' },
     ];
-    const g = buildRailGroups({ catalog, openSlugs: [], pinned: ['palate'], recents, recentCap: 2 });
+    const g = buildRailGroups({ catalog, openSlugs: [], saved: ['palate'], recents, recentCap: 2 });
     expect(g.recent.map((t) => t.slug)).toEqual(['lift', 'chiwit']); // newest first, capped at 2
   });
 
   it('ignores slugs not present in the catalog', () => {
-    const g = buildRailGroups({ catalog, openSlugs: ['ghost'], pinned: ['nope'], recents: [{ slug: 'x', lastOpened: 'z' }] });
+    const g = buildRailGroups({ catalog, openSlugs: ['ghost'], saved: ['nope'], recents: [{ slug: 'x', lastOpened: 'z' }] });
     expect(g.open).toEqual([]);
-    expect(g.pinned).toEqual([]);
+    expect(g.saved).toEqual([]);
     expect(g.recent).toEqual([]);
+  });
+
+  it('accepts legacy pinned input as saved', () => {
+    const g = buildRailGroups({ catalog, openSlugs: [], pinned: ['palate'], recents: [] });
+    expect(g.saved.map((t) => t.slug)).toEqual(['palate']);
+  });
+
+  it('merges saved and legacy pinned inputs without duplicates', () => {
+    const g = buildRailGroups({
+      catalog,
+      openSlugs: [],
+      saved: ['palate'],
+      pinned: ['palate', 'lift'],
+      recents: [],
+    });
+
+    expect(g.saved.map((t) => t.slug)).toEqual(['palate', 'lift']);
   });
 });

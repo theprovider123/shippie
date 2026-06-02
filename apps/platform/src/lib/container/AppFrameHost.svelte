@@ -26,7 +26,7 @@
 
   interface Props {
     app: ContainerApp;
-    /** Active in the workspace? Drives `display: block` vs `display: none`. */
+    /** Active in the Dock? Drives `display: block` vs `display: none`. */
     active: boolean;
     /** Reload-key seed. Bumping this remounts the iframe. */
     reloadNonce: number;
@@ -61,25 +61,12 @@
   }: Props = $props();
 
   let parentHash = $state('');
-  let activeFrame: HTMLIFrameElement | null = null;
+  let activeFrame = $state<HTMLIFrameElement | null>(null);
+  let paintedFrames = $state<Record<string, boolean>>({});
+  const frameKey = $derived(`${app.id}:${reloadNonce}`);
+  const locallyPainted = $derived(Boolean(paintedFrames[frameKey]));
   const runtimeSrcWithHash = $derived(srcWithHash(runtimeSrc, parentHash));
   const packageFrameSrcWithHash = $derived(srcWithHash(packageFrameSrc, parentHash));
-
-  // Flip true after 5s of continuous 'booting'. Surfaces an explanatory
-  // line so users know the app isn't dead — first launches often need
-  // to download assets behind the iframe.
-  let slowBoot = $state<Record<string, boolean>>({});
-  $effect(() => {
-    const status = frameStates[app.id]?.status;
-    if (status !== 'booting') {
-      if (slowBoot[app.id]) slowBoot = { ...slowBoot, [app.id]: false };
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      slowBoot = { ...slowBoot, [app.id]: true };
-    }, 5_000);
-    return () => window.clearTimeout(timer);
-  });
 
   onMount(() => {
     const updateHash = () => {
@@ -108,11 +95,20 @@
 
   function registerFrame(node: HTMLIFrameElement, appId: string) {
     activeFrame = node;
+    const key = frameKey;
     const cleanup = onRegister(node, appId);
+    const localPaintChecks = [350, 1_000, 1_800].map((delay) =>
+      window.setTimeout(() => {
+        if (activeFrame !== node || paintedFrames[key]) return;
+        markLocallyPainted(node, key);
+        if (!paintedFrames[key] && delay === 1_800) paintedFrames = { ...paintedFrames, [key]: true };
+      }, delay),
+    );
     postParentHashBurst(node);
     return {
       destroy() {
         if (activeFrame === node) activeFrame = null;
+        for (const check of localPaintChecks) window.clearTimeout(check);
         cleanup?.destroy?.();
       },
     };
@@ -120,9 +116,37 @@
 
   function handleFrameLoad(event: Event) {
     const node = event.currentTarget as HTMLIFrameElement;
+    const key = frameKey;
     activeFrame = node;
+    markLocallyPainted(node, key);
     onReady(app.id, node);
+    for (const delay of [250, 1_000, 3_000]) {
+      window.setTimeout(() => {
+        if (activeFrame !== node) return;
+        markLocallyPainted(node, key);
+        onReady(app.id, node);
+      }, delay);
+    }
     postParentHashBurst(node);
+  }
+
+  function markLocallyPainted(node: HTMLIFrameElement, key = frameKey) {
+    if (paintedFrames[key] || !frameLooksPainted(node)) return;
+    paintedFrames = { ...paintedFrames, [key]: true };
+  }
+
+  function frameLooksPainted(node: HTMLIFrameElement): boolean {
+    let doc: Document | null = null;
+    try {
+      doc = node.contentDocument;
+    } catch {
+      return false;
+    }
+    if (!doc?.body) return false;
+    const bodyText = (doc.body.innerText || doc.body.textContent || '').trim();
+    if (/something went wrong|application error|failed to load|not found|404|500/i.test(bodyText)) return false;
+    if (bodyText.length > 0) return true;
+    return Boolean(doc.querySelector('canvas, svg, img, video, button, input, textarea, select, [role="button"], [role="main"]'));
   }
 
   function postParentHashBurst(node = activeFrame) {
@@ -193,15 +217,10 @@
       ></iframe>
     {/if}
   {/key}
-  {#if frameStates[app.id]?.status === 'booting'}
+  {#if frameStates[app.id]?.status === 'booting' && !locallyPainted}
     <div class="frame-loader" role="status" aria-live="polite">
       <RocketLoader size="lg" label={`Opening ${app.name}`} />
       <p class="frame-loader-label">Opening {app.name}…</p>
-      {#if slowBoot[app.id]}
-        <p class="frame-loader-slow">
-          Taking longer than usual — the first launch may need to download assets.
-        </p>
-      {/if}
     </div>
   {/if}
   {#if frameStates[app.id]?.status === 'error'}
@@ -249,15 +268,6 @@
     letter-spacing: 0.08em;
     color: var(--text-light);
     margin: 0;
-  }
-  .frame-loader-slow {
-    font-family: var(--font-sans);
-    font-size: var(--caption-size);
-    color: var(--text-secondary);
-    margin: 0;
-    max-width: 36ch;
-    text-align: center;
-    line-height: 1.4;
   }
   .frame-recovery {
     position: absolute;

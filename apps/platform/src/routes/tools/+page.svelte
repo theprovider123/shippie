@@ -17,7 +17,7 @@
   import {
     hydrateLauncherMemory,
     launcherMemory,
-    togglePinnedApp,
+    toggleSavedApp,
   } from '$lib/stores/launcher-memory';
   import { startCatalogSync } from '$lib/client/catalog-sync';
 
@@ -34,9 +34,9 @@
   const appBySlug = $derived.by(() => new Map(data.apps.map((app) => [app.slug, app])));
   const selectedApp = $derived(selectedSlug ? (appBySlug.get(selectedSlug) ?? null) : null);
   const filtered = $derived(Boolean(data.query || data.categoryFilter || data.remixableFilter));
-  const pinnedSet = $derived.by(() => new Set($launcherMemory.pinned));
-  const pinnedApps = $derived.by(() =>
-    $launcherMemory.pinned
+  const savedSet = $derived.by(() => new Set($launcherMemory.saved));
+  const savedApps = $derived.by(() =>
+    $launcherMemory.saved
       .map((slug) => appBySlug.get(slug))
       .filter((app): app is LauncherApp => Boolean(app)),
   );
@@ -95,7 +95,7 @@
     const totalLaunches = Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, n) => sum + n, 0);
     return totalLaunches === 0;
   });
-  const hasLauncherHistory = $derived(!isFirstVisit || pinnedApps.length > 0 || recentApps.length > 0);
+  const hasLauncherHistory = $derived(!isFirstVisit || savedApps.length > 0 || recentApps.length > 0);
 
   onMount(() => {
     hydrateLauncherMemory();
@@ -310,10 +310,10 @@
                   app={launcherAppToToolTile(app)}
                   density="card"
                   href={runHref(app.slug)}
-                  pinned={pinnedSet.has(app.slug)}
+                  pinned={savedSet.has(app.slug)}
                   recentLabel={recentLabel(app.slug)}
                   onInspect={() => inspectApp(app)}
-                  onTogglePin={togglePinnedApp}
+                  onTogglePin={toggleSavedApp}
                 />
               </li>
             {/each}
@@ -337,10 +337,10 @@
                       app={launcherAppToToolTile(app)}
                       density="card"
                       href={runHref(app.slug)}
-                      pinned={pinnedSet.has(app.slug)}
+                      pinned={savedSet.has(app.slug)}
                       recentLabel={recentLabel(app.slug)}
                       onInspect={() => inspectApp(app)}
-                      onTogglePin={togglePinnedApp}
+                      onTogglePin={toggleSavedApp}
                     />
                   </li>
                 {/each}
@@ -372,8 +372,8 @@
         </nav>
       {/if}
     {:else}
-      {#if pinnedApps.length > 0}
-        <SavedDock apps={pinnedApps} />
+      {#if savedApps.length > 0}
+        <SavedDock apps={savedApps} />
       {/if}
 
       <section class="launcher-section primary" aria-labelledby="continue-title">
@@ -390,10 +390,10 @@
                 app={launcherAppToToolTile(app)}
                 density="card"
                 href={runHref(app.slug)}
-                pinned={pinnedSet.has(app.slug)}
+                pinned={savedSet.has(app.slug)}
                 recentLabel={recentLabel(app.slug)}
                 onInspect={() => inspectApp(app)}
-                onTogglePin={togglePinnedApp}
+                onTogglePin={toggleSavedApp}
               />
             </li>
           {/each}
@@ -413,10 +413,10 @@
                   app={launcherAppToToolTile(app)}
                   density="card"
                   href={runHref(app.slug)}
-                  pinned={pinnedSet.has(app.slug)}
+                  pinned={savedSet.has(app.slug)}
                   recentLabel={recentLabel(app.slug)}
                   onInspect={() => inspectApp(app)}
-                  onTogglePin={togglePinnedApp}
+                  onTogglePin={toggleSavedApp}
                 />
               </li>
             {/each}
@@ -443,7 +443,7 @@
 
 <AppInspector
   app={selectedApp}
-  pinned={selectedApp ? pinnedSet.has(selectedApp.slug) : false}
+  pinned={selectedApp ? savedSet.has(selectedApp.slug) : false}
   onClose={closeInspector}
 />
 

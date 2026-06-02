@@ -1,6 +1,6 @@
 /**
  * Phase 4 — shared open-state for the mobile tool switcher sheet. The global
- * BottomDock "Tools" tab sets this; the /workspace route mounts the sheet and
+ * BottomDock "Tools" tab sets this; the /dock route mounts the sheet and
  * binds its open state here (a small store beats a custom DOM event and matches
  * the existing svelte-store pattern).
  */
