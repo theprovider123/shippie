@@ -16,7 +16,7 @@
   .dashboard-shell {
     display: grid;
     grid-template-columns: 240px 1fr;
-    min-height: 100dvh;
+    min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
     background: var(--paper-warm);
     color: var(--bg);
   }
@@ -24,9 +24,15 @@
     padding: 2.5rem 3rem;
     overflow-x: auto;
   }
-  @media (max-width: 640px) {
-    .dashboard-shell { grid-template-columns: 1fr; }
-    .dashboard-main { padding: 1.5rem; }
+  @media (max-width: 760px) {
+    .dashboard-shell {
+      display: block;
+      min-height: auto;
+    }
+    .dashboard-main {
+      padding: 1rem;
+      overflow-x: visible;
+    }
   }
   @media (prefers-color-scheme: dark) {
     .dashboard-shell { background: var(--bg); color: var(--text); }

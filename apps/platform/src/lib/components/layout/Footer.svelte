@@ -2,10 +2,10 @@
   // Compact launch footer: public chrome should not reintroduce retired routes.
 </script>
 
-<footer class="footer">
+<footer class="footer" aria-label="Shippie footer">
   <div class="wrap">
-    <div class="footer-lines">
-      <div class="footer-brandline">
+    <div class="footer-grid">
+      <div class="footer-brandline" aria-label="Shippie">
         <a href="/dock" class="footer-mark">
           <img
             src="/__shippie-pwa/icon.svg"
@@ -16,15 +16,28 @@
           />
           <span>Shippie</span>
         </a>
-        <span>open source</span>
-        <span>AGPL-3.0</span>
-        <a href="https://github.com/theprovider123/shippie">GitHub</a>
+        <span>Open source local tools.</span>
+        <a href="mailto:info@shippie.app">info@shippie.app</a>
       </div>
-      <div class="footer-links" aria-label="Legal and trust links">
+
+      <nav class="footer-links" aria-label="Product links">
+        <a href="/dock">Dock</a>
+        <a href="/tools">Tools</a>
+        <a href="/docs">Docs</a>
+        <a href="/new">Ship</a>
+        <a href="/you">You</a>
+      </nav>
+
+      <nav class="footer-links" aria-label="Trust links">
         <a href="/docs/privacy">Privacy</a>
         <a href="/docs/terms">Terms</a>
         <a href="/docs/security">Security</a>
-      </div>
+        <a href="https://github.com/theprovider123/shippie">GitHub</a>
+        <span>AGPL-3.0</span>
+      </nav>
+    </div>
+    <div class="footer-smallprint">
+      <span>Everything local unless you choose otherwise.</span>
     </div>
   </div>
 </footer>
@@ -33,14 +46,14 @@
   .footer {
     background: var(--surface);
     border-top: 1px solid var(--border);
-    padding: var(--space-3xl) 0 var(--space-xl);
-    margin-top: var(--space-3xl);
+    padding: 1.25rem 0;
+    margin-top: var(--space-xl);
   }
-  .footer-lines {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--space-md) var(--space-xl);
+  .footer-grid {
+    display: grid;
+    grid-template-columns: minmax(14rem, 1fr) auto auto;
+    align-items: center;
+    gap: 0.6rem 1.25rem;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
@@ -50,7 +63,7 @@
     display: inline-flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.6rem 0.75rem;
   }
   .footer-mark {
     display: inline-flex;
@@ -69,13 +82,40 @@
   .footer a:hover {
     color: var(--text-secondary);
   }
+  .footer-smallprint {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-light);
+  }
   @media (max-width: 640px) {
     .footer {
-      padding-bottom: calc(var(--space-3xl) + var(--safe-bottom));
+      margin-top: var(--space-lg);
+      padding: 1rem 0 calc(1rem + var(--safe-bottom));
     }
-    .footer-lines {
+    :global(body[data-mobile-dock-chrome='true']) .footer {
+      padding-bottom: calc(4.75rem + var(--safe-bottom));
+    }
+    .footer-grid {
       display: grid;
-      gap: var(--space-md);
+      grid-template-columns: 1fr;
+      gap: 0.6rem;
+    }
+    .footer-brandline {
+      display: flex;
+      gap: 0.45rem 0.6rem;
+    }
+    .footer-links {
+      gap: 0.4rem 0.65rem;
+    }
+    .footer-smallprint {
+      margin-top: 0.45rem;
+      padding-top: 0.45rem;
     }
   }
 </style>

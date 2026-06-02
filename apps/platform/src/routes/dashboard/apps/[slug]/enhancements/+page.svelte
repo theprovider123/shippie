@@ -173,7 +173,7 @@
     font-family: var(--font-heading);
     font-size: var(--h2-size);
     margin: 0 0 0.5rem;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
   .lede {
     color: var(--text-secondary);

@@ -25,6 +25,18 @@ function normaliseReturnTo(value: string | null): string {
   return value;
 }
 
+function localContinueTarget(returnTo: string): string {
+  if (
+    returnTo === '/dashboard'
+    || returnTo.startsWith('/dashboard/')
+    || returnTo === '/admin'
+    || returnTo.startsWith('/admin/')
+  ) {
+    return '/dock';
+  }
+  return returnTo;
+}
+
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
   const returnTo = normaliseReturnTo(url.searchParams.get('return_to'));
 
@@ -39,6 +51,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
     googleEnabled: env ? isGoogleConfigured(env) : false,
     devMode: env?.SHIPPIE_ENV !== 'production',
     returnTo,
+    continueTo: localContinueTarget(returnTo),
   };
 };
 

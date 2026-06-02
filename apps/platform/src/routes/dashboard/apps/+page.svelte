@@ -80,7 +80,7 @@
   .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
   .eyebrow a { color: inherit; text-decoration: none; }
   .eyebrow a:hover { text-decoration: underline; }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.25rem; margin: 0.25rem 0 0.5rem 0; letter-spacing: -0.02em; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.25rem; margin: 0.25rem 0 0.5rem 0; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); margin: 0; grid-column: 1; }
   .ship { background: var(--sunset); color: white; text-decoration: none; padding: 0 1.5rem; height: 44px; display: inline-flex; align-items: center; border-radius: 0; font-weight: 600; font-size: 14px; }
   .empty { text-align: center; padding: 4rem 2rem; border: 1px dashed var(--border-paper-mid); border-radius: 0; }
@@ -103,10 +103,95 @@
   .vis { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-muted-warm); }
   td a { color: var(--sunset); text-decoration: none; font-weight: 600; }
   td a:hover { text-decoration: underline; }
+  @media (max-width: 760px) {
+    .header {
+      grid-template-columns: 1fr;
+      align-items: start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 2rem;
+      line-height: 1.05;
+    }
+    .ship {
+      width: 100%;
+      justify-content: center;
+    }
+    .empty {
+      padding: 2rem 1rem;
+    }
+    .table-wrap {
+      border: 0;
+      overflow: visible;
+    }
+    table,
+    tbody,
+    tr,
+    td {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    thead {
+      display: none;
+    }
+    tbody {
+      display: grid;
+      gap: 0.75rem;
+    }
+    tr {
+      padding: 0.85rem;
+      border: 1px solid var(--paper-cream);
+    }
+    td {
+      border: 0;
+      padding: 0;
+    }
+    td + td {
+      margin-top: 0.5rem;
+    }
+    td:not(:first-child) {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    td:not(:first-child)::before {
+      color: var(--text-muted-warm);
+      content: '';
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    td:nth-child(2)::before { content: 'Type'; }
+    td:nth-child(3)::before { content: 'Status'; }
+    td:nth-child(4)::before { content: 'Visibility'; }
+    td:nth-child(5)::before { content: 'Last deploy'; }
+    td:nth-child(6)::before { content: 'Manage'; }
+    td.right {
+      text-align: left;
+    }
+    td.right a {
+      min-height: var(--touch-min, 44px);
+      display: inline-flex;
+      align-items: center;
+      color: var(--sunset);
+    }
+    .slug {
+      overflow-wrap: anywhere;
+    }
+  }
   @media (prefers-color-scheme: dark) {
     .table-wrap { border-color: var(--ink-warm); }
     th { background: rgba(255,255,255,0.04); }
     td { border-color: rgba(255,255,255,0.05); }
     .empty { border-color: var(--ink-warm-mid); }
+  }
+  @media (prefers-color-scheme: dark) and (max-width: 760px) {
+    tr {
+      border-color: var(--ink-warm);
+    }
   }
 </style>

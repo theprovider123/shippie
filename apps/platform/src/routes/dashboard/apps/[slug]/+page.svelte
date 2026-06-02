@@ -390,7 +390,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   }
   .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
   .eyebrow a { color: inherit; text-decoration: none; }
-  .launchpad-head h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.2rem; margin: 0.25rem 0 0.15rem; letter-spacing: -0.02em; }
+  .launchpad-head h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.2rem; margin: 0.25rem 0 0.15rem; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); margin: 0; }
   .launchpad-actions { display: flex; gap: 0.5rem; align-items: center; }
   .launchpad-actions .primary {

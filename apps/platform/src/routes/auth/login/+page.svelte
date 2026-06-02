@@ -23,7 +23,7 @@
         />
         <span>shippie</span>
       </a>
-      <a class="skip-top" href={data.returnTo}>Skip sign in</a>
+      <a class="skip-top" href={data.continueTo}>Skip sign in</a>
     </header>
 
     <section class="intro" aria-labelledby="login-title">
@@ -35,7 +35,7 @@
       </p>
 
       <div class="hero-actions">
-        <a class="continue-primary" href={data.returnTo}>Continue without account</a>
+        <a class="continue-primary" href={data.continueTo}>Continue without account</a>
         <a class="browse-link" href="/tools">Browse tools</a>
       </div>
 

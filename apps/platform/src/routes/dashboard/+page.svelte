@@ -32,6 +32,14 @@
   </a>
 </section>
 
+<section class="sync-note" aria-label="Maker account sync">
+  <strong>Account sync</strong>
+  <span>
+    This dashboard follows your account on phone and desktop. Dock saves and offline copies are still per device.
+  </span>
+  <a href="/you">Device settings</a>
+</section>
+
 {#if apps.length > 0}
   <section class="recent">
     <h2 class="section-title">Recent</h2>
@@ -53,7 +61,7 @@
 </form>
 
 <style>
-  .header { margin-bottom: 2rem; }
+  .header { margin-bottom: 1.5rem; }
   .eyebrow {
     display: inline-flex;
     align-items: center;
@@ -66,9 +74,9 @@
     margin: 0 0 0.25rem 0;
   }
   .eyebrow img { display: block; }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.5rem; margin: 0; letter-spacing: -0.02em; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.5rem; margin: 0; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); }
-  .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
   .card {
     display: block;
     padding: 1.5rem;
@@ -90,6 +98,35 @@
     color: var(--sunset);
     margin: 0;
   }
+  .sync-note {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    margin-bottom: 1.5rem;
+    border-top: 1px solid var(--paper-cream);
+    border-bottom: 1px solid var(--paper-cream);
+    color: var(--text-muted-warm);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .sync-note strong {
+    color: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .sync-note span {
+    flex: 1;
+  }
+  .sync-note a {
+    color: var(--sunset);
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+  }
   .recent ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem; }
   .recent li {
     display: grid;
@@ -110,11 +147,50 @@
     background: transparent; border: 1px solid var(--paper-cream); padding: 0.5rem 1.5rem;
     border-radius: 0; font-size: 13px; cursor: pointer; color: inherit;
   }
+  @media (max-width: 760px) {
+    .header {
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 2rem;
+      line-height: 1.05;
+    }
+    .quick {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
+    }
+    .card {
+      padding: 1rem;
+    }
+    .sync-note {
+      display: grid;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+    }
+    .recent li {
+      grid-template-columns: auto 1fr;
+      gap: 0.35rem 0.65rem;
+      padding: 0.75rem 0;
+    }
+    .status,
+    .vis {
+      grid-column: 2;
+      justify-self: start;
+    }
+    .logout button {
+      width: 100%;
+      min-height: var(--touch-min, 44px);
+    }
+  }
   @media (prefers-color-scheme: dark) {
     .card { border-color: var(--ink-warm); }
     .card.primary { background: rgba(232,96,60,0.08); }
     .recent li { border-color: rgba(255,255,255,0.05); }
     .status { background: rgba(255,255,255,0.05); }
     .logout button { border-color: var(--ink-warm); }
+    .sync-note {
+      border-color: var(--ink-warm);
+    }
   }
 </style>

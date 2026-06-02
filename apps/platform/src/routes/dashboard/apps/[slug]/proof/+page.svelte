@@ -100,7 +100,7 @@
     font-family: var(--font-mono);
     font-size: 0.95rem;
     margin: 0;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
   .pill {
     font-family: var(--font-mono);

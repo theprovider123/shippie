@@ -6,7 +6,7 @@
 </script>
 
 <aside class="sidebar">
-  <a class="brand" href="/">
+  <a class="brand" href="/dock">
     <img
       src="/__shippie-pwa/icon.svg"
       alt=""
@@ -69,7 +69,7 @@
     font-family: 'Fraunces', Georgia, serif;
     font-size: 1.0625rem;
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
     color: var(--bg);
   }
   .brand small {
@@ -129,11 +129,63 @@
   .row:hover { background: rgba(0,0,0,0.04); }
   .dot { width: 10px; height: 10px; border-radius: 0; flex-shrink: 0; }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 760px) {
+    .sidebar {
+      width: 100%;
+      min-height: auto;
+      padding: 0.85rem 1rem;
+      gap: 0.75rem;
+      border-right: 0;
+      border-bottom: 1px solid var(--border-light, #E5DDC8);
+    }
+    .brand,
+    .user,
+    .apps {
+      display: none;
+    }
+    .nav {
+      flex-direction: row;
+      gap: 0.4rem;
+      overflow-x: auto;
+      margin: 0 -1rem;
+      padding: 0 1rem;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nav::-webkit-scrollbar {
+      display: none;
+    }
+    .nav a {
+      flex: 0 0 auto;
+      min-height: var(--touch-min, 44px);
+      display: inline-flex;
+      align-items: center;
+      padding: 0 0.85rem;
+      border: 1px solid var(--border-light, #E5DDC8);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .ship-btn {
+      height: var(--touch-min, 44px);
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      background: var(--sunset);
+      color: var(--paper-warm-deep);
+    }
+  }
   @media (prefers-color-scheme: dark) {
     .sidebar { border-color: var(--ink-warm); }
     .nav a { color: var(--text); }
     .nav a:hover { background: rgba(255,255,255,0.04); }
     .row { color: var(--text); }
     .row:hover { background: rgba(255,255,255,0.04); }
+  }
+  @media (prefers-color-scheme: dark) and (max-width: 760px) {
+    .nav a {
+      border-color: var(--ink-warm);
+    }
   }
 </style>
