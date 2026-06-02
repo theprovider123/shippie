@@ -154,6 +154,18 @@ function PoolDetail({
   const store = useStore();
   const { profile, prediction, results } = store;
   const [link, setLink] = useState("");
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  function copyCode() {
+    tap();
+    navigator.clipboard
+      ?.writeText(pool.code)
+      .then(() => {
+        setCodeCopied(true);
+        setTimeout(() => setCodeCopied(false), 1400);
+      })
+      .catch(() => {});
+  }
   const [err, setErr] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [rename, setRename] = useState(pool.name);
@@ -220,7 +232,9 @@ function PoolDetail({
         <button className="back-btn" onClick={() => { tap(); onBack(); }}>
           ← Pools
         </button>
-        <span className="pool-code lg">{pool.code}</span>
+        <button className="pool-code lg copyable" onClick={copyCode} title="Copy join code">
+          {codeCopied ? "Copied ✓" : pool.code}
+        </button>
       </div>
       <h2 className="pool-detail-name">{pool.name}</h2>
 
