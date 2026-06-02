@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 import { drawStadium, drawBall, drawBallShadow, Trail, Particles, Shake } from "../../lib/stadium";
+import { Keeper, keeperConfig, saved as keeperSaved, rampedDifficulty } from "../../lib/keeper";
 
 const SHOTS = 8;
 
@@ -8,7 +9,7 @@ const SHOTS = 8;
  * Top Bins — swipe the ball to shoot. A keeper patrols then DIVES; aim for the top
  * corners ("top bins") for 3, anywhere else for 1. Net ripples on a goal. 8 shots.
  */
-export function TopBins({ onGameOver, target }: { onGameOver: (score: number) => void; target?: number }) {
+export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver: (score: number) => void; target?: number; difficulty?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [shots, setShots] = useState(SHOTS);
@@ -36,8 +37,7 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
     const goalL = () => W * 0.16;
     const goalR = () => W * 0.84;
     const barH = () => H * 0.16;
-    const keeper = { x: W / 2, dir: 1, speed: 2.2, diving: false, target: W / 2, lean: 0 };
-    const keeperW = () => (goalR() - goalL()) * 0.24;
+    const keeper = new Keeper(goalL(), goalR(), keeperConfig(difficulty));
     const spot = () => ({ x: W / 2, y: H * 0.86 });
     let ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.048 };
     let drag: { x: number; y: number } | null = null;
@@ -51,7 +51,7 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
 
     function resetBall() {
       ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.048 };
-      keeper.diving = false; keeper.lean = 0; trail.clear();
+      keeper.reset(); trail.clear();
     }
     function shoot(dx: number, dy: number) {
       if (ball.flying || dy > -10) return;
@@ -62,8 +62,8 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
       // Keeper commits a dive toward where the ball will cross — with error so it's beatable.
       const tToGoal = Math.max(1, (ball.y - goalY()) / Math.max(1, -ball.vy));
       const cross = ball.x + ball.vx * tToGoal;
-      keeper.target = cross + (Math.random() - 0.5) * keeperW() * 2.4;
-      keeper.diving = true;
+      keeper.cfg = keeperConfig(rampedDifficulty(difficulty, scoreRef.current));
+      keeper.commit(cross);
     }
     function onDown(e: PointerEvent) {
       const r = canvas.getBoundingClientRect();
@@ -85,10 +85,10 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
     function judge() {
       const gl = goalL(), gr = goalR();
       const inGoal = ball.x > gl && ball.x < gr;
-      const saved = Math.abs(ball.x - keeper.x) < keeperW() / 2 + ball.r;
-      if (!inGoal || saved) {
-        setFlash(saved ? "SAVED!" : "MISS");
-        shake.kick(saved ? 6 : 2);
+      const isSaved = keeperSaved(ball.x, keeper.x, keeper.reachPx(), ball.r);
+      if (!inGoal || isSaved) {
+        setFlash(isSaved ? "SAVED!" : "MISS");
+        shake.kick(isSaved ? 6 : 2);
         confirmBuzz();
       } else {
         const corner = ball.x < gl + (gr - gl) * 0.2 || ball.x > gr - (gr - gl) * 0.2;
@@ -106,15 +106,8 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
     }
 
     function frame(now: number) {
-      // keeper: patrol, or dive toward target
-      if (keeper.diving) {
-        keeper.x += (keeper.target - keeper.x) * 0.18;
-        keeper.lean += ((keeper.target > W / 2 ? 0.5 : -0.5) - keeper.lean) * 0.2;
-      } else {
-        keeper.x += keeper.dir * keeper.speed;
-        if (keeper.x < goalL() + keeperW() / 2) keeper.dir = 1;
-        if (keeper.x > goalR() - keeperW() / 2) keeper.dir = -1;
-      }
+      keeper.setBounds(goalL(), goalR());
+      keeper.update(2.2);
 
       if (ball.flying) {
         ball.vy += 0.12; ball.x += ball.vx; ball.y += ball.vy;
@@ -152,7 +145,7 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
       ctx.translate(keeper.x, gy + bh * 0.42);
       ctx.rotate(keeper.lean);
       ctx.fillStyle = "#16f08b";
-      const kw = keeperW();
+      const kw = keeper.reachPx() * 1.6;
       roundRect(ctx, -kw / 2, -bh * 0.32, kw, bh * 0.62, 6);
       ctx.fill();
       ctx.fillStyle = "#0a1f16"; // head

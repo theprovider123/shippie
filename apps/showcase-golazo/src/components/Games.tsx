@@ -27,6 +27,7 @@ export function Games({ challenge, penalty }: { challenge?: Challenge | null; pe
   const [sel, setSel] = useState<Sel>(penalty ? "penalty" : challenge ? challenge.game : null);
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
+  const [diff, setDiff] = useState<"casual" | "pro">("casual");
 
   const soloGame = sel && sel !== "penalty" ? sel : null;
 
@@ -96,12 +97,26 @@ export function Games({ challenge, penalty }: { challenge?: Challenge | null; pe
   const board = mergeBoards(store.scores, global, soloGame!).slice(0, 10);
   const target = challenge && challenge.game === soloGame ? challenge.score : undefined;
 
+  const diffValue = diff === "pro" ? 0.7 : 0.3;
+  const hasKeeper = soloGame === "topbins" || soloGame === "freekick";
+
   return (
     <div className="games">
-      <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+      <div className="game-top">
+        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+        {hasKeeper && (
+          <div className="diff-toggle" role="tablist" aria-label="Difficulty">
+            {(["casual", "pro"] as const).map((d) => (
+              <button key={d} role="tab" aria-selected={diff === d} className={diff === d ? "is-sel" : ""} onClick={() => { tap(); setDiff(d); }}>
+                {d === "casual" ? "Casual" : "Pro"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {soloGame === "keepy" && <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
-      {soloGame === "topbins" && <TopBins key={`t-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
-      {soloGame === "freekick" && <FreeKick key={`f-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
+      {soloGame === "topbins" && <TopBins key={`t-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
+      {soloGame === "freekick" && <FreeKick key={`f-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
 
       <div className="game-meta-row">
         <span className="game-best">Your best · <strong>{best}</strong> {meta.unit}</span>

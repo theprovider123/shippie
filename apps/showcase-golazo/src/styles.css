@@ -2829,3 +2829,10 @@ input {
 .yn-next-clock { font-family: var(--font-display); font-weight: 850; font-size: 16px; color: var(--accent); margin-left: auto; }
 .yn-opp { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
 .yn-opp-team { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; }
+
+/* ── Difficulty toggle (games) ─────────────────────────────────────────── */
+.game-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.game-top .back-btn { margin: 0; }
+.diff-toggle { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.diff-toggle button { padding: 6px 14px; border-radius: 999px; font-weight: 750; font-size: 12.5px; color: var(--muted); transition: all 0.16s var(--ease); }
+.diff-toggle button.is-sel { background: var(--accent); color: #06140f; }
