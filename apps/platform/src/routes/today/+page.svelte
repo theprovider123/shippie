@@ -49,7 +49,7 @@
 
   function appHref(appId: string): string | null {
     const slug = appId.replace(/^app_/, '').replace(/_/g, '-');
-    return knownSlugs.has(slug) ? `/run/${slug}` : null;
+    return knownSlugs.has(slug) ? `/dock?app=${encodeURIComponent(slug)}` : null;
   }
 
   function fmtRelative(ts: number): string {
@@ -105,7 +105,7 @@
     <section class="today-empty-card">
       <h2>Nothing logged yet.</h2>
       <p>
-        Open an app from <a href="/apps">the marketplace</a> and do something — a coffee in Field Kitchen, a journal entry, a workout in Move. Whatever fires shows up here.
+        Open an app from <a href="/tools">Tools</a> and do something — a coffee in Palate, a journal entry, a workout in Lift. Whatever fires shows up here.
       </p>
       <p class="today-foot-note">
         The summary builds itself from intents your apps broadcast. Nothing is sent to a Shippie server. There is no admin who could read it.

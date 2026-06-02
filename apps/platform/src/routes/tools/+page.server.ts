@@ -1,7 +1,7 @@
 /**
- * Marketplace browse — `/apps`.
+ * Tools browse — `/tools`.
  *
- * Empty `q` → top-of-the-marketplace browse, ordered by upvote then
+ * Empty `q` → top-of-tools browse, ordered by upvote then
  * install count. Non-empty `q` → FTS5 search. The query string is
  * sanitised in `buildFtsQuery` (see `db/queries/apps.ts`) so we never
  * concatenate user input into a MATCH predicate raw.

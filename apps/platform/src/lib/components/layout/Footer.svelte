@@ -6,7 +6,7 @@
   <div class="wrap">
     <div class="footer-lines">
       <div class="footer-brandline">
-        <a href="/" class="footer-mark">
+        <a href="/dock" class="footer-mark">
           <img
             src="/__shippie-pwa/icon.svg"
             alt=""

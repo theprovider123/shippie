@@ -10,12 +10,9 @@
 
   let mobileOpen = $state(false);
 
-  const docsPaths = new Set(['/docs', '/build', '/why', '/professionals', '/labs']);
-
   function isHomePath(pathname: string): boolean {
     return pathname === '/'
       || pathname === '/dock'
-      || pathname.startsWith('/apps')
       || pathname === '/arcade'
       || pathname === '/leaderboards'
       || pathname === '/glance'
@@ -23,8 +20,8 @@
       || pathname === '/whitepaper';
   }
 
-  function isDocsPath(pathname: string): boolean {
-    return docsPaths.has(pathname) || pathname.startsWith('/docs/');
+  function isToolsPath(pathname: string): boolean {
+    return pathname === '/tools' || pathname.startsWith('/apps/');
   }
 </script>
 
@@ -46,7 +43,7 @@
 
     <div class="nav-center">
       <a href="/dock" class="nav-link" class:active={isHomePath($page.url.pathname)} aria-current={isHomePath($page.url.pathname) ? 'page' : undefined}>Dock</a>
-      <a href="/docs" class="nav-link" class:active={isDocsPath($page.url.pathname)} aria-current={isDocsPath($page.url.pathname) ? 'page' : undefined}>Docs</a>
+      <a href="/tools" class="nav-link" class:active={isToolsPath($page.url.pathname)} aria-current={isToolsPath($page.url.pathname) ? 'page' : undefined}>Tools</a>
     </div>
 
     <div class="nav-right">
@@ -80,7 +77,7 @@
   {#if mobileOpen}
     <div id="mobile-menu" class="mobile-menu">
       <a href="/dock" onclick={() => (mobileOpen = false)}>Dock</a>
-      <a href="/docs" onclick={() => (mobileOpen = false)}>Docs</a>
+      <a href="/tools" onclick={() => (mobileOpen = false)}>Tools</a>
       {#if user}
         <a href="/you" onclick={() => (mobileOpen = false)}>You</a>
         <a href="/dashboard" onclick={() => (mobileOpen = false)}>Dashboard</a>

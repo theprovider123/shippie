@@ -18,10 +18,18 @@ import { sendMagicLink } from '$server/auth/email';
 import { getAuthSecret } from '$server/auth/env';
 import { checkMagicLinkRateLimit } from '$server/auth/rate-limit';
 
+function normaliseReturnTo(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return '/dock';
+  }
+  return value;
+}
+
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
+  const returnTo = normaliseReturnTo(url.searchParams.get('return_to'));
+
   // Already signed in? Bounce to the return target or home.
   if (locals.user) {
-    const returnTo = url.searchParams.get('return_to') ?? '/';
     throw redirect(303, returnTo);
   }
 
@@ -30,6 +38,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
     githubEnabled: Boolean(env?.GITHUB_CLIENT_ID && env?.GITHUB_CLIENT_SECRET),
     googleEnabled: env ? isGoogleConfigured(env) : false,
     devMode: env?.SHIPPIE_ENV !== 'production',
+    returnTo,
   };
 };
 
@@ -71,12 +80,12 @@ export const actions: Actions = {
     }
 
     const origin = platform.env.PUBLIC_ORIGIN ?? url.origin;
-    const returnTo = url.searchParams.get('return_to');
+    const returnTo = normaliseReturnTo(url.searchParams.get('return_to'));
     const linkUrl = new URL(
       `/auth/email-link/${encodeURIComponent(mint.token)}`,
       origin.replace(/\/$/, ''),
     );
-    if (returnTo) linkUrl.searchParams.set('return_to', returnTo);
+    if (returnTo !== '/dock') linkUrl.searchParams.set('return_to', returnTo);
     const link = linkUrl.toString();
 
     try {
@@ -117,8 +126,8 @@ export const actions: Actions = {
     };
     cookies.set('github_oauth_state', state, cookieAttrs);
 
-    const returnTo = url.searchParams.get('return_to');
-    if (returnTo) cookies.set('auth_return_to', returnTo, cookieAttrs);
+    const returnTo = normaliseReturnTo(url.searchParams.get('return_to'));
+    if (returnTo !== '/dock') cookies.set('auth_return_to', returnTo, cookieAttrs);
 
     throw redirect(302, authUrl.toString());
   },

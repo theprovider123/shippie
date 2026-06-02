@@ -60,7 +60,7 @@
     </form>
 
     <p class="hint">Codes expire 15 minutes after the CLI requests them.</p>
-    <a class="continue-link" href="/">Return to the tool launcher</a>
+    <a class="continue-link" href="/dock">Return to Dock</a>
   </div>
 </main>
 
@@ -101,7 +101,7 @@
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
     font-size: clamp(2.25rem, 9vw, 3.6rem);
     line-height: 0.98;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     margin: 0;
   }
   .lede { color: var(--text-secondary, #5C5751); line-height: 1.55; margin: 0; }

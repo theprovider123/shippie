@@ -9,11 +9,11 @@
     actions?: EntryAction[];
   }
 
-  let { label = 'Tool launcher', actions = [] }: Props = $props();
+  let { label = 'Dock', actions = [] }: Props = $props();
 </script>
 
 <nav class="entry-nav" aria-label="Page navigation">
-  <a class="launcher" href="/" aria-label="Return to Shippie tool launcher">
+  <a class="launcher" href="/dock" aria-label="Open Shippie Dock">
     <img
       src="/__shippie-pwa/icon.svg"
       alt=""
@@ -58,7 +58,7 @@
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
     font-size: 1.05rem;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
 
   .launcher img {
