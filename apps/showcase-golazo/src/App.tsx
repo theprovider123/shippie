@@ -13,14 +13,14 @@ import { BottomNav, type Tab } from "./components/BottomNav";
 import { readShareFromHash, readSweepFromHash, type SharePayload } from "./lib/codec";
 import type { Sweep } from "./lib/sweeps";
 import { readChallengeFromHash, type Challenge } from "./lib/games";
-import { readShootoutFromHash, type Shootout } from "./lib/penalty";
+import { readDuelFromHash, type Duel } from "./lib/duel";
 import { completion } from "./lib/bracket";
 import { useStore } from "./state";
 
 export function App() {
   const { profile, prediction } = useStore();
   const [tab, setTab] = useState<Tab>(() => {
-    if (typeof location !== "undefined" && (readChallengeFromHash(location.hash) || readShootoutFromHash(location.hash))) return "play";
+    if (typeof location !== "undefined" && (readChallengeFromHash(location.hash) || readDuelFromHash(location.hash))) return "play";
     return completion(prediction) > 0 ? "home" : "predict";
   });
   const [incoming, setIncoming] = useState<SharePayload | null>(() =>
@@ -32,8 +32,8 @@ export function App() {
   const [challenge, setChallenge] = useState<Challenge | null>(() =>
     typeof location !== "undefined" ? readChallengeFromHash(location.hash) : null,
   );
-  const [penalty, setPenalty] = useState<Shootout | null>(() =>
-    typeof location !== "undefined" ? readShootoutFromHash(location.hash) : null,
+  const [duel, setDuel] = useState<Duel | null>(() =>
+    typeof location !== "undefined" ? readDuelFromHash(location.hash) : null,
   );
   const [demo, setDemo] = useState(() =>
     typeof location !== "undefined" ? /[#&]demo/.test(location.hash) : false,
@@ -49,8 +49,8 @@ export function App() {
       if (s) setIncomingSweep(s);
       const c = readChallengeFromHash(hash);
       if (c) { setChallenge(c); setTab("play"); }
-      const pk = readShootoutFromHash(hash);
-      if (pk) { setPenalty(pk); setTab("play"); }
+      const dl = readDuelFromHash(hash);
+      if (dl) { setDuel(dl); setTab("play"); }
       if (/[#&]demo/.test(hash)) setDemo(true);
     };
     const fromHash = () => ingest(location.hash);
@@ -97,7 +97,7 @@ export function App() {
             )}
             {tab === "predict" && <PredictScreen />}
             {tab === "pools" && <Pools />}
-            {tab === "play" && <Games challenge={challenge} penalty={penalty} />}
+            {tab === "play" && <Games challenge={challenge} duel={duel} />}
           </main>
           <BottomNav active={tab} onChange={setTab} />
         </>

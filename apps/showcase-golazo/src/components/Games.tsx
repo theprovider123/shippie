@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { KeepyUppy } from "./games/KeepyUppy";
 import { TopBins } from "./games/TopBins";
 import { FreeKick } from "./games/FreeKick";
-import { Penalty } from "./games/Penalty";
+import { PenaltyDuel } from "./games/PenaltyDuel";
 import {
   GAMES,
   gameMeta,
@@ -13,7 +13,7 @@ import {
   type ScoreEntry,
   type Challenge,
 } from "../lib/games";
-import type { Shootout } from "../lib/penalty";
+import type { Duel } from "../lib/duel";
 import { fetchGlobal, submitGlobal, isGlobalEnabled } from "../lib/leaderboard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
@@ -21,10 +21,10 @@ import { tap } from "../lib/haptics";
 type Sel = GameId | "penalty" | null;
 
 /** Play surface: pick a game, post scores, see the worldwide board. */
-export function Games({ challenge, penalty }: { challenge?: Challenge | null; penalty?: Shootout | null }) {
+export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?: Duel | null }) {
   const store = useStore();
   const playerName = store.profile?.name || "You";
-  const [sel, setSel] = useState<Sel>(penalty ? "penalty" : challenge ? challenge.game : null);
+  const [sel, setSel] = useState<Sel>(duel ? "penalty" : challenge ? challenge.game : null);
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [diff, setDiff] = useState<"casual" | "pro">("casual");
@@ -72,8 +72,8 @@ export function Games({ challenge, penalty }: { challenge?: Challenge | null; pe
           ))}
           <button className="game-card vs" onClick={() => { tap(); setSel("penalty"); }}>
             <span className="game-card-emoji">🥅</span>
-            <span className="game-card-name">Penalty Shootout <em className="h2h">H2H</em></span>
-            <span className="game-card-how">Take 5 pens, then challenge a mate by link</span>
+            <span className="game-card-name">Penalty Duel <em className="h2h">H2H</em></span>
+            <span className="game-card-how">You're keeper AND striker — duel a mate by link</span>
             <span className="game-card-best">You vs a mate</span>
           </button>
         </div>
@@ -86,7 +86,7 @@ export function Games({ challenge, penalty }: { challenge?: Challenge | null; pe
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
-        <Penalty challenge={penalty} playerName={playerName} />
+        <PenaltyDuel duel={duel} playerName={playerName} />
       </div>
     );
   }
