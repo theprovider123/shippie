@@ -122,6 +122,7 @@
     hydrateLauncherMemory,
     launcherMemory,
     recordAppLaunch,
+    removeSavedApp,
     saveAppToDock,
   } from '$lib/stores/launcher-memory';
   import { ensureAppOffline } from '$lib/stores/cached-slugs';
@@ -848,6 +849,12 @@
       activeAppId = null;
       section = 'home';
     }
+  }
+
+  function removeSavedTool(slug: string) {
+    removeSavedApp(slug);
+    const app = launchVisibleAppBySlug.get(slug);
+    toast.push({ kind: 'info', message: `${app?.name ?? 'Tool'} removed from Dock.` });
   }
 
   // Phase 2 — resume/insight strip above the active tool. One item,
@@ -3695,6 +3702,7 @@
                 onDismissInsight={dismissInsight}
                 onOpenApp={openApp}
                 onCloseTool={closeRailTool}
+                onRemoveSavedTool={removeSavedTool}
                 onStayOnCurrent={stayOnCurrent}
               onAcceptUpdate={acceptUpdate}
               onCreateMeshRoom={createMeshRoom}

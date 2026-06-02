@@ -39,6 +39,7 @@
     onDismissInsight: (insight: Insight) => void;
     onOpenApp: (appId: string) => void;
     onCloseTool?: (slug: string) => void;
+    onRemoveSavedTool?: (slug: string) => void;
     onStayOnCurrent: (appId: string) => void;
     onAcceptUpdate: (appId: string) => void;
     onCreateMeshRoom: () => void;
@@ -60,6 +61,7 @@
     onDismissInsight,
     onOpenApp,
     onCloseTool,
+    onRemoveSavedTool,
     onStayOnCurrent,
     onAcceptUpdate,
     onCreateMeshRoom,
@@ -133,8 +135,14 @@
   <p>Running, saved, and recent tools stay close. Browse when you need something new.</p>
 </div>
 {#if updateCards.length > 0}
-  <details class="updates">
-    <summary>{updateCards.length} tool update{updateCards.length === 1 ? '' : 's'} available</summary>
+  <details class="updates" open>
+    <summary>
+      <span class="updates-summary-copy">
+        <strong>Updates available</strong>
+        <small>Review package changes before installing.</small>
+      </span>
+      <span class="updates-count">{updateCards.length}</span>
+    </summary>
     {#each updateCards as card (card.app.id)}
       <article>
         <div>
@@ -171,14 +179,9 @@
       label: 'Running',
       tools: dockGroups.open,
       state: sectionRuntimeState('open'),
-      onClose: onCloseTool,
-    })}
-  {/if}
-  {#if dockGroups.saved.length > 0}
-    {@render DockSection({
-      label: 'Saved',
-      tools: dockGroups.saved,
-      state: sectionRuntimeState('saved'),
+      action: onCloseTool,
+      actionLabel: (tool) => `Close ${tool.name}`,
+      actionTitle: 'Close running tool',
     })}
   {/if}
   {#if dockGroups.recent.length > 0}
@@ -186,6 +189,16 @@
       label: 'Recent',
       tools: dockGroups.recent,
       state: sectionRuntimeState('recent'),
+    })}
+  {/if}
+  {#if dockGroups.saved.length > 0}
+    {@render DockSection({
+      label: 'Saved',
+      tools: dockGroups.saved,
+      state: sectionRuntimeState('saved'),
+      action: onRemoveSavedTool,
+      actionLabel: (tool) => `Remove ${tool.name} from Dock`,
+      actionTitle: 'Remove from Dock',
     })}
   {/if}
 
@@ -248,12 +261,16 @@
   label,
   tools,
   state,
-  onClose,
+  action,
+  actionLabel,
+  actionTitle,
 }: {
   label: string;
   tools: readonly RailTool[];
   state: ToolRuntimeState;
-  onClose?: (slug: string) => void;
+  action?: (slug: string) => void;
+  actionLabel?: (tool: RailTool) => string;
+  actionTitle?: string;
 })}
   <section class="dock-section">
     <div class="dock-section-head">
@@ -272,7 +289,7 @@
     </div>
     <div class="dock-row-list">
       {#each tools as tool (tool.slug)}
-        <div class="dock-tool-row" class:with-close={onClose}>
+        <div class="dock-tool-row" class:with-close={action}>
           <ToolTile
             app={railToolToTile(tool)}
             density="drawer"
@@ -281,8 +298,16 @@
             noActions
             onOpen={() => openToolSlug(tool.slug)}
           />
-          {#if onClose}
-            <button class="dock-row-close" type="button" aria-label={`Close ${tool.name}`} onclick={() => onClose(tool.slug)}>×</button>
+          {#if action}
+            <button
+              class="dock-row-close"
+              type="button"
+              aria-label={actionLabel?.(tool) ?? `Remove ${tool.name}`}
+              title={actionTitle}
+              onclick={() => action(tool.slug)}
+            >
+              ×
+            </button>
           {/if}
         </div>
       {/each}
@@ -294,24 +319,30 @@
   /* Inherits container-shell variables (--space-md, --bg, --border, etc).
      The shell loads them at :root, so component-scoped CSS can use them. */
   .section-head {
-    margin: var(--space-md) 0 var(--space-sm);
+    display: grid;
+    gap: 0.5rem;
+    margin: var(--space-md) 0 var(--space-md);
   }
   .section-title-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: var(--space-sm);
+    gap: var(--space-md);
   }
   .section-head h2 {
-    margin: 0 0 4px;
+    min-width: 0;
+    margin: 0;
     font-size: 1.25rem;
   }
   .section-head p {
+    max-width: 44rem;
     margin: 0;
     color: var(--text-secondary);
     font-size: 0.9rem;
+    line-height: 1.4;
   }
   .mine-toggle {
+    flex: none;
     min-height: 32px;
     padding: 0 10px;
     border: 1px solid var(--border);
@@ -397,26 +428,66 @@
     background: rgba(232, 96, 60, 0.08);
   }
   .updates {
+    border: 1px solid color-mix(in srgb, var(--sunset) 38%, var(--border-light));
+    background: color-mix(in srgb, var(--sunset) 9%, var(--surface));
+    box-shadow: inset 3px 0 0 var(--sunset);
     margin-bottom: var(--space-md);
   }
   .updates > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    min-height: 48px;
     font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
+    color: var(--text);
     cursor: pointer;
-    padding: 0.35rem 0;
+    padding: 0.75rem var(--space-sm);
     list-style: none;
   }
   .updates > summary::-webkit-details-marker { display: none; }
-  .updates > summary::before { content: '▸ '; color: var(--sunset); }
-  .updates[open] > summary::before { content: '▾ '; }
+  .updates > summary::after {
+    content: 'Hide';
+    flex: none;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .updates:not([open]) > summary::after { content: 'Review'; color: var(--sunset); }
+  .updates-summary-copy {
+    display: grid;
+    gap: 0.12rem;
+    min-width: 0;
+  }
+  .updates-summary-copy strong {
+    color: var(--text);
+    font-family: var(--font-heading);
+    font-size: 0.98rem;
+    letter-spacing: 0;
+  }
+  .updates-summary-copy small {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+  }
+  .updates-count {
+    flex: none;
+    display: grid;
+    place-items: center;
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    border: 1px solid color-mix(in srgb, var(--sunset) 60%, transparent);
+    background: color-mix(in srgb, var(--sunset) 18%, transparent);
+    color: var(--sunset);
+    font-size: 0.8rem;
+  }
   .updates article {
     display: flex;
     gap: var(--space-md);
     padding: var(--space-sm);
     border: 1px solid var(--border-light);
-    margin-bottom: 6px;
+    margin: 0 var(--space-sm) var(--space-sm);
     background: var(--surface);
   }
   .row-actions {
@@ -472,7 +543,11 @@
   }
   @media (max-width: 640px) {
     .section-head {
-      margin: 0 0 var(--space-sm);
+      gap: 0.65rem;
+      margin: 0 0 var(--space-md);
+    }
+    .section-title-row {
+      gap: var(--space-sm);
     }
     .section-title-row h2 {
       font-size: clamp(2.05rem, 10vw, 3rem);
@@ -483,10 +558,18 @@
       line-height: 1.45;
     }
     .mine-toggle {
+      margin-top: 0.25rem;
       min-height: var(--touch-min);
     }
     .updates {
       margin-bottom: var(--space-sm);
+    }
+    .updates > summary {
+      align-items: flex-start;
+      padding: var(--space-sm);
+    }
+    .updates > summary::after {
+      padding-top: 0.12rem;
     }
     .updates article {
       align-items: stretch;
