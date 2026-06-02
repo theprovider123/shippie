@@ -17,27 +17,24 @@
   import InsightStrip from '$lib/container/InsightStrip.svelte';
   import {
     ToolTile,
-    containerAppToToolTile,
     type ToolTileApp,
     type ToolRuntimeState,
   } from '$lib/components/tool-surface';
-  import type { ContainerApp, UpdateCard } from '$lib/container/state';
+  import type { UpdateCard } from '$lib/container/state';
   import type { RailGroups, RailTool } from '$lib/container/rail-groups';
   import type { Insight } from '@shippie/agent';
   import type { MeshStatus } from '$lib/container/mesh-status';
 
   interface Props {
     insights: readonly Insight[];
-    apps: readonly ContainerApp[];
     dockGroups: RailGroups;
-    openAppIds: readonly string[];
     updateCards: readonly UpdateCard[];
     meshStatus: MeshStatus;
     meshJoinCodeInput: string;
     meshError: string;
     onOpenInsight: (insight: Insight) => void;
     onDismissInsight: (insight: Insight) => void;
-    onOpenApp: (appId: string) => void;
+    onOpenTool: (slug: string) => void;
     onCloseTool?: (slug: string) => void;
     onRemoveSavedTool?: (slug: string) => void;
     onStayOnCurrent: (appId: string) => void;
@@ -50,16 +47,14 @@
 
   let {
     insights,
-    apps,
     dockGroups,
-    openAppIds,
     updateCards,
     meshStatus,
     meshJoinCodeInput,
     meshError,
     onOpenInsight,
     onDismissInsight,
-    onOpenApp,
+    onOpenTool,
     onCloseTool,
     onRemoveSavedTool,
     onStayOnCurrent,
@@ -69,23 +64,6 @@
     onLeaveMeshRoom,
     onMeshJoinCodeChange,
   }: Props = $props();
-  let showMineOnly = $state(false);
-  const visibleApps = $derived(showMineOnly ? apps.filter((app) => app.owned || app.visibility === 'local') : apps);
-  const quickSlugs = $derived(
-    new Set([
-      ...dockGroups.open.map((tool) => tool.slug),
-      ...dockGroups.saved.map((tool) => tool.slug),
-      ...dockGroups.recent.map((tool) => tool.slug),
-    ]),
-  );
-  const browsePreview = $derived(visibleApps.filter((app) => !quickSlugs.has(app.slug)).slice(0, 12));
-  const hasDockRows = $derived(dockGroups.open.length > 0 || dockGroups.saved.length > 0 || dockGroups.recent.length > 0);
-  const appBySlug = $derived(new Map(apps.map((app) => [app.slug, app])));
-
-  function runtimeStateFor(app: ContainerApp): ToolRuntimeState {
-    return openAppIds.includes(app.id) ? 'live' : 'idle';
-  }
-
   function sectionRuntimeState(section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
     return section === 'open' ? 'live' : 'idle';
   }
@@ -103,11 +81,6 @@
     };
   }
 
-  function openToolSlug(slug: string) {
-    const app = appBySlug.get(slug);
-    if (app) onOpenApp(app.id);
-  }
-
   function captionFor(label: string, category: string | undefined): string {
     if (label === 'Running') return category ?? 'Running';
     if (label === 'Saved') return 'Saved to Dock';
@@ -122,17 +95,8 @@
 <div class="section-head">
   <div class="section-title-row">
     <h2>Dock</h2>
-    <button
-      class="mine-toggle"
-      class:active={showMineOnly}
-      type="button"
-      aria-pressed={showMineOnly}
-      onclick={() => (showMineOnly = !showMineOnly)}
-    >
-      My tools
-    </button>
   </div>
-  <p>Running, saved, and recent tools stay close. Browse when you need something new.</p>
+  <p>Running, saved, and recent tools stay close. Use Tools to search the wider catalog.</p>
 </div>
 {#if updateCards.length > 0}
   <details class="updates" open>
@@ -201,28 +165,6 @@
       actionTitle: 'Remove from Dock',
     })}
   {/if}
-
-  <section class="dock-section">
-    <div class="dock-section-head">
-      <div>
-        <h3>Browse</h3>
-        <p>{hasDockRows ? 'More tools from the catalog.' : 'Start with a few tools, then save your favorites to Dock.'}</p>
-      </div>
-      <a href="/tools">All tools</a>
-    </div>
-    <div class="dock-row-list">
-      {#each browsePreview as app (app.id)}
-        <ToolTile
-          app={containerAppToToolTile(app)}
-          density="drawer"
-          captionLabel={app.category ?? 'Tool'}
-          runtimeState={runtimeStateFor(app)}
-          noActions
-          onOpen={() => onOpenApp(app.id)}
-        />
-      {/each}
-    </div>
-  </section>
 </div>
 <div class="nearby-panel">
   <h3>Share nearby</h3>
@@ -296,7 +238,7 @@
             runtimeState={state}
             captionLabel={captionFor(label, tool.category)}
             noActions
-            onOpen={() => openToolSlug(tool.slug)}
+            onOpen={() => onOpenTool(tool.slug)}
           />
           {#if action}
             <button
@@ -320,8 +262,8 @@
      The shell loads them at :root, so component-scoped CSS can use them. */
   .section-head {
     display: grid;
-    gap: 0.5rem;
-    margin: var(--space-md) 0 var(--space-md);
+    gap: 0.4rem;
+    margin: 0 0 clamp(1rem, 2vw, 1.5rem);
   }
   .section-title-row {
     display: flex;
@@ -332,7 +274,7 @@
   .section-head h2 {
     min-width: 0;
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.08rem;
   }
   .section-head p {
     max-width: 44rem;
@@ -341,26 +283,9 @@
     font-size: 0.9rem;
     line-height: 1.4;
   }
-  .mine-toggle {
-    flex: none;
-    min-height: 32px;
-    padding: 0 10px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-  .mine-toggle.active,
-  .mine-toggle:hover {
-    color: var(--text);
-    border-color: var(--sunset);
-  }
   .dock-sections {
     display: grid;
-    gap: var(--space-md);
+    gap: clamp(1rem, 1.8vw, 1.35rem);
     margin-bottom: var(--space-md);
   }
   .dock-section {
@@ -383,27 +308,19 @@
     color: var(--text-secondary);
     font-size: 0.86rem;
   }
-  .dock-section-head a {
-    flex: none;
-    color: var(--sunset);
-    font-family: var(--font-mono);
-    font-size: 0.76rem;
-    text-decoration: none;
-  }
   .dock-row-list {
     --dock-tool-row-height: 64px;
     display: grid;
     border: 1px solid var(--border-light);
-    background: var(--surface);
+    background: var(--border-light);
+    gap: 1px;
   }
   .dock-tool-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     min-height: var(--dock-tool-row-height);
     background: var(--surface);
-    border-bottom: 1px solid var(--border-light);
   }
-  .dock-tool-row:last-child { border-bottom: 0; }
   .dock-tool-row :global(.tile-drawer) {
     min-height: var(--dock-tool-row-height);
     border: 0;
@@ -541,6 +458,22 @@
     font-size: 0.85rem;
     margin: 0.5rem 0 0;
   }
+  @media (min-width: 641px) {
+    .section-head h2 {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    .section-title-row {
+      justify-content: flex-end;
+    }
+    .section-head p {
+      max-width: min(54rem, calc(100vw - 360px));
+    }
+  }
   @media (max-width: 640px) {
     .section-head {
       gap: 0.65rem;
@@ -556,10 +489,6 @@
     .section-head p {
       font-size: 1rem;
       line-height: 1.45;
-    }
-    .mine-toggle {
-      margin-top: 0.25rem;
-      min-height: var(--touch-min);
     }
     .updates {
       margin-bottom: var(--space-sm);

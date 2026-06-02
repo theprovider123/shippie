@@ -1,8 +1,6 @@
 <!--
-  Mobile tool switcher. This must scale past a few dozen tools, so the
-  primary surface is searchable rows with visible names and state instead of
-  an icon-only grid. It uses the shared Sheet primitive for scroll lock,
-  focus trapping, and back/Escape dismissal.
+  Mobile switcher. It is intentionally scoped to Dock context (running, saved,
+  recent); full catalog discovery lives on /tools.
 -->
 <script lang="ts">
   import Sheet from '$lib/components/ui/Sheet.svelte';
@@ -20,8 +18,12 @@
   let { open, groups, allApps, onOpen, onClose, onCloseTool = undefined }: Props = $props();
 
   let query = $state('');
-  const totalCount = $derived(allApps.length);
-  const searchable = $derived(totalCount > 8);
+  const contextCount = $derived(new Set([
+    ...groups.open.map((tool) => tool.slug),
+    ...groups.saved.map((tool) => tool.slug),
+    ...groups.recent.map((tool) => tool.slug),
+  ]).size);
+  const searchable = $derived(contextCount > 8);
   const sections = $derived(buildToolSwitcherSections({ groups, allApps, query }));
   const hasResults = $derived(sections.some((section) => section.tools.length > 0));
 
@@ -38,25 +40,25 @@
 <Sheet
   open={open}
   onClose={onClose}
-  title="Switch tools"
-  subtitle={`${totalCount} available`}
+  title="Switcher"
+  subtitle="Running, saved, and recent"
   dismissOnBack={false}
 >
   <div class="switcher">
     <div class="switcher-actions" aria-label="Tool actions">
-      <a href="/tools" onclick={onClose}>All tools</a>
+      <a href="/tools" onclick={onClose}>Browse tools</a>
       <a href="/dock?section=data" onclick={onClose}>Data</a>
       <a href="/dock?section=access" onclick={onClose}>Access</a>
     </div>
 
     {#if searchable}
-      <label class="switcher-search" aria-label="Search tools">
+      <label class="switcher-search" aria-label="Search Dock tools">
         <span aria-hidden="true">⌕</span>
         <input
           type="search"
           autocomplete="off"
           spellcheck="false"
-          placeholder="Search by name, category, or slug"
+          placeholder="Search your Dock"
           bind:value={query}
         />
         {#if query}
@@ -118,7 +120,8 @@
     {:else}
       <div class="empty">
         <strong>No tools found</strong>
-        <p>Try a different name or category.</p>
+        <p>Search saved, recent, and running tools here. Browse the catalog from Tools.</p>
+        <a href="/tools" onclick={onClose}>Browse tools →</a>
       </div>
     {/if}
   </div>
@@ -324,5 +327,13 @@
   .empty p {
     margin: 0;
     color: var(--text-secondary);
+  }
+  .empty a {
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    text-transform: uppercase;
   }
 </style>

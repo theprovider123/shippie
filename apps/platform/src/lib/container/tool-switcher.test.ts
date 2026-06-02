@@ -17,17 +17,17 @@ const groups: RailGroups = {
 };
 
 describe('buildToolSwitcherSections', () => {
-  it('orders personal context before browse', () => {
+  it('shows only personal switcher context', () => {
     const sections = buildToolSwitcherSections({
       groups,
       allApps: [tool('palate'), tool('journal'), tool('lift'), tool('sleep')],
     });
-    expect(sections.map((s) => s.id)).toEqual(['open', 'saved', 'recent', 'browse']);
+    expect(sections.map((s) => s.id)).toEqual(['open', 'saved', 'recent']);
     expect(sections[1]?.label).toBe('Saved');
-    expect(sections.at(-1)?.tools.map((t) => t.slug)).toEqual(['sleep']);
+    expect(sections.flatMap((s) => s.tools.map((t) => t.slug))).not.toContain('sleep');
   });
 
-  it('searches all tools with context-first ordering', () => {
+  it('searches running, saved, and recent tools only', () => {
     const sections = buildToolSwitcherSections({
       groups,
       allApps: [tool('palate'), tool('journal'), tool('lift'), tool('coffee', 'cooking')],
@@ -35,13 +35,13 @@ describe('buildToolSwitcherSections', () => {
     });
     expect(sections).toHaveLength(1);
     expect(sections[0]?.id).toBe('results');
-    expect(sections[0]?.tools.map((t) => t.slug)).toEqual(['palate', 'coffee']);
+    expect(sections[0]?.tools.map((t) => t.slug)).toEqual(['palate']);
   });
 
   it('caps large sections and reports hidden count', () => {
     const many = Array.from({ length: 120 }, (_, i) => tool(`app-${i}`));
     const sections = buildToolSwitcherSections({
-      groups: { open: [], saved: [], recent: [] },
+      groups: { open: many, saved: [], recent: [] },
       allApps: many,
       maxPerSection: 40,
     });

@@ -1,6 +1,6 @@
 import type { RailGroups, RailTool } from './rail-groups';
 
-export type ToolSwitcherSectionId = 'open' | 'saved' | 'recent' | 'browse' | 'results';
+export type ToolSwitcherSectionId = 'open' | 'saved' | 'recent' | 'results';
 
 export interface ToolSwitcherSection {
   id: ToolSwitcherSectionId;
@@ -58,30 +58,21 @@ function section(
 export function buildToolSwitcherSections(input: ToolSwitcherInput): ToolSwitcherSection[] {
   const max = input.maxPerSection ?? 80;
   const query = (input.query ?? '').trim();
-  const orderedAll = uniqueBySlug([
+  const switcherTools = uniqueBySlug([
     ...input.groups.open,
     ...input.groups.saved,
     ...input.groups.recent,
-    ...input.allApps,
   ]);
 
   if (query) {
     return [
-      section('results', 'Results', orderedAll.filter((tool) => matches(tool, query)), max),
+      section('results', 'Results', switcherTools.filter((tool) => matches(tool, query)), max),
     ].filter((s): s is ToolSwitcherSection => Boolean(s));
   }
-
-  const quickSlugs = new Set([
-    ...input.groups.open.map((tool) => tool.slug),
-    ...input.groups.saved.map((tool) => tool.slug),
-    ...input.groups.recent.map((tool) => tool.slug),
-  ]);
-  const browse = input.allApps.filter((tool) => !quickSlugs.has(tool.slug));
 
   return [
     section('open', 'Running', input.groups.open, max),
     section('saved', 'Saved', input.groups.saved, max),
     section('recent', 'Recent', input.groups.recent, max),
-    section('browse', 'Browse', browse, max),
   ].filter((s): s is ToolSwitcherSection => Boolean(s));
 }

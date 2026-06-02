@@ -1,7 +1,5 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
-  import { switcherOpen } from '$lib/stores/switcher';
   import type { AppUser } from '$server/auth/lucia';
 
   interface Props {
@@ -11,21 +9,18 @@
   let { user }: Props = $props();
 
   // Mobile Dock contract: Dock · Tools · You. Dock = local tools home;
-  // Tools opens the switcher sheet (on /dock or /run; elsewhere it
-  // navigates there first and the sheet opens on arrival via the store);
-  // You holds account / settings / docs / ship.
+  // Tools is the stable discovery/search page; transient switching stays
+  // in the switcher drawer inside Dock/tool mode.
   function isDock(pathname: string): boolean {
     return pathname === '/' || pathname === '/dock' || pathname.startsWith('/run');
   }
 
-  function isYou(pathname: string): boolean {
-    return pathname === '/you';
+  function isTools(pathname: string): boolean {
+    return pathname === '/tools' || pathname.startsWith('/apps/');
   }
 
-  function openTools() {
-    switcherOpen.set(true);
-    const p = $page.url.pathname;
-    if (!p.startsWith('/dock') && !p.startsWith('/run')) void goto('/dock');
+  function isYou(pathname: string): boolean {
+    return pathname === '/you';
   }
 </script>
 
@@ -34,10 +29,10 @@
     <span aria-hidden="true">◐</span>
     <strong>Dock</strong>
   </a>
-  <button type="button" class="dock-btn" onclick={openTools}>
+  <a href="/tools" class:active={isTools($page.url.pathname)} aria-current={isTools($page.url.pathname) ? 'page' : undefined}>
     <span aria-hidden="true">▦</span>
     <strong>Tools</strong>
-  </button>
+  </a>
   <a
     href="/you"
     class:active={isYou($page.url.pathname)}
@@ -78,8 +73,7 @@
     box-shadow: 0 -8px 28px rgba(44, 31, 20, 0.1);
   }
 
-  .bottom-dock a,
-  .bottom-dock .dock-btn {
+  .bottom-dock a {
     position: relative;
     display: grid;
     place-items: center;
@@ -100,8 +94,7 @@
       box-shadow 0.15s var(--ease-out, ease);
   }
 
-  .bottom-dock a span,
-  .bottom-dock .dock-btn span {
+  .bottom-dock a span {
     display: grid;
     place-items: center;
     min-inline-size: var(--touch-min);
@@ -110,8 +103,7 @@
     line-height: 1;
   }
 
-  .bottom-dock a strong,
-  .bottom-dock .dock-btn strong {
+  .bottom-dock a strong {
     display: block;
     max-width: 100%;
     overflow: hidden;
@@ -132,8 +124,7 @@
     color: var(--sunset);
   }
 
-  .bottom-dock a:focus-visible,
-  .bottom-dock .dock-btn:focus-visible {
+  .bottom-dock a:focus-visible {
     outline: 2px solid var(--sunset);
     outline-offset: -2px;
   }
