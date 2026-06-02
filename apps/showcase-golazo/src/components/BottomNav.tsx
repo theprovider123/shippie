@@ -1,6 +1,6 @@
 import { tap } from "../lib/haptics";
 
-export type Tab = "home" | "predict" | "pools" | "live";
+export type Tab = "home" | "predict" | "pools" | "play" | "live";
 
 const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
   {
@@ -17,6 +17,16 @@ const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
     id: "pools",
     label: "Pools",
     icon: <path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5-2.9 1-5.5-4-3.9 5.5-.8z" />,
+  },
+  {
+    id: "play",
+    label: "Play",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 3a9 9 0 0 0 0 18M3.6 9h16.8M3.6 15h16.8M9 3.6 12 12l-3 8.4M15 3.6 12 12l3 8.4" />
+      </>
+    ),
   },
   {
     id: "live",

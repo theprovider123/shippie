@@ -2504,3 +2504,92 @@ input {
 }
 .pool-code.copyable:active { transform: scale(0.95); }
 .pool-code.copyable:hover { color: var(--accent); }
+
+/* ── Arcade games + worldwide board (Play tab) ─────────────────────────── */
+.games { display: flex; flex-direction: column; }
+.game-toggle { margin-bottom: 14px; }
+
+.game-stage {
+  position: relative;
+  width: 100%;
+  height: min(64vh, 540px);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--hi);
+  touch-action: none;
+  user-select: none;
+}
+.keepy-stage {
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(120, 180, 255, 0.12), transparent 60%),
+    linear-gradient(180deg, #0c2a1c 0%, #0a1f16 55%, #07150f 100%);
+}
+.topbins-stage {
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(22, 240, 139, 0.1), transparent 55%),
+    linear-gradient(180deg, #0a1626 0%, #0a1f16 70%, #07150f 100%);
+}
+.game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.game-hud {
+  position: absolute;
+  top: 12px; left: 16px; right: 16px;
+  display: flex; align-items: baseline; gap: 8px;
+  z-index: 2; pointer-events: none;
+}
+.game-score { font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: 1; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,0.5); }
+.game-unit { font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.game-shots { margin-left: auto; font-size: 13px; letter-spacing: 2px; color: var(--accent); }
+
+.game-overlay {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; text-align: center; padding: 26px;
+  background: radial-gradient(80% 60% at 50% 45%, rgba(6, 12, 9, 0.78), rgba(6, 12, 9, 0.92));
+  backdrop-filter: blur(3px);
+  animation: pop-in 0.3s var(--spring) both;
+}
+.game-overlay h3 { font-family: var(--font-display); font-weight: 900; font-size: clamp(26px, 8vw, 34px); margin: 2px 0; }
+.game-overlay p { color: var(--muted); font-size: 14px; max-width: 26ch; margin: 0; }
+.game-emoji { font-size: 52px; }
+.game-target { color: var(--gold) !important; font-weight: 800; }
+.game-overlay .cta { margin-top: 14px; max-width: 220px; }
+
+.game-flash {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 11vw, 52px);
+  pointer-events: none;
+  animation: flash-pop 0.9s var(--spring) both;
+}
+.game-flash.bins { color: var(--gold); text-shadow: 0 0 30px rgba(255, 211, 77, 0.6); }
+.game-flash.goal { color: var(--accent); text-shadow: 0 0 26px rgba(22, 240, 139, 0.5); }
+.game-flash.miss { color: var(--muted); font-size: clamp(22px, 7vw, 34px); }
+@keyframes flash-pop {
+  0% { opacity: 0; transform: scale(0.7); }
+  20% { opacity: 1; transform: scale(1.05); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1) translateY(-14px); }
+}
+
+.game-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 4px; }
+.game-best { font-size: 14px; color: var(--muted); }
+.game-best strong { font-family: var(--font-display); color: var(--text); font-size: 18px; }
+.ghost-btn.sm { padding: 8px 13px; font-size: 13px; border-radius: 999px; }
+
+.board-head { display: flex; align-items: baseline; gap: 10px; margin-top: 16px; }
+.board-note { font-size: 11px; color: var(--faint); }
+.board-empty { color: var(--muted); font-size: 14px; padding: 16px 0; }
+.game-board { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.board-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px;
+}
+.board-row.is-you { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.board-rank { font-family: var(--font-display); font-weight: 900; color: var(--faint); min-width: 20px; }
+.board-row:nth-child(1) .board-rank { color: var(--gold); }
+.board-name { font-weight: 750; }
+.board-tag { font-size: 12px; opacity: 0.8; }
+.board-score { margin-left: auto; font-family: var(--font-display); font-weight: 850; font-size: 18px; }

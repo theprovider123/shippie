@@ -4,25 +4,31 @@ import { MyCall } from "./components/MyCall";
 import { GroupStage } from "./components/GroupStage";
 import { BracketView } from "./components/BracketView";
 import { Pools } from "./components/Pools";
+import { Games } from "./components/Games";
 import { Live } from "./components/Live";
 import { IncomingShare } from "./components/IncomingShare";
 import { IncomingSweep } from "./components/IncomingSweep";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { readShareFromHash, readSweepFromHash, type SharePayload } from "./lib/codec";
 import type { Sweep } from "./lib/sweeps";
+import { readChallengeFromHash, type Challenge } from "./lib/games";
 import { completion } from "./lib/bracket";
 import { useStore } from "./state";
 
 export function App() {
   const { profile, prediction } = useStore();
-  const [tab, setTab] = useState<Tab>(() =>
-    completion(prediction) > 0 ? "home" : "predict",
-  );
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof location !== "undefined" && readChallengeFromHash(location.hash)) return "play";
+    return completion(prediction) > 0 ? "home" : "predict";
+  });
   const [incoming, setIncoming] = useState<SharePayload | null>(() =>
     typeof location !== "undefined" ? readShareFromHash(location.hash) : null,
   );
   const [incomingSweep, setIncomingSweep] = useState<Sweep | null>(() =>
     typeof location !== "undefined" ? readSweepFromHash(location.hash) : null,
+  );
+  const [challenge, setChallenge] = useState<Challenge | null>(() =>
+    typeof location !== "undefined" ? readChallengeFromHash(location.hash) : null,
   );
 
   // Capture shared brackets + sweepstake draws from the URL hash — directly
@@ -33,6 +39,8 @@ export function App() {
       if (p) setIncoming(p);
       const s = readSweepFromHash(hash);
       if (s) setIncomingSweep(s);
+      const c = readChallengeFromHash(hash);
+      if (c) { setChallenge(c); setTab("play"); }
     };
     const fromHash = () => ingest(location.hash);
     const onMsg = (e: MessageEvent) => {
@@ -73,6 +81,7 @@ export function App() {
             {tab === "home" && <MyCall onContinue={() => setTab("predict")} />}
             {tab === "predict" && <PredictScreen />}
             {tab === "pools" && <Pools />}
+            {tab === "play" && <Games challenge={challenge} />}
             {tab === "live" && <Live />}
           </main>
           <BottomNav active={tab} onChange={setTab} />

@@ -1,0 +1,66 @@
+import { describe, it, expect } from "vitest";
+import {
+  addLocalScore,
+  bestScore,
+  topScores,
+  mergeBoards,
+  encodeChallenge,
+  decodeChallenge,
+  challengeUrl,
+  readChallengeFromHash,
+  gameMeta,
+  type ScoreEntry,
+} from "./games";
+
+const s = (game: "keepy" | "topbins", name: string, score: number, at = 0): ScoreEntry => ({ game, name, score, at });
+
+describe("local board", () => {
+  it("ranks highest-first and tracks bests per game", () => {
+    let board: ScoreEntry[] = [];
+    board = addLocalScore(board, s("keepy", "Sam", 12));
+    board = addLocalScore(board, s("keepy", "Sam", 30, 1));
+    board = addLocalScore(board, s("topbins", "Sam", 5, 2));
+    expect(bestScore(board, "keepy")).toBe(30);
+    expect(bestScore(board, "topbins")).toBe(5);
+    expect(topScores(board, "keepy")[0].score).toBe(30);
+    expect(topScores(board, "keepy").every((e) => e.game === "keepy")).toBe(true);
+  });
+  it("stamps local scores as yours", () => {
+    const board = addLocalScore([], s("keepy", "Sam", 9));
+    expect(board[0].source).toBe("you");
+  });
+});
+
+describe("merge global + local", () => {
+  it("interleaves and ranks both, global above lower local", () => {
+    const local: ScoreEntry[] = [{ ...s("keepy", "Sam", 20), source: "you" }];
+    const global: ScoreEntry[] = [
+      { ...s("keepy", "Ana", 99), source: "global" },
+      { ...s("keepy", "Bo", 5), source: "global" },
+    ];
+    const merged = mergeBoards(local, global, "keepy");
+    expect(merged.map((e) => e.score)).toEqual([99, 20, 5]);
+    expect(merged[1].source).toBe("you");
+  });
+});
+
+describe("challenge links", () => {
+  it("round-trips a score challenge", () => {
+    const c = { game: "keepy" as const, name: "Sam", score: 42 };
+    expect(decodeChallenge(encodeChallenge(c))).toEqual(c);
+  });
+  it("reads a challenge out of a hash and ignores others", () => {
+    const url = challengeUrl({ game: "topbins", name: "Mo", score: 7 }, "https://x/");
+    const hash = url.slice(url.indexOf("#"));
+    expect(readChallengeFromHash(hash)).toMatchObject({ game: "topbins", score: 7, name: "Mo" });
+    expect(readChallengeFromHash("#sweep=abc")).toBeNull();
+    expect(decodeChallenge("garbage")).toBeNull();
+  });
+});
+
+describe("metadata", () => {
+  it("resolves each game", () => {
+    expect(gameMeta("keepy").unit).toBe("kick-ups");
+    expect(gameMeta("topbins").name).toBe("Top Bins");
+  });
+});

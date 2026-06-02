@@ -12,6 +12,7 @@ import { prunePicks } from "./lib/bracket";
 import * as store from "./lib/storage";
 import type { SharePayload } from "./lib/codec";
 import { makeSeed, type Sweep, type SweepMode, type SweepScope } from "./lib/sweeps";
+import { addLocalScore, type GameId, type ScoreEntry } from "./lib/games";
 
 export interface SweepOpts {
   mode?: SweepMode;
@@ -52,6 +53,9 @@ interface Store {
   createSweep: (name: string, members: string[], opts?: SweepOpts) => Sweep;
   importSweep: (sweep: Sweep) => Sweep;
   removeSweep: (id: string) => void;
+
+  scores: ScoreEntry[];
+  addScore: (game: GameId, score: number) => ScoreEntry;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -70,6 +74,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [pools, setPools] = useState<Pool[]>(() => store.loadPools());
   const [results, setResults] = useState<Results>(() => store.loadResults());
   const [sweeps, setSweeps] = useState<Sweep[]>(() => store.loadSweeps());
+  const [scores, setScores] = useState<ScoreEntry[]>(() => store.loadScores());
   const [feed, setFeed] = useState<Feed>(() => emptyFeed());
   const [online, setOnline] = useState(false);
 
@@ -77,6 +82,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => store.savePools(pools), [pools]);
   useEffect(() => store.saveResults(results), [results]);
   useEffect(() => store.saveSweeps(sweeps), [sweeps]);
+  useEffect(() => store.saveScores(scores), [scores]);
 
   // Pull the tournament feed once on launch. Official results (when present)
   // flow into `results`, lighting up live scoring + pool leaderboards.
@@ -248,8 +254,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeSweep(id) {
         setSweeps((ss) => ss.filter((s) => s.id !== id));
       },
+
+      scores,
+      addScore(game, score) {
+        const entry: ScoreEntry = {
+          game,
+          name: profile?.name?.trim() || "You",
+          score: Math.max(0, Math.floor(score)),
+          at: Date.now(),
+          source: "you",
+        };
+        setScores((ss) => addLocalScore(ss, entry));
+        return entry;
+      },
     };
-  }, [profile, prediction, pools, results, sweeps, feed, online]);
+  }, [profile, prediction, pools, results, sweeps, scores, feed, online]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

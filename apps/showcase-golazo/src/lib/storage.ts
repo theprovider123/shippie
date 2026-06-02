@@ -3,6 +3,7 @@
 
 import type { Pool, Prediction, Profile, Results } from "./types";
 import type { Sweep } from "./sweeps";
+import type { ScoreEntry } from "./games";
 import { SCHEMA_VERSION } from "./types";
 
 const K = {
@@ -11,7 +12,15 @@ const K = {
   pools: "golazo:pools",
   results: "golazo:results",
   sweeps: "golazo:sweeps",
+  scores: "golazo:scores",
 } as const;
+
+export function loadScores(): ScoreEntry[] {
+  return read<ScoreEntry[]>(K.scores, []);
+}
+export function saveScores(scores: ScoreEntry[]): void {
+  write(K.scores, scores);
+}
 
 function read<T>(key: string, fallback: T): T {
   try {
