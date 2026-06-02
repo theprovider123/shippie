@@ -958,8 +958,24 @@
   );
   const recoveredReceipts = $derived(recoveredReceiptsFor(receiptsByApp, appById));
   const totalRows = $derived(Object.values(rowsByApp).reduce((sum, rows) => sum + rows.length, 0));
+  const updateCandidateApps = $derived.by(() => {
+    const candidateIds = new Set<string>([
+      ...openAppIds,
+      ...Object.keys(receiptsByApp),
+    ]);
+    for (const slug of $launcherMemory.saved) {
+      const app = launchVisibleAppBySlug.get(slug);
+      if (app) candidateIds.add(app.id);
+    }
+    const out: ContainerApp[] = [];
+    for (const appId of candidateIds) {
+      const app = appById.get(appId);
+      if (app && receiptsByApp[app.id]) out.push(app);
+    }
+    return out;
+  });
   const updateCards = $derived(
-    installedApps
+    updateCandidateApps
       .map((app) => buildUpdateCard(app, receiptsByApp[app.id]))
       .filter((card): card is UpdateCard => Boolean(card)),
   );
@@ -1208,6 +1224,13 @@
     const alreadySaved = drawerSavedSet.has(app.slug);
     if (!alreadySaved) {
       saveAppToDock(app.slug);
+      if (!receiptsByApp[app.id]) {
+        receiptsByApp = {
+          ...receiptsByApp,
+          [app.id]: createReceiptFor(app),
+        };
+        persistContainerState();
+      }
       toast.push({ kind: 'info', message: `Saving ${app.name} to Dock...` });
     }
     try {
@@ -2392,6 +2415,8 @@
       ...receiptsByApp,
       [appId]: createReceiptFor(app),
     };
+    persistContainerState();
+    toast.push({ kind: 'success', message: `${app.name} updated.` });
   }
 
   function stayOnCurrent(appId: string) {
@@ -2408,6 +2433,7 @@
       },
       ...logs.slice(0, 11),
     ];
+    persistContainerState();
   }
 
   function exportReceipts() {

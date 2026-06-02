@@ -15,6 +15,7 @@
 -->
 <script lang="ts">
   import InsightStrip from '$lib/container/InsightStrip.svelte';
+  import Sheet from '$lib/components/ui/Sheet.svelte';
   import {
     ToolTile,
     type ToolTileApp,
@@ -22,6 +23,12 @@
   } from '$lib/components/tool-surface';
   import type { UpdateCard } from '$lib/container/state';
   import type { RailGroups, RailTool } from '$lib/container/rail-groups';
+  import {
+    updateBadgeLabel,
+    updateChips,
+    updateSeverity,
+    updateSummary,
+  } from '$lib/container/update-status';
   import type { Insight } from '@shippie/agent';
   import type { MeshStatus } from '$lib/container/mesh-status';
 
@@ -68,6 +75,34 @@
     return 'idle';
   }
 
+  let updateSheetOpen = $state(false);
+  const updateSubtitle = $derived(updateCards.length === 1 ? '1 tool' : `${updateCards.length} tools`);
+  const attentionUpdates = $derived(updateCards.filter((card) => updateSeverity(card) === 'attention'));
+  const reviewUpdates = $derived(updateCards.filter((card) => updateSeverity(card) === 'review'));
+  const quietUpdates = $derived(updateCards.filter((card) => updateSeverity(card) === 'quiet'));
+
+  function openUpdates() {
+    updateSheetOpen = true;
+  }
+
+  function closeUpdates() {
+    updateSheetOpen = false;
+  }
+
+  function installUpdate(card: UpdateCard) {
+    onAcceptUpdate(card.app.id);
+    if (updateCards.length <= 1) closeUpdates();
+  }
+
+  function keepCurrent(card: UpdateCard) {
+    onStayOnCurrent(card.app.id);
+    if (updateCards.length <= 1) closeUpdates();
+  }
+
+  function updateCardForTool(tool: RailTool): UpdateCard | null {
+    return updateCards.find((card) => card.app.slug === tool.slug) ?? null;
+  }
+
   function railToolToTile(tool: RailTool): ToolTileApp {
     return {
       slug: tool.slug,
@@ -95,47 +130,39 @@
 <div class="section-head">
   <div class="section-title-row">
     <h1>Dock</h1>
+    {#if updateCards.length > 0}
+      <button
+        type="button"
+        class="update-trigger"
+        class:attention={attentionUpdates.length > 0}
+        onclick={openUpdates}
+      >
+        <span>{updateBadgeLabel(updateCards)}</span>
+      </button>
+    {/if}
   </div>
   <p>Running, recent, and saved tools stay close. Use Tools when you want to find something new.</p>
 </div>
 {#if updateCards.length > 0}
-  <details class="updates" open>
-    <summary>
-      <span class="updates-summary-copy">
-        <strong>Updates available</strong>
-        <small>Review package changes before installing.</small>
-      </span>
-      <span class="updates-count">{updateCards.length}</span>
-    </summary>
-    {#each updateCards as card (card.app.id)}
-      <article>
-        <div>
-          <strong>{card.app.name} v{card.app.version}</strong>
-          <p>
-            Installed v{card.receipt.version}.
-            {card.packageHashChanged ? ' Package changed.' : ' Package hash unchanged.'}
-            {card.kindChanged ? ' App kind changed.' : ' Data posture unchanged.'}
-            {#if card.addedNetworkDomains.length > 0}
-              New domains: {card.addedNetworkDomains.join(', ')}.
-            {/if}
-            {#if card.addedPermissions.length > 0}
-              New capabilities: {card.addedPermissions.join(', ')}.
-            {/if}
-            {#if card.dataCompatibility.status !== 'same-schema'}
-              Data: {card.dataCompatibility.summary}
-            {/if}
-            {#if card.latestSecurityScore !== null || card.latestPrivacyGrade}
-              Trust now: {card.latestSecurityScore ?? 'unscored'} security · {card.latestPrivacyGrade ?? 'ungraded'} privacy.
-            {/if}
-          </p>
-        </div>
-        <div class="row-actions">
-          <button onclick={() => onStayOnCurrent(card.app.id)}>Keep current</button>
-          <button onclick={() => onAcceptUpdate(card.app.id)}>Install update</button>
-        </div>
-      </article>
-    {/each}
-  </details>
+  <Sheet
+    open={updateSheetOpen}
+    onClose={closeUpdates}
+    title="Updates"
+    subtitle={updateSubtitle}
+    dismissOnBack={false}
+  >
+    <div class="updates-sheet">
+      {#if attentionUpdates.length > 0}
+        {@render UpdateGroup('Needs review', attentionUpdates)}
+      {/if}
+      {#if reviewUpdates.length > 0}
+        {@render UpdateGroup('Ready', reviewUpdates)}
+      {/if}
+      {#if quietUpdates.length > 0}
+        {@render UpdateGroup('Quiet', quietUpdates)}
+      {/if}
+    </div>
+  </Sheet>
 {/if}
 <div class="dock-sections">
   {#if dockGroups.open.length > 0}
@@ -231,6 +258,7 @@
     </div>
     <div class="dock-row-list">
       {#each tools as tool (tool.slug)}
+        {@const updateCard = updateCardForTool(tool)}
         <div class="dock-tool-row" class:with-close={action}>
           <ToolTile
             app={railToolToTile(tool)}
@@ -240,6 +268,17 @@
             noActions
             onOpen={() => onOpenTool(tool.slug)}
           />
+          {#if updateCard}
+            <button
+              type="button"
+              class="dock-row-update-chip"
+              class:attention={updateSeverity(updateCard) === 'attention'}
+              onclick={openUpdates}
+              aria-label={`Review update for ${tool.name}`}
+            >
+              {updateSeverity(updateCard) === 'attention' ? 'Review' : 'Update'}
+            </button>
+          {/if}
           {#if action}
             <button
               class="dock-row-close"
@@ -257,6 +296,36 @@
   </section>
 {/snippet}
 
+{#snippet UpdateGroup(label: string, cards: readonly UpdateCard[])}
+  <section class="update-group" aria-label={label}>
+    <div class="update-group-head">
+      <h3>{label}</h3>
+      <span>{cards.length}</span>
+    </div>
+    <div class="update-list">
+      {#each cards as card (card.app.id)}
+        <article class="update-row" class:attention={updateSeverity(card) === 'attention'}>
+          <div class="update-copy">
+            <div class="update-row-title">
+              <strong>{card.app.name}</strong>
+              <small>{updateSummary(card)}</small>
+            </div>
+            <div class="update-chips" aria-label={`Changes for ${card.app.name}`}>
+              {#each updateChips(card) as chip (chip.label)}
+                <span class:attention={chip.tone === 'attention'} class:safe={chip.tone === 'safe'}>{chip.label}</span>
+              {/each}
+            </div>
+          </div>
+          <div class="update-row-actions">
+            <button type="button" onclick={() => keepCurrent(card)}>Later</button>
+            <button type="button" class="primary" onclick={() => installUpdate(card)}>Update</button>
+          </div>
+        </article>
+      {/each}
+    </div>
+  </section>
+{/snippet}
+
 <style>
   /* Inherits container-shell variables (--space-md, --bg, --border, etc).
      The shell loads them at :root, so component-scoped CSS can use them. */
@@ -267,7 +336,7 @@
   }
   .section-title-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: var(--space-md);
   }
@@ -282,6 +351,33 @@
     color: var(--text-secondary);
     font-size: 0.9rem;
     line-height: 1.4;
+  }
+  .update-trigger {
+    flex: none;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .update-trigger:hover,
+  .update-trigger:focus-visible {
+    color: var(--sunset);
+    border-color: var(--sunset);
+    outline: none;
+  }
+  .update-trigger.attention {
+    color: var(--sunset);
+    border-color: color-mix(in srgb, var(--sunset) 55%, var(--border-light));
+    background: color-mix(in srgb, var(--sunset) 8%, var(--surface));
   }
   .dock-sections {
     display: grid;
@@ -315,7 +411,8 @@
   }
   .dock-tool-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: stretch;
     min-height: var(--dock-tool-row-height);
     background: var(--surface);
     border: 1px solid var(--border-light);
@@ -327,6 +424,31 @@
   }
   .dock-tool-row :global(.chip) {
     display: none;
+  }
+  .dock-row-update-chip {
+    align-self: center;
+    min-height: 32px;
+    margin-right: 8px;
+    padding: 0 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--sage-leaf) 45%, var(--border-light));
+    background: color-mix(in srgb, var(--sage-leaf) 9%, transparent);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .dock-row-update-chip:hover,
+  .dock-row-update-chip:focus-visible {
+    color: var(--text);
+    border-color: var(--sage-leaf);
+    outline: none;
+  }
+  .dock-row-update-chip.attention {
+    color: var(--sunset);
+    border-color: color-mix(in srgb, var(--sunset) 60%, var(--border-light));
+    background: color-mix(in srgb, var(--sunset) 8%, transparent);
   }
   .dock-row-close {
     display: grid;
@@ -346,73 +468,120 @@
     color: var(--sunset);
     background: rgba(232, 96, 60, 0.08);
   }
-  .updates {
-    border: 1px solid color-mix(in srgb, var(--sunset) 38%, var(--border-light));
-    background: color-mix(in srgb, var(--sunset) 9%, var(--surface));
-    box-shadow: inset 3px 0 0 var(--sunset);
-    margin-bottom: var(--space-md);
+  .updates-sheet {
+    display: grid;
+    gap: 1rem;
   }
-  .updates > summary {
+  .update-group {
+    display: grid;
+    gap: 0.55rem;
+  }
+  .update-group-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-md);
-    min-height: 48px;
-    font-family: var(--font-mono);
-    color: var(--text);
-    cursor: pointer;
-    padding: 0.75rem var(--space-sm);
-    list-style: none;
+    gap: var(--space-sm);
   }
-  .updates > summary::-webkit-details-marker { display: none; }
-  .updates > summary::after {
-    content: 'Hide';
-    flex: none;
+  .update-group-head h3 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
     color: var(--text-secondary);
-    font-size: 0.7rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
-  .updates:not([open]) > summary::after { content: 'Review'; color: var(--sunset); }
-  .updates-summary-copy {
-    display: grid;
-    gap: 0.12rem;
-    min-width: 0;
-  }
-  .updates-summary-copy strong {
-    color: var(--text);
-    font-family: var(--font-heading);
-    font-size: 0.98rem;
-    letter-spacing: 0;
-  }
-  .updates-summary-copy small {
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    letter-spacing: 0;
-  }
-  .updates-count {
-    flex: none;
+  .update-group-head span {
     display: grid;
     place-items: center;
-    min-width: 1.75rem;
-    min-height: 1.75rem;
-    border: 1px solid color-mix(in srgb, var(--sunset) 60%, transparent);
-    background: color-mix(in srgb, var(--sunset) 18%, transparent);
-    color: var(--sunset);
-    font-size: 0.8rem;
-  }
-  .updates article {
-    display: flex;
-    gap: var(--space-md);
-    padding: var(--space-sm);
+    min-width: 1.5rem;
+    min-height: 1.5rem;
     border: 1px solid var(--border-light);
-    margin: 0 var(--space-sm) var(--space-sm);
-    background: var(--surface);
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
   }
-  .row-actions {
-    display: flex;
-    flex-direction: column;
+  .update-list {
+    display: grid;
     gap: 6px;
+  }
+  .update-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-md);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    padding: var(--space-sm);
+  }
+  .update-row.attention {
+    border-color: color-mix(in srgb, var(--sunset) 42%, var(--border-light));
+    box-shadow: inset 3px 0 0 var(--sunset);
+  }
+  .update-copy,
+  .update-row-title {
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .update-row-title strong {
+    color: var(--text);
+    font-family: var(--font-heading);
+    font-size: 1rem;
+  }
+  .update-row-title small {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+  .update-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .update-chips span {
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.45rem;
+    border: 1px solid var(--border-light);
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+  }
+  .update-chips span.safe {
+    color: var(--sage-leaf);
+    border-color: color-mix(in srgb, var(--sage-leaf) 42%, var(--border-light));
+  }
+  .update-chips span.attention {
+    color: var(--sunset);
+    border-color: color-mix(in srgb, var(--sunset) 48%, var(--border-light));
+  }
+  .update-row-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .update-row-actions button {
+    min-height: var(--touch-min);
+    padding: 0 0.85rem;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .update-row-actions button.primary {
+    border-color: var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
+  }
+  .update-row-actions button:hover,
+  .update-row-actions button:focus-visible {
+    border-color: var(--sunset);
+    outline: none;
   }
   .nearby-panel {
     border: 1px solid var(--border-light);
@@ -486,6 +655,10 @@
     .section-title-row {
       gap: var(--space-sm);
     }
+    .update-trigger {
+      min-height: 36px;
+      padding: 0 0.6rem;
+    }
     .section-title-row h1 {
       font-size: clamp(2.05rem, 10vw, 3rem);
       line-height: 0.96;
@@ -494,27 +667,11 @@
       font-size: 1rem;
       line-height: 1.45;
     }
-    .updates {
-      margin-bottom: var(--space-sm);
-    }
-    .updates > summary {
-      align-items: flex-start;
-      padding: var(--space-sm);
-    }
-    .updates > summary::after {
-      padding-top: 0.12rem;
-    }
-    .updates article {
-      align-items: stretch;
-      flex-direction: column;
+    .update-row {
+      grid-template-columns: 1fr;
       padding: var(--space-md);
-      background: var(--surface);
     }
-    .row-actions {
-      flex-direction: row;
-    }
-    .row-actions button {
-      min-height: var(--touch-min);
+    .update-row-actions button {
       flex: 1;
     }
     .dock-section-head {
