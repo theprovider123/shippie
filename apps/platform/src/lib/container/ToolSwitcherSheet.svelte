@@ -38,15 +38,15 @@
 <Sheet
   open={open}
   onClose={onClose}
-  title="Tools"
+  title="Switch tools"
   subtitle={`${totalCount} available`}
   dismissOnBack={false}
 >
   <div class="switcher">
     <div class="switcher-actions" aria-label="Tool actions">
-      <a href="/tools" onclick={onClose}>Browse</a>
-      <a href="/dock?section=data" onclick={onClose}>Your data</a>
-      <a href="/dock?section=access" onclick={onClose}>Permissions</a>
+      <a href="/tools" onclick={onClose}>All tools</a>
+      <a href="/dock?section=data" onclick={onClose}>Data</a>
+      <a href="/dock?section=access" onclick={onClose}>Access</a>
     </div>
 
     {#if searchable}

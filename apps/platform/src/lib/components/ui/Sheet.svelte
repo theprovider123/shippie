@@ -63,6 +63,19 @@
   let pushedHistory = false;
   let closingFromPopstate = false;
   let ignoreNextPopstate = false;
+  let dragPointerId: number | null = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragStartTime = 0;
+  let dragY = $state(0);
+  let dragging = $state(false);
+
+  const sheetTransform = $derived(dragY > 0 ? `translate3d(0, ${dragY}px, 0)` : undefined);
+
+  function isMobileSheet() {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 640px)').matches;
+  }
 
   // Body scroll lock — reference-counted so nested sheets behave.
   // Stored on window so multiple Sheet instances share state.
@@ -163,6 +176,46 @@
     if (dismissOnBackdrop) onClose();
   }
 
+  function onSheetPointerDown(event: PointerEvent) {
+    if (!open || !sheetEl || !isMobileSheet()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const rect = sheetEl.getBoundingClientRect();
+    const inHeaderZone = event.clientY - rect.top <= 76;
+    const onHandle = Boolean(target.closest('.grab, .sheet-title'));
+    if (!inHeaderZone && !onHandle) return;
+    if (!onHandle && target.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+
+    dragPointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    dragStartTime = performance.now();
+    dragY = 0;
+    dragging = true;
+    sheetEl.setPointerCapture?.(event.pointerId);
+  }
+
+  function onSheetPointerMove(event: PointerEvent) {
+    if (dragPointerId !== event.pointerId || !dragging) return;
+    const dx = event.clientX - dragStartX;
+    const dy = event.clientY - dragStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 18) return;
+    dragY = Math.max(0, dy);
+    if (dragY > 0) event.preventDefault();
+  }
+
+  function onSheetPointerUp(event: PointerEvent) {
+    if (dragPointerId !== event.pointerId) return;
+    const dy = Math.max(0, event.clientY - dragStartY);
+    const elapsed = Math.max(1, performance.now() - dragStartTime);
+    const velocity = dy / elapsed;
+    dragPointerId = null;
+    dragging = false;
+    sheetEl?.releasePointerCapture?.(event.pointerId);
+    dragY = 0;
+    if (dy > 96 || velocity > 0.65) onClose();
+  }
+
   function onPopstate() {
     if (ignoreNextPopstate) {
       ignoreNextPopstate = false;
@@ -221,6 +274,12 @@
     aria-labelledby={title ? titleId : undefined}
     aria-label={title ? undefined : (label ?? 'Dialog')}
     tabindex="-1"
+    class:dragging
+    style:transform={sheetTransform}
+    onpointerdown={onSheetPointerDown}
+    onpointermove={onSheetPointerMove}
+    onpointerup={onSheetPointerUp}
+    onpointercancel={onSheetPointerUp}
   >
     <div class="grab" aria-hidden="true"></div>
     {#if title}
@@ -269,6 +328,12 @@
     max-height: 92dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
+    transition: transform 140ms ease-out;
+    touch-action: pan-y;
+  }
+  .sheet.dragging {
+    animation: none;
+    transition: none;
   }
   @keyframes sheet-rise {
     from { transform: translateY(20px); opacity: 0.6; }
