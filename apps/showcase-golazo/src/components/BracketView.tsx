@@ -71,56 +71,61 @@ export function BracketView({ onChampion }: { onChampion?: () => void }) {
         />
       )}
 
-      <div className="round-rail">
-        {ROUNDS.map((r) => {
-          const slots = BRACKET_SHAPE[r];
-          const done = slots.filter((s) => prediction.knockout[s.id]).length;
-          return (
-            <button
-              key={r}
-              className={`round-chip ${r === round ? "is-sel" : ""}`}
-              onClick={() => {
-                tap();
-                setRound(r);
-              }}
-            >
-              <span className="round-chip-name">
-                {r === "F" ? "Final" : r}
-              </span>
-              <span className="round-chip-count">
-                {done}/{slots.length}
-              </span>
-            </button>
-          );
-        })}
+      {/* Round-by-round (mobile + default) */}
+      <div className="bracket-rounds">
+        <div className="round-rail">
+          {ROUNDS.map((r) => {
+            const slots = BRACKET_SHAPE[r];
+            const done = slots.filter((s) => prediction.knockout[s.id]).length;
+            return (
+              <button
+                key={r}
+                className={`round-chip ${r === round ? "is-sel" : ""}`}
+                onClick={() => { tap(); setRound(r); }}
+              >
+                <span className="round-chip-name">{r === "F" ? "Final" : r}</span>
+                <span className="round-chip-count">{done}/{slots.length}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <h3 className="round-title">{ROUND_LABEL[round]}</h3>
+
+        <div className={`match-list ${round === "F" ? "is-final" : ""}`}>
+          {BRACKET_SHAPE[round].map((slot) => {
+            const [a, b] = participants[slot.id] ?? [null, null];
+            const winner = prediction.knockout[slot.id];
+            return (
+              <div className="match" key={slot.id}>
+                <SlotSide teamId={a} picked={winner === a} dimmed={Boolean(winner) && winner !== a} onPick={() => pick(slot.id, a)} />
+                <span className="match-v" aria-hidden>v</span>
+                <SlotSide teamId={b} picked={winner === b} dimmed={Boolean(winner) && winner !== b} onPick={() => pick(slot.id, b)} />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <h3 className="round-title">{ROUND_LABEL[round]}</h3>
-
-      <div className={`match-list ${round === "F" ? "is-final" : ""}`}>
-        {BRACKET_SHAPE[round].map((slot) => {
-          const [a, b] = participants[slot.id] ?? [null, null];
-          const winner = prediction.knockout[slot.id];
-          return (
-            <div className="match" key={slot.id}>
-              <SlotSide
-                teamId={a}
-                picked={winner === a}
-                dimmed={Boolean(winner) && winner !== a}
-                onPick={() => pick(slot.id, a)}
-              />
-              <span className="match-v" aria-hidden>
-                v
-              </span>
-              <SlotSide
-                teamId={b}
-                picked={winner === b}
-                dimmed={Boolean(winner) && winner !== b}
-                onPick={() => pick(slot.id, b)}
-              />
+      {/* Whole-bracket tree (desktop ≥1024px) */}
+      <div className="bracket-tree" aria-hidden={false}>
+        {ROUNDS.map((r) => (
+          <div className={`tree-col tree-${r}`} key={r}>
+            <span className="tree-col-head">{r === "F" ? "Final" : r}</span>
+            <div className="tree-matches">
+              {BRACKET_SHAPE[r].map((slot) => {
+                const [a, b] = participants[slot.id] ?? [null, null];
+                const winner = prediction.knockout[slot.id];
+                return (
+                  <div className={`tree-match${winner ? " is-done" : ""}`} key={slot.id}>
+                    <SlotSide teamId={a} picked={winner === a} dimmed={Boolean(winner) && winner !== a} onPick={() => pick(slot.id, a)} />
+                    <SlotSide teamId={b} picked={winner === b} dimmed={Boolean(winner) && winner !== b} onPick={() => pick(slot.id, b)} />
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

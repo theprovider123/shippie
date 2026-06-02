@@ -2647,3 +2647,58 @@ input {
 .dev-title { font-family: var(--font-display); font-weight: 850; font-size: 14px; color: var(--accent); }
 .dev-note { font-size: 12.5px; color: var(--muted); margin: 0 0 2px; }
 .dev-close { position: absolute; top: 12px; right: 14px; color: var(--muted); font-size: 14px; }
+
+/* ── Whole-bracket tree (desktop only) ─────────────────────────────────── */
+.bracket-tree { display: none; }
+@media (min-width: 1024px) {
+  .bracket-rounds { display: none; }
+  .bracket-tree {
+    display: flex;
+    gap: 18px;
+    overflow-x: auto;
+    padding: 6px 2px 14px;
+    height: min(72vh, 680px);
+    scrollbar-width: thin;
+  }
+  .tree-col {
+    flex: 1 0 150px;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tree-col-head {
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 850;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .tree-matches {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 8px;
+  }
+  .tree-match {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .tree-match.is-done { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  .tree-match .slot {
+    padding: 6px 9px;
+    gap: 7px;
+    font-size: 13px;
+  }
+  .tree-match .slot .slot-name { font-size: 13px; }
+  /* The Final column gets a touch of gold gravitas */
+  .tree-F .tree-match { border-color: color-mix(in srgb, var(--gold) 30%, var(--line)); background: color-mix(in srgb, var(--gold) 6%, var(--surface)); }
+}
