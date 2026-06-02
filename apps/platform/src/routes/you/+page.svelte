@@ -28,6 +28,9 @@
   const totalLaunches = $derived(
     Object.values($launcherMemory.launchCounts ?? {}).reduce((sum, count) => sum + count, 0),
   );
+  const makerToolsLabel = $derived(
+    data.makerApps.length === 0 ? 'Make tools' : `${data.makerApps.length} made`,
+  );
   const offlineApps = $derived.by(() =>
     data.apps.filter((app) => $cachedSlugs.has(app.slug) || $offlineStatuses[app.slug]?.state === 'saved'),
   );
@@ -100,6 +103,48 @@
   </header>
 
   <main class="content wrap">
+    <section class="overview-grid" aria-label="This device summary">
+      <div>
+        <span>Saved</span>
+        <strong>{savedCount}</strong>
+      </div>
+      <div>
+        <span>Recent</span>
+        <strong>{recentCount}</strong>
+      </div>
+      <div>
+        <span>Offline</span>
+        <strong>{offlineApps.length}</strong>
+      </div>
+      <div>
+        <span>Launches</span>
+        <strong>{totalLaunches}</strong>
+      </div>
+    </section>
+
+    <section class="nav-grid" aria-label="Shippie places">
+      <a href="/dock">
+        <span>Dock</span>
+        <strong>Saved + recent</strong>
+        <small>Your running, saved, and recent tools.</small>
+      </a>
+      <a href="/tools">
+        <span>Tools</span>
+        <strong>Catalog</strong>
+        <small>Search, view details, save, and open new tools.</small>
+      </a>
+      <a href="/dock?section=data">
+        <span>Data</span>
+        <strong>{offlineApps.length} offline</strong>
+        <small>Export, restore, repair, and move local app data.</small>
+      </a>
+      <a href="/new">
+        <span>Ship</span>
+        <strong>{makerToolsLabel}</strong>
+        <small>Publish or manage tools you build.</small>
+      </a>
+    </section>
+
     <section class="panel account-panel" aria-labelledby="account-title">
       <div class="section-head">
         <h2 id="account-title">Account</h2>
@@ -131,63 +176,21 @@
       {/if}
     </section>
 
-    <section class="nav-grid" aria-label="Shippie places">
-      <a href="/dock">
-        <span>Dock</span>
-        <strong>{savedCount} saved · {recentCount} recent</strong>
-        <small>Your running, saved, and recent tools.</small>
-      </a>
-      <a href="/tools">
-        <span>Tools</span>
-        <strong>Browse catalog</strong>
-        <small>Search, view details, save, and open new tools.</small>
-      </a>
-      <a href="/dock?section=data">
-        <span>Data</span>
-        <strong>{offlineApps.length} offline</strong>
-        <small>Export, restore, repair, and move local app data.</small>
-      </a>
-      <a href="/new">
-        <span>Ship</span>
-        <strong>{data.makerApps.length || 'Make'} tools</strong>
-        <small>Publish or manage tools you build.</small>
-      </a>
-    </section>
-
     <section class="panel" aria-labelledby="device-title">
       <div class="section-head">
         <h2 id="device-title">This Device</h2>
-        <span>local first</span>
+        <span>{storagePinned ? 'protected' : 'local first'}</span>
       </div>
-      <div class="metric-grid">
+      <div class="device-grid">
         <div>
-          <span>Saved</span>
-          <strong>{savedCount}</strong>
+          <span>Storage</span>
+          <strong>{formatOfflineBytes(storageUsage) || 'Measuring'}</strong>
+          <small>{storageQuota > 0 ? `of ${formatOfflineBytes(storageQuota)}` : 'used locally'}</small>
         </div>
         <div>
-          <span>Recent</span>
-          <strong>{recentCount}</strong>
-        </div>
-        <div>
-          <span>Offline</span>
-          <strong>{offlineApps.length}</strong>
-        </div>
-        <div>
-          <span>Launches</span>
-          <strong>{totalLaunches}</strong>
-        </div>
-      </div>
-      <div class="data-grid">
-        <div>
-          <strong>Launcher memory</strong>
-          <p>Saved and recent tools are stored locally, with a small cookie backup for this browser.</p>
-        </div>
-        <div>
-          <strong>Storage budget</strong>
-          <p>
-            {formatOfflineBytes(storageUsage) || 'Measuring'} used{storageQuota > 0 ? ` of ${formatOfflineBytes(storageQuota)}` : ''}.
-            {storagePinned ? ' Browser storage is protected.' : ' You can ask the browser to protect saved tools.'}
-          </p>
+          <span>Offline files</span>
+          <strong>{storagePinned ? 'Protected' : 'Standard'}</strong>
+          <small>{storagePinned ? 'Browser should keep saved tools.' : 'Ask the browser to protect saved tools.'}</small>
         </div>
       </div>
       <div class="data-actions">
@@ -368,8 +371,8 @@
   }
 
   .account-row,
-  .data-grid,
-  .metric-grid,
+  .overview-grid,
+  .device-grid,
   .nav-grid,
   .repair-list,
   .trust-band,
@@ -383,7 +386,7 @@
   }
 
   .account-row strong,
-  .data-grid strong,
+  .device-grid strong,
   .repair-row strong {
     font-family: var(--font-heading);
     font-size: 1.05rem;
@@ -391,7 +394,7 @@
   }
 
   .account-row p,
-  .data-grid p,
+  .device-grid small,
   .repair-row p {
     margin-top: 4px;
     color: var(--text-secondary);
@@ -436,7 +439,8 @@
   }
 
   .nav-grid span,
-  .metric-grid span {
+  .overview-grid span,
+  .device-grid span {
     color: var(--text-light);
     font-family: var(--font-mono);
     font-size: 11px;
@@ -456,31 +460,35 @@
     line-height: 1.4;
   }
 
-  .metric-grid,
-  .data-grid {
+  .overview-grid,
+  .device-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
     background: var(--border-light);
   }
 
-  .metric-grid > div,
-  .data-grid > div {
+  .overview-grid > div,
+  .device-grid > div {
     display: grid;
     gap: 0.35rem;
     padding: var(--space-md);
     background: var(--surface);
   }
 
-  .metric-grid strong {
+  .overview-grid strong {
     font-family: var(--font-heading);
     font-size: clamp(1.7rem, 5vw, 2.35rem);
     line-height: 0.95;
     color: var(--text);
   }
 
-  .data-grid {
+  .device-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .device-grid strong {
+    line-height: 1.1;
   }
 
   .text-danger {
@@ -577,13 +585,21 @@
     }
 
     .nav-grid,
-    .metric-grid,
-    .data-grid {
+    .overview-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .device-grid {
       grid-template-columns: 1fr;
     }
 
     .nav-grid a {
-      min-height: 104px;
+      min-height: 86px;
+      padding: var(--space-sm);
+    }
+
+    .nav-grid small {
+      display: none;
     }
 
     .section-head {
