@@ -118,14 +118,14 @@
     return qs ? `/tools?${qs}` : '/tools';
   }
 
-  function runHref(slug: string): string {
-    return `/run/${encodeURIComponent(slug)}`;
+  function detailsHref(slug: string): string {
+    return `/apps/${encodeURIComponent(slug)}`;
   }
 </script>
 
 <svelte:head>
   <title>Tools — Shippie</title>
-  <meta name="description" content="Search, save, and open local tools on Shippie. Local by default, offline-ready, and clear when something connects." />
+  <meta name="description" content="Search, browse, and save local tools on Shippie. Launch and resume saved tools from Dock." />
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />
@@ -147,7 +147,7 @@
         </p>
         <h1 class="title">Tools</h1>
         <p class="lede">
-          Search the catalogue. Save tools to Dock, or open one full-screen.
+          Search the catalogue. View details or save tools to Dock.
         </p>
       </div>
       <div class="head-tools">
@@ -218,7 +218,8 @@
               <ToolTile
                 app={launcherAppToToolTile(app)}
                 density="card"
-                href={runHref(app.slug)}
+                href={detailsHref(app.slug)}
+                intent="details"
                 pinned={savedSet.has(app.slug)}
                 onInspect={() => inspectApp(app)}
                 onTogglePin={toggleSavedApp}
@@ -244,7 +245,8 @@
                   <ToolTile
                     app={launcherAppToToolTile(app)}
                     density="card"
-                    href={runHref(app.slug)}
+                    href={detailsHref(app.slug)}
+                    intent="details"
                     pinned={savedSet.has(app.slug)}
                     onInspect={() => inspectApp(app)}
                     onTogglePin={toggleSavedApp}
