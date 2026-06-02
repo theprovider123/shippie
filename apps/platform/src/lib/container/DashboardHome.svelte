@@ -437,6 +437,7 @@
   .mesh-code-input {
     flex: 1;
     min-width: 120px;
+    min-height: var(--touch-min);
     padding: 6px 10px;
     border: 1px solid var(--border-light);
     background: var(--bg);
@@ -447,6 +448,7 @@
   .mesh-create,
   .mesh-join,
   .mesh-leave {
+    min-height: var(--touch-min);
     padding: 6px 12px;
     background: var(--sunset, #e8603c);
     color: var(--bg-pure, #fff);

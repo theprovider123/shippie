@@ -4046,6 +4046,7 @@
     gap: 8px;
   }
   .dropzone {
+    position: relative;
     min-height: 92px;
     border: 1px dashed var(--border);
     background: var(--surface);
@@ -4064,10 +4065,11 @@
   }
   .dropzone input {
     position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
     opacity: 0;
-    pointer-events: none;
+    cursor: pointer;
   }
   .collection-list article {
     padding: var(--space-md);
@@ -4097,13 +4099,17 @@
     gap: 8px;
   }
   .collection-actions input {
-    min-height: 42px;
+    min-height: var(--touch-min);
     padding: 0 0.75rem;
     border: 1px solid var(--border-light);
     border-radius: 0;
     background: var(--surface);
     color: var(--text);
     font: inherit;
+  }
+  .collection-actions button {
+    min-height: var(--touch-min);
+    padding: 0 1rem;
   }
   .collection-status,
   .collection-meta span {
@@ -4691,7 +4697,7 @@
     position: relative;
     align-self: center;
     width: 44px;
-    height: 24px;
+    height: var(--touch-min, 44px);
     padding: 0;
     border: 0;
     background: transparent;
@@ -4702,7 +4708,8 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: 10px;
+    top: 50%;
+    transform: translateY(-50%);
     height: 3px;
     background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
@@ -4721,6 +4728,7 @@
   .focused-home {
     display: inline-flex;
     align-items: center;
+    min-height: var(--touch-min, 44px);
     min-width: 0;
     gap: 10px;
     padding: 0;
@@ -4756,7 +4764,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 34px;
+    min-height: var(--touch-min, 44px);
+    min-width: var(--touch-min, 44px);
     padding: 0 11px;
     border: 0;
     background: transparent;
@@ -4782,7 +4791,7 @@
     color: var(--sunset, #e8603c);
   }
   .focused-action-close {
-    min-width: 34px;
+    min-width: var(--touch-min, 44px);
     padding: 0 10px;
     font-size: 16px;
     letter-spacing: 0;
@@ -4975,6 +4984,7 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 8px;
+    min-height: var(--touch-min, 44px);
     padding: 8px 12px;
     margin: 0 0 12px;
     background: rgba(0, 0, 0, 0.03);
@@ -4991,6 +5001,7 @@
   }
   .focused-search input {
     min-width: 0;
+    min-height: var(--touch-min, 44px);
     background: transparent;
     border: 0;
     padding: 6px 0;
@@ -5005,6 +5016,8 @@
     outline: none;
   }
   .focused-search-clear {
+    width: var(--touch-min, 44px);
+    height: var(--touch-min, 44px);
     background: transparent;
     border: 0;
     padding: 4px 6px;
@@ -5067,12 +5080,12 @@
       font-size: 11px;
     }
     .focused-action {
-      min-height: 32px;
+      min-height: var(--touch-min, 44px);
       padding: 0 9px;
       font-size: 10px;
     }
     .focused-action-close {
-      min-width: 32px;
+      min-width: var(--touch-min, 44px);
       font-size: 16px;
     }
     .focused-section-head {
@@ -5129,12 +5142,12 @@
   .rail-head { font-family: var(--font-heading); font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
   .rail-mark { color: var(--sunset); }
   .rail-quick { margin-left: auto; display: flex; gap: 2px; }
-  .rail-quick-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; background: none; border: 1px solid transparent; color: var(--text-secondary); font-size: 0.86rem; text-decoration: none; cursor: pointer; }
+  .rail-quick-btn { display: inline-grid; place-items: center; width: var(--touch-min); height: var(--touch-min); background: none; border: 1px solid transparent; color: var(--text-secondary); font-size: 0.92rem; text-decoration: none; cursor: pointer; }
   .rail-quick-btn:hover { color: var(--text); border-color: var(--border-light); background: var(--surface); }
   .rail-quick-btn.active { color: var(--sunset); border-color: var(--border-light); background: var(--surface); }
   .rail-quick-btn:focus-visible { outline: 2px solid var(--sunset); outline-offset: -2px; }
   .rail-label { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 1.15rem 0 0.35rem; }
-  .rail-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 34px; background: none; border: 0; color: var(--text); font-size: 0.78rem; padding: 0.28rem 0.34rem; text-align: left; cursor: pointer; }
+  .rail-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 40px; background: none; border: 0; color: var(--text); font-size: 0.78rem; padding: 0.32rem 0.34rem; text-align: left; cursor: pointer; }
   .rail-item:hover { background: var(--surface-alt); }
   .rail-item.active { background: var(--surface-alt); border-left: 2px solid var(--sunset); padding-left: calc(0.34rem - 2px); }
   .rail-item.muted { color: var(--text-secondary); }
@@ -5142,7 +5155,7 @@
   .rail-live { width: 6px; height: 6px; border-radius: 50%; background: var(--success-soft); margin-left: auto; }
   .rail-empty { color: var(--text-light); font-size: 0.8rem; font-style: italic; }
   .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.2rem; border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
-  .foot-item { font-size: 0.74rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.18rem 0; }
+  .foot-item { min-height: var(--touch-min); display: flex; align-items: center; font-size: 0.74rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.18rem 0; }
   .foot-item.active, .foot-item:hover { color: var(--text); }
   .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
   .hydrating-panel { min-height: 240px; }

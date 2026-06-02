@@ -136,6 +136,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    min-height: var(--touch-min, 44px);
     color: var(--text);
   }
   .nav-mark { display: block; flex-shrink: 0; }
@@ -146,6 +147,11 @@
     letter-spacing: 0;
   }
   .nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-min, 44px);
+    min-width: var(--touch-min, 44px);
+    justify-content: center;
     font-size: var(--small-size);
     color: var(--text-secondary);
     transition: color 0.2s;
@@ -162,6 +168,11 @@
     text-underline-offset: 6px;
   }
   .nav-signin {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-min, 44px);
+    min-width: var(--touch-min, 44px);
+    justify-content: center;
     font-size: var(--small-size);
     color: var(--text-light);
   }
@@ -175,6 +186,9 @@
   }
   .nav-cta {
     display: none;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--touch-min, 44px);
     padding: 0.5rem 1.125rem;
     background: var(--sunset);
     color: var(--bg-pure);
@@ -188,8 +202,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: var(--touch-min);
-    height: var(--touch-min);
+    width: var(--touch-min, 44px);
+    height: var(--touch-min, 44px);
     border-radius: 50%;
     overflow: hidden;
     background: var(--surface-alt);
@@ -208,8 +222,8 @@
     flex-direction: column;
     justify-content: center;
     gap: 4px;
-    width: var(--touch-min);
-    height: var(--touch-min);
+    width: var(--touch-min, 44px);
+    height: var(--touch-min, 44px);
     background: none;
     border: 1px solid transparent;
     border-radius: 0;

@@ -56,7 +56,7 @@
 <style>
   .doc-page {
     min-height: 100dvh;
-    padding: calc(var(--nav-height) + var(--safe-top) + var(--space-xl)) clamp(1.25rem, 5vw, 4rem) var(--space-3xl);
+    padding: var(--space-xl) clamp(1.25rem, 5vw, 4rem) var(--space-3xl);
     background:
       linear-gradient(180deg, rgba(232, 96, 60, 0.08), transparent 320px),
       var(--bg);
@@ -81,6 +81,11 @@
   }
 
   .crumbs a {
+    min-height: var(--touch-min);
+    min-width: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-secondary);
     text-decoration: none;
   }

@@ -381,6 +381,11 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
+    min-height: var(--touch-min, 44px);
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border-paper-mid);
+    background: transparent;
+    color: inherit;
     margin-top: 0.25rem;
     box-sizing: border-box;
   }

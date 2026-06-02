@@ -66,5 +66,12 @@
   .starters :global(.tile-drawer:last-child) {
     border-bottom: 0;
   }
-  .browse-all { color: var(--sunset); font-size: 0.85rem; }
+  .browse-all {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    color: var(--sunset);
+    font-size: 0.85rem;
+  }
 </style>

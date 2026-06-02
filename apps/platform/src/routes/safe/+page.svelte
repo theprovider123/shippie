@@ -163,6 +163,12 @@
     color: var(--ink-primary, #1a1a1a);
   }
 
+  .safe a {
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+  }
+
   header h1 {
     margin: 0 0 0.25rem;
     font-size: 1.75rem;

@@ -630,6 +630,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     border-bottom: 1px solid var(--border-light);
     vertical-align: top;
     color: var(--text-secondary);
+    overflow-wrap: anywhere;
   }
   .license-table th {
     font-family: var(--font-mono);
@@ -643,6 +644,19 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     font-family: var(--font-mono);
     color: var(--sage-leaf);
     white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    .docs-page {
+      padding-left: calc(1rem + var(--safe-left));
+      padding-right: calc(1rem + var(--safe-right));
+    }
+
+    .license-table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 
 </style>

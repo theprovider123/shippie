@@ -116,6 +116,7 @@
     padding: var(--space-lg, 1.5rem) var(--space-md, 1rem);
     font-family: var(--font-sans, system-ui, sans-serif);
     color: var(--ink-primary, #1a1a1a);
+    overflow-x: clip;
   }
 
   .trust-header h1 {
@@ -171,6 +172,7 @@
   }
 
   .trust-row {
+    min-width: 0;
     display: grid;
     grid-template-columns: 3.5rem 1fr auto auto;
     gap: 0.5rem;
@@ -202,6 +204,7 @@
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
     font-size: 0.8rem;
     color: var(--ink-muted, #666);
+    overflow-wrap: anywhere;
   }
 
   .trust-bytes {
@@ -217,5 +220,17 @@
     border-top: 1px solid var(--border-soft, #e8e0d2);
     font-size: 0.8rem;
     color: var(--ink-muted, #666);
+  }
+
+  @media (max-width: 640px) {
+    .trust-row {
+      grid-template-columns: 3.5rem minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .trust-host,
+    .trust-bytes {
+      grid-column: 2;
+    }
   }
 </style>

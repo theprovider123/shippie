@@ -142,6 +142,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    min-height: var(--touch-min, 44px);
     color: inherit;
   }
   .brand img {

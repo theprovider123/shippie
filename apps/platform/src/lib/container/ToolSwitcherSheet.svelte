@@ -142,7 +142,7 @@
     background: var(--border-light);
   }
   .switcher-actions a {
-    min-height: 40px;
+    min-height: var(--touch-min);
     display: grid;
     place-items: center;
     background: var(--surface);
@@ -175,6 +175,7 @@
   }
   .switcher-search input {
     min-width: 0;
+    min-height: var(--touch-min);
     border: 0;
     background: transparent;
     color: var(--text);
@@ -182,8 +183,8 @@
     outline: none;
   }
   .switcher-search button {
-    width: 32px;
-    height: 32px;
+    width: var(--touch-min);
+    height: var(--touch-min);
     border: 1px solid transparent;
     background: transparent;
     color: var(--text-secondary);
@@ -329,6 +330,10 @@
     color: var(--text-secondary);
   }
   .empty a {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
     color: var(--sunset);
     font-family: var(--font-mono);
     font-size: 0.76rem;

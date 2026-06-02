@@ -430,7 +430,9 @@
     padding: 0 clamp(1.5rem, 4vw, 3rem);
   }
   .back {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-min);
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     letter-spacing: 0.2em;
@@ -570,6 +572,9 @@
     padding: var(--space-md);
   }
   .trust-details summary {
+    min-height: var(--touch-min);
+    display: flex;
+    align-items: center;
     cursor: pointer;
     font-family: var(--font-heading);
     font-size: 1.2rem;
@@ -733,6 +738,9 @@
     color: var(--text-light);
   }
   .ownership-grid a {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
     color: var(--sunset);
     overflow-wrap: anywhere;
   }
@@ -822,6 +830,9 @@
   }
   .ownership-actions a,
   .ownership-actions span {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
     padding: 0.55rem 0.75rem;
     border: 1px solid var(--border-light);
     border-radius: 0;

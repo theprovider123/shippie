@@ -176,8 +176,14 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-height: var(--touch-min, 44px);
     font-size: 14px;
     cursor: pointer;
+  }
+  label input[type='radio'] {
+    width: 18px;
+    height: 18px;
+    accent-color: currentColor;
   }
 
   .drawer-content {

@@ -53,6 +53,13 @@
       || ((url.pathname === '/container' || url.pathname === '/dock') && url.searchParams.get('focused') === '1');
   }
 
+  function showFooter(url: URL): boolean {
+    const pathname = url.pathname;
+    return !isDockRoute(url)
+      && !pathname.startsWith('/run')
+      && !((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') === '1');
+  }
+
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);
     const mobileAppChrome = hideNavOnMobile($page.url);
@@ -103,7 +110,7 @@
 {#if showBottomDock($page.url)}
   <BottomDock user={data.user} />
 {/if}
-{#if !isDockRoute($page.url)}
+{#if showFooter($page.url)}
   <Footer />
 {/if}
 <Toast />

@@ -69,6 +69,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    min-height: var(--touch-min, 44px);
     font-family: var(--font-heading);
     font-size: var(--small-size);
     font-weight: 700;
@@ -76,6 +77,9 @@
   }
   .footer-mark img { display: block; flex-shrink: 0; }
   .footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-min, 44px);
     color: inherit;
     text-decoration: none;
   }

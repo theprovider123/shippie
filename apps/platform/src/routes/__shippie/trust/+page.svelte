@@ -268,6 +268,7 @@
     padding: var(--space-lg, 1.5rem) var(--space-md, 1rem);
     font-family: var(--font-sans, system-ui, sans-serif);
     color: var(--ink-primary, #1a1a1a);
+    overflow-x: clip;
   }
 
   header h1 {
@@ -325,6 +326,7 @@
   .revocations li {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     background: var(--surface-soft, #f7f4ee);
@@ -341,6 +343,7 @@
   }
 
   .trust-row {
+    min-width: 0;
     display: grid;
     grid-template-columns: 8rem 12rem 1fr auto;
     gap: 0.5rem;
@@ -358,6 +361,8 @@
 
   .trust-app {
     font-weight: 500;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .trust-capability code,
@@ -365,6 +370,7 @@
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
     font-size: 0.8rem;
     color: var(--ink-muted, #666);
+    overflow-wrap: anywhere;
   }
 
   .trust-summary {
@@ -384,6 +390,10 @@
   }
 
   .btn {
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 0.5rem 0.9rem;
     border-radius: 0.4rem;
     border: 1px solid var(--border-default, #cfc6b3);
@@ -409,7 +419,7 @@
   }
 
   .btn--small {
-    padding: 0.25rem 0.6rem;
+    padding: 0.35rem 0.7rem;
     font-size: 0.8rem;
   }
 
@@ -426,5 +436,25 @@
   .btn--danger {
     border-color: var(--border-warning, #f3c969);
     color: var(--ink-warning, #4a3000);
+  }
+
+  @media (max-width: 640px) {
+    .trust-row {
+      grid-template-columns: 1fr;
+      gap: 0.35rem;
+      align-items: start;
+    }
+
+    .trust-capability,
+    .trust-host,
+    .trust-summary {
+      min-width: 0;
+    }
+
+    .retention,
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
   }
 </style>

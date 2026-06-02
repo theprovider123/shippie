@@ -206,6 +206,11 @@
     min-height: var(--touch-min);
     cursor: pointer;
   }
+  .controls input[type='radio'] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--sunset);
+  }
   .case {
     margin-top: var(--space-2xl);
     padding-top: var(--space-lg);
