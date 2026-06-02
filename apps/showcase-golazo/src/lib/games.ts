@@ -2,7 +2,7 @@
 // and travel by challenge link, exactly like the rest of Golazo. A worldwide
 // board lights up on top when a leaderboard endpoint is reachable (leaderboard.ts).
 
-export type GameId = "keepy" | "topbins";
+export type GameId = "keepy" | "topbins" | "freekick";
 
 export interface GameMeta {
   id: GameId;
@@ -26,6 +26,13 @@ export const GAMES: GameMeta[] = [
     name: "Top Bins",
     tagline: "Beat the keeper",
     how: "Swipe to shoot — aim for the top corners",
+    unit: "goals",
+  },
+  {
+    id: "freekick",
+    name: "Free Kick",
+    tagline: "Bend it round the wall",
+    how: "Swipe with a curve to bend it past the wall",
     unit: "goals",
   },
 ];
@@ -92,7 +99,7 @@ export function encodeChallenge(c: Challenge): string {
 }
 
 export function decodeChallenge(code: string): Challenge | null {
-  const m = /^(keepy|topbins)~(\d+)~(.*)$/.exec(code.trim());
+  const m = /^(keepy|topbins|freekick)~(\d+)~(.*)$/.exec(code.trim());
   if (!m) return null;
   return { game: m[1] as GameId, score: Number(m[2]), name: decodeURIComponent(m[3]) || "A mate" };
 }

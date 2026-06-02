@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { KeepyUppy } from "./games/KeepyUppy";
 import { TopBins } from "./games/TopBins";
+import { FreeKick } from "./games/FreeKick";
+import { Penalty } from "./games/Penalty";
 import {
   GAMES,
   gameMeta,
@@ -11,77 +13,99 @@ import {
   type ScoreEntry,
   type Challenge,
 } from "../lib/games";
+import type { Shootout } from "../lib/penalty";
 import { fetchGlobal, submitGlobal, isGlobalEnabled } from "../lib/leaderboard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
 
-/** Play surface: toggle the two games, post scores, see the worldwide board. */
-export function Games({ challenge }: { challenge?: Challenge | null }) {
+type Sel = GameId | "penalty" | null;
+
+/** Play surface: pick a game, post scores, see the worldwide board. */
+export function Games({ challenge, penalty }: { challenge?: Challenge | null; penalty?: Shootout | null }) {
   const store = useStore();
-  const [active, setActive] = useState<GameId>(challenge?.game ?? "keepy");
+  const playerName = store.profile?.name || "You";
+  const [sel, setSel] = useState<Sel>(penalty ? "penalty" : challenge ? challenge.game : null);
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetchGlobal(active).then((g) => { if (!cancelled) setGlobal(g); });
-    return () => { cancelled = true; };
-  }, [active]);
+  const soloGame = sel && sel !== "penalty" ? sel : null;
 
-  const meta = gameMeta(active);
-  const best = bestScore(store.scores, active);
-  const board = mergeBoards(store.scores, global, active).slice(0, 10);
-  const target = challenge && challenge.game === active ? challenge.score : undefined;
+  useEffect(() => {
+    if (!soloGame) return;
+    let cancelled = false;
+    void fetchGlobal(soloGame).then((g) => { if (!cancelled) setGlobal(g); });
+    return () => { cancelled = true; };
+  }, [soloGame]);
 
   function onGameOver(score: number) {
-    if (score <= 0) return; // a duck doesn't make the table
-    store.addScore(active, score);
-    void submitGlobal({ game: active, name: store.profile?.name || "You", score }).then((g) => {
-      if (g.length) setGlobal(g);
-    });
+    if (!soloGame || score <= 0) return;
+    store.addScore(soloGame, score);
+    void submitGlobal({ game: soloGame, name: playerName, score }).then((g) => { if (g.length) setGlobal(g); });
   }
 
   async function shareChallenge() {
+    if (!soloGame) return;
     tap();
-    const url = challengeUrl({ game: active, name: store.profile?.name || "A mate", score: best });
+    const meta = gameMeta(soloGame);
+    const best = bestScore(store.scores, soloGame);
+    const url = challengeUrl({ game: soloGame, name: playerName, score: best });
     const text = `⚽️ I got ${best} ${meta.unit} on ${meta.name} in Golazo. Beat me → ${url}`;
-    try {
-      if (navigator.share) { await navigator.share({ title: meta.name, text, url }); return; }
-    } catch { /* fall through */ }
-    try { await navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); } catch { /* ignore */ }
+    try { if (navigator.share) { await navigator.share({ title: meta.name, text, url }); return; } } catch { /* */ }
+    try { await navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); } catch { /* */ }
   }
+
+  // ── Game select ──
+  if (!sel) {
+    return (
+      <div className="games">
+        <h2 className="section-title">Play</h2>
+        <p className="games-intro">Quick football games. No login — your bests live on this phone, challenge a mate by link.</p>
+        <div className="game-grid">
+          {GAMES.map((g) => (
+            <button key={g.id} className="game-card" onClick={() => { tap(); setSel(g.id); }}>
+              <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : "🧱"}</span>
+              <span className="game-card-name">{g.name}</span>
+              <span className="game-card-how">{g.how}</span>
+              <span className="game-card-best">Best {bestScore(store.scores, g.id)}</span>
+            </button>
+          ))}
+          <button className="game-card vs" onClick={() => { tap(); setSel("penalty"); }}>
+            <span className="game-card-emoji">🥅</span>
+            <span className="game-card-name">Penalty Shootout <em className="h2h">H2H</em></span>
+            <span className="game-card-how">Take 5 pens, then challenge a mate by link</span>
+            <span className="game-card-best">You vs a mate</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Penalty (head-to-head) ──
+  if (sel === "penalty") {
+    return (
+      <div className="games">
+        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+        <Penalty challenge={penalty} playerName={playerName} />
+      </div>
+    );
+  }
+
+  // ── Solo game + leaderboard ──
+  const meta = gameMeta(soloGame!);
+  const best = bestScore(store.scores, soloGame!);
+  const board = mergeBoards(store.scores, global, soloGame!).slice(0, 10);
+  const target = challenge && challenge.game === soloGame ? challenge.score : undefined;
 
   return (
     <div className="games">
-      <h2 className="section-title">Play</h2>
-
-      <div className="segmented game-toggle" role="tablist">
-        {GAMES.map((g) => (
-          <button
-            key={g.id}
-            role="tab"
-            aria-selected={active === g.id}
-            className={active === g.id ? "is-sel" : ""}
-            onClick={() => { if (active !== g.id) { tap(); setActive(g.id); } }}
-          >
-            {g.name}
-          </button>
-        ))}
-      </div>
-
-      {active === "keepy" ? (
-        <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />
-      ) : (
-        <TopBins key={`t-${target ?? "x"}`} onGameOver={onGameOver} target={target} />
-      )}
+      <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+      {soloGame === "keepy" && <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
+      {soloGame === "topbins" && <TopBins key={`t-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
+      {soloGame === "freekick" && <FreeKick key={`f-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
 
       <div className="game-meta-row">
         <span className="game-best">Your best · <strong>{best}</strong> {meta.unit}</span>
-        {best > 0 && (
-          <button className="ghost-btn sm" onClick={shareChallenge}>
-            {copied ? "Copied ✓" : "Challenge a mate"}
-          </button>
-        )}
+        {best > 0 && <button className="ghost-btn sm" onClick={shareChallenge}>{copied ? "Copied ✓" : "Challenge a mate"}</button>}
       </div>
 
       <div className="board-head">
