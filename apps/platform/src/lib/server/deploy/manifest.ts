@@ -110,6 +110,7 @@ export interface ShippieJsonLite {
    * package/source metadata and marketplace ownership surfaces.
    */
   source_repo?: string;
+  source_commit?: string;
   license?: string;
   remix_allowed?: boolean;
   template_id?: string;
@@ -243,6 +244,7 @@ export function deriveManifest(input: DeriveManifestInput): DerivedManifest {
         spaces: parseSpaces(m.spaces),
         intents: parseIntents(m.intents),
         source_repo: normalizedSourceRepo(m.source_repo),
+        source_commit: typeof m.source_commit === 'string' ? m.source_commit.trim() || undefined : undefined,
         license: typeof m.license === 'string' ? m.license : undefined,
         remix_allowed: typeof m.remix_allowed === 'boolean' ? m.remix_allowed : undefined,
         template_id: typeof m.template_id === 'string' ? m.template_id : undefined,

@@ -128,6 +128,7 @@ export interface DeployLineageOverride {
   parentAppId?: string | null;
   parentVersion?: string | null;
   sourceRepo?: string | null;
+  sourceCommit?: string | null;
   license?: string | null;
   remixAllowed?: boolean;
 }
@@ -552,6 +553,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     parentAppId: resolvedLineage.parentAppId,
     parentVersion: resolvedLineage.parentVersion,
     sourceRepo: resolvedLineage.sourceRepo,
+    sourceCommit: resolvedLineage.sourceCommit,
     license: resolvedLineage.license,
     remixAllowed: resolvedLineage.remixAllowed,
     updatedAt: completedAt,
@@ -1616,6 +1618,7 @@ interface ResolvedLineageValues {
   parentAppId: string | null;
   parentVersion: string | null;
   sourceRepo: string | null;
+  sourceCommit: string | null;
   license: string | null;
   remixAllowed: boolean;
 }
@@ -1631,6 +1634,7 @@ function resolveLineageValues(
     parentAppId: manifest.parent_app_id ?? override?.parentAppId ?? existing?.parentAppId ?? null,
     parentVersion: manifest.parent_version ?? override?.parentVersion ?? existing?.parentVersion ?? null,
     sourceRepo: manifest.source_repo ?? override?.sourceRepo ?? existing?.sourceRepo ?? githubRepo ?? null,
+    sourceCommit: manifest.source_commit ?? override?.sourceCommit ?? existing?.sourceCommit ?? null,
     license: manifest.license ?? override?.license ?? existing?.license ?? null,
     remixAllowed: manifest.remix_allowed ?? override?.remixAllowed ?? existing?.remixAllowed ?? false,
   };

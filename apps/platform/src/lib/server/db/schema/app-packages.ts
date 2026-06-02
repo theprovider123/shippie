@@ -58,6 +58,7 @@ export const appLineage = sqliteTable('app_lineage', {
   parentAppId: text('parent_app_id').references(() => apps.id, { onDelete: 'set null' }),
   parentVersion: text('parent_version'),
   sourceRepo: text('source_repo'),
+  sourceCommit: text('source_commit'),
   license: text('license'),
   remixAllowed: integer('remix_allowed', { mode: 'boolean' }).default(false).notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
