@@ -89,11 +89,15 @@ export function App() {
       {profile ? (
         <>
           <main className="screen">
-            {tab === "home" && <MyCall onContinue={() => setTab("predict")} />}
+            {tab === "home" && (
+              <>
+                <MyCall onContinue={() => setTab("predict")} />
+                <Live />
+              </>
+            )}
             {tab === "predict" && <PredictScreen />}
             {tab === "pools" && <Pools />}
             {tab === "play" && <Games challenge={challenge} penalty={penalty} />}
-            {tab === "live" && <Live />}
           </main>
           <BottomNav active={tab} onChange={setTab} />
         </>

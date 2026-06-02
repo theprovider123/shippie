@@ -95,13 +95,10 @@ describe("App smoke", () => {
     clickButton("Pools");
     expect(container.textContent).toContain("Pools");
 
-    // Live → match-day screen (BroadcastChannel-free path).
-    clickButton("Live");
-    expect(container.textContent).toContain("Match day");
-
-    // Back home.
+    // Back home — Match day is now folded into the home screen (Live tab removed).
     clickButton("My Call");
     expect(container.querySelector(".home")).not.toBeNull();
+    expect(container.textContent).toContain("Match day");
   });
 
   it("opens an incoming shared bracket from the URL hash", () => {
