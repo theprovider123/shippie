@@ -105,11 +105,6 @@
   import TransferPromptModal from '$lib/container/TransferPromptModal.svelte';
   import AppFrameHost from '$lib/container/AppFrameHost.svelte';
   import AppSwitcherGesture from '$lib/container/AppSwitcherGesture.svelte';
-  import {
-    ToolTile,
-    containerAppToToolTile,
-    type ToolRuntimeState,
-  } from '$lib/components/tool-surface';
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
@@ -121,6 +116,7 @@
   import { pickStarters } from '$lib/container/starters';
   import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
   import ToolSwitcherSheet from '$lib/container/ToolSwitcherSheet.svelte';
+  import { buildToolSwitcherSections } from '$lib/container/tool-switcher';
   import { switcherOpen } from '$lib/stores/switcher';
   import {
     hydrateLauncherMemory,
@@ -834,6 +830,19 @@
     if (app) openApp(app.id);
   }
 
+  function closeRailTool(slug: string) {
+    const app = launchVisibleAppBySlug.get(slug);
+    if (!app) return;
+    const remaining = openAppIds.filter((id) => id !== app.id);
+    if (remaining.length === openAppIds.length) return;
+    openAppIds = remaining;
+    disposeApp(app.id);
+    if (activeAppId === app.id) {
+      activeAppId = remaining[0] ?? null;
+      if (!activeAppId) section = 'home';
+    }
+  }
+
   // Phase 2 — resume/insight strip above the active tool. One item,
   // actionable-only; dismiss collapses it to a small badge.
   let stripDismissed = $state<Set<string>>(new Set());
@@ -923,35 +932,16 @@
     drawerQuickApps.length + drawerRemainingApps.length > 12,
   );
   const drawerSearchTrim = $derived(drawerSearchQuery.trim().toLowerCase());
-  function matchesDrawerSearch(app: ContainerApp): boolean {
-    if (!drawerSearchTrim) return true;
-    return (
-      app.name.toLowerCase().includes(drawerSearchTrim) ||
-      app.slug.toLowerCase().includes(drawerSearchTrim) ||
-      (app.shortName ?? '').toLowerCase().includes(drawerSearchTrim) ||
-      (app.category ?? '').toLowerCase().includes(drawerSearchTrim)
-    );
-  }
-  const drawerQuickAppsFiltered = $derived(
-    drawerSearchTrim ? drawerQuickApps.filter(matchesDrawerSearch) : drawerQuickApps,
+  const focusedSwitcherSections = $derived(
+    buildToolSwitcherSections({
+      groups: railGroups,
+      allApps: railCatalog,
+      query: drawerSearchQuery,
+    }),
   );
-  const drawerRemainingAppsFiltered = $derived(
-    drawerSearchTrim ? drawerRemainingApps.filter(matchesDrawerSearch) : drawerRemainingApps,
+  const focusedSwitcherHasResults = $derived(
+    focusedSwitcherSections.some((section) => section.tools.length > 0),
   );
-  const drawerSearchResults = $derived.by(() => {
-    if (!drawerSearchTrim) return [];
-    const seen = new Set<string>();
-    return [...drawerQuickAppsFiltered, ...drawerRemainingAppsFiltered].filter((app) => {
-      if (seen.has(app.id)) return false;
-      seen.add(app.id);
-      return true;
-    });
-  });
-  function drawerRuntimeStateFor(app: ContainerApp): ToolRuntimeState {
-    if (activeAppId === app.id) return 'current';
-    if (openAppIds.includes(app.id)) return 'live';
-    return 'idle';
-  }
   const recoveredReceipts = $derived(recoveredReceiptsFor(receiptsByApp, appById));
   const totalRows = $derived(Object.values(rowsByApp).reduce((sum, rows) => sum + rows.length, 0));
   const updateCards = $derived(
@@ -3238,17 +3228,6 @@
             }}>×</button>
           </nav>
         </header>
-        {#snippet focusedToolTile(app: ContainerApp)}
-          <ToolTile
-            app={containerAppToToolTile(app)}
-            density="drawer"
-            pinned={drawerPinnedSet.has(app.slug)}
-            runtimeState={drawerRuntimeStateFor(app)}
-            onOpen={() => switchFocusedApp(app)}
-            onTogglePin={() => toggleDrawerPin(app)}
-          />
-        {/snippet}
-
         {#if drawerSearchActive}
           <label class="focused-search" aria-label="Search tools">
             <span class="focused-search-icon" aria-hidden="true">⌕</span>
@@ -3270,45 +3249,73 @@
           </label>
         {/if}
 
-        {#if drawerSearchTrim}
-          {#if drawerSearchResults.length > 0}
-            <div class="focused-section-head focused-search-results-head">
-              <h2>Results</h2>
-              <span>{drawerSearchResults.length}</span>
-            </div>
-            <div class="focused-grid focused-search-results">
-              {#each drawerSearchResults as app (app.id)}
-                {@render focusedToolTile(app)}
-              {/each}
-            </div>
-          {:else}
-            <p class="focused-search-empty">
-              Nothing matches “{drawerSearchQuery}” yet.
-              <button type="button" onclick={() => (drawerSearchQuery = '')}>Clear search</button>
-            </p>
-          {/if}
-        {:else if drawerQuickAppsFiltered.length > 0}
-          <div class="focused-section-head">
-            <h2>Quick</h2>
-            <span>{drawerQuickAppsFiltered.length}</span>
-          </div>
-          <div class="focused-grid">
-            {#each drawerQuickAppsFiltered as app (app.id)}
-              {@render focusedToolTile(app)}
+        {#if focusedSwitcherHasResults}
+          <div class="focused-tool-sections">
+            {#each focusedSwitcherSections as section (section.id)}
+              <section class="focused-tool-section" aria-labelledby={`focused-tools-${section.id}`}>
+                <div class="focused-section-head">
+                  <h2 id={`focused-tools-${section.id}`}>{section.label}</h2>
+                  <span>{section.total}</span>
+                </div>
+                <div class="focused-list">
+                  {#each section.tools as tool (tool.slug)}
+                    {@const app = launchVisibleAppBySlug.get(tool.slug)}
+                    {#if app}
+                      <div class="focused-tool-row" class:running={section.id === 'open'}>
+                        <button type="button" class="focused-tool-open" onclick={() => switchFocusedApp(app)}>
+                          <span class="focused-tool-icon" style="background:{tool.accent}">{tool.icon}</span>
+                          <span class="focused-tool-copy">
+                            <strong>{tool.name}</strong>
+                            <small>
+                              {#if section.id === 'open'}
+                                Running now
+                              {:else if section.id === 'pinned'}
+                                Pinned
+                              {:else if section.id === 'recent'}
+                                Recent
+                              {:else}
+                                {tool.category ?? 'Tool'}
+                              {/if}
+                            </small>
+                          </span>
+                          {#if section.id === 'open'}
+                            <span class="focused-live-dot" aria-hidden="true"></span>
+                          {/if}
+                        </button>
+                        <button
+                          type="button"
+                          class="focused-pin"
+                          class:pinned={drawerPinnedSet.has(tool.slug)}
+                          aria-label={drawerPinnedSet.has(tool.slug) ? `Unpin ${tool.name}` : `Pin ${tool.name}`}
+                          title={drawerPinnedSet.has(tool.slug) ? 'Unpin' : 'Pin'}
+                          onclick={() => toggleDrawerPin(app)}
+                        >
+                          {drawerPinnedSet.has(tool.slug) ? '★' : '☆'}
+                        </button>
+                        {#if section.id === 'open'}
+                          <button
+                            type="button"
+                            class="focused-close-tool"
+                            aria-label={`Close ${tool.name}`}
+                            title="Close running tool"
+                            onclick={() => closeRailTool(tool.slug)}
+                          >×</button>
+                        {/if}
+                      </div>
+                    {/if}
+                  {/each}
+                </div>
+                {#if section.hidden > 0}
+                  <p class="focused-section-more">Showing first {section.tools.length}. Search to narrow {section.hidden} more.</p>
+                {/if}
+              </section>
             {/each}
           </div>
-        {/if}
-
-        {#if !drawerSearchTrim && drawerRemainingAppsFiltered.length > 0}
-          <div class="focused-section-head">
-            <h2>{drawerPersonalized ? 'Browse' : 'Tools'}</h2>
-            <span>{drawerRemainingAppsFiltered.length}</span>
-          </div>
-          <div class="focused-grid">
-            {#each drawerRemainingAppsFiltered as app (app.id)}
-              {@render focusedToolTile(app)}
-            {/each}
-          </div>
+        {:else}
+          <p class="focused-search-empty">
+            Nothing matches “{drawerSearchQuery}” yet.
+            <button type="button" onclick={() => (drawerSearchQuery = '')}>Clear search</button>
+          </p>
         {/if}
 
         {#if agentInsights.length > 0}
@@ -3379,8 +3386,9 @@
   allApps={railCatalog}
   onOpen={openRailTool}
   onClose={() => switcherOpen.set(false)}
+  onCloseTool={closeRailTool}
 />
-<section class="shell">
+<section class="shell" class:section-active={section !== 'home'}>
   <aside class="sidebar">
     <div class="rail-head">
       <span class="rail-mark">⌘</span> Workspace
@@ -3913,6 +3921,12 @@
       display: block;
       border-top: 0;
       padding-bottom: calc(96px + var(--safe-bottom));
+    }
+    .shell.section-active .sidebar {
+      display: none;
+    }
+    .shell.section-active .workspace {
+      padding-top: calc(14px + var(--safe-top));
     }
     .sidebar {
       position: sticky;
@@ -4604,20 +4618,113 @@
     border-color: rgba(94, 167, 119, 0.4);
     background: rgba(94, 167, 119, 0.06);
   }
-  .focused-grid {
+  .focused-tool-sections,
+  .focused-tool-section {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 2px;
-    margin-bottom: 6px;
+    gap: 10px;
   }
-  /* Use the canonical 1025px shell breakpoint (mobile-first floor of
-     mobile-audit/audit-static-rules.mjs). The drawer is full-width on
-     phone + tablet, two-column only on real laptop widths. */
-  @media (min-width: 1025px) {
-    .focused-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 4px;
-    }
+  .focused-list {
+    display: grid;
+    gap: 1px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: var(--cream-border, rgba(0, 0, 0, 0.1));
+  }
+  .focused-tool-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    background: var(--cream-bg, #faf7ef);
+  }
+  .focused-tool-row.running {
+    grid-template-columns: minmax(0, 1fr) 42px 42px;
+    box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
+  }
+  .focused-tool-open {
+    min-width: 0;
+    min-height: 58px;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .focused-tool-open:hover,
+  .focused-tool-open:focus-visible {
+    background: rgba(20, 18, 15, 0.045);
+    outline: none;
+  }
+  .focused-tool-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    color: var(--bg, #14120f);
+    font-family: var(--font-heading);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+  .focused-tool-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .focused-tool-copy strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+    line-height: 1.1;
+  }
+  .focused-tool-copy small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .focused-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--sage-leaf, #74a57f);
+  }
+  .focused-pin,
+  .focused-close-tool {
+    width: 42px;
+    min-height: 58px;
+    border: 0;
+    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: transparent;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .focused-pin.pinned {
+    color: var(--sunset, #e8603c);
+  }
+  .focused-pin:hover,
+  .focused-pin:focus-visible,
+  .focused-close-tool:hover,
+  .focused-close-tool:focus-visible {
+    color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.08);
+    outline: none;
+  }
+  .focused-section-more {
+    margin: 0;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
   }
   .focused-search {
     display: grid;
@@ -4628,12 +4735,6 @@
     margin: 0 0 12px;
     background: rgba(0, 0, 0, 0.03);
     border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
-  }
-  .focused-search-results-head {
-    margin-top: -4px;
-  }
-  .focused-search-results {
-    padding-bottom: 18px;
   }
   .focused-search:focus-within {
     border-color: var(--sunset, #e8603c);
@@ -4731,10 +4832,6 @@
     }
     .focused-section-head {
       gap: 8px;
-    }
-    .focused-grid {
-      grid-template-columns: 1fr;
-      gap: 2px;
     }
   }
 
