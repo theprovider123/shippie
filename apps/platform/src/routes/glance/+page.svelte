@@ -30,7 +30,7 @@
   }
   function appHref(appId: string): string | null {
     const s = appSlug(appId);
-    return knownSlugs.has(s) ? `/run/${s}` : null;
+    return knownSlugs.has(s) ? `/dock?app=${encodeURIComponent(s)}` : null;
   }
 
   async function refresh() {
@@ -93,7 +93,7 @@
     <section class="glance-empty">
       <h2>Nothing logged yet.</h2>
       <p>
-        Open an app from <a href="/apps">the marketplace</a> and do something — a coffee in Field Kitchen, a journal entry, a workout in Move. Whatever fires shows up here.
+        Open an app from <a href="/tools">Tools</a> and do something — a coffee in Palate, a journal entry, a workout in Lift. Whatever fires shows up here.
       </p>
     </section>
   {:else if !loading}

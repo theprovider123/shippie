@@ -51,6 +51,12 @@
      * swaps the focused frame via `onOpen`).
      */
     href?: string;
+    /**
+     * `launch` records recency and can warm the runtime iframe.
+     * `details` is for catalog surfaces where the tile opens metadata
+     * rather than the app itself.
+     */
+    intent?: 'launch' | 'details';
     onOpen?: (app: ToolTileApp) => void;
     onTogglePin?: (slug: string) => void;
     onInspect?: (app: ToolTileApp) => void;
@@ -73,6 +79,7 @@
     runtimeState = 'idle',
     recentLabel = '',
     href,
+    intent = 'launch',
     onOpen,
     onTogglePin,
     onInspect,
@@ -112,6 +119,7 @@
     app.display?.connectionBadges ?? connectionBadgesFromKind(app.kind),
   );
   const launchHref = $derived(href ?? `/run/${encodeURIComponent(app.slug)}`);
+  const launchesTool = $derived(intent === 'launch');
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
   const isSaving = $derived(
@@ -143,11 +151,13 @@
   // offline" — not just "Open Cycle". Falls back to the bare name when
   // no chip applies.
   const launchAriaLabel = $derived.by(() => {
+    if (!launchesTool) return `View ${safeName} details`;
     if (runtimeState === 'current') return `Open ${safeName}, current tool`;
     if (runtimeState === 'live') return `Open ${safeName}, live in background`;
     if (isSavedToDock && isOffline && density !== 'dock') return `Open ${safeName}, saved offline`;
     return `Open ${safeName}`;
   });
+  const launchingLabel = $derived(launchesTool ? 'Opening…' : 'Viewing…');
 
   /**
    * One-line state chip rendered in `card` and `drawer` densities:
@@ -197,7 +207,9 @@
     prewarmed = true;
     void preloadData(launchHref).catch(() => {});
     addPrefetchLink(launchHref);
-    addPrefetchLink(`/__shippie-run/${encodeURIComponent(app.slug)}/?shippie_embed=1`);
+    if (launchesTool) {
+      addPrefetchLink(`/__shippie-run/${encodeURIComponent(app.slug)}/?shippie_embed=1`);
+    }
   }
 
   function scheduleHardLaunchFallback(event?: MouseEvent) {
@@ -223,7 +235,7 @@
 
   function launchAndRemember(event?: MouseEvent) {
     launching = true;
-    recordAppLaunch(app.slug);
+    if (launchesTool) recordAppLaunch(app.slug);
     if (!href && onOpen) {
       event?.preventDefault();
       onOpen(app);
@@ -373,7 +385,7 @@
           </span>
         {/if}
         {#if launching}
-          <span class="tile-launching" aria-live="polite">Opening…</span>
+          <span class="tile-launching" aria-live="polite">{launchingLabel}</span>
         {/if}
       </span>
     </a>

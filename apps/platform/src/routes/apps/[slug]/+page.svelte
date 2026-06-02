@@ -93,7 +93,7 @@
 
 <header class="hero" style="background: {data.app.themeColor};">
   <div class="hero-wrap">
-    <a href="/apps" class="back">← All tools</a>
+    <a href="/tools" class="back">← All tools</a>
     <div class="hero-row">
       <IconOrMonogram
         name={data.app.name}
@@ -115,8 +115,8 @@
           {/if}
         </div>
         <div class="cta-row">
-          <a class="open-btn" href={data.ownership.standaloneUrl}>
-            Open {data.app.name}
+          <a class="open-btn" href={`/dock?app=${encodeURIComponent(data.app.slug)}`}>
+            Open in Dock
           </a>
           <LocalAppActions
             slug={data.app.slug}
