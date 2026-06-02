@@ -10,6 +10,9 @@
   "display": "standalone",
   "orientation": "portrait",
   "lifecycle": "manual",
+  "allowed_connect_domains": [
+    "shippie.app"
+  ],
   "intents": {
     "provides": [
       "world-cup-bracket",

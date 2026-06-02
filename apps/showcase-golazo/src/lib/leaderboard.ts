@@ -11,7 +11,7 @@ import type { GameId, ScoreEntry } from "./games";
  *   POST {url}  {game,name,score} -> { scores: ScoreEntry[] }
  * The host must be whitelisted in shippie.json allowed_connect_domains.
  */
-export const GLOBAL_LEADERBOARD_URL = "";
+export const GLOBAL_LEADERBOARD_URL = "https://shippie.app/api/golazo/scores";
 
 export function isGlobalEnabled(): boolean {
   return GLOBAL_LEADERBOARD_URL.length > 0;
