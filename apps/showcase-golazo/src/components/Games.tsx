@@ -18,6 +18,7 @@ import {
 } from "../lib/games";
 import type { Duel } from "../lib/duel";
 import { fetchGlobal, submitGlobal, isGlobalEnabled } from "../lib/leaderboard";
+import { gameCardBlob } from "../lib/sharecard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
 
@@ -59,6 +60,15 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     const best = bestScore(store.scores, soloGame);
     const url = challengeUrl({ game: soloGame, name: playerName, score: best });
     const text = `⚽️ I got ${best} ${meta.unit} on ${meta.name} in Golazo. Beat me → ${url}`;
+    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : "🧱";
+    // Share the viral card image + link first; fall back to text/copy.
+    try {
+      const blob = await gameCardBlob({ emoji, game: meta.name, score: best, unit: meta.unit, playerName });
+      if (blob) {
+        const file = new File([blob], "golazo.png", { type: "image/png" });
+        if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: meta.name, text, url }); return; }
+      }
+    } catch { /* fall through */ }
     try { if (navigator.share) { await navigator.share({ title: meta.name, text, url }); return; } } catch { /* */ }
     try { await navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1400); } catch { /* */ }
   }

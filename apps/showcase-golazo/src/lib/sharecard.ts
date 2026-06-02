@@ -258,6 +258,67 @@ export async function sweepCardBlob(c: SweepCard): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
 }
 
+export interface GameCard {
+  emoji: string;
+  game: string;
+  score: number;
+  unit: string;
+  playerName: string;
+  /** Optional subtitle, e.g. a duel result "beat Mo 4–3". */
+  sub?: string;
+}
+
+/** Viral artifact for a game result: "47 KICK-UPS — beat me". Story format. */
+export function drawGameCard(canvas: HTMLCanvasElement, c: GameCard): void {
+  const [W, H] = SIZES.story;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const accent = "#16f08b", accent2 = "#58f0a8";
+
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#06121f"); bg.addColorStop(1, "#0a1c14");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, W * 0.85);
+  glow.addColorStop(0, hexA(accent, 0.32)); glow.addColorStop(1, "transparent");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.lineWidth = 2;
+  for (let i = 1; i < 6; i++) { const y = (H / 6) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  const pad = 90;
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#fff"; ctx.font = `800 60px ${FONT}`;
+  ctx.fillText("GOLAZO", pad, 150);
+  ctx.fillStyle = accent2; ctx.font = `700 26px ${FONT}`;
+  ctx.fillText("· ARCADE", pad + 245, 150);
+
+  ctx.textAlign = "center";
+  ctx.font = `300px ${FONT}`;
+  ctx.fillText(c.emoji, W / 2, 560);
+  ctx.fillStyle = "#fff"; ctx.font = `900 200px ${FONT}`;
+  ctx.fillText(String(c.score), W / 2, 850);
+  ctx.fillStyle = accent2; ctx.font = `800 56px ${FONT}`;
+  ctx.fillText(c.unit.toUpperCase(), W / 2, 930);
+  ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = `700 44px ${FONT}`;
+  ctx.fillText(c.game + (c.sub ? ` · ${c.sub}` : ""), W / 2, 1080);
+
+  const cardY = 1480;
+  ctx.fillStyle = "rgba(255,255,255,0.05)"; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.fill();
+  ctx.strokeStyle = hexA(accent2, 0.5); ctx.lineWidth = 3; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = `800 52px ${FONT}`;
+  ctx.fillText(c.playerName || "Me", W / 2, cardY + 100);
+  ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.font = `600 36px ${FONT}`;
+  ctx.fillText("Think you can beat that?", W / 2, cardY + 160);
+  ctx.fillStyle = accent2; ctx.font = `800 40px ${FONT}`;
+  ctx.fillText("shippie.app/run/golazo", W / 2, cardY + 230);
+}
+
+export async function gameCardBlob(c: GameCard): Promise<Blob | null> {
+  const canvas = document.createElement("canvas");
+  drawGameCard(canvas, c);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
+}
+
 export async function cardBlob(
   prediction: Prediction,
   profile: Profile,
