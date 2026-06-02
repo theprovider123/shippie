@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { team } from "../data/teams";
 import { drawFor, potTotal, sweepMode, sweepScope, SCOPE_LABEL, type Sweep } from "../lib/sweeps";
+import { sweepCardBlob } from "../lib/sharecard";
 import { useStore } from "../state";
 import { teamVars } from "../ui/atoms";
 import { confirmBuzz, tap } from "../lib/haptics";
@@ -21,6 +22,30 @@ export function IncomingSweep({ sweep, onClose }: { sweep: Sweep; onClose: () =>
     ? Object.keys(draw).find((m) => m.toLowerCase() === myName.toLowerCase())
     : undefined;
   const myTeams = myEntry ? draw[myEntry] ?? [] : [];
+
+  async function saveCard() {
+    tap();
+    if (!myTeams[0]) return;
+    const blob = await sweepCardBlob({
+      playerName: myEntry ?? profile?.name ?? "Me",
+      teamId: myTeams[0],
+      sweepName: sweep.name,
+      pot: pot || undefined,
+      currency: sweep.currency,
+    });
+    if (!blob) return;
+    const file = new File([blob], "golazo-draw.png", { type: "image/png" });
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: sweep.name });
+        return;
+      }
+    } catch { /* fall through to download */ }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "golazo-draw.png"; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="incoming sweep-incoming" role="dialog" aria-modal="true">
@@ -44,6 +69,7 @@ export function IncomingSweep({ sweep, onClose }: { sweep: Sweep; onClose: () =>
                 </span>
               ))}
             </div>
+            <button className="ghost-btn sm" onClick={saveCard}>Save my card 📸</button>
           </div>
         )}
 

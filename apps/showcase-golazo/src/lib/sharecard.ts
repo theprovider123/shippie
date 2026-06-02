@@ -189,6 +189,75 @@ function hexA(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+export interface SweepCard {
+  playerName: string;
+  teamId: string;
+  sweepName: string;
+  pot?: number;
+  currency?: string;
+}
+
+/** The viral artifact for a sweepstake draw: "I drew Brazil". Story format. */
+export function drawSweepCard(canvas: HTMLCanvasElement, c: SweepCard): void {
+  const [W, H] = SIZES.story;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const t = maybeTeam(c.teamId);
+  const accent = t ? t.colors[0] : "#10b981";
+  const accent2 = t ? t.colors[1] : "#34d399";
+
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#070b16"); bg.addColorStop(1, "#0d1426");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, W * 0.85);
+  glow.addColorStop(0, hexA(accent, 0.36)); glow.addColorStop(1, "transparent");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.lineWidth = 2;
+  for (let i = 1; i < 6; i++) { const y = (H / 6) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  const pad = 90;
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#ffffff"; ctx.font = `800 60px ${FONT}`;
+  ctx.fillText("GOLAZO", pad, 150);
+  ctx.fillStyle = accent2; ctx.font = `700 26px ${FONT}`;
+  ctx.fillText("· SWEEPSTAKE", pad + 245, 150);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = `700 38px ${FONT}`;
+  ctx.fillText("I DREW", W / 2, 420);
+  ctx.font = `320px ${FONT}`;
+  ctx.fillText(t ? t.flag : "🎲", W / 2, 760);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `900 ${t && t.name.length > 11 ? 96 : 124}px ${FONT}`;
+  ctx.fillText((t ? t.name : "—").toUpperCase(), W / 2, 980);
+  ctx.fillStyle = accent2;
+  roundRect(ctx, W / 2 - 110, 1015, 220, 10, 5); ctx.fill();
+
+  ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = `700 40px ${FONT}`;
+  ctx.fillText(c.sweepName.toUpperCase(), W / 2, 1200);
+  if (c.pot) {
+    ctx.fillStyle = "#ffd34d"; ctx.font = `900 64px ${FONT}`;
+    ctx.fillText(`${c.currency ?? "£"}${c.pot} POT · WINNER TAKES ALL`, W / 2, 1300);
+  }
+
+  const cardY = 1480;
+  ctx.fillStyle = "rgba(255,255,255,0.05)"; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.fill();
+  ctx.strokeStyle = hexA(accent2, 0.5); ctx.lineWidth = 3; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.stroke();
+  ctx.fillStyle = "#ffffff"; ctx.font = `800 52px ${FONT}`;
+  ctx.fillText(c.playerName || "Me", W / 2, cardY + 100);
+  ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.font = `600 36px ${FONT}`;
+  ctx.fillText("Come on you " + (t ? t.short : "lot") + "!", W / 2, cardY + 160);
+  ctx.fillStyle = accent2; ctx.font = `800 40px ${FONT}`;
+  ctx.fillText("shippie.app/run/golazo", W / 2, cardY + 230);
+}
+
+export async function sweepCardBlob(c: SweepCard): Promise<Blob | null> {
+  const canvas = document.createElement("canvas");
+  drawSweepCard(canvas, c);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
+}
+
 export async function cardBlob(
   prediction: Prediction,
   profile: Profile,
