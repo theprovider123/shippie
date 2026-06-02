@@ -1102,15 +1102,34 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // /__shippie-run/<slug>/* — stale-while-revalidate for raw showcase
-  // runtime assets. These are content-addressed by the showcase build and
-  // are safe to keep offline across platform shell deploys.
+  // /__shippie-run/<slug>/* — network-first for entry documents while
+  // online, cache-first for hashed runtime assets, and sealed capsules
+  // only as offline fallback. Saved/offline should never pin an online
+  // user to an old app bundle after a deploy.
   if (url.pathname.startsWith(RUNTIME_PREFIX + '/')) {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const slug = runtimeSlugFromPath(url.pathname);
-      const capsuleHit = await cachedCapsuleResponse(req, slug);
-      if (capsuleHit) return capsuleHit;
+      const isEntryDocument = ShippieOfflineCapsule.isDocumentRequest(req);
+      const capsuleHit = async () => cachedCapsuleResponse(req, slug);
+
+      if (isEntryDocument && !browserReportsOffline()) {
+        try {
+          const res = await fetch(req);
+          if (expectedRuntimeResponse(req, res)) {
+            cache.put(req, res.clone()).catch(() => {});
+            return res;
+          }
+        } catch {
+          /* fall through to cache/capsule fallback */
+        }
+      }
+
+      if (browserReportsOffline()) {
+        const offlineHit = await capsuleHit();
+        if (offlineHit) return offlineHit;
+      }
+
       const cached = await cache.match(req);
       if (cached) {
         if (!expectedRuntimeResponse(req, cached)) {
@@ -1133,7 +1152,9 @@ self.addEventListener('fetch', (e) => {
         }
         return res;
       } catch {
-        if (ShippieOfflineCapsule.isDocumentRequest(req)) {
+        const offlineHit = await capsuleHit();
+        if (offlineHit) return offlineHit;
+        if (isEntryDocument) {
           const launcher = await cachedLauncher(cache, slug);
           if (launcher) return launcher;
         }
