@@ -220,8 +220,6 @@
   // Focused-mode app-switcher drawer open state. Only meaningful when
   // `data.focused === true`; ignored in dashboard mode.
   let focusedDrawerOpen = $state(false);
-  let focusedChromeOpen = $state(false);
-  let focusedToolOptionsOpen = $state(false);
   let focusedShareFeedback = $state('');
   let focusedQrMarkup = $state<string | null>(null);
   // Safe-edges contract: each iframe-mounted app can declare which
@@ -722,15 +720,12 @@
     if (!activeApp || typeof window === 'undefined') return '';
     return new URL(`/run/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
   });
-  // Dedupe QR generation by (activeApp.id, focusedToolOptionsOpen). The
-  // previous derivation re-fired whenever `focusedToolOptionsOpen`
-  // changed even if the URL was identical, briefly clearing
-  // `focusedQrMarkup` to null on fast open/close and producing a
-  // visible flicker. The key keeps the last completed generation
-  // pinned so re-opening the same tool reuses the same SVG.
+  // Dedupe QR generation by active app + URL while the switcher is open.
+  // The switcher is now the active-tool share surface, so the QR is ready
+  // there instead of hiding behind a second "More" panel.
   const qrGenKey = $derived(
-    activeApp && focusedToolOptionsOpen
-      ? `${activeApp.id}:${focusedToolOptionsOpen}`
+    activeApp && focusedDrawerOpen
+      ? `${activeApp.id}:${activeToolUrl}`
       : '',
   );
   let lastQrGenKey = '';
@@ -1042,7 +1037,6 @@
   function switchFocusedApp(app: ContainerApp) {
     openApp(app.id);
     closeFocusedDrawer();
-    focusedToolOptionsOpen = false;
     if (data.focused && typeof window !== 'undefined') {
       replaceFocusedRunUrl(app);
       window.requestAnimationFrame(() => frames.get(app.id)?.focus());
@@ -1067,7 +1061,6 @@
   function exitFocusedMode(targetSection: ContainerSection = 'home') {
     dismissTransientPrompts();
     closeFocusedDrawer();
-    focusedToolOptionsOpen = false;
     activeAppId = null;
     section = targetSection;
     const href = targetSection === 'home' ? '/dock' : `/dock?section=${targetSection}`;
@@ -1080,8 +1073,6 @@
   }
 
   function toggleFocusedDrawer() {
-    focusedChromeOpen = false;
-    focusedToolOptionsOpen = false;
     if (focusedDrawerOpen) {
       closeFocusedDrawer();
       return;
@@ -1090,78 +1081,28 @@
     focusedDrawerOpen = true;
   }
 
-  function toggleFocusedToolOptions() {
-    focusedChromeOpen = false;
-    closeFocusedDrawer();
-    focusedToolOptionsOpen = !focusedToolOptionsOpen;
-  }
-
-  function toggleFocusedChrome(event?: Event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-    const next = !focusedChromeOpen;
-    focusedChromeOpen = next;
-    if (next) {
-      closeFocusedDrawer();
-      focusedToolOptionsOpen = false;
-    }
-  }
-
-  function returnToDockFromTool(event?: Event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-    focusedChromeOpen = false;
-    if (data.focused) exitFocusedMode('home');
-    else goHome();
-  }
-
   function openFocusedSwitcher(event?: Event) {
     event?.preventDefault();
     event?.stopPropagation();
-    focusedChromeOpen = false;
     toggleFocusedDrawer();
   }
 
-  function saveActiveToolFromChrome(event?: Event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (activeApp) void saveDrawerTool(activeApp);
-    focusedChromeOpen = false;
-  }
-
-  function openFocusedOptionsFromChrome(event?: Event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-    focusedChromeOpen = false;
-    toggleFocusedToolOptions();
-  }
-
-  function handleFocusedChromeButtonKeydown(event: KeyboardEvent) {
+  function handleFocusedNubKeydown(event: KeyboardEvent) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
-    toggleFocusedChrome(event);
+    openFocusedSwitcher(event);
   }
 
-  function closeFocusedToolOptions() {
-    focusedToolOptionsOpen = false;
-  }
-
-  function handleFocusedChromeKeydown(event: KeyboardEvent) {
+  function handleFocusedShellKeydown(event: KeyboardEvent) {
     if (!(data.focused || immersiveActive)) return;
     // ⌘K / Ctrl+K — summon (toggle) the tool switcher from inside a tool.
     if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')) {
       event.preventDefault();
-      focusedChromeOpen = false;
       toggleFocusedDrawer();
       return;
     }
-    if (event.key === 'Escape' && focusedChromeOpen) {
+    if (event.key === 'Escape' && focusedDrawerOpen) {
       event.preventDefault();
-      focusedChromeOpen = false;
-      return;
-    }
-    if (event.key === 'Escape' && focusedToolOptionsOpen) {
-      event.preventDefault();
-      focusedToolOptionsOpen = false;
+      closeFocusedDrawer();
     }
   }
 
@@ -1173,7 +1114,6 @@
   $effect(() => {
     if (typeof window === 'undefined' || !(data.focused || immersiveActive)) {
       chromeIdle = false;
-      focusedChromeOpen = false;
       return;
     }
     let timer: ReturnType<typeof setTimeout>;
@@ -1826,7 +1766,6 @@
 
   function openFocusedDrawerAsBackFallback() {
     if (!data.focused) return;
-    focusedToolOptionsOpen = false;
     drawerSearchQuery = '';
     focusedDrawerOpen = true;
     restoreFocusedHistorySentinel();
@@ -2977,7 +2916,6 @@
     }
 
     closeFocusedDrawer();
-    focusedToolOptionsOpen = false;
     notFoundSlug = null;
     if (closeSlug) {
       switcherOpen.set(false);
@@ -3196,11 +3134,6 @@
 
   function handleFocusedPopstate() {
     if (!data.focused) return;
-    if (focusedToolOptionsOpen) {
-      focusedToolOptionsOpen = false;
-      restoreFocusedHistorySentinel();
-      return;
-    }
     if (focusedDrawerOpen) {
       closeFocusedDrawer();
       restoreFocusedHistorySentinel();
@@ -3329,7 +3262,7 @@
   />
 </svelte:head>
 
-<svelte:window onresize={() => (viewportWidth = window.innerWidth)} onkeydown={handleFocusedChromeKeydown} />
+<svelte:window onresize={() => (viewportWidth = window.innerWidth)} onkeydown={handleFocusedShellKeydown} />
 
 <IntentPromptModal
   prompt={pendingIntentBatch}
@@ -3372,7 +3305,7 @@
     by the surrounding script block. Focused mode is a presentation
     branch, not a behaviour branch.
   -->
-  <section class="focused-shell" data-chrome-idle={chromeIdle} data-chrome-open={focusedChromeOpen}>
+  <section class="focused-shell" data-chrome-idle={chromeIdle}>
     <div
       class="focused-dock-nub-wrap"
       class:input-region-bottom={activeInputRegion === 'bottom'}
@@ -3382,10 +3315,10 @@
         type="button"
         class="focused-dock-nub"
         class:first-run={firstRunHint}
-        aria-label={focusedChromeOpen ? 'Hide Shippie controls' : 'Show Shippie controls'}
-        aria-expanded={focusedChromeOpen}
-        onclick={toggleFocusedChrome}
-        onkeydown={handleFocusedChromeButtonKeydown}
+        aria-label="Open Shippie switcher"
+        aria-expanded={focusedDrawerOpen}
+        onclick={openFocusedSwitcher}
+        onkeydown={handleFocusedNubKeydown}
       >
         <img
           src="/__shippie-pwa/icon.svg"
@@ -3395,22 +3328,6 @@
           aria-hidden="true"
         />
       </button>
-      {#if focusedChromeOpen}
-        <div class="focused-command-strip" role="toolbar" aria-label="Shippie controls">
-          <button type="button" onclick={returnToDockFromTool}>Dock</button>
-          <button type="button" onclick={openFocusedSwitcher}>Switcher</button>
-          {#if activeApp}
-            <button
-              type="button"
-              class:saved={drawerSavedSet.has(activeApp.slug)}
-              onclick={saveActiveToolFromChrome}
-            >
-              {drawerSavedSet.has(activeApp.slug) ? 'Saved' : 'Save'}
-            </button>
-            <button type="button" onclick={openFocusedOptionsFromChrome}>More</button>
-          {/if}
-        </div>
-      {/if}
     </div>
     <div class="focused-frame">
       {#if notFoundSlug}
@@ -3498,6 +3415,28 @@
             }}>×</button>
           </nav>
         </header>
+        {#if activeApp}
+          <section class="focused-share-card" aria-label={`Share ${activeApp.name}`}>
+            <div class="focused-share-card-qr" aria-hidden={!focusedQrMarkup}>
+              {#if focusedQrMarkup}
+                {@html focusedQrMarkup}
+              {:else}
+                <span>QR</span>
+              {/if}
+            </div>
+            <div class="focused-share-card-copy">
+              <p>Share current tool</p>
+              <strong>{activeApp.name}</strong>
+              <small>{activeToolUrl.replace(/^https?:\/\//, '')}</small>
+            </div>
+            <div class="focused-share-card-actions">
+              <button type="button" onclick={shareActiveTool}>
+                {focusedShareFeedback || 'Share'}
+              </button>
+              <button type="button" onclick={copyActiveToolLink}>Copy</button>
+            </div>
+          </section>
+        {/if}
         {#if drawerSearchActive}
           <label class="focused-search" aria-label="Search Dock tools">
             <span class="focused-search-icon" aria-hidden="true">⌕</span>
@@ -3607,51 +3546,6 @@
         {/if}
       </div>
     </AppSwitcherGesture>
-    {#if focusedToolOptionsOpen && activeApp}
-      <button
-        type="button"
-        class="focused-options-backdrop"
-        aria-label="Close tool options"
-        onclick={closeFocusedToolOptions}
-      ></button>
-      <aside class="focused-options-panel" aria-label={`${activeApp.name} sharing and options`}>
-        <div class="focused-drawer-grip" aria-hidden="true"></div>
-        <header class="focused-options-head">
-          <p class="focused-options-kicker">Current tool</p>
-          <h2>{activeApp.name}</h2>
-          {#if activeApp.description}
-            <p>{activeApp.description}</p>
-          {/if}
-        </header>
-        {#if focusedQrMarkup}
-          <div class="focused-share-qr" aria-label={`QR code for ${activeApp.name}`}>
-            <div class="focused-share-qr-code">{@html focusedQrMarkup}</div>
-            <p>Scan to open</p>
-          </div>
-        {/if}
-        <div class="focused-options-list">
-          <button type="button" class="focused-option-row primary" onclick={shareActiveTool}>
-            <span>Share tool</span>
-            <small>{focusedShareFeedback || 'System share sheet'}</small>
-          </button>
-          <button type="button" class="focused-option-row" onclick={copyActiveToolLink}>
-            <span>Copy quicklink</span>
-            <small>{focusedShareFeedback || activeToolUrl.replace(/^https?:\/\//, '')}</small>
-          </button>
-          <button
-            type="button"
-            class="focused-option-row"
-            onclick={() => {
-              if (activeAppId) reloadFrame(activeAppId);
-              closeFocusedToolOptions();
-            }}
-          >
-            <span>Reload tool</span>
-            <small>Fresh frame, same local data</small>
-          </button>
-        </div>
-      </aside>
-    {/if}
   </section>
 {:else}
 <ToolSwitcherSheet
@@ -4492,53 +4386,11 @@
   @media (prefers-reduced-motion: reduce) {
     .focused-dock-nub.first-run { animation: none; }
   }
-  .focused-command-strip {
-    display: flex;
-    align-items: center;
-    gap: 1px;
-    max-width: min(460px, calc(100vw - 64px));
-    border: 1px solid rgba(168, 196, 145, 0.32);
-    background: rgba(20, 18, 15, 0.86);
-    box-shadow: 0 14px 38px rgba(20, 18, 15, 0.24);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    animation: focused-command-in 150ms var(--ease-out, ease);
-  }
-  .focused-command-strip button {
-    min-height: 40px;
-    padding: 0 0.85rem;
-    border: 0;
-    border-right: 1px solid rgba(168, 196, 145, 0.16);
-    background: transparent;
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-  .focused-command-strip button:last-child {
-    border-right: 0;
-  }
-  .focused-command-strip button:hover,
-  .focused-command-strip button:focus-visible {
-    color: var(--sunset);
-    background: rgba(255, 253, 247, 0.06);
-    outline: none;
-  }
-  .focused-command-strip button.saved {
-    color: var(--sage-leaf);
-  }
-  @keyframes focused-command-in {
-    from { opacity: 0; transform: translateX(-8px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
   /* Immersive idle — dim (but keep tappable) the in-tool chrome after ~1.5s
      of no activity; any pointer/key/touch restores it. Motion-only so
      reduced-motion users keep the chrome fully visible. */
   @media (prefers-reduced-motion: no-preference) {
-    .focused-shell[data-chrome-idle='true'][data-chrome-open='false'] .focused-dock-nub-wrap {
+    .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
       opacity: 0.38;
       transform: translateY(-50%) translateX(-16px);
     }
@@ -4581,164 +4433,12 @@
     .focused-dock-nub[aria-expanded='true'] {
       transform: translateY(-2px);
     }
-    .focused-command-strip {
-      width: min(360px, calc(100vw - 28px));
-      justify-content: stretch;
-    }
-    .focused-command-strip button {
-      flex: 1;
-      min-width: 0;
-      padding: 0 0.45rem;
-      font-size: 0.62rem;
-    }
-    .focused-shell[data-chrome-idle='true'][data-chrome-open='false'] .focused-dock-nub-wrap {
+    .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
       opacity: 0.34;
       transform: translateX(-50%) translateY(12px);
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
       transform: translateY(140%);
-    }
-  }
-
-  .focused-options-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 58;
-    padding: 0;
-    border: 0;
-    background: rgba(20, 18, 15, 0.28);
-    cursor: default;
-    animation: focused-fade-in 160ms var(--ease-out);
-  }
-  .focused-options-panel {
-    position: fixed;
-    top: 50%;
-    right: calc(env(safe-area-inset-right, 0px) + 48px);
-    z-index: 64;
-    width: min(340px, calc(100vw - 24px));
-    max-height: min(80dvh, 620px);
-    overflow-y: auto;
-    padding: 16px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--cream-bg, #faf7ef);
-    color: var(--cream-text, #14120f);
-    box-shadow: 0 18px 54px rgba(20, 18, 15, 0.24);
-    transform: translateY(-50%);
-    animation: focused-options-in 180ms var(--spring);
-  }
-  .focused-options-head {
-    display: grid;
-    gap: 6px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-  }
-  .focused-options-kicker,
-  .focused-options-head p,
-  .focused-option-row small {
-    margin: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
-  }
-  .focused-options-kicker {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-  .focused-options-head h2 {
-    margin: 0;
-    font-family: var(--font-heading);
-    font-size: 28px;
-    line-height: 1;
-  }
-  .focused-options-head p {
-    font-size: 15px;
-    line-height: 1.35;
-  }
-  .focused-options-list {
-    display: grid;
-    gap: 8px;
-    padding-top: 12px;
-  }
-  .focused-share-qr {
-    display: grid;
-    grid-template-columns: 88px minmax(0, 1fr);
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0 0;
-  }
-  .focused-share-qr-code {
-    width: 88px;
-    height: 88px;
-    padding: 6px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--paper-warm);
-  }
-  .focused-share-qr-code :global(svg) {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-  .focused-share-qr p {
-    margin: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    line-height: 1.35;
-    text-transform: uppercase;
-  }
-  .focused-option-row {
-    display: grid;
-    gap: 4px;
-    width: 100%;
-    min-width: 0;
-    padding: 12px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: rgba(20, 18, 15, 0.025);
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
-  }
-  .focused-option-row:hover,
-  .focused-option-row:focus-visible {
-    border-color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.07);
-    transform: translateX(-2px);
-  }
-  .focused-option-row.primary {
-    border-color: rgba(232, 96, 60, 0.34);
-    background: rgba(232, 96, 60, 0.09);
-  }
-  .focused-option-row span {
-    font-family: var(--font-heading);
-    font-size: 18px;
-    line-height: 1.05;
-  }
-  .focused-option-row small {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.03em;
-    line-height: 1.2;
-  }
-  @media (max-width: 640px) {
-    .focused-options-panel {
-      top: auto;
-      right: 0;
-      bottom: max(16px, env(safe-area-inset-bottom, 0px));
-      left: 0;
-      width: auto;
-      max-height: calc(100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 16px);
-      padding: 10px 16px 16px;
-      border-right: 0;
-      border-left: 0;
-      transform: none;
-      animation: focused-options-sheet-in 180ms var(--spring);
     }
   }
 
@@ -4857,6 +4557,91 @@
   .focused-action-close:focus-visible {
     color: var(--sunset, #e8603c);
   }
+  .focused-share-card {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0 14px;
+    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+  }
+  .focused-share-card-qr {
+    width: 72px;
+    height: 72px;
+    display: grid;
+    place-items: center;
+    padding: 6px;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: var(--paper-warm, #f5efe4);
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
+  .focused-share-card-qr :global(svg) {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .focused-share-card-copy {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+  .focused-share-card-copy p,
+  .focused-share-card-copy small {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .focused-share-card-copy strong {
+    min-width: 0;
+    overflow: hidden;
+    font-family: var(--font-heading);
+    font-size: 19px;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .focused-share-card-copy small {
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .focused-share-card-actions {
+    display: inline-flex;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+  }
+  .focused-share-card-actions button {
+    min-height: var(--touch-min, 44px);
+    padding: 0 11px;
+    border: 0;
+    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: transparent;
+    color: var(--cream-text, #14120f);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .focused-share-card-actions button:first-child {
+    border-left: 0;
+  }
+  .focused-share-card-actions button:hover,
+  .focused-share-card-actions button:focus-visible {
+    color: var(--sunset, #e8603c);
+    background: rgba(232, 96, 60, 0.08);
+    outline: none;
+  }
   .focused-section-head {
     display: flex;
     align-items: baseline;
@@ -4928,11 +4713,11 @@
   .focused-tool-row {
     min-width: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 42px;
+    grid-template-columns: minmax(0, 1fr) 58px;
     background: var(--cream-bg, #faf7ef);
   }
   .focused-tool-row.running {
-    grid-template-columns: minmax(0, 1fr) 42px 42px;
+    grid-template-columns: minmax(0, 1fr) 58px 42px;
     box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
   .focused-tool-open {
@@ -5108,14 +4893,6 @@
     from { opacity: 0; }
     to { opacity: 1; }
   }
-  @keyframes focused-options-in {
-    from { opacity: 0; transform: translateY(-50%) translateX(12px); }
-    to { opacity: 1; transform: translateY(-50%); }
-  }
-  @keyframes focused-options-sheet-in {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
   @media (max-width: 640px) {
     .focused-drawer {
       padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
@@ -5145,15 +4922,29 @@
       min-width: var(--touch-min, 44px);
       font-size: 16px;
     }
+    .focused-share-card {
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 10px;
+      padding: 8px 0 12px;
+    }
+    .focused-share-card-qr {
+      width: 58px;
+      height: 58px;
+    }
+    .focused-share-card-copy strong {
+      font-size: 17px;
+    }
+    .focused-share-card-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      width: 100%;
+    }
+    .focused-share-card-actions button {
+      flex: 1;
+      min-width: 0;
+    }
     .focused-section-head {
       gap: 8px;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .focused-options-backdrop,
-    .focused-options-panel {
-      animation: none;
     }
   }
 
