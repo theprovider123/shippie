@@ -17,6 +17,12 @@ const APPS_DIR = join(REPO_ROOT, 'apps');
 const STATIC_RUNTIME_DIR = join(REPO_ROOT, 'apps', 'platform', 'static', '__shippie-run');
 
 describe('showcase catalog drift check', () => {
+  test('generated first-party identity catalog matches source manifests even without a static bake', () => {
+    const sourceSlugs = slugsFromShowcaseDirs();
+    expect([...SHOWCASE_SLUGS].sort()).toEqual(sourceSlugs);
+    expect(FIRST_PARTY_CURATION.map((entry) => entry.slug).sort()).toEqual(sourceSlugs);
+  });
+
   test('generated slugs match hosted showcase runtime directories', () => {
     if (!existsSync(STATIC_RUNTIME_DIR)) return;
     expect([...SHOWCASE_SLUGS].sort()).toEqual(staticRuntimeSlugs());

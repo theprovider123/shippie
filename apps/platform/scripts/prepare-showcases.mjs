@@ -782,15 +782,15 @@ function main() {
     const missing = slugs.filter((slug) => !hostedSlugs.includes(slug));
     if (missing.length > 0) {
       console.warn(
-        `[prepare-showcases] generated-only: ${missing.length} showcase(s) have no static bake and were excluded from runtime manifests: ${missing.join(', ')}`,
+        `[prepare-showcases] generated-only: ${missing.length} showcase(s) have no static bake; runtime asset manifests only include hosted runtimes: ${missing.join(', ')}`,
       );
     }
-    writeShowcaseCatalog(hostedSlugs);
-    writeFirstPartyCuration(hostedSlugs);
+    writeShowcaseCatalog(slugs);
+    writeFirstPartyCuration(slugs);
     writeRuntimePrecache(hostedSlugs);
     writePrecacheList();
     console.log(
-      `[prepare-showcases] generated manifests only for ${hostedSlugs.length} hosted showcase(s).`,
+      `[prepare-showcases] generated manifests only for ${slugs.length} showcase(s) (${hostedSlugs.length} hosted runtime(s)).`,
     );
     return;
   }
