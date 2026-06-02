@@ -86,3 +86,74 @@ export function readShareFromHash(hash: string): SharePayload | null {
   if (!m) return null;
   return decodeShare(m[1]);
 }
+
+// ── Shared sweepstake draws ──────────────────────────────────────────────────
+// The organiser runs the draw once; the link IS the draw. Everyone who opens it
+// recomputes the identical allocation from (members, seed, mode, scope). Still
+// zero backend. We only need the config, not the dealt teams — the deal is
+// deterministic.
+import type { Sweep, SweepMode, SweepScope } from "./sweeps";
+
+interface SweepWire {
+  v: number;
+  n: string; // sweep name
+  s: string; // seed
+  m: string[]; // members
+  md?: SweepMode; // mode
+  sc?: SweepScope; // scope
+  st?: number; // stake
+  cu?: string; // currency
+  c?: number; // createdAt
+}
+
+export function encodeSweep(sweep: Sweep): string {
+  const wire: SweepWire = {
+    v: SCHEMA_VERSION,
+    n: sweep.name.slice(0, 40),
+    s: sweep.seed,
+    m: sweep.members.map((x) => x.slice(0, 24)).slice(0, 64),
+    md: sweep.mode,
+    sc: sweep.scope,
+    st: sweep.stake,
+    cu: sweep.currency,
+    c: sweep.createdAt,
+  };
+  return b64urlEncode(new TextEncoder().encode(JSON.stringify(wire)));
+}
+
+export function decodeSweep(code: string): Sweep | null {
+  try {
+    const w = JSON.parse(
+      new TextDecoder().decode(b64urlDecode(code.trim())),
+    ) as SweepWire;
+    if (!w || !w.s || !Array.isArray(w.m)) return null;
+    return {
+      id: `shared-${w.s}`,
+      name: w.n || "Sweepstake",
+      seed: w.s,
+      members: w.m,
+      createdAt: w.c ?? 0,
+      mode: w.md,
+      scope: w.sc,
+      stake: w.st,
+      currency: w.cu,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function sweepUrl(sweep: Sweep, base?: string): string {
+  const root =
+    base ??
+    (typeof location !== "undefined"
+      ? location.origin + location.pathname
+      : "https://shippie.app/run/golazo/");
+  return `${root}#sweep=${encodeSweep(sweep)}`;
+}
+
+export function readSweepFromHash(hash: string): Sweep | null {
+  const m = /[#&]sweep=([^&]+)/.exec(hash);
+  if (!m) return null;
+  return decodeSweep(m[1]);
+}
