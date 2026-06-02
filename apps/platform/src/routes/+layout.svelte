@@ -18,6 +18,10 @@
 
   let { data, children }: Props = $props();
 
+  function isDockRoute(url: URL): boolean {
+    return url.pathname === '/dock';
+  }
+
   function showBottomDock(url: URL): boolean {
     const pathname = url.pathname;
     if ((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') !== '1') return true;
@@ -39,7 +43,8 @@
   }
 
   function hideNavOnMobile(url: URL): boolean {
-    return showBottomDock(url)
+    return isDockRoute(url)
+      || showBottomDock(url)
       || url.pathname.startsWith('/auth')
       || url.pathname.startsWith('/invite')
       || url.pathname.startsWith('/c/')
@@ -51,8 +56,10 @@
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);
     const mobileAppChrome = hideNavOnMobile($page.url);
+    const dockShellRoute = isDockRoute($page.url);
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
     document.body.dataset.mobileAppChrome = mobileAppChrome ? 'true' : 'false';
+    document.body.dataset.dockShellRoute = dockShellRoute ? 'true' : 'false';
   });
 
   onMount(() => {
@@ -85,16 +92,20 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-<div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
-  <Nav user={data.user} />
-</div>
-<main id="main" class:with-bottom-dock={showBottomDock($page.url)}>
+{#if !isDockRoute($page.url)}
+  <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
+    <Nav user={data.user} />
+  </div>
+{/if}
+<main id="main" class:with-bottom-dock={showBottomDock($page.url)} class:dock-shell-route={isDockRoute($page.url)}>
   {@render children()}
 </main>
 {#if showBottomDock($page.url)}
   <BottomDock user={data.user} />
 {/if}
-<Footer />
+{#if !isDockRoute($page.url)}
+  <Footer />
+{/if}
 <Toast />
 
 <style>
@@ -105,6 +116,15 @@
        the layout doesn't jump on scroll). */
     min-height: calc(100svh - var(--nav-height) - var(--safe-top));
     min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
+  }
+
+  main.dock-shell-route {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+
+  :global(body[data-dock-shell-route='true']) {
+    padding-top: 0;
   }
 
   /* Dock 1.1 — when a tool owns the screen (immersive active-tool), the

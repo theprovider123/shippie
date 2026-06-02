@@ -320,8 +320,8 @@
      The shell loads them at :root, so component-scoped CSS can use them. */
   .section-head {
     display: grid;
-    gap: 0.5rem;
-    margin: var(--space-md) 0 var(--space-md);
+    gap: 0.4rem;
+    margin: 0 0 clamp(1rem, 2vw, 1.5rem);
   }
   .section-title-row {
     display: flex;
@@ -332,7 +332,7 @@
   .section-head h2 {
     min-width: 0;
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.08rem;
   }
   .section-head p {
     max-width: 44rem;
@@ -344,8 +344,8 @@
   .mine-toggle {
     flex: none;
     min-height: 32px;
-    padding: 0 10px;
-    border: 1px solid var(--border);
+    padding: 0 9px;
+    border: 1px solid var(--border-light);
     background: transparent;
     color: var(--text-secondary);
     font-family: var(--font-mono);
@@ -360,7 +360,7 @@
   }
   .dock-sections {
     display: grid;
-    gap: var(--space-md);
+    gap: clamp(1rem, 1.8vw, 1.35rem);
     margin-bottom: var(--space-md);
   }
   .dock-section {
@@ -394,16 +394,15 @@
     --dock-tool-row-height: 64px;
     display: grid;
     border: 1px solid var(--border-light);
-    background: var(--surface);
+    background: var(--border-light);
+    gap: 1px;
   }
   .dock-tool-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     min-height: var(--dock-tool-row-height);
     background: var(--surface);
-    border-bottom: 1px solid var(--border-light);
   }
-  .dock-tool-row:last-child { border-bottom: 0; }
   .dock-tool-row :global(.tile-drawer) {
     min-height: var(--dock-tool-row-height);
     border: 0;
@@ -540,6 +539,22 @@
     color: var(--danger, #b6472d);
     font-size: 0.85rem;
     margin: 0.5rem 0 0;
+  }
+  @media (min-width: 641px) {
+    .section-head h2 {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    .section-title-row {
+      justify-content: flex-end;
+    }
+    .section-head p {
+      max-width: min(54rem, calc(100vw - 360px));
+    }
   }
   @media (max-width: 640px) {
     .section-head {

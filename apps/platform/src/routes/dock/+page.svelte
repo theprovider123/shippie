@@ -3616,19 +3616,19 @@
       {/each}
     {/if}
 
-    {#if railGroups.saved.length > 0}
-      <p class="rail-label">Saved</p>
-      {#each railGroups.saved as t (t.slug)}
-        <button class="rail-item" onclick={() => openRailTool(t.slug)}>
+    {#if railGroups.recent.length > 0}
+      <p class="rail-label">Recent</p>
+      {#each railGroups.recent as t (t.slug)}
+        <button class="rail-item muted" onclick={() => openRailTool(t.slug)}>
           <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
         </button>
       {/each}
     {/if}
 
-    {#if railGroups.recent.length > 0}
-      <p class="rail-label">Recent</p>
-      {#each railGroups.recent as t (t.slug)}
-        <button class="rail-item muted" onclick={() => openRailTool(t.slug)}>
+    {#if railGroups.saved.length > 0}
+      <p class="rail-label">Saved</p>
+      {#each railGroups.saved as t (t.slug)}
+        <button class="rail-item" onclick={() => openRailTool(t.slug)}>
           <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
         </button>
       {/each}
@@ -3649,13 +3649,14 @@
   </aside>
 
   <main class="dock-canvas">
-    <div class="topbar section-mode">
+    {#if section !== 'home' || meshBadgeLabel(meshStatus)}
+    <div class="topbar section-mode" class:home-mode={section === 'home'}>
       {#if section !== 'home'}
         <button class="home-button" onclick={goHome}>← Dock</button>
+        <div>
+          <h2>{sectionTitle(section)}</h2>
+        </div>
       {/if}
-      <div>
-        <h2>{sectionTitle(section)}</h2>
-      </div>
       {#if meshBadgeLabel(meshStatus)}
         <button
           class="mesh-badge"
@@ -3667,6 +3668,7 @@
         </button>
       {/if}
     </div>
+    {/if}
 
     {#if activeApp && canvasStripItem && !stripCollapsed}
       <CanvasStrip item={canvasStripItem} onOpen={openStrip} onDismiss={dismissStrip} />
@@ -3675,7 +3677,7 @@
     {/if}
 
     {#if !activeApp}
-      <section class="panel">
+      <section class="panel" class:dock-home-panel={section === 'home'}>
         {#if section === 'home'}
           {#if !launcherHydrated}
             <!-- brief neutral panel until local tool state hydrates; prevents a
@@ -3867,19 +3869,23 @@
 <style>
   .shell {
     /* dvh cascade — see +layout.svelte for rationale. */
-    min-height: calc(100svh - var(--nav-height));
-    min-height: calc(100dvh - var(--nav-height));
+    min-height: 100svh;
+    min-height: 100dvh;
     display: grid;
-    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    grid-template-columns: clamp(176px, 17vw, 248px) minmax(0, 1fr);
     background: var(--bg);
-    border-top: 1px solid var(--border-light);
   }
   .sidebar {
-    padding: var(--space-2xl);
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding:
+      calc(18px + var(--safe-top))
+      clamp(12px, 1.5vw, 22px)
+      calc(18px + var(--safe-bottom));
     border-right: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
-    gap: var(--space-xl);
+    gap: 0;
   }
   h2,
   h3 {
@@ -3908,9 +3914,11 @@
   }
   .status-panel,
   .panel {
-    border: 1px solid var(--border-light);
     background: var(--surface);
     border-radius: 0;
+  }
+  .status-panel {
+    border: 1px solid var(--border-light);
   }
   .status-panel {
     padding: var(--space-md);
@@ -3956,9 +3964,14 @@
   }
   .dock-canvas {
     min-width: 0;
-    padding: var(--space-xl);
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding:
+      calc(20px + var(--safe-top))
+      clamp(22px, 3.2vw, 56px)
+      calc(24px + var(--safe-bottom));
     display: grid;
-    gap: var(--space-md);
+    gap: clamp(14px, 2vw, 24px);
     align-content: start;
   }
   .topbar {
@@ -3977,9 +3990,14 @@
     color: var(--sunset);
   }
   .panel {
-    padding: var(--space-lg);
+    padding: var(--space-md);
     display: grid;
     gap: var(--space-lg);
+  }
+  .dock-home-panel {
+    padding: 0;
+    border: 0;
+    background: transparent;
   }
   .section-head {
     display: grid;
@@ -4110,12 +4128,10 @@
   }
   @media (max-width: 1024px) {
     .shell {
-      grid-template-columns: 1fr;
+      grid-template-columns: clamp(156px, 22vw, 208px) minmax(0, 1fr);
     }
     .sidebar {
-      border-right: 0;
-      border-bottom: 1px solid var(--border-light);
-      padding: var(--space-xl);
+      padding-inline: 12px;
     }
     .topbar {
       align-items: flex-start;
@@ -5108,20 +5124,20 @@
   .rail-head { font-family: var(--font-heading); font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
   .rail-mark { color: var(--sunset); }
   .rail-quick { margin-left: auto; display: flex; gap: 2px; }
-  .rail-quick-btn { display: inline-grid; place-items: center; width: 30px; height: 30px; background: none; border: 1px solid transparent; color: var(--text-secondary); font-size: 0.95rem; text-decoration: none; cursor: pointer; }
-  .rail-quick-btn:hover { color: var(--text); border-color: var(--border); }
-  .rail-quick-btn.active { color: var(--sunset); border-color: var(--border); }
+  .rail-quick-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; background: none; border: 1px solid transparent; color: var(--text-secondary); font-size: 0.86rem; text-decoration: none; cursor: pointer; }
+  .rail-quick-btn:hover { color: var(--text); border-color: var(--border-light); background: var(--surface); }
+  .rail-quick-btn.active { color: var(--sunset); border-color: var(--border-light); background: var(--surface); }
   .rail-quick-btn:focus-visible { outline: 2px solid var(--sunset); outline-offset: -2px; }
-  .rail-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: var(--space-md) 0 var(--space-xs); }
-  .rail-item { display: flex; align-items: center; gap: var(--space-sm); width: 100%; background: none; border: 0; color: var(--text); font-size: 0.85rem; padding: 0.4rem 0.4rem; text-align: left; cursor: pointer; }
+  .rail-label { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 1.15rem 0 0.35rem; }
+  .rail-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 34px; background: none; border: 0; color: var(--text); font-size: 0.78rem; padding: 0.28rem 0.34rem; text-align: left; cursor: pointer; }
   .rail-item:hover { background: var(--surface-alt); }
-  .rail-item.active { background: var(--surface-alt); border-left: 2px solid var(--sunset); padding-left: calc(0.4rem - 2px); }
+  .rail-item.active { background: var(--surface-alt); border-left: 2px solid var(--sunset); padding-left: calc(0.34rem - 2px); }
   .rail-item.muted { color: var(--text-secondary); }
-  .rail-icon { width: 20px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 0.6rem; color: var(--bg); }
+  .rail-icon { width: 18px; height: 18px; flex: none; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 0.54rem; color: var(--bg); }
   .rail-live { width: 6px; height: 6px; border-radius: 50%; background: var(--success-soft); margin-left: auto; }
   .rail-empty { color: var(--text-light); font-size: 0.8rem; font-style: italic; }
-  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-xs); border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
-  .foot-item { font-size: 0.8rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.2rem 0; }
+  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.2rem; border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
+  .foot-item { font-size: 0.74rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.18rem 0; }
   .foot-item.active, .foot-item:hover { color: var(--text); }
   .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
   .hydrating-panel { min-height: 240px; }
