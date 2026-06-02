@@ -3423,12 +3423,13 @@
             }}
           >
             <span class="focused-brand-copy">
-              <strong>Shippie</strong>
-              <small>Local tools, one Dock.</small>
+              <strong>Switcher</strong>
+              <small>Running, saved, recent.</small>
             </span>
           </button>
           <nav class="focused-drawer-actions" aria-label="Drawer actions">
-            <button class="focused-action" type="button" onclick={() => exitFocusedMode('home')}>Tools</button>
+            <button class="focused-action" type="button" onclick={() => exitFocusedMode('home')}>Dock</button>
+            <a class="focused-action" href="/tools">Browse</a>
             <button class="focused-action focused-action-data" type="button" onclick={() => exitFocusedMode('data')}>Data</button>
             <button class="focused-action focused-action-close" type="button" aria-label="Close Shippie tools" onclick={() => {
               closeFocusedDrawer();
@@ -3436,13 +3437,13 @@
           </nav>
         </header>
         {#if drawerSearchActive}
-          <label class="focused-search" aria-label="Search tools">
+          <label class="focused-search" aria-label="Search Dock tools">
             <span class="focused-search-icon" aria-hidden="true">⌕</span>
             <input
               type="search"
               autocomplete="off"
               spellcheck="false"
-              placeholder="Search tools…"
+              placeholder="Search your Dock…"
               bind:value={drawerSearchQuery}
             />
             {#if drawerSearchQuery}
@@ -3519,8 +3520,13 @@
           </div>
         {:else}
           <p class="focused-search-empty">
-            Nothing matches “{drawerSearchQuery}” yet.
-            <button type="button" onclick={() => (drawerSearchQuery = '')}>Clear search</button>
+            {#if drawerSearchQuery}
+              Nothing matches “{drawerSearchQuery}” yet.
+              <button type="button" onclick={() => (drawerSearchQuery = '')}>Clear search</button>
+            {:else}
+              Nothing is running, saved, or recent yet.
+            {/if}
+            <a href="/tools">Browse tools</a>
           </p>
         {/if}
 
@@ -3635,12 +3641,12 @@
     {/if}
 
     {#if railGroups.open.length === 0 && railGroups.saved.length === 0 && railGroups.recent.length === 0}
-      <p class="rail-label">Tools</p>
+      <p class="rail-label">Dock</p>
       <p class="rail-empty">No tools yet</p>
     {/if}
 
     <nav class="rail-foot" aria-label="Dock sections">
-      <a class="foot-item" href="/tools">＋ Add tools</a>
+      <a class="foot-item" href="/tools">＋ Browse tools</a>
       <button class="foot-item" class:active={section === 'data'} onclick={() => showSection('data')}>Data</button>
       <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
       <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
@@ -3693,16 +3699,14 @@
           {:else}
               <DashboardHome
                 insights={agentInsights}
-                apps={launchVisibleApps}
                 dockGroups={railGroups}
-                {openAppIds}
                 {updateCards}
                 {meshStatus}
               {meshJoinCodeInput}
               {meshError}
                 onOpenInsight={openInsight}
                 onDismissInsight={dismissInsight}
-                onOpenApp={openApp}
+                onOpenTool={openRailTool}
                 onCloseTool={closeRailTool}
                 onRemoveSavedTool={removeSavedTool}
                 onStayOnCurrent={stayOnCurrent}
@@ -5018,7 +5022,8 @@
     font-size: 13px;
     text-align: center;
   }
-  .focused-search-empty button {
+  .focused-search-empty button,
+  .focused-search-empty a {
     margin-left: 6px;
     background: transparent;
     border: 0;

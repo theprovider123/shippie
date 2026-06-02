@@ -151,7 +151,7 @@
     return () => window.clearTimeout(timer);
   });
 
-  // First-run "Tools" label on the bottom switcher handle. The handle is a
+  // First-run "Switch" label on the bottom switcher handle. The handle is a
   // quiet grabber by design; a one-time label makes it discoverable. Shown
   // until the user opens the switcher once, then persisted off (and stays
   // quiet thereafter, per the design tuning note).
@@ -433,7 +433,7 @@
     role="presentation"
   >
     {#if toolsHintVisible && edge === 'bottom'}
-      <span class="tools-hint">Tools</span>
+      <span class="tools-hint">Switch</span>
     {/if}
   </div>
 {/if}
