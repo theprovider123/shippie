@@ -68,7 +68,7 @@ export function ShareSheet({
         </div>
         <div className="sheet-actions">
           <button className="cta" onClick={onShare}>
-            Share my bracket
+            Share my call
           </button>
           <div className="sheet-actions-row">
             <button className="ghost-btn wide" onClick={onSave}>

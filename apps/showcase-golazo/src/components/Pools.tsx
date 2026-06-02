@@ -290,7 +290,7 @@ function PoolDetail({
         <button className="cta wide" onClick={invite}>
           Invite — share my link
         </button>
-        <span className="field-label">Add a friend's bracket</span>
+        <span className="field-label">Add a friend's call</span>
         <div className="pool-form-row">
           <input
             className="field-input"

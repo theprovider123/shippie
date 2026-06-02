@@ -43,14 +43,14 @@ export function BracketView({ onChampion }: { onChampion?: () => void }) {
       <Confetti fire={fire} />
       <div className="section-head">
         <div>
-          <h2 className="section-title">Knockout</h2>
+          <h2 className="section-title">Route to the Final</h2>
           <p className="section-hint">Tap a team to send them through.</p>
         </div>
       </div>
 
       {r32Ready < 8 && (
         <div className="lock-note">
-          Finish your groups to fill the knockout draw. {r32Ready}/32 spots set.
+          Finish your groups to fill your route to the final. {r32Ready}/32 spots set.
         </div>
       )}
 

@@ -14,14 +14,13 @@ import { readShareFromHash, readSweepFromHash, type SharePayload } from "./lib/c
 import type { Sweep } from "./lib/sweeps";
 import { readChallengeFromHash, type Challenge } from "./lib/games";
 import { readDuelFromHash, type Duel } from "./lib/duel";
-import { completion } from "./lib/bracket";
 import { useStore } from "./state";
 
 export function App() {
-  const { profile, prediction } = useStore();
+  const { profile } = useStore();
   const [tab, setTab] = useState<Tab>(() => {
-    if (typeof location !== "undefined" && (readChallengeFromHash(location.hash) || readDuelFromHash(location.hash))) return "play";
-    return completion(prediction) > 0 ? "home" : "predict";
+    // Games-first: Play is the default home of the app.
+    return "play";
   });
   const [incoming, setIncoming] = useState<SharePayload | null>(() =>
     typeof location !== "undefined" ? readShareFromHash(location.hash) : null,

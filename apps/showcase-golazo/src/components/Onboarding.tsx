@@ -41,7 +41,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
           Call the <em>2026</em> World&nbsp;Cup.
         </h1>
         <p className="onboard-sub">
-          Build your bracket. Share it by link. Settle it with your mates.
+          Play, make your calls, and settle it with your mates.
         </p>
       </header>
 

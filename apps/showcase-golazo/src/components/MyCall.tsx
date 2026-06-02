@@ -63,7 +63,7 @@ export function MyCall({ onContinue }: { onContinue: () => void }) {
         </div>
       ) : (
         <div className="countdown live">
-          <span className="countdown-label">The World Cup is live</span>
+          <span className="countdown-label">It's tournament time</span>
         </div>
       )}
 
@@ -116,7 +116,7 @@ export function MyCall({ onContinue }: { onContinue: () => void }) {
 
       <div className="progress-card">
         <div className="progress-top">
-          <span>Bracket called</span>
+          <span>Your call</span>
           <strong>{pct}%</strong>
         </div>
         <div className="progress-bar">
@@ -140,7 +140,7 @@ export function MyCall({ onContinue }: { onContinue: () => void }) {
         </div>
       ) : (
         <p className="score-pending">
-          Scores light up when the group stage kicks off. Lock your call now.
+          Make your calls, then settle it with your mates.
         </p>
       )}
 

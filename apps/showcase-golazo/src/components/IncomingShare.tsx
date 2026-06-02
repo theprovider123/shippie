@@ -77,7 +77,7 @@ export function IncomingShare({
         <div className="incoming-done">
           <p>Added to <strong>{added}</strong>.</p>
           <button className="cta" onClick={() => { tap(); onClose(); }}>
-            Beat their bracket →
+            Beat their call →
           </button>
         </div>
       ) : (

@@ -83,21 +83,26 @@ describe("App smoke", () => {
     );
     mount();
 
-    // Lands on home with the user's name + bottom nav.
-    expect(container.textContent).toContain("Tester");
+    // Games-first: lands on Play (the game select) with the bottom nav.
     expect(container.querySelector(".bottom-nav")).not.toBeNull();
+    expect(container.querySelector(".game-grid")).not.toBeNull();
 
-    // Predict → group builder.
-    clickButton("Predict");
+    // Navigate by nav item (label match), which is unambiguous.
+    const nav = (label: string) => {
+      const item = [...container.querySelectorAll(".nav-item")].find(
+        (b) => (b.textContent ?? "").trim() === label,
+      ) as HTMLButtonElement | undefined;
+      if (!item) throw new Error(`nav item not found: ${label}`);
+      act(() => item.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    };
+
+    nav("Picks");
     expect(container.textContent).toContain("Group stage");
-
-    // Pools → empty-state copy.
-    clickButton("Pools");
+    nav("Mates");
     expect(container.textContent).toContain("Pools");
-
-    // Back home — Match day is now folded into the home screen (Live tab removed).
-    clickButton("My Call");
+    nav("You");
     expect(container.querySelector(".home")).not.toBeNull();
+    expect(container.textContent).toContain("Tester");
     expect(container.textContent).toContain("Match day");
   });
 

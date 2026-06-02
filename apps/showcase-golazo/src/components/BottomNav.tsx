@@ -4,21 +4,6 @@ export type Tab = "home" | "predict" | "pools" | "play";
 
 const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
   {
-    id: "home",
-    label: "My Call",
-    icon: <path d="M3 11.5 12 4l9 7.5M5.5 10v9h13v-9" />,
-  },
-  {
-    id: "predict",
-    label: "Predict",
-    icon: <path d="M4 6h6v4M4 18h6v-4M10 8h4v8h-4M14 12h6" />,
-  },
-  {
-    id: "pools",
-    label: "Pools",
-    icon: <path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5-2.9 1-5.5-4-3.9 5.5-.8z" />,
-  },
-  {
     id: "play",
     label: "Play",
     icon: (
@@ -27,6 +12,21 @@ const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
         <path d="M12 3a9 9 0 0 0 0 18M3.6 9h16.8M3.6 15h16.8M9 3.6 12 12l-3 8.4M15 3.6 12 12l3 8.4" />
       </>
     ),
+  },
+  {
+    id: "predict",
+    label: "Picks",
+    icon: <path d="M4 6h6v4M4 18h6v-4M10 8h4v8h-4M14 12h6" />,
+  },
+  {
+    id: "pools",
+    label: "Mates",
+    icon: <path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5-2.9 1-5.5-4-3.9 5.5-.8z" />,
+  },
+  {
+    id: "home",
+    label: "You",
+    icon: <path d="M3 11.5 12 4l9 7.5M5.5 10v9h13v-9" />,
   },
 ];
 
