@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
+import { drawStadium, drawBall, drawBallShadow, Trail, Particles, Shake } from "../../lib/stadium";
 
 const SHOTS = 8;
 
 /**
- * Top Bins — swipe the ball to shoot. A keeper patrols the line; aim for the top
- * corners ("top bins") for 3, anywhere else in the goal for 1. Eight shots.
- * Pure canvas + rAF, offline. Score = weighted goals.
+ * Top Bins — swipe the ball to shoot. A keeper patrols then DIVES; aim for the top
+ * corners ("top bins") for 3, anywhere else for 1. Net ripples on a goal. 8 shots.
  */
 export function TopBins({ onGameOver, target }: { onGameOver: (score: number) => void; target?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -35,28 +35,39 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
     const goalY = () => H * 0.2;
     const goalL = () => W * 0.16;
     const goalR = () => W * 0.84;
-    const keeper = { x: W / 2, w: () => (goalR() - goalL()) * 0.26, dir: 1, speed: 2.4 };
+    const barH = () => H * 0.16;
+    const keeper = { x: W / 2, dir: 1, speed: 2.2, diving: false, target: W / 2, lean: 0 };
+    const keeperW = () => (goalR() - goalL()) * 0.24;
     const spot = () => ({ x: W / 2, y: H * 0.86 });
-    let ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.05 };
+    let ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.048 };
     let drag: { x: number; y: number } | null = null;
     let aim: { x: number; y: number } | null = null;
+    let netBulge: { x: number; t: number } | null = null;
+    const trail = new Trail(9);
+    const particles = new Particles();
+    const shake = new Shake();
+    const start = performance.now();
     let raf = 0;
 
-    function resetBall() { ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.05 }; }
-
+    function resetBall() {
+      ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.048 };
+      keeper.diving = false; keeper.lean = 0; trail.clear();
+    }
     function shoot(dx: number, dy: number) {
-      if (ball.flying || dy > -10) return; // must swipe upward
-      ball.vx = dx * 0.16;
-      ball.vy = dy * 0.16;
-      ball.flying = true;
+      if (ball.flying || dy > -10) return;
+      ball.vx = dx * 0.16; ball.vy = dy * 0.16; ball.flying = true;
       hapticTap();
       shotsRef.current -= 1;
       setShots(shotsRef.current);
+      // Keeper commits a dive toward where the ball will cross — with error so it's beatable.
+      const tToGoal = Math.max(1, (ball.y - goalY()) / Math.max(1, -ball.vy));
+      const cross = ball.x + ball.vx * tToGoal;
+      keeper.target = cross + (Math.random() - 0.5) * keeperW() * 2.4;
+      keeper.diving = true;
     }
     function onDown(e: PointerEvent) {
       const r = canvas.getBoundingClientRect();
-      drag = { x: e.clientX - r.left, y: e.clientY - r.top };
-      aim = drag;
+      drag = { x: e.clientX - r.left, y: e.clientY - r.top }; aim = drag;
     }
     function onMove(e: PointerEvent) {
       if (!drag) return;
@@ -74,63 +85,95 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
     function judge() {
       const gl = goalL(), gr = goalR();
       const inGoal = ball.x > gl && ball.x < gr;
-      const kx = keeper.x, kw = keeper.w();
-      const saved = ball.x > kx - kw / 2 && ball.x < kx + kw / 2;
+      const saved = Math.abs(ball.x - keeper.x) < keeperW() / 2 + ball.r;
       if (!inGoal || saved) {
         setFlash(saved ? "SAVED!" : "MISS");
+        shake.kick(saved ? 6 : 2);
         confirmBuzz();
       } else {
         const corner = ball.x < gl + (gr - gl) * 0.2 || ball.x > gr - (gr - gl) * 0.2;
         const pts = corner ? 3 : 1;
-        scoreRef.current += pts;
-        setScore(scoreRef.current);
+        scoreRef.current += pts; setScore(scoreRef.current);
         setFlash(corner ? "TOP BINS! +3" : "GOAL +1");
+        netBulge = { x: ball.x, t: 0 };
+        particles.emit(ball.x, ball.y, "spark", corner ? 26 : 16);
+        shake.kick(corner ? 12 : 7);
         celebrate();
       }
       setTimeout(() => setFlash(""), 900);
-      if (shotsRef.current <= 0) { setTimeout(end, 900); }
+      if (shotsRef.current <= 0) setTimeout(() => { setPhase("over"); onGameOver(scoreRef.current); }, 900);
       else resetBall();
     }
-    function end() { setPhase("over"); onGameOver(scoreRef.current); }
 
-    function frame() {
-      // keeper patrol
-      keeper.x += keeper.dir * keeper.speed;
-      if (keeper.x < goalL() + keeper.w() / 2) keeper.dir = 1;
-      if (keeper.x > goalR() - keeper.w() / 2) keeper.dir = -1;
+    function frame(now: number) {
+      // keeper: patrol, or dive toward target
+      if (keeper.diving) {
+        keeper.x += (keeper.target - keeper.x) * 0.18;
+        keeper.lean += ((keeper.target > W / 2 ? 0.5 : -0.5) - keeper.lean) * 0.2;
+      } else {
+        keeper.x += keeper.dir * keeper.speed;
+        if (keeper.x < goalL() + keeperW() / 2) keeper.dir = 1;
+        if (keeper.x > goalR() - keeperW() / 2) keeper.dir = -1;
+      }
 
       if (ball.flying) {
         ball.vy += 0.12; ball.x += ball.vx; ball.y += ball.vy;
-        if (ball.y <= goalY() + ball.r) { judge(); }
+        trail.push(ball.x, ball.y);
+        if (ball.y <= goalY() + ball.r) judge();
         else if (ball.y > H + ball.r * 2 || ball.x < -50 || ball.x > W + 50) {
           setFlash("MISS"); setTimeout(() => setFlash(""), 700);
-          if (shotsRef.current <= 0) setTimeout(end, 400); else resetBall();
+          if (shotsRef.current <= 0) setTimeout(() => { setPhase("over"); onGameOver(scoreRef.current); }, 400);
+          else resetBall();
         }
       }
 
-      ctx.clearRect(0, 0, W, H);
-      const gl = goalL(), gr = goalR(), gy = goalY();
-      // net
+      const [sx, sy] = shake.offset();
+      ctx.save();
+      ctx.translate(sx, sy);
+      drawStadium(ctx, W, H, now - start, { pitchTop: 0.5 });
+
+      const gl = goalL(), gr = goalR(), gy = goalY(), bh = barH();
+      // net (with bulge if scoring)
       ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 1;
-      for (let x = gl; x <= gr; x += (gr - gl) / 12) { ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy + H * 0.16); ctx.stroke(); }
-      for (let y = gy; y <= gy + H * 0.16; y += H * 0.16 / 4) { ctx.beginPath(); ctx.moveTo(gl, y); ctx.lineTo(gr, y); ctx.stroke(); }
+      const bulge = netBulge ? Math.max(0, 1 - netBulge.t / 22) : 0;
+      for (let x = gl; x <= gr; x += (gr - gl) / 14) {
+        const push = netBulge ? bulge * 14 * Math.exp(-((x - netBulge.x) ** 2) / (2 * (W * 0.06) ** 2)) : 0;
+        ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy + bh + push); ctx.stroke();
+      }
+      for (let y = gy; y <= gy + bh; y += bh / 5) {
+        ctx.beginPath(); ctx.moveTo(gl, y); ctx.lineTo(gr, y); ctx.stroke();
+      }
+      if (netBulge) { netBulge.t++; if (netBulge.t > 22) netBulge = null; }
       // posts + bar
       ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 5; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(gl, gy + H * 0.16); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + H * 0.16); ctx.stroke();
-      // keeper
+      ctx.beginPath(); ctx.moveTo(gl, gy + bh); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + bh); ctx.stroke();
+      // keeper (diving body)
+      ctx.save();
+      ctx.translate(keeper.x, gy + bh * 0.42);
+      ctx.rotate(keeper.lean);
       ctx.fillStyle = "#16f08b";
-      const kw = keeper.w();
-      ctx.fillRect(keeper.x - kw / 2, gy + 4, kw, H * 0.07);
-      // aim guide
+      const kw = keeperW();
+      roundRect(ctx, -kw / 2, -bh * 0.32, kw, bh * 0.62, 6);
+      ctx.fill();
+      ctx.fillStyle = "#0a1f16"; // head
+      ctx.beginPath(); ctx.arc(0, -bh * 0.38, kw * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // aim guide (dotted trajectory)
       if (aim) {
         const s = spot();
-        ctx.strokeStyle = "rgba(22,240,139,0.6)"; ctx.setLineDash([6, 6]); ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(aim.x, aim.y); ctx.stroke(); ctx.setLineDash([]);
+        let vx = (aim.x - s.x) * 0.16, vy = (aim.y - s.y) * 0.16, px = s.x, py = s.y;
+        ctx.fillStyle = "rgba(22,240,139,0.55)";
+        for (let i = 0; i < 14; i++) {
+          px += vx; py += vy; vy += 0.12;
+          ctx.beginPath(); ctx.arc(px, py, 2.4, 0, Math.PI * 2); ctx.fill();
+        }
       }
       // ball
-      const g = ctx.createRadialGradient(ball.x - ball.r * 0.3, ball.y - ball.r * 0.3, ball.r * 0.2, ball.x, ball.y, ball.r);
-      g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#c9d2dc");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+      if (ball.flying) trail.draw(ctx, ball.r);
+      drawBallShadow(ctx, ball.x, H - 8, ball.r, ball.flying ? 0.6 : 0.1);
+      drawBall(ctx, ball.x, ball.y, ball.r, now / 120);
+      particles.update(); particles.draw(ctx);
+      ctx.restore();
 
       raf = requestAnimationFrame(frame);
     }
@@ -145,7 +188,7 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
     };
   }, [phase, onGameOver]);
 
-  function start() {
+  function startGame() {
     scoreRef.current = 0; shotsRef.current = SHOTS;
     setScore(0); setShots(SHOTS); setFlash(""); setPhase("play");
   }
@@ -164,7 +207,7 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
           <h3>Top Bins</h3>
           <p>Swipe the ball to shoot. Beat the keeper — top corners are worth 3. {SHOTS} shots.</p>
           {target ? <p className="game-target">Beat {target} to win the challenge</p> : null}
-          <button className="cta wide" onClick={start}>Kick off</button>
+          <button className="cta wide" onClick={startGame}>Kick off</button>
         </div>
       )}
       {phase === "over" && (
@@ -172,9 +215,19 @@ export function TopBins({ onGameOver, target }: { onGameOver: (score: number) =>
           <span className="game-emoji">{target && score > target ? "🏆" : "⚽️"}</span>
           <h3>{score} goals</h3>
           <p>{target ? (score > target ? `You beat ${target}!` : `${target} to beat`) : score >= 12 ? "Worldie." : "Have another go."}</p>
-          <button className="cta wide" onClick={start}>Again</button>
+          <button className="cta wide" onClick={startGame}>Again</button>
         </div>
       )}
     </div>
   );
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
