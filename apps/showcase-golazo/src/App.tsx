@@ -5,6 +5,7 @@ import { GroupStage } from "./components/GroupStage";
 import { BracketView } from "./components/BracketView";
 import { Pools } from "./components/Pools";
 import { Games } from "./components/Games";
+import { DevPanel } from "./components/DevPanel";
 import { Live } from "./components/Live";
 import { IncomingShare } from "./components/IncomingShare";
 import { IncomingSweep } from "./components/IncomingSweep";
@@ -30,6 +31,9 @@ export function App() {
   const [challenge, setChallenge] = useState<Challenge | null>(() =>
     typeof location !== "undefined" ? readChallengeFromHash(location.hash) : null,
   );
+  const [demo, setDemo] = useState(() =>
+    typeof location !== "undefined" ? /[#&]demo/.test(location.hash) : false,
+  );
 
   // Capture shared brackets + sweepstake draws from the URL hash — directly
   // (standalone /run) and via the container's posted parent hash (embedded).
@@ -41,6 +45,7 @@ export function App() {
       if (s) setIncomingSweep(s);
       const c = readChallengeFromHash(hash);
       if (c) { setChallenge(c); setTab("play"); }
+      if (/[#&]demo/.test(hash)) setDemo(true);
     };
     const fromHash = () => ingest(location.hash);
     const onMsg = (e: MessageEvent) => {
@@ -96,6 +101,7 @@ export function App() {
       {!incoming && incomingSweep && profile && (
         <IncomingSweep sweep={incomingSweep} onClose={dismissSweep} />
       )}
+      {demo && profile && <DevPanel onClose={() => setDemo(false)} />}
     </div>
   );
 }

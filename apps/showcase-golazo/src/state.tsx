@@ -13,6 +13,7 @@ import * as store from "./lib/storage";
 import type { SharePayload } from "./lib/codec";
 import { makeSeed, type Sweep, type SweepMode, type SweepScope } from "./lib/sweeps";
 import { addLocalScore, type GameId, type ScoreEntry } from "./lib/games";
+import { simulateTournament } from "./lib/sim";
 
 export interface SweepOpts {
   mode?: SweepMode;
@@ -49,6 +50,7 @@ interface Store {
   setGroupResult: (letter: GroupLetter, ids: string[]) => void;
   setKnockoutResult: (slotId: string, teamId: string) => void;
   clearResults: () => void;
+  simulateResults: () => void;
 
   createSweep: (name: string, members: string[], opts?: SweepOpts) => Sweep;
   importSweep: (sweep: Sweep) => Sweep;
@@ -225,6 +227,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       clearResults() {
         setResults({ groups: {}, knockout: {} });
+      },
+
+      simulateResults() {
+        setResults(simulateTournament());
       },
 
       createSweep(name, members, opts) {
