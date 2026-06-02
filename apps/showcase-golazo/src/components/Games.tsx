@@ -3,6 +3,9 @@ import { KeepyUppy } from "./games/KeepyUppy";
 import { TopBins } from "./games/TopBins";
 import { FreeKick } from "./games/FreeKick";
 import { PenaltyDuel } from "./games/PenaltyDuel";
+import { PenaltyRoulette } from "./games/PenaltyRoulette";
+import { WhoAreYa } from "./games/WhoAreYa";
+import { GuessNation } from "./games/GuessNation";
 import {
   GAMES,
   gameMeta,
@@ -18,7 +21,12 @@ import { fetchGlobal, submitGlobal, isGlobalEnabled } from "../lib/leaderboard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
 
-type Sel = GameId | "penalty" | null;
+type Sel = GameId | "penalty" | "roulette" | "trivia" | "nation" | null;
+const PUB: { id: "roulette" | "trivia" | "nation"; emoji: string; name: string; how: string }[] = [
+  { id: "roulette", emoji: "🎯", name: "Penalty Roulette", how: "Pass the phone — get saved, you're out" },
+  { id: "trivia", emoji: "🧠", name: "Who Are Ya?", how: "World Cup trivia, no Googling" },
+  { id: "nation", emoji: "🌍", name: "Guess the Nation", how: "See the flag, name the country" },
+];
 
 /** Play surface: pick a game, post scores, see the worldwide board. */
 export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?: Duel | null }) {
@@ -29,7 +37,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   const [copied, setCopied] = useState(false);
   const [diff, setDiff] = useState<"casual" | "pro">("casual");
 
-  const soloGame = sel && sel !== "penalty" ? sel : null;
+  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" ? sel : null;
 
   useEffect(() => {
     if (!soloGame) return;
@@ -77,6 +85,29 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
             <span className="game-card-best">You vs a mate</span>
           </button>
         </div>
+
+        <span className="field-label" style={{ marginTop: 20 }}>🍺 Pub games — pass the phone</span>
+        <div className="game-grid">
+          {PUB.map((g) => (
+            <button key={g.id} className="game-card pub" onClick={() => { tap(); setSel(g.id); }}>
+              <span className="game-card-emoji">{g.emoji}</span>
+              <span className="game-card-name">{g.name}</span>
+              <span className="game-card-how">{g.how}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Pub games (full-screen, local, no leaderboard) ──
+  if (sel === "roulette" || sel === "trivia" || sel === "nation") {
+    return (
+      <div className="games">
+        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+        {sel === "roulette" && <PenaltyRoulette />}
+        {sel === "trivia" && <WhoAreYa />}
+        {sel === "nation" && <GuessNation />}
       </div>
     );
   }
