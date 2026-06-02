@@ -64,8 +64,8 @@
     onLeaveMeshRoom,
     onMeshJoinCodeChange,
   }: Props = $props();
-  function sectionRuntimeState(section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
-    return section === 'open' ? 'live' : 'idle';
+  function sectionRuntimeState(_section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
+    return 'idle';
   }
 
   function railToolToTile(tool: RailTool): ToolTileApp {
@@ -82,8 +82,8 @@
   }
 
   function captionFor(label: string, category: string | undefined): string {
-    if (label === 'Running') return category ?? 'Running';
-    if (label === 'Saved') return 'Saved to Dock';
+    if (label === 'Running') return 'Open now';
+    if (label === 'Saved') return 'Saved';
     if (label === 'Recent') return 'Recent';
     return category ?? 'Tool';
   }
@@ -94,9 +94,9 @@
 {/if}
 <div class="section-head">
   <div class="section-title-row">
-    <h2>Dock</h2>
+    <h1>Dock</h1>
   </div>
-  <p>Running, saved, and recent tools stay close. Use Tools to search the wider catalog.</p>
+  <p>Running, recent, and saved tools stay close. Use Tools when you want to find something new.</p>
 </div>
 {#if updateCards.length > 0}
   <details class="updates" open>
@@ -220,11 +220,11 @@
         <h3>{label}</h3>
         <p>
           {#if label === 'Running'}
-            Still warm in the background.
+            Still open in the background.
           {:else if label === 'Saved'}
-            In your Dock and kept ready offline.
+            Ready here and offline.
           {:else}
-            Recently opened on this device.
+            Opened on this device.
           {/if}
         </p>
       </div>
@@ -271,7 +271,7 @@
     justify-content: space-between;
     gap: var(--space-md);
   }
-  .section-head h2 {
+  .section-head h1 {
     min-width: 0;
     margin: 0;
     font-size: 1.08rem;
@@ -311,20 +311,22 @@
   .dock-row-list {
     --dock-tool-row-height: 64px;
     display: grid;
-    border: 1px solid var(--border-light);
-    background: var(--border-light);
-    gap: 1px;
+    gap: 6px;
   }
   .dock-tool-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     min-height: var(--dock-tool-row-height);
     background: var(--surface);
+    border: 1px solid var(--border-light);
   }
   .dock-tool-row :global(.tile-drawer) {
     min-height: var(--dock-tool-row-height);
     border: 0;
     background: transparent;
+  }
+  .dock-tool-row :global(.chip) {
+    display: none;
   }
   .dock-row-close {
     display: grid;
@@ -461,7 +463,7 @@
     margin: 0.5rem 0 0;
   }
   @media (min-width: 641px) {
-    .section-head h2 {
+    .section-head h1 {
       position: fixed;
       width: 1px;
       height: 1px;
@@ -484,7 +486,7 @@
     .section-title-row {
       gap: var(--space-sm);
     }
-    .section-title-row h2 {
+    .section-title-row h1 {
       font-size: clamp(2.05rem, 10vw, 3rem);
       line-height: 0.96;
     }

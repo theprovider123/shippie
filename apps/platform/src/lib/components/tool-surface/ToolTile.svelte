@@ -62,6 +62,8 @@
     onInspect?: (app: ToolTileApp) => void;
     /** Card-density-only; drawer/dock hide the copy-link affordance. */
     onCopyLink?: (app: ToolTileApp) => void;
+    /** Card-density-only; Tools uses open/save/info, not share. */
+    showCopyAction?: boolean;
     /**
      * Suppress the built-in save/copy/inspect column. Use when the
      * parent surface needs its own action set (e.g. the
@@ -84,6 +86,7 @@
     onTogglePin,
     onInspect,
     onCopyLink,
+    showCopyAction = true,
     noActions = false,
     captionLabel = '',
   }: Props = $props();
@@ -448,17 +451,19 @@
         >
           {saveGlyph}
         </button>
-        <button
-          type="button"
-          class="icon-btn"
-          class:copied={copyState === 'copied'}
-          class:errored={copyState === 'error'}
-          title={copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
-          aria-label={`Copy link for ${safeName}`}
-          onclick={handleCopyLink}
-        >
-          {copyState === 'copied' ? '✓' : copyState === 'error' ? '!' : '↗'}
-        </button>
+        {#if showCopyAction}
+          <button
+            type="button"
+            class="icon-btn copy-action"
+            class:copied={copyState === 'copied'}
+            class:errored={copyState === 'error'}
+            title={copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
+            aria-label={`Copy link for ${safeName}`}
+            onclick={handleCopyLink}
+          >
+            {copyState === 'copied' ? '✓' : copyState === 'error' ? '!' : '↗'}
+          </button>
+        {/if}
         {#if onInspect}
           <button
             type="button"
@@ -953,9 +958,16 @@
       white-space: normal;
     }
     .tile-card .tile-eyebrow,
-    .tile-card .tile-blurb,
     .tile-card .tile-badges {
       display: none;
+    }
+    .tile-card .tile-blurb {
+      display: -webkit-box;
+      margin-top: 3px;
+      font-size: 0.9rem;
+      line-height: 1.35;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
     }
     .tile-card .tile-meta {
       margin-top: 2px;
@@ -965,7 +977,7 @@
       align-self: center;
     }
     .tile-card .tile-body { align-content: center; }
-    .tile-card .tile-actions .icon-btn:nth-child(2) {
+    .tile-card .tile-actions .copy-action {
       display: none;
     }
     .tile-card .icon-btn {

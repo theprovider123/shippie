@@ -35,6 +35,7 @@ const LAUNCHER_FEATURED_SLUGS_BY_PHASE: Record<LauncherPhase, readonly string[]>
   prelaunch: PUBLIC_FLAGSHIP_SLUGS,
   'world-cup': PUBLIC_FLAGSHIP_SLUGS,
 };
+const curatedCopyBySlug = new Map(curatedApps.map((app) => [app.slug, app.description]));
 
 /**
  * Build the set of canonical slugs that should appear on launcher
@@ -125,9 +126,14 @@ function mergeWithBundledApps(
   phase: LauncherPhase,
 ) {
   const visibleRows = launcherVisible(rows, phase);
-  const seen = new Set(visibleRows.map((app) => app.slug));
+  const hydratedRows = visibleRows.map((app) => {
+    const curatedCopy = curatedCopyBySlug.get(app.slug);
+    if (!curatedCopy || app.tagline || app.description) return app;
+    return { ...app, tagline: curatedCopy, description: curatedCopy };
+  });
+  const seen = new Set(hydratedRows.map((app) => app.slug));
   const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter).apps.filter((app) => !seen.has(app.slug));
-  return [...visibleRows, ...fallback];
+  return [...hydratedRows, ...fallback];
 }
 
 export const load: PageServerLoad = async ({ platform, url, depends, locals, setHeaders }) => {

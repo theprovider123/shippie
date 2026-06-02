@@ -53,7 +53,7 @@
       offlineStatus?.state === 'downloading' ||
       offlineStatus?.state === 'verifying',
   );
-  const isSaved = $derived(Boolean(app && isOffline));
+  const isSaved = $derived(Boolean(app && (pinned || isOffline)));
   const connectionBadges = $derived(connectionBadgesFromKind(app?.kind));
   const offlineLabel = $derived.by(() => {
     if (!app || !offlineHealth) return '';

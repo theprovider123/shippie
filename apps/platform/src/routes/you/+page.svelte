@@ -92,10 +92,10 @@
 
 <div class="you-page">
   <header class="you-head wrap">
-    <p class="eyebrow">You</p>
+    <p class="eyebrow">Settings</p>
     <div class="head-row">
       <div>
-        <h1>Settings</h1>
+        <h1>You</h1>
         <p class="lede">Account, local data, offline storage, and builder tools. Your apps live in Dock and Tools.</p>
       </div>
       <a class="home-link" href="/dock">Dock →</a>
@@ -295,8 +295,8 @@
 
   h1 {
     font-family: var(--font-heading);
-    font-size: clamp(2.25rem, 8vw, 4.25rem);
-    line-height: 0.96;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1;
     letter-spacing: 0;
   }
 
@@ -569,6 +569,7 @@
 
     h1 {
       font-size: clamp(2rem, 12vw, 2.7rem);
+      line-height: 1;
     }
 
     .lede {

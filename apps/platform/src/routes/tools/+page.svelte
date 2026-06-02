@@ -118,8 +118,8 @@
     return qs ? `/tools?${qs}` : '/tools';
   }
 
-  function detailsHref(slug: string): string {
-    return `/apps/${encodeURIComponent(slug)}`;
+  function launchHref(slug: string): string {
+    return `/run/${encodeURIComponent(slug)}`;
   }
 </script>
 
@@ -134,20 +134,10 @@
   <header class="head wrap">
     <div class="head-grid">
       <div class="head-copy">
-        <p class="eyebrow hero-eyebrow">
-          <img
-            src="/__shippie-pwa/icon.svg"
-            alt=""
-            width="18"
-            height="18"
-            class="hero-mark"
-            aria-hidden="true"
-          />
-          <span>Browse tools</span>
-        </p>
+        <p class="eyebrow">Browse</p>
         <h1 class="title">Tools</h1>
         <p class="lede">
-          Search the catalogue. View details or save tools to Dock.
+          Browse, open, and save local tools. Dock is for launching what you already use.
         </p>
       </div>
       <div class="head-tools">
@@ -218,11 +208,12 @@
               <ToolTile
                 app={launcherAppToToolTile(app)}
                 density="card"
-                href={detailsHref(app.slug)}
-                intent="details"
+                href={launchHref(app.slug)}
+                intent="launch"
                 pinned={savedSet.has(app.slug)}
                 onInspect={() => inspectApp(app)}
                 onTogglePin={toggleSavedApp}
+                showCopyAction={false}
               />
             </li>
           {/each}
@@ -245,11 +236,12 @@
                   <ToolTile
                     app={launcherAppToToolTile(app)}
                     density="card"
-                    href={detailsHref(app.slug)}
-                    intent="details"
+                    href={launchHref(app.slug)}
+                    intent="launch"
                     pinned={savedSet.has(app.slug)}
                     onInspect={() => inspectApp(app)}
                     onTogglePin={toggleSavedApp}
+                    showCopyAction={false}
                   />
                 </li>
               {/each}
@@ -316,22 +308,12 @@
     color: var(--text-light);
     margin: 0 0 0.55rem;
   }
-  .hero-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-  .hero-mark {
-    width: 18px;
-    height: 18px;
-    object-fit: contain;
-  }
   .head-copy {
     max-width: 36rem;
   }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(1.95rem, 3vw, 2.8rem);
+    font-size: clamp(2rem, 4vw, 3rem);
     letter-spacing: 0;
     line-height: 1;
     margin: 0;
@@ -491,17 +473,13 @@
     .head-tools {
       gap: 8px;
     }
-    .hero-eyebrow {
-      display: none;
-    }
     .lede {
-      display: none;
       margin-top: 0.75rem;
-      font-size: 1rem;
+      font-size: 0.95rem;
       line-height: 1.45;
     }
     .title {
-      font-size: clamp(2rem, 10vw, 2.35rem);
+      font-size: clamp(2rem, 10vw, 2.7rem);
       line-height: 1;
     }
     .results {
