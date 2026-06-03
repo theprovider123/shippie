@@ -20,10 +20,10 @@
   );
 </script>
 
-<svelte:head><title>Feedback · Dashboard</title></svelte:head>
+<svelte:head><title>Feedback · Maker</title></svelte:head>
 
 <header>
-  <p class="eyebrow"><a href="/dashboard">Dashboard</a> · feedback</p>
+  <p class="eyebrow"><a href="/maker">Maker</a> · feedback</p>
   <h1>Feedback inbox</h1>
   <p class="lede">{data.myApps.length} apps · {data.items.length} items</p>
   <div class="status-summary" aria-label="Status breakdown">

@@ -11,7 +11,7 @@
 
 <div class="admin-shell">
   <aside class="sidebar">
-    <a class="brand" href="/">shippie</a>
+    <a class="brand" href="/dock">shippie</a>
     <p class="badge">admin</p>
     <p class="user">{data.admin.displayName ?? data.admin.username ?? data.admin.email}</p>
 
@@ -25,7 +25,7 @@
       <a href="/admin/profile" class:active={$page.url.pathname.startsWith('/admin/profile')}>Builder profile</a>
     </nav>
 
-    <a class="back" href="/dashboard">← Back to dashboard</a>
+    <a class="back" href="/maker">← Back to Maker</a>
   </aside>
 
   <main>
@@ -96,6 +96,47 @@
 
   @media (max-width: 640px) {
     .admin-shell { grid-template-columns: 1fr; }
-    main { padding: 1.5rem; }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding: 0.85rem 1rem;
+      border-right: 0;
+      border-bottom: 1px solid var(--border-light, #2A251E);
+      background: var(--bg, #14120F);
+    }
+    .brand,
+    .badge,
+    .user {
+      margin: 0;
+    }
+    nav {
+      flex-direction: row;
+      gap: 0.4rem;
+      overflow-x: auto;
+      margin: 0 -1rem;
+      padding: 0 1rem;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    nav::-webkit-scrollbar {
+      display: none;
+    }
+    nav a {
+      flex: 0 0 auto;
+      min-height: var(--touch-min, 44px);
+      display: inline-flex;
+      align-items: center;
+      padding: 0 0.85rem;
+      border: 1px solid var(--border-light, #2A251E);
+      white-space: nowrap;
+    }
+    .back {
+      min-height: var(--touch-min, 44px);
+      display: inline-flex;
+      align-items: center;
+      margin-top: 0;
+    }
+    main { padding: 1rem; }
   }
 </style>

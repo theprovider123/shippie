@@ -28,6 +28,7 @@ const DEFAULT_COLOURS = ['#E84A2D', '#F4B860', '#7FB269', '#3F8AA8', '#7E5B96', 
 export function Confetti({ trigger, colours = DEFAULT_COLOURS, count = 80, origin }: ConfettiProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fxRef = useRef<Particles | null>(null);
+  const hasSeenTriggerRef = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -49,6 +50,10 @@ export function Confetti({ trigger, colours = DEFAULT_COLOURS, count = 80, origi
     const fx = fxRef.current;
     const canvas = canvasRef.current;
     if (!fx || !canvas) return;
+    if (!hasSeenTriggerRef.current) {
+      hasSeenTriggerRef.current = true;
+      return;
+    }
     fx.emit({
       x: origin?.x ?? canvas.clientWidth / 2,
       y: origin?.y ?? 0,

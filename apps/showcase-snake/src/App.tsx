@@ -64,8 +64,6 @@ function loadStored(): Stored {
 }
 function saveStored(s: Stored) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {/**/} }
 
-const DPAD_FADE_AFTER_HOPS = 8;
-
 export function App() {
   const [mode, setMode] = useState<Mode>('classic');
   const [world, setWorld] = useState<World>(() => createWorld('classic'));
@@ -73,7 +71,6 @@ export function App() {
   const [muted, setMutedState] = useState(() => isMuted());
   const [armed, setArmed] = useState(false);
   const [, force] = useState(0);
-  const [hopCount, setHopCount] = useState(0);
   const [resultRecorded, setResultRecorded] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
   const lastFrameRef = useRef(performance.now());
@@ -88,7 +85,6 @@ export function App() {
     lastFrameRef.current = performance.now();
     lastStepAtRef.current = 0;
     setArmed(false);
-    setHopCount(0);
     setResultRecorded(false);
   }, []);
 
@@ -126,7 +122,6 @@ export function App() {
     setArmed(true);
     haptic('tap');
     sfx.play('tap', { volume: 0.3, pitch: 1.1 });
-    setHopCount((n) => n + 1);
   }, [world]);
 
   // Game loop. tickWorld advances time; we commit a step whenever
@@ -204,7 +199,6 @@ export function App() {
     else hopOrSetDir(dy > 0 ? 'S' : 'N');
   };
 
-  const dpadVisible = hopCount < DPAD_FADE_AFTER_HOPS;
   const speedPct = Math.round(((BASE_STEP_MS - stepIntervalMs(world)) / BASE_STEP_MS) * 100);
 
   const shareResult = async () => {
@@ -289,24 +283,22 @@ export function App() {
         </div>
       </div>
 
-      {dpadVisible ? (
-        <section className="dpad-row" aria-hidden>
-          <button type="button" className="dpad-btn"
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('W'); }}
-          >◀</button>
-          <div className="dpad-stack">
-            <button type="button" className="dpad-btn"
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('N'); }}
-            >▲</button>
-            <button type="button" className="dpad-btn"
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('S'); }}
-            >▼</button>
-          </div>
-          <button type="button" className="dpad-btn"
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('E'); }}
-          >▶</button>
-        </section>
-      ) : null}
+      <section className="dpad-row" role="group" aria-label="Move snake">
+        <button type="button" className="dpad-btn" aria-label="Move left"
+          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('W'); }}
+        >◀</button>
+        <div className="dpad-stack">
+          <button type="button" className="dpad-btn" aria-label="Move up"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('N'); }}
+          >▲</button>
+          <button type="button" className="dpad-btn" aria-label="Move down"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('S'); }}
+          >▼</button>
+        </div>
+        <button type="button" className="dpad-btn" aria-label="Move right"
+          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hopOrSetDir('E'); }}
+        >▶</button>
+      </section>
 
       {world.state === 'over' ? (
         <section className="overlay" aria-live="polite">

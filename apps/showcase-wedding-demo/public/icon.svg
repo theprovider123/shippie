@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Charlotte and James wedding guide">
+  <rect width="512" height="512" fill="#FAF7F2"/>
+  <path d="M256 390c-46-58-110-105-110-175 0-38 29-69 67-69 23 0 43 11 56 29 13-18 33-29 56-29 38 0 67 31 67 69 0 70-64 117-110 175l-13 17-13-17Z" fill="none" stroke="#C4956A" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M252 124c-19-30-21-60-6-90 22 21 30 48 21 82m19 21c27-13 55-12 84 5-27 20-55 23-84 11m-43 0c-29 12-57 9-84-11 29-17 57-18 84-5" fill="none" stroke="#C4956A" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

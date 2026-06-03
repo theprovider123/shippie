@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Locanda Soho menu">
+  <rect width="512" height="512" fill="#FEFCF8"/>
+  <rect x="74" y="56" width="364" height="400" rx="8" fill="none" stroke="#8B1A1A" stroke-width="18"/>
+  <path d="M143 164h226M143 238h226M143 312h226" stroke="#1C1812" stroke-width="14" stroke-linecap="round"/>
+  <path d="M256 96c34 0 62 18 62 41 0 12-8 23-20 30l20 33H194l20-33c-12-7-20-18-20-30 0-23 28-41 62-41Z" fill="#8B1A1A"/>
+  <path d="M182 390h144" stroke="#8B1A1A" stroke-width="14" stroke-linecap="round"/>
+</svg>

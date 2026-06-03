@@ -1,0 +1,13 @@
+{
+  "name": "Charlotte & James — 14th June 2026",
+  "short_name": "C & J",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#C4956A",
+  "background_color": "#FAF7F2",
+  "icons": [
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ]
+}

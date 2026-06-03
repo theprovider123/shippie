@@ -165,6 +165,26 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // future match-day surfaces. No curated iframe app consumes them yet.
   'world-cup-bracket',
   'share-card',
+  // Corporate demo — feedback is emitted for shell/admin summaries and
+  // maker reporting, not a curated iframe-to-iframe consumer.
+  'event.feedback',
+  // Corporate demo — session attendance is also a maker/reporting signal;
+  // no curated iframe app consumes it directly.
+  'event.session.attendance',
+  // Private demo apps — these emit local guest/customer/operator events
+  // for shell summaries and maker/admin reporting. They are not intended
+  // as curated iframe-to-iframe provider streams yet.
+  'market.checked-in',
+  'market.vendor-viewed',
+  'market.event-reserved',
+  'race.finished',
+  'race.cutoff-risk',
+  'race.gps-fix',
+  'restaurant-order',
+  'restaurant-feedback',
+  'wedding.song-requested',
+  'wedding.table-searched',
+  'wedding.memory-uploaded',
 ]);
 
 /**

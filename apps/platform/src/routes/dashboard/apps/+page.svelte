@@ -1,16 +1,17 @@
 <script lang="ts">
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
+  const demo = $derived(data.demoDiagnostics);
 </script>
 
-<svelte:head><title>Your apps · Shippie</title></svelte:head>
+<svelte:head><title>Maker apps · Shippie</title></svelte:head>
 
 <header class="header">
-  <p class="eyebrow"><a href="/dashboard">Dashboard</a> · apps</p>
-  <h1>Your apps</h1>
+  <p class="eyebrow"><a href="/maker">Maker</a> · apps</p>
+  <h1>Apps</h1>
   <p class="lede">
     {#if data.apps.length === 0}
-      You haven't shipped anything yet.
+      No database apps are owned by this signed-in account yet.
     {:else}
       {data.apps.length} {data.apps.length === 1 ? 'app' : 'apps'}
     {/if}
@@ -20,10 +21,26 @@
 
 {#if data.apps.length === 0}
   <div class="empty">
-    <p class="emoji">🍳</p>
-    <h2>Ship your first app</h2>
-    <p>Upload a static zip — your app is live at <code>{'{slug}'}.shippie.app</code> in under a minute.</p>
-    <a class="btn btn--primary" href="/new">Get started</a>
+    <p class="empty-mark">MI</p>
+    <h2>No owned apps yet</h2>
+    <p>
+      Maker lists DB apps where <code>maker_id</code> equals this account.
+      Signed in as <strong>{data.user.email}</strong>.
+    </p>
+    {#if demo.rows.length > 0}
+      <p>
+        Demo rows found: {demo.rows.map((row) => row.slug).join(', ')}.
+        {demo.ownedSlugs.length === 0 ? 'None are owned by this account.' : `Owned here: ${demo.ownedSlugs.join(', ')}.`}
+      </p>
+    {:else}
+      <p>No seeded demo rows were found in this database.</p>
+    {/if}
+    <div class="empty-actions">
+      <a class="btn btn--primary" href="/new">Ship an app</a>
+      {#if data.user.isAdmin}
+        <a class="empty-link" href="/admin">Inspect Admin</a>
+      {/if}
+    </div>
   </div>
 {:else}
   <div class="table-wrap">
@@ -51,7 +68,7 @@
             <td><span class="vis">{app.visibilityScope}</span></td>
             <td class="time">{formatRelative(app.lastDeployedAt)}</td>
             <td class="right">
-              <a href={`/dashboard/apps/${app.slug}`}>Open →</a>
+              <a href={`/maker/apps/${app.slug}`}>Open →</a>
             </td>
           </tr>
         {/each}
@@ -84,8 +101,43 @@
   .lede { color: var(--text-muted-warm); margin: 0; grid-column: 1; }
   .ship { background: var(--sunset); color: white; text-decoration: none; padding: 0 1.5rem; height: 44px; display: inline-flex; align-items: center; border-radius: 0; font-weight: 600; font-size: 14px; }
   .empty { text-align: center; padding: 4rem 2rem; border: 1px dashed var(--border-paper-mid); border-radius: 0; }
-  .emoji { font-size: 48px; margin: 0; }
+  .empty-mark {
+    width: 48px;
+    height: 48px;
+    display: inline-grid;
+    place-items: center;
+    margin: 0 auto;
+    background: var(--sunset);
+    color: white;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 700;
+  }
   .empty h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.75rem; margin: 0.5rem 0; }
+  .empty p {
+    max-width: 42rem;
+    margin-left: auto;
+    margin-right: auto;
+    color: var(--text-muted-warm);
+    line-height: 1.5;
+  }
+  .empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.65rem;
+    margin-top: 1rem;
+  }
+  .empty-link {
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    border: 1px solid var(--paper-cream);
+    color: var(--sunset);
+    text-decoration: none;
+    font-weight: 700;
+  }
   /* "Get started" uses canonical .btn .btn--primary from tokens.css. */
   .table-wrap { border: 1px solid var(--paper-cream); border-radius: 0; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }

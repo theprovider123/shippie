@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Highbury Market Guide">
+  <rect width="512" height="512" rx="76" fill="#F7F3EE"/>
+  <path d="M116 220h280l-34-94H150z" fill="#E8603C"/>
+  <path d="M150 126h212l34 94H116z" fill="#F49B7B" opacity=".28"/>
+  <path d="M134 220h232v190H134z" fill="#FFFDF8"/>
+  <path d="M152 410h212" stroke="#2A1F14" stroke-width="18" stroke-linecap="round"/>
+  <path d="M170 250h80v64h-80z" fill="#DCE4D0"/>
+  <path d="M280 250h62v64h-62z" fill="#F0C1A7"/>
+  <path d="M164 346h188" stroke="#5E7B5C" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="196" cy="346" r="14" fill="#5E7B5C"/>
+  <circle cx="256" cy="346" r="14" fill="#C4783C"/>
+  <circle cx="316" cy="346" r="14" fill="#E8603C"/>
+</svg>

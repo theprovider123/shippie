@@ -1,0 +1,67 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "version": 1,
+  "type": "app",
+  "name": "corporate-demo",
+  "slug": "corporate-demo",
+  "display_name": "Apex Leadership Conference 2026",
+  "description": "Conference guide. No login. Works offline.",
+  "tagline": "Private corporate event guide for senior leaders.",
+  "category": "tools",
+  "icon": "/icon.svg",
+  "theme_color": "#E8603C",
+  "background_color": "#0F0F0F",
+  "visibility": "private",
+  "owner": "devante@urthly.digital",
+  "shareableLink": true,
+  "offline": true,
+  "display_mode": "standalone",
+  "orientation": "portrait",
+  "permissions": {
+    "auth": false,
+    "storage": "rw",
+    "files": false,
+    "analytics": false,
+    "external_network": false
+  },
+  "requested_permissions": ["haptics"],
+  "intents": {
+    "provides": ["event.session.attendance", "event.feedback"],
+    "consumes": []
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["conference-agenda", "attendee-profile", "feedback"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "apex.attendee.name",
+        "apex.attendee.dietary",
+        "apex.qa",
+        "apex.poll.vote",
+        "apex.feedback",
+        "apex.awards.seen",
+        "my-streams"
+      ],
+      "prefixes": ["apex."]
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "tools",
+    "tier": "private-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-corporate-demo",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "corporate-demo",
+    "schema": "corporate-demo.v1"
+  },
+  "entry": "index.html"
+}

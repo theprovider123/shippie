@@ -1,0 +1,43 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "type": "app",
+  "name": "Locanda Soho - Menu",
+  "slug": "restaurant-demo",
+  "display_name": "Locanda Soho — Menu",
+  "description": "Digital menu. No download. Works offline.",
+  "version": 1,
+  "visibility": "private",
+  "owner": "devante@urthly.digital",
+  "shareableLink": true,
+  "offline": true,
+  "permissions": {
+    "auth": false,
+    "storage": "rw",
+    "files": false,
+    "analytics": false,
+    "external_network": false
+  },
+  "requested_permissions": ["haptics"],
+  "entry": "index.html",
+  "icon": "/icon.svg",
+  "theme_color": "#8B1A1A",
+  "background_color": "#FEFCF8",
+  "display_mode": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": ["restaurant-order", "restaurant-feedback"],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "food-drink",
+    "tier": "private-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-restaurant-demo",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "restaurant-demo",
+    "schema": "restaurant-demo.v1"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Docklands",
+  "short_name": "Docklands",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0B2228",
+  "background_color": "#06181C",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

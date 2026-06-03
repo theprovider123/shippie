@@ -1,0 +1,20 @@
+{
+  "name": "Highbury Market Guide",
+  "short_name": "Highbury",
+  "description": "A weekly community market guide for stalls, events, visitor info, and digital loyalty stamps.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F3EE",
+  "theme_color": "#E8603C",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["local", "food", "utilities"]
+}

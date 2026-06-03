@@ -1,0 +1,45 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "type": "app",
+  "version": 1,
+  "name": "Docklands",
+  "slug": "docklands",
+  "description": "Build a dock maze, defend the Beacon, and see how many Tide rounds you survive.",
+  "icon": "/icon.svg",
+  "theme_color": "#0B2228",
+  "background_color": "#06181C",
+  "visibility": "private",
+  "display_mode": "standalone",
+  "orientation": "portrait",
+  "lifecycle": "manual",
+  "owner": "devante@urthly.digital",
+  "offline": true,
+  "entry": "index.html",
+  "permissions": {
+    "auth": false,
+    "storage": "rw",
+    "files": false,
+    "analytics": false,
+    "external_network": false
+  },
+  "intents": {
+    "provides": [
+      "game.completed",
+      "wave.cleared"
+    ],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "games",
+    "tier": "private-flagship",
+    "subcategory": "strategy"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-docklands",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "docklands",
+    "schema": "docklands.v1"
+  }
+}

@@ -6,7 +6,7 @@
 
 <header class="header">
   <p class="eyebrow">
-    <a href="/dashboard">Dashboard</a> · <a href="/dashboard/apps">apps</a> · {data.app.slug}
+    <a href="/maker">Maker</a> · <a href="/maker/apps">apps</a> · {data.app.slug}
   </p>
   <div class="title">
     <span class="swatch" style:background={data.app.themeColor}></span>
@@ -14,12 +14,12 @@
   </div>
   <p class="lede">{data.app.tagline ?? data.app.slug + '.shippie.app'}</p>
   <nav class="tabs" aria-label="App sections">
-    <a href={`/dashboard/apps/${data.app.slug}`} class:active={$page.url.pathname === `/dashboard/apps/${data.app.slug}`}>Overview</a>
-    <a href={`/dashboard/apps/${data.app.slug}/feedback`} class:active={$page.url.pathname.endsWith('/feedback')}>Feedback</a>
-    <a href={`/dashboard/apps/${data.app.slug}/analytics`} class:active={$page.url.pathname.endsWith('/analytics')}>Analytics</a>
-    <a href={`/dashboard/apps/${data.app.slug}/access`} class:active={$page.url.pathname.endsWith('/access')}>Access</a>
-    <a href={`/dashboard/apps/${data.app.slug}/profile`} class:active={$page.url.pathname.endsWith('/profile')}>Profile</a>
-    <a href={`/dashboard/apps/${data.app.slug}/proof`} class:active={$page.url.pathname.endsWith('/proof')}>Proof</a>
+    <a href={`/maker/apps/${data.app.slug}`} class:active={$page.url.pathname === `/dashboard/apps/${data.app.slug}` || $page.url.pathname === `/maker/apps/${data.app.slug}`}>Overview</a>
+    <a href={`/maker/apps/${data.app.slug}/feedback`} class:active={$page.url.pathname.endsWith('/feedback')}>Feedback</a>
+    <a href={`/maker/apps/${data.app.slug}/analytics`} class:active={$page.url.pathname.endsWith('/analytics')}>Analytics</a>
+    <a href={`/maker/apps/${data.app.slug}/access`} class:active={$page.url.pathname.endsWith('/access')}>Access</a>
+    <a href={`/maker/apps/${data.app.slug}/profile`} class:active={$page.url.pathname.endsWith('/profile')}>Profile</a>
+    <a href={`/maker/apps/${data.app.slug}/proof`} class:active={$page.url.pathname.endsWith('/proof')}>Proof</a>
   </nav>
 </header>
 

@@ -41,10 +41,9 @@ const STORAGE_KEY = 'shippie:crossing:v2';
 const STARTING_LIVES = 3;
 const HOP_DURATION_MS = 110;
 const EDGE_NO_INPUT_PX = 16;
-const EAGLE_WARN_MS = 4000;
-const EAGLE_SWOOP_MS = 5500;
+const EAGLE_WARN_MS = 8000;
+const EAGLE_SWOOP_MS = 11000;
 const EAGLE_SWOOP_DURATION_MS = 600;
-const DPAD_FADE_AFTER_HOPS = 5;
 
 type Mode = 'endless' | 'campaign' | 'daily';
 type Phase = 'idle' | 'playing' | 'lose' | 'win';
@@ -194,7 +193,6 @@ export function App() {
   const [deathFx, setDeathFx] = useState<{ kind: 'splash' | 'splat' | 'eagle'; col: number; row: number; until: number } | null>(null);
   const [eagleState, setEagleState] = useState<{ swoopStartedAt: number; col: number } | null>(null);
   const [warnEagle, setWarnEagle] = useState(false);
-  const [hopsTaken, setHopsTaken] = useState(0);
   const [muted, setMutedState] = useState(() => isMuted());
   const [fullscreen, setFullscreenState] = useState(false);
   const [showCharacterPicker, setShowCharacterPicker] = useState(false);
@@ -249,7 +247,6 @@ export function App() {
     bufferedHopRef.current = null;
     tickRef.current = 0;
     lastHopAtRef.current = performance.now();
-    setHopsTaken(0);
   }, []);
 
   const start = () => {
@@ -407,7 +404,6 @@ export function App() {
       until: performance.now() + HOP_DURATION_MS,
     };
     lastHopAtRef.current = performance.now();
-    setHopsTaken((n) => n + 1);
     setWarnEagle(false);
     setEagleState(null);
     if (dy > 0) {
@@ -497,18 +493,26 @@ export function App() {
       lastFrameRef.current = now;
       tickRef.current += dt;
 
-      // Eagle logic — punish idle.
+      // Eagle logic — punish idle only once the player has actually
+      // committed into the crossing. The start lane is an orientation
+      // space, especially on mobile.
       const idleMs = now - lastHopAtRef.current;
-      if (!warnEagle && idleMs > EAGLE_WARN_MS && idleMs < EAGLE_SWOOP_MS && phase === 'playing') {
-        setWarnEagle(true);
-        sfx.play('warn', { pitch: 1.4 });
-      }
-      if (!eagleState && idleMs > EAGLE_SWOOP_MS && phase === 'playing') {
-        setEagleState({ swoopStartedAt: now, col: frogRef.current.col + frogRef.current.drift });
-        sfx.play('fail', { pitch: 0.6 });
-      }
-      if (eagleState && now - eagleState.swoopStartedAt > EAGLE_SWOOP_DURATION_MS) {
-        die('eagle');
+      const eagleCanHunt = frogRef.current.row > level.startRow;
+      if (!eagleCanHunt) {
+        if (warnEagle) setWarnEagle(false);
+        if (eagleState) setEagleState(null);
+      } else {
+        if (!warnEagle && idleMs > EAGLE_WARN_MS && idleMs < EAGLE_SWOOP_MS && phase === 'playing') {
+          setWarnEagle(true);
+          sfx.play('warn', { pitch: 1.4 });
+        }
+        if (!eagleState && idleMs > EAGLE_SWOOP_MS && phase === 'playing') {
+          setEagleState({ swoopStartedAt: now, col: frogRef.current.col + frogRef.current.drift });
+          sfx.play('fail', { pitch: 0.6 });
+        }
+        if (eagleState && now - eagleState.swoopStartedAt > EAGLE_SWOOP_DURATION_MS) {
+          die('eagle');
+        }
       }
 
       // Hop landing.
@@ -582,8 +586,6 @@ export function App() {
     if (isFullscreen()) void exitFullscreen();
     else void requestFullscreen(containerRef.current);
   };
-
-  const dpadVisible = hopsTaken < DPAD_FADE_AFTER_HOPS;
 
   // ---- Render ----
   const renderRows: React.ReactElement[] = [];
@@ -734,14 +736,14 @@ export function App() {
           </span>
         ) : null}
 
-        {/* On-screen D-pad — fades after a few hops once the player
-            groks it. Each button: tap = single hop, hold = repeat at
-            140ms cadence so the frog moves continuously while held. */}
-        {phase === 'playing' && dpadVisible ? (
-          <div className="dpad" aria-hidden>
+        {/* On-screen D-pad. Each button: tap = single hop, hold =
+            repeat at 140ms cadence so the frog moves continuously. */}
+        {phase === 'playing' ? (
+          <div className="dpad" role="group" aria-label="Move frog">
             <button
               type="button"
               className="dpad-up"
+              aria-label="Move up"
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, 1); startRepeat(0, 1); }}
               onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
               onPointerCancel={() => stopRepeat()}
@@ -750,6 +752,7 @@ export function App() {
             <button
               type="button"
               className="dpad-left"
+              aria-label="Move left"
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(-1, 0); startRepeat(-1, 0); }}
               onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
               onPointerCancel={() => stopRepeat()}
@@ -758,6 +761,7 @@ export function App() {
             <button
               type="button"
               className="dpad-right"
+              aria-label="Move right"
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(1, 0); startRepeat(1, 0); }}
               onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
               onPointerCancel={() => stopRepeat()}
@@ -766,6 +770,7 @@ export function App() {
             <button
               type="button"
               className="dpad-down"
+              aria-label="Move down"
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); hop(0, -1); startRepeat(0, -1); }}
               onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); stopRepeat(); }}
               onPointerCancel={() => stopRepeat()}

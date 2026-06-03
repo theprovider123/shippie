@@ -23,6 +23,14 @@
   function isToolsPath(pathname: string): boolean {
     return pathname === '/tools' || pathname.startsWith('/apps/');
   }
+
+  function isMakerPath(pathname: string): boolean {
+    return pathname === '/dashboard'
+      || pathname.startsWith('/dashboard/')
+      || pathname === '/maker'
+      || pathname.startsWith('/maker/')
+      || pathname === '/new';
+  }
 </script>
 
 <nav class="navbar" aria-label="Primary">
@@ -44,6 +52,12 @@
     <div class="nav-center">
       <a href="/dock" class="nav-link" class:active={isHomePath($page.url.pathname)} aria-current={isHomePath($page.url.pathname) ? 'page' : undefined}>Dock</a>
       <a href="/tools" class="nav-link" class:active={isToolsPath($page.url.pathname)} aria-current={isToolsPath($page.url.pathname) ? 'page' : undefined}>Tools</a>
+      {#if user}
+        <a href="/maker" class="nav-link" class:active={isMakerPath($page.url.pathname)} aria-current={isMakerPath($page.url.pathname) ? 'page' : undefined}>Maker</a>
+        {#if user.isAdmin}
+          <a href="/admin" class="nav-link nav-link-admin" class:active={$page.url.pathname.startsWith('/admin')} aria-current={$page.url.pathname.startsWith('/admin') ? 'page' : undefined}>Admin</a>
+        {/if}
+      {/if}
     </div>
 
     <div class="nav-right">
@@ -80,7 +94,7 @@
       <a href="/tools" onclick={() => (mobileOpen = false)}>Tools</a>
       {#if user}
         <a href="/you" onclick={() => (mobileOpen = false)}>You</a>
-        <a href="/dashboard" onclick={() => (mobileOpen = false)}>Dashboard</a>
+        <a href="/maker" onclick={() => (mobileOpen = false)}>Maker</a>
         {#if user.isAdmin}
           <a href="/admin" onclick={() => (mobileOpen = false)}>Admin</a>
         {/if}

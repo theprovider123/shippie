@@ -22,8 +22,8 @@
   <p class="user">{user.displayName ?? user.email}</p>
 
   <nav class="nav">
-    <a href="/dashboard" class:active={$page.url.pathname === '/dashboard'}>Overview</a>
-    <a href="/dashboard/apps" class:active={$page.url.pathname.startsWith('/dashboard/apps')}>Your apps</a>
+    <a href="/maker" class:active={$page.url.pathname === '/dashboard' || $page.url.pathname === '/maker'}>Maker home</a>
+    <a href="/maker/apps" class:active={$page.url.pathname.startsWith('/dashboard/apps') || $page.url.pathname.startsWith('/maker/apps')}>Apps</a>
     <a href="/dashboard/feedback" class:active={$page.url.pathname === '/dashboard/feedback'}>Feedback</a>
   </nav>
 
@@ -33,7 +33,7 @@
     <div class="apps">
       <p class="eyebrow">Recent</p>
       {#each myApps.slice(0, 6) as app (app.id)}
-        <a class="row" href={`/dashboard/apps/${app.slug}`}>
+        <a class="row" href={`/maker/apps/${app.slug}`}>
           <span class="dot" style:background={app.themeColor}></span>
           <span class="name">{app.name}</span>
         </a>

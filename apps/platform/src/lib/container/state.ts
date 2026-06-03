@@ -177,6 +177,9 @@ type CuratedAppSpec = {
   icon?: string;
   accent: string;
   category?: string;
+  visibility?: ContainerVisibility;
+  surface?: ContainerApp['surface'];
+  tier?: ContainerApp['tier'];
   layout?: AppLayout;
   aspectRatio?: string;
   port: number;
@@ -214,9 +217,11 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
     packageHash: `sha256:${(index + 1).toString(16).slice(-1).repeat(64)}`,
     data: defaultAppDataPassport(spec.slug),
     standaloneUrl: `/run/${spec.slug}`,
-    visibility: 'public',
+    visibility: spec.visibility ?? 'public',
     permissions: localPermissions(spec.slug, spec.intents),
     category: spec.category,
+    surface: spec.surface,
+    tier: spec.tier,
     layout: spec.layout,
     aspectRatio: spec.aspectRatio,
     devUrl: `http://localhost:${spec.port}/`,
@@ -292,6 +297,40 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     accent: '#C8102E',
     category: 'tools',
     port: 5252,
+  },
+  {
+    slug: 'corporate-demo',
+    name: 'Apex Leadership Conference 2026',
+    shortName: 'Apex',
+    description: 'Conference guide. No login. Works offline.',
+    appKind: 'local',
+    icon: 'AL',
+    accent: '#E8603C',
+    category: 'tools',
+    visibility: 'private',
+    surface: 'archived',
+    tier: 'private-flagship',
+    port: 5262,
+    intents: {
+      provides: ['event.session.attendance', 'event.feedback'],
+    },
+  },
+  {
+    slug: 'race-demo',
+    name: 'Hackney Half Marathon 2026',
+    shortName: 'Race Demo',
+    description: 'Race guide. GPS works offline. No signal needed.',
+    appKind: 'local',
+    icon: '13',
+    accent: '#00D4AA',
+    category: 'health-fitness',
+    visibility: 'private',
+    surface: 'archived',
+    tier: 'private-flagship',
+    port: 5258,
+    intents: {
+      provides: ['race.finished', 'race.cutoff-risk', 'race.gps-fix'],
+    },
   },
   {
     slug: 'whiteboard',
@@ -430,6 +469,40 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     intents: {
       provides: ['dined-out'],
       consumes: ['cooked-meal'],
+    },
+  },
+  {
+    slug: 'market-demo',
+    name: 'Highbury Market Guide',
+    shortName: 'Highbury',
+    description: 'A weekly community market guide for stalls, events, visitor info, and digital loyalty stamps.',
+    appKind: 'local',
+    icon: 'HM',
+    accent: '#E8603C',
+    category: 'food-drink',
+    visibility: 'private',
+    surface: 'archived',
+    tier: 'private-flagship',
+    port: 5265,
+    intents: {
+      provides: ['market.checked-in', 'market.vendor-viewed', 'market.event-reserved'],
+    },
+  },
+  {
+    slug: 'restaurant-demo',
+    name: 'Locanda Soho - Menu',
+    shortName: 'Locanda',
+    description: 'Digital restaurant menu and local ordering demo for tables, kitchen, and owner view.',
+    appKind: 'local',
+    icon: 'LS',
+    accent: '#8B1A1A',
+    category: 'food-drink',
+    visibility: 'private',
+    surface: 'archived',
+    tier: 'private-flagship',
+    port: 5257,
+    intents: {
+      provides: ['restaurant-order', 'restaurant-feedback'],
     },
   },
   {
@@ -1024,6 +1097,21 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     port: 5241,
     intents: { provides: ['game.completed', 'wave.cleared'] },
   },
+  {
+    slug: 'docklands',
+    name: 'Docklands',
+    shortName: 'Docklands',
+    description: 'Isometric tower-defense survival. Build a dock maze, hold the Beacon, chase your best round.',
+    appKind: 'local',
+    icon: 'DL',
+    accent: '#7FD4D0',
+    category: 'games',
+    visibility: 'private',
+    surface: 'archived',
+    tier: 'private-flagship',
+    port: 5263,
+    intents: { provides: ['game.completed', 'wave.cleared'] },
+  },
   // Arcade v3 — three new headliners: a word game, a fixed-shooter,
   // and a block puzzle. All first-party arcade entries.
   {
@@ -1142,6 +1230,24 @@ const curatedAppSpecs: CuratedAppSpec[] = [
         'body-metrics-logged',
         'mood-logged',
       ],
+    },
+  },
+  {
+    slug: 'wedding-demo',
+    name: 'Charlotte & James',
+    shortName: 'Wedding',
+    description:
+      'Private wedding day guide for guests: timeline, table search, menus, memories, travel info, and song requests. No login, offline-first.',
+    appKind: 'local',
+    icon: 'CJ',
+    accent: '#C4956A',
+    category: 'lifestyle',
+    visibility: 'private',
+    surface: 'archived',
+    tier: 'private-flagship',
+    port: 5256,
+    intents: {
+      provides: ['wedding.song-requested', 'wedding.table-searched', 'wedding.memory-uploaded'],
     },
   },
 ];

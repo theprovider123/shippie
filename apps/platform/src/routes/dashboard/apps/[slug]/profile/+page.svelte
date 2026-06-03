@@ -7,7 +7,7 @@
 <svelte:head><title>Profile · {data.app.name}</title></svelte:head>
 
 <header>
-  <p><a href={`/dashboard/apps/${data.app.slug}`}>Dashboard</a> · app profile</p>
+  <p><a href={`/maker/apps/${data.app.slug}`}>Maker</a> · app profile</p>
   <h1>{data.app.name}</h1>
   <span>Listing details, media, trust links</span>
 </header>

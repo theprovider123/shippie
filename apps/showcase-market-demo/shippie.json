@@ -1,0 +1,90 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "version": 1,
+  "type": "app",
+  "name": "Highbury Market Guide",
+  "short_name": "Highbury",
+  "slug": "market-demo",
+  "description": "A weekly community market guide for stalls, events, visitor info, and digital loyalty stamps.",
+  "tagline": "Real food. Local people. Every Sunday.",
+  "category": "food-drink",
+  "icon": "/icon.svg",
+  "theme_color": "#E8603C",
+  "background_color": "#F7F3EE",
+  "visibility": "private",
+  "owner": "devante@urthly.digital",
+  "shareableLink": true,
+  "display_mode": "standalone",
+  "offline": true,
+  "entry": "index.html",
+  "orientation": "portrait",
+  "permissions": {
+    "auth": false,
+    "storage": "rw",
+    "files": false,
+    "analytics": false,
+    "external_network": false
+  },
+  "requested_permissions": ["geolocation", "haptics"],
+  "intents": {
+    "provides": [
+      "market.checked-in",
+      "market.vendor-viewed",
+      "market.event-reserved"
+    ],
+    "consumes": []
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["market-week", "visitor-loyalty", "vendor-directory"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": ["market-demo.checked-in", "market-demo.stamps"],
+      "prefixes": ["market-demo."]
+    }
+  },
+  "data_schemas": {
+    "vendors": {
+      "id": "text primary key",
+      "name": "text not null",
+      "category": "text not null",
+      "stall": "text not null",
+      "payment": "text",
+      "is_here": "integer",
+      "weekly_note": "text",
+      "updated_at": "datetime"
+    },
+    "market_events": {
+      "id": "text primary key",
+      "title": "text not null",
+      "starts_at": "datetime",
+      "location": "text",
+      "capacity": "integer",
+      "cost": "text"
+    },
+    "visits": {
+      "id": "text primary key",
+      "visited_on": "text not null",
+      "distance_m": "integer",
+      "stamp_count": "integer",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "food-drink",
+    "tier": "private-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-market-demo",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "market-demo",
+    "schema": "market-demo.v1"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "version": 1,
+  "type": "app",
+  "name": "race-demo",
+  "slug": "race-demo",
+  "display_name": "Hackney Half Marathon 2026",
+  "description": "Race guide. GPS works offline. No signal needed.",
+  "tagline": "Offline GPS race guide for runners and event teams.",
+  "category": "health-fitness",
+  "icon": "/icon.svg",
+  "theme_color": "#00D4AA",
+  "background_color": "#0A0A0A",
+  "visibility": "private",
+  "owner": "devante@urthly.digital",
+  "shareableLink": true,
+  "offline": true,
+  "display_mode": "standalone",
+  "orientation": "portrait",
+  "permissions": {
+    "auth": false,
+    "storage": "rw",
+    "files": false,
+    "analytics": false,
+    "external_network": false
+  },
+  "requested_permissions": ["geolocation", "haptics"],
+  "intents": {
+    "provides": ["race.finished", "race.cutoff-risk", "race.gps-fix"],
+    "consumes": []
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["race-telemetry", "race-progress"],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": ["race-demo.telemetry", "race-demo.finish"],
+      "prefixes": ["race-demo."]
+    }
+  },
+  "data_schemas": {
+    "race_telemetry": {
+      "id": "text primary key",
+      "covered_km": "real",
+      "pace_seconds_per_km": "integer",
+      "recorded_at": "datetime"
+    },
+    "race_finish": {
+      "id": "text primary key",
+      "bib": "text",
+      "chip_time_seconds": "integer",
+      "finished_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "health-fitness",
+    "tier": "private-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-race-demo",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "race-demo",
+    "schema": "race-demo.v1"
+  },
+  "entry": "index.html"
+}

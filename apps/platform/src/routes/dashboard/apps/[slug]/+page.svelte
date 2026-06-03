@@ -116,12 +116,12 @@ shippie.feedback.submit({
   }
 </script>
 
-<svelte:head><title>{data.app.name} · Dashboard</title></svelte:head>
+<svelte:head><title>{data.app.name} · Maker</title></svelte:head>
 
 <section class="launchpad">
   <header class="launchpad-head">
     <div>
-      <p class="eyebrow"><a href="/dashboard">Dashboard</a> · {data.app.name}</p>
+      <p class="eyebrow"><a href="/maker">Maker</a> · {data.app.name}</p>
       <h1>{data.app.name}</h1>
       <p class="lede">{data.app.tagline ?? `Live at ${data.app.slug}.shippie.app`}</p>
     </div>

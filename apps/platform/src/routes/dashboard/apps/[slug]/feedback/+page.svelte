@@ -42,8 +42,8 @@ shippie.feedback.submit({
 
 <header>
   <p class="eyebrow">
-    <a href="/dashboard">Dashboard</a> ·
-    <a href={`/dashboard/apps/${data.app.slug}`}>{data.app.name}</a> ·
+    <a href="/maker">Maker</a> ·
+    <a href={`/maker/apps/${data.app.slug}`}>{data.app.name}</a> ·
     feedback
   </p>
   <h1>Feedback</h1>

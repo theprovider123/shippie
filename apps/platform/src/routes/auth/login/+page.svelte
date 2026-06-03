@@ -4,6 +4,43 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   let submitting = $state(false);
+
+  const copy = $derived.by(() => {
+    if (data.intent === 'admin') {
+      return {
+        eyebrow: 'Admin sign in',
+        title: 'Admin sign in.',
+        lede: 'This area is for Shippie operators. Sign in with an admin account to review apps, moderation, audit logs, and platform health.',
+        panelTitle: 'Verify your account.',
+        panelText: 'Use GitHub or a magic link. We will send you back to Admin after sign-in.',
+        primary: 'Sign in to Admin',
+        secondary: 'Back to Dock',
+        strip: ['Protected route', 'Admin only', 'Magic link'],
+      };
+    }
+    if (data.intent === 'maker') {
+      return {
+        eyebrow: 'Maker sign in',
+        title: 'Sign in to ship.',
+        lede: 'Manage your apps, deploys, access, analytics, and builder profile across phone and desktop.',
+        panelTitle: 'Open Maker.',
+        panelText: 'Use GitHub or a magic link. We will send you back to the maker flow after sign-in.',
+        primary: 'Sign in to Maker',
+        secondary: 'Back to Dock',
+        strip: ['Maker tools', 'Deploys', 'Magic link'],
+      };
+    }
+    return {
+      eyebrow: 'Account optional',
+      title: 'Keep going locally.',
+      lede: 'Shippie works without an account. Sign in only when you want sync, recovery, or builder tools.',
+      panelTitle: 'For sync and shipping.',
+      panelText: 'Use a magic link. No password to remember.',
+      primary: 'Continue without account',
+      secondary: 'Browse tools',
+      strip: ['Local first', 'No password', 'Magic link'],
+    };
+  });
 </script>
 
 <svelte:head>
@@ -23,34 +60,36 @@
         />
         <span>shippie</span>
       </a>
-      <a class="skip-top" href={data.continueTo}>Skip sign in</a>
+      <a class="skip-top" href="/dock">{data.requiresAccount ? 'Back to Dock' : 'Skip sign in'}</a>
     </header>
 
     <section class="intro" aria-labelledby="login-title">
-      <p class="eyebrow">Account optional</p>
-      <h1 id="login-title">Keep going locally.</h1>
-      <p class="lede">
-        Shippie works without an account. Sign in only when you want sync,
-        recovery, or builder tools.
-      </p>
+      <p class="eyebrow">{copy.eyebrow}</p>
+      <h1 id="login-title">{copy.title}</h1>
+      <p class="lede">{copy.lede}</p>
 
       <div class="hero-actions">
-        <a class="continue-primary" href={data.continueTo}>Continue without account</a>
-        <a class="browse-link" href="/tools">Browse tools</a>
+        {#if data.requiresAccount}
+          <a class="continue-primary" href="#signin-panel-title">{copy.primary}</a>
+          <a class="browse-link" href="/dock">{copy.secondary}</a>
+        {:else}
+          <a class="continue-primary" href={data.continueTo}>{copy.primary}</a>
+          <a class="browse-link" href="/tools">{copy.secondary}</a>
+        {/if}
       </div>
 
       <div class="local-strip" aria-label="Local-first account summary">
-        <span>Local first</span>
-        <span>No password</span>
-        <span>Magic link</span>
+        {#each copy.strip as label}
+          <span>{label}</span>
+        {/each}
       </div>
     </section>
 
     <section class="panel" aria-labelledby="signin-panel-title">
       <div class="panel-head">
         <p class="eyebrow">Sign in</p>
-        <h2 id="signin-panel-title">For sync and shipping.</h2>
-        <p>Use a magic link. No password to remember.</p>
+        <h2 id="signin-panel-title">{copy.panelTitle}</h2>
+        <p>{copy.panelText}</p>
       </div>
 
       {#if form?.error}

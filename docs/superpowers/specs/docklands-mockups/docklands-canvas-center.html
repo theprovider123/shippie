@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Shippie Docklands — Beacon-centered mockup</title>
+<style>
+  :root{
+    --salt:#0e3a44; --salt-2:#11505a; --foam:#7fd4d0; --brass:#e8a23c; --brass-2:#f6c66b;
+    --wood:#b9733c; --wood-2:#d68f54; --plank:#caa06a; --ink:#f3ead6; --ink-dim:#b9b09a;
+    --panel:rgba(10,24,28,0.72); --line:rgba(127,212,208,0.22); --danger:#ef6a4a;
+    --font:'Trebuchet MS',Verdana,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#06181c;color:var(--ink);font-family:var(--font);overflow:hidden;-webkit-tap-highlight-color:transparent}
+  #stage{position:fixed;inset:0;display:block}
+  /* ---- HUD ---- */
+  .hud{position:fixed;left:0;right:0;display:flex;gap:8px;align-items:center;pointer-events:none;z-index:5}
+  .top{top:0;padding:max(10px,env(safe-area-inset-top)) 12px 10px;justify-content:space-between;
+       background:linear-gradient(180deg,rgba(6,18,22,0.85),rgba(6,18,22,0))}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.02em}
+  .mark{width:22px;height:22px;display:grid;place-items:center;background:var(--brass);color:#2a1a06;
+        font-weight:800;clip-path:polygon(15% 0,85% 0,100% 30%,50% 100%,0 30%)}
+  .stat{display:flex;gap:14px;font-size:12px;color:var(--ink-dim)}
+  .stat b{color:var(--brass-2);font-variant-numeric:tabular-nums}
+  .pill{pointer-events:auto;background:var(--panel);border:1px solid var(--line);padding:4px 10px;
+        font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--foam);backdrop-filter:blur(8px)}
+  /* ---- bottom rail ---- */
+  .rail{bottom:0;padding:10px 12px calc(12px + env(safe-area-inset-bottom));justify-content:center;gap:6px;
+        background:linear-gradient(0deg,rgba(6,18,22,0.92),rgba(6,18,22,0))}
+  .rail button{pointer-events:auto;display:grid;place-items:center;gap:3px;min-width:62px;min-height:52px;
+    background:var(--panel);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:11px;cursor:pointer;
+    backdrop-filter:blur(8px);transition:.15s}
+  .rail button .i{font-size:18px;line-height:1}
+  .rail button[aria-pressed=true]{border-color:var(--brass);color:var(--brass-2);box-shadow:inset 0 -2px 0 var(--brass)}
+  .rail button.go{background:var(--brass);color:#2a1a06;border-color:var(--brass);font-weight:700}
+  .rail button.go.live{background:var(--danger);border-color:var(--danger);color:#fff}
+  /* ---- creator panel ---- */
+  .creator{position:fixed;top:54px;right:10px;width:188px;z-index:6;background:var(--panel);border:1px solid var(--line);
+    padding:12px;backdrop-filter:blur(10px);transform:translateX(calc(100% + 16px));transition:transform .28s cubic-bezier(.22,1,.36,1)}
+  .creator.open{transform:none}
+  .creator h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--foam);margin-bottom:8px}
+  .row{margin-bottom:10px}
+  .row label{display:block;font-size:10px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+  .swatches{display:flex;gap:5px;flex-wrap:wrap}
+  .sw{width:22px;height:22px;border:2px solid transparent;cursor:pointer}
+  .sw[aria-pressed=true]{border-color:var(--ink);box-shadow:0 0 0 1px var(--brass)}
+  .seg{display:flex;gap:4px}
+  .seg button{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:11px;padding:5px 0;cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--brass);color:#2a1a06;border-color:var(--brass)}
+  .creator .rnd{width:100%;margin-top:2px;background:none;border:1px dashed var(--line);color:var(--foam);font:inherit;font-size:11px;padding:6px;cursor:pointer}
+  /* ---- toast / hint ---- */
+  .hint{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:7;background:var(--panel);
+    border:1px solid var(--line);padding:7px 14px;font-size:12px;color:var(--ink);backdrop-filter:blur(8px);
+    opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;max-width:88vw}
+  .hint.show{opacity:1}
+  .trust{position:fixed;left:10px;bottom:84px;z-index:6;font-size:10px;color:var(--ink-dim);background:var(--panel);
+    border:1px solid var(--line);padding:5px 9px;backdrop-filter:blur(8px);letter-spacing:.04em}
+  .trust b{color:var(--foam)}
+  /* ---- always-on goal (the 10-year-old test) ---- */
+  .goal{position:fixed;top:46px;left:50%;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:10px;
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;backdrop-filter:blur(8px);
+    pointer-events:none;white-space:nowrap}
+  .goal .label{font-size:12px;font-weight:700;letter-spacing:.01em}
+  .goal .hearts{display:flex;gap:3px;font-size:14px;line-height:1}
+  .goal .hearts span{filter:drop-shadow(0 0 4px rgba(239,106,74,.5));transition:opacity .25s,transform .25s}
+  .goal .hearts span.gone{opacity:.18;transform:scale(.7)}
+  /* ---- Beacon Pulse panic button ---- */
+  .pulse-btn{position:fixed;right:10px;bottom:84px;z-index:7;display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:var(--panel);border:1px solid var(--brass);color:var(--brass-2);font:inherit;font-size:10px;font-weight:700;
+    padding:8px 10px;border-radius:12px;cursor:pointer;backdrop-filter:blur(8px);transition:.15s}
+  .pulse-btn .pi{font-size:20px;line-height:1}
+  .pulse-btn:disabled{opacity:.4;border-color:var(--line);color:var(--ink-dim);cursor:default}
+  .pulse-btn:not(:disabled){box-shadow:0 0 16px rgba(246,198,107,.4);animation:pglow 1.4s ease-in-out infinite}
+  @keyframes pglow{0%,100%{box-shadow:0 0 12px rgba(246,198,107,.35)}50%{box-shadow:0 0 22px rgba(246,198,107,.6)}}
+  .pulse-btn .pbar{width:46px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}
+  .pulse-btn .pbar i{display:block;height:100%;width:40%;background:var(--brass-2);transition:width .3s}
+  /* ---- first-run coach: the pointing finger ---- */
+  .coach{position:fixed;z-index:8;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:4px;
+    transform:translate(-50%,-100%);transition:opacity .35s, left .4s, top .4s;text-align:center}
+  .coach.hide{opacity:0}
+  .coach .bubble{background:var(--brass);color:#2a1a06;font-weight:700;font-size:13px;padding:7px 12px;border-radius:10px;
+    box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:62vw}
+  .coach .arrow{font-size:26px;color:var(--brass);animation:bob 1s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+  /* ---- big center card: countdown + win/lose ---- */
+  .bigcard{position:fixed;inset:0;z-index:9;display:none;place-items:center;background:rgba(4,12,15,.5);backdrop-filter:blur(2px)}
+  .bigcard.show{display:grid}
+  .bigcard .inner{text-align:center;animation:pop .4s cubic-bezier(.2,1.2,.4,1)}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  .bigcard .count{font-size:120px;font-weight:800;color:var(--brass-2);text-shadow:0 0 40px rgba(246,198,107,.6)}
+  .bigcard .title{font-size:30px;font-weight:800;margin-bottom:6px}
+  .bigcard .stars{font-size:40px;letter-spacing:6px;margin:6px 0}
+  .bigcard .sub{font-size:14px;color:var(--ink-dim);margin-bottom:16px}
+  .bigcard .again{pointer-events:auto;background:var(--brass);color:#2a1a06;border:none;font:inherit;font-weight:700;
+    font-size:15px;padding:12px 26px;border-radius:12px;cursor:pointer}
+  @media(max-width:520px){ .creator{top:50px;width:170px} .stat{gap:9px;font-size:11px} .goal .label{font-size:11px} }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<div class="hud top">
+  <div class="brand"><span class="mark">⌘</span> Docklands <span style="color:var(--ink-dim);font-weight:400;font-size:12px">· Beacon at the heart</span></div>
+  <div class="stat">
+    <span>◆ <b id="salvage">120</b></span>
+    <span>⚡ <b id="powerTxt">40</b></span>
+    <span>🌊 wave <b id="wave">—</b></span>
+    <span class="pill" id="netpill">● offline</span>
+  </div>
+</div>
+
+<button class="pulse-btn" id="pulse" disabled><span class="pi">💥</span><span>Beacon Pulse</span><span class="pbar"><i id="pbar"></i></span></button>
+
+<div class="goal" id="goal">
+  <span class="label">Protect the Beacon</span>
+  <span class="hearts" id="hearts"><span>❤</span><span>❤</span><span>❤</span></span>
+</div>
+
+<div class="coach" id="coach">
+  <div class="bubble" id="coachText">Tap the glowing tile to build a zapper</div>
+  <div class="arrow">▼</div>
+</div>
+
+<div class="bigcard" id="bigcard"><div class="inner" id="bigInner"></div></div>
+
+<aside class="creator" id="creator">
+  <h3>Captain creator</h3>
+  <div class="row"><label>Skin</label><div class="swatches" data-k="skin"></div></div>
+  <div class="row"><label>Hair</label><div class="swatches" data-k="hair"></div></div>
+  <div class="row"><label>Outfit</label><div class="swatches" data-k="outfit"></div></div>
+  <div class="row"><label>Stance</label>
+    <div class="seg" data-k="stance">
+      <button data-v="steady" aria-pressed="true">Steady</button>
+      <button data-v="bouncy">Bouncy</button>
+    </div>
+  </div>
+  <button class="rnd" id="randomize">⟳ Randomize look</button>
+</aside>
+
+<div class="trust" id="trust">Trust: <b>local only</b> · nothing left this device</div>
+<div class="hint" id="hint"></div>
+
+<div class="hud rail">
+  <button id="m-build" aria-pressed="true"><span class="i">▦</span>Build</button>
+  <button id="m-crew"><span class="i">☻</span>Crew</button>
+  <button id="m-look"><span class="i">✎</span>Look</button>
+  <button id="m-open"><span class="i">⌁</span>Open</button>
+  <button id="m-share"><span class="i">↗</span>Share</button>
+  <button id="tide" class="go"><span class="i">▶</span>Start</button>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('stage'), ctx = cv.getContext('2d');
+  let W=0,H=0,DPR=Math.min(2,devicePixelRatio||1);
+  const GRID=10, TW=64, TH=32; // iso tile
+  let origin={x:0,y:0}, t=0;
+
+  // ---------- world ----------
+  const PAL = {
+    skin:['#f1c9a5','#e0a878','#b87a4e','#8a5630','#5e3a1e'],
+    hair:['#2a1a12','#7a4a26','#caa05a','#d94f3a','#5a6e8c','#cfd3d6'],
+    outfit:['#1e8f86','#e8a23c','#c0405a','#5a78c0','#3a8f5a','#8a4fb0'],
+  };
+  const look={skin:PAL.skin[2],hair:PAL.hair[2],outfit:PAL.outfit[0],stance:'steady'};
+
+  // Beacon lives dead-center; furniture rings it, the cozy hearth model.
+  const CORE={x:5,y:5};
+  // furniture: type, gx, gy, h(eight), color — arranged AROUND the Beacon, off the lanes
+  const FURN=[
+    {t:'bed',x:1,y:1,c:'#6f9bd1',w:2,d:1,h:14},
+    {t:'galley',x:8,y:1,c:'#caa06a',w:1,d:1,h:20},
+    {t:'beacon-lamp',x:1,y:8,c:'#f6c66b',w:1,d:1,h:28,glow:1},
+    {t:'beacon-lamp',x:8,y:8,c:'#f6c66b',w:1,d:1,h:28,glow:1},
+    {t:'crate',x:6,y:6,c:'#b9733c',w:1,d:1,h:18},
+    {t:'crate',x:6,y:7,c:'#b9733c',w:1,d:1,h:18},
+    {t:'turret',x:6,y:4,c:'#9fb7c9',w:1,d:1,h:24,turret:1,ang:0,cd:0},
+    {t:'plant',x:3,y:7,c:'#3a8f5a',w:1,d:1,h:16},
+    {t:'plant',x:7,y:2,c:'#3a8f5a',w:1,d:1,h:16},
+  ];
+  // Two gates at the room edges; both lanes converge INWARD on the center Beacon.
+  const ROUTES=[
+    [[0,5],[1,5],[2,5],[3,5],[4,5],[5,5]].map(([x,y])=>({x,y})),   // Gate A — from the left
+    [[5,0],[5,1],[5,2],[5,3],[5,4],[5,5]].map(([x,y])=>({x,y})),   // Gate B — from the top
+  ];
+  const GATES=ROUTES.map(r=>r[0]);
+
+  let mode='build';
+  let salvage=120, spark=8, waveNum=0, waveActive=false;
+  const MAX_HEARTS=3; let hearts=MAX_HEARTS;
+  let beaconStage=1;        // grows on each win (1..5) — the lighthouse trophy
+  let power=40;             // Beacon power meter (0..100); fuels the Pulse
+  const TURRET_RANGE=3.2;   // tiles — drawn as a range ring
+  let hover=null;           // {x,y} build-mode cursor tile for the ghost ring
+  let pulseRing=0;          // transient Beacon-Pulse shockwave radius
+  // teach: 0 = "build a zapper", 1 = "press Start", 2 = done
+  let teachStep=0; const TEACH_TILE={x:4,y:4};
+  const enemies=[], shots=[], sparks=[];
+  const crew=[{n:'Mira',x:2,y:8,c:'#e8a23c',ph:0,tool:'hammer'},{n:'Penn',x:3,y:8,c:'#c0405a',ph:2,tool:'horn'},{n:'Jax',x:6,y:7,c:'#5a78c0',ph:4,tool:'flare'},{n:'Sol',x:7,y:8,c:'#3a8f5a',ph:1,tool:'gauntlet'}];
+  const avatar={x:5,y:8,ph:0};
+
+  // ---------- iso helpers ----------
+  const iso=(gx,gy)=>({x:origin.x+(gx-gy)*TW/2, y:origin.y+(gx+gy)*TH/2});
+  function resize(){
+    W=cv.width=innerWidth*DPR; H=cv.height=innerHeight*DPR;
+    cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    const cw=innerWidth, ch=innerHeight;
+    origin={x:cw/2, y:ch/2 - (GRID*TH)/2 + 8};
+    if(typeof setCoach==='function') setCoach();
+  }
+  addEventListener('resize',resize); resize();
+
+  // ---------- drawing ----------
+  function tileTop(gx,gy,fill){
+    const p=iso(gx,gy);
+    ctx.beginPath();
+    ctx.moveTo(p.x,p.y);
+    ctx.lineTo(p.x+TW/2,p.y+TH/2);
+    ctx.lineTo(p.x,p.y+TH);
+    ctx.lineTo(p.x-TW/2,p.y+TH/2);
+    ctx.closePath();
+    ctx.fillStyle=fill; ctx.fill();
+  }
+  function onRoute(x,y){return ROUTES.some(r=>r.some(c=>c.x===x&&c.y===y))}
+  function isBeacon(x,y){return x===CORE.x&&y===CORE.y}
+
+  function drawWater(){
+    // animated salt water behind the dock
+    const g=ctx.createLinearGradient(0,0,0,innerHeight);
+    g.addColorStop(0,'#07222a'); g.addColorStop(1,'#0c3b44');
+    ctx.fillStyle=g; ctx.fillRect(0,0,innerWidth,innerHeight);
+    ctx.save();
+    for(let i=0;i<60;i++){
+      const x=(i*53+ (t*18))%(innerWidth+80)-40;
+      const y=(i*97)%innerHeight;
+      const a=0.04+0.03*Math.sin(t*1.3+i);
+      ctx.fillStyle=`rgba(127,212,208,${a})`;
+      const w=22+12*Math.sin(t+i);
+      ctx.fillRect(x,y,w,2);
+    }
+    ctx.restore();
+  }
+
+  function drawFloor(){
+    for(let s=0;s<GRID*2;s++){               // draw back-to-front by diagonal
+      for(let gx=0;gx<GRID;gx++){
+        const gy=s-gx; if(gy<0||gy>=GRID) continue;
+        const route=onRoute(gx,gy);
+        const shade=((gx+gy)%2===0);
+        let col= route ? '#15545d' : (shade?'#c9a06a':'#bd9560');
+        tileTop(gx,gy,col);
+        // plank lines
+        const p=iso(gx,gy);
+        ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+TW/2,p.y+TH/2);ctx.lineTo(p.x,p.y+TH);ctx.lineTo(p.x-TW/2,p.y+TH/2);ctx.closePath();ctx.stroke();
+        if(route){ // glowing tide route in tide mode
+          const pulse=waveActive?0.35+0.25*Math.sin(t*4 + (gx+gy)):0.16;
+          ctx.fillStyle=`rgba(127,212,208,${pulse})`; ctx.fill();
+        }
+      }
+    }
+    // gate markers — one per converging lane
+    ctx.fillStyle='rgba(239,106,74,.95)';ctx.font='12px sans-serif';
+    GATES.forEach((g,i)=>{const gp=iso(g.x,g.y);ctx.fillText('⚓ gate '+(i+1), gp.x-22, gp.y+TH/2+4);});
+    // teach target ring — the one tile a beginner should tap first
+    if(teachStep===0){
+      const tp=iso(TEACH_TILE.x,TEACH_TILE.y), pr=0.5+0.5*Math.sin(t*4);
+      ctx.save();ctx.translate(tp.x,tp.y+TH/2);
+      ctx.strokeStyle=`rgba(246,198,107,${0.5+0.4*pr})`;ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(0,-TH/2*pr-2);ctx.lineTo(TW/2,0);ctx.lineTo(0,TH/2+2);ctx.lineTo(-TW/2,0);ctx.closePath();ctx.stroke();
+      ctx.restore();
+    }
+    // ---- the Beacon: the thing you protect (grows with beaconStage) ----
+    const cp=iso(CORE.x,CORE.y), bx=cp.x, by=cp.y+TH/2, low=hearts<=1;
+    const pulse=0.6+0.4*Math.sin(t*(low?6:2));
+    const towerH=10+(beaconStage-1)*13;      // it physically grows each win
+    const lampY=by-towerH;
+    const beamH=80+beaconStage*30;
+    // upward light beam
+    const beam=ctx.createLinearGradient(bx,lampY-beamH,bx,lampY);
+    beam.addColorStop(0,'rgba(246,198,107,0)');beam.addColorStop(1,`rgba(246,198,107,${0.16*pulse})`);
+    ctx.fillStyle=beam;ctx.fillRect(bx-9,lampY-beamH,18,beamH);
+    // rotating sweep beam from stage 3+
+    if(beaconStage>=3){
+      const a=t*1.1, len=70+beaconStage*16;
+      ctx.save();ctx.translate(bx,lampY);ctx.rotate(a);
+      const sw=ctx.createLinearGradient(0,0,len,0);
+      sw.addColorStop(0,'rgba(246,198,107,.35)');sw.addColorStop(1,'rgba(246,198,107,0)');
+      ctx.fillStyle=sw;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(len,-14);ctx.lineTo(len,14);ctx.closePath();ctx.fill();
+      ctx.restore();
+    }
+    // tapered tower body
+    const baseW=14+beaconStage*2;
+    ctx.fillStyle='#caa06a';
+    ctx.beginPath();ctx.moveTo(bx-baseW/2,by+6);ctx.lineTo(bx+baseW/2,by+6);ctx.lineTo(bx+6,lampY);ctx.lineTo(bx-6,lampY);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.moveTo(bx,by+6);ctx.lineTo(bx+baseW/2,by+6);ctx.lineTo(bx+6,lampY);ctx.lineTo(bx,lampY);ctx.closePath();ctx.fill();
+    // stage-banded rings up the tower
+    for(let s=1;s<beaconStage;s++){const ry=by-s*(towerH/beaconStage);ctx.strokeStyle='#e8a23c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx-baseW/2*0.7,ry);ctx.lineTo(bx+baseW/2*0.7,ry);ctx.stroke();}
+    // lamp aura + lamp
+    const aura=ctx.createRadialGradient(bx,lampY,2,bx,lampY,(40+beaconStage*8)*(0.85+0.2*pulse));
+    aura.addColorStop(0,low?'rgba(239,106,74,.9)':'rgba(246,198,107,.9)');
+    aura.addColorStop(1,'rgba(246,198,107,0)');
+    ctx.fillStyle=aura;ctx.beginPath();ctx.arc(bx,lampY,(40+beaconStage*8)*(0.85+0.2*pulse),0,7);ctx.fill();
+    ctx.fillStyle=low?'#ef6a4a':'#fff3d0';
+    ctx.beginPath();ctx.arc(bx,lampY,8+beaconStage+1.5*pulse,0,7);ctx.fill();
+    // weather vane from stage 4+
+    if(beaconStage>=4){ctx.strokeStyle='#e8a23c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx,lampY-10-beaconStage);ctx.lineTo(bx,lampY-18-beaconStage*2);ctx.stroke();ctx.fillStyle='#e8a23c';ctx.beginPath();ctx.arc(bx,lampY-20-beaconStage*2,3,0,7);ctx.fill();}
+    // hearts floating over the lamp
+    for(let i=0;i<MAX_HEARTS;i++){ ctx.font='14px sans-serif';
+      ctx.fillStyle=i<hearts?'#ef6a4a':'rgba(255,255,255,.18)';
+      ctx.fillText('♥', bx-21+i*15, lampY-20);
+    }
+    ctx.fillStyle='#f3ead6';ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Beacon · Lv'+beaconStage, bx, lampY-28);ctx.textAlign='left';
+  }
+
+  function box(gx,gy,h,c,opt={}){
+    const p=iso(gx,gy); const top=p.y+TH/2-h;
+    // glow
+    if(opt.glow){
+      const r=ctx.createRadialGradient(p.x,top,2,p.x,top,70);
+      r.addColorStop(0,'rgba(246,198,107,0.5)');r.addColorStop(1,'rgba(246,198,107,0)');
+      ctx.fillStyle=r; ctx.beginPath();ctx.arc(p.x,top,70,0,7);ctx.fill();
+    }
+    // left face
+    ctx.fillStyle=shade(c,-26);
+    ctx.beginPath();ctx.moveTo(p.x-TW/2,p.y+TH/2);ctx.lineTo(p.x,p.y+TH);ctx.lineTo(p.x,p.y+TH-h);ctx.lineTo(p.x-TW/2,p.y+TH/2-h);ctx.closePath();ctx.fill();
+    // right face
+    ctx.fillStyle=shade(c,-12);
+    ctx.beginPath();ctx.moveTo(p.x+TW/2,p.y+TH/2);ctx.lineTo(p.x,p.y+TH);ctx.lineTo(p.x,p.y+TH-h);ctx.lineTo(p.x+TW/2,p.y+TH/2-h);ctx.closePath();ctx.fill();
+    // top
+    ctx.fillStyle=c;
+    ctx.beginPath();ctx.moveTo(p.x,p.y+TH/2-h);ctx.lineTo(p.x+TW/2,p.y+TH/2-h+TH/2);ctx.lineTo(p.x,p.y+TH-h);ctx.lineTo(p.x-TW/2,p.y+TH/2-h+TH/2);ctx.closePath();ctx.fill();
+  }
+  function shade(hex,amt){
+    const n=parseInt(hex.slice(1),16); let r=(n>>16)+amt,g=((n>>8)&255)+amt,b=(n&255)+amt;
+    r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function drawAvatar(gx,gy,ph,L){
+    const p=iso(gx,gy); const bob=Math.sin(t*3+ph)*(L.stance==='bouncy'?3:1.3);
+    const bx=p.x, by=p.y+TH/2-bob;
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(bx,p.y+TH/2+2,9,4,0,0,7);ctx.fill();
+    // body / outfit
+    ctx.fillStyle=L.outfit; rrect(bx-6,by-16,12,16,3);
+    // head
+    ctx.fillStyle=L.skin; ctx.beginPath();ctx.arc(bx,by-20,6.4,0,7);ctx.fill();
+    // hair cap
+    ctx.fillStyle=L.hair; ctx.beginPath();ctx.arc(bx,by-22,6.6,Math.PI,0);ctx.fill();
+    ctx.fillRect(bx-6.6,by-22,13,2.4);
+  }
+  function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();ctx.fill();}
+
+  // depth sort & draw all standing objects
+  // range rings on the floor — so a beginner SEES what each zapper covers
+  function ringAt(gx,gy,strong){
+    const p=iso(gx,gy), cx=p.x, cy=p.y+TH/2;
+    ctx.save();
+    ctx.strokeStyle=strong?'rgba(127,212,208,.9)':'rgba(127,212,208,.30)';
+    ctx.lineWidth=strong?2:1.5; if(!strong)ctx.setLineDash([5,5]);
+    ctx.beginPath();ctx.ellipse(cx,cy,TURRET_RANGE*TW/2,TURRET_RANGE*TH/2,0,0,7);ctx.stroke();
+    if(strong){const f=ctx.createRadialGradient(cx,cy,4,cx,cy,TURRET_RANGE*TW/2);
+      f.addColorStop(0,'rgba(127,212,208,.10)');f.addColorStop(1,'rgba(127,212,208,0)');
+      ctx.fillStyle=f;ctx.beginPath();ctx.ellipse(cx,cy,TURRET_RANGE*TW/2,TURRET_RANGE*TH/2,0,0,7);ctx.fill();}
+    ctx.restore();
+  }
+  function drawRanges(){
+    for(const f of FURN) if(f.turret) ringAt(f.x,f.y,false);   // faint ring per zapper
+    if(mode==='build' && hover && !FURN.some(f=>f.x===hover.x&&f.y===hover.y)
+       && !onRoute(hover.x,hover.y) && !isBeacon(hover.x,hover.y)) ringAt(hover.x,hover.y,true); // bright ghost ring
+  }
+  function drawObjects(){
+    const items=[];
+    FURN.forEach(f=>items.push({gx:f.x,gy:f.y,d:f.x+f.y,kind:'furn',ref:f}));
+    crew.forEach(c=>items.push({gx:c.x,gy:c.y,d:c.x+c.y+0.5,kind:'crew',ref:c}));
+    items.push({gx:avatar.x,gy:avatar.y,d:avatar.x+avatar.y+0.5,kind:'me',ref:avatar});
+    enemies.forEach(e=>items.push({gx:e.gx,gy:e.gy,d:e.gx+e.gy+0.6,kind:'enemy',ref:e}));
+    items.sort((a,b)=>a.d-b.d);
+    for(const it of items){
+      if(it.kind==='furn'){const f=it.ref; box(f.x,f.y,f.h,f.c,{glow:f.glow}); if(f.turret) drawTurretHead(f);}
+      else if(it.kind==='crew'){drawAvatar(it.ref.x,it.ref.y,it.ref.ph,{skin:'#e0a878',hair:'#2a1a12',outfit:it.ref.c,stance:'steady'});}
+      else if(it.kind==='me'){drawAvatar(avatar.x,avatar.y,avatar.ph,look);}
+      else if(it.kind==='enemy'){drawEnemy(it.ref);}
+    }
+  }
+  function drawTurretHead(f){
+    const p=iso(f.x,f.y);const cx=p.x,cy=p.y+TH/2-f.h-2;
+    ctx.fillStyle='#33424d';ctx.beginPath();ctx.arc(cx,cy,5,0,7);ctx.fill();
+    ctx.strokeStyle='#cfe6e4';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(f.ang)*11,cy+Math.sin(f.ang)*6);ctx.stroke();
+  }
+  function drawEnemy(e){
+    const p=iso(e.gx,e.gy);const x=p.x,y=p.y+TH/2-8+Math.sin(t*6+e.ph)*1.5;
+    ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(x,p.y+TH/2+2,7,3,0,0,7);ctx.fill();
+    ctx.fillStyle=e.boss?'#7a3a8f':'#3a6b74';ctx.beginPath();ctx.arc(x,y,e.boss?9:6,0,7);ctx.fill();
+    ctx.fillStyle='#cfe6e4';ctx.beginPath();ctx.arc(x-2,y-1,1.4,0,7);ctx.arc(x+2,y-1,1.4,0,7);ctx.fill();
+    // hp
+    ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(x-7,y-13,14,3);
+    ctx.fillStyle='#7fd4d0';ctx.fillRect(x-7,y-13,14*Math.max(0,e.hp/e.max),3);
+  }
+
+  function drawShots(){
+    for(const s of shots){ctx.fillStyle='#f6c66b';ctx.beginPath();ctx.arc(s.x,s.y,2.4,0,7);ctx.fill();}
+    for(const s of sparks){ctx.globalAlpha=s.life;ctx.fillStyle=s.c;ctx.fillRect(s.x,s.y,2,2);ctx.globalAlpha=1;}
+  }
+
+  function nightLights(){
+    // soft vignette so lamp glow reads
+    const g=ctx.createRadialGradient(innerWidth/2,innerHeight/2,innerHeight*0.2,innerWidth/2,innerHeight/2,innerHeight*0.75);
+    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(2,10,12,0.55)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,innerWidth,innerHeight);
+  }
+
+  // ---------- sim ----------
+  function gpos(gx,gy){const p=iso(gx,gy);return{x:p.x,y:p.y+TH/2-8}}
+  function startTide(){
+    if(waveActive)return;
+    if(teachStep<2){teachStep=2; setCoach();}        // pressing Start finishes the tutorial
+    // 3·2·1·GO, then the gunk drifts in — so a beginner sees it coming
+    let n=3; bigCount(n);
+    const tick=()=>{ n--; if(n>0){bigCount(n);setTimeout(tick,700);} else {bigCount('GO');setTimeout(()=>{hideBig();spawnTide();},500);} };
+    setTimeout(tick,700);
+  }
+  function bigCount(v){const c=document.getElementById('bigcard');c.classList.add('show');
+    document.getElementById('bigInner').innerHTML=`<div class="count">${v}</div>`;}
+  function hideBig(){document.getElementById('bigcard').classList.remove('show');}
+  function spawnTide(){
+    waveActive=true; waveNum++; hearts=MAX_HEARTS; updateHearts();
+    document.getElementById('wave').textContent=waveNum;
+    const count=4+waveNum*2;
+    for(let i=0;i<count;i++){
+      const boss=(i===count-1 && waveNum>=2);
+      const route=ROUTES[i%ROUTES.length];           // alternate gates so both lanes are live
+      enemies.push({route,seg:0,tp:-Math.floor(i/ROUTES.length)*0.7,gx:route[0].x,gy:route[0].y,hp:boss?14:4,max:boss?14:4,sp:boss?0.18:0.32,boss,ph:i*1.3});
+    }
+    flash(`Tide ${waveNum} — keep the gunk off the Beacon!`);
+    document.getElementById('tide').classList.add('live');
+    document.getElementById('netpill').textContent='● simulating';
+  }
+  function updateHearts(){const h=document.getElementById('hearts').children;
+    for(let i=0;i<h.length;i++) h[i].classList.toggle('gone', i>=hearts);}
+  const PULSE_COST=50;
+  function updatePower(){
+    document.getElementById('powerTxt').textContent=Math.round(power);
+    document.getElementById('pbar').style.width=power+'%';
+    document.getElementById('pulse').disabled = power<PULSE_COST;
+  }
+  function beaconPulse(){
+    if(power<PULSE_COST){flash('Beacon needs more ⚡ power to Pulse');return;}
+    power-=PULSE_COST; updatePower();
+    pulseRing=1;                                   // kick off the shockwave fx
+    for(const e of enemies){ if(e.dead)continue; e.tp=Math.max(-0.4, e.tp-2.5); } // shove all gunk back toward the gates
+    boom(CORE.x,CORE.y,'#f6c66b');
+    flash('💥 Beacon Pulse! All gunk shoved back to the gates');
+  }
+  function stepEnemies(dt){
+    for(const e of enemies){
+      if(e.dead)continue; e.tp+=dt*e.sp; if(e.tp<0){continue;}
+      const seg=Math.floor(e.tp), f=e.tp-seg;
+      if(seg>=e.route.length-1){ e.dead=true; hearts=Math.max(0,hearts-1); updateHearts(); boom(CORE.x,CORE.y,'#ef6a4a');
+        if(hearts<=0){loseTide();return;} flash(`Ouch! Beacon took a hit · ${hearts} ♥ left`); continue;}
+      const a=e.route[seg], b=e.route[seg+1];
+      e.gx=a.x+(b.x-a.x)*f; e.gy=a.y+(b.y-a.y)*f;
+    }
+    // turrets fire
+    for(const tr of FURN){ if(!tr.turret)continue; tr.cd-=dt;
+      let best=null,bd=4;
+      for(const e of enemies){if(e.dead||e.tp<0)continue;const d=Math.hypot(e.gx-tr.x,e.gy-tr.y);if(d<bd){bd=d;best=e;}}
+      if(best){const tp=gpos(best.gx,best.gy),sp=gpos(tr.x,tr.y);tr.ang=Math.atan2(tp.y-(sp.y-tr.h),tp.x-sp.x);
+        if(tr.cd<=0){tr.cd=0.5; shots.push({x:sp.x,y:sp.y-tr.h+6,tx:best,life:1});}}
+    }
+    // shots
+    for(const s of shots){ if(s.dead)continue; if(s.tx.dead){s.dead=true;continue;}
+      const tp=gpos(s.tx.gx,s.tx.gy); const dx=tp.x-s.x,dy=tp.y-s.y,d=Math.hypot(dx,dy);
+      if(d<6){s.dead=true; s.tx.hp-=2; boom(s.tx.gx,s.tx.gy,'#f6c66b'); if(s.tx.hp<=0){s.tx.dead=true;salvage+=3;document.getElementById('salvage').textContent=salvage;}}
+      else {s.x+=dx/d*420*dt; s.y+=dy/d*420*dt;}
+    }
+    for(let i=shots.length-1;i>=0;i--) if(shots[i].dead)shots.splice(i,1);
+    for(let i=sparks.length-1;i>=0;i--){const s=sparks[i];s.x+=s.vx;s.y+=s.vy;s.vy+=0.12;s.life-=0.03;if(s.life<=0)sparks.splice(i,1);}
+    // end wave?
+    if(waveActive && enemies.every(e=>e.dead)){
+      const reward=12+waveNum*4; salvage+=reward; spark+=2;
+      document.getElementById('salvage').textContent=salvage;
+      winTide(reward);
+    }
+  }
+  function endTide(){ waveActive=false; enemies.length=0; shots.length=0;
+    document.getElementById('tide').classList.remove('live');
+    document.getElementById('netpill').textContent='● offline'; }
+  function winTide(reward){ endTide();
+    const grew=beaconStage<5; if(grew) beaconStage++;   // the Beacon grows!
+    power=Math.min(100,power+30); updatePower();
+    const stars='⭐'.repeat(hearts)+'<span style="opacity:.2">⭐</span>'.repeat(MAX_HEARTS-hearts);
+    showBig(`<div class="title" style="color:var(--brass-2)">Beacon safe!</div>
+      <div class="stars">${stars}</div>
+      <div class="sub">Tide ${waveNum} cleared · +${reward} salvage${grew?` · <b style="color:var(--brass-2)">Beacon grew to Lv ${beaconStage}!</b>`:''}</div>
+      <button class="again" id="bigBtn">Keep building →</button>`); }
+  function loseTide(){ endTide();
+    showBig(`<div class="title" style="color:var(--danger)">The gunk got in!</div>
+      <div class="sub">Build more zappers along the glowing path, then try again.</div>
+      <button class="again" id="bigBtn">Try again</button>`); }
+  function showBig(html){const c=document.getElementById('bigcard');c.classList.add('show');
+    document.getElementById('bigInner').innerHTML=html;
+    const b=document.getElementById('bigBtn'); if(b) b.onclick=()=>{hearts=MAX_HEARTS;updateHearts();hideBig();flash('Build mode · place zappers, then press ▶ Start');};}
+  function boom(gx,gy,c){const p=gpos(gx,gy);for(let i=0;i<8;i++)sparks.push({x:p.x,y:p.y,vx:(Math.random()-.5)*3,vy:(Math.random()-.7)*3,life:1,c});}
+
+  // ---------- loop ----------
+  let last=performance.now();
+  function drawPulseFx(){
+    if(pulseRing<=0)return;
+    const cp=iso(CORE.x,CORE.y), R=pulseRing*Math.max(innerWidth,innerHeight)*0.6;
+    ctx.save();ctx.globalAlpha=Math.max(0,1-pulseRing);
+    ctx.strokeStyle='#f6c66b';ctx.lineWidth=4;
+    ctx.beginPath();ctx.ellipse(cp.x,cp.y+TH/2,R,R*TH/TW,0,0,7);ctx.stroke();
+    ctx.restore();
+  }
+  function frame(now){
+    const dt=Math.min(0.05,(now-last)/1000); last=now; t+=dt;
+    if(pulseRing>0){pulseRing+=dt*1.6; if(pulseRing>=1)pulseRing=0;}
+    if(waveActive && power<100){power=Math.min(100,power+dt*4); updatePower();}  // trickle-charge during a Tide
+    drawWater(); drawFloor(); drawRanges(); drawObjects(); drawShots(); drawPulseFx(); nightLights();
+    if(waveActive) stepEnemies(dt);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // shared inverse-iso: screen → grid tile
+  function pickTile(mx,my){
+    const gx=Math.round(((mx-origin.x)/(TW/2)+(my-origin.y)/(TH/2))/2 -0.5);
+    const gy=Math.round(((my-origin.y)/(TH/2)-(mx-origin.x)/(TW/2))/2 -0.5);
+    return {gx,gy};
+  }
+  cv.addEventListener('pointermove',e=>{
+    const {gx,gy}=pickTile(e.clientX,e.clientY);
+    hover=(gx>=0&&gy>=0&&gx<GRID&&gy<GRID)?{x:gx,y:gy}:null;
+  });
+  document.getElementById('pulse').addEventListener('click',beaconPulse);
+
+  // ---------- input ----------
+  let hintT;
+  function flash(m){const h=document.getElementById('hint');h.textContent=m;h.classList.add('show');clearTimeout(hintT);hintT=setTimeout(()=>h.classList.remove('show'),2600);}
+  // the pointing-finger coach — the whole tutorial is two taps
+  function setCoach(){
+    const c=document.getElementById('coach'), txt=document.getElementById('coachText');
+    if(teachStep>=2){c.classList.add('hide');return;}
+    c.classList.remove('hide');
+    if(teachStep===0){
+      txt.textContent='Tap the glowing tile to build a zapper';
+      const p=iso(TEACH_TILE.x,TEACH_TILE.y);
+      c.style.left=p.x+'px'; c.style.top=(p.y-6)+'px';
+    } else {
+      txt.textContent='Now press ▶ Start to send the Tide';
+      const r=document.getElementById('tide').getBoundingClientRect();
+      c.style.left=(r.left+r.width/2)+'px'; c.style.top=(r.top-6)+'px';
+    }
+  }
+  // place / select on the grid
+  cv.addEventListener('pointerdown',e=>{
+    const mx=e.clientX,my=e.clientY;
+    // inverse iso
+    const gx=Math.round(((mx-origin.x)/(TW/2)+(my-origin.y)/(TH/2))/2 -0.5);
+    const gy=Math.round(((my-origin.y)/(TH/2)-(mx-origin.x)/(TW/2))/2 -0.5);
+    if(gx<0||gy<0||gx>=GRID||gy>=GRID)return;
+    if(mode==='build'){
+      if(salvage<8){flash('Need 8 salvage to build');return;}
+      if(FURN.some(f=>f.x===gx&&f.y===gy)){flash('Something is already here');return;}
+      if(isBeacon(gx,gy)){flash('That\'s the Beacon — build around it, not on it');return;}
+      if(onRoute(gx,gy)){flash('Can\'t build on the water path — put zappers beside it');return;}
+      FURN.push({t:'turret',x:gx,y:gy,c:'#9fb7c9',w:1,d:1,h:24,turret:1,ang:0,cd:0});
+      salvage-=8; document.getElementById('salvage').textContent=salvage;
+      flash('Zapper built! It clears gunk that comes near — see its ring');
+      if(teachStep===0){teachStep=1; setCoach();}
+    } else if(mode==='look'){
+      avatar.x=gx; avatar.y=gy;
+    } else { flash('Day watch · route clear · Beacon stable'); }
+  });
+  // mode rail
+  const modes={'m-build':'build','m-crew':'crew','m-look':'look','m-open':'open','m-share':'share'};
+  Object.keys(modes).forEach(id=>{
+    document.getElementById(id).addEventListener('click',()=>{
+      mode=modes[id];
+      Object.keys(modes).forEach(o=>document.getElementById(o).setAttribute('aria-pressed', o===id));
+      document.getElementById('creator').classList.toggle('open', mode==='look');
+      if(mode==='open'){flash('Join code DOCK-7F3 · live room signal logged to Trust');document.getElementById('netpill').textContent='● live · 1 guest';document.getElementById('trust').innerHTML='Trust: <b>live room</b> · sharing presence signal';}
+      else if(mode==='share'){flash('Postcard + "Beat my tide" capsule ready to send');}
+      else if(mode==='crew'){flash('Crew: Mira (builder) · Penn (host) · Jax (tactician)');}
+      else {document.getElementById('netpill').textContent='● offline';document.getElementById('trust').innerHTML='Trust: <b>local only</b> · nothing left this device';}
+    });
+  });
+  document.getElementById('tide').addEventListener('click',startTide);
+
+  // creator swatches
+  document.querySelectorAll('.swatches').forEach(box=>{
+    const k=box.dataset.k;
+    PAL[k].forEach((c,i)=>{
+      const b=document.createElement('button');b.className='sw';b.style.background=c;b.dataset.v=c;
+      b.setAttribute('aria-pressed', look[k]===c);
+      b.onclick=()=>{look[k]=c;box.querySelectorAll('.sw').forEach(s=>s.setAttribute('aria-pressed',s.dataset.v===c));};
+      box.appendChild(b);
+    });
+  });
+  document.querySelectorAll('.seg').forEach(seg=>{
+    const k=seg.dataset.k;
+    seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{look[k]=b.dataset.v;seg.querySelectorAll('button').forEach(o=>o.setAttribute('aria-pressed',o===b));});
+  });
+  document.getElementById('randomize').onclick=()=>{
+    ['skin','hair','outfit'].forEach(k=>{const c=PAL[k][Math.floor(Math.random()*PAL[k].length)];look[k]=c;
+      document.querySelectorAll(`.swatches[data-k=${k}] .sw`).forEach(s=>s.setAttribute('aria-pressed',s.dataset.v===c));});
+    flash('New look · saved to local profile');
+  };
+  updateHearts(); updatePower(); setCoach();
+  flash('This is your room. The glowing Beacon is yours to protect.');
+})();
+</script>
+</body>
+</html>

@@ -64,7 +64,9 @@
   } from '$lib/container/bridge-handlers';
   import {
     createIntentRegistry,
+    denyIntent,
     grantIntent,
+    isIntentDenied,
     isIntentGranted,
     revokeIntent,
     type IntentGrants,
@@ -1804,6 +1806,9 @@
     // intent. Grants are keyed by (consumer, intent) — once approved,
     // any provider firing this intent reaches the consumer with no
     // further prompts.
+    if (isIntentDenied(intentGrants, consumerAppId, intent)) {
+      return { provider: null, rows: [], reason: 'permission_denied' };
+    }
     if (!isIntentGranted(intentGrants, consumerAppId, intent)) {
       // De-dupe: if the same (consumer, intent) is already queued,
       // resolve the new request when the existing one resolves.
@@ -1860,13 +1865,16 @@
     if (!pendingIntentPrompt) return;
     const consumerId = pendingIntentPrompt.consumerId;
     const batch = pendingIntentQueue.filter((p) => p.consumerId === consumerId);
+    let nextGrants = intentGrants;
     for (const prompt of batch) {
+      nextGrants = denyIntent(nextGrants, prompt.consumerId, prompt.intent);
       prompt.resolve({
         provider: null,
         rows: [],
         reason: 'permission_denied',
       });
     }
+    intentGrants = nextGrants;
     pendingIntentQueue = pendingIntentQueue.filter((p) => p.consumerId !== consumerId);
   }
 
@@ -3565,6 +3573,10 @@
         <a class="rail-quick-btn" href="/tools" title="Browse tools" aria-label="Browse tools">⌕</a>
         <button class="rail-quick-btn" class:active={section === 'data'} title="Your data" aria-label="Your data" onclick={() => showSection('data')}>⊞</button>
         <button class="rail-quick-btn" class:active={section === 'access'} title="Access" aria-label="Access" onclick={() => showSection('access')}>⚿</button>
+        <a class="rail-quick-btn" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'} title="Maker" aria-label="Maker">M</a>
+        {#if data.user?.isAdmin}
+          <a class="rail-quick-btn" href="/admin" title="Admin" aria-label="Admin">A</a>
+        {/if}
       </nav>
     </div>
 
@@ -3606,7 +3618,13 @@
       <button class="foot-item" class:active={section === 'data'} onclick={() => showSection('data')}>Data</button>
       <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
       <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
-      <a class="foot-item" href="/you">○ Sign in to sync</a>
+      <a class="foot-item" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'}>
+        {data.user ? 'Maker' : 'Sign in to ship'}
+      </a>
+      {#if data.user?.isAdmin}
+        <a class="foot-item" href="/admin">Admin</a>
+      {/if}
+      <a class="foot-item" href="/you">{data.user ? 'You' : 'Sign in to sync'}</a>
     </nav>
   </aside>
 

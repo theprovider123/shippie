@@ -135,7 +135,10 @@
             <p>{data.user.email}</p>
           </div>
           <div class="account-actions">
-            <a href="/dashboard">Dashboard</a>
+            <a href="/maker">Maker</a>
+            {#if data.user.isAdmin}
+              <a href="/admin">Admin</a>
+            {/if}
             <form method="POST" action="/auth/logout">
               <button type="submit">Sign out</button>
             </form>
@@ -145,7 +148,7 @@
         <div class="account-row">
           <div>
             <strong>Use Shippie without an account.</strong>
-            <p>Sign in only for sync, recovery, builder tools, or a dashboard.</p>
+            <p>Sign in only for sync, recovery, builder tools, or Maker.</p>
           </div>
           <div class="account-actions">
             <a href="/auth/login?return_to=%2Fyou">Sign in</a>
@@ -230,7 +233,10 @@
         <a href="/docs">Docs</a>
         <a href="/dock?section=access">Access</a>
         <a href="/dock?section=data">Your data</a>
-        <a href="/dashboard/apps">Maker dashboard</a>
+        <a href="/maker/apps">Maker</a>
+        {#if data.user?.isAdmin}
+          <a href="/admin">Admin</a>
+        {/if}
       </div>
     </section>
   </main>

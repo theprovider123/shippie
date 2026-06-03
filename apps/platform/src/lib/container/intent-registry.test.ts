@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import {
   createIntentRegistry,
+  denyIntent,
   grantIntent,
+  isIntentDenied,
   isIntentGranted,
   removeAppIntentGrants,
   revokeIntent,
@@ -115,6 +117,13 @@ describe('intent grants — keyed by (consumer, intent)', () => {
     expect(isIntentGranted(next, 'app_other', 'cooked-meal')).toBe(false);
   });
 
+  test('denyIntent records a remembered denial per (consumer, intent)', () => {
+    const next = denyIntent({}, 'app_habit', 'cooked-meal');
+    expect(isIntentGranted(next, 'app_habit', 'cooked-meal')).toBe(false);
+    expect(isIntentDenied(next, 'app_habit', 'cooked-meal')).toBe(true);
+    expect(isIntentDenied(next, 'app_habit', 'workout-completed')).toBe(false);
+  });
+
   test('grantIntent does not mutate the input', () => {
     const before = {};
     grantIntent(before, 'app_habit', 'cooked-meal');
@@ -136,6 +145,13 @@ describe('intent grants — keyed by (consumer, intent)', () => {
     grants = revokeIntent(grants, 'app_habit', 'cooked-meal');
     expect(isIntentGranted(grants, 'app_habit', 'cooked-meal')).toBe(false);
     expect(isIntentGranted(grants, 'app_habit', 'workout-completed')).toBe(true);
+  });
+
+  test('grantIntent overrides a previous denial', () => {
+    let grants = denyIntent({}, 'app_habit', 'cooked-meal');
+    grants = grantIntent(grants, 'app_habit', 'cooked-meal');
+    expect(isIntentDenied(grants, 'app_habit', 'cooked-meal')).toBe(false);
+    expect(isIntentGranted(grants, 'app_habit', 'cooked-meal')).toBe(true);
   });
 
   test('removeAppIntentGrants drops every grant the app holds as consumer', () => {

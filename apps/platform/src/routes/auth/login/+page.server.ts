@@ -30,12 +30,32 @@ function localContinueTarget(returnTo: string): string {
   if (
     pathname === '/dashboard'
     || pathname.startsWith('/dashboard/')
+    || pathname === '/maker'
+    || pathname.startsWith('/maker/')
     || pathname === '/admin'
     || pathname.startsWith('/admin/')
+    || pathname === '/new'
   ) {
     return '/dock';
   }
   return returnTo;
+}
+
+type LoginIntent = 'local' | 'maker' | 'admin';
+
+function loginIntentFor(returnTo: string): LoginIntent {
+  const pathname = returnTo.split(/[?#]/, 1)[0] || '/dock';
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin';
+  if (
+    pathname === '/dashboard'
+    || pathname.startsWith('/dashboard/')
+    || pathname === '/maker'
+    || pathname.startsWith('/maker/')
+    || pathname === '/new'
+  ) {
+    return 'maker';
+  }
+  return 'local';
 }
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
@@ -53,6 +73,8 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
     devMode: env?.SHIPPIE_ENV !== 'production',
     returnTo,
     continueTo: localContinueTarget(returnTo),
+    intent: loginIntentFor(returnTo),
+    requiresAccount: loginIntentFor(returnTo) !== 'local',
   };
 };
 

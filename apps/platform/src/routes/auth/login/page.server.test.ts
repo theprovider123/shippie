@@ -55,7 +55,7 @@ function emailActionEvent(returnTo = '/dashboard?claim_trial=trial-abcd1234') {
 }
 
 describe('/auth/login email action', () => {
-  test('continues local browsing from protected dashboard urls', async () => {
+  test('marks protected dashboard urls as maker sign-in', async () => {
     const url = new URL('https://shippie.app/auth/login');
     url.searchParams.set('return_to', '/dashboard?smoke=footer2');
 
@@ -68,6 +68,26 @@ describe('/auth/login email action', () => {
     expect(result).toMatchObject({
       returnTo: '/dashboard?smoke=footer2',
       continueTo: '/dock',
+      intent: 'maker',
+      requiresAccount: true,
+    });
+  });
+
+  test('marks protected admin urls as admin sign-in', async () => {
+    const url = new URL('https://shippie.app/auth/login');
+    url.searchParams.set('return_to', '/admin?view=apps');
+
+    const result = await load({
+      locals: {},
+      platform: { env: { SHIPPIE_ENV: 'production' } },
+      url,
+    } as never);
+
+    expect(result).toMatchObject({
+      returnTo: '/admin?view=apps',
+      continueTo: '/dock',
+      intent: 'admin',
+      requiresAccount: true,
     });
   });
 

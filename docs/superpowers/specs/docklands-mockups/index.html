@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shippie Docklands Mockups</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <main class="mockups">
+      <section class="cover">
+        <div class="harbor-skyline" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="cover-copy">
+          <p class="eyebrow">Shippie showcase game</p>
+          <h1>Docklands</h1>
+          <p class="dek">Build a room that fights back.</p>
+          <div class="cover-promise" aria-label="Game premise">
+            <span>Your room is your base</span>
+            <span>Your furniture fights</span>
+            <span>Your friends dock in</span>
+          </div>
+        </div>
+        <div class="cover-meta">
+          <span>Offline</span>
+          <span>Local</span>
+          <span>Live</span>
+          <span>Sync</span>
+        </div>
+      </section>
+
+      <section class="screen screen-premise" aria-labelledby="premise-title">
+        <header class="screen-title">
+          <div>
+            <p class="eyebrow">Instant fantasy</p>
+            <h2 id="premise-title">Day room, Tide fight</h2>
+          </div>
+          <p>The same personal room handles cozy life, tactical defense, friend visits, and playable sharing.</p>
+        </header>
+
+        <div class="loop-board" aria-label="Docklands game loop">
+          <div class="loop-stage">
+            <span class="loop-water"></span>
+            <span class="loop-dock"></span>
+            <span class="loop-beacon"></span>
+            <span class="loop-route"></span>
+            <span class="loop-captain"></span>
+            <span class="loop-friend"></span>
+            <span class="loop-turret"></span>
+            <span class="loop-crate"></span>
+          </div>
+          <div class="loop-steps">
+            <article>
+              <strong>Day</strong>
+              <span>Build, decorate, craft, customize, care for crew.</span>
+            </article>
+            <article>
+              <strong>Tide</strong>
+              <span>The path lights up and furniture unfolds into defenses.</span>
+            </article>
+            <article>
+              <strong>Dock in</strong>
+              <span>Friends arrive as roles: Fixer, Spotter, Charger, Host.</span>
+            </article>
+            <article>
+              <strong>Send</strong>
+              <span>Post a room card that opens as a playable challenge.</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen screen-playable" aria-labelledby="playable-title">
+        <header class="screen-title">
+          <div>
+            <p class="eyebrow">Browser-native prototype</p>
+            <h2 id="playable-title">A living room, not a page</h2>
+          </div>
+          <p>Canvas scene sketch for the final feel: animated water, captain customization, local build actions, Tide simulation, share/trust states.</p>
+        </header>
+
+        <div class="playable-shell">
+          <iframe title="Docklands canvas prototype" src="./docklands-canvas.html"></iframe>
+        </div>
+      </section>
+
+      <section class="screen screen-creator" aria-labelledby="creator-title">
+        <header class="screen-title">
+          <div>
+            <p class="eyebrow">Character creator</p>
+            <h2 id="creator-title">A captain people recognise</h2>
+          </div>
+          <p>Full customization starts inside the room: body, face, hair, outfit, gear, emotes, and privacy controls.</p>
+        </header>
+
+        <div class="creator-shell" id="creatorShell">
+          <section class="creator-preview" aria-label="Captain preview">
+            <div class="creator-room">
+              <div class="creator-avatar" id="captainAvatar">
+                <span class="avatar-shadow"></span>
+                <span class="avatar-body"></span>
+                <span class="avatar-head"></span>
+                <span class="avatar-hair"></span>
+                <span class="avatar-face"></span>
+                <span class="avatar-jacket"></span>
+                <span class="avatar-tool"></span>
+              </div>
+              <div class="creator-nameplate">
+                <strong id="captainName">Captain Vale</strong>
+                <span id="captainTrait">Brisk builder</span>
+              </div>
+              <div class="creator-dock-light"></div>
+            </div>
+          </section>
+
+          <aside class="creator-controls">
+            <p class="panel-label">Customize</p>
+            <label class="text-field">
+              <span>Name</span>
+              <input id="nameInput" value="Captain Vale" maxlength="18" />
+            </label>
+
+            <div class="control-block">
+              <strong>Skin</strong>
+              <div class="swatch-row" data-target="skin">
+                <button class="tone-a selected" data-value="#d49a72" aria-label="warm skin"></button>
+                <button class="tone-b" data-value="#8d5f42" aria-label="deep skin"></button>
+                <button class="tone-c" data-value="#f0c6a1" aria-label="light skin"></button>
+                <button class="tone-d" data-value="#5d3a31" aria-label="umber skin"></button>
+              </div>
+            </div>
+
+            <div class="control-block">
+              <strong>Hair</strong>
+              <div class="swatch-row" data-target="hair">
+                <button class="hair-a selected" data-value="#2c2523" aria-label="black hair"></button>
+                <button class="hair-b" data-value="#b56d32" aria-label="copper hair"></button>
+                <button class="hair-c" data-value="#e8cf76" aria-label="gold hair"></button>
+                <button class="hair-d" data-value="#5b607c" aria-label="storm hair"></button>
+              </div>
+            </div>
+
+            <div class="control-block">
+              <strong>Outfit</strong>
+              <div class="segmented creator-segment" data-target="outfit">
+                <button class="selected" data-value="builder">Builder</button>
+                <button data-value="host">Host</button>
+                <button data-value="tide">Tide</button>
+              </div>
+            </div>
+
+            <div class="control-block">
+              <strong>Stance</strong>
+              <div class="segmented creator-segment" data-target="stance">
+                <button class="selected" data-value="brisk">Brisk</button>
+                <button data-value="steady">Steady</button>
+                <button data-value="relaxed">Relaxed</button>
+              </div>
+            </div>
+
+            <div class="emote-strip">
+              <button data-emote="wave">Wave</button>
+              <button data-emote="cheer">Cheer</button>
+              <button data-emote="repair">Repair</button>
+            </div>
+
+            <div class="privacy-chip">Local profile. Share only when you post a room card.</div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="screen screen-owner" aria-labelledby="owner-title">
+        <header class="screen-title">
+          <div>
+            <p class="eyebrow">Owner room</p>
+            <h2 id="owner-title">Your room fights back</h2>
+          </div>
+          <p>The first screen is the playable dock: Beacon, crew, furniture, Tide route, trophies, and share controls.</p>
+        </header>
+
+        <div class="app-frame desktop-frame mode-tide" id="dockApp">
+          <header class="topbar">
+            <div>
+              <p class="app-kicker">Docklands</p>
+              <h3>Beacon Dock</h3>
+            </div>
+            <nav class="top-actions" aria-label="Room status">
+              <span id="modePill">Tide mode</span>
+              <span>3 crew</span>
+              <span>Offline ready</span>
+            </nav>
+          </header>
+
+          <div class="workspace">
+            <aside class="side-panel left-panel">
+              <p class="panel-label">Crew</p>
+              <div class="crew-row">
+                <span class="avatar builder"></span>
+                <div>
+                  <strong>Mira</strong>
+                  <small>Builder - comfort 82</small>
+                </div>
+              </div>
+              <div class="crew-row">
+                <span class="avatar host"></span>
+                <div>
+                  <strong>Penn</strong>
+                  <small>Host - morale 76</small>
+                </div>
+              </div>
+              <div class="crew-row">
+                <span class="avatar tactician"></span>
+                <div>
+                  <strong>Jax</strong>
+                  <small>Tactician - safety 68</small>
+                </div>
+              </div>
+              <div class="need-bars" aria-label="Crew needs">
+                <label>Comfort <span style="--w:82%"></span></label>
+                <label>Morale <span style="--w:76%"></span></label>
+                <label>Safety <span style="--w:68%"></span></label>
+              </div>
+            </aside>
+
+            <section class="room-stage" aria-label="Isometric dock room mockup">
+              <div class="water water-top"></div>
+              <div class="water water-bottom"></div>
+              <div class="iso-room">
+                <div class="tile path p1"></div>
+                <div class="tile path p2"></div>
+                <div class="tile path p3"></div>
+                <div class="tile path p4"></div>
+                <div class="tile path p5"></div>
+                <div class="tile path p6"></div>
+                <div class="tile path p7"></div>
+                <div class="tile path p8"></div>
+                <div class="tile path p9"></div>
+                <div class="tile floor f1"></div>
+                <div class="tile floor f2"></div>
+                <div class="tile floor f3"></div>
+                <div class="tile floor f4"></div>
+                <div class="tile floor f5"></div>
+                <div class="tile floor f6"></div>
+                <div class="tile floor f7"></div>
+                <div class="item bed"></div>
+                <div class="item bench"></div>
+                <div class="item workbench"></div>
+                <div class="item crate crate-a"></div>
+                <div class="item crate crate-b"></div>
+                <div class="item turret turret-a"></div>
+                <div class="item turret turret-b"></div>
+                <div class="item trophy"></div>
+                <div class="item neon-sign"></div>
+                <div class="item beacon-core"></div>
+                <div class="item tide-orb"></div>
+                <div class="crew-sprite sprite-a"></div>
+                <div class="crew-sprite sprite-b"></div>
+                <div class="enemy enemy-a"></div>
+                <div class="enemy enemy-b"></div>
+                <div class="route-glow"></div>
+                <div class="spark spark-a"></div>
+                <div class="spark spark-b"></div>
+                <div class="room-label">Route to Beacon</div>
+              </div>
+            </section>
+
+            <aside class="side-panel right-panel">
+              <p class="panel-label" id="inspectorLabel">Selected</p>
+              <h4 id="inspectorTitle">Bell Turret</h4>
+              <p class="small-copy" id="inspectorCopy">Level 2. Good against Bottle Skippers. Uses 1 generator charge per burst.</p>
+              <div class="meter">
+                <span id="inspectorMeter" style="--w:64%"></span>
+              </div>
+              <button class="primary-button" id="primaryAction">Upgrade</button>
+              <button class="ghost-button" id="secondaryAction">Move</button>
+              <div class="trust-note" id="trustNote">Trust: last share logged locally.</div>
+            </aside>
+          </div>
+
+          <nav class="bottom-rail" aria-label="Docklands tools">
+            <button data-mode="day">Day</button>
+            <button data-mode="build">Build</button>
+            <button class="rail-active" data-mode="tide">Tide</button>
+            <button data-mode="open">Open</button>
+            <button data-mode="share">Share</button>
+          </nav>
+        </div>
+      </section>
+
+      <section class="screen screen-build" aria-labelledby="build-title">
+        <header class="screen-title">
+          <div>
+            <p class="eyebrow">Build mode</p>
+            <h2 id="build-title">Furniture is social, useful, and defensive</h2>
+          </div>
+          <p>The player sees path validity while placing objects, so room design and tower defense are the same act.</p>
+        </header>
+
+        <div class="phone-row">
+          <div class="phone-frame">
+            <header class="phone-top">
+              <span>Beacon Dock</span>
+              <strong>Build</strong>
+            </header>
+            <div class="phone-room">
+              <div class="mini-iso">
+                <span class="mini-tile good a"></span>
+                <span class="mini-tile good b"></span>
+                <span class="mini-tile route c"></span>
+                <span class="mini-tile route d"></span>
+                <span class="mini-tile warn e"></span>
+                <span class="mini-item new-item"></span>
+                <span class="mini-item lamp"></span>
+                <span class="mini-item coil"></span>
+                <span class="mini-route"></span>
+              </div>
+              <div class="placement-callout">
+                <strong>Crate Wall</strong>
+                <span>Path still open</span>
+              </div>
+            </div>
+            <div class="build-drawer">
+              <div class="segmented">
+                <button class="selected">Block</button>
+                <button>Home</button>
+                <button>Defense</button>
+              </div>
+              <div class="palette">
+                <button><span class="swatch crate"></span>Crate</button>
+                <button><span class="swatch bridge"></span>Bridge</button>
+                <button><span class="swatch net"></span>Net</button>
+                <button><span class="swatch lamp"></span>Lamp</button>
+              </div>
+              <div class="placement-actions">
+                <button class="ghost-button">Rotate</button>
+                <button class="primary-button">Place</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-notes">
+            <h3>Build verbs</h3>
+            <p>Place, route, assign, defend, gift, stamp, share, inspect.</p>
+            <ul>
+              <li>Path preview prevents dead rooms.</li>
+              <li>Furniture affects crew needs and wave outcomes.</li>
+              <li>Guest placement is a host-approved request, not direct mutation.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen screen-live" aria-labelledby="live-title">
+        <header class="screen-title">
+          <div>
+            <p class="eyebrow">Live tide</p>
+            <h2 id="live-title">Same room, real-time co-op</h2>
+          </div>
+          <p>Guests join by code, pick a temporary role, and send commands the host validates into the deterministic wave.</p>
+        </header>
+
+        <div class="app-frame live-frame">
+          <header class="topbar live-top">
+            <div>
+              <p class="app-kicker">Open dock</p>
+              <h3>Join code: BEACON-482</h3>
+            </div>
+            <nav class="top-actions">
+              <span>3 guests</span>
+              <span>Emote chat</span>
+              <span>Host locked</span>
+            </nav>
+          </header>
+
+          <div class="live-layout">
+            <section class="room-stage live-stage">
+              <div class="iso-room live-room">
+                <div class="tile path p1"></div>
+                <div class="tile path p2"></div>
+                <div class="tile path p3"></div>
+                <div class="tile path p4"></div>
+                <div class="tile path p5"></div>
+                <div class="tile path p6"></div>
+                <div class="tile path p7"></div>
+                <div class="tile path p8"></div>
+                <div class="item crate crate-a"></div>
+                <div class="item crate crate-b"></div>
+                <div class="item turret turret-a"></div>
+                <div class="item turret turret-b"></div>
+                <div class="enemy enemy-a"></div>
+                <div class="enemy enemy-b"></div>
+                <div class="enemy enemy-c"></div>
+                <div class="crew-sprite sprite-a"></div>
+                <div class="crew-sprite sprite-b"></div>
+                <div class="guest guest-a">Fix</div>
+                <div class="guest guest-b">Spot</div>
+                <div class="pulse-ring"></div>
+                <div class="room-label">Wave 3 - 00:42</div>
+              </div>
+            </section>
+
+            <aside class="live-panel">
+              <p class="panel-label">Co-op roles</p>
+              <div class="role active">
+                <strong>Fixer</strong>
+                <span>Repair crate wall</span>
+              </div>
+              <div class="role">
+                <strong>Spotter</strong>
+                <span>Mark Tide Brute</span>
+              </div>
+              <div class="role">
+                <strong>Charger</strong>
+                <span>Power Spark Coil</span>
+              </div>
+              <button class="primary-button">Send pulse</button>
+              <button class="ghost-button">Revoke invite</button>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen screen-share" aria-labelledby="share-title">
+        <header class="screen-title">
+          <div>
+            <p class="eyebrow">Share and memory</p>
+            <h2 id="share-title">Every share is playable</h2>
+          </div>
+          <p>Postcards, challenge capsules, guestbook receipts, and trust rows make the room portable and auditable.</p>
+        </header>
+
+        <div class="share-grid">
+          <div class="postcard">
+            <p class="app-kicker">Room postcard</p>
+            <h3>Beacon Dock</h3>
+            <div class="postcard-room">
+              <span class="post-tile a"></span>
+              <span class="post-tile b"></span>
+              <span class="post-tile c"></span>
+              <span class="post-item"></span>
+              <span class="post-route"></span>
+            </div>
+            <p>Wave 3 cleared. Brass Lantern earned.</p>
+          </div>
+
+          <div class="share-panel">
+            <p class="panel-label">Share sheet</p>
+            <button class="primary-button">Beat my tide</button>
+            <button class="ghost-button">Copy room link</button>
+            <button class="ghost-button">Gift blueprint</button>
+            <div class="qr" aria-label="QR mockup">
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="guestbook-panel">
+            <p class="panel-label">Guestbook</p>
+            <div class="entry">
+              <strong>Mae cleared your tide</strong>
+              <span>Replay verified - 01:18</span>
+            </div>
+            <div class="entry">
+              <strong>Sol gifted Net Launcher</strong>
+              <span>Blueprint copied, not transferred</span>
+            </div>
+            <div class="entry trust">
+              <strong>Trust</strong>
+              <span>Share export and 2 intent rows logged locally</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

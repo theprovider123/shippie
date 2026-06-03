@@ -1,0 +1,85 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "version": 1,
+  "type": "app",
+  "name": "Charlotte & James — 14th June 2026",
+  "slug": "wedding-demo",
+  "display_name": "Charlotte & James — 14th June 2026",
+  "description": "Wedding day guide for guests. No login. Works offline.",
+  "tagline": "Private wedding day guide for guests.",
+  "category": "lifestyle",
+  "icon": "/icon.svg",
+  "theme_color": "#C4956A",
+  "background_color": "#FAF7F2",
+  "visibility": "private",
+  "owner": "devante@urthly.digital",
+  "shareableLink": true,
+  "offline": true,
+  "display_mode": "standalone",
+  "orientation": "portrait",
+  "permissions": {
+    "auth": false,
+    "storage": "rw",
+    "files": true,
+    "analytics": false,
+    "external_network": false
+  },
+  "requested_permissions": ["camera", "haptics"],
+  "intents": {
+    "provides": ["wedding.song-requested", "wedding.table-searched", "wedding.memory-uploaded"],
+    "consumes": []
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": ["guest-activity", "song-requests", "memories"],
+    "attachments": true,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "encrypted-chunked",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "wedding-demo.guest-name",
+        "wedding-demo.song-requests",
+        "wedding-demo.memories",
+        "wedding-demo.analytics"
+      ],
+      "prefixes": ["wedding-demo."]
+    }
+  },
+  "data_schemas": {
+    "table_search": {
+      "id": "text primary key",
+      "guest_name": "text not null",
+      "table_number": "integer",
+      "searched_at": "datetime"
+    },
+    "song_requests": {
+      "id": "text primary key",
+      "song": "text not null",
+      "artist": "text",
+      "created_at": "datetime"
+    },
+    "memories": {
+      "id": "text primary key",
+      "filename": "text",
+      "mime_type": "text",
+      "bytes": "integer",
+      "uploaded_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "archived",
+    "category": "lifestyle",
+    "tier": "private-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-wedding-demo",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "wedding-demo",
+    "schema": "wedding-demo.v1"
+  },
+  "entry": "index.html"
+}

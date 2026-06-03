@@ -28,6 +28,7 @@ body {
   -webkit-font-smoothing: antialiased;
   line-height: 1.45;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 button { font: inherit; }
 
@@ -35,12 +36,19 @@ button { font: inherit; }
   height: 100%;
   width: 100%;
   margin: 0 auto;
-  padding: max(12px, env(safe-area-inset-top, 0px)) clamp(8px, 2vw, 16px) max(16px, env(safe-area-inset-bottom, 0px));
+  padding: max(12px, env(safe-area-inset-top, 0px)) clamp(8px, 2vw, 16px) calc(max(16px, env(safe-area-inset-bottom, 0px)) + var(--mobile-dock-clearance, 0px));
   display: flex;
   flex-direction: column;
   gap: 10px;
   max-width: 480px;
   position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 719px) {
+  .app {
+    --mobile-dock-clearance: 34px;
+  }
 }
 
 h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
@@ -88,6 +96,11 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   width: 100%;
   margin: 0 auto;
   max-width: 480px;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   touch-action: none;
 }
 .grid {
@@ -97,7 +110,9 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   background: rgba(42, 31, 22, 0.12);
   padding: 1px;
   aspect-ratio: 1 / 1;
-  width: 100%;
+  width: min(100%, calc(100dvh - 224px));
+  max-width: 480px;
+  max-height: 100%;
 }
 .cell {
   background: rgba(255, 255, 255, 0.7);
@@ -127,9 +142,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   to { transform: scale(1.05); }
 }
 
-/* D-pad row — lives BELOW the grid, never overlapping play area.
-   Three buttons wide on a sensible row layout. Auto-hides via the
-   `hopCount < DPAD_FADE_AFTER_HOPS` gate in App.tsx. */
+/* D-pad row — lives below the grid and stays mounted for long mobile runs. */
 .dpad-row {
   display: flex;
   align-items: center;
@@ -138,6 +151,7 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   margin: 0 auto;
   width: 100%;
   max-width: 320px;
+  flex: 0 0 auto;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -148,8 +162,8 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   gap: 6px;
 }
 .dpad-btn {
-  width: 56px;
-  height: 56px;
+  width: clamp(58px, 18vw, 68px);
+  height: clamp(58px, 18vw, 68px);
   border-radius: 0;
   border: 1px solid rgba(42, 31, 22, 0.25);
   background: rgba(255, 255, 255, 0.92);
@@ -161,8 +175,9 @@ h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 60
   justify-content: center;
   padding: 0;
   touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.dpad-stack .dpad-btn { height: 44px; }
+.dpad-stack .dpad-btn { height: clamp(46px, 14vw, 52px); }
 .dpad-btn:active {
   background: rgba(79, 164, 135, 0.35);
   transform: scale(0.95);

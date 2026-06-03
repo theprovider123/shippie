@@ -89,7 +89,15 @@ export function isIntentGranted(
   consumerAppId: string,
   intent: string,
 ): boolean {
-  return Boolean(grants[consumerAppId]?.[intent]);
+  return grants[consumerAppId]?.[intent] === true;
+}
+
+export function isIntentDenied(
+  grants: IntentGrants,
+  consumerAppId: string,
+  intent: string,
+): boolean {
+  return grants[consumerAppId]?.[intent] === false;
 }
 
 export function grantIntent(
@@ -102,6 +110,20 @@ export function grantIntent(
     [consumerAppId]: {
       ...(grants[consumerAppId] ?? {}),
       [intent]: true,
+    },
+  };
+}
+
+export function denyIntent(
+  grants: IntentGrants,
+  consumerAppId: string,
+  intent: string,
+): IntentGrants {
+  return {
+    ...grants,
+    [consumerAppId]: {
+      ...(grants[consumerAppId] ?? {}),
+      [intent]: false,
     },
   };
 }
@@ -120,9 +142,7 @@ export function removeAppIntentGrants(grants: IntentGrants, appId: string): Inte
   const next: IntentGrants = {};
   for (const [consumerId, intentGrants] of Object.entries(grants)) {
     if (consumerId === appId) continue;
-    const filtered = Object.fromEntries(
-      Object.entries(intentGrants).filter(([, granted]) => granted),
-    );
+    const filtered = Object.fromEntries(Object.entries(intentGrants));
     if (Object.keys(filtered).length > 0) {
       next[consumerId] = filtered;
     }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Docklands">
+  <rect width="128" height="128" rx="18" fill="#06181c"/>
+  <path d="M18 83 64 56l46 27-46 27Z" fill="#0e2c34" stroke="#7fd4d0" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M33 78 64 60l31 18-31 18Z" fill="#c9a06a" opacity=".9"/>
+  <path d="M64 22 79 58H49Z" fill="#f6c66b"/>
+  <circle cx="64" cy="55" r="18" fill="#67dcec" opacity=".28"/>
+  <circle cx="64" cy="55" r="10" fill="#f6c66b"/>
+  <path d="M64 16v92" stroke="#f6c66b" stroke-width="5" stroke-linecap="round" opacity=".65"/>
+  <path d="M28 94h76" stroke="#e8a23c" stroke-width="6" stroke-linecap="round"/>
+</svg>

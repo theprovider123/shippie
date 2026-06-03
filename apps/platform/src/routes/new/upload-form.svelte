@@ -53,7 +53,7 @@
   const shareUrl = $derived(
     result.kind === 'success'
       ? visibility === 'private'
-        ? `(generating private invite — open the dashboard)`
+        ? `(generating private invite — open Maker)`
         : `${typeof window !== 'undefined' ? window.location.origin : ''}/apps/${result.slug}`
       : '',
   );
@@ -254,10 +254,10 @@
           <div class="action-row" aria-label="Next actions">
             <a href={result.liveUrl} target="_blank" rel="noreferrer">Open app</a>
             {#if !trialMode}
-              <a href={`/dashboard/apps/${result.slug}`}>Launchpad</a>
+              <a href={`/maker/apps/${result.slug}`}>Maker</a>
             {/if}
             {#if result.reportUrl || result.deployId}
-              <a href={absoluteUrl(result.reportUrl ?? `/dashboard/apps/${result.slug}/deploys/${result.deployId}`)}>
+              <a href={absoluteUrl(result.reportUrl ?? `/maker/apps/${result.slug}/deploys/${result.deployId}`)}>
                 Flight Recorder
               </a>
             {/if}

@@ -1,0 +1,278 @@
+# Reconcile slice map — origin/main..HEAD (254 commits, 2026-06-02)
+
+> Release-notes skeleton for the reconcile PR. Each commit assigned to exactly one slice
+> by precedence (remix → docs → workspace → packages → platform → launch-polish).
+> origin/main is a strict ancestor; history is linear. Merge to main = D1 migrate + prod deploy.
+
+## Slice 1 — Remix / provenance / deploy lineage
+
+- `9501b7db` merge: reconcile workspace Phase 1+2 with codex coherence contracts (5a5b8930)
+- `5a5b8930` feat(platform): codify local tool coherence contracts
+- `b61b0f5e` feat(platform): wire Data Passport compatibility into the remix flow
+- `ab08af3a` fix(showcase): precache parade remix packs
+- `36286202` feat(showcase): support remixed parade route extents
+
+## Slice 3 — Docs / open-marketplace positioning
+
+- `0e1d94bc` docs(workspace): add approved A+B execution refinements + acceptance gates
+- `72fda190` docs(workspace): 1.1 immersion + stabilization UX/UI review + phased plan
+- `f675f528` docs(workspace): Phase 3 plan — hydration-flicker guard + drop line-17 import mention
+- `07592610` docs(workspace): tighten Phase 3 plan per review (boot-path task, both-state-source verify, drop unused import)
+- `f8a603bd` docs(workspace): Phase 3 plan (first-run empty state)
+- `07833e7b` docs(workspace): pre-staged Phase 1+2 reconciliation playbook vs codex WIP
+- `cc8ee401` docs(workspace): Phase 2 plan (resume/insight strip)
+- `ed8fc215` docs(workspace): patch Phase 1 plan per review (openApp-by-id, /tools links, sign-in foot, manifest shortcut)
+- `8720770f` docs(workspace): Phase 1 implementation plan (front door + rail + PWA)
+- `ea817c13` docs(workspace): tighten implementation contract per review
+- `be8c65b0` docs(workspace): approved Workspace redesign spec
+- `fa2fc15c` docs(cycle): research synthesis for private cycle tracker
+- `488a6c4a` docs: record parade companion round seven notes
+- `fc05be97` docs(parade): cut noncritical day-one features
+- `2f3ecfda` docs(parade): add opportunistic relay plan
+
+## Slice 2 — Workspace / front-door / dock
+
+- `aab92edd` fix(workspace): make tool drawers scalable
+- `a3843018` feat(workspace): Phase F — cap warm iframes at 3 on mobile
+- `f6248e43` feat(workspace): Phase E core — maker viewport contract (layout stage)
+- `a0c0d00a` feat(workspace): Phase C+D — chrome + home cleanup
+- `4e21bf95` feat(workspace): Phase B — latent shell (Cmd+K summon + auto-dim chrome)
+- `a02664fc` feat(workspace): Phase A — immersive active-tool (full-bleed canvas, /workspace?app= URL, back closes tool, chrome hidden)
+- `5860fd5c` fix(workspace): clear svelte-check warnings — switcher-sheet a11y (dialog tabindex + Escape/backdrop) + remove orphaned rail CSS (h1/.tabs)
+- `09ea2e6e` feat(workspace): first-run 'Tools' label on the mobile switcher handle (gesture mode)
+- `f574bdc3` refactor(workspace): retire the always-on Updates box (render only when updates exist)
+- `6b678430` feat(workspace): category-based monogram colours in rail, switcher + starters
+- `71a4bf1f` feat(workspace): categoryColorFamily helper (category-based monogram colour)
+- `ecdbe191` feat(workspace): mount tool-switcher sheet on /workspace
+- `d7dd24bc` feat(workspace): mobile dock -> Today · Tools · You (Tools opens switcher)
+- `c1531620` feat(workspace): mobile tool-switcher sheet + switcherOpen store
+- `978ceaee` feat(workspace): first-run empty state — organic boot lands empty + hydration-gated hero
+- `0693c06c` feat(workspace): WorkspaceEmptyState (hero + starters + browse)
+- `e56ef892` feat(workspace): pure pickStarters selector for first-run
+- `6c5f157e` feat(workspace): mount resume/insight strip above the active tool
+- `447e2f5b` feat(workspace): CanvasStrip slim one-item component
+- `886e0177` feat(workspace): canvas resume/insight strip selector
+- `4c120d1d` fix(workspace): repair /run shell import + focused-mode dock + stale browse links
+- `60ba047a` test(workspace): catalog drift-check reads /tools page after relocation
+- `0574c8a5` feat(workspace): adaptive Open/Pinned/Recent rail switcher
+- `193cc009` feat(workspace): shell-asset precache routes -> /workspace,/tools
+- `2b3c8cd0` feat(workspace): SW shell precache + key maps include /workspace and /tools
+- `3361e7dd` feat(workspace): PWA manifest start_url + shortcuts -> /workspace
+- `36c592a0` feat(workspace): /container -> /workspace back-compat redirect
+- `162dcba2` feat(workspace): / redirects to /workspace (front door flip)
+- `2e4c70a3` refactor(workspace): rename /container route to /workspace, drop bare-redirect, repoint internal route links
+- `0a2165f9` refactor(workspace): catalog search submits to /tools
+- `17b76ff3` refactor(workspace): /apps -> /tools (preserve query)
+- `10614a6c` refactor(workspace): relocate catalog to /tools, repoint internal links
+- `9c840d96` feat(workspace): pure adaptive rail-grouping selector
+- `797db125` chore(workspace): carry forward outstanding session work
+- `34f01550` fix(platform): keep maker apps in launcher visibility
+- `b2521014` feat(platform): unify launcher shelf visibility
+- `d14ce819` feat(platform): codify the discovery contract as an enforced guardrail
+- `04e32242` fix(platform): harden mobile launcher navigation
+- `954becfb` fix(platform): restore launcher tile navigation
+- `7732138f` fix(platform): hide unready launcher apps
+- `249a8eab` fix(platform): streamline launcher mobile UX
+- `5ce6a0d3` fix(platform): normalize offline launcher kernel
+- `dede5f93` fix(platform): keep offline launcher on saved tools
+- `e6c59d31` feat(showcase-recipe): plan view popular-tonight rail + Sunday week-summary + cookedServings tracking
+
+## Slice 5 — Packages / export / refactor / chore
+
+- `805c712b` feat(trust-ledger): Tranche 5A core package + bridge ledger hook
+- `32724969` feat(cycle): modes, app lock, data export/delete, clinician share, seek-care
+- `4e686657` refactor(palate): checked shopping items leave the active list
+- `6b769351` refactor(chiwit): simplify Today's two competing quick-loggers
+- `4ee80604` feat(platform): stop deriving package id + data family from the mutable slug
+- `6ca53a71` feat(chiwit): distinct calm-instrument visual identity
+- `b7a8b188` chore(showcase): sync parade route pack typing
+- `342d1f17` refactor(showcase): simplify parade companion map controls
+- `e21b856d` refactor(showcase-chiwit): hoist KIND_META to CSS vars + dedupe last7Days computation
+- `8bdefc02` feat(showcase-chiwit): CSV export + repeat-yesterday check-in
+- `a37ed434` chore(showcase): close parade launch gates
+- `6ccf5116` refactor(platform): commit AppSwitcherGesture constants into the module
+- `3ec161e0` refactor(platform): guard InsightStrip render on insights.length > 0
+- `29441d27` refactor(platform): extract AppSwitcherGesture tuning constants to module
+- `26ecb72b` chore(showcase-story-studio): apply 2026-05-23 review polish
+- `d28dc3ae` chore(showcase-steep): apply 2026-05-23 review polish
+- `08d2ce9b` chore(showcase-snap-and-forget): apply 2026-05-23 review polish
+- `ae562e3c` chore(showcase-snake): apply 2026-05-23 review polish
+- `b8d25731` chore(showcase-journal): apply 2026-05-23 review polish
+- `d2889575` chore(showcase-therapy-notes): apply 2026-05-23 review polish
+- `5c883268` chore(showcase-tap-counter): apply 2026-05-23 review polish
+- `0de4460b` chore(showcase-tab): apply 2026-05-23 review polish
+- `76ad2ab3` chore(showcase-symptom-diary): apply 2026-05-23 review polish
+- `f35d2b9b` chore(showcase-sudoku): apply 2026-05-23 review polish
+- `dd068482` chore(showcase-site-visit): apply 2026-05-23 review polish
+- `3ad9ce38` chore(showcase-invaders): apply 2026-05-23 review polish
+- `711bc696` chore(showcase-memory-grid): apply 2026-05-23 review polish
+- `6397754d` chore(showcase-meal-planner): apply 2026-05-23 review polish
+- `3342314b` chore(showcase-receipt-snap): apply 2026-05-23 review polish
+- `f837fba5` chore(showcase-maze): apply 2026-05-23 review polish
+- `1b483be0` chore(showcase-cycle): apply 2026-05-23 review polish
+- `49c81e7c` chore(showcase-crossing): apply 2026-05-23 review polish
+- `972d631d` chore(showcase-crewtrip): apply 2026-05-23 review polish
+- `e6359907` chore(showcase-show-and-tell): apply 2026-05-23 review polish
+- `3ade384e` chore(showcase-hearth): apply 2026-05-23 review polish
+- `f8e3a88e` chore(showcase-pantry-scanner): apply 2026-05-23 review polish
+- `af1888e4` chore(showcase-pitch-forge): apply 2026-05-23 review polish
+- `67f78f97` chore(showcase-shopping-list): apply 2026-05-23 review polish
+- `02be2794` chore(showcase-quartet): apply 2026-05-23 review polish
+- `0ed9e486` chore(showcase-habit-tracker): apply 2026-05-23 review polish
+- `31896f39` chore(showcase-restaurant-memory): apply 2026-05-23 review polish
+- `27d1f096` feat(shippie-ai): worker-deadlock circuit breaker + tidy Backend re-export
+- `84f63614` chore(showcase-lift): apply 2026-05-23 review polish — TemplateEditor unsaved-changes guard
+- `22e40b48` chore(showcase-daily-puzzle): apply 2026-05-23 review polish
+- `acd5cd05` chore(showcase-cooking): apply 2026-05-23 review polish
+- `7a1f560b` chore(showcase-lift): apply 2026-05-23 review polish
+- `3a10e237` chore(showcase-bricks): apply 2026-05-23 review polish
+- `305a183d` chore(showcase-live-room): note kit-v2 skin gap
+- `5e7b2931` chore(showcase-would-you-rather): apply 2026-05-23 review polish
+- `a474a5e0` chore(showcase-colour-of-day): apply 2026-05-23 review polish
+- `824cbe9b` chore(showcase-world-cup-fantasy): apply 2026-05-23 review polish
+- `e46233b5` chore(showcase-breath): apply 2026-05-23 review polish
+- `66282652` chore(showcase-coffee): apply 2026-05-23 review polish
+- `54ea8aaa` chore(showcase-voice-memo): apply 2026-05-23 review polish
+- `21d3a79f` chore(showcase-drift): apply 2026-05-23 review polish
+- `69301923` chore(showcase-body-metrics): apply 2026-05-23 review polish
+- `9df3755e` chore(showcase-drawing-telephone): apply 2026-05-23 review polish
+- `c97c9286` chore(showcase-chess): apply 2026-05-23 review polish
+- `a6ae5346` chore(showcase-touch): apply 2026-05-23 review polish
+- `8e0e5cff` chore(showcase-care-log): apply 2026-05-23 review polish
+- `3ca6fe05` chore(showcase-block-drop): apply 2026-05-23 review polish
+- `f2848d9c` chore(showcase-dough): apply 2026-05-23 review polish
+- `32a1fc42` chore(showcase-bulwark): apply 2026-05-23 review polish
+- `7cc706f6` chore(showcase-stack): apply 2026-05-23 review polish
+- `f7927603` chore(showcase-read-later): apply 2026-05-23 review polish
+- `82a6f4fc` chore(showcase-co-pilot): apply 2026-05-23 review polish
+- `1324682e` chore(showcase-atlas): apply 2026-05-23 review polish
+
+## Slice 6 — Platform core
+
+- `648e9668` feat(platform): wire ledger + telemetry + CSP into container; ship OS roadmap
+- `a904edde` feat(platform): Tranche 1/2/3/4/6 foundations + tests
+- `ca7dc427` feat(platform): Tranche 5A/5B/5C — ledger host, registry, surfaces
+- `eeabf4e7` style(platform): canonical .btn primitive + sharpen docs hierarchy
+- `6e1d02fd` feat(platform): ingest app icons to R2, serve same-origin (no hotlinks)
+- `f514f82f` feat(platform): idempotent, resumable runtime-slug rename migration
+- `f7981732` feat(platform): slug aliases so third-party renames 302 instead of 404
+- `66d70da6` fix(platform): allow hashed local db bridge in arcade csp
+- `8987a6e0` feat(platform): pick up Claude showcase updates
+- `c0923d3a` feat(platform): unify tool surfaces and offline capsules
+- `ae5e2172` fix(platform): accept connected painted frames
+- `70fe256a` fix(platform): recover painted app frames
+- `b549a618` fix(platform): open saved run apps offline
+- `44e40bb6` fix(platform): rate limit parade pulses by source
+- `4c036839` fix(platform): preserve parade pack switch url
+- `26cfb6e4` fix(platform): edge cache parade fan pulse
+- `5ca30af6` fix(platform): dedupe focused-mode QR generation by activeApp + open
+- `12e00b0c` feat(platform): show pending chip while transfer-drop commit is in flight
+- `a4ea749d` feat(platform): pulse back-edge grabber once when in-tool back appears
+- `1e36fd55` feat(platform): show queue position in container prompt modals
+- `06587fe1` feat(shippie-ai): per-task sampling for usage log
+- `9ee95b8a` feat(shippie-ai): wire progress streaming, capabilities probe, and preload hint
+- `41f590aa` fix(platform): retry static local db bridge requests
+- `7d3a1694` feat(platform): surface "still loading" hint after 5s of frame boot
+- `1dcf1e2d` feat(shippie-ai): add shippie.ai.ready() + tighten unavailable-handling JSDoc
+
+## Slice 4 — Launch polish (showcases, style, fixes)
+
+- `044d316f` feat(cycle): optional passphrase-encrypted backup (BackupCard)
+- `9202e07b` feat(cycle): manual correction on the timeline (edit/delete cycle start)
+- `01f8362e` feat(cycle): app-lock privacy screen with duress/decoy PIN
+- `ee8222cd` feat(cycle): full intent set + personal pattern insights (+tests)
+- `30d5070d` feat(cycle): full 5-second daily log + period-started intent
+- `1d1f232a` fix(analyse): ignore test fixtures in kind smoke
+- `f53a92df` feat(cycle): expand data model for the full 5-second log + modes + privacy (v2)
+- `95e6c284` feat(cycle): render the private-dusk dark identity (own the page surface)
+- `87d4e7b8` fix(cycle): remove font-CDN dependency + establish private-dusk brand tokens
+- `1225b11a` style(golazo): World Cup look & feel — gold championship layer + atmosphere
+- `af524ec2` feat(golazo): local kickoff times, sweepstakes, group management, live feed
+- `cc1becc8` fix(showcase): include Golazo in hosted runtime bake
+- `5e4f8641` fix(showcase): remove whiteboard inline service worker script
+- `99958bba` fix(sdk): harden iframe mutation observers
+- `bd5fdf45` fix(palate): polish mobile nav into a solid editorial bar
+- `b9b76754` fix(chiwit): finish retheme sweep + polish floating mobile nav
+- `8cf2bc5a` feat(palate): confident editorial test-kitchen identity
+- `0f673f7d` fix(showcase): quiet empty parade route updates
+- `4b39d9a0` fix(showcase): prevent parade map label collisions
+- `7b495c30` fix(showcase): clarify parade map route labels
+- `263c430e` fix(showcase): keep off-map parade taps visible
+- `a5e398e9` feat(showcase): enrich parade offline map detail
+- `9018eb30` fix(showcase): update parade app to official route
+- `03220b32` fix(showcase): simplify parade map default view
+- `ab2e1593` fix(showcase): harden parade signal resume sync
+- `f4ae0bb5` fix(showcase): simplify parade map and sharing
+- `9c10b0c2` feat(showcase): sharpen parade live tracker
+- `98793d5c` fix(showcase): harden parade map and test packs
+- `1e60a4f3` fix(showcase): make parade groups live
+- `20579e4e` fix(showcase): sharpen parade map zoom
+- `72950c4f` feat(showcase): add offline parade map detail layer
+- `a02a7a75` fix(showcase): declutter parade map labels
+- `76c95430` fix(showcase): harden parade offline sync
+- `a7f34b74` fix(showcase): clarify parade map goal flow
+- `62e17538` fix(showcase): improve parade map zoom
+- `a9c3db60` feat(showcase): add parade banter wrap up tracking
+- `5f0b128e` feat(showcase): widen parade test pack maps
+- `9f3fce5a` fix(showcase): show correct parade test pack maps
+- `a8236efa` feat(showcase): add parade route pack registry
+- `d0e83540` fix(showcase): project parade map with active extent
+- `1fcb125d` feat(showcase): harden parade companion launch
+- `5c4d6fc3` fix(showcase): source-weight parade signals
+- `7eb20de1` fix(showcase): clarify parade map anchors
+- `d0002627` fix(showcase): harden parade find mode sync
+- `8bf942a2` fix(showcase): clarify parade crowd pulses
+- `a0b12c96` fix(showcase): simplify parade sharing and banter
+- `bf60ff44` feat(showcase): add parade crowd relay sync
+- `e511492e` feat(showcase): simplify parade map wayfinding
+- `8dba7411` fix(showcase): harmonise parade identity and banter
+- `2ef151de` feat(showcase): tighten parade offline banter
+- `55595280` feat(showcase): sync parade live route packs
+- `43eac974` feat(showcase): add parade supporter tags
+- `cfe86660` fix(showcase): promote toilet queue tap
+- `553aee83` fix(showcase): make parade food reports peer-carried
+- `5290c7a7` feat(showcase): expand parade banter
+- `5ee49a06` feat(showcase-parade-companion): finish launch polish
+- `03607bf0` feat(showcase-parade-companion): round 8 map detail and first-use polish
+- `1da553e1` fix(showcase-read-later): add capabilities/preload stubs to AI SDK test mocks
+- `bc0c71eb` feat(showcase-recipe): user-orderable shopping aisles persisted to localStorage
+- `911134ba` feat(showcase-recipe): RecipeImportSheet — URL tab
+- `51ddd5a8` feat(showcase-chiwit): timeline day expand/collapse
+- `00c29313` feat(showcase-chiwit): cross-app timing correlation insights
+- `213fcf40` style(showcase-chiwit): Data hero illustration + paint orphan page modifiers
+- `6efb03f1` feat(showcase-chiwit): customizable quick-log grid in Data view
+- `3f4ceefe` style(showcase-chiwit): Timeline month-scrubber hairline + WeekContour dot finish
+- `d421e0d3` feat(showcase-recipe): per-ingredient photo + caption notes
+- `21d32498` style(showcase-chiwit): Patterns custom factor-row + custom slider thumb
+- `c430e3a8` feat(showcase-recipe): extract recipes from schema.org/Recipe via shippie proxy
+- `4f22727b` style(showcase-recipe): magazine-density aisle headers + sticky scroll
+- `ec0c9307` style(showcase-recipe): RecipeRow 4:3 photo on mobile, hover lift
+- `da288f67` feat(iframe-sdk): extend ai surface with progress, timeout, capabilities, preload
+- `00066f0b` style(showcase-recipe): editorial CookRecap keepsake sheet
+- `81e4bd57` style(showcase-chiwit): visual standout pass — /100 unit annotation, inked navigation, brand typography
+- `fd2455cd` style(showcase-recipe): CookMode page-turn ritual + plan-day-card + pantry typography
+- `41b2267d` style(showcase-chiwit): visual standout pass — editorial type, contour halo, paper tiles
+- `54d8e09f` style(showcase-recipe): saffron 'Tonight' badge + bolder tile photos + sage-leaf motif
+- `e195645b` style(showcase-chiwit): visual standout pass — numbers as art, motion tokens, layered depth
+- `16f6f053` style(showcase-recipe): editorial RecipeSheet hero + ingredient tiles + method steps
+- `83073bb4` fix(showcase): harden parade offline launch
+- `703ad367` feat(showcase): add parade banter onboarding
+- `f54e1c09` feat(showcase): tighten parade group hub launch
+- `e1cbc1f1` feat(showcase-chiwit): streak detection — surface consecutive 3+ signal days
+- `937a7952` style(showcase-chiwit): replace wipe confirm with sheet
+- `a30c1988` feat(showcase-chiwit): empty states teach the next move
+- `02828805` style(showcase-chiwit): clarify empty pattern states
+- `c132d61b` style(showcase-recipe): lift empty states and motion polish
+- `bf937ad7` feat(showcase-chiwit): micro-interactions — contour drawing, pulse-ring fill, dismiss feedback
+- `940ca1c1` fix(showcase-recipe): guard intent subscriptions
+- `16d4eecb` style(showcase-chiwit): tighten hierarchy — factor helpers, tone badges, focus rings
+- `6f0f9789` polish flagships and document standout pass
+- `f737a110` feat(showcase-chiwit): standout hero moments — time-aware greeting + factor-mapped quick logs
+- `91185c32` fix(showcase): polish recipe mobile hero
+- `26671b72` fix(showcase): polish parade readiness
+- `ea0364ec` feat(showcase): finish parade prelaunch
+- `26f8778b` fix(showcase-read-later): add ready() stub to AI SDK test mocks
+- `6844611f` feat(showcase-match-room): emit kickoff-soon intent for WCF matcher
+- `c478581f` feat(showcase): focus parade companion day-one app
+- `644aa5f5` feat(showcase): add parade companion
+

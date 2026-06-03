@@ -413,7 +413,7 @@
   {#if data.isMaker}
     <section class="section">
       <Button href={`/dashboard/apps/${data.app.slug}`} variant="secondary">
-        Open in dashboard →
+        Open in Maker →
       </Button>
     </section>
   {/if}

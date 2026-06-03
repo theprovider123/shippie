@@ -160,7 +160,7 @@
         <ol>
           <li>Live at <code>{'<slug>'}.shippie.app</code> with the wrapper runtime and install support.</li>
           <li>The App Flight Recorder shows local-tool eligibility, blocked risks, fixed essentials, and health checks.</li>
-          <li>The dashboard tracks proof badges as real devices use the app.</li>
+          <li>Maker tracks proof badges as real devices use the app.</li>
           <li>Your tool runs locally; secure backup is optional continuity, not a cloud account.</li>
         </ol>
       </div>
@@ -177,7 +177,7 @@ shippie deploy ./dist</code></pre>
         <article id="github">
           <h3>GitHub</h3>
           <pre><code>git push origin main</code></pre>
-          <p><a href="/dashboard">Connect a repo</a> after your first deploy.</p>
+          <p><a href="/maker">Connect a repo</a> after your first deploy.</p>
         </article>
       </div>
     </aside>
