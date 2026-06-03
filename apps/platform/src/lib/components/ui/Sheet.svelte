@@ -24,6 +24,10 @@
    */
   import type { Snippet } from 'svelte';
   import { pushState } from '$app/navigation';
+  import {
+    isHorizontalDrawerGesture,
+    shouldDismissDrawer,
+  } from '$lib/utils/drawer-dismiss';
 
   interface Props {
     open: boolean;
@@ -67,6 +71,7 @@
   let dragStartX = 0;
   let dragStartY = 0;
   let dragStartTime = 0;
+  let dragFromChrome = false;
   let dragY = $state(0);
   let dragging = $state(false);
 
@@ -183,23 +188,37 @@
     const rect = sheetEl.getBoundingClientRect();
     const inHeaderZone = event.clientY - rect.top <= 76;
     const onHandle = Boolean(target.closest('.grab, .sheet-title'));
-    if (!inHeaderZone && !onHandle) return;
-    if (!onHandle && target.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+    const fromChrome = onHandle || inHeaderZone;
+    const atScrollTop = sheetEl.scrollTop <= 1;
+    if (!fromChrome && !atScrollTop) return;
 
     dragPointerId = event.pointerId;
     dragStartX = event.clientX;
     dragStartY = event.clientY;
     dragStartTime = performance.now();
+    dragFromChrome = fromChrome;
     dragY = 0;
-    dragging = true;
-    sheetEl.setPointerCapture?.(event.pointerId);
+    dragging = false;
   }
 
   function onSheetPointerMove(event: PointerEvent) {
-    if (dragPointerId !== event.pointerId || !dragging) return;
+    if (dragPointerId !== event.pointerId) return;
     const dx = event.clientX - dragStartX;
     const dy = event.clientY - dragStartY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 18) return;
+    if (isHorizontalDrawerGesture(dx, dy) || dy < -12) {
+      dragPointerId = null;
+      dragging = false;
+      dragFromChrome = false;
+      dragY = 0;
+      return;
+    }
+    if (dy <= 0) return;
+    if (!dragFromChrome && sheetEl && sheetEl.scrollTop > 1) return;
+    if (!dragging) {
+      if (dy < 8) return;
+      dragging = true;
+      sheetEl?.setPointerCapture?.(event.pointerId);
+    }
     dragY = Math.max(0, dy);
     if (dragY > 0) event.preventDefault();
   }
@@ -208,12 +227,13 @@
     if (dragPointerId !== event.pointerId) return;
     const dy = Math.max(0, event.clientY - dragStartY);
     const elapsed = Math.max(1, performance.now() - dragStartTime);
-    const velocity = dy / elapsed;
+    const shouldDismiss = dragging && shouldDismissDrawer(dy, elapsed);
     dragPointerId = null;
     dragging = false;
+    dragFromChrome = false;
     sheetEl?.releasePointerCapture?.(event.pointerId);
     dragY = 0;
-    if (dy > 96 || velocity > 0.65) onClose();
+    if (shouldDismiss) onClose();
   }
 
   function onPopstate() {
@@ -301,6 +321,7 @@
     background: rgba(0, 0, 0, 0.36);
     z-index: 1000;
     animation: scrim-fade 140ms ease-out;
+    touch-action: none;
   }
   @keyframes scrim-fade {
     from { opacity: 0; }

@@ -4,6 +4,13 @@ export const ENTRY_DURATION_MS = 200;
 export const EXIT_DURATION_MS = 150;
 export const SPRING_OVERSHOOT = 1.03;
 export const BOTTOM_TAP_CANCEL_DISTANCE = 8;
+export {
+  DRAWER_DISMISS_DISTANCE,
+  DRAWER_DISMISS_VELOCITY,
+  DRAWER_HORIZONTAL_CANCEL_DISTANCE,
+  isHorizontalDrawerGesture,
+  shouldDismissDrawer,
+} from '$lib/utils/drawer-dismiss';
 
 export function shouldCancelBottomTap(dx: number, dy: number): boolean {
   return Math.abs(dx) > BOTTOM_TAP_CANCEL_DISTANCE || dy > BOTTOM_TAP_CANCEL_DISTANCE;

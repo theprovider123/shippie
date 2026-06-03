@@ -37,7 +37,9 @@
     ENTRY_DURATION_MS,
     EXIT_DURATION_MS,
     SPRING_OVERSHOOT,
+    isHorizontalDrawerGesture,
     shouldCancelBottomTap,
+    shouldDismissDrawer,
   } from './app-switcher-gesture';
 
   interface Props {
@@ -199,6 +201,7 @@
   let dismissStartX = 0;
   let dismissStartY = 0;
   let dismissStartTime = 0;
+  let dismissFromChrome = false;
   let drawerDragY = $state(0);
   let drawerDismissActive = $state(false);
   let keyboardInset = $state(0);
@@ -206,14 +209,8 @@
   $effect(() => {
     if (typeof document === 'undefined') return;
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    const previousOverscroll = document.body.style.overscrollBehavior;
-    document.body.style.overflow = 'hidden';
-    document.body.style.overscrollBehavior = 'contain';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overscrollBehavior = previousOverscroll;
-    };
+    lockBody();
+    return unlockBody;
   });
 
   $effect(() => {
@@ -351,22 +348,36 @@
     if (!target) return;
     const grip = target.closest('[data-drawer-grip]');
     const handle = target.closest('[data-drawer-drag-handle]');
-    if (!handle) return;
-    if (!grip && target.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+    const fromChrome = Boolean(grip || handle);
+    const atScrollTop = drawerNode.scrollTop <= 1;
+    if (!fromChrome && !atScrollTop) return;
     dismissPointerId = event.pointerId;
     dismissStartX = event.clientX;
     dismissStartY = event.clientY;
     dismissStartTime = performance.now();
+    dismissFromChrome = fromChrome;
     drawerDragY = 0;
-    drawerDismissActive = true;
-    drawerNode.setPointerCapture?.(event.pointerId);
+    drawerDismissActive = false;
   }
 
   function handleDrawerDismissPointerMove(event: PointerEvent) {
-    if (dismissPointerId !== event.pointerId || !drawerDismissActive) return;
+    if (dismissPointerId !== event.pointerId) return;
     const dx = event.clientX - dismissStartX;
     const dy = event.clientY - dismissStartY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 18) return;
+    if (isHorizontalDrawerGesture(dx, dy) || dy < -12) {
+      dismissPointerId = null;
+      dismissFromChrome = false;
+      drawerDismissActive = false;
+      drawerDragY = 0;
+      return;
+    }
+    if (dy <= 0) return;
+    if (!dismissFromChrome && drawerNode && drawerNode.scrollTop > 1) return;
+    if (!drawerDismissActive) {
+      if (dy < 8) return;
+      drawerDismissActive = true;
+      drawerNode?.setPointerCapture?.(event.pointerId);
+    }
     drawerDragY = Math.max(0, dy);
     if (drawerDragY > 0) event.preventDefault();
   }
@@ -375,12 +386,50 @@
     if (dismissPointerId !== event.pointerId) return;
     const dy = Math.max(0, event.clientY - dismissStartY);
     const elapsed = Math.max(1, performance.now() - dismissStartTime);
-    const velocity = dy / elapsed;
+    const shouldDismiss = drawerDismissActive && shouldDismissDrawer(dy, elapsed);
     dismissPointerId = null;
+    dismissFromChrome = false;
     drawerDismissActive = false;
     drawerNode?.releasePointerCapture?.(event.pointerId);
     drawerDragY = 0;
-    if (dy > 96 || velocity > 0.65) onOpenChange(false);
+    if (shouldDismiss) onOpenChange(false);
+  }
+
+  function lockBody() {
+    if (typeof window === 'undefined') return;
+    const w = window as unknown as { __shippieSheetLockCount?: number };
+    const count = (w.__shippieSheetLockCount ?? 0) + 1;
+    w.__shippieSheetLockCount = count;
+    if (count !== 1) return;
+    const scrollY = window.scrollY;
+    document.body.dataset.shippieSheetScrollY = String(scrollY);
+    document.body.dataset.shippieSheetOverflow = document.body.style.overflow;
+    document.body.dataset.shippieSheetPosition = document.body.style.position;
+    document.body.dataset.shippieSheetTop = document.body.style.top;
+    document.body.dataset.shippieSheetWidth = document.body.style.width;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+  }
+
+  function unlockBody() {
+    if (typeof window === 'undefined') return;
+    const w = window as unknown as { __shippieSheetLockCount?: number };
+    const count = Math.max(0, (w.__shippieSheetLockCount ?? 0) - 1);
+    w.__shippieSheetLockCount = count;
+    if (count !== 0) return;
+    const scrollY = Number(document.body.dataset.shippieSheetScrollY ?? '0');
+    document.body.style.overflow = document.body.dataset.shippieSheetOverflow ?? '';
+    document.body.style.position = document.body.dataset.shippieSheetPosition ?? '';
+    document.body.style.top = document.body.dataset.shippieSheetTop ?? '';
+    document.body.style.width = document.body.dataset.shippieSheetWidth ?? '';
+    delete document.body.dataset.shippieSheetScrollY;
+    delete document.body.dataset.shippieSheetOverflow;
+    delete document.body.dataset.shippieSheetPosition;
+    delete document.body.dataset.shippieSheetTop;
+    delete document.body.dataset.shippieSheetWidth;
+    window.scrollTo(0, scrollY);
   }
 
   // Backdrop tap → close.
@@ -628,7 +677,7 @@
   .drawer.dragging {
     transition: none !important;
   }
-  .drawer.open.settled {
+  .drawer.open.settled:not(.dragging) {
     transition: none !important;
     transform: translate(0, 0) !important;
   }
