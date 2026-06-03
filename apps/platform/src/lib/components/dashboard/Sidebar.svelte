@@ -22,7 +22,7 @@
   <p class="user">{user.displayName ?? user.email}</p>
 
   <nav class="nav">
-    <a href="/maker" class:active={$page.url.pathname === '/dashboard' || $page.url.pathname === '/maker'}>Home</a>
+    <a href="/maker" class:active={$page.url.pathname === '/dashboard' || $page.url.pathname === '/maker'}>Maker</a>
     <a href="/maker/apps" class:active={$page.url.pathname.startsWith('/dashboard/apps') || $page.url.pathname.startsWith('/maker/apps')}>Apps</a>
     <a href="/dashboard/feedback" class:active={$page.url.pathname === '/dashboard/feedback'}>Feedback</a>
   </nav>

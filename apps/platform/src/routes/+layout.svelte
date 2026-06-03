@@ -22,6 +22,14 @@
     return url.pathname === '/dock';
   }
 
+  // Maker/dashboard routes render their own chrome (the dashboard Sidebar,
+  // whose brand links back to /dock). Suppress the global Nav there so the
+  // page doesn't show two "shippie" headers / competing menu bars.
+  function isMakerShellRoute(url: URL): boolean {
+    const p = url.pathname;
+    return p === '/dashboard' || p.startsWith('/dashboard/') || p === '/maker' || p.startsWith('/maker/');
+  }
+
   function showBottomDock(url: URL): boolean {
     const pathname = url.pathname;
     if ((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') !== '1') return true;
@@ -99,7 +107,7 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-{#if !isDockRoute($page.url)}
+{#if !isDockRoute($page.url) && !isMakerShellRoute($page.url)}
   <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
     <Nav user={data.user} />
   </div>

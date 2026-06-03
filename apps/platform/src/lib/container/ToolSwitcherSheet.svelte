@@ -46,8 +46,8 @@
 >
   <div class="switcher">
     <div class="switcher-actions" aria-label="Tool actions">
-      <a href="/tools" onclick={onClose}>Browse tools</a>
-      <a href="/you" onclick={onClose}>Data</a>
+      <a href="/tools" onclick={onClose}>Tools</a>
+      <a href="/you" onclick={onClose}>You</a>
       <a href="/dock?section=access" onclick={onClose}>Access</a>
     </div>
 
