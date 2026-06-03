@@ -1140,17 +1140,43 @@
     };
   });
 
-  async function copyActiveToolLink() {
-    if (!activeToolUrl) return;
+  function fallbackCopyText(text: string): boolean {
+    if (typeof document === 'undefined') return false;
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
     try {
-      await navigator.clipboard?.writeText(activeToolUrl);
-      focusedShareFeedback = 'Copied';
+      return document.execCommand('copy');
     } catch {
-      focusedShareFeedback = 'Copy failed';
+      return false;
+    } finally {
+      textarea.remove();
     }
+  }
+
+  async function copyActiveToolLink(): Promise<boolean> {
+    if (!activeToolUrl) return false;
+    let copied = false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(activeToolUrl);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+    if (!copied) copied = fallbackCopyText(activeToolUrl);
+    focusedShareFeedback = copied ? 'Copied' : 'Link visible';
     window.setTimeout(() => {
       focusedShareFeedback = '';
     }, 1600);
+    return copied;
   }
 
   async function shareActiveTool() {
@@ -3424,23 +3450,37 @@
         </header>
         {#if activeApp}
           <section class="focused-share-card" aria-label={`Share ${activeApp.name}`}>
-            <div class="focused-share-card-qr" aria-hidden={!focusedQrMarkup}>
-              {#if focusedQrMarkup}
-                {@html focusedQrMarkup}
-              {:else}
-                <span>QR</span>
-              {/if}
+            <div class="focused-share-card-media">
+              <div class="focused-share-card-qr" aria-hidden={!focusedQrMarkup}>
+                {#if focusedQrMarkup}
+                  {@html focusedQrMarkup}
+                {:else}
+                  <span>QR</span>
+                {/if}
+              </div>
+              <div class="focused-share-card-actions" aria-label="Share current tool">
+                <button type="button" onclick={shareActiveTool} aria-label={`Share ${activeApp.name}`} title="Share">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M12 3v12" />
+                    <path d="m7 8 5-5 5 5" />
+                    <path d="M5 14v5h14v-5" />
+                  </svg>
+                </button>
+                <button type="button" onclick={copyActiveToolLink} aria-label={`Copy ${activeApp.name} link`} title="Copy link">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M8 8h11v11H8z" />
+                    <path d="M5 15H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h9a1 1 0 0 1 1 1v1" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="focused-share-card-copy">
-              <p>Share current tool</p>
+              <p>Current tool</p>
               <strong>{activeApp.name}</strong>
               <small>{activeToolUrl.replace(/^https?:\/\//, '')}</small>
-            </div>
-            <div class="focused-share-card-actions">
-              <button type="button" onclick={shareActiveTool}>
-                {focusedShareFeedback || 'Share'}
-              </button>
-              <button type="button" onclick={copyActiveToolLink}>Copy</button>
+              {#if focusedShareFeedback}
+                <span class="focused-share-feedback" role="status">{focusedShareFeedback}</span>
+              {/if}
             </div>
           </section>
         {/if}
@@ -3451,7 +3491,7 @@
               type="search"
               autocomplete="off"
               spellcheck="false"
-              placeholder="Search your Dock…"
+              placeholder="Search your Dock..."
               bind:value={drawerSearchQuery}
             />
             {#if drawerSearchQuery}
@@ -4547,15 +4587,20 @@
   }
   .focused-share-card {
     display: grid;
-    grid-template-columns: 72px minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 12px;
-    padding: 10px 0 14px;
+    gap: 14px;
+    padding: 8px 0 12px;
     border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
   }
+  .focused-share-card-media {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 6px;
+  }
   .focused-share-card-qr {
-    width: 72px;
-    height: 72px;
+    width: 66px;
+    height: 66px;
     display: grid;
     place-items: center;
     padding: 6px;
@@ -4574,7 +4619,7 @@
   .focused-share-card-copy {
     min-width: 0;
     display: grid;
-    gap: 3px;
+    gap: 2px;
   }
   .focused-share-card-copy p,
   .focused-share-card-copy small {
@@ -4594,7 +4639,7 @@
     min-width: 0;
     overflow: hidden;
     font-family: var(--font-heading);
-    font-size: 19px;
+    font-size: 18px;
     line-height: 1.05;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -4603,26 +4648,42 @@
     letter-spacing: 0.02em;
     text-transform: none;
   }
+  .focused-share-feedback {
+    justify-self: start;
+    margin-top: 2px;
+    color: var(--sunset, #e8603c);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
   .focused-share-card-actions {
     display: inline-flex;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    align-items: center;
+    gap: 6px;
   }
   .focused-share-card-actions button {
+    width: var(--touch-min, 44px);
+    height: var(--touch-min, 44px);
     min-height: var(--touch-min, 44px);
-    padding: 0 11px;
-    border: 0;
-    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: transparent;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    background: rgba(20, 18, 15, 0.025);
     color: var(--cream-text, #14120f);
     cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
     transition: color 150ms ease, background 150ms ease;
   }
-  .focused-share-card-actions button:first-child {
-    border-left: 0;
+  .focused-share-card-actions svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
   .focused-share-card-actions button:hover,
   .focused-share-card-actions button:focus-visible {
@@ -4813,20 +4874,23 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-height: var(--touch-min, 44px);
-    padding: 8px 12px;
-    margin: 0 0 12px;
-    background: rgba(0, 0, 0, 0.03);
+    padding: 0 10px 0 13px;
+    margin: 0 0 10px;
+    border-radius: 8px;
+    background: rgba(20, 18, 15, 0.025);
     border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
   }
   .focused-search:focus-within {
     border-color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.04);
+    background: rgba(255, 253, 247, 0.72);
+    box-shadow: 0 0 0 2px rgba(232, 96, 60, 0.08);
   }
   .focused-search-icon {
     color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1;
   }
   .focused-search input {
@@ -4834,7 +4898,7 @@
     min-height: var(--touch-min, 44px);
     background: transparent;
     border: 0;
-    padding: 6px 0;
+    padding: 0;
     color: inherit;
     font: inherit;
     /* Per tokens.css --type-body-mobile: iOS Safari zooms inputs whose
@@ -4846,11 +4910,11 @@
     outline: none;
   }
   .focused-search-clear {
-    width: var(--touch-min, 44px);
-    height: var(--touch-min, 44px);
+    width: 34px;
+    height: 34px;
     background: transparent;
     border: 0;
-    padding: 4px 6px;
+    padding: 0;
     color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
     font-size: 11px;
@@ -4911,7 +4975,7 @@
       font-size: 16px;
     }
     .focused-share-card {
-      grid-template-columns: 58px minmax(0, 1fr);
+      grid-template-columns: auto minmax(0, 1fr);
       gap: 10px;
       padding: 8px 0 12px;
     }
@@ -4923,13 +4987,11 @@
       font-size: 17px;
     }
     .focused-share-card-actions {
-      grid-column: 1 / -1;
-      display: flex;
-      width: 100%;
+      display: inline-flex;
+      gap: 6px;
     }
     .focused-share-card-actions button {
-      flex: 1;
-      min-width: 0;
+      width: var(--touch-min, 44px);
     }
     .focused-section-head {
       gap: 8px;
