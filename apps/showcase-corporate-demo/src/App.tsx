@@ -724,8 +724,8 @@ function MyDayScreen({
     <section className="screen">
       <div className="personal-hero">
         <p className="eyebrow">{EVENT.dateRange}</p>
-        <h2>{greetingFor(clock.minutes)}, {name.trim() || 'add your name'}.</h2>
-        <p>Here is your day at Apex.</p>
+        <h2>{name.trim() ? `${greetingFor(clock.minutes)}, ${name.trim()}.` : `${greetingFor(clock.minutes)}.`}</h2>
+        <p>{name.trim() ? 'Here is your day at Apex.' : 'Add your name below to personalise your day at Apex.'}</p>
       </div>
 
       <div className="form-grid">
@@ -838,16 +838,20 @@ function SpeakersScreen({ onOpenSpeaker }: { onOpenSpeaker: (id: string) => void
       <div className="searchbar">
         <input value={query} placeholder="Search speakers" onChange={(event) => setQuery(event.target.value)} />
       </div>
-      <div className="speaker-grid">
-        {filtered.map((speaker) => (
-          <button key={speaker.id} className="speaker-card" type="button" onClick={() => onOpenSpeaker(speaker.id)}>
-            <span>{speaker.initials}</span>
-            <strong>{speaker.name}</strong>
-            <em>{speaker.title}</em>
-            <small>{speaker.org}</small>
-          </button>
-        ))}
-      </div>
+      {filtered.length === 0 ? (
+        <p className="list-empty">No speakers match “{query.trim()}”.</p>
+      ) : (
+        <div className="speaker-grid">
+          {filtered.map((speaker) => (
+            <button key={speaker.id} className="speaker-card" type="button" onClick={() => onOpenSpeaker(speaker.id)}>
+              <span>{speaker.initials}</span>
+              <strong>{speaker.name}</strong>
+              <em>{speaker.title}</em>
+              <small>{speaker.org}</small>
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

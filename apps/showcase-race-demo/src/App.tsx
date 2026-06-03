@@ -358,9 +358,23 @@ function MapScreen({ telemetry }: { telemetry: RaceTelemetry }) {
           </span>
         </div>
         <strong className="mono">{Math.max(0, TOTAL_KM - telemetry.coveredKm).toFixed(1)} km to finish</strong>
-        <button type="button" className="gps-button" onClick={telemetry.enableGps}>
+        <button
+          type="button"
+          className="gps-button"
+          data-state={telemetry.source}
+          onClick={telemetry.enableGps}
+          disabled={telemetry.source === 'gps' || telemetry.source === 'waiting' || telemetry.source === 'unavailable'}
+        >
           <Icon name="gps" />
-          <span>{telemetry.source === 'gps' ? 'GPS live' : 'Enable GPS'}</span>
+          <span>
+            {telemetry.source === 'gps'
+              ? 'GPS live'
+              : telemetry.source === 'waiting'
+                ? 'Locating…'
+                : telemetry.source === 'unavailable'
+                  ? 'GPS unavailable'
+                  : 'Enable GPS'}
+          </span>
         </button>
         <div className="meter">
           <span style={{ width: `${progress * 100}%` }} />

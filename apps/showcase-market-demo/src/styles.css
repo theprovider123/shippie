@@ -22,20 +22,6 @@
 @font-face {
   font-family: 'General Sans';
   font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/general-sans-500.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'General Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/general-sans-600.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'General Sans';
-  font-style: normal;
   font-weight: 700;
   font-display: swap;
   src: url('/fonts/general-sans-700.woff2') format('woff2');
@@ -128,10 +114,12 @@ h3 {
   font-family: var(--heading);
   font-weight: 650;
   line-height: 1.02;
+  font-optical-sizing: auto;
 }
 
 h1 {
   font-size: 2.35rem;
+  letter-spacing: -0.012em;
 }
 
 h2 {
@@ -281,9 +269,9 @@ h2 {
 .hero-note {
   font-family: var(--heading);
   font-style: italic;
-  font-size: 1.08rem;
+  font-size: 0.98rem;
   line-height: 1.35;
-  color: var(--accent-dark);
+  color: var(--muted);
 }
 
 .strapline {
@@ -395,15 +383,15 @@ h2 {
 
 .feature-row {
   display: grid;
-  grid-template-columns: 9px 1fr auto;
+  grid-template-columns: 4px 1fr auto;
   align-items: center;
-  gap: 14px;
+  gap: 13px;
   width: 100%;
   padding: 15px 4px;
   border-bottom: 1px solid var(--line);
   background: transparent;
   text-align: left;
-  transition: background 150ms ease;
+  transition: background 150ms ease, transform 150ms ease;
 }
 
 .feature-row:last-child {
@@ -423,9 +411,9 @@ h2 {
 }
 
 .feature-color {
-  width: 9px;
-  height: 46px;
-  border-radius: 8px;
+  width: 4px;
+  height: 38px;
+  border-radius: 999px;
   background: var(--tone);
 }
 
@@ -557,7 +545,7 @@ h2 {
 }
 
 .map-stall[data-away='true'] {
-  opacity: 0.42;
+  opacity: 0.6;
   border-style: dashed;
 }
 
@@ -699,7 +687,7 @@ h2 {
   border-left: 4px solid var(--tone);
   background: transparent;
   text-align: left;
-  transition: background 150ms ease;
+  transition: background 150ms ease, transform 150ms ease;
 }
 
 .vendor-card:last-child {
@@ -1100,4 +1088,20 @@ h2 {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Keyboard focus ring (was missing entirely) */
+.brand-chip:focus-visible,
+.tab-button:focus-visible,
+.text-action:focus-visible,
+.feature-row:focus-visible,
+.vendor-card:focus-visible,
+.map-stall:focus-visible,
+.filter-button:focus-visible,
+.reserve-button:focus-visible,
+.primary-button:focus-visible,
+.search-box input:focus-visible {
+  outline: 2px solid var(--accent-dark);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
