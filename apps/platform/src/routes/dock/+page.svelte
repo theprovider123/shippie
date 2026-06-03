@@ -4314,26 +4314,25 @@
      keeping large chrome over the running tool. */
   .focused-dock-nub-wrap {
     position: fixed;
-    top: 50%;
-    z-index: 62;
-    left: max(0px, env(safe-area-inset-left, 0px));
+    top: max(12px, calc(env(safe-area-inset-top, 0px) + 10px));
+    left: 50%;
+    z-index: 1020;
     display: flex;
     align-items: center;
     gap: 7px;
-    transform: translateY(-50%);
+    transform: translateX(-50%);
     transition:
       opacity 0.22s ease,
       transform 0.22s ease;
   }
   .focused-dock-nub {
-    width: 34px;
+    width: 52px;
     height: 42px;
     display: grid;
     place-items: center;
     padding: 0;
     border: 1px solid rgba(168, 196, 145, 0.34);
-    border-left: 0;
-    border-radius: 0 15px 15px 0;
+    border-radius: 999px;
     background: rgba(20, 18, 15, 0.62);
     color: var(--text);
     cursor: pointer;
@@ -4361,7 +4360,7 @@
     border-color: var(--sage-leaf);
     box-shadow: 0 10px 28px rgba(20, 18, 15, 0.22);
     outline: none;
-    transform: translateX(8px);
+    transform: translateY(2px);
   }
   .focused-dock-nub.first-run {
     animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
@@ -4381,7 +4380,7 @@
   @media (prefers-reduced-motion: no-preference) {
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
       opacity: 0.38;
-      transform: translateY(-50%) translateX(-16px);
+      transform: translateX(-50%) translateY(-2px);
     }
   }
 
@@ -4392,21 +4391,20 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.18s ease, transform 0.18s ease;
-    transform: translateY(-50%) translateX(-100%);
+    transform: translateX(-50%) translateY(-140%);
   }
   @media (max-width: 640px) {
     .focused-dock-nub-wrap {
-      top: auto;
-      top: calc(env(safe-area-inset-top, 0px) + 12px);
-      right: calc(env(safe-area-inset-right, 0px) + 12px);
+      top: max(14px, calc(env(safe-area-inset-top, 0px) + 10px));
+      right: auto;
       bottom: auto;
-      left: auto;
-      align-items: flex-end;
-      transform: none;
+      left: 50%;
+      align-items: center;
+      transform: translateX(-50%);
     }
     .focused-dock-nub {
-      width: 48px;
-      height: 48px;
+      width: 54px;
+      height: 44px;
       border: 1px solid rgba(168, 196, 145, 0.30);
       border-radius: 999px;
       background: rgba(20, 18, 15, 0.72);
@@ -4421,14 +4419,14 @@
     .focused-dock-nub:hover,
     .focused-dock-nub:focus-visible,
     .focused-dock-nub[aria-expanded='true'] {
-      transform: translateY(-2px);
+      transform: translateY(2px);
     }
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
       opacity: 0.42;
-      transform: translateY(-8px);
+      transform: translateX(-50%) translateY(-2px);
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
-      transform: translateY(-140%);
+      transform: translateX(-50%) translateY(-140%);
     }
   }
 
