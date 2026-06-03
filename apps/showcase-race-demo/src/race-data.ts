@@ -208,3 +208,14 @@ export const paceChart = [
   { finish: '2:10:00', perKm: '6:09', perMile: '9:54' },
   { finish: '2:30:00', perKm: '7:06', perMile: '11:26' },
 ];
+
+// Hackney Half course elevation (metres above sea level, ~1 point per km).
+// London-flat with gentle undulations through Hackney and Victoria Park.
+export const elevationProfile: Array<{ km: number; m: number }> = [
+  { km: 0, m: 18 }, { km: 1, m: 16 }, { km: 2, m: 20 }, { km: 3, m: 25 },
+  { km: 4, m: 22 }, { km: 5, m: 19 }, { km: 6, m: 24 }, { km: 7, m: 31 },
+  { km: 8, m: 35 }, { km: 9, m: 32 }, { km: 10, m: 26 }, { km: 11, m: 22 },
+  { km: 12, m: 20 }, { km: 13, m: 26 }, { km: 14, m: 30 }, { km: 15, m: 34 },
+  { km: 16, m: 36 }, { km: 17, m: 29 }, { km: 18, m: 24 }, { km: 19, m: 21 },
+  { km: 20, m: 19 }, { km: 21.1, m: 16 },
+];

@@ -7,7 +7,6 @@ import {
   FILTERS,
   GETTING_THERE,
   MARKET,
-  REVIEWS,
   VENDORS,
   type Vendor,
   type VendorCategory,
@@ -201,98 +200,60 @@ export function App() {
   );
 }
 
+function HomeRow({
+  label,
+  sub,
+  onClick,
+}: {
+  label: string;
+  sub: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="home-row" onClick={onClick}>
+      <span className="home-row-text">
+        <strong>{label}</strong>
+        <small>{sub}</small>
+      </span>
+      <Icon name="arrow" />
+    </button>
+  );
+}
+
 function HomeScreen({
   onNavigate,
-  onOpenVendor,
 }: {
   onNavigate: (tab: Tab) => void;
   onOpenVendor: (vendorId: string) => void;
 }) {
-  const featured = VENDORS.filter((vendor) => vendor.featured);
+  const here = VENDORS.filter((vendor) => !vendor.away).length;
+  const [seasonTag, seasonHead] = MARKET.theme.split(' - ');
   return (
     <div className="screen home-screen">
       <section className="hero-panel">
         <MarketIllustration />
         <div className="hero-copy">
-          <p className="eyebrow">This Sunday</p>
+          <p className="eyebrow">This Sunday · 10–2</p>
           <h1>{MARKET.name}</h1>
-          <p className="hero-note">Rain or shine, every Sunday on the Fields since 2011.</p>
-          <p className="strapline">{MARKET.strapline}</p>
-          <dl className="hero-meta">
-            <div>
-              <dt>Theme</dt>
-              <dd>{MARKET.theme}</dd>
-            </div>
-            <div>
-              <dt>Place</dt>
-              <dd>{MARKET.location}</dd>
-            </div>
-          </dl>
+          <p className="hero-note">{MARKET.strapline}</p>
         </div>
       </section>
 
-      <section className="market-stats" aria-label="Market summary">
-        <div>
-          <strong>{MARKET.stalls}</strong>
-          <span>stalls</span>
-        </div>
-        <div>
-          <strong>{EVENTS.length}</strong>
-          <span>events</span>
-        </div>
-        <div>
-          <strong>{MARKET.established}</strong>
-          <span>since</span>
-        </div>
+      <section className="season-band" aria-label="In season now">
+        <p className="eyebrow">In season · {seasonTag}</p>
+        <p className="season-head">{seasonHead ?? MARKET.theme}</p>
       </section>
 
-      <section className="section-block">
-        <div className="section-head">
-          <p className="eyebrow">Featured this week</p>
-          <button type="button" className="text-action" onClick={() => onNavigate('stalls')}>
-            All stalls
-            <Icon name="arrow" />
-          </button>
-        </div>
-        <div className="feature-list">
-          {featured.map((vendor) => (
-            <button
-              key={vendor.id}
-              className="feature-row"
-              type="button"
-              onClick={() => onOpenVendor(vendor.id)}
-            >
-              <span
-                className="feature-color"
-                style={{ '--tone': CATEGORY_META[vendor.category].color } as CSSProperties}
-                aria-hidden="true"
-              />
-              <span>
-                <strong>{vendor.name}</strong>
-                <small>{vendor.week}</small>
-              </span>
-              <Icon name="arrow" />
-            </button>
-          ))}
-        </div>
-      </section>
+      <nav className="home-rows" aria-label="Market sections">
+        <HomeRow label="Find your stall" sub={`${here} here today · live map`} onClick={() => onNavigate('stalls')} />
+        <HomeRow label="What's on today" sub={`${EVENTS.length} events · talks & tastings`} onClick={() => onNavigate('events')} />
+        <HomeRow label="Your market card" sub="8 of 10 Sundays · 2 to go" onClick={() => onNavigate('stamps')} />
+        <HomeRow label="Plan your visit" sub={`${MARKET.location} · getting here`} onClick={() => onNavigate('visit')} />
+      </nav>
 
       <section className="notice-band">
-        <p className="eyebrow">Market note</p>
+        <p className="eyebrow">Since {MARKET.established}</p>
         <p>{MARKET.about}</p>
-      </section>
-
-      <section className="section-block">
-        <p className="eyebrow">Regulars say</p>
-        <div className="review-stack">
-          {REVIEWS.map((review) => (
-            <article key={review.vendor} className="review-row">
-              <strong>{review.vendor}</strong>
-              <p>{review.body}</p>
-              <small>{review.source}</small>
-            </article>
-          ))}
-        </div>
       </section>
     </div>
   );

@@ -1306,3 +1306,84 @@ button {
     transform: translateY(0);
   }
 }
+
+/* — Course elevation profile — sports data-viz moment — */
+.elev-panel {
+  position: relative;
+}
+
+.elev-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.elev-svg {
+  width: 100%;
+  height: 96px;
+  margin-top: 6px;
+  display: block;
+  overflow: visible;
+}
+
+.elev-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.elev-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px rgba(0, 212, 170, 0.55));
+}
+
+.elev-aid {
+  fill: var(--bg);
+  stroke: var(--gold);
+  stroke-width: 1.6;
+}
+
+.elev-here-line {
+  stroke: var(--text);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: 0.5;
+}
+
+.elev-here-dot {
+  fill: var(--text);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.elev-axis {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.elev-aid-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.elev-aid-key i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.6px solid var(--gold);
+  background: var(--bg);
+}

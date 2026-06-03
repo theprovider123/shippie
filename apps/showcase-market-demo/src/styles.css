@@ -1105,3 +1105,76 @@ h2 {
   outline-offset: 2px;
   border-radius: 8px;
 }
+
+/* ============================================================
+   WARM FARMSTAND — simplified home hub
+   ============================================================ */
+.season-band {
+  display: grid;
+  gap: 3px;
+  padding: 2px 4px;
+}
+
+.season-head {
+  font-family: var(--heading);
+  font-style: italic;
+  font-size: 1.7rem;
+  line-height: 1.05;
+  color: var(--accent-dark);
+  letter-spacing: -0.01em;
+}
+
+.home-rows {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.home-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 66px;
+  padding: 16px 6px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  transition: background 150ms ease, padding-left 150ms ease;
+}
+
+.home-row:hover {
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  padding-left: 12px;
+}
+
+.home-row:active {
+  transform: translateY(1px);
+}
+
+.home-row-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.home-row-text strong {
+  font-family: var(--heading);
+  font-size: 1.22rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.home-row-text small {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.home-row svg {
+  width: 20px;
+  height: 20px;
+  color: var(--faint);
+  flex: none;
+}

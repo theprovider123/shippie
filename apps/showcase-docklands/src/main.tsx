@@ -236,9 +236,9 @@
         <div class="r"><span>Gunk cleared (${kills})</span><span>+◆${killGold}</span></div>
         <div class="r"><span>Wave bonus</span><span>+◆${bonus}</span></div>
         ${gems?`<div class="r"><span>Gems banked</span><span style="color:var(--gem)">◈${gems}</span></div>`:''}
-        <div class="r tot"><span>Earned this round</span><span>+◆${roundEarned}</span></div>
+        <div class="r tot"><span>Earned this round</span><span class="totval">+◆${roundEarned}</span></div>
       </div><button class="again" id="cardBtn">Continue →</button>`;
-    $('card').classList.add('show');$('cardBtn').onclick=()=>{$('card').classList.remove('show');round++;startPrep();};}
+    $('card').classList.add('show');countUp($('cardIn').querySelector('.totval'),roundEarned,'+◆');buzz(18);$('cardBtn').onclick=()=>{$('card').classList.remove('show');round++;startPrep();};}
 
   // ---------- Special: one perk, chosen upfront, kept for the whole run ----------
   const SPECIALS=[
@@ -447,6 +447,7 @@
   function flash(m,bad){const el=$('toast');el.textContent=m;el.className='toast show'+(bad?' bad':'');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1900);}
   function banner(title,sub){const el=$('wavebanner');if(!el)return;el.innerHTML='<b>'+title+'</b>'+(sub?'<i>'+sub+'</i>':'');el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200);}
   function buzz(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+  function countUp(el,target,prefix){if(!el)return;let v=0;const step=Math.max(1,Math.ceil(target/22));el.textContent=prefix+'0';function tick(){v=Math.min(target,v+step);el.textContent=prefix+v;if(v<target)requestAnimationFrame(tick);}requestAnimationFrame(tick);}
 
   // ---------- loop + input ----------
   let last=performance.now();

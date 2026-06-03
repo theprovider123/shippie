@@ -1603,3 +1603,104 @@ textarea {
   font-size: 14px;
   text-align: center;
 }
+
+/* — Live day-arc: the whole conference day at a glance — */
+.day-arc {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.day-arc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.day-arc-now {
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.day-arc-track {
+  position: relative;
+  height: 38px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.day-arc-seg {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  border-radius: 3px;
+  opacity: 0.9;
+}
+
+.day-arc-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(6, 6, 6, 0.42);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.day-arc-now-mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.day-arc-now-mark::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
+
+.day-arc-axis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-3);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.day-arc-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.day-arc-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  margin-left: 6px;
+}
+
+.day-arc-legend i:first-child {
+  margin-left: 0;
+}

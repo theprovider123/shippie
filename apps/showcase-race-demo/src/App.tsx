@@ -15,6 +15,7 @@ import {
 } from './calculations.ts';
 import {
   TOTAL_KM,
+  elevationProfile,
   infoSections,
   paceChart,
   participant,
@@ -188,6 +189,72 @@ export function App() {
   );
 }
 
+function ElevationProfile({ coveredKm }: { coveredKm: number }) {
+  const W = 320;
+  const H = 96;
+  const padTop = 12;
+  const padBottom = 16;
+  const elevs = elevationProfile.map((p) => p.m);
+  const minM = Math.min(...elevs);
+  const maxM = Math.max(...elevs);
+  const x = (km: number) => (km / TOTAL_KM) * W;
+  const y = (m: number) => H - padBottom - ((m - minM) / (maxM - minM)) * (H - padTop - padBottom);
+
+  const line = elevationProfile.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.km).toFixed(1)} ${y(p.m).toFixed(1)}`).join(' ');
+  const area = `${line} L${W} ${H} L0 ${H} Z`;
+
+  // interpolate elevation at an arbitrary km (for the "you are here" dot)
+  const elevAt = (km: number) => {
+    const clamped = Math.max(0, Math.min(TOTAL_KM, km));
+    for (let i = 1; i < elevationProfile.length; i += 1) {
+      const a = elevationProfile[i - 1];
+      const b = elevationProfile[i];
+      if (!a || !b) continue;
+      if (clamped <= b.km) {
+        const t = (clamped - a.km) / (b.km - a.km || 1);
+        return a.m + (b.m - a.m) * t;
+      }
+    }
+    return elevationProfile[elevationProfile.length - 1]?.m ?? minM;
+  };
+  const here = Math.max(0, Math.min(TOTAL_KM, coveredKm));
+
+  return (
+    <section className="panel elev-panel">
+      <div className="section-kicker">Course Profile</div>
+      <div className="elev-meta mono">
+        <span>{minM}–{maxM} m</span>
+        <span>21.1 km</span>
+      </div>
+      <svg className="elev-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Hackney Half elevation profile">
+        <defs>
+          <linearGradient id="elevFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0.33, 0.66].map((g) => (
+          <line key={g} x1="0" y1={padTop + g * (H - padTop - padBottom)} x2={W} y2={padTop + g * (H - padTop - padBottom)} className="elev-grid" />
+        ))}
+        <path d={area} fill="url(#elevFill)" />
+        <path d={line} className="elev-line" />
+        {stations.map((s) => (
+          <circle key={s.km} cx={x(s.km)} cy={y(elevAt(s.km))} r="2.6" className="elev-aid" />
+        ))}
+        <g transform={`translate(${x(here)} 0)`}>
+          <line x1="0" y1={padTop - 6} x2="0" y2={H} className="elev-here-line" />
+          <circle cx="0" cy={y(elevAt(here))} r="4" className="elev-here-dot" />
+        </g>
+      </svg>
+      <div className="elev-axis mono">
+        <span>Start</span>
+        <span className="elev-aid-key"><i /> Aid stations</span>
+        <span>Finish</span>
+      </div>
+    </section>
+  );
+}
+
 function HomeScreen({
   now,
   startTarget,
@@ -225,6 +292,8 @@ function HomeScreen({
           <small>to wave start</small>
         </div>
       </section>
+
+      <ElevationProfile coveredKm={telemetry.coveredKm} />
 
       <section className="panel">
         <div className="section-kicker">Now At The Venue</div>

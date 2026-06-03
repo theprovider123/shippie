@@ -490,6 +490,58 @@ function BottomNav({ active, onTab }: { active: Tab; onTab: (tab: Tab) => void }
   );
 }
 
+const TRACK_TINT: Record<string, string> = {
+  main: 'var(--accent)',
+  breakout: 'var(--accent-2)',
+  social: 'var(--success)',
+  break: 'var(--text-3)',
+};
+
+function DayArc({ clock }: { clock: EventClock }) {
+  const daySessions = SESSIONS.filter((s) => s.day === clock.day);
+  if (daySessions.length === 0) return null;
+  const dayStart = Math.min(...daySessions.map((s) => s.start));
+  const dayEnd = Math.max(...daySessions.map((s) => s.end));
+  const span = Math.max(1, dayEnd - dayStart);
+  const pct = (m: number) => `${(((m - dayStart) / span) * 100).toFixed(2)}%`;
+  const nowClamped = Math.max(dayStart, Math.min(dayEnd, clock.minutes));
+  const elapsed = clock.minutes >= dayEnd ? 'Programme complete' : clock.minutes < dayStart ? 'Doors soon' : `Now · ${formatTime(clock.minutes)}`;
+
+  return (
+    <section className="day-arc" aria-label="The day at a glance">
+      <div className="day-arc-head">
+        <span className="panel-kicker"><span className="live-dot" />Your day</span>
+        <span className="mono day-arc-now">{elapsed}</span>
+      </div>
+      <div className="day-arc-track">
+        {daySessions.map((s) => (
+          <span
+            key={s.id}
+            className="day-arc-seg"
+            style={{
+              left: pct(s.start),
+              width: `${(((s.end - s.start) / span) * 100).toFixed(2)}%`,
+              background: TRACK_TINT[s.track] ?? 'var(--text-3)',
+            }}
+            title={`${formatTime(s.start)} ${sessionLabel(s, {}).title}`}
+          />
+        ))}
+        <span className="day-arc-fill" style={{ width: pct(nowClamped) }} />
+        <span className="day-arc-now-mark" style={{ left: pct(nowClamped) }} />
+      </div>
+      <div className="day-arc-axis mono">
+        <span>{formatTime(dayStart)}</span>
+        <span className="day-arc-legend">
+          <i style={{ background: 'var(--accent)' }} />Keynote
+          <i style={{ background: 'var(--accent-2)' }} />Breakout
+          <i style={{ background: 'var(--success)' }} />Social
+        </span>
+        <span>{formatTime(dayEnd)}</span>
+      </div>
+    </section>
+  );
+}
+
 function HomeScreen({
   clock,
   currentSession,
@@ -570,6 +622,8 @@ function HomeScreen({
           <em>{sessionLabel(upNext, selectedStreams).room}</em>
         </button>
       )}
+
+      <DayArc clock={clock} />
 
       <div className="quick-grid">
         <button type="button" onClick={() => onGo('schedule')}>

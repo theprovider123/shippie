@@ -101,3 +101,7 @@ app\ icon.png
 *.sketch
 *.fig
 .superpowers/
+
+# Showcase design-review artifacts (kept locally, not deployed)
+/showcase-screenshots/
+apps/platform/_shotkit/

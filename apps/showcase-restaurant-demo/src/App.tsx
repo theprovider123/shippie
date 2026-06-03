@@ -23,6 +23,8 @@ import {
 
 const shippie = createShippieIframeSdk({ appId: 'app_restaurant_demo' });
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+
 const FILTER_KEY = 'shippie.restaurant-demo.filters.v1';
 const ORDERS_KEY = 'shippie.restaurant-demo.orders.v1';
 const FEEDBACK_KEY = 'shippie.restaurant-demo.feedback.v1';
@@ -421,11 +423,14 @@ function MenuHeader({
           <circle cx="12" cy="7.6" r="0.5" fill="currentColor" stroke="currentColor" />
         </svg>
       </button>
-      <p className="table-pill">{table}</p>
-      <h1>{RESTAURANT.name}</h1>
-      <p className="tagline">{RESTAURANT.tagline}</p>
-      <p className="menu-welcome">Cooked fresh tonight by Rosa and Chiara.</p>
-      <div className="menu-rule" />
+      <div className="masthead">
+        <p className="masthead-est">Frith Street · Soho · Est. 1989</p>
+        <h1 className="masthead-name">{RESTAURANT.name}</h1>
+        <p className="masthead-sub">{RESTAURANT.tagline}</p>
+        <div className="masthead-rule">
+          <span className="masthead-table">{table}</span>
+        </div>
+      </div>
       <nav className="filter-row" aria-label="Dietary filters">
         <button
           type="button"
@@ -469,28 +474,37 @@ function MenuSections({
   onAddDish: (dish: Dish) => void;
   onFeedback: (score: number, text: string) => void;
 }) {
+  const numerals: Record<string, string> = {};
+  let courseN = 0;
+  for (const s of sections) {
+    if (s.id !== 'specials') numerals[s.id] = ROMAN[courseN++] ?? '';
+  }
+
   return (
     <div className="menu-sections">
-      {sections.map((section) => (
+      {sections.map((section) => {
+        const isSpecial = section.id === 'specials';
+        return (
         <section
           key={section.id}
-          className={`menu-section ${section.id === 'specials' ? 'special-section' : ''}`}
+          className={`menu-section ${isSpecial ? 'special-section' : ''}`}
         >
           <div className="section-heading">
-            <div>
+            <span className="course-num" aria-hidden="true">{isSpecial ? '✦' : numerals[section.id]}</span>
+            <div className="course-title">
               <h2>{section.title}</h2>
-              {section.id === 'specials' ? (
-                <p className="special-updated">
-                  Updated {todayLabel(special.updatedAt)}
-                </p>
+              {isSpecial ? (
+                <p className="special-updated">Specials board · updated {todayLabel(special.updatedAt)}</p>
+              ) : section.note ? (
+                <p className="course-note">{section.note}</p>
               ) : null}
             </div>
-            {section.note && section.id !== 'specials' ? <span>{section.note}</span> : null}
           </div>
 
-          {section.id === 'specials' ? (
+          {isSpecial ? (
             <p className="special-demo-note">
-              Specials update automatically when the owner photographs the specials board. AI extracts the text.
+              <span className="ai-tag">AI</span>
+              The owner photographs the specials board and the menu updates itself — no typing, fully offline.
             </p>
           ) : null}
 
@@ -512,7 +526,8 @@ function MenuSections({
 
           {section.id === 'dolci' ? <FeedbackPanel onSubmit={onFeedback} /> : null}
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -707,16 +722,23 @@ function DishSheet({
           <button className="sheet-close" type="button" onClick={onClose} aria-label="Close">
             ×
           </button>
-          {dish.special ? <p className="sheet-kicker">Special today</p> : null}
+          <p className="sheet-kicker">{dish.special ? 'Special today' : 'À la carte'}</p>
           <h2 id="dish-sheet-title">{dish.name}</h2>
-          <p>{dish.description}</p>
-          <DetailRow label="Price" value={formatPrice(dish)} />
-          <DetailRow
-            label="Allergens"
-            value={dish.allergens && dish.allergens.length ? dish.allergens.join(', ') : 'None declared'}
-          />
-          {dish.winePairing ? <DetailRow label="Wine pairing" value={dish.winePairing} /> : null}
-          {dish.chefNote ? <DetailRow label="Chef's note" value={dish.chefNote} italic /> : null}
+          <p className="dish-sheet-desc">{dish.description}</p>
+          {dish.chefNote ? (
+            <blockquote className="chef-note">
+              {dish.chefNote}
+              <cite>From the pass</cite>
+            </blockquote>
+          ) : null}
+          <div className="dish-facts">
+            <DetailRow label="Price" value={formatPrice(dish)} />
+            <DetailRow
+              label="Allergens"
+              value={dish.allergens && dish.allergens.length ? dish.allergens.join(', ') : 'None declared'}
+            />
+          </div>
+          {dish.winePairing ? <WinePairing pairing={dish.winePairing} /> : null}
           <DishBadges dish={dish} />
           {typeof dish.price === 'number' ? (
             <button
@@ -727,7 +749,7 @@ function DishSheet({
                 onClose();
               }}
             >
-              +1 {inOrder > 0 ? `- ${inOrder} already chosen` : ''}
+              Add to order{inOrder > 0 ? ` · ${inOrder} chosen` : ''}
             </button>
           ) : null}
         </div>
@@ -750,6 +772,33 @@ function DetailRow({
       <span>{label}</span>
       <p className={italic ? 'detail-italic' : ''}>{value}</p>
     </div>
+  );
+}
+
+function WinePairing({ pairing }: { pairing: string }) {
+  // Data shape: "Chianti Classico, Castello di Ama - earthy, bright, built for ragu."
+  const dash = pairing.indexOf(' - ');
+  const fullName = dash === -1 ? pairing : pairing.slice(0, dash);
+  const note = dash === -1 ? '' : pairing.slice(dash + 3);
+  const comma = fullName.indexOf(',');
+  const wine = comma === -1 ? fullName : fullName.slice(0, comma);
+  const producer = comma === -1 ? '' : fullName.slice(comma + 1).trim();
+
+  return (
+    <aside className="wine-pairing" aria-label="Sommelier wine pairing">
+      <div className="wine-pairing-head">
+        <svg className="wine-glass" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M8 3h8c0 4-1.6 7-4 7s-4-3-4-7z" />
+          <line x1="12" y1="10" x2="12" y2="19" />
+          <line x1="8.5" y1="21" x2="15.5" y2="21" />
+        </svg>
+        <p className="wine-pairing-kicker">The sommelier suggests</p>
+      </div>
+      <p className="wine-pairing-name">{wine}</p>
+      {producer ? <p className="wine-pairing-producer">{producer}</p> : null}
+      {note ? <p className="wine-pairing-note">“{note.replace(/\.$/, '')}”</p> : null}
+      <p className="wine-pairing-foot">By the glass or bottle · ask your server</p>
+    </aside>
   );
 }
 
