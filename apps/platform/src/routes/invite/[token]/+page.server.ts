@@ -2,7 +2,7 @@
  * Invite claim page. Displays the app being invited to + a CTA. The
  * actual claim posts to a form action below; that action verifies the
  * invite, sets the HMAC-signed grant cookie, and redirects into the
- * focused container so the private package can be installed locally.
+ * focused Dock shell so the private package can be installed locally.
  *
  * Port of `apps/web/app/invite/[token]/page.tsx` + the claim API route.
  */

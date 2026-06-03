@@ -134,7 +134,7 @@
           <p>{data.user ? `${privateMakerCount} private, ${data.makerApps.length} total` : 'Published and private apps appear after sign-in.'}</p>
         </div>
         {#if data.user}
-          <a class="section-link" href="/dashboard/apps">All apps</a>
+          <a class="section-link" href="/maker/apps">All apps</a>
         {/if}
       </div>
 
@@ -155,7 +155,7 @@
               </div>
               <div class="app-actions">
                 <a href={`/run/${app.slug}`}>Run</a>
-                <a href={`/dashboard/apps/${app.slug}`}>Manage</a>
+                <a href={`/maker/apps/${app.slug}`}>Manage</a>
               </div>
             </article>
           {/each}

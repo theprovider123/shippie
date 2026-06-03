@@ -54,7 +54,7 @@
     result.kind === 'success'
       ? visibility === 'private'
         ? `(generating private invite — open Maker)`
-        : `${typeof window !== 'undefined' ? window.location.origin : ''}/apps/${result.slug}`
+        : result.liveUrl
       : '',
   );
 
@@ -196,9 +196,9 @@
     <span class="label">Where it lives</span>
     <select id="ship-surface" name="surface" bind:value={surfaceChoice} class="surface-select">
       <option value="auto">Auto (use shippie.json or existing setting)</option>
-      <option value="featured">App — appears on /apps</option>
-      <option value="arcade">Game — appears on /arcade (no ads / tracking / IAP)</option>
-      <option value="labs">Experiment — appears on /labs</option>
+      <option value="featured">Tool — appears in Tools</option>
+      <option value="arcade">Game — appears in Tools under Games</option>
+      <option value="labs">Experiment — documented in Labs</option>
     </select>
     <span class="hint">
       Auto is best: your shippie.json's <code>curation.surface</code> wins, falling back to the existing app row's surface, then "featured".

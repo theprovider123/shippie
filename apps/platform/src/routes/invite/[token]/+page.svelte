@@ -20,14 +20,14 @@
 
 <main class="invite-page">
   <div class="shell">
-    <EntryNav actions={[{ href: '/apps', label: 'Browse tools' }]} />
+    <EntryNav actions={[{ href: '/tools', label: 'Browse tools' }]} />
 
     <section class="panel" aria-label={data.invalid ? 'Expired invite' : 'Private space invite'}>
     {#if data.invalid}
       <p class="eyebrow">Invite link</p>
       <h1 class="title">Invite expired</h1>
       <p class="body">Ask the person who shared this with you for a new link.</p>
-      <a class="secondary-link" href="/">Return to the tool launcher</a>
+      <a class="secondary-link" href="/dock">Return to Dock</a>
     {:else if data.invite}
       <p class="eyebrow">Private invite</p>
       <h1 class="title">{data.invite.appName}</h1>
@@ -73,7 +73,7 @@
         Join now without creating an account. Signing in later only helps keep access across
         devices; Shippie still cannot read the space.
       </p>
-      <a class="secondary-link" href="/">Not now — open the launcher</a>
+      <a class="secondary-link" href="/dock">Not now — open Dock</a>
     {/if}
     </section>
   </div>

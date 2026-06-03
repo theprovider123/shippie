@@ -47,8 +47,8 @@
   );
   const railActions = $derived(
     targetApp
-      ? [{ href: `/apps/${targetApp.slug}`, label: 'Install app' }]
-      : [{ href: '/apps', label: 'Browse tools' }],
+      ? [{ href: `/run/${targetApp.slug}`, label: 'Open tool' }]
+      : [{ href: '/tools', label: 'Browse tools' }],
   );
 
   let openUrl = $state<string | null>(null);
@@ -162,8 +162,10 @@
         </div>
         <p class="muted small">
           Don't have {targetApp.name}? Visit
-          <a href="https://shippie.app/apps/{targetApp.slug}">shippie.app/apps/{targetApp.slug}</a>
-          to open it, then come back to this URL.
+          <a href={`https://shippie.app/tools?q=${encodeURIComponent(targetApp.slug)}`}>
+            shippie.app/tools
+          </a>
+          to find it, then come back to this URL.
         </p>
       {:else}
         <p class="muted small">No matching Shippie app for type "{blob.type}" yet.</p>

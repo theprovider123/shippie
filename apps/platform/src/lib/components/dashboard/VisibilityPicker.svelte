@@ -15,7 +15,7 @@
   });
 
   const options = $derived([
-    { value: 'public', label: 'Public', blurb: 'Listed on /apps and /leaderboards.' },
+    { value: 'public', label: 'Public', blurb: 'Listed in Tools and leaderboards.' },
     { value: 'unlisted', label: 'Unlisted', blurb: 'Anyone with the URL can open. Not listed.' },
     { value: 'private', label: 'Private', blurb: 'Invitees only. Hidden from search.' },
     ...((organizationId || scope === 'team' || initial === 'team')

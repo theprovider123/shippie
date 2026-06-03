@@ -84,7 +84,7 @@
             </p>
           </div>
           <div class="space-actions">
-            <a href={`/container?app=${encodeURIComponent(data.app.slug)}&focused=1&space=${encodeURIComponent(space.id)}&role=${encodeURIComponent(hostRole)}`}>Host</a>
+            <a href={`/dock?app=${encodeURIComponent(data.app.slug)}&focused=1&space=${encodeURIComponent(space.id)}&role=${encodeURIComponent(hostRole)}`}>Host</a>
             {#if space.status !== 'archived'}
               <form method="POST" action="?/archiveSpace">
                 <input type="hidden" name="spaceId" value={space.id} />

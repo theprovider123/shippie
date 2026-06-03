@@ -303,7 +303,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   <section id="open-source" class="section">
     <h2>Open source</h2>
     <p class="section-lede">
-      The whole platform — control plane, edge worker, SDK, CLI, container, AI iframe —
+      The whole platform — control plane, edge worker, SDK, CLI, Dock runtime, AI iframe —
       lives at
       <a href="https://github.com/theprovider123/shippie">github.com/theprovider123/shippie</a>. Fork it, deploy
       it, run it on your own Cloudflare account. Nothing is hidden behind a paid tier.

@@ -31,7 +31,7 @@ export interface ContainerInstallState {
 export function installBuiltPackage(built: BuiltShippiePackage): InstalledPackage {
   const manifest = built.manifest;
   if (!manifest.runtime.container) {
-    throw new Error('This package is standalone-only and cannot run in the container yet.');
+    throw new Error('This package is standalone-only and cannot run in Dock yet.');
   }
   const permissions = readPackagePermissions(built.files);
   const version = readPackageVersionRecord(built.files);

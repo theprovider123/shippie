@@ -17,7 +17,7 @@ export function privateJoinUrlForApp(
   if (role) params.set('role', role);
   const joinToken = joinTokenFromValue(opts.joinToken);
   if (joinToken) params.set('space_join', joinToken);
-  return `/container?${params.toString()}`;
+  return `/dock?${params.toString()}`;
 }
 
 export function isPrivateJoinRequest(url: URL): boolean {

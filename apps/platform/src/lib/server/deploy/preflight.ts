@@ -171,7 +171,7 @@ export function runPreflight(input: PreflightInput): PreflightReport {
       rule: 'server-code',
       severity: 'block',
       title: `Server-side code detected (${[...new Set(serverSignals)].join(', ')})`,
-      detail: 'Shippie hosts static bundles only. Use Wrap mode at /new instead.',
+      detail: 'Shippie hosts static bundles only. Build your app to static output, then upload the dist/build/out folder from Ship.',
     });
   } else {
     findings.push({ rule: 'server-code', severity: 'pass', title: 'No server-side code detected' });

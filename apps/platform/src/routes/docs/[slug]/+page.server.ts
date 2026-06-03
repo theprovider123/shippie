@@ -116,7 +116,7 @@ const pages: Record<string, DocsPage> = {
         bullets: [
           'Public listings must be honest about what the tool does.',
           'Private tools must not rely on obscurity as their only security model.',
-          'Tools that attempt to steal data, hide network behavior, or attack the container may be removed.',
+          'Tools that attempt to steal data, hide network behavior, or attack the Dock runtime may be removed.',
         ],
       },
       {
@@ -160,13 +160,13 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Security model',
         body: [
-          'Shippie treats each tool as untrusted until the platform can verify how it should run. The container uses iframe boundaries, package receipts, app metadata, and explicit bridge APIs so tools ask for capabilities instead of reaching across the shell.',
+          'Shippie treats each tool as untrusted until the platform can verify how it should run. Dock uses iframe boundaries, package receipts, app metadata, and explicit bridge APIs so tools ask for capabilities instead of reaching across the shell.',
         ],
       },
       {
         title: 'What we check',
         body: [
-          'The platform scans deploys and generated packages for device support, external domains, local-data signals, security posture, and container compatibility. Runtime proof badges are earned only after Shippie observes a capability working on real devices.',
+          'The platform scans deploys and generated packages for device support, external domains, local-data signals, security posture, and Dock compatibility. Runtime proof badges are earned only after Shippie observes a capability working on real devices.',
         ],
         bullets: [
           'Package hashes and package metadata help users identify the version they opened.',
@@ -208,7 +208,7 @@ const pages: Record<string, DocsPage> = {
         ],
         bullets: [
           'Use Safari, not an in-app browser, for the most reliable home-screen setup.',
-          'After adding it, open Shippie from the home-screen icon for the standalone launcher.',
+          'After adding it, open Shippie from the home-screen icon for standalone Dock.',
           'If the icon opens Safari instead of standalone mode, remove it and add it again from Safari.',
         ],
       },
@@ -227,12 +227,12 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'After setup',
         body: [
-          'The home-screen launcher starts at Home. Your saved tools, recent tools, and local device data stay tied to the browser profile or app storage on that device.',
+          'The home-screen app starts at Dock. Your saved tools, recent tools, and local device data stay tied to the browser profile or app storage on that device.',
         ],
       },
     ],
     links: [
-      { href: '/', label: 'Open Home' },
+      { href: '/dock', label: 'Open Dock' },
       { href: '/docs/what-is-local', label: 'What local means' },
     ],
   },
@@ -287,13 +287,58 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'What Shippie adds',
         body: [
-          'Shippie turns a web app into a listed, phone-ready, container-compatible tool with package metadata, app detail pages, local-data surfaces, and launch telemetry.',
+          'Shippie turns a web app into a listed, phone-ready, Dock-ready tool with package metadata, app detail pages, local-data surfaces, and launch telemetry.',
         ],
       },
     ],
     links: [
       { href: '/new', label: 'Ship an app' },
+      { href: '/docs/cli', label: 'CLI and MCP' },
       { href: '/docs', label: 'Docs home' },
+    ],
+  },
+  cli: {
+    title: 'CLI and MCP',
+    eyebrow: 'For builders',
+    description: 'Ship from your terminal, editor, or agent without leaving your build loop.',
+    updated,
+    sections: [
+      {
+        title: 'What it is',
+        body: [
+          'CLI and MCP use the same deploy path as the browser upload. You build a static bundle, Shippie scans it, uploads the package, and makes the tool available from its live URL and Tools listing.',
+          'Use the browser form when you want the simplest path. Use CLI or MCP when you are already working from a repo, editor, or automated agent.',
+        ],
+      },
+      {
+        title: 'Fast path',
+        body: [
+          'Build your app to dist, build, out, or another static output folder. Then run shippie deploy with the output path and slug you want to claim.',
+        ],
+        bullets: [
+          'Example: shippie deploy ./dist --slug my-tool.',
+          'Private trials can be claimed later from Maker.',
+          'Remixes should include the remix source so lineage stays visible.',
+        ],
+      },
+      {
+        title: 'What gets blocked',
+        body: [
+          'Shippie hosts static local tools. Server routes, bundled secrets, hidden trackers, ad code, unsafe network calls, and undisclosed user-data exits are blocked or flagged before publish.',
+          'External reference data is allowed when it is disclosed cleanly and does not send personal tool content out by surprise.',
+        ],
+      },
+      {
+        title: 'After deploy',
+        body: [
+          'Open the live URL to test the tool, save it to Dock when you want it close, and use Maker for deploy history, visibility, feedback, access, and updates.',
+        ],
+      },
+    ],
+    links: [
+      { href: '/new', label: 'Ship in browser' },
+      { href: '/maker/apps', label: 'Maker apps' },
+      { href: '/docs/build', label: 'Build guide' },
     ],
   },
   remix: {
@@ -355,7 +400,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'The launch promise',
         body: [
-          'Open the launcher, run the tool, add it to your phone later if it earns the spot, and understand where your data lives before you trust it.',
+          'Open Dock, run the tool, add it to your phone later if it earns the spot, and understand where your data lives before you trust it.',
         ],
       },
     ],
@@ -400,7 +445,7 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'What belongs here',
         body: [
-          'Labs is where experimental Shippie surfaces can be documented without taking a top-level nav slot. Production-ready tools should live in Home or app detail pages.',
+          'Labs is where experimental Shippie surfaces can be documented without taking a top-level nav slot. Production-ready tools should live in Tools and launch from Dock.',
         ],
       },
     ],

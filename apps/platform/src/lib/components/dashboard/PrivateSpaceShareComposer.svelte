@@ -205,7 +205,7 @@
   }
 
   function buildHostUrl(input: { role: string; spaceId: string }): string {
-    const url = new URL('/container', window.location.origin);
+    const url = new URL('/dock', window.location.origin);
     url.searchParams.set('app', slug);
     url.searchParams.set('focused', '1');
     url.searchParams.set('space', input.spaceId);

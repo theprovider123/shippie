@@ -53,7 +53,7 @@
           <p class="eyebrow">Remix unavailable</p>
           <h2>{data.remix.reason}</h2>
         </div>
-        <a href="/apps">Browse remixable apps</a>
+        <a href="/tools?remixable=1">Browse remixable tools</a>
       </section>
     {:else if remixApp}
       <section class="remix-panel" aria-label="Remix source">

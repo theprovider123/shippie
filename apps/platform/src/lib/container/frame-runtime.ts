@@ -115,7 +115,7 @@ export function markFrameReadyState(states: FrameStates, appId: string): FrameSt
 export function markFrameErrorState(
   states: FrameStates,
   appId: string,
-  message = 'This app could not open in the container.',
+  message = 'This tool could not open in Dock.',
 ): FrameStates {
   return { ...states, [appId]: { status: 'error', message } };
 }

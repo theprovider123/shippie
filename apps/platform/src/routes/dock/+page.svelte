@@ -1495,7 +1495,7 @@
 
   function markFrameError(
     appId: string,
-    message = 'This app could not open in the container.',
+    message = 'This tool could not open in Dock.',
     options: { retryable?: boolean; retryablePaintMiss?: boolean } = {},
   ) {
     if ((options.retryable || options.retryablePaintMiss) && (framePaintMissRetries[appId] ?? 0) === 0) {
@@ -2324,7 +2324,7 @@
       }
     } catch (err) {
       console.info('shippie:container Your Data overlay unavailable', err);
-      dataRecoveryStatus = 'Your Data is available from each app’s Shippie menu. This container could not open the overlay.';
+      dataRecoveryStatus = 'Your Data is available from each tool’s Shippie menu. Dock could not open the overlay.';
     }
   }
 
@@ -2566,7 +2566,7 @@
       const manifest = parsed as AppPackageManifest;
       assertValidPackageManifest(manifest);
       if (!manifest.runtime.container) {
-        packageImportStatus = 'This package is standalone-only and cannot run in the container yet.';
+        packageImportStatus = 'This package is standalone-only and cannot run in Dock yet.';
         return;
       }
       const app = manifestToContainerApp(manifest);
