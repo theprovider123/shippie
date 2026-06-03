@@ -1,5 +1,5 @@
-export const DRAWER_DISMISS_DISTANCE = 96;
-export const DRAWER_DISMISS_VELOCITY = 0.65;
+export const DRAWER_DISMISS_DISTANCE = 72;
+export const DRAWER_DISMISS_VELOCITY = 0.55;
 export const DRAWER_HORIZONTAL_CANCEL_DISTANCE = 18;
 
 export function isHorizontalDrawerGesture(dx: number, dy: number): boolean {

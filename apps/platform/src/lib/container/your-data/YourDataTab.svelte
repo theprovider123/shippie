@@ -80,6 +80,8 @@
       ? 'Shippie can count it, not read it. Your encrypted backup is ready.'
       : 'Shippie can count it, not read it. Backups are optional.',
   );
+  const backupState = $derived(backupExport ? 'Ready' : 'Optional');
+  const restoredCount = $derived(recoveredReceipts.length);
 
   onMount(() => {
     if (typeof window === 'undefined') return;
@@ -105,19 +107,31 @@
 
 <div class="your-data-tab">
   <header class="head">
-    <p class="eyebrow">Local data</p>
-    <h2>What your apps keep</h2>
-    <p>Each app keeps its own data on this device. You can review it, clear it, or make a backup without turning sign-in into a requirement.</p>
+    <p class="eyebrow">Data</p>
+    <h2>Your data</h2>
+    <p>Review local app data, move it to another device, or make a backup. Sign-in stays optional.</p>
   </header>
 
-  <section class="plain-summary" aria-label="Your data summary">
-    <div class="summary-count">
+  <section class="data-overview" aria-label="Your data summary">
+    <div>
+      <span>Apps</span>
       <strong>{installedAppsCount}</strong>
-      <span>{appWord} saved here</span>
+      <small>{appWord} saved here</small>
     </div>
-    <div class="summary-copy">
-      <p>{itemSummary}</p>
-      <p class="privacy-note">{privacySummary}</p>
+    <div>
+      <span>Items</span>
+      <strong>{totalRows}</strong>
+      <small>{itemSummary}</small>
+    </div>
+    <div>
+      <span>Backup</span>
+      <strong>{backupState}</strong>
+      <small>{privacySummary}</small>
+    </div>
+    <div>
+      <span>Restored</span>
+      <strong>{restoredCount}</strong>
+      <small>Waiting receipts</small>
     </div>
   </section>
 
@@ -216,53 +230,47 @@
     color: var(--text-secondary);
     line-height: 1.55;
   }
-  .plain-summary {
+  .data-overview {
     display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: stretch;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
     border: 1px solid var(--border-light);
     background: var(--border-light);
   }
-  .summary-count,
-  .summary-copy {
+  .data-overview > div {
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+    padding: 14px 16px;
     background: var(--surface);
   }
-  .summary-count {
-    min-width: 132px;
-    padding: 14px 16px;
-    display: grid;
-    align-content: center;
-    gap: 0.25rem;
-  }
-  .summary-count span {
+  .data-overview span {
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-light);
   }
-  .summary-count strong {
+  .data-overview strong {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 8vw, 2.8rem);
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
     font-weight: 600;
     line-height: 0.95;
     color: var(--text);
   }
-  .summary-copy {
-    padding: 14px 16px;
-    display: grid;
-    align-content: center;
-    gap: 0.35rem;
-  }
-  .summary-copy p:first-child {
-    color: var(--text);
-  }
-  .privacy-note {
+  .data-overview small {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-secondary);
     font-size: var(--small-size);
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
   .data-trigger {
     display: flex;
@@ -339,19 +347,8 @@
     .head p:not(.eyebrow) {
       font-size: 1rem;
     }
-    .plain-summary {
-      grid-template-columns: 1fr;
-    }
-    .summary-count {
-      min-width: 0;
-      min-height: 76px;
-      grid-template-columns: auto 1fr;
-      align-items: baseline;
-      align-content: center;
-      column-gap: 0.7rem;
-    }
-    .summary-copy {
-      padding: 12px 14px;
+    .data-overview {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .data-trigger {
       align-items: stretch;

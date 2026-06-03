@@ -196,7 +196,7 @@
     dragStartX = event.clientX;
     dragStartY = event.clientY;
     dragStartTime = performance.now();
-    dragFromChrome = fromChrome;
+    dragFromChrome = fromChrome || atScrollTop;
     dragY = 0;
     dragging = false;
   }
@@ -215,7 +215,7 @@
     if (dy <= 0) return;
     if (!dragFromChrome && sheetEl && sheetEl.scrollTop > 1) return;
     if (!dragging) {
-      if (dy < 8) return;
+      if (dy < 4) return;
       dragging = true;
       sheetEl?.setPointerCapture?.(event.pointerId);
     }

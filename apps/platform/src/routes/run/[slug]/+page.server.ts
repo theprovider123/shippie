@@ -43,10 +43,14 @@ export const load: PageServerLoad = async ({ platform, params, url, setHeaders, 
     'cache-control': 'no-store',
   });
   depends('app:apps');
-  return loadContainerPageData({
+  const containerData = await loadContainerPageData({
     platform,
     url,
     requestedAppSlug: containerSlugForRequest(canonical.slug),
     focused: true,
   });
+  return {
+    ...containerData,
+    origin: url.origin,
+  };
 };

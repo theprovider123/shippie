@@ -355,7 +355,7 @@
     dismissStartX = event.clientX;
     dismissStartY = event.clientY;
     dismissStartTime = performance.now();
-    dismissFromChrome = fromChrome;
+    dismissFromChrome = fromChrome || atScrollTop;
     drawerDragY = 0;
     drawerDismissActive = false;
   }
@@ -374,7 +374,7 @@
     if (dy <= 0) return;
     if (!dismissFromChrome && drawerNode && drawerNode.scrollTop > 1) return;
     if (!drawerDismissActive) {
-      if (dy < 8) return;
+      if (dy < 4) return;
       drawerDismissActive = true;
       drawerNode?.setPointerCapture?.(event.pointerId);
     }

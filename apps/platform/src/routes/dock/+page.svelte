@@ -244,9 +244,8 @@
   // opens the tool switcher. Gated by localStorage.
   let firstRunHint = $state(false);
   // Viewport width for drawer-edge selection. ≤640px → drawer rises from
-  // the bottom (matches the mark's top-right placement on mobile via the
-  // existing media query); larger → slides in from the left next to the
-  // mark's top-left placement on desktop.
+  // the bottom while its summon control sits at the top, away from
+  // in-app bottom toolbars; larger → slides in from the left.
   let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
   const focusedDrawerEdge = $derived<'left' | 'bottom'>(viewportWidth <= 640 ? 'bottom' : 'left');
   let receiptsByApp = $state<Record<string, AppReceipt>>(
@@ -3417,7 +3416,7 @@
           <nav class="focused-drawer-actions" aria-label="Drawer actions">
             <button class="focused-action" type="button" onclick={() => exitFocusedMode('home')}>Dock</button>
             <a class="focused-action" href="/tools">Browse</a>
-            <button class="focused-action focused-action-data" type="button" onclick={() => exitFocusedMode('data')}>Data</button>
+            <a class="focused-action focused-action-data" href="/you">Data</a>
             <button class="focused-action focused-action-close" type="button" aria-label="Close Shippie tools" onclick={() => {
               closeFocusedDrawer();
             }}>×</button>
@@ -4426,25 +4425,26 @@
   @media (max-width: 640px) {
     .focused-dock-nub-wrap {
       top: auto;
-      left: 50%;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+      top: calc(env(safe-area-inset-top, 0px) + 12px);
+      right: calc(env(safe-area-inset-right, 0px) + 12px);
+      bottom: auto;
+      left: auto;
       align-items: flex-end;
-      flex-direction: column-reverse;
-      transform: translateX(-50%);
+      transform: none;
     }
     .focused-dock-nub {
-      width: 58px;
-      height: 24px;
+      width: 48px;
+      height: 48px;
       border: 1px solid rgba(168, 196, 145, 0.30);
       border-radius: 999px;
       background: rgba(20, 18, 15, 0.72);
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      box-shadow: 0 6px 18px rgba(20, 18, 15, 0.14);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(20, 18, 15, 0.18);
     }
     .focused-dock-nub img {
-      width: 15px;
-      height: 15px;
+      width: 20px;
+      height: 20px;
     }
     .focused-dock-nub:hover,
     .focused-dock-nub:focus-visible,
@@ -4452,11 +4452,11 @@
       transform: translateY(-2px);
     }
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
-      opacity: 0.34;
-      transform: translateX(-50%) translateY(6px);
+      opacity: 0.42;
+      transform: translateY(-8px);
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
-      transform: translateY(140%);
+      transform: translateY(-140%);
     }
   }
 
