@@ -132,6 +132,9 @@ export const handle: Handle = async ({ event, resolve }) => {
     // resolveHostFull returns null for). Should be a 404 page.
   }
 
+  const platformWrapperResponse = await platformWrapperSystemRoute(event);
+  if (platformWrapperResponse) return platformWrapperResponse;
+
   const runtimeAssetResponse = await runtimeAssetTarget(event);
   if (runtimeAssetResponse) return runtimeAssetResponse;
 
@@ -192,6 +195,90 @@ function firstPartyTraceId(request: Request): string {
   const incoming = request.headers.get('x-shippie-trace-id');
   if (incoming && /^[a-zA-Z0-9-]{1,64}$/.test(incoming)) return incoming;
   return crypto.randomUUID();
+}
+
+async function platformWrapperSystemRoute(event: Parameters<Handle>[0]['event']): Promise<Response | null> {
+  if (!PLATFORM_HOSTS.has(event.url.hostname)) return null;
+  if (!isApexWrapperSystemPath(event.url.pathname)) return null;
+  if (!event.platform?.env) {
+    return new Response('Platform bindings unavailable.', {
+      status: 503,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    });
+  }
+  const slug = inferFirstPartyRuntimeSlug(event) ?? 'shippie';
+  const ctx: WrapperContext = {
+    request: event.request,
+    env: event.platform.env,
+    slug,
+    traceId: firstPartyTraceId(event.request),
+  };
+  const res = await dispatchWrapperSystemRoute(ctx, event.url.pathname);
+  return res ? finalizeWrapperResponse(res, ctx) : null;
+}
+
+function isApexWrapperSystemPath(pathname: string): boolean {
+  return (
+    pathname === '/__shippie/local.js' ||
+    pathname.startsWith('/__shippie/local/') ||
+    pathname === '/__shippie/meta' ||
+    pathname === '/__shippie/manifest' ||
+    pathname === '/__shippie/manifest.json' ||
+    pathname === '/__shippie/sw.js' ||
+    pathname === '/__shippie/assets.json' ||
+    pathname === '/__shippie/sdk.js' ||
+    pathname === '/__shippie/install' ||
+    pathname === '/__shippie/install/phone' ||
+    pathname === '/__shippie/feedback' ||
+    /^\/__shippie\/feedback\/[^/]+\/vote$/.test(pathname) ||
+    pathname === '/__shippie/analytics' ||
+    pathname === '/__shippie/beacon' ||
+    pathname === '/__shippie/handoff' ||
+    pathname === '/__shippie/push/vapid-key' ||
+    pathname === '/__shippie/push/subscribe' ||
+    pathname === '/__shippie/push/unsubscribe' ||
+    pathname === '/__shippie/data' ||
+    pathname === '/__shippie/connections' ||
+    pathname === '/__shippie/connections.json' ||
+    pathname === '/__shippie/group' ||
+    pathname === '/__shippie/group/' ||
+    /^\/__shippie\/group\/[^/]+\/moderate$/.test(pathname) ||
+    /^\/__shippie\/icons\/[^/]+$/.test(pathname) ||
+    /^\/__shippie\/splash\/[^/]+$/.test(pathname)
+  );
+}
+
+function inferFirstPartyRuntimeSlug(event: Parameters<Handle>[0]['event']): string | null {
+  const direct =
+    event.url.searchParams.get('slug') ??
+    event.url.searchParams.get('app') ??
+    event.url.searchParams.get('appSlug');
+  const directSlug = direct ? canonicalFirstPartySlug(direct) : null;
+  if (directSlug) return directSlug;
+
+  const referer = event.request.headers.get('referer') ?? event.request.headers.get('referrer');
+  if (!referer) return null;
+  try {
+    const url = new URL(referer);
+    const runtimeMatch = /^\/__shippie-run\/([^/]+)(?:\/|$)/.exec(url.pathname);
+    const runMatch = /^\/run\/([^/]+)(?:\/|$)/.exec(url.pathname);
+    const slug = runtimeMatch?.[1] ?? runMatch?.[1] ?? null;
+    return slug ? canonicalFirstPartySlug(slug) : null;
+  } catch {
+    return null;
+  }
+}
+
+function canonicalFirstPartySlug(slug: string): string | null {
+  let decoded = '';
+  try {
+    decoded = decodeURIComponent(slug).trim();
+  } catch {
+    return null;
+  }
+  if (!decoded) return null;
+  if (!isFirstPartyShowcase(decoded)) return null;
+  return containerSlugForRequest(decoded);
 }
 
 async function runtimeAssetTarget(event: Parameters<Handle>[0]['event']): Promise<Response | null> {
