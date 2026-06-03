@@ -15,13 +15,14 @@
 <style>
   .dashboard-shell {
     display: grid;
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 208px minmax(0, 1fr);
     min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
     background: var(--paper-warm);
     color: var(--bg);
   }
   .dashboard-main {
-    padding: 2.5rem 3rem;
+    min-width: 0;
+    padding: clamp(1rem, 3vw, 2rem);
     overflow-x: auto;
   }
   @media (max-width: 760px) {

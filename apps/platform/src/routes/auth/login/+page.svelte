@@ -8,33 +8,33 @@
   const copy = $derived.by(() => {
     if (data.intent === 'admin') {
       return {
-        eyebrow: 'Admin sign in',
-        title: 'Admin sign in.',
-        lede: 'This area is for Shippie operators. Sign in with an admin account to review apps, moderation, audit logs, and platform health.',
-        panelTitle: 'Verify your account.',
-        panelText: 'Use GitHub or a magic link. We will send you back to Admin after sign-in.',
+        eyebrow: 'Admin',
+        title: 'Sign in',
+        lede: 'Operator tools for reviews, moderation, audit logs, and platform health.',
+        panelTitle: 'Continue to Admin',
+        panelText: 'Use GitHub or a magic link. We will send you back after sign-in.',
         primary: 'Sign in to Admin',
         secondary: 'Back to Dock',
-        strip: ['Protected route', 'Admin only', 'Magic link'],
+        strip: ['Protected', 'Admin only', 'Magic link'],
       };
     }
     if (data.intent === 'maker') {
       return {
-        eyebrow: 'Maker sign in',
-        title: 'Sign in to ship.',
-        lede: 'Manage your apps, deploys, access, analytics, and builder profile across phone and desktop.',
-        panelTitle: 'Open Maker.',
-        panelText: 'Use GitHub or a magic link. We will send you back to the maker flow after sign-in.',
-        primary: 'Sign in to Maker',
+        eyebrow: 'Maker',
+        title: 'Sign in',
+        lede: 'Manage apps, deploys, feedback, and access across phone and desktop.',
+        panelTitle: 'Continue to Maker',
+        panelText: 'Use GitHub or a magic link. We will send you back after sign-in.',
+        primary: 'Open Maker',
         secondary: 'Back to Dock',
-        strip: ['Maker tools', 'Deploys', 'Magic link'],
+        strip: ['Apps', 'Deploys', 'Magic link'],
       };
     }
     return {
-      eyebrow: 'Account optional',
-      title: 'Keep going locally.',
-      lede: 'Shippie works without an account. Sign in only when you want sync, recovery, or builder tools.',
-      panelTitle: 'For sync and shipping.',
+      eyebrow: 'Account',
+      title: 'Optional',
+      lede: 'Shippie works locally without an account. Sign in for sync, recovery, or builder tools.',
+      panelTitle: 'Sign in when you need it',
       panelText: 'Use a magic link. No password to remember.',
       primary: 'Continue without account',
       secondary: 'Browse tools',
@@ -156,7 +156,7 @@
   }
   .shell {
     width: 100%;
-    max-width: 1040px;
+    max-width: 880px;
     min-height: calc(100svh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 2.5rem);
     min-height: calc(100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 2.5rem);
     margin: 0 auto;
@@ -207,8 +207,8 @@
   .intro {
     display: grid;
     align-content: center;
-    gap: 1rem;
-    padding: 1.5rem 0 1rem;
+    gap: 0.85rem;
+    padding: 1rem 0 0.5rem;
   }
   .eyebrow {
     margin: 0;
@@ -225,8 +225,8 @@
     margin: 0;
   }
   h1 {
-    max-width: 10ch;
-    font-size: 3rem;
+    max-width: 11ch;
+    font-size: 2.75rem;
     line-height: 1;
   }
   h2 {
@@ -235,7 +235,7 @@
   }
   .lede,
   .panel-head p {
-    max-width: 35rem;
+    max-width: 31rem;
     color: var(--text-secondary, #5C5751);
     font-size: 1.05rem;
     line-height: 1.55;
@@ -246,7 +246,7 @@
     flex-wrap: wrap;
     gap: 0.75rem;
     align-items: center;
-    margin-top: 0.25rem;
+    margin-top: 0.1rem;
   }
   .continue-primary {
     min-height: 48px;
@@ -277,7 +277,7 @@
     margin-top: 0.25rem;
   }
   .local-strip span {
-    min-height: 32px;
+    min-height: 30px;
     display: inline-flex;
     align-items: center;
     padding: 0 0.7rem;
@@ -292,8 +292,8 @@
     width: 100%;
     display: grid;
     gap: 1rem;
-    padding-top: 1.25rem;
-    border-top: 2px solid var(--sunset, #E8603C);
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light, #E5DDC8);
   }
   .panel-head {
     display: grid;
@@ -393,9 +393,9 @@
   }
   @media (min-width: 760px) {
     .shell {
-      grid-template-columns: minmax(0, 1fr) minmax(20rem, 25rem);
+      grid-template-columns: minmax(0, 0.95fr) minmax(20rem, 23rem);
       grid-template-rows: 1fr;
-      column-gap: 4rem;
+      column-gap: 3rem;
       padding-top: var(--nav-height, 72px);
     }
     .topbar {
@@ -406,14 +406,14 @@
       padding: 2rem 0;
     }
     h1 {
-      font-size: 4.4rem;
+      font-size: 4rem;
     }
     .panel {
       align-self: center;
       padding-top: 0;
       padding-left: 1.25rem;
       border-top: 0;
-      border-left: 2px solid var(--sunset, #E8603C);
+      border-left: 1px solid var(--border-light, #E5DDC8);
     }
   }
   @media (max-width: 520px) {

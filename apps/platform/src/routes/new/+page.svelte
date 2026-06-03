@@ -1,6 +1,5 @@
 <script lang="ts">
   import UploadForm from './upload-form.svelte';
-  import WrapForm from './wrap-form.svelte';
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
   const remixApp = $derived(data.remix?.ok ? data.remix.remix : null);
@@ -8,15 +7,13 @@
   const forkUrl = $derived(remixApp?.forkUrl ?? null);
 
   const checks = [
-    'Detects local-tool capabilities',
-    'Blocks cloud storage, auth, ads, and trackers',
-    'Blocks security failures before publish',
-    'Writes a flight-recorder export',
-    'Honours Your Data secure backup policy',
+    'Checks local-tool readiness',
+    'Blocks risky data paths',
+    'Creates a deploy record',
   ];
 </script>
 
-<svelte:head><title>Ship a new app · Shippie</title></svelte:head>
+<svelte:head><title>Ship app · Shippie</title></svelte:head>
 
 <main class="page">
   <div class="container">
@@ -31,14 +28,12 @@
           aria-hidden="true"
         />
         <p class="eyebrow">Ship</p>
-        <h1>{remixApp ? `Remix ${remixApp.name}.` : 'A live URL in under a minute.'}</h1>
+        <h1>{remixApp ? `Remix ${remixApp.name}` : 'Ship app'}</h1>
         <p class="lede">
           {#if remixApp}
-            Fork on GitHub or upload your build. Shippie keeps the parent app, version, license,
-            and attribution wired to your remix.
+            Upload your build or fork the source. Shippie keeps attribution and remix terms attached.
           {:else}
-            Drop a built local tool zip or push from your editor. Shippie scans the bundle,
-            blocks user-data egress, gives you a phone QR, and records the deploy — never the user.
+            Drop a built local tool zip. Shippie scans it, publishes it, and records the deploy.
           {/if}
         </p>
       </div>
@@ -81,31 +76,25 @@
     {/if}
 
     <section class="starter-row" aria-labelledby="starter-row-title">
-      <p class="eyebrow">Start from</p>
-      <h2 id="starter-row-title">Pick a starting point.</h2>
+      <p class="eyebrow">Paths</p>
+      <h2 id="starter-row-title">Start simple.</h2>
       <ul class="starter-list" role="list">
         <li>
           <a href="#quick-ship">
-            <strong>Blank tool</strong>
-            <span>Upload a zip from anywhere.</span>
-          </a>
-        </li>
-        <li>
-          <a href="/?remixable=1">
-            <strong>Remix an existing tool</strong>
-            <span>Browse tools with source and license published.</span>
+            <strong>Upload zip</strong>
+            <span>Use a built <code>dist</code>, <code>build</code>, or <code>out</code> folder.</span>
           </a>
         </li>
         <li>
           <a href="/docs/cli">
-            <strong>From your CLI / MCP</strong>
-            <span>Push from VS Code, Cursor, the terminal.</span>
+            <strong>CLI / MCP</strong>
+            <span>Push from your editor or terminal.</span>
           </a>
         </li>
         <li>
-          <a href="#wrap-url">
-            <strong>Convert a hosted app</strong>
-            <span>Move Supabase/Firebase/Auth0 data paths to Shippie local primitives.</span>
+          <a href="/tools?remixable=1">
+            <strong>Remix</strong>
+            <span>Start from a tool with source and license published.</span>
           </a>
         </li>
       </ul>
@@ -134,34 +123,14 @@
       </div>
     </section>
 
-    <section class="secondary-flow" aria-labelledby="wrap-url">
-      <div class="section-head">
-        <p class="eyebrow">{data.user ? 'Already hosted' : 'Maker account'}</p>
-        <h2 id="wrap-url">Convert a hosted app</h2>
-        <p>
-          {#if data.user}
-            URL wrapping is retired for the marketplace. If a tool depends on a hosted backend,
-            move user data to <code>shippie.local.db</code> and publish the built bundle.
-          {:else}
-            Shippie tools are local-first by default. Try the zip flow above, then sign in
-            when you want to keep the deploy.
-          {/if}
-        </p>
-      </div>
-      <div class="form-surface">
-        <WrapForm />
-      </div>
-    </section>
-
     <aside class="next">
       <div>
         <p class="eyebrow">After deploy</p>
-        <h2>Shippie tells you what it did.</h2>
+        <h2>Then manage it in Maker.</h2>
         <ol>
-          <li>Live at <code>{'<slug>'}.shippie.app</code> with the wrapper runtime and install support.</li>
-          <li>The App Flight Recorder shows local-tool eligibility, blocked risks, fixed essentials, and health checks.</li>
-          <li>Maker tracks proof badges as real devices use the app.</li>
-          <li>Your tool runs locally; secure backup is optional continuity, not a cloud account.</li>
+          <li>Open the live app at <code>{'<slug>'}.shippie.app</code>.</li>
+          <li>Review proof, feedback, analytics, and access in Maker.</li>
+          <li>Keep user data local; backup stays optional.</li>
         </ol>
       </div>
       <div class="next-tools" aria-label="Other deploy paths">
@@ -173,11 +142,6 @@ shippie deploy ./dist</code></pre>
         <article>
           <h3>Claude Code / Cursor</h3>
           <pre><code>bunx @shippie/mcp install</code></pre>
-        </article>
-        <article id="github">
-          <h3>GitHub</h3>
-          <pre><code>git push origin main</code></pre>
-          <p><a href="/maker">Connect a repo</a> after your first deploy.</p>
         </article>
       </div>
     </aside>
@@ -209,13 +173,13 @@ shippie deploy ./dist</code></pre>
   .container { width: 100%; max-width: 1040px; min-width: 0; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
   .hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
-    gap: 2rem;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.55fr);
+    gap: 1.5rem;
     align-items: end;
     padding-bottom: 2rem;
     border-bottom: 1px solid var(--paper-cream);
   }
-  .header-mark { display: block; width: 56px; height: 56px; margin-bottom: 1rem; }
+  .header-mark { display: block; width: 40px; height: 40px; margin-bottom: 0.75rem; }
   .eyebrow {
     margin: 0 0 0.55rem;
     font-size: 11px;
@@ -224,7 +188,7 @@ shippie deploy ./dist</code></pre>
     color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
   }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(2.35rem, 6vw, 4.75rem); line-height: 0.95; margin: 0; letter-spacing: -0.02em; max-width: 760px; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(2.35rem, 6vw, 4rem); line-height: 0.98; margin: 0; letter-spacing: 0; max-width: 760px; }
   h2 {
     font-family: 'Fraunces', Georgia, serif;
     font-size: clamp(1.5rem, 3vw, 2.15rem);
@@ -232,7 +196,7 @@ shippie deploy ./dist</code></pre>
     margin: 0;
     letter-spacing: -0.01em;
   }
-  .lede { color: var(--ink-muted-warm); font-size: 18px; line-height: 1.55; max-width: 720px; }
+  .lede { color: var(--ink-muted-warm); font-size: 1rem; line-height: 1.5; max-width: 560px; }
   .hero > *,
   .hero-status {
     min-width: 0;
@@ -305,7 +269,7 @@ shippie deploy ./dist</code></pre>
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.6rem;
   }
   .starter-list a {
@@ -327,7 +291,7 @@ shippie deploy ./dist</code></pre>
     .starter-list span { color: var(--text-secondary); }
   }
 
-  .primary-flow, .secondary-flow {
+  .primary-flow {
     display: grid;
     grid-template-columns: minmax(240px, 0.55fr) minmax(0, 1fr);
     gap: 2rem;
@@ -349,7 +313,6 @@ shippie deploy ./dist</code></pre>
   .next-tools article { min-width: 0; padding: 1rem; border-right: 1px solid var(--paper-cream); }
   .next-tools article:last-child { border-right: 0; }
   .next-tools h3 { margin: 0 0 0.65rem; font-size: 1rem; line-height: 1.2; }
-  .next-tools p { margin: 0.65rem 0 0; color: var(--ink-muted-warm); font-size: 13px; line-height: 1.45; }
   pre {
     background: var(--bg);
     color: var(--text);
@@ -389,8 +352,8 @@ shippie deploy ./dist</code></pre>
   .footer { color: var(--text-muted-warm); font-size: 13px; }
   code { font-family: ui-monospace, monospace; font-size: 0.9em; }
   @media (max-width: 1024px) {
-    .hero, .remix-panel, .primary-flow, .secondary-flow, .next { grid-template-columns: 1fr; }
-    .next-tools { grid-template-columns: 1fr; }
+    .hero, .remix-panel, .primary-flow, .next { grid-template-columns: 1fr; }
+    .starter-list, .next-tools { grid-template-columns: 1fr; }
     .next-tools article { border-right: 0; border-bottom: 1px solid var(--paper-cream); }
     .next-tools article:last-child { border-bottom: 0; }
     .hero-status { border-left: 0; padding-left: 0; border-top: 1px solid var(--paper-cream); padding-top: 1rem; }
@@ -416,18 +379,17 @@ shippie deploy ./dist</code></pre>
     .lede {
       font-size: 1rem;
     }
-    .primary-flow,
-    .secondary-flow {
+    .primary-flow {
       gap: 1rem;
       padding-top: 1.25rem;
     }
   }
   @media (prefers-color-scheme: dark) {
     .page { background: var(--bg); color: var(--text); }
-    .hero, .remix-panel, .primary-flow, .secondary-flow, .next-tools, .next-tools article, .next { border-color: var(--ink-warm); }
+    .hero, .remix-panel, .primary-flow, .next-tools, .next-tools article, .next { border-color: var(--ink-warm); }
     pre { background: var(--bg-pure); }
     .next { background: rgba(232, 96, 60, 0.06); }
-    .lede, .remix-panel p, .section-head p, .next-tools p, .hero-status ul, .next ol { color: var(--border-cream-soft); }
+    .lede, .remix-panel p, .section-head p, .hero-status ul, .next ol { color: var(--border-cream-soft); }
     .remix-actions a,
     .remix-panel.unavailable > a {
       border-color: var(--text);

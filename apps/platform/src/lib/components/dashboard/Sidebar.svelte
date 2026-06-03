@@ -22,12 +22,12 @@
   <p class="user">{user.displayName ?? user.email}</p>
 
   <nav class="nav">
-    <a href="/maker" class:active={$page.url.pathname === '/dashboard' || $page.url.pathname === '/maker'}>Maker home</a>
+    <a href="/maker" class:active={$page.url.pathname === '/dashboard' || $page.url.pathname === '/maker'}>Home</a>
     <a href="/maker/apps" class:active={$page.url.pathname.startsWith('/dashboard/apps') || $page.url.pathname.startsWith('/maker/apps')}>Apps</a>
     <a href="/dashboard/feedback" class:active={$page.url.pathname === '/dashboard/feedback'}>Feedback</a>
   </nav>
 
-  <a class="ship-btn" href="/new">Ship a new app</a>
+  <a class="ship-btn" href="/new">Ship app</a>
 
   {#if myApps.length > 0}
     <div class="apps">
@@ -46,11 +46,11 @@
   .sidebar {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    padding: 2rem 1.5rem;
+    gap: 1rem;
+    padding: 1.4rem 1rem;
     border-right: 1px solid var(--border-light, #E5DDC8);
     min-height: 100dvh;
-    width: 240px;
+    width: 208px;
     box-sizing: border-box;
   }
   .brand {
@@ -59,7 +59,7 @@
     gap: 0.5rem;
     text-decoration: none;
     color: inherit;
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.65rem;
     border-bottom: 1px solid var(--border-light, #E5DDC8);
     margin-bottom: 0.25rem;
   }
@@ -84,12 +84,22 @@
   @media (prefers-color-scheme: dark) {
     .brand strong { color: var(--text); }
   }
-  .user { font-size: 12px; color: var(--text-muted-warm); margin: 0; }
+  .user {
+    overflow: hidden;
+    margin: 0;
+    color: var(--text-muted-warm);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .nav { display: flex; flex-direction: column; gap: 0.25rem; }
   .nav a {
     text-decoration: none;
     color: var(--bg);
-    padding: 0.5rem 0.75rem;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.7rem;
     border-radius: 0;
     font-size: 14px;
   }
@@ -98,16 +108,15 @@
   .ship-btn {
     display: inline-block;
     text-align: center;
-    background: var(--bg);
+    background: var(--sunset);
     color: white;
     text-decoration: none;
-    height: 40px;
-    line-height: 40px;
+    min-height: var(--touch-min, 44px);
     border-radius: 0;
     font-weight: 600;
     font-size: 13px;
   }
-  .apps { display: flex; flex-direction: column; gap: 0.25rem; }
+  .apps { display: flex; flex-direction: column; gap: 0.2rem; }
   .eyebrow {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     text-transform: uppercase;
@@ -120,7 +129,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.4rem 0.75rem;
+    min-height: 34px;
+    padding: 0 0.7rem;
     border-radius: 0;
     text-decoration: none;
     color: var(--bg);
@@ -133,17 +143,33 @@
     .sidebar {
       width: 100%;
       min-height: auto;
-      padding: 0.85rem 1rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      padding: 0.7rem 1rem;
       gap: 0.75rem;
       border-right: 0;
       border-bottom: 1px solid var(--border-light, #E5DDC8);
     }
-    .brand,
     .user,
     .apps {
       display: none;
     }
+    .brand {
+      min-width: 0;
+      padding-bottom: 0;
+      margin-bottom: 0;
+      border-bottom: 0;
+    }
+    .brand img {
+      width: 24px;
+      height: 24px;
+    }
+    .brand small {
+      display: none;
+    }
     .nav {
+      grid-column: 1 / -1;
       flex-direction: row;
       gap: 0.4rem;
       overflow-x: auto;
@@ -166,12 +192,13 @@
       white-space: nowrap;
     }
     .ship-btn {
+      width: auto;
+      padding: 0 0.9rem;
       height: var(--touch-min, 44px);
       line-height: 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 100%;
       background: var(--sunset);
       color: var(--paper-warm-deep);
     }

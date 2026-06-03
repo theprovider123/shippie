@@ -119,18 +119,6 @@ shippie.feedback.submit({
 <svelte:head><title>{data.app.name} · Maker</title></svelte:head>
 
 <section class="launchpad">
-  <header class="launchpad-head">
-    <div>
-      <p class="eyebrow"><a href="/maker">Maker</a> · {data.app.name}</p>
-      <h1>{data.app.name}</h1>
-      <p class="lede">{data.app.tagline ?? `Live at ${data.app.slug}.shippie.app`}</p>
-    </div>
-    <div class="launchpad-actions">
-      <a class="primary" href={`https://${data.app.slug}.shippie.app/`} target="_blank" rel="noreferrer">Open</a>
-      <a class="ghost" href={`/apps/${data.app.slug}`}>Public page →</a>
-    </div>
-  </header>
-
   <div class="launchpad-stripe" aria-label="Status at a glance">
     <span class="vis vis-{data.app.visibilityScope}">{data.app.visibilityScope}</span>
     <span class="stat">{data.app.installCount ?? 0} opens</span>
@@ -383,26 +371,9 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
 </section>
 
 <style>
-  .launchpad { display: grid; gap: 1rem; margin-bottom: 1.5rem; }
-  .launchpad-head { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; }
-  @media (max-width: 640px) {
-    .launchpad-head { grid-template-columns: 1fr; }
-  }
+  .launchpad { display: grid; gap: 0.9rem; margin-bottom: 1.25rem; }
   .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
-  .eyebrow a { color: inherit; text-decoration: none; }
-  .launchpad-head h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2.2rem; margin: 0.25rem 0 0.15rem; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); margin: 0; }
-  .launchpad-actions { display: flex; gap: 0.5rem; align-items: center; }
-  .launchpad-actions .primary {
-    background: var(--ink-near-black); color: var(--paper-warm-deep); padding: 0.6rem 1.1rem; font-family: ui-monospace, monospace; font-size: 13px;
-    text-transform: uppercase; letter-spacing: 0.06em; min-height: var(--touch-min, 44px); display: inline-flex; align-items: center;
-    text-decoration: none;
-  }
-  .launchpad-actions .ghost {
-    background: transparent; color: inherit; padding: 0.6rem 1rem; font-family: ui-monospace, monospace; font-size: 13px;
-    border: 1px solid currentColor; min-height: var(--touch-min, 44px); display: inline-flex; align-items: center;
-    text-decoration: none;
-  }
   .launchpad-stripe { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
   .launchpad-stripe .stat { font-family: ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft-warm); padding: 4px 10px; border: 1px solid var(--paper-cream); }
   .launchpad-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }

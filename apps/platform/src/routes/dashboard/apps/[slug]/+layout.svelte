@@ -5,12 +5,17 @@
 </script>
 
 <header class="header">
-  <p class="eyebrow">
-    <a href="/maker">Maker</a> · <a href="/maker/apps">apps</a> · {data.app.slug}
-  </p>
-  <div class="title">
-    <span class="swatch" style:background={data.app.themeColor}></span>
-    <h1>{data.app.name}</h1>
+  <div class="title-row">
+    <div class="title">
+      <span class="swatch" style:background={data.app.themeColor}></span>
+      <div>
+        <p class="eyebrow">
+          <a href="/maker">Maker</a> · <a href="/maker/apps">apps</a>
+        </p>
+        <h1>{data.app.name}</h1>
+      </div>
+    </div>
+    <a class="open-link" href={`https://${data.app.slug}.shippie.app/`} target="_blank" rel="noreferrer">Open</a>
   </div>
   <p class="lede">{data.app.tagline ?? data.app.slug + '.shippie.app'}</p>
   <nav class="tabs" aria-label="App sections">
@@ -26,18 +31,38 @@
 {@render children()}
 
 <style>
-  .header { margin-bottom: 1.5rem; }
+  .header { margin-bottom: 1rem; }
   .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
   .eyebrow a { color: inherit; text-decoration: none; }
   .eyebrow a:hover { text-decoration: underline; }
-  .title { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
-  .swatch { width: 24px; height: 24px; border-radius: 0; }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0; letter-spacing: 0; }
+  .title-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+  }
+  .title { min-width: 0; display: flex; align-items: center; gap: 0.75rem; }
+  .swatch { width: 30px; height: 30px; flex-shrink: 0; border-radius: 0; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.8rem, 5vw, 2.4rem); line-height: 1; margin: 0; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); margin: 0.25rem 0 0 0; }
-  .tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--paper-cream); margin-top: 1.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .open-link {
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.9rem;
+    border: 1px solid var(--paper-cream);
+    color: var(--sunset);
+    text-decoration: none;
+    font-weight: 700;
+  }
+  .tabs { display: flex; gap: 0.35rem; border-bottom: 1px solid var(--paper-cream); margin-top: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tabs::-webkit-scrollbar { height: 0; }
   .tabs a {
-    padding: 0.625rem 0.25rem;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.55rem;
     color: var(--text-muted-warm);
     text-decoration: none;
     border-bottom: 2px solid transparent;
@@ -54,6 +79,13 @@
     .title {
       align-items: flex-start;
       gap: 0.6rem;
+    }
+    .title-row {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+    }
+    .open-link {
+      width: 100%;
     }
     .swatch {
       width: 20px;
@@ -90,6 +122,7 @@
   }
   @media (prefers-color-scheme: dark) {
     .tabs { border-color: var(--ink-warm); }
+    .open-link { border-color: var(--ink-warm); }
     .tabs a:hover { color: var(--text); }
   }
   @media (prefers-color-scheme: dark) and (max-width: 760px) {
