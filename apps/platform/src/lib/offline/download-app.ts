@@ -81,6 +81,35 @@ function withSwTimeout<T>(
   });
 }
 
+export function withPromiseTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const timer = (typeof window === 'undefined' ? setTimeout : window.setTimeout)(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(`sw_timeout_${label}`));
+    }, ms);
+    promise.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        (typeof window === 'undefined' ? clearTimeout : window.clearTimeout)(timer);
+        resolve(value);
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        (typeof window === 'undefined' ? clearTimeout : window.clearTimeout)(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
+}
+
 declare global {
   interface Window {
     __shippieSuppressNextControllerReload?: boolean;
@@ -91,7 +120,11 @@ async function getActiveSw(options: { ensureLatest?: boolean } = {}): Promise<Se
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) {
     throw new Error(NO_SW_ERROR);
   }
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await withPromiseTimeout(
+    navigator.serviceWorker.ready,
+    8000,
+    'ready',
+  );
   if (options.ensureLatest) {
     await refreshMarketplaceSw(registration);
   }
@@ -103,7 +136,7 @@ async function getActiveSw(options: { ensureLatest?: boolean } = {}): Promise<Se
 async function refreshMarketplaceSw(registration: ServiceWorkerRegistration): Promise<void> {
   let nextRegistration = registration;
   try {
-    nextRegistration = await registration.update();
+    nextRegistration = await withPromiseTimeout(registration.update(), 5000, 'update');
   } catch {
     /* best effort — the current active worker can still handle the request */
   }

@@ -90,7 +90,7 @@
     return `Save ${app.name}`;
   });
   const saveActionTitle = $derived.by(() => {
-    if (isSaving) return 'Saving offline copy';
+    if (isSaving) return 'Saving to Dock';
     if (isOffline) return 'Saved offline';
     return 'Save';
   });

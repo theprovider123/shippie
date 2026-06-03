@@ -1,5 +1,9 @@
-import { describe, expect, test } from 'vitest';
-import { describeOfflineHealth } from './download-app';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describeOfflineHealth, withPromiseTimeout } from './download-app';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('offline health labels', () => {
   test('only calls a capsule ready when saved or cache-confirmed', () => {
@@ -33,5 +37,16 @@ describe('offline health labels', () => {
       label: 'Repairing offline copy',
       detail: '4/10 files verified',
     });
+  });
+
+  test('times out service-worker readiness instead of leaving saving state stuck', async () => {
+    vi.useFakeTimers();
+    const pending = new Promise<string>(() => {});
+    const result = withPromiseTimeout(pending, 10, 'ready');
+    const assertion = expect(result).rejects.toThrow('sw_timeout_ready');
+
+    await vi.advanceTimersByTimeAsync(10);
+
+    await assertion;
   });
 });

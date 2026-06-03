@@ -36,6 +36,7 @@
     ToolRuntimeState,
     ToolTileApp,
   } from './types';
+  import { toolTileStateChip } from './state';
 
   interface Props {
     app: ToolTileApp;
@@ -139,16 +140,18 @@
   const saveActionLabel = $derived.by(() => {
     if (isSaving) return `Saving ${safeName}`;
     if (isSavedToDock && isOffline) return `${safeName} saved to Dock and available offline`;
-    if (isSavedToDock) return `${safeName} saved to Dock; offline copy pending`;
+    if (offlineWarn) return `${safeName} saved to Dock; refresh offline copy`;
+    if (isSavedToDock) return `${safeName} saved to Dock`;
     return `Save ${safeName} to Dock`;
   });
   const saveActionTitle = $derived.by(() => {
-    if (isSaving) return 'Saving offline copy';
+    if (isSaving) return 'Saving to Dock';
     if (isSavedToDock && isOffline) return 'Saved to Dock - available offline';
-    if (isSavedToDock) return 'Saved to Dock - repair offline copy';
+    if (offlineWarn) return 'Refresh offline copy';
+    if (isSavedToDock) return 'Saved to Dock';
     return 'Save to Dock and make available offline';
   });
-  const saveGlyph = $derived(isSaving ? '...' : isSavedToDock ? '✓' : '+');
+  const saveGlyph = $derived(isSaving ? '...' : offlineWarn ? '↻' : isSavedToDock ? '✓' : '+');
   // Screen readers should hear the runtime/save state of the launch
   // affordance — "Open Cycle, current tool" or "Open Ledger, saved
   // offline" — not just "Open Cycle". Falls back to the bare name when
@@ -168,27 +171,17 @@
    * - card favours offline state (`Saved` / `Saving` / `Refresh`)
    * - tier surfaces in both when present
    */
-  const stateChip = $derived.by<{ label: string; tone: 'current' | 'live' | 'saved' | 'saving' | 'warn' | 'tier' | 'idle' } | null>(() => {
-    if (density === 'drawer') {
-      if (runtimeState === 'current') return { label: 'Current', tone: 'current' };
-      if (runtimeState === 'live') return { label: 'Live', tone: 'live' };
-      if (runtimeState === 'opening') return { label: 'Opening', tone: 'live' };
-    }
-    if (isSaving) return { label: 'Saving', tone: 'saving' };
-    if (isSavedToDock && isOffline) return { label: density === 'dock' ? '' : 'Saved', tone: 'saved' };
-    if (isSavedToDock) return { label: 'Saving offline', tone: 'saving' };
-    if (offlineWarn) return { label: 'Refresh', tone: 'warn' };
-    if (app.tier && app.tier !== 'public') {
-      const map: Record<string, string> = {
-        private: 'Private',
-        team: 'Team',
-        local: 'On device',
-        unlisted: 'Unlisted',
-      };
-      return { label: map[app.tier] ?? '', tone: 'tier' };
-    }
-    return null;
-  });
+  const stateChip = $derived.by(() =>
+    toolTileStateChip({
+      density,
+      runtimeState,
+      isSaving,
+      isSavedToDock,
+      isOffline,
+      offlineWarn,
+      tier: app.tier,
+    }),
+  );
 
   function addPrefetchLink(target: string) {
     if (typeof document === 'undefined') return;
