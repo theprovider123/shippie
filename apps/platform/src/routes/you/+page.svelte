@@ -131,7 +131,7 @@
       <div class="section-head">
         <div>
           <h2 id="apps-title">Your apps</h2>
-          <p>{data.user ? `${privateMakerCount} private, ${data.makerApps.length} total` : 'Sign in to see your apps here.'}</p>
+          <p>{data.user ? `${privateMakerCount} private, ${data.makerApps.length} total` : 'Published and private apps appear after sign-in.'}</p>
         </div>
         {#if data.user}
           <a class="section-link" href="/dashboard/apps">All apps</a>
@@ -168,9 +168,8 @@
         </div>
       {:else}
         <div class="empty-apps">
-          <strong>Sign in for your app launcher.</strong>
-          <p>Your owned, private, and demo apps will appear here.</p>
-          <a href="/auth/login?return_to=%2Fyou">Sign in</a>
+          <strong>No account connected.</strong>
+          <p>Your owned, private, and demo apps will appear here after you sign in.</p>
         </div>
       {/if}
     </section>
@@ -199,8 +198,8 @@
       {:else}
         <div class="account-row">
           <div>
-            <strong>Use Shippie without an account.</strong>
-            <p>Sign in only for sync, recovery, builder tools, or Maker.</p>
+            <strong>Sign in for sync and builder tools.</strong>
+            <p>Everything local still works without an account.</p>
           </div>
           <div class="account-actions">
             <a href="/auth/login?return_to=%2Fyou">Sign in</a>

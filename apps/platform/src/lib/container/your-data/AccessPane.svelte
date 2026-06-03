@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ContainerApp } from '$lib/container/state';
+  import type { MeshStatus } from '$lib/container/mesh-status';
 
   type Flow = {
     provider: ContainerApp;
@@ -9,10 +10,27 @@
 
   interface Props {
     flows: Flow[];
+    nearbyStatus: MeshStatus;
+    nearbyJoinCodeInput: string;
+    nearbyError: string;
     onRevoke: (consumerId: string, intent: string) => void;
+    onCreateNearby: () => void;
+    onJoinNearby: () => void;
+    onLeaveNearby: () => void;
+    onNearbyJoinCodeChange: (value: string) => void;
   }
 
-  const { flows, onRevoke }: Props = $props();
+  const {
+    flows,
+    nearbyStatus,
+    nearbyJoinCodeInput,
+    nearbyError,
+    onRevoke,
+    onCreateNearby,
+    onJoinNearby,
+    onLeaveNearby,
+    onNearbyJoinCodeChange,
+  }: Props = $props();
   const grantCount = $derived(flows.reduce((sum, flow) => sum + flow.consumers.length, 0));
 </script>
 
@@ -31,6 +49,43 @@
     <span>Grants</span>
     <strong>{grantCount}</strong>
   </div>
+</section>
+
+<section class="nearby-card" aria-labelledby="nearby-title">
+  <div class="nearby-copy">
+    <p class="eyebrow">Nearby</p>
+    <h3 id="nearby-title">Nearby devices</h3>
+    {#if nearbyStatus.state === 'connected'}
+      <p>
+        Session active. Join code <code>{nearbyStatus.joinCode}</code> · {nearbyStatus.peerCount} device{nearbyStatus.peerCount === 1 ? '' : 's'} connected.
+      </p>
+    {:else if nearbyStatus.state === 'connecting'}
+      <p>Connecting to nearby devices...</p>
+    {:else}
+      <p>Occasionally share with another device or someone on the same network. Dock stays focused on launching.</p>
+    {/if}
+  </div>
+  {#if nearbyStatus.state === 'connected'}
+    <button type="button" class="nearby-button" onclick={onLeaveNearby}>Leave</button>
+  {:else}
+    <div class="nearby-actions">
+      <button type="button" class="nearby-button primary" onclick={onCreateNearby}>Start</button>
+      <input
+        id="nearby-join-code"
+        name="nearby-join-code"
+        placeholder="Join code"
+        value={nearbyJoinCodeInput}
+        oninput={(event) => onNearbyJoinCodeChange((event.currentTarget as HTMLInputElement).value)}
+        spellcheck="false"
+        autocapitalize="characters"
+        maxlength="32"
+      />
+      <button type="button" class="nearby-button" onclick={onJoinNearby}>Join</button>
+    </div>
+  {/if}
+  {#if nearbyError}
+    <p class="nearby-error">{nearbyError}</p>
+  {/if}
 </section>
 
 {#if flows.length === 0}
@@ -117,6 +172,64 @@
     font-size: clamp(1.8rem, 6vw, 2.7rem);
     line-height: 0.95;
   }
+  .nearby-card {
+    margin-bottom: var(--space-md);
+    padding: var(--space-md);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-md);
+    align-items: center;
+  }
+  .nearby-copy {
+    display: grid;
+    gap: 0.35rem;
+  }
+  .nearby-copy h3 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: clamp(1.25rem, 4vw, 1.65rem);
+    line-height: 1;
+  }
+  .nearby-copy code {
+    font-family: var(--font-mono);
+    color: var(--text);
+  }
+  .nearby-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nearby-actions input {
+    width: 128px;
+    min-height: var(--touch-min);
+    padding: 0 10px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-pure);
+    color: var(--text);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+  .nearby-button {
+    min-height: var(--touch-min);
+    padding: 0 0.85rem;
+    border: 1px solid var(--border-light);
+    background: var(--bg-pure);
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+  }
+  .nearby-button.primary {
+    border-color: var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
+  }
+  .nearby-error {
+    grid-column: 1 / -1;
+    color: var(--danger, #b6472d);
+    font-size: var(--small-size);
+  }
   .muted.small {
     font-size: var(--small-size);
   }
@@ -176,6 +289,17 @@
     }
     .access-summary div {
       min-height: 76px;
+    }
+    .nearby-card,
+    .nearby-actions {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+    .nearby-actions {
+      display: grid;
+    }
+    .nearby-actions input {
+      width: auto;
     }
     .flow-consumers li {
       align-items: stretch;

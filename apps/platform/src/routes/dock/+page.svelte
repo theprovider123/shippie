@@ -3674,20 +3674,13 @@
                 insights={agentInsights}
                 dockGroups={railGroups}
                 {updateCards}
-                {meshStatus}
-              {meshJoinCodeInput}
-              {meshError}
                 onOpenInsight={openInsight}
                 onDismissInsight={dismissInsight}
                 onOpenTool={openRailTool}
                 onCloseTool={closeRailTool}
                 onRemoveSavedTool={removeSavedTool}
                 onStayOnCurrent={stayOnCurrent}
-              onAcceptUpdate={acceptUpdate}
-              onCreateMeshRoom={createMeshRoom}
-              onJoinMeshRoom={joinMeshRoom}
-              onLeaveMeshRoom={leaveMeshRoom}
-              onMeshJoinCodeChange={(value) => (meshJoinCodeInput = value)}
+                onAcceptUpdate={acceptUpdate}
             />
           {/if}
         {:else if section === 'create'}
@@ -3781,9 +3774,16 @@
         {:else if section === 'access'}
           <AccessPane
             flows={observationFlows}
+            nearbyStatus={meshStatus}
+            nearbyJoinCodeInput={meshJoinCodeInput}
+            nearbyError={meshError}
             onRevoke={(consumerId, intent) => {
               intentGrants = revokeIntent(intentGrants, consumerId, intent);
             }}
+            onCreateNearby={createMeshRoom}
+            onJoinNearby={joinMeshRoom}
+            onLeaveNearby={leaveMeshRoom}
+            onNearbyJoinCodeChange={(value) => (meshJoinCodeInput = value)}
           />
         {:else}
           <YourDataTab
@@ -4235,34 +4235,6 @@
     background: rgba(94, 167, 119, 0.12);
     border-color: rgba(94, 167, 119, 0.4);
   }
-  .mesh-code-input {
-    height: 36px;
-    padding: 0 10px;
-    border-radius: 0;
-    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.15));
-    font-size: var(--type-body-mobile);
-    text-transform: uppercase;
-    width: 180px;
-  }
-  .mesh-create,
-  .mesh-join,
-  .mesh-leave {
-    height: 36px;
-    padding: 0 14px;
-    border-radius: 0;
-    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
-    background: transparent;
-    color: var(--text);
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .mesh-create {
-    background: var(--sunset, #E8603C);
-    border-color: var(--sunset, #E8603C);
-    color: var(--bg-pure, #fff);
-    font-weight: 600;
-  }
-
   /* Unification plan — focused mode. /run/<slug>/ and /container?app=
      &focused=1 land here. Full-bleed app + invisible chrome. The
      AppSwitcherGesture component owns its own overlays; this just

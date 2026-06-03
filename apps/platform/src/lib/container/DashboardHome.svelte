@@ -2,10 +2,9 @@
   P1A.5 (deep container split, A1.5) — extracted Home section from
   /container/+page.svelte.
 
-  Owns the dashboard-style home view: insights strip, app grid,
-  updates list, and the nearby (mesh) panel. Pure UI with everything
-  wired in via props — the parent shell still owns the reactive
-  state.
+  Owns the Dock home view: insights strip, app grid, and updates list.
+  Pure UI with everything wired in via props — the parent shell still
+  owns the reactive state.
 
   Future: when the unification plan moves the dashboard to apex `/`,
   this component is what renders there. The /container route's
@@ -30,15 +29,11 @@
     updateSummary,
   } from '$lib/container/update-status';
   import type { Insight } from '@shippie/agent';
-  import type { MeshStatus } from '$lib/container/mesh-status';
 
   interface Props {
     insights: readonly Insight[];
     dockGroups: RailGroups;
     updateCards: readonly UpdateCard[];
-    meshStatus: MeshStatus;
-    meshJoinCodeInput: string;
-    meshError: string;
     onOpenInsight: (insight: Insight) => void;
     onDismissInsight: (insight: Insight) => void;
     onOpenTool: (slug: string) => void;
@@ -46,19 +41,12 @@
     onRemoveSavedTool?: (slug: string) => void;
     onStayOnCurrent: (appId: string) => void;
     onAcceptUpdate: (appId: string) => void;
-    onCreateMeshRoom: () => void;
-    onJoinMeshRoom: () => void;
-    onLeaveMeshRoom: () => void;
-    onMeshJoinCodeChange: (value: string) => void;
   }
 
   let {
     insights,
     dockGroups,
     updateCards,
-    meshStatus,
-    meshJoinCodeInput,
-    meshError,
     onOpenInsight,
     onDismissInsight,
     onOpenTool,
@@ -66,10 +54,6 @@
     onRemoveSavedTool,
     onStayOnCurrent,
     onAcceptUpdate,
-    onCreateMeshRoom,
-    onJoinMeshRoom,
-    onLeaveMeshRoom,
-    onMeshJoinCodeChange,
   }: Props = $props();
   function sectionRuntimeState(_section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
     return 'idle';
@@ -193,39 +177,6 @@
     })}
   {/if}
 </div>
-<div class="nearby-panel">
-  <h3>Share nearby</h3>
-  {#if meshStatus.state === 'connected'}
-    <p>
-      Sharing with nearby devices. Join code <code>{meshStatus.joinCode}</code> · {meshStatus.peerCount} other device{meshStatus.peerCount === 1 ? '' : 's'} connected.
-    </p>
-    <button class="mesh-leave" onclick={onLeaveMeshRoom}>Leave session</button>
-  {:else if meshStatus.state === 'connecting'}
-    <p>Connecting locally…</p>
-  {:else}
-    <p>Share a tool with people on the same Wi-Fi, or connect another of your own devices. Stays peer-to-peer when possible, with encrypted relay fallback.</p>
-    <div class="mesh-actions">
-      <button class="mesh-create" onclick={onCreateMeshRoom}>Create a nearby session</button>
-      <span>or join with a code</span>
-      <input
-        class="mesh-code-input"
-        id="mesh-join-code"
-        name="mesh-join-code"
-        placeholder="Paste join code"
-        value={meshJoinCodeInput}
-        oninput={(e) => onMeshJoinCodeChange((e.currentTarget as HTMLInputElement).value)}
-        spellcheck="false"
-        autocapitalize="characters"
-        maxlength="32"
-      />
-      <button class="mesh-join" onclick={onJoinMeshRoom}>Join</button>
-    </div>
-    {#if meshError}
-      <p class="error-text">{meshError}</p>
-    {/if}
-  {/if}
-</div>
-
 {#snippet DockSection({
   label,
   tools,
@@ -583,54 +534,6 @@
     border-color: var(--sunset);
     outline: none;
   }
-  .nearby-panel {
-    border: 1px solid var(--border-light);
-    padding: var(--space-md);
-    background: var(--surface);
-  }
-  .nearby-panel h3 {
-    margin: 0 0 0.5rem;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-secondary);
-  }
-  .mesh-actions {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .mesh-actions span {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-  }
-  .mesh-code-input {
-    flex: 1;
-    min-width: 120px;
-    min-height: var(--touch-min);
-    padding: 6px 10px;
-    border: 1px solid var(--border-light);
-    background: var(--bg);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .mesh-create,
-  .mesh-join,
-  .mesh-leave {
-    min-height: var(--touch-min);
-    padding: 6px 12px;
-    background: var(--sunset, #e8603c);
-    color: var(--bg-pure, #fff);
-    border: 1px solid var(--sunset, var(--sunset));
-    cursor: pointer;
-  }
-  .error-text {
-    color: var(--danger, #b6472d);
-    font-size: 0.85rem;
-    margin: 0.5rem 0 0;
-  }
   @media (min-width: 641px) {
     .section-head h1 {
       position: fixed;
@@ -679,24 +582,6 @@
     }
     .dock-tool-row :global(.tile-drawer) {
       padding: 10px 12px;
-    }
-    .nearby-panel {
-      padding: var(--space-md);
-    }
-    .mesh-actions {
-      display: grid;
-      grid-template-columns: 1fr;
-      align-items: stretch;
-    }
-    .mesh-actions span {
-      display: none;
-    }
-    .mesh-code-input,
-    .mesh-create,
-    .mesh-join,
-    .mesh-leave {
-      min-height: var(--touch-min);
-      font-size: var(--type-body-mobile);
     }
   }
 </style>
