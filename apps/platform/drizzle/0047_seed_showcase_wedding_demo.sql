@@ -1,5 +1,5 @@
 -- Seed the Wedding Guide demo as a private, direct-link showcase owned by
--- devante@urthly.digital. The archived surface keeps it out of public shelves
+-- devanteprov@gmail.com. The archived surface keeps it out of public shelves
 -- while still allowing /run/wedding-demo to resolve.
 
 INSERT OR IGNORE INTO apps (
@@ -38,7 +38,7 @@ SELECT
   'success',
   'archived'
 FROM users
-WHERE email = 'devante@urthly.digital'
+WHERE email = 'devanteprov@gmail.com'
 LIMIT 1;
 --> statement-breakpoint
 UPDATE apps

@@ -63,7 +63,7 @@ describe('sendMagicLink — Cloudflare Email Service path', () => {
         from: 'Shippie <login@shippie.app>',
         subject: 'Sign in to Shippie',
         html: expect.stringContaining('https://shippie.app/x'),
-        text: expect.stringContaining('https://shippie.app/x'),
+        text: expect.stringContaining('If Shippie is installed'),
       }),
     ]);
   });
@@ -74,5 +74,6 @@ describe('renderMagicLinkHtml', () => {
     const html = renderMagicLinkHtml('https://x.test/?<script>=1');
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('If Shippie is installed');
   });
 });

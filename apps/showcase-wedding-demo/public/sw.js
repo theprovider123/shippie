@@ -1,10 +1,18 @@
-const CACHE = 'wedding-demo-v1';
+const CACHE = 'wedding-demo-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(['./', './index.html', './icon.svg']))
+      .then((cache) =>
+        cache.addAll([
+          './',
+          './index.html',
+          './icon.svg',
+          './fonts/cormorant-roman.woff2',
+          './fonts/cormorant-italic.woff2',
+        ]),
+      )
       .then(() => self.skipWaiting()),
   );
 });

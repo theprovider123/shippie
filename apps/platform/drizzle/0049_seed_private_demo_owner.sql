@@ -1,4 +1,4 @@
--- Ensure the private demo set has an admin owner even in fresh local D1
+-- Ensure the private demo set has the admin owner even in fresh local D1
 -- databases that only have the synthetic trial/shell users.
 
 INSERT OR IGNORE INTO users (
@@ -11,7 +11,7 @@ INSERT OR IGNORE INTO users (
   email_verified
 ) VALUES (
   '00000000-0000-4000-8000-devante00001',
-  'devante@urthly.digital',
+  'devanteprov@gmail.com',
   'devante',
   'Devante',
   true,
@@ -25,12 +25,12 @@ SET
   verified_maker = true,
   email_verified = COALESCE(email_verified, datetime('now')),
   updated_at = datetime('now')
-WHERE email = 'devante@urthly.digital';
+WHERE email = 'devanteprov@gmail.com';
 --> statement-breakpoint
 WITH owner AS (
   SELECT id
   FROM users
-  WHERE email = 'devante@urthly.digital'
+  WHERE email = 'devanteprov@gmail.com'
   LIMIT 1
 ),
 demo_rows(slug, name, tagline, description, category, theme_color, background_color) AS (
@@ -129,7 +129,7 @@ SET
     WHEN 'corporate-demo' THEN '#0F0F0F'
     ELSE background_color
   END,
-  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' LIMIT 1), maker_id),
+  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devanteprov@gmail.com' LIMIT 1), maker_id),
   visibility_scope = 'private',
   surface = 'archived',
   is_archived = 0,

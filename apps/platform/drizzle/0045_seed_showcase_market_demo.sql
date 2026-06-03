@@ -5,7 +5,7 @@ INSERT OR IGNORE INTO apps (id, slug, name, tagline, description, type, category
 SELECT lower(hex(randomblob(16))), 'market-demo', 'Highbury Market Guide', 'Real food. Local people. Every Sunday.', 'A weekly community market guide for stalls, events, visitor info, and digital loyalty stamps.', 'app', 'food-drink', '#E8603C', '#F7F3EE', 'zip', 'static', users.id, 'private', 'archived', 0
 FROM users
 WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com'
-ORDER BY email = 'devante@urthly.digital' DESC
+ORDER BY email = 'devanteprov@gmail.com' DESC
 LIMIT 1;
 --> statement-breakpoint
 UPDATE apps

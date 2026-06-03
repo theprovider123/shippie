@@ -616,7 +616,7 @@ function MenuScreen({ selectedGuest }: { selectedGuest: Guest | null }) {
     <section className="screen-pad menu-screen">
       <header className="section-head">
         <h2>Our Menu</h2>
-        <p className="intro">Your menu has been noted. Enjoy.</p>
+        <p className="intro">{selectedGuest ? 'Your menu has been noted. Enjoy.' : 'Served on the day. Enjoy.'}</p>
         <span className="rule" />
       </header>
 

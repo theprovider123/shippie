@@ -224,12 +224,12 @@ blockquote {
 }
 
 .menu-section {
-  scroll-margin-top: 190px;
+  scroll-margin-top: 214px;
 }
 
 .section-heading {
   position: sticky;
-  top: 166px;
+  top: 190px;
   z-index: 4;
   display: flex;
   align-items: flex-end;
@@ -245,8 +245,7 @@ blockquote {
   font-size: 28px;
   font-variant-caps: all-small-caps;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
 }
 
 .section-heading span,
@@ -268,7 +267,7 @@ blockquote {
 }
 
 .special-section .section-heading {
-  top: 166px;
+  top: 190px;
   background: color-mix(in srgb, var(--paper) 93%, var(--accent-soft));
   border-bottom-color: color-mix(in srgb, var(--accent) 50%, var(--rule));
 }
@@ -423,7 +422,26 @@ blockquote {
   border-radius: 999px;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 600;
   background: rgba(255, 255, 255, 0.45);
+}
+
+.diet-badge.is-vegan {
+  color: var(--vegan);
+  border-color: color-mix(in srgb, var(--vegan) 38%, var(--rule));
+  background: color-mix(in srgb, var(--vegan) 7%, white);
+}
+
+.diet-badge.is-veg {
+  color: var(--veg);
+  border-color: color-mix(in srgb, var(--veg) 38%, var(--rule));
+  background: color-mix(in srgb, var(--veg) 7%, white);
+}
+
+.diet-badge.is-gf {
+  color: var(--gf);
+  border-color: color-mix(in srgb, var(--gf) 38%, var(--rule));
+  background: color-mix(in srgb, var(--gf) 7%, white);
 }
 
 .allergen-wrap {
@@ -483,7 +501,7 @@ blockquote {
   height: 44px;
   border: 0;
   background: transparent;
-  color: var(--faint);
+  color: var(--muted);
   cursor: pointer;
   transition: transform 140ms ease, color 140ms ease;
 }
@@ -1036,7 +1054,7 @@ blockquote {
   }
 
   .section-heading {
-    top: 160px;
+    top: 184px;
   }
 
   .dish-line {

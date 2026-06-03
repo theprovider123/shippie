@@ -77,6 +77,8 @@ function renderMagicLinkText(url: string): string {
   return [
     'Sign in to Shippie',
     '',
+    'If Shippie is installed, your device may open the app automatically.',
+    '',
     `Open this magic link to finish signing in: ${url}`,
     '',
     'If you did not request this email, you can ignore it.',
@@ -89,7 +91,7 @@ export function renderMagicLinkHtml(url: string): string {
     <div style="font-family: Inter, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #14120F;">
       <h1 style="font-size: 28px; margin-bottom: 12px;">Sign in to Shippie</h1>
       <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">
-        Use the button below to finish signing in.
+        Use the button below to finish signing in. If Shippie is installed, your device may open the app automatically.
       </p>
       <p style="margin: 0 0 24px;">
         <a

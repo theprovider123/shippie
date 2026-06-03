@@ -59,9 +59,12 @@ export const load: PageServerLoad = async ({ parent, platform, setHeaders }) => 
               id: schema.apps.id,
               slug: schema.apps.slug,
               name: schema.apps.name,
+              tagline: schema.apps.tagline,
+              category: schema.apps.category,
               themeColor: schema.apps.themeColor,
               latestDeployStatus: schema.apps.latestDeployStatus,
               visibilityScope: schema.apps.visibilityScope,
+              surface: schema.apps.surface,
               updatedAt: schema.apps.updatedAt,
             })
             .from(schema.apps)

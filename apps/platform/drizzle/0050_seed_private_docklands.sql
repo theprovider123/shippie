@@ -37,7 +37,7 @@ SELECT
   'success'
 FROM users
 WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com'
-ORDER BY email = 'devante@urthly.digital' DESC
+ORDER BY email = 'devanteprov@gmail.com' DESC
 LIMIT 1;
 --> statement-breakpoint
 UPDATE apps
@@ -48,7 +48,7 @@ SET
   category = 'games',
   theme_color = '#0B2228',
   background_color = '#06181C',
-  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devante@urthly.digital' DESC LIMIT 1), maker_id),
+  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devanteprov@gmail.com' DESC LIMIT 1), maker_id),
   visibility_scope = 'private',
   surface = 'archived',
   is_archived = 0,

@@ -4427,7 +4427,7 @@
     .focused-dock-nub-wrap {
       top: auto;
       left: 50%;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
       align-items: flex-end;
       flex-direction: column-reverse;
       transform: translateX(-50%);
@@ -4453,7 +4453,7 @@
     }
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
       opacity: 0.34;
-      transform: translateX(-50%) translateY(12px);
+      transform: translateX(-50%) translateY(6px);
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
       transform: translateY(140%);

@@ -47,7 +47,7 @@ button { font: inherit; }
 
 @media (max-width: 719px) {
   .app {
-    --mobile-dock-clearance: 34px;
+    --mobile-dock-clearance: 44px;
   }
 }
 

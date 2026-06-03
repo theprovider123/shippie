@@ -10,6 +10,7 @@ import { verifyAndConsumeToken } from '$server/auth/verification-tokens';
 import { findOrCreateUserByEmail } from '$server/auth/users';
 import { createLucia } from '$server/auth/lucia';
 import { getAuthSecret } from '$server/auth/env';
+import { safeReturnTo } from '$server/auth/return-to';
 
 export const GET: RequestHandler = async ({ params, platform, cookies, url }) => {
   if (!platform?.env.DB) {
@@ -41,6 +42,6 @@ export const GET: RequestHandler = async ({ params, platform, cookies, url }) =>
   const cookie = lucia.createSessionCookie(session.id);
   cookies.set(cookie.name, cookie.value, { path: '.', ...cookie.attributes });
 
-  const returnTo = url.searchParams.get('return_to') ?? '/';
+  const returnTo = safeReturnTo(url.searchParams.get('return_to'), '/you');
   throw redirect(303, returnTo);
 };

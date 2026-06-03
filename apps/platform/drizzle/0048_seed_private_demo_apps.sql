@@ -39,7 +39,7 @@ SELECT
   'success'
 FROM users
 WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com'
-ORDER BY email = 'devante@urthly.digital' DESC
+ORDER BY email = 'devanteprov@gmail.com' DESC
 LIMIT 1;
 --> statement-breakpoint
 INSERT OR IGNORE INTO apps (
@@ -79,7 +79,7 @@ SELECT
   'success'
 FROM users
 WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com'
-ORDER BY email = 'devante@urthly.digital' DESC
+ORDER BY email = 'devanteprov@gmail.com' DESC
 LIMIT 1;
 --> statement-breakpoint
 INSERT OR IGNORE INTO apps (
@@ -119,7 +119,7 @@ SELECT
   'success'
 FROM users
 WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com'
-ORDER BY email = 'devante@urthly.digital' DESC
+ORDER BY email = 'devanteprov@gmail.com' DESC
 LIMIT 1;
 --> statement-breakpoint
 INSERT OR IGNORE INTO apps (
@@ -159,7 +159,7 @@ SELECT
   'success'
 FROM users
 WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com'
-ORDER BY email = 'devante@urthly.digital' DESC
+ORDER BY email = 'devanteprov@gmail.com' DESC
 LIMIT 1;
 --> statement-breakpoint
 INSERT OR IGNORE INTO apps (
@@ -199,7 +199,7 @@ SELECT
   'success'
 FROM users
 WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com'
-ORDER BY email = 'devante@urthly.digital' DESC
+ORDER BY email = 'devanteprov@gmail.com' DESC
 LIMIT 1;
 --> statement-breakpoint
 UPDATE apps
@@ -210,7 +210,7 @@ SET
   category = 'food-drink',
   theme_color = '#E8603C',
   background_color = '#F7F3EE',
-  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devante@urthly.digital' DESC LIMIT 1), maker_id),
+  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devanteprov@gmail.com' DESC LIMIT 1), maker_id),
   visibility_scope = 'private',
   surface = 'archived',
   is_archived = 0,
@@ -226,7 +226,7 @@ SET
   category = 'health-fitness',
   theme_color = '#00D4AA',
   background_color = '#0A0A0A',
-  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devante@urthly.digital' DESC LIMIT 1), maker_id),
+  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devanteprov@gmail.com' DESC LIMIT 1), maker_id),
   visibility_scope = 'private',
   surface = 'archived',
   is_archived = 0,
@@ -242,7 +242,7 @@ SET
   category = 'food-drink',
   theme_color = '#8B1A1A',
   background_color = '#FEFCF8',
-  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devante@urthly.digital' DESC LIMIT 1), maker_id),
+  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devanteprov@gmail.com' DESC LIMIT 1), maker_id),
   visibility_scope = 'private',
   surface = 'archived',
   is_archived = 0,
@@ -258,7 +258,7 @@ SET
   category = 'lifestyle',
   theme_color = '#C4956A',
   background_color = '#FAF7F2',
-  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devante@urthly.digital' DESC LIMIT 1), maker_id),
+  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devanteprov@gmail.com' DESC LIMIT 1), maker_id),
   visibility_scope = 'private',
   surface = 'archived',
   is_archived = 0,
@@ -274,7 +274,7 @@ SET
   category = 'tools',
   theme_color = '#E8603C',
   background_color = '#0F0F0F',
-  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devante@urthly.digital' DESC LIMIT 1), maker_id),
+  maker_id = COALESCE((SELECT id FROM users WHERE email = 'devante@urthly.digital' OR email = 'devanteprov@gmail.com' ORDER BY email = 'devanteprov@gmail.com' DESC LIMIT 1), maker_id),
   visibility_scope = 'private',
   surface = 'archived',
   is_archived = 0,

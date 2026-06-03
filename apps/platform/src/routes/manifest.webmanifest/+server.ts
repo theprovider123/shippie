@@ -39,6 +39,7 @@ export const GET: RequestHandler = async ({ url }) => {
     orientation: 'portrait',
     theme_color: '#14120F',
     background_color: '#14120F',
+    handle_links: 'preferred',
     launch_handler: { client_mode: ['navigate-existing', 'auto'] },
     categories: ['productivity'],
     icons: [
@@ -60,6 +61,10 @@ export const GET: RequestHandler = async ({ url }) => {
           'application/json': ['.json'],
         },
       },
+    ],
+    url_handlers: [
+      { origin: 'https://shippie.app' },
+      { origin: 'https://www.shippie.app' },
     ],
     protocol_handlers: [{ protocol: 'web+shippie', url: '/dock?open=%s' }],
   };

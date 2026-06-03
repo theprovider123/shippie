@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import {
   DEFAULT_SPECIAL_NOTE,
@@ -416,7 +424,7 @@ function MenuHeader({
       <p className="table-pill">{table}</p>
       <h1>{RESTAURANT.name}</h1>
       <p className="tagline">{RESTAURANT.tagline}</p>
-      <p className="menu-welcome">Tonight's table is ready. Everything here is cooked fresh by Rosa and Chiara.</p>
+      <p className="menu-welcome">Cooked fresh tonight by Rosa and Chiara.</p>
       <div className="menu-rule" />
       <nav className="filter-row" aria-label="Dietary filters">
         <button
@@ -572,13 +580,20 @@ function DishRow({
   );
 }
 
+function dietTone(badge: string): string {
+  if (/vegan/i.test(badge)) return 'is-vegan';
+  if (/gluten/i.test(badge)) return 'is-gf';
+  if (/veget/i.test(badge)) return 'is-veg';
+  return '';
+}
+
 function DishBadges({ dish }: { dish: Dish }) {
   const labels = dish.badges ?? [];
   if (labels.length === 0) return null;
   return (
     <div className="badge-row" aria-label="Dietary badges">
       {labels.map((badge) => (
-        <span key={badge} className="diet-badge">
+        <span key={badge} className={`diet-badge ${dietTone(badge)}`.trim()}>
           {badge}
         </span>
       ))}
@@ -596,8 +611,21 @@ function FeedbackPanel({
   const [sent, setSent] = useState(false);
   const ratingLabels = ['Poor', 'Fair', 'Good', 'Great', 'Excellent'];
 
+  function pick(index: number) {
+    setScore(index);
+    setSent(false);
+  }
+
+  function onStarKey(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const current = score ?? 0;
+    const next = event.key === 'ArrowRight' ? Math.min(4, current + 1) : Math.max(0, current - 1);
+    pick(next);
+  }
+
   function submit() {
-    if (score == null) return;
+    if (score == null || sent) return;
     onSubmit(score + 1, text);
     setSent(true);
     setText('');
@@ -606,22 +634,21 @@ function FeedbackPanel({
   return (
     <section className="feedback-panel" aria-label="Anonymous feedback">
       <h3>How's your meal?</h3>
-      <div className="rating-row" role="radiogroup" aria-label="Rate your meal">
+      <div className="rating-row" role="radiogroup" aria-label="Rate your meal" onKeyDown={onStarKey}>
         {ratingLabels.map((label, index) => {
           const picked = score != null && index <= score;
+          const tabbable = score === index || (score == null && index === 0);
           return (
             <button
               key={label}
               type="button"
               role="radio"
               aria-checked={score === index}
+              tabIndex={tabbable ? 0 : -1}
               className={`rating-star ${picked ? 'is-filled' : ''}`}
               aria-label={`${label} — ${index + 1} of 5`}
               title={label}
-              onClick={() => {
-                setScore(index);
-                setSent(false);
-              }}
+              onClick={() => pick(index)}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M12 3.2l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.5l6.1-.7z" />
@@ -630,7 +657,7 @@ function FeedbackPanel({
           );
         })}
       </div>
-      {score != null ? <p className="rating-caption">{ratingLabels[score]}</p> : null}
+      {score != null ? <p className="rating-caption">{sent ? 'Thank you — sent anonymously' : ratingLabels[score]}</p> : null}
       <textarea
         value={text}
         onChange={(event) => setText(event.target.value)}
