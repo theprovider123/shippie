@@ -398,6 +398,7 @@ function RouteMarker({
   if (marker.kind === 'km') {
     return (
       <g className="marker km-marker" transform={`translate(${point.x} ${point.y})`} onClick={() => onSelect(marker)}>
+        <circle r="22" style={{ fill: 'transparent', stroke: 'none' }} />
         <circle r="10" />
         <text y="4">{marker.km}</text>
       </g>
@@ -409,6 +410,7 @@ function RouteMarker({
       transform={`translate(${point.x} ${point.y})`}
       onClick={() => onSelect(marker)}
     >
+      <circle r="24" style={{ fill: 'transparent', stroke: 'none' }} />
       <circle r={marker.kind === 'start' || marker.kind === 'finish' ? 17 : 14} />
       <text y="5">{symbolForMarker(marker.kind)}</text>
     </g>

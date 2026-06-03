@@ -100,6 +100,7 @@
   .dpad{position:fixed;left:max(14px,env(safe-area-inset-left));bottom:calc(16px + env(safe-area-inset-bottom));z-index:7;display:none;
     width:132px;height:132px;pointer-events:none}
   .dpad.show{display:block}
+  .dpad::before{content:"";position:absolute;left:6px;top:6px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 50% 38%,rgba(20,52,60,.6),rgba(7,27,32,.45));border:1px solid rgba(127,212,208,.16);box-shadow:inset 0 1px 0 rgba(127,212,208,.1),0 6px 16px rgba(0,0,0,.4);backdrop-filter:blur(7px);pointer-events:none}
   .dpad button{position:absolute;width:44px;height:44px;pointer-events:auto;touch-action:none;background:var(--panel);border:1px solid var(--brass-line);color:var(--brass-2);
     font-size:18px;border-radius:11px;cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(8px);transition:background .1s,transform .1s}
   .dpad button:active,.dpad button.on{background:var(--brass);color:#2a1a06;transform:scale(.94)}
@@ -294,7 +295,7 @@
 <div class="sheet" id="sheet"><div class="hdr"><div class="ti" id="sheetTi">Build</div><button class="x" id="sheetX">✕</button></div><div id="opts"></div></div>
 <div class="card" id="card"><div class="in" id="cardIn"></div></div>
 <div class="note-c">Docklands · Harbor Blueprint · offline demo</div>
-<div class="wavebanner" id="wavebanner" aria-hidden="true"></div>
+<div class="wavebanner" id="wavebanner" role="status" aria-live="polite"></div>
 
 <script type="module" src="/src/main.tsx"></script>
 </body>

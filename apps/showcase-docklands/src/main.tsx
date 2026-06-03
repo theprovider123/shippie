@@ -223,7 +223,7 @@
   function adjCoil(x,y){for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(inGrid(nx,ny)&&built[ny][nx]&&built[ny][nx].kind==='coil')return true;}return false;}
   function hit(e,dmg){if(e.slow>0)dmg*=1.5;if(e.shield>0){const a=Math.min(e.shield,dmg);e.shield-=a;dmg-=a;boom(e.x,e.y,'#bcd6e8');if(dmg<=0)return;}e.hp-=dmg;boom(e.x,e.y,e.slow>0?'#9be0ff':'#f6c66b');
     if(e.hp<=0&&!e.dead){e.dead=true;roundKills++;pops.push({x:e.x,y:e.y,r:e.r,col:e.col,life:1});gain(3,e.x,e.y-e.r-12);
-      if(e.boss){gems+=2;floats.push({x:e.x,y:e.y-e.r-12,txt:'+◈2',col:'#67dcec',life:1});updRes();flash('Brute down! +◈2');}
+      if(e.boss){gems+=2;floats.push({x:e.x,y:e.y-e.r-12,txt:'+◈2',col:'#67dcec',life:1});updRes();buzz([20,40,80]);flash('Brute down! +◈2');}
       else if(Math.random()<.06){gems+=1;floats.push({x:e.x,y:e.y-e.r-12,txt:'+◈1',col:'#67dcec',life:1});updRes();}
       if(e.k==='kelp'&&!e.s2)for(let j=0;j<2;j++)enemies.push({k:'s',col:'#6ad08a',r:5,gx:e.gx+(j?.3:-.3),gy:e.gy,x:e.x,y:e.y,hp:3,max:3,spd:e.spd*1.2,ph:0,slow:0,s2:1});}}
   function gain(amt,x,y){const v=Math.round(amt*MOD.income);tokens+=v;roundEarned+=v;floats.push({x,y,txt:'+◆'+v,col:'#f6c66b',life:1});updRes();}
@@ -275,8 +275,10 @@
     let nTw=0;for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++)if(built[y][x]&&built[y][x].kind!=='block')nTw++;
     if(nTw===0)setTimeout(()=>{if(phase==='defend')flash('⚠ No towers built — the Beacon is exposed!',1);},1700);
     const nt={3:'Rust Crab',5:'Runner',7:'Kelp Crawler',9:'Shielded Hulk',12:'Flyer — ignores walls!'}[round];
+    const newPortal=(round===6||round===12||round===18);
     let sub='Hold the line';
-    if(round===6||round===12||round===18)sub='A new portal opened — defend more sides!';
+    if(newPortal&&nt)sub='New portal · '+nt;
+    else if(newPortal)sub='A new portal opened — defend more sides!';
     else if(round%10===0)sub='☠ '+TYPES.leviathan.named+' incoming';
     else if(round%5===0)sub='Mini-boss — Tide Brute';
     else if(nt)sub='New gunk: '+nt;
@@ -366,9 +368,8 @@
     for(const f of floats){ctx.globalAlpha=Math.max(0,Math.min(1,f.life));ctx.fillStyle=f.col;ctx.fillText(f.txt,f.x,f.y-(1-f.life)*34);}ctx.globalAlpha=1;ctx.textAlign='left';
     if(pulseRing>0){const cp=iso(CORE.x,CORE.y);ctx.save();ctx.globalAlpha=Math.max(0,1-pulseRing);ctx.strokeStyle='#f6c66b';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(cp.x,cp.y+TH/2,pulseRing*W*.6,pulseRing*W*.6*TH/TW,0,0,7);ctx.stroke();ctx.restore();}
     // cinematic vignette
-    {const vg=ctx.createRadialGradient(W/2,H*.46,Math.min(W,H)*.3,W/2,H*.5,Math.max(W,H)*.72);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.42)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);}}
-  function drawBeacon(){const cp=iso(CORE.x,CORE.y);let bx=cp.x;const by=cp.y+TH/2,low=hearts<=1,pulse=.6+.4*Math.sin(t*(low?6:2));
-    if(beaconShake>0)bx+=Math.sin(t*50)*beaconShake*5;
+    {const vg=ctx.createRadialGradient(W/2,H*.46,Math.min(W,H)*.34,W/2,H*.5,Math.max(W,H)*.72);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.30)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);}}
+  function drawBeacon(){const cp=iso(CORE.x,CORE.y);const dx=beaconShake>0?Math.sin(t*50)*beaconShake*5:0;let bx=cp.x+dx;const by=cp.y+TH/2,low=hearts<=1,pulse=.6+.4*Math.sin(t*(low?6:2));
     const col=low?'239,106,74':'246,198,107',lampY=by-34;
     // rotating lighthouse sweep — two opposing light cones
     {const sweep=(t*1.1)%(Math.PI*2);ctx.save();ctx.translate(bx,lampY);for(let k=0;k<2;k++){const a=sweep+k*Math.PI;const grd=ctx.createLinearGradient(0,0,Math.cos(a)*160,Math.sin(a)*74);grd.addColorStop(0,`rgba(${col},${.26*pulse})`);grd.addColorStop(1,`rgba(${col},0)`);ctx.fillStyle=grd;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a-.14)*160,Math.sin(a-.14)*74);ctx.lineTo(Math.cos(a+.14)*160,Math.sin(a+.14)*74);ctx.closePath();ctx.fill();}ctx.restore();}
@@ -377,8 +378,8 @@
     // ground bloom
     const aura=ctx.createRadialGradient(bx,by-13,2,bx,by-13,54*pulse+24);aura.addColorStop(0,`rgba(${col},.95)`);aura.addColorStop(.5,`rgba(${col},.5)`);aura.addColorStop(1,`rgba(${col},0)`);
     ctx.fillStyle=aura;ctx.beginPath();ctx.arc(bx,by-13,54*pulse+24,0,7);ctx.fill();
-    // lighthouse tower base (3-face iso) + upper segment
-    box(CORE.x,CORE.y,16,'#b98a4e');
+    // lighthouse tower base (3-face iso) + upper segment — shaken in lockstep with the column
+    ctx.save();ctx.translate(dx,0);box(CORE.x,CORE.y,16,'#b98a4e');ctx.restore();
     ctx.fillStyle='#b98a4e';ctx.fillRect(bx-9,by-32,18,16);ctx.fillStyle='#caa06a';ctx.fillRect(bx-11,by-36,22,5);
     // lamp room + white-hot core
     ctx.fillStyle=`rgba(${col},${.85})`;ctx.beginPath();ctx.arc(bx,lampY,11+2.5*pulse,0,7);ctx.fill();
