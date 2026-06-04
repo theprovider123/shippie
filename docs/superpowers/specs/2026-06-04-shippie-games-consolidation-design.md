@@ -45,13 +45,14 @@ PER-GAME APPS (canonical, keep identity)         RETENTION SPINE
 ```
 
 - **Games** stay the source of truth (the real engines). Hubs **deep-link into** them (or embed the same shared game component), never fork weaker copies.
+- **Embed vs deep-link is a per-game decision the first implementation plan must make explicit** — it changes data ownership, event/observation flow, PWA launch behavior, and migration surface. Default: deep-link (cheapest; preserves the game's own keys/install); embed only where a hub genuinely needs the game inline (e.g. the Daily set rendering today's Sudoku without a context switch).
 - **Cross-game streak/profile** lives at the hub/platform layer, aggregating each game's `game.completed` observation (infra already exists).
 
 ---
 
 ## 3. The shared kit: `@shippie/arcade-kit`
 
-Extracted **from real needs after vertical slices** (see §8), not speculatively. Largely liftable from `golazo/src/lib/`.
+Extracted **from real needs after vertical slices** (see §10), not speculatively. Largely liftable from `golazo/src/lib/`.
 
 ### 3.1 Surface
 - **Game registry** — data-driven `{ id, name, category, loop: 'daily'|'score', shareEmoji, deepLink, component? }`. (Today: hardcoded ternaries in `Games.tsx`.)
@@ -63,9 +64,11 @@ Extracted **from real needs after vertical slices** (see §8), not speculatively
 - **`<JuiceLayer>` + sound bank** (Particles/Shake/`ARCADE_SAMPLES`) — standardize (4 canvases are audio-only; docklands is silent).
 - **Phase-2:** deterministic `ghost/replay` recorder; `achievements`.
 
-### 3.2 Versioned daily/streak/share contract (REQUIRED, define before extraction)
+### 3.2 Versioned daily/streak/share contract
 
-Every daily result, streak entry, share payload, and leaderboard row is stamped with:
+**Sequencing:** this contract is **drafted before the slices** (§10 step 2) so slice work isn't throwaway, then **finalized after** the slices stress-test it (§10 step 4). The shapes below are the draft.
+
+**(a) Per-game result.** Every daily result, streak entry, share payload, and leaderboard row is stamped with:
 
 ```ts
 interface DailyResultContract {
@@ -80,8 +83,22 @@ interface DailyResultContract {
 ```
 
 - `puzzleId = `${gameId}-${seedDate}-r${rulesVersion}-c${contentVersion}`` — stamped into every persisted attempt + emitted observation (five-letter already does a `-vN` version of this; formalize it).
-- **Streak rule:** a streak only counts entries whose `(gameId, rulesVersion)` match the current rules; content refreshes (new puzzle bank) must not retroactively invalidate past streaks. Define the UTC/local day boundary once, in the kit.
+- **Per-game streak rule:** a streak only counts entries whose `(gameId, rulesVersion)` match the current rules; content refreshes must not retroactively invalidate past streaks.
 - **Share/replay payloads** carry `payloadVersion` so a future hub can still render an old shared link.
+
+**(b) Daily-set (the core retention object — "Today's Daily: 4/7").** The combined set needs its **own** versioned identity, separate from per-game results, or changing the set corrupts the combined streak:
+
+```ts
+interface DailySetContract {
+  dailySetId: string;      // 'shippie-daily'
+  setVersion: number;      // bump when membership/requiredCount/rules change
+  setDate: string;         // 'YYYY-MM-DD' at UTC midnight
+  memberGameIds: string[]; // which games are in today's set
+  requiredCount: number;   // completions needed to extend the combined streak
+}
+```
+
+- **Combined streak rule:** a day extends the combined streak when ≥ `requiredCount` members (matched by their per-game `puzzleId`) are completed for that `setDate`. Membership/requirement changes bump `setVersion` and must **not** retroactively break past combined streaks (same principle as per-game `rulesVersion`).
 
 ### 3.3 Leaderboard trust tiers (define scope up front)
 
@@ -96,7 +113,7 @@ Offline-first scores are trivially spoofable, so classify every number:
 
 Collection over: **sudoku · five-letter · quartet · number-trail · block-drop · memory · reaction · chess-puzzle (new)**.
 
-- **One combined daily set + one streak** ("Today's Daily: 4/7"). `daily-puzzle` already prototypes `longestCombinedStreak` — promote it to the kit.
+- **One combined daily set + one streak** ("Today's Daily: 4/7"), governed by the `DailySetContract` (§3.2b). `daily-puzzle` already prototypes `longestCombinedStreak` — promote it to the kit under the versioned set identity.
 - Bring every game up to **five-letter's** bar (the reference: daily seed, 30-day archive calendar, streak, emoji share grid, stats).
 - **De-dup:** delete the weak embedded Sudoku/Memory/Reaction inside `daily-puzzle`; the hub embeds/links the real engines.
 
@@ -179,19 +196,20 @@ Each game already owns `localStorage` keys (`shippie:<game>:v1`), some IndexedDB
 ## 10. Sequencing (revised per review — slices before kit)
 
 1. **This strategy doc** (product decision: hubs = collections).
-2. **Three vertical slices** to surface real shared needs (avoid the abstraction trap). Concrete picks, chosen to maximize the shared-need surface:
-   - **Stack** (canvas arcade) — add daily-seed bag + share-card → exercises seed + score-loop + share.
-   - **Sudoku** (daily puzzle) — daily board + streak + save/resume → exercises the contract, streak, *and* local-data persistence/migration (it has zero persistence today, so it's the highest-signal slice).
+2. **Draft the contract** (§3.2 result + daily-set + §3.3 trust tiers) — marked *draft*, enough to build the slices against so they aren't throwaway.
+3. **Three vertical slices** built against the draft contract, to surface real shared needs (avoid the abstraction trap). Concrete picks, ordered to de-risk early — **lead with Sudoku**:
+   - **Sudoku** (daily puzzle, FIRST) — daily board + streak + save/resume → forces the contract, persistence, save/resume, *and* local-data migration early (zero persistence today = highest-signal slice).
+   - **Stack** (canvas arcade) — daily-seed bag + share-card → exercises seed + score-loop + share, the cleaner visible win.
    - **Golazo / TopBins** (football) — streak mode + share → proves the kit works inside an existing hub.
    (Five-letter is the reference implementation to copy from, not a slice.)
-3. **Define the daily/streak/share payload contract** (§3.2) + leaderboard trust tiers (§3.3) from what the slices needed.
-4. **Extract `@shippie/arcade-kit`** from the proven slices.
-5. **Shippie Daily** collection hub (cross-game streak, daily set, de-dup embedded copies).
-6. **Shippie Arcade** collection hub (daily-seed challenges, leaderboard, ghost).
-7. **Golazo + `/today`** adopt the kit; `/today` cross-hub streak teaser.
-8. **Phase-2:** coins/XP/achievements, ghost/replay, deeper bracket↔games tie-ins.
+4. **Finalize the contract** (§3.2/§3.3) from what the three slices actually needed.
+5. **Extract `@shippie/arcade-kit`** from the proven slices.
+6. **Shippie Daily** collection hub (cross-game streak, daily set, de-dup embedded copies).
+7. **Shippie Arcade** collection hub (daily-seed challenges, leaderboard, ghost).
+8. **Golazo + `/today`** adopt the kit; `/today` cross-hub streak teaser.
+9. **Phase-2:** coins/XP/achievements, ghost/replay, deeper bracket↔games tie-ins.
 
-Each numbered step from 2 onward becomes its own spec → plan → implementation cycle.
+Each numbered step from 3 onward becomes its own spec → plan → implementation cycle.
 
 ---
 
