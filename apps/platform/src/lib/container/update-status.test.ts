@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import type { UpdateCard } from './state';
-import { updateBadgeLabel, updateChips, updateSeverity, updateSummary } from './update-status';
+import {
+  updateBadgeLabel,
+  updateChips,
+  updateCounts,
+  updateReviewNote,
+  updateSeverity,
+  updateSummary,
+} from './update-status';
 
 function card(overrides: Partial<UpdateCard> = {}): UpdateCard {
   return {
@@ -29,6 +36,7 @@ describe('update status', () => {
     expect(updateSeverity(c)).toBe('quiet');
     expect(updateSummary(c)).toBe('package refreshed');
     expect(updateChips(c).map((chip) => chip.label)).toContain('Same access');
+    expect(updateReviewNote(c)).toBeNull();
   });
 
   test('marks version changes as review updates', () => {
@@ -46,6 +54,14 @@ describe('update status', () => {
 
     expect(updateSeverity(c)).toBe('attention');
     expect(updateBadgeLabel([c, card()])).toBe('1 needs review');
+    expect(updateCounts([c, card(), card({ versionChanged: true })])).toEqual({
+      total: 3,
+      attention: 1,
+      review: 1,
+      quiet: 1,
+    });
+    expect(updateReviewNote(c)).toBe('Data review: Compatible family, migration may run.');
+    expect(updateChips(c).map((chip) => chip.label)).toContain('Data review');
     expect(updateChips(c).map((chip) => chip.tone)).toContain('attention');
   });
 });

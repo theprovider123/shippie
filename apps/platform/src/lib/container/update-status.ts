@@ -8,6 +8,13 @@ export interface UpdateChip {
   tone: UpdateChipTone;
 }
 
+export interface UpdateCounts {
+  total: number;
+  attention: number;
+  review: number;
+  quiet: number;
+}
+
 export function updateSeverity(card: UpdateCard): UpdateSeverity {
   if (
     card.kindChanged ||
@@ -28,8 +35,21 @@ export function updateSeverity(card: UpdateCard): UpdateSeverity {
   return 'quiet';
 }
 
+export function updateCounts(cards: readonly UpdateCard[]): UpdateCounts {
+  const counts: UpdateCounts = {
+    total: cards.length,
+    attention: 0,
+    review: 0,
+    quiet: 0,
+  };
+  for (const card of cards) {
+    counts[updateSeverity(card)] += 1;
+  }
+  return counts;
+}
+
 export function updateBadgeLabel(cards: readonly UpdateCard[]): string {
-  const attention = cards.filter((card) => updateSeverity(card) === 'attention').length;
+  const { attention } = updateCounts(cards);
   if (attention > 0) return attention === 1 ? '1 needs review' : `${attention} need review`;
   return cards.length === 1 ? '1 update' : `${cards.length} updates`;
 }
@@ -44,6 +64,15 @@ export function updateSummary(card: UpdateCard): string {
   return parts.length > 0 ? parts.join(' · ') : 'ready to update';
 }
 
+export function updateReviewNote(card: UpdateCard): string | null {
+  if (card.dataCompatibility.status === 'same-schema') return null;
+  const summary = card.dataCompatibility.summary
+    .replace(/^Data compatibility unknown\s*[—-]\s*/i, '')
+    .replace(/^Data compatibility\s*/i, '')
+    .trim();
+  return summary.length > 0 ? `Data review: ${summary}` : 'Data review recommended.';
+}
+
 export function updateChips(card: UpdateCard): UpdateChip[] {
   const chips: UpdateChip[] = [];
   if (card.versionChanged) chips.push({ label: `v${card.receipt.version} to v${card.app.version}`, tone: 'neutral' });
@@ -54,7 +83,7 @@ export function updateChips(card: UpdateCard): UpdateChip[] {
   if (card.dataCompatibility.status === 'same-schema') {
     chips.push({ label: 'Same data', tone: 'safe' });
   } else {
-    chips.push({ label: card.dataCompatibility.summary, tone: 'attention' });
+    chips.push({ label: 'Data review', tone: 'attention' });
   }
   if (card.addedNetworkDomains.length > 0) {
     chips.push({ label: `${card.addedNetworkDomains.length} new domain${card.addedNetworkDomains.length === 1 ? '' : 's'}`, tone: 'attention' });

@@ -2426,6 +2426,24 @@
     toast.push({ kind: 'success', message: `${app.name} updated.` });
   }
 
+  function acceptAllUpdates(appIds: readonly string[]) {
+    const nextReceipts = { ...receiptsByApp };
+    let updatedCount = 0;
+    for (const appId of appIds) {
+      const app = appById.get(appId);
+      if (!app) continue;
+      nextReceipts[appId] = createReceiptFor(app);
+      updatedCount += 1;
+    }
+    if (updatedCount === 0) return;
+    receiptsByApp = nextReceipts;
+    persistContainerState();
+    toast.push({
+      kind: 'success',
+      message: updatedCount === 1 ? '1 tool updated.' : `${updatedCount} tools updated.`,
+    });
+  }
+
   function stayOnCurrent(appId: string) {
     const app = appById.get(appId);
     if (!app) return;
@@ -3724,17 +3742,18 @@
               onOpen={(app) => openApp(app.id)}
             />
           {:else}
-              <DashboardHome
-                insights={agentInsights}
-                dockGroups={railGroups}
-                {updateCards}
-                onOpenInsight={openInsight}
-                onDismissInsight={dismissInsight}
-                onOpenTool={openRailTool}
-                onCloseTool={closeRailTool}
-                onRemoveSavedTool={removeSavedTool}
-                onStayOnCurrent={stayOnCurrent}
-                onAcceptUpdate={acceptUpdate}
+            <DashboardHome
+              insights={agentInsights}
+              dockGroups={railGroups}
+              {updateCards}
+              onOpenInsight={openInsight}
+              onDismissInsight={dismissInsight}
+              onOpenTool={openRailTool}
+              onCloseTool={closeRailTool}
+              onRemoveSavedTool={removeSavedTool}
+              onStayOnCurrent={stayOnCurrent}
+              onAcceptUpdate={acceptUpdate}
+              onAcceptAllUpdates={acceptAllUpdates}
             />
           {/if}
         {:else if section === 'create'}

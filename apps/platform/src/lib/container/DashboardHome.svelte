@@ -25,6 +25,8 @@
   import {
     updateBadgeLabel,
     updateChips,
+    updateCounts,
+    updateReviewNote,
     updateSeverity,
     updateSummary,
   } from '$lib/container/update-status';
@@ -41,6 +43,7 @@
     onRemoveSavedTool?: (slug: string) => void;
     onStayOnCurrent: (appId: string) => void;
     onAcceptUpdate: (appId: string) => void;
+    onAcceptAllUpdates: (appIds: readonly string[]) => void;
   }
 
   let {
@@ -54,13 +57,22 @@
     onRemoveSavedTool,
     onStayOnCurrent,
     onAcceptUpdate,
+    onAcceptAllUpdates,
   }: Props = $props();
   function sectionRuntimeState(_section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
     return 'idle';
   }
 
   let updateSheetOpen = $state(false);
+  const counts = $derived(updateCounts(updateCards));
   const updateSubtitle = $derived(updateCards.length === 1 ? '1 tool' : `${updateCards.length} tools`);
+  const updateCountSummary = $derived.by(() => {
+    const parts: string[] = [];
+    if (counts.attention > 0) parts.push(counts.attention === 1 ? '1 needs review' : `${counts.attention} need review`);
+    if (counts.review > 0) parts.push(counts.review === 1 ? '1 ready' : `${counts.review} ready`);
+    if (counts.quiet > 0) parts.push(counts.quiet === 1 ? '1 quiet' : `${counts.quiet} quiet`);
+    return parts.join(' · ');
+  });
   const attentionUpdates = $derived(updateCards.filter((card) => updateSeverity(card) === 'attention'));
   const reviewUpdates = $derived(updateCards.filter((card) => updateSeverity(card) === 'review'));
   const quietUpdates = $derived(updateCards.filter((card) => updateSeverity(card) === 'quiet'));
@@ -76,6 +88,11 @@
   function installUpdate(card: UpdateCard) {
     onAcceptUpdate(card.app.id);
     if (updateCards.length <= 1) closeUpdates();
+  }
+
+  function installAllUpdates() {
+    onAcceptAllUpdates(updateCards.map((card) => card.app.id));
+    closeUpdates();
   }
 
   function keepCurrent(card: UpdateCard) {
@@ -136,6 +153,15 @@
     dismissOnBack={false}
   >
     <div class="updates-sheet">
+      <div class="updates-toolbar">
+        <div>
+          <strong>{counts.total} {counts.total === 1 ? 'tool' : 'tools'} pending</strong>
+          {#if updateCountSummary}
+            <span>{updateCountSummary}</span>
+          {/if}
+        </div>
+        <button type="button" class="update-all" onclick={installAllUpdates}>Update all</button>
+      </div>
       {#if attentionUpdates.length > 0}
         {@render UpdateGroup('Needs review', attentionUpdates)}
       {/if}
@@ -255,6 +281,7 @@
     </div>
     <div class="update-list">
       {#each cards as card (card.app.id)}
+        {@const reviewNote = updateReviewNote(card)}
         <article class="update-row" class:attention={updateSeverity(card) === 'attention'}>
           <div class="update-copy">
             <div class="update-row-title">
@@ -266,6 +293,9 @@
                 <span class:attention={chip.tone === 'attention'} class:safe={chip.tone === 'safe'}>{chip.label}</span>
               {/each}
             </div>
+            {#if reviewNote}
+              <p class="update-note">{reviewNote}</p>
+            {/if}
           </div>
           <div class="update-row-actions">
             <button type="button" onclick={() => keepCurrent(card)}>Later</button>
@@ -421,7 +451,48 @@
   }
   .updates-sheet {
     display: grid;
-    gap: 1rem;
+    gap: 0.9rem;
+  }
+  .updates-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 0 0 0.8rem;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .updates-toolbar div {
+    min-width: 0;
+    display: grid;
+    gap: 0.25rem;
+  }
+  .updates-toolbar strong {
+    color: var(--text);
+    font-family: var(--font-heading);
+    font-size: 0.98rem;
+  }
+  .updates-toolbar span {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+  .update-all {
+    flex: none;
+    min-height: 38px;
+    padding: 0 0.9rem;
+    border: 1px solid var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .update-all:hover,
+  .update-all:focus-visible {
+    border-color: var(--text);
+    outline: none;
   }
   .update-group {
     display: grid;
@@ -458,45 +529,45 @@
   .update-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-md);
+    gap: 0.85rem;
     border: 1px solid var(--border-light);
     background: var(--surface);
-    padding: var(--space-sm);
+    padding: 0.75rem 0.8rem;
   }
   .update-row.attention {
-    border-color: color-mix(in srgb, var(--sunset) 42%, var(--border-light));
-    box-shadow: inset 3px 0 0 var(--sunset);
+    border-color: color-mix(in srgb, var(--sunset) 20%, var(--border-light));
+    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--sunset) 78%, var(--border-light));
   }
   .update-copy,
   .update-row-title {
     min-width: 0;
     display: grid;
-    gap: 0.35rem;
+    gap: 0.3rem;
   }
   .update-row-title strong {
     color: var(--text);
     font-family: var(--font-heading);
-    font-size: 1rem;
+    font-size: 0.98rem;
   }
   .update-row-title small {
     color: var(--text-secondary);
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     line-height: 1.35;
   }
   .update-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 4px;
   }
   .update-chips span {
-    min-height: 24px;
+    min-height: 22px;
     display: inline-flex;
     align-items: center;
-    padding: 0 0.45rem;
+    padding: 0 0.42rem;
     border: 1px solid var(--border-light);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     letter-spacing: 0.04em;
   }
   .update-chips span.safe {
@@ -505,21 +576,28 @@
   }
   .update-chips span.attention {
     color: var(--sunset);
-    border-color: color-mix(in srgb, var(--sunset) 48%, var(--border-light));
+    border-color: color-mix(in srgb, var(--sunset) 34%, var(--border-light));
+    background: color-mix(in srgb, var(--sunset) 6%, transparent);
+  }
+  .update-note {
+    margin: 0.05rem 0 0;
+    color: color-mix(in srgb, var(--sunset) 82%, var(--text-secondary));
+    font-size: 0.76rem;
+    line-height: 1.4;
   }
   .update-row-actions {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     gap: 6px;
   }
   .update-row-actions button {
-    min-height: var(--touch-min);
-    padding: 0 0.85rem;
+    min-height: 36px;
+    padding: 0 0.72rem;
     border: 1px solid var(--border-light);
     background: transparent;
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: 0.64rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     cursor: pointer;
@@ -562,6 +640,13 @@
       min-height: 36px;
       padding: 0 0.6rem;
     }
+    .updates-toolbar {
+      align-items: stretch;
+      display: grid;
+    }
+    .update-all {
+      width: 100%;
+    }
     .section-title-row h1 {
       font-size: clamp(2.05rem, 10vw, 3rem);
       line-height: 0.96;
@@ -572,10 +657,14 @@
     }
     .update-row {
       grid-template-columns: 1fr;
-      padding: var(--space-md);
+      padding: 0.85rem;
+    }
+    .update-row-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
     }
     .update-row-actions button {
-      flex: 1;
+      width: 100%;
     }
     .dock-section-head {
       align-items: flex-start;
