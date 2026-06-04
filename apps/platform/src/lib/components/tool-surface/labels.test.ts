@@ -25,28 +25,19 @@ describe('updateChipLabel — follows UpdateState', () => {
   });
 });
 
-describe('saveActionLabel — Save vs Refresh vs Repair', () => {
-  test('Save for unsaved relationships regardless of offline state', () => {
-    const relationships: Relationship[] = ['catalog', 'recent', 'running'];
-    const offline: OfflineState[] = ['none', 'saving', 'ready', 'needs-refresh', 'failed'];
-    for (const r of relationships) {
-      for (const o of offline) {
-        expect(saveActionLabel(r, o)).toBe('Save');
-      }
+describe('saveActionLabel — Save vs Refresh vs Repair (keys off offlineState)', () => {
+  test('Save for healthy offline states', () => {
+    const healthy: OfflineState[] = ['none', 'saving', 'ready'];
+    for (const o of healthy) {
+      expect(saveActionLabel(o)).toBe('Save');
     }
   });
 
-  test('Save for a saved healthy tool (none/saving/ready)', () => {
-    expect(saveActionLabel('saved', 'none')).toBe('Save');
-    expect(saveActionLabel('saved', 'saving')).toBe('Save');
-    expect(saveActionLabel('saved', 'ready')).toBe('Save');
+  test('Refresh when the offline copy needs-refresh', () => {
+    expect(saveActionLabel('needs-refresh')).toBe('Refresh');
   });
 
-  test('Refresh for a saved tool that needs-refresh', () => {
-    expect(saveActionLabel('saved', 'needs-refresh')).toBe('Refresh');
-  });
-
-  test('Repair for a saved tool whose offline copy failed', () => {
-    expect(saveActionLabel('saved', 'failed')).toBe('Repair');
+  test('Repair when the offline copy failed', () => {
+    expect(saveActionLabel('failed')).toBe('Repair');
   });
 });

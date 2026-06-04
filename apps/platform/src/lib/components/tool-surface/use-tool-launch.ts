@@ -64,6 +64,23 @@ export function prefetchTargets(
   return targets;
 }
 
+/**
+ * Append a `<link rel="prefetch">` for a target, once. The href is
+ * CSS-escaped before it enters the dedupe selector so a URL containing
+ * `"` can't throw SyntaxError or widen the match. SSR-safe (no-op when
+ * there is no document). Ported verbatim from ToolTile.
+ */
+export function addPrefetchLink(target: string): void {
+  if (typeof document === 'undefined') return;
+  const safeHref = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(target) : target;
+  if (document.head.querySelector(`link[rel="prefetch"][href="${safeHref}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'prefetch';
+  link.href = target;
+  link.as = 'document';
+  document.head.appendChild(link);
+}
+
 export interface ToolLaunchDeps {
   /** Present only for navigating tiles; absent for in-app frame swaps. */
   getHref: () => string | undefined;
@@ -125,9 +142,11 @@ export function createToolLaunch(deps: ToolLaunchDeps): ToolLaunchController {
     event?: (LaunchActivationLike & { preventDefault?: () => void }) | undefined,
   ) {
     if (deps.launchesTool()) deps.recordLaunch(deps.getSlug());
-    if (!deps.getHref() && deps.onOpen) {
+    // No href → the tile can only open via the in-app swap callback
+    // (navigation is impossible without a target anyway).
+    if (!deps.getHref()) {
       event?.preventDefault?.();
-      deps.onOpen();
+      deps.onOpen?.();
       return;
     }
     scheduleHardLaunchFallback(event);

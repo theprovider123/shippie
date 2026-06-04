@@ -154,3 +154,33 @@ describe('toolState — save action (the bug-magnet: saved-but-broken keeps repa
     ).toBe(false);
   });
 });
+
+describe('toolState — running+saved overlap (actions decouple from dominant relationship)', () => {
+  const runningAndSavedHealthy = () =>
+    toolState(input({ isRunning: true, savedSlugs: new Set(['demo']), download: 'saved' }));
+
+  test('relationship label is running (dominant) but the tool is still saved', () => {
+    expect(runningAndSavedHealthy().relationship).toBe('running');
+  });
+
+  test('save STAYS HIDDEN for a running tool that is already saved + healthy', () => {
+    expect(runningAndSavedHealthy().actions.save).toBe(false);
+  });
+
+  test('remove STAYS AVAILABLE for a running tool that is saved (not derived from relationship)', () => {
+    expect(runningAndSavedHealthy().actions.remove).toBe(true);
+  });
+
+  test('close is available because it is running', () => {
+    expect(runningAndSavedHealthy().actions.close).toBe(true);
+  });
+
+  test('running + saved + broken offline copy shows repair (save) AND remove AND close', () => {
+    const s = toolState(
+      input({ isRunning: true, savedSlugs: new Set(['demo']), download: 'error' }),
+    );
+    expect(s.actions.save).toBe(true);
+    expect(s.actions.remove).toBe(true);
+    expect(s.actions.close).toBe(true);
+  });
+});

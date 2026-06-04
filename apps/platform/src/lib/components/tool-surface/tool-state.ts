@@ -78,18 +78,23 @@ export function toolState(input: ToolStateInput): ToolState {
   const offlineState = offlineStateFromDownload(input.download);
   const updateState = updateStateFromSeverity(input.updateSeverity);
 
+  // Actions derive from RAW membership, not the collapsed relationship.
+  // A tool can be both running and saved — its dominant `relationship`
+  // is 'running' (for the label), but it is still saved, so save must
+  // stay hidden and remove must stay available. Deriving from
+  // `relationship === 'saved'` would mis-handle that overlap.
+  const isSaved = input.savedSlugs.has(input.slug);
   const savedButBroken =
-    relationship === 'saved' &&
-    (offlineState === 'needs-refresh' || offlineState === 'failed');
+    isSaved && (offlineState === 'needs-refresh' || offlineState === 'failed');
 
   const actions: ToolActions = {
     open: true,
     info: true,
     // Hide once saved AND healthy; reappear as Refresh/Repair when the
     // saved offline copy is broken so the fix is never hidden.
-    save: relationship !== 'saved' || savedButBroken,
+    save: !isSaved || savedButBroken,
     close: input.isRunning,
-    remove: relationship === 'saved' && input.surface !== 'tools',
+    remove: isSaved && input.surface !== 'tools',
     review: updateState !== 'none',
   };
 

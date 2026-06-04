@@ -36,11 +36,14 @@ export function updateChipLabel(updateState: UpdateState): string | null {
 }
 
 /**
- * Label for the `save` action. For a saved-but-broken offline copy the
- * action stays visible and re-labels to Refresh / Repair (spec §3.4).
+ * Label for the `save` action. Keys purely off offlineState: only a saved
+ * tool can have a broken (`failed` / `needs-refresh`) offline copy, so a
+ * broken state unambiguously means the repair case — and this stays
+ * correct when the dominant relationship is `running` (running + saved +
+ * broken still labels Repair, not Save). Spec §3.4.
  */
-export function saveActionLabel(relationship: Relationship, offlineState: OfflineState): string {
-  if (relationship === 'saved' && offlineState === 'failed') return 'Repair';
-  if (relationship === 'saved' && offlineState === 'needs-refresh') return 'Refresh';
+export function saveActionLabel(offlineState: OfflineState): string {
+  if (offlineState === 'failed') return 'Repair';
+  if (offlineState === 'needs-refresh') return 'Refresh';
   return 'Save';
 }
