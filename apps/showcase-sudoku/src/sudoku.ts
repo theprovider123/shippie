@@ -15,10 +15,11 @@ export type Board = Cell[];
 const ROWS = 9;
 const COLS = 9;
 
-function shuffled<T>(arr: T[]): T[] {
+/** Fisher-Yates using an injectable RNG (defaults to Math.random for free play). */
+function shuffled<T>(arr: T[], rng: () => number = Math.random): T[] {
   const out = [...arr];
   for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     const a = out[i]!;
     const b = out[j]!;
     out[i] = b;
@@ -60,13 +61,13 @@ function findEmpty(board: Board): number {
   return -1;
 }
 
-function solveFill(board: Board): boolean {
+function solveFill(board: Board, rng: () => number = Math.random): boolean {
   const i = findEmpty(board);
   if (i === -1) return true;
-  for (const v of shuffled([1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+  for (const v of shuffled([1, 2, 3, 4, 5, 6, 7, 8, 9], rng)) {
     if (isValidPlacement(board, i, v)) {
       board[i] = v;
-      if (solveFill(board)) return true;
+      if (solveFill(board, rng)) return true;
       board[i] = 0;
     }
   }
@@ -94,9 +95,9 @@ function countSolutions(board: Board, cap = 2): number {
   return count;
 }
 
-export function generateSolved(): Board {
+export function generateSolved(rng: () => number = Math.random): Board {
   const board = emptyBoard();
-  solveFill(board);
+  solveFill(board, rng);
   return board;
 }
 
@@ -104,13 +105,16 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 
 const REMOVE_BUDGET: Record<Difficulty, number> = { easy: 36, medium: 46, hard: 54 };
 
-export function generatePuzzle(diff: Difficulty = 'medium'): { puzzle: Board; solution: Board } {
-  const solution = generateSolved();
+export function generatePuzzle(
+  diff: Difficulty = 'medium',
+  rng: () => number = Math.random,
+): { puzzle: Board; solution: Board } {
+  const solution = generateSolved(rng);
   const puzzle = [...solution];
   const target = REMOVE_BUDGET[diff];
   let removed = 0;
   // Iterate over indices in a random order so puzzles vary in shape.
-  const order = shuffled(Array.from({ length: 81 }, (_, i) => i));
+  const order = shuffled(Array.from({ length: 81 }, (_, i) => i), rng);
   for (const i of order) {
     if (removed >= target) break;
     const previous = puzzle[i] ?? 0;
