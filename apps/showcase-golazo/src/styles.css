@@ -2892,3 +2892,15 @@ input {
 .roulette-won-cap { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
 .roulette-won-name { font-family: var(--font-display); font-weight: 900; font-size: clamp(36px, 12vw, 54px); color: var(--gold); margin: 4px 0 8px; }
 .zone-bar.static { position: static; margin-top: auto; }
+
+/* Daily play-streak badge (games hub) */
+.games-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.games-streak {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #e8603c) 16%, transparent);
+  color: var(--accent, #e8603c);
+  font-weight: 800;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}

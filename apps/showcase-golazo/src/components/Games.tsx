@@ -21,6 +21,7 @@ import { fetchGlobal, submitGlobal, isGlobalEnabled } from "../lib/leaderboard";
 import { gameCardBlob } from "../lib/sharecard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
+import { loadStreak, recordPlayToday, rollStreak, todayKeyUTC, type StreakStore } from "../lib/daily";
 
 type Sel = GameId | "penalty" | "roulette" | "trivia" | "nation" | null;
 const PUB: { id: "roulette" | "trivia" | "nation"; emoji: string; name: string; how: string }[] = [
@@ -37,6 +38,8 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [diff, setDiff] = useState<"casual" | "pro">("casual");
+  const [streak, setStreak] = useState<StreakStore>(() => loadStreak());
+  const streakCurrent = rollStreak(streak.completedDates, todayKeyUTC()).current;
 
   const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" ? sel : null;
 
@@ -50,6 +53,8 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   function onGameOver(score: number) {
     if (!soloGame || score <= 0) return;
     store.addScore(soloGame, score);
+    // Daily play-streak (the meta Golazo lacked) — coexists with scores/leaderboard.
+    setStreak((s) => recordPlayToday(s));
     void submitGlobal({ game: soloGame, name: playerName, score }).then((g) => { if (g.length) setGlobal(g); });
   }
 
@@ -77,7 +82,10 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   if (!sel) {
     return (
       <div className="games">
-        <h2 className="section-title">Play</h2>
+        <div className="games-head">
+          <h2 className="section-title">Play</h2>
+          {streakCurrent > 0 ? <span className="games-streak">🔥 {streakCurrent}-day streak</span> : null}
+        </div>
         <p className="games-intro">Quick football games. No login — your bests live on this phone, challenge a mate by link.</p>
         <div className="game-grid">
           {GAMES.map((g) => (
