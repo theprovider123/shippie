@@ -80,6 +80,7 @@
         <a href="/admin">Admin</a>
       {/if}
     </div>
+    {#if data.user.isAdmin}
     <details class="diagnostics">
       <summary>Account diagnostics</summary>
       <div class="diagnostic-grid">
@@ -105,6 +106,7 @@
         </p>
       {/if}
     </details>
+    {/if}
   </section>
 {/if}
 

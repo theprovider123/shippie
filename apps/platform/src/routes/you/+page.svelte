@@ -48,7 +48,6 @@
       .filter(({ health }) => health.state === 'needs_refresh' || health.state === 'needs_connection' || health.state === 'failed'),
   );
   const hasLocalData = $derived(dockToolCount > 0 || offlineApps.length > 0 || totalLaunches > 0);
-  const pinnedMakerApps = $derived(data.makerApps.slice(0, 12));
   const privateMakerCount = $derived(
     data.makerApps.filter((app) => app.visibilityScope === 'private').length,
   );
@@ -131,39 +130,13 @@
       <div class="section-head">
         <div>
           <h2 id="apps-title">Apps</h2>
-          <p>{data.user ? `${privateMakerCount} private, ${data.makerApps.length} total` : 'Published and private apps appear after sign-in.'}</p>
+          <p>{data.user ? `${data.makerApps.length} total · ${privateMakerCount} private` : 'Published and private apps appear after sign-in.'}</p>
         </div>
-        {#if data.user}
-          <a class="section-link" href="/maker/apps">Manage apps</a>
-        {/if}
       </div>
 
-      {#if data.user && pinnedMakerApps.length > 0}
-        <div class="app-grid">
-          {#each pinnedMakerApps as app (app.slug)}
-            <article class="app-tile" style={`--tile: ${app.themeColor || '#E8603C'}`}>
-              <a class="app-main" href={`/run/${app.slug}`}>
-                <span class="app-mark" aria-hidden="true">{app.name.slice(0, 2).toUpperCase()}</span>
-                <span>
-                  <strong>{app.name}</strong>
-                  <small>{app.tagline || app.category}</small>
-                </span>
-              </a>
-              <div class="app-meta">
-                <span>{app.visibilityScope}</span>
-                <span>{app.latestDeployStatus ?? 'draft'}</span>
-              </div>
-              <div class="app-actions">
-                <a href={`/run/${app.slug}`}>Run</a>
-                <a href={`/maker/apps/${app.slug}`}>Manage</a>
-              </div>
-            </article>
-          {/each}
-        </div>
-      {:else if data.user}
-        <div class="empty-apps">
-          <strong>No apps attached yet.</strong>
-          <p>New apps you ship or claim will appear here.</p>
+      {#if data.user}
+        <div class="maker-entry">
+          <a class="primary" href="/maker/apps">Manage apps</a>
           <a href="/new">Ship app</a>
         </div>
       {:else}
@@ -351,15 +324,13 @@
   }
 
   .home-link,
-  .section-link,
   .account-actions a,
   .account-actions button,
   .secondary-action,
   .text-danger,
   .repair-row button,
   .link-list a,
-  .app-actions a,
-  .empty-apps a {
+  .maker-entry a {
     min-height: var(--touch-min);
     display: inline-flex;
     align-items: center;
@@ -377,14 +348,12 @@
   }
 
   .home-link:hover,
-  .section-link:hover,
   .account-actions a:hover,
   .account-actions button:hover,
   .secondary-action:hover,
   .repair-row button:hover,
   .link-list a:hover,
-  .app-actions a:hover,
-  .empty-apps a:hover {
+  .maker-entry a:hover {
     color: var(--sunset);
     border-color: var(--sunset);
   }
@@ -416,10 +385,6 @@
     margin-top: 4px;
     color: var(--text-secondary);
     font-size: var(--small-size);
-  }
-
-  .section-link {
-    flex: 0 0 auto;
   }
 
   .account-row,
@@ -471,88 +436,13 @@
     gap: var(--space-md);
   }
 
-  .app-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-    border: 1px solid var(--border-light);
-    background: var(--border-light);
-  }
-
-  .app-tile {
-    min-width: 0;
-    display: grid;
-    gap: var(--space-sm);
-    padding: var(--space-md);
-    background: var(--surface);
-  }
-
-  .app-main {
-    min-height: 58px;
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 12px;
-    align-items: center;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .app-mark {
-    width: 42px;
-    height: 42px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 7px;
-    background: var(--tile);
-    color: #fff;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0;
-  }
-
-  .app-main strong {
-    display: block;
-    overflow: hidden;
-    color: var(--text);
-    font-family: var(--font-heading);
-    font-size: 1.08rem;
-    line-height: 1.1;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .app-main small {
-    display: -webkit-box;
-    margin-top: 4px;
-    overflow: hidden;
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    line-height: 1.25;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-  }
-
-  .app-meta,
-  .app-actions {
+  .maker-entry {
     display: flex;
-    align-items: center;
-    gap: 8px;
     flex-wrap: wrap;
+    gap: 10px;
   }
 
-  .app-meta span {
-    color: var(--text-light);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .app-actions a:first-child,
-  .empty-apps a {
+  .maker-entry a.primary {
     border-color: var(--sunset);
     color: var(--sunset);
   }
@@ -715,22 +605,6 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .app-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .app-tile {
-      padding: var(--space-md);
-    }
-
-    .app-main strong {
-      white-space: normal;
-    }
-
-    .section-link {
-      width: 100%;
-    }
-
     .device-grid {
       grid-template-columns: 1fr;
     }
@@ -752,8 +626,7 @@
     .secondary-action,
     .text-danger,
     .repair-row button,
-    .app-actions a,
-    .empty-apps a {
+    .maker-entry a {
       flex: 1 1 140px;
     }
   }

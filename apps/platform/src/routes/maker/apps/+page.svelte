@@ -157,17 +157,19 @@
         <a href="/admin">Admin</a>
       {/if}
     </div>
-    <details class="diagnostics">
-      <summary>Demo app diagnostics</summary>
-      {#if demo.rows.length > 0}
-        <p>
-          Demo rows found: {demo.rows.map((row) => row.slug).join(', ')}.
-          {demo.ownedSlugs.length === 0 ? 'None are owned by this account.' : `Owned here: ${demo.ownedSlugs.join(', ')}.`}
-        </p>
-      {:else}
-        <p>No seeded demo rows were found in this database.</p>
-      {/if}
-    </details>
+    {#if data.user.isAdmin}
+      <details class="diagnostics">
+        <summary>Demo app diagnostics</summary>
+        {#if demo.rows.length > 0}
+          <p>
+            Demo rows found: {demo.rows.map((row) => row.slug).join(', ')}.
+            {demo.ownedSlugs.length === 0 ? 'None are owned by this account.' : `Owned here: ${demo.ownedSlugs.join(', ')}.`}
+          </p>
+        {:else}
+          <p>No seeded demo rows were found in this database.</p>
+        {/if}
+      </details>
+    {/if}
   </section>
 {:else}
   <section class="controls" aria-label="Search and filter">

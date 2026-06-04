@@ -12,6 +12,22 @@
 
 ---
 
+## Implementation status — COMPLETE (2026-06-04)
+
+Implemented across six commits on `review-implementation-2026-05-23`; each phase shipped green (`bun run health`). Not yet deployed (needs the user's Cloudflare-authed deploy).
+
+| Phase | Commit | Notes |
+|---|---|---|
+| 1 — Route ownership + slim layout + labels | `2e49ed41` | `/maker` owns the real pages; `/dashboard` → 308 alias; layout loads only recents + counts; all generated `/dashboard` URLs repointed; provider-return + alias tests. |
+| 2 — Shell aligned to Dock/Tools/You | `d33291ed` | Global Nav restored on `/maker`; Sidebar rail deleted; horizontal sub-nav (Apps · Feedback · Ship app); redundant headers stripped. |
+| 3 — Apps list | `79464333` | Server-side search/filter/sort/pagination, human status pills, metrics, Open/Manage. |
+| 4+5 — Detail + share matrix | `1f097281` | Title row (status pill + Open/Share), 6→5 tabs, pure unit-tested visibility/status share matrix + Svelte `MakerShareSheet`, wired into detail + list. |
+| 6 — Polish + guards | _(this commit)_ | `/you` compact maker entry (no inline grid); demo diagnostics admin-gated; `maker-labels-check.mjs` static guard wired into `build`; manual `maker-smoke.mjs` Playwright flow. |
+
+Notable deviation from the plan, verified against HEAD: the login "bounce maker → /dock" was **not** a live bug — the email-link and OAuth callbacks already honor `return_to` and `loginIntentFor` already covers `/maker`; the deliverable became provider-return regression tests rather than a code change. `QrShareSheet` turned out to be React-only, so a Svelte `MakerShareSheet` was built instead.
+
+---
+
 ## 1. Findings (current state, HEAD-verified)
 
 ### 1.1 Entry path from `/you`

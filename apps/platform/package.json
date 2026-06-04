@@ -12,7 +12,7 @@
     "audit:mobile": "bun scripts/mobile-audit/route-inventory.mjs && bun scripts/mobile-audit/audit-static-rules.mjs && bun scripts/mobile-audit/audit-tokens.mjs && bun scripts/mobile-audit/audit-showcase-overflow.mjs",
     "audit:showcase-runtime": "bun scripts/prepare-showcases.mjs && bun scripts/mobile-audit/audit-showcase-runtime.mjs",
     "prepare:whitepaper": "bun scripts/prepare-whitepaper.mjs",
-    "build": "bun scripts/prepare-showcases.mjs && bun scripts/scan-external-refs.mjs static/__shippie-run src/routes src/lib/components src/lib/styles && bun scripts/audit-showcase-storage.mjs && bun scripts/prepare-whitepaper.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
+    "build": "bun scripts/prepare-showcases.mjs && bun scripts/scan-external-refs.mjs static/__shippie-run src/routes src/lib/components src/lib/styles && bun scripts/maker-labels-check.mjs && bun scripts/audit-showcase-storage.mjs && bun scripts/prepare-whitepaper.mjs && vite build && bun scripts/wrap-worker-with-scheduled.mjs",
     "preview": "wrangler dev",
     "deploy": "bun run build && bun scripts/upload-sdk-bundle.mjs && wrangler deploy",
     "deploy:verified": "bun run build && bun scripts/upload-sdk-bundle.mjs && wrangler deploy && bun scripts/prove-sealed-cloud.mjs --origin https://shippie.app --profiles quick",
