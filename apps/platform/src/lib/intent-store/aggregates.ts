@@ -122,6 +122,8 @@ export const INTENT_LABELS: Record<string, string> = {
   'chore-done': 'finished a chore',
   'fridge-added': 'added to fridge',
   'dinner-eaten': 'ate dinner',
+  // Games
+  'game.completed': 'completed a game',
 };
 
 export function labelFor(intent: string): string {

@@ -41,6 +41,7 @@
     "@lucia-auth/adapter-sqlite": "^3.0.0",
     "@shippie/access": "workspace:*",
     "@shippie/agent": "workspace:*",
+    "@shippie/arcade-kit": "workspace:*",
     "@shippie/analyse": "workspace:*",
     "@shippie/local-ai": "workspace:*",
     "@shippie/local-runtime-contract": "workspace:*",

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { listEventsSince, clearStore, type IntentEvent } from '$lib/intent-store/store';
   import { summarise, labelFor, type DailySummary } from '$lib/intent-store/aggregates';
+  import { summariseDailyStreak, type DailyStreakSummary } from '$lib/intent-store/daily-streak';
   import { SHOWCASE_SLUGS } from '$lib/_generated/showcase-catalog';
 
   type Window = '24h' | '7d' | '30d';
@@ -10,9 +11,11 @@
     '7d': { label: 'This week', ms: 7 * 24 * 60 * 60 * 1000 },
     '30d': { label: 'This month', ms: 30 * 24 * 60 * 60 * 1000 },
   };
+  const STREAK_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
   let window: Window = $state('24h');
   let summary: DailySummary | null = $state(null);
+  let dailyStreak: DailyStreakSummary | null = $state(null);
   let loading = $state(true);
   let confirmingClear = $state(false);
 
@@ -23,12 +26,16 @@
   async function refresh() {
     loading = true;
     try {
-      const since = Date.now() - WINDOWS[window].ms;
-      const events: IntentEvent[] = await listEventsSince(since);
-      summary = summarise(events, WINDOWS[window].ms);
+      const now = Date.now();
+      const windowMs = WINDOWS[window].ms;
+      const events: IntentEvent[] = await listEventsSince(now - Math.max(windowMs, STREAK_WINDOW_MS), 5_000);
+      const windowEvents = events.filter((event) => event.ts >= now - windowMs);
+      summary = summarise(windowEvents, windowMs);
+      dailyStreak = summariseDailyStreak(events);
     } catch (err) {
       console.warn('[today] could not read intent store', err);
       summary = { windowMs: WINDOWS[window].ms, earliest: null, latest: null, total: 0, apps: [] };
+      dailyStreak = summariseDailyStreak([]);
     } finally {
       loading = false;
     }
@@ -101,7 +108,26 @@
 
   {#if loading}
     <p class="today-empty">Reading the day…</p>
-  {:else if !summary || summary.total === 0}
+  {:else}
+    <section class="today-daily" aria-label="Daily games progress">
+      <div>
+        <span class="today-streak-badge" aria-label={`${dailyStreak?.current ?? 0} day streak`}>
+          Streak {dailyStreak?.current ?? 0} {dailyStreak?.current === 1 ? 'day' : 'days'}
+        </span>
+        <p>
+          Today's Daily <strong>{dailyStreak?.today.done ?? 0}/{dailyStreak?.today.required ?? 3}</strong>
+          {#if dailyStreak?.today.complete}
+            · set complete
+          {:else}
+            · complete {Math.max(0, (dailyStreak?.today.required ?? 3) - (dailyStreak?.today.done ?? 0))} more
+          {/if}
+        </p>
+      </div>
+      <span class="today-best">Best {dailyStreak?.best ?? 0}</span>
+    </section>
+  {/if}
+
+  {#if !loading && (!summary || summary.total === 0)}
     <section class="today-empty-card">
       <h2>Nothing logged yet.</h2>
       <p>
@@ -111,7 +137,7 @@
         The summary builds itself from intents your apps broadcast. Nothing is sent to a Shippie server. There is no admin who could read it.
       </p>
     </section>
-  {:else}
+  {:else if !loading && summary}
     <section class="today-stat-strip">
       <p>
         <strong>{summary.total}</strong> {summary.total === 1 ? 'event' : 'events'} from <strong>{summary.apps.length}</strong> {summary.apps.length === 1 ? 'app' : 'apps'}
@@ -231,6 +257,45 @@
     padding: 24px;
   }
 
+  .today-daily {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0;
+    margin-bottom: 24px;
+  }
+
+  .today-daily p {
+    margin: 8px 0 0;
+    color: var(--text-secondary);
+  }
+
+  .today-daily strong {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .today-streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .today-best {
+    color: var(--text-light, #7A6B58);
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
   .today-empty-card h2 {
     margin: 0 0 8px;
     font-weight: 600;
@@ -341,4 +406,15 @@
   /* Footer action buttons use canonical .btn .btn--ghost / .btn--danger.
      Only the layout spacing override stays local. */
   .today-footer .btn + .btn { margin-left: 0.5rem; }
+
+  @media (max-width: 640px) {
+    .today {
+      padding-inline: 16px;
+    }
+
+    .today-daily {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
 </style>

@@ -20,6 +20,7 @@
         "@shippie/analyse": "workspace:*",
         "@shippie/app-package-builder": "workspace:*",
         "@shippie/app-package-contract": "workspace:*",
+        "@shippie/arcade-kit": "workspace:*",
         "@shippie/backup-providers": "workspace:*",
         "@shippie/container-bridge": "workspace:*",
         "@shippie/design-tokens": "workspace:*",

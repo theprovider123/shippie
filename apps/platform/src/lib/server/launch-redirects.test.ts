@@ -63,6 +63,7 @@ describe('launch retired-route redirects', () => {
       '/run/[slug]',
       '/safe',
       '/trust-preview',
+      '/today',
       '/whitepaper',
       '/you',
     ]);

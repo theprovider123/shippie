@@ -7,7 +7,6 @@ export const RETIRED_PUBLIC_ROUTES = {
   // stayed in place until the page server hooked into the leaderboard
   // helpers; it's restored as a live route now.
   '/glance': '/dock?section=home',
-  '/today': '/dock?section=home',
   '/build': '/docs/build',
   '/why': '/docs/why',
   '/professionals': '/docs/pro',
