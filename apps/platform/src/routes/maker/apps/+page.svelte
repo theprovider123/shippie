@@ -11,7 +11,6 @@
 
 <header class="maker-head">
   <div>
-    <p class="eyebrow"><a href="/maker">Maker</a> · apps</p>
     <h1>Apps</h1>
     <p class="lede">
       {#if data.apps.length === 0}
@@ -21,7 +20,6 @@
       {/if}
     </p>
   </div>
-  <a class="ship" href="/new">Ship app</a>
 </header>
 
 <section class="summary-grid" aria-label="Apps summary">
@@ -117,14 +115,10 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
-  .eyebrow a,
   .manage,
   .ship,
   .empty-actions a {
     text-decoration: none;
-  }
-  .eyebrow a {
-    color: inherit;
   }
   h1,
   h2 {

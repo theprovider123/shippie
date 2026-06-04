@@ -14,13 +14,8 @@
 
 <header class="maker-head">
   <div>
-    <p class="eyebrow">Maker</p>
     <h1>Maker</h1>
     <p class="lede">Apps, deploys, feedback, and access for <strong>{data.user.email}</strong>.</p>
-  </div>
-  <div class="head-actions">
-    <a class="primary" href="/new">Ship app</a>
-    <a href="/dock">Dock</a>
   </div>
 </header>
 
@@ -152,14 +147,12 @@
     color: var(--text-muted-warm);
     line-height: 1.5;
   }
-  .head-actions,
   .empty-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     justify-content: flex-end;
   }
-  .head-actions a,
   .empty-actions a,
   .section-head > a {
     min-height: var(--touch-min, 44px);
@@ -172,7 +165,6 @@
     text-decoration: none;
     font-weight: 700;
   }
-  .head-actions a.primary,
   .empty-actions a.primary {
     border-color: var(--sunset);
     background: var(--sunset);
@@ -368,7 +360,6 @@
       display: grid;
       align-items: start;
     }
-    .head-actions,
     .empty-actions {
       justify-content: stretch;
       display: grid;
@@ -393,7 +384,6 @@
     }
   }
   @media (prefers-color-scheme: dark) {
-    .head-actions a,
     .empty-actions a,
     .section-head > a,
     .summary-grid,

@@ -22,12 +22,12 @@
     return url.pathname === '/dock';
   }
 
-  // Maker/dashboard routes render their own chrome (the dashboard Sidebar,
-  // whose brand links back to /dock). Suppress the global Nav there so the
-  // page doesn't show two "shippie" headers / competing menu bars.
+  // The maker area now uses the global Nav as its top chrome (like Dock/Tools/
+  // You) plus its own horizontal section sub-nav, so the Nav is NOT suppressed
+  // there. Only the legacy /dashboard alias (which 308s to /maker) is excluded.
   function isMakerShellRoute(url: URL): boolean {
     const p = url.pathname;
-    return p === '/dashboard' || p.startsWith('/dashboard/') || p === '/maker' || p.startsWith('/maker/');
+    return p === '/dashboard' || p.startsWith('/dashboard/');
   }
 
   function showBottomDock(url: URL): boolean {

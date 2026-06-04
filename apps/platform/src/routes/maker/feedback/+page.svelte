@@ -23,7 +23,6 @@
 <svelte:head><title>Feedback · Maker</title></svelte:head>
 
 <header>
-  <p class="eyebrow"><a href="/maker">Maker</a> · feedback</p>
   <h1>Feedback inbox</h1>
   <p class="lede">{data.counts.total} apps · {data.items.length} items</p>
   <div class="status-summary" aria-label="Status breakdown">
@@ -123,8 +122,6 @@
 
 <style>
   header { margin-bottom: 1.5rem; }
-  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
-  .eyebrow a { color: inherit; text-decoration: none; }
   h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0.25rem 0; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); margin: 0; }
   .status-summary { display: flex; gap: 0.4rem; margin-top: 0.8rem; flex-wrap: wrap; }
