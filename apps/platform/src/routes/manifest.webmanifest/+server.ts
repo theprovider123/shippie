@@ -50,8 +50,9 @@ export const GET: RequestHandler = async ({ url }) => {
     ],
     shortcuts: [
       { name: 'Open Dock', url: '/dock', short_name: 'Dock' },
-      { name: 'Saved data', url: '/dock?section=data', short_name: 'Data' },
-      { name: 'Deploy an app', url: '/new', short_name: 'Deploy' },
+      { name: 'Browse tools', url: '/tools', short_name: 'Tools' },
+      { name: 'You', url: '/you', short_name: 'You' },
+      { name: 'Ship app', url: '/new', short_name: 'Ship' },
     ],
     file_handlers: [
       {

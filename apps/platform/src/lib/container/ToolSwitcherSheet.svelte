@@ -46,9 +46,9 @@
 >
   <div class="switcher">
     <div class="switcher-actions" aria-label="Tool actions">
+      <button type="button" onclick={onClose}>Dock</button>
       <a href="/tools" onclick={onClose}>Tools</a>
       <a href="/you" onclick={onClose}>You</a>
-      <a href="/dock?section=access" onclick={onClose}>Access</a>
     </div>
 
     {#if searchable}
@@ -141,7 +141,8 @@
     border: 1px solid var(--border-light);
     background: var(--border-light);
   }
-  .switcher-actions a {
+  .switcher-actions a,
+  .switcher-actions button {
     min-height: var(--touch-min);
     display: grid;
     place-items: center;
@@ -152,9 +153,17 @@
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    border: 0;
+    cursor: pointer;
+  }
+  .switcher-actions button {
+    appearance: none;
+    -webkit-appearance: none;
   }
   .switcher-actions a:focus-visible,
-  .switcher-actions a:hover {
+  .switcher-actions a:hover,
+  .switcher-actions button:focus-visible,
+  .switcher-actions button:hover {
     color: var(--sunset);
     outline: none;
   }

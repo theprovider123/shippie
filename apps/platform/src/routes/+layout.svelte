@@ -22,6 +22,11 @@
     return url.pathname === '/dock';
   }
 
+  function isImmersiveToolRoute(url: URL): boolean {
+    return url.pathname.startsWith('/run')
+      || ((url.pathname === '/container' || url.pathname === '/dock') && url.searchParams.get('focused') === '1');
+  }
+
   // The maker area now uses the global Nav as its top chrome (like Dock/Tools/
   // You) plus its own horizontal section sub-nav, so the Nav is NOT suppressed
   // there. Only the legacy /dashboard alias (which 308s to /maker) is excluded.
@@ -108,12 +113,17 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-{#if !isDockRoute($page.url) && !isMakerShellRoute($page.url)}
+{#if !isDockRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url)}
   <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
     <Nav user={data.user} />
   </div>
 {/if}
-<main id="main" class:with-bottom-dock={showBottomDock($page.url)} class:dock-shell-route={isDockRoute($page.url)}>
+<main
+  id="main"
+  class:with-bottom-dock={showBottomDock($page.url)}
+  class:dock-shell-route={isDockRoute($page.url)}
+  class:immersive-tool-route={isImmersiveToolRoute($page.url)}
+>
   {@render children()}
 </main>
 {#if showBottomDock($page.url)}
@@ -135,6 +145,11 @@
   }
 
   main.dock-shell-route {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+
+  main.immersive-tool-route {
     min-height: 100svh;
     min-height: 100dvh;
   }

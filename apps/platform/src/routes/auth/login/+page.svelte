@@ -25,7 +25,7 @@
         lede: 'Manage apps, deploys, feedback, and access across phone and desktop.',
         panelTitle: 'Continue to Maker',
         panelText: 'Use GitHub or a magic link. We will send you back after sign-in.',
-        primary: 'Open Maker',
+        primary: 'Sign in to Maker',
         secondary: 'Back to Dock',
         strip: ['Apps', 'Deploys', 'Magic link'],
       };
@@ -71,7 +71,6 @@
       <div class="hero-actions">
         {#if data.requiresAccount}
           <a class="continue-primary" href="#signin-panel-title">{copy.primary}</a>
-          <a class="browse-link" href="/dock">{copy.secondary}</a>
         {:else}
           <a class="continue-primary" href={data.continueTo}>{copy.primary}</a>
           <a class="browse-link" href="/tools">{copy.secondary}</a>
