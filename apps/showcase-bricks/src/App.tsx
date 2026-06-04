@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { share, shareLines } from '@shippie/arcade-kit';
 import { createShippieIframeSdk } from '@shippie/iframe-sdk';
 import { createObservationClient } from '@shippie/observations';
 import { haptic } from '@shippie/sdk/wrapper';
@@ -72,6 +73,7 @@ export function App() {
   const [muted, setMutedState] = useState(() => isMuted());
   const [, force] = useState(0);
   const [resultRecorded, setResultRecorded] = useState(false);
+  const [shared, setShared] = useState(false);
   const lastFrameRef = useRef(performance.now());
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +87,7 @@ export function App() {
     setWorldRef({ world: createWorld(level, seed) });
     lastFrameRef.current = performance.now();
     setResultRecorded(false);
+    setShared(false);
   }, []);
 
   // Game loop.
@@ -222,7 +225,24 @@ export function App() {
         <section className="overlay" aria-live="polite">
           <p className="finish-line">Game over · {world.score} pts · lvl {world.level}</p>
           <p className="muted small">Best: {stored.bestScore} pts · lvl {stored.bestLevel}</p>
-          <button type="button" className="primary" onClick={() => startGame(mode)}>Play again</button>
+          {mode === 'daily' ? (
+            <button
+              type="button"
+              className="primary"
+              onClick={async () => {
+                const ok = await share(
+                  shareLines([
+                    `Bricks daily ${todayKey()} — ${world.score} pts · lvl ${world.level}${stored.dailyStreak > 0 ? ` · 🔥 ${stored.dailyStreak}` : ''}`,
+                    'shippie.app/run/bricks/',
+                  ]),
+                );
+                if (ok) setShared(true);
+              }}
+            >
+              {shared ? 'Shared ✓' : 'Share result'}
+            </button>
+          ) : null}
+          <button type="button" className={mode === 'daily' ? 'tab' : 'primary'} onClick={() => startGame(mode)}>Play again</button>
         </section>
       ) : null}
     </main>

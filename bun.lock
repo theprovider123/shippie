@@ -181,6 +181,7 @@
       "name": "@shippie/showcase-bricks",
       "version": "0.0.0",
       "dependencies": {
+        "@shippie/arcade-kit": "workspace:*",
         "@shippie/design-tokens": "workspace:*",
         "@shippie/iframe-sdk": "workspace:*",
         "@shippie/juice": "workspace:*",
