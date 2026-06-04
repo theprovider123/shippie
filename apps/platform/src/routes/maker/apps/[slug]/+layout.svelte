@@ -26,6 +26,21 @@
   const live = $derived(isAppLive(data.app));
   const share = $derived(shareStateFor(data.app));
   const pill = $derived(statusPill(data.app.latestDeployStatus));
+  const appRoot = $derived(`/maker/apps/${data.app.slug}`);
+  const pathname = $derived($page.url.pathname);
+  const homeActive = $derived(
+    pathname === appRoot ||
+      pathname.startsWith(`${appRoot}/analytics`) ||
+      pathname.startsWith(`${appRoot}/proof`) ||
+      pathname.startsWith(`${appRoot}/deploys`),
+  );
+  const feedbackActive = $derived(pathname.startsWith(`${appRoot}/feedback`));
+  const accessActive = $derived(pathname.startsWith(`${appRoot}/access`) || pathname.startsWith(`${appRoot}/profile`));
+  const settingsActive = $derived(
+    pathname.startsWith(`${appRoot}/settings`) ||
+      pathname.startsWith(`${appRoot}/enhancements`) ||
+      pathname.startsWith(`${appRoot}/localize`),
+  );
   let shareOpen = $state(false);
 </script>
 
@@ -53,11 +68,10 @@
   </div>
   <p class="lede">{data.app.tagline ?? data.app.slug + '.shippie.app'}</p>
   <nav class="tabs" aria-label="App sections">
-    <a href={`/maker/apps/${data.app.slug}`} class:active={$page.url.pathname === `/maker/apps/${data.app.slug}`}>Overview</a>
-    <a href={`/maker/apps/${data.app.slug}/feedback`} class:active={$page.url.pathname.endsWith('/feedback')}>Feedback</a>
-    <a href={`/maker/apps/${data.app.slug}/access`} class:active={$page.url.pathname.endsWith('/access')}>Access</a>
-    <a href={`/maker/apps/${data.app.slug}/profile`} class:active={$page.url.pathname.endsWith('/profile')}>Profile</a>
-    <a href={`/maker/apps/${data.app.slug}/proof`} class:active={$page.url.pathname.endsWith('/proof')}>Proof</a>
+    <a href={appRoot} class:active={homeActive}>Home</a>
+    <a href={`${appRoot}/feedback`} class:active={feedbackActive}>Feedback</a>
+    <a href={`${appRoot}/access`} class:active={accessActive}>Share &amp; Access</a>
+    <a href={`${appRoot}/settings`} class:active={settingsActive}>Settings</a>
   </nav>
 </header>
 

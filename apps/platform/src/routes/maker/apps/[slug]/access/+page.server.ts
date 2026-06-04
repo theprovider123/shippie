@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { parseSpaces } from '$server/deploy/manifest';
+import { saveMakerAppProfile } from '$server/maker/profile-save';
 import { archiveSpaceForApp, listSpacesForApp, summariseSpaceMetrics } from '$server/spaces/private-spaces';
 import type { App as AppRow } from '$server/db/schema/apps';
 
@@ -16,6 +17,7 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
       ...layout,
       invites: [],
       access: [],
+      lineage: null,
       privateSpaces: [],
       privateSpaceMetrics: summariseSpaceMetrics([]),
     };
@@ -32,6 +34,11 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     .select()
     .from(schema.appAccess)
     .where(eq(schema.appAccess.appId, layout.app.id));
+  const [lineage] = await db
+    .select()
+    .from(schema.appLineage)
+    .where(eq(schema.appLineage.appId, layout.app.id))
+    .limit(1);
 
   const [deploy] = layout.app.activeDeployId
     ? await db
@@ -44,10 +51,12 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
   const privateSpaces = await listSpacesForApp(layout.app.id, platform.env.DB);
   const privateSpaceMetrics = summariseSpaceMetrics(privateSpaces);
 
-  return { ...layout, invites, access, spaces, privateSpaces, privateSpaceMetrics };
+  return { ...layout, invites, access, lineage: lineage ?? null, spaces, privateSpaces, privateSpaceMetrics };
 };
 
 export const actions: Actions = {
+  save: saveMakerAppProfile,
+
   archiveSpace: async ({ request, locals, params, platform, url }) => {
     if (!platform?.env.DB) return fail(503, { error: 'database unavailable' });
     const app = await loadOwnedApp({

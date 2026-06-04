@@ -121,6 +121,8 @@
 </svelte:head>
 
 <div class="page">
+  <a class="back-link" href={`/maker/apps/${data.app.slug}`}>Back to Home</a>
+
   <header class="header">
     <div class="title-row">
       <h1>Deploy v{deploy.version}</h1>
@@ -440,6 +442,16 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
+  }
+  .back-link {
+    align-self: flex-start;
+    color: var(--text-secondary);
+    font-size: var(--small-size, 0.9rem);
+    text-decoration: none;
+  }
+  .back-link:hover {
+    color: var(--text);
+    text-decoration: underline;
   }
   .header h1 {
     margin: 0;

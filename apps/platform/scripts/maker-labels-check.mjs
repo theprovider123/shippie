@@ -5,6 +5,7 @@
 //   - the old split labels "All apps" / "Your apps"
 //   - a user-facing /dashboard URL inside the maker surface (the real pages
 //     moved to /maker; /dashboard is a redirect alias only)
+//   - stale maker Home metric counters in place of live source-table metrics
 //
 // Component IMPORT paths under $components/dashboard/ are allowed (that's the
 // physical component directory, not a URL). Runs in `bun run build`.
@@ -21,6 +22,11 @@ const RULES = [
   { re: /\/dashboard\/apps/, msg: 'user-facing /dashboard/apps URL (use /maker/apps)' },
   { re: /["'`]\/dashboard(["'`?])/, msg: 'user-facing /dashboard URL (use /maker)' },
 ];
+const MAKER_HOME_FILES = new Set([
+  join('src', 'routes', 'maker', 'apps', '[slug]', '+page.server.ts'),
+  join('src', 'routes', 'maker', 'apps', '[slug]', '+page.svelte'),
+]);
+const STALE_HOME_METRIC_RE = /\b(?:installCount|feedbackOpenCount)\b/;
 
 function walk(dir) {
   /** @type {string[]} */
@@ -60,6 +66,11 @@ for (const file of files) {
       if (rule.re.test(line)) {
         violations.push(`${file}:${i + 1}  ${rule.msg}\n    ${line.trim()}`);
       }
+    }
+    if (MAKER_HOME_FILES.has(file) && STALE_HOME_METRIC_RE.test(line)) {
+      violations.push(
+        `${file}:${i + 1}  stale maker Home metric counter (use live analytics/feedback source tables)\n    ${line.trim()}`,
+      );
     }
   });
 }

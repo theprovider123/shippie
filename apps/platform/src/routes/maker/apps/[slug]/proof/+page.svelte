@@ -3,6 +3,8 @@
   let { data }: PageProps = $props();
 </script>
 
+<a class="back-link" href={`/maker/apps/${data.app.slug}`}>Back to Home</a>
+
 <header class="proof-header">
   <p class="eyebrow">Proof</p>
   <h1>Runtime evidence</h1>
@@ -51,6 +53,17 @@
 </section>
 
 <style>
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+    font-size: var(--small-size, 0.9rem);
+    text-decoration: none;
+  }
+  .back-link:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
   .proof-header {
     margin-bottom: 1.5rem;
   }

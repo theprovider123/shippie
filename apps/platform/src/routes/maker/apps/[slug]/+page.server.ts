@@ -1,42 +1,70 @@
 /**
- * Per-app overview — recent deploys + visibility + App Kind summary +
- * App Kind actions (dispute / clear dispute / save workflow probes).
+ * Maker app Home — calm health view.
+ *
+ * This page deliberately computes health from live source tables. The
+ * denormalized counter columns are not maintained, so Home must never read
+ * them.
  */
-import { error, fail, redirect } from '@sveltejs/kit';
-import { desc, eq, sql } from 'drizzle-orm';
-import type { Actions, PageServerLoad } from './$types';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
+import { CAPABILITY_BADGES, type CapabilityBadge } from '$server/proof/taxonomy';
 import {
-  readAppKindProfile,
-  writeAppKindProfile,
-  readShippieJsonOverride,
-  writeShippieJsonOverride,
-} from '$server/deploy/kv-write';
-import type { AppKindProfile, PublicKindStatus } from '$lib/types/app-kind';
+  OPEN_EVENTS,
+  proofSummary,
+  toFeedbackPreview,
+  zeroFillOpens,
+  type OpensDay,
+} from '$server/maker/app-health';
 
 export const load: PageServerLoad = async ({ parent, platform }) => {
   const layout = await parent();
-  if (!platform?.env.DB) return { ...layout, deploys: [], kindProfile: null, workflowProbes: [] };
+  const emptyHealth = {
+    metrics: {
+      opens: 0,
+      favorites: layout.app.upvoteCount,
+      feedbackOpen: 0,
+      events: 0,
+    },
+    opensByDay: zeroFillOpens([]),
+    latestEvent: null as { eventName: string; createdAt: string } | null,
+    topFeedback: [],
+    lineage: null as { sourceRepo: string | null; license: string | null; remixAllowed: boolean } | null,
+    proof: proofSummary({ earnedBadges: [], proofEventCount: 0, totalBadges: CAPABILITY_BADGES.length }),
+  };
+
+  if (!platform?.env.DB) return { ...layout, health: emptyHealth };
 
   const db = getDrizzleClient(platform.env.DB);
-  const deploys = await db
+  const openEvents = [...OPEN_EVENTS];
+
+  const [opensRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.analyticsEvents)
+    .where(and(eq(schema.analyticsEvents.appId, layout.app.id), inArray(schema.analyticsEvents.eventName, openEvents)));
+
+  const dayExpr = sql<string>`date(${schema.analyticsEvents.createdAt})`;
+  const opensByDayRows = await db
     .select({
-      id: schema.deploys.id,
-      version: schema.deploys.version,
-      status: schema.deploys.status,
-      sourceType: schema.deploys.sourceType,
-      durationMs: schema.deploys.durationMs,
-      createdAt: schema.deploys.createdAt,
-      completedAt: schema.deploys.completedAt,
+      date: dayExpr,
+      opens: sql<number>`count(*)`,
     })
-    .from(schema.deploys)
-    .where(eq(schema.deploys.appId, layout.app.id))
-    .orderBy(desc(schema.deploys.createdAt))
-    .limit(10);
-  const [analyticsTotal] = await db
+    .from(schema.analyticsEvents)
+    .where(
+      and(
+        eq(schema.analyticsEvents.appId, layout.app.id),
+        inArray(schema.analyticsEvents.eventName, openEvents),
+        sql`date(${schema.analyticsEvents.createdAt}) >= date('now', '-29 day')`,
+      ),
+    )
+    .groupBy(dayExpr)
+    .orderBy(dayExpr);
+
+  const [eventsRow] = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.analyticsEvents)
     .where(eq(schema.analyticsEvents.appId, layout.app.id));
+
   const [latestEvent] = await db
     .select({
       eventName: schema.analyticsEvents.eventName,
@@ -46,6 +74,26 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     .where(eq(schema.analyticsEvents.appId, layout.app.id))
     .orderBy(desc(schema.analyticsEvents.createdAt))
     .limit(1);
+
+  const [feedbackOpenRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.feedbackItems)
+    .where(and(eq(schema.feedbackItems.appId, layout.app.id), eq(schema.feedbackItems.status, 'open')));
+
+  const topFeedbackRows = await db
+    .select({
+      id: schema.feedbackItems.id,
+      type: schema.feedbackItems.type,
+      title: schema.feedbackItems.title,
+      body: schema.feedbackItems.body,
+      voteCount: schema.feedbackItems.voteCount,
+      createdAt: schema.feedbackItems.createdAt,
+    })
+    .from(schema.feedbackItems)
+    .where(and(eq(schema.feedbackItems.appId, layout.app.id), eq(schema.feedbackItems.status, 'open')))
+    .orderBy(desc(schema.feedbackItems.voteCount), desc(schema.feedbackItems.createdAt), desc(schema.feedbackItems.id))
+    .limit(3);
+
   const [lineage] = await db
     .select({
       sourceRepo: schema.appLineage.sourceRepo,
@@ -56,114 +104,36 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     .where(eq(schema.appLineage.appId, layout.app.id))
     .limit(1);
 
-  const kindProfile = platform.env.CACHE
-    ? await readAppKindProfile(platform.env.CACHE, layout.app.slug)
-    : null;
+  const earnedBadges = await db
+    .select({ badge: schema.capabilityBadges.badge })
+    .from(schema.capabilityBadges)
+    .where(eq(schema.capabilityBadges.appId, layout.app.id));
 
-  // Workflow probes are stored on the maker's shippie.json override —
-  // applied to the next deploy and persisted with the kind profile.
-  const override = platform.env.CACHE
-    ? await readShippieJsonOverride(platform.env.CACHE, layout.app.slug)
-    : null;
-  const workflowProbes = Array.isArray(override?.workflow_probes)
-    ? (override?.workflow_probes as string[])
-    : [];
+  const [proofEventRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.proofEvents)
+    .where(eq(schema.proofEvents.appId, layout.app.id));
 
   return {
     ...layout,
-    deploys,
-    kindProfile,
-    workflowProbes,
-    launchpad: {
-      analyticsTotal: Number(analyticsTotal?.count ?? 0),
+    health: {
+      metrics: {
+        opens: Number(opensRow?.count ?? 0),
+        favorites: layout.app.upvoteCount,
+        feedbackOpen: Number(feedbackOpenRow?.count ?? 0),
+        events: Number(eventsRow?.count ?? 0),
+      },
+      opensByDay: zeroFillOpens(
+        opensByDayRows.map((row) => ({ date: row.date, opens: Number(row.opens) })) satisfies OpensDay[],
+      ),
       latestEvent: latestEvent ?? null,
+      topFeedback: toFeedbackPreview(topFeedbackRows),
       lineage: lineage ?? null,
+      proof: proofSummary({
+        earnedBadges: earnedBadges.map((row) => row.badge as CapabilityBadge),
+        proofEventCount: Number(proofEventRow?.count ?? 0),
+        totalBadges: CAPABILITY_BADGES.length,
+      }),
     },
   };
-};
-
-async function requireOwner(
-  locals: App.Locals,
-  platform: App.Platform | undefined,
-  slug: string,
-  pathname: string,
-): Promise<{ appId: string }> {
-  if (!locals.user) {
-    throw redirect(303, `/auth/login?return_to=${encodeURIComponent(pathname)}`);
-  }
-  if (!platform?.env.DB) throw error(500, 'database unavailable');
-  const db = getDrizzleClient(platform.env.DB);
-  const [app] = await db
-    .select({ id: schema.apps.id, makerId: schema.apps.makerId })
-    .from(schema.apps)
-    .where(eq(schema.apps.slug, slug))
-    .limit(1);
-  if (!app) throw error(404, 'app not found');
-  if (app.makerId !== locals.user.id) throw error(403, 'forbidden');
-  return { appId: app.id };
-}
-
-async function setKindStatus(
-  platform: App.Platform | undefined,
-  slug: string,
-  appId: string,
-  newStatus: PublicKindStatus,
-  disputeReason?: string,
-): Promise<void> {
-  if (!platform?.env.DB) return;
-  const db = getDrizzleClient(platform.env.DB);
-  await db
-    .update(schema.apps)
-    .set({ currentPublicKindStatus: newStatus })
-    .where(eq(schema.apps.id, appId));
-
-  if (platform.env.CACHE) {
-    const profile = (await readAppKindProfile(platform.env.CACHE, slug)) as
-      | AppKindProfile
-      | null;
-    if (profile) {
-      await writeAppKindProfile(platform.env.CACHE, slug, {
-        ...profile,
-        publicKindStatus: newStatus,
-        ...(disputeReason ? { disputeReason } : {}),
-      });
-    }
-  }
-}
-
-export const actions: Actions = {
-  disputeKind: async ({ request, locals, platform, params, url }) => {
-    const { appId } = await requireOwner(locals, platform, params.slug!, url.pathname);
-    const form = await request.formData();
-    const reason = (form.get('reason') as string | null)?.slice(0, 500) ?? '';
-    if (!reason || reason.trim().length < 10) {
-      return fail(400, { disputeError: 'Tell us why in at least 10 characters.' });
-    }
-    await setKindStatus(platform, params.slug!, appId, 'disputed', reason.trim());
-    return { disputeOk: true };
-  },
-
-  clearDispute: async ({ locals, platform, params, url }) => {
-    const { appId } = await requireOwner(locals, platform, params.slug!, url.pathname);
-    await setKindStatus(platform, params.slug!, appId, 'estimated');
-    return { clearOk: true };
-  },
-
-  saveWorkflowProbes: async ({ request, locals, platform, params, url }) => {
-    await requireOwner(locals, platform, params.slug!, url.pathname);
-    if (!platform?.env.CACHE) throw error(503, 'kv binding unavailable');
-    const form = await request.formData();
-    const raw = (form.get('probes') as string | null) ?? '';
-    const probes = raw
-      .split('\n')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0 && s.length <= 200)
-      .slice(0, 16);
-
-    const existing =
-      (await readShippieJsonOverride(platform.env.CACHE, params.slug!)) ?? {};
-    const next = { ...existing, workflow_probes: probes };
-    await writeShippieJsonOverride(platform.env.CACHE, params.slug!, next);
-    return { probesOk: true, probesSaved: probes.length };
-  },
 };

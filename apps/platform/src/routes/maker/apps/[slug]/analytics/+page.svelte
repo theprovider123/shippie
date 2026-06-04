@@ -12,6 +12,8 @@
 <svelte:head><title>Analytics · {data.app.name}</title></svelte:head>
 
 <section class="analytics">
+  <a class="back-link" href={`/maker/apps/${data.app.slug}`}>Back to Home</a>
+
   <aside class="privacy-band" aria-labelledby="privacy-band-title">
     <p id="privacy-band-title">
       <strong>Basic usage only.</strong>
@@ -80,6 +82,16 @@
 
 <style>
   .analytics { display: grid; gap: 1.25rem; }
+  .back-link {
+    justify-self: start;
+    color: var(--ink-soft-warm);
+    font-size: var(--small-size, 0.9rem);
+    text-decoration: none;
+  }
+  .back-link:hover {
+    color: var(--ink-warm);
+    text-decoration: underline;
+  }
   .privacy-band {
     border: 1px solid var(--border-paper-mid);
     background: rgba(250, 247, 239, 0.72);
