@@ -110,6 +110,7 @@
   import EmptyState from '$lib/components/ui/EmptyState.svelte';
   import PushOptInToast from '$lib/components/notifications/PushOptInToast.svelte';
   import DashboardHome from '$lib/container/DashboardHome.svelte';
+  import FeedbackSheet from '$lib/components/feedback/FeedbackSheet.svelte';
   import { buildRailGroups, type RailTool } from '$lib/container/rail-groups';
   import { categoryColorFamily } from '$lib/container/category-color';
   import CanvasStrip from '$lib/container/CanvasStrip.svelte';
@@ -223,6 +224,7 @@
   // `data.focused === true`; ignored in dashboard mode.
   let focusedDrawerOpen = $state(false);
   let focusedShareFeedback = $state('');
+  let feedbackOpen = $state(false);
   let focusedQrMarkup = $state<string | null>(null);
   // Safe-edges contract: each iframe-mounted app can declare which
   // part of the viewport its own touch input owns via the
@@ -3312,6 +3314,14 @@
   queueIndex={transferQueueIndex}
   queueSize={pendingPromptQueueSize}
 />
+{#if activeApp}
+  <FeedbackSheet
+    open={feedbackOpen}
+    appName={activeApp.name}
+    appSlug={activeApp.slug}
+    onClose={() => (feedbackOpen = false)}
+  />
+{/if}
 
 {#if transferPending.size > 0 && transferPendingLabel}
   <!-- Pending transfer-drop chip — surfaces a "Sending {kind}…" signal
@@ -3470,6 +3480,11 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="M8 8h11v11H8z" />
                     <path d="M5 15H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h9a1 1 0 0 1 1 1v1" />
+                  </svg>
+                </button>
+                <button type="button" onclick={() => (feedbackOpen = true)} aria-label={`Send feedback about ${activeApp.name}`} title="Send feedback">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                 </button>
               </div>
