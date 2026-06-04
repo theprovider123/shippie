@@ -189,3 +189,23 @@ button.primary {
 .game-code, .level-code { font-family: var(--font-mono); font-style: italic; font-weight: 500; font-size: 0.78rem; letter-spacing: 0.08em; color: var(--accent, currentColor); text-transform: uppercase; }
 .title-hero { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.022em; font-size: clamp(2.4rem, 7vw, 4rem); line-height: 0.95; }
 .title-hero em { font-style: italic; color: var(--accent, currentColor); }
+
+/* Daily mode: streak badge + mode toggle */
+.streak {
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #e8603c) 16%, transparent);
+  color: var(--accent, #e8603c);
+  font-weight: 800;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.mode-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.mode-row .tab {
+  flex: 1;
+}
