@@ -11,7 +11,18 @@ import type { SQL } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { emptyDemoDiagnostics, loadDemoDiagnostics } from '$server/maker/diagnostics';
-import type { MyAppRow } from '../+layout.server';
+
+export type AppListRow = {
+  id: string;
+  slug: string;
+  name: string;
+  type: string;
+  themeColor: string;
+  latestDeployStatus: string | null;
+  visibilityScope: string;
+  lastDeployedAt: string | null;
+  activeDeployId: string | null;
+};
 
 const PAGE_SIZE = 20;
 
@@ -55,7 +66,7 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 
   if (!platform?.env.DB) {
     return {
-      apps: [] as MyAppRow[],
+      apps: [] as AppListRow[],
       total: 0,
       pageSize: PAGE_SIZE,
       filters,
@@ -103,6 +114,7 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
       latestDeployStatus: schema.apps.latestDeployStatus,
       visibilityScope: schema.apps.visibilityScope,
       lastDeployedAt: schema.apps.lastDeployedAt,
+      activeDeployId: schema.apps.activeDeployId,
     })
     .from(schema.apps)
     .where(where)

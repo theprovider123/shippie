@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { qrSvg } from '@shippie/qr';
+  import { shareStateFor } from '$lib/maker/share';
   import type { PageData, ActionData } from './$types';
   import KindBadge from '$lib/components/marketplace/KindBadge.svelte';
   import type {
@@ -31,6 +32,7 @@
       lineage: null,
     },
   );
+  const share = $derived(shareStateFor(data.app));
   const hasSource = $derived(Boolean(launchpad.lineage?.sourceRepo || data.app.githubRepo));
   const isRemixable = $derived(
     Boolean(launchpad.lineage?.remixAllowed && launchpad.lineage?.license && hasSource),
@@ -71,6 +73,8 @@
   let copied = $state(false);
 
   onMount(() => {
+    // Only generate a public QR when the app is actually shareable in the open.
+    if (shareStateFor(data.app).kind !== 'public') return;
     void qrSvg(publicUrl, { ecc: 'M', size: 148 })
       .then((markup) => (qrMarkup = markup))
       .catch(() => (qrMarkup = null));
@@ -124,6 +128,7 @@ shippie.feedback.submit({
     <span class="stat">{data.app.installCount ?? 0} opens</span>
     <span class="stat">{data.app.upvoteCount ?? 0} favorites</span>
     <span class="stat">{data.app.feedbackOpenCount ?? 0} feedback</span>
+    <span class="stat">{launchpad.analyticsTotal} events</span>
   </div>
 
   <div class="launchpad-quick">
@@ -146,20 +151,42 @@ shippie.feedback.submit({
   </div>
 
   <div class="ship-panel">
-    <div class="qr-card">
-      <div class="qr-box" aria-label={`QR code for ${data.app.name}`}>
-        {#if qrMarkup}
-          {@html qrMarkup}
-        {:else}
-          <span>QR</span>
-        {/if}
+    {#if share.kind === 'public'}
+      <div class="qr-card">
+        <div class="qr-box" aria-label={`QR code for ${data.app.name}`}>
+          {#if qrMarkup}
+            {@html qrMarkup}
+          {:else}
+            <span>QR</span>
+          {/if}
+        </div>
+        <div>
+          <strong>Open on phone</strong>
+          <p>{publicUrl}</p>
+          <button type="button" onclick={shareApp}>{copied ? 'Copied' : 'Share / copy link'}</button>
+        </div>
       </div>
-      <div>
-        <strong>Open on phone</strong>
-        <p>{publicUrl}</p>
-        <button type="button" onclick={shareApp}>{copied ? 'Copied' : 'Share / copy link'}</button>
+    {:else if share.kind === 'invite'}
+      <div class="qr-card invite-card">
+        <div>
+          <strong>Private app</strong>
+          <p>Invite-only — share access from the Access tab instead of a public link.</p>
+          <a href={share.href}>Manage access →</a>
+        </div>
       </div>
-    </div>
+    {:else}
+      <div class="qr-card invite-card">
+        <div>
+          <strong>{share.reason}</strong>
+          <p>
+            {share.reason === 'Fix deploy'
+              ? 'The latest deploy failed. Fix it to get a shareable link and QR.'
+              : 'Ship this app to get a shareable link and QR.'}
+          </p>
+          <a href="/new">Ship app →</a>
+        </div>
+      </div>
+    {/if}
     <div class="analytics-card">
       <span>First analytics event</span>
       {#if launchpad.analyticsTotal > 0}
@@ -402,6 +429,22 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     grid-template-columns: 148px minmax(0, 1fr);
     gap: 1rem;
     align-items: center;
+  }
+  .invite-card {
+    grid-template-columns: 1fr;
+  }
+  .invite-card strong {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  .invite-card a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-min, 44px);
+    color: var(--sunset);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 13px;
   }
   .qr-box {
     width: 148px;

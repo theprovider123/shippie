@@ -65,10 +65,21 @@
 <script lang="ts">
   import { page as pageStore } from '$app/stores';
   import { goto } from '$app/navigation';
+  import MakerShareSheet from '$components/maker/MakerShareSheet.svelte';
+  import { shareStateFor } from '$lib/maker/share';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const demo = $derived(data.demoDiagnostics);
+
+  let shareSheet = $state<{ open: boolean; url: string; title: string }>({
+    open: false,
+    url: '',
+    title: '',
+  });
+  function openShare(url: string, name: string) {
+    shareSheet = { open: true, url, title: `Share ${name}` };
+  }
   const f = $derived(data.filters);
   const totalPages = $derived(Math.max(1, Math.ceil(data.total / data.pageSize)));
   const rangeStart = $derived(data.total === 0 ? 0 : (f.page - 1) * data.pageSize + 1);
@@ -221,7 +232,7 @@
     <section class="app-list" aria-label="Apps">
       {#each data.apps as app (app.id)}
         {@const pill = statusPill(app.latestDeployStatus)}
-        {@const isLive = app.latestDeployStatus === 'success'}
+        {@const share = shareStateFor(app)}
         <article class="app-row">
           <a class="app-main" href={`/maker/apps/${app.slug}`}>
             <span class="swatch" style:background={app.themeColor}></span>
@@ -236,8 +247,13 @@
           </span>
           <span class="time">{formatRelative(app.lastDeployedAt)}</span>
           <span class="actions">
-            {#if isLive}
+            {#if share.kind !== 'blocked'}
               <a class="action" href={`https://${app.slug}.shippie.app/`} target="_blank" rel="noreferrer">Open</a>
+            {/if}
+            {#if share.kind === 'public'}
+              <button class="action" type="button" onclick={() => openShare(share.url, app.name)}>Share</button>
+            {:else if share.kind === 'invite'}
+              <a class="action" href={share.href}>Share</a>
             {/if}
             <a class="action manage" href={`/maker/apps/${app.slug}`}>Manage</a>
           </span>
@@ -254,6 +270,13 @@
     {/if}
   {/if}
 {/if}
+
+<MakerShareSheet
+  open={shareSheet.open}
+  url={shareSheet.url}
+  title={shareSheet.title}
+  onClose={() => (shareSheet.open = false)}
+/>
 
 <style>
   .maker-head {
@@ -547,6 +570,12 @@
     font-size: 13px;
     text-decoration: none;
     white-space: nowrap;
+  }
+  button.action {
+    background: none;
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
   }
   .action.manage {
     border: 1px solid var(--paper-cream);
