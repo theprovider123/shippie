@@ -33,7 +33,7 @@ One tool, one contract, two visual primitives. No third primitive, no per-surfac
 
 Two models with **different lifecycles**, never merged:
 
-- **`ToolDisplay`** — static, adapter-cached. Display fields that don't change on a device tick. Already exists as `ToolTileApp`; rename/extend in place. Computed once by `adapters.ts` (the file's existing perf comment is exactly why this stays separate — we will not re-run `titleCap` on 60+ tiles per reactive tick).
+- **`ToolDisplay`** — static, adapter-cached. Display fields that don't change on a device tick. Already exists as `ToolTileApp`. **Migrate via a compatibility alias, not a repo-wide rename:** add `ToolDisplay`, then `export type ToolTileApp = ToolDisplay;` so existing call sites keep compiling; remove the alias only after `ToolTile.svelte` is deleted (end of Sprint 3). Computed once by `adapters.ts` (the file's existing perf comment is exactly why this stays separate — we will not re-run `titleCap` on 60+ tiles per reactive tick).
 - **`ToolState`** — dynamic, reactive. Per-device state derived by a **pure selector** from stores. Recomputing it on an offline/update tick must NOT touch `ToolDisplay`.
 
 ```ts
@@ -83,7 +83,7 @@ export interface ToolStateInput {
   isRunning: boolean;
   savedSlugs: ReadonlySet<string>;
   recentSlugs: ReadonlySet<string>;
-  download: AppDownloadState;        // from offline/download-app.ts
+  download: AppDownloadState | null | undefined; // from offline/download-app.ts; missing → none
   updateSeverity: UpdateSeverity | null; // from container/update-status.ts
   surface: 'dock' | 'tools' | 'drawer';
 }
@@ -93,11 +93,11 @@ export function toolState(input: ToolStateInput): ToolState;
 **Relationship** (priority order; a tool can be both saved and running):
 `running` if `isRunning` → else `saved` if in `savedSlugs` → else `recent` if in `recentSlugs` → else `catalog`.
 
-**OfflineState** — re-bucket the existing 8-value `AppDownloadState`:
+**OfflineState** — re-bucket the existing 8-value `AppDownloadState` (missing entry → `none`):
 
 | AppDownloadState | OfflineState |
 |---|---|
-| `idle` | `none` |
+| `null` / `undefined` / `idle` | `none` |
 | `requested`, `downloading`, `verifying` | `saving` |
 | `saved` | `ready` |
 | `partial`, `evicted` | `needs-refresh` |
@@ -114,10 +114,12 @@ export function toolState(input: ToolStateInput): ToolState;
 **Actions** (derived, surface-aware):
 - `open`: always.
 - `info`: always.
-- `save`: `relationship !== 'saved'` (idempotent — calling save on a saved tool is a no-op, but the button is hidden once saved). On `tools` surface, `save` is allowed (discovery → adopt). The Saved *section* and remove/manage affordances are NOT on Tools.
+- `save`: `relationship !== 'saved' || offlineState === 'needs-refresh' || offlineState === 'failed'`. The button hides once a tool is saved AND offline-healthy, but **reappears as a repair affordance when a saved tool's offline copy is broken** — so the only obvious fix for the saving-stuck bug is never hidden. Same handler (`saveAppToDock` + `ensureAppOffline`); the visible **label switches to `Refresh` / `Repair`** when `relationship === 'saved'` and `offlineState ∈ {needs-refresh, failed}`. On `tools` surface, `save` is allowed (discovery → adopt). The Saved *section* and remove/manage affordances are NOT on Tools.
 - `close`: `isRunning`.
 - `remove`: `relationship === 'saved'` and `surface !== 'tools'`.
 - `review`: `updateState !== 'none'`.
+
+The label for `save` comes from `saveActionLabel(relationship, offlineState)` in `labels.ts` (§3.3) — `Save` for catalog/recent, `Refresh` when saved + `needs-refresh`, `Repair` when saved + `failed`. No call site hard-codes these.
 
 ### 3.3 Single source of copy
 
@@ -138,9 +140,14 @@ export function updateChipLabel(u: UpdateState): string | null {
     case 'none':         return null;
   }
 }
+export function saveActionLabel(r: Relationship, o: OfflineState): string {
+  if (r === 'saved' && o === 'failed')       return 'Repair';
+  if (r === 'saved' && o === 'needs-refresh') return 'Refresh';
+  return 'Save';
+}
 ```
 
-The literals `Open now`, `Saved`, `Saved to Dock`, `Running now`, `Recent`, `Update`, `Review` may appear in **no other** `.svelte` or surface file. Enforced by CI grep (§7).
+These copy functions are the single source of relationship/update/save labels. The guardrail in §10 enforces this by requiring `ToolRow`/`ToolCard` to import their labels from `labels.ts` (not by globally banning the words, which appear validly in maker/account/docs UI).
 
 ### 3.4 Save semantics (locked product decision)
 
@@ -148,6 +155,7 @@ The literals `Open now`, `Saved`, `Saved to Dock`, `Running now`, `Recent`, `Upd
 
 - One handler: `saveAppToDock(slug)` + `ensureAppOffline(slug)`.
 - Partial failure is surfaced via `offlineState` (`saving` → `ready`, or `failed` / `needs-refresh`), never silently.
+- **A saved tool whose offline copy breaks keeps a visible repair action** — `save` does not hide on `needs-refresh`/`failed`; the label becomes `Refresh`/`Repair` (§3.2). This is the direct fix for the saving-stuck symptom: the repair path is always one tap away on the row itself.
 - The old drawer "pin (no download)" behavior is retired.
 
 ## 4. The two primitives (Phase 1 — build by EXTRACTION, not greenfield)
@@ -210,10 +218,19 @@ Used by: desktop Tools grid only.
 
 ## 9. Scale rules (Phase 6 — hard caps, not "manageable")
 
-Rendering every item is forbidden. Concrete caps:
-- **Drawer:** show first N per section; search to reveal the rest (reuse `ToolSwitcherSheet`'s existing "showing first N" capping).
-- **Dock:** cap Recent/Saved display counts; provide a manage/search affordance for the overflow.
-- **Tools:** paginated or virtualized browse.
+Rendering every item is forbidden. Concrete caps (defaults locked here so every surface interprets "manageable" identically; expose as named constants in `tool-surface/scale.ts`):
+- **Drawer:** **8 per section**, search to reveal the rest (reuse `ToolSwitcherSheet`'s existing "showing first N" capping).
+- **Dock home:** **5 Running / 8 Recent / 8 Saved**; a "Manage" / search affordance reveals the overflow.
+- **Tools:** virtualized browse, **page size 48** (matches the existing grid pull); search filters the full catalog before paging.
+
+```ts
+// tool-surface/scale.ts
+export const DRAWER_PER_SECTION = 8;
+export const DOCK_RUNNING_CAP = 5;
+export const DOCK_RECENT_CAP = 8;
+export const DOCK_SAVED_CAP = 8;
+export const TOOLS_PAGE_SIZE = 48;
+```
 
 Test matrix (each viewport 390 / 768 / 1440 / 1920):
 - Tool counts: **0, 1, 100, 1000**.
@@ -224,11 +241,11 @@ Test matrix (each viewport 390 / 768 / 1440 / 1920):
 
 ## 10. Guardrails (Phase 7 — CI tests, not guidelines)
 
-Add automated checks so drift can't creep back:
-1. **Forbidden-string grep test:** the §3.3 literals must not appear in any `.svelte`/surface file outside `labels.ts`. Fails CI.
+Add automated checks so drift can't creep back. **Scope guards to the app-list primitives, not the whole repo** — the words "Saved"/"Update"/"Review" appear validly in maker, account, docs, and unrelated sheet UI, so a global string ban would false-fail.
+1. **Label-source test (replaces global string-ban):** assert that `ToolRow.svelte` and `ToolCard.svelte` import their relationship/update/save labels from `labels.ts` and contain no inline relationship/update/save string literals. Enforces "one copy source" without policing unrelated files.
 2. **Forbidden bespoke markup test:** class names `rail-item`, `tool-row`, `focused-tool-row`, `dock-tool-row` (and any new app-list markup) must not exist outside `ToolRow.svelte` / `ToolCard.svelte`. Fails CI.
 3. **Single-sheet test:** no roll-your-own `position: fixed` scrim + drag handler outside `Sheet.svelte` (grep for the duplicated scroll-lock key usage outside the canonical sheet).
-4. Extend existing `adapters.test.ts` / `state.test.ts` with the `toolState` selector tests + the offline/update bucket mappings.
+4. Extend existing `adapters.test.ts` / `state.test.ts` with the `toolState` selector tests + the offline/update bucket mappings + the saved-but-broken `save`-action-stays-visible case.
 
 ## 11. Sprint order
 
