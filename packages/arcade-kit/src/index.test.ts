@@ -12,6 +12,9 @@ import {
   loadStreak,
   writeStreak,
   shareLines,
+  isSetComplete,
+  setProgress,
+  rollSetStreak,
   type PuzzleVersion,
 } from './index';
 
@@ -76,4 +79,22 @@ test('save/resume + streak persistence round-trip; corrupt is fresh', () => {
 
 test('shareLines joins with newlines', () => {
   expect(shareLines(['a', 'b', 'c'])).toBe('a\nb\nc');
+});
+
+test('daily-set: progress + completion + combined streak', () => {
+  const set = {
+    dailySetId: 'shippie-daily',
+    setVersion: 1,
+    setDate: '2026-06-04',
+    memberGameIds: ['sudoku', 'five-letter', 'quartet', 'block-drop'],
+    requiredCount: 3,
+  };
+  const p = setProgress(set, ['sudoku', 'five-letter', 'crossword-not-in-set']);
+  expect(p).toEqual({ done: 2, required: 3, total: 4, complete: false });
+  const p2 = setProgress(set, ['sudoku', 'five-letter', 'quartet']);
+  expect(p2.complete).toBe(true);
+  expect(isSetComplete(3, 3)).toBe(true);
+  expect(isSetComplete(2, 3)).toBe(false);
+  // combined streak walks the dates the set was completed
+  expect(rollSetStreak(['2026-06-02', '2026-06-03', '2026-06-04'], '2026-06-04')).toEqual({ current: 3, best: 3 });
 });

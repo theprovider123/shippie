@@ -46,6 +46,7 @@ PER-GAME APPS (canonical, keep identity)         RETENTION SPINE
 
 - **Games** stay the source of truth (the real engines). Hubs **deep-link into** them (or embed the same shared game component), never fork weaker copies.
 - **Embed vs deep-link is a per-game decision the first implementation plan must make explicit** — it changes data ownership, event/observation flow, PWA launch behavior, and migration surface. Default: deep-link (cheapest; preserves the game's own keys/install); embed only where a hub genuinely needs the game inline (e.g. the Daily set rendering today's Sudoku without a context switch).
+- **RESOLVED (Phase-1 build, 2026-06-04):** deep-linked games are **separate-origin PWAs** (`<slug>.shippie.app`), so a standalone "Daily hub" app **cannot read their localStorage** to compute a combined streak. Therefore the **cross-game streak lives at the platform**, aggregated from the `game.completed` **observations** (now stamped with `puzzleId`) that already flow to the shell via the iframe-sdk bridge regardless of origin. The "Daily hub" is the platform **`/today`** surface (§5), not a separate deep-linking app. A separate hub app would only see the games if it **embedded** them same-origin — heavier, deferred. The kit's `DailySetContract` + `setProgress`/`rollSetStreak` are the pure primitives that platform aggregator consumes.
 - **Cross-game streak/profile** lives at the hub/platform layer, aggregating each game's `game.completed` observation (infra already exists).
 
 ---

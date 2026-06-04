@@ -112,6 +112,53 @@ export function recordToday(prev: StreakStore, today: string = todayKeyUTC()): S
   return { completedDates, best: Math.max(prev.best, rolled.best) };
 }
 
+// ─────────────────── daily-set (the combined "Today: 4/7") ───────────────────
+
+/**
+ * The combined daily set is the headline retention object. It has its OWN
+ * versioned identity (separate from per-game results) so changing membership or
+ * the required count never retroactively corrupts the combined streak.
+ *
+ * IMPORTANT (architecture): the games are separate-origin PWAs, so a hub cannot
+ * read their localStorage directly. Set-completion must be aggregated where the
+ * `game.completed` observations land — the platform. These helpers are the pure
+ * primitives that aggregator uses; they take already-collected member completions.
+ */
+export interface DailySetContract {
+  dailySetId: string;
+  setVersion: number;
+  setDate: string;
+  memberGameIds: string[];
+  requiredCount: number;
+}
+
+/** Has today's set been completed? (≥ requiredCount members done). */
+export function isSetComplete(completedMemberCount: number, requiredCount: number): boolean {
+  return completedMemberCount >= requiredCount;
+}
+
+export interface DailySetProgress {
+  done: number;
+  required: number;
+  total: number;
+  complete: boolean;
+}
+
+/** Progress for today's set, given which member gameIds were completed today. */
+export function setProgress(set: DailySetContract, completedTodayGameIds: readonly string[]): DailySetProgress {
+  const done = set.memberGameIds.filter((id) => completedTodayGameIds.includes(id)).length;
+  return { done, required: set.requiredCount, total: set.memberGameIds.length, complete: isSetComplete(done, set.requiredCount) };
+}
+
+/**
+ * Combined streak: the run of consecutive days the set was completed. `setCompletedDates`
+ * is the list of dates on which ≥ requiredCount members were done (derived by the
+ * platform aggregator from per-game completions). Reuses the single-game streak walk.
+ */
+export function rollSetStreak(setCompletedDates: readonly string[], today: string): { current: number; best: number } {
+  return rollStreak(setCompletedDates, today);
+}
+
 // ───────────────────── persistence (IO, guarded) ─────────────────────
 
 /** Envelope for in-progress daily state (save/resume), keyed by puzzleId. */
