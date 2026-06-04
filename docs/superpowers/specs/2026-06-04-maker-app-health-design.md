@@ -24,7 +24,7 @@
 |---|---|---|---|
 | **Home** | `…/[slug]` (today's Overview) | health view (§3); *summaries* of analytics + proof + feedback | none (read-only) |
 | **Feedback** | `…/[slug]/feedback` (unchanged) | inbox | `setStatus` (existing) |
-| **Share & Access** | `…/[slug]/access` (absorbs `profile`) | Share · Visibility · Invites/spaces · Public listing (name/tagline/category/icon/cover/links) · Source/license/remix | union of access (`archiveSpace` + invite actions) **and** profile (`save` + icon ingestion) |
+| **Share & Access** | `…/[slug]/access` (absorbs `profile`) | Share · Visibility · Invites/spaces · Public listing (name/tagline/category/icon/cover/links) · Source/license/remix | `archiveSpace` (access) + profile `save` + icon ingestion. **Invite create/revoke stay API fetches** (`CreateInviteForm`/`InviteRow` → `/api/…`), not page actions |
 | **Settings** | `…/[slug]/settings` (**new**) | SDK setup · Deploys history · App Kind · PWA readiness · Enhancements · Advanced | Kind `disputeKind`/`clearDispute`/`saveWorkflowProbes` (**moved off the Home/root server**) |
 
 **Kept as drill-downs (off the tab bar, deep links preserved):** `analytics`, `proof`, `deploys/[deployId]`, `enhancements`, `localize`, `remix`.
@@ -39,8 +39,8 @@
 Single column. Each section follows the **empty-state rule (P2):** *expected-but-empty → compact prompt; genuinely N/A → hide.*
 
 1. **Title row** (already built in the layout): icon · name · status pill · **Open** · **Share** (visibility-aware matrix).
-2. **Metric strip:** `opens · saved · feedback · events` + a **30-day opens sparkline** to the right. (Sources in §5.)
-3. **What people say:** top 3 feedback items (`status='open'`, ordered `voteCount desc`) with title + vote count; header shows `[N open] →` linking to Feedback. *Empty (new app):* compact prompt — "No feedback yet — add the feedback widget" + link to Settings → SDK setup. *(This block is where Slice B's user-submitted feedback will surface.)*
+2. **Metric strip:** `opens · favorites · feedback · events` + a **30-day opens sparkline** to the right. ("Favorites," not "saved" — Save-to-Dock is local launcher memory with no server telemetry; see §5.)
+3. **What people say:** top 3 feedback items (`status='open'`, ordered `voteCount desc, createdAt desc, id desc` so ties are deterministic), rendering `title ?? body-excerpt ?? type` (titles are nullable) + vote count; header shows `[N open] →` linking to Feedback. *Empty (new app):* compact prompt — "No feedback yet — add the feedback widget" + link to Settings → SDK setup. *(This block is where Slice B's user-submitted feedback will surface.)*
 4. **Usage:** total events · last event name/time · the sparkline; `View details →` → existing `analytics` page. *Empty:* compact "No events yet — open your live app once after adding the SDK."
 5. **Proof:** compact badge strip (e.g. `◆◆◇ 2 of 3`) → `proof` page. *N/A (no profile/badges):* hide.
 6. **To fix:** only the **incomplete** launch-checklist items (live · feedback wired · analytics event · source+remix published · GitHub connected). Hides entirely when all done. Links now point at the new tabs (source+remix → Share & Access).
@@ -52,7 +52,7 @@ Single column. Each section follows the **empty-state rule (P2):** *expected-but
 **Share & Access** (`…/[slug]/access` page, sectioned):
 - **Share** — the visibility-aware matrix + QR (reuse `shareStateFor` + `MakerShareSheet`).
 - **Visibility** — `VisibilityPicker` (existing).
-- **Invites & spaces** — existing access content (`CreateInviteForm`, `InviteRow`, `PrivateSpaceShareComposer`, `archiveSpace`).
+- **Invites & spaces** — existing access content (`CreateInviteForm`, `InviteRow`, `PrivateSpaceShareComposer`, `archiveSpace`). Note: invite create/revoke already go through **API endpoints** (`/api/…`), not page actions — preserve those fetch flows as-is and invalidate/refresh deliberately after they return. Only `archiveSpace` is a page action.
 - **Public listing** — the profile form (name/tagline/category/icon/cover/links) **and** source repo/license/remix terms (`appLineage`). Moves the `save` action + **icon ingestion** from the profile server into this page's server.
 
 **Settings** (`…/[slug]/settings`, **new** page + server, sectioned):
@@ -71,10 +71,10 @@ The denormalized `apps` counters are unreliable: `installCount` and `feedbackOpe
 |---|---|---|
 | **opens** | raw analytics | `count(analyticsEvents)` where `appId` AND `eventName IN OPEN_EVENTS` |
 | **opens sparkline** | raw analytics | group by `date(createdAt)` over last 30d, same filter; zero-fill missing days client-side |
-| **saved** | `apps.upvoteCount` | maintained ✓ — read directly |
+| **favorites** | `apps.upvoteCount` | maintained ✓ — read directly. This is the favorite/upvote signal. *Save-to-Dock* (offline capsule / launcher memory) is **local-only with no server telemetry**, so it is deliberately **not** a Home metric. |
 | **feedback (open)** | live | `count(feedbackItems)` where `appId` AND `status='open'` |
 | **events (total)** | live | `count(analyticsEvents)` where `appId` |
-| **top feedback** | live | `feedbackItems` where `appId` AND `status='open'`, `order voteCount desc limit 3` |
+| **top feedback** | live | `feedbackItems` where `appId` AND `status='open'`, `order by voteCount desc, createdAt desc, id desc limit 3`; render `title ?? excerpt(body) ?? type` |
 
 ```
 const OPEN_EVENTS = ['app_open', 'opened'];  // Dock 'app_open' + SDK 'opened';
@@ -88,7 +88,8 @@ const OPEN_EVENTS = ['app_open', 'opened'];  // Dock 'app_open' + SDK 'opened';
 Moving markup between pages moves the form **actions** too:
 - The root `…/[slug]/+page.server.ts` currently hosts `disputeKind`/`clearDispute`/`saveWorkflowProbes`. These **move** to `…/[slug]/settings/+page.server.ts`; their forms post there.
 - `…/[slug]/access/+page.server.ts` gains the profile `save` + icon-ingestion logic (merged from `profile/+page.server.ts`). Where a form must post to a sibling route, use an explicit `action="/maker/apps/[slug]/...?/name"` target rather than relying on the local default.
-- The old `profile` route becomes a **308 redirect to `access`** (consistent with the preserve-deep-routes principle) so existing `…/profile` links/bookmarks don't 404.
+- The old `profile` route becomes a **308 redirect to `access`** for GET (consistent with the preserve-deep-routes principle) so `…/profile` links/bookmarks don't 404. Because the old Profile form POSTs to `?/save`, **keep a temporary `save` compatibility action on `/profile`** (forwarding to the merged handler) so a stale tab submitting during/after deploy doesn't hit a removed action; drop the shim in a later cleanup.
+- **Invite create/revoke are NOT migrated** — they remain API fetches (see §4); only `archiveSpace` + profile `save`/icon move into the Share & Access page server.
 
 ## 7. Out of scope (separate slices)
 
@@ -98,7 +99,7 @@ Moving markup between pages moves the form **actions** too:
 
 ## 8. Testing
 
-- **Unit (vitest):** the opens-per-day group query shape; the top-feedback filter (`open` only, vote-ordered); the empty-vs-N/A section logic (pure helper); merged Share & Access actions still save (profile fields + lineage) and `archiveSpace` still works; moved Kind actions resolve on the settings server.
+- **Unit (vitest):** the opens-per-day group query shape; the top-feedback filter (`open` only) with **deterministic ordering** (`voteCount, createdAt, id`) and **title fallback** (`title ?? excerpt ?? type`); the empty-vs-N/A section logic (pure helper); merged Share & Access actions still save (profile fields + lineage) and `archiveSpace` still works; the `/profile` `?/save` compatibility shim still accepts a post; moved Kind actions resolve on the settings server.
 - **Guard:** extend `maker-labels-check.mjs` to also fail on stale-counter reads (`installCount`/`feedbackOpenCount`) in the maker Home, so the P1 decision can't silently regress.
 - **Manual:** 390/768/1440 pass across the 4 tabs; a new (zero-data) app shows compact prompts, a mature app shows a clean Home with no "to fix"; deep links to `…/profile`, `…/analytics`, `…/proof` still resolve.
 
@@ -110,3 +111,10 @@ Moving markup between pages moves the form **actions** too:
 - **P2 (empty states):** resolved in §3 — compact prompts for new apps; only N/A hides.
 - **P2 (feedback preview filter):** resolved in §3/§5 — `status='open'`, vote-ordered.
 - **P3 (tab count + active-tab):** resolved in §2 — 5 current tabs corrected; drill-down highlighting + back-trail defined.
+
+### Round 2 findings
+
+- **P1 ("saved" semantics):** resolved in §3/§5 — metric is **"favorites"** (= `upvoteCount`, maintained). Save-to-Dock is local-only with no server telemetry, so it is not a Home metric. This corrects UI copy, the metric-truth promise, and tests.
+- **P2 (invite actions are API, not page actions):** resolved in §2/§4/§6 — invite create/revoke stay as API fetches; only `archiveSpace` + profile `save`/icon migrate into the Share & Access page server.
+- **P3 (Profile redirect compat):** resolved in §6 — GET 308 redirect + a temporary `?/save` compatibility action on `/profile` so a stale tab posting during deploy doesn't hit a removed action.
+- **P3 (feedback preview determinism):** resolved in §3/§5 — secondary order `createdAt desc, id desc`; render `title ?? excerpt(body) ?? type`.
