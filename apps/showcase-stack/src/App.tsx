@@ -16,6 +16,7 @@ import {
   holdSwap,
   lockPiece,
   pieceCells,
+  setBagSeed,
   spawnNext,
   tryMove,
   tryRotate,
@@ -23,6 +24,15 @@ import {
   type PieceType,
 } from './tetris';
 import { exitFullscreen, isFullscreen, requestFullscreen } from './fullscreen';
+import {
+  loadSave,
+  puzzleId,
+  rollStreak,
+  shareStackResult,
+  todayKeyUTC,
+  writeSave,
+  type DailySave,
+} from './daily';
 
 /**
  * Stack — modern Tetris.
@@ -41,7 +51,15 @@ import { exitFullscreen, isFullscreen, requestFullscreen } from './fullscreen';
  * tap centre to rotate. Hold/pause via on-screen buttons.
  */
 
-type Mode = 'marathon' | 'sprint' | 'ultra';
+type Mode = 'marathon' | 'sprint' | 'ultra' | 'daily';
+
+const STREAK_KEY = 'shippie:stack:streak:v1';
+interface StreakStore { completedDates: string[]; best: number }
+function loadStreak(): StreakStore {
+  const s = loadSave<StreakStore>(STREAK_KEY);
+  if (s && Array.isArray(s.payload?.completedDates)) return s.payload;
+  return { completedDates: [], best: 0 };
+}
 
 const LOCK_DELAY_MS = 500;
 const SPRINT_TARGET_LINES = 40;
@@ -85,6 +103,7 @@ function loadRecords(): Records {
       marathon: { bestScore: 0, best: 0, runs: 0 },
       sprint: { bestScore: 0, best: 0, runs: 0 },
       ultra: { bestScore: 0, best: 0, runs: 0 },
+      daily: { bestScore: 0, best: 0, runs: 0 },
     };
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
@@ -92,12 +111,14 @@ function loadRecords(): Records {
       marathon: raw.marathon ?? { bestScore: 0, best: 0, runs: 0 },
       sprint: raw.sprint ?? { bestScore: 0, best: 0, runs: 0 },
       ultra: raw.ultra ?? { bestScore: 0, best: 0, runs: 0 },
+      daily: raw.daily ?? { bestScore: 0, best: 0, runs: 0 },
     };
   } catch {
     return {
       marathon: { bestScore: 0, best: 0, runs: 0 },
       sprint: { bestScore: 0, best: 0, runs: 0 },
       ultra: { bestScore: 0, best: 0, runs: 0 },
+      daily: { bestScore: 0, best: 0, runs: 0 },
     };
   }
 }
@@ -135,6 +156,9 @@ export function App() {
   const [paused, setPaused] = useState(false);
   const [running, setRunning] = useState(false);
   const [records, setRecords] = useState<Records>(() => loadRecords());
+  const [streak, setStreak] = useState<StreakStore>(() => loadStreak());
+  const [shared, setShared] = useState(false);
+  const streakView = rollStreak(streak.completedDates, todayKeyUTC());
   const [fullscreen, setFullscreenState] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -205,12 +229,26 @@ export function App() {
         },
       };
     });
+    const isDaily = mode === 'daily';
+    const pid = isDaily ? puzzleId('stack', todayKeyUTC()) : undefined;
     observations.emit({
       kind: 'game.completed',
       game: 'stack',
       result: `${mode}/${score}/${game.lines}L`,
+      puzzleId: pid,
       at: new Date().toISOString(),
-    });
+    } as Parameters<typeof observations.emit>[0]);
+    if (isDaily) {
+      const today = todayKeyUTC();
+      setStreak((prev) => {
+        if (prev.completedDates.includes(today)) return prev;
+        const completedDates = [...prev.completedDates, today].slice(-400);
+        const rolled = rollStreak(completedDates, today);
+        const next = { completedDates, best: Math.max(prev.best, rolled.best) };
+        writeSave<StreakStore>(STREAK_KEY, { puzzleId: STREAK_KEY, payloadVersion: 1, payload: next } satisfies DailySave<StreakStore>);
+        return next;
+      });
+    }
   }, [elapsed, game.lines, game.score, mode]);
 
   // Game tick: gravity + lock delay + mode-end checks.
@@ -311,6 +349,10 @@ export function App() {
 
   const start = (m: Mode) => {
     setMode(m);
+    // Daily plays the same 7-bag sequence for everyone (engine djb2's the string).
+    if (m === 'daily') setBagSeed(puzzleId('stack', todayKeyUTC()));
+    else setBagSeed(Math.floor(Math.random() * 0x7fffffff));
+    setShared(false);
     const fresh = createGame();
     setGame(fresh);
     setRunning(true);
@@ -320,6 +362,17 @@ export function App() {
   };
 
   const togglePause = () => setPaused((p) => !p);
+
+  async function shareDaily() {
+    const text = shareStackResult({ puzzleId: puzzleId('stack', todayKeyUTC()), score: game.score, lines: game.lines });
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) await navigator.share({ text });
+      else if (typeof navigator !== 'undefined' && navigator.clipboard) await navigator.clipboard.writeText(text);
+      setShared(true);
+    } catch {
+      /* dismissed */
+    }
+  }
 
   const onAction = useCallback(
     (action: 'left' | 'right' | 'down' | 'rotateL' | 'rotateR' | 'hard' | 'hold' | 'pause') => {
@@ -441,14 +494,14 @@ export function App() {
       </header>
 
       <section className="mode-row">
-        {(['marathon', 'sprint', 'ultra'] as Mode[]).map((m) => (
+        {(['daily', 'marathon', 'sprint', 'ultra'] as Mode[]).map((m) => (
           <button
             key={m}
             type="button"
             className={m === mode ? 'tab active' : 'tab'}
             onClick={() => start(m)}
           >
-            {m}
+            {m === 'daily' && streakView.current > 0 ? `daily 🔥${streakView.current}` : m}
           </button>
         ))}
       </section>
@@ -463,6 +516,8 @@ export function App() {
             <p className="status">{Math.max(0, sprintRemaining)} lines · {(elapsed / 1000).toFixed(1)}s</p>
           ) : mode === 'ultra' ? (
             <p className="status">{(ultraRemainingMs / 1000).toFixed(1)}s left</p>
+          ) : mode === 'daily' ? (
+            <p className="status">Daily · same pieces for all</p>
           ) : (
             <p className="status">Marathon</p>
           )}
@@ -494,8 +549,17 @@ export function App() {
 
       {!running ? (
         <section className="overlay">
-          {game.over ? <p className="finish-line">Top-out · {game.score} pts</p> : null}
-          <button type="button" className="primary" onClick={() => start(mode)}>Start {mode}</button>
+          {game.over ? (
+            <p className="finish-line">
+              {mode === 'daily' ? `Daily · ${game.score} pts · 🔥 ${streakView.current}` : `Top-out · ${game.score} pts`}
+            </p>
+          ) : null}
+          {game.over && mode === 'daily' ? (
+            <button type="button" className="primary" onClick={shareDaily}>{shared ? 'Shared ✓' : 'Share result'}</button>
+          ) : null}
+          <button type="button" className={game.over && mode === 'daily' ? 'tab' : 'primary'} onClick={() => start(mode)}>
+            {mode === 'daily' ? (game.over ? 'Retry today' : 'Play daily') : `Start ${mode}`}
+          </button>
           <p className="muted small">Best {mode}: {records[mode].bestScore} pts · {records[mode].runs} runs</p>
         </section>
       ) : null}
