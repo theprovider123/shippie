@@ -71,3 +71,46 @@ export interface ToolTileApp {
    */
   display?: ToolTileDisplay;
 }
+
+/**
+ * Compatibility alias for the harmonization work. `ToolDisplay` is the
+ * forward name for the static, adapter-cached display model. New code
+ * uses `ToolDisplay`; the alias keeps existing `ToolTileApp` call sites
+ * compiling. Drop the alias once `ToolTile.svelte` is deleted.
+ * See docs/superpowers/specs/2026-06-04-dock-tools-drawer-harmonization-design.md §3.1.
+ */
+export type ToolDisplay = ToolTileApp;
+
+// ---------------------------------------------------------------------------
+// Dynamic tool state (harmonization contract §3) — reactive, per-device.
+// Derived by the pure `toolState` selector in `./tool-state.ts`. Kept
+// SEPARATE from the static ToolDisplay above: an offline/update tick
+// recomputes ToolState without touching the cached display fields.
+// ---------------------------------------------------------------------------
+
+/** How the current device relates to a tool. Priority running > saved > recent > catalog. */
+export type Relationship = 'running' | 'recent' | 'saved' | 'catalog';
+
+/** Re-bucketed view of the 8-value AppDownloadState. */
+export type OfflineState = 'none' | 'saving' | 'ready' | 'needs-refresh' | 'failed';
+
+/** Collapsed view of the 3-value UpdateSeverity. */
+export type UpdateState = 'none' | 'update' | 'needs-review';
+
+/** Which actions a primitive should render for this tool, on this surface. */
+export interface ToolActions {
+  open: boolean;
+  /** Add to Dock + ensure offline. Stays visible as Refresh/Repair when a saved copy is broken. */
+  save: boolean;
+  info: boolean;
+  close: boolean;
+  remove: boolean;
+  review: boolean;
+}
+
+export interface ToolState {
+  relationship: Relationship;
+  offlineState: OfflineState;
+  updateState: UpdateState;
+  actions: ToolActions;
+}
