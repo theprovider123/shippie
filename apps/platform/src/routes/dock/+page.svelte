@@ -3441,8 +3441,8 @@
           </button>
           <nav class="focused-drawer-actions" aria-label="Drawer actions">
             <button class="focused-action" type="button" onclick={() => exitFocusedMode('home')}>Dock</button>
-            <a class="focused-action" href="/tools">Browse</a>
-            <a class="focused-action focused-action-data" href="/you">Data</a>
+            <a class="focused-action" href="/tools">Tools</a>
+            <a class="focused-action focused-action-you" href="/you">You</a>
             <button class="focused-action focused-action-close" type="button" aria-label="Close Shippie tools" onclick={() => {
               closeFocusedDrawer();
             }}>×</button>
@@ -3610,7 +3610,7 @@
       <nav class="rail-quick" aria-label="Quick actions">
         <a class="rail-quick-btn" href="/tools" title="Add tools" aria-label="Add tools">＋</a>
         <a class="rail-quick-btn" href="/tools" title="Browse tools" aria-label="Browse tools">⌕</a>
-        <button class="rail-quick-btn" class:active={section === 'data'} title="Your data" aria-label="Your data" onclick={() => showSection('data')}>⊞</button>
+        <a class="rail-quick-btn" href="/you" title="You" aria-label="You">⊞</a>
         <button class="rail-quick-btn" class:active={section === 'access'} title="Access" aria-label="Access" onclick={() => showSection('access')}>⚿</button>
         <a class="rail-quick-btn" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'} title="Maker" aria-label="Maker">M</a>
         {#if data.user?.isAdmin}
@@ -3654,7 +3654,7 @@
 
     <nav class="rail-foot" aria-label="Dock sections">
       <a class="foot-item" href="/tools">＋ Browse tools</a>
-      <button class="foot-item" class:active={section === 'data'} onclick={() => showSection('data')}>Data</button>
+      <a class="foot-item" href="/you">You</a>
       <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
       <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
       <a class="foot-item" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'}>
@@ -3663,7 +3663,6 @@
       {#if data.user?.isAdmin}
         <a class="foot-item" href="/admin">Admin</a>
       {/if}
-      <a class="foot-item" href="/you">{data.user ? 'You' : 'Sign in to sync'}</a>
     </nav>
   </aside>
 
@@ -4572,7 +4571,7 @@
     color: var(--cream-text, #14120f);
     background: rgba(20, 18, 15, 0.04);
   }
-  .focused-action-data {
+  .focused-action-you {
     color: var(--sunset, #e8603c);
   }
   .focused-action-close {

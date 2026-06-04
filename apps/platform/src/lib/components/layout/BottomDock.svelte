@@ -37,7 +37,7 @@
     href="/you"
     class:active={isYou($page.url.pathname)}
     aria-current={isYou($page.url.pathname) ? 'page' : undefined}
-    aria-label={user ? 'Open your Shippie profile' : 'Open your local Shippie data'}
+    aria-label="Open You"
   >
     <span aria-hidden="true">◌</span>
     <strong>You</strong>
