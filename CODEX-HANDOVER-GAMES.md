@@ -16,11 +16,12 @@ Goal: **retention / daily habit.** Hubs are *collections + a shared spine*, NOT 
    - Daily-set (combined "Today: 4/7"): `DailySetContract`, `setProgress(set, completedTodayGameIds)`, `isSetComplete(done, required)`, `rollSetStreak(setDates, today)`.
    - Persistence (guarded IO): `loadSave`/`writeSave` (`DailySave<T>` envelope), `loadStreak`/`writeStreak`.
    - Share: `shareLines(lines)`, `share(text)` (Web-Share → clipboard).
-2. **4 games on the kit** (each `daily.ts` is a thin wrapper — game-specific versions + share copy, everything else delegates):
+2. **5 games on the kit** (each `daily.ts` is a thin wrapper — game-specific versions + share copy, everything else delegates):
    - **sudoku** — Daily mode (UTC-seeded board), save/resume, streak, share. Generator made seedable (`generatePuzzle(diff, rng)`). 11 tests.
    - **stack** — Daily 7-bag (same pieces for everyone via `setBagSeed(puzzleId)`), streak, share. 16 tests.
    - **golazo** — daily play-streak in the games hub (coexists with existing scores/leaderboard/share). 70 vitest tests.
    - **block-drop** — shares its existing deterministic daily. 8 tests.
+   - **bricks** — shares its daily result (Breakout). 8 tests.
 3. **`@shippie/observations`** — `game.completed` now has a typed optional `puzzleId?: string` (sudoku/stack emit it on daily plays). This is the key the platform aggregator reads.
 
 **Verify any app:** `cd apps/showcase-<app> && bun test src && bunx vite build --base=/__shippie-run/<app>/`. NOTE the test runner differs: **sudoku/stack/block-drop use `bun test`; golazo uses `vitest` (`bun run test`)**. Screenshot harness: `apps/platform/_shotkit/` (run with `bun` from `apps/platform`).
@@ -45,7 +46,7 @@ Goal: **retention / daily habit.** Hubs are *collections + a shared spine*, NOT 
 
 ### 2. Retrofit the remaining daily/arcade games onto the kit (mechanical — copy the wrapper pattern)
 Per `docs/.../2026-06-04-...-design.md` §8. Pattern = add `@shippie/arcade-kit` dep + replace/clean the app's daily helpers with kit calls + add `share()` on daily game-over (+ `puzzleId` on the `game.completed` emit).
-- **Have daily-seed, need SHARE** (quick): snake, bricks, drift, maze, lustre, crossing, maze.
+- **Have daily-seed, need SHARE** (quick, copy block-drop/bricks): drift, maze, lustre, crossing. (snake/lustre already share text.)
 - **Need daily-seed + streak + share**: memory-grid, reaction, invaders, bulwark, docklands (docklands also needs SDK sound/observations — it's an island).
 - **five-letter / quartet**: already premium daily — just point them at the kit + emit `puzzleId` so they feed the /today streak.
 - **chess**: NEW daily tactic puzzle (biggest untapped hook) — its own slice.
