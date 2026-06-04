@@ -59,6 +59,12 @@ export interface GameCompleted {
   kind: 'game.completed';
   game: string;      // game slug, e.g. 'sudoku', 'daily-puzzle'
   result: number | string;  // numeric score, time-ms, or short string
+  /**
+   * Versioned daily id (`<game>-YYYY-MM-DD-rN-cN`) for daily plays, from
+   * `@shippie/arcade-kit`. Present only when the completion was a daily; the
+   * platform's cross-game daily-streak aggregator (/today) keys off this.
+   */
+  puzzleId?: string;
   at: string;
 }
 

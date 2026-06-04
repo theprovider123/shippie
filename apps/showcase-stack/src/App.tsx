@@ -237,7 +237,7 @@ export function App() {
       result: `${mode}/${score}/${game.lines}L`,
       puzzleId: pid,
       at: new Date().toISOString(),
-    } as Parameters<typeof observations.emit>[0]);
+    });
     if (isDaily) {
       const today = todayKeyUTC();
       setStreak((prev) => {

@@ -159,7 +159,7 @@ export function App() {
         result: isDaily ? `daily/${Math.round(dur / 1000)}s` : `${diff}/${Math.round(dur / 1000)}s`,
         puzzleId: isDaily ? pid : undefined,
         at: new Date().toISOString(),
-      } as Parameters<typeof observations.emit>[0]);
+      });
       if (isDaily) {
         const today = todayKeyUTC();
         setStreak((prev) => {
