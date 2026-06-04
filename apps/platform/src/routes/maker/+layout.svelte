@@ -6,7 +6,7 @@
 </script>
 
 <div class="dashboard-shell">
-  <Sidebar user={data.user} myApps={data.myApps} />
+  <Sidebar user={data.user} recentApps={data.recentApps} />
   <main class="dashboard-main">
     {@render children()}
   </main>

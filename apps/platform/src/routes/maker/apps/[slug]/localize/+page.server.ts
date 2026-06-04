@@ -1,5 +1,5 @@
 /**
- * /dashboard/apps/[slug]/localize
+ * /maker/apps/[slug]/localize
  *
  * Phase 8 Localize V1 — preview only.
  *

@@ -168,7 +168,7 @@ export const POST: RequestHandler = async (event) => {
       total_bytes: result.totalBytes,
       live_url: result.liveUrl,
       visibility_scope: result.visibilityScope,
-      report_url: `/dashboard/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
+      report_url: `/maker/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
       report_json_url: `/api/deploy/${encodeURIComponent(result.deployId)}/report`,
       preflight: {
         passed: true,

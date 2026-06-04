@@ -42,6 +42,7 @@
       '/container',
       '/dock',
       '/dashboard',
+      '/maker',
       '/dev',
       '/invite',
       '/manifest.webmanifest',

@@ -127,7 +127,7 @@ function renderText(
     lines.push('');
   }
   lines.push(`You can review the app in your dashboard:`);
-  lines.push(`  ${origin}/dashboard/apps/${input.slug}`);
+  lines.push(`  ${origin}/maker/apps/${input.slug}`);
   lines.push('');
   lines.push(
     `If you believe this was a mistake, reply to this email and we'll review the decision.`,
@@ -145,7 +145,7 @@ function renderHtml(
   const safeReason = input.reason ? escapeHtml(input.reason) : null;
   const safeSlug = escapeHtml(input.slug);
   const safeCategory = input.suspensionReason ? escapeHtml(input.suspensionReason) : null;
-  const dashboardUrl = `${origin}/dashboard/apps/${encodeURIComponent(input.slug)}`;
+  const dashboardUrl = `${origin}/maker/apps/${encodeURIComponent(input.slug)}`;
 
   return `<!doctype html>
 <html><body style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1a1a1a;">

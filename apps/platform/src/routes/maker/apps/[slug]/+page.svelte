@@ -45,25 +45,25 @@
     {
       label: 'Feedback is ready',
       done: (data.app.feedbackOpenCount ?? 0) > 0,
-      href: `/dashboard/apps/${data.app.slug}/feedback`,
+      href: `/maker/apps/${data.app.slug}/feedback`,
       action: 'Inbox',
     },
     {
       label: 'Analytics has received an event',
       done: launchpad.analyticsTotal > 0,
-      href: `/dashboard/apps/${data.app.slug}/analytics`,
+      href: `/maker/apps/${data.app.slug}/analytics`,
       action: launchpad.analyticsTotal > 0 ? 'View events' : 'Watch first event',
     },
     {
       label: 'Source and remix terms are published',
       done: isRemixable,
-      href: `/dashboard/apps/${data.app.slug}/profile`,
+      href: `/maker/apps/${data.app.slug}/profile`,
       action: isRemixable ? 'Review' : 'Add source',
     },
     {
       label: 'GitHub is connected',
       done: Boolean(data.app.githubVerified || data.app.githubInstallationId),
-      href: data.app.githubVerified ? `/dashboard/apps/${data.app.slug}/profile` : '/new#github',
+      href: data.app.githubVerified ? `/maker/apps/${data.app.slug}/profile` : '/new#github',
       action: data.app.githubVerified ? 'Connected' : 'Connect',
     },
   ]);
@@ -127,15 +127,15 @@ shippie.feedback.submit({
   </div>
 
   <div class="launchpad-quick">
-    <a class="quick" href={`/dashboard/apps/${data.app.slug}/analytics`}>
+    <a class="quick" href={`/maker/apps/${data.app.slug}/analytics`}>
       <strong>Analytics</strong>
       <span>Opens, favorites, latest event</span>
     </a>
-    <a class="quick" href={`/dashboard/apps/${data.app.slug}/feedback`}>
+    <a class="quick" href={`/maker/apps/${data.app.slug}/feedback`}>
       <strong>Feedback</strong>
       <span>Bugs, ideas, ratings</span>
     </a>
-    <a class="quick" href={`/dashboard/apps/${data.app.slug}/profile`}>
+    <a class="quick" href={`/maker/apps/${data.app.slug}/profile`}>
       <strong>Profile</strong>
       <span>Source, license, remix</span>
     </a>
@@ -172,7 +172,7 @@ shippie.feedback.submit({
         <strong>Waiting for first event</strong>
         <p>Open the live app once after adding the SDK; accepted aggregate events appear here.</p>
       {/if}
-      <a href={`/dashboard/apps/${data.app.slug}/analytics`}>Open analytics →</a>
+      <a href={`/maker/apps/${data.app.slug}/analytics`}>Open analytics →</a>
     </div>
   </div>
 
@@ -196,7 +196,7 @@ shippie.feedback.submit({
     <summary>Turn on feedback in your app</summary>
     <p class="hint">
       Drop one of these into your app. Submissions land in your inbox at
-      <a href={`/dashboard/apps/${data.app.slug}/feedback`}>Feedback</a>. Private by
+      <a href={`/maker/apps/${data.app.slug}/feedback`}>Feedback</a>. Private by
       default — only you see them unless you choose to publish.
     </p>
     <div class="snippet-tabs">
@@ -253,12 +253,12 @@ shippie.analytics.track('opened');`}</pre>
         <p class="localize">
           <strong>Eligible to localize:</strong>
           {profile.localization.supportedTransforms.join(', ')}.
-          <a href={`/dashboard/apps/${data.app.slug}/localize`}>Run Localize →</a>
+          <a href={`/maker/apps/${data.app.slug}/localize`}>Run Localize →</a>
         </p>
       {:else if profile.localization?.blockers?.length}
         <p class="muted">
           Localize blockers: {profile.localization.blockers.join(', ')}.
-          <a href={`/dashboard/apps/${data.app.slug}/remix`}>Try Remix →</a>
+          <a href={`/maker/apps/${data.app.slug}/remix`}>Try Remix →</a>
         </p>
       {/if}
 
@@ -347,8 +347,8 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   <div class="card">
     <h2>Visibility</h2>
     <p><span class="vis vis-{data.app.visibilityScope}">{data.app.visibilityScope}</span></p>
-    <a href={`/dashboard/apps/${data.app.slug}/profile`}>Edit profile →</a>
-    <a href={`/dashboard/apps/${data.app.slug}/access`}>Manage access →</a>
+    <a href={`/maker/apps/${data.app.slug}/profile`}>Edit profile →</a>
+    <a href={`/maker/apps/${data.app.slug}/access`}>Manage access →</a>
   </div>
 
   <div class="card">

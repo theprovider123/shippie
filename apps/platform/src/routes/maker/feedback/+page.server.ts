@@ -1,15 +1,16 @@
 import type { PageServerLoad } from './$types';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { getDrizzleClient, schema } from '$server/db/client';
 
 export const load: PageServerLoad = async ({ parent, platform }) => {
   const layout = await parent();
-  if (!platform?.env.DB || layout.myApps.length === 0) {
-    return { ...layout, items: [] };
+  if (!platform?.env.DB || layout.counts.total === 0) {
+    return { items: [] };
   }
 
   const db = getDrizzleClient(platform.env.DB);
-  const appIds = layout.myApps.map((app) => app.id);
+  // Join straight to the maker's owned apps instead of materialising every
+  // app id first — scales with the feedback table, not the app count.
   const rows = await db
     .select({
       id: schema.feedbackItems.id,
@@ -27,9 +28,9 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
     })
     .from(schema.feedbackItems)
     .innerJoin(schema.apps, eq(schema.apps.id, schema.feedbackItems.appId))
-    .where(inArray(schema.feedbackItems.appId, appIds))
+    .where(and(eq(schema.apps.makerId, layout.user.id), eq(schema.apps.isArchived, false)))
     .orderBy(desc(schema.feedbackItems.createdAt))
     .limit(100);
 
-  return { ...layout, items: rows };
+  return { items: rows };
 };

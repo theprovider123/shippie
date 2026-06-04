@@ -1,5 +1,5 @@
 /**
- * /dashboard/apps/[slug]/deploys/[deployId]
+ * /maker/apps/[slug]/deploys/[deployId]
  *
  * Phase 4 Stage A — maker-facing deploy report page.
  *

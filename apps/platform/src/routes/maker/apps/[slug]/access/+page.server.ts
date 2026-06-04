@@ -1,5 +1,5 @@
 /**
- * /dashboard/apps/[slug]/access — visibility + invites management.
+ * /maker/apps/[slug]/access — visibility + invites management.
  */
 import { error, fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';

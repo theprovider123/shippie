@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import type { MyAppRow } from '../../../routes/dashboard/+layout.server';
+  import type { MyAppRow } from '../../../routes/maker/+layout.server';
 
-  let { user, myApps }: { user: { email: string; displayName: string | null }; myApps: MyAppRow[] } = $props();
+  let { user, recentApps }: { user: { email: string; displayName: string | null }; recentApps: MyAppRow[] } = $props();
 </script>
 
 <aside class="sidebar">
@@ -22,17 +22,17 @@
   <p class="user">{user.displayName ?? user.email}</p>
 
   <nav class="nav">
-    <a href="/maker" class:active={$page.url.pathname === '/dashboard' || $page.url.pathname === '/maker'}>Maker</a>
-    <a href="/maker/apps" class:active={$page.url.pathname.startsWith('/dashboard/apps') || $page.url.pathname.startsWith('/maker/apps')}>Apps</a>
-    <a href="/dashboard/feedback" class:active={$page.url.pathname === '/dashboard/feedback'}>Feedback</a>
+    <a href="/maker" class:active={$page.url.pathname === '/maker'}>Maker</a>
+    <a href="/maker/apps" class:active={$page.url.pathname.startsWith('/maker/apps')}>Apps</a>
+    <a href="/maker/feedback" class:active={$page.url.pathname === '/maker/feedback'}>Feedback</a>
   </nav>
 
   <a class="ship-btn" href="/new">Ship app</a>
 
-  {#if myApps.length > 0}
+  {#if recentApps.length > 0}
     <div class="apps">
       <p class="eyebrow">Recent</p>
-      {#each myApps.slice(0, 6) as app (app.id)}
+      {#each recentApps.slice(0, 6) as app (app.id)}
         <a class="row" href={`/maker/apps/${app.slug}`}>
           <span class="dot" style:background={app.themeColor}></span>
           <span class="name">{app.name}</span>

@@ -1,10 +1,14 @@
 import { describe, expect, test, vi } from 'vitest';
+import { isRedirect } from '@sveltejs/kit';
 import { actions, load } from './+page.server';
 
 const mocks = vi.hoisted(() => ({
   mintVerificationToken: vi.fn(),
   sendMagicLink: vi.fn(async () => {}),
   checkMagicLinkRateLimit: vi.fn(async () => ({ ok: true, remaining: 2, retryAfterMs: 0 })),
+  createGitHub: vi.fn(() => ({
+    createAuthorizationURL: () => new URL('https://github.com/login/oauth/authorize?client_id=test'),
+  })),
 }));
 
 vi.mock('$server/auth/verification-tokens', () => ({
@@ -25,9 +29,7 @@ vi.mock('$server/auth/rate-limit', () => ({
 
 vi.mock('$server/auth/github', () => ({
   GitHubNotConfiguredError: class GitHubNotConfiguredError extends Error {},
-  createGitHub: () => {
-    throw new Error('not used');
-  },
+  createGitHub: mocks.createGitHub,
 }));
 
 vi.mock('$server/auth/google', () => ({
@@ -71,6 +73,60 @@ describe('/auth/login email action', () => {
       intent: 'maker',
       requiresAccount: true,
     });
+  });
+
+  test('marks /maker urls as maker sign-in and preserves the target', async () => {
+    const url = new URL('https://shippie.app/auth/login');
+    url.searchParams.set('return_to', '/maker/apps/my-app');
+
+    const result = await load({
+      locals: {},
+      platform: { env: { SHIPPIE_ENV: 'production' } },
+      url,
+    } as never);
+
+    expect(result).toMatchObject({
+      returnTo: '/maker/apps/my-app',
+      intent: 'maker',
+      requiresAccount: true,
+    });
+  });
+
+  test('email magic link carries a /maker return target', async () => {
+    mocks.mintVerificationToken.mockResolvedValueOnce({ token: 'token-maker' });
+
+    const result = await actions.email(emailActionEvent('/maker/apps/my-app'));
+
+    expect(result).toEqual({ success: true, email: 'maker@example.com' });
+    expect(mocks.sendMagicLink).toHaveBeenCalledWith({
+      to: 'maker@example.com',
+      url: 'https://shippie.app/auth/email-link/token-maker?return_to=%2Fmaker%2Fapps%2Fmy-app',
+      env: {
+        DB: {},
+        PUBLIC_ORIGIN: 'https://shippie.app',
+      },
+    });
+  });
+
+  test('github action stores the /maker return target for the OAuth round-trip', async () => {
+    const cookies = { set: vi.fn() };
+    const url = new URL('https://shippie.app/auth/login');
+    url.searchParams.set('return_to', '/maker/apps/my-app');
+
+    let redirected: { status: number } | undefined;
+    try {
+      await actions.github({
+        platform: { env: { SHIPPIE_ENV: 'production', GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' } },
+        cookies,
+        url,
+      } as never);
+    } catch (err) {
+      if (isRedirect(err)) redirected = { status: err.status };
+      else throw err;
+    }
+
+    expect(redirected?.status).toBe(302);
+    expect(cookies.set).toHaveBeenCalledWith('auth_return_to', '/maker/apps/my-app', expect.any(Object));
   });
 
   test('marks protected admin urls as admin sign-in', async () => {

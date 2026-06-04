@@ -130,11 +130,11 @@
     <section class="panel app-panel" aria-labelledby="apps-title">
       <div class="section-head">
         <div>
-          <h2 id="apps-title">Your apps</h2>
+          <h2 id="apps-title">Apps</h2>
           <p>{data.user ? `${privateMakerCount} private, ${data.makerApps.length} total` : 'Published and private apps appear after sign-in.'}</p>
         </div>
         {#if data.user}
-          <a class="section-link" href="/maker/apps">All apps</a>
+          <a class="section-link" href="/maker/apps">Manage apps</a>
         {/if}
       </div>
 

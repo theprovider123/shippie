@@ -132,7 +132,7 @@
               </button>
             </form>
             <a href={`/apps/${app.slug}`} target="_blank" rel="noopener" class="btn-text">View</a>
-            <a href={`/dashboard/apps/${app.slug}`} class="btn-text">Dashboard</a>
+            <a href={`/maker/apps/${app.slug}`} class="btn-text">Dashboard</a>
           </td>
         </tr>
       {/each}

@@ -1102,6 +1102,7 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/auth/')) return;
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/dashboard/')) return;
+  if (url.pathname.startsWith('/maker/')) return;
   if (url.pathname.startsWith('/admin/')) return;
 
   // Standalone post-cloud kernel. These two static files must survive

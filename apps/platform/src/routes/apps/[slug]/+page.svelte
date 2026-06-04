@@ -25,7 +25,7 @@
       return {
         title: `Share ${data.app.name}`,
         text: `Send a private invite to ${data.app.name}.`,
-        url: `${origin}/dashboard/apps/${encodeURIComponent(data.app.slug)}/access`,
+        url: `${origin}/maker/apps/${encodeURIComponent(data.app.slug)}/access`,
       };
     }
     if (data.app.visibility === 'private') {
@@ -412,7 +412,7 @@
 
   {#if data.isMaker}
     <section class="section">
-      <Button href={`/dashboard/apps/${data.app.slug}`} variant="secondary">
+      <Button href={`/maker/apps/${data.app.slug}`} variant="secondary">
         Open in Maker →
       </Button>
     </section>

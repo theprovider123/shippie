@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { LayoutData } from './$types';
+  import type { PageData } from './$types';
 
-  let { data }: { data: LayoutData } = $props();
-  const apps = $derived(data.myApps);
+  let { data }: { data: PageData } = $props();
+  const apps = $derived(data.recentApps);
   const demo = $derived(data.demoDiagnostics);
-  const privateCount = $derived(apps.filter((app) => app.visibilityScope === 'private').length);
-  const liveCount = $derived(apps.filter((app) => app.latestDeployStatus === 'success').length);
+  const privateCount = $derived(data.counts.private);
+  const liveCount = $derived(data.counts.live);
 </script>
 
 <svelte:head>
@@ -27,7 +27,7 @@
 <section class="summary-grid" aria-label="Maker summary">
   <div>
     <span>Apps</span>
-    <strong>{apps.length}</strong>
+    <strong>{data.counts.total}</strong>
   </div>
   <div>
     <span>Live</span>
@@ -49,14 +49,14 @@
   <a href="/you">You</a>
 </section>
 
-{#if apps.length > 0}
+{#if data.counts.total > 0}
   <section class="app-section" aria-labelledby="recent-title">
     <div class="section-head">
       <div>
         <p class="eyebrow">Recent</p>
-        <h2 id="recent-title">Your apps</h2>
+        <h2 id="recent-title">Apps</h2>
       </div>
-      <a href="/maker/apps">All apps</a>
+      <a href="/maker/apps">View all →</a>
     </div>
     <div class="app-list">
       {#each apps.slice(0, 6) as app (app.id)}

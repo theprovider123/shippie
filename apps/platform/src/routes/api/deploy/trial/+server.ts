@@ -177,12 +177,12 @@ export const POST: RequestHandler = async (event) => {
     slug,
     deploy_id: result.deployId,
     live_url: result.liveUrl,
-    report_url: `/dashboard/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
+    report_url: `/maker/apps/${encodeURIComponent(slug)}/deploys/${encodeURIComponent(result.deployId)}`,
     report_json_url: `/api/deploy/${encodeURIComponent(result.deployId)}/report`,
     expires_at: expiresAt,
     files: result.files,
     total_bytes: result.totalBytes,
-    claim_url: `/auth/login?return_to=${encodeURIComponent(`/dashboard?${claimTarget}`)}`,
+    claim_url: `/auth/login?return_to=${encodeURIComponent(`/maker?${claimTarget}`)}`,
   });
 };
 

@@ -25,7 +25,7 @@
 <header>
   <p class="eyebrow"><a href="/maker">Maker</a> · feedback</p>
   <h1>Feedback inbox</h1>
-  <p class="lede">{data.myApps.length} apps · {data.items.length} items</p>
+  <p class="lede">{data.counts.total} apps · {data.items.length} items</p>
   <div class="status-summary" aria-label="Status breakdown">
     <button
       type="button"
@@ -108,7 +108,7 @@
     {#each filteredItems as item (item.id)}
       <article>
         <div class="row">
-          <a href={`/dashboard/apps/${item.appSlug}`}>{item.appName}</a>
+          <a href={`/maker/apps/${item.appSlug}`}>{item.appName}</a>
           <span>{item.type}</span>
           <span class:open={item.status === 'open'}>{item.status}</span>
           {#if item.rating}<strong>{item.rating}/5</strong>{/if}
