@@ -130,10 +130,10 @@ describe('showcase catalog drift check', () => {
     // The catalog moved from `/` to `/tools` in the Workspace redesign;
     // root is now a redirect stub. Tiles live on the catalog page.
     const homeSource = readFileSync(join(REPO_ROOT, 'apps', 'platform', 'src', 'routes', 'tools', '+page.svelte'), 'utf8');
-    const homepageTiles = [...homeSource.matchAll(/<ToolTile[\s\S]*?\/>/g)].map((match) => match[0]);
-    expect(homepageTiles.length).toBeGreaterThan(0);
-    for (const tile of homepageTiles) {
-      expect(tile, 'homepage ToolTile must navigate to its /run route').toContain('href={runHref(app.slug)}');
+    const catalogLaunchers = [...homeSource.matchAll(/<Tool(?:Row|Card)[\s\S]*?\/>/g)].map((match) => match[0]);
+    expect(catalogLaunchers.length).toBeGreaterThan(0);
+    for (const launcher of catalogLaunchers) {
+      expect(launcher, 'catalog ToolRow/ToolCard must navigate to its /run route').toContain('href={runHref(app.slug)}');
     }
 
     const savedDockSource = readFileSync(
