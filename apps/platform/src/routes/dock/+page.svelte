@@ -119,8 +119,16 @@
   import { pickStarters } from '$lib/container/starters';
   import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
   import ToolSwitcherSheet from '$lib/container/ToolSwitcherSheet.svelte';
-  import { buildToolSwitcherSections } from '$lib/container/tool-switcher';
+  import {
+    buildToolSwitcherSections,
+    type ToolSwitcherSectionId,
+  } from '$lib/container/tool-switcher';
   import { switcherOpen } from '$lib/stores/switcher';
+  import {
+    ToolRow,
+    toolState,
+    type ToolTileApp,
+  } from '$lib/components/tool-surface';
   import {
     hydrateLauncherMemory,
     launcherMemory,
@@ -829,6 +837,26 @@
       recents: $launcherMemory.recents,
     }),
   );
+  const railToolCount = $derived(
+    new Set([
+      ...railGroups.open.map((tool) => tool.slug),
+      ...railGroups.saved.map((tool) => tool.slug),
+      ...railGroups.recent.map((tool) => tool.slug),
+    ]).size,
+  );
+
+  function railToolToTile(tool: RailTool): ToolTileApp {
+    return {
+      slug: tool.slug,
+      name: tool.name,
+      category: tool.category ?? null,
+      iconUrl: null,
+      themeColor: tool.accent,
+      glyph: tool.icon,
+      firstPartySigned: false,
+      badges: [],
+    };
+  }
 
   function openRailTool(slug: string) {
     const app = launchVisibleAppBySlug.get(slug);
@@ -899,6 +927,7 @@
   );
   const starterApps = $derived(pickStarters(launchVisibleApps, PUBLIC_FLAGSHIP_SLUGS, 4));
   const drawerSavedSet = $derived(new Set($launcherMemory.saved));
+  const drawerRecentSet = $derived(new Set($launcherMemory.recents.map((item) => item.slug)));
   const drawerSavedApps = $derived.by(() => {
     // Saved slugs are unique by construction,
     // so we can resolve and filter in a single pass without a second
@@ -955,6 +984,39 @@
   const focusedSwitcherHasResults = $derived(
     focusedSwitcherSections.some((section) => section.tools.length > 0),
   );
+  function stateForFocusedTool(tool: RailTool, sectionId: ToolSwitcherSectionId) {
+    return toolState({
+      slug: tool.slug,
+      isRunning: railOpenSlugs.includes(tool.slug),
+      savedSlugs: drawerSavedSet,
+      recentSlugs: sectionId === 'recent' ? new Set([tool.slug]) : drawerRecentSet,
+      download: undefined,
+      updateSeverity: null,
+      surface: 'drawer',
+    });
+  }
+
+  function openFocusedRailTool(slug: string) {
+    const app = launchVisibleAppBySlug.get(slug);
+    if (app) switchFocusedApp(app);
+  }
+
+  function saveFocusedRailTool(slug: string) {
+    const app = launchVisibleAppBySlug.get(slug);
+    if (app) void saveDrawerTool(app);
+  }
+
+  function closeFocusedRailTool(slug: string) {
+    closeFocusedDrawer();
+    if (data.focused) {
+      void goto(`/dock?close=${encodeURIComponent(slug)}`, {
+        noScroll: true,
+        keepFocus: true,
+      });
+      return;
+    }
+    closeRailTool(slug);
+  }
   const recoveredReceipts = $derived(recoveredReceiptsFor(receiptsByApp, appById));
   const totalRows = $derived(Object.values(rowsByApp).reduce((sum, rows) => sum + rows.length, 0));
   const updateCandidateApps = $derived.by(() => {
@@ -3548,49 +3610,19 @@
                 </div>
                 <div class="focused-list">
                   {#each section.tools as tool (tool.slug)}
-                    {@const app = launchVisibleAppBySlug.get(tool.slug)}
-                    {#if app}
-                      <div class="focused-tool-row" class:running={section.id === 'open'}>
-                        <button type="button" class="focused-tool-open" onclick={() => switchFocusedApp(app)}>
-                          <span class="focused-tool-icon" style="background:{tool.accent}">{tool.icon}</span>
-                          <span class="focused-tool-copy">
-                            <strong>{tool.name}</strong>
-                            <small>
-                              {#if section.id === 'open'}
-                                Running now
-                              {:else if section.id === 'saved'}
-                                Saved to Dock
-                              {:else if section.id === 'recent'}
-                                Recent
-                              {:else}
-                                {tool.category ?? 'Tool'}
-                              {/if}
-                            </small>
-                          </span>
-                          {#if section.id === 'open'}
-                            <span class="focused-live-dot" aria-hidden="true"></span>
-                          {/if}
-                        </button>
-                        <button
-                          type="button"
-                          class="focused-pin"
-                          class:pinned={drawerSavedSet.has(tool.slug)}
-                          aria-label={drawerSavedSet.has(tool.slug) ? `${tool.name} saved to Dock` : `Save ${tool.name} to Dock`}
-                          title={drawerSavedSet.has(tool.slug) ? 'Saved to Dock' : 'Save to Dock'}
-                          onclick={() => saveDrawerTool(app)}
-                        >
-                          {drawerSavedSet.has(tool.slug) ? 'Saved' : 'Save'}
-                        </button>
-                        {#if section.id === 'open'}
-                          <a
-                            class="focused-close-tool"
-                            href={`/dock?close=${encodeURIComponent(tool.slug)}`}
-                            aria-label={`Close ${tool.name}`}
-                            title="Close running tool"
-                          >×</a>
-                        {/if}
-                      </div>
-                    {/if}
+                    <ToolRow
+                      app={railToolToTile(tool)}
+                      state={stateForFocusedTool(tool, section.id)}
+                      current={activeApp?.slug === tool.slug}
+                      hideRelationship
+                      caption={section.id === 'results' ? (tool.category ?? 'Tool') : ''}
+                      onOpen={() => openFocusedRailTool(tool.slug)}
+                      onSave={() => saveFocusedRailTool(tool.slug)}
+                      onRemove={() => removeSavedTool(tool.slug)}
+                      onClose={railOpenSlugs.includes(tool.slug)
+                        ? () => closeFocusedRailTool(tool.slug)
+                        : undefined}
+                    />
                   {/each}
                 </div>
                 {#if section.hidden > 0}
@@ -3652,38 +3684,18 @@
       </nav>
     </div>
 
-    {#if railGroups.open.length > 0}
-      <p class="rail-label">Open</p>
-      {#each railGroups.open as t (t.slug)}
-        <button class="rail-item active" onclick={() => openRailTool(t.slug)}>
-          <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>
-          {t.name}<span class="rail-live"></span>
-        </button>
-      {/each}
-    {/if}
-
-    {#if railGroups.recent.length > 0}
-      <p class="rail-label">Recent</p>
-      {#each railGroups.recent as t (t.slug)}
-        <button class="rail-item muted" onclick={() => openRailTool(t.slug)}>
-          <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
-        </button>
-      {/each}
-    {/if}
-
-    {#if railGroups.saved.length > 0}
-      <p class="rail-label">Saved</p>
-      {#each railGroups.saved as t (t.slug)}
-        <button class="rail-item" onclick={() => openRailTool(t.slug)}>
-          <span class="rail-icon" style="background:{t.accent}">{t.icon}</span>{t.name}
-        </button>
-      {/each}
-    {/if}
-
-    {#if railGroups.open.length === 0 && railGroups.saved.length === 0 && railGroups.recent.length === 0}
-      <p class="rail-label">Dock</p>
-      <p class="rail-empty">No tools yet</p>
-    {/if}
+    <button
+      type="button"
+      class="rail-switcher"
+      onclick={() => switcherOpen.set(true)}
+      aria-label={railToolCount > 0 ? `Open Dock switcher with ${railToolCount} tools` : 'Open Dock switcher'}
+    >
+      <span>
+        <strong>Switcher</strong>
+        <small>{railToolCount > 0 ? `${railToolCount} tools ready` : 'No tools yet'}</small>
+      </span>
+      <span aria-hidden="true">⌘K</span>
+    </button>
 
     <nav class="rail-foot" aria-label="Dock sections">
       <a class="foot-item" href="/tools">＋ Browse tools</a>
@@ -4790,110 +4802,6 @@
     border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
     background: var(--cream-border, rgba(0, 0, 0, 0.1));
   }
-  .focused-tool-row {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 58px;
-    background: var(--cream-bg, #faf7ef);
-  }
-  .focused-tool-row.running {
-    grid-template-columns: minmax(0, 1fr) 58px 42px;
-    box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
-  }
-  .focused-tool-open {
-    min-width: 0;
-    min-height: 58px;
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-  .focused-tool-open:hover,
-  .focused-tool-open:focus-visible {
-    background: rgba(20, 18, 15, 0.045);
-    outline: none;
-  }
-  .focused-tool-icon {
-    width: 36px;
-    height: 36px;
-    display: grid;
-    place-items: center;
-    color: var(--bg, #14120f);
-    font-family: var(--font-heading);
-    font-size: 0.78rem;
-    font-weight: 700;
-  }
-  .focused-tool-copy {
-    min-width: 0;
-    display: grid;
-    gap: 2px;
-  }
-  .focused-tool-copy strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 15px;
-    line-height: 1.1;
-  }
-  .focused-tool-copy small {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
-    font-size: 12px;
-    line-height: 1.2;
-  }
-  .focused-live-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--sage-leaf, #74a57f);
-  }
-  .focused-pin,
-  .focused-close-tool {
-    display: grid;
-    place-items: center;
-    min-width: 54px;
-    min-height: 58px;
-    padding: 0 8px;
-    border: 0;
-    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: transparent;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
-    font-family: var(--font-mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    text-decoration: none;
-    letter-spacing: 0.08em;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .focused-pin.pinned {
-    color: var(--sunset, #e8603c);
-  }
-  .focused-close-tool {
-    min-width: 42px;
-    padding: 0;
-    font-size: 18px;
-    letter-spacing: 0;
-    text-transform: none;
-  }
-  .focused-pin:hover,
-  .focused-pin:focus-visible,
-  .focused-close-tool:hover,
-  .focused-close-tool:focus-visible {
-    color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.08);
-    outline: none;
-  }
   .focused-section-more {
     margin: 0;
     color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
@@ -5075,14 +4983,52 @@
   .rail-quick-btn:hover { color: var(--text); border-color: var(--border-light); background: var(--surface); }
   .rail-quick-btn.active { color: var(--sunset); border-color: var(--border-light); background: var(--surface); }
   .rail-quick-btn:focus-visible { outline: 2px solid var(--sunset); outline-offset: -2px; }
-  .rail-label { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 1.15rem 0 0.35rem; }
-  .rail-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 40px; background: none; border: 0; color: var(--text); font-size: 0.78rem; padding: 0.32rem 0.34rem; text-align: left; cursor: pointer; }
-  .rail-item:hover { background: var(--surface-alt); }
-  .rail-item.active { background: var(--surface-alt); border-left: 2px solid var(--sunset); padding-left: calc(0.34rem - 2px); }
-  .rail-item.muted { color: var(--text-secondary); }
-  .rail-icon { width: 18px; height: 18px; flex: none; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 0.54rem; color: var(--bg); }
-  .rail-live { width: 6px; height: 6px; border-radius: 50%; background: var(--success-soft); margin-left: auto; }
-  .rail-empty { color: var(--text-light); font-size: 0.8rem; font-style: italic; }
+  .rail-switcher {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 58px;
+    margin: 0.35rem 0 1rem;
+    padding: 0.62rem 0.7rem;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+  .rail-switcher:hover {
+    border-color: var(--border);
+    background: var(--surface-alt);
+  }
+  .rail-switcher:focus-visible {
+    outline: 2px solid var(--sunset);
+    outline-offset: -2px;
+  }
+  .rail-switcher span:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .rail-switcher strong {
+    font-family: var(--font-heading);
+    font-size: 0.88rem;
+    line-height: 1.1;
+  }
+  .rail-switcher small,
+  .rail-switcher span:last-child {
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+  .rail-switcher span:last-child {
+    flex: none;
+    padding: 0.12rem 0.28rem;
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+  }
   .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.2rem; border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
   .foot-item { min-height: var(--touch-min); display: flex; align-items: center; font-size: 0.74rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.18rem 0; }
   .foot-item.active, .foot-item:hover { color: var(--text); }
