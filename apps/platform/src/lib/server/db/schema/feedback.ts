@@ -22,6 +22,8 @@ export const feedbackItems = sqliteTable(
     duplicateOf: text('duplicate_of'),
     externalUserId: text('external_user_id'),
     externalUserDisplay: text('external_user_display'),
+    makerReply: text('maker_reply'),
+    makerReplyAt: text('maker_reply_at'),
     metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
     createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
     updatedAt: text('updated_at').default(sql`(datetime('now'))`).notNull(),

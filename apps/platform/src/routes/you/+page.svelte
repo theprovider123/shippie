@@ -13,6 +13,8 @@
     hydrateLauncherMemory,
     launcherMemory,
   } from '$lib/stores/launcher-memory';
+  import { localFeedbackIds } from '$lib/feedback/local-store';
+  import type { UserFeedbackView } from '$lib/feedback/history';
 
   let { data }: { data: PageData } = $props();
 
@@ -52,11 +54,42 @@
     data.makerApps.filter((app) => app.visibilityScope === 'private').length,
   );
 
+  // "Your feedback": signed-in items come from the loader (by user id); items
+  // submitted on this device (incl. while signed out) are fetched by id from
+  // the capability endpoint. Merge, server-authoritative, newest first.
+  let localFeedback = $state<UserFeedbackView[]>([]);
+  const feedbackHistory = $derived.by(() => {
+    const byId = new Map<string, UserFeedbackView>();
+    for (const item of localFeedback) byId.set(item.id, item);
+    for (const item of data.myFeedback) byId.set(item.id, item);
+    return [...byId.values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  });
+
+  function formatFeedbackDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(date);
+  }
+
   onMount(() => {
     hydrateLauncherMemory();
     void refreshCachedSlugs(data.apps.map((app) => app.slug));
     void refreshStorageEstimate();
+    void loadLocalFeedback();
   });
+
+  async function loadLocalFeedback() {
+    const ids = localFeedbackIds();
+    if (ids.length === 0) return;
+    try {
+      const res = await fetch(`/api/feedback/mine?ids=${ids.map(encodeURIComponent).join(',')}`);
+      if (!res.ok) return;
+      const payload = (await res.json()) as { items?: UserFeedbackView[] };
+      localFeedback = Array.isArray(payload.items) ? payload.items : [];
+    } catch {
+      // best-effort — the local entries simply won't refresh
+    }
+  }
 
   async function refreshStorageEstimate() {
     const estimate = await getOfflineStorageEstimate();
@@ -177,6 +210,49 @@
           <div class="account-actions">
             <a href="/auth/login?return_to=%2Fyou">Sign in</a>
           </div>
+        </div>
+      {/if}
+    </section>
+
+    <section class="panel" aria-labelledby="feedback-title">
+      <div class="section-head">
+        <div>
+          <h2 id="feedback-title">Your feedback</h2>
+          <p>
+            {#if feedbackHistory.length > 0}
+              Status and replies on what you sent.
+            {:else if data.user}
+              Feedback you send on any app appears here.
+            {:else}
+              Feedback you send on this device appears here.
+            {/if}
+          </p>
+        </div>
+        <span>{data.user ? 'account' : 'this device'}</span>
+      </div>
+
+      {#if feedbackHistory.length > 0}
+        <div class="feedback-list">
+          {#each feedbackHistory as item (item.id)}
+            <div class="feedback-row">
+              <div class="feedback-main">
+                <div class="feedback-top">
+                  <strong>{item.appName}</strong>
+                  <span class="fb-status tone-{item.tone}">{item.status}</span>
+                </div>
+                {#if item.preview}<p class="feedback-preview">{item.preview}</p>{/if}
+                {#if item.makerReply}
+                  <p class="feedback-reply"><span>Maker reply</span>{item.makerReply}</p>
+                {/if}
+              </div>
+              <time datetime={item.createdAt}>{formatFeedbackDate(item.createdAt)}</time>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="empty-apps">
+          <strong>No feedback yet.</strong>
+          <p>Open any app and tap the feedback button next to Share to send an idea or report a bug.</p>
         </div>
       {/if}
     </section>
@@ -629,5 +705,88 @@
     .maker-entry a {
       flex: 1 1 140px;
     }
+  }
+
+  .feedback-list {
+    display: grid;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+  .feedback-row {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .feedback-row:last-child {
+    border-bottom: 0;
+  }
+  .feedback-main {
+    min-width: 0;
+    display: grid;
+    gap: 0.3rem;
+  }
+  .feedback-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .feedback-top strong {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .fb-status {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border: 1px solid var(--border-light);
+    color: var(--text-light);
+  }
+  .fb-status.tone-open {
+    border-color: var(--sunset);
+    color: var(--sunset);
+  }
+  .fb-status.tone-progress {
+    border-color: var(--warning);
+    color: var(--warning);
+  }
+  .fb-status.tone-done {
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .feedback-preview {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.4;
+  }
+  .feedback-reply {
+    margin: 0.15rem 0 0;
+    padding: 0.4rem 0.6rem;
+    border-left: 2px solid var(--sunset);
+    background: rgba(232, 96, 60, 0.05);
+    color: var(--text-secondary);
+    font-size: var(--small-size);
+    line-height: 1.4;
+  }
+  .feedback-reply span {
+    display: block;
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .feedback-row time {
+    flex-shrink: 0;
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: 11px;
   }
 </style>

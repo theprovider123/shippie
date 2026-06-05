@@ -6,6 +6,7 @@ import { isFirstPartyShowcase } from '$lib/showcase-slugs';
 import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { browsePublic } from '$server/db/queries/apps';
+import { toUserFeedbackView } from '$lib/feedback/history';
 
 const CATALOG_LIMIT = 120;
 
@@ -45,13 +46,14 @@ export const load: PageServerLoad = async ({ parent, platform, setHeaders }) => 
       apps: bundled,
       user,
       makerApps: [],
+      myFeedback: [],
     };
   }
 
   const db = getDrizzleClient(platform.env.DB);
 
   try {
-    const [publicRows, makerApps] = await Promise.all([
+    const [publicRows, makerApps, myFeedbackRows] = await Promise.all([
       browsePublic(db, { limit: CATALOG_LIMIT, offset: 0 }),
       user
         ? db
@@ -71,6 +73,26 @@ export const load: PageServerLoad = async ({ parent, platform, setHeaders }) => 
             .where(and(eq(schema.apps.makerId, user.id), eq(schema.apps.isArchived, false)))
             .orderBy(desc(schema.apps.updatedAt))
         : Promise.resolve([]),
+      user
+        ? db
+            .select({
+              id: schema.feedbackItems.id,
+              appSlug: schema.apps.slug,
+              appName: schema.apps.name,
+              type: schema.feedbackItems.type,
+              title: schema.feedbackItems.title,
+              body: schema.feedbackItems.body,
+              status: schema.feedbackItems.status,
+              makerReply: schema.feedbackItems.makerReply,
+              makerReplyAt: schema.feedbackItems.makerReplyAt,
+              createdAt: schema.feedbackItems.createdAt,
+            })
+            .from(schema.feedbackItems)
+            .innerJoin(schema.apps, eq(schema.apps.id, schema.feedbackItems.appId))
+            .where(eq(schema.feedbackItems.userId, user.id))
+            .orderBy(desc(schema.feedbackItems.createdAt))
+            .limit(30)
+        : Promise.resolve([]),
     ]);
 
     const seen = new Set(publicRows.map((app) => app.slug));
@@ -88,12 +110,14 @@ export const load: PageServerLoad = async ({ parent, platform, setHeaders }) => 
       apps,
       user,
       makerApps,
+      myFeedback: myFeedbackRows.map(toUserFeedbackView),
     };
   } catch {
     return {
       apps: bundled,
       user,
       makerApps: [],
+      myFeedback: [],
     };
   }
 };

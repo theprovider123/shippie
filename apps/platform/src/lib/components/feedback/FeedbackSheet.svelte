@@ -8,6 +8,7 @@
     type FeedbackType,
     type ModerationStatus,
   } from '$lib/feedback/submit';
+  import { recordLocalFeedback } from '$lib/feedback/local-store';
 
   let {
     open = false,
@@ -47,8 +48,18 @@
     if (!canSend) return;
     phase = 'sending';
     error = null;
+    const trimmed = message.trim();
     const result = await submitAppFeedback({ slug: appSlug, type, message });
     if (result.ok) {
+      // Track on-device so the user can see status + maker reply later under
+      // /you — even without an account.
+      recordLocalFeedback({
+        id: result.id,
+        appSlug,
+        type,
+        message: trimmed,
+        createdAt: new Date().toISOString(),
+      });
       ack = feedbackAck(result.status as ModerationStatus);
       phase = 'done';
     } else {

@@ -87,7 +87,7 @@ export async function handleFeedback(ctx: WrapperContext): Promise<Response> {
       .insert(schema.feedbackItems)
       .values({
         appId: app.id,
-        userId: null,
+        userId: ctx.userId ?? null,
         type: body.type,
         status: moderation.status,
         title,

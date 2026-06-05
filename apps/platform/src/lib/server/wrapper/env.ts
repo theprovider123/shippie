@@ -45,4 +45,11 @@ export interface WrapperContext {
   env: WrapperEnv;
   slug: string;
   traceId: string;
+  /**
+   * The signed-in platform user, when the request carries a first-party Lucia
+   * session (e.g. the same-origin Dock feedback submit). Null for anonymous and
+   * cross-origin iframe-SDK calls. Used to link feedback to a user's account
+   * without ever requiring sign-in.
+   */
+  userId?: string | null;
 }

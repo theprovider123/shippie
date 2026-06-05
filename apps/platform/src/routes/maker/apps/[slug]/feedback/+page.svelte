@@ -1,23 +1,37 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import { MAKER_STATUSES, MAX_MAKER_REPLY_LEN, isMakerStatus, makerStatusLabel } from '$lib/feedback/status';
   let { data }: { data: PageData } = $props();
 
+  function isHeld(status: string | null): boolean {
+    return status === 'reviewing' || status === 'spam';
+  }
+  // A held/legacy item defaults the status selector to "open" so a maker
+  // triages it forward rather than re-saving a moderation state.
+  function defaultStatusFor(status: string | null): string {
+    return isMakerStatus(status) ? status : 'open';
+  }
+
   const counts = $derived.by(() => {
-    const c = { open: 0, reviewing: 0, hidden: 0, spam: 0, resolved: 0, other: 0 };
+    const c = { open: 0, planned: 0, fixed: 0, closed: 0, held: 0 };
     for (const item of data.items) {
-      const s = (item.status ?? 'open') as keyof typeof c;
-      if (s in c) c[s]++;
-      else c.other++;
+      const s = item.status ?? 'open';
+      if (s === 'open') c.open++;
+      else if (s === 'planned') c.planned++;
+      else if (s === 'fixed') c.fixed++;
+      else if (s === 'closed') c.closed++;
+      else if (isHeld(s)) c.held++;
     }
     return c;
   });
 
-  let filterStatus = $state<'all' | 'open' | 'reviewing' | 'hidden' | 'spam' | 'resolved'>('all');
-  const filteredItems = $derived(
-    filterStatus === 'all'
-      ? data.items
-      : data.items.filter((item) => (item.status ?? 'open') === filterStatus),
-  );
+  type Filter = 'all' | 'open' | 'planned' | 'fixed' | 'closed' | 'held';
+  let filterStatus = $state<Filter>('all');
+  const filteredItems = $derived.by(() => {
+    if (filterStatus === 'all') return data.items;
+    if (filterStatus === 'held') return data.items.filter((item) => isHeld(item.status));
+    return data.items.filter((item) => (item.status ?? 'open') === filterStatus);
+  });
 
   function buildSdkSnippet(): string {
     return `import { shippie } from '@shippie/sdk';
@@ -52,46 +66,30 @@ shippie.feedback.submit({
     Only you see this — publish individual items later if you want a public roadmap.
   </p>
   <div class="status-summary" aria-label="Status breakdown">
-    <button
-      type="button"
-      class="chip"
-      class:active={filterStatus === 'all'}
-      onclick={() => (filterStatus = 'all')}
-    >
+    <button type="button" class="chip" class:active={filterStatus === 'all'} onclick={() => (filterStatus = 'all')}>
       All <span>{data.items.length}</span>
     </button>
-    <button
-      type="button"
-      class="chip"
-      class:active={filterStatus === 'open'}
-      onclick={() => (filterStatus = 'open')}
-    >
+    <button type="button" class="chip" class:active={filterStatus === 'open'} onclick={() => (filterStatus = 'open')}>
       Open <span>{counts.open}</span>
     </button>
-    {#if counts.reviewing > 0}
+    <button type="button" class="chip" class:active={filterStatus === 'planned'} onclick={() => (filterStatus = 'planned')}>
+      Planned <span>{counts.planned}</span>
+    </button>
+    <button type="button" class="chip" class:active={filterStatus === 'fixed'} onclick={() => (filterStatus = 'fixed')}>
+      Fixed <span>{counts.fixed}</span>
+    </button>
+    <button type="button" class="chip" class:active={filterStatus === 'closed'} onclick={() => (filterStatus = 'closed')}>
+      Closed <span>{counts.closed}</span>
+    </button>
+    {#if counts.held > 0}
       <button
         type="button"
         class="chip flagged"
-        class:active={filterStatus === 'reviewing'}
-        onclick={() => (filterStatus = 'reviewing')}
-        title="Awaiting moderator review. Not public yet."
+        class:active={filterStatus === 'held'}
+        onclick={() => (filterStatus = 'held')}
+        title="Held for moderator review. Not public yet."
       >
-        Awaiting review <span>{counts.reviewing}</span>
-      </button>
-    {/if}
-    {#if counts.spam > 0}
-      <button type="button" class="chip" class:active={filterStatus === 'spam'} onclick={() => (filterStatus = 'spam')}>
-        Spam <span>{counts.spam}</span>
-      </button>
-    {/if}
-    {#if counts.hidden > 0}
-      <button type="button" class="chip" class:active={filterStatus === 'hidden'} onclick={() => (filterStatus = 'hidden')}>
-        Hidden <span>{counts.hidden}</span>
-      </button>
-    {/if}
-    {#if counts.resolved > 0}
-      <button type="button" class="chip" class:active={filterStatus === 'resolved'} onclick={() => (filterStatus = 'resolved')}>
-        Resolved <span>{counts.resolved}</span>
+        Held <span>{counts.held}</span>
       </button>
     {/if}
   </div>
@@ -130,7 +128,7 @@ shippie.feedback.submit({
         <article>
           <div class="row">
             <span>{item.type}</span>
-            <span class:open={item.status === 'open'} class:flagged={item.status === 'reviewing' || item.status === 'spam'}>{item.status}</span>
+            <span class:open={item.status === 'open'} class:flagged={isHeld(item.status)}>{makerStatusLabel(item.status ?? 'open')}</span>
             {#if item.rating}<strong>{item.rating}/5</strong>{/if}
             {#if item.externalUserDisplay}<span class="user">{item.externalUserDisplay}</span>{/if}
           </div>
@@ -141,11 +139,24 @@ shippie.feedback.submit({
               {#each item.metadata.moderation_flags as flag}<span>{flag}</span>{/each}
             </div>
           {/if}
-          <form method="POST" action="?/setStatus" class="item-actions">
+          {#if item.makerReply}
+            <p class="maker-reply"><span>Your reply</span>{item.makerReply}</p>
+          {/if}
+          <form method="POST" action="?/triage" class="triage">
             <input type="hidden" name="id" value={item.id} />
-            <button name="status" value="open" type="submit" disabled={item.status === 'open'}>Reopen</button>
-            <button name="status" value="resolved" type="submit" disabled={item.status === 'resolved'}>Mark resolved</button>
-            <button name="status" value="hidden" type="submit" disabled={item.status === 'hidden'}>Hide</button>
+            <label class="triage-status">
+              <span>Status</span>
+              <select name="status">
+                {#each MAKER_STATUSES as s}
+                  <option value={s} selected={defaultStatusFor(item.status) === s}>{makerStatusLabel(s)}</option>
+                {/each}
+              </select>
+            </label>
+            <label class="triage-reply">
+              <span>Reply to the user</span>
+              <textarea name="reply" rows="2" maxlength={MAX_MAKER_REPLY_LEN} placeholder="Optional — shown in the user’s feedback history">{item.makerReply ?? ''}</textarea>
+            </label>
+            <button type="submit">Save</button>
           </form>
           <small>{item.createdAt} · {item.voteCount} votes</small>
         </article>
@@ -189,28 +200,77 @@ shippie.feedback.submit({
   .row .user { color: var(--text-muted-warm); }
   .flags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.55rem 0 0; }
   .flags span { border: 1px solid rgba(232,197,71,0.38); color: var(--warning); padding: 2px 7px; font-family: ui-monospace, monospace; font-size: 11px; }
-  .item-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-top: 0.65rem;
+  .maker-reply {
+    display: grid;
+    gap: 0.2rem;
+    margin: 0.65rem 0 0;
+    padding: 0.55rem 0.7rem;
+    border-left: 2px solid var(--sunset);
+    background: rgba(232, 96, 60, 0.05);
+    color: var(--ink-soft-warm);
+    font-size: 0.95rem;
   }
-  .item-actions button {
+  .maker-reply span {
+    font-family: ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sunset);
+  }
+  .triage {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: end;
+    margin-top: 0.7rem;
+  }
+  .triage label {
+    display: grid;
+    gap: 0.25rem;
+  }
+  .triage label span {
+    font-family: ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted-warm);
+  }
+  .triage select,
+  .triage textarea {
     min-height: var(--touch-min, 44px);
     border: 1px solid var(--paper-cream);
-    background: transparent;
-    color: var(--sunset);
-    padding: 0 0.65rem;
-    font-family: ui-monospace, monospace;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    cursor: pointer;
+    background: var(--bg);
+    color: inherit;
+    font: inherit;
+    font-size: 14px;
+    padding: 0.4rem 0.55rem;
+    border-radius: 0;
   }
-  .item-actions button:disabled {
-    color: var(--text-muted-warm);
-    cursor: not-allowed;
-    opacity: 0.65;
+  .triage textarea {
+    resize: vertical;
+    line-height: 1.4;
+  }
+  .triage select:focus,
+  .triage textarea:focus {
+    outline: none;
+    border-color: var(--sunset);
+  }
+  .triage button {
+    min-height: var(--touch-min, 44px);
+    padding: 0 1rem;
+    border: 1px solid var(--sunset);
+    background: var(--sunset);
+    color: white;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 0;
+  }
+  @media (max-width: 600px) {
+    .triage {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
   }
   .snippet { margin-top: 1rem; text-align: left; padding: 0.75rem 1rem; border: 1px dashed var(--border-paper-mid); }
   .snippet > summary { cursor: pointer; font-weight: 600; color: var(--sunset); min-height: var(--touch-min, 44px); display: flex; align-items: center; }
