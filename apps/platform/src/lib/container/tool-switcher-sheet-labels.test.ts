@@ -15,4 +15,11 @@ describe('ToolSwitcherSheet labels', () => {
     expect(actions).not.toContain('>Data<');
     expect(actions).not.toContain('>Browse<');
   });
+
+  it('renders rows via the ToolRow primitive, not hardcoded relationship copy', () => {
+    expect(source).toContain('ToolRow');
+    // These drift phrases now come from labels.ts via ToolRow, never inline.
+    expect(source).not.toContain('Running now');
+    expect(source).not.toContain('Saved to Dock');
+  });
 });

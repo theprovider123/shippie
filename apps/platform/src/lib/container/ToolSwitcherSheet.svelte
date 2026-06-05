@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import Sheet from '$lib/components/ui/Sheet.svelte';
+  import { ToolRow, toolState, type ToolTileApp } from '$lib/components/tool-surface';
   import type { RailGroups, RailTool } from './rail-groups';
   import { buildToolSwitcherSections } from './tool-switcher';
 
@@ -16,6 +17,31 @@
     onCloseTool?: (slug: string) => void;
   }
   let { open, groups, allApps, onOpen, onClose, onCloseTool = undefined }: Props = $props();
+
+  const EMPTY_SLUGS: ReadonlySet<string> = new Set();
+  function railToolToTile(tool: RailTool): ToolTileApp {
+    return {
+      slug: tool.slug,
+      name: tool.name,
+      category: tool.category ?? null,
+      iconUrl: null,
+      themeColor: tool.accent,
+      glyph: tool.icon,
+      firstPartySigned: false,
+      badges: [],
+    };
+  }
+  function stateForTool(tool: RailTool, sectionId: string) {
+    return toolState({
+      slug: tool.slug,
+      isRunning: sectionId === 'open',
+      savedSlugs: sectionId === 'saved' ? new Set([tool.slug]) : EMPTY_SLUGS,
+      recentSlugs: sectionId === 'recent' ? new Set([tool.slug]) : EMPTY_SLUGS,
+      download: undefined,
+      updateSeverity: null,
+      surface: 'drawer',
+    });
+  }
 
   let query = $state('');
   const contextCount = $derived(new Set([
@@ -76,40 +102,19 @@
           </div>
           <div class="tool-list">
             {#each section.tools as tool (tool.slug)}
-              <div class="tool-row" class:running={section.id === 'open'}>
-                <a class="tool-open" href={`/dock?app=${encodeURIComponent(tool.slug)}`} onclick={() => pick(tool.slug)}>
-                  <span class="tool-icon" style="background:{tool.accent}">{tool.icon}</span>
-                  <span class="tool-copy">
-                    <strong>{tool.name}</strong>
-                    <small>
-                      {#if section.id === 'open'}
-                        Running now
-                      {:else if section.id === 'saved'}
-                        Saved to Dock
-                      {:else if section.id === 'recent'}
-                        Recent
-                      {:else}
-                        {tool.category ?? 'Tool'}
-                      {/if}
-                    </small>
-                  </span>
-                  {#if section.id === 'open'}
-                    <span class="live-dot" aria-hidden="true"></span>
-                  {/if}
-                </a>
-                {#if section.id === 'open' && onCloseTool}
-                  <a
-                    class="tool-close"
-                    href={`/dock?close=${encodeURIComponent(tool.slug)}`}
-                    aria-label={`Close ${tool.name}`}
-                    title="Close"
-                    onclick={() => {
-                      closeRunning(tool.slug);
-                      onClose();
-                    }}
-                  >×</a>
-                {/if}
-              </div>
+              <ToolRow
+                app={railToolToTile(tool)}
+                state={stateForTool(tool, section.id)}
+                current={section.id === 'open'}
+                hideRelationship
+                caption={section.id !== 'open' && section.id !== 'saved' && section.id !== 'recent'
+                  ? (tool.category ?? 'Tool')
+                  : ''}
+                onOpen={() => pick(tool.slug)}
+                onClose={section.id === 'open' && onCloseTool
+                  ? () => { closeRunning(tool.slug); onClose(); }
+                  : undefined}
+              />
             {/each}
           </div>
           {#if section.hidden > 0}
@@ -229,100 +234,11 @@
     font-family: var(--font-mono);
     font-size: 0.72rem;
   }
+  /* The rows are ToolRow primitives now; this list just frames the group. */
   .tool-list {
     display: grid;
     border: 1px solid var(--border-light);
     background: var(--surface);
-  }
-  .tool-row {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border-light);
-  }
-  .tool-row:last-child { border-bottom: 0; }
-  .tool-row.running {
-    box-shadow: inset 3px 0 0 var(--sunset);
-  }
-  .tool-open {
-    min-width: 0;
-    min-height: 64px;
-    border: 0;
-    background: transparent;
-    color: var(--text);
-    display: grid;
-    grid-template-columns: 52px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    text-align: left;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .tool-open:hover,
-  .tool-open:focus-visible {
-    background: var(--surface-alt);
-    outline: none;
-  }
-  .tool-icon {
-    width: 52px;
-    height: 52px;
-    display: grid;
-    place-items: center;
-    color: var(--bg);
-    font-family: var(--font-heading);
-    font-size: 1rem;
-    font-weight: 700;
-  }
-  .tool-copy {
-    min-width: 0;
-    display: grid;
-    gap: 2px;
-  }
-  .tool-copy strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-heading);
-    font-size: 1rem;
-    line-height: 1.2;
-  }
-  .tool-copy small {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text-light);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-  }
-  .live-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--success-soft);
-  }
-  .tool-close {
-    display: grid;
-    place-items: center;
-    width: 52px;
-    min-height: 64px;
-    border: 0;
-    border-left: 1px solid var(--border-light);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .tool-close:hover,
-  .tool-close:focus-visible {
-    color: var(--sunset);
-    background: rgba(232, 96, 60, 0.08);
-    outline: none;
   }
   .section-more {
     margin: 2px 0 0;
