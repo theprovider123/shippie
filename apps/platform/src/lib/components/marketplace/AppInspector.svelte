@@ -1,4 +1,12 @@
 <script lang="ts">
+  /**
+   * AppInspector — tool details. Renders inside the canonical Sheet
+   * primitive (bottom sheet on mobile, centered modal on tablet+), so it
+   * inherits focus-trap, aria-modal, Escape, swipe-down, browser-back
+   * dismiss, and reference-counted scroll-lock instead of rolling its own
+   * (it used to duplicate ~140 lines of scrim/drag/lock with no a11y).
+   */
+  import Sheet from '$lib/components/ui/Sheet.svelte';
   import IconOrMonogram from './IconOrMonogram.svelte';
   import CapabilityBadges from './CapabilityBadges.svelte';
   import { toast } from '$lib/stores/toast';
@@ -13,10 +21,6 @@
   import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
   import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
   import { connectionBadgesFromKind } from '$lib/marketplace/connection-badges';
-  import {
-    isHorizontalDrawerGesture,
-    shouldDismissDrawer,
-  } from '$lib/utils/drawer-dismiss';
 
   interface InspectorApp {
     slug: string;
@@ -44,14 +48,6 @@
   let { app, pinned = false, onClose = undefined }: Props = $props();
   let copyState = $state<'idle' | 'copied' | 'error'>('idle');
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
-  let inspectorEl: HTMLElement | null = $state(null);
-  let dragPointerId: number | null = null;
-  let dragStartX = 0;
-  let dragStartY = 0;
-  let dragStartTime = 0;
-  let dragFromChrome = false;
-  let dragY = $state(0);
-  let dragging = $state(false);
 
   const blurb = $derived(app ? app.tagline ?? app.description ?? `${app.name} on Shippie` : '');
   const typeLabel = $derived(app ? (app.type.toLowerCase() === 'app' ? 'tool' : app.type) : '');
@@ -71,7 +67,6 @@
     if (!app || !offlineHealth) return '';
     return offlineHealth.label;
   });
-  const inspectorTransform = $derived(dragY > 0 ? `translate3d(0, ${dragY}px, 0)` : undefined);
   const dataLabel = $derived.by(() => {
     if (!app?.kind) return 'Not scanned yet';
     if (app.kind === 'local') return 'No external connections detected';
@@ -130,128 +125,14 @@
     }
   }
 
-  function isMobileInspector() {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 640px)').matches;
-  }
-
   function closeInspector() {
     onClose?.();
   }
-
-  function onInspectorPointerDown(event: PointerEvent) {
-    if (!app || !inspectorEl || !isMobileInspector()) return;
-    const target = event.target instanceof HTMLElement ? event.target : null;
-    if (!target) return;
-    const rect = inspectorEl.getBoundingClientRect();
-    const inHeaderZone = event.clientY - rect.top <= 96;
-    const onGrip = Boolean(target.closest('.grab'));
-    const fromChrome = onGrip || inHeaderZone;
-    const atScrollTop = inspectorEl.scrollTop <= 1;
-    if (!fromChrome && !atScrollTop) return;
-    dragPointerId = event.pointerId;
-    dragStartX = event.clientX;
-    dragStartY = event.clientY;
-    dragStartTime = performance.now();
-    dragFromChrome = fromChrome || atScrollTop;
-    dragY = 0;
-    dragging = false;
-  }
-
-  function onInspectorPointerMove(event: PointerEvent) {
-    if (dragPointerId !== event.pointerId) return;
-    const dx = event.clientX - dragStartX;
-    const dy = event.clientY - dragStartY;
-    if (isHorizontalDrawerGesture(dx, dy) || dy < -12) {
-      dragPointerId = null;
-      dragFromChrome = false;
-      dragging = false;
-      dragY = 0;
-      return;
-    }
-    if (dy <= 0) return;
-    if (!dragFromChrome && inspectorEl && inspectorEl.scrollTop > 1) return;
-    if (!dragging) {
-      if (dy < 4) return;
-      dragging = true;
-      inspectorEl?.setPointerCapture?.(event.pointerId);
-    }
-    dragY = Math.max(0, dy);
-    if (dragY > 0) event.preventDefault();
-  }
-
-  function onInspectorPointerUp(event: PointerEvent) {
-    if (dragPointerId !== event.pointerId) return;
-    const dy = Math.max(0, event.clientY - dragStartY);
-    const elapsed = Math.max(1, performance.now() - dragStartTime);
-    const shouldDismiss = dragging && shouldDismissDrawer(dy, elapsed);
-    dragPointerId = null;
-    dragFromChrome = false;
-    dragging = false;
-    inspectorEl?.releasePointerCapture?.(event.pointerId);
-    dragY = 0;
-    if (shouldDismiss) closeInspector();
-  }
-
-  function lockBody() {
-    if (typeof window === 'undefined') return;
-    const w = window as unknown as { __shippieSheetLockCount?: number };
-    const count = (w.__shippieSheetLockCount ?? 0) + 1;
-    w.__shippieSheetLockCount = count;
-    if (count !== 1) return;
-    const scrollY = window.scrollY;
-    document.body.dataset.shippieSheetScrollY = String(scrollY);
-    document.body.dataset.shippieSheetOverflow = document.body.style.overflow;
-    document.body.dataset.shippieSheetPosition = document.body.style.position;
-    document.body.dataset.shippieSheetTop = document.body.style.top;
-    document.body.dataset.shippieSheetWidth = document.body.style.width;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-  }
-
-  function unlockBody() {
-    if (typeof window === 'undefined') return;
-    const w = window as unknown as { __shippieSheetLockCount?: number };
-    const count = Math.max(0, (w.__shippieSheetLockCount ?? 0) - 1);
-    w.__shippieSheetLockCount = count;
-    if (count !== 0) return;
-    const scrollY = Number(document.body.dataset.shippieSheetScrollY ?? '0');
-    document.body.style.overflow = document.body.dataset.shippieSheetOverflow ?? '';
-    document.body.style.position = document.body.dataset.shippieSheetPosition ?? '';
-    document.body.style.top = document.body.dataset.shippieSheetTop ?? '';
-    document.body.style.width = document.body.dataset.shippieSheetWidth ?? '';
-    delete document.body.dataset.shippieSheetScrollY;
-    delete document.body.dataset.shippieSheetOverflow;
-    delete document.body.dataset.shippieSheetPosition;
-    delete document.body.dataset.shippieSheetTop;
-    delete document.body.dataset.shippieSheetWidth;
-    window.scrollTo(0, scrollY);
-  }
-
-  $effect(() => {
-    if (!app || typeof window === 'undefined') return;
-    lockBody();
-    return unlockBody;
-  });
 </script>
 
-{#if app}
-  <div class="scrim" role="presentation" onclick={closeInspector}></div>
-  <aside
-    bind:this={inspectorEl}
-    class="inspector"
-    class:dragging
-    aria-label={`${app.name} details`}
-    style:transform={inspectorTransform}
-    onpointerdown={onInspectorPointerDown}
-    onpointermove={onInspectorPointerMove}
-    onpointerup={onInspectorPointerUp}
-    onpointercancel={onInspectorPointerUp}
-  >
-    <div class="grab" aria-hidden="true"></div>
-    <header>
+<Sheet open={!!app} onClose={closeInspector} label={app ? `${app.name} details` : 'Tool details'}>
+  {#if app}
+    <header class="inspector-header">
       <button type="button" class="close" onclick={closeInspector} aria-label="Close details">×</button>
       <IconOrMonogram
         name={app.name}
@@ -332,51 +213,12 @@
         <CapabilityBadges badges={app.badges ?? []} max={6} />
       </section>
     {/if}
-  </aside>
-{/if}
+  {/if}
+</Sheet>
 
 <style>
-  .scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 210;
-    background: rgba(10, 9, 7, 0.58);
-    animation: scrim-in 0.16s var(--ease-out);
-    touch-action: none;
-  }
-  .inspector {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 211;
-    width: min(440px, 100vw);
-    overflow: auto;
-    border-left: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text);
-    padding: var(--space-xl) var(--space-xl) calc(var(--space-xl) + var(--safe-bottom));
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-    animation: inspect-in 0.18s var(--ease-out);
-    overscroll-behavior: contain;
-    transition: transform 140ms var(--ease-out);
-    touch-action: pan-y;
-  }
-  .inspector.dragging {
-    animation: none;
-    transition: none;
-  }
-  .grab {
-    display: none;
-    width: 36px;
-    height: 4px;
-    margin: 0 auto 2px;
-    background: var(--border);
-    border-radius: 2px;
-  }
-  header {
+  .inspector-header {
+    position: relative;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: var(--space-md);
@@ -385,8 +227,8 @@
   }
   .close {
     position: absolute;
-    top: var(--space-md);
-    right: var(--space-md);
+    top: 0;
+    right: 0;
     width: var(--touch-min);
     height: var(--touch-min);
     display: grid;
@@ -547,43 +389,10 @@
     border-color: rgba(232, 197, 71, 0.42);
     background: rgba(232, 197, 71, 0.08);
   }
-  @keyframes inspect-in {
-    from { transform: translateX(16px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  @keyframes scrim-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
   @media (max-width: 640px) {
-    .inspector {
-      top: auto;
-      left: 0;
-      right: 0;
-      width: 100vw;
-      max-height: 92dvh;
-      border-left: 0;
-      border-top: 1px solid var(--border);
-      padding: var(--space-lg) var(--space-lg) calc(var(--space-lg) + var(--safe-bottom));
-      animation-name: inspect-rise;
-    }
-    .grab {
-      display: block;
-      flex: 0 0 auto;
-    }
     .actions,
     .facts {
       grid-template-columns: 1fr 1fr;
-    }
-  }
-  @keyframes inspect-rise {
-    from { transform: translateY(20px); opacity: 0.6; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .inspector,
-    .scrim {
-      animation: none;
     }
   }
 </style>
