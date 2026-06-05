@@ -50,8 +50,13 @@
     <div class="actions">
       <button class="primary" onclick={retry}>Retry</button>
       <button class="ghost" onclick={repairShell}>Repair Shippie</button>
-      <a class="ghost" href="/">Go home</a>
     </div>
+
+    <nav class="route-out" aria-label="Go to">
+      <a href="/dock">Dock</a>
+      <a href="/tools">Tools</a>
+      <a href="/you">You</a>
+    </nav>
   </div>
 </div>
 
@@ -142,5 +147,26 @@
   .ghost:hover {
     border-color: #5E7B5C;
     color: #A8C491;
+  }
+
+  /* Consistent Dock · Tools · You route-out, so an error never strands you. */
+  .route-out {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #2A241F;
+  }
+  .route-out a {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #B8A88F;
+    text-decoration: none;
+  }
+  .route-out a:hover {
+    color: #E8603C;
   }
 </style>

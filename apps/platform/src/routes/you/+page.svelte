@@ -257,9 +257,12 @@
       {/if}
     </section>
 
-    <section class="panel" aria-labelledby="device-title">
+    <section class="panel" aria-labelledby="data-title">
       <div class="section-head">
-        <h2 id="device-title">This Device</h2>
+        <div>
+          <h2 id="data-title">Your data</h2>
+          <p>Everything you save stays on this device unless you back it up.</p>
+        </div>
         <span>{storagePinned ? 'protected' : 'local first'}</span>
       </div>
       <div class="device-grid">
@@ -274,8 +277,30 @@
           <small>{storagePinned ? 'Browser should keep saved tools.' : 'Ask the browser to protect saved tools.'}</small>
         </div>
       </div>
+
+      {#if offlineAttentionRows.length > 0}
+        <div class="repair-block">
+          <p class="repair-head">
+            {offlineAttentionRows.length} saved {offlineAttentionRows.length === 1 ? 'app needs' : 'apps need'} attention
+          </p>
+          <div class="repair-list">
+            {#each offlineAttentionRows.slice(0, 5) as row (row.app.slug)}
+              <div class="repair-row">
+                <div>
+                  <strong>{row.app.name}</strong>
+                  <p>{row.health.label}</p>
+                </div>
+                {#if row.health.actionable}
+                  <button type="button" onclick={() => repairOfflineCopy(row.app)}>Repair</button>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
       <div class="data-actions">
-        <a href="/dock?section=data" class="secondary-action">Manage data</a>
+        <a href="/dock?section=data" class="secondary-action primary-action">Manage data →</a>
         <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
           {storagePinned ? 'Storage protected' : storagePinning ? 'Protecting storage' : 'Protect offline storage'}
         </button>
@@ -284,28 +309,6 @@
         </button>
       </div>
     </section>
-
-    {#if offlineAttentionRows.length > 0}
-      <section class="panel" aria-labelledby="offline-title">
-        <div class="section-head">
-          <h2 id="offline-title">Offline Repair</h2>
-          <span>{offlineAttentionRows.length} need attention</span>
-        </div>
-        <div class="repair-list">
-          {#each offlineAttentionRows.slice(0, 5) as row (row.app.slug)}
-            <div class="repair-row">
-              <div>
-                <strong>{row.app.name}</strong>
-                <p>{row.health.label}</p>
-              </div>
-              {#if row.health.actionable}
-                <button type="button" onclick={() => repairOfflineCopy(row.app)}>Repair</button>
-              {/if}
-            </div>
-          {/each}
-        </div>
-      </section>
-    {/if}
 
     <section class="panel" aria-labelledby="privacy-title">
       <div class="section-head">
@@ -598,6 +601,8 @@
 
   .repair-list {
     display: grid;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
   }
 
   .repair-row {
@@ -607,6 +612,24 @@
 
   .repair-row:last-child {
     border-bottom: 0;
+  }
+
+  .repair-block {
+    margin-top: var(--space-md);
+  }
+
+  .repair-head {
+    margin: 0 0 var(--space-sm);
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .primary-action {
+    border-color: var(--sunset);
+    color: var(--sunset);
   }
 
   .trust-band {
