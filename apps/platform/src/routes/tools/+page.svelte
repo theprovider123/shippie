@@ -3,8 +3,10 @@
   import type { PageProps } from './$types';
   import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
   import {
-    ToolTile,
+    ToolCard,
+    ToolRow,
     launcherAppToToolTile,
+    toolState,
   } from '$lib/components/tool-surface';
   import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
   import { displayCategory } from '$lib/marketplace/display-text';
@@ -12,16 +14,19 @@
   // Randomiser hero retired from the home page — too prominent + the
   // wheel mostly read empty for first-visit users. Lives at /today
   // (or wherever a "your other apps" surface lands later) instead.
-  import { refreshCachedSlugs } from '$lib/stores/cached-slugs';
+  import { refreshCachedSlugs, ensureAppOffline, offlineStatuses } from '$lib/stores/cached-slugs';
   import {
     hydrateLauncherMemory,
     launcherMemory,
-    toggleSavedApp,
+    saveAppToDock,
   } from '$lib/stores/launcher-memory';
   import { startCatalogSync } from '$lib/client/catalog-sync';
 
   let { data }: PageProps = $props();
   let selectedSlug = $state<string | null>(null);
+  // Below this width Tools browses as a row list, not a card grid (spec §7).
+  let viewportWidth = $state(1280);
+  const useRows = $derived(viewportWidth <= 768);
 
   type LauncherApp = (typeof data.apps)[number];
 
@@ -29,6 +34,30 @@
   const selectedApp = $derived(selectedSlug ? (appBySlug.get(selectedSlug) ?? null) : null);
   const filtered = $derived(Boolean(data.query || data.categoryFilter || data.remixableFilter));
   const savedSet = $derived.by(() => new Set($launcherMemory.saved));
+  const EMPTY_SLUGS: ReadonlySet<string> = new Set();
+
+  // Dynamic per-tool state for the browse surface. Tools is catalog/saved
+  // only — no running/recent/update axis here — so the selector drives
+  // just the save (+) / repair (↻) affordance and hides remove.
+  function stateFor(app: LauncherApp) {
+    return toolState({
+      slug: app.slug,
+      isRunning: false,
+      savedSlugs: savedSet,
+      recentSlugs: EMPTY_SLUGS,
+      download: $offlineStatuses[app.slug]?.state,
+      updateSeverity: null,
+      surface: 'tools',
+    });
+  }
+
+  // Save = add to Dock AND make available offline (spec §3.4). Never a
+  // toggle: on the repair case the tool is already saved, so toggling
+  // would unsave it — we re-ensure the offline copy instead.
+  async function saveApp(app: LauncherApp) {
+    if (!savedSet.has(app.slug)) saveAppToDock(app.slug);
+    await ensureAppOffline(app.slug);
+  }
   const fallbackApps = $derived.by(() =>
     filtered && data.apps.length === 0 && data.query
       ? suggestApps(data.query, data.suggestionPool ?? [], 4)
@@ -125,10 +154,10 @@
 
 <svelte:head>
   <title>Tools — Shippie</title>
-  <meta name="description" content="Search, browse, and save local tools on Shippie. Launch and resume saved tools from Dock." />
+  <meta name="description" content="Search and browse local tools on Shippie." />
 </svelte:head>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} bind:innerWidth={viewportWidth} />
 
 <div class="page">
   <header class="head wrap">
@@ -137,7 +166,7 @@
         <p class="eyebrow">Browse</p>
         <h1 class="title">Tools</h1>
         <p class="lede">
-          Browse, open, and save local tools. Dock is for launching what you already use.
+          Search and browse the local tools you can run on this device.
         </p>
       </div>
       <div class="head-tools">
@@ -202,19 +231,28 @@
         </span>
       </div>
       {#if data.apps.length > 0}
-        <ul class="launcher-grid compact-grid" role="list">
+        <ul class="launcher-grid" class:compact-grid={!useRows} class:row-list={useRows} role="list">
           {#each data.apps as app (app.slug)}
             <li>
-              <ToolTile
-                app={launcherAppToToolTile(app)}
-                density="card"
-                href={runHref(app.slug)}
-                intent="launch"
-                pinned={savedSet.has(app.slug)}
-                onInspect={() => inspectApp(app)}
-                onTogglePin={toggleSavedApp}
-                showCopyAction={false}
-              />
+              {#if useRows}
+                <ToolRow
+                  app={launcherAppToToolTile(app)}
+                  state={stateFor(app)}
+                  href={runHref(app.slug)}
+                  intent="launch"
+                  onSave={() => saveApp(app)}
+                  onInfo={() => inspectApp(app)}
+                />
+              {:else}
+                <ToolCard
+                  app={launcherAppToToolTile(app)}
+                  state={stateFor(app)}
+                  href={runHref(app.slug)}
+                  intent="launch"
+                  onSave={() => saveApp(app)}
+                  onInfo={() => inspectApp(app)}
+                />
+              {/if}
             </li>
           {/each}
         </ul>
@@ -230,19 +268,28 @@
             <a class="empty-clear" href={pageHref('', 1, data.categoryFilter, false)}>clear search →</a>
           </p>
           {#if fallbackApps.length > 0}
-            <ul class="launcher-grid compact-grid" role="list">
+            <ul class="launcher-grid" class:compact-grid={!useRows} class:row-list={useRows} role="list">
               {#each fallbackApps as app (app.slug)}
                 <li>
-                  <ToolTile
-                    app={launcherAppToToolTile(app)}
-                    density="card"
-                    href={runHref(app.slug)}
-                    intent="launch"
-                    pinned={savedSet.has(app.slug)}
-                    onInspect={() => inspectApp(app)}
-                    onTogglePin={toggleSavedApp}
-                    showCopyAction={false}
-                  />
+                  {#if useRows}
+                    <ToolRow
+                      app={launcherAppToToolTile(app)}
+                      state={stateFor(app)}
+                      href={runHref(app.slug)}
+                      intent="launch"
+                      onSave={() => saveApp(app)}
+                      onInfo={() => inspectApp(app)}
+                    />
+                  {:else}
+                    <ToolCard
+                      app={launcherAppToToolTile(app)}
+                      state={stateFor(app)}
+                      href={runHref(app.slug)}
+                      intent="launch"
+                      onSave={() => saveApp(app)}
+                      onInfo={() => inspectApp(app)}
+                    />
+                  {/if}
                 </li>
               {/each}
             </ul>
@@ -291,8 +338,15 @@
     padding-bottom: max(var(--space-3xl), env(safe-area-inset-bottom, 0px));
   }
   .head {
+    padding-top: clamp(0.5rem, 1.4vw, var(--space-sm));
     padding-bottom: clamp(1rem, 2.1vw, var(--space-lg));
     border-bottom: 1px solid var(--border-light);
+    /* Sticky so search + category chips stay reachable while the grid
+       scrolls (spec §7). Opaque background prevents content bleed. */
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg, var(--bg-pure));
   }
   .head-grid {
     display: grid;
@@ -419,6 +473,14 @@
   .compact-grid {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
   }
+  /* Mobile (≤768): browse as a single-column row list, not cards. The
+     ToolRows own their height + dividers, so the list just stacks them. */
+  .row-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+    border-top: 1px solid var(--border-light);
+  }
+  .row-list li { min-width: 0; }
   .pager {
     margin-top: var(--space-2xl);
     display: flex;
@@ -446,7 +508,7 @@
       justify-content: flex-start;
     }
   }
-  @media (max-width: 640px) {
+  @media (max-width: 768px) {
     .section-head {
       align-items: baseline;
       flex-direction: row;
