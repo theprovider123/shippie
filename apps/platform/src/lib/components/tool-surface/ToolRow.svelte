@@ -29,8 +29,10 @@
     intent?: 'launch' | 'details';
     /** Drawer "current tool" highlight. */
     current?: boolean;
-    /** Optional secondary text (last opened, size). Shown when relationship has no label. */
+    /** Optional secondary text (last opened, size). Takes precedence over the relationship label. */
     caption?: string;
+    /** Sectioned surfaces (Dock) already label the group, so suppress the inline relationship label. */
+    hideRelationship?: boolean;
     onOpen?: (app: ToolDisplay) => void;
     onSave?: (app: ToolDisplay) => void;
     onInfo?: (app: ToolDisplay) => void;
@@ -46,6 +48,7 @@
     intent = 'launch',
     current = false,
     caption = '',
+    hideRelationship = false,
     onOpen,
     onSave,
     onInfo,
@@ -58,11 +61,15 @@
   const launchHref = $derived(href ?? `/run/${encodeURIComponent(app.slug)}`);
 
   const relLabel = $derived(relationshipLabel(state.relationship));
+  const showRel = $derived(!hideRelationship && relLabel !== '');
   const updateLabel = $derived(updateChipLabel(state.updateState));
   const saveLabel = $derived(saveActionLabel(state.offlineState));
   const isRepair = $derived(state.offlineState === 'needs-refresh' || state.offlineState === 'failed');
   const offlineReady = $derived(state.offlineState === 'ready');
   const isSaving = $derived(state.offlineState === 'saving');
+  // Show the secondary line only when it has content, so name-only rows stay centered.
+  const showCaption = $derived(!showRel && caption !== '');
+  const hasStatus = $derived(showRel || isSaving || showCaption);
 
   // Render a button only when applicable AND the surface wired a handler.
   const showReview = $derived(state.actions.review && !!onReview);
@@ -89,6 +96,34 @@
   }
 </script>
 
+{#snippet rowInner()}
+  <span class="row-icon">
+    <IconOrMonogram
+      name={app.name}
+      slug={app.slug}
+      iconUrl={app.iconUrl ?? null}
+      themeColor={app.themeColor}
+      size={44}
+    />
+    {#if app.firstPartySigned}
+      <span class="dot dot-signed" aria-hidden="true" title="Shippie-signed"></span>
+    {/if}
+    {#if offlineReady}
+      <span class="dot dot-offline" aria-hidden="true" title="Saved offline"></span>
+    {/if}
+  </span>
+  <span class="row-body">
+    <span class="row-name">{safeName}</span>
+    {#if hasStatus}
+      <span class="row-status">
+        {#if showRel}<span class="row-rel">{relLabel}</span>{/if}
+        {#if isSaving}<span class="chip chip-saving">Saving</span>{/if}
+        {#if showCaption}<span class="row-caption">{caption}</span>{/if}
+      </span>
+    {/if}
+  </span>
+{/snippet}
+
 <div class="row" class:current>
   {#if href}
     <a
@@ -102,55 +137,11 @@
       data-sveltekit-preload-data="hover"
       aria-label={`Open ${safeName}`}
     >
-      <span class="row-icon">
-        <IconOrMonogram
-          name={app.name}
-          slug={app.slug}
-          iconUrl={app.iconUrl ?? null}
-          themeColor={app.themeColor}
-          size={44}
-        />
-        {#if app.firstPartySigned}
-          <span class="dot dot-signed" aria-hidden="true" title="Shippie-signed"></span>
-        {/if}
-        {#if offlineReady}
-          <span class="dot dot-offline" aria-hidden="true" title="Saved offline"></span>
-        {/if}
-      </span>
-      <span class="row-body">
-        <span class="row-name">{safeName}</span>
-        <span class="row-status">
-          {#if relLabel}<span class="row-rel">{relLabel}</span>{/if}
-          {#if isSaving}<span class="chip chip-saving">Saving</span>{/if}
-          {#if !relLabel && caption}<span class="row-caption">{caption}</span>{/if}
-        </span>
-      </span>
+      {@render rowInner()}
     </a>
   {:else}
     <button class="row-open" type="button" onclick={launch.launchAndRemember} aria-label={`Open ${safeName}`}>
-      <span class="row-icon">
-        <IconOrMonogram
-          name={app.name}
-          slug={app.slug}
-          iconUrl={app.iconUrl ?? null}
-          themeColor={app.themeColor}
-          size={44}
-        />
-        {#if app.firstPartySigned}
-          <span class="dot dot-signed" aria-hidden="true" title="Shippie-signed"></span>
-        {/if}
-        {#if offlineReady}
-          <span class="dot dot-offline" aria-hidden="true" title="Saved offline"></span>
-        {/if}
-      </span>
-      <span class="row-body">
-        <span class="row-name">{safeName}</span>
-        <span class="row-status">
-          {#if relLabel}<span class="row-rel">{relLabel}</span>{/if}
-          {#if isSaving}<span class="chip chip-saving">Saving</span>{/if}
-          {#if !relLabel && caption}<span class="row-caption">{caption}</span>{/if}
-        </span>
-      </span>
+      {@render rowInner()}
     </button>
   {/if}
 

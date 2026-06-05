@@ -16,9 +16,9 @@
   import InsightStrip from '$lib/container/InsightStrip.svelte';
   import Sheet from '$lib/components/ui/Sheet.svelte';
   import {
-    ToolTile,
+    ToolRow,
+    toolState,
     type ToolTileApp,
-    type ToolRuntimeState,
   } from '$lib/components/tool-surface';
   import type { UpdateCard } from '$lib/container/state';
   import type { RailGroups, RailTool } from '$lib/container/rail-groups';
@@ -59,9 +59,6 @@
     onAcceptUpdate,
     onAcceptAllUpdates,
   }: Props = $props();
-  function sectionRuntimeState(_section: 'open' | 'saved' | 'recent'): ToolRuntimeState {
-    return 'idle';
-  }
 
   let updateSheetOpen = $state(false);
   const counts = $derived(updateCounts(updateCards));
@@ -117,11 +114,21 @@
     };
   }
 
-  function captionFor(label: string, category: string | undefined): string {
-    if (label === 'Running') return 'Open now';
-    if (label === 'Saved') return 'Saved';
-    if (label === 'Recent') return 'Recent';
-    return category ?? 'Tool';
+  const EMPTY_SLUGS: ReadonlySet<string> = new Set();
+  // Per-section dynamic state for the dock rows. The section is known, so
+  // membership is trivial: a Running row is running, a Saved row is saved.
+  // The selector then yields the right actions (close / remove / review).
+  function stateForTool(tool: RailTool, sectionId: 'open' | 'recent' | 'saved') {
+    const card = updateCardForTool(tool);
+    return toolState({
+      slug: tool.slug,
+      isRunning: sectionId === 'open',
+      savedSlugs: sectionId === 'saved' ? new Set([tool.slug]) : EMPTY_SLUGS,
+      recentSlugs: sectionId === 'recent' ? new Set([tool.slug]) : EMPTY_SLUGS,
+      download: undefined,
+      updateSeverity: card ? updateSeverity(card) : null,
+      surface: 'dock',
+    });
   }
 </script>
 
@@ -176,56 +183,32 @@
 {/if}
 <div class="dock-sections">
   {#if dockGroups.open.length > 0}
-    {@render DockSection({
-      label: 'Running',
-      tools: dockGroups.open,
-      state: sectionRuntimeState('open'),
-      action: onCloseTool,
-      actionLabel: (tool) => `Close ${tool.name}`,
-      actionTitle: 'Close running tool',
-    })}
+    {@render DockSection({ label: 'Running', sectionId: 'open', tools: dockGroups.open })}
   {/if}
   {#if dockGroups.recent.length > 0}
-    {@render DockSection({
-      label: 'Recent',
-      tools: dockGroups.recent,
-      state: sectionRuntimeState('recent'),
-    })}
+    {@render DockSection({ label: 'Recent', sectionId: 'recent', tools: dockGroups.recent })}
   {/if}
   {#if dockGroups.saved.length > 0}
-    {@render DockSection({
-      label: 'Saved',
-      tools: dockGroups.saved,
-      state: sectionRuntimeState('saved'),
-      action: onRemoveSavedTool,
-      actionLabel: (tool) => `Remove ${tool.name} from Dock`,
-      actionTitle: 'Remove from Dock',
-    })}
+    {@render DockSection({ label: 'Saved', sectionId: 'saved', tools: dockGroups.saved })}
   {/if}
 </div>
 {#snippet DockSection({
   label,
+  sectionId,
   tools,
-  state,
-  action,
-  actionLabel,
-  actionTitle,
 }: {
   label: string;
+  sectionId: 'open' | 'recent' | 'saved';
   tools: readonly RailTool[];
-  state: ToolRuntimeState;
-  action?: (slug: string) => void;
-  actionLabel?: (tool: RailTool) => string;
-  actionTitle?: string;
 })}
   <section class="dock-section">
     <div class="dock-section-head">
       <div>
         <h3>{label}</h3>
         <p>
-          {#if label === 'Running'}
+          {#if sectionId === 'open'}
             Still open in the background.
-          {:else if label === 'Saved'}
+          {:else if sectionId === 'saved'}
             Ready here and offline.
           {:else}
             Opened on this device.
@@ -235,39 +218,15 @@
     </div>
     <div class="dock-row-list">
       {#each tools as tool (tool.slug)}
-        {@const updateCard = updateCardForTool(tool)}
-        <div class="dock-tool-row" class:with-close={action}>
-          <ToolTile
-            app={railToolToTile(tool)}
-            density="drawer"
-            runtimeState={state}
-            captionLabel={captionFor(label, tool.category)}
-            noActions
-            onOpen={() => onOpenTool(tool.slug)}
-          />
-          {#if updateCard}
-            <button
-              type="button"
-              class="dock-row-update-chip"
-              class:attention={updateSeverity(updateCard) === 'attention'}
-              onclick={openUpdates}
-              aria-label={`Review update for ${tool.name}`}
-            >
-              {updateSeverity(updateCard) === 'attention' ? 'Review' : 'Update'}
-            </button>
-          {/if}
-          {#if action}
-            <button
-              class="dock-row-close"
-              type="button"
-              aria-label={actionLabel?.(tool) ?? `Remove ${tool.name}`}
-              title={actionTitle}
-              onclick={() => action(tool.slug)}
-            >
-              ×
-            </button>
-          {/if}
-        </div>
+        <ToolRow
+          app={railToolToTile(tool)}
+          state={stateForTool(tool, sectionId)}
+          hideRelationship
+          onOpen={() => onOpenTool(tool.slug)}
+          onReview={() => openUpdates()}
+          onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
+          onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
+        />
       {/each}
     </div>
   </section>
@@ -385,69 +344,14 @@
     color: var(--text-secondary);
     font-size: 0.86rem;
   }
+  /* Dock rows are now ToolRow primitives — they own their height,
+     dividers, actions, and the Review/Update chip. The list just frames
+     the group; the rows divide themselves with their own border-bottom. */
   .dock-row-list {
-    --dock-tool-row-height: 64px;
     display: grid;
-    gap: 6px;
-  }
-  .dock-tool-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: stretch;
-    min-height: var(--dock-tool-row-height);
-    background: var(--surface);
+    gap: 0;
     border: 1px solid var(--border-light);
-  }
-  .dock-tool-row :global(.tile-drawer) {
-    min-height: var(--dock-tool-row-height);
-    border: 0;
-    background: transparent;
-  }
-  .dock-tool-row :global(.chip) {
-    display: none;
-  }
-  .dock-row-update-chip {
-    align-self: center;
-    min-height: 32px;
-    margin-right: 8px;
-    padding: 0 0.65rem;
-    border: 1px solid color-mix(in srgb, var(--sage-leaf) 45%, var(--border-light));
-    background: color-mix(in srgb, var(--sage-leaf) 9%, transparent);
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-  .dock-row-update-chip:hover,
-  .dock-row-update-chip:focus-visible {
-    color: var(--text);
-    border-color: var(--sage-leaf);
-    outline: none;
-  }
-  .dock-row-update-chip.attention {
-    color: var(--sunset);
-    border-color: color-mix(in srgb, var(--sunset) 60%, var(--border-light));
-    background: color-mix(in srgb, var(--sunset) 8%, transparent);
-  }
-  .dock-row-close {
-    display: grid;
-    place-items: center;
-    width: 52px;
-    min-height: 100%;
-    border: 0;
-    border-left: 1px solid var(--border-light);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .dock-row-close:hover,
-  .dock-row-close:focus-visible {
-    color: var(--sunset);
-    background: rgba(232, 96, 60, 0.08);
+    background: var(--surface);
   }
   .updates-sheet {
     display: grid;
@@ -668,9 +572,6 @@
     }
     .dock-section-head {
       align-items: flex-start;
-    }
-    .dock-tool-row :global(.tile-drawer) {
-      padding: 10px 12px;
     }
   }
 </style>
