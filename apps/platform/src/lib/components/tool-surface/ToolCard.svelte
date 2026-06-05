@@ -218,15 +218,20 @@
 
   .card-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
   .card-eyebrow {
-    display: inline-flex;
-    flex-wrap: wrap;
+    display: flex;
+    /* Single line, clipped — wrapping pills were the main source of card
+       height drift. Fixed height keeps every card identical. */
+    flex-wrap: nowrap;
     align-items: center;
     gap: 6px 8px;
-    min-height: 16px;
+    height: 16px;
+    overflow: hidden;
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text-light);
   }
+  .card-eyebrow .category { flex: 0 0 auto; }
+  .card-eyebrow .conn-pill { flex: 0 0 auto; }
   .card-name {
     font-family: var(--font-heading);
     font-weight: 600;
@@ -250,11 +255,13 @@
     min-height: calc(14px * 1.5 * 2);
   }
   .card-badge-row {
-    display: inline-flex;
-    flex-wrap: wrap;
+    display: flex;
+    flex-wrap: nowrap;
     gap: 6px;
-    /* Reserved even when empty, so a card with badges matches one without. */
-    min-height: 22px;
+    /* Fixed (not min-) height + clip, so a card with badges is exactly as
+       tall as one without — no drift from wrapping badges. */
+    height: 22px;
+    overflow: hidden;
   }
 
   .conn-pill {
