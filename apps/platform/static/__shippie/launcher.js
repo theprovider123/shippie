@@ -3,6 +3,7 @@
   const POINTER_STORE = 'pointers';
   const LOCAL_DB = 'shippie.launcher-local-db.v1';
   const LOCAL_ROWS = 'rows';
+  const CONTAINER_STATE_KEY = 'shippie.container.v1';
   const REPAIR_EVENT = 'OFFLINE_CAPSULE_INCOMPLETE';
   const app = document.getElementById('app');
   let activeSlug = null;
@@ -255,63 +256,326 @@
     }
   }
 
-  async function rowsFor(appId, table) {
+  function objectOrEmpty(value) {
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  }
+
+  function blankContainerState() {
+    return {
+      openAppIds: [],
+      importedApps: [],
+      packageFilesByApp: {},
+      receiptsByApp: {},
+      rowsByApp: {},
+      intentGrants: {},
+      transferGrants: {},
+      dismissedInsightIds: {},
+    };
+  }
+
+  function normalizeLocalRows(rows) {
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .filter((row) => row && typeof row === 'object')
+      .map((row) => ({
+        id: typeof row.id === 'string' || typeof row.id === 'number' ? String(row.id) : '',
+        table: typeof row.table === 'string' && row.table.length > 0 ? row.table : 'items',
+        payload: row.payload,
+        createdAt: typeof row.createdAt === 'string' ? row.createdAt : new Date().toISOString(),
+      }))
+      .filter((row) => row.id.length > 0);
+  }
+
+  function normalizeRowsByApp(rowsByApp) {
+    const out = {};
+    if (!rowsByApp || typeof rowsByApp !== 'object') return out;
+    for (const appId of Object.keys(rowsByApp)) {
+      out[appId] = normalizeLocalRows(rowsByApp[appId]);
+    }
+    return out;
+  }
+
+  function readContainerState() {
+    try {
+      const raw = window.localStorage.getItem(CONTAINER_STATE_KEY);
+      if (!raw) return blankContainerState();
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.openAppIds) || !parsed.receiptsByApp || !parsed.rowsByApp) {
+        return null;
+      }
+      return {
+        ...blankContainerState(),
+        ...parsed,
+        openAppIds: parsed.openAppIds.filter((appId) => typeof appId === 'string'),
+        importedApps: Array.isArray(parsed.importedApps) ? parsed.importedApps : [],
+        packageFilesByApp: objectOrEmpty(parsed.packageFilesByApp),
+        receiptsByApp: objectOrEmpty(parsed.receiptsByApp),
+        rowsByApp: normalizeRowsByApp(parsed.rowsByApp),
+        intentGrants: objectOrEmpty(parsed.intentGrants),
+        transferGrants: objectOrEmpty(parsed.transferGrants),
+        dismissedInsightIds: objectOrEmpty(parsed.dismissedInsightIds),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeContainerState(state) {
+    try {
+      window.localStorage.setItem(CONTAINER_STATE_KEY, JSON.stringify(state));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function readContainerRows(appId) {
+    const state = readContainerState();
+    if (!state) return null;
+    return normalizeLocalRows(state.rowsByApp[appId]);
+  }
+
+  function writeContainerRows(appId, rows) {
+    const state = readContainerState();
+    if (!state) return false;
+    state.rowsByApp = {
+      ...state.rowsByApp,
+      [appId]: normalizeLocalRows(rows),
+    };
+    return writeContainerState(state);
+  }
+
+  async function legacyRowsForApp(appId) {
     return withRows('readonly', async (store) => {
       const rows = await requestResult(store.getAll());
-      return rows.filter((row) => row.appId === appId && row.table === table);
+      return rows.filter((row) => row.appId === appId).map(legacyRowToLocalRow);
     });
   }
 
-  function payloadRows(rows) {
-    return rows.map((row) => ({ id: row.id, payload: row.payload, createdAt: row.createdAt, updatedAt: row.updatedAt }));
+  function legacyRowToLocalRow(row) {
+    const payload = row && typeof row.payload === 'object' && row.payload !== null ? row.payload : {};
+    const fallbackId = typeof row.id === 'string' ? row.id.split(':').pop() : '';
+    const id = readRecordId(payload) || fallbackId || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+    return {
+      id,
+      table: typeof row.table === 'string' && row.table.length > 0 ? row.table : 'items',
+      payload,
+      createdAt: typeof row.createdAt === 'string' ? row.createdAt : new Date().toISOString(),
+    };
+  }
+
+  function localRowToLegacyRow(appId, row) {
+    return {
+      id: appId + ':' + row.table + ':' + row.id,
+      appId,
+      table: row.table,
+      payload: row.payload,
+      createdAt: row.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async function writeLegacyRows(appId, rows) {
+    await withRows('readwrite', async (store) => {
+      const existing = await requestResult(store.getAll());
+      for (const row of existing) {
+        if (row.appId === appId) await requestResult(store.delete(row.id));
+      }
+      for (const row of rows) {
+        await requestResult(store.put(localRowToLegacyRow(appId, row)));
+      }
+    });
+  }
+
+  function rowKey(row) {
+    return row.table + ':' + row.id;
+  }
+
+  function rowTime(row) {
+    const parsed = Date.parse(row.createdAt);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function mergeRows(primary, secondary) {
+    const seen = new Set(primary.map(rowKey));
+    const missing = secondary.filter((row) => {
+      const key = rowKey(row);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return [...missing, ...primary].sort((a, b) => rowTime(b) - rowTime(a));
+  }
+
+  async function rowsForApp(appId) {
+    const containerRows = readContainerRows(appId);
+    if (containerRows) {
+      const legacyRows = await legacyRowsForApp(appId).catch(() => []);
+      const merged = mergeRows(containerRows, legacyRows);
+      if (merged.length !== containerRows.length) writeContainerRows(appId, merged);
+      return merged;
+    }
+    return legacyRowsForApp(appId);
+  }
+
+  async function persistRowsForApp(appId, rows) {
+    if (writeContainerRows(appId, rows)) return;
+    await writeLegacyRows(appId, rows);
+  }
+
+  function readPayloadTable(payload) {
+    if (!payload || typeof payload !== 'object') return 'items';
+    const table = payload.table;
+    return typeof table === 'string' && table.length > 0 ? table : 'items';
+  }
+
+  function readPayloadValue(payload) {
+    if (!payload || typeof payload !== 'object') return payload;
+    const value = payload.value;
+    return value && typeof value === 'object' ? value : payload;
+  }
+
+  function readPayloadId(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    return typeof payload.id === 'string' || typeof payload.id === 'number' ? String(payload.id) : null;
+  }
+
+  function readPayloadPatch(payload) {
+    if (!payload || typeof payload !== 'object' || !payload.patch || typeof payload.patch !== 'object' || Array.isArray(payload.patch)) {
+      return null;
+    }
+    return payload.patch;
+  }
+
+  function readRecordId(record) {
+    if (!record || typeof record !== 'object') return null;
+    return typeof record.id === 'string' || typeof record.id === 'number' ? String(record.id) : null;
+  }
+
+  function readRowRecord(row) {
+    return row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload) ? row.payload : {};
+  }
+
+  function readQueryOptions(payload) {
+    if (!payload || typeof payload !== 'object') return {};
+    const opts = payload.opts && typeof payload.opts === 'object' ? payload.opts : payload;
+    return {
+      where: opts.where && typeof opts.where === 'object' && !Array.isArray(opts.where) ? opts.where : undefined,
+      orderBy: opts.orderBy && typeof opts.orderBy === 'object' && !Array.isArray(opts.orderBy) ? opts.orderBy : undefined,
+      limit: typeof opts.limit === 'number' ? opts.limit : undefined,
+      offset: typeof opts.offset === 'number' ? opts.offset : undefined,
+    };
+  }
+
+  function matchesWhere(row, where) {
+    return Object.entries(where || {}).every(([key, expected]) => {
+      if (expected && typeof expected === 'object' && !Array.isArray(expected)) {
+        const value = row[key];
+        if (value === undefined) return false;
+        if ('gte' in expected && Number(value) < Number(expected.gte)) return false;
+        if ('lte' in expected && Number(value) > Number(expected.lte)) return false;
+        if ('gt' in expected && Number(value) <= Number(expected.gt)) return false;
+        if ('lt' in expected && Number(value) >= Number(expected.lt)) return false;
+        return true;
+      }
+      return row[key] === expected;
+    });
+  }
+
+  function compareValues(a, b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return -1;
+    if (b == null) return 1;
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+    return String(a).localeCompare(String(b));
+  }
+
+  function sortRows(rows, orderBy) {
+    const entry = Object.entries(orderBy || {})[0];
+    if (!entry) return rows;
+    const [key, dir] = entry;
+    return [...rows].sort((a, b) => compareValues(readRowRecord(a)[key], readRowRecord(b)[key]) * (dir === 'desc' ? -1 : 1));
+  }
+
+  function queryRows(rows, payload) {
+    const table = readPayloadTable(payload);
+    const opts = readQueryOptions(payload);
+    let matches = rows.filter((row) => row.table === table && matchesWhere(readRowRecord(row), opts.where));
+    if (opts.orderBy) matches = sortRows(matches, opts.orderBy);
+    const offset = opts.offset || 0;
+    const limit = typeof opts.limit === 'number' ? opts.limit : matches.length;
+    return matches.slice(offset, offset + limit);
+  }
+
+  function searchRows(rows, payload) {
+    const query = payload && typeof payload === 'object' ? payload.query : '';
+    const needle = typeof query === 'string' ? query.toLowerCase() : '';
+    if (!needle) return rows;
+    return rows.filter((row) =>
+      Object.values(readRowRecord(row)).some((value) => value != null && String(value).toLowerCase().includes(needle)),
+    );
+  }
+
+  function buildLocalRow(payload, existingRowCount) {
+    const record = readPayloadValue(payload);
+    const id = readRecordId(record) || String(activeSlug || 'app').replace(/-/g, '_') + '_' + (existingRowCount + 1);
+    return {
+      id,
+      table: readPayloadTable(payload),
+      payload: record,
+      createdAt: new Date().toISOString(),
+    };
   }
 
   async function handleBridgeRequest(data) {
     const appId = data.appId || ('app_' + String(activeSlug || 'unknown').replace(/-/g, '_'));
     const payload = data.payload || {};
-    const table = payload.table || 'default';
-    const now = new Date().toISOString();
-    if (data.capability === 'db.insert' && data.method === 'create') return {};
+    if (data.capability === 'db.insert' && data.method === 'create') return { created: true, table: readPayloadTable(payload) };
     if (data.capability === 'db.insert' && data.method === 'insert') {
-      const value = payload.value && typeof payload.value === 'object' ? payload.value : {};
-      const id = String(value.id || crypto.randomUUID());
-      await withRows('readwrite', (store) =>
-        requestResult(store.put({ id: appId + ':' + table + ':' + id, appId, table, payload: { ...value, id }, createdAt: now, updatedAt: now })),
-      );
-      return {};
+      const rows = await rowsForApp(appId);
+      const row = buildLocalRow(payload, rows.length);
+      await persistRowsForApp(appId, [row, ...rows]);
+      return row;
     }
     if (data.capability === 'db.insert' && data.method === 'update') {
-      const key = appId + ':' + table + ':' + payload.id;
-      await withRows('readwrite', async (store) => {
-        const existing = await requestResult(store.get(key));
-        if (!existing) return;
-        await requestResult(store.put({ ...existing, payload: { ...existing.payload, ...(payload.patch || {}) }, updatedAt: now }));
+      const table = readPayloadTable(payload);
+      const id = readPayloadId(payload);
+      const patch = readPayloadPatch(payload);
+      if (!id || !patch) return { updated: false };
+      let updated = false;
+      const rows = (await rowsForApp(appId)).map((row) => {
+        if (row.table !== table || row.id !== id) return row;
+        updated = true;
+        return { ...row, payload: { ...readRowRecord(row), ...patch, id } };
       });
-      return {};
+      await persistRowsForApp(appId, rows);
+      return { updated };
     }
     if (data.capability === 'db.insert' && data.method === 'delete') {
-      await withRows('readwrite', (store) => requestResult(store.delete(appId + ':' + table + ':' + payload.id)));
-      return {};
+      const table = readPayloadTable(payload);
+      const id = readPayloadId(payload);
+      if (!id) return { deleted: false };
+      const rows = await rowsForApp(appId);
+      const nextRows = rows.filter((row) => row.table !== table || row.id !== id);
+      await persistRowsForApp(appId, nextRows);
+      return { deleted: nextRows.length !== rows.length };
     }
     if (data.capability === 'db.query' && data.method === 'count') {
-      return { count: (await rowsFor(appId, table)).length };
+      return { count: queryRows(await rowsForApp(appId), payload).length };
     }
     if (data.capability === 'db.query' && data.method === 'lastBackup') return null;
     if (data.capability === 'db.query' && data.method === 'export') {
-      return { rows: payloadRows(await rowsFor(appId, table)) };
+      return { table: readPayloadTable(payload), rows: queryRows(await rowsForApp(appId), payload) };
     }
     if (data.capability === 'db.query' && (data.method === 'query' || data.method === 'vectorSearch')) {
-      return { rows: payloadRows(await rowsFor(appId, table)) };
+      return { rows: queryRows(await rowsForApp(appId), payload) };
     }
     if (data.capability === 'db.query' && data.method === 'search') {
-      const query = String(payload.query || '').toLowerCase();
-      const rows = (await rowsFor(appId, table)).filter((row) => JSON.stringify(row.payload).toLowerCase().includes(query));
-      return { rows: payloadRows(rows) };
+      return { rows: searchRows(queryRows(await rowsForApp(appId), payload), payload) };
     }
     if (data.capability === 'storage.getUsage') {
-      const rows = await withRows('readonly', (store) => requestResult(store.getAll()));
-      const bytes = new TextEncoder().encode(JSON.stringify(rows.filter((row) => row.appId === appId))).byteLength;
-      return { bytes };
+      const rows = await rowsForApp(appId);
+      return { rows: rows.length, bytes: JSON.stringify(rows).length };
     }
     throw new Error('Unsupported offline launcher bridge request: ' + data.capability + '/' + data.method);
   }
@@ -330,6 +594,15 @@
       );
     }
   });
+
+  if (window.__SHIPPIE_TEST_OFFLINE_LAUNCHER__) {
+    window.__shippieOfflineLauncherTest = {
+      handleBridgeRequest,
+      readContainerRows,
+      rowsForApp,
+    };
+    return;
+  }
 
   if (navigator.serviceWorker) {
     navigator.serviceWorker.addEventListener('message', (event) => {

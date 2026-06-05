@@ -3813,8 +3813,8 @@
           </div>
           <div class="action-grid">
             <a href="/new">Deploy app</a>
-            <button>Remix template</button>
-            <button>Connect Claude Code</button>
+            <a href="/tools?remixable=1">Remix template</a>
+            <a href="/docs/cli">Connect Claude Code</a>
           </div>
           <div class="backup-box">
             <div>
@@ -4060,8 +4060,7 @@
     gap: var(--space-md);
   }
   .app-tile,
-  .action-grid a,
-  .action-grid button {
+  .action-grid a {
     min-height: 128px;
     padding: var(--space-md);
     display: grid;
@@ -4278,8 +4277,7 @@
       grid-template-columns: 1fr;
       gap: 8px;
     }
-    .action-grid a,
-    .action-grid button {
+    .action-grid a {
       min-height: var(--touch-min);
       align-content: center;
     }
