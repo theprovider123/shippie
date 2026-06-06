@@ -110,13 +110,25 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
         <button className="god-hero" onClick={() => { tap(); setSel("god"); }}>
           <span className="god-hero-tag">Daily test · worldwide</span>
           <span className="god-hero-name">Group of Death</span>
-          <span className="god-hero-how">Flap through the gaps, pick the right answer at every gate. Knowledge + nerve. One slip and you're out.</span>
+          <span className="god-hero-how">Flap through the gaps, pick the right answer at every gate. Knowledge + nerve.</span>
           <span className="god-hero-foot">
             <span className="god-hero-best">Best {bestScore(store.scores, "god")} caps</span>
             <span className="god-hero-cta">Play →</span>
           </span>
         </button>
 
+        <span className="field-label" style={{ marginTop: 22 }}>🍺 Pub games — trivia &amp; pass the phone</span>
+        <div className="game-grid">
+          {PUB.map((g) => (
+            <button key={g.id} className="game-card pub" onClick={() => { tap(); setSel(g.id); }}>
+              <span className="game-card-emoji">{g.emoji}</span>
+              <span className="game-card-name">{g.name}</span>
+              <span className="game-card-how">{g.how}</span>
+            </button>
+          ))}
+        </div>
+
+        <span className="field-label" style={{ marginTop: 22 }}>⚽️ Solo &amp; head-to-head</span>
         <div className="game-grid">
           {GAMES.filter((g) => g.id !== "god").map((g) => (
             <button key={g.id} className="game-card" onClick={() => { tap(); setSel(g.id); }}>
@@ -138,17 +150,6 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
             <span className="game-card-how">You're keeper AND striker — duel a mate by link</span>
             <span className="game-card-best">You vs a mate</span>
           </button>
-        </div>
-
-        <span className="field-label" style={{ marginTop: 20 }}>🍺 Pub games — pass the phone</span>
-        <div className="game-grid">
-          {PUB.map((g) => (
-            <button key={g.id} className="game-card pub" onClick={() => { tap(); setSel(g.id); }}>
-              <span className="game-card-emoji">{g.emoji}</span>
-              <span className="game-card-name">{g.name}</span>
-              <span className="game-card-how">{g.how}</span>
-            </button>
-          ))}
         </div>
       </div>
     );
