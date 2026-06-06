@@ -17,11 +17,11 @@ export function monogram(name: string, slug = ''): string {
   if (n) {
     const words = n.split(/\s+/).filter(Boolean);
     if (words.length >= 2) {
-      return (firstChar(words[0]) + firstChar(words[1])).toUpperCase();
+      return (firstChar(words[0] ?? '') + firstChar(words[1] ?? '')).toUpperCase();
     }
-    const chars = Array.from(words[0] ?? '');
-    if (chars.length >= 2) return chars[0].toUpperCase() + chars[1].toLowerCase();
-    if (chars.length === 1) return chars[0].toUpperCase();
+    const [c0, c1] = Array.from(words[0] ?? '');
+    if (c0 && c1) return c0.toUpperCase() + c1.toLowerCase();
+    if (c0) return c0.toUpperCase();
   }
   const s = (slug ?? '').trim();
   return s ? (Array.from(s)[0] ?? '?').toUpperCase() : '?';
