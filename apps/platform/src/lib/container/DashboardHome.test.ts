@@ -17,4 +17,9 @@ describe('DashboardHome launchpad grid (guardrail)', () => {
   test('keeps the row list for manage view', () => {
     expect(src).toContain('class="dock-row-list"');
   });
+  test('collapses empty sections (no group rendered when its list is empty)', () => {
+    expect(src).toContain('dockGroups.open.length > 0');
+    expect(src).toContain('dockGroups.recent.length > 0');
+    expect(src).toContain('dockGroups.saved.length > 0');
+  });
 });
