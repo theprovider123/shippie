@@ -99,16 +99,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   if (!sel) {
     return (
       <div className="games">
-        <div className="play-head">
-          <h2 className="section-title">Play</h2>
-          <button
-            className={`pubnight-toggle${store.pubNight ? " is-on" : ""}`}
-            onClick={() => { tap(); store.togglePubNight(); }}
-            aria-pressed={store.pubNight}
-          >
-            🍺 Pub Night {store.pubNight ? "on" : "off"}
-          </button>
-        </div>
+        <h2 className="section-title">Play</h2>
         <p className="games-intro">Quick footy games. No login — your bests live on this phone, challenge a mate by link.</p>
 
         <div className="god-hero-wrap">

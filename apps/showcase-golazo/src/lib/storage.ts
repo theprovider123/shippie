@@ -16,7 +16,6 @@ const K = {
   sweeps: "golazo:sweeps",
   scores: "golazo:scores",
   reactions: "golazo:reactions",
-  pubNight: "golazo:pubnight",
   streak: "golazo:streak",
 } as const;
 
@@ -26,14 +25,6 @@ export function loadStreak(): StreakState | null {
 }
 export function saveStreak(s: StreakState): void {
   write(K.streak, s);
-}
-
-// ── Pub Night Mode (dimmed, calm, big tap targets for pass-the-phone) ──
-export function loadPubNight(): boolean {
-  return read<boolean>(K.pubNight, false);
-}
-export function savePubNight(on: boolean): void {
-  write(K.pubNight, on);
 }
 
 // ── Reactions (🔥📞💀 sent to mates' rows) ──

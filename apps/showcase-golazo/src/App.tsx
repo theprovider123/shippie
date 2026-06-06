@@ -19,7 +19,7 @@ import { useCountdown, pad2 } from "./ui/atoms";
 import { useStore } from "./state";
 
 export function App() {
-  const { profile, pubNight } = useStore();
+  const { profile } = useStore();
   const [tab, setTab] = useState<Tab>(() => {
     // Games-first: Play is the default home of the app.
     return "play";
@@ -86,7 +86,7 @@ export function App() {
   }
 
   return (
-    <div className={`app${pubNight ? " pub-night" : ""}`}>
+    <div className="app">
       {profile ? (
         <>
           <main className="screen">

@@ -23,7 +23,7 @@ const NOTIFY_KEY = "golazo:notify";
  *  No account — everything lives on this phone. */
 export function Profile() {
   const store = useStore();
-  const { profile, prediction, results, scores, reactions, streak, pubNight } = store;
+  const { profile, prediction, results, scores, reactions, streak } = store;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile?.name ?? "");
   const [notify, setNotify] = useState<boolean>(() => {
@@ -143,13 +143,6 @@ export function Profile() {
             <small>{notify ? `On — e.g. "${sampleNudge(streak)}"` : "Off — turn on for kick-off reminders. No spam, just banter."}</small>
           </div>
           <span className={`switch${notify ? " is-on" : ""}`} aria-hidden />
-        </div>
-        <div className="settings-row" onClick={() => store.togglePubNight()} role="button" tabIndex={0}>
-          <div>
-            <strong>Pub Night Mode</strong>
-            <small>{pubNight ? "On — dimmed, calm, big taps for passing the phone." : "Off — flip on when the phone's going round the table."}</small>
-          </div>
-          <span className={`switch${pubNight ? " is-on" : ""}`} aria-hidden />
         </div>
         <div className="settings-row is-static">
           <div>
