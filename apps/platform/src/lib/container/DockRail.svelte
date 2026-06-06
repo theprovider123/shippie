@@ -56,7 +56,10 @@
       onclick={onOpenSwitcher}
       aria-label={railToolCount > 0 ? `Open Dock switcher with ${railToolCount} tools` : 'Open Dock switcher'}
     >
-      <span>
+      <span class="switcher-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="11" height="11" rx="1.5"/><path d="M9 20h11V9"/></svg>
+      </span>
+      <span class="switcher-text">
         <strong class="label">Switcher</strong>
         <small class="label">{railToolCount > 0 ? `${railToolCount} tools ready` : 'No tools yet'}</small>
       </span>
@@ -125,20 +128,32 @@
     display: inline;
   }
 
-  .dock-rail:hover .rail-switcher span:first-child,
-  .dock-rail:focus-within .rail-switcher span:first-child {
+  .dock-rail:hover .switcher-text,
+  .dock-rail:focus-within .switcher-text {
     display: grid;
   }
 
+  .dock-rail:hover .switcher-icon,
+  .dock-rail:focus-within .switcher-icon {
+    display: none;
+  }
+
   /* Rail head */
+  /* Collapsed: centered vertical stack. Expanded: horizontal head row. */
   .rail-head {
     font-family: var(--font-heading);
     font-size: 1rem;
     color: var(--text);
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: var(--space-sm);
     margin-bottom: var(--space-sm);
+  }
+
+  .dock-rail:hover .rail-head,
+  .dock-rail:focus-within .rail-head {
+    flex-direction: row;
   }
 
   .rail-mark {
@@ -146,19 +161,20 @@
     flex: none;
   }
 
-  /* Quick actions */
+  /* Quick actions — centered column when collapsed */
   .rail-quick {
-    margin-left: auto;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 2px;
   }
 
-  /* When expanded, lay quick actions horizontally */
+  /* When expanded, lay quick actions horizontally and push them right */
   .dock-rail:hover .rail-quick,
   .dock-rail:focus-within .rail-quick {
     flex-direction: row;
     flex-wrap: wrap;
+    margin-left: auto;
   }
 
   .rail-quick-btn {
@@ -219,10 +235,16 @@
     outline-offset: -2px;
   }
 
-  .rail-switcher span:first-child {
+  .switcher-text {
     min-width: 0;
     display: none;
     gap: 2px;
+  }
+
+  .switcher-icon {
+    display: grid;
+    place-items: center;
+    margin: 0 auto;
   }
 
   .rail-switcher strong {
@@ -287,13 +309,22 @@
       display: inline;
     }
 
-    .rail-switcher span:first-child {
+    .switcher-text {
       display: grid;
+    }
+
+    .switcher-icon {
+      display: none;
+    }
+
+    .rail-head {
+      flex-direction: row;
     }
 
     .rail-quick {
       flex-direction: row;
       flex-wrap: wrap;
+      margin-left: auto;
     }
   }
 
