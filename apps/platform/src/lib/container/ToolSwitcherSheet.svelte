@@ -241,36 +241,43 @@
     font-family: var(--font-mono);
     font-size: 0.72rem;
   }
-  /* The rows are ToolRow primitives now; this list just frames the group. */
+  /* Rows sit directly on the panel (transparent ToolRows with their own
+     dividers) — no nested bordered box, so the list aligns with the header
+     and the panel's own elevation carries the layering. */
   .tool-list {
     display: grid;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-top: 1px solid var(--border-light);
   }
   .section-more {
     margin: 2px 0 0;
   }
   .empty {
-    padding: 22px 18px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    padding: 4px 0 2px;
     display: grid;
-    gap: 6px;
+    gap: 8px;
+  }
+  .empty strong {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
   }
   .empty p {
     margin: 0;
+    max-width: 42ch;
+    font-size: 0.85rem;
+    line-height: 1.5;
     color: var(--text-secondary);
   }
   .empty a {
     min-height: var(--touch-min);
+    margin-top: 2px;
     display: inline-flex;
     align-items: center;
     align-self: flex-start;
     color: var(--sunset);
     font-family: var(--font-mono);
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     letter-spacing: 0.06em;
     text-decoration: none;
     text-transform: uppercase;
