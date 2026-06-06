@@ -1,65 +1,34 @@
 <script lang="ts">
   /**
-   * IconOrMonogram — renders an `<img>` if a maker uploaded an icon,
-   * otherwise falls back to a square monogram (first letter of the
-   * app name) on the maker-supplied theme color.
-   *
-   * Square (`shippie-icon` from tokens.css) is the brand hallmark — no
-   * rounded corners.
+   * IconOrMonogram — kept as a stable name for ~10 existing call sites.
+   * Now a thin wrapper over ToolGlyph (the real icon atom). Do not add
+   * visual logic here; change ToolGlyph instead.
    */
+  import ToolGlyph from '$lib/components/tool-surface/ToolGlyph.svelte';
+
   interface Props {
     name: string;
     slug: string;
     iconUrl: string | null | undefined;
     themeColor: string;
     size?: number;
+    /** Retained for call-site compatibility; ToolGlyph derives its own scale. */
     fontScale?: number;
+    glyph?: string | null;
+    running?: boolean;
+    float?: boolean;
   }
 
-  let { name, slug, iconUrl, themeColor, size = 64, fontScale = 0.45 }: Props = $props();
-
-  const letter = $derived(
-    (name?.trim()?.[0] ?? slug?.[0] ?? '?').toUpperCase()
-  );
+  let {
+    name,
+    slug,
+    iconUrl,
+    themeColor,
+    size = 64,
+    glyph = null,
+    running = false,
+    float = false,
+  }: Props = $props();
 </script>
 
-{#if iconUrl}
-  <img
-    src={iconUrl}
-    alt=""
-    class="shippie-icon"
-    width={size}
-    height={size}
-    style="width: {size}px; height: {size}px; object-fit: cover;"
-    aria-hidden="true"
-    loading="lazy"
-    decoding="async"
-  />
-{:else}
-  <div
-    class="shippie-icon monogram"
-    style="
-      width: {size}px;
-      height: {size}px;
-      background: {themeColor};
-      font-size: {Math.round(size * fontScale)}px;
-    "
-    aria-hidden="true"
-  >
-    {letter}
-  </div>
-{/if}
-
-<style>
-  .monogram {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-    font-family: var(--font-heading);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0;
-    user-select: none;
-  }
-</style>
+<ToolGlyph {name} {slug} {iconUrl} {themeColor} {glyph} {size} {running} {float} />
