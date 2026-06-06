@@ -56,3 +56,7 @@ export const CANONICAL_TAILWIND_MAPPINGS: ReadonlyArray<string> = [
   '--font-body',
   '--font-mono',
 ];
+
+// Programmatic icon algorithm — shared by ToolGlyph (DOM) and the
+// build-time SVG generator so live + baked icons match.
+export { monogram, accentColor, surfaceSeed } from './tool-icon';
