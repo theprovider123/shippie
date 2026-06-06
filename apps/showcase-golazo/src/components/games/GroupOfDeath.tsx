@@ -23,6 +23,7 @@ interface Wall {
   q?: string;
   topLabel?: string;
   botLabel?: string;
+  chose?: "correct" | "wrong"; // which opening the ball went through
   scored: boolean;
 }
 
@@ -121,6 +122,11 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
       setTimeout(() => { setPhase("over"); onGameOver(scoreRef.current); }, 800);
     }
 
+    function flashFor(msg: string) {
+      setFlash(msg);
+      window.setTimeout(() => setFlash((f) => (f === msg ? "" : f)), 750);
+    }
+
     function flapNow() {
       if (dead) return;
       started = true;
@@ -149,21 +155,28 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
           if (wl.kind === "plain") {
             if (!inOpening(ballY, wl.gapY, wl.gapH)) die("WALL!");
           } else {
-            const safe = wl.correctTop
-              ? inOpening(ballY, wl.topY!, wl.openH!)
-              : inOpening(ballY, wl.botY!, wl.openH!);
-            const wrong = wl.correctTop
-              ? inOpening(ballY, wl.botY!, wl.openH!)
-              : inOpening(ballY, wl.topY!, wl.openH!);
-            if (wrong) die("WRONG ONE!");
-            else if (!safe) die("WALL!");
+            // Either opening gets you through (skill). The right answer is a bonus,
+            // the wrong one just misses out — you only die hitting the wall itself.
+            const inTop = inOpening(ballY, wl.topY!, wl.openH!);
+            const inBot = inOpening(ballY, wl.botY!, wl.openH!);
+            if (inTop || inBot) {
+              if (wl.chose === undefined) wl.chose = (wl.correctTop ? inTop : inBot) ? "correct" : "wrong";
+            } else die("WALL!");
           }
         }
         if (!wl.scored && wl.x + thick < ballX && !dead) {
           wl.scored = true;
-          scoreRef.current += wl.kind === "gate" ? 2 : 1;
+          if (wl.kind === "gate") {
+            if (wl.chose === "correct") {
+              scoreRef.current += 3; celebrate(); particles.emit(ballX, ballY, "spark", 14);
+              flashFor("CALLED IT ✓");
+            } else {
+              scoreRef.current += 1; flashFor("WRONG — NO BONUS");
+            }
+          } else {
+            scoreRef.current += 1;
+          }
           setScore(scoreRef.current);
-          if (wl.kind === "gate") { celebrate(); particles.emit(ballX, ballY, "spark", 10); }
         }
       }
       // recycle offscreen walls + always keep a buffer queued to the right
@@ -213,12 +226,12 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
         <span className="game-score">{score}</span><span className="game-unit">caps</span>
       </div>
       <canvas ref={canvasRef} className="game-canvas" />
-      {flash && <div className="game-flash miss">{flash}</div>}
+      {flash && <div className={`game-flash ${flash.includes("✓") ? "bins" : "miss"}`}>{flash}</div>}
       {phase === "ready" && (
         <div className="game-overlay">
           <span className="game-emoji">💀</span>
           <h3>Group of Death</h3>
-          <p>Tap to keep the ball up and find the gap. Every third wall is a <strong>question</strong> — fly through the right answer. One slip and you're out.</p>
+          <p>Tap to keep the ball up and find the gap. At a <strong>question wall</strong>, either opening gets you through — the right answer is a big bonus. Only the walls end your run.</p>
           {target ? <p className="game-target">Beat {target} to win the challenge</p> : null}
           <button className="cta wide" onClick={startGame}>Kick off</button>
         </div>

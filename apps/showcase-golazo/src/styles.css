@@ -3277,7 +3277,8 @@ input {
   border-radius: 3px;
   padding: 6px 14px;
 }
-.god-stage .game-flash { color: var(--red-card); }
+.god-stage .game-flash.miss { color: var(--red-card); }
+.god-stage .game-flash.bins { color: var(--lime); }
 
 /* ─── Quiz banter + pub forfeit ─────────────────────────────────────────────── */
 .quiz-quip {
