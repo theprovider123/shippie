@@ -634,16 +634,12 @@
   .drawer {
     position: fixed;
     z-index: 64;
-    --text: var(--cream-text, #2c1f14);
-    --text-secondary: var(--cream-secondary, rgba(44, 31, 20, 0.72));
-    --text-light: rgba(44, 31, 20, 0.58);
-    --surface: transparent;
-    --surface-alt: rgba(44, 31, 20, 0.045);
-    --border: var(--cream-border, rgba(44, 31, 20, 0.16));
-    --border-light: var(--cream-border, rgba(44, 31, 20, 0.1));
-    background: var(--cream-bg, #faf7ef);
-    color: var(--cream-text, #14120f);
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+    /* Dark Shippie surface — children inherit the global dark tokens
+       (no cream overrides), so ToolRow/Switcher look identical to the
+       dock home. */
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
     will-change: transform;
     contain: layout paint;
     backface-visibility: hidden;

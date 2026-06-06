@@ -305,6 +305,7 @@
   .section-head h1 {
     min-width: 0;
     margin: 0;
+    font-family: var(--font-heading);
     font-size: 1.08rem;
   }
   .section-head p {

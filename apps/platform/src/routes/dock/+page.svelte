@@ -3766,7 +3766,7 @@
                 <div class="collection-list">
                   {#each activeCollection.packages as entry (entry.packageHash)}
                     <article>
-                      <span class="app-icon" style={`--accent:${entry.kind === 'local' ? '#74A57F' : entry.kind === 'connected' ? '#4E7C9A' : '#B6472D'}`}>
+                      <span class="app-icon" style={`--accent:${entry.kind === 'local' ? 'var(--sage-moss)' : entry.kind === 'connected' ? 'var(--marigold)' : 'var(--sunset)'}`}>
                         {entry.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
                       </span>
                       <div>
@@ -4275,7 +4275,7 @@
     position: fixed;
     inset: 0;
     z-index: 1000;
-    background: var(--bg-pure, #fff);
+    background: var(--bg-pure);
   }
   .focused-frame {
     position: fixed;
@@ -4314,10 +4314,10 @@
     z-index: 1015;
     max-width: min(520px, calc(100vw - 28px));
     padding: 10px 14px;
-    border: 1px solid rgba(20, 18, 15, 0.14);
-    background: rgba(255, 253, 247, 0.94);
-    color: var(--bg);
-    box-shadow: 0 14px 34px rgba(20, 18, 15, 0.16);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
     font-size: 13px;
     line-height: 1.35;
     text-align: center;
@@ -4488,7 +4488,7 @@
     top: 50%;
     transform: translateY(-50%);
     height: 3px;
-    background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
+    background: color-mix(in srgb, var(--text-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
   .focused-drawer-head {
     position: sticky;
@@ -4499,8 +4499,8 @@
     align-items: center;
     gap: 14px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
-    background: var(--cream-bg, #faf7ef);
+    border-bottom: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
+    background: var(--surface, #faf7ef);
   }
   .focused-home {
     display: inline-flex;
@@ -4527,7 +4527,7 @@
     line-height: 1;
   }
   .focused-brand-copy small {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-size: 12px;
     line-height: 1.25;
     white-space: nowrap;
@@ -4535,7 +4535,7 @@
   .focused-drawer-actions {
     display: inline-flex;
     flex-shrink: 0;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
   }
   .focused-action {
     display: inline-flex;
@@ -4546,7 +4546,7 @@
     padding: 0 11px;
     border: 0;
     background: transparent;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.58));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.58));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -4557,7 +4557,7 @@
     transition: color 150ms ease, background 150ms ease;
   }
   .focused-action + .focused-action {
-    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border-left: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
   }
   .focused-action:hover,
   .focused-action:focus-visible {
@@ -4583,7 +4583,7 @@
     align-items: center;
     gap: 14px;
     padding: 8px 0 12px;
-    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border-bottom: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
   }
   .focused-share-card-media {
     display: inline-flex;
@@ -4596,9 +4596,9 @@
     display: grid;
     place-items: center;
     padding: 6px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--paper-warm, #f5efe4);
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
+    background: var(--surface, #f5efe4);
+    color: var(--text-secondary, rgba(0, 0, 0, 0.48));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.12em;
@@ -4618,7 +4618,7 @@
     min-width: 0;
     margin: 0;
     overflow: hidden;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -4662,7 +4662,7 @@
     display: grid;
     place-items: center;
     padding: 0;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: rgba(20, 18, 15, 0.025);
     color: var(--cream-text, #14120f);
     cursor: pointer;
@@ -4694,13 +4694,13 @@
     margin: 0;
     font-size: 12px;
     font-weight: 600;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-family: var(--font-mono);
   }
   .focused-section-head span {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.45));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.45));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.1em;
@@ -4718,8 +4718,8 @@
     gap: 6px;
   }
   .focused-insight {
-    background: var(--cream-bg, rgba(255, 255, 255, 0.85));
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: var(--surface, rgba(255, 255, 255, 0.85));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     border-radius: 12px;
     padding: 12px 14px;
   }
@@ -4729,7 +4729,7 @@
   }
   .focused-insight p {
     margin: 4px 0 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-size: 13px;
   }
   .focused-insight-high {
@@ -4748,12 +4748,12 @@
   .focused-list {
     display: grid;
     gap: 1px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--cream-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
+    background: var(--border-light, rgba(0, 0, 0, 0.1));
   }
   .focused-section-more {
     margin: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.04em;
@@ -4768,16 +4768,16 @@
     margin: 0 0 10px;
     border-radius: 8px;
     background: rgba(20, 18, 15, 0.025);
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
   }
   .focused-search:focus-within {
     border-color: var(--sunset, #e8603c);
-    background: rgba(255, 253, 247, 0.72);
+    background: var(--surface);
     box-shadow: 0 0 0 2px rgba(232, 96, 60, 0.08);
   }
   .focused-search-icon {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.48));
     font-size: 15px;
     line-height: 1;
   }
@@ -4803,7 +4803,7 @@
     background: transparent;
     border: 0;
     padding: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
     font-size: 11px;
     cursor: pointer;
@@ -4813,7 +4813,7 @@
   .focused-search-empty {
     margin: 6px 0;
     padding: 12px;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-size: 13px;
     text-align: center;
   }
@@ -4900,10 +4900,10 @@
     align-items: center;
     gap: 8px;
     padding: 8px 14px;
-    border: 1px solid rgba(20, 18, 15, 0.14);
-    background: rgba(255, 253, 247, 0.94);
-    color: var(--bg);
-    box-shadow: 0 12px 28px rgba(20, 18, 15, 0.14);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
     font-size: 12.5px;
     line-height: 1.3;
     backdrop-filter: blur(10px);
@@ -4912,8 +4912,8 @@
   .transfer-pending-spinner {
     width: 12px;
     height: 12px;
-    border: 2px solid rgba(20, 18, 15, 0.18);
-    border-top-color: rgba(20, 18, 15, 0.6);
+    border: 2px solid var(--border-light);
+    border-top-color: var(--sunset);
     border-radius: 50%;
     animation: transfer-pending-spin 720ms linear infinite;
   }
