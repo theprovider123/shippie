@@ -518,13 +518,6 @@ input {
 }
 
 /* ── Generic section transitions for builder cards ─────────────────────── */
-.group-card,
-.match,
-.pool-row,
-.board-row,
-.fixture-chip {
-  animation: pop-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -549,19 +542,19 @@ input {
   flex: 0 0 auto;
   width: 42px;
   height: 42px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1.5px solid var(--line);
+  border-radius: 3px;
+  background: var(--turf);
+  border: 1px solid var(--line);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 17px;
+  font-size: 19px;
   color: var(--muted);
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 .letter.is-sel {
-  color: var(--text);
-  border-color: var(--accent);
-  background: rgba(22, 240, 139, 0.1);
+  color: var(--pitch);
+  border-color: var(--lime);
+  background: var(--lime);
 }
 .letter.is-done {
   color: var(--accent);
@@ -581,11 +574,13 @@ input {
   border: 2px solid var(--bg);
 }
 .group-card {
-  background: var(--surface);
+  background: var(--turf);
   border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 16px;
-  box-shadow: var(--shadow);
+}
+.group-name {
+  text-transform: uppercase;
 }
 .group-card-head {
   display: flex;
@@ -619,8 +614,8 @@ input {
   align-items: center;
   gap: 13px;
   padding: 13px 14px;
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 3px;
+  background: rgba(245, 240, 232, 0.02);
   border: 1px solid var(--line);
   text-align: left;
   overflow: hidden;
@@ -661,7 +656,7 @@ input {
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: 2px;
   display: grid;
   place-items: center;
   font-family: var(--font-display);
@@ -683,18 +678,23 @@ input {
 .rank-name {
   flex: 1;
   min-width: 0;
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15.5px;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .rank-tag {
+  font-family: var(--font-display);
   font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.1em;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 2px;
+  text-transform: uppercase;
   white-space: nowrap;
   /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
@@ -758,25 +758,27 @@ input {
 /* ── Predict segmented control ─────────────────────────────────────────── */
 .segmented {
   display: flex;
-  gap: 4px;
-  background: var(--surface);
+  background: var(--turf);
   border: 1px solid var(--line);
-  border-radius: 13px;
-  padding: 4px;
-  margin-bottom: 20px;
+  border-radius: 4px;
+  padding: 2px;
+  margin-bottom: 18px;
 }
 .segmented button {
   flex: 1;
   padding: 11px;
-  border-radius: 10px;
-  font-weight: 750;
-  font-size: 14.5px;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
-  transition: all 0.16s ease;
+  transition: color 0.12s ease, background 0.12s ease;
 }
 .segmented .is-sel {
-  background: var(--text);
-  color: var(--bg);
+  background: var(--chalk);
+  color: var(--pitch);
 }
 
 /* ── Bracket ───────────────────────────────────────────────────────────── */
@@ -2652,15 +2654,16 @@ input {
   margin: 0 0 16px;
   padding: 14px;
   border-radius: var(--r);
-  background: radial-gradient(120% 80% at 50% 0%, var(--gold-soft), transparent 70%), var(--surface);
-  border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--line));
+  background: var(--turf);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--gold);
 }
-.golden-boot-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 11px; }
-.golden-boot-cap { font-family: var(--font-display); font-weight: 850; font-size: 15px; color: var(--gold); }
-.golden-boot-sub { font-size: 12.5px; color: var(--muted); }
-.golden-boot-sub strong { color: var(--text); }
+.golden-boot-head { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; }
+.golden-boot-cap { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+.golden-boot-sub { font-family: var(--font-serif); font-style: italic; font-size: 12.5px; color: var(--muted); }
+.golden-boot-sub strong { color: var(--chalk); font-style: normal; }
 .boot-rail {
-  display: flex; gap: 8px; overflow-x: auto;
+  display: flex; gap: 6px; overflow-x: auto;
   padding-bottom: 4px; margin: 0 -2px;
   scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
@@ -2668,17 +2671,19 @@ input {
 .boot-chip {
   flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 12px; border-radius: 999px;
-  background: var(--surface-2);
+  padding: 8px 11px; border-radius: 3px;
+  background: var(--pitch);
   border: 1px solid var(--line);
-  font-weight: 750; font-size: 13px;
-  transition: all 0.16s var(--ease);
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 14px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted);
+  transition: all 0.12s var(--ease);
 }
 .boot-chip:active { transform: scale(0.95); }
 .boot-chip.is-sel {
-  background: color-mix(in srgb, var(--tc1, var(--gold)) 22%, transparent);
-  border-color: color-mix(in srgb, var(--tc1, var(--gold)) 55%, var(--line));
-  color: #fff;
+  background: var(--chalk);
+  border-color: var(--chalk);
+  color: var(--pitch);
 }
 
 /* ── Demo panel (#demo) ────────────────────────────────────────────────── */
@@ -2989,18 +2994,21 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-bottom: 14px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  font-size: 13px;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border-radius: 4px;
+  font-family: var(--font-code);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
-  background: var(--surface);
+  background: var(--turf);
   border: 1px solid var(--line);
 }
-.lock-banner strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+.lock-banner strong { color: var(--lime); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
 .lock-banner.is-locked { color: var(--gold); border-color: var(--gold-soft); }
-.outside-bet .golden-boot-cap { color: var(--gold); }
+.outside-bet .golden-boot-cap { color: var(--amber); }
 .mycall-cta { margin-top: 20px; }
 
 /* ─── New games + Pub Night Mode (Slice 5) ─────────────────────────────────── */
