@@ -220,14 +220,13 @@
   // Focused-mode app-switcher drawer open state. Only meaningful when
   // `data.focused === true`; ignored in dashboard mode.
   let focusedDrawerOpen = $state(false);
-  let focusedToolOptionsOpen = $state(false);
   let focusedShareFeedback = $state('');
   let focusedQrMarkup = $state<string | null>(null);
   // Safe-edges contract: each iframe-mounted app can declare which
   // part of the viewport its own touch input owns via the
-  // @shippie/iframe-sdk safe-edges API. Host honours this by shrinking
-  // its own chrome (focused-chrome-tools + focused-chrome-options
-  // buttons) so a tap meant for a game doesn't open container UI.
+  // @shippie/iframe-sdk safe-edges API. Host honours this by keeping
+  // its own single focused chrome mark compact so a tap meant for a game
+  // doesn't open container UI.
   // 'none' keeps the chrome at full size; 'bottom' is a placeholder
   // for future bottom-grabber suppression; 'all' shrinks the chrome
   // to a 12px edge sliver that's still tappable but stops bleeding
@@ -243,9 +242,8 @@
   // opens the tool switcher. Gated by localStorage.
   let firstRunHint = $state(false);
   // Viewport width for drawer-edge selection. ≤640px → drawer rises from
-  // the bottom (matches the mark's top-right placement on mobile via the
-  // existing media query); larger → slides in from the left next to the
-  // mark's top-left placement on desktop.
+  // the bottom while the mark stays top-center above app chrome; larger →
+  // slides in from the left next to the mark's top-left placement.
   let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
   const focusedDrawerEdge = $derived<'left' | 'bottom'>(viewportWidth <= 640 ? 'bottom' : 'left');
   let receiptsByApp = $state<Record<string, AppReceipt>>(
@@ -721,15 +719,12 @@
     if (!activeApp || typeof window === 'undefined') return '';
     return new URL(`/run/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
   });
-  // Dedupe QR generation by (activeApp.id, focusedToolOptionsOpen). The
-  // previous derivation re-fired whenever `focusedToolOptionsOpen`
-  // changed even if the URL was identical, briefly clearing
-  // `focusedQrMarkup` to null on fast open/close and producing a
-  // visible flicker. The key keeps the last completed generation
-  // pinned so re-opening the same tool reuses the same SVG.
+  // Dedupe QR generation by active app while the focused drawer is open.
+  // The key keeps the last completed generation pinned so drawer reopens
+  // for the same tool reuse the same SVG instead of flickering blank.
   const qrGenKey = $derived(
-    activeApp && focusedToolOptionsOpen
-      ? `${activeApp.id}:${focusedToolOptionsOpen}`
+    activeApp && focusedDrawerOpen
+      ? activeApp.id
       : '',
   );
   let lastQrGenKey = '';
@@ -816,6 +811,9 @@
       accent: categoryColorFamily(a.category),
       category: a.category,
     })),
+  );
+  const activeRailTool = $derived(
+    activeApp ? railCatalog.find((tool) => tool.slug === activeApp.slug) ?? null : null,
   );
   const railOpenSlugs: string[] = $derived(
     openAppIds
@@ -1025,7 +1023,6 @@
   function switchFocusedApp(app: ContainerApp) {
     openApp(app.id);
     closeFocusedDrawer();
-    focusedToolOptionsOpen = false;
     if (data.focused && typeof window !== 'undefined') {
       replaceFocusedRunUrl(app);
       window.requestAnimationFrame(() => frames.get(app.id)?.focus());
@@ -1050,7 +1047,6 @@
   function exitFocusedMode(targetSection: ContainerSection = 'home') {
     dismissTransientPrompts();
     closeFocusedDrawer();
-    focusedToolOptionsOpen = false;
     activeAppId = null;
     section = targetSection;
     const href = targetSection === 'home' ? '/dock' : `/dock?section=${targetSection}`;
@@ -1063,7 +1059,6 @@
   }
 
   function toggleFocusedDrawer() {
-    focusedToolOptionsOpen = false;
     if (focusedDrawerOpen) {
       closeFocusedDrawer();
       return;
@@ -1072,35 +1067,15 @@
     focusedDrawerOpen = true;
   }
 
-  function toggleFocusedToolOptions() {
-    closeFocusedDrawer();
-    focusedToolOptionsOpen = !focusedToolOptionsOpen;
-  }
-
   function handleFocusedToolsPress(event: Event) {
     event.preventDefault();
     event.stopPropagation();
-    exitFocusedMode('home');
-  }
-
-  function handleFocusedOptionsPress(event: Event) {
-    event.preventDefault();
-    event.stopPropagation();
-    toggleFocusedToolOptions();
+    toggleFocusedDrawer();
   }
 
   function handleFocusedToolsKeydown(event: KeyboardEvent) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     handleFocusedToolsPress(event);
-  }
-
-  function handleFocusedOptionsKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    handleFocusedOptionsPress(event);
-  }
-
-  function closeFocusedToolOptions() {
-    focusedToolOptionsOpen = false;
   }
 
   function handleFocusedChromeKeydown(event: KeyboardEvent) {
@@ -1111,9 +1086,9 @@
       toggleFocusedDrawer();
       return;
     }
-    if (event.key === 'Escape' && focusedToolOptionsOpen) {
+    if (event.key === 'Escape' && focusedDrawerOpen) {
       event.preventDefault();
-      focusedToolOptionsOpen = false;
+      closeFocusedDrawer();
     }
   }
 
@@ -1770,7 +1745,6 @@
 
   function openFocusedDrawerAsBackFallback() {
     if (!data.focused) return;
-    focusedToolOptionsOpen = false;
     drawerSearchQuery = '';
     focusedDrawerOpen = true;
     restoreFocusedHistorySentinel();
@@ -2918,7 +2892,6 @@
     }
 
     closeFocusedDrawer();
-    focusedToolOptionsOpen = false;
     notFoundSlug = null;
     if (closeSlug) {
       switcherOpen.set(false);
@@ -3137,11 +3110,6 @@
 
   function handleFocusedPopstate() {
     if (!data.focused) return;
-    if (focusedToolOptionsOpen) {
-      focusedToolOptionsOpen = false;
-      restoreFocusedHistorySentinel();
-      return;
-    }
     if (focusedDrawerOpen) {
       closeFocusedDrawer();
       restoreFocusedHistorySentinel();
@@ -3321,14 +3289,14 @@
     branch, not a behaviour branch.
   -->
   <section class="focused-shell" data-chrome-idle={chromeIdle}>
-    <a
-      href="/dock"
+    <button
+      type="button"
       class="focused-chrome-button focused-chrome-tools"
       class:first-run={firstRunHint}
       class:input-region-bottom={activeInputRegion === 'bottom'}
       class:input-region-all={activeInputRegion === 'all'}
-      aria-label="Return to Shippie Dock"
-      data-sveltekit-reload
+      aria-label={focusedDrawerOpen ? 'Close Shippie tools' : 'Open Shippie tools'}
+      aria-expanded={focusedDrawerOpen}
       onmousedown={handleFocusedToolsPress}
       ontouchstart={handleFocusedToolsPress}
       onkeydown={handleFocusedToolsKeydown}
@@ -3340,23 +3308,8 @@
         height="22"
         aria-hidden="true"
       />
-      <span class="sr-only">Return to Shippie Dock</span>
-    </a>
-    {#if activeApp}
-      <button
-        type="button"
-        class="focused-chrome-button focused-chrome-options"
-        class:input-region-all={activeInputRegion === 'all'}
-        aria-label={`Share and options for ${activeApp.name}`}
-        aria-expanded={focusedToolOptionsOpen}
-        onmousedown={handleFocusedOptionsPress}
-        ontouchstart={handleFocusedOptionsPress}
-        onkeydown={handleFocusedOptionsKeydown}
-      >
-        <span aria-hidden="true">↗</span>
-        <span class="sr-only">Share and options</span>
-      </button>
-    {/if}
+      <span class="sr-only">{focusedDrawerOpen ? 'Close Shippie tools' : 'Open Shippie tools'}</span>
+    </button>
     <div class="focused-frame">
       {#if notFoundSlug}
         <div class="focused-not-found">
@@ -3443,6 +3396,47 @@
             }}>×</button>
           </nav>
         </header>
+        {#if activeApp}
+          <section class="focused-current-tool" aria-labelledby="focused-current-tool-title">
+            <div class="focused-current-main">
+              <span class="focused-current-icon" style="background:{activeRailTool?.accent ?? 'var(--sunset)'}">
+                {activeRailTool?.icon ?? activeApp.shortName ?? activeApp.name.slice(0, 2)}
+              </span>
+              <span class="focused-current-copy">
+                <span class="focused-current-kicker">Current tool</span>
+                <strong id="focused-current-tool-title">{activeApp.name}</strong>
+                {#if activeApp.description}
+                  <small>{activeApp.description}</small>
+                {/if}
+              </span>
+              {#if focusedQrMarkup}
+                <span class="focused-current-qr" aria-label={`QR code for ${activeApp.name}`}>
+                  {@html focusedQrMarkup}
+                </span>
+              {/if}
+            </div>
+            <div class="focused-current-actions" aria-label={`${activeApp.name} actions`}>
+              <button type="button" class="focused-current-action primary" onclick={shareActiveTool}>
+                <span>Share</span>
+                <small>{focusedShareFeedback || 'Open share sheet'}</small>
+              </button>
+              <button type="button" class="focused-current-action" onclick={copyActiveToolLink}>
+                <span>Copy</span>
+                <small>{focusedShareFeedback || activeToolUrl.replace(/^https?:\/\//, '')}</small>
+              </button>
+              <button
+                type="button"
+                class="focused-current-action"
+                onclick={() => {
+                  if (activeAppId) reloadFrame(activeAppId);
+                }}
+              >
+                <span>Reload</span>
+                <small>Fresh frame, same local data</small>
+              </button>
+            </div>
+          </section>
+        {/if}
         {#if drawerSearchActive}
           <label class="focused-search" aria-label="Search Dock tools">
             <span class="focused-search-icon" aria-hidden="true">⌕</span>
@@ -3552,51 +3546,6 @@
         {/if}
       </div>
     </AppSwitcherGesture>
-    {#if focusedToolOptionsOpen && activeApp}
-      <button
-        type="button"
-        class="focused-options-backdrop"
-        aria-label="Close tool options"
-        onclick={closeFocusedToolOptions}
-      ></button>
-      <aside class="focused-options-panel" aria-label={`${activeApp.name} sharing and options`}>
-        <div class="focused-drawer-grip" aria-hidden="true"></div>
-        <header class="focused-options-head">
-          <p class="focused-options-kicker">Current tool</p>
-          <h2>{activeApp.name}</h2>
-          {#if activeApp.description}
-            <p>{activeApp.description}</p>
-          {/if}
-        </header>
-        {#if focusedQrMarkup}
-          <div class="focused-share-qr" aria-label={`QR code for ${activeApp.name}`}>
-            <div class="focused-share-qr-code">{@html focusedQrMarkup}</div>
-            <p>Scan to open</p>
-          </div>
-        {/if}
-        <div class="focused-options-list">
-          <button type="button" class="focused-option-row primary" onclick={shareActiveTool}>
-            <span>Share tool</span>
-            <small>{focusedShareFeedback || 'System share sheet'}</small>
-          </button>
-          <button type="button" class="focused-option-row" onclick={copyActiveToolLink}>
-            <span>Copy quicklink</span>
-            <small>{focusedShareFeedback || activeToolUrl.replace(/^https?:\/\//, '')}</small>
-          </button>
-          <button
-            type="button"
-            class="focused-option-row"
-            onclick={() => {
-              if (activeAppId) reloadFrame(activeAppId);
-              closeFocusedToolOptions();
-            }}
-          >
-            <span>Reload tool</span>
-            <small>Fresh frame, same local data</small>
-          </button>
-        </div>
-      </aside>
-    {/if}
   </section>
 {:else}
 <ToolSwitcherSheet
@@ -4371,8 +4320,8 @@
     white-space: nowrap;
   }
 
-  /* Thin focused-mode chrome. Shippie owns two small marks only:
-     tools/data on the left, current-tool share/options on the right.
+  /* Thin focused-mode chrome. Shippie owns one small mark only:
+     tools/switcher. Current-tool share/actions live inside the switcher.
      No hidden hit-zones are active in focused mode, so app builders
      keep their own headers, nav, inputs, swipes, and edge targets. */
   .focused-chrome-button {
@@ -4413,20 +4362,15 @@
     border-left: 0;
     border-radius: 0 16px 16px 0;
   }
-  .focused-chrome-options {
-    right: calc(env(safe-area-inset-right, 0px) - 12px);
-    border-right: 0;
-    border-radius: 16px 0 0 16px;
-  }
   /* Safe-edges contract: when the active app declares it owns the
      bottom or the entire viewport via @shippie/iframe-sdk
-     `safeEdges.declareInputRegion()`, compact the chrome buttons so
-     their hit area stays at the edge of game controls. Keep them
+     `safeEdges.declareInputRegion()`, compact the chrome mark so
+     its hit area stays at the edge of game controls. Keep it
      visibly identifiable, though: a too-thin sliver reads as "missing"
-     in launch games like Snake and prevents people finding share/data.
+     in launch games like Snake and prevents people finding the switcher.
 
-     'bottom' suppresses just the left tools pill (the one that
-     overlaps Stack's leftmost touch button). 'all' shrinks both. */
+     'bottom' suppresses the tools pill where app controls need room.
+     'all' keeps the same one-mark contract compact. */
   .focused-chrome-button.input-region-bottom.focused-chrome-tools,
   .focused-chrome-button.input-region-all {
     width: var(--touch-min);
@@ -4436,9 +4380,6 @@
   .focused-chrome-tools.input-region-bottom,
   .focused-chrome-tools.input-region-all {
     left: calc(env(safe-area-inset-left, 0px) - 2px);
-  }
-  .focused-chrome-options.input-region-all {
-    right: calc(env(safe-area-inset-right, 0px) - 2px);
   }
   .focused-chrome-button.input-region-bottom.focused-chrome-tools:hover,
   .focused-chrome-button.input-region-bottom.focused-chrome-tools:focus-visible,
@@ -4480,9 +4421,6 @@
   :global(html[data-keyboard-open="true"]) .focused-chrome-tools {
     transform: translateY(-50%) translateX(-100%);
   }
-  :global(html[data-keyboard-open="true"]) .focused-chrome-options {
-    transform: translateY(-50%) translateX(100%);
-  }
   .focused-chrome-button:hover,
   .focused-chrome-button:focus-visible,
   .focused-chrome-button[aria-expanded='true'] {
@@ -4494,11 +4432,6 @@
   .focused-chrome-tools:focus-visible {
     transform: translateY(-50%) translateX(18px);
   }
-  .focused-chrome-options:hover,
-  .focused-chrome-options:focus-visible,
-  .focused-chrome-options[aria-expanded='true'] {
-    transform: translateY(-50%) translateX(-18px);
-  }
   .focused-chrome-button img {
     display: block;
     flex-shrink: 0;
@@ -4509,8 +4442,8 @@
   }
   @media (max-width: 640px) {
     .focused-chrome-button {
-      top: auto;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+      top: calc(env(safe-area-inset-top, 0px) + 10px);
+      bottom: auto;
       width: var(--touch-min);
       height: 48px;
       background: rgba(20, 18, 15, 0.82);
@@ -4521,175 +4454,45 @@
       transform: none;
     }
     .focused-chrome-tools {
-      left: calc(env(safe-area-inset-left, 0px) + 12px);
+      left: 50%;
       border-left: 1px solid rgba(168, 196, 145, 0.35);
-      border-radius: 18px;
-    }
-    .focused-chrome-options {
-      right: calc(env(safe-area-inset-right, 0px) + 12px);
-      border-right: 1px solid rgba(168, 196, 145, 0.35);
-      border-radius: 18px;
+      border-radius: 999px;
+      transform: translateX(-50%);
     }
     .focused-chrome-tools.input-region-bottom,
     .focused-chrome-tools.input-region-all {
-      left: calc(env(safe-area-inset-left, 0px) + 8px);
-    }
-    .focused-chrome-options.input-region-all {
-      right: calc(env(safe-area-inset-right, 0px) + 8px);
+      left: 50%;
     }
     .focused-chrome-tools:hover,
-    .focused-chrome-tools:focus-visible,
-    .focused-chrome-options:hover,
-    .focused-chrome-options:focus-visible,
-    .focused-chrome-options[aria-expanded='true'] {
-      transform: translateY(-2px);
+    .focused-chrome-tools:focus-visible {
+      transform: translateX(-50%) translateY(-2px);
     }
-    :global(html[data-keyboard-open="true"]) .focused-chrome-tools,
-    :global(html[data-keyboard-open="true"]) .focused-chrome-options {
-      transform: translateY(140%);
+    :global(html[data-keyboard-open="true"]) .focused-chrome-tools {
+      transform: translateX(-50%) translateY(-140%);
     }
   }
 
-  .focused-options-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 58;
-    padding: 0;
-    border: 0;
-    background: rgba(20, 18, 15, 0.28);
-    cursor: default;
-    animation: focused-fade-in 160ms var(--ease-out);
+  .focused-shell :global(.drawer) {
+    --cream-bg: #0F0D0A;
+    --cream-text: #EDE4D3;
+    --cream-secondary: #B8A88F;
+    --cream-border: #2E2822;
+    --text: #EDE4D3;
+    --text-secondary: #B8A88F;
+    --text-light: #7A6B58;
+    --surface: #1E1A15;
+    --surface-alt: #252019;
+    --border: #3D3530;
+    --border-light: #2E2822;
+    background: #0F0D0A;
+    color: #EDE4D3;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.42);
   }
-  .focused-options-panel {
-    position: fixed;
-    top: 50%;
-    right: calc(env(safe-area-inset-right, 0px) + 48px);
-    z-index: 64;
-    width: min(340px, calc(100vw - 24px));
-    max-height: min(80dvh, 620px);
-    overflow-y: auto;
-    padding: 16px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--cream-bg, #faf7ef);
-    color: var(--cream-text, #14120f);
-    box-shadow: 0 18px 54px rgba(20, 18, 15, 0.24);
-    transform: translateY(-50%);
-    animation: focused-options-in 180ms var(--spring);
+  .focused-shell :global(.drawer.from-bottom) {
+    border-top-color: #2E2822;
   }
-  .focused-options-head {
-    display: grid;
-    gap: 6px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-  }
-  .focused-options-kicker,
-  .focused-options-head p,
-  .focused-option-row small {
-    margin: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
-  }
-  .focused-options-kicker {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-  .focused-options-head h2 {
-    margin: 0;
-    font-family: var(--font-heading);
-    font-size: 28px;
-    line-height: 1;
-  }
-  .focused-options-head p {
-    font-size: 15px;
-    line-height: 1.35;
-  }
-  .focused-options-list {
-    display: grid;
-    gap: 8px;
-    padding-top: 12px;
-  }
-  .focused-share-qr {
-    display: grid;
-    grid-template-columns: 88px minmax(0, 1fr);
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0 0;
-  }
-  .focused-share-qr-code {
-    width: 88px;
-    height: 88px;
-    padding: 6px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--paper-warm);
-  }
-  .focused-share-qr-code :global(svg) {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-  .focused-share-qr p {
-    margin: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    line-height: 1.35;
-    text-transform: uppercase;
-  }
-  .focused-option-row {
-    display: grid;
-    gap: 4px;
-    width: 100%;
-    min-width: 0;
-    padding: 12px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: rgba(20, 18, 15, 0.025);
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
-  }
-  .focused-option-row:hover,
-  .focused-option-row:focus-visible {
-    border-color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.07);
-    transform: translateX(-2px);
-  }
-  .focused-option-row.primary {
-    border-color: rgba(232, 96, 60, 0.34);
-    background: rgba(232, 96, 60, 0.09);
-  }
-  .focused-option-row span {
-    font-family: var(--font-heading);
-    font-size: 18px;
-    line-height: 1.05;
-  }
-  .focused-option-row small {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.03em;
-    line-height: 1.2;
-  }
-  @media (max-width: 640px) {
-    .focused-options-panel {
-      top: auto;
-      right: 0;
-      bottom: max(16px, env(safe-area-inset-bottom, 0px));
-      left: 0;
-      width: auto;
-      max-height: calc(100dvh - max(16px, env(safe-area-inset-bottom, 0px)) - 16px);
-      padding: 10px 16px 16px;
-      border-right: 0;
-      border-left: 0;
-      transform: none;
-      animation: focused-options-sheet-in 180ms var(--spring);
-    }
+  .focused-shell :global(.drawer.from-left) {
+    border-right-color: #2E2822;
   }
 
   .focused-drawer {
@@ -4697,7 +4500,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    color: var(--cream-text, #14120f);
+    color: #EDE4D3;
   }
   .focused-drawer-grip {
     display: none;
@@ -4718,7 +4521,7 @@
     top: 50%;
     transform: translateY(-50%);
     height: 3px;
-    background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
+    background: color-mix(in srgb, #B8A88F 44%, transparent);
   }
   .focused-drawer-head {
     position: sticky;
@@ -4729,8 +4532,8 @@
     align-items: center;
     gap: 14px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
-    background: var(--cream-bg, #faf7ef);
+    border-bottom: 1px solid #2E2822;
+    background: #0F0D0A;
   }
   .focused-home {
     display: inline-flex;
@@ -4757,7 +4560,7 @@
     line-height: 1;
   }
   .focused-brand-copy small {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: #B8A88F;
     font-size: 12px;
     line-height: 1.25;
     white-space: nowrap;
@@ -4765,7 +4568,7 @@
   .focused-drawer-actions {
     display: inline-flex;
     flex-shrink: 0;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid #2E2822;
   }
   .focused-action {
     display: inline-flex;
@@ -4776,7 +4579,7 @@
     padding: 0 11px;
     border: 0;
     background: transparent;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.58));
+    color: #B8A88F;
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -4787,12 +4590,12 @@
     transition: color 150ms ease, background 150ms ease;
   }
   .focused-action + .focused-action {
-    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border-left: 1px solid #2E2822;
   }
   .focused-action:hover,
   .focused-action:focus-visible {
-    color: var(--cream-text, #14120f);
-    background: rgba(20, 18, 15, 0.04);
+    color: #EDE4D3;
+    background: #1E1A15;
   }
   .focused-action-data {
     color: var(--sunset, #e8603c);
@@ -4807,6 +4610,121 @@
   .focused-action-close:focus-visible {
     color: var(--sunset, #e8603c);
   }
+  .focused-current-tool {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #2E2822;
+    background: #1E1A15;
+  }
+  .focused-current-main {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+  .focused-current-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    color: #0F0D0A;
+    font-family: var(--font-heading);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .focused-current-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .focused-current-kicker {
+    color: #7A6B58;
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .focused-current-copy strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    line-height: 1.15;
+  }
+  .focused-current-copy small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #B8A88F;
+    font-size: 0.76rem;
+    line-height: 1.25;
+  }
+  .focused-current-qr {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding: 4px;
+    border: 1px solid #2E2822;
+    background: #EDE4D3;
+  }
+  .focused-current-qr :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .focused-current-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid #2E2822;
+    background: #2E2822;
+    gap: 1px;
+  }
+  .focused-current-action {
+    min-width: 0;
+    min-height: var(--touch-min, 44px);
+    display: grid;
+    align-content: center;
+    gap: 2px;
+    padding: 9px 10px;
+    border: 0;
+    background: #0F0D0A;
+    color: #EDE4D3;
+    text-align: left;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .focused-current-action:hover,
+  .focused-current-action:focus-visible {
+    background: #252019;
+    outline: none;
+  }
+  .focused-current-action.primary {
+    color: var(--sunset, #e8603c);
+  }
+  .focused-current-action span {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .focused-current-action small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #7A6B58;
+    font-size: 0.68rem;
+    line-height: 1.15;
+  }
   .focused-section-head {
     display: flex;
     align-items: baseline;
@@ -4818,13 +4736,13 @@
     margin: 0;
     font-size: 12px;
     font-weight: 600;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: #7A6B58;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-family: var(--font-mono);
   }
   .focused-section-head span {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.45));
+    color: #7A6B58;
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.1em;
@@ -4842,8 +4760,8 @@
     gap: 6px;
   }
   .focused-insight {
-    background: var(--cream-bg, rgba(255, 255, 255, 0.85));
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: #1E1A15;
+    border: 1px solid #2E2822;
     border-radius: 12px;
     padding: 12px 14px;
   }
@@ -4853,7 +4771,7 @@
   }
   .focused-insight p {
     margin: 4px 0 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: #B8A88F;
     font-size: 13px;
   }
   .focused-insight-high {
@@ -4872,14 +4790,14 @@
   .focused-list {
     display: grid;
     gap: 1px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--cream-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid #2E2822;
+    background: #2E2822;
   }
   .focused-tool-row {
     min-width: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 42px;
-    background: var(--cream-bg, #faf7ef);
+    background: #1E1A15;
   }
   .focused-tool-row.running {
     grid-template-columns: minmax(0, 1fr) 42px 42px;
@@ -4901,7 +4819,7 @@
   }
   .focused-tool-open:hover,
   .focused-tool-open:focus-visible {
-    background: rgba(20, 18, 15, 0.045);
+    background: #252019;
     outline: none;
   }
   .focused-tool-icon {
@@ -4909,7 +4827,7 @@
     height: 36px;
     display: grid;
     place-items: center;
-    color: var(--bg, #14120f);
+    color: #0F0D0A;
     font-family: var(--font-heading);
     font-size: 0.78rem;
     font-weight: 700;
@@ -4932,7 +4850,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: #B8A88F;
     font-size: 12px;
     line-height: 1.2;
   }
@@ -4950,9 +4868,9 @@
     min-height: 58px;
     padding: 0 8px;
     border: 0;
-    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border-left: 1px solid #2E2822;
     background: transparent;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    color: #B8A88F;
     font-family: var(--font-mono);
     font-size: 11px;
     text-transform: uppercase;
@@ -4981,7 +4899,7 @@
   }
   .focused-section-more {
     margin: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    color: #7A6B58;
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.04em;
@@ -4994,15 +4912,15 @@
     min-height: var(--touch-min, 44px);
     padding: 8px 12px;
     margin: 0 0 12px;
-    background: rgba(0, 0, 0, 0.03);
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: #1E1A15;
+    border: 1px solid #2E2822;
   }
   .focused-search:focus-within {
     border-color: var(--sunset, #e8603c);
-    background: rgba(232, 96, 60, 0.04);
+    background: rgba(232, 96, 60, 0.08);
   }
   .focused-search-icon {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    color: #7A6B58;
     font-size: 16px;
     line-height: 1;
   }
@@ -5028,7 +4946,7 @@
     background: transparent;
     border: 0;
     padding: 4px 6px;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    color: #B8A88F;
     font-family: var(--font-mono);
     font-size: 11px;
     cursor: pointer;
@@ -5038,7 +4956,7 @@
   .focused-search-empty {
     margin: 6px 0;
     padding: 12px;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: #B8A88F;
     font-size: 13px;
     text-align: center;
   }
@@ -5054,18 +4972,6 @@
     text-decoration: underline;
   }
 
-  @keyframes focused-fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes focused-options-in {
-    from { opacity: 0; transform: translateY(-50%) translateX(12px); }
-    to { opacity: 1; transform: translateY(-50%); }
-  }
-  @keyframes focused-options-sheet-in {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
   @media (max-width: 640px) {
     .focused-drawer {
       padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
@@ -5095,15 +5001,26 @@
       min-width: var(--touch-min, 44px);
       font-size: 16px;
     }
+    .focused-current-main {
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+    }
+    .focused-current-icon {
+      width: 38px;
+      height: 38px;
+    }
+    .focused-current-qr {
+      width: 50px;
+      height: 50px;
+    }
+    .focused-current-actions {
+      grid-template-columns: 1fr;
+    }
+    .focused-current-action {
+      grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
+      align-items: center;
+    }
     .focused-section-head {
       gap: 8px;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .focused-options-backdrop,
-    .focused-options-panel {
-      animation: none;
     }
   }
 
