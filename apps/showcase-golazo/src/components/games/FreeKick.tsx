@@ -62,9 +62,9 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       if (pts.length < 3) return 0;
       const a = pts[0], b = pts[pts.length - 1], m = pts[Math.floor(pts.length / 2)];
       const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      // signed perpendicular distance of m from line a→b
+      // signed perpendicular distance of m from line a→b — even a gentle arc bends it
       const cross = ((b.x - a.x) * (a.y - m.y) - (b.y - a.y) * (a.x - m.x)) / len;
-      return clamp(-cross * 0.012, -0.5, 0.5);
+      return clamp(-cross * 0.026, -0.95, 0.95);
     }
     function clamp(n: number, lo: number, hi: number) { return n < lo ? lo : n > hi ? hi : n; }
 
@@ -75,9 +75,10 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       hapticTap();
       shotsRef.current -= 1; setShots(shotsRef.current);
       keeper.cfg = keeperConfig(rampedDifficulty(difficulty, scoreRef.current));
-      // predict crossing (curl included, roughly) and commit the keeper
+      // The keeper reads the ball's LAUNCH line, not the curve — so a banana bends
+      // away from their dive. They guess where a straight shot would cross.
       let px = spot().x, vx = ball.vx, vy = ball.vy, py = spot().y;
-      for (let i = 0; i < 60 && py > goalY(); i++) { vy += 0.11; vx += curl; px += vx; py += vy; }
+      for (let i = 0; i < 60 && py > goalY(); i++) { vy += 0.11; px += vx; py += vy; }
       keeper.commit(px);
     }
     function onDown(e: PointerEvent) { const r = canvas.getBoundingClientRect(); drag = { x: e.clientX - r.left, y: e.clientY - r.top }; path = [drag]; aim = drag; }
@@ -108,7 +109,8 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       keeper.update(2);
 
       if (ball.flying && !resolved) {
-        ball.vy += 0.11; ball.vx += ball.curl; ball.x += ball.vx; ball.y += ball.vy;
+        // Banana: strong lateral kick that eases as the ball loses spin.
+        ball.vy += 0.11; ball.vx += ball.curl; ball.curl *= 0.97; ball.x += ball.vx; ball.y += ball.vy;
         trail.push(ball.x, ball.y);
         if (Math.abs(ball.y - wallY()) < 6 && Math.abs(ball.x - wallX) < W * 0.12) endShot("WALL!", 0);
         else if (ball.y <= goalY() + ball.r) {
@@ -135,9 +137,9 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       ctx.save();
       ctx.translate(keeper.x, gy + bh * 0.5);
       ctx.rotate(keeper.lean * 0.6);
-      ctx.fillStyle = "#16f08b"; const kw = keeper.reachPx() * 1.4;
+      ctx.fillStyle = "#f5a623"; const kw = keeper.reachPx() * 1.4;
       ctx.beginPath(); ctx.ellipse(0, 0, kw / 2, bh * 0.34, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#0a1f16"; ctx.beginPath(); ctx.arc(0, -bh * 0.3, kw * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#2a1f12"; ctx.beginPath(); ctx.arc(0, -bh * 0.3, kw * 0.22, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       // wall
       const players = 4, ww = W * 0.05;
@@ -148,10 +150,10 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       }
       // aim guide with curl
       if (aim && drag) {
-        const s = spot(); const curl = curlFromPath(path);
+        const s = spot(); let cc = curlFromPath(path);
         let vx = (aim.x - s.x) * 0.14, vy = (aim.y - s.y) * 0.16, px = s.x, py = s.y;
-        ctx.fillStyle = "rgba(22,240,139,0.5)";
-        for (let i = 0; i < 18; i++) { vy += 0.11; vx += curl; px += vx; py += vy; ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = "rgba(184,255,78,0.55)";
+        for (let i = 0; i < 22 && py > goalY() - 20; i++) { vy += 0.11; vx += cc; cc *= 0.97; px += vx; py += vy; ctx.beginPath(); ctx.arc(px, py, 2.4, 0, Math.PI * 2); ctx.fill(); }
       }
       if (ball.flying) trail.draw(ctx, ball.r);
       drawBallShadow(ctx, ball.x, H - 8, ball.r, ball.flying ? 0.6 : 0.1);

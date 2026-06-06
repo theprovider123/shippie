@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { tap as hapticTap, confirmBuzz } from "../../lib/haptics";
+import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 import { drawStadium, drawBall, drawBallShadow, Trail, Particles, Shake } from "../../lib/stadium";
 
 /**
@@ -35,6 +35,11 @@ export function KeepyUppy({ onGameOver, target }: { onGameOver: (score: number) 
     let raf = 0;
     let spin = 0;
     let squash = 1;
+    // A breeze that wanders and strengthens — the ball drifts, so you have to
+    // chase it round the screen rather than tap in one spot.
+    let wind = 0;
+    let windTarget = (Math.random() - 0.5) * 0.06;
+    let windClock = 0;
     const trail = new Trail(7);
     const particles = new Particles();
     const shake = new Shake();
@@ -51,7 +56,10 @@ export function KeepyUppy({ onGameOver, target }: { onGameOver: (score: number) 
       shake.kick(4);
       scoreRef.current += 1;
       setScore(scoreRef.current);
-      hapticTap();
+      if (scoreRef.current % 25 === 0 || scoreRef.current === 10) {
+        celebrate();
+        particles.emit(ball.x, ball.y, "spark", 18);
+      } else hapticTap();
     }
     function onDown(e: PointerEvent) {
       const r = canvas.getBoundingClientRect();
@@ -60,7 +68,17 @@ export function KeepyUppy({ onGameOver, target }: { onGameOver: (score: number) 
     canvas.addEventListener("pointerdown", onDown);
 
     function frame(now: number) {
+      // Wander the wind; it grows a little with your score so it never gets easy.
+      windClock -= 1;
+      if (windClock <= 0) {
+        const strength = 0.05 + Math.min(0.1, scoreRef.current * 0.002);
+        windTarget = (Math.random() - 0.5) * 2 * strength;
+        windClock = 70 + Math.random() * 90;
+      }
+      wind += (windTarget - wind) * 0.02;
       ball.vy += gravity;
+      ball.vx += wind;
+      ball.vx = Math.max(-7.5, Math.min(7.5, ball.vx));
       ball.x += ball.vx; ball.y += ball.vy;
       spin += ball.vx * 0.05;
       squash += (1 - squash) * 0.2;

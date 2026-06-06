@@ -159,11 +159,11 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
       ctx.save();
       ctx.translate(keeper.x, gy + bh * 0.42);
       ctx.rotate(keeper.lean);
-      ctx.fillStyle = "#16f08b";
+      ctx.fillStyle = "#f5a623";
       const kw = keeper.reachPx() * 1.6;
       roundRect(ctx, -kw / 2, -bh * 0.32, kw, bh * 0.62, 6);
       ctx.fill();
-      ctx.fillStyle = "#0a1f16"; // head
+      ctx.fillStyle = "#2a1f12"; // head
       ctx.beginPath(); ctx.arc(0, -bh * 0.38, kw * 0.22, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       // aim guide (dotted trajectory)
