@@ -53,6 +53,7 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
     const keeper = new Keeper(goalL(), goalR(), keeperConfig(difficulty));
     const spot = () => ({ x: W / 2, y: H * 0.86 });
     let ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.048 };
+    let spin = 0;
     let drag: { x: number; y: number } | null = null;
     let aim: { x: number; y: number } | null = null;
     let netBulge: { x: number; t: number } | null = null;
@@ -64,11 +65,15 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
 
     function resetBall() {
       ball = { ...spot(), vx: 0, vy: 0, flying: false, r: Math.min(W, H) * 0.048 };
-      keeper.reset(); trail.clear();
+      spin = 0; keeper.reset(); trail.clear();
     }
     function shoot(dx: number, dy: number) {
       if (ball.flying || dy > -10) return;
-      ball.vx = dx * 0.16; ball.vy = dy * 0.16; ball.flying = true;
+      // a touch more pace off the boot, with a floor so a soft flick still travels
+      const pw = 0.19;
+      const mag = Math.hypot(dx, dy);
+      const boost = mag < H * 0.3 ? (H * 0.3) / Math.max(1, mag) : 1;
+      ball.vx = dx * pw * boost; ball.vy = dy * pw * boost; ball.flying = true;
       hapticTap();
       shotsRef.current -= 1;
       setShots(shotsRef.current);
@@ -126,6 +131,7 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
 
       if (ball.flying) {
         ball.vy += 0.12; ball.x += ball.vx; ball.y += ball.vy;
+        spin += ball.vx * 0.05 + 0.18;
         trail.push(ball.x, ball.y);
         if (ball.y <= goalY() + ball.r) judge();
         else if (ball.y > H + ball.r * 2 || ball.x < -50 || ball.x > W + 50) {
@@ -157,20 +163,23 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
       ctx.beginPath(); ctx.moveTo(gl, gy + bh); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + bh); ctx.stroke();
       // keeper — a real diving figure, gloves at the edge of the save zone
       drawKeeper(ctx, keeper.x, gy + bh * 0.62, keeper.reachPx(), keeper.lean, bh, keeper.dive);
-      // aim guide (dotted trajectory)
-      if (aim) {
+      // aim guide (dotted trajectory) — matches the real shot power
+      if (aim && !ball.flying) {
         const s = spot();
-        let vx = (aim.x - s.x) * 0.16, vy = (aim.y - s.y) * 0.16, px = s.x, py = s.y;
-        ctx.fillStyle = "rgba(22,240,139,0.55)";
-        for (let i = 0; i < 14; i++) {
+        const dx = aim.x - s.x, dy = aim.y - s.y, mag = Math.hypot(dx, dy);
+        const boost = mag < H * 0.3 ? (H * 0.3) / Math.max(1, mag) : 1;
+        let vx = dx * 0.19 * boost, vy = dy * 0.19 * boost, px = s.x, py = s.y;
+        for (let i = 0; i < 16 && py > gy - 10; i++) {
           px += vx; py += vy; vy += 0.12;
-          ctx.beginPath(); ctx.arc(px, py, 2.4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = `rgba(184,255,78,${0.5 - i * 0.022})`;
+          ctx.beginPath(); ctx.arc(px, py, 3 - i * 0.08, 0, Math.PI * 2); ctx.fill();
         }
       }
-      // ball
+      // ball — shrinks into the distance (perspective) and spins on its flight
       if (ball.flying) trail.draw(ctx, ball.r);
       drawBallShadow(ctx, ball.x, H - 8, ball.r, ball.flying ? 0.6 : 0.1);
-      drawBall(ctx, ball.x, ball.y, ball.r, now / 120);
+      const persp = 0.6 + 0.4 * Math.max(0, Math.min(1, (ball.y - gy) / (spot().y - gy)));
+      drawBall(ctx, ball.x, ball.y, ball.r * persp, ball.flying ? spin : now / 400);
       particles.update(); particles.draw(ctx);
       ctx.restore();
 
