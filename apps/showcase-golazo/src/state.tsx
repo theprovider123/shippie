@@ -13,6 +13,7 @@ import * as store from "./lib/storage";
 import type { SharePayload } from "./lib/codec";
 import { makeSeed, type Sweep, type SweepMode, type SweepScope } from "./lib/sweeps";
 import { addLocalScore, type GameId, type ScoreEntry } from "./lib/games";
+import { addReaction, type ReactionKind, type ReactionStore } from "./lib/reactions";
 import { simulateTournament } from "./lib/sim";
 
 export interface SweepOpts {
@@ -58,6 +59,10 @@ interface Store {
 
   scores: ScoreEntry[];
   addScore: (game: GameId, score: number) => ScoreEntry;
+
+  /** Reactions you've sent to mates' rows (🔥📞💀), keyed by their uid. */
+  reactions: ReactionStore;
+  react: (uid: string, kind: ReactionKind) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -77,6 +82,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [results, setResults] = useState<Results>(() => store.loadResults());
   const [sweeps, setSweeps] = useState<Sweep[]>(() => store.loadSweeps());
   const [scores, setScores] = useState<ScoreEntry[]>(() => store.loadScores());
+  const [reactions, setReactions] = useState<ReactionStore>(() => store.loadReactions());
   const [feed, setFeed] = useState<Feed>(() => emptyFeed());
   const [online, setOnline] = useState(false);
 
@@ -85,6 +91,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => store.saveResults(results), [results]);
   useEffect(() => store.saveSweeps(sweeps), [sweeps]);
   useEffect(() => store.saveScores(scores), [scores]);
+  useEffect(() => store.saveReactions(reactions), [reactions]);
 
   // Pull the tournament feed once on launch. Official results (when present)
   // flow into `results`, lighting up live scoring + pool leaderboards.
@@ -273,8 +280,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setScores((ss) => addLocalScore(ss, entry));
         return entry;
       },
+
+      reactions,
+      react(uid, kind) {
+        setReactions((r) => addReaction(r, uid, kind, Date.now()));
+      },
     };
-  }, [profile, prediction, pools, results, sweeps, scores, feed, online]);
+  }, [profile, prediction, pools, results, sweeps, scores, reactions, feed, online]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

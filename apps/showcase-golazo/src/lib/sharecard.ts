@@ -492,8 +492,11 @@ export interface ReceiptsRow {
 }
 export interface ReceiptsCard {
   matchLabel: string; // "GROUP G · MATCH WEEK 1"
-  home: ReceiptsSide;
-  away: ReceiptsSide;
+  /** A concrete result, when there is one. Omit for a standings-only headline. */
+  home?: ReceiptsSide;
+  away?: ReceiptsSide;
+  /** Headline shown when there's no single match (pool-level receipts). */
+  headline?: string;
   rows: ReceiptsRow[];
   callout: string; // the receipts banner line
   groupName: string; // "The Lads"
@@ -557,7 +560,7 @@ export function drawReceiptsCard(canvas: HTMLCanvasElement, c: ReceiptsCard): vo
   cardBackdrop(ctx, W, H, hexA("#ff3b30", 0.1), hexA(G1, 0.07));
   cardEyebrow(ctx, pad, c.matchLabel.toUpperCase());
 
-  // — Match score box —
+  // — Match score box (or a standings headline when there's no single match) —
   const mY = 220;
   const mH = 280;
   ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -569,25 +572,36 @@ export function drawReceiptsCard(canvas: HTMLCanvasElement, c: ReceiptsCard): vo
   ctx.stroke();
   ctx.textAlign = "center";
   const cyMid = mY + 130;
-  // home
-  ctx.font = `110px ${FONT}`;
-  ctx.fillText(c.home.flag, W * 0.27, cyMid);
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.font = `700 34px ${FONT}`;
-  ctx.fillText(c.home.short.toUpperCase(), W * 0.27, cyMid + 90);
-  // away
-  ctx.font = `110px ${FONT}`;
-  ctx.fillText(c.away.flag, W * 0.73, cyMid);
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.font = `700 34px ${FONT}`;
-  ctx.fillText(c.away.short.toUpperCase(), W * 0.73, cyMid + 90);
-  // score
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `900 96px ${FONT}`;
-  ctx.fillText(`${c.home.score}–${c.away.score}`, W / 2, cyMid + 10);
-  ctx.fillStyle = G1;
-  ctx.font = `700 26px ${FONT}`;
-  ctx.fillText("FULL TIME", W / 2, cyMid + 80);
+  if (c.home && c.away) {
+    // home
+    ctx.font = `110px ${FONT}`;
+    ctx.fillText(c.home.flag, W * 0.27, cyMid);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = `700 34px ${FONT}`;
+    ctx.fillText(c.home.short.toUpperCase(), W * 0.27, cyMid + 90);
+    // away
+    ctx.font = `110px ${FONT}`;
+    ctx.fillText(c.away.flag, W * 0.73, cyMid);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = `700 34px ${FONT}`;
+    ctx.fillText(c.away.short.toUpperCase(), W * 0.73, cyMid + 90);
+    // score
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `900 96px ${FONT}`;
+    ctx.fillText(`${c.home.score}–${c.away.score}`, W / 2, cyMid + 10);
+    ctx.fillStyle = G1;
+    ctx.font = `700 26px ${FONT}`;
+    ctx.fillText("FULL TIME", W / 2, cyMid + 80);
+  } else {
+    ctx.font = `90px ${FONT}`;
+    ctx.fillText("🧾", W / 2, cyMid - 10);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `900 64px ${FONT}`;
+    ctx.fillText("THE RECEIPTS", W / 2, cyMid + 80);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = `600 32px ${FONT}`;
+    ctx.fillText(c.headline ?? "The table doesn't lie.", W / 2, cyMid + 140);
+  }
 
   // — Pool table —
   ctx.textAlign = "left";

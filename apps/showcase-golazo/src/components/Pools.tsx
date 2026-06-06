@@ -5,9 +5,17 @@ import { decodeShare } from "../lib/codec";
 import { hasResults, scorePrediction } from "../lib/scoring";
 import { shareBracket } from "../lib/share";
 import { useStore } from "../state";
-import type { Pool, Prediction } from "../lib/types";
+import type { Pool, PoolEntry, Prediction } from "../lib/types";
 import { Flag, teamVars } from "../ui/atoms";
 import { confirmBuzz, tap } from "../lib/haptics";
+import {
+  REACTION_EMOJI,
+  REACTION_ORDER,
+  activeReactions,
+} from "../lib/reactions";
+import { mostWrong, rankEntries, tagFor } from "../lib/receipts";
+import { tribeStats } from "../lib/tribe";
+import { receiptsCardBlob, type ReceiptsRow } from "../lib/sharecard";
 import { Sweepstakes } from "./Sweepstakes";
 
 interface Row {
@@ -206,6 +214,64 @@ function PoolDetail({
     return completion(b.prediction) - completion(a.prediction);
   });
 
+  // — The Receipts + tribe stats + reactions (derived, offline) —
+  const [openReact, setOpenReact] = useState<string | null>(null);
+  const entries: PoolEntry[] = rows.map((r) => ({
+    uid: r.uid,
+    name: r.name,
+    favTeam: r.favTeam,
+    prediction: r.prediction,
+    importedAt: 0,
+  }));
+  const rankedReceipts = rankEntries(entries, results);
+  const tagByUid = new Map(
+    rankedReceipts.map((re) => [re.entry.uid, tagFor(re, rankedReceipts, results)] as const),
+  );
+  const tribe = profile ? tribeStats(prediction, entries.map((e) => e.prediction)) : [];
+  const receipts = mostWrong(entries, results);
+  const now = Date.now();
+
+  async function shareReceipts() {
+    tap();
+    const shareRows: ReceiptsRow[] = rankedReceipts.slice(0, 5).map((re) => {
+      const isMe = re.entry.uid === profile?.uid;
+      const t = tagByUid.get(re.entry.uid);
+      return {
+        pos: re.pos,
+        initial: re.entry.name.charAt(0) || "?",
+        name: re.entry.name,
+        pts: re.pts,
+        you: isMe,
+        tag: isMe ? "YOU" : t?.label,
+        tone: isMe ? "you" : t?.tone === "good" ? "good" : t?.tone === "bad" ? "bad" : undefined,
+      };
+    });
+    const blob = await receiptsCardBlob({
+      matchLabel: `${pool.name} · The Receipts`,
+      headline: receipts ? `${receipts.line.split(".")[0]}.` : "The table doesn't lie.",
+      rows: shareRows,
+      callout: receipts?.line ?? "Tips are in. The table's live.",
+      groupName: pool.name,
+      players: rows.length,
+    });
+    if (!blob) return;
+    const file = new File([blob], "golazo-receipts.png", { type: "image/png" });
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: receipts?.line ?? "The Receipts 🧾" });
+        return;
+      }
+    } catch {
+      /* fall through to download */
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "golazo-receipts.png";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function addLink() {
     setErr(null);
     const m = /[#&?]b=([^&]+)/.exec(link.trim());
@@ -253,6 +319,12 @@ function PoolDetail({
                 <span className="board-name">
                   {r.name}
                   {r.isMe && <em className="you-tag">you</em>}
+                  {(() => {
+                    const t = tagByUid.get(r.uid);
+                    return t && !r.isMe ? (
+                      <em className={`row-tag tone-${t.tone}`}>{t.label}</em>
+                    ) : null;
+                  })()}
                 </span>
                 <span className="board-champ">
                   {champ ? (
@@ -260,7 +332,7 @@ function PoolDetail({
                       <Flag id={champ} size={16} /> {team(champ).short}
                     </>
                   ) : (
-                    "no champion yet"
+                    "no tips yet"
                   )}
                 </span>
               </span>
@@ -274,6 +346,43 @@ function PoolDetail({
                   <small>{Math.round(completion(r.prediction) * 100)}%</small>
                 )}
               </span>
+              {!r.isMe && (
+                <span className="row-react">
+                  {activeReactions(store.reactions, r.uid, now).map((k) => (
+                    <span key={k} className="react-badge">
+                      {REACTION_EMOJI[k]}
+                    </span>
+                  ))}
+                  <button
+                    className="react-toggle"
+                    aria-label={`React to ${r.name}`}
+                    onClick={() => {
+                      tap();
+                      setOpenReact(openReact === r.uid ? null : r.uid);
+                    }}
+                  >
+                    +
+                  </button>
+                  {openReact === r.uid && (
+                    <span className="react-pop" role="menu">
+                      {REACTION_ORDER.map((k) => (
+                        <button
+                          key={k}
+                          role="menuitem"
+                          aria-label={k}
+                          onClick={() => {
+                            tap();
+                            store.react(r.uid, k);
+                            setOpenReact(null);
+                          }}
+                        >
+                          {REACTION_EMOJI[k]}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                </span>
+              )}
             </li>
           );
         })}
@@ -286,11 +395,39 @@ function PoolDetail({
         </p>
       )}
 
-      <div className="pool-add">
-        <button className="cta wide" onClick={invite}>
-          Invite — share my link
+      {receipts && (
+        <div className="receipts-banner">
+          <span className="receipts-emoji" aria-hidden>📞</span>
+          <p className="receipts-text">{receipts.line}</p>
+        </div>
+      )}
+
+      {(receipts || scored) && (
+        <button className="ghost-btn wide receipts-share" onClick={shareReceipts}>
+          🧾 Share The Receipts
         </button>
-        <span className="field-label">Add a friend's call</span>
+      )}
+
+      {tribe.length > 0 && (
+        <div className="tribe">
+          <span className="field-label">Where you sit</span>
+          <ul className="tribe-list">
+            {tribe.map((s, i) => (
+              <li key={i} className="tribe-row">
+                <span className="tribe-pct">{s.pct}%</span>
+                <span className="tribe-label">{s.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="pool-add">
+        <p className="pool-scarcity">{pool.name} is filling up — drop the link in the chat.</p>
+        <button className="cta wide" onClick={invite}>
+          Drop in the group chat
+        </button>
+        <span className="field-label">Add a mate's call</span>
         <div className="pool-form-row">
           <input
             className="field-input"
