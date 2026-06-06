@@ -24,7 +24,7 @@ export async function shareBracket(
   format: CardFormat = "story",
 ): Promise<ShareResult> {
   const url = shareUrl(payloadFrom(profile, prediction));
-  const text = `I called the 2026 World Cup on Golazo. Think you can beat my bracket?`;
+  const text = `My 2026 World Cup call is locked on Golazo. Prove me wrong.`;
 
   // 1) Native share with the image file (best — Instagram/WhatsApp/X friendly).
   try {

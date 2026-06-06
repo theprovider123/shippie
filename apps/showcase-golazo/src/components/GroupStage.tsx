@@ -65,9 +65,9 @@ export function GroupStage({ onAllDone }: { onAllDone?: () => void }) {
     <div className="groups">
       <div className="section-head">
         <div>
-          <h2 className="section-title">Group stage</h2>
+          <h2 className="section-title">The Groups</h2>
           <p className="section-hint">
-            Tap teams in your finishing order. Top two go through.
+            Tap teams into your finishing order. Top two go through.
           </p>
         </div>
         <div className="tally">

@@ -15,12 +15,12 @@ const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
   },
   {
     id: "predict",
-    label: "Picks",
+    label: "Tips",
     icon: <path d="M4 6h6v4M4 18h6v-4M10 8h4v8h-4M14 12h6" />,
   },
   {
     id: "pools",
-    label: "Mates",
+    label: "Your Lot",
     icon: <path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5-2.9 1-5.5-4-3.9 5.5-.8z" />,
   },
   {

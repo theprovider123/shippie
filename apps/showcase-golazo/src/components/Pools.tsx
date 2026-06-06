@@ -64,16 +64,16 @@ export function Pools() {
     <div className="pools">
       <div className="section-head">
         <div>
-          <h2 className="section-title">Pools</h2>
-          <p className="section-hint">Settle it with your mates. No accounts.</p>
+          <h2 className="section-title">Your Lot</h2>
+          <p className="section-hint">Settle it with your lot. No accounts, no faff.</p>
         </div>
       </div>
 
       {pools.length === 0 && (
         <div className="empty-pools">
           <span className="empty-pools-emoji" aria-hidden>🏟️</span>
-          <p>Start a pool, share your link, and watch the table fill up as your
-          friends call it.</p>
+          <p>Start a group, drop the link in the chat, and watch the table fill
+          up as your lot make their calls.</p>
         </div>
       )}
 
@@ -93,7 +93,7 @@ export function Pools() {
 
       <div className="pool-forms">
         <div className="pool-form">
-          <span className="field-label">Start a pool</span>
+          <span className="field-label">Start a group</span>
           <div className="pool-form-row">
             <input
               className="field-input"
@@ -134,8 +134,8 @@ export function Pools() {
 
       {profile && (
         <p className="pools-tip">
-          Tip: a pool is your private table — add friends by pasting the link
-          they send you. Your picks stay on this phone until you choose to share.
+          Tip: your group is a private table — add your lot by pasting the link
+          they send you. Your tips stay on this phone until you choose to share.
         </p>
       )}
     </div>
@@ -230,7 +230,7 @@ function PoolDetail({
     <div className="pool-detail">
       <div className="pool-detail-head">
         <button className="back-btn" onClick={() => { tap(); onBack(); }}>
-          ← Pools
+          ← Your Lot
         </button>
         <button className="pool-code lg copyable" onClick={copyCode} title="Copy join code">
           {codeCopied ? "Copied ✓" : pool.code}

@@ -133,7 +133,7 @@ function PredictScreen() {
           className={phase === "groups" ? "is-sel" : ""}
           onClick={() => setPhase("groups")}
         >
-          Groups
+          The Groups
         </button>
         <button
           role="tab"
@@ -141,7 +141,7 @@ function PredictScreen() {
           className={phase === "knockout" ? "is-sel" : ""}
           onClick={() => setPhase("knockout")}
         >
-          Knockout
+          The Knockouts
         </button>
       </div>
 

@@ -96,14 +96,14 @@ describe("App smoke", () => {
       act(() => item.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     };
 
-    nav("Picks");
-    expect(container.textContent).toContain("Group stage");
-    nav("Mates");
-    expect(container.textContent).toContain("Pools");
+    nav("Tips");
+    expect(container.textContent).toContain("The Groups");
+    nav("Your Lot");
+    expect(container.textContent).toContain("Your Lot");
     nav("You");
     expect(container.querySelector(".home")).not.toBeNull();
     expect(container.textContent).toContain("Tester");
-    expect(container.textContent).toContain("Match day");
+    expect(container.textContent).toContain("Match Week");
   });
 
   it("opens an incoming shared bracket from the URL hash", () => {
