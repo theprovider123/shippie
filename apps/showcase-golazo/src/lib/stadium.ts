@@ -252,6 +252,7 @@ export function drawKeeper(
   reachPx: number,
   lean: number,
   scale: number,
+  dive = 0,
   kit = "#f5a623",
 ): void {
   const dark = "#2a1f12";
@@ -263,10 +264,13 @@ export function drawKeeper(
   const shoulderY = -bodyH * 0.4;
   const span = Math.max(reachPx, bodyW * 0.9); // gloves at the save-zone edge
   const reachUp = scale * 0.22; // arms raised as they spread
+  const dir = lean === 0 ? 0 : lean > 0 ? 1 : -1;
 
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(lean * 0.45); // tilt into the dive
+  // Launch off the line: arc up + out toward the dive as `dive` ramps 0→1.
+  ctx.translate(cx + dir * dive * scale * 0.35, cy - Math.sin(dive * Math.PI) * scale * 0.42);
+  // Body rotates from upright toward fully horizontal in the dive direction.
+  ctx.rotate(lean * 0.3 + dir * dive * (Math.PI * 0.42));
 
   // legs
   ctx.fillStyle = dark;

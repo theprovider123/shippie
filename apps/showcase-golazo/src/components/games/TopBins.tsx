@@ -156,7 +156,7 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
       ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 5; ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(gl, gy + bh); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + bh); ctx.stroke();
       // keeper — a real diving figure, gloves at the edge of the save zone
-      drawKeeper(ctx, keeper.x, gy + bh * 0.62, keeper.reachPx(), keeper.lean, bh);
+      drawKeeper(ctx, keeper.x, gy + bh * 0.62, keeper.reachPx(), keeper.lean, bh, keeper.dive);
       // aim guide (dotted trajectory)
       if (aim) {
         const s = spot();

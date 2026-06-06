@@ -86,9 +86,10 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
           ctx.fillRect(cx - w / 2, gy, w, bh);
         }
       }
-      // keeper — a real diving figure
+      // keeper — a real diving figure that launches off the line
       const lean = a ? (zoneX(a.dive) - W / 2) / (W * 0.3) : 0;
-      drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.16, lean, bh);
+      const dive = a ? Math.min(1, a.t / 16) : 0;
+      drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.16, lean, bh, dive);
       // ball
       drawBall(ctx, ballX, ballY, Math.min(W, H) * 0.045, now / 120);
       particles.update(); particles.draw(ctx);

@@ -50,6 +50,8 @@ export class Keeper {
   target: number;
   lean = 0;
   diving = false;
+  /** 0 = on the line, 1 = full-stretch airborne dive. Drives the dive animation. */
+  dive = 0;
   private patrolDir = 1;
   private wait = 0; // reaction-delay frames remaining before the dive commits
 
@@ -86,17 +88,21 @@ export class Keeper {
   update(idleSpeed = 2): void {
     if (this.diving) {
       // Hesitate first: only a small anticipatory shift, then explode into the dive.
-      const factor = this.wait > 0 ? (this.cfg.speed + 0.04) * 0.18 : this.cfg.speed + 0.04;
+      const committed = this.wait <= 0;
+      const factor = committed ? this.cfg.speed + 0.04 : (this.cfg.speed + 0.04) * 0.18;
       if (this.wait > 0) this.wait--;
       this.x += (this.target - this.x) * factor;
       const mid = (this.x0 + this.x1) / 2;
       this.lean += (clamp((this.target - mid) / ((this.x1 - this.x0) / 2), -1, 1) - this.lean) * 0.2;
+      // Once committed, launch off the line into a full-stretch dive.
+      if (committed) this.dive += (1 - this.dive) * 0.22;
     } else {
       this.x += this.patrolDir * idleSpeed;
       const reachPx = this.reachPx();
       if (this.x < this.x0 + reachPx) this.patrolDir = 1;
       if (this.x > this.x1 - reachPx) this.patrolDir = -1;
       this.lean += (0 - this.lean) * 0.2;
+      this.dive += (0 - this.dive) * 0.3;
     }
   }
 
@@ -109,5 +115,6 @@ export class Keeper {
     this.target = this.x;
     this.diving = false;
     this.lean = 0;
+    this.dive = 0;
   }
 }
