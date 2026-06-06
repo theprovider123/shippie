@@ -43,7 +43,7 @@
   class="tool-glyph"
   class:running
   class:float
-  style="--c: {accent}; --dot: {Math.max(5, Math.round(size * 0.14))}px; width: {size}px; height: {size}px; font-size: {Math.round(size * 0.32)}px;"
+  style="--c: {accent}; width: {size}px; height: {size}px; font-size: {Math.round(size * 0.36)}px;"
   aria-hidden="true"
 >
   {#if running}<span class="pulse"></span>{/if}
@@ -54,7 +54,6 @@
   {:else}
     <span class="monogram">{mark}</span>
   {/if}
-  <span class="dot"></span>
   {#if showRocket}
     <span class="rocket">
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="2" aria-hidden="true">
@@ -72,8 +71,11 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--tool-icon-radius);
-    background: var(--tool-icon-tile);
-    border: 1px solid color-mix(in srgb, var(--c) var(--tool-icon-hairline), transparent);
+    /* Faint accent-tinted dark tile: gives the icon presence on any dark
+       surface and turns per-tool colour into a muted tonal wash instead of
+       a clashing bright letter. */
+    background: color-mix(in srgb, var(--c) 15%, var(--tool-icon-tile));
+    border: 1px solid color-mix(in srgb, var(--c) 48%, transparent);
     overflow: visible;
   }
   .tool-glyph.float { box-shadow: var(--tool-icon-float); }
@@ -85,11 +87,6 @@
     color: var(--c);
   }
   .emoji { line-height: 1; }
-  .dot {
-    position: absolute; left: var(--dot, 9px); top: var(--dot, 9px);
-    width: 4px; height: 4px; border-radius: 1px;
-    background: var(--c); opacity: 0.65;
-  }
   .tool-glyph.running {
     box-shadow:
       var(--tool-icon-float),

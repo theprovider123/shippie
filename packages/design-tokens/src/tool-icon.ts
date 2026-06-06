@@ -42,8 +42,9 @@ export function accentColor(slug: string, themeColor?: string | null): string {
   const tc = (themeColor ?? '').trim().toLowerCase();
   if (tc && !DEFAULT_THEME_COLORS.has(tc)) return (themeColor as string).trim();
   const hue = hashString(slug ?? '') % 360;
-  // Fixed S/L tuned for the terminal palette so contrast holds across hues.
-  return `hsl(${hue} 58% 62%)`;
+  // Muted, even S/L so derived hues read as a harmonious tonal set (not
+  // clashing neon) while still differentiating tools.
+  return `hsl(${hue} 42% 62%)`;
 }
 
 /** Deterministic seed in [0, 1) for the ambient sheen / generated texture. */

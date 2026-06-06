@@ -243,9 +243,11 @@
     background: transparent;
     box-sizing: border-box;
   }
-  .row:hover { background: rgba(0, 0, 0, 0.04); }
+  /* Hover/current must LIGHTEN on the dark theme (a black overlay did nothing).
+     Current = subtle lift + a clean sunset edge bar, not a muddy orange wash. */
+  .row:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
   .row.current {
-    background: rgba(232, 96, 60, 0.06);
+    background: color-mix(in srgb, var(--text) 4%, transparent);
     box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
   @media (min-width: 769px) {
