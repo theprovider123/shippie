@@ -1,5 +1,5 @@
-// Binary "this or that" football questions for Group of Death — short answers
-// that fit on a wall gap. Evergreen pub knowledge, no live data.
+// The gates in Group of Death are famous World Cup MOMENTS — fly through the
+// right answer. Short answers that fit on a wall. Evergreen, no live data.
 
 export interface Gate {
   q: string;
@@ -8,30 +8,30 @@ export interface Gate {
 }
 
 export const GATES: Gate[] = [
-  { q: "Most World Cups won?", correct: "Brazil", wrong: "Germany" },
-  { q: "Won the 2022 World Cup?", correct: "Argentina", wrong: "France" },
-  { q: "Won the 1966 World Cup?", correct: "England", wrong: "Germany" },
-  { q: "Scored the Hand of God?", correct: "Maradona", wrong: "Pelé" },
-  { q: "Most World Cup goals?", correct: "Klose", wrong: "Ronaldo" },
-  { q: "First World Cup hosts?", correct: "Uruguay", wrong: "Brazil" },
-  { q: "Teams at the 2026 World Cup?", correct: "48", wrong: "32" },
-  { q: "Zidane's 2006 red card?", correct: "Headbutt", wrong: "Dive" },
-  { q: "Messi plays for?", correct: "Argentina", wrong: "Brazil" },
-  { q: "Mbappé plays for?", correct: "France", wrong: "Belgium" },
-  { q: "The Three Lions?", correct: "England", wrong: "Wales" },
-  { q: "La Roja?", correct: "Spain", wrong: "Italy" },
-  { q: "The Azzurri?", correct: "Italy", wrong: "Spain" },
-  { q: "Pelé's country?", correct: "Brazil", wrong: "Argentina" },
-  { q: "Penalty spot distance?", correct: "12 yards", wrong: "18 yards" },
-  { q: "A match lasts?", correct: "90 mins", wrong: "80 mins" },
-  { q: "Two yellows means?", correct: "Sent off", wrong: "Free kick" },
-  { q: "Wembley is in?", correct: "London", wrong: "Manchester" },
-  { q: "Surprise of 2022?", correct: "Morocco", wrong: "Ghana" },
-  { q: "Golden Boot is for?", correct: "Top scorer", wrong: "Best keeper" },
-  { q: "Held every?", correct: "4 years", wrong: "2 years" },
-  { q: "Samba football?", correct: "Brazil", wrong: "Spain" },
-  { q: "2026 co-hosts USA,", correct: "Canada", wrong: "Brazil" },
-  { q: "Ronaldo plays for?", correct: "Portugal", wrong: "Spain" },
+  { q: "'Goal of the Century' scorer?", correct: "Maradona", wrong: "Pelé" },
+  { q: "Hand of God was against?", correct: "England", wrong: "Brazil" },
+  { q: "Zidane headbutted?", correct: "Materazzi", wrong: "Cannavaro" },
+  { q: "Maracanazo 1950 winner?", correct: "Uruguay", wrong: "Brazil" },
+  { q: "Germany 7-1 — who won?", correct: "Germany", wrong: "Brazil" },
+  { q: "Won the 2014 final?", correct: "Germany", wrong: "Argentina" },
+  { q: "Götze's 2014 winner for?", correct: "Germany", wrong: "Argentina" },
+  { q: "Iniesta's 2010 winner for?", correct: "Spain", wrong: "Holland" },
+  { q: "Baggio's 1994 miss gave it to?", correct: "Brazil", wrong: "Italy" },
+  { q: "Suárez handball vs?", correct: "Ghana", wrong: "Uruguay" },
+  { q: "The Cruyff turn — nation?", correct: "Holland", wrong: "Germany" },
+  { q: "Roger Milla danced for?", correct: "Cameroon", wrong: "Senegal" },
+  { q: "1966 hat-trick hero?", correct: "Hurst", wrong: "Charlton" },
+  { q: "Ronaldo's 2002 goals beat?", correct: "Germany", wrong: "France" },
+  { q: "Carlos Alberto 1970 goal for?", correct: "Brazil", wrong: "Italy" },
+  { q: "Bergkamp's 1998 stunner vs?", correct: "Argentina", wrong: "Brazil" },
+  { q: "Owen's 1998 solo goal for?", correct: "England", wrong: "Argentina" },
+  { q: "Gazza cried at?", correct: "Italia 90", wrong: "USA 94" },
+  { q: "Pelé won his first WC aged?", correct: "17", wrong: "21" },
+  { q: "Mineirazo humbled which hosts?", correct: "Brazil", wrong: "Russia" },
+  { q: "Tardelli's scream — 1982 for?", correct: "Italy", wrong: "Spain" },
+  { q: "Forlán's 2010 Golden Ball for?", correct: "Uruguay", wrong: "Ghana" },
+  { q: "Beckham 1998 red — kicked?", correct: "Simeone", wrong: "Verón" },
+  { q: "James' 2014 Golden Boot for?", correct: "Colombia", wrong: "Chile" },
 ];
 
 /** A reshuffled deck so no two runs feel the same. */

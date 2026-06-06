@@ -56,7 +56,6 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
     const flap = -H * 0.0118;        // a softer header
     const thick = Math.max(40, W * 0.12);
     let speed = W * 0.0052;          // starts calm; ramps slowly
-    let spawnX = W + 40;
     const spacing = W * 0.74;        // more room to line up the next gap
     const maxStep = H * 0.26;        // next gap is always reachable from the last
     const walls: Wall[] = [];
@@ -76,6 +75,9 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
 
     function spawnWall() {
       wallCount++;
+      // Place each new wall a fixed gap beyond the current rightmost one, so walls
+      // keep streaming in forever at a steady cadence (not a fixed world slot).
+      const x = walls.length ? walls[walls.length - 1].x + spacing : W + 60;
       const gateNow = wallCount % 4 === 0; // every fourth wall tests knowledge
       const margin = H * 0.1;
       if (gateNow) {
@@ -89,7 +91,7 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
           ? Math.random() < 0.62
           : Math.random() < 0.38;
         walls.push({
-          x: spawnX, kind: "gate", gapY: 0, gapH: 0, openH, topY, botY,
+          x, kind: "gate", gapY: 0, gapH: 0, openH, topY, botY,
           correctTop, q: g.q,
           topLabel: correctTop ? g.correct : g.wrong,
           botLabel: correctTop ? g.wrong : g.correct,
@@ -102,13 +104,12 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
         const hi = H - margin - gapH / 2;
         // next gap stays within a reachable hop of the last one
         const gapY = Math.max(lo, Math.min(hi, lastGapY + (Math.random() - 0.5) * 2 * maxStep));
-        walls.push({ x: spawnX, kind: "plain", gapY, gapH, scored: false });
+        walls.push({ x, kind: "plain", gapY, gapH, scored: false });
         lastGapY = gapY;
       }
-      spawnX += spacing;
     }
-    // prime a few walls
-    for (let i = 0; i < 4; i++) spawnWall();
+    // prime the first few walls
+    for (let i = 0; i < 5; i++) spawnWall();
 
     function die(msg: string) {
       if (dead) return;
@@ -165,9 +166,9 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
           if (wl.kind === "gate") { celebrate(); particles.emit(ballX, ballY, "spark", 10); }
         }
       }
-      // recycle + spawn
+      // recycle offscreen walls + always keep a buffer queued to the right
       while (walls.length && walls[0].x + thick < -20) walls.shift();
-      if (walls.length && walls[walls.length - 1].x < W - spacing) spawnWall();
+      while (walls.length < 6) spawnWall();
 
       // bounds
       if (started && !dead) {
