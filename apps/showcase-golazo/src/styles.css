@@ -3306,3 +3306,39 @@ input {
   text-align: center;
   margin: 8px 0 4px;
 }
+
+/* ─── Outside Bet stakes ─────────────────────────────────────────────────────── */
+.ob-stakes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 12px;
+  padding: 12px 14px;
+  border-radius: 4px;
+  background: var(--pitch);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
+}
+.ob-stakes-num {
+  font-family: var(--font-code);
+  font-weight: 700;
+  font-size: 34px;
+  color: var(--amber);
+  line-height: 1;
+}
+.ob-stakes-txt {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.ob-stakes-txt strong { color: var(--chalk); font-style: normal; }
+.boot-chip .boot-bonus {
+  font-style: normal;
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--amber);
+  margin-left: 2px;
+}
+.boot-chip.is-sel .boot-bonus { color: var(--pitch); }

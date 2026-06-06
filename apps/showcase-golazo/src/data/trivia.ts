@@ -39,9 +39,46 @@ export const TRIVIA: TriviaQ[] = [
   { q: "Keeper who captained Spain in 2010?", options: ["De Gea", "Casillas", "Reina", "Valdés"], answer: 1 },
 ];
 
-/** A fresh shuffled set of n questions. */
+// ── Famous World Cup moments — the ones every fan argues about ──────────────
+export const MOMENTS: TriviaQ[] = [
+  { q: "Maradona's 'Goal of the Century' (1986) was against?", options: ["England", "Belgium", "Italy", "Brazil"], answer: 0 },
+  { q: "Who did Zidane headbutt in the 2006 final?", options: ["Cannavaro", "Materazzi", "Gattuso", "Buffon"], answer: 1 },
+  { q: "Ronaldo's two goals in the 2002 final beat?", options: ["Germany", "Brazil", "Turkey", "Spain"], answer: 0 },
+  { q: "Luis Suárez's handball on the line (2010) denied?", options: ["Ghana", "Nigeria", "Senegal", "Uruguay"], answer: 0 },
+  { q: "Götze's extra-time winner in 2014 beat?", options: ["Brazil", "Netherlands", "Argentina", "Germany"], answer: 2 },
+  { q: "Iniesta's winning goal in 2010 was against?", options: ["Germany", "Netherlands", "Spain", "Uruguay"], answer: 1 },
+  { q: "The 'Maracanazo' (1950) — who shocked Brazil at home?", options: ["Uruguay", "Argentina", "Sweden", "Italy"], answer: 0 },
+  { q: "Roberto Baggio skied the decisive 1994 penalty against?", options: ["Brazil", "Bulgaria", "Spain", "Germany"], answer: 0 },
+  { q: "Carlos Alberto's iconic 1970 team goal was for?", options: ["Italy", "Brazil", "Uruguay", "Mexico"], answer: 1 },
+  { q: "Germany's 7-1 thrashing of Brazil happened in?", options: ["2010", "2014", "2018", "2006"], answer: 1 },
+  { q: "Dennis Bergkamp's stunning 1998 goal knocked out?", options: ["Argentina", "Brazil", "Croatia", "Italy"], answer: 0 },
+  { q: "Michael Owen's wonder-goal in 1998 was against?", options: ["Romania", "Argentina", "Colombia", "Germany"], answer: 1 },
+  { q: "Beckham was sent off in 1998 for kicking out at?", options: ["Simeone", "Verón", "Batistuta", "Ortega"], answer: 0 },
+  { q: "Roger Milla's corner-flag dance lit up which World Cup?", options: ["1986", "1990", "1994", "1982"], answer: 1 },
+  { q: "Just Fontaine's record 13 goals came at the 1958 World Cup for?", options: ["France", "Brazil", "Sweden", "Hungary"], answer: 0 },
+  { q: "Cruyff's famous 'turn' in 1974 — he played for?", options: ["Netherlands", "Germany", "Argentina", "Poland"], answer: 0 },
+  { q: "James Rodríguez won the 2014 Golden Boot for?", options: ["Brazil", "Colombia", "Chile", "Uruguay"], answer: 1 },
+  { q: "Mbappé in the 2018 final — youngest to score in a final since?", options: ["Pelé", "Maradona", "Ronaldo", "Müller"], answer: 0 },
+  { q: "'Toto' Schillaci was top scorer at which World Cup?", options: ["1986", "1990", "1994", "1982"], answer: 1 },
+  { q: "Paolo Rossi dragged Italy to glory in?", options: ["1978", "1982", "1986", "1974"], answer: 1 },
+  { q: "Marco Tardelli's iconic scream came in the 1982 final vs?", options: ["Brazil", "West Germany", "Poland", "France"], answer: 1 },
+  { q: "Cafu lifted the trophy as captain in?", options: ["1998", "2002", "1994", "2006"], answer: 1 },
+  { q: "Diego Forlán won the 2010 Golden Ball for?", options: ["Uruguay", "Argentina", "Spain", "Ghana"], answer: 0 },
+  { q: "Hosts who won on home soil in 1978?", options: ["Argentina", "Brazil", "Spain", "Mexico"], answer: 0 },
+  { q: "Zidane scored twice (headers) in the 1998 final against?", options: ["Italy", "Brazil", "Croatia", "Germany"], answer: 1 },
+  { q: "Lineker's Golden Boot (6 goals) came at?", options: ["Mexico 1986", "Italia 1990", "Spain 1982", "USA 1994"], answer: 0 },
+  { q: "'They think it's all over… it is now' described the end of?", options: ["1966 final", "1970 final", "1982 final", "1990 semi"], answer: 0 },
+  { q: "The 'Miracle of Bern' (1954) — who beat Hungary?", options: ["West Germany", "Austria", "Brazil", "Uruguay"], answer: 0 },
+  { q: "Pickford's save in the 2018 shootout helped England beat?", options: ["Colombia", "Sweden", "Croatia", "Tunisia"], answer: 0 },
+  { q: "Senegal's shock opening win in 2002 was against holders?", options: ["France", "Brazil", "Italy", "Germany"], answer: 0 },
+  { q: "North Korea's famous run reached the quarters in?", options: ["1966", "1970", "1962", "1958"], answer: 0 },
+  { q: "Which keeper was Argentina's penalty hero in 1990?", options: ["Goycochea", "Zenga", "Pfaff", "Taffarel"], answer: 0 },
+  { q: "The 'Hand of God' and 'Goal of the Century' came in the same 1986 match vs?", options: ["England", "Belgium", "West Germany", "Uruguay"], answer: 0 },
+];
+
+/** A fresh shuffled set of n questions, drawn from trivia + famous moments. */
 export function pickTrivia(n: number): TriviaQ[] {
-  const pool = [...TRIVIA];
+  const pool = [...TRIVIA, ...MOMENTS];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];

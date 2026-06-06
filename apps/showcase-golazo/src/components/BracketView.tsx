@@ -167,18 +167,28 @@ function OutsideBet({
   // Long-shots first: the weakest seeds are the spicy outside bets.
   const teams = [...TEAMS].sort((a, b) => b.seed - a.seed);
   const picked = selected ? team(selected) : null;
+  const bonus = picked ? outsideBetBonus(picked.seed) : 0;
   return (
     <div className="golden-boot outside-bet">
       <div className="golden-boot-head">
-        <span className="golden-boot-cap">🐴 Outside Bet</span>
+        <span className="golden-boot-cap">🐴 Outside Bet · bonus points</span>
         <span className="golden-boot-sub">
           {picked ? (
             <>Your bolter: <strong>{picked.flag} {picked.name}</strong></>
           ) : (
-            "Back a long-shot to go further than the odds say."
+            "Back a long-shot to reach the last 16. The braver the call, the bigger the bonus."
           )}
         </span>
       </div>
+      {picked && (
+        <div className="ob-stakes">
+          <span className="ob-stakes-num">+{bonus}</span>
+          <span className="ob-stakes-txt">
+            pts if <strong>{picked.short}</strong> reach the knockouts.{" "}
+            {picked.seed >= 33 ? "Proper brave." : picked.seed >= 17 ? "Outside shout." : "Safe-ish."}
+          </span>
+        </div>
+      )}
       <div className="boot-rail">
         {teams.map((t) => (
           <button
@@ -190,11 +200,17 @@ function OutsideBet({
           >
             <Flag id={t.id} size={22} />
             <span>{t.short}</span>
+            <em className="boot-bonus">+{outsideBetBonus(t.seed)}</em>
           </button>
         ))}
       </div>
     </div>
   );
+}
+
+/** The weaker the nation (higher seed), the bigger the bonus for backing them. */
+function outsideBetBonus(seed: number): number {
+  return 15 + Math.round((seed / 48) * 55); // ~16 (favourite) → 70 (rank outsider)
 }
 
 function GoldenBoot({
