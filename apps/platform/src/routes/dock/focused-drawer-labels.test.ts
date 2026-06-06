@@ -3,6 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const source = readFileSync(fileURLToPath(new URL('./+page.svelte', import.meta.url)), 'utf8');
+// The Dock rail was extracted into its own component; its labels live there now.
+const railSource = readFileSync(
+  fileURLToPath(new URL('../../lib/container/DockRail.svelte', import.meta.url)),
+  'utf8',
+);
 
 describe('focused Dock drawer labels', () => {
   it('uses the Dock / Tools / You product vocabulary', () => {
@@ -16,7 +21,7 @@ describe('focused Dock drawer labels', () => {
   });
 
   it('keeps primary Dock rail actions on Tools / You language', () => {
-    const railActions = source.match(/<nav class="rail-foot"[\s\S]*?<\/nav>/)?.[0] ?? '';
+    const railActions = railSource.match(/<nav class="rail-foot"[\s\S]*?<\/nav>/)?.[0] ?? '';
 
     expect(railActions).toContain('Browse tools');
     expect(railActions).toContain('>You<');
