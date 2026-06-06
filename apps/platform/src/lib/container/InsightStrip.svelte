@@ -64,22 +64,22 @@
     flex: 0 0 280px;
     min-width: 280px;
     border-radius: 0;
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: var(--surface);
+    border: 1px solid var(--border-light);
     padding: 14px 14px 12px;
     display: flex;
     align-items: flex-start;
     gap: 6px;
   }
   .insight-card.high {
-    border-color: var(--sunset, #E8603C);
-    background: rgba(232, 96, 60, 0.06);
+    border-color: var(--sunset);
+    background: color-mix(in srgb, var(--sunset) 8%, var(--surface));
   }
   .insight-card.medium {
-    border-color: rgba(232, 96, 60, 0.4);
+    border-color: color-mix(in srgb, var(--sunset) 40%, var(--border-light));
   }
   .insight-card.low {
-    background: rgba(255, 255, 255, 0.55);
+    background: var(--surface);
   }
   .insight-body {
     flex: 1;
@@ -92,13 +92,15 @@
   }
   .insight-body h4 {
     margin: 0 0 4px;
+    font-family: var(--font-heading);
     font-size: 14px;
     font-weight: 600;
+    color: var(--text);
   }
   .insight-body p {
     margin: 0;
     font-size: 13px;
-    color: rgba(0, 0, 0, 0.62);
+    color: var(--text-secondary);
     line-height: 1.4;
   }
   .insight-dismiss {
@@ -109,10 +111,10 @@
     border-radius: 0;
     font-size: 16px;
     line-height: 1;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-light);
     cursor: pointer;
   }
   .insight-dismiss:hover {
-    color: rgba(0, 0, 0, 0.85);
+    color: var(--text);
   }
 </style>

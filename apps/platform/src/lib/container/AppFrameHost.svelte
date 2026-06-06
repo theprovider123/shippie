@@ -276,12 +276,12 @@
     place-content: center;
     gap: 8px;
     padding: var(--space-lg);
-    border: 1px solid rgba(182, 71, 45, 0.3);
+    border: 1px solid color-mix(in srgb, var(--sunset) 32%, var(--border-light));
     border-radius: 0;
-    background: rgba(255, 250, 242, 0.96);
+    background: var(--surface);
     color: var(--text);
     text-align: center;
-    box-shadow: 0 18px 60px rgba(33, 29, 24, 0.16);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
   }
   .frame-recovery p {
     margin: 0;
