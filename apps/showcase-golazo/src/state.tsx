@@ -40,6 +40,7 @@ interface Store {
   setGroupOrder: (letter: GroupLetter, ids: string[]) => void;
   pickWinner: (slotId: string, teamId: string) => void;
   setTopScorer: (teamId: string | undefined) => void;
+  setOutsideBet: (teamId: string | undefined) => void;
   resetPrediction: () => void;
 
   createPool: (name: string) => Pool;
@@ -154,6 +155,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setTopScorer(teamId) {
         setPrediction((p) => ({ ...p, topScorer: teamId }));
+      },
+
+      setOutsideBet(teamId) {
+        setPrediction((p) => ({ ...p, outsideBet: teamId }));
       },
 
       resetPrediction() {

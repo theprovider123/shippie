@@ -6,6 +6,7 @@ import {
   type GroupLetter,
 } from "../data/tournament";
 import { team } from "../data/teams";
+import { tipsLocked } from "../lib/locktimer";
 import { useStore } from "../state";
 import { Flag, teamVars } from "../ui/atoms";
 import { confirmBuzz, tap } from "../lib/haptics";
@@ -26,6 +27,7 @@ export function GroupStage({ onAllDone }: { onAllDone?: () => void }) {
   const rows = [...placed, ...unplaced];
 
   function place(letter: GroupLetter, id: string) {
+    if (tipsLocked(Date.now())) return; // read-only once the cup kicks off
     const cur = (prediction.groups[letter] ?? []).filter((x) =>
       GROUPS[letter].includes(x),
     );

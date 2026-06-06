@@ -14,6 +14,8 @@ import { readShareFromHash, readSweepFromHash, type SharePayload } from "./lib/c
 import type { Sweep } from "./lib/sweeps";
 import { readChallengeFromHash, type Challenge } from "./lib/games";
 import { readDuelFromHash, type Duel } from "./lib/duel";
+import { TOURNAMENT_KICKOFF } from "./lib/locktimer";
+import { useCountdown, pad2 } from "./ui/atoms";
 import { useStore } from "./state";
 
 export function App() {
@@ -117,15 +119,30 @@ export function App() {
 
 function PredictScreen() {
   const { prediction } = useStore();
-  const [phase, setPhase] = useState<"groups" | "knockout">(() => {
-    const groupsDone = Object.values(prediction.groups).filter(
-      (g) => g && g.length >= 4,
-    ).length;
-    return groupsDone >= 12 ? "knockout" : "groups";
-  });
+  const groupsDone = Object.values(prediction.groups).filter(
+    (g) => g && g.length >= 4,
+  ).length;
+  const [phase, setPhase] = useState<"groups" | "knockout">(() =>
+    groupsDone >= 12 ? "knockout" : "groups",
+  );
+  const lock = useCountdown(TOURNAMENT_KICKOFF);
+  const lockText = lock.done
+    ? null
+    : lock.days > 0
+      ? `${lock.days}d ${lock.hours}h ${lock.mins}m`
+      : lock.hours > 0
+        ? `${lock.hours}h ${lock.mins}m`
+        : `${lock.mins}m ${pad2(lock.secs)}s`;
 
   return (
     <div className="predict">
+      <div className={`lock-banner ${lock.done ? "is-locked" : ""}`}>
+        {lock.done ? (
+          <span>🔒 Tips are in — your call is locked.</span>
+        ) : (
+          <span>⏳ Tips lock in <strong>{lockText}</strong> · {groupsDone}/12 groups tipped</span>
+        )}
+      </div>
       <div className="segmented" role="tablist">
         <button
           role="tab"
