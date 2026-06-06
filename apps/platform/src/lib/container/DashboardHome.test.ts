@@ -9,7 +9,9 @@ describe('DashboardHome launchpad grid (guardrail)', () => {
     expect(src).toContain('class="view-toggle"');
   });
   test('renders ToolRow tiles in grid view', () => {
-    expect(src).toContain('variant="tile"');
+    // One shared snippet renders both variants — grid passes 'tile'.
+    expect(src).toContain("dockTool(tool, 'tile')");
+    expect(src).toContain('variant={v}');
     expect(src).toContain('class="dock-tile-grid"');
   });
   test('keeps the row list for manage view', () => {

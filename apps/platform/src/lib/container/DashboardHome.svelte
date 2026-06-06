@@ -62,6 +62,9 @@
 
   let updateSheetOpen = $state(false);
   let dockView = $state<'grid' | 'manage'>('grid');
+  const hasDockTools = $derived(
+    dockGroups.open.length > 0 || dockGroups.recent.length > 0 || dockGroups.saved.length > 0,
+  );
   const counts = $derived(updateCounts(updateCards));
   const updateSubtitle = $derived(updateCards.length === 1 ? '1 tool' : `${updateCards.length} tools`);
   const updateCountSummary = $derived.by(() => {
@@ -149,9 +152,16 @@
         <span>{updateBadgeLabel(updateCards)}</span>
       </button>
     {/if}
-    <button type="button" class="view-toggle" onclick={() => (dockView = dockView === 'grid' ? 'manage' : 'grid')}>
-      {dockView === 'grid' ? 'Manage' : 'Done'}
-    </button>
+    {#if hasDockTools}
+      <button
+        type="button"
+        class="view-toggle"
+        aria-pressed={dockView === 'manage'}
+        onclick={() => (dockView = dockView === 'grid' ? 'manage' : 'grid')}
+      >
+        {dockView === 'grid' ? 'Manage' : 'Done'}
+      </button>
+    {/if}
   </div>
   <p>Running, recent, and saved tools stay close. Use Tools when you want to find something new.</p>
 </div>
@@ -220,34 +230,25 @@
         </p>
       </div>
     </div>
+    {#snippet dockTool(tool: RailTool, v: 'row' | 'tile')}
+      <ToolRow
+        app={railToolToTile(tool)}
+        state={stateForTool(tool, sectionId)}
+        variant={v}
+        hideRelationship
+        onOpen={() => onOpenTool(tool.slug)}
+        onReview={() => openUpdates()}
+        onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
+        onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
+      />
+    {/snippet}
     {#if dockView === 'grid'}
       <div class="dock-tile-grid">
-        {#each tools as tool (tool.slug)}
-          <ToolRow
-            app={railToolToTile(tool)}
-            state={stateForTool(tool, sectionId)}
-            variant="tile"
-            hideRelationship
-            onOpen={() => onOpenTool(tool.slug)}
-            onReview={() => openUpdates()}
-            onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
-            onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
-          />
-        {/each}
+        {#each tools as tool (tool.slug)}{@render dockTool(tool, 'tile')}{/each}
       </div>
     {:else}
       <div class="dock-row-list">
-        {#each tools as tool (tool.slug)}
-          <ToolRow
-            app={railToolToTile(tool)}
-            state={stateForTool(tool, sectionId)}
-            hideRelationship
-            onOpen={() => onOpenTool(tool.slug)}
-            onReview={() => openUpdates()}
-            onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
-            onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
-          />
-        {/each}
+        {#each tools as tool (tool.slug)}{@render dockTool(tool, 'row')}{/each}
       </div>
     {/if}
   </section>
@@ -372,6 +373,9 @@
   }
   .view-toggle {
     flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 34px;
     padding: 0 0.75rem;
     border: 1px solid var(--border-light);
