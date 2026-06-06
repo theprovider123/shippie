@@ -4525,12 +4525,6 @@
     font-size: 22px;
     line-height: 1;
   }
-  .focused-brand-copy small {
-    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
-    font-size: 12px;
-    line-height: 1.25;
-    white-space: nowrap;
-  }
   .focused-drawer-actions {
     display: inline-flex;
     flex-shrink: 0;
@@ -4844,9 +4838,6 @@
     }
     .focused-brand-copy strong {
       font-size: 20px;
-    }
-    .focused-brand-copy small {
-      font-size: 11px;
     }
     .focused-action {
       min-height: var(--touch-min, 44px);

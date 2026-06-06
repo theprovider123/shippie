@@ -22,8 +22,21 @@
     current = null,
   }: Props = $props();
 
-  const showSection = onShowSection ?? (() => goto('/dock'));
-  const openSwitcher = onOpenSwitcher ?? (() => goto('/dock'));
+  function showSection(sectionId: 'access' | 'create') {
+    if (onShowSection) {
+      onShowSection(sectionId);
+      return;
+    }
+    void goto('/dock');
+  }
+
+  function openSwitcher() {
+    if (onOpenSwitcher) {
+      onOpenSwitcher();
+      return;
+    }
+    void goto('/dock');
+  }
 </script>
 
 <aside class="dock-rail">
@@ -76,7 +89,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="11" height="11" rx="1.5"/><path d="M9 20h11V9"/></svg>
       </span>
       <span class="switcher-text">
-        <strong class="label">Switcher</strong>
+        <strong class="label">Dock tools</strong>
         <small class="label">{railToolCount > 0 ? `${railToolCount} tools ready` : 'No tools yet'}</small>
       </span>
       <span aria-hidden="true" class="label">⌘K</span>
