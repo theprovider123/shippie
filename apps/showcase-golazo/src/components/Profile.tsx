@@ -12,6 +12,7 @@ import {
 import { hasResults, scorePrediction } from "../lib/scoring";
 import { landed } from "../lib/outsidebet";
 import { sampleNudge } from "../lib/notifications";
+import { formatKickoff } from "../lib/zones";
 import { useStore } from "../state";
 import { Flag, pad2, teamVars, useCountdown } from "../ui/atoms";
 import { WatchFrom } from "./WatchFrom";
@@ -89,7 +90,7 @@ export function Profile() {
         )}
       </header>
 
-      {profile.favTeam && <NationCard teamId={profile.favTeam} />}
+      {profile.favTeam && <NationCard teamId={profile.favTeam} zone={profile.watchZone} />}
 
       <div className="stat-grid">
         <div className="stat-cell">
@@ -168,12 +169,13 @@ function groupOf(teamId: string): GroupLetter | null {
 }
 
 /** Compact "your nation" card: flag, group, next-match countdown. */
-function NationCard({ teamId }: { teamId: string }) {
+function NationCard({ teamId, zone }: { teamId: string; zone?: string }) {
   const t = team(teamId);
   const letter = groupOf(teamId);
   const fx = GROUP_FIXTURES.find((f) => f.home === teamId || f.away === teamId);
   const c = useCountdown(fx?.kickoff ?? "2026-06-11T16:00:00Z");
   const oppId = fx ? (fx.home === teamId ? fx.away : fx.home) : null;
+  const k = fx ? formatKickoff(fx.kickoff, zone) : null;
 
   return (
     <div className="your-nation" style={teamVars(t)}>
@@ -185,9 +187,11 @@ function NationCard({ teamId }: { teamId: string }) {
         </div>
         {letter && <span className="yn-group">Group {letter}</span>}
       </div>
-      {fx && !c.done && (
+      {fx && !c.done && k && (
         <div className="yn-next">
-          <span className="yn-next-label">Next{oppId ? ` v ${team(oppId).short}` : ""} in</span>
+          <span className="yn-next-label">
+            Next{oppId ? ` v ${team(oppId).short}` : ""} · {k.day} {k.time}
+          </span>
           <span className="yn-next-clock">{c.days}d {pad2(c.hours)}h {pad2(c.mins)}m</span>
         </div>
       )}
