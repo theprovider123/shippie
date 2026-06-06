@@ -5,7 +5,16 @@
  */
 
 /** Theme-colour values that mean "maker did not choose one" → derive instead. */
-const DEFAULT_THEME_COLORS = new Set(['', '#000', '#000000', 'transparent']);
+const DEFAULT_THEME_COLORS = new Set([
+  '',
+  '#000',
+  '#000000',
+  'transparent',
+  // Shippie's shell defaults. These are platform chrome colours, not
+  // maker-selected app accents, so derive a readable slug colour instead.
+  '#14120f',
+  '#0f0d0a',
+]);
 
 function firstChar(word: string): string {
   return Array.from(word)[0] ?? '';

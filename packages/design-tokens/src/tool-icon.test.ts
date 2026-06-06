@@ -38,6 +38,10 @@ describe('accentColor', () => {
     expect(accentColor('sudoku', '#000000')).toBe(accentColor('sudoku', null));
     expect(accentColor('sudoku', '')).toBe(accentColor('sudoku', null));
   });
+  test('treats Shippie shell colours as unset, not maker accents', () => {
+    expect(accentColor('sudoku', '#14120F')).toBe(accentColor('sudoku', null));
+    expect(accentColor('sudoku', '#0F0D0A')).toBe(accentColor('sudoku', null));
+  });
   test('is stable for the same slug', () => {
     expect(accentColor('sudoku', null)).toBe(accentColor('sudoku', null));
   });
