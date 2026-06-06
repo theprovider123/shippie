@@ -3,9 +3,13 @@
 // green, chalk type, Barlow Condensed for the shout, Source Code Pro for the
 // data, ruled lines not boxes. No glows. (Your Call design system.)
 
+import qrcode from "qrcode-generator";
 import { maybeTeam, type Team } from "../data/teams";
 import { championOf } from "./bracket";
 import type { Prediction, Profile } from "./types";
+
+/** Where every share card points — scan to play. */
+const APP_URL = "https://shippie.app/run/golazo";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const PITCH = "#0d1f0f";
@@ -98,17 +102,56 @@ function paper(ctx: CanvasRenderingContext2D, W: number, H: number) {
   }
   ctx.globalAlpha = 1;
 }
+/** Draw a crisp QR (pitch modules on a chalk chip) at x,y of the given size. */
+function drawQR(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number) {
+  const qr = qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount();
+  const quiet = Math.round(size * 0.08);
+  const inner = size - quiet * 2;
+  const cell = inner / n;
+  // chalk chip background (the "sticker")
+  ctx.fillStyle = CHALK;
+  ctx.fillRect(x, y, size, size);
+  ctx.fillStyle = PITCH;
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (qr.isDark(r, c)) {
+        ctx.fillRect(x + quiet + Math.floor(c * cell), y + quiet + Math.floor(r * cell), Math.ceil(cell), Math.ceil(cell));
+      }
+    }
+  }
+}
+
+const FOOTER_H = 150; // bottom band reserved for the footer + QR
+
 function footerStrip(ctx: CanvasRenderingContext2D, W: number, H: number, pad: number, accent: string) {
-  const y = H - 96;
+  const y = H - FOOTER_H;
   rule(ctx, pad, y, W - pad * 2, 2, BORDER);
+  const qrSize = 104;
+  drawQR(ctx, APP_URL, W - pad - qrSize, y + 24, qrSize);
+  // left block — wordmark + scan prompt
+  ctx.textAlign = "left";
+  ctx.fillStyle = accent;
+  ctx.font = disp(800, 30);
+  ctx.fillText("YOUR CALL", pad, y + 56);
+  ctx.fillStyle = MUTED;
+  ctx.font = disp(600, 24);
+  tracked(ctx, "WORLD CUP 2026", pad, y + 92, 2);
+  // scan prompt next to the QR
   ctx.textAlign = "left";
   ctx.fillStyle = MUTED;
-  ctx.font = disp(700, 26);
-  ctx.fillText("WORLD CUP 2026", pad, y + 56);
-  ctx.textAlign = "right";
-  ctx.fillStyle = accent;
-  ctx.fillText("YOURCALL.APP", W - pad, y + 56);
-  ctx.textAlign = "left";
+  ctx.font = disp(700, 22);
+  tracked2(ctx, "SCAN TO PLAY", W - pad - qrSize - 16, y + 70, 2);
+}
+
+// right-aligned tracked text
+function tracked2(ctx: CanvasRenderingContext2D, text: string, rightX: number, y: number, ls: number) {
+  let w = 0;
+  for (const ch of text) w += ctx.measureText(ch).width + ls;
+  let cx = rightX - w;
+  for (const ch of text) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + ls; }
 }
 
 // Spread tracking for that newspaper-headline feel (Canvas has no letter-spacing).
@@ -233,7 +276,7 @@ export function drawCard(canvas: HTMLCanvasElement, prediction: Prediction, prof
   ctx.textAlign = "left";
   ctx.fillStyle = MUTED;
   ctx.font = disp(700, 28);
-  tracked(ctx, `LOCKED BY ${(profile.name || "ME").toUpperCase()}`, pad, H - 150, 3);
+  tracked(ctx, `LOCKED BY ${(profile.name || "ME").toUpperCase()}`, pad, H - FOOTER_H - 28, 3);
   footerStrip(ctx, W, H, pad, LIME);
 }
 
@@ -346,12 +389,12 @@ export function drawReceiptsCard(canvas: HTMLCanvasElement, c: ReceiptsCard): vo
   const maxW = W - pad * 2;
   ctx.font = disp(900, 96);
   const lh = 98;
-  for (let i = 0; i < words.length && ly < H - 170; i++) {
+  for (let i = 0; i < words.length && ly < H - FOOTER_H - 40; i++) {
     const test = line ? `${line} ${words[i]}` : words[i];
     if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, pad, ly); ly += lh; line = words[i]; }
     else line = test;
   }
-  if (line && ly < H - 130) ctx.fillText(line, pad, ly);
+  if (line && ly < H - FOOTER_H - 10) ctx.fillText(line, pad, ly);
 
   footerStrip(ctx, W, H, pad, RED);
 }
@@ -524,6 +567,58 @@ export async function gameCardBlob(c: GameCard): Promise<Blob | null> {
   await ensureFonts();
   const canvas = document.createElement("canvas");
   drawGameCard(canvas, c);
+  return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.95));
+}
+
+// ── Group of Death results card ──────────────────────────────────────────────
+export interface GodCard { playerName: string; score: number; moments: { q: string; a: string }[]; }
+
+export function drawGodCard(canvas: HTMLCanvasElement, c: GodCard): void {
+  const [W, H] = SIZES.story;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const pad = 72;
+  paper(ctx, W, H);
+  rule(ctx, pad, 88, W - pad * 2, 4, "#e8272a");
+  ctx.textAlign = "left"; ctx.fillStyle = "#e8272a"; ctx.font = disp(700, 30);
+  tracked(ctx, "GROUP OF DEATH", pad, 150, 4);
+
+  // big score
+  ctx.fillStyle = LIME; ctx.font = mono(180);
+  ctx.fillText(String(c.score), pad, 320);
+  ctx.fillStyle = CHALK; ctx.font = disp(800, 56);
+  ctx.fillText("CAPS", pad + 6, 380);
+  rule(ctx, pad, 412, W - pad * 2, 2, BORDER);
+
+  // moments nailed
+  ctx.fillStyle = MUTED; ctx.font = disp(700, 26);
+  tracked(ctx, c.moments.length ? "MOMENTS YOU NAILED" : "NO MOMENTS THIS RUN — GO AGAIN", pad, 470, 3);
+  const rows = c.moments.slice(0, 9);
+  let ry = 510;
+  for (const m of rows) {
+    if (ry > H - FOOTER_H - 70) break;
+    ctx.fillStyle = LIME; ctx.font = disp(800, 30);
+    ctx.fillText("✓", pad, ry + 34);
+    ctx.fillStyle = CHALK; ctx.font = disp(700, 34);
+    const a = m.a.toUpperCase();
+    ctx.fillText(a, pad + 44, ry + 34);
+    ctx.fillStyle = MUTED; ctx.font = serif(22);
+    const q = m.q.length > 40 ? m.q.slice(0, 39) + "…" : m.q;
+    ctx.fillText(q, pad + 44, ry + 64);
+    rule(ctx, pad, ry + 86, W - pad * 2, 1, BORDER);
+    ry += 104;
+  }
+
+  ctx.textAlign = "left"; ctx.fillStyle = MUTED; ctx.font = disp(700, 26);
+  tracked(ctx, `${(c.playerName || "ME").toUpperCase()} · BEAT THIS`, pad, H - FOOTER_H - 24, 3);
+  footerStrip(ctx, W, H, pad, "#e8272a");
+}
+
+export async function godCardBlob(c: GodCard): Promise<Blob | null> {
+  await ensureFonts();
+  const canvas = document.createElement("canvas");
+  drawGodCard(canvas, c);
   return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.95));
 }
 

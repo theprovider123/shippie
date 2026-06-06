@@ -10,6 +10,7 @@ import { GroupOfDeath } from "./games/GroupOfDeath";
 import { OutsideBetRoulette } from "./games/OutsideBetRoulette";
 import { CardHappy } from "./games/CardHappy";
 import { ThatsNeverAPen } from "./games/ThatsNeverAPen";
+import { BeatTheClock } from "./games/BeatTheClock";
 import {
   GAMES,
   gameMeta,
@@ -35,14 +36,16 @@ type Sel =
   | "nation"
   | "cardhappy"
   | "tnap"
+  | "beatclock"
   | null;
-type PubId = "roulette" | "trivia" | "nation" | "cardhappy" | "tnap";
+type PubId = "roulette" | "trivia" | "nation" | "cardhappy" | "tnap" | "beatclock";
 const PUB: { id: PubId; emoji: string; name: string; how: string }[] = [
+  { id: "trivia", emoji: "🧠", name: "Who Are Ya?", how: "World Cup trivia, no Googling" },
+  { id: "beatclock", emoji: "⏱️", name: "Beat the Clock", how: "As many as you can in 30 seconds" },
+  { id: "nation", emoji: "🌍", name: "Guess the Nation", how: "See the flag, name the country" },
   { id: "roulette", emoji: "🎯", name: "Penalty Roulette", how: "Pass the phone — get saved, you're out" },
   { id: "cardhappy", emoji: "🟨", name: "Card Happy", how: "Yellow or red? Best ref in the room wins" },
   { id: "tnap", emoji: "🤌", name: "That's Never A Pen", how: "Vote pen or no pen, then argue about it" },
-  { id: "trivia", emoji: "🧠", name: "Who Are Ya?", how: "World Cup trivia, no Googling" },
-  { id: "nation", emoji: "🌍", name: "Guess the Nation", how: "See the flag, name the country" },
 ];
 
 /** Play surface: pick a game, post scores, see the worldwide board. */
@@ -117,17 +120,6 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
           </span>
         </button>
 
-        <span className="field-label" style={{ marginTop: 22 }}>🍺 Pub games — trivia &amp; pass the phone</span>
-        <div className="game-grid">
-          {PUB.map((g) => (
-            <button key={g.id} className="game-card pub" onClick={() => { tap(); setSel(g.id); }}>
-              <span className="game-card-emoji">{g.emoji}</span>
-              <span className="game-card-name">{g.name}</span>
-              <span className="game-card-how">{g.how}</span>
-            </button>
-          ))}
-        </div>
-
         <span className="field-label" style={{ marginTop: 22 }}>⚽️ Solo &amp; head-to-head</span>
         <div className="game-grid">
           {GAMES.filter((g) => g.id !== "god").map((g) => (
@@ -151,12 +143,23 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
             <span className="game-card-best">You vs a mate</span>
           </button>
         </div>
+
+        <span className="field-label" style={{ marginTop: 22 }}>🍺 Pub games — trivia &amp; pass the phone</span>
+        <div className="game-grid">
+          {PUB.map((g) => (
+            <button key={g.id} className="game-card pub" onClick={() => { tap(); setSel(g.id); }}>
+              <span className="game-card-emoji">{g.emoji}</span>
+              <span className="game-card-name">{g.name}</span>
+              <span className="game-card-how">{g.how}</span>
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
 
   // ── Pub games (full-screen, local, no leaderboard) ──
-  if (sel === "roulette" || sel === "trivia" || sel === "nation" || sel === "cardhappy" || sel === "tnap") {
+  if (sel === "roulette" || sel === "trivia" || sel === "nation" || sel === "cardhappy" || sel === "tnap" || sel === "beatclock") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
@@ -164,6 +167,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
         {sel === "cardhappy" && <CardHappy />}
         {sel === "tnap" && <ThatsNeverAPen />}
         {sel === "trivia" && <WhoAreYa />}
+        {sel === "beatclock" && <BeatTheClock />}
         {sel === "nation" && <GuessNation />}
       </div>
     );
@@ -215,7 +219,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
       {soloGame === "keepy" && <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
       {soloGame === "topbins" && <TopBins key={`t-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
       {soloGame === "freekick" && <FreeKick key={`f-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
-      {soloGame === "god" && <GroupOfDeath key={`g-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
+      {soloGame === "god" && <GroupOfDeath key={`g-${target ?? "x"}`} onGameOver={onGameOver} target={target} playerName={playerName} />}
 
       <div className="game-meta-row">
         <span className="game-best">Your best · <strong>{best}</strong> {meta.unit}</span>

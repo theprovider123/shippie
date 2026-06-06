@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 import { drawStadium, drawBall, Trail, Particles, Shake } from "../../lib/stadium";
 import { shuffleGates, type Gate } from "../../data/gates";
+import { godCardBlob } from "../../lib/sharecard";
+
+interface Moment { q: string; a: string; }
 
 /**
  * GROUP OF DEATH — the centrepiece. Flappy-feel: tap to keep the ball up and
@@ -27,12 +30,27 @@ interface Wall {
   scored: boolean;
 }
 
-export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: number) => void; target?: number }) {
+export function GroupOfDeath({ onGameOver, target, playerName = "Me" }: { onGameOver: (score: number) => void; target?: number; playerName?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<"ready" | "play" | "over">("ready");
   const [flash, setFlash] = useState("");
+  const [recap, setRecap] = useState<Moment[]>([]);
+  const [shared, setShared] = useState(false);
   const scoreRef = useRef(0);
+  const correctRef = useRef<Moment[]>([]);
+
+  async function share() {
+    hapticTap();
+    const blob = await godCardBlob({ playerName, score: scoreRef.current, moments: recap });
+    if (!blob) return;
+    const file = new File([blob], "group-of-death.png", { type: "image/png" });
+    const text = `🐍 ${scoreRef.current} caps in Group of Death on Golazo. Knowledge + nerve. Beat me.`;
+    try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; } } catch { /* */ }
+    try { if (navigator.share) { await navigator.share({ text }); return; } } catch { /* */ }
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "group-of-death.png"; a.click(); URL.revokeObjectURL(url);
+    setShared(true); setTimeout(() => setShared(false), 1600);
+  }
 
   useEffect(() => {
     if (phase !== "play") return;
@@ -119,6 +137,7 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
       shake.kick(14);
       confirmBuzz();
       particles.emit(ballX, ballY, "spark", 20);
+      setRecap(correctRef.current.slice());
       setTimeout(() => { setPhase("over"); onGameOver(scoreRef.current); }, 800);
     }
 
@@ -169,6 +188,7 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
           if (wl.kind === "gate") {
             if (wl.chose === "correct") {
               scoreRef.current += 3; celebrate(); particles.emit(ballX, ballY, "spark", 14);
+              correctRef.current.push({ q: wl.q!, a: wl.correctTop ? wl.topLabel! : wl.botLabel! });
               flashFor("CALLED IT ✓");
             } else {
               scoreRef.current += 1; flashFor("WRONG — NO BONUS");
@@ -217,7 +237,7 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
   }, [phase, onGameOver]);
 
   function startGame() {
-    scoreRef.current = 0; setScore(0); setFlash(""); setPhase("play");
+    scoreRef.current = 0; setScore(0); setFlash(""); correctRef.current = []; setRecap([]); setPhase("play");
   }
 
   return (
@@ -237,11 +257,26 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
         </div>
       )}
       {phase === "over" && (
-        <div className="game-overlay">
+        <div className="game-overlay god-over">
           <span className="game-emoji">{target && score > target ? "🏆" : "💀"}</span>
           <h3>{score} caps</h3>
           <p>{target ? (score > target ? `You beat ${target}!` : `${target} to beat`) : score >= 30 ? "Brain AND boots. Tidy." : score >= 12 ? "Not bad. Go again." : "Survived the group? Barely."}</p>
+          {recap.length > 0 && (
+            <div className="god-recap">
+              <span className="field-label">Moments you nailed</span>
+              <ul className="god-recap-list">
+                {recap.map((m, i) => (
+                  <li key={i} className="god-recap-row">
+                    <span className="god-recap-tick">✓</span>
+                    <span className="god-recap-a">{m.a}</span>
+                    <span className="god-recap-q">{m.q}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <button className="cta wide" onClick={startGame}>Again</button>
+          <button className="ghost-btn wide" onClick={share}>{shared ? "Saved ✓" : "🧾 Share your run"}</button>
         </div>
       )}
     </div>

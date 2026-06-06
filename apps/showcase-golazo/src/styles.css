@@ -3343,3 +3343,19 @@ input {
   margin-left: 2px;
 }
 .boot-chip.is-sel .boot-bonus { color: var(--pitch); }
+
+/* ─── Group of Death — results recap ───────────────────────────────────────── */
+.god-over { overflow-y: auto; }
+.god-recap { width: 100%; text-align: left; margin: 6px 0 14px; }
+.god-recap-list { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--line); max-height: 34vh; overflow-y: auto; }
+.god-recap-row { display: flex; align-items: baseline; gap: 8px; padding: 9px 2px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.god-recap-tick { color: var(--lime); font-weight: 800; font-family: var(--font-display); }
+.god-recap-a { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: 0.02em; text-transform: uppercase; }
+.god-recap-q { font-family: var(--font-serif); font-style: italic; font-size: 12px; color: var(--muted); width: 100%; }
+
+/* ─── Beat the Clock ───────────────────────────────────────────────────────── */
+.quiz-clock { font-family: var(--font-code); font-weight: 700; font-size: 22px; color: var(--lime); }
+.quiz-clock.low { color: var(--red-card); }
+.clock-bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; margin: 2px 0 10px; }
+.clock-bar span { display: block; height: 100%; background: var(--lime); transition: width 1s linear; }
+.clock-bar span.low { background: var(--red-card); }
