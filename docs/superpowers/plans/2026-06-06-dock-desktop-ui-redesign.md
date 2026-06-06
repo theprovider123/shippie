@@ -4,61 +4,77 @@
 
 **Goal:** Rebuild the Dock desktop landing page as a launchpad grid with a collapsing icon rail and a sharp, collision-proof, cross-platform icon system.
 
-**Architecture:** A pure `tool-icon.ts` algorithm in `@shippie/design-tokens` (monogram + accent + seed) is the single source of truth, consumed by both a new `ToolGlyph` Svelte atom (live DOM) and the build-time SVG generator (baked PWA/app/mobile icons). The Dock home switches to a launchpad grid of `ToolCard` in a new `launchpad` density (no third primitive), and the left rail is extracted into a collapsible `DockRail.svelte`. Terminal-style tiles, hybrid square corners, floating depth, a single shared ambient WebGL layer, and a rocket badge on running tools.
+**Architecture:** A pure `tool-icon.ts` algorithm in `@shippie/design-tokens` (monogram + accent + seed), re-exported from the package index, is the single source of truth — consumed by both a new `ToolGlyph` Svelte atom (live DOM) and the build-time SVG generator (baked PWA/app/mobile icons). The Dock home switches to a launchpad grid built from **`ToolRow` in a new `variant="tile"`** (ToolRow is the contract-designated Dock launch/manage primitive and already carries `onClose/onRemove/onReview` — so no third primitive and no erosion of ToolCard's browse-only boundary). The left rail is extracted into a collapsible `DockRail.svelte`. Terminal-style tiles, hybrid square corners, floating depth, a single shared ambient WebGL layer, and a rocket badge on running tools.
 
-**Tech Stack:** SvelteKit 5 (runes), TypeScript, `@shippie/design-tokens` (bun:test), platform tests on vitest, JetBrains Mono (already a brand font), lucide icons, WebGL2.
+**Tech Stack:** SvelteKit 5 (runes), TypeScript, `@shippie/design-tokens` (bun:test), `apps/platform` tests on **vitest only** (CLAUDE.md invariant — never `bun:test` under `apps/platform`), JetBrains Mono (already a brand font), lucide icons, WebGL2.
 
 **Spec:** `docs/superpowers/specs/2026-06-06-dock-desktop-ui-redesign-design.md`
+
+### Testing approach (read first)
+
+This repo has **no component-render tests** and does **not** depend on `@testing-library/svelte`; adding it would also require a DOM env that the vitest config does not currently provide. Established style (see `tool-surface/labels.test.ts`, `tool-surface/primitives-guardrail.test.ts`):
+- **Logic** → pure unit tests (`tool-icon.ts` gets the heavy coverage here).
+- **Components** → **source-text guardrail** tests that read the `.svelte` file and assert structural invariants (import wiring, render-priority order, gating conditions, required a11y attributes).
+
+Every component task below uses this guardrail style — no `render()`, no new dependency. (If true render tests are wanted later, that's a separate, scoped decision to add `@testing-library/svelte` + a jsdom env; not in this plan.)
 
 ---
 
 ## File Structure
 
-**Sprint 1 — icon foundation (`@shippie/design-tokens`)**
+**Sprint 1 — icon foundation (`@shippie/design-tokens`, bun:test)**
 - Create: `packages/design-tokens/src/tool-icon.ts` — pure monogram/accent/seed algorithm. No deps.
-- Create: `packages/design-tokens/src/tool-icon.test.ts` — bun:test unit tests.
+- Create: `packages/design-tokens/src/tool-icon.test.ts` — bun:test unit tests + package-index re-export test.
+- Modify: `packages/design-tokens/src/index.ts` — **re-export** `tool-icon` + add token names to `CANONICAL_TOKENS`.
 - Modify: `packages/design-tokens/src/tokens.css` — hybrid icon radius + terminal surface tokens.
-- Modify: `packages/design-tokens/src/index.ts` — export new tokens in `CANONICAL_TOKENS`.
 
-**Sprint 2 — `ToolGlyph` atom (`apps/platform`)**
+**Sprint 2 — `ToolGlyph` atom (`apps/platform`, vitest guardrail)**
 - Create: `apps/platform/src/lib/components/tool-surface/ToolGlyph.svelte` — the icon atom.
-- Create: `apps/platform/src/lib/components/tool-surface/ToolGlyph.test.ts` — vitest component tests.
-- Modify: `apps/platform/src/lib/components/marketplace/IconOrMonogram.svelte` — thin wrapper delegating to `ToolGlyph` (keeps 10 call sites compiling).
+- Create: `apps/platform/src/lib/components/tool-surface/ToolGlyph.test.ts` — source-text guardrail.
+- Modify: `apps/platform/src/lib/components/marketplace/IconOrMonogram.svelte` — thin wrapper delegating to `ToolGlyph` (keeps ~10 call sites compiling).
+- Create: `apps/platform/src/lib/components/marketplace/IconOrMonogram.test.ts` — guardrail: asserts delegation.
 
-**Sprint 3 — build parity**
-- Modify: `scripts/generate-monogram-icons.mjs` — import shared algorithm; emit terminal-style SVG.
-- Create: `scripts/generate-monogram-icons.test.mjs` — parity test (SVG output uses shared algorithm).
+**Sprint 3 — build parity (clean-tree gated)**
+- Modify: `scripts/generate-monogram-icons.mjs` — import shared algorithm; export `buildMonogramSvg`; emit terminal-style SVG.
+- Create: `scripts/generate-monogram-icons.test.mjs` — parity test (bun:test; script lives outside `apps/platform`).
 
-**Sprint 4 — launchpad grid**
-- Modify: `apps/platform/src/lib/components/tool-surface/ToolCard.svelte` — add `density` prop (`card` | `launchpad`).
-- Modify: `apps/platform/src/lib/components/tool-surface/primitives-guardrail.test.ts` — constrain density values; assert no third primitive.
+**Sprint 4 — launchpad grid (ToolRow tile variant)**
+- Modify: `apps/platform/src/lib/components/tool-surface/ToolRow.svelte` — add `variant: 'row' | 'tile'`; tile uses `ToolGlyph` + running state.
+- Create: `apps/platform/src/lib/components/tool-surface/ToolRow.test.ts` — guardrail: variant union + tile branch (or extend existing tool-surface tests).
+- Modify: `apps/platform/src/lib/components/tool-surface/primitives-guardrail.test.ts` — assert ToolCard stays browse-only; ToolRow variant union is closed; no third primitive.
+- Create: `apps/platform/src/lib/container/DockSection.svelte` — shared section header (collapses when empty).
+- Create: `apps/platform/src/lib/container/DockSection.test.ts` — guardrail: empty-collapse conditional.
 - Modify: `apps/platform/src/lib/container/DashboardHome.svelte` — launchpad grid, unified sections, header, Manage toggle.
-- Create: `apps/platform/src/lib/container/DockSection.svelte` — shared section header (label + caption, collapses when empty).
 
 **Sprint 5 — rail**
-- Create: `apps/platform/src/lib/container/DockRail.svelte` — collapsible icon rail.
-- Create: `apps/platform/src/lib/container/DockRail.test.ts` — labels, collapse/expand, no stray-positioned header (M-bug regression).
+- Create: `apps/platform/src/lib/container/DockRail.svelte` — collapsible icon rail (hover + pin + keyboard-focus + coarse-pointer fallback).
+- Create: `apps/platform/src/lib/container/DockRail.test.ts` — guardrail: a11y names, coarse-pointer query, no stray-positioned header (M-bug regression).
 - Modify: `apps/platform/src/routes/dock/+page.svelte` — replace inline rail markup with `<DockRail/>`.
 
 **Sprint 6 — ambient shader (enhancement, flag-gated)**
 - Create: `apps/platform/src/lib/components/tool-surface/AmbientGrid.svelte` — single WebGL layer + reduced-motion/static fallback.
+- Create: `apps/platform/src/lib/components/tool-surface/AmbientGrid.test.ts` — guardrail: single getContext, reduced-motion branch, fallback markup.
 
 ---
 
 ## Sprint 1 — Icon Foundation
 
-### Task 1: Pure icon algorithm in design-tokens
+### Task 1: Pure icon algorithm + package re-export
 
 **Files:**
 - Create: `packages/design-tokens/src/tool-icon.ts`
-- Test: `packages/design-tokens/src/tool-icon.test.ts`
+- Create: `packages/design-tokens/src/tool-icon.test.ts`
+- Modify: `packages/design-tokens/src/index.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test (logic + the P0 re-export)**
 
 ```ts
 // packages/design-tokens/src/tool-icon.test.ts
 import { describe, expect, test } from 'bun:test';
 import { monogram, accentColor, surfaceSeed } from './tool-icon';
+// P0 regression: the package root MUST re-export these (consumers import
+// from '@shippie/design-tokens', which resolves to ./index.ts).
+import * as pkg from './index';
 
 describe('monogram', () => {
   test('multi-word name → both initials, upper', () => {
@@ -104,14 +120,22 @@ describe('surfaceSeed', () => {
     expect(s).toBeLessThan(1);
   });
 });
+
+describe('package index re-export (P0)', () => {
+  test('monogram/accentColor/surfaceSeed are exported from ./index', () => {
+    expect(typeof pkg.monogram).toBe('function');
+    expect(typeof pkg.accentColor).toBe('function');
+    expect(typeof pkg.surfaceSeed).toBe('function');
+  });
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd packages/design-tokens && bun test src/tool-icon.test.ts`
-Expected: FAIL — `Cannot find module './tool-icon'`.
+Expected: FAIL — `Cannot find module './tool-icon'` and the index re-export assertions fail.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Write the implementation**
 
 ```ts
 // packages/design-tokens/src/tool-icon.ts
@@ -169,23 +193,31 @@ export function surfaceSeed(slug: string): number {
 }
 ```
 
+Then add the re-export to `packages/design-tokens/src/index.ts` (append after the existing exports):
+
+```ts
+// Programmatic icon algorithm — shared by ToolGlyph (DOM) and the
+// build-time SVG generator so live + baked icons match.
+export { monogram, accentColor, surfaceSeed } from './tool-icon';
+```
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd packages/design-tokens && bun test src/tool-icon.test.ts`
-Expected: PASS — all assertions green.
+Expected: PASS — all assertions green, including the index re-export block.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/design-tokens/src/tool-icon.ts packages/design-tokens/src/tool-icon.test.ts
-git commit -m "feat(design-tokens): pure tool-icon algorithm (monogram + accent + seed)"
+git add packages/design-tokens/src/tool-icon.ts packages/design-tokens/src/tool-icon.test.ts packages/design-tokens/src/index.ts
+git commit -m "feat(design-tokens): pure tool-icon algorithm, re-exported from index"
 ```
 
 ### Task 2: Terminal icon tokens in tokens.css
 
 **Files:**
+- Modify: `packages/design-tokens/src/index.ts` (CANONICAL_TOKENS list)
 - Modify: `packages/design-tokens/src/tokens.css`
-- Modify: `packages/design-tokens/src/index.ts`
 - Test: `packages/design-tokens/src/index.test.ts` (existing snapshot test enforces tokens exist)
 
 - [ ] **Step 1: Add the new tokens to the canonical list (failing test first)**
@@ -236,49 +268,45 @@ git commit -m "feat(design-tokens): terminal tool-icon tokens (hybrid radius, ti
 
 ## Sprint 2 — ToolGlyph Atom
 
-### Task 3: ToolGlyph component
+### Task 3: ToolGlyph component (guardrail-tested)
 
 **Files:**
 - Create: `apps/platform/src/lib/components/tool-surface/ToolGlyph.svelte`
 - Test: `apps/platform/src/lib/components/tool-surface/ToolGlyph.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing guardrail test**
 
 ```ts
 // apps/platform/src/lib/components/tool-surface/ToolGlyph.test.ts
 import { describe, expect, test } from 'vitest';
-import { render } from '@testing-library/svelte';
-import ToolGlyph from './ToolGlyph.svelte';
+import { readFileSync } from 'node:fs';
 
-describe('ToolGlyph', () => {
-  test('renders an <img> when iconUrl is present', () => {
-    const { container } = render(ToolGlyph, {
-      props: { slug: 'dough', name: 'Dough', iconUrl: '/icon.svg' },
-    });
-    expect(container.querySelector('img')).not.toBeNull();
-    expect(container.querySelector('.monogram')).toBeNull();
+const src = readFileSync(new URL('./ToolGlyph.svelte', import.meta.url), 'utf8');
+
+describe('ToolGlyph structure (guardrail)', () => {
+  test('uses the shared algorithm from the package root', () => {
+    expect(src).toContain("from '@shippie/design-tokens'");
+    expect(src).toMatch(/import\s*{[^}]*monogram[^}]*accentColor[^}]*}/);
   });
-
-  test('renders the emoji glyph when no iconUrl but glyph present', () => {
-    const { getByText } = render(ToolGlyph, {
-      props: { slug: 'dock', name: 'Dock', iconUrl: null, glyph: '🧰' },
-    });
-    expect(getByText('🧰')).toBeTruthy();
+  test('render priority is iconUrl → glyph → monogram', () => {
+    const iImg = src.indexOf('iconUrl}');
+    const iGlyph = src.indexOf(':else if glyph');
+    const iMono = src.indexOf('class="monogram"');
+    expect(iImg).toBeGreaterThan(-1);
+    expect(iGlyph).toBeGreaterThan(iImg);
+    expect(iMono).toBeGreaterThan(iGlyph);
   });
-
-  test('renders a smart monogram fallback', () => {
-    const { getByText } = render(ToolGlyph, {
-      props: { slug: 'symptom-diary', name: 'Symptom Diary', iconUrl: null },
-    });
-    expect(getByText('SD')).toBeTruthy();
+  test('rocket badge is gated on running + a size threshold', () => {
+    expect(src).toContain('showRocket');
+    expect(src).toMatch(/running\s*&&\s*size\s*>=\s*28/);
+    expect(src).toContain('class="rocket"');
   });
-
-  test('running adds the rocket badge and running class', () => {
-    const { container } = render(ToolGlyph, {
-      props: { slug: 'sudoku', name: 'Sudoku', iconUrl: null, running: true },
-    });
-    expect(container.querySelector('.tool-glyph.running')).not.toBeNull();
-    expect(container.querySelector('.rocket')).not.toBeNull();
+  test('uses the brand mono font and hybrid-radius token', () => {
+    expect(src).toContain("--font-mono");
+    expect(src).toContain('var(--tool-icon-radius)');
+  });
+  test('respects prefers-reduced-motion for the pulse', () => {
+    expect(src).toContain('prefers-reduced-motion');
   });
 });
 ```
@@ -286,7 +314,7 @@ describe('ToolGlyph', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface/ToolGlyph.test.ts`
-Expected: FAIL — cannot resolve `./ToolGlyph.svelte`.
+Expected: FAIL — cannot read `./ToolGlyph.svelte`.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -367,31 +395,19 @@ Expected: FAIL — cannot resolve `./ToolGlyph.svelte`.
     border: 1px solid color-mix(in srgb, var(--c) var(--tool-icon-hairline), transparent);
     overflow: visible;
   }
-  .tool-glyph.float {
-    box-shadow: var(--tool-icon-float);
-  }
-  .tool-glyph img {
-    border-radius: inherit;
-    object-fit: cover;
-  }
+  .tool-glyph.float { box-shadow: var(--tool-icon-float); }
+  .tool-glyph img { border-radius: inherit; object-fit: cover; }
   .monogram {
     font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--c);
   }
-  .emoji {
-    line-height: 1;
-  }
+  .emoji { line-height: 1; }
   .dot {
-    position: absolute;
-    left: 9px;
-    top: 9px;
-    width: 4px;
-    height: 4px;
-    border-radius: 1px;
-    background: var(--c);
-    opacity: 0.65;
+    position: absolute; left: 9px; top: 9px;
+    width: 4px; height: 4px; border-radius: 1px;
+    background: var(--c); opacity: 0.65;
   }
   .tool-glyph.running {
     box-shadow:
@@ -400,29 +416,17 @@ Expected: FAIL — cannot resolve `./ToolGlyph.svelte`.
       0 0 16px -3px color-mix(in srgb, var(--c) 55%, transparent);
   }
   .rocket {
-    position: absolute;
-    right: -6px;
-    top: -6px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
+    position: absolute; right: -6px; top: -6px;
+    width: 18px; height: 18px; border-radius: 50%;
     background: var(--tool-icon-tile);
     border: 1px solid color-mix(in srgb, var(--c) 60%, transparent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   }
-  .rocket svg {
-    width: 10px;
-    height: 10px;
-  }
+  .rocket svg { width: 10px; height: 10px; }
   .pulse {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border: 1.5px solid var(--c);
-    opacity: 0;
+    position: absolute; inset: 0; border-radius: inherit;
+    border: 1.5px solid var(--c); opacity: 0;
     animation: glyph-pulse 2.4s ease-out infinite;
   }
   @keyframes glyph-pulse {
@@ -439,7 +443,7 @@ Expected: FAIL — cannot resolve `./ToolGlyph.svelte`.
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface/ToolGlyph.test.ts`
-Expected: PASS — all four tests green.
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -452,28 +456,30 @@ git commit -m "feat(tool-surface): ToolGlyph icon atom (terminal style, running 
 
 **Files:**
 - Modify: `apps/platform/src/lib/components/marketplace/IconOrMonogram.svelte`
-- Test: `apps/platform/src/lib/components/marketplace/IconOrMonogram.test.ts` (create)
+- Test: `apps/platform/src/lib/components/marketplace/IconOrMonogram.test.ts`
 
-- [ ] **Step 1: Write the failing test (props pass through; monogram is now smart)**
+- [ ] **Step 1: Write the failing guardrail test**
 
 ```ts
 // apps/platform/src/lib/components/marketplace/IconOrMonogram.test.ts
 import { describe, expect, test } from 'vitest';
-import { render } from '@testing-library/svelte';
-import IconOrMonogram from './IconOrMonogram.svelte';
+import { readFileSync } from 'node:fs';
 
-describe('IconOrMonogram (delegates to ToolGlyph)', () => {
-  test('still renders an <img> when iconUrl is present', () => {
-    const { container } = render(IconOrMonogram, {
-      props: { name: 'Dough', slug: 'dough', iconUrl: '/i.svg', themeColor: '#e07a4d' },
-    });
-    expect(container.querySelector('img')).not.toBeNull();
+const src = readFileSync(new URL('./IconOrMonogram.svelte', import.meta.url), 'utf8');
+
+describe('IconOrMonogram delegates to ToolGlyph (guardrail)', () => {
+  test('imports and renders ToolGlyph', () => {
+    expect(src).toContain('ToolGlyph');
+    expect(src).toMatch(/<ToolGlyph[\s\S]*\/>/);
   });
-  test('uses the smart 2-letter monogram for multi-word names', () => {
-    const { getByText } = render(IconOrMonogram, {
-      props: { name: 'Symptom Diary', slug: 'symptom-diary', iconUrl: null, themeColor: '#7fa06a' },
-    });
-    expect(getByText('SD')).toBeTruthy();
+  test('no longer contains its own monogram/letter logic', () => {
+    expect(src).not.toContain('.monogram');
+    expect(src).not.toMatch(/name\?\.trim\(\)\?\.\[0\]/);
+  });
+  test('forwards the identifying props', () => {
+    for (const p of ['name', 'slug', 'iconUrl', 'themeColor', 'size']) {
+      expect(src).toContain(p);
+    }
   });
 });
 ```
@@ -481,7 +487,7 @@ describe('IconOrMonogram (delegates to ToolGlyph)', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd apps/platform && bunx vitest run src/lib/components/marketplace/IconOrMonogram.test.ts`
-Expected: FAIL — current component renders a single letter "S", not "SD".
+Expected: FAIL — current component still has `.monogram` + letter logic and no `ToolGlyph`.
 
 - [ ] **Step 3: Replace IconOrMonogram body with a ToolGlyph delegation**
 
@@ -526,9 +532,9 @@ Expected: FAIL — current component renders a single letter "S", not "SD".
 - [ ] **Step 4: Run tests to verify pass (and no call-site regressions)**
 
 Run: `cd apps/platform && bunx vitest run src/lib/components/marketplace/IconOrMonogram.test.ts src/lib/components/tool-surface`
-Expected: PASS. Then run the broader suite touching consumers:
-Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface src/lib/components/marketplace`
 Expected: PASS.
+Then typecheck the consumers (10 call sites): `cd apps/platform && bun run typecheck`
+Expected: no new errors. (If `typecheck` is slow, scope with the project's svelte-check script.)
 
 - [ ] **Step 5: Commit**
 
@@ -541,11 +547,16 @@ git commit -m "refactor(marketplace): IconOrMonogram delegates to ToolGlyph"
 
 ## Sprint 3 — Build Parity
 
+> **PREFLIGHT (required — P1c).** The generator is idempotent (writes only *missing* `icon.svg`s) but `git add apps/showcase-*/public/icon.svg` can sweep up unrelated dirty showcase/generated work that is already in the tree. Before starting this sprint:
+> 1. `git status --short` — if any `apps/showcase-*` or generated files are dirty/untracked from other work, STOP. Either land/stash that work first, or run this sprint in an isolated worktree (`superpowers:using-git-worktrees`).
+> 2. After regenerating, stage **only files the generator actually wrote** — diff and add explicitly, never `git add -A`.
+> Note: because the generator only fills *missing* icons, existing baked icons keep their old look. Restyling already-baked showcase icons onto the terminal style is a **separate, deliberate force-regen pass** (broader churn) and is out of scope here.
+
 ### Task 5: Generate icons from the shared algorithm
 
 **Files:**
 - Modify: `scripts/generate-monogram-icons.mjs`
-- Test: `scripts/generate-monogram-icons.test.mjs`
+- Test: `scripts/generate-monogram-icons.test.mjs` (bun:test — script is outside `apps/platform`, so bun:test is correct here)
 
 - [ ] **Step 1: Write the failing parity test**
 
@@ -580,7 +591,7 @@ Expected: FAIL — `buildMonogramSvg` is not exported; current script inlines fi
 
 - [ ] **Step 3: Refactor the generator to export `buildMonogramSvg` using the shared algorithm**
 
-In `scripts/generate-monogram-icons.mjs`, add the import near the top and replace the inline SVG construction with a shared, exported builder (terminal style, hybrid radius):
+Add the import near the top of `scripts/generate-monogram-icons.mjs` and an exported builder:
 
 ```js
 import { monogram, accentColor } from '../packages/design-tokens/src/tool-icon.ts';
@@ -602,134 +613,147 @@ export function buildMonogramSvg({ name, slug, themeColor }) {
 }
 ```
 
-Then, in the existing showcase-walking code, replace the body that writes `public/icon.svg` so it calls `buildMonogramSvg({ name, slug, themeColor })` instead of the old first-letter string. Keep the existing idempotency / file-resolution logic unchanged.
+Then, in the existing showcase-walking code, replace the body that writes `public/icon.svg` so it calls `buildMonogramSvg({ name, slug, themeColor })`. Keep the existing idempotency / file-resolution logic unchanged so it still only writes missing icons.
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `bun test scripts/generate-monogram-icons.test.mjs`
 Expected: PASS.
 
-- [ ] **Step 5: Regenerate showcase icons and commit**
+- [ ] **Step 5: Regenerate, stage ONLY written files, commit**
 
 ```bash
+git status --short        # confirm clean tree per preflight before running
 bun scripts/generate-monogram-icons.mjs
-git add scripts/generate-monogram-icons.mjs scripts/generate-monogram-icons.test.mjs apps/showcase-*/public/icon.svg
+git status --short        # list exactly what the generator wrote
+# stage only those paths explicitly, e.g.:
+git add scripts/generate-monogram-icons.mjs scripts/generate-monogram-icons.test.mjs
+# add each generated icon.svg the run actually produced, individually:
+# git add apps/showcase-<slug>/public/icon.svg
 git commit -m "feat(icons): generate terminal-style icons from shared algorithm (web/app/mobile parity)"
 ```
 
 ---
 
-## Sprint 4 — Launchpad Grid
+## Sprint 4 — Launchpad Grid (ToolRow tile variant)
 
-### Task 6: ToolCard launchpad density
+### Task 6: ToolRow `variant="tile"`
 
 **Files:**
-- Modify: `apps/platform/src/lib/components/tool-surface/ToolCard.svelte`
-- Test: `apps/platform/src/lib/components/tool-surface/ToolCard.test.ts` (create if absent)
+- Modify: `apps/platform/src/lib/components/tool-surface/ToolRow.svelte`
+- Test: `apps/platform/src/lib/components/tool-surface/ToolRow.test.ts`
 - Modify: `apps/platform/src/lib/components/tool-surface/primitives-guardrail.test.ts`
 
-- [ ] **Step 1: Write the failing test for the density prop**
+> **Why ToolRow, not ToolCard:** the frozen harmonization contract designates **ToolRow** as the Dock launch/manage primitive, and it already carries `onClose/onRemove/onReview`. ToolCard is deliberately browse-only (its header comment: *"close / remove / review are Dock concepts and never appear on browse"*). Adding a tile presentation to ToolRow keeps the Dock on its contract primitive, gets management handlers for free, and adds no third primitive.
+
+- [ ] **Step 1: Write the failing guardrail test**
 
 ```ts
-// apps/platform/src/lib/components/tool-surface/ToolCard.test.ts
+// apps/platform/src/lib/components/tool-surface/ToolRow.test.ts
 import { describe, expect, test } from 'vitest';
-import { render } from '@testing-library/svelte';
-import ToolCard from './ToolCard.svelte';
-import type { ToolDisplay, ToolState } from './types';
+import { readFileSync } from 'node:fs';
 
-const app: ToolDisplay = { slug: 'sudoku', name: 'Sudoku', themeColor: '#000000' };
-const state: ToolState = {
-  relationship: 'running',
-  offlineState: 'ready',
-  updateState: 'none',
-  actions: { open: true, save: false, info: true, close: true, remove: false, review: false },
-};
+const src = readFileSync(new URL('./ToolRow.svelte', import.meta.url), 'utf8');
 
-describe('ToolCard density', () => {
-  test('launchpad density renders the icon-forward layout', () => {
-    const { container } = render(ToolCard, { props: { app, state, density: 'launchpad' } });
-    expect(container.querySelector('.tool-card.density-launchpad')).not.toBeNull();
+describe('ToolRow tile variant (guardrail)', () => {
+  test('declares a closed variant union', () => {
+    expect(src).toContain("variant?: 'row' | 'tile'");
   });
-  test('running tool shows the rocket via ToolGlyph', () => {
-    const { container } = render(ToolCard, { props: { app, state, density: 'launchpad' } });
-    expect(container.querySelector('.rocket')).not.toBeNull();
-  });
-  test('defaults to card density when none provided', () => {
-    const { container } = render(ToolCard, { props: { app, state } });
-    expect(container.querySelector('.tool-card.density-card')).not.toBeNull();
+  test('tile branch renders ToolGlyph with running state', () => {
+    expect(src).toContain('ToolGlyph');
+    expect(src).toMatch(/running=\{state\.relationship === 'running'\}/);
+    expect(src).toContain("variant === 'tile'");
   });
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface/ToolCard.test.ts`
-Expected: FAIL — no `density` prop / no `.density-launchpad` class.
+Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface/ToolRow.test.ts`
+Expected: FAIL — no `variant` prop / no tile branch.
 
-- [ ] **Step 3: Add the density prop to ToolCard**
+- [ ] **Step 3: Add the tile variant to ToolRow**
 
-In `apps/platform/src/lib/components/tool-surface/ToolCard.svelte`:
-1. Add to the `Props` interface: `density?: 'card' | 'launchpad';`
-2. Destructure with default: `density = 'card'` in the `$props()` call.
-3. Add the density class to the root element: `class="tool-card density-{density}"`.
-4. Ensure the icon is rendered via `ToolGlyph` with `running={state.relationship === 'running'}` and, for launchpad, a larger `size` (e.g. 56) with `float`. In `launchpad` density, the name renders centered beneath the glyph and the primary manage action (`close` for running, `remove` for saved — driven off `state.actions`) appears on hover/focus.
-5. Add CSS: `.density-launchpad` lays out as a centered column (glyph, name); manage control is absolutely positioned top-right, shown on `:hover`/`:focus-within`. `.density-card` keeps existing styles.
+In `apps/platform/src/lib/components/tool-surface/ToolRow.svelte`:
+1. Add to the `Props` interface: `variant?: 'row' | 'tile';`
+2. Destructure with default `variant = 'row'`.
+3. Import `ToolGlyph` (`import ToolGlyph from './ToolGlyph.svelte';`).
+4. Add a `{#snippet tileInner()}` that renders the icon-forward column, reusing the existing derived flags (`safeName`, `showClose`, `showRemove`, etc.):
 
 ```svelte
-<!-- add near the top of the markup, replacing the existing icon usage -->
-<ToolGlyph
-  slug={app.slug}
-  name={app.name}
-  iconUrl={app.iconUrl}
-  glyph={app.glyph}
-  themeColor={app.themeColor}
-  size={density === 'launchpad' ? 56 : 40}
-  running={state.relationship === 'running'}
-  float={density === 'launchpad'}
-/>
+{#snippet tileInner()}
+  <ToolGlyph
+    slug={app.slug}
+    name={app.name}
+    iconUrl={app.iconUrl ?? null}
+    glyph={app.glyph ?? null}
+    themeColor={app.themeColor}
+    size={56}
+    running={state.relationship === 'running'}
+    float={true}
+  />
+  <span class="tile-name">{safeName}</span>
+{/snippet}
 ```
 
+5. Branch the outer markup on `variant`. The existing `row` markup stays exactly as-is under `{#if variant === 'row'}`; add the tile branch:
+
+```svelte
+{#if variant === 'tile'}
+  <div class="tile" class:current>
+    {#if href}
+      <a class="tile-open" href={launchHref} onclick={launch.launchAndRemember}
+         data-sveltekit-preload-data="hover" aria-label={`Open ${safeName}`}>
+        {@render tileInner()}
+      </a>
+    {:else}
+      <button class="tile-open" type="button" onclick={launch.launchAndRemember} aria-label={`Open ${safeName}`}>
+        {@render tileInner()}
+      </button>
+    {/if}
+    <div class="tile-actions">
+      {#if showClose}<button class="manage" type="button" onclick={() => onClose?.(app)} aria-label={`Close ${safeName}`}>×</button>{/if}
+      {#if showRemove}<button class="manage" type="button" onclick={() => onRemove?.(app)} aria-label={`Remove ${safeName}`}>−</button>{/if}
+    </div>
+  </div>
+{:else}
+  <!-- existing row markup unchanged -->
+{/if}
+```
+
+6. Add tile CSS (height stays internally owned; external override still impossible):
+
 ```css
-.tool-card.density-launchpad {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  padding: 14px 8px;
-  position: relative;
-  text-align: center;
-}
-.tool-card.density-launchpad .manage {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-.tool-card.density-launchpad:hover .manage,
-.tool-card.density-launchpad:focus-within .manage {
-  opacity: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .tool-card.density-launchpad .manage { transition: none; }
-}
+.tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 14px 8px; text-align: center; }
+.tile-open { display: flex; flex-direction: column; align-items: center; gap: 9px; background: none; border: 0; cursor: pointer; color: inherit; }
+.tile-name { font-size: 13px; color: var(--text); }
+.tile-actions .manage { position: absolute; top: 6px; right: 6px; opacity: 0; transition: opacity 0.12s; background: none; border: 0; color: var(--text-dim, #8c8170); cursor: pointer; }
+.tile:hover .manage, .tile:focus-within .manage { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .tile-actions .manage { transition: none; } }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface/ToolCard.test.ts`
+Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface/ToolRow.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Update the primitives guardrail to allow exactly two density values**
+- [ ] **Step 5: Reinforce the contract in the guardrail test**
 
-In `apps/platform/src/lib/components/tool-surface/primitives-guardrail.test.ts`, add a test asserting `density` only accepts `card | launchpad` (grep the component source for the union type) and that the Dock imports only `ToolRow`/`ToolCard` (no new primitive file). Example assertion:
+In `apps/platform/src/lib/components/tool-surface/primitives-guardrail.test.ts`, add:
 
 ```ts
-test('ToolCard density union stays closed (card | launchpad)', () => {
-  const src = readFileSync(
-    new URL('./ToolCard.svelte', import.meta.url), 'utf8',
-  );
-  expect(src).toContain("density?: 'card' | 'launchpad'");
+import { readFileSync } from 'node:fs';
+
+test('ToolCard stays browse-only (no Dock management handlers)', () => {
+  const card = readFileSync(new URL('./ToolCard.svelte', import.meta.url), 'utf8');
+  expect(card).not.toContain('onClose');
+  expect(card).not.toContain('onRemove');
+  expect(card).not.toContain('onReview');
+});
+
+test('ToolRow variant union stays closed (row | tile)', () => {
+  const row = readFileSync(new URL('./ToolRow.svelte', import.meta.url), 'utf8');
+  expect(row).toContain("variant?: 'row' | 'tile'");
 });
 ```
 
@@ -739,8 +763,8 @@ Run: `cd apps/platform && bunx vitest run src/lib/components/tool-surface/primit
 Expected: PASS.
 
 ```bash
-git add apps/platform/src/lib/components/tool-surface/ToolCard.svelte apps/platform/src/lib/components/tool-surface/ToolCard.test.ts apps/platform/src/lib/components/tool-surface/primitives-guardrail.test.ts
-git commit -m "feat(tool-surface): ToolCard launchpad density (icon-forward grid tile)"
+git add apps/platform/src/lib/components/tool-surface/ToolRow.svelte apps/platform/src/lib/components/tool-surface/ToolRow.test.ts apps/platform/src/lib/components/tool-surface/primitives-guardrail.test.ts
+git commit -m "feat(tool-surface): ToolRow tile variant (icon-forward Dock grid tile)"
 ```
 
 ### Task 7: DockSection + DashboardHome launchpad grid
@@ -750,28 +774,23 @@ git commit -m "feat(tool-surface): ToolCard launchpad density (icon-forward grid
 - Test: `apps/platform/src/lib/container/DockSection.test.ts`
 - Modify: `apps/platform/src/lib/container/DashboardHome.svelte`
 
-- [ ] **Step 1: Write the failing test for DockSection (collapses when empty)**
+- [ ] **Step 1: Write the failing guardrail test**
 
 ```ts
 // apps/platform/src/lib/container/DockSection.test.ts
 import { describe, expect, test } from 'vitest';
-import { render } from '@testing-library/svelte';
-import DockSection from './DockSection.svelte';
+import { readFileSync } from 'node:fs';
 
-describe('DockSection', () => {
-  test('renders label + caption when it has items', () => {
-    const { getByText, container } = render(DockSection, {
-      props: { label: 'Running', caption: 'Still open in the background.', count: 3 },
-    });
-    expect(getByText('Running')).toBeTruthy();
-    expect(getByText('Still open in the background.')).toBeTruthy();
-    expect(container.querySelector('section')).not.toBeNull();
-  });
+const src = readFileSync(new URL('./DockSection.svelte', import.meta.url), 'utf8');
+
+describe('DockSection (guardrail)', () => {
   test('collapses (renders nothing) when count is 0', () => {
-    const { container } = render(DockSection, {
-      props: { label: 'Recent', caption: 'Opened on this device.', count: 0 },
-    });
-    expect(container.querySelector('section')).toBeNull();
+    expect(src).toContain('{#if count > 0}');
+  });
+  test('renders label, caption and a grid container', () => {
+    expect(src).toContain('{label}');
+    expect(src).toContain('{caption}');
+    expect(src).toContain('class="grid"');
   });
 });
 ```
@@ -829,10 +848,10 @@ Expected: PASS.
 - [ ] **Step 5: Wire DashboardHome to the grid + header + Manage toggle**
 
 In `apps/platform/src/lib/container/DashboardHome.svelte`:
-1. Import `DockSection` and `ToolCard`.
-2. Add a page header region above the sections: a greeting `<h1>` plus the existing one-liner as a `<p class="subtitle">` (move the "Running, recent, and saved tools stay close…" string here; it must no longer be an absolutely-positioned floating paragraph — this removes the stray "M" overlap).
-3. Add a `view` state: `let view = $state<'grid' | 'manage'>('grid')` with a small toggle in the header.
-4. Render each group through `DockSection`, passing `count` from the data, and inside render each tool as `ToolCard` with `density={view === 'grid' ? 'launchpad' : 'card'}` (manage view uses the row-like card / existing density). Keep the existing `toolState` selector usage to compute `state` per tool — do not recompute display fields.
+1. Import `DockSection` and `ToolRow`.
+2. Add a page header region above the sections: a greeting `<h1>` plus the existing one-liner as `<p class="subtitle">` (move the "Running, recent, and saved tools stay close…" string here; it must no longer be an absolutely-positioned floating paragraph — this removes the stray "M" overlap).
+3. Add view state: `let view = $state<'grid' | 'manage'>('grid')` with a toggle button.
+4. Render each group via `DockSection`, with each tool as `ToolRow` using `variant={view === 'grid' ? 'tile' : 'row'}`. Keep the existing `toolState` selector for `state` (do not recompute display fields). Wire the management handlers the Dock already uses (`onClose`, `onRemove`, `onInfo`, `onSave`).
 
 ```svelte
 <header class="dock-header">
@@ -845,16 +864,16 @@ In `apps/platform/src/lib/container/DashboardHome.svelte`:
 
 <DockSection label="Running" caption="Still open in the background." count={running.length}>
   {#each running as app (app.slug)}
-    <ToolCard {app} state={toolState(app)} density={view === 'grid' ? 'launchpad' : 'card'} onClose={handleClose} onInfo={handleInfo} />
+    <ToolRow {app} state={toolState(app)} variant={view === 'grid' ? 'tile' : 'row'} hideRelationship onClose={handleClose} onInfo={handleInfo} />
   {/each}
 </DockSection>
 <!-- repeat DockSection for Recent (onSave) and Saved (onRemove), same pattern -->
 ```
 
-- [ ] **Step 6: Run the DashboardHome + section tests + typecheck**
+- [ ] **Step 6: Run the section test + typecheck**
 
-Run: `cd apps/platform && bunx vitest run src/lib/container/DockSection.test.ts && bunx svelte-check --threshold error`
-Expected: PASS / no errors. (If `svelte-check` is not the project's checker, use the script in `apps/platform/package.json`.)
+Run: `cd apps/platform && bunx vitest run src/lib/container/DockSection.test.ts && bun run typecheck`
+Expected: PASS / no new errors.
 
 - [ ] **Step 7: Commit**
 
@@ -867,7 +886,7 @@ git commit -m "feat(dock): launchpad grid home with unified sections, header, ma
 
 ## Sprint 5 — Rail
 
-### Task 8: Collapsible DockRail
+### Task 8: Collapsible DockRail (desktop + tablet + keyboard)
 
 **Files:**
 - Create: `apps/platform/src/lib/container/DockRail.svelte`
@@ -876,31 +895,32 @@ git commit -m "feat(dock): launchpad grid home with unified sections, header, ma
 
 > **Coordination:** `dock/+page.svelte` is a 5037-line Codex collision zone. Before editing, run `git fetch && git log --oneline -3 origin/feat/dock-harmonization` and re-check HEAD; if Codex has touched the rail region, rebase/coordinate before extracting. Stage only the files listed.
 
-- [ ] **Step 1: Write the failing test (labels, collapse, no stray header)**
+- [ ] **Step 1: Write the failing guardrail test (a11y + P2 coarse-pointer/keyboard)**
 
 ```ts
 // apps/platform/src/lib/container/DockRail.test.ts
 import { describe, expect, test } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
-import DockRail from './DockRail.svelte';
+import { readFileSync } from 'node:fs';
 
-describe('DockRail', () => {
-  test('collapsed by default; nav items have accessible names', () => {
-    const { container, getByLabelText } = render(DockRail, { props: { signedIn: false } });
-    const nav = container.querySelector('nav.dock-rail');
-    expect(nav?.getAttribute('aria-expanded')).toBe('false');
-    expect(getByLabelText('Create')).toBeTruthy();
-    expect(getByLabelText('Browse tools')).toBeTruthy();
+const src = readFileSync(new URL('./DockRail.svelte', import.meta.url), 'utf8');
+
+describe('DockRail (guardrail)', () => {
+  test('every nav item carries an accessible name', () => {
+    expect(src).toContain('aria-label');
+    expect(src).toContain('title=');
   });
-  test('expands on pin toggle', async () => {
-    const { container, getByLabelText } = render(DockRail, { props: { signedIn: false } });
-    await fireEvent.click(getByLabelText('Expand navigation'));
-    expect(container.querySelector('nav.dock-rail')?.getAttribute('aria-expanded')).toBe('true');
+  test('exposes expanded state via aria-expanded', () => {
+    expect(src).toContain('aria-expanded');
   });
-  test('does not render any absolutely-positioned element overlapping the content (M-bug regression)', () => {
-    const { container } = render(DockRail, { props: { signedIn: false } });
-    // The rail is self-contained; it must not leak a stray glyph into the page header.
-    expect(container.textContent).not.toMatch(/^\s*M\s*$/);
+  test('expands on keyboard focus, not only hover (P2)', () => {
+    expect(src).toContain('onfocusin');
+    expect(src).toContain('onfocusout');
+  });
+  test('has a coarse-pointer (touch/tablet) fallback so it is not icon-only mystery meat (P2)', () => {
+    expect(src).toContain('(pointer: coarse)');
+  });
+  test('does not leak a stray single-letter node into the page (M-bug regression)', () => {
+    expect(src).not.toMatch(/>\s*M\s*</);
   });
 });
 ```
@@ -910,7 +930,7 @@ describe('DockRail', () => {
 Run: `cd apps/platform && bunx vitest run src/lib/container/DockRail.test.ts`
 Expected: FAIL — `./DockRail.svelte` not found.
 
-- [ ] **Step 3: Implement DockRail (collapsible, lucide nav, account block)**
+- [ ] **Step 3: Implement DockRail**
 
 ```svelte
 <!-- apps/platform/src/lib/container/DockRail.svelte -->
@@ -918,8 +938,9 @@ Expected: FAIL — `./DockRail.svelte` not found.
   /**
    * DockRail — collapsible left navigation extracted from dock/+page.svelte.
    * Collapsed 56px (icon-only + tooltips) → expanded 200px (labels).
-   * Pinned state persists to localStorage. Replaces the old cramped icon
-   * cluster + dead space + flat link list.
+   * Expands on hover, keyboard focus (focusin), or pin. On coarse pointers
+   * (touch/tablet) it defaults to the labeled width so it never becomes
+   * mystery-meat. Pin persists to localStorage.
    */
   import { Plus, LayoutGrid, User, KeyRound, PanelLeft } from 'lucide-svelte';
 
@@ -928,7 +949,8 @@ Expected: FAIL — `./DockRail.svelte` not found.
 
   let pinned = $state(false);
   let hovered = $state(false);
-  const expanded = $derived(pinned || hovered);
+  let focused = $state(false);
+  const expanded = $derived(pinned || hovered || focused);
 
   function togglePin() {
     pinned = !pinned;
@@ -953,13 +975,15 @@ Expected: FAIL — `./DockRail.svelte` not found.
   aria-expanded={expanded}
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
+  onfocusin={() => (focused = true)}
+  onfocusout={() => (focused = false)}
 >
   <div class="brand">
     <span class="logo" aria-hidden="true"></span>
-    {#if expanded}<span class="wordmark">Dock</span>{/if}
+    <span class="wordmark">Dock</span>
   </div>
 
-  <button class="pin" aria-label="Expand navigation" onclick={togglePin}>
+  <button class="pin" aria-label="Expand navigation" title="Expand navigation" onclick={togglePin}>
     <PanelLeft size={18} />
   </button>
 
@@ -968,43 +992,45 @@ Expected: FAIL — `./DockRail.svelte` not found.
       <li>
         <a href={item.href} class:primary={item.primary} aria-label={item.label} title={item.label}>
           <item.icon size={18} />
-          {#if expanded}<span>{item.label}</span>{/if}
+          <span class="label">{item.label}</span>
         </a>
       </li>
     {/each}
   </ul>
 
   <div class="account">
-    <a href={signedIn ? '/you' : '/auth/login'} aria-label={signedIn ? 'Account' : 'Sign in to ship'} title={signedIn ? 'Account' : 'Sign in to ship'}>
+    <a href={signedIn ? '/you' : '/auth/login'}
+       aria-label={signedIn ? 'Account' : 'Sign in to ship'}
+       title={signedIn ? 'Account' : 'Sign in to ship'}>
       <span class="avatar" aria-hidden="true"></span>
-      {#if expanded}<span>{signedIn ? 'Account' : 'Sign in to ship'}</span>{/if}
+      <span class="label">{signedIn ? 'Account' : 'Sign in to ship'}</span>
     </a>
   </div>
 </nav>
 
 <style>
   .dock-rail {
-    display: flex;
-    flex-direction: column;
-    width: 56px;
-    transition: width 0.15s ease;
+    display: flex; flex-direction: column;
+    width: 56px; transition: width 0.15s ease;
     border-right: 1px solid var(--line, #2e2920);
-    padding: 12px 8px;
-    gap: 6px;
-    height: 100%;
+    padding: 12px 8px; gap: 6px; height: 100%;
   }
   .dock-rail.expanded { width: 200px; }
+  /* Labels hidden only while collapsed; shown when expanded. */
+  .dock-rail:not(.expanded) .label,
+  .dock-rail:not(.expanded) .wordmark { display: none; }
+  /* P2: touch/tablet has no hover — default to the labeled width. */
+  @media (pointer: coarse) {
+    .dock-rail { width: 200px; }
+    .dock-rail .label, .dock-rail .wordmark { display: inline; }
+  }
   .brand { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px; }
   .logo { width: 22px; height: 22px; border-radius: 4px; background: var(--sunset, #c98a4b); }
   .wordmark { font-weight: 700; color: var(--text); }
   .pin { background: none; border: 0; color: var(--text-dim, #8c8170); cursor: pointer; padding: 6px; align-self: flex-start; }
   ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-  a {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px; border-radius: 8px; color: var(--text-dim, #8c8170);
-    text-decoration: none; white-space: nowrap;
-  }
-  a:hover { background: var(--panel, #211d17); color: var(--text); }
+  a { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; color: var(--text-dim, #8c8170); text-decoration: none; white-space: nowrap; }
+  a:hover, a:focus-visible { background: var(--panel, #211d17); color: var(--text); }
   a.primary { color: var(--text); }
   .account { margin-top: auto; border-top: 1px solid var(--line, #2e2920); padding-top: 8px; }
   .avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--sage-moss, #7fa06a); flex: none; }
@@ -1012,7 +1038,7 @@ Expected: FAIL — `./DockRail.svelte` not found.
 </style>
 ```
 
-> If `lucide-svelte` is not already a dependency, add it first: `cd apps/platform && bun add lucide-svelte` and commit the lockfile change in this task.
+> If `lucide-svelte` is not already a dependency, add it first: `cd apps/platform && bun add lucide-svelte`, and include `bun.lock` in this task's commit.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1021,7 +1047,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Replace the inline rail in dock/+page.svelte**
 
-In `apps/platform/src/routes/dock/+page.svelte`: import `DockRail`, delete the inline rail markup (the cramped icon cluster + Switcher-adjacent nav + the flat `Browse tools / You / Access / Create / Sign in to ship` list), and render `<DockRail signedIn={…} />` in its place. Pass the existing signed-in value from the page's data. Remove now-dead rail CSS. Verify the existing dock route tests still pass.
+In `apps/platform/src/routes/dock/+page.svelte`: import `DockRail`, delete the inline rail markup (the cramped icon cluster + the flat `Browse tools / You / Access / Create / Sign in to ship` list around line 3672), and render `<DockRail signedIn={…} />` in its place, passing the existing signed-in value from page data. Remove now-dead rail CSS. The deleted cluster is the source of the stray "M" overlap.
 
 - [ ] **Step 6: Run the dock route tests + commit**
 
@@ -1046,22 +1072,25 @@ git commit -m "feat(dock): collapsible DockRail; remove dead-space rail and stra
 - Test: `apps/platform/src/lib/components/tool-surface/AmbientGrid.test.ts`
 - Modify: `apps/platform/src/lib/container/DashboardHome.svelte` (mount behind the grid, flag-gated)
 
-- [ ] **Step 1: Write the failing test (fallback behaviour)**
+- [ ] **Step 1: Write the failing guardrail test**
 
 ```ts
 // apps/platform/src/lib/components/tool-surface/AmbientGrid.test.ts
-import { describe, expect, test, vi } from 'vitest';
-import { render } from '@testing-library/svelte';
-import AmbientGrid from './AmbientGrid.svelte';
+import { describe, expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
 
-describe('AmbientGrid', () => {
-  test('renders a static fallback when prefers-reduced-motion is set', () => {
-    vi.stubGlobal('matchMedia', (q: string) => ({
-      matches: q.includes('reduce'), media: q, addEventListener() {}, removeEventListener() {},
-    }));
-    const { container } = render(AmbientGrid, { props: { accents: ['#c98a4b'] } });
-    expect(container.querySelector('canvas')).toBeNull();
-    expect(container.querySelector('.ambient-static')).not.toBeNull();
+const src = readFileSync(new URL('./AmbientGrid.svelte', import.meta.url), 'utf8');
+
+describe('AmbientGrid (guardrail)', () => {
+  test('creates exactly one GL context (never per-tile)', () => {
+    expect(src.match(/getContext\(/g)?.length).toBe(1);
+  });
+  test('honors prefers-reduced-motion and has a static fallback', () => {
+    expect(src).toContain('prefers-reduced-motion');
+    expect(src).toContain('ambient-static');
+  });
+  test('pauses animation when the tab is hidden', () => {
+    expect(src).toContain('document.hidden');
   });
 });
 ```
@@ -1115,9 +1144,7 @@ Expected: FAIL — component missing.
 {/if}
 
 <style>
-  .ambient, .ambient-static {
-    position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  }
+  .ambient, .ambient-static { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
   .ambient-static {
     background: radial-gradient(120% 80% at 30% 10%, color-mix(in srgb, var(--a) 10%, transparent), transparent 60%);
   }
@@ -1131,7 +1158,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Mount behind the grid in DashboardHome, flag-gated**
 
-In `DashboardHome.svelte`, wrap the sections in a `position: relative` container and place `<AmbientGrid accents={visibleAccents} />` as the first child when a `PUBLIC_DOCK_AMBIENT` flag (or existing feature-flag mechanism) is enabled. Tiles already `float`, so they read above it.
+In `DashboardHome.svelte`, wrap the sections in a `position: relative` container and place `<AmbientGrid accents={visibleAccents} />` as the first child when the Dock ambient flag is enabled. Use the project's existing feature-flag mechanism (confirm the name at implementation time — e.g. a `PUBLIC_` env flag or the existing flags store). Tiles already `float`, so they read above it.
 
 - [ ] **Step 6: Commit**
 
@@ -1144,15 +1171,17 @@ git commit -m "feat(dock): flag-gated ambient WebGL layer with reduced-motion fa
 
 ## Final verification
 
-- [ ] **Run the full platform suite:** `cd apps/platform && bun run test` — Expected: PASS.
-- [ ] **Run the design-tokens suite:** `cd packages/design-tokens && bun test` — Expected: PASS.
+- [ ] **Green-light gate:** `bun run health` (typecheck && test && build) from repo root — Expected: PASS. Per CLAUDE.md Bash gotcha, do NOT pipe to `tail` for the pass/fail check; capture output to a file and grep for failure markers, or use `set -o pipefail`.
+- [ ] **design-tokens suite:** `cd packages/design-tokens && bun test` — Expected: PASS.
 - [ ] **Capture desktop visual shots** via the existing `_shotkit` harness (Dock grid, hover manage action, running rocket, rail expanded); pngquant before committing per `urthly-apps-screenshot-pipeline` convention.
-- [ ] **Manual check at 1440px and 2560px:** grid fills the canvas, no dead rail space, no stray "M", running tools show the rocket, same icon appears on the installed PWA.
+- [ ] **Manual check at 1440px and 2560px:** grid fills the canvas, no dead rail space, no stray "M", running tools show the rocket; tablet/touch shows the labeled rail; same icon appears on the installed PWA.
 
 ---
 
 ## Self-Review notes (author)
 
-- **Spec coverage:** launchpad grid (Task 6–7) ✓; collapsible rail (Task 8) ✓; ToolGlyph + algorithm (Tasks 1,3) ✓; cross-platform parity (Task 5) ✓; terminal style + hybrid radius + float + rocket (Tasks 2,3) ✓; ambient shader scoped to one context (Task 9) ✓; unified sections + affordances + header + M-bug fix (Tasks 7,8) ✓; no third primitive / guardrail (Task 6) ✓; accessibility (focus-within actions, aria-labels — Tasks 6,8) ✓; reduced-motion (Tasks 3,6,9) ✓.
-- **Type consistency:** `monogram(name, slug)`, `accentColor(slug, themeColor)`, `surfaceSeed(slug)` used identically in Tasks 1, 3, 5. `ToolGlyph` props match consumption in Tasks 4 and 6. `density: 'card' | 'launchpad'` consistent across Tasks 6–7 and the guardrail.
-- **Known verify-at-runtime items (carried from spec §10):** the exact default `themeColor` sentinel set (confirm in `adapters.ts` during Task 1 — adjust `DEFAULT_THEME_COLORS` if the codebase uses a different "unset" value); whether `lucide-svelte` is already a dependency (Task 8); the project's feature-flag mechanism name (Task 9).
+- **Spec coverage:** launchpad grid (Task 6–7) ✓; collapsible rail + tablet/keyboard (Task 8) ✓; ToolGlyph + algorithm + re-export (Tasks 1,3) ✓; cross-platform parity + clean-tree gate (Task 5) ✓; terminal style + hybrid radius + float + rocket (Tasks 2,3) ✓; ambient shader scoped to one context (Task 9) ✓; unified sections + affordances + header + M-bug fix (Tasks 7,8) ✓; no third primitive / ToolCard stays browse-only (Task 6 guardrail) ✓; accessibility (focus-within actions, aria-labels — Tasks 6,8) ✓; reduced-motion (Tasks 3,8,9) ✓.
+- **Review fixes applied:** P0 index re-export + package-index test (Task 1); P1a all component tests are vitest source-text guardrails, no `@testing-library/svelte`, no new dep (Testing approach + every component task); P1b launchpad uses **ToolRow `variant="tile"`** not ToolCard, with a guardrail asserting ToolCard stays browse-only (Task 6); P1c Sprint 3 clean-tree/worktree preflight + explicit per-file staging (Sprint 3 header, Task 5 Step 5); P2 rail expands on keyboard focus + coarse-pointer labeled fallback (Task 8).
+- **Type/name consistency:** `monogram(name, slug)`, `accentColor(slug, themeColor)`, `surfaceSeed(slug)` identical in Tasks 1, 3, 5. `ToolGlyph` props match consumption in Tasks 4 and 6. `variant: 'row' | 'tile'` consistent across Tasks 6–7 and the guardrail.
+- **Test-runner invariant:** `apps/platform` tests are all vitest; only `design-tokens` and the `scripts/` parity test use `bun:test` (both outside `apps/platform`) — complies with CLAUDE.md.
+- **Verify-at-runtime items:** default `themeColor` sentinel set (confirm in `adapters.ts` during Task 1; adjust `DEFAULT_THEME_COLORS`); whether `lucide-svelte` is already a dependency (Task 8); the project's feature-flag mechanism name (Task 9).
