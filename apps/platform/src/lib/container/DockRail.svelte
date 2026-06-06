@@ -1,13 +1,29 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+
   interface Props {
-    section: string;
     user: { isAdmin?: boolean } | null | undefined;
-    railToolCount: number;
-    onShowSection: (s: 'access' | 'create') => void;
-    onOpenSwitcher: () => void;
+    section?: string;
+    railToolCount?: number;
+    /** Dock-only callbacks. Omitted on /tools and /you, where these actions
+     *  navigate to the Dock instead. */
+    onShowSection?: (s: 'access' | 'create') => void;
+    onOpenSwitcher?: () => void;
+    /** Highlights the current top-level route on non-dock surfaces. */
+    current?: 'browse' | 'you' | null;
   }
 
-  const { section, user, railToolCount, onShowSection, onOpenSwitcher }: Props = $props();
+  const {
+    user,
+    section = '',
+    railToolCount = 0,
+    onShowSection,
+    onOpenSwitcher,
+    current = null,
+  }: Props = $props();
+
+  const showSection = onShowSection ?? (() => goto('/dock'));
+  const openSwitcher = onOpenSwitcher ?? (() => goto('/dock'));
 </script>
 
 <aside class="dock-rail">
@@ -19,10 +35,10 @@
         <a class="rail-quick-btn" href="/tools" title="Add tools" aria-label="Add tools">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         </a>
-        <a class="rail-quick-btn" href="/tools" title="Browse tools" aria-label="Browse tools">
+        <a class="rail-quick-btn" class:current={current === 'browse'} href="/tools" title="Browse tools" aria-label="Browse tools">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         </a>
-        <a class="rail-quick-btn" href="/you" title="You" aria-label="You">
+        <a class="rail-quick-btn" class:current={current === 'you'} href="/you" title="You" aria-label="You">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         </a>
         <button
@@ -30,7 +46,7 @@
           class:active={section === 'access'}
           title="Access"
           aria-label="Access"
-          onclick={() => onShowSection('access')}
+          onclick={() => showSection('access')}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l2 2M14 9l2 2"/></svg>
         </button>
@@ -53,7 +69,7 @@
     <button
       type="button"
       class="rail-switcher"
-      onclick={onOpenSwitcher}
+      onclick={openSwitcher}
       aria-label={railToolCount > 0 ? `Open Dock switcher with ${railToolCount} tools` : 'Open Dock switcher'}
     >
       <span class="switcher-icon" aria-hidden="true">
@@ -67,12 +83,12 @@
     </button>
 
     <nav class="rail-foot" aria-label="Dock sections">
-      <a class="foot-item" href="/tools"><span class="label">＋ Browse tools</span></a>
-      <a class="foot-item" href="/you"><span class="label">You</span></a>
-      <button class="foot-item" class:active={section === 'access'} onclick={() => onShowSection('access')}>
+      <a class="foot-item" class:current={current === 'browse'} href="/tools"><span class="label">＋ Browse tools</span></a>
+      <a class="foot-item" class:current={current === 'you'} href="/you"><span class="label">You</span></a>
+      <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>
         <span class="label">Access</span>
       </button>
-      <button class="foot-item" class:active={section === 'create'} onclick={() => onShowSection('create')}>
+      <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>
         <span class="label">Create</span>
       </button>
       <a class="foot-item" href={user ? '/maker' : '/auth/login?return_to=%2Fmaker'}>
@@ -196,7 +212,8 @@
     background: var(--surface);
   }
 
-  .rail-quick-btn.active {
+  .rail-quick-btn.active,
+  .rail-quick-btn.current {
     color: var(--sunset);
     border-color: var(--border-light);
     background: var(--surface);
@@ -296,6 +313,9 @@
   .foot-item.active,
   .foot-item:hover {
     color: var(--text);
+  }
+  .foot-item.current {
+    color: var(--sunset);
   }
 
   /* Coarse pointer (touch/tablet): always show labels — never mystery-meat icon-only */

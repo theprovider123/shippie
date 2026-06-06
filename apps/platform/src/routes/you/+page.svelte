@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { PageData } from './$types';
+  import RailShell from '$lib/container/RailShell.svelte';
   import {
     describeOfflineHealth,
     formatOfflineBytes,
@@ -127,6 +128,7 @@
   />
 </svelte:head>
 
+<RailShell user={data.user} current="you">
 <div class="you-page">
   <header class="you-head wrap">
     <p class="eyebrow">Settings</p>
@@ -344,6 +346,7 @@
     </section>
   </main>
 </div>
+</RailShell>
 
 <style>
   .you-page {
