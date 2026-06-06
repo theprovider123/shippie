@@ -16,7 +16,7 @@ const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
   },
   {
     id: "predict",
-    label: "Tips",
+    label: "Predict",
     icon: (
       <>
         <circle cx="11" cy="11" r="8.5" />

@@ -96,7 +96,7 @@ describe("App smoke", () => {
       act(() => item.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     };
 
-    nav("Tips");
+    nav("Predict");
     expect(container.textContent).toContain("The Groups");
     nav("Your Lot");
     expect(container.textContent).toContain("Your Lot");

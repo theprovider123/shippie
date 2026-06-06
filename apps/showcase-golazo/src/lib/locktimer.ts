@@ -7,13 +7,13 @@ export const TOURNAMENT_KICKOFF_MS = Date.parse(TOURNAMENT_KICKOFF);
 
 export interface Countdown {
   locked: boolean;
-  /** "2d 14h 32m" before lock, "Tips in" once locked. */
+  /** "2d 14h 32m" before lock, "Predictions in" once locked. */
   text: string;
 }
 
 export function lockCountdown(kickoffMs: number, nowMs: number): Countdown {
   const ms = kickoffMs - nowMs;
-  if (ms <= 0) return { locked: true, text: "Tips in" };
+  if (ms <= 0) return { locked: true, text: "Predictions in" };
   const days = Math.floor(ms / 86_400_000);
   const hours = Math.floor((ms % 86_400_000) / 3_600_000);
   const mins = Math.floor((ms % 3_600_000) / 60_000);

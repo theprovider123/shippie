@@ -26,6 +26,6 @@ describe("lockCountdown", () => {
   it("is locked once kick-off has passed", () => {
     const c = lockCountdown(NOW - 1, NOW);
     expect(c.locked).toBe(true);
-    expect(c.text).toBe("Tips in");
+    expect(c.text).toBe("Predictions in");
   });
 });
