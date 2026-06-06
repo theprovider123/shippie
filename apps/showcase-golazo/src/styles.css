@@ -1,43 +1,66 @@
 /* ───────────────────────────────────────────────────────────────────────────
-   GOLAZO — Stadium Broadcast Night
-   Dark floodlit base · electric "golazo green" signature · champion-tinted
-   spotlights · heavy condensed broadcast type · tactile scoreboard numerals.
-   Logic-only deps; this file paints everything. Fully offline.
+   YOUR CALL — football programme, rebuilt for a phone
+   Pitch-green base · chalk type · teletext numerals · Panini sticker grid ·
+   newspaper back-page share cards. Barlow Condensed for the shout, Libre
+   Baskerville for the story, Source Code Pro for the data. Ruled lines, not
+   cards. No glows. Always dark. Self-hosted fonts; fully offline.
 ─────────────────────────────────────────────────────────────────────────── */
 
+/* — Self-hosted fonts (latin subset, offline) — */
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 500; font-display: swap; src: url("./fonts/barlow-condensed-500.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("./fonts/barlow-condensed-600.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url("./fonts/barlow-condensed-700.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 800; font-display: swap; src: url("./fonts/barlow-condensed-800.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 900; font-display: swap; src: url("./fonts/barlow-condensed-900.woff2") format("woff2"); }
+@font-face { font-family: "Libre Baskerville"; font-style: normal; font-weight: 400; font-display: swap; src: url("./fonts/libre-baskerville-400.woff2") format("woff2"); }
+@font-face { font-family: "Libre Baskerville"; font-style: italic; font-weight: 400; font-display: swap; src: url("./fonts/libre-baskerville-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Source Code Pro"; font-style: normal; font-weight: 400; font-display: swap; src: url("./fonts/source-code-pro-400.woff2") format("woff2"); }
+@font-face { font-family: "Source Code Pro"; font-style: normal; font-weight: 600; font-display: swap; src: url("./fonts/source-code-pro-600.woff2") format("woff2"); }
+@font-face { font-family: "Source Code Pro"; font-style: normal; font-weight: 700; font-display: swap; src: url("./fonts/source-code-pro-700.woff2") format("woff2"); }
+
 :root {
-  --bg: #06090f;
-  --bg-1: #0a0e1a;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-2: rgba(255, 255, 255, 0.07);
-  --hi: rgba(255, 255, 255, 0.06); /* top-edge highlight on cards */
-  --line: rgba(255, 255, 255, 0.08);
-  --line-2: rgba(255, 255, 255, 0.15);
-  --text: #f6f8fc;
-  --muted: rgba(246, 248, 252, 0.6);
-  --faint: rgba(246, 248, 252, 0.36);
-  --accent: #16f08b;
-  --accent-2: #58f0a8;
-  /* Championship gold — the trophy. Used for the champion + the Final. */
-  --gold: #ffd34d;
-  --gold-2: #f0a93b;
-  --gold-soft: rgba(255, 211, 77, 0.16);
-  --amber: #ffae3b;
-  --danger: #ff5d6c;
-  --r-sm: 12px;
-  --r: 18px;
-  --r-lg: 24px;
-  --pad: 18px;
-  /* Motion — one spring for entrances, one ease for state. */
-  --spring: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Football palette — pitch green base, chalk type */
+  --pitch: #0d1f0f;
+  --turf: #132a15;
+  --chalk: #f5f0e8;
+  --mud: #2a1f12;
+  --lime: #b8ff4e;
+  --red-card: #e8272a;
+
+  /* Legacy aliases (the rest of the file themes off these) remapped to football */
+  --bg: #0d1f0f;
+  --bg-1: #0a1a0c;
+  --surface: rgba(245, 240, 232, 0.04);
+  --surface-2: rgba(245, 240, 232, 0.07);
+  --hi: rgba(245, 240, 232, 0.05);
+  --line: rgba(245, 240, 232, 0.1);
+  --line-2: rgba(245, 240, 232, 0.2);
+  --text: #f5f0e8;
+  --muted: rgba(245, 240, 232, 0.4);
+  --faint: rgba(245, 240, 232, 0.28);
+  --accent: #b8ff4e;
+  --accent-2: #b8ff4e;
+  --gold: #f0c040;
+  --gold-2: #f0c040;
+  --gold-soft: rgba(240, 192, 64, 0.16);
+  --amber: #f5a623;
+  --danger: #e8272a;
+  /* Ruled lines, not cards — flat corners everywhere */
+  --r-sm: 3px;
+  --r: 4px;
+  --r-lg: 4px;
+  --pad: 24px;
+  /* Motion — minimal. Physical button press; no springy entrances. */
+  --spring: cubic-bezier(0.4, 0, 0.2, 1);
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --font-display: "SF Pro Display", system-ui, -apple-system, "Segoe UI",
-    "Helvetica Neue", Arial, sans-serif;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  --shadow: 0 16px 44px -20px rgba(0, 0, 0, 0.75);
-  --shadow-lg: 0 30px 70px -28px rgba(0, 0, 0, 0.85);
-  --shadow-gold: 0 20px 60px -22px rgba(240, 169, 59, 0.45);
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-serif: "Libre Baskerville", Georgia, serif;
+  --font-code: "Source Code Pro", ui-monospace, "SF Mono", monospace;
+  /* No glows in this world — kept as no-ops so legacy refs flatten cleanly */
+  --shadow: none;
+  --shadow-lg: none;
+  --shadow-gold: none;
 }
 
 * {
@@ -53,7 +76,10 @@ body,
 }
 
 body {
-  background: var(--bg);
+  background: var(--pitch);
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, var(--pitch) 0%, #0a1a0c 100%);
   color: var(--text);
   font-family: var(--font);
   font-size: 16px;
@@ -80,42 +106,43 @@ input {
   position: relative;
   height: 100vh;
   height: 100dvh;
+  width: 390px;
+  max-width: 100vw;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  background:
-    /* twin floodlights from above */
-    radial-gradient(80% 50% at 22% -8%, rgba(120, 180, 255, 0.1), transparent 60%),
-    radial-gradient(80% 50% at 78% -8%, rgba(22, 240, 139, 0.1), transparent 60%),
-    /* warm trophy glow rising from the floor */
-    radial-gradient(120% 60% at 50% 118%, rgba(240, 169, 59, 0.14), transparent 65%),
-    /* edge vignette for stadium depth */
-    radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.55)),
-    var(--bg);
+  background: transparent;
+  /* the column sits in front of the body's pitch; ruled edges on desktop */
+  border-left: 1px solid var(--border, var(--line));
+  border-right: 1px solid var(--border, var(--line));
   overflow: hidden;
 }
 
-/* faint pitch grid */
-.app::before {
+/* Play surface only: subtle diagonal pitch lines */
+.app:has(.games)::before,
+.app.play-bg::before {
   content: "";
   position: absolute;
   inset: 0;
   background-image: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.018) 0 1px,
-    transparent 1px 92px
+    -45deg,
+    transparent,
+    transparent 40px,
+    rgba(255, 255, 255, 0.012) 40px,
+    rgba(255, 255, 255, 0.012) 80px
   );
   pointer-events: none;
   z-index: 0;
 }
 
-/* film grain — premium stadium-broadcast texture (inline SVG, offline-safe) */
+/* faint film grain over the whole column (inline SVG, offline-safe) */
 .app::after {
   content: "";
   position: absolute;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 140px 140px;
-  opacity: 0.035;
+  opacity: 0.03;
   mix-blend-mode: overlay;
   pointer-events: none;
   z-index: 0;
@@ -133,17 +160,7 @@ input {
     calc(env(safe-area-inset-bottom) + 100px);
 }
 
-/* Staggered "broadcast lower-third" reveal of each screen's top-level blocks. */
-.screen > * > * {
-  animation: rise-in 0.5s var(--spring) both;
-}
-.screen > * > *:nth-child(1) { animation-delay: 0.02s; }
-.screen > * > *:nth-child(2) { animation-delay: 0.06s; }
-.screen > * > *:nth-child(3) { animation-delay: 0.1s; }
-.screen > * > *:nth-child(4) { animation-delay: 0.14s; }
-.screen > * > *:nth-child(5) { animation-delay: 0.18s; }
-.screen > * > *:nth-child(n + 6) { animation-delay: 0.22s; }
-
+/* Page transitions: none. Hard cut, like changing channel. (Design brief.) */
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -155,18 +172,14 @@ input {
 .wordmark {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: clamp(34px, 11vw, 52px);
-  letter-spacing: -0.04em;
-  font-style: italic;
-  background: linear-gradient(100deg, var(--text), #b9c4d4);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  line-height: 0.95;
+  font-size: clamp(40px, 13vw, 58px);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--chalk);
+  line-height: 0.9;
 }
 .wordmark-dot {
-  color: var(--accent);
-  -webkit-text-fill-color: var(--accent);
+  color: var(--lime);
 }
 
 .section-head {
@@ -178,15 +191,20 @@ input {
 }
 .section-title {
   font-family: var(--font-display);
-  font-weight: 850;
-  font-size: 26px;
-  letter-spacing: -0.025em;
+  font-weight: 900;
+  font-size: 46px;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--chalk);
   margin: 0;
 }
 .section-hint {
-  margin: 2px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 13.5px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .tally {
   font-variant-numeric: tabular-nums;
@@ -214,55 +232,27 @@ input {
 .cta {
   position: relative;
   width: 100%;
-  background: linear-gradient(180deg, #2bf79a, #0fce75);
-  color: #032012;
-  font-weight: 850;
-  font-size: 16.5px;
-  letter-spacing: -0.01em;
-  padding: 17px 20px;
-  border-radius: 15px;
+  background: var(--lime);
+  color: var(--pitch);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 15px 24px;
+  border-radius: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   overflow: hidden;
-  box-shadow: 0 14px 34px -12px rgba(22, 240, 139, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  transition: transform 0.14s var(--spring), box-shadow 0.2s var(--ease),
-    opacity 0.2s var(--ease);
-}
-/* glide sheen across the primary button only (not small inline CTAs) */
-.cta:not(.sm)::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -60%;
-  width: 40%;
-  height: 100%;
-  background: linear-gradient(
-    100deg,
-    transparent,
-    rgba(255, 255, 255, 0.32),
-    transparent
-  );
-  transform: skewX(-18deg);
-  /* Calmer cadence — a slow occasional glint, not a constant shimmer. */
-  animation: cta-sheen 9s var(--ease) infinite;
-}
-@keyframes cta-sheen {
-  0%, 80% {
-    left: -60%;
-  }
-  92%, 100% {
-    left: 130%;
-  }
+  transition: transform 0.1s var(--ease), opacity 0.2s var(--ease);
 }
 .cta:active {
   transform: scale(0.97);
 }
 .cta:disabled {
-  opacity: 0.35;
-  box-shadow: none;
+  opacity: 0.4;
 }
 .cta.sm {
   width: auto;
@@ -1918,19 +1908,16 @@ input {
 }
 
 /* ── Bottom nav ────────────────────────────────────────────────────────── */
+/* Footer strip of a programme: solid turf, top rule, lime underline on active */
 .bottom-nav {
   position: relative;
   z-index: 5;
   display: flex;
   justify-content: space-around;
   align-items: stretch;
-  gap: 4px;
-  background: rgba(7, 10, 17, 0.72);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  background: var(--turf);
   border-top: 1px solid var(--line);
-  box-shadow: 0 -1px 0 var(--hi) inset;
-  padding: 9px 8px calc(env(safe-area-inset-bottom) + 9px);
+  padding: 0 4px calc(env(safe-area-inset-bottom));
 }
 .nav-item {
   position: relative;
@@ -1938,46 +1925,37 @@ input {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 9px 0 7px;
-  border-radius: 14px;
-  color: var(--faint);
-  font-size: 10.5px;
+  gap: 3px;
+  padding: 10px 4px 14px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  transition: color 0.2s var(--ease), transform 0.14s var(--spring);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
-/* sliding active pill */
-.nav-item::before {
+/* lime underline beneath the active tab — two pixels, like a programme footer */
+.nav-item.is-active::after {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: 14px;
-  background: rgba(22, 240, 139, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(22, 240, 139, 0.25);
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.2s var(--ease), transform 0.24s var(--spring);
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: var(--lime);
 }
 .nav-item:active {
-  transform: scale(0.94);
+  transform: scale(0.97);
 }
 .nav-item.is-active {
-  color: var(--accent);
-}
-.nav-item.is-active::before {
-  opacity: 1;
-  transform: scale(1);
+  color: var(--chalk);
 }
 .nav-item svg {
   position: relative;
-  transition: transform 0.24s var(--spring);
 }
 .nav-item.is-active svg {
-  transform: translateY(-2px) scale(1.08);
-}
-.nav-item span {
-  position: relative;
+  color: var(--lime);
 }
 
 /* ── Watch-from (timezone) ─────────────────────────────────────────────── */
