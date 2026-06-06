@@ -72,7 +72,7 @@
 >
   <div class="switcher">
     <div class="switcher-actions" aria-label="Tool actions">
-      <button type="button" onclick={onClose}>Dock</button>
+      <button type="button" class="current" aria-current="page" onclick={onClose}>Dock</button>
       <a href="/tools" onclick={onClose}>Tools</a>
       <a href="/you" onclick={onClose}>You</a>
     </div>
@@ -152,7 +152,7 @@
     display: grid;
     place-items: center;
     background: var(--surface);
-    color: var(--text);
+    color: var(--text-secondary);
     text-decoration: none;
     font-family: var(--font-mono);
     font-size: 0.72rem;
@@ -165,11 +165,17 @@
     appearance: none;
     -webkit-appearance: none;
   }
+  /* Current surface (you're in the Dock) — clearly marked, not a faux tab. */
+  .switcher-actions .current {
+    color: var(--sunset);
+    background: color-mix(in srgb, var(--sunset) 8%, var(--surface));
+    box-shadow: inset 0 -2px 0 var(--sunset);
+  }
   .switcher-actions a:focus-visible,
   .switcher-actions a:hover,
   .switcher-actions button:focus-visible,
   .switcher-actions button:hover {
-    color: var(--sunset);
+    color: var(--text);
     outline: none;
   }
 

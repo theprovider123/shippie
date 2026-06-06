@@ -318,7 +318,8 @@
   .scrim {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.36);
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(3px);
     z-index: 1000;
     animation: scrim-fade 140ms ease-out;
     touch-action: none;
