@@ -65,6 +65,10 @@ function ensurePublicDir(showcaseDir) {
   return dir;
 }
 
+// Only run the file generation when invoked directly (`bun scripts/...`).
+// Importing this module (e.g. the parity test importing buildMonogramSvg)
+// must NOT touch the working tree.
+if (import.meta.main) {
 const showcaseDirs = listShowcaseDirs();
 let generated = 0;
 let skippedOk = 0;
@@ -109,4 +113,5 @@ console.log(`[generate-monogram-icons] shippie.json updated:  ${renamedRefs}`);
 if (written.length > 0) {
   console.log(`[generate-monogram-icons] first 10 written:`);
   for (const p of written.slice(0, 10)) console.log(`  - ${p}`);
+}
 }
