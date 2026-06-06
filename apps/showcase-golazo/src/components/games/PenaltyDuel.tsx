@@ -97,7 +97,7 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
       // keeper — a real diving figure that launches off the line
       const lean = a ? (zoneX(a.dive) - W / 2) / (W * 0.3) : 0;
       const dive = a ? Math.min(1, a.t / 16) : 0;
-      drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.16, lean, bh, dive);
+      drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.12, lean, bh * 0.92, dive);
       // ball — arcs in with a trail, shrinking into the distance
       if (a) trail.draw(ctx, ballR);
       drawBall(ctx, ballX, ballY, ballR, now / 90);

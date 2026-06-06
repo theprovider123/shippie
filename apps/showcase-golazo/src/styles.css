@@ -2567,7 +2567,7 @@ input {
 .game-stage {
   position: relative;
   width: 100%;
-  height: min(64vh, 540px);
+  height: min(66vh, 560px);
   border-radius: var(--r-lg);
   overflow: hidden;
   border: 1px solid var(--line-2);

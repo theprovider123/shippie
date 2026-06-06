@@ -241,7 +241,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
       </div>
 
       {board.length === 0 ? (
-        <p className="board-empty">No scores yet — be the first. Tap <strong>Kick off</strong>.</p>
+        <p className="board-empty">No scores yet — put one up and you're top of the world.</p>
       ) : (
         <ol className="board game-board">
           {board.map((e, i) => (
