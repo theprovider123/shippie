@@ -7,7 +7,7 @@ import {
   type Duel,
   type DuelSide,
 } from "../../lib/duel";
-import { drawStadium, drawBall, Particles, Shake } from "../../lib/stadium";
+import { drawStadium, drawBall, drawKeeper, Particles, Shake } from "../../lib/stadium";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 
 type Phase = "intro" | "shoot" | "keep" | "result";
@@ -86,15 +86,9 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
           ctx.fillRect(cx - w / 2, gy, w, bh);
         }
       }
-      // keeper
-      ctx.save();
-      ctx.translate(keeperX, gy + bh * 0.5);
+      // keeper — a real diving figure
       const lean = a ? (zoneX(a.dive) - W / 2) / (W * 0.3) : 0;
-      ctx.rotate(lean * 0.5);
-      ctx.fillStyle = "#16f08b"; const kw = (gr - gl) * 0.18;
-      ctx.beginPath(); ctx.ellipse(0, 0, kw / 2, bh * 0.34, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#0a1f16"; ctx.beginPath(); ctx.arc(0, -bh * 0.34, kw * 0.26, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
+      drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.16, lean, bh);
       // ball
       drawBall(ctx, ballX, ballY, Math.min(W, H) * 0.045, now / 120);
       particles.update(); particles.draw(ctx);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
-import { drawStadium, drawBall, drawBallShadow, Trail, Particles, Shake } from "../../lib/stadium";
+import { drawStadium, drawBall, drawBallShadow, drawKeeper, Trail, Particles, Shake } from "../../lib/stadium";
 import { Keeper, keeperConfig, saved as keeperSaved, rampedDifficulty } from "../../lib/keeper";
 
 const SHOTS = 8;
@@ -155,17 +155,8 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
       // posts + bar
       ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 5; ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(gl, gy + bh); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + bh); ctx.stroke();
-      // keeper (diving body)
-      ctx.save();
-      ctx.translate(keeper.x, gy + bh * 0.42);
-      ctx.rotate(keeper.lean);
-      ctx.fillStyle = "#f5a623";
-      const kw = keeper.reachPx() * 1.6;
-      roundRect(ctx, -kw / 2, -bh * 0.32, kw, bh * 0.62, 6);
-      ctx.fill();
-      ctx.fillStyle = "#2a1f12"; // head
-      ctx.beginPath(); ctx.arc(0, -bh * 0.38, kw * 0.22, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
+      // keeper — a real diving figure, gloves at the edge of the save zone
+      drawKeeper(ctx, keeper.x, gy + bh * 0.62, keeper.reachPx(), keeper.lean, bh);
       // aim guide (dotted trajectory)
       if (aim) {
         const s = spot();
@@ -229,14 +220,4 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
       )}
     </div>
   );
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }
