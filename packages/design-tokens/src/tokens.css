@@ -83,6 +83,16 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --duration: 0.6s;
 
+  /* ── Tool icon system (terminal style, hybrid square) ───────── */
+  --tool-icon-radius: 3px;
+  --tool-icon-tile: #15110c;
+  --tool-icon-hairline: 34%; /* alpha mix of the accent for the border */
+  --tool-icon-float:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 10px 22px -10px rgba(0, 0, 0, 0.85),
+    0 3px 8px -4px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.3);
+
   color-scheme: dark;
 }
 

@@ -40,6 +40,10 @@ export const CANONICAL_TOKENS: ReadonlyArray<string> = [
   '--font-body',
   '--font-mono',
   '--spring',
+  '--tool-icon-radius',
+  '--tool-icon-tile',
+  '--tool-icon-hairline',
+  '--tool-icon-float',
 ];
 
 /**
