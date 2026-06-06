@@ -954,27 +954,30 @@ input {
 }
 .home-greet {
   margin: 0;
-  font-size: 12.5px;
+  font-family: var(--font-display);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
 }
 .home-name {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: clamp(30px, 9vw, 40px);
-  letter-spacing: -0.03em;
+  font-size: clamp(36px, 11vw, 48px);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 0.95;
   margin: 2px 0 0;
 }
 .home-fav {
   width: 46px;
   height: 46px;
-  border-radius: 13px;
+  border-radius: 4px;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--tc1, var(--accent)) 22%, transparent);
-  border: 1.5px solid color-mix(in srgb, var(--tc1, var(--accent)) 50%, transparent);
+  background: color-mix(in srgb, var(--tc1, var(--lime)) 18%, var(--turf));
+  border: 1px solid color-mix(in srgb, var(--tc1, var(--lime)) 45%, transparent);
 }
 .countdown {
   background: var(--surface);
@@ -1216,7 +1219,7 @@ input {
 }
 .progress-card,
 .score-card {
-  background: var(--surface);
+  background: var(--turf);
   border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 16px;
@@ -1261,16 +1264,20 @@ input {
   gap: 5px;
 }
 .score-big strong {
-  font-family: var(--font-display);
-  font-weight: 900;
+  font-family: var(--font-code);
+  font-weight: 700;
   font-size: 40px;
-  color: var(--accent);
+  color: var(--lime);
   font-variant-numeric: tabular-nums;
 }
 .score-big span {
+  font-family: var(--font-display);
   color: var(--faint);
   font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
+.score-sub { font-family: var(--font-serif); }
 .score-sub {
   margin: 0;
   font-size: 13.5px;
@@ -2807,22 +2814,22 @@ input {
   margin: 4px 0 16px;
   padding: 15px;
   border-radius: var(--r);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--tc1, var(--accent)) 18%, transparent), transparent 70%), var(--surface);
-  border: 1px solid color-mix(in srgb, var(--tc1, var(--accent)) 38%, var(--line));
-  box-shadow: inset 0 1px 0 var(--hi);
+  background: var(--turf);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--chalk);
 }
 .yn-head { display: flex; align-items: center; gap: 12px; }
 .yn-flag { font-size: 34px; line-height: 1; }
 .yn-id { display: flex; flex-direction: column; }
-.yn-cap { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
-.yn-name { font-family: var(--font-display); font-weight: 900; font-size: 20px; }
-.yn-group { margin-left: auto; text-align: right; font-weight: 800; font-size: 13px; color: var(--text); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.yn-death { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; color: var(--danger); background: color-mix(in srgb, var(--danger) 15%, transparent); border-radius: 6px; padding: 2px 7px; }
+.yn-cap { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.yn-name { font-family: var(--font-display); font-weight: 900; font-size: 22px; text-transform: uppercase; letter-spacing: 0.02em; }
+.yn-group { margin-left: auto; text-align: right; font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.yn-death { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; color: var(--red-card); border: 1.5px solid var(--red-card); border-radius: 2px; padding: 2px 6px; transform: rotate(-3deg); }
 .yn-next { display: flex; align-items: baseline; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
-.yn-next-label { font-size: 12.5px; color: var(--muted); }
-.yn-next-clock { font-family: var(--font-display); font-weight: 850; font-size: 16px; color: var(--accent); margin-left: auto; }
-.yn-opp { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
-.yn-opp-team { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; }
+.yn-next-label { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.yn-next-clock { font-family: var(--font-code); font-weight: 700; font-size: 16px; color: var(--lime); margin-left: auto; letter-spacing: 0.04em; }
+.yn-opp { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+.yn-opp-team { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--pitch); border: 1px solid var(--line); border-radius: 3px; padding: 4px 8px; }
 
 /* ── Difficulty toggle (games) ─────────────────────────────────────────── */
 .game-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
@@ -3163,34 +3170,34 @@ input {
 .home-name .edit-hint { font-size: 14px; color: var(--faint); margin-left: 4px; }
 .profile .home-name { cursor: pointer; }
 
-.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 18px 0; background: var(--line); border: 1px solid var(--line); }
 .stat-cell {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r); padding: 16px;
-  display: flex; flex-direction: column; gap: 4px;
+  background: var(--turf); border: none;
+  border-radius: 0; padding: 18px 16px;
+  display: flex; flex-direction: column; gap: 5px;
 }
-.stat-num { font-family: var(--font-display); font-weight: 900; font-size: 34px; color: var(--accent); line-height: 1; }
-.stat-lab { font-size: 12px; color: var(--muted); }
+.stat-num { font-family: var(--font-code); font-weight: 700; font-size: 38px; color: var(--lime); line-height: 1; }
+.stat-lab { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 
-.profile-section { margin-top: 22px; text-align: left; }
-.timeline { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.profile-section { margin-top: 24px; text-align: left; }
+.timeline { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .timeline-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: var(--r-sm);
-  background: var(--surface); border: 1px solid var(--line);
+  padding: 11px 4px; border-radius: 0;
+  background: transparent; border: none; border-bottom: 1px solid var(--line);
 }
-.timeline-team { font-weight: 800; }
-.timeline-round { color: var(--muted); font-size: 13px; margin-left: auto; }
+.timeline-team { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; }
+.timeline-round { font-family: var(--font-display); color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; margin-left: auto; }
 
 .settings-row {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
   padding: 14px 16px; margin-top: 8px;
-  border-radius: var(--r); background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); background: var(--turf); border: 1px solid var(--line);
   cursor: pointer;
 }
 .settings-row.is-static { cursor: default; }
-.settings-row strong { display: block; font-size: 15px; }
-.settings-row small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.4; }
+.settings-row strong { display: block; font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: 0.03em; text-transform: uppercase; }
+.settings-row small { display: block; font-family: var(--font-serif); color: var(--muted); font-size: 12px; margin-top: 3px; line-height: 1.45; }
 .switch {
   flex-shrink: 0; width: 46px; height: 28px; border-radius: 999px;
   background: var(--surface-2); border: 1px solid var(--line-2); position: relative;
