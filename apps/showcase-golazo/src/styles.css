@@ -383,103 +383,80 @@ input {
     calc(env(safe-area-inset-bottom) + 26px);
   z-index: 1;
 }
-.onboard-glow {
-  position: absolute;
-  inset: -10% -20% auto -20%;
-  height: 60%;
-  background: radial-gradient(
-    60% 100% at 50% 0,
-    var(--tc1, rgba(22, 240, 139, 0.35)),
-    transparent 70%
-  );
-  filter: blur(20px);
-  opacity: 0.5;
-  pointer-events: none;
-}
+.onboard-glow { display: none; }
 .onboard-head {
   margin-bottom: 26px;
 }
 .onboard-title {
   font-family: var(--font-display);
-  font-weight: 850;
-  font-size: clamp(30px, 9vw, 42px);
-  letter-spacing: -0.03em;
-  line-height: 1.02;
+  font-weight: 900;
+  font-size: clamp(34px, 11vw, 48px);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 0.95;
   margin: 18px 0 10px;
 }
 .onboard-title em {
-  font-style: italic;
-  color: var(--accent);
+  font-style: normal;
+  color: var(--lime);
 }
 .onboard-sub {
   color: var(--muted);
-  font-size: 15.5px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.5;
   margin: 0;
-  max-width: 30ch;
+  max-width: 32ch;
 }
+/* Arcade entry — a ruled banner; button on its own row so it can never clip */
 .arcade-entry {
   position: relative;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 14px;
-  padding: 15px;
-  margin: -6px 0 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 15px 16px;
+  margin: 0 0 22px;
   border-radius: var(--r);
-  background:
-    radial-gradient(120% 90% at 0% 0%, rgba(22, 240, 139, 0.18), transparent 62%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line));
-  box-shadow: 0 20px 48px -28px rgba(22, 240, 139, 0.75), inset 0 1px 0 var(--hi);
-  overflow: hidden;
-  animation: rise-in 0.5s var(--spring) 0.08s both;
-}
-.arcade-entry::after {
-  content: "⚽";
-  position: absolute;
-  right: 92px;
-  bottom: -20px;
-  font-size: 74px;
-  line-height: 1;
-  opacity: 0.1;
-  transform: rotate(-14deg);
-  pointer-events: none;
+  background: var(--turf);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--lime);
 }
 .arcade-kicker {
   display: block;
-  color: var(--accent);
+  color: var(--lime);
+  font-family: var(--font-display);
   font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .arcade-entry h2 {
-  position: relative;
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(21px, 6vw, 28px);
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   line-height: 1;
-  z-index: 1;
 }
 .arcade-play {
-  position: relative;
-  z-index: 1;
-  min-height: 46px;
+  width: 100%;
+  min-height: 44px;
   padding: 0 17px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #032012;
-  font-weight: 900;
-  white-space: nowrap;
-  box-shadow: 0 12px 28px -16px rgba(22, 240, 139, 0.8);
-  transition: transform 0.14s var(--spring), filter 0.18s var(--ease);
+  border-radius: 4px;
+  background: var(--lime);
+  color: var(--pitch);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 0.1s var(--ease);
 }
 .arcade-play:active {
-  transform: scale(0.96);
-  filter: brightness(0.95);
+  transform: scale(0.98);
 }
 .team-grid {
   display: grid;
@@ -495,21 +472,23 @@ input {
   display: flex;
   align-items: center;
   gap: 7px;
-  background: var(--surface);
-  border: 1.5px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 10px;
+  background: var(--turf);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 10px;
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
 }
 .team-pill:active {
   transform: scale(0.95);
 }
 .team-pill.is-active {
-  border-color: var(--tc1, var(--accent));
-  background: color-mix(in srgb, var(--tc1, var(--accent)) 22%, transparent);
-  box-shadow: 0 0 0 1px var(--tc1, var(--accent)) inset;
+  border-color: var(--lime);
+  background: color-mix(in srgb, var(--lime) 16%, var(--turf));
 }
 .onboard-foot {
   margin-top: auto;
