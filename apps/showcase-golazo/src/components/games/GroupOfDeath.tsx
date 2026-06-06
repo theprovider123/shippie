@@ -48,20 +48,22 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
     size();
     window.addEventListener("resize", size);
 
-    const r = Math.min(W, H) * 0.034;
+    const r = Math.min(W, H) * 0.032;
     const ballX = W * 0.28;
     let ballY = H * 0.5;
     let vy = 0;
-    const gravity = H * 0.0009;
-    const flap = -H * 0.013;
+    const gravity = H * 0.00072;     // gentler fall — more control
+    const flap = -H * 0.0118;        // a softer header
     const thick = Math.max(40, W * 0.12);
-    let speed = W * 0.006;
+    let speed = W * 0.0052;          // starts calm; ramps slowly
     let spawnX = W + 40;
-    const spacing = W * 0.66;
+    const spacing = W * 0.74;        // more room to line up the next gap
+    const maxStep = H * 0.26;        // next gap is always reachable from the last
     const walls: Wall[] = [];
     const deck = shuffleGates();
     let gi = 0;
     let wallCount = 0;
+    let lastGapY = H * 0.5;
     let dead = false;
     let started = false; // forgiving: don't fall until first tap
     const trail = new Trail(10);
@@ -74,14 +76,18 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
 
     function spawnWall() {
       wallCount++;
-      const gateNow = wallCount % 3 === 0; // every third wall tests knowledge
-      const margin = H * 0.12;
+      const gateNow = wallCount % 4 === 0; // every fourth wall tests knowledge
+      const margin = H * 0.1;
       if (gateNow) {
         const g = nextGate();
-        const openH = Math.max(H * 0.17, H * 0.22 - scoreRef.current * H * 0.0008);
-        const topY = margin + openH / 2 + H * 0.04;
-        const botY = H - margin - openH / 2 - H * 0.04;
-        const correctTop = Math.random() < 0.5;
+        const openH = Math.max(H * 0.2, H * 0.24 - scoreRef.current * H * 0.0004);
+        // openings spread around the centre — both reachable from the last gap
+        const topY = H * 0.31;
+        const botY = H * 0.69;
+        // put the correct answer on whichever side is easier to reach from here
+        const correctTop = Math.abs(topY - lastGapY) <= Math.abs(botY - lastGapY)
+          ? Math.random() < 0.62
+          : Math.random() < 0.38;
         walls.push({
           x: spawnX, kind: "gate", gapY: 0, gapH: 0, openH, topY, botY,
           correctTop, q: g.q,
@@ -89,10 +95,15 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
           botLabel: correctTop ? g.wrong : g.correct,
           scored: false,
         });
+        lastGapY = correctTop ? topY : botY;
       } else {
-        const gapH = Math.max(H * 0.22, H * 0.34 - scoreRef.current * H * 0.0016);
-        const gapY = margin + gapH / 2 + Math.random() * (H - margin * 2 - gapH);
+        const gapH = Math.max(H * 0.28, H * 0.4 - scoreRef.current * H * 0.0009);
+        const lo = margin + gapH / 2;
+        const hi = H - margin - gapH / 2;
+        // next gap stays within a reachable hop of the last one
+        const gapY = Math.max(lo, Math.min(hi, lastGapY + (Math.random() - 0.5) * 2 * maxStep));
         walls.push({ x: spawnX, kind: "plain", gapY, gapH, scored: false });
+        lastGapY = gapY;
       }
       spawnX += spacing;
     }
@@ -126,7 +137,8 @@ export function GroupOfDeath({ onGameOver, target }: { onGameOver: (score: numbe
       if (started && !dead) {
         vy += gravity;
         ballY += vy;
-        speed = W * 0.006 + scoreRef.current * W * 0.00012; // ramps up
+        // ramps slowly and caps, so a good player can keep going a long, long time
+        speed = Math.min(W * 0.0095, W * 0.0052 + scoreRef.current * W * 0.00005);
       }
       // move walls + collisions + scoring
       for (const wl of walls) {
