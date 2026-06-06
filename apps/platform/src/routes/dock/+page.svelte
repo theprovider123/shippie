@@ -4467,7 +4467,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    color: var(--cream-text, #14120f);
+    color: var(--text);
   }
   .focused-drawer-grip {
     display: none;
@@ -4561,11 +4561,8 @@
   }
   .focused-action:hover,
   .focused-action:focus-visible {
-    color: var(--cream-text, #14120f);
-    background: rgba(20, 18, 15, 0.04);
-  }
-  .focused-action-you {
-    color: var(--sunset, #e8603c);
+    color: var(--text);
+    background: color-mix(in srgb, var(--text) 6%, transparent);
   }
   .focused-action-close {
     min-width: var(--touch-min, 44px);
@@ -4664,7 +4661,7 @@
     padding: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: rgba(20, 18, 15, 0.025);
-    color: var(--cream-text, #14120f);
+    color: var(--text);
     cursor: pointer;
     transition: color 150ms ease, background 150ms ease;
   }
