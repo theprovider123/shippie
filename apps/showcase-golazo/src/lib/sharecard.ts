@@ -1,14 +1,30 @@
-// The viral artifact: a gorgeous, screenshot-worthy card of your World Cup call.
-// Pure Canvas2D so it works offline and needs no fonts beyond the system stack.
+// The viral artifact: a screenshot-worthy share card of your World Cup call.
+// Pure Canvas2D, offline. Styled like the back page of a sports paper — pitch
+// green, chalk type, Barlow Condensed for the shout, Source Code Pro for the
+// data, ruled lines not boxes. No glows. (Your Call design system.)
 
-import { maybeTeam, team, type Team } from "../data/teams";
+import { maybeTeam, type Team } from "../data/teams";
 import { championOf } from "./bracket";
 import type { Prediction, Profile } from "./types";
 
-// ── Golazo brand accents (the share-card identity stays Golazo green) ──────────
-const G1 = "#16f08b"; // brand green
-const G2 = "#58f0a8"; // light green
-const GOLD = "#ffd34d";
+// ── Palette ──────────────────────────────────────────────────────────────────
+const PITCH = "#0d1f0f";
+const MUD = "#2a1f12";
+const CHALK = "#f5f0e8";
+const LIME = "#b8ff4e";
+const AMBER = "#f5a623";
+const RED = "#e8272a";
+const GOLD = "#f0c040";
+const MUTED = "rgba(245,240,232,0.45)";
+const BORDER = "rgba(245,240,232,0.16)";
+
+const DISP = `900 1px "Barlow Condensed", "Arial Narrow", sans-serif`; // weight/size overwritten per call
+const SERIF = `italic 400 1px "Libre Baskerville", Georgia, serif`;
+const MONO = `700 1px "Source Code Pro", ui-monospace, monospace`;
+const disp = (w: number, s: number) => `${w} ${s}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+const serif = (s: number) => `italic 400 ${s}px "Libre Baskerville", Georgia, serif`;
+const mono = (s: number, w = 700) => `${w} ${s}px "Source Code Pro", ui-monospace, monospace`;
+void DISP; void SERIF; void MONO;
 
 /** The headline picks pulled out of a full call, for the My Call card. */
 export interface CallHighlights {
@@ -25,26 +41,23 @@ export function callHighlights(pred: Prediction): CallHighlights {
   const f = [pred.knockout["SF-0"], pred.knockout["SF-1"]];
   const runnerUpId = f.find((id) => id && id !== champ?.id) ?? null;
   const runnerUp = maybeTeam(runnerUpId);
-  // Semifinalists = the four quarter-final winners; the weakest-seeded is a real bolter.
   const semis = ["QF-0", "QF-1", "QF-2", "QF-3"]
     .map((s) => maybeTeam(pred.knockout[s]))
     .filter((t): t is Team => Boolean(t));
   const bolter = semis.slice().sort((a, b) => b.seed - a.seed)[0] ?? null;
   const outsideBet = maybeTeam(pred.outsideBet) ?? bolter;
   const goldenBoot = maybeTeam(pred.topScorer);
-
   return { champ, runnerUp, outsideBet, goldenBoot, spicy: spicyTake(pred, champ) };
 }
 
-/** A dry one-liner that fits the call. Specific where it can be, stock otherwise. */
 function spicyTake(pred: Prediction, champ: Team | null): string {
   const picked = new Set(Object.values(pred.knockout));
   const engOut = !picked.has("ENG") && hasTeam(pred, "ENG");
   if (champ?.id === "ENG") return "England to actually win it. Brave. Wrong, probably.";
-  if (engOut) return "England to bottle it before the final. Again. Sorry not sorry.";
+  if (engOut) return "England will bottle it in the quarters. They always do.";
   if (champ && champ.seed > 8) return `${champ.name} lifting it. Bold. I'll take the glory.`;
   if (champ) return `${champ.name} all day. Screenshot this.`;
-  return "Locked it in. No takebacks. Prove me wrong.";
+  return "Tips in. No going back now.";
 }
 
 function hasTeam(pred: Prediction, id: string): boolean {
@@ -55,775 +68,491 @@ function hasTeam(pred: Prediction, id: string): boolean {
 }
 
 export type CardFormat = "story" | "og";
-
 const SIZES: Record<CardFormat, [number, number]> = {
-  story: [1080, 1920], // Instagram / WhatsApp status
-  og: [1200, 630], // link unfurls
+  story: [1080, 1920],
+  og: [1200, 630],
 };
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const rad = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rad, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rad);
-  ctx.arcTo(x + w, y + h, x, y + h, rad);
-  ctx.arcTo(x, y + h, x, y, rad);
-  ctx.arcTo(x, y, x + w, y, rad);
-  ctx.closePath();
+// ── Canvas helpers ─────────────────────────────────────────────────────────
+function rule(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, thick = 2, color = BORDER) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, thick);
+}
+function fitText(ctx: CanvasRenderingContext2D, text: string, max: number, base: number, weight = 900): number {
+  let size = base;
+  ctx.font = disp(weight, size);
+  while (ctx.measureText(text).width > max && size > 24) {
+    size -= 4;
+    ctx.font = disp(weight, size);
+  }
+  return size;
+}
+function paper(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  ctx.fillStyle = PITCH;
+  ctx.fillRect(0, 0, W, H);
+  // faint grain so the green reads like fabric, not flat hex
+  ctx.globalAlpha = 0.05;
+  for (let i = 0; i < 1400; i++) {
+    ctx.fillStyle = i % 2 ? CHALK : "#000";
+    ctx.fillRect(Math.floor((i * 9301 + 49297) % W), Math.floor((i * 233280) % H), 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+function footerStrip(ctx: CanvasRenderingContext2D, W: number, H: number, pad: number, accent: string) {
+  const y = H - 96;
+  rule(ctx, pad, y, W - pad * 2, 2, BORDER);
+  ctx.textAlign = "left";
+  ctx.fillStyle = MUTED;
+  ctx.font = disp(700, 26);
+  ctx.fillText("WORLD CUP 2026", pad, y + 56);
+  ctx.textAlign = "right";
+  ctx.fillStyle = accent;
+  ctx.fillText("YOURCALL.APP", W - pad, y + 56);
+  ctx.textAlign = "left";
 }
 
-const FONT = `-apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+// Spread tracking for that newspaper-headline feel (Canvas has no letter-spacing).
+function tracked(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, ls: number) {
+  let cx = x;
+  for (const ch of text) {
+    ctx.fillText(ch, cx, y);
+    cx += ctx.measureText(ch).width + ls;
+  }
+  return cx - ls;
+}
 
-export function drawCard(
-  canvas: HTMLCanvasElement,
-  prediction: Prediction,
-  profile: Profile,
-  format: CardFormat = "story",
-): void {
+// ── Card 1: MY CALL — newspaper back page ────────────────────────────────────
+export function drawCard(canvas: HTMLCanvasElement, prediction: Prediction, profile: Profile, format: CardFormat = "story"): void {
   const [W, H] = SIZES[format];
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-
-  const champId = championOf(prediction);
-  const champ = maybeTeam(champId);
-  const accent = champ ? champ.colors[0] : "#10b981";
-  const accent2 = champ ? champ.colors[1] : "#34d399";
-
-  // — Background: deep stadium night with a champion-tinted glow —
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#070b16");
-  bg.addColorStop(1, "#0d1426");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  const glow = ctx.createRadialGradient(
-    W / 2,
-    H * 0.42,
-    0,
-    W / 2,
-    H * 0.42,
-    W * 0.85,
-  );
-  glow.addColorStop(0, hexA(accent, format === "og" ? 0.28 : 0.34));
-  glow.addColorStop(1, "transparent");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  // subtle pitch lines
-  ctx.strokeStyle = "rgba(255,255,255,0.045)";
-  ctx.lineWidth = 2;
-  for (let i = 1; i < 6; i++) {
-    const y = (H / 6) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
-    ctx.stroke();
-  }
-
-  const isStory = format === "story";
-  const pad = isStory ? 90 : 56;
-
-  // — Wordmark —
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `800 ${isStory ? 60 : 40}px ${FONT}`;
-  ctx.fillText("GOLAZO", pad, isStory ? 150 : 84);
-  ctx.fillStyle = accent2;
-  ctx.font = `700 ${isStory ? 28 : 20}px ${FONT}`;
-  ctx.fillText("· 2026 WORLD CUP CALL", pad + (isStory ? 245 : 165), isStory ? 150 : 84);
-
   const h = callHighlights(prediction);
+  const champ = h.champ;
+  paper(ctx, W, H);
 
-  if (isStory) {
-    // — "MY WINNER IS" + champion hero (left flag, big name, trophy) —
+  if (format === "og") {
+    const pad = 64;
     ctx.textAlign = "left";
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = `700 32px ${FONT}`;
-    ctx.fillText("MY WINNER IS", pad, 300);
-
-    ctx.font = `130px ${FONT}`;
-    ctx.fillText(champ ? champ.flag : "🏆", pad, 460);
-    const nm = (champ ? champ.name : "TBD").toUpperCase();
-    const nameSize = nm.length > 9 ? 78 : 100;
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `900 ${nameSize}px ${FONT}`;
-    ctx.fillText(nm, pad + 170, 440);
+    ctx.fillStyle = LIME;
+    ctx.font = disp(700, 26);
+    tracked(ctx, "YOUR CALL · WORLD CUP 2026", pad, 96, 3);
+    ctx.fillStyle = CHALK;
+    ctx.font = disp(900, 150);
+    ctx.fillText("MY CALL", pad, 250);
+    ctx.font = disp(700, 30);
+    ctx.fillStyle = MUTED;
+    ctx.fillText("MY WINNER", pad, 330);
+    const sz = fitText(ctx, (champ ? champ.name : "TBD").toUpperCase(), W - pad * 2 - 220, 130);
+    ctx.fillStyle = CHALK;
+    ctx.font = disp(900, sz);
+    ctx.fillText((champ ? champ.name : "TBD").toUpperCase(), pad, 470);
     ctx.textAlign = "right";
-    ctx.font = `90px ${FONT}`;
-    ctx.fillText("🏆", W - pad, 450);
-
-    // accent underline under the name
-    ctx.fillStyle = G1;
-    roundRect(ctx, pad + 170, 480, 200, 10, 5);
-    ctx.fill();
-
-    // — 2×2 picks grid —
-    const gap = 26;
-    const cellW = (W - pad * 2 - gap) / 2;
-    const cellH = 210;
-    const gx2 = pad + cellW + gap;
-    const gy = 600;
-    const gy2 = gy + cellH + gap;
-    drawPickCell(ctx, pad, gy, cellW, cellH, "Outside Bet", {
-      flag: h.outsideBet?.flag,
-      value: h.outsideBet?.short ?? "—",
-      hot: true,
-    });
-    drawPickCell(ctx, gx2, gy, cellW, cellH, "Golden Boot", {
-      flag: h.goldenBoot?.flag,
-      value: h.goldenBoot?.short ?? "—",
-    });
-    drawPickCell(ctx, pad, gy2, cellW, cellH, "Runner-up", {
-      flag: h.runnerUp?.flag,
-      value: h.runnerUp?.short ?? "—",
-    });
-    drawPickCell(ctx, gx2, gy2, cellW, cellH, "My Final", {
-      value: `${champ?.short ?? "TBD"} v ${h.runnerUp?.short ?? "TBD"}`,
-    });
-
-    // — Spicy take band —
-    const sy = gy2 + cellH + 50;
-    const sh = 210;
-    ctx.fillStyle = hexA(GOLD, 0.07);
-    roundRect(ctx, pad, sy, W - pad * 2, sh, 28);
-    ctx.fill();
-    ctx.strokeStyle = hexA(GOLD, 0.25);
-    ctx.lineWidth = 2;
-    roundRect(ctx, pad, sy, W - pad * 2, sh, 28);
-    ctx.stroke();
-    ctx.textAlign = "left";
-    ctx.font = `60px ${FONT}`;
-    ctx.fillText("🔥", pad + 36, sy + 88);
-    ctx.fillStyle = GOLD;
-    ctx.font = `700 26px ${FONT}`;
-    ctx.fillText("SPICY TAKE", pad + 120, sy + 60);
-    ctx.fillStyle = "rgba(255,255,255,0.88)";
-    ctx.font = `600 38px ${FONT}`;
-    wrapText(ctx, h.spicy, pad + 120, sy + 110, W - pad * 2 - 150, 48, 2);
-
-    // — Footer: locked by + url —
-    const fy = H - 200;
-    ctx.strokeStyle = "rgba(255,255,255,0.1)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(pad, fy);
-    ctx.lineTo(W - pad, fy);
-    ctx.stroke();
-    ctx.textAlign = "left";
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = `600 38px ${FONT}`;
-    ctx.fillText("Locked by ", pad, fy + 70);
-    const lw = ctx.measureText("Locked by ").width;
-    ctx.fillStyle = "#fff";
-    ctx.font = `800 38px ${FONT}`;
-    ctx.fillText(profile.name || "Me", pad + lw, fy + 70);
-    ctx.textAlign = "right";
-    ctx.fillStyle = G1;
-    ctx.font = `800 34px ${FONT}`;
-    ctx.fillText("shippie.app/run/golazo", W - pad, fy + 70);
-  } else {
-    // — OG layout: champion on the right, copy on the left —
-    ctx.textAlign = "left";
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.font = `700 24px ${FONT}`;
-    ctx.fillText("MY WINNER", pad, 200);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `900 84px ${FONT}`;
-    ctx.fillText((champ ? champ.name : "TBD").toUpperCase(), pad, 290);
-    ctx.fillStyle = accent2;
-    ctx.font = `700 28px ${FONT}`;
-    ctx.fillText("Prove me wrong → shippie.app/run/golazo", pad, 380);
-    ctx.font = `200px ${FONT}`;
-    ctx.textAlign = "right";
-    ctx.fillText(champ ? champ.flag : "🏆", W - pad, 360);
+    ctx.font = `200px "Barlow Condensed", sans-serif`;
+    ctx.fillText(champ ? champ.flag : "🏆", W - pad, 440);
+    footerStrip(ctx, W, H, pad, LIME);
+    return;
   }
-}
 
-/** A pick cell for the My Call grid: label + (optional flag) + value, rounded box. */
-function drawPickCell(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  hgt: number,
-  label: string,
-  opts: { flag?: string; value: string; hot?: boolean },
-): void {
-  ctx.fillStyle = opts.hot ? hexA(G1, 0.07) : "rgba(255,255,255,0.05)";
-  roundRect(ctx, x, y, w, hgt, 24);
-  ctx.fill();
-  ctx.strokeStyle = opts.hot ? hexA(G1, 0.35) : "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 2;
-  roundRect(ctx, x, y, w, hgt, 24);
-  ctx.stroke();
-
+  const pad = 72;
+  // Masthead
+  rule(ctx, pad, 88, W - pad * 2, 4, CHALK);
   ctx.textAlign = "left";
-  ctx.fillStyle = opts.hot ? G2 : "rgba(255,255,255,0.5)";
-  ctx.font = `700 26px ${FONT}`;
-  ctx.fillText(label.toUpperCase(), x + 30, y + 60);
+  ctx.fillStyle = LIME;
+  ctx.font = disp(700, 30);
+  tracked(ctx, "YOUR CALL · WORLD CUP 2026", pad, 150, 4);
 
-  let vx = x + 30;
-  if (opts.flag) {
-    ctx.font = `56px ${FONT}`;
-    ctx.fillText(opts.flag, x + 30, y + 145);
-    vx = x + 110;
-  }
-  ctx.fillStyle = "#ffffff";
-  const big = opts.value.length > 10 ? 40 : 50;
-  ctx.font = `800 ${big}px ${FONT}`;
-  ctx.fillText(opts.value, vx, y + 138);
+  // MY CALL headline
+  ctx.fillStyle = CHALK;
+  ctx.font = disp(900, 200);
+  ctx.fillText("MY CALL", pad - 4, 340);
+  rule(ctx, pad, 380, W - pad * 2, 2, BORDER);
 
-  if (opts.hot) {
-    ctx.textAlign = "right";
-    ctx.font = `40px ${FONT}`;
-    ctx.fillText("🌶️", x + w - 26, y + 58);
+  // Winner hero
+  ctx.fillStyle = MUTED;
+  ctx.font = disp(700, 30);
+  tracked(ctx, "MY WINNER", pad, 460, 4);
+  ctx.font = `150px "Barlow Condensed", sans-serif`;
+  ctx.fillText(champ ? champ.flag : "🏆", pad, 640);
+  const wname = (champ ? champ.name : "TBD").toUpperCase();
+  const wsz = fitText(ctx, wname, W - pad * 2 - 200, 150);
+  ctx.fillStyle = CHALK;
+  ctx.font = disp(900, wsz);
+  ctx.fillText(wname, pad + 180, 615);
+  ctx.fillStyle = LIME;
+  ctx.fillRect(pad + 180, 650, 220, 8);
+
+  // 2×2 ruled grid of secondary picks
+  const gx = pad, gy = 740, gw = W - pad * 2, gh = 300;
+  const midX = gx + gw / 2, midY = gy + gh / 2;
+  rule(ctx, gx, gy, gw, 2, BORDER);
+  rule(ctx, gx, gy + gh, gw, 2, BORDER);
+  ctx.fillStyle = BORDER;
+  ctx.fillRect(midX, gy, 2, gh);
+  ctx.fillRect(gx, midY, gw, 2);
+  const cells: [string, Team | null, string][] = [
+    ["OUTSIDE BET", h.outsideBet, LIME],
+    ["GOLDEN BOOT", h.goldenBoot, CHALK],
+    ["RUNNERS-UP", h.runnerUp, CHALK],
+    ["MY FINAL", champ, CHALK],
+  ];
+  cells.forEach(([label, t, accent], i) => {
+    const cx = gx + (i % 2) * (gw / 2) + 28;
+    const cy = gy + Math.floor(i / 2) * (gh / 2);
     ctx.textAlign = "left";
-  }
+    ctx.fillStyle = i === 0 ? LIME : MUTED;
+    ctx.font = disp(600, 24);
+    tracked(ctx, label, cx, cy + 52, 3);
+    ctx.fillStyle = CHALK;
+    ctx.font = disp(800, 56);
+    if (i === 3) {
+      const fin = `${champ?.short ?? "TBD"} v ${h.runnerUp?.short ?? "TBD"}`;
+      ctx.fillText(fin, cx, cy + 120);
+    } else {
+      ctx.font = `48px "Barlow Condensed", sans-serif`;
+      ctx.fillText(t?.flag ?? "—", cx, cy + 120);
+      ctx.fillStyle = accent;
+      ctx.font = disp(800, 56);
+      ctx.fillText(t?.short ?? "—", cx + 78, cy + 118);
+    }
+  });
+
+  // HOT TAKE — double-ruled sidebar, Baskerville italic
+  const sx = pad, sy = 1130, sw = W - pad * 2;
+  rule(ctx, sx, sy, sw, 2, AMBER);
+  rule(ctx, sx, sy + 8, sw, 2, "rgba(245,166,35,0.45)");
+  ctx.fillStyle = AMBER;
+  ctx.font = disp(800, 24);
+  tracked(ctx, "HOT TAKE", sx + 4, sy + 60, 3);
+  ctx.fillStyle = CHALK;
+  ctx.font = serif(40);
+  wrapText(ctx, `"${h.spicy}"`, sx + 4, sy + 130, sw - 8, 56, 3);
+
+  // Locked-by + footer
+  ctx.textAlign = "left";
+  ctx.fillStyle = MUTED;
+  ctx.font = disp(700, 28);
+  tracked(ctx, `LOCKED BY ${(profile.name || "ME").toUpperCase()}`, pad, H - 150, 3);
+  footerStrip(ctx, W, H, pad, LIME);
 }
 
-/** Word-wrap helper for canvas text: draws up to `maxLines`, ellipsising overflow. */
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxW: number,
-  lineH: number,
-  maxLines: number,
-): void {
+function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number, maxLines: number) {
   const words = text.split(" ");
-  let line = "";
-  let ly = y;
-  let lines = 0;
+  let line = "", ly = y, lines = 0;
   for (let i = 0; i < words.length; i++) {
     const test = line ? `${line} ${words[i]}` : words[i];
     if (ctx.measureText(test).width > maxW && line) {
       lines++;
-      if (lines === maxLines) {
-        ctx.fillText(`${line}…`, x, ly);
-        return;
-      }
-      ctx.fillText(line, x, ly);
-      ly += lineH;
-      line = words[i];
-    } else {
-      line = test;
-    }
+      if (lines === maxLines) { ctx.fillText(`${line}…`, x, ly); return; }
+      ctx.fillText(line, x, ly); ly += lineH; line = words[i];
+    } else line = test;
   }
   ctx.fillText(line, x, ly);
 }
 
-function hexA(hex: string, a: number): string {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${a})`;
+// ── Card 2: THE RECEIPTS — tabloid splash ────────────────────────────────────
+export interface ReceiptsSide { short: string; flag: string; score: number; }
+export interface ReceiptsRow { pos: number; initial: string; name: string; pts: number; tag?: string; you?: boolean; tone?: "you" | "good" | "bad"; }
+export interface ReceiptsCard {
+  matchLabel: string;
+  home?: ReceiptsSide;
+  away?: ReceiptsSide;
+  headline?: string;
+  rows: ReceiptsRow[];
+  callout: string;
+  groupName: string;
+  players: number;
 }
 
-export interface SweepCard {
-  playerName: string;
-  teamId: string;
-  sweepName: string;
-  pot?: number;
-  currency?: string;
+export function drawReceiptsCard(canvas: HTMLCanvasElement, c: ReceiptsCard): void {
+  const [W, H] = SIZES.story;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const pad = 72;
+  paper(ctx, W, H);
+
+  rule(ctx, pad, 88, W - pad * 2, 4, CHALK);
+  ctx.textAlign = "left";
+  ctx.fillStyle = RED;
+  ctx.font = disp(700, 28);
+  tracked(ctx, c.matchLabel.toUpperCase(), pad, 146, 3);
+
+  // Score line, huge, Source Code Pro
+  if (c.home && c.away) {
+    ctx.textAlign = "center";
+    ctx.font = `120px "Barlow Condensed", sans-serif`;
+    ctx.fillText(c.home.flag, W * 0.24, 300);
+    ctx.fillText(c.away.flag, W * 0.76, 300);
+    ctx.fillStyle = CHALK;
+    ctx.font = mono(150);
+    ctx.fillText(`${c.home.score}–${c.away.score}`, W / 2, 300);
+    ctx.fillStyle = MUTED;
+    ctx.font = disp(700, 28);
+    ctx.fillText(c.home.short.toUpperCase(), W * 0.24, 360);
+    ctx.fillText(c.away.short.toUpperCase(), W * 0.76, 360);
+    ctx.fillStyle = LIME;
+    ctx.font = disp(700, 24);
+    ctx.fillText("FULL TIME", W / 2, 360);
+  } else {
+    ctx.fillStyle = CHALK;
+    ctx.font = disp(900, 110);
+    ctx.fillText("THE RECEIPTS", pad, 290);
+  }
+  ctx.textAlign = "left";
+  rule(ctx, pad, 400, W - pad * 2, 2, BORDER);
+
+  // Pool table (top 5)
+  const rows = c.rows.slice(0, 5);
+  const ty = 430, rh = 96;
+  const medals = [GOLD, "#c0c0c0", "#cd7f32"];
+  rows.forEach((r, i) => {
+    const ry = ty + i * rh;
+    if (r.you) { ctx.fillStyle = "rgba(184,255,78,0.06)"; ctx.fillRect(pad, ry, W - pad * 2, rh); }
+    ctx.textAlign = "left";
+    ctx.fillStyle = i < 3 ? medals[i] : MUTED;
+    ctx.font = disp(900, 52);
+    ctx.fillText(String(r.pos).padStart(2, "0"), pad, ry + 64);
+    ctx.fillStyle = CHALK;
+    ctx.font = disp(800, 46);
+    const nameUp = r.name.toUpperCase();
+    ctx.fillText(nameUp, pad + 110, ry + 62);
+    if (r.tag) {
+      const col = r.tone === "bad" ? RED : r.tone === "good" ? LIME : MUTED;
+      const nameW = ctx.measureText(nameUp).width;
+      ctx.font = disp(800, 22);
+      const tw = ctx.measureText(r.tag.toUpperCase()).width;
+      const tx = pad + 110 + nameW + 28;
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.strokeRect(tx, ry + 28, tw + 22, 40);
+      ctx.fillStyle = col;
+      ctx.fillText(r.tag.toUpperCase(), tx + 11, ry + 56);
+    }
+    ctx.textAlign = "right";
+    ctx.fillStyle = r.tone === "bad" ? RED : CHALK;
+    ctx.font = mono(44);
+    ctx.fillText(String(r.pts), W - pad, ry + 60);
+    ctx.textAlign = "left";
+    rule(ctx, pad, ry + rh, W - pad * 2, 1, BORDER);
+  });
+
+  // The callout — back-page headline, stacked, filling the bottom third
+  const cy = Math.max(ty + rows.length * rh + 110, 1180);
+  ctx.fillStyle = CHALK;
+  const words = c.callout.toUpperCase().replace(/[""]/g, "").split(" ");
+  // greedy-wrap into big lines
+  let line = "", ly = cy;
+  const maxW = W - pad * 2;
+  ctx.font = disp(900, 96);
+  const lh = 98;
+  for (let i = 0; i < words.length && ly < H - 170; i++) {
+    const test = line ? `${line} ${words[i]}` : words[i];
+    if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, pad, ly); ly += lh; line = words[i]; }
+    else line = test;
+  }
+  if (line && ly < H - 130) ctx.fillText(line, pad, ly);
+
+  footerStrip(ctx, W, H, pad, RED);
+}
+export async function receiptsCardBlob(c: ReceiptsCard): Promise<Blob | null> {
+  await ensureFonts();
+  const canvas = document.createElement("canvas");
+  drawReceiptsCard(canvas, c);
+  return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.95));
 }
 
-/** The viral artifact for a sweepstake draw: "I drew Brazil". Story format. */
+// ── Card 3: OUTSIDE BET — match-programme cover ──────────────────────────────
+export interface OutsideBetCard { teamId: string; qualifier: string; pctCalled: number; oneIn: number; bonus: number; playerName: string; }
+
+export function drawOutsideBetCard(canvas: HTMLCanvasElement, c: OutsideBetCard): void {
+  const [W, H] = SIZES.story;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const t = maybeTeam(c.teamId);
+  paper(ctx, W, H);
+
+  // Flag fills the top two-thirds on a mud field
+  const flagH = Math.round(H * 0.56);
+  ctx.fillStyle = MUD;
+  ctx.fillRect(0, 0, W, flagH);
+  ctx.textAlign = "center";
+  ctx.font = `${Math.round(flagH * 0.62)}px "Barlow Condensed", sans-serif`;
+  ctx.textBaseline = "middle";
+  ctx.fillText(t ? t.flag : "🐴", W / 2, flagH / 2);
+  ctx.textBaseline = "alphabetic";
+
+  // Eyebrow + believer sticker
+  ctx.textAlign = "left";
+  ctx.fillStyle = AMBER;
+  ctx.font = disp(800, 30);
+  tracked(ctx, "OUTSIDE BET", 72, 120, 4);
+  // sticker, rotated
+  ctx.save();
+  ctx.translate(W - 250, 150);
+  ctx.rotate(0.05);
+  ctx.fillStyle = AMBER;
+  ctx.fillRect(0, 0, 200, 56);
+  ctx.fillStyle = PITCH;
+  ctx.font = disp(800, 26);
+  ctx.fillText(`1 IN ${c.oneIn} BELIEVE`, 14, 38);
+  ctx.restore();
+
+  // Name bar — bleeds across the middle, chalk rules top & bottom
+  const nbY = flagH;
+  rule(ctx, 0, nbY, W, 4, CHALK);
+  const name = (t ? t.name : "—").toUpperCase();
+  ctx.fillStyle = CHALK;
+  const nsz = fitText(ctx, name, W - 144, 130);
+  ctx.font = disp(900, nsz);
+  ctx.textAlign = "center";
+  ctx.fillText(name, W / 2, nbY + 130);
+  rule(ctx, 0, nbY + 170, W, 4, CHALK);
+
+  // Qualifier
+  ctx.fillStyle = MUTED;
+  ctx.font = disp(600, 30);
+  ctx.fillText(c.qualifier.toUpperCase(), W / 2, nbY + 230);
+
+  // Stat bar — dark, Source Code Pro (sits just under the qualifier)
+  const sbY = nbY + 300;
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(0, sbY, W, 150);
+  const stats: [string, string, string][] = [
+    ["CALLED IT", `${c.pctCalled}%`, AMBER],
+    ["BONUS", `+${c.bonus}`, LIME],
+    ["BRAVE?", "VERY", CHALK],
+  ];
+  stats.forEach(([l, v, col], i) => {
+    const x = W * (0.2 + i * 0.3);
+    ctx.textAlign = "center";
+    ctx.fillStyle = MUTED;
+    ctx.font = disp(600, 24);
+    ctx.fillText(l, x, sbY + 56);
+    ctx.fillStyle = col;
+    ctx.font = mono(44);
+    ctx.fillText(v, x, sbY + 110);
+  });
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = CHALK;
+  ctx.font = serif(38);
+  ctx.fillText(`"${c.playerName || "I"} saw it coming."`, 72, sbY + 230);
+  footerStrip(ctx, W, H, 72, AMBER);
+}
+export async function outsideBetCardBlob(c: OutsideBetCard): Promise<Blob | null> {
+  await ensureFonts();
+  const canvas = document.createElement("canvas");
+  drawOutsideBetCard(canvas, c);
+  return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.95));
+}
+
+// ── Sweepstake draw card ─────────────────────────────────────────────────────
+export interface SweepCard { playerName: string; teamId: string; sweepName: string; pot?: number; currency?: string; }
 export function drawSweepCard(canvas: HTMLCanvasElement, c: SweepCard): void {
   const [W, H] = SIZES.story;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const t = maybeTeam(c.teamId);
-  const accent = t ? t.colors[0] : "#10b981";
-  const accent2 = t ? t.colors[1] : "#34d399";
-
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#070b16"); bg.addColorStop(1, "#0d1426");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, W * 0.85);
-  glow.addColorStop(0, hexA(accent, 0.36)); glow.addColorStop(1, "transparent");
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.lineWidth = 2;
-  for (let i = 1; i < 6; i++) { const y = (H / 6) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-
-  const pad = 90;
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#ffffff"; ctx.font = `800 60px ${FONT}`;
-  ctx.fillText("GOLAZO", pad, 150);
-  ctx.fillStyle = accent2; ctx.font = `700 26px ${FONT}`;
-  ctx.fillText("· SWEEPSTAKE", pad + 245, 150);
+  paper(ctx, W, H);
+  const pad = 72;
+  rule(ctx, pad, 88, W - pad * 2, 4, CHALK);
+  ctx.textAlign = "left"; ctx.fillStyle = LIME; ctx.font = disp(700, 30);
+  tracked(ctx, `${c.sweepName.toUpperCase()} · YOUR CALL`, pad, 150, 3);
 
   ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = `700 38px ${FONT}`;
-  ctx.fillText("I DREW", W / 2, 420);
-  ctx.font = `320px ${FONT}`;
-  ctx.fillText(t ? t.flag : "🎲", W / 2, 760);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `900 ${t && t.name.length > 11 ? 96 : 124}px ${FONT}`;
-  ctx.fillText((t ? t.name : "—").toUpperCase(), W / 2, 980);
-  ctx.fillStyle = accent2;
-  roundRect(ctx, W / 2 - 110, 1015, 220, 10, 5); ctx.fill();
+  ctx.fillStyle = MUTED; ctx.font = disp(800, 40);
+  ctx.fillText("I GOT", W / 2, 460);
+  ctx.font = `300px "Barlow Condensed", sans-serif`;
+  ctx.fillStyle = CHALK;
+  ctx.fillText(t ? t.flag : "🎲", W / 2, 820);
+  const nm = (t ? t.name : "—").toUpperCase();
+  const nsz = fitText(ctx, nm, W - pad * 2, 150);
+  ctx.font = disp(900, nsz);
+  ctx.fillText(nm, W / 2, 980);
+  ctx.fillStyle = LIME; ctx.fillRect(W / 2 - 110, 1015, 220, 8);
 
-  ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = `700 40px ${FONT}`;
-  ctx.fillText(c.sweepName.toUpperCase(), W / 2, 1200);
   if (c.pot) {
-    ctx.fillStyle = "#ffd34d"; ctx.font = `900 64px ${FONT}`;
-    ctx.fillText(`${c.currency ?? "£"}${c.pot} POT · WINNER TAKES ALL`, W / 2, 1300);
+    ctx.fillStyle = GOLD; ctx.font = disp(900, 60);
+    ctx.fillText(`${c.currency ?? "£"}${c.pot} · WINNER TAKES ALL`, W / 2, 1180);
   }
-
-  const cardY = 1480;
-  ctx.fillStyle = "rgba(255,255,255,0.05)"; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.fill();
-  ctx.strokeStyle = hexA(accent2, 0.5); ctx.lineWidth = 3; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.stroke();
-  ctx.fillStyle = "#ffffff"; ctx.font = `800 52px ${FONT}`;
-  ctx.fillText(c.playerName || "Me", W / 2, cardY + 100);
-  ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.font = `600 36px ${FONT}`;
-  ctx.fillText("Come on you " + (t ? t.short : "lot") + "!", W / 2, cardY + 160);
-  ctx.fillStyle = accent2; ctx.font = `800 40px ${FONT}`;
-  ctx.fillText("shippie.app/run/golazo", W / 2, cardY + 230);
+  ctx.textAlign = "left";
+  ctx.fillStyle = CHALK; ctx.font = serif(40);
+  wrapText(ctx, `"Come on you ${t ? t.short : "lot"}. Don't let me down."`, pad, 1360, W - pad * 2, 54, 2);
+  footerStrip(ctx, W, H, pad, LIME);
 }
-
 export async function sweepCardBlob(c: SweepCard): Promise<Blob | null> {
+  await ensureFonts();
   const canvas = document.createElement("canvas");
   drawSweepCard(canvas, c);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
+  return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.95));
 }
 
-export interface GameCard {
-  emoji: string;
-  game: string;
-  score: number;
-  unit: string;
-  playerName: string;
-  /** Optional subtitle, e.g. a duel result "beat Mo 4–3". */
-  sub?: string;
-}
-
-/** Viral artifact for a game result: "47 KICK-UPS — beat me". Story format. */
+// ── Arcade game result card ──────────────────────────────────────────────────
+export interface GameCard { emoji: string; game: string; score: number; unit: string; playerName: string; sub?: string; }
 export function drawGameCard(canvas: HTMLCanvasElement, c: GameCard): void {
   const [W, H] = SIZES.story;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const accent = "#16f08b", accent2 = "#58f0a8";
-
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#06121f"); bg.addColorStop(1, "#0a1c14");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, W * 0.85);
-  glow.addColorStop(0, hexA(accent, 0.32)); glow.addColorStop(1, "transparent");
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.lineWidth = 2;
-  for (let i = 1; i < 6; i++) { const y = (H / 6) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-
-  const pad = 90;
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#fff"; ctx.font = `800 60px ${FONT}`;
-  ctx.fillText("GOLAZO", pad, 150);
-  ctx.fillStyle = accent2; ctx.font = `700 26px ${FONT}`;
-  ctx.fillText("· ARCADE", pad + 245, 150);
+  paper(ctx, W, H);
+  const pad = 72;
+  rule(ctx, pad, 88, W - pad * 2, 4, CHALK);
+  ctx.textAlign = "left"; ctx.fillStyle = LIME; ctx.font = disp(700, 30);
+  tracked(ctx, `${c.game.toUpperCase()} · YOUR CALL`, pad, 150, 3);
 
   ctx.textAlign = "center";
-  ctx.font = `300px ${FONT}`;
+  ctx.font = `260px "Barlow Condensed", sans-serif`;
+  ctx.fillStyle = CHALK;
   ctx.fillText(c.emoji, W / 2, 560);
-  ctx.fillStyle = "#fff"; ctx.font = `900 200px ${FONT}`;
-  ctx.fillText(String(c.score), W / 2, 850);
-  ctx.fillStyle = accent2; ctx.font = `800 56px ${FONT}`;
-  ctx.fillText(c.unit.toUpperCase(), W / 2, 930);
-  ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = `700 44px ${FONT}`;
-  ctx.fillText(c.game + (c.sub ? ` · ${c.sub}` : ""), W / 2, 1080);
-
-  const cardY = 1480;
-  ctx.fillStyle = "rgba(255,255,255,0.05)"; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.fill();
-  ctx.strokeStyle = hexA(accent2, 0.5); ctx.lineWidth = 3; roundRect(ctx, pad, cardY, W - pad * 2, 280, 36); ctx.stroke();
-  ctx.fillStyle = "#fff"; ctx.font = `800 52px ${FONT}`;
-  ctx.fillText(c.playerName || "Me", W / 2, cardY + 100);
-  ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.font = `600 36px ${FONT}`;
-  ctx.fillText("Think you can beat that?", W / 2, cardY + 160);
-  ctx.fillStyle = accent2; ctx.font = `800 40px ${FONT}`;
-  ctx.fillText("shippie.app/run/golazo", W / 2, cardY + 230);
+  ctx.fillStyle = LIME; ctx.font = mono(280);
+  ctx.fillText(String(c.score), W / 2, 920);
+  ctx.fillStyle = CHALK; ctx.font = disp(800, 64);
+  ctx.fillText(c.unit.toUpperCase(), W / 2, 1010);
+  if (c.sub) {
+    ctx.fillStyle = MUTED; ctx.font = disp(600, 40);
+    ctx.fillText(c.sub.toUpperCase(), W / 2, 1090);
+  }
+  ctx.textAlign = "left";
+  ctx.fillStyle = CHALK; ctx.font = serif(40);
+  wrapText(ctx, `"${c.playerName || "I"} reckons that's beatable. Prove it."`, pad, 1320, W - pad * 2, 54, 2);
+  footerStrip(ctx, W, H, pad, LIME);
 }
-
 export async function gameCardBlob(c: GameCard): Promise<Blob | null> {
+  await ensureFonts();
   const canvas = document.createElement("canvas");
   drawGameCard(canvas, c);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
+  return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.95));
 }
 
-export async function cardBlob(
-  prediction: Prediction,
-  profile: Profile,
-  format: CardFormat = "story",
-): Promise<Blob | null> {
+export async function cardBlob(prediction: Prediction, profile: Profile, format: CardFormat = "story"): Promise<Blob | null> {
+  await ensureFonts();
   const canvas = document.createElement("canvas");
   drawCard(canvas, prediction, profile, format);
-  return new Promise((resolve) => {
-    canvas.toBlob((b) => resolve(b), "image/png", 0.95);
-  });
+  return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.95));
 }
 
-// ── Card 2: The Receipts (result + pool table + most-wrong callout) ───────────
-
-export interface ReceiptsSide {
-  short: string;
-  flag: string;
-  score: number;
-}
-export interface ReceiptsRow {
-  pos: number;
-  initial: string;
-  name: string;
-  pts: number;
-  /** Short tag shown on the row, e.g. "YOU", "Called it", "Bottled It 💀". */
-  tag?: string;
-  you?: boolean;
-  /** Tag colour intent. */
-  tone?: "you" | "good" | "bad";
-}
-export interface ReceiptsCard {
-  matchLabel: string; // "GROUP G · MATCH WEEK 1"
-  /** A concrete result, when there is one. Omit for a standings-only headline. */
-  home?: ReceiptsSide;
-  away?: ReceiptsSide;
-  /** Headline shown when there's no single match (pool-level receipts). */
-  headline?: string;
-  rows: ReceiptsRow[];
-  callout: string; // the receipts banner line
-  groupName: string; // "The Lads"
-  players: number;
+/** Pitch-green accent so the rest of the UI can theme to your pick. */
+export function accentFor(_prediction: Prediction): [string, string] {
+  return [LIME, GOLD];
 }
 
-function cardBackdrop(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  glowA: string,
-  glowB?: string,
-): void {
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#06121f");
-  bg.addColorStop(1, "#0a1c14");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-  const g1 = ctx.createRadialGradient(W * 0.85, H * 0.12, 0, W * 0.85, H * 0.12, W * 0.7);
-  g1.addColorStop(0, glowA);
-  g1.addColorStop(1, "transparent");
-  ctx.fillStyle = g1;
-  ctx.fillRect(0, 0, W, H);
-  if (glowB) {
-    const g2 = ctx.createRadialGradient(W * 0.1, H * 0.9, 0, W * 0.1, H * 0.9, W * 0.6);
-    g2.addColorStop(0, glowB);
-    g2.addColorStop(1, "transparent");
-    ctx.fillStyle = g2;
-    ctx.fillRect(0, 0, W, H);
+/** Make sure the self-hosted fonts are ready before painting to canvas. */
+async function ensureFonts(): Promise<void> {
+  try {
+    const f = (document as Document & { fonts?: FontFaceSet }).fonts;
+    if (!f) return;
+    await Promise.all([
+      f.load(`900 100px "Barlow Condensed"`),
+      f.load(`700 100px "Barlow Condensed"`),
+      f.load(`600 40px "Barlow Condensed"`),
+      f.load(`italic 400 40px "Libre Baskerville"`),
+      f.load(`700 60px "Source Code Pro"`),
+    ]);
+    await f.ready;
+  } catch {
+    /* fonts will fall back to the stack */
   }
-  ctx.strokeStyle = "rgba(255,255,255,0.045)";
-  ctx.lineWidth = 2;
-  for (let i = 1; i < 6; i++) {
-    const y = (H / 6) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
-    ctx.stroke();
-  }
-}
-
-function cardEyebrow(ctx: CanvasRenderingContext2D, pad: number, meta: string): void {
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `800 60px ${FONT}`;
-  ctx.fillText("GOLAZO", pad, 150);
-  ctx.fillStyle = G2;
-  ctx.font = `700 26px ${FONT}`;
-  ctx.fillText(`· ${meta}`, pad + 245, 150);
-}
-
-/** The Receipts: a result + your lot's table + a named callout of the most-wrong. */
-export function drawReceiptsCard(canvas: HTMLCanvasElement, c: ReceiptsCard): void {
-  const [W, H] = SIZES.story;
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const pad = 90;
-
-  cardBackdrop(ctx, W, H, hexA("#ff3b30", 0.1), hexA(G1, 0.07));
-  cardEyebrow(ctx, pad, c.matchLabel.toUpperCase());
-
-  // — Match score box (or a standings headline when there's no single match) —
-  const mY = 220;
-  const mH = 280;
-  ctx.fillStyle = "rgba(255,255,255,0.04)";
-  roundRect(ctx, pad, mY, W - pad * 2, mH, 28);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 2;
-  roundRect(ctx, pad, mY, W - pad * 2, mH, 28);
-  ctx.stroke();
-  ctx.textAlign = "center";
-  const cyMid = mY + 130;
-  if (c.home && c.away) {
-    // home
-    ctx.font = `110px ${FONT}`;
-    ctx.fillText(c.home.flag, W * 0.27, cyMid);
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = `700 34px ${FONT}`;
-    ctx.fillText(c.home.short.toUpperCase(), W * 0.27, cyMid + 90);
-    // away
-    ctx.font = `110px ${FONT}`;
-    ctx.fillText(c.away.flag, W * 0.73, cyMid);
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = `700 34px ${FONT}`;
-    ctx.fillText(c.away.short.toUpperCase(), W * 0.73, cyMid + 90);
-    // score
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `900 96px ${FONT}`;
-    ctx.fillText(`${c.home.score}–${c.away.score}`, W / 2, cyMid + 10);
-    ctx.fillStyle = G1;
-    ctx.font = `700 26px ${FONT}`;
-    ctx.fillText("FULL TIME", W / 2, cyMid + 80);
-  } else {
-    ctx.font = `90px ${FONT}`;
-    ctx.fillText("🧾", W / 2, cyMid - 10);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `900 64px ${FONT}`;
-    ctx.fillText("THE RECEIPTS", W / 2, cyMid + 80);
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = `600 32px ${FONT}`;
-    ctx.fillText(c.headline ?? "The table doesn't lie.", W / 2, cyMid + 140);
-  }
-
-  // — Pool table —
-  ctx.textAlign = "left";
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.font = `700 30px ${FONT}`;
-  ctx.fillText(`${c.groupName.toUpperCase()} · YOUR LOT`, pad, mY + mH + 80);
-
-  const tableY = mY + mH + 110;
-  const rowH = 108;
-  const rows = c.rows.slice(0, 5);
-  const medals = ["#ffd700", "#c0c0c0", "#cd7f32"];
-  rows.forEach((r, i) => {
-    const ry = tableY + i * rowH;
-    if (r.you) {
-      ctx.fillStyle = hexA(G1, 0.08);
-      roundRect(ctx, pad, ry, W - pad * 2, rowH - 12, 18);
-      ctx.fill();
-    }
-    // position
-    ctx.textAlign = "center";
-    ctx.fillStyle = i < 3 ? medals[i] : "rgba(255,255,255,0.4)";
-    ctx.font = `900 44px ${FONT}`;
-    ctx.fillText(String(r.pos), pad + 40, ry + 62);
-    // avatar
-    ctx.fillStyle = r.you ? hexA(G1, 0.18) : "rgba(255,255,255,0.08)";
-    ctx.beginPath();
-    ctx.arc(pad + 130, ry + 46, 36, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = r.you ? G1 : "rgba(255,255,255,0.8)";
-    ctx.font = `800 34px ${FONT}`;
-    ctx.fillText(r.initial.toUpperCase(), pad + 130, ry + 58);
-    // name
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `${r.you ? 800 : 600} 40px ${FONT}`;
-    ctx.fillText(r.name, pad + 190, ry + 58);
-    // tag
-    if (r.tag) {
-      const tone =
-        r.tone === "bad" ? "#ff3b30" : r.tone === "good" ? G1 : G2;
-      ctx.font = `700 24px ${FONT}`;
-      const tw = ctx.measureText(r.tag.toUpperCase()).width + 36;
-      ctx.fillStyle = hexA(tone, 0.14);
-      roundRect(ctx, pad + 190 + ctx.measureText(r.name).width + 24, ry + 24, tw, 44, 10);
-      ctx.fill();
-      ctx.fillStyle = tone;
-      ctx.fillText(
-        r.tag.toUpperCase(),
-        pad + 190 + ctx.measureText(r.name).width + 42,
-        ry + 54,
-      );
-    }
-    // points
-    ctx.textAlign = "right";
-    ctx.fillStyle = r.tone === "bad" ? "#ff3b30" : "#ffffff";
-    ctx.font = `900 48px ${FONT}`;
-    ctx.fillText(String(r.pts), W - pad - 70, ry + 58);
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = `600 24px ${FONT}`;
-    ctx.fillText("pts", W - pad - 20, ry + 56);
-  });
-
-  // — Receipts banner —
-  const bY = tableY + rows.length * rowH + 30;
-  const bH = 200;
-  ctx.fillStyle = hexA("#ff3b30", 0.1);
-  roundRect(ctx, pad, bY, W - pad * 2, bH, 28);
-  ctx.fill();
-  ctx.strokeStyle = hexA("#ff3b30", 0.22);
-  ctx.lineWidth = 2;
-  roundRect(ctx, pad, bY, W - pad * 2, bH, 28);
-  ctx.stroke();
-  ctx.textAlign = "left";
-  ctx.font = `60px ${FONT}`;
-  ctx.fillText("📞", pad + 36, bY + 92);
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.font = `600 40px ${FONT}`;
-  wrapText(ctx, c.callout, pad + 120, bY + 70, W - pad * 2 - 150, 52, 3);
-
-  // — Footer —
-  const fY = H - 150;
-  ctx.strokeStyle = "rgba(255,255,255,0.1)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pad, fY);
-  ctx.lineTo(W - pad, fY);
-  ctx.stroke();
-  ctx.textAlign = "left";
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.font = `600 36px ${FONT}`;
-  ctx.fillText(`${c.groupName} · ${c.players} players`, pad, fY + 64);
-  ctx.textAlign = "right";
-  ctx.fillStyle = G1;
-  ctx.font = `800 34px ${FONT}`;
-  ctx.fillText("shippie.app/run/golazo", W - pad, fY + 64);
-}
-
-export async function receiptsCardBlob(c: ReceiptsCard): Promise<Blob | null> {
-  const canvas = document.createElement("canvas");
-  drawReceiptsCard(canvas, c);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
-}
-
-// ── Card 3: Outside Bet badge (rewards contrarianism, FOMO stats) ─────────────
-
-export interface OutsideBetCard {
-  teamId: string;
-  qualifier: string; // "Qualified from Group C · 2nd"
-  pctCalled: number; // 8
-  oneIn: number; // 12
-  bonus: number; // 40
-  playerName: string;
-}
-
-/** The Outside Bet badge: your contrarian nation came good. Gold glow + FOMO stats. */
-export function drawOutsideBetCard(canvas: HTMLCanvasElement, c: OutsideBetCard): void {
-  const [W, H] = SIZES.story;
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const pad = 90;
-  const t = maybeTeam(c.teamId);
-
-  // gold-centred backdrop
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#0a0806");
-  bg.addColorStop(1, "#120d06");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, W * 0.9);
-  glow.addColorStop(0, hexA("#ffd700", 0.16));
-  glow.addColorStop(0.45, hexA("#ff8c00", 0.07));
-  glow.addColorStop(1, "transparent");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  cardEyebrow(ctx, pad, "OUTSIDE BET 🐴");
-
-  ctx.textAlign = "center";
-  ctx.font = `300px ${FONT}`;
-  ctx.fillText(t ? t.flag : "🐴", W / 2, 620);
-
-  const nm = (t ? t.name : "—").toUpperCase();
-  ctx.fillStyle = GOLD;
-  ctx.font = `900 ${nm.length > 11 ? 100 : 130}px ${FONT}`;
-  ctx.fillText(nm, W / 2, 800);
-
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.font = `600 36px ${FONT}`;
-  ctx.fillText(c.qualifier, W / 2, 880);
-
-  // — 3-stat row —
-  const sY = 1000;
-  const sH = 240;
-  const gap = 24;
-  const sw = (W - pad * 2 - gap * 2) / 3;
-  const stats: [string, string][] = [
-    [`${c.pctCalled}%`, "OF PLAYERS\nCALLED THIS"],
-    [`1/${c.oneIn}`, "BELIEVERS\nIN THE GROUP"],
-    [`+${c.bonus}`, "BONUS\nPOINTS"],
-  ];
-  stats.forEach(([num, desc], i) => {
-    const sx = pad + i * (sw + gap);
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    roundRect(ctx, sx, sY, sw, sH, 22);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    ctx.lineWidth = 2;
-    roundRect(ctx, sx, sY, sw, sH, 22);
-    ctx.stroke();
-    ctx.textAlign = "center";
-    ctx.fillStyle = GOLD;
-    ctx.font = `900 76px ${FONT}`;
-    ctx.fillText(num, sx + sw / 2, sY + 110);
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = `600 26px ${FONT}`;
-    desc.split("\n").forEach((line, li) => {
-      ctx.fillText(line, sx + sw / 2, sY + 160 + li * 36);
-    });
-  });
-
-  // — CTA —
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.font = `800 44px ${FONT}`;
-  ctx.fillText(`${c.playerName || "I"} saw it coming.`, W / 2, sY + sH + 110);
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.font = `600 36px ${FONT}`;
-  ctx.fillText("Make your call at shippie.app/run/golazo", W / 2, sY + sH + 170);
-
-  // — Footer —
-  const fY = H - 150;
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pad, fY);
-  ctx.lineTo(W - pad, fY);
-  ctx.stroke();
-  ctx.textAlign = "left";
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.font = `600 36px ${FONT}`;
-  ctx.fillText("Picked by ", pad, fY + 64);
-  const lw = ctx.measureText("Picked by ").width;
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.font = `800 36px ${FONT}`;
-  ctx.fillText(c.playerName || "Me", pad + lw, fY + 64);
-  ctx.textAlign = "right";
-  ctx.fillStyle = GOLD;
-  ctx.font = `800 34px ${FONT}`;
-  ctx.fillText("shippie.app/run/golazo", W - pad, fY + 64);
-}
-
-export async function outsideBetCardBlob(c: OutsideBetCard): Promise<Blob | null> {
-  const canvas = document.createElement("canvas");
-  drawOutsideBetCard(canvas, c);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
-}
-
-/** Champion-aware accent so the rest of the UI can theme to your pick. */
-export function accentFor(prediction: Prediction): [string, string] {
-  const champId = championOf(prediction);
-  if (!champId) return ["#10b981", "#34d399"];
-  const t = team(champId);
-  return t.colors;
 }
