@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Onboarding } from "./components/Onboarding";
-import { MyCall } from "./components/MyCall";
+import { Profile } from "./components/Profile";
 import { GroupStage } from "./components/GroupStage";
 import { BracketView } from "./components/BracketView";
 import { Pools } from "./components/Pools";
@@ -98,7 +98,7 @@ export function App() {
           <main className="screen">
             {tab === "home" && (
               <>
-                <MyCall onContinue={() => setTab("predict")} />
+                <Profile />
                 <Live />
               </>
             )}

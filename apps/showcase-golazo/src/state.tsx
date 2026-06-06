@@ -15,6 +15,7 @@ import { makeSeed, type Sweep, type SweepMode, type SweepScope } from "./lib/swe
 import { addLocalScore, type GameId, type ScoreEntry } from "./lib/games";
 import { addReaction, type ReactionKind, type ReactionStore } from "./lib/reactions";
 import { setHapticsMuted } from "./lib/haptics";
+import { bumpStreak, dayKey } from "./lib/streak";
 import { simulateTournament } from "./lib/sim";
 
 export interface SweepOpts {
@@ -62,6 +63,9 @@ interface Store {
   scores: ScoreEntry[];
   addScore: (game: GameId, score: number) => ScoreEntry;
 
+  /** Days-in-a-row you've opened the app. */
+  streak: number;
+
   /** Reactions you've sent to mates' rows (🔥📞💀), keyed by their uid. */
   reactions: ReactionStore;
   react: (uid: string, kind: ReactionKind) => void;
@@ -90,6 +94,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [scores, setScores] = useState<ScoreEntry[]>(() => store.loadScores());
   const [reactions, setReactions] = useState<ReactionStore>(() => store.loadReactions());
   const [pubNight, setPubNight] = useState<boolean>(() => store.loadPubNight());
+  const [streak, setStreak] = useState<number>(() => store.loadStreak()?.days ?? 0);
   const [feed, setFeed] = useState<Feed>(() => emptyFeed());
   const [online, setOnline] = useState(false);
 
@@ -98,6 +103,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setHapticsMuted(pubNight);
     store.savePubNight(pubNight);
   }, [pubNight]);
+
+  // Bump the tip streak once per launch (consecutive-day aware).
+  useEffect(() => {
+    const next = bumpStreak(store.loadStreak(), dayKey(Date.now()));
+    store.saveStreak(next);
+    setStreak(next.days);
+  }, []);
 
   useEffect(() => store.savePrediction(prediction), [prediction]);
   useEffect(() => store.savePools(pools), [pools]);
@@ -307,8 +319,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       togglePubNight() {
         setPubNight((p) => !p);
       },
+
+      streak,
     };
-  }, [profile, prediction, pools, results, sweeps, scores, reactions, pubNight, feed, online]);
+  }, [profile, prediction, pools, results, sweeps, scores, reactions, pubNight, streak, feed, online]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

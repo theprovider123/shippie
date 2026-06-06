@@ -5,6 +5,7 @@ import type { Pool, Prediction, Profile, Results } from "./types";
 import type { Sweep } from "./sweeps";
 import type { ScoreEntry } from "./games";
 import type { ReactionStore } from "./reactions";
+import type { StreakState } from "./streak";
 import { SCHEMA_VERSION } from "./types";
 
 const K = {
@@ -16,7 +17,16 @@ const K = {
   scores: "golazo:scores",
   reactions: "golazo:reactions",
   pubNight: "golazo:pubnight",
+  streak: "golazo:streak",
 } as const;
+
+// ── Tip streak ──
+export function loadStreak(): StreakState | null {
+  return read<StreakState | null>(K.streak, null);
+}
+export function saveStreak(s: StreakState): void {
+  write(K.streak, s);
+}
 
 // ── Pub Night Mode (dimmed, calm, big tap targets for pass-the-phone) ──
 export function loadPubNight(): boolean {
