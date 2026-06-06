@@ -143,8 +143,9 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border);
     background: var(--border-light);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
   .switcher-actions a,
   .switcher-actions button {
@@ -243,18 +244,20 @@
   /* The rows are ToolRow primitives now; this list just frames the group. */
   .tool-list {
     display: grid;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border);
     background: var(--surface);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
   .section-more {
     margin: 2px 0 0;
   }
   .empty {
-    padding: 18px;
-    border: 1px solid var(--border-light);
+    padding: 22px 18px;
+    border: 1px solid var(--border);
     background: var(--surface);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     display: grid;
-    gap: 4px;
+    gap: 6px;
   }
   .empty p {
     margin: 0;

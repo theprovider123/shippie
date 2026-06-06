@@ -341,8 +341,14 @@
       max(18px, var(--safe-right))
       calc(18px + var(--safe-bottom))
       max(18px, var(--safe-left));
-    border-top: 1px solid var(--border-light);
+    border-top: 1px solid var(--border);
     background: var(--bg-pure);
+    /* Elevation: float clearly above the dimmed/blurred backdrop, with a
+       faint top rim-light so the panel reads as layered glass. */
+    box-shadow:
+      0 24px 70px -16px rgba(0, 0, 0, 0.85),
+      0 6px 20px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
     display: grid;
     gap: 14px;
     animation: sheet-rise 180ms ease-out;
@@ -390,7 +396,7 @@
       bottom: auto;
       top: 50%;
       transform: translateY(-50%);
-      border: 1px solid var(--border-light);
+      border: 1px solid var(--border);
       animation: sheet-fade 140ms ease-out;
     }
     @keyframes sheet-fade {
