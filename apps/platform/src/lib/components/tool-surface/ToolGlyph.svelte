@@ -40,7 +40,7 @@
   class="tool-glyph"
   class:running
   class:float
-  style="--c: {accent}; width: {size}px; height: {size}px; font-size: {Math.round(size * 0.32)}px;"
+  style="--c: {accent}; --dot: {Math.max(5, Math.round(size * 0.14))}px; width: {size}px; height: {size}px; font-size: {Math.round(size * 0.32)}px;"
   aria-hidden="true"
 >
   {#if running}<span class="pulse"></span>{/if}
@@ -83,7 +83,7 @@
   }
   .emoji { line-height: 1; }
   .dot {
-    position: absolute; left: 9px; top: 9px;
+    position: absolute; left: var(--dot, 9px); top: var(--dot, 9px);
     width: 4px; height: 4px; border-radius: 1px;
     background: var(--c); opacity: 0.65;
   }
