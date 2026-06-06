@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  loadContainerPageData,
   packageDownloadUrl,
   resolvePrivateJoinState,
   type ContainerPackageSummary,
@@ -32,6 +33,21 @@ const pkg: ContainerPackageSummary = {
 describe('container private join data', () => {
   test('builds package download URLs with encoded hashes', () => {
     expect(packageDownloadUrl('private-room', pkg.packageHash)).toBe(pkg.packageUrl);
+  });
+
+  test('stamps container data with the current runtime version', async () => {
+    const data = await loadContainerPageData({
+      platform: {
+        env: {
+          CF_VERSION_METADATA: { id: 'version_abc-123' },
+        },
+      } as never,
+      url: new URL('https://shippie.test/run/private-room'),
+      requestedAppSlug: 'private-room',
+      focused: true,
+    });
+
+    expect(data.runtimeVersion).toBe('version_abc-123');
   });
 
   test('returns null unless a private join was requested for an available app', () => {

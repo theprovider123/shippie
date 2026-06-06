@@ -3181,9 +3181,7 @@
     const currentUrl = typeof window === 'undefined' ? $page.url : new URL(window.location.href);
     const preferDevUrl = currentUrl.searchParams.get('dev_apps') === '1';
     if (!preferDevUrl && packageFilesByApp[app.id]) return null;
-    const forwardedParams = data.focused && data.requestedAppSlug === app.slug
-      ? focusedRuntimeParams(currentUrl.searchParams)
-      : undefined;
+    const forwardedParams = runtimeParamsFor(app, currentUrl.searchParams);
     return resolveRuntimeSrc(app, currentUrl.hostname, { preferDevUrl, searchParams: forwardedParams });
   }
 
@@ -3224,6 +3222,15 @@
       forwarded.append(key, value);
     });
     return forwarded;
+  }
+
+  function runtimeParamsFor(app: ContainerApp, params: URLSearchParams): URLSearchParams | undefined {
+    const forwarded =
+      data.focused && data.requestedAppSlug === app.slug
+        ? focusedRuntimeParams(params)
+        : new URLSearchParams();
+    if (data.runtimeVersion) forwarded.set('shippie_runtime', data.runtimeVersion);
+    return forwarded.toString() ? forwarded : undefined;
   }
 
   function currentSpaceContextFor(app: ContainerApp): AppSpaceContext | null {

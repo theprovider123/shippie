@@ -70,6 +70,7 @@ export async function loadContainerPageData({
       packages: [] as ContainerPackageSummary[],
       requestedAppSlug,
       focused,
+      runtimeVersion: runtimeVersionFor(platform),
       privateJoin: null as ContainerPrivateJoin | null,
     };
   }
@@ -151,6 +152,7 @@ export async function loadContainerPageData({
       packages: [] as ContainerPackageSummary[],
       requestedAppSlug,
       focused,
+      runtimeVersion: runtimeVersionFor(platform),
       privateJoin: null as ContainerPrivateJoin | null,
     };
   }
@@ -196,6 +198,7 @@ export async function loadContainerPageData({
     packages,
     requestedAppSlug,
     focused,
+    runtimeVersion: runtimeVersionFor(platform),
     privateJoin: resolvePrivateJoinState({
       url,
       requestedAppSlug,
@@ -203,6 +206,13 @@ export async function loadContainerPageData({
       inviteGrantForRequestedApp: inviteGrantsRequestedApp,
     }),
   };
+}
+
+function runtimeVersionFor(platform: App.Platform | undefined): string | null {
+  const version =
+    (platform?.env as { CF_VERSION_METADATA?: { id?: string } } | undefined)
+      ?.CF_VERSION_METADATA?.id ?? null;
+  return version && /^[A-Za-z0-9_-]{1,80}$/.test(version) ? version : null;
 }
 
 function dedupeNewestPackages(packages: readonly ContainerPackageSummary[]): ContainerPackageSummary[] {
