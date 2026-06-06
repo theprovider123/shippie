@@ -3527,7 +3527,6 @@
           >
             <span class="focused-brand-copy">
               <strong>Switcher</strong>
-              <small>Running, saved, recent.</small>
             </span>
           </button>
           <nav class="focused-drawer-actions" aria-label="Drawer actions">
@@ -4499,8 +4498,8 @@
     align-items: center;
     gap: 14px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
-    background: var(--surface, #faf7ef);
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg);
   }
   .focused-home {
     display: inline-flex;
@@ -4742,11 +4741,10 @@
     display: grid;
     gap: 10px;
   }
+  /* Transparent list — rows carry their own dividers; no brown fill block. */
   .focused-list {
     display: grid;
-    gap: 1px;
-    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
-    background: var(--border-light, rgba(0, 0, 0, 0.1));
+    border-top: 1px solid var(--border-light);
   }
   .focused-section-more {
     margin: 0;

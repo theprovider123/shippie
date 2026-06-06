@@ -246,8 +246,8 @@
   /* Hover/current must LIGHTEN on the dark theme (a black overlay did nothing).
      Current = subtle lift + a clean sunset edge bar, not a muddy orange wash. */
   .row:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+  /* Current tool is marked by the sunset edge bar alone — no fill band. */
   .row.current {
-    background: color-mix(in srgb, var(--text) 4%, transparent);
     box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
   @media (min-width: 769px) {

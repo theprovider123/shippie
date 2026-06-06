@@ -71,11 +71,10 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--tool-icon-radius);
-    /* Faint accent-tinted dark tile: gives the icon presence on any dark
-       surface and turns per-tool colour into a muted tonal wash instead of
-       a clashing bright letter. */
-    background: color-mix(in srgb, var(--c) 15%, var(--tool-icon-tile));
-    border: 1px solid color-mix(in srgb, var(--c) 48%, transparent);
+    /* Clean near-black tile defined by a crisp accent outline + glyph —
+       no colour-wash fill, so the list stays simple on any dark surface. */
+    background: var(--tool-icon-tile);
+    border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
     overflow: visible;
   }
   .tool-glyph.float { box-shadow: var(--tool-icon-float); }

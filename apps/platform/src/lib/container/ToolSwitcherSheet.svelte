@@ -67,7 +67,6 @@
   open={open}
   onClose={onClose}
   title="Switcher"
-  subtitle="Running, saved, and recent"
   dismissOnBack={false}
 >
   <div class="switcher">
