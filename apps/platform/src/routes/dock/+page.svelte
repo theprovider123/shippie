@@ -119,6 +119,7 @@
   import { pickStarters } from '$lib/container/starters';
   import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
   import ToolSwitcherSheet from '$lib/container/ToolSwitcherSheet.svelte';
+  import DockRail from '$lib/container/DockRail.svelte';
   import {
     buildToolSwitcherSections,
     type ToolSwitcherSectionId,
@@ -3669,47 +3670,13 @@
   onCloseTool={closeRailTool}
 />
 <section class="shell" class:section-active={section !== 'home'}>
-  <aside class="sidebar">
-    <div class="rail-head">
-      <span class="rail-mark">⌘</span> Dock
-      <nav class="rail-quick" aria-label="Quick actions">
-        <a class="rail-quick-btn" href="/tools" title="Add tools" aria-label="Add tools">＋</a>
-        <a class="rail-quick-btn" href="/tools" title="Browse tools" aria-label="Browse tools">⌕</a>
-        <a class="rail-quick-btn" href="/you" title="You" aria-label="You">⊞</a>
-        <button class="rail-quick-btn" class:active={section === 'access'} title="Access" aria-label="Access" onclick={() => showSection('access')}>⚿</button>
-        <a class="rail-quick-btn" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'} title="Maker" aria-label="Maker">M</a>
-        {#if data.user?.isAdmin}
-          <a class="rail-quick-btn" href="/admin" title="Admin" aria-label="Admin">A</a>
-        {/if}
-      </nav>
-    </div>
-
-    <button
-      type="button"
-      class="rail-switcher"
-      onclick={() => switcherOpen.set(true)}
-      aria-label={railToolCount > 0 ? `Open Dock switcher with ${railToolCount} tools` : 'Open Dock switcher'}
-    >
-      <span>
-        <strong>Switcher</strong>
-        <small>{railToolCount > 0 ? `${railToolCount} tools ready` : 'No tools yet'}</small>
-      </span>
-      <span aria-hidden="true">⌘K</span>
-    </button>
-
-    <nav class="rail-foot" aria-label="Dock sections">
-      <a class="foot-item" href="/tools">＋ Browse tools</a>
-      <a class="foot-item" href="/you">You</a>
-      <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
-      <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
-      <a class="foot-item" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'}>
-        {data.user ? 'Maker' : 'Sign in to ship'}
-      </a>
-      {#if data.user?.isAdmin}
-        <a class="foot-item" href="/admin">Admin</a>
-      {/if}
-    </nav>
-  </aside>
+  <DockRail
+    {section}
+    user={data.user}
+    {railToolCount}
+    onShowSection={showSection}
+    onOpenSwitcher={() => switcherOpen.set(true)}
+  />
 
   <main class="dock-canvas">
     {#if section !== 'home' || meshBadgeLabel(meshStatus)}
@@ -3934,20 +3901,8 @@
     min-height: 100svh;
     min-height: 100dvh;
     display: grid;
-    grid-template-columns: clamp(176px, 17vw, 248px) minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
     background: var(--bg);
-  }
-  .sidebar {
-    min-height: 100svh;
-    min-height: 100dvh;
-    padding:
-      calc(18px + var(--safe-top))
-      clamp(12px, 1.5vw, 22px)
-      calc(18px + var(--safe-bottom));
-    border-right: 1px solid var(--border-light);
-    display: flex;
-    flex-direction: column;
-    gap: 0;
   }
   h2,
   h3 {
@@ -4195,10 +4150,7 @@
   }
   @media (max-width: 1024px) {
     .shell {
-      grid-template-columns: clamp(156px, 22vw, 208px) minmax(0, 1fr);
-    }
-    .sidebar {
-      padding-inline: 12px;
+      grid-template-columns: 64px minmax(0, 1fr);
     }
     .topbar {
       align-items: flex-start;
@@ -4216,9 +4168,6 @@
     }
     .shell.section-active .dock-canvas {
       padding-top: calc(14px + var(--safe-top));
-    }
-    .sidebar {
-      display: none;
     }
     .sidebar-intro,
     .status-panel {
@@ -4975,63 +4924,6 @@
     .transfer-pending-spinner { animation: none; }
   }
 
-  /* Dock rail (Phase 1) — reuses tokens; sharp corners, no new language. */
-  .rail-head { font-family: var(--font-heading); font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
-  .rail-mark { color: var(--sunset); }
-  .rail-quick { margin-left: auto; display: flex; gap: 2px; }
-  .rail-quick-btn { display: inline-grid; place-items: center; width: var(--touch-min); height: var(--touch-min); background: none; border: 1px solid transparent; color: var(--text-secondary); font-size: 0.92rem; text-decoration: none; cursor: pointer; }
-  .rail-quick-btn:hover { color: var(--text); border-color: var(--border-light); background: var(--surface); }
-  .rail-quick-btn.active { color: var(--sunset); border-color: var(--border-light); background: var(--surface); }
-  .rail-quick-btn:focus-visible { outline: 2px solid var(--sunset); outline-offset: -2px; }
-  .rail-switcher {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    min-height: 58px;
-    margin: 0.35rem 0 1rem;
-    padding: 0.62rem 0.7rem;
-    border: 1px solid var(--border-light);
-    background: var(--surface);
-    color: var(--text);
-    text-align: left;
-    cursor: pointer;
-  }
-  .rail-switcher:hover {
-    border-color: var(--border);
-    background: var(--surface-alt);
-  }
-  .rail-switcher:focus-visible {
-    outline: 2px solid var(--sunset);
-    outline-offset: -2px;
-  }
-  .rail-switcher span:first-child {
-    min-width: 0;
-    display: grid;
-    gap: 2px;
-  }
-  .rail-switcher strong {
-    font-family: var(--font-heading);
-    font-size: 0.88rem;
-    line-height: 1.1;
-  }
-  .rail-switcher small,
-  .rail-switcher span:last-child {
-    color: var(--text-light);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.04em;
-  }
-  .rail-switcher span:last-child {
-    flex: none;
-    padding: 0.12rem 0.28rem;
-    border: 1px solid var(--border-light);
-    background: var(--bg);
-  }
-  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.2rem; border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
-  .foot-item { min-height: var(--touch-min); display: flex; align-items: center; font-size: 0.74rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.18rem 0; }
-  .foot-item.active, .foot-item:hover { color: var(--text); }
   .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
   .hydrating-panel { min-height: 240px; }
 </style>
