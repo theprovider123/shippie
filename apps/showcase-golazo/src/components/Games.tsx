@@ -8,7 +8,6 @@ import { WhoAreYa } from "./games/WhoAreYa";
 import { GuessNation } from "./games/GuessNation";
 import { GroupOfDeath } from "./games/GroupOfDeath";
 import { OutsideBetRoulette } from "./games/OutsideBetRoulette";
-import { ManagerMode } from "./games/ManagerMode";
 import { CardHappy } from "./games/CardHappy";
 import { ThatsNeverAPen } from "./games/ThatsNeverAPen";
 import {
@@ -30,7 +29,6 @@ import { tap } from "../lib/haptics";
 type Sel =
   | GameId
   | "penalty"
-  | "manager"
   | "obr"
   | "roulette"
   | "trivia"
@@ -48,11 +46,11 @@ const PUB: { id: PubId; emoji: string; name: string; how: string }[] = [
 ];
 
 /** Play surface: pick a game, post scores, see the worldwide board. */
-export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge | null; duel?: Duel | null; managerTeam?: string[] | null }) {
+export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?: Duel | null }) {
   const store = useStore();
   const playerName = store.profile?.name || "You";
   const [sel, setSel] = useState<Sel>(
-    managerTeam ? "manager" : duel ? "penalty" : challenge ? challenge.game : null,
+    duel ? "penalty" : challenge ? challenge.game : null,
   );
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
@@ -140,12 +138,6 @@ export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge 
             <span className="game-card-how">You're keeper AND striker — duel a mate by link</span>
             <span className="game-card-best">You vs a mate</span>
           </button>
-          <button className="game-card vs" onClick={() => { tap(); setSel("manager"); }}>
-            <span className="game-card-emoji">📋</span>
-            <span className="game-card-name">Manager Mode <em className="h2h">H2H</em></span>
-            <span className="game-card-how">Pick your XI on a budget — duel a mate's sheet</span>
-            <span className="game-card-best">You vs a mate</span>
-          </button>
         </div>
 
         <span className="field-label" style={{ marginTop: 20 }}>🍺 Pub games — pass the phone</span>
@@ -186,20 +178,12 @@ export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge 
     );
   }
 
-  // ── Head-to-head: Penalty Duel + Manager Mode ──
+  // ── Head-to-head: Penalty Duel ──
   if (sel === "penalty") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
         <PenaltyDuel duel={duel} playerName={playerName} />
-      </div>
-    );
-  }
-  if (sel === "manager") {
-    return (
-      <div className="games">
-        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
-        <ManagerMode playerName={playerName} opponent={managerTeam ?? undefined} />
       </div>
     );
   }

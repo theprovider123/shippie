@@ -14,7 +14,6 @@ import { readShareFromHash, readSweepFromHash, type SharePayload } from "./lib/c
 import type { Sweep } from "./lib/sweeps";
 import { readChallengeFromHash, type Challenge } from "./lib/games";
 import { readDuelFromHash, type Duel } from "./lib/duel";
-import { readManagerFromHash } from "./lib/manager";
 import { TOURNAMENT_KICKOFF } from "./lib/locktimer";
 import { useCountdown, pad2 } from "./ui/atoms";
 import { useStore } from "./state";
@@ -37,9 +36,6 @@ export function App() {
   const [duel, setDuel] = useState<Duel | null>(() =>
     typeof location !== "undefined" ? readDuelFromHash(location.hash) : null,
   );
-  const [manager, setManager] = useState<string[] | null>(() =>
-    typeof location !== "undefined" ? readManagerFromHash(location.hash) : null,
-  );
   const [demo, setDemo] = useState(() =>
     typeof location !== "undefined" ? /[#&]demo/.test(location.hash) : false,
   );
@@ -56,8 +52,6 @@ export function App() {
       if (c) { setChallenge(c); setTab("play"); }
       const dl = readDuelFromHash(hash);
       if (dl) { setDuel(dl); setTab("play"); }
-      const mg = readManagerFromHash(hash);
-      if (mg) { setManager(mg); setTab("play"); }
       if (/[#&]demo/.test(hash)) setDemo(true);
     };
     const fromHash = () => ingest(location.hash);
@@ -104,7 +98,7 @@ export function App() {
             )}
             {tab === "predict" && <PredictScreen />}
             {tab === "pools" && <Pools />}
-            {tab === "play" && <Games challenge={challenge} duel={duel} managerTeam={manager} />}
+            {tab === "play" && <Games challenge={challenge} duel={duel} />}
           </main>
           <BottomNav active={tab} onChange={setTab} />
         </>
