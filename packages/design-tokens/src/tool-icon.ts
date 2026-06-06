@@ -40,13 +40,13 @@ function hashString(s: string): number {
 /** Accent colour: maker's themeColor when real, else a slug-derived hue. */
 export function accentColor(slug: string, themeColor?: string | null): string {
   const tc = (themeColor ?? '').trim().toLowerCase();
-  if (tc && !DEFAULT_THEME_COLORS.has(tc)) return themeColor as string;
+  if (tc && !DEFAULT_THEME_COLORS.has(tc)) return (themeColor as string).trim();
   const hue = hashString(slug ?? '') % 360;
   // Fixed S/L tuned for the terminal palette so contrast holds across hues.
   return `hsl(${hue} 58% 62%)`;
 }
 
-/** Deterministic 0..1 seed for the ambient sheen / generated texture. */
+/** Deterministic seed in [0, 1) for the ambient sheen / generated texture. */
 export function surfaceSeed(slug: string): number {
   return (hashString(slug ?? '') % 1000) / 1000;
 }

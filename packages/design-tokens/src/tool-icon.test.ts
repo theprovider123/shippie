@@ -16,17 +16,23 @@ describe('monogram', () => {
   test('empty name falls back to slug initial', () => {
     expect(monogram('', 'dough')).toBe('D');
   });
+  test('whitespace-only name falls back to slug initial', () => {
+    expect(monogram('   ', 'dough')).toBe('D');
+  });
   test('no name and no slug → ?', () => {
     expect(monogram('', '')).toBe('?');
   });
-  test('unicode-safe (no broken surrogate halves)', () => {
-    expect(Array.from(monogram('🚀rocket', 'rocket')).length).toBeGreaterThan(0);
+  test('unicode-safe: keeps the leading emoji code point intact', () => {
+    expect(monogram('🚀rocket', 'rocket')).toBe('🚀r');
   });
 });
 
 describe('accentColor', () => {
   test('respects a real maker theme colour', () => {
     expect(accentColor('anything', '#ff8800')).toBe('#ff8800');
+  });
+  test('trims whitespace from a real themeColor before returning', () => {
+    expect(accentColor('slug', ' #ff8800 ')).toBe('#ff8800');
   });
   test('derives from slug when theme colour is default/unset', () => {
     expect(accentColor('sudoku', '#000000')).toBe(accentColor('sudoku', null));
