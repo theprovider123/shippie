@@ -50,6 +50,20 @@ describe('ToolCard — label source guardrail', () => {
   });
 });
 
+describe('ToolCard browse-only contract', () => {
+  test('ToolCard stays browse-only (no Dock management handlers)', () => {
+    const card = readFileSync(fileURLToPath(new URL('./ToolCard.svelte', import.meta.url)), 'utf8');
+    expect(card).not.toContain('onClose');
+    expect(card).not.toContain('onRemove');
+    expect(card).not.toContain('onReview');
+  });
+
+  test('ToolRow variant union stays closed (row | tile)', () => {
+    const row = readFileSync(fileURLToPath(new URL('./ToolRow.svelte', import.meta.url)), 'utf8');
+    expect(row).toContain("variant?: 'row' | 'tile'");
+  });
+});
+
 describe('migrated launcher surfaces — bespoke row markup guardrail', () => {
   const surfaces = [
     '../../container/DashboardHome.svelte',
