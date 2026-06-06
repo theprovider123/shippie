@@ -3278,3 +3278,31 @@ input {
   padding: 6px 14px;
 }
 .god-stage .game-flash { color: var(--red-card); }
+
+/* ─── Quiz banter + pub forfeit ─────────────────────────────────────────────── */
+.quiz-quip {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: -4px 0 4px;
+}
+.quiz-quip.good { color: var(--lime); }
+.quiz-quip.bad { color: var(--red-card); }
+.quiz-forfeit {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--amber);
+  margin: 6px 0 4px;
+}
+.pub-forfeit {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--amber);
+  text-align: center;
+  margin: 8px 0 4px;
+}

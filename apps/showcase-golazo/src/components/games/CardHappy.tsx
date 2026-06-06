@@ -84,6 +84,7 @@ export function CardHappy() {
             <li key={n} className="board-row"><span className="board-rank">{i + 1}</span><span className="board-name">{n}</span><span className="board-score">{s}</span></li>
           ))}
         </ol>
+        {board.length > 1 && <p className="pub-forfeit">🍺 Worst ref ({board[board.length - 1][0]}) gets the round in.</p>}
         <button className="cta wide" onClick={() => { setPhase("setup"); }}>New game</button>
       </div>
     );
