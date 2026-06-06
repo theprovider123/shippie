@@ -37,10 +37,10 @@ bucket_name = "shippie-documents-prod"
 directory = ".svelte-kit/cloudflare"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-# Product shell routes must run through SvelteKit first so their
-# cache-control stays no-store. The immutable chunks and showcase runtime
-# assets still go straight through Workers Assets for speed.
-run_worker_first = ["/", "/apps", "/apps/*", "/container", "/run/*"]
+# Product shell routes and first-party showcase runtime HTML must run
+# through SvelteKit first so their cache-control stays fresh. Hashed
+# chunks still flow through Workers Assets via the ASSETS binding.
+run_worker_first = ["/", "/apps", "/apps/*", "/container", "/run/*", "/__shippie-run/*"]
 
 # KV — fill in `id` after `wrangler kv namespace create shippie-platform-cache`.
 [[kv_namespaces]]

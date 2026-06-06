@@ -104,6 +104,8 @@ describe('hooks.server first-party showcase routing', () => {
     });
 
     expect(await res.text()).toBe('<h1>Recipe asset</h1>');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(res.headers.get('cdn-cache-control')).toBe('no-store');
     expect(resolve).not.toHaveBeenCalled();
   });
 

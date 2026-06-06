@@ -118,8 +118,8 @@
     return qs ? `/tools?${qs}` : '/tools';
   }
 
-  function detailsHref(slug: string): string {
-    return `/apps/${encodeURIComponent(slug)}`;
+  function runHref(slug: string): string {
+    return `/run/${encodeURIComponent(slug)}/`;
   }
 </script>
 
@@ -218,8 +218,8 @@
               <ToolTile
                 app={launcherAppToToolTile(app)}
                 density="card"
-                href={detailsHref(app.slug)}
-                intent="details"
+                href={runHref(app.slug)}
+                intent="launch"
                 pinned={savedSet.has(app.slug)}
                 onInspect={() => inspectApp(app)}
                 onTogglePin={toggleSavedApp}
@@ -245,8 +245,8 @@
                   <ToolTile
                     app={launcherAppToToolTile(app)}
                     density="card"
-                    href={detailsHref(app.slug)}
-                    intent="details"
+                    href={runHref(app.slug)}
+                    intent="launch"
                     pinned={savedSet.has(app.slug)}
                     onInspect={() => inspectApp(app)}
                     onTogglePin={toggleSavedApp}

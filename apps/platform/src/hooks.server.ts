@@ -211,13 +211,37 @@ async function runtimeAssetTarget(event: Parameters<Handle>[0]['event']): Promis
   const assets = event.platform?.env.ASSETS;
   if (!assets) return null;
 
-  const response = await assets.fetch(event.url);
+  const response = asFreshRuntimeShell(assetPath, await assets.fetch(event.url));
   if (response.status === 404 && !assetPath.includes('.')) {
     const fallbackUrl = new URL(event.url);
     fallbackUrl.pathname = `/__shippie-run/${slug}/index.html`;
-    return withShippieRuntimeCsp(withArcadeCspIfArcade(slug, await assets.fetch(fallbackUrl)));
+    return withShippieRuntimeCsp(
+      withArcadeCspIfArcade(slug, asFreshRuntimeShell('index.html', await assets.fetch(fallbackUrl))),
+    );
   }
   return withShippieRuntimeCsp(withArcadeCspIfArcade(slug, response));
+}
+
+function asFreshRuntimeShell(assetPath: string, response: Response): Response {
+  if (!response.ok) return response;
+  const contentType = response.headers.get('content-type') ?? '';
+  const shellLike =
+    assetPath === '' ||
+    assetPath.endsWith('/') ||
+    assetPath.endsWith('.html') ||
+    assetPath.endsWith('.webmanifest') ||
+    contentType.includes('text/html') ||
+    contentType.includes('manifest+json');
+  if (!shellLike) return response;
+
+  const headers = new Headers(response.headers);
+  headers.set('cache-control', 'no-store');
+  headers.set('cdn-cache-control', 'no-store');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 /**
