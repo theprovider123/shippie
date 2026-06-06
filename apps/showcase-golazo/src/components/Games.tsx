@@ -6,6 +6,7 @@ import { PenaltyDuel } from "./games/PenaltyDuel";
 import { PenaltyRoulette } from "./games/PenaltyRoulette";
 import { WhoAreYa } from "./games/WhoAreYa";
 import { GuessNation } from "./games/GuessNation";
+import { GroupOfDeath } from "./games/GroupOfDeath";
 import { OutsideBetRoulette } from "./games/OutsideBetRoulette";
 import { ManagerMode } from "./games/ManagerMode";
 import { CardHappy } from "./games/CardHappy";
@@ -57,7 +58,7 @@ export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge 
   const [copied, setCopied] = useState(false);
   const [diff, setDiff] = useState<"casual" | "pro">("casual");
 
-  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" ? sel : null;
+  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" || sel === "god" ? sel : null;
 
   useEffect(() => {
     if (!soloGame) return;
@@ -79,7 +80,7 @@ export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge 
     const best = bestScore(store.scores, soloGame);
     const url = challengeUrl({ game: soloGame, name: playerName, score: best });
     const text = `⚽️ I got ${best} ${meta.unit} on ${meta.name} in Golazo. Beat me → ${url}`;
-    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : "🧱";
+    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : soloGame === "god" ? "💀" : "🧱";
     // Share the viral card image + link first; fall back to text/copy.
     try {
       const blob = await gameCardBlob({ emoji, game: meta.name, score: best, unit: meta.unit, playerName });
@@ -107,8 +108,19 @@ export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge 
           </button>
         </div>
         <p className="games-intro">Quick footy games. No login — your bests live on this phone, challenge a mate by link.</p>
+
+        <button className="god-hero" onClick={() => { tap(); setSel("god"); }}>
+          <span className="god-hero-tag">Daily test · worldwide</span>
+          <span className="god-hero-name">Group of Death</span>
+          <span className="god-hero-how">Flap through the gaps, pick the right answer at every gate. Knowledge + nerve. One slip and you're out.</span>
+          <span className="god-hero-foot">
+            <span className="god-hero-best">Best {bestScore(store.scores, "god")} caps</span>
+            <span className="god-hero-cta">Play →</span>
+          </span>
+        </button>
+
         <div className="game-grid">
-          {GAMES.map((g) => (
+          {GAMES.filter((g) => g.id !== "god").map((g) => (
             <button key={g.id} className="game-card" onClick={() => { tap(); setSel(g.id); }}>
               <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : "🧱"}</span>
               <span className="game-card-name">{g.name}</span>
@@ -218,6 +230,7 @@ export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge 
       {soloGame === "keepy" && <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
       {soloGame === "topbins" && <TopBins key={`t-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
       {soloGame === "freekick" && <FreeKick key={`f-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
+      {soloGame === "god" && <GroupOfDeath key={`g-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
 
       <div className="game-meta-row">
         <span className="game-best">Your best · <strong>{best}</strong> {meta.unit}</span>

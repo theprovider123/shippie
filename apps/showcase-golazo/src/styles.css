@@ -3209,3 +3209,72 @@ input {
 }
 .switch.is-on { background: rgba(22,240,139,0.25); border-color: var(--accent); }
 .switch.is-on::after { transform: translateX(18px); background: var(--accent); }
+
+/* ─── Group of Death — centrepiece hero + stage ────────────────────────────── */
+.god-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  padding: 18px 16px;
+  margin: 0 0 18px;
+  border-radius: var(--r);
+  background: var(--turf);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--red-card);
+  cursor: pointer;
+  transition: transform 0.1s var(--ease), border-color 0.15s;
+}
+.god-hero:active { transform: scale(0.99); }
+.god-hero:hover { border-color: var(--line-2); }
+.god-hero-tag {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red-card);
+}
+.god-hero-name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 40px;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.god-hero-how {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 40ch;
+}
+.god-hero-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.god-hero-best {
+  font-family: var(--font-code);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+.god-hero-cta {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pitch);
+  background: var(--lime);
+  border-radius: 3px;
+  padding: 6px 14px;
+}
+.god-stage .game-flash { color: var(--red-card); }
