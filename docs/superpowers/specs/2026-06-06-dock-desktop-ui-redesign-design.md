@@ -97,9 +97,9 @@ The generator is refactored to import `monogram()` / `accentColor()` from `packa
 ### 4.4 Layout components
 
 - **`DockRail.svelte`** (new, extracted from `dock/+page.svelte`): the collapsible icon rail. Collapsed 56px / expanded 200px (CSS-driven, hover + pinned state persisted to localStorage). Sections: brand, primary (Create, Browse), nav (You, Access), account block pinned bottom. Lucide icons + tooltips. This **removes** the stray-"M" cluster and the dead space, and extracts ~hundreds of lines from the 5037-line `dock/+page.svelte`.
-- **`DashboardHome.svelte`** (existing): switches the content region to the **launchpad grid**. Each group (Running / Recent / Saved) renders a responsive grid of **`ToolCard` in `density="launchpad"`** (icon-forward: large `ToolGlyph`, name under, manage action on hover). The existing row layout is preserved as `density="row"` for a "Manage" toggle and remains the mobile shape. **No third primitive** — `ToolCard` gains a density prop, consistent with the contract.
+- **`DashboardHome.svelte`** (existing): switches the content region to the **launchpad grid**. Each group (Running / Recent / Saved) renders a responsive grid of **`ToolRow` in `variant="tile"`** (icon-forward: large `ToolGlyph`, name under, manage action on hover). The existing row layout is preserved as `variant="row"` for a "Manage" toggle and remains the mobile shape. **No third primitive** — `ToolRow` (the contract's Dock launch/manage primitive, already carrying `onClose/onRemove/onReview`) gains a presentation variant. ToolCard stays **browse-only**, untouched.
 - **Section system:** one shared section header component (label + one-line caption) with identical spacing/rhythm for all three groups. Empty groups collapse (fixes the lopsided-board problem). Replaces the three bespoke treatments.
-- **Affordances:** one remove pattern. Running tiles → `close` (rocket-aware), Saved tiles → `remove`; both rendered by `ToolCard` from `ToolState.actions` (already modeled — `actions.close` / `actions.remove`), shown on hover with a tooltip, never two bare glyphs side by side.
+- **Affordances:** one remove pattern. Running tiles → `close` (rocket-aware), Saved tiles → `remove`; both rendered by `ToolRow` (tile variant) from `ToolState.actions` (already modeled — `actions.close` / `actions.remove`), shown on hover/focus with a tooltip, never two bare glyphs side by side.
 - **Page header:** a real header region (greeting + the existing one-liner as a subtitle), replacing the floating tooltip-paragraph.
 
 ### 4.5 Ambient shader (scoped)
@@ -137,7 +137,7 @@ One `<canvas>` WebGL layer behind the grid renders a slow, low-contrast living g
 - **Unit (Bun):** `tool-icon.ts` — monogram rules (multi-word, single-word, unicode, empty), colour stability (same slug → same hue; different slugs same initial → different hues), contrast floor.
 - **Parity test:** the SVG emitted by `generate-monogram-icons.mjs` and the `ToolGlyph` DOM use the same `monogram()`/`accentColor()` output for a fixture set (asserts cross-platform consistency).
 - **Component:** `ToolGlyph` renders img/glyph/monogram by priority; running adds rocket+ring; respects `size`.
-- **Guardrail:** extend `primitives-guardrail.test.ts` — Dock still uses only `ToolRow`/`ToolCard`; no third primitive; `ToolCard` density values constrained.
+- **Guardrail:** extend `primitives-guardrail.test.ts` — Dock still uses only `ToolRow`/`ToolCard`; no third primitive; `ToolRow` variant union constrained (`row` | `tile`); `ToolCard` stays browse-only (no `onClose`/`onRemove`/`onReview`).
 - **Layout:** rail collapsed/expanded labels; empty group collapses; no stray absolutely-positioned header element (regression test for the "M" bug).
 - **Visual:** Playwright shots via `_shotkit` for Dock desktop (grid, hover, running state, rail expanded) — pngquant before commit per existing pipeline.
 
@@ -146,13 +146,13 @@ One `<canvas>` WebGL layer behind the grid renders a slow, low-contrast living g
 1. **Icon foundation.** `packages/design-tokens/src/tool-icon.ts` + token changes + tests. No UI change yet.
 2. **`ToolGlyph` atom.** Build it on the algorithm; replace `IconOrMonogram` internals (keep the filename/exports as a thin alias to avoid a repo-wide rename, matching the harmonization migration style). Terminal style, hybrid radius, float, running rocket.
 3. **Build parity.** Refactor `generate-monogram-icons.mjs` onto the shared algorithm; add parity test; regenerate showcase `icon.svg`s.
-4. **Launchpad grid.** `ToolCard` `density="launchpad"`; `DashboardHome` grid + unified section system + page header + Manage toggle (row density).
+4. **Launchpad grid.** `ToolRow` `variant="tile"`; `DashboardHome` grid + unified section system + page header + Manage toggle (row variant).
 5. **Rail.** Extract `DockRail.svelte` from `dock/+page.svelte`; collapsible + lucide nav + account block; delete dead space; fix the stray-"M" cluster.
 6. **Ambient shader.** Single GL layer + reduced-motion/static fallback. (Last; pure enhancement.)
 
 ## 10. Risks / open questions
 
-- **Contract pressure:** adding `ToolCard density` is the one contract-adjacent change. Mitigation: it's a density prop on an existing primitive, not a new component; guardrail test enforces it. Worth a sign-off from whoever owns the frozen contract (Codex collision zone — `dock/+page.svelte` is shared).
+- **Contract pressure:** adding a `ToolRow variant` is the one contract-adjacent change, but it's *more* aligned than touching ToolCard — ToolRow is already the contract's Dock primitive. It's a presentation variant on an existing primitive, not a new component; guardrail test enforces both the closed variant union and ToolCard's browse-only boundary. Still worth a nod from whoever owns the frozen contract (Codex collision zone — `dock/+page.svelte` is shared).
 - **`dock/+page.svelte` is 5037 lines and co-edited by Codex.** Extracting `DockRail` must be coordinated (per memory: stage explicitly, re-check HEAD, isolate worktrees).
 - **Default `themeColor` detection:** need to identify the current "default/unset" theme colour value so `accentColor()` knows when to derive vs respect maker intent. (Verify in adapters during Sprint 1.)
 - **Rocket badge at tiny sizes** (rail/Switcher ~20px): badge may need to hide below a size threshold — confirm during Sprint 2.
