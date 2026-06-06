@@ -6,6 +6,10 @@ import { PenaltyDuel } from "./games/PenaltyDuel";
 import { PenaltyRoulette } from "./games/PenaltyRoulette";
 import { WhoAreYa } from "./games/WhoAreYa";
 import { GuessNation } from "./games/GuessNation";
+import { OutsideBetRoulette } from "./games/OutsideBetRoulette";
+import { ManagerMode } from "./games/ManagerMode";
+import { CardHappy } from "./games/CardHappy";
+import { ThatsNeverAPen } from "./games/ThatsNeverAPen";
 import {
   GAMES,
   gameMeta,
@@ -22,18 +26,33 @@ import { gameCardBlob } from "../lib/sharecard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
 
-type Sel = GameId | "penalty" | "roulette" | "trivia" | "nation" | null;
-const PUB: { id: "roulette" | "trivia" | "nation"; emoji: string; name: string; how: string }[] = [
+type Sel =
+  | GameId
+  | "penalty"
+  | "manager"
+  | "obr"
+  | "roulette"
+  | "trivia"
+  | "nation"
+  | "cardhappy"
+  | "tnap"
+  | null;
+type PubId = "roulette" | "trivia" | "nation" | "cardhappy" | "tnap";
+const PUB: { id: PubId; emoji: string; name: string; how: string }[] = [
   { id: "roulette", emoji: "🎯", name: "Penalty Roulette", how: "Pass the phone — get saved, you're out" },
+  { id: "cardhappy", emoji: "🟨", name: "Card Happy", how: "Yellow or red? Best ref in the room wins" },
+  { id: "tnap", emoji: "🤌", name: "That's Never A Pen", how: "Vote pen or no pen, then argue about it" },
   { id: "trivia", emoji: "🧠", name: "Who Are Ya?", how: "World Cup trivia, no Googling" },
   { id: "nation", emoji: "🌍", name: "Guess the Nation", how: "See the flag, name the country" },
 ];
 
 /** Play surface: pick a game, post scores, see the worldwide board. */
-export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?: Duel | null }) {
+export function Games({ challenge, duel, managerTeam }: { challenge?: Challenge | null; duel?: Duel | null; managerTeam?: string[] | null }) {
   const store = useStore();
   const playerName = store.profile?.name || "You";
-  const [sel, setSel] = useState<Sel>(duel ? "penalty" : challenge ? challenge.game : null);
+  const [sel, setSel] = useState<Sel>(
+    managerTeam ? "manager" : duel ? "penalty" : challenge ? challenge.game : null,
+  );
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [diff, setDiff] = useState<"casual" | "pro">("casual");
@@ -77,8 +96,17 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   if (!sel) {
     return (
       <div className="games">
-        <h2 className="section-title">Play</h2>
-        <p className="games-intro">Quick football games. No login — your bests live on this phone, challenge a mate by link.</p>
+        <div className="play-head">
+          <h2 className="section-title">Play</h2>
+          <button
+            className={`pubnight-toggle${store.pubNight ? " is-on" : ""}`}
+            onClick={() => { tap(); store.togglePubNight(); }}
+            aria-pressed={store.pubNight}
+          >
+            🍺 Pub Night {store.pubNight ? "on" : "off"}
+          </button>
+        </div>
+        <p className="games-intro">Quick footy games. No login — your bests live on this phone, challenge a mate by link.</p>
         <div className="game-grid">
           {GAMES.map((g) => (
             <button key={g.id} className="game-card" onClick={() => { tap(); setSel(g.id); }}>
@@ -88,10 +116,22 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
               <span className="game-card-best">Best {bestScore(store.scores, g.id)}</span>
             </button>
           ))}
+          <button className="game-card" onClick={() => { tap(); setSel("obr"); }}>
+            <span className="game-card-emoji">🎲</span>
+            <span className="game-card-name">Outside Bet Roulette</span>
+            <span className="game-card-how">Spin for a random nation — your tournament rides on them</span>
+            <span className="game-card-best">Pot luck</span>
+          </button>
           <button className="game-card vs" onClick={() => { tap(); setSel("penalty"); }}>
             <span className="game-card-emoji">🥅</span>
             <span className="game-card-name">Penalty Duel <em className="h2h">H2H</em></span>
             <span className="game-card-how">You're keeper AND striker — duel a mate by link</span>
+            <span className="game-card-best">You vs a mate</span>
+          </button>
+          <button className="game-card vs" onClick={() => { tap(); setSel("manager"); }}>
+            <span className="game-card-emoji">📋</span>
+            <span className="game-card-name">Manager Mode <em className="h2h">H2H</em></span>
+            <span className="game-card-how">Pick your XI on a budget — duel a mate's sheet</span>
             <span className="game-card-best">You vs a mate</span>
           </button>
         </div>
@@ -111,23 +151,43 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   }
 
   // ── Pub games (full-screen, local, no leaderboard) ──
-  if (sel === "roulette" || sel === "trivia" || sel === "nation") {
+  if (sel === "roulette" || sel === "trivia" || sel === "nation" || sel === "cardhappy" || sel === "tnap") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
         {sel === "roulette" && <PenaltyRoulette />}
+        {sel === "cardhappy" && <CardHappy />}
+        {sel === "tnap" && <ThatsNeverAPen />}
         {sel === "trivia" && <WhoAreYa />}
         {sel === "nation" && <GuessNation />}
       </div>
     );
   }
 
-  // ── Penalty (head-to-head) ──
+  // ── Outside Bet Roulette (solo spin) ──
+  if (sel === "obr") {
+    return (
+      <div className="games">
+        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+        <OutsideBetRoulette playerName={playerName} />
+      </div>
+    );
+  }
+
+  // ── Head-to-head: Penalty Duel + Manager Mode ──
   if (sel === "penalty") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
         <PenaltyDuel duel={duel} playerName={playerName} />
+      </div>
+    );
+  }
+  if (sel === "manager") {
+    return (
+      <div className="games">
+        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+        <ManagerMode playerName={playerName} opponent={managerTeam ?? undefined} />
       </div>
     );
   }

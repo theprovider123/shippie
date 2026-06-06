@@ -15,7 +15,16 @@ const K = {
   sweeps: "golazo:sweeps",
   scores: "golazo:scores",
   reactions: "golazo:reactions",
+  pubNight: "golazo:pubnight",
 } as const;
+
+// ── Pub Night Mode (dimmed, calm, big tap targets for pass-the-phone) ──
+export function loadPubNight(): boolean {
+  return read<boolean>(K.pubNight, false);
+}
+export function savePubNight(on: boolean): void {
+  write(K.pubNight, on);
+}
 
 // ── Reactions (🔥📞💀 sent to mates' rows) ──
 export function loadReactions(): ReactionStore {

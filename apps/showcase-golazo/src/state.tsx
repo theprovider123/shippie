@@ -14,6 +14,7 @@ import type { SharePayload } from "./lib/codec";
 import { makeSeed, type Sweep, type SweepMode, type SweepScope } from "./lib/sweeps";
 import { addLocalScore, type GameId, type ScoreEntry } from "./lib/games";
 import { addReaction, type ReactionKind, type ReactionStore } from "./lib/reactions";
+import { setHapticsMuted } from "./lib/haptics";
 import { simulateTournament } from "./lib/sim";
 
 export interface SweepOpts {
@@ -64,6 +65,10 @@ interface Store {
   /** Reactions you've sent to mates' rows (🔥📞💀), keyed by their uid. */
   reactions: ReactionStore;
   react: (uid: string, kind: ReactionKind) => void;
+
+  /** Pub Night Mode: dimmed, calm, big tap targets for passing the phone. */
+  pubNight: boolean;
+  togglePubNight: () => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -84,8 +89,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sweeps, setSweeps] = useState<Sweep[]>(() => store.loadSweeps());
   const [scores, setScores] = useState<ScoreEntry[]>(() => store.loadScores());
   const [reactions, setReactions] = useState<ReactionStore>(() => store.loadReactions());
+  const [pubNight, setPubNight] = useState<boolean>(() => store.loadPubNight());
   const [feed, setFeed] = useState<Feed>(() => emptyFeed());
   const [online, setOnline] = useState(false);
+
+  // Keep haptics muting in lock-step with Pub Night Mode.
+  useEffect(() => {
+    setHapticsMuted(pubNight);
+    store.savePubNight(pubNight);
+  }, [pubNight]);
 
   useEffect(() => store.savePrediction(prediction), [prediction]);
   useEffect(() => store.savePools(pools), [pools]);
@@ -290,8 +302,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       react(uid, kind) {
         setReactions((r) => addReaction(r, uid, kind, Date.now()));
       },
+
+      pubNight,
+      togglePubNight() {
+        setPubNight((p) => !p);
+      },
     };
-  }, [profile, prediction, pools, results, sweeps, scores, reactions, feed, online]);
+  }, [profile, prediction, pools, results, sweeps, scores, reactions, pubNight, feed, online]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

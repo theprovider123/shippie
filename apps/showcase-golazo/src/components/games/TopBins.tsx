@@ -5,6 +5,18 @@ import { Keeper, keeperConfig, saved as keeperSaved, rampedDifficulty } from "..
 
 const SHOTS = 8;
 
+// One dry line per outcome — the commentary box never says the same thing twice.
+const QUIPS = {
+  bins: ["Top bins. Get in.", "Postage stamp.", "Keeper had no chance."],
+  goal: ["That's a goal.", "Tucked away.", "Scrappy, but it counts."],
+  saved: ["Keeper didn't move.", "Right at him.", "Have a word."],
+  miss: ["Row Z.", "Post.", "Section behind the goal got that one."],
+} as const;
+function quipFor(kind: keyof typeof QUIPS): string {
+  const opts = QUIPS[kind];
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+
 /**
  * Top Bins — swipe the ball to shoot. A keeper patrols then DIVES; aim for the top
  * corners ("top bins") for 3, anywhere else for 1. Net ripples on a goal. 8 shots.
@@ -15,6 +27,7 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
   const [shots, setShots] = useState(SHOTS);
   const [phase, setPhase] = useState<"ready" | "play" | "over">("ready");
   const [flash, setFlash] = useState("");
+  const [quip, setQuip] = useState("");
   const scoreRef = useRef(0);
   const shotsRef = useRef(SHOTS);
 
@@ -88,6 +101,7 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
       const isSaved = keeperSaved(ball.x, keeper.x, keeper.reachPx(), ball.r);
       if (!inGoal || isSaved) {
         setFlash(isSaved ? "SAVED!" : "MISS");
+        setQuip(quipFor(isSaved ? "saved" : "miss"));
         shake.kick(isSaved ? 6 : 2);
         confirmBuzz();
       } else {
@@ -95,12 +109,13 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
         const pts = corner ? 3 : 1;
         scoreRef.current += pts; setScore(scoreRef.current);
         setFlash(corner ? "TOP BINS! +3" : "GOAL +1");
+        setQuip(quipFor(corner ? "bins" : "goal"));
         netBulge = { x: ball.x, t: 0 };
         particles.emit(ball.x, ball.y, "spark", corner ? 26 : 16);
         shake.kick(corner ? 12 : 7);
         celebrate();
       }
-      setTimeout(() => setFlash(""), 900);
+      setTimeout(() => { setFlash(""); setQuip(""); }, 1100);
       if (shotsRef.current <= 0) setTimeout(() => { setPhase("over"); onGameOver(scoreRef.current); }, 900);
       else resetBall();
     }
@@ -183,7 +198,7 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
 
   function startGame() {
     scoreRef.current = 0; shotsRef.current = SHOTS;
-    setScore(0); setShots(SHOTS); setFlash(""); setPhase("play");
+    setScore(0); setShots(SHOTS); setFlash(""); setQuip(""); setPhase("play");
   }
 
   return (
@@ -194,6 +209,7 @@ export function TopBins({ onGameOver, target, difficulty = 0.35 }: { onGameOver:
       </div>
       <canvas ref={canvasRef} className="game-canvas" />
       {flash && <div className={`game-flash${flash.includes("BINS") ? " bins" : flash.includes("GOAL") ? " goal" : " miss"}`}>{flash}</div>}
+      {quip && <div className="tb-quip">{quip}</div>}
       {phase === "ready" && (
         <div className="game-overlay">
           <span className="game-emoji">🥅</span>

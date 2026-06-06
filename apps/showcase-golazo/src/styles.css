@@ -3013,3 +3013,145 @@ input {
 .lock-banner.is-locked { color: var(--gold); border-color: var(--gold-soft); }
 .outside-bet .golden-boot-cap { color: var(--gold); }
 .mycall-cta { margin-top: 20px; }
+
+/* ─── New games + Pub Night Mode (Slice 5) ─────────────────────────────────── */
+.play-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pubnight-toggle {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pubnight-toggle.is-on { background: var(--gold-soft); color: var(--gold); border-color: var(--gold-soft); }
+
+/* Pub Night Mode — calmer, dimmer, bigger taps for passing the phone */
+.app.pub-night { filter: saturate(0.85) brightness(0.82); }
+.app.pub-night .cta,
+.app.pub-night .zone-btn,
+.app.pub-night .ch-option,
+.app.pub-night .tnap-btn { padding-top: 18px; padding-bottom: 18px; font-size: 17px; }
+.app.pub-night .game-card { min-height: 132px; }
+
+.tb-quip {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 14px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* Outside Bet Roulette */
+.obr-reel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 18px 0;
+  padding: 22px 28px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  min-width: 220px;
+}
+.obr-reel.is-spinning { animation: obr-shake 0.3s linear infinite; }
+.obr-reel.is-locked { border-color: var(--gold); box-shadow: 0 0 36px var(--gold-soft); }
+@keyframes obr-shake { 0%,100% { transform: translateX(-1px); } 50% { transform: translateX(1px); } }
+.obr-flag { font-size: 72px; line-height: 1; }
+.obr-name { font-family: var(--font-display); font-weight: 900; font-size: clamp(28px, 8vw, 42px); }
+.obr-verdict { color: var(--muted); font-size: 14px; margin: 6px 0 14px; }
+.obr-verdict strong { color: var(--text); }
+
+/* Card Happy + pass-the-phone shared turn header */
+.ch-turn { text-align: center; margin-bottom: 6px; }
+.ch-turn-cap { display: block; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.ch-turn-name { font-family: var(--font-display); font-weight: 900; font-size: clamp(28px, 9vw, 40px); margin: 2px 0; }
+.ch-progress { font-size: 12px; color: var(--muted); }
+.ch-incident {
+  font-size: 17px;
+  line-height: 1.45;
+  text-align: center;
+  margin: 16px auto 20px;
+  max-width: 30ch;
+  color: var(--text);
+}
+.ch-options { display: flex; flex-direction: column; gap: 10px; }
+.ch-option {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px; font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), border-color 0.18s;
+}
+.ch-option:hover { transform: translateY(-2px); border-color: var(--line-2); }
+.ch-option-emoji { font-size: 22px; }
+.ch-reveal { text-align: center; }
+.ch-result { font-family: var(--font-display); font-weight: 900; font-size: 30px; margin-bottom: 6px; }
+.ch-result.good { color: var(--accent); }
+.ch-result.bad { color: var(--danger); }
+.ch-answer { color: var(--muted); margin-bottom: 18px; }
+
+/* That's Never A Pen */
+.tnap-vote { display: flex; gap: 12px; margin-top: 18px; }
+.tnap-btn {
+  flex: 1; padding: 22px 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  font-size: 18px; font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+.tnap-btn:hover { transform: translateY(-2px); }
+.tnap-btn.pen { background: rgba(22,240,139,0.1); color: var(--accent); border-color: rgba(22,240,139,0.3); }
+.tnap-btn.no { background: rgba(255,93,108,0.1); color: var(--danger); border-color: rgba(255,93,108,0.3); }
+.tnap-tally { display: flex; gap: 12px; margin: 18px 0; }
+.tnap-side {
+  flex: 1; text-align: center; padding: 18px;
+  border-radius: var(--r); background: var(--surface); border: 1px solid var(--line);
+}
+.tnap-side.win { border-color: var(--accent); box-shadow: 0 0 24px rgba(22,240,139,0.18); }
+.tnap-n { display: block; font-family: var(--font-display); font-weight: 900; font-size: 44px; }
+.tnap-l { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.tnap-verdict { text-align: center; font-size: 15px; line-height: 1.5; color: var(--text); margin-bottom: 16px; }
+.tnap-ref { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+/* Manager Mode */
+.mgr-bank { display: flex; gap: 10px; margin: 14px 0 8px; }
+.mgr-bank-stat {
+  flex: 1; text-align: center; padding: 12px 6px;
+  border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line);
+}
+.mgr-bank-stat span { display: block; font-family: var(--font-display); font-weight: 900; font-size: 26px; color: var(--accent); }
+.mgr-bank-stat small { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mgr-bank-stat.over span { color: var(--danger); }
+.mgr-group { margin-top: 12px; text-align: left; }
+.mgr-rail { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.mgr-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.mgr-chip:disabled { opacity: 0.35; cursor: not-allowed; }
+.mgr-chip.is-sel { border-color: var(--accent); background: rgba(22,240,139,0.12); }
+.mgr-chip-cost { color: var(--faint); font-size: 11px; }
+.mgr-duel { text-align: center; font-weight: 700; margin: 14px 0; }
+.mgr-duel.win { color: var(--accent); }
+.mgr-duel.lose { color: var(--danger); }
