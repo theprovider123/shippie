@@ -5,7 +5,7 @@ const src = readFileSync(new URL('./ToolGlyph.svelte', import.meta.url), 'utf8')
 
 describe('ToolGlyph structure (guardrail)', () => {
   test('uses the shared algorithm from the package root', () => {
-    expect(src).toContain("from '@shippie/design-tokens'");
+    expect(src).toContain("from '@shippie/design-tokens/tool-icon'");
     // Order-independent: both symbols must be imported, regardless of sort order.
     expect(src).toMatch(/\bmonogram\b/);
     expect(src).toMatch(/\baccentColor\b/);

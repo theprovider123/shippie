@@ -6,7 +6,10 @@
    * The same monogram()/accentColor() run in the build-time SVG
    * generator, so live tiles and baked PWA icons match.
    */
-  import { monogram, accentColor } from '@shippie/design-tokens';
+  // Import the PURE algorithm subpath, not the package root — the root
+  // index.ts pulls in node:path (path constants) which breaks the browser
+  // bundle. This module is dependency-free and browser-safe.
+  import { monogram, accentColor } from '@shippie/design-tokens/tool-icon';
 
   interface Props {
     slug: string;
