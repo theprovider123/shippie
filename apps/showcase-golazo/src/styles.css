@@ -200,30 +200,35 @@ input {
   margin: 0;
 }
 .section-hint {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
+  max-width: 32ch;
   color: var(--muted);
-  font-size: 13px;
-  letter-spacing: 0.12em;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  line-height: 1.5;
   text-transform: uppercase;
 }
 .tally {
   font-variant-numeric: tabular-nums;
   display: flex;
   align-items: baseline;
-  gap: 4px;
-  background: var(--surface);
+  gap: 5px;
+  background: var(--turf);
   border: 1px solid var(--line);
-  padding: 6px 12px;
-  border-radius: 999px;
+  padding: 8px 14px;
+  border-radius: 3px;
   white-space: nowrap;
   /* mobile-audit-allow: nowrap-intentional — short pill/badge/numeric */
 }
 .tally strong {
-  color: var(--accent);
+  font-family: var(--font-code);
+  color: var(--lime);
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
 }
 .tally span {
+  font-family: var(--font-code);
   color: var(--faint);
   font-size: 13px;
 }
@@ -783,43 +788,45 @@ input {
 
 /* ── Bracket ───────────────────────────────────────────────────────────── */
 .lock-note {
-  background: rgba(255, 174, 59, 0.1);
-  border: 1px solid rgba(255, 174, 59, 0.28);
+  background: var(--turf);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
   color: var(--amber);
-  border-radius: 12px;
+  border-radius: 3px;
   padding: 12px 14px;
+  font-family: var(--font-serif);
+  font-style: italic;
   font-size: 13px;
-  font-weight: 600;
   margin-bottom: 14px;
 }
 .champ-banner {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(
-    100deg,
-    color-mix(in srgb, var(--tc1, var(--accent)) 28%, transparent),
-    transparent
-  );
-  border: 1px solid color-mix(in srgb, var(--tc1, var(--accent)) 45%, transparent);
-  border-radius: 14px;
-  padding: 13px 16px;
+  background: var(--turf);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--gold);
+  border-radius: 4px;
+  padding: 14px 16px;
   margin-bottom: 16px;
 }
 .champ-banner-label {
+  font-family: var(--font-display);
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
 }
 .champ-banner-team {
   display: flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-display);
-  font-weight: 850;
-  font-size: 18px;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   margin-left: auto;
 }
 .champ-banner-cup {
@@ -840,24 +847,29 @@ input {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   min-width: 66px;
   padding: 9px 12px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1.5px solid var(--line);
-  transition: all 0.15s ease;
+  border-radius: 3px;
+  background: var(--turf);
+  border: 1px solid var(--line);
+  transition: all 0.12s ease;
 }
 .round-chip.is-sel {
-  border-color: var(--accent);
-  background: rgba(22, 240, 139, 0.1);
+  border-color: var(--lime);
+  background: var(--lime);
 }
+.round-chip.is-sel .round-chip-name { color: var(--pitch); }
+.round-chip.is-sel .round-chip-count { color: rgba(13, 31, 15, 0.6); }
 .round-chip-name {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .round-chip-count {
+  font-family: var(--font-code);
   font-size: 11px;
   color: var(--faint);
   font-variant-numeric: tabular-nums;
@@ -1564,7 +1576,9 @@ input {
 .board-score {
   display: flex;
   align-items: baseline;
-  gap: 3px;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 64px;
 }
 .board-score strong {
   font-family: var(--font-code);
@@ -2834,9 +2848,9 @@ input {
 /* ── Difficulty toggle (games) ─────────────────────────────────────────── */
 .game-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .game-top .back-btn { margin: 0; }
-.diff-toggle { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
-.diff-toggle button { padding: 6px 14px; border-radius: 999px; font-weight: 750; font-size: 12.5px; color: var(--muted); transition: all 0.16s var(--ease); }
-.diff-toggle button.is-sel { background: var(--accent); color: #06140f; }
+.diff-toggle { display: inline-flex; background: var(--turf); border: 1px solid var(--line); border-radius: 3px; padding: 2px; }
+.diff-toggle button { padding: 6px 14px; border-radius: 2px; font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); transition: all 0.12s var(--ease); }
+.diff-toggle button.is-sel { background: var(--chalk); color: var(--pitch); }
 
 /* ── Penalty Duel zone input ───────────────────────────────────────────── */
 .zone-bar {
@@ -2920,8 +2934,10 @@ input {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-left: 12px;
+  flex: 0 0 auto;
 }
 .react-badge { font-size: 15px; line-height: 1; }
 .react-toggle {
@@ -2929,7 +2945,7 @@ input {
   height: 28px;
   border-radius: 50%;
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--turf);
   color: var(--muted);
   font-size: 18px;
   line-height: 1;
@@ -3009,12 +3025,13 @@ input {
   justify-content: center;
   gap: 8px;
   margin-bottom: 16px;
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-radius: 4px;
   font-family: var(--font-code);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--muted);
   background: var(--turf);
   border: 1px solid var(--line);
@@ -3028,12 +3045,15 @@ input {
 .play-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pubnight-toggle {
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--turf);
   color: var(--muted);
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }

@@ -144,9 +144,9 @@ function PredictScreen() {
     <div className="predict">
       <div className={`lock-banner ${lock.done ? "is-locked" : ""}`}>
         {lock.done ? (
-          <span>🔒 Tips are in — your call is locked.</span>
+          <span>Tips are in · No going back now</span>
         ) : (
-          <span>⏳ Tips lock in <strong>{lockText}</strong> · {groupsDone}/12 groups tipped</span>
+          <span>Tips lock in <strong>{lockText}</strong></span>
         )}
       </div>
       <div className="segmented" role="tablist">
