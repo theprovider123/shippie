@@ -1,11 +1,14 @@
 <script lang="ts">
   import SavedManageSheet from './SavedManageSheet.svelte';
   import {
-    ToolTile,
-    launcherAppToToolTile,
+    ToolRow,
+    launcherAppToToolDisplay,
+    toolState,
   } from '$lib/components/tool-surface';
   import {
+    cachedSlugs,
     ensureAppOffline,
+    offlineStatuses,
     removeAppAndTrack,
   } from '$lib/stores/cached-slugs';
   import { removeSavedApp } from '$lib/stores/launcher-memory';
@@ -26,6 +29,8 @@
   let { apps }: Props = $props();
   let manageOpen = $state(false);
   const managedApps = $derived(apps);
+  const savedSlugs = $derived(new Set(managedApps.map((app) => app.slug)));
+  const EMPTY_SLUGS: ReadonlySet<string> = new Set();
 
   function onRemoveSaved(slug: string) {
     removeSavedApp(slug);
@@ -43,6 +48,22 @@
   function runHref(slug: string): string {
     return `/run/${encodeURIComponent(slug)}`;
   }
+
+  function downloadFor(slug: string) {
+    return $offlineStatuses[slug]?.state ?? ($cachedSlugs.has(slug) ? 'saved' : 'idle');
+  }
+
+  function stateFor(app: DockApp) {
+    return toolState({
+      slug: app.slug,
+      isRunning: false,
+      savedSlugs,
+      recentSlugs: EMPTY_SLUGS,
+      download: downloadFor(app.slug),
+      updateSeverity: null,
+      surface: 'dock',
+    });
+  }
 </script>
 
 {#if managedApps.length > 0}
@@ -59,26 +80,22 @@
       </button>
     </header>
 
-    <ul
-      class="rail"
-      aria-label="Saved tools"
-      class:single={managedApps.length === 1}
-    >
+    <ul class="saved-list" aria-label="Saved tools">
       {#each managedApps as app (app.slug)}
-        <li class="rail-item">
-          <ToolTile
-            app={launcherAppToToolTile(app)}
-            density="dock"
+        <li class="saved-list-item">
+          <ToolRow
+            app={launcherAppToToolDisplay(app)}
+            state={stateFor(app)}
             href={runHref(app.slug)}
-            pinned={true}
+            hideRelationship
           />
         </li>
       {/each}
       {#if managedApps.length > 2}
-        <li class="rail-item">
+        <li class="saved-list-item">
           <button
             type="button"
-            class="rail-manage"
+            class="saved-manage"
             aria-label="Manage all saved tools"
             onclick={() => (manageOpen = true)}
           >
@@ -136,45 +153,40 @@
     outline-offset: 2px;
     color: var(--text);
   }
-  .rail {
+  .saved-list {
     list-style: none;
     margin: 0;
-    display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    padding: 6px 0 10px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(to right, #000 92%, transparent);
-    mask-image: linear-gradient(to right, #000 92%, transparent);
-  }
-  .rail::-webkit-scrollbar { display: none; }
-  .rail.single {
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .rail-item {
-    flex: 0 0 auto;
-    width: 76px;
-    scroll-snap-align: start;
-  }
-  .rail-manage {
-    width: 76px;
     display: grid;
-    gap: 6px;
-    justify-items: center;
+    padding: 0;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+  .saved-list-item {
+    min-width: 0;
+  }
+  .saved-list-item:not(:last-child) {
+    border-bottom: 1px solid var(--border-light);
+  }
+  .saved-list-item :global(.row) {
+    border-bottom: 0;
+  }
+  .saved-manage {
+    width: 100%;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     color: var(--text-light);
     background: transparent;
     border: 0;
-    padding: 0;
+    padding: 8px 12px;
     cursor: pointer;
     font-family: inherit;
     transition: color 0.15s var(--ease-out);
   }
-  .rail-manage .manage-icon {
-    width: 66px;
-    height: 66px;
+  .saved-manage .manage-icon {
+    width: 44px;
+    height: 44px;
     display: inline-grid;
     place-items: center;
     border: 1px dashed var(--border);
@@ -183,27 +195,19 @@
     font-size: 22px;
     transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
   }
-  .rail-manage:hover { color: var(--text); }
-  .rail-manage:hover .manage-icon { border-color: var(--sunset); color: var(--text); }
-  .rail-manage:focus-visible .manage-icon {
+  .saved-manage:hover { color: var(--text); }
+  .saved-manage:hover .manage-icon { border-color: var(--sunset); color: var(--text); }
+  .saved-manage:focus-visible .manage-icon {
     outline: 2px solid var(--sunset);
     outline-offset: 3px;
   }
-  .rail-manage .manage-label {
+  .saved-manage .manage-label {
     font-family: var(--font-body);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.2;
-    text-align: center;
-    max-width: 76px;
+    text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  @container (max-width: 22rem) {
-    .rail-item { width: 74px; }
-    .rail-manage,
-    .rail-manage .manage-label { width: 74px; max-width: 74px; }
-    .rail-manage .manage-icon { width: 64px; height: 64px; font-size: 20px; }
   }
 </style>

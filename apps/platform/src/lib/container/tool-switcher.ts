@@ -1,4 +1,5 @@
 import type { RailGroups, RailTool } from './rail-groups';
+import { DRAWER_PER_SECTION } from '$lib/components/tool-surface/scale';
 
 export type ToolSwitcherSectionId = 'open' | 'saved' | 'recent' | 'results';
 
@@ -56,7 +57,7 @@ function section(
 }
 
 export function buildToolSwitcherSections(input: ToolSwitcherInput): ToolSwitcherSection[] {
-  const max = input.maxPerSection ?? 80;
+  const max = input.maxPerSection ?? DRAWER_PER_SECTION;
   const query = (input.query ?? '').trim();
   const switcherTools = uniqueBySlug([
     ...input.groups.open,

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { containerAppToToolTile, launcherAppToToolTile } from './adapters';
+import { containerAppToToolDisplay, launcherAppToToolDisplay } from './adapters';
 import type { ContainerApp } from '$lib/container/state';
 import { SHIPPIE_PERMISSIONS_SCHEMA } from '@shippie/app-package-contract';
 
-describe('launcherAppToToolTile', () => {
+describe('launcherAppToToolDisplay', () => {
   it('prefers tagline as blurb, falls back to description', () => {
     expect(
-      launcherAppToToolTile({
+      launcherAppToToolDisplay({
         slug: 'a',
         name: 'A',
         tagline: 'tag',
@@ -16,7 +16,7 @@ describe('launcherAppToToolTile', () => {
     ).toBe('tag');
 
     expect(
-      launcherAppToToolTile({
+      launcherAppToToolDisplay({
         slug: 'a',
         name: 'A',
         tagline: null,
@@ -27,7 +27,7 @@ describe('launcherAppToToolTile', () => {
   });
 
   it('treats absent badges as an empty array', () => {
-    const result = launcherAppToToolTile({
+    const result = launcherAppToToolDisplay({
       slug: 'a',
       name: 'A',
       themeColor: '#000',
@@ -37,7 +37,7 @@ describe('launcherAppToToolTile', () => {
   });
 });
 
-describe('containerAppToToolTile', () => {
+describe('containerAppToToolDisplay', () => {
   const baseContainerApp: ContainerApp = {
     id: 'app:tap',
     slug: 'tap',
@@ -60,19 +60,19 @@ describe('containerAppToToolTile', () => {
   };
 
   it('uses accent as themeColor and surfaces the glyph', () => {
-    const result = containerAppToToolTile(baseContainerApp);
+    const result = containerAppToToolDisplay(baseContainerApp);
     expect(result.themeColor).toBe('#cc4444');
     expect(result.glyph).toBe('⊕');
     expect(result.iconUrl).toBeNull();
   });
 
   it('propagates visibility into the tier field', () => {
-    expect(containerAppToToolTile(baseContainerApp).tier).toBe('private');
+    expect(containerAppToToolDisplay(baseContainerApp).tier).toBe('private');
     expect(
-      containerAppToToolTile({ ...baseContainerApp, visibility: 'public' }).tier,
+      containerAppToToolDisplay({ ...baseContainerApp, visibility: 'public' }).tier,
     ).toBe('public');
     expect(
-      containerAppToToolTile({ ...baseContainerApp, visibility: undefined }).tier,
+      containerAppToToolDisplay({ ...baseContainerApp, visibility: undefined }).tier,
     ).toBe('public');
   });
 });

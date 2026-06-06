@@ -5,7 +5,7 @@ import {
   titleCap,
 } from '$lib/marketplace/display-text';
 import { connectionBadgesFromKind } from '$lib/marketplace/connection-badges';
-import type { ToolTier, ToolTileApp, ToolTileDisplay } from './types';
+import type { ToolTier, ToolDisplay, ToolDisplayFields } from './types';
 
 interface LauncherShape {
   slug: string;
@@ -25,7 +25,7 @@ function buildDisplay(
   blurb: string | null,
   category: string | null,
   kind: import('$lib/types/app-kind').AppKind | null,
-): ToolTileDisplay {
+): ToolDisplayFields {
   const safeName = titleCap(rawName);
   return {
     safeName,
@@ -36,12 +36,12 @@ function buildDisplay(
 }
 
 /**
- * Marketplace catalogue row → ToolTileApp. Used by the homepage,
+ * Marketplace catalogue row → ToolDisplay. Used by the homepage,
  * search, and category surfaces. Display fields are precomputed so the
  * 60+ tiles on the launcher don't each re-run the same string work on
  * every reactive tick.
  */
-export function launcherAppToToolTile(app: LauncherShape): ToolTileApp {
+export function launcherAppToToolDisplay(app: LauncherShape): ToolDisplay {
   const blurb = app.tagline ?? app.description ?? null;
   const category = app.category ?? null;
   const kind = app.kind ?? null;
@@ -60,12 +60,12 @@ export function launcherAppToToolTile(app: LauncherShape): ToolTileApp {
 }
 
 /**
- * Curated container row → ToolTileApp. Container apps carry an emoji
+ * Curated container row → ToolDisplay. Container apps carry an emoji
  * glyph + accent colour rather than a raster icon, so we surface the
  * glyph and use `accent` as the theme colour so IconOrMonogram still
  * has a sensible square fallback.
  */
-export function containerAppToToolTile(app: ContainerApp): ToolTileApp {
+export function containerAppToToolDisplay(app: ContainerApp): ToolDisplay {
   const tier = (app.visibility ?? 'public') as ToolTier;
   const blurb = app.description ?? null;
   const category = app.category ?? null;

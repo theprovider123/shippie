@@ -28,8 +28,9 @@ import {
   type LauncherPhase,
   type LauncherRowShape,
 } from '$lib/launcher';
+import { TOOLS_PAGE_SIZE } from '$lib/components/tool-surface/scale';
 
-const PER_PAGE = 48;
+const PER_PAGE = TOOLS_PAGE_SIZE;
 
 const LAUNCHER_FEATURED_SLUGS_BY_PHASE: Record<LauncherPhase, readonly string[]> = {
   prelaunch: PUBLIC_FLAGSHIP_SLUGS,

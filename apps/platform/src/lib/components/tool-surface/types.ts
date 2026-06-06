@@ -1,16 +1,10 @@
 /**
- * ToolTile — unified primitive for every Shippie tool surface.
+ * Static tool display contract shared by ToolRow and ToolCard.
  *
- * Operating model: every tool surface (full launcher, in-app drawer,
- * dock rail) renders the same primitive at a different density. The
- * launcher is dark, the drawer is cream — but both inherit those
- * palettes from the parent shell via CSS tokens, so the primitive
- * itself is palette-agnostic.
- *
- * Data sources differ — the marketplace home renders rows from a SQL
- * query (`LauncherApp`-shaped), the container drawer renders curated
- * `ContainerApp` rows from `lib/container/state.ts`. The adapters in
- * `./adapters.ts` flatten both into this normalised shape.
+ * Data sources differ — the marketplace renders SQL-backed launcher
+ * rows, while the Dock renders curated ContainerApp rows. The adapters
+ * flatten both into this normalised shape and cache expensive display
+ * strings once per app.
  */
 
 import type { PublicCapabilityBadge } from '$server/marketplace/capability-badges';
@@ -23,35 +17,18 @@ import type { AppKind } from '$lib/types/app-kind';
 export type ToolTier = 'private' | 'team' | 'local' | 'unlisted' | 'public';
 
 /**
- * Drawer-only runtime state. Tells the user which tile is the
- * currently-focused tool versus which other tools are warm but in the
- * background.
- */
-export type ToolRuntimeState = 'idle' | 'current' | 'live' | 'opening';
-
-/**
- * Density picks the visual treatment.
- *  - `dock`: 66px square, single-line name. Saved rail on the homepage.
- *  - `drawer`: 52px icon + name + one small status line + pin star.
- *    Compressed row inside the focused-mode drawer.
- *  - `card`: full launcher card with eyebrow, blurb, action buttons.
- *    The marketplace home, search results, and category pages.
- */
-export type ToolDensity = 'dock' | 'drawer' | 'card';
-
-/**
  * Precomputed display fields. The adapters do the work once per app so
- * 60+ tiles don't each re-run titleCap / displayCategory /
+ * 60+ tools don't each re-run titleCap / displayCategory /
  * normaliseBlurb / connectionBadgesFromKind on every reactive tick.
  */
-export interface ToolTileDisplay {
+export interface ToolDisplayFields {
   safeName: string;
   categoryLabel: string;
   blurb: string;
   connectionBadges: readonly import('$lib/marketplace/connection-badges').ConnectionDisclosureBadge[];
 }
 
-export interface ToolTileApp {
+export interface ToolDisplay {
   slug: string;
   name: string;
   blurb?: string | null;
@@ -65,21 +42,12 @@ export interface ToolTileApp {
   firstPartySigned?: boolean;
   badges?: PublicCapabilityBadge[];
   /**
-   * Precomputed display strings. Optional — when omitted, ToolTile
-   * falls back to computing them inline. Adapters fill this in so tiles
-   * read from cache instead of recomputing per render.
+   * Precomputed display strings. Optional — when omitted, primitives
+   * fall back to computing them inline. Adapters fill this in so rows
+   * and cards read from cache instead of recomputing per render.
    */
-  display?: ToolTileDisplay;
+  display?: ToolDisplayFields;
 }
-
-/**
- * Compatibility alias for the harmonization work. `ToolDisplay` is the
- * forward name for the static, adapter-cached display model. New code
- * uses `ToolDisplay`; the alias keeps existing `ToolTileApp` call sites
- * compiling. Drop the alias once `ToolTile.svelte` is deleted.
- * See docs/superpowers/specs/2026-06-04-dock-tools-drawer-harmonization-design.md §3.1.
- */
-export type ToolDisplay = ToolTileApp;
 
 // ---------------------------------------------------------------------------
 // Dynamic tool state (harmonization contract §3) — reactive, per-device.

@@ -2,8 +2,10 @@
   import LauncherCard from '$lib/components/marketplace/LauncherCard.svelte';
   import LauncherCardV2 from '$lib/components/marketplace/LauncherCardV2.svelte';
   import {
-    ToolTile,
-    launcherAppToToolTile,
+    ToolCard,
+    ToolRow,
+    launcherAppToToolDisplay,
+    toolState,
   } from '$lib/components/tool-surface';
   import {
     displayCategory,
@@ -13,12 +15,25 @@
   } from '$lib/marketplace/display-text';
   import { LAB_FIXTURES } from './fixtures';
 
-  let variant = $state<'v1' | 'v2' | 'v3' | 'split'>('split');
+  let variant = $state<'v1' | 'v2' | 'primitives' | 'split'>('split');
   let containerWidth = $state<'narrow' | 'standard' | 'wide'>('standard');
 
   const widthPx = $derived(
     containerWidth === 'narrow' ? 280 : containerWidth === 'wide' ? 520 : 360,
   );
+  const EMPTY_SLUGS: ReadonlySet<string> = new Set();
+
+  function previewState(slug: string, pinned: boolean, recentLabel: string) {
+    return toolState({
+      slug,
+      isRunning: false,
+      savedSlugs: pinned ? new Set([slug]) : EMPTY_SLUGS,
+      recentSlugs: recentLabel ? new Set([slug]) : EMPTY_SLUGS,
+      download: pinned ? 'saved' : 'idle',
+      updateSeverity: null,
+      surface: 'tools',
+    });
+  }
 </script>
 
 <svelte:head>
@@ -40,7 +55,7 @@
         <legend>Variant</legend>
         <label><input type="radio" bind:group={variant} value="v1" /> v1 (legacy)</label>
         <label><input type="radio" bind:group={variant} value="v2" /> v2 (interim)</label>
-        <label><input type="radio" bind:group={variant} value="v3" /> v3 (ToolTile)</label>
+        <label><input type="radio" bind:group={variant} value="primitives" /> primitives</label>
         <label><input type="radio" bind:group={variant} value="split" /> split (all)</label>
       </fieldset>
       <fieldset>
@@ -60,6 +75,8 @@
       description: normaliseBlurb(fixture.app.description),
       category: displayCategory(fixture.app.category),
     }}
+    {@const primitiveApp = launcherAppToToolDisplay(displayed)}
+    {@const primitiveState = previewState(displayed.slug, fixture.pinned, fixture.recentLabel || '')}
     <section class="case">
       <header class="case-head">
         <h2>{fixture.label}</h2>
@@ -102,36 +119,23 @@
             </div>
           </figure>
         {/if}
-        {#if variant === 'v3' || variant === 'split'}
-          <figure class="frame v3" style="--frame-w: {widthPx}px">
-            <figcaption>v3 — ToolTile (card density)</figcaption>
+        {#if variant === 'primitives' || variant === 'split'}
+          <figure class="frame primitive-card" style="--frame-w: {widthPx}px">
+            <figcaption>primitive — ToolCard</figcaption>
             <div class="frame-body">
-              <ToolTile
-                app={launcherAppToToolTile(displayed)}
-                density="card"
-                pinned={fixture.pinned}
-                recentLabel={fixture.recentLabel || ''}
+              <ToolCard
+                app={primitiveApp}
+                state={primitiveState}
               />
             </div>
           </figure>
-          <figure class="frame v3-drawer" style="--frame-w: {widthPx}px">
-            <figcaption>v3 — ToolTile (drawer density)</figcaption>
+          <figure class="frame primitive-row" style="--frame-w: {widthPx}px">
+            <figcaption>primitive — ToolRow</figcaption>
             <div class="frame-body cream">
-              <ToolTile
-                app={launcherAppToToolTile(displayed)}
-                density="drawer"
-                pinned={fixture.pinned}
-                runtimeState="current"
-              />
-            </div>
-          </figure>
-          <figure class="frame v3-dock" style="--frame-w: 120px">
-            <figcaption>v3 — ToolTile (dock)</figcaption>
-            <div class="frame-body">
-              <ToolTile
-                app={launcherAppToToolTile(displayed)}
-                density="dock"
-                pinned={fixture.pinned}
+              <ToolRow
+                app={primitiveApp}
+                state={primitiveState}
+                caption={fixture.recentLabel || ''}
               />
             </div>
           </figure>

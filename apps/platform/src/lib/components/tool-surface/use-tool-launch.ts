@@ -1,13 +1,12 @@
 /**
- * use-tool-launch — the shared launch path extracted from ToolTile.svelte
+ * use-tool-launch — the shared launch path for ToolRow and ToolCard
  * so ToolRow and ToolCard inherit identical warm-launch, prefetch, and
  * hard-fallback behavior (spec §5). The bug-prone decisions live in the
  * pure helpers below and are unit-tested exhaustively; `createToolLaunch`
  * is thin glue over them that owns the prewarm flag + fallback timer.
  *
- * Behavior is a faithful port of ToolTile's warmLaunch /
- * scheduleHardLaunchFallback / launchAndRemember — do not change timings
- * or guards without updating the tests.
+ * Behavior preserves the legacy warmLaunch / scheduleHardLaunchFallback /
+ * launchAndRemember timings — do not change them without updating tests.
  */
 
 /** The SPA hard-launch fallback fires this long after a plain click if the
@@ -68,7 +67,7 @@ export function prefetchTargets(
  * Append a `<link rel="prefetch">` for a target, once. The href is
  * CSS-escaped before it enters the dedupe selector so a URL containing
  * `"` can't throw SyntaxError or widen the match. SSR-safe (no-op when
- * there is no document). Ported verbatim from ToolTile.
+ * there is no document).
  */
 export function addPrefetchLink(target: string): void {
   if (typeof document === 'undefined') return;

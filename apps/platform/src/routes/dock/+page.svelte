@@ -127,7 +127,7 @@
   import {
     ToolRow,
     toolState,
-    type ToolTileApp,
+    type ToolDisplay,
   } from '$lib/components/tool-surface';
   import {
     hydrateLauncherMemory,
@@ -845,7 +845,7 @@
     ]).size,
   );
 
-  function railToolToTile(tool: RailTool): ToolTileApp {
+  function railToolToTile(tool: RailTool): ToolDisplay {
     return {
       slug: tool.slug,
       name: tool.name,

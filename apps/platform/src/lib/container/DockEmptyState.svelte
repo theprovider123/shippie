@@ -6,8 +6,9 @@
 -->
 <script lang="ts">
   import {
-    ToolTile,
-    containerAppToToolTile,
+    ToolRow,
+    containerAppToToolDisplay,
+    toolState,
   } from '$lib/components/tool-surface';
   import type { ContainerApp } from './state';
 
@@ -17,6 +18,19 @@
     onOpen: (app: ContainerApp) => void;
   }
   let { starters, totalCount, onOpen }: Props = $props();
+  const EMPTY_SLUGS: ReadonlySet<string> = new Set();
+
+  function stateFor(app: ContainerApp) {
+    return toolState({
+      slug: app.slug,
+      isRunning: false,
+      savedSlugs: EMPTY_SLUGS,
+      recentSlugs: EMPTY_SLUGS,
+      download: undefined,
+      updateSeverity: null,
+      surface: 'dock',
+    });
+  }
 </script>
 
 <div class="dock-empty">
@@ -30,11 +44,11 @@
     <p class="starters-label">Start with these</p>
     <div class="starters">
       {#each starters as app (app.slug)}
-        <ToolTile
-          app={containerAppToToolTile(app)}
-          density="drawer"
-          captionLabel={app.category ?? 'Tool'}
-          noActions
+        <ToolRow
+          app={containerAppToToolDisplay(app)}
+          state={stateFor(app)}
+          caption={app.category ?? 'Tool'}
+          hideRelationship
           onOpen={() => onOpen(app)}
         />
       {/each}
@@ -52,18 +66,11 @@
   .hero-sub { font-size: 0.8rem; color: var(--text-muted-warm, #8b847a); margin: var(--space-xs) 0 0; }
   .starters-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 0; }
   .starters {
-    --dock-tool-row-height: 64px;
     display: grid;
     border: 1px solid var(--border-light);
     background: var(--surface);
   }
-  .starters :global(.tile-drawer) {
-    min-height: var(--dock-tool-row-height);
-    border: 0;
-    border-bottom: 1px solid var(--border-light);
-    background: transparent;
-  }
-  .starters :global(.tile-drawer:last-child) {
+  .starters :global(.row:last-child) {
     border-bottom: 0;
   }
   .browse-all {

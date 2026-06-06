@@ -18,7 +18,7 @@
   import {
     ToolRow,
     toolState,
-    type ToolTileApp,
+    type ToolDisplay,
   } from '$lib/components/tool-surface';
   import type { UpdateCard } from '$lib/container/state';
   import type { RailGroups, RailTool } from '$lib/container/rail-groups';
@@ -101,7 +101,7 @@
     return updateCards.find((card) => card.app.slug === tool.slug) ?? null;
   }
 
-  function railToolToTile(tool: RailTool): ToolTileApp {
+  function railToolToTile(tool: RailTool): ToolDisplay {
     return {
       slug: tool.slug,
       name: tool.name,

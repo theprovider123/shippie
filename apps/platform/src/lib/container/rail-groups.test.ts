@@ -30,7 +30,7 @@ describe('buildRailGroups', () => {
     expect(g.recent).toEqual([]);
   });
 
-  it('Recent excludes saved + open, sorts newest-first, caps at 5', () => {
+  it('Recent excludes saved + open, sorts newest-first, and respects the cap', () => {
     const recents = [
       { slug: 'palate', lastOpened: '2026-06-01T08:00:00Z' }, // saved -> excluded
       { slug: 'chiwit', lastOpened: '2026-06-01T07:00:00Z' },

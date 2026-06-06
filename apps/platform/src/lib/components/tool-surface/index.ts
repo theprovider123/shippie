@@ -1,8 +1,6 @@
-export { default as ToolTile } from './ToolTile.svelte';
 export { default as ToolRow } from './ToolRow.svelte';
 export { default as ToolCard } from './ToolCard.svelte';
-export { default as ToolSection } from './ToolSection.svelte';
-export { launcherAppToToolTile, containerAppToToolTile } from './adapters';
+export { launcherAppToToolDisplay, containerAppToToolDisplay } from './adapters';
 export {
   toolState,
   offlineStateFromDownload,
@@ -28,10 +26,8 @@ export {
   TOOLS_PAGE_SIZE,
 } from './scale';
 export type {
-  ToolTileApp,
   ToolDisplay,
-  ToolDensity,
-  ToolRuntimeState,
+  ToolDisplayFields,
   ToolTier,
   Relationship,
   OfflineState,

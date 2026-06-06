@@ -9,8 +9,9 @@
   } from '$lib/offline/download-app';
   import { cachedSlugs, offlineStatuses } from '$lib/stores/cached-slugs';
   import {
-    ToolTile,
-    launcherAppToToolTile,
+    ToolRow,
+    launcherAppToToolDisplay,
+    toolState,
   } from '$lib/components/tool-surface';
 
   interface SheetApp {
@@ -34,6 +35,8 @@
   let persisted = $state(false);
   let pinning = $state(false);
   const savedBytes = $derived(apps.reduce((sum, app) => sum + bytesFor(app.slug), 0));
+  const savedSlugs = $derived(new Set(apps.map((app) => app.slug)));
+  const EMPTY_SLUGS: ReadonlySet<string> = new Set();
 
   onMount(() => {
     void refreshStorageEstimate();
@@ -68,6 +71,22 @@
     return describeOfflineHealth($offlineStatuses[slug], {
       cached: $cachedSlugs.has(slug),
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
+    });
+  }
+
+  function downloadFor(slug: string) {
+    return $offlineStatuses[slug]?.state ?? ($cachedSlugs.has(slug) ? 'saved' : 'idle');
+  }
+
+  function stateFor(app: SheetApp) {
+    return toolState({
+      slug: app.slug,
+      isRunning: false,
+      savedSlugs,
+      recentSlugs: EMPTY_SLUGS,
+      download: downloadFor(app.slug),
+      updateSeverity: null,
+      surface: 'drawer',
     });
   }
 </script>
@@ -118,38 +137,20 @@
     <ul class="list" role="list">
       {#each apps as app (app.slug)}
         {@const health = healthFor(app.slug)}
-        <li class="row">
-          <div class="row-tile">
-            <ToolTile
-              app={launcherAppToToolTile(app)}
-              density="drawer"
+        <li class="list-row">
+          <div class="row-main">
+            <ToolRow
+              app={launcherAppToToolDisplay(app)}
+              state={stateFor(app)}
               href={`/run/${encodeURIComponent(app.slug)}`}
-              captionLabel={`${health.label}${bytesFor(app.slug) > 0 ? ` · ${formatBytes(bytesFor(app.slug))}` : ''}`}
-              noActions
+              caption={`${health.label}${bytesFor(app.slug) > 0 ? ` · ${formatBytes(bytesFor(app.slug))}` : ''}`}
+              hideRelationship
               onOpen={onClose}
+              onSave={() => onSaveOffline(app.slug)}
+              onRemove={() => onRemoveSaved(app.slug)}
             />
             <small class:warn={health.state !== 'ready'}>{health.detail}</small>
           </div>
-          <span class="row-actions">
-            <button
-              type="button"
-              class="row-btn"
-              aria-label={`Refresh offline copy of ${app.name}`}
-              title="Refresh offline copy"
-              onclick={() => onSaveOffline(app.slug)}
-            >
-              ↻
-            </button>
-            <button
-              type="button"
-              class="row-btn danger"
-              aria-label={`Remove ${app.name} from Dock and delete its offline copy`}
-              title="Remove from Dock"
-              onclick={() => onRemoveSaved(app.slug)}
-            >
-              ×
-            </button>
-          </span>
         </li>
       {/each}
     </ul>
@@ -267,54 +268,26 @@
     padding: 0;
     border-top: 1px solid var(--border-light);
   }
-  .row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    gap: 8px;
-    align-items: center;
+  .list-row {
+    display: block;
     border-bottom: 1px solid var(--border-light);
   }
-  .row-tile {
+  .list-row :global(.row) {
+    border-bottom: 0;
+  }
+  .row-main {
     min-width: 0;
     display: grid;
     gap: 2px;
     padding: 4px 0;
   }
-  .row-tile small {
+  .row-main small {
     color: var(--text-light);
     font-size: 11px;
     line-height: 1.3;
     padding-left: 2px;
   }
-  .row-tile small.warn {
+  .row-main small.warn {
     color: var(--marigold);
   }
-  .row-actions {
-    display: inline-flex;
-    gap: 6px;
-  }
-  .row-btn {
-    width: var(--touch-min);
-    height: var(--touch-min);
-    display: inline-grid;
-    place-items: center;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-light);
-    font-family: var(--font-mono);
-    font-size: 0.95rem;
-    cursor: pointer;
-  }
-  .row-btn:hover { color: var(--text); border-color: var(--sunset); }
-  .row-btn:focus-visible {
-    outline: 2px solid var(--sunset);
-    outline-offset: 2px;
-    color: var(--text);
-  }
-  .row-btn.danger {
-    color: var(--marigold);
-    border-color: rgba(232, 197, 71, 0.4);
-    background: rgba(232, 197, 71, 0.06);
-  }
-  .row-btn.danger:hover { color: var(--sunset); border-color: var(--sunset); }
 </style>

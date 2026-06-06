@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
   import Sheet from '$lib/components/ui/Sheet.svelte';
-  import { ToolRow, toolState, type ToolTileApp } from '$lib/components/tool-surface';
+  import { ToolRow, toolState, type ToolDisplay } from '$lib/components/tool-surface';
   import type { RailGroups, RailTool } from './rail-groups';
   import { buildToolSwitcherSections } from './tool-switcher';
 
@@ -19,7 +19,7 @@
   let { open, groups, allApps, onOpen, onClose, onCloseTool = undefined }: Props = $props();
 
   const EMPTY_SLUGS: ReadonlySet<string> = new Set();
-  function railToolToTile(tool: RailTool): ToolTileApp {
+  function railToolToTile(tool: RailTool): ToolDisplay {
     return {
       slug: tool.slug,
       name: tool.name,

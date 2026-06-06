@@ -140,31 +140,40 @@ describe('showcase catalog drift check', () => {
       join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'marketplace', 'SavedDock.svelte'),
       'utf8',
     );
-    const savedDockTiles = [...savedDockSource.matchAll(/<ToolTile[\s\S]*?\/>/g)].map((match) => match[0]);
-    expect(savedDockTiles.length).toBeGreaterThan(0);
-    for (const tile of savedDockTiles) {
-      expect(tile, 'saved dock ToolTile must navigate to its /run route').toContain('href={runHref(app.slug)}');
+    const savedDockRows = [...savedDockSource.matchAll(/<ToolRow[\s\S]*?\/>/g)].map((match) => match[0]);
+    expect(savedDockRows.length).toBeGreaterThan(0);
+    for (const row of savedDockRows) {
+      expect(row, 'saved dock ToolRow must navigate to its /run route').toContain('href={runHref(app.slug)}');
     }
   });
 
   test('card launch controls keep a clickable box', () => {
-    const tileSource = readFileSync(
-      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'ToolTile.svelte'),
+    const cardSource = readFileSync(
+      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'ToolCard.svelte'),
       'utf8',
     );
-    expect(tileSource).not.toMatch(/\\.tile-card \\.tile-launch\\s*{[^}]*display:\\s*contents/s);
+    expect(cardSource).not.toMatch(/\\.card-open\\s*{[^}]*display:\\s*contents/s);
   });
 
-  test('tool tiles can recover from stalled enhanced navigation', () => {
-    const tileSource = readFileSync(
-      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'ToolTile.svelte'),
+  test('tool primitives can recover from stalled enhanced navigation', () => {
+    const launchSource = readFileSync(
+      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'use-tool-launch.ts'),
       'utf8',
     );
-    expect(tileSource).toContain('scheduleHardLaunchFallback(event)');
-    expect(tileSource).toContain('window.location.assign(target)');
-    expect(tileSource).toContain('onpointerdown={warmLaunch}');
-    expect(tileSource).toContain('ontouchstart={warmLaunch}');
-    expect(tileSource).not.toContain('defaultPrevented');
+    const rowSource = readFileSync(
+      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'ToolRow.svelte'),
+      'utf8',
+    );
+    const cardSource = readFileSync(
+      join(REPO_ROOT, 'apps', 'platform', 'src', 'lib', 'components', 'tool-surface', 'ToolCard.svelte'),
+      'utf8',
+    );
+    expect(launchSource).toContain('scheduleHardLaunchFallback(event)');
+    expect(launchSource).toContain('window.location.assign(target)');
+    expect(rowSource).toContain('onpointerdown={launch.warmLaunch}');
+    expect(rowSource).toContain('ontouchstart={launch.warmLaunch}');
+    expect(cardSource).toContain('onpointerdown={launch.warmLaunch}');
+    expect(launchSource).not.toContain('defaultPrevented');
   });
 });
 

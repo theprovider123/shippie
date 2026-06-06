@@ -5,7 +5,7 @@
   import {
     ToolCard,
     ToolRow,
-    launcherAppToToolTile,
+    launcherAppToToolDisplay,
     toolState,
   } from '$lib/components/tool-surface';
   import SearchBar from '$lib/components/marketplace/SearchBar.svelte';
@@ -236,7 +236,7 @@
             <li>
               {#if useRows}
                 <ToolRow
-                  app={launcherAppToToolTile(app)}
+                  app={launcherAppToToolDisplay(app)}
                   state={stateFor(app)}
                   href={runHref(app.slug)}
                   intent="launch"
@@ -245,7 +245,7 @@
                 />
               {:else}
                 <ToolCard
-                  app={launcherAppToToolTile(app)}
+                  app={launcherAppToToolDisplay(app)}
                   state={stateFor(app)}
                   href={runHref(app.slug)}
                   intent="launch"
@@ -273,7 +273,7 @@
                 <li>
                   {#if useRows}
                     <ToolRow
-                      app={launcherAppToToolTile(app)}
+                      app={launcherAppToToolDisplay(app)}
                       state={stateFor(app)}
                       href={runHref(app.slug)}
                       intent="launch"
@@ -282,7 +282,7 @@
                     />
                   {:else}
                     <ToolCard
-                      app={launcherAppToToolTile(app)}
+                      app={launcherAppToToolDisplay(app)}
                       state={stateFor(app)}
                       href={runHref(app.slug)}
                       intent="launch"
