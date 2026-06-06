@@ -11,6 +11,7 @@ import {
 } from "../data/tournament";
 import { hasResults, scorePrediction } from "../lib/scoring";
 import { landed } from "../lib/outsidebet";
+import { sampleNudge } from "../lib/notifications";
 import { useStore } from "../state";
 import { Flag, pad2, teamVars, useCountdown } from "../ui/atoms";
 import { WatchFrom } from "./WatchFrom";
@@ -138,7 +139,7 @@ export function Profile() {
         <div className="settings-row" onClick={toggleNotify} role="button" tabIndex={0}>
           <div>
             <strong>Match nudges</strong>
-            <small>{notify ? "On — we'll give you a shout before your nation kicks off." : "Off — turn on for kick-off reminders. No spam, just banter."}</small>
+            <small>{notify ? `On — e.g. "${sampleNudge(streak)}"` : "Off — turn on for kick-off reminders. No spam, just banter."}</small>
           </div>
           <span className={`switch${notify ? " is-on" : ""}`} aria-hidden />
         </div>

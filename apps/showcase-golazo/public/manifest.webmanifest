@@ -1,7 +1,7 @@
 {
   "name": "Golazo — Call the World Cup",
   "short_name": "Golazo",
-  "description": "Call the 2026 World Cup. Build your bracket, share it by link, settle it with your mates. No login. Works offline.",
+  "description": "Call the 2026 World Cup. Make your tips, share them by link, settle it with your lot. No login. Works offline.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
