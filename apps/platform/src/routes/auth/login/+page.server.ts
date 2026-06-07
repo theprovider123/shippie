@@ -22,6 +22,19 @@ import { mintVerificationToken } from '$server/auth/verification-tokens';
 import { sendMagicLink } from '$server/auth/email';
 import { getAuthSecret } from '$server/auth/env';
 import { checkMagicLinkRateLimit } from '$server/auth/rate-limit';
+import { createLucia } from '$server/auth/lucia';
+import { ensureDemoSignIn } from '$server/cloudlet/demo-login';
+
+// Dev / non-prod demo entry — runtime-gated on SHIPPIE_ENV. The production
+// worker sets SHIPPIE_ENV="production" (wrangler.toml [vars]); local dev sets
+// "development" (.dev.vars). We use a RUNTIME env gate (not compile-time
+// import.meta.env.DEV) so the demo works under `wrangler dev` running the
+// built worker — which is the only local mode that exports the SchoolWorkspace
+// Durable Object the demo needs. NEVER true when SHIPPIE_ENV is production.
+function demoEnabled(env: { SHIPPIE_ENV?: string } | undefined): boolean {
+  const flavor = env?.SHIPPIE_ENV ?? 'development';
+  return flavor !== 'production' && flavor !== 'canary';
+}
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
   // Already signed in? Bounce to the return target or home.
@@ -36,6 +49,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
     googleEnabled: env ? isGoogleConfigured(env) : false,
     microsoftEnabled: env ? isMicrosoftConfigured(env) : false,
     devMode: env?.SHIPPIE_ENV !== 'production',
+    demoEnabled: demoEnabled(env),
   };
 };
 
@@ -93,6 +107,38 @@ export const actions: Actions = {
     }
 
     return { success: true, email };
+  },
+
+  // Dev-only demo entry — "sign in as Sarah Mitchell". Provisions + seeds the
+  // demo school (idempotent), grants the demo teacher membership, mints a Lucia
+  // session, and lands on Today. Hard-gated: production builds compile DEMO_ENABLED
+  // to false and the SHIPPIE_ENV check is a second guard.
+  demo: async ({ platform, cookies }) => {
+    if (!demoEnabled(platform?.env)) {
+      return fail(403, { error: 'Demo sign-in is not available.' });
+    }
+    if (!platform?.env.DB) return fail(500, { error: 'Database unavailable.' });
+    if (!platform.env.SCHOOL_WORKSPACE) {
+      return fail(500, { error: 'School workspace binding unavailable (run via wrangler/vite dev with platformProxy).' });
+    }
+
+    let result;
+    try {
+      result = await ensureDemoSignIn({
+        d1: platform.env.DB,
+        schoolWorkspaceNs: platform.env.SCHOOL_WORKSPACE,
+      });
+    } catch (err) {
+      console.error('[auth] demo sign-in failed', err);
+      return fail(500, { error: 'Could not start the demo. Check the server logs.' });
+    }
+
+    const lucia = createLucia(platform.env.DB, platform.env);
+    const session = await lucia.createSession(result.userId, {});
+    const cookie = lucia.createSessionCookie(session.id);
+    cookies.set(cookie.name, cookie.value, { path: '.', ...cookie.attributes });
+
+    throw redirect(303, '/uniti');
   },
 
   github: async ({ platform, cookies, url }) => {
