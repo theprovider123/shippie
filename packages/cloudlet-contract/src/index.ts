@@ -4,3 +4,4 @@ export * from './provisioning';
 export * from './rbac';
 export * from './invites';
 export * from './sync';
+export * from './ai';

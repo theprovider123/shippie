@@ -11,8 +11,10 @@ declare module 'bun:test' {
     toBeTruthy: () => R;
     toBeFalsy: () => R;
     toContain: (expected: unknown) => R;
+    toHaveLength: (expected: number) => R;
     toMatchObject: (expected: unknown) => R;
     toThrow: (message?: string | RegExp) => R;
+    readonly not: Matchers<R>;
   }
   export function expect<T = unknown>(value: T): Matchers<void>;
 }
