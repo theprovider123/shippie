@@ -27,6 +27,8 @@ export interface WrapperEnv {
   ASSETS?: { fetch: typeof fetch };
   CACHE: KVNamespace;
   SIGNAL_ROOM?: DurableObjectNamespace;
+  // Uniti Cloudlet per-school private workspace DO.
+  SCHOOL_WORKSPACE?: DurableObjectNamespace;
   SHIPPIE_ENV: string;
   PUBLIC_ORIGIN: string;
   SEALED_DOCS_ENABLED?: string;

@@ -49,6 +49,9 @@ declare global {
         CACHE: KVNamespace;
         // SIGNAL_ROOM lands in Phase 6 alongside the proximity DO port.
         SIGNAL_ROOM?: DurableObjectNamespace;
+        // SCHOOL_WORKSPACE — Uniti Cloudlet per-school private workspace DO
+        // (one DO per provisioned school instance, embedded SQLite).
+        SCHOOL_WORKSPACE?: DurableObjectNamespace;
         SHIPPIE_ENV: string;
         PUBLIC_ORIGIN: string;
         // Phase 3 secrets — set via `wrangler secret put`.

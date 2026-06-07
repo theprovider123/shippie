@@ -83,9 +83,21 @@ deleted_classes = ["SignalRoom"]
 tag = "v3"
 new_sqlite_classes = ["SignalRoom"]
 
+# Uniti Cloudlet (Phase 1A) — SchoolWorkspace is the per-school private
+# workspace DO with embedded SQLite (one DO per provisioned school
+# instance, keyed by the immutable instance id). SQLite-backed, so it
+# needs new_sqlite_classes.
+[[migrations]]
+tag = "v-uniti-1"
+new_sqlite_classes = ["SchoolWorkspace"]
+
 [[durable_objects.bindings]]
 name = "SIGNAL_ROOM"
 class_name = "SignalRoom"
+
+[[durable_objects.bindings]]
+name = "SCHOOL_WORKSPACE"
+class_name = "SchoolWorkspace"
 
 [vars]
 SHIPPIE_ENV = "production"

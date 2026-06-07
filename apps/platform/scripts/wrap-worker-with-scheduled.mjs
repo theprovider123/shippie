@@ -34,6 +34,8 @@ const cronEntry = resolve(root, 'src/lib/server/cron/index.ts');
 const cronOut = resolve(dest, '_cron.js');
 const proximityEntry = resolve(root, 'src/lib/server/proximity/signal-room.ts');
 const proximityOut = resolve(dest, '_proximity.js');
+const cloudletEntry = resolve(root, 'src/lib/server/cloudlet/school-workspace.ts');
+const cloudletOut = resolve(dest, '_cloudlet.js');
 
 if (!existsSync(original)) {
   console.error(`[wrap-worker] expected ${original} — did vite build run?`);
@@ -111,6 +113,7 @@ async function bundleEntry(entry, outName) {
 
 await bundleEntry(cronEntry, '_cron.js');
 await bundleEntry(proximityEntry, '_proximity.js');
+await bundleEntry(cloudletEntry, '_cloudlet.js');
 
 if (!existsSync(cronOut) || statSync(cronOut).size === 0) {
   console.error(`[wrap-worker] cron bundle missing or empty at ${cronOut}`);
@@ -118,6 +121,10 @@ if (!existsSync(cronOut) || statSync(cronOut).size === 0) {
 }
 if (!existsSync(proximityOut) || statSync(proximityOut).size === 0) {
   console.error(`[wrap-worker] proximity bundle missing or empty at ${proximityOut}`);
+  process.exit(1);
+}
+if (!existsSync(cloudletOut) || statSync(cloudletOut).size === 0) {
+  console.error(`[wrap-worker] cloudlet bundle missing or empty at ${cloudletOut}`);
   process.exit(1);
 }
 
@@ -128,6 +135,7 @@ const wrapper = `// SHIPPIE_CRON_WRAPPER_V1
 import sveltekit from './_worker.sveltekit.js';
 import { handleScheduled } from './_cron.js';
 export { SignalRoom } from './_proximity.js';
+export { SchoolWorkspace } from './_cloudlet.js';
 
 export default {
   fetch: (req, env, ctx) => sveltekit.fetch(req, env, ctx),
