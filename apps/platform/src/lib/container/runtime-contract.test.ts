@@ -219,6 +219,18 @@ describe('container runtime contracts', () => {
     expect(buildUpdateCard(refreshedApp, receipt)).toBeNull();
   });
 
+  test('version-only refreshes are silent system plumbing', () => {
+    const oldApp = appWithNetwork(['api.example.com']);
+    const receipt = createReceiptFor(oldApp);
+    const refreshedApp: ContainerApp = {
+      ...oldApp,
+      version: '2',
+      packageHash: `sha256:${'9'.repeat(64)}`,
+    };
+
+    expect(buildUpdateCard(refreshedApp, receipt)).toBeNull();
+  });
+
   test('same-version access changes still require review', () => {
     const oldApp = appWithNetwork(['api.old.example']);
     const receipt = createReceiptFor(oldApp);

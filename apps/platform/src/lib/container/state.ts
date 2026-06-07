@@ -1407,7 +1407,6 @@ export function buildUpdateCard(
 
 export function isUserVisibleUpdate(card: UpdateCard): boolean {
   const materialChange =
-    card.versionChanged ||
     card.permissionsChanged ||
     card.kindChanged ||
     card.addedPermissions.length > 0 ||
