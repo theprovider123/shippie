@@ -268,7 +268,11 @@
                     {cfg?.emoji ?? ''}
                   </div>
                   <div class="tl-date">{shortDate(e.updatedAt)}</div>
-                  {#if e.note}<div class="tl-note">{e.note}</div>{/if}
+                  {#if e.safeguarding}
+                    <div class="tl-note tl-restricted" title="Safeguarding note — access restricted, excluded from AI">
+                      🔒 Safeguarding note (restricted)
+                    </div>
+                  {:else if e.note}<div class="tl-note">{e.note}</div>{/if}
                 </div>
               {/each}
             </div>
@@ -491,5 +495,9 @@
     text-align: center;
     line-height: 1.3;
     max-width: 84px;
+  }
+  .tl-restricted {
+    color: var(--revisit);
+    font-weight: 600;
   }
 </style>
