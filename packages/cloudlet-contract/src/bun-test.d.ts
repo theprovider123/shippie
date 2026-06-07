@@ -13,6 +13,7 @@ declare module 'bun:test' {
     toBeTruthy: () => R;
     toBeFalsy: () => R;
     toContain: (expected: unknown) => R;
+    toContainEqual: (expected: unknown) => R;
     toHaveLength: (expected: number) => R;
     toMatchObject: (expected: unknown) => R;
     toThrow: (message?: string | RegExp) => R;

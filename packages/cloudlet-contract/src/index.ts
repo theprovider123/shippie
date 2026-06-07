@@ -6,3 +6,4 @@ export * from './invites';
 export * from './sync';
 export * from './ai';
 export * from './what-works';
+export * from './mis';
