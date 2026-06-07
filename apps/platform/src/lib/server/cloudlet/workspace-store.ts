@@ -251,6 +251,45 @@ export class WorkspaceStore {
         typeof p.confidence === 'number' ? p.confidence : null,
         receivedAt,
       );
+    } else if (e.type === 'adaptation.generated') {
+      // Phase 5 — the adaptation engine (rules or broker path) emits the
+      // structured cards through the SAME append-only log. Project each into
+      // the read-model. Idempotent on card id (INSERT OR IGNORE) so a replay
+      // of the generation event doesn't duplicate cards.
+      const cards = Array.isArray(p.cards) ? (p.cards as Array<Record<string, unknown>>) : [];
+      for (const c of cards) {
+        const target = (c.target ?? {}) as { ids?: unknown; label?: unknown };
+        const ids = Array.isArray(target.ids) ? (target.ids as string[]) : [];
+        const evidence = Array.isArray(c.evidence)
+          ? (c.evidence as Array<{ note?: string }>)
+              .map((ev) => ev?.note)
+              .filter(Boolean)
+              .join(' · ')
+          : '';
+        // Contract confidence is 'emerging'|'established'; the row stores a
+        // numeric % for the prototype UI — map to a representative value.
+        const confidencePct = c.confidence === 'established' ? 80 : 55;
+        this.sql.run(
+          `INSERT OR IGNORE INTO adaptation_cards
+           (id,lesson_id,subject_id,objective,type_label,emoji,target,need,teacher_action,why,evidence,confidence,review_state,outcome,outcome_note)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          String(c.id ?? `card-${Date.now()}`),
+          (c.lessonId as string) ?? null,
+          (c.subjectId as string) ?? '',
+          (c.objective as string) ?? '',
+          (c.source as string) === 'broker' ? 'AI suggestion' : 'Suggested',
+          '✨',
+          String(target.label ?? `${ids.length} pupils`),
+          (c.need as string) ?? '',
+          (c.teacherAction as string) ?? '',
+          (c.whyThis as string) ?? '',
+          evidence,
+          confidencePct,
+          'planned',
+          null,
+          null,
+        );
+      }
     } else if (e.type === 'adaptation.outcome_recorded') {
       const cardId = p.cardId as string | undefined;
       const outcome = p.outcome as string | undefined;
