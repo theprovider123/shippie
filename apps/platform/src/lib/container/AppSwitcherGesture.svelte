@@ -49,7 +49,7 @@
     open: boolean;
     onOpenChange: (open: boolean) => void;
     /** Edge from which the drawer enters. Default 'left'. */
-    edge?: 'left' | 'bottom';
+    edge?: 'left' | 'bottom' | 'right';
     /**
      * Minimum horizontal pull in CSS px before we commit to the
      * drawer-open gesture. Below this, the touch is treated as a
@@ -452,7 +452,9 @@
   const drawerTransform = $derived.by(() => {
     if (open && edge === 'bottom' && drawerDragY > 0) return `translate3d(0, ${drawerDragY}px, 0)`;
     if (open) return 'translate(0, 0)';
-    return edge === 'left' ? 'translateX(-100%)' : 'translateY(100%)';
+    if (edge === 'left') return 'translateX(-100%)';
+    if (edge === 'right') return 'translateX(100%)';
+    return 'translateY(100%)';
   });
   const dimmedAppTransform = $derived(open ? `scale(${APP_SCALE_AT_OPEN})` : 'scale(1)');
   const dimmedAppOpacity = $derived(open ? APP_OPACITY_AT_OPEN : 1);
@@ -520,6 +522,7 @@
   class:dragging={drawerDismissActive}
   class:settled={drawerSettled && open && !drawerDismissActive}
   class:from-left={edge === 'left'}
+  class:from-right={edge === 'right'}
   class:from-bottom={edge === 'bottom'}
   style:transform={drawerTransform}
   style:--drawer-keyboard-inset={`${keyboardInset}px`}
@@ -655,6 +658,15 @@
     border-right: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     overflow-y: auto;
   }
+  .drawer.from-right {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(520px, 44vw);
+    min-width: min(380px, 94vw);
+    border-left: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
+    overflow-y: auto;
+  }
   .drawer.from-bottom {
     left: 0;
     right: 0;
@@ -680,18 +692,23 @@
   .drawer.from-left:not(.open) {
     transform: translateX(-100%) !important;
   }
+  .drawer.from-right:not(.open) {
+    transform: translateX(100%) !important;
+  }
   .drawer.from-bottom:not(.open) {
     transform: translateY(100%) !important;
   }
 
   @media (max-width: 1024px) {
-    .drawer.from-left {
+    .drawer.from-left,
+    .drawer.from-right {
       width: min(480px, 58vw);
     }
   }
 
   @media (max-width: 640px) {
-    .drawer.from-left {
+    .drawer.from-left,
+    .drawer.from-right {
       width: min(100vw, 430px);
       min-width: 0;
     }

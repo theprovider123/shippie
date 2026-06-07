@@ -258,7 +258,9 @@
   // the bottom while its summon control sits at the top, away from
   // in-app bottom toolbars; larger → slides in from the left.
   let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
-  const focusedDrawerEdge = $derived<'left' | 'bottom'>(viewportWidth <= 640 ? 'bottom' : 'left');
+  // The switcher tab lives on the right edge, so the drawer slides in from the
+  // right (sleek lateral motion) on every size — no more bottom-sheet "pop up".
+  const focusedDrawerEdge = $derived<'left' | 'bottom' | 'right'>('right');
   let receiptsByApp = $state<Record<string, AppReceipt>>(
     initialFocusedApp ? { [initialFocusedApp.id]: createReceiptFor(initialFocusedApp) } : {},
   );
@@ -3513,17 +3515,7 @@
       gestureEnabled={false}
     >
       <div class="focused-drawer">
-        <button
-          type="button"
-          class="focused-drawer-grip"
-          data-drawer-drag-handle
-          data-drawer-grip
-          aria-label="Close Shippie tools"
-          onclick={() => {
-            closeFocusedDrawer();
-          }}
-        ></button>
-        <header class="focused-drawer-head" data-drawer-drag-handle>
+        <header class="focused-drawer-head">
           <button
             type="button"
             class="focused-home"
@@ -3614,7 +3606,6 @@
               <section class="focused-tool-section" aria-labelledby={`focused-tools-${section.id}`}>
                 <div class="focused-section-head">
                   <h2 id={`focused-tools-${section.id}`}>{section.label}</h2>
-                  <span>{section.total}</span>
                 </div>
                 <div class="focused-list">
                   {#each section.tools as tool (tool.slug)}
@@ -4363,31 +4354,38 @@
   /* Immersive Dock nub. The host keeps one small, spatially polite
      escape hatch; tapping it reveals temporary commands instead of
      keeping large chrome over the running tool. */
+  /* Pinned to the top-RIGHT corner, not dead-centre: app titles/headers live
+     centred at the top, so a centred nub covered them. The corner is the
+     quietest top zone; idle-dim (below) fades it further during use. */
+  /* Edge pull-tab: vertically-centred on the RIGHT edge — the one region apps
+     don't put controls in (corners have buttons, top has titles, bottom nav).
+     A slim rounded tab flush to the edge; idle-dim tucks it further. */
   .focused-dock-nub-wrap {
     position: fixed;
-    top: max(12px, calc(env(safe-area-inset-top, 0px) + 10px));
-    left: 50%;
+    top: 50%;
+    right: 0;
+    left: auto;
     z-index: 1020;
     display: flex;
     align-items: center;
-    gap: 7px;
-    transform: translateX(-50%);
+    transform: translateY(-50%);
     transition:
       opacity 0.22s ease,
       transform 0.22s ease;
   }
   .focused-dock-nub {
-    width: 52px;
-    height: 44px;
+    width: 20px;
+    height: 46px;
     display: grid;
     place-items: center;
     padding: 0;
     border: 1px solid rgba(168, 196, 145, 0.34);
-    border-radius: 999px;
-    background: rgba(20, 18, 15, 0.62);
+    border-right: 0;
+    border-radius: 13px 0 0 13px;
+    background: rgba(20, 18, 15, 0.66);
     color: var(--text);
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(20, 18, 15, 0.14);
+    box-shadow: -6px 0 20px rgba(20, 18, 15, 0.18);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     transition:
@@ -4399,19 +4397,27 @@
   }
   .focused-dock-nub img {
     display: block;
-    width: 19px;
-    height: 19px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
     pointer-events: none;
   }
   .focused-dock-nub:hover,
-  .focused-dock-nub:focus-visible,
-  .focused-dock-nub[aria-expanded='true'] {
+  .focused-dock-nub:focus-visible {
     background: rgba(20, 18, 15, 0.86);
     border-color: var(--sage-leaf);
-    box-shadow: 0 10px 28px rgba(20, 18, 15, 0.22);
+    box-shadow: -8px 0 26px rgba(20, 18, 15, 0.26);
     outline: none;
-    transform: translateY(2px);
+    transform: translateX(-3px);
+  }
+  /* Open: the tab slots into the panel edge — flush, surface-matched, with a
+     recessed inset shadow + a sunset accent so it reads as docked in. */
+  .focused-dock-nub[aria-expanded='true'] {
+    background: var(--surface-alt);
+    border-color: var(--border-light);
+    box-shadow: inset 3px 0 0 var(--sunset), inset -1px 0 5px rgba(0, 0, 0, 0.45);
+    transform: translateX(0);
+    outline: none;
   }
   .focused-dock-nub.first-run {
     animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
@@ -4430,54 +4436,35 @@
      reduced-motion users keep the chrome fully visible. */
   @media (prefers-reduced-motion: no-preference) {
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
-      opacity: 0.38;
-      transform: translateX(-50%) translateY(-2px);
+      opacity: 0.4;
+      transform: translateY(-50%) translateX(42%);
     }
   }
 
-  /* Keyboard open inside the running tool — hide the chrome so it
-     doesn't float over the keyboard area. The :global selector matches
-     the data attribute set on <html> by handleToolKeyboardMessage. */
+  /* Keyboard open inside the running tool — tuck the tab off the right edge so
+     it never floats over app input. The :global selector matches the data
+     attribute set on <html> by handleToolKeyboardMessage. */
   :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.18s ease, transform 0.18s ease;
-    transform: translateX(-50%) translateY(-140%);
+    transform: translateY(-50%) translateX(120%);
   }
   @media (max-width: 640px) {
-    .focused-dock-nub-wrap {
-      top: max(14px, calc(env(safe-area-inset-top, 0px) + 10px));
-      right: auto;
-      bottom: auto;
-      left: 50%;
-      align-items: center;
-      transform: translateX(-50%);
-    }
     .focused-dock-nub {
-      width: 54px;
-      height: 44px;
-      border: 1px solid rgba(168, 196, 145, 0.30);
-      border-radius: 999px;
-      background: rgba(20, 18, 15, 0.72);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      box-shadow: 0 8px 24px rgba(20, 18, 15, 0.18);
+      width: 22px;
+      height: 50px;
     }
     .focused-dock-nub img {
-      width: 20px;
-      height: 20px;
-    }
-    .focused-dock-nub:hover,
-    .focused-dock-nub:focus-visible,
-    .focused-dock-nub[aria-expanded='true'] {
-      transform: translateY(2px);
+      width: 15px;
+      height: 15px;
     }
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
-      opacity: 0.42;
-      transform: translateX(-50%) translateY(-2px);
+      opacity: 0.44;
+      transform: translateY(-50%) translateX(42%);
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
-      transform: translateX(-50%) translateY(-140%);
+      transform: translateY(-50%) translateX(120%);
     }
   }
 
@@ -4487,27 +4474,6 @@
     flex-direction: column;
     gap: 12px;
     color: var(--text);
-  }
-  .focused-drawer-grip {
-    display: none;
-    position: relative;
-    align-self: center;
-    width: 44px;
-    height: var(--touch-min, 44px);
-    padding: 0;
-    border: 0;
-    background: transparent;
-    cursor: grab;
-  }
-  .focused-drawer-grip::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 3px;
-    background: color-mix(in srgb, var(--text-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
   .focused-drawer-head {
     position: sticky;
@@ -4709,13 +4675,6 @@
     letter-spacing: 0.14em;
     font-family: var(--font-mono);
   }
-  .focused-section-head span {
-    color: var(--text-secondary, rgba(0, 0, 0, 0.45));
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
   .focused-insights-heading {
     margin-top: 8px;
   }
@@ -4846,10 +4805,6 @@
     .focused-drawer {
       padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
       gap: 10px;
-    }
-    .focused-drawer-grip {
-      display: block;
-      touch-action: none;
     }
     .focused-drawer-head {
       gap: 10px;
