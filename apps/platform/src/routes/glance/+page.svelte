@@ -319,7 +319,7 @@
     align-items: end;
   }
   .glance-pattern-bar {
-    background: var(--text);
+    background: var(--sunset);
     width: 100%;
     transition: height 0.2s ease;
     align-self: end;

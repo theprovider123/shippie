@@ -95,9 +95,9 @@
     font: inherit;
   }
   .actions .primary {
-    border-color: var(--text);
-    background: var(--text);
-    color: var(--bg-pure);
+    border-color: var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
     font-weight: 600;
   }
   .actions .danger {

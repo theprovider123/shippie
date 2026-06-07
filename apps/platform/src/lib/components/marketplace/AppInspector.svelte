@@ -292,9 +292,9 @@
     cursor: pointer;
   }
   .actions a:first-child {
-    background: var(--text);
-    border-color: var(--text);
-    color: var(--bg-pure);
+    background: var(--sunset);
+    border-color: var(--sunset);
+    color: var(--bg);
   }
   .actions a:hover,
   .actions button:hover {

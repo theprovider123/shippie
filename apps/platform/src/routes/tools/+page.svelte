@@ -422,9 +422,10 @@
   .cats a:hover,
   .cats .cat-chip:hover { color: var(--sunset); border-color: var(--sunset); }
   .cats .cat-chip.active {
-    color: var(--bg-pure);
-    background: var(--text);
-    border-color: var(--text);
+    color: var(--sunset);
+    background: var(--surface-alt);
+    border-color: var(--sunset);
+    box-shadow: inset 0 -2px 0 var(--sunset);
   }
   .cats .cat-chip-link {
     /* Wayfinding chip — same shape as the topical chips so it sits

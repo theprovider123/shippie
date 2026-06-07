@@ -187,8 +187,9 @@
     cursor: pointer;
   }
   .segmented button.active {
-    background: var(--text);
-    color: var(--bg-pure);
+    background: var(--surface-alt);
+    color: var(--sunset);
+    box-shadow: inset 0 -2px 0 var(--sunset);
     font-weight: 600;
   }
   label {
@@ -258,9 +259,9 @@
   .primary {
     min-height: 48px;
     padding: 0.7rem 1rem;
-    border: 1px solid var(--text);
-    background: var(--text);
-    color: var(--bg-pure);
+    border: 1px solid var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
     font: inherit;
     font-weight: 600;
     cursor: pointer;

@@ -242,8 +242,9 @@
   }
 
   .today-window-tabs button.today-tab-active {
-    background: var(--text);
-    color: var(--bg, #14120F);
+    background: var(--surface-alt);
+    color: var(--sunset);
+    box-shadow: inset 0 -2px 0 var(--sunset);
   }
 
   .today-empty,

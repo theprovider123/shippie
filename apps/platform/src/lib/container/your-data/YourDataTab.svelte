@@ -320,9 +320,10 @@
     outline-offset: -2px;
   }
   .segmented button.active {
-    background: var(--text);
-    color: var(--bg-pure);
+    background: var(--surface-alt);
+    color: var(--sunset);
     font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--sunset);
   }
   .count {
     font-family: var(--font-mono);

@@ -95,9 +95,9 @@
   .primary {
     min-height: 48px;
     padding: 0.7rem 1rem;
-    border: 1px solid var(--text);
-    background: var(--text);
-    color: var(--bg-pure);
+    border: 1px solid var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
     font: inherit;
     font-weight: 600;
     cursor: pointer;

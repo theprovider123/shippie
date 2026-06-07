@@ -3990,9 +3990,13 @@
     font: inherit;
   }
   .home-button {
-    background: var(--text);
-    color: var(--bg-pure);
-    border-color: var(--text);
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border-light);
+  }
+  .home-button:hover {
+    border-color: var(--sunset);
+    color: var(--sunset);
   }
   .dock-canvas {
     min-width: 0;
