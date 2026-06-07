@@ -131,8 +131,8 @@
   .access-page {
     min-height: 100dvh;
     padding: calc(var(--safe-top, 0px) + 1rem) clamp(1rem, 4vw, 2.5rem) calc(var(--safe-bottom, 0px) + 2rem);
-    background: var(--paper-warm, #FAF7EF);
-    color: var(--bg, #14120F);
+    background: var(--bg);
+    color: var(--text);
   }
   .head,
   .block {
@@ -176,7 +176,7 @@
   }
   p {
     margin: 0;
-    color: var(--text-muted-warm, #6D6258);
+    color: var(--text-secondary);
     line-height: 1.5;
   }
   .head-actions {
@@ -192,25 +192,35 @@
     align-items: center;
     justify-content: center;
     padding: 0 0.9rem;
-    border: 1px solid var(--paper-cream, #E5DDC8);
-    background: transparent;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
     color: inherit;
     text-decoration: none;
     font: inherit;
     font-weight: 700;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .head-actions a:hover,
+  button:hover {
+    border-color: var(--border);
+    background: var(--surface-alt);
   }
   .head-actions .primary {
-    border-color: var(--sunset, #E8603C);
-    background: var(--sunset, #E8603C);
-    color: white;
+    border-color: var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
+  }
+  .head-actions .primary:hover {
+    border-color: var(--sunset);
+    background: color-mix(in srgb, var(--sunset) 88%, white);
   }
   .block {
     display: grid;
     gap: 0.75rem;
     margin-top: 2rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--paper-cream, #E5DDC8);
+    border-top: 1px solid var(--border-light);
   }
   .section-head {
     display: flex;
@@ -222,13 +232,19 @@
   .row-title span {
     font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 0.7rem;
-    color: var(--text-muted-warm, #6D6258);
+    color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
+  .row-title span {
+    color: var(--sunset);
+    border: 1px solid color-mix(in srgb, var(--sunset) 40%, var(--border-light));
+    padding: 0.05rem 0.35rem;
+  }
   .session-list {
     display: grid;
-    border: 1px solid var(--paper-cream, #E5DDC8);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
   }
   .session-row {
     display: grid;
@@ -236,7 +252,7 @@
     gap: 1rem;
     align-items: center;
     padding: 0.85rem;
-    border-top: 1px solid var(--paper-cream, #E5DDC8);
+    border-top: 1px solid var(--border-light);
   }
   .session-row:first-child {
     border-top: 0;
@@ -256,7 +272,9 @@
   }
   .empty {
     padding: 1rem;
-    border: 1px solid var(--paper-cream, #E5DDC8);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text-light);
   }
   .error,
   .ok {

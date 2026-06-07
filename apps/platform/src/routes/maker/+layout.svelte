@@ -23,13 +23,26 @@
 
 <style>
   .maker-shell {
+    /* Dark-first, always — remap the legacy cream palette to dark tokens for the
+       whole maker subtree so every child page inherits the new design language
+       without per-file edits. */
+    --paper-warm: var(--bg);
+    --paper-warm-strong: var(--surface);
+    --paper-warm-deep: var(--surface);
+    --paper-cream: var(--border-light);
+    --paper-cream-soft: var(--border-light);
+    --ink-warm: var(--border-light);
+    --ink-warm-mid: var(--border-light);
+    --ink-warm-line: var(--border-light);
+    --border-paper-mid: var(--border-light);
+    --text-muted-warm: var(--text-secondary);
     min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
-    background: var(--paper-warm);
-    color: var(--bg);
+    background: var(--bg);
+    color: var(--text);
   }
   .maker-subnav {
-    border-bottom: 1px solid var(--border-light, #e5ddc8);
-    background: var(--paper-warm);
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg);
   }
   .subnav-inner {
     display: flex;
@@ -57,7 +70,7 @@
     white-space: nowrap;
   }
   .subnav-inner a:hover {
-    color: var(--bg);
+    color: var(--text);
   }
   .subnav-inner a.active {
     color: var(--sunset);
@@ -80,19 +93,6 @@
     .maker-main {
       padding: 1rem;
       overflow-x: visible;
-    }
-  }
-  @media (prefers-color-scheme: dark) {
-    .maker-shell {
-      background: var(--bg);
-      color: var(--text);
-    }
-    .maker-subnav {
-      border-color: var(--ink-warm);
-      background: var(--bg);
-    }
-    .subnav-inner a:hover {
-      color: var(--text);
     }
   }
 </style>

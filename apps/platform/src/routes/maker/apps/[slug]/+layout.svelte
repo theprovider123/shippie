@@ -107,7 +107,7 @@
   .pill-ok { background: rgba(46, 125, 91, 0.15); color: var(--success); }
   .pill-bad { background: rgba(180, 63, 42, 0.15); color: var(--danger); }
   .pill-warn { background: rgba(232, 96, 60, 0.15); color: var(--danger-hover); }
-  .pill-muted { background: rgba(0, 0, 0, 0.06); color: var(--text-muted-warm); }
+  .pill-muted { background: var(--surface-alt); color: var(--text-secondary); }
   .lede { color: var(--text-muted-warm); margin: 0.25rem 0 0 0; }
   .title-actions { display: inline-flex; gap: 0.5rem; }
   .action {
@@ -152,7 +152,7 @@
     font-weight: 500;
   }
   .tabs a.active { color: var(--sunset); border-bottom-color: var(--sunset); }
-  .tabs a:hover { color: var(--bg); }
+  .tabs a:hover { color: var(--text); }
   @media (max-width: 760px) {
     .header {
       margin-bottom: 1rem;
