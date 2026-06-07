@@ -29,6 +29,15 @@
   <Icon name={c.icon} size={12} />
   <span>{c.label}</span>
   {#if status === 'synced'}
-    <span style="opacity:0.65;font-size:10px;font-weight:500;">· School Cloud</span>
+    <span class="sync-suffix" style="opacity:0.65;font-size:10px;font-weight:500;">· School Cloud</span>
   {/if}
 </div>
+
+<style>
+  /* On phones the verbose suffix squeezes the page title — drop it. */
+  @media (max-width: 720px) {
+    .sync-suffix {
+      display: none;
+    }
+  }
+</style>

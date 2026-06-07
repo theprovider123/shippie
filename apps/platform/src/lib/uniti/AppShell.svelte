@@ -31,7 +31,23 @@
     children?: Snippet;
   } = $props();
 
-  let collapsed = $state(false);
+  // User-controlled collapse + an automatic narrow-screen collapse. On phones
+  // the full 220px sidebar would eat most of a 390px viewport, so we fall back
+  // to the slim icon rail (58px) until there's room. `userCollapsed` lets the
+  // toggle still expand it on wide screens.
+  let userCollapsed = $state(false);
+  let narrow = $state(false);
+
+  $effect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 720px)');
+    const sync = () => (narrow = mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  });
+
+  const collapsed = $derived(userCollapsed || narrow);
   const sw = $derived(collapsed ? 58 : 220);
   const base = $derived(`/uniti`);
 
@@ -78,13 +94,15 @@
           u
         </div>
       {/if}
-      <button
-        onclick={() => (collapsed = !collapsed)}
-        aria-label="Toggle sidebar"
-        style="background:none;border:none;cursor:pointer;color:var(--text-subtle);border-radius:6px;padding:4px;display:flex;"
-      >
-        <Icon name={collapsed ? 'chevron_r' : 'chevron_l'} size={15} />
-      </button>
+      {#if !narrow}
+        <button
+          onclick={() => (userCollapsed = !userCollapsed)}
+          aria-label="Toggle sidebar"
+          style="background:none;border:none;cursor:pointer;color:var(--text-subtle);border-radius:6px;padding:4px;display:flex;"
+        >
+          <Icon name={collapsed ? 'chevron_r' : 'chevron_l'} size={15} />
+        </button>
+      {/if}
     </div>
 
     <nav style="flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;">
@@ -131,8 +149,9 @@
   <!-- Main -->
   <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
     <div
+      class="appshell-topbar"
       style="height:52px;background:var(--surface);border-bottom:1px solid var(--border);
-        display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0;"
+        display:flex;align-items:center;padding:0 {narrow ? 14 : 22}px;gap:{narrow ? 8 : 12}px;flex-shrink:0;"
     >
       <div style="flex:1;overflow:hidden;">
         <span

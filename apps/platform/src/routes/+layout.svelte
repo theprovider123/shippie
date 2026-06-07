@@ -33,7 +33,14 @@
       '/manifest.webmanifest',
       '/run',
       '/trust-preview',
+      '/uniti',
     ].some((prefix) => pathname === prefix || pathname.startsWith(prefix));
+  }
+
+  // Immersive full-bleed apps that own their entire viewport (their own shell,
+  // header and nav) — Shippie marketplace chrome (top Nav + Footer) is hidden.
+  function isImmersiveApp(url: URL): boolean {
+    return url.pathname === '/uniti' || url.pathname.startsWith('/uniti/');
   }
 
   function hideNavOnMobile(url: URL): boolean {
@@ -51,6 +58,9 @@
     const mobileAppChrome = hideNavOnMobile($page.url);
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
     document.body.dataset.mobileAppChrome = mobileAppChrome ? 'true' : 'false';
+    // Immersive apps own the page background — stop the dark Shippie body
+    // colour peeking above/below their full-bleed shell.
+    document.body.dataset.immersive = isImmersiveApp($page.url) ? 'true' : 'false';
   });
 
   onMount(() => {
@@ -95,16 +105,20 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-<div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
-  <Nav user={data.user} />
-</div>
-<main id="main" class:with-bottom-dock={showBottomDock($page.url)}>
+{#if !isImmersiveApp($page.url)}
+  <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
+    <Nav user={data.user} />
+  </div>
+{/if}
+<main id="main" class:with-bottom-dock={showBottomDock($page.url)} class:immersive={isImmersiveApp($page.url)}>
   {@render children()}
 </main>
 {#if showBottomDock($page.url)}
   <BottomDock user={data.user} />
 {/if}
-<Footer />
+{#if !isImmersiveApp($page.url)}
+  <Footer />
+{/if}
 <Toast />
 
 <style>
@@ -115,6 +129,17 @@
        the layout doesn't jump on scroll). */
     min-height: calc(100svh - var(--nav-height) - var(--safe-top));
     min-height: calc(100dvh - var(--nav-height) - var(--safe-top));
+  }
+
+  /* Immersive apps (e.g. Uniti) own the full viewport with no Shippie chrome. */
+  main.immersive {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+  /* Match the body to the immersive app's own background so no dark Shippie
+     colour shows above the skip-link or below a short page. */
+  :global(body[data-immersive='true']) {
+    background: #f8f7f4;
   }
 
   @media (max-width: 640px), (display-mode: standalone) {
