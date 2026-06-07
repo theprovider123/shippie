@@ -393,6 +393,9 @@
   .tile-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
   .tile-actions .manage { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; padding: 4px; line-height: 1; opacity: 0; transition: opacity 0.12s; background: none; border: 0; color: var(--text-dim, #8c8170); cursor: pointer; }
   .tile:hover .manage, .tile:focus-within .manage { opacity: 1; }
+  /* No hover on touch — the × / − must always be reachable there (this is what
+     the removed "Manage" mode used to expose). Desktop keeps the hover reveal. */
+  @media (hover: none) { .tile-actions .manage { opacity: 1; } }
   .tile-actions .manage:focus-visible { opacity: 1; outline: 2px solid var(--sunset); outline-offset: 1px; }
   @media (prefers-reduced-motion: reduce) { .tile-actions .manage { transition: none; } }
 </style>
