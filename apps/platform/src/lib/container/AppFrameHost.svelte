@@ -175,18 +175,21 @@
     const base = src.split('#')[0];
     return hash ? `${base}${hash.startsWith('#') ? hash : `#${hash}`}` : base;
   }
+
 </script>
 
 <div class="frame-stage" class:active style={stageStyleFor(app.layout, app.aspectRatio)}>
   {#key `${app.id}:${reloadNonce}`}
     {#if runtimeSrcWithHash}
+      <!-- Runtime URLs are already hosted Shippie app surfaces with CSP and
+        bridge origin filtering. A same-origin sandbox with scripts +
+        same-origin is ineffective and logs a browser warning before hydration,
+        so only generated package/srcdoc frames are sandboxed. -->
       <iframe
         use:registerFrame={app.id}
         data-shippie-app-id={app.id}
         title={`${app.name} Shippie tool`}
-        sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
-        allowfullscreen
         src={runtimeSrcWithHash}
         onload={handleFrameLoad}
         onerror={() => onError(app.id)}
@@ -198,7 +201,6 @@
         title={`${app.name} Shippie tool`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
-        allowfullscreen
         src={packageFrameSrcWithHash}
         onload={handleFrameLoad}
         onerror={() => onError(app.id)}
@@ -210,7 +212,6 @@
         title={`${app.name} Shippie tool`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
-        allowfullscreen
         {srcdoc}
         onload={handleFrameLoad}
         onerror={() => onError(app.id)}

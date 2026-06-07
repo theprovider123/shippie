@@ -105,7 +105,7 @@ async function flush(): Promise<void> {
   }
 }
 
-function requeue(batch: ShellEvent[], reason: string): void {
+function requeue(batch: ShellEvent[], reason: string, opts: { quiet?: boolean } = {}): void {
   if (queue.length + batch.length > QUEUE_CAP) {
     // Drop the oldest to bound the queue. Better to lose old telemetry
     // than to grow unbounded against a permanently-broken endpoint.
@@ -113,7 +113,7 @@ function requeue(batch: ShellEvent[], reason: string): void {
     batch.splice(0, drop);
   }
   queue.unshift(...batch);
-  if (typeof console !== 'undefined') {
+  if (!opts.quiet && typeof console !== 'undefined') {
     console.warn(`[shell-track] requeued ${batch.length} events (${reason})`);
   }
 }
@@ -132,7 +132,7 @@ function bindBeaconOnce(): void {
     }
     if (queue.length === 0) return;
     const batch = queue.splice(0);
-    requeue(batch, 'hidden-ledger-first');
+    requeue(batch, 'hidden-ledger-first', { quiet: true });
   });
 }
 

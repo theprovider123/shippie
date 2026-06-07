@@ -218,7 +218,6 @@ a:focus-visible {
 .mode-tabs button,
 .soft-note,
 .quiet-note,
-.close-link,
 .during-top,
 .felt-tap p,
 .thumb-rail button,
@@ -674,6 +673,7 @@ a:focus-visible {
 }
 
 .check-row {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 12px;
@@ -690,7 +690,17 @@ a:focus-visible {
 }
 
 .check-row + .check-row {
-  border-top: 1px solid rgba(238, 230, 217, 0.065);
+  border-top: 0;
+}
+
+.check-row + .check-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 42px;
+  height: 1px;
+  background: rgba(238, 230, 217, 0.06);
 }
 
 .check-dot {

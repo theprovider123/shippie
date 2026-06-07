@@ -108,6 +108,10 @@
       <p class="card-eyebrow">Open source</p>
       <p class="card-blurb">License positions, self-hosting, what is AGPL and what is MIT.</p>
     </a>
+    <a href="#help" class="nav-card">
+      <p class="card-eyebrow">Help &amp; legal</p>
+      <p class="card-blurb">Get support, plus privacy, terms, and security.</p>
+    </a>
   </nav>
 
   <section id="for-users" class="section">
@@ -312,6 +316,30 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
       <code>CONTRIBUTING.md</code> and active maintainers. Small fixes merge within days; bigger
       architecture changes get a design-doc round first.
     </p>
+  </section>
+
+  <section id="help" class="section">
+    <h2>Help &amp; legal</h2>
+    <p class="section-lede">Stuck, or need the fine print? It's all here.</p>
+
+    <h3 id="get-help">Get help</h3>
+    <p>
+      Most answers are on this page. For anything else, email
+      <a href="mailto:info@shippie.app">info@shippie.app</a> or open an issue on
+      <a href="https://github.com/theprovider123/shippie">GitHub</a>. A tool misbehaving? Use the
+      feedback control inside the tool — the report travels with it.
+    </p>
+
+    <h3 id="privacy">Privacy &amp; terms</h3>
+    <p>
+      The promise in one line: your tool data stays on your device unless you export, back up,
+      sync, or connect a disclosed service.
+    </p>
+    <ul class="legal-links">
+      <li><a href="/docs/privacy">Privacy</a> — what we do and don't collect.</li>
+      <li><a href="/docs/terms">Terms</a> — the rules for using Shippie.</li>
+      <li><a href="/docs/security">Security</a> — how tools are scanned and sandboxed.</li>
+    </ul>
   </section>
 
 </main>
