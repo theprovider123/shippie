@@ -9,14 +9,12 @@ import type { WrapperContext } from '../env';
 import { checkRateLimit, clientKey } from '../rate-limit';
 import { getDrizzleClient, schema } from '../../db/client';
 import { eq } from 'drizzle-orm';
+import { sanitizeAnalyticsEvent, type RawAnalyticsEvent } from '../../analytics/sanitize';
 
-interface BeaconEvent {
-  event?: string;
-  event_type?: string;
-  event_name?: string;
-  session_id?: string;
-  user_id?: string;
-  properties?: Record<string, unknown>;
+type BeaconEvent = RawAnalyticsEvent;
+
+export function sanitizeBeaconAnalyticsEvents(events: BeaconEvent[]) {
+  return events.map(sanitizeAnalyticsEvent).filter((event): event is NonNullable<typeof event> => event !== null);
 }
 
 export async function handleBeacon(ctx: WrapperContext): Promise<Response> {
@@ -45,21 +43,16 @@ export async function handleBeacon(ctx: WrapperContext): Promise<Response> {
   });
   if (!app) return new Response(null, { status: 204 }); // ack-and-drop unknown apps
 
-  const rows = events
-    .map((e) => {
-      const name = e.event_name ?? e.event_type ?? e.event;
-      if (!name || typeof name !== 'string') return null;
-      return {
+  const rows = sanitizeBeaconAnalyticsEvents(events)
+    .map((event) => ({
         appId: app.id,
-        userId: e.user_id ?? null,
-        sessionId: e.session_id ?? null,
-        eventName: name,
-        properties: e.properties ?? null,
-        url: null,
-        referrer: null,
-      };
-    })
-    .filter((r): r is NonNullable<typeof r> => r !== null);
+        userId: event.userId,
+        sessionId: event.sessionId,
+        eventName: event.eventName,
+        properties: event.properties,
+        url: event.url,
+        referrer: event.referrer,
+      }));
 
   if (rows.length === 0) return new Response(null, { status: 204 });
 

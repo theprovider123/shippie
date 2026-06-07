@@ -6,6 +6,11 @@ import { PenaltyDuel } from "./games/PenaltyDuel";
 import { PenaltyRoulette } from "./games/PenaltyRoulette";
 import { WhoAreYa } from "./games/WhoAreYa";
 import { GuessNation } from "./games/GuessNation";
+import { GroupOfDeath } from "./games/GroupOfDeath";
+import { OutsideBetRoulette } from "./games/OutsideBetRoulette";
+import { CardHappy } from "./games/CardHappy";
+import { ThatsNeverAPen } from "./games/ThatsNeverAPen";
+import { BeatTheClock } from "./games/BeatTheClock";
 import {
   GAMES,
   gameMeta,
@@ -21,27 +26,41 @@ import { fetchGlobal, submitGlobal, isGlobalEnabled } from "../lib/leaderboard";
 import { gameCardBlob } from "../lib/sharecard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
-import { loadStreak, recordPlayToday, rollStreak, todayKeyUTC, type StreakStore } from "../lib/daily";
 
-type Sel = GameId | "penalty" | "roulette" | "trivia" | "nation" | null;
-const PUB: { id: "roulette" | "trivia" | "nation"; emoji: string; name: string; how: string }[] = [
-  { id: "roulette", emoji: "🎯", name: "Penalty Roulette", how: "Pass the phone — get saved, you're out" },
+type Sel =
+  | GameId
+  | "penalty"
+  | "obr"
+  | "roulette"
+  | "trivia"
+  | "nation"
+  | "cardhappy"
+  | "tnap"
+  | "beatclock"
+  | null;
+type PubId = "roulette" | "trivia" | "nation" | "cardhappy" | "tnap" | "beatclock";
+const PUB: { id: PubId; emoji: string; name: string; how: string }[] = [
   { id: "trivia", emoji: "🧠", name: "Who Are Ya?", how: "World Cup trivia, no Googling" },
+  { id: "beatclock", emoji: "⏱️", name: "Beat the Clock", how: "As many as you can in 30 seconds" },
   { id: "nation", emoji: "🌍", name: "Guess the Nation", how: "See the flag, name the country" },
+  { id: "roulette", emoji: "🎯", name: "Penalty Roulette", how: "Pass the phone — get saved, you're out" },
+  { id: "cardhappy", emoji: "🟨", name: "Card Happy", how: "Yellow or red? Best ref in the room wins" },
+  { id: "tnap", emoji: "🤌", name: "That's Never A Pen", how: "Vote pen or no pen, then argue about it" },
 ];
 
 /** Play surface: pick a game, post scores, see the worldwide board. */
 export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?: Duel | null }) {
   const store = useStore();
   const playerName = store.profile?.name || "You";
-  const [sel, setSel] = useState<Sel>(duel ? "penalty" : challenge ? challenge.game : null);
+  const [sel, setSel] = useState<Sel>(
+    duel ? "penalty" : challenge ? challenge.game : null,
+  );
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [diff, setDiff] = useState<"casual" | "pro">("casual");
-  const [streak, setStreak] = useState<StreakStore>(() => loadStreak());
-  const streakCurrent = rollStreak(streak.completedDates, todayKeyUTC()).current;
+  const [boardGame, setBoardGame] = useState<GameId | null>(null);
 
-  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" ? sel : null;
+  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" || sel === "god" ? sel : null;
 
   useEffect(() => {
     if (!soloGame) return;
@@ -53,8 +72,6 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   function onGameOver(score: number) {
     if (!soloGame || score <= 0) return;
     store.addScore(soloGame, score);
-    // Daily play-streak (the meta Golazo lacked) — coexists with scores/leaderboard.
-    setStreak((s) => recordPlayToday(s));
     void submitGlobal({ game: soloGame, name: playerName, score }).then((g) => { if (g.length) setGlobal(g); });
   }
 
@@ -65,7 +82,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     const best = bestScore(store.scores, soloGame);
     const url = challengeUrl({ game: soloGame, name: playerName, score: best });
     const text = `⚽️ I got ${best} ${meta.unit} on ${meta.name} in Golazo. Beat me → ${url}`;
-    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : "🧱";
+    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : soloGame === "god" ? "💀" : "🧱";
     // Share the viral card image + link first; fall back to text/copy.
     try {
       const blob = await gameCardBlob({ emoji, game: meta.name, score: best, unit: meta.unit, playerName });
@@ -82,20 +99,41 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   if (!sel) {
     return (
       <div className="games">
-        <div className="games-head">
-          <h2 className="section-title">Play</h2>
-          {streakCurrent > 0 ? <span className="games-streak">🔥 {streakCurrent}-day streak</span> : null}
+        <h2 className="section-title">Play</h2>
+        <p className="games-intro">Quick footy games. No login — your bests live on this phone, challenge a mate by link.</p>
+
+        <div className="god-hero-wrap">
+          <button className="god-hero" onClick={() => { tap(); setSel("god"); }}>
+            <span className="god-hero-tag">Daily test · worldwide</span>
+            <span className="god-hero-name">Group of Death</span>
+            <span className="god-hero-how">Flap through the gaps, pick the right answer at every gate. Knowledge + nerve.</span>
+            <span className="god-hero-foot">
+              <span className="god-hero-best">Best {bestScore(store.scores, "god")} caps</span>
+              <span className="god-hero-cta">Play →</span>
+            </span>
+          </button>
+          <button className="game-board-btn" aria-label="Group of Death world leaderboard" onClick={() => { tap(); setBoardGame("god"); }}>🏆</button>
         </div>
-        <p className="games-intro">Quick football games. No login — your bests live on this phone, challenge a mate by link.</p>
+
+        <span className="field-label" style={{ marginTop: 22 }}>⚽️ Solo &amp; head-to-head</span>
         <div className="game-grid">
-          {GAMES.map((g) => (
-            <button key={g.id} className="game-card" onClick={() => { tap(); setSel(g.id); }}>
-              <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : "🧱"}</span>
-              <span className="game-card-name">{g.name}</span>
-              <span className="game-card-how">{g.how}</span>
-              <span className="game-card-best">Best {bestScore(store.scores, g.id)}</span>
-            </button>
+          {GAMES.filter((g) => g.id !== "god").map((g) => (
+            <div key={g.id} className="game-card-wrap">
+              <button className="game-card" onClick={() => { tap(); setSel(g.id); }}>
+                <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : "🧱"}</span>
+                <span className="game-card-name">{g.name}</span>
+                <span className="game-card-how">{g.how}</span>
+                <span className="game-card-best">Best {bestScore(store.scores, g.id)}</span>
+              </button>
+              <button className="game-board-btn" aria-label={`${g.name} world leaderboard`} onClick={() => { tap(); setBoardGame(g.id); }}>🏆</button>
+            </div>
           ))}
+          <button className="game-card" onClick={() => { tap(); setSel("obr"); }}>
+            <span className="game-card-emoji">🎲</span>
+            <span className="game-card-name">Outside Bet Roulette</span>
+            <span className="game-card-how">Spin for a random nation — your tournament rides on them</span>
+            <span className="game-card-best">Pot luck</span>
+          </button>
           <button className="game-card vs" onClick={() => { tap(); setSel("penalty"); }}>
             <span className="game-card-emoji">🥅</span>
             <span className="game-card-name">Penalty Duel <em className="h2h">H2H</em></span>
@@ -104,7 +142,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
           </button>
         </div>
 
-        <span className="field-label" style={{ marginTop: 20 }}>🍺 Pub games — pass the phone</span>
+        <span className="field-label" style={{ marginTop: 22 }}>🍺 Pub games — trivia &amp; pass the phone</span>
         <div className="game-grid">
           {PUB.map((g) => (
             <button key={g.id} className="game-card pub" onClick={() => { tap(); setSel(g.id); }}>
@@ -114,23 +152,38 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
             </button>
           ))}
         </div>
+
+        {boardGame && <LeaderboardSheet game={boardGame} onClose={() => setBoardGame(null)} />}
       </div>
     );
   }
 
   // ── Pub games (full-screen, local, no leaderboard) ──
-  if (sel === "roulette" || sel === "trivia" || sel === "nation") {
+  if (sel === "roulette" || sel === "trivia" || sel === "nation" || sel === "cardhappy" || sel === "tnap" || sel === "beatclock") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
         {sel === "roulette" && <PenaltyRoulette />}
+        {sel === "cardhappy" && <CardHappy />}
+        {sel === "tnap" && <ThatsNeverAPen />}
         {sel === "trivia" && <WhoAreYa />}
+        {sel === "beatclock" && <BeatTheClock />}
         {sel === "nation" && <GuessNation />}
       </div>
     );
   }
 
-  // ── Penalty (head-to-head) ──
+  // ── Outside Bet Roulette (solo spin) ──
+  if (sel === "obr") {
+    return (
+      <div className="games">
+        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
+        <OutsideBetRoulette playerName={playerName} />
+      </div>
+    );
+  }
+
+  // ── Head-to-head: Penalty Duel ──
   if (sel === "penalty") {
     return (
       <div className="games">
@@ -166,6 +219,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
       {soloGame === "keepy" && <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
       {soloGame === "topbins" && <TopBins key={`t-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
       {soloGame === "freekick" && <FreeKick key={`f-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
+      {soloGame === "god" && <GroupOfDeath key={`g-${target ?? "x"}`} onGameOver={onGameOver} target={target} playerName={playerName} />}
 
       <div className="game-meta-row">
         <span className="game-best">Your best · <strong>{best}</strong> {meta.unit}</span>
@@ -178,7 +232,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
       </div>
 
       {board.length === 0 ? (
-        <p className="board-empty">No scores yet — be the first. Tap <strong>Kick off</strong>.</p>
+        <p className="board-empty">No scores yet — put one up and you're top of the world.</p>
       ) : (
         <ol className="board game-board">
           {board.map((e, i) => (
@@ -191,6 +245,49 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
           ))}
         </ol>
       )}
+    </div>
+  );
+}
+
+/** A peek at the worldwide board for a single game — opened from its 🏆 icon. */
+function LeaderboardSheet({ game, onClose }: { game: GameId; onClose: () => void }) {
+  const store = useStore();
+  const [global, setGlobal] = useState<ScoreEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchGlobal(game).then((g) => { if (!cancelled) { setGlobal(g); setLoading(false); } });
+    return () => { cancelled = true; };
+  }, [game]);
+  const meta = gameMeta(game);
+  const board = mergeBoards(store.scores, global, game).slice(0, 12);
+  return (
+    <div className="lb-backdrop" onClick={onClose}>
+      <div className="lb-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="lb-head">
+          <span className="field-label" style={{ margin: 0 }}>{meta.name} · 🌍 Worldwide</span>
+          <button className="lb-close" aria-label="Close" onClick={onClose}>✕</button>
+        </div>
+        {!isGlobalEnabled() && (
+          <p className="board-note">The world board lights up when you're online. Your bests + shared challenges for now.</p>
+        )}
+        {loading ? (
+          <p className="board-note">Loading the world…</p>
+        ) : board.length === 0 ? (
+          <p className="board-note">No scores yet — be the first to put one up.</p>
+        ) : (
+          <ol className="board game-board">
+            {board.map((e, i) => (
+              <li key={`${e.name}-${e.score}-${i}`} className={`board-row${e.source === "you" ? " is-you" : ""}`}>
+                <span className="board-rank">{i + 1}</span>
+                <span className="board-name">{e.name}{e.source === "you" ? " (you)" : ""}</span>
+                {e.source === "global" && <span className="board-tag">🌍</span>}
+                <span className="board-score">{e.score} {meta.unit}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
     </div>
   );
 }

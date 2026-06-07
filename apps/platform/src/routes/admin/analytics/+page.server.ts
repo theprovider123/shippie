@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { requireAdmin } from '$server/admin/auth';
+import { emptyPlatformPulse, loadPlatformAnalyticsPulse } from '$server/analytics/platform-summary';
 
 type SummaryRow = {
   totalEvents: number;
@@ -74,10 +75,11 @@ export const load: PageServerLoad = async (event) => {
       kinds: [] as KindRow[],
       recentProof: [] as RecentProofRow[],
       spacesSummary: emptySpacesSummary(),
+      platformPulse: emptyPlatformPulse(30),
     };
   }
 
-  const [summary, topTools, topEvents, daily, kinds, recentProof, spacesSummary] = await Promise.all([
+  const [summary, topTools, topEvents, daily, kinds, recentProof, spacesSummary, platformPulse] = await Promise.all([
     db.prepare(
       `
       SELECT
@@ -184,6 +186,7 @@ export const load: PageServerLoad = async (event) => {
         (SELECT COALESCE(SUM(used_count), 0) FROM app_invites) AS totalInviteUses
       `,
     ).first<SpacesSummaryRow>(),
+    loadPlatformAnalyticsPulse(db, 30),
   ]);
 
   return {
@@ -196,6 +199,7 @@ export const load: PageServerLoad = async (event) => {
     kinds: normalizeRows(kinds.results),
     recentProof: normalizeRows(recentProof.results),
     spacesSummary: normalizeSpacesSummary(spacesSummary),
+    platformPulse,
   };
 };
 

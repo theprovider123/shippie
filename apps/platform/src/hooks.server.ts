@@ -15,6 +15,7 @@
  */
 import type { Handle } from '@sveltejs/kit';
 import { createLucia } from '$server/auth/lucia';
+import { touchSessionContext } from '$server/auth/session-context';
 import {
   dispatchMakerSubdomain,
   dispatchWrapperSystemRoute,
@@ -177,6 +178,15 @@ export const handle: Handle = async ({ event, resolve }) => {
           };
         }
         event.locals.session = session;
+        if (session && event.platform?.env.DB) {
+          void touchSessionContext({
+            db: event.platform.env.DB,
+            sessionId: session.id,
+            request: event.request,
+          }).catch((err) => {
+            console.error('[auth] touchSessionContext failed', err);
+          });
+        }
       } catch (err) {
         console.error('[auth] session validation failed; continuing anonymous', err);
         const blank = lucia.createBlankSessionCookie();

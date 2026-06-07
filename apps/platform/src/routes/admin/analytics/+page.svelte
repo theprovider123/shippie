@@ -6,6 +6,9 @@
   const maxDaily = $derived(
     Math.max(1, ...data.daily.map((row) => Number(row.events ?? 0))),
   );
+  const maxDevice = $derived(
+    Math.max(1, ...data.platformPulse.deviceSplit.map((row) => Number(row.count ?? 0))),
+  );
 
   function n(value: number | null | undefined): string {
     return Number(value ?? 0).toLocaleString();
@@ -79,6 +82,50 @@
       <span>Proof devices</span>
       <strong>{n(data.summary.proofDevices)}</strong>
     </article>
+  </section>
+
+  <section class="panel pulse-panel">
+    <div class="section-head">
+      <h2>Shippie pulse</h2>
+      <p>Simple aggregate platform numbers for the last {data.platformPulse.rangeDays} days.</p>
+    </div>
+    <div class="stat-grid compact" aria-label="Platform pulse metrics">
+      <article>
+        <span>Apps</span>
+        <strong>{n(data.platformPulse.summary.totalApps)}</strong>
+        <p>{n(data.platformPulse.summary.liveApps)} live</p>
+      </article>
+      <article>
+        <span>Public apps</span>
+        <strong>{n(data.platformPulse.summary.publicApps)}</strong>
+        <p>{n(data.platformPulse.summary.privateApps)} private</p>
+      </article>
+      <article>
+        <span>Active apps</span>
+        <strong>{n(data.platformPulse.summary.activeApps)}</strong>
+        <p>received aggregate events</p>
+      </article>
+      <article>
+        <span>Anon sessions</span>
+        <strong>{n(data.platformPulse.summary.anonymousSessions)}</strong>
+        <p>counted, never shown</p>
+      </article>
+    </div>
+    {#if data.platformPulse.deviceSplit.length > 0}
+      <div class="device-list" aria-label="Anonymous device split">
+        {#each data.platformPulse.deviceSplit as row (row.deviceClass)}
+          <div class="device-row">
+            <span>{row.deviceClass}</span>
+            <div class="bar-track" aria-label={`${row.count} ${row.deviceClass} samples`}>
+              <span style={`width:${pct(row.count, maxDevice)}%`}></span>
+            </div>
+            <strong>{n(row.count)}</strong>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <p class="muted">No coarse device samples in this window yet.</p>
+    {/if}
   </section>
 
   <section class="panel spaces-panel">
@@ -293,6 +340,27 @@
   .spaces-panel {
     margin-bottom: 1rem;
   }
+  .pulse-panel {
+    display: grid;
+    gap: 1rem;
+  }
+  .device-list {
+    display: grid;
+    gap: 0.65rem;
+  }
+  .device-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 72px;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .device-row span {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary, #B8A88F);
+  }
   .two-col {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -348,7 +416,8 @@
   @media (max-width: 640px) {
     .stat-grid,
     .thead,
-    .tr { grid-template-columns: 1fr; }
+    .tr,
+    .device-row { grid-template-columns: 1fr; }
     .thead { display: none; }
     .bar-row { grid-template-columns: 1fr; }
   }

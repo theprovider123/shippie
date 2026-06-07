@@ -25,7 +25,7 @@
       <a href="/admin/profile" class:active={$page.url.pathname.startsWith('/admin/profile')}>Builder profile</a>
     </nav>
 
-    <a class="back" href="/maker">← Back to Maker</a>
+    <a class="back" href="/maker/apps">← Back to Apps</a>
   </aside>
 
   <main>

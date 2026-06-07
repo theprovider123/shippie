@@ -16,7 +16,7 @@ import { json } from "@sveltejs/kit";
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { RequestHandler } from "./$types";
 
-const GAMES = new Set(["keepy", "topbins"]);
+const GAMES = new Set(["keepy", "topbins", "freekick", "god"]);
 const MAX = 50;
 
 interface Entry {

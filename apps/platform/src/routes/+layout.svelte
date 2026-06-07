@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { invalidateAll } from '$app/navigation';
   import '$lib/styles/tokens.css';
   import Nav from '$lib/components/layout/Nav.svelte';
   import BottomDock from '$lib/components/layout/BottomDock.svelte';
@@ -84,6 +85,43 @@
   });
 
   onMount(() => {
+    let authChannel: BroadcastChannel | null = null;
+    const handleAuthEvent = () => {
+      void invalidateAll();
+    };
+
+    try {
+      authChannel = new BroadcastChannel('shippie-auth');
+      authChannel.onmessage = (event) => {
+        if ((event.data as { kind?: string } | null)?.kind === 'signed-in') {
+          handleAuthEvent();
+        }
+      };
+    } catch {
+      authChannel = null;
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'shippie:auth-event:v1' && event.newValue) {
+        handleAuthEvent();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    if (data.user) {
+      try {
+        const key = `shippie:auth-broadcasted:${data.user.id}`;
+        if (!sessionStorage.getItem(key)) {
+          const payload = { kind: 'signed-in', at: Date.now() };
+          authChannel?.postMessage(payload);
+          localStorage.setItem('shippie:auth-event:v1', JSON.stringify(payload));
+          sessionStorage.setItem(key, '1');
+        }
+      } catch {
+        // Storage and BroadcastChannel are best-effort in private/PWA contexts.
+      }
+    }
+
     document.body.dataset.appReady = 'true';
     installOfflineRepairLoop();
 
@@ -93,7 +131,7 @@
       if (!sessionStorage.getItem('shippie:track:viewport_mode')) {
         const w = window.innerWidth;
         const mode = w < 768 ? 'mobile' : w < 1280 ? 'tablet' : 'desktop';
-        track('viewport_mode', { mode, width: w });
+        track('viewport_mode', { mode });
         sessionStorage.setItem('shippie:track:viewport_mode', '1');
       }
       if (matchesStandalone() && !sessionStorage.getItem('shippie:track:standalone')) {
@@ -104,6 +142,11 @@
       // sessionStorage blocked (private browsing) — fire on every load,
       // accept the slight over-count rather than lose the signal.
     }
+
+    return () => {
+      authChannel?.close();
+      window.removeEventListener('storage', onStorage);
+    };
   });
 </script>
 

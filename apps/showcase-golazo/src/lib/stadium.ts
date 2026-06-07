@@ -227,6 +227,79 @@ export class Shake {
   }
 }
 
+function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * A proper goalkeeper: head, jersey, two arms spread to gloves at the edge of the
+ * save zone, and legs — tilting into the dive with `lean`. `reachPx` is the save
+ * half-width (so the gloves mark exactly what they can reach); `scale` ≈ goal-mouth
+ * height. Amber kit by default so the keeper reads as the opponent.
+ */
+export function drawKeeper(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  reachPx: number,
+  lean: number,
+  scale: number,
+  dive = 0,
+  kit = "#f5a623",
+): void {
+  const dark = "#2a1f12";
+  const glove = "#fff7e6";
+  const skin = "#e8c9a0";
+  const bodyW = Math.max(13, scale * 0.3);
+  const bodyH = scale * 0.5;
+  const headR = scale * 0.15;
+  const shoulderY = -bodyH * 0.4;
+  const span = Math.max(reachPx, bodyW * 0.9); // gloves at the save-zone edge
+  const reachUp = scale * 0.22; // arms raised as they spread
+  const dir = lean === 0 ? 0 : lean > 0 ? 1 : -1;
+
+  ctx.save();
+  // Launch off the line: arc up + out toward the dive as `dive` ramps 0→1.
+  ctx.translate(cx + dir * dive * scale * 0.35, cy - Math.sin(dive * Math.PI) * scale * 0.42);
+  // Body rotates from upright toward fully horizontal in the dive direction.
+  ctx.rotate(lean * 0.3 + dir * dive * (Math.PI * 0.42));
+
+  // legs
+  ctx.fillStyle = dark;
+  rr(ctx, -bodyW * 0.46, bodyH * 0.34, bodyW * 0.34, scale * 0.3, bodyW * 0.16);
+  rr(ctx, bodyW * 0.12, bodyH * 0.34, bodyW * 0.34, scale * 0.3, bodyW * 0.16);
+  // torso (jersey)
+  ctx.fillStyle = kit;
+  rr(ctx, -bodyW / 2, -bodyH * 0.52, bodyW, bodyH, bodyW * 0.34);
+  // arms reaching out to the gloves
+  ctx.strokeStyle = kit;
+  ctx.lineWidth = Math.max(6, scale * 0.15);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-bodyW * 0.38, shoulderY);
+  ctx.lineTo(-span, shoulderY - reachUp);
+  ctx.moveTo(bodyW * 0.38, shoulderY);
+  ctx.lineTo(span, shoulderY - reachUp);
+  ctx.stroke();
+  // gloves
+  ctx.fillStyle = glove;
+  ctx.beginPath(); ctx.arc(-span, shoulderY - reachUp, scale * 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(span, shoulderY - reachUp, scale * 0.1, 0, Math.PI * 2); ctx.fill();
+  // head
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(0, -bodyH * 0.52 - headR * 0.7, headR, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
 export function hexA(hex: string, a: number): string {
   const h = hex.replace("#", "");
   const r = parseInt(h.slice(0, 2), 16);

@@ -10,19 +10,27 @@ export interface KeeperConfig {
   error: number;
   /** Lerp factor toward the dive target (0..1). Higher = quicker dive. */
   speed: number;
+  /** Frames the keeper hesitates before committing the dive (human reaction). */
+  reactionFrames: number;
 }
 
 function clamp(n: number, lo: number, hi: number): number {
   return n < lo ? lo : n > hi ? hi : n;
 }
 
-/** Difficulty 0 (flap) → 1 (world class). Casual ≈ 0.3, Pro ≈ 0.75. */
+/**
+ * Difficulty 0 (flap) → 1 (world class). Casual ≈ 0.3, Pro ≈ 0.75.
+ * Tuned to feel HUMAN: a keeper can't cover the whole goal (reach tops out at
+ * ~a quarter of it), always guesses with some error, and reacts a beat late —
+ * so power, placement and curl genuinely beat them.
+ */
 export function keeperConfig(difficulty: number): KeeperConfig {
   const d = clamp(difficulty, 0, 1);
   return {
-    reach: 0.12 + d * 0.17, // 0.12 → 0.29 of the goal
-    error: 0.52 - d * 0.44, // 0.52 → 0.08 of the goal
-    speed: 0.14 + d * 0.12,
+    reach: 0.1 + d * 0.13, // 0.10 → 0.23 of the goal (corners always live)
+    error: 0.6 - d * 0.36, // 0.60 → 0.24 of the goal (never psychic)
+    speed: 0.12 + d * 0.1, // a touch slower than before
+    reactionFrames: Math.round(13 - d * 7), // 13 → 6 frames of hesitation
   };
 }
 
@@ -42,7 +50,10 @@ export class Keeper {
   target: number;
   lean = 0;
   diving = false;
+  /** 0 = on the line, 1 = full-stretch airborne dive. Drives the dive animation. */
+  dive = 0;
   private patrolDir = 1;
+  private wait = 0; // reaction-delay frames remaining before the dive commits
 
   constructor(private x0: number, private x1: number, public cfg: KeeperConfig) {
     this.x = (x0 + x1) / 2;
@@ -53,12 +64,15 @@ export class Keeper {
     this.x0 = x0; this.x1 = x1;
   }
 
-  /** Commit a dive toward where the ball will cross, with difficulty-scaled error. */
+  /** Commit a dive toward where the ball will cross, with difficulty-scaled error.
+   *  The keeper hesitates `reactionFrames` before actually moving — so a fast,
+   *  well-placed shot can be in before they get across. */
   commit(predictedCrossX: number, rng: () => number = Math.random): void {
     const goalW = this.x1 - this.x0;
     const err = (rng() - 0.5) * goalW * this.cfg.error * 2;
     this.target = clamp(predictedCrossX + err, this.x0, this.x1);
     this.diving = true;
+    this.wait = this.cfg.reactionFrames ?? 0;
   }
 
   /** Commit to a fixed zone centre (for keeper-vs-striker games where the side is chosen). */
@@ -67,20 +81,28 @@ export class Keeper {
     const mid = (this.x0 + this.x1) / 2;
     this.target = dir === 0 ? mid : mid + dir * goalW * 0.3;
     this.diving = true;
+    this.wait = this.cfg.reactionFrames ?? 0;
   }
 
   /** Per-frame update. When idle (no dive committed), patrol the line. */
   update(idleSpeed = 2): void {
     if (this.diving) {
-      this.x += (this.target - this.x) * (this.cfg.speed + 0.04);
+      // Hesitate first: only a small anticipatory shift, then explode into the dive.
+      const committed = this.wait <= 0;
+      const factor = committed ? this.cfg.speed + 0.04 : (this.cfg.speed + 0.04) * 0.18;
+      if (this.wait > 0) this.wait--;
+      this.x += (this.target - this.x) * factor;
       const mid = (this.x0 + this.x1) / 2;
       this.lean += (clamp((this.target - mid) / ((this.x1 - this.x0) / 2), -1, 1) - this.lean) * 0.2;
+      // Once committed, launch off the line into a full-stretch dive.
+      if (committed) this.dive += (1 - this.dive) * 0.22;
     } else {
       this.x += this.patrolDir * idleSpeed;
       const reachPx = this.reachPx();
       if (this.x < this.x0 + reachPx) this.patrolDir = 1;
       if (this.x > this.x1 - reachPx) this.patrolDir = -1;
       this.lean += (0 - this.lean) * 0.2;
+      this.dive += (0 - this.dive) * 0.3;
     }
   }
 
@@ -93,5 +115,6 @@ export class Keeper {
     this.target = this.x;
     this.diving = false;
     this.lean = 0;
+    this.dive = 0;
   }
 }

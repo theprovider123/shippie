@@ -6,6 +6,8 @@ const URL_RE = /\bhttps?:\/\//i;
 const CONTROL_RE = /[\u0000-\u001f\u007f]/;
 const SENSITIVE_KEY_RE =
   /(?:email|e-?mail|phone|password|secret|token|address|location|latitude|longitude|query|search|message|note|body|content|referrer|url)$/i;
+const DEVICE_DETAIL_KEY_RE =
+  /^(?:width|height|screen|screen_width|screen_height|screenWidth|screenHeight|viewport_width|viewport_height|viewportWidth|viewportHeight|innerWidth|innerHeight|dpr|pixelRatio|userAgent|ua|ip|fingerprint|deviceId|device_id)$/i;
 
 const MAX_PROPERTY_KEYS = 24;
 const MAX_ARRAY_ITEMS = 10;
@@ -82,6 +84,7 @@ function sanitizeObject(value: unknown, depth: number): Record<string, unknown> 
 function sanitizePropertyKey(key: string): string | null {
   if (!SAFE_KEY_RE.test(key)) return null;
   if (SENSITIVE_KEY_RE.test(key)) return null;
+  if (DEVICE_DETAIL_KEY_RE.test(key)) return null;
   return key;
 }
 

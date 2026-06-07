@@ -12,19 +12,20 @@ export interface ZoneOption {
 }
 
 export const ZONE_OPTIONS: ZoneOption[] = [
-  { id: "auto", label: "My location (auto)" },
-  { id: "America/Los_Angeles", label: "Los Angeles", hint: "PT" },
-  { id: "America/Mexico_City", label: "Mexico City", hint: "CT" },
-  { id: "America/New_York", label: "New York / Toronto", hint: "ET" },
-  { id: "America/Sao_Paulo", label: "São Paulo", hint: "BRT" },
-  { id: "Europe/London", label: "London", hint: "BST" },
-  { id: "Europe/Paris", label: "Paris / Madrid / Lagos+1", hint: "CEST" },
-  { id: "Africa/Lagos", label: "Lagos / Casablanca", hint: "WAT" },
-  { id: "Europe/Athens", label: "Athens / Cairo", hint: "EEST" },
-  { id: "Asia/Dubai", label: "Dubai", hint: "GST" },
-  { id: "Asia/Kolkata", label: "India", hint: "IST" },
-  { id: "Asia/Tokyo", label: "Tokyo / Seoul", hint: "JST" },
-  { id: "Australia/Sydney", label: "Sydney", hint: "AEST" },
+  { id: "auto", label: "Where I am" },
+  { id: "Europe/London", label: "UK & Ireland", hint: "BST" },
+  { id: "Europe/Paris", label: "Western Europe", hint: "CEST" },
+  { id: "Europe/Athens", label: "Eastern Europe", hint: "EEST" },
+  { id: "Africa/Lagos", label: "West Africa", hint: "WAT" },
+  { id: "Asia/Dubai", label: "Middle East", hint: "GST" },
+  { id: "Asia/Kolkata", label: "South Asia", hint: "IST" },
+  { id: "Asia/Tokyo", label: "East Asia", hint: "JST" },
+  { id: "Australia/Sydney", label: "Australia", hint: "AEST" },
+  { id: "America/New_York", label: "US East", hint: "ET" },
+  { id: "America/Chicago", label: "US Central", hint: "CT" },
+  { id: "America/Los_Angeles", label: "US West", hint: "PT" },
+  { id: "America/Mexico_City", label: "Mexico", hint: "CT" },
+  { id: "America/Sao_Paulo", label: "South America", hint: "BRT" },
 ];
 
 /** The device's own IANA zone, best-effort. */

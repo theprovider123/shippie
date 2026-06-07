@@ -88,7 +88,7 @@ export function Live() {
     <div className="live">
       <div className="section-head">
         <div>
-          <h2 className="section-title">Match day</h2>
+          <h2 className="section-title">Match Week</h2>
           <p className="section-hint">React live with everyone in the room.</p>
         </div>
         <span className="presence">

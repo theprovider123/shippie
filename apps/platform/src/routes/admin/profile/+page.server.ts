@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { requireAdmin } from '$server/admin/auth';
+import { emptyPlatformPulse, loadPlatformAnalyticsPulse } from '$server/analytics/platform-summary';
 import { getDrizzleClient, schema } from '$server/db/client';
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9_-]{1,31}$/;
@@ -30,32 +31,37 @@ export const load: PageServerLoad = async (event) => {
         youtubeUrl: null,
         sponsorUrl: null,
       },
+      platformPulse: emptyPlatformPulse(30),
     };
   }
 
   const db = getDrizzleClient(dbBinding);
-  const [profile] = await db
-    .select({
-      id: schema.users.id,
-      email: schema.users.email,
-      username: schema.users.username,
-      displayName: schema.users.displayName,
-      avatarUrl: schema.users.avatarUrl,
-      headline: schema.users.headline,
-      bio: schema.users.bio,
-      location: schema.users.location,
-      websiteUrl: schema.users.websiteUrl,
-      githubUrl: schema.users.githubUrl,
-      xUrl: schema.users.xUrl,
-      blueskyUrl: schema.users.blueskyUrl,
-      mastodonUrl: schema.users.mastodonUrl,
-      linkedinUrl: schema.users.linkedinUrl,
-      youtubeUrl: schema.users.youtubeUrl,
-      sponsorUrl: schema.users.sponsorUrl,
-    })
-    .from(schema.users)
-    .where(eq(schema.users.id, admin.id))
-    .limit(1);
+  const [profileRows, platformPulse] = await Promise.all([
+    db
+      .select({
+        id: schema.users.id,
+        email: schema.users.email,
+        username: schema.users.username,
+        displayName: schema.users.displayName,
+        avatarUrl: schema.users.avatarUrl,
+        headline: schema.users.headline,
+        bio: schema.users.bio,
+        location: schema.users.location,
+        websiteUrl: schema.users.websiteUrl,
+        githubUrl: schema.users.githubUrl,
+        xUrl: schema.users.xUrl,
+        blueskyUrl: schema.users.blueskyUrl,
+        mastodonUrl: schema.users.mastodonUrl,
+        linkedinUrl: schema.users.linkedinUrl,
+        youtubeUrl: schema.users.youtubeUrl,
+        sponsorUrl: schema.users.sponsorUrl,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, admin.id))
+      .limit(1),
+    loadPlatformAnalyticsPulse(dbBinding, 30),
+  ]);
+  const [profile] = profileRows;
 
   return {
     status: 'ready' as const,
@@ -77,6 +83,7 @@ export const load: PageServerLoad = async (event) => {
       youtubeUrl: null,
       sponsorUrl: null,
     },
+    platformPulse,
   };
 };
 

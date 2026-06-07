@@ -11,8 +11,9 @@ import { findOrCreateUserByEmail } from '$server/auth/users';
 import { createLucia } from '$server/auth/lucia';
 import { getAuthSecret } from '$server/auth/env';
 import { safeReturnTo } from '$server/auth/return-to';
+import { annotateSessionContext } from '$server/auth/session-context';
 
-export const GET: RequestHandler = async ({ params, platform, cookies, url }) => {
+export const GET: RequestHandler = async ({ params, platform, cookies, url, request }) => {
   if (!platform?.env.DB) {
     return new Response('Database unavailable.', { status: 500 });
   }
@@ -41,7 +42,16 @@ export const GET: RequestHandler = async ({ params, platform, cookies, url }) =>
   const session = await lucia.createSession(user.id, {});
   const cookie = lucia.createSessionCookie(session.id);
   cookies.set(cookie.name, cookie.value, { path: '.', ...cookie.attributes });
+  await annotateSessionContext({
+    db: platform.env.DB,
+    sessionId: session.id,
+    request,
+  }).catch((err) => {
+    console.error('[auth] annotate email-link session failed', err);
+  });
 
   const returnTo = safeReturnTo(url.searchParams.get('return_to'), '/you');
-  throw redirect(303, returnTo);
+  const next = new URL('/auth/continue', url.origin);
+  next.searchParams.set('return_to', returnTo);
+  throw redirect(303, next.pathname + next.search);
 };

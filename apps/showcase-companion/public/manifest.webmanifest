@@ -1,0 +1,24 @@
+{
+  "name": "Companion",
+  "short_name": "Companion",
+  "description": "A private local-first companion for preparation, during-mode grounding, and integration.",
+  "id": "/run/companion/",
+  "start_url": "/run/companion/",
+  "scope": "/run/companion/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#100D15",
+  "theme_color": "#C9824B",
+  "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "utilities"]
+}

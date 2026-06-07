@@ -192,6 +192,7 @@
             <p>{data.user.email}</p>
           </div>
           <div class="account-actions">
+            <a href="/you/access">Access</a>
             <a href="/maker">Maker</a>
             {#if data.user.isAdmin}
               <a href="/admin">Admin</a>

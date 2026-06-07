@@ -7,7 +7,7 @@ import {
   type Duel,
   type DuelSide,
 } from "../../lib/duel";
-import { drawStadium, drawBall, Particles, Shake } from "../../lib/stadium";
+import { drawStadium, drawBall, drawKeeper, Trail, Particles, Shake } from "../../lib/stadium";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 
 type Phase = "intro" | "shoot" | "keep" | "result";
@@ -44,7 +44,9 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
     let W = 0, H = 0, raf = 0;
     const particles = new Particles();
     const shake = new Shake();
+    const trail = new Trail(12);
     const startT = performance.now();
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
     function size() {
       const r = canvas.getBoundingClientRect();
       W = r.width; H = r.height;
@@ -54,20 +56,26 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
     size();
     window.addEventListener("resize", size);
 
-    function zoneX(z: Zone) { const gl = W * 0.22, gr = W * 0.78; return z === -1 ? gl + (gr - gl) * 0.18 : z === 1 ? gr - (gr - gl) * 0.18 : W / 2; }
+    function zoneX(z: Zone) { const gl = W * 0.14, gr = W * 0.86; return z === -1 ? gl + (gr - gl) * 0.16 : z === 1 ? gr - (gr - gl) * 0.16 : W / 2; }
     function frame(now: number) {
-      const gy = H * 0.22, gl = W * 0.22, gr = W * 0.78, bh = H * 0.18;
+      const gy = H * 0.2, gl = W * 0.14, gr = W * 0.86, bh = H * 0.23;
       const a = animRef.current;
-      const spotX = W / 2, spotY = H * 0.82;
-      let ballX = spotX, ballY = spotY, keeperX = W / 2;
+      const spotX = W / 2, spotY = H * 0.84;
+      const baseR = Math.min(W, H) * 0.052;
+      const goalYTarget = gy + bh * 0.5;
+      let ballX = spotX, ballY = spotY, keeperX = W / 2, ballR = baseR;
       if (a) {
-        const k = Math.min(1, a.t / 28);
+        const raw = Math.min(1, a.t / 20);
+        const k = easeOut(raw); // snappy off the boot, settles into the goal
         ballX = spotX + (zoneX(a.shot) - spotX) * k;
-        ballY = spotY + (gy + bh * 0.5 - spotY) * k;
-        keeperX = W / 2 + (zoneX(a.dive) - W / 2) * Math.min(1, a.t / 18);
-        if (a.t === 16 && a.goal) { particles.emit(zoneX(a.shot), gy + bh * 0.4, "spark", 22); shake.kick(10); }
-        if (a.t === 16 && !a.goal) shake.kick(6);
-      }
+        // parabolic arc: rises off the spot, dips into the net
+        ballY = spotY + (goalYTarget - spotY) * k - Math.sin(raw * Math.PI) * H * 0.12;
+        ballR = baseR * (1 - 0.42 * k); // shrinks into the distance (perspective)
+        keeperX = W / 2 + (zoneX(a.dive) - W / 2) * easeOut(Math.min(1, a.t / 14));
+        if (raw < 1) trail.push(ballX, ballY);
+        if (a.t === 14 && a.goal) { particles.emit(zoneX(a.shot), goalYTarget, "spark", 26); shake.kick(12); }
+        if (a.t === 14 && !a.goal) { shake.kick(8); particles.emit(keeperX, gy + bh * 0.55, "dust", 12); }
+      } else { trail.clear(); }
       const [sx, sy] = shake.offset();
       ctx.save();
       ctx.translate(sx, sy);
@@ -86,17 +94,13 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
           ctx.fillRect(cx - w / 2, gy, w, bh);
         }
       }
-      // keeper
-      ctx.save();
-      ctx.translate(keeperX, gy + bh * 0.5);
+      // keeper — a real diving figure that launches off the line
       const lean = a ? (zoneX(a.dive) - W / 2) / (W * 0.3) : 0;
-      ctx.rotate(lean * 0.5);
-      ctx.fillStyle = "#16f08b"; const kw = (gr - gl) * 0.18;
-      ctx.beginPath(); ctx.ellipse(0, 0, kw / 2, bh * 0.34, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#0a1f16"; ctx.beginPath(); ctx.arc(0, -bh * 0.34, kw * 0.26, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      // ball
-      drawBall(ctx, ballX, ballY, Math.min(W, H) * 0.045, now / 120);
+      const dive = a ? Math.min(1, a.t / 16) : 0;
+      drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.12, lean, bh * 0.92, dive);
+      // ball — arcs in with a trail, shrinking into the distance
+      if (a) trail.draw(ctx, ballR);
+      drawBall(ctx, ballX, ballY, ballR, now / 90);
       particles.update(); particles.draw(ctx);
       ctx.restore();
 

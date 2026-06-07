@@ -22,10 +22,18 @@ export const sessions = sqliteTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     /** ISO timestamp string — Lucia adapter expects this shape. */
     expiresAt: text('expires_at').notNull(),
+    clientName: text('client_name'),
+    clientSurface: text('client_surface'),
+    clientIdHash: text('client_id_hash'),
+    userAgent: text('user_agent'),
+    createdAt: text('created_at'),
+    lastSeenAt: text('last_seen_at'),
   },
   (t) => [
     index('sessions_user_id_idx').on(t.userId),
     index('sessions_expires_idx').on(t.expiresAt),
+    index('sessions_user_last_seen_idx').on(t.userId, t.lastSeenAt),
+    index('sessions_client_id_hash_idx').on(t.clientIdHash),
   ],
 );
 

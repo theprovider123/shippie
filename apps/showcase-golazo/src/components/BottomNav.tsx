@@ -2,31 +2,51 @@ import { tap } from "../lib/haptics";
 
 export type Tab = "home" | "predict" | "pools" | "play";
 
+// Line icons, slightly human weight — matched to the Your Call design.
 const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
   {
     id: "play",
     label: "Play",
     icon: (
       <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 3a9 9 0 0 0 0 18M3.6 9h16.8M3.6 15h16.8M9 3.6 12 12l-3 8.4M15 3.6 12 12l3 8.4" />
+        <circle cx="11" cy="11" r="9" />
+        <path d="M9 8.5 L15 11 L9 13.5 Z" strokeLinejoin="round" fill="none" />
       </>
     ),
   },
   {
     id: "predict",
-    label: "Picks",
-    icon: <path d="M4 6h6v4M4 18h6v-4M10 8h4v8h-4M14 12h6" />,
+    label: "Predict",
+    icon: (
+      <>
+        <circle cx="11" cy="11" r="8.5" />
+        <circle cx="11" cy="11" r="4" />
+        <circle cx="11" cy="11" r="1" fill="currentColor" stroke="none" />
+        <path d="M11 1.5v2M11 18.5v2M1.5 11h2M18.5 11h2" />
+      </>
+    ),
   },
   {
     id: "pools",
-    label: "Mates",
-    icon: <path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5-2.9 1-5.5-4-3.9 5.5-.8z" />,
+    label: "Your Lot",
+    icon: (
+      <>
+        <circle cx="8.5" cy="5.5" r="3.5" />
+        <path d="M1 21 C1.5 16 4.5 13 8.5 13 C12.5 13 15.5 16 16 21" fill="none" />
+        <circle cx="16" cy="5" r="2.5" />
+        <path d="M15 13.5 C18 13.5 21.5 15.5 23 21" fill="none" />
+      </>
+    ),
   },
   {
     id: "home",
     label: "You",
-    icon: <path d="M3 11.5 12 4l9 7.5M5.5 10v9h13v-9" />,
+    icon: (
+      <>
+        <circle cx="11" cy="6.5" r="4" />
+        <path d="M2.5 21 C3 16.5 6.5 13 11 13 C15.5 13 19 16.5 19.5 21" fill="none" />
+      </>
+    ),
   },
 ];
 
@@ -50,14 +70,13 @@ export function BottomNav({
           }}
         >
           <svg
-            viewBox="0 0 24 24"
+            viewBox="0 0 22 22"
             width="22"
             height="22"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.8"
+            strokeWidth="1.5"
             strokeLinecap="round"
-            strokeLinejoin="round"
           >
             {it.icon}
           </svg>

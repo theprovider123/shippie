@@ -201,7 +201,29 @@ function defaultAppDataPassport(slug: string): AppDataPassportRecord {
   };
 }
 
-function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
+/**
+ * Stable fallback identity for curated tools when the DB package registry is
+ * unavailable. This must never depend on array order: adding one new tool
+ * should not make every saved tool look like it has an update.
+ */
+export function curatedPackageHash(slug: string, version = '1'): string {
+  const seed = `${slug || 'tool'}@${version || '1'}`;
+  const chunks: string[] = [];
+  for (let i = 0; i < 8; i += 1) chunks.push(fnv1aHex(`${seed}:${i}`));
+  return `sha256:${chunks.join('')}`;
+}
+
+function fnv1aHex(input: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+function curatedApp(spec: CuratedAppSpec): ContainerApp {
+  const version = '1';
   return {
     id: `app_${spec.slug.replace(/-/g, '_')}`,
     slug: spec.slug,
@@ -213,8 +235,8 @@ function curatedApp(spec: CuratedAppSpec, index: number): ContainerApp {
     labelKind: labelKindForAppKind(spec.appKind),
     icon: spec.icon ?? initials(spec.name),
     accent: spec.accent,
-    version: '1',
-    packageHash: `sha256:${(index + 1).toString(16).slice(-1).repeat(64)}`,
+    version,
+    packageHash: curatedPackageHash(spec.slug, version),
     data: defaultAppDataPassport(spec.slug),
     standaloneUrl: `/run/${spec.slug}`,
     visibility: spec.visibility ?? 'public',
@@ -574,6 +596,20 @@ const curatedAppSpecs: CuratedAppSpec[] = [
       provides: ['mindful-session', 'focus-session', 'mood-logged'],
       consumes: ['caffeine-logged', 'workout-completed', 'sleep-logged'],
     },
+  },
+  {
+    slug: 'companion',
+    name: 'Companion',
+    shortName: 'Companion',
+    description: 'Private solo trip preparation, during-mode grounding, and integration. Local-first and offline during the session.',
+    appKind: 'local',
+    icon: 'CM',
+    accent: '#C9824B',
+    category: 'health-fitness',
+    visibility: 'private',
+    surface: 'labs',
+    tier: 'labs',
+    port: 5266,
   },
   {
     slug: 'move',
@@ -1345,13 +1381,12 @@ export function buildUpdateCard(
   receipt: AppReceipt | undefined,
 ): UpdateCard | null {
   if (!receipt) return null;
-  if (receipt.packageHash === app.packageHash && receipt.version === app.version) return null;
   const receiptPermissions = permissionKeys(receipt.permissions);
   const appPermissions = permissionKeys(app.permissions.capabilities as unknown as Record<string, unknown>);
   const receiptDomains = networkDomainsFromCapabilities(receipt.permissions);
   const appDomains = networkDomainsFromCapabilities(app.permissions.capabilities as unknown as Record<string, unknown>);
   const dataCompatibility = assessDataPassportCompatibility(receipt.data, app.data);
-  return {
+  const card: UpdateCard = {
     app,
     receipt,
     versionChanged: receipt.version !== app.version,
@@ -1367,6 +1402,26 @@ export function buildUpdateCard(
     latestPrivacyGrade: app.trust?.privacy.grade ?? null,
     containerEligibility: app.trust?.containerEligibility ?? null,
   };
+  return isUserVisibleUpdate(card) ? card : null;
+}
+
+export function isUserVisibleUpdate(card: UpdateCard): boolean {
+  const materialChange =
+    card.versionChanged ||
+    card.permissionsChanged ||
+    card.kindChanged ||
+    card.addedPermissions.length > 0 ||
+    card.removedPermissions.length > 0 ||
+    card.addedNetworkDomains.length > 0 ||
+    card.removedNetworkDomains.length > 0;
+  const dataDeclared = Boolean(
+    card.receipt.data?.family ||
+    card.receipt.data?.schema ||
+    card.app.data?.family ||
+    card.app.data?.schema,
+  );
+  const dataNeedsReview = card.dataCompatibility.status !== 'same-schema' && dataDeclared;
+  return materialChange || dataNeedsReview;
 }
 
 function permissionKeys(capabilities: Record<string, unknown>): string[] {

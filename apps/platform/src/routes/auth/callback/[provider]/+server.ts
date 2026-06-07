@@ -15,8 +15,9 @@ import {
   fetchGitHubPrimaryEmail,
 } from '$server/auth/github';
 import { findOrCreateUserByGitHub } from '$server/auth/users';
+import { annotateSessionContext } from '$server/auth/session-context';
 
-export const GET: RequestHandler = async ({ params, url, cookies, platform }) => {
+export const GET: RequestHandler = async ({ params, url, cookies, platform, request }) => {
   if (params.provider !== 'github') {
     return new Response(`Provider ${params.provider} not supported.`, { status: 501 });
   }
@@ -60,10 +61,19 @@ export const GET: RequestHandler = async ({ params, url, cookies, platform }) =>
     const session = await lucia.createSession(user.id, {});
     const cookie = lucia.createSessionCookie(session.id);
     cookies.set(cookie.name, cookie.value, { path: '.', ...cookie.attributes });
+    await annotateSessionContext({
+      db: platform.env.DB,
+      sessionId: session.id,
+      request,
+    }).catch((err) => {
+      console.error('[auth] annotate github session failed', err);
+    });
 
     const returnTo = cookies.get('auth_return_to') ?? '/';
     cookies.delete('auth_return_to', { path: '/' });
-    throw redirect(303, returnTo);
+    const next = new URL('/auth/continue', url.origin);
+    next.searchParams.set('return_to', returnTo);
+    throw redirect(303, next.pathname + next.search);
   } catch (err) {
     if (err instanceof Response) throw err;
     if ((err as { status?: number })?.status === 303) throw err; // redirect rethrow

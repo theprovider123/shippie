@@ -7,15 +7,19 @@ import {
   type RoundId,
 } from "../data/tournament";
 import { team } from "../data/teams";
-import { championOf, resolveBracket } from "../lib/bracket";
+import { championOf, isComplete, resolveBracket } from "../lib/bracket";
+import { tipsLocked } from "../lib/locktimer";
 import { useStore } from "../state";
 import { Confetti, Flag, teamVars } from "../ui/atoms";
 import { celebrate, tap } from "../lib/haptics";
+import { ShareSheet } from "./ShareSheet";
 
 export function BracketView({ onChampion }: { onChampion?: () => void }) {
-  const { prediction, pickWinner, setTopScorer } = useStore();
+  const { profile, prediction, pickWinner, setTopScorer, setOutsideBet } = useStore();
   const [round, setRound] = useState<RoundId>("R32");
   const [fire, setFire] = useState(0);
+  const [share, setShare] = useState(false);
+  const locked = tipsLocked(Date.now());
 
   const { participants, r32 } = resolveBracket(
     prediction.groups,
@@ -23,9 +27,10 @@ export function BracketView({ onChampion }: { onChampion?: () => void }) {
   );
   const r32Ready = r32.filter(Boolean).length;
   const champ = championOf(prediction);
+  const complete = isComplete(prediction);
 
   function pick(slotId: string, teamId: string | null) {
-    if (!teamId) return;
+    if (!teamId || locked) return;
     const wasFinal = slotId === "F-0";
     const before = prediction.knockout["F-0"];
     pickWinner(slotId, teamId);
@@ -67,7 +72,14 @@ export function BracketView({ onChampion }: { onChampion?: () => void }) {
       {champ && (
         <GoldenBoot
           selected={prediction.topScorer}
-          onPick={(id) => { tap(); setTopScorer(prediction.topScorer === id ? undefined : id); }}
+          onPick={(id) => { if (locked) return; tap(); setTopScorer(prediction.topScorer === id ? undefined : id); }}
+        />
+      )}
+
+      {champ && (
+        <OutsideBet
+          selected={prediction.outsideBet}
+          onPick={(id) => { if (locked) return; tap(); setOutsideBet(prediction.outsideBet === id ? undefined : id); }}
         />
       )}
 
@@ -127,8 +139,78 @@ export function BracketView({ onChampion }: { onChampion?: () => void }) {
           </div>
         ))}
       </div>
+
+      {complete && (
+        <button className="cta wide mycall-cta" onClick={() => { tap(); setShare(true); }}>
+          🔒 That's my call — share it
+        </button>
+      )}
+
+      {share && profile && (
+        <ShareSheet
+          profile={profile}
+          prediction={prediction}
+          onClose={() => setShare(false)}
+        />
+      )}
     </div>
   );
+}
+
+function OutsideBet({
+  selected,
+  onPick,
+}: {
+  selected?: string;
+  onPick: (id: string) => void;
+}) {
+  // Long-shots first: the weakest seeds are the spicy outside bets.
+  const teams = [...TEAMS].sort((a, b) => b.seed - a.seed);
+  const picked = selected ? team(selected) : null;
+  const bonus = picked ? outsideBetBonus(picked.seed) : 0;
+  return (
+    <div className="golden-boot outside-bet">
+      <div className="golden-boot-head">
+        <span className="golden-boot-cap">🐴 Outside Bet · bonus points</span>
+        <span className="golden-boot-sub">
+          {picked ? (
+            <>Your bolter: <strong>{picked.flag} {picked.name}</strong></>
+          ) : (
+            "Back a long-shot to reach the last 16. The braver the call, the bigger the bonus."
+          )}
+        </span>
+      </div>
+      {picked && (
+        <div className="ob-stakes">
+          <span className="ob-stakes-num">+{bonus}</span>
+          <span className="ob-stakes-txt">
+            pts if <strong>{picked.short}</strong> reach the knockouts.{" "}
+            {picked.seed >= 33 ? "Proper brave." : picked.seed >= 17 ? "Outside shout." : "Safe-ish."}
+          </span>
+        </div>
+      )}
+      <div className="boot-rail">
+        {teams.map((t) => (
+          <button
+            key={t.id}
+            className={`boot-chip${selected === t.id ? " is-sel" : ""}`}
+            style={teamVars(t)}
+            onClick={() => onPick(t.id)}
+            aria-pressed={selected === t.id}
+          >
+            <Flag id={t.id} size={22} />
+            <span>{t.short}</span>
+            <em className="boot-bonus">+{outsideBetBonus(t.seed)}</em>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The weaker the nation (higher seed), the bigger the bonus for backing them. */
+function outsideBetBonus(seed: number): number {
+  return 15 + Math.round((seed / 48) * 55); // ~16 (favourite) → 70 (rank outsider)
 }
 
 function GoldenBoot({

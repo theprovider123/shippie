@@ -1329,6 +1329,7 @@
         focused: data.focused,
         app_kind: app.appKind,
         category: app.category ?? null,
+        device_class: analyticsDeviceClass(),
       },
       ts: Date.now(),
     });
@@ -1359,6 +1360,13 @@
     } catch {
       return `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
     }
+  }
+
+  function analyticsDeviceClass(): 'mobile' | 'tablet' | 'desktop' {
+    const width = viewportWidth || (typeof window === 'undefined' ? 1024 : window.innerWidth);
+    if (width < 768) return 'mobile';
+    if (width < 1280) return 'tablet';
+    return 'desktop';
   }
 
   function disposeApp(appId: string) {
@@ -1427,7 +1435,7 @@
     );
     const timeout = window.setTimeout(() => {
       if (frameStates[appId]?.status === 'booting') {
-        markFrameError(appId, 'This app took too long to start.');
+        markFrameError(appId, 'This tool took too long to open.');
       }
     }, 15_000);
 
@@ -1493,7 +1501,7 @@
             }
             markFrameError(
               appId,
-              `${app.name} loaded but did not paint. This is usually a stale app bundle or a script crash; reload it once.`,
+              `${app.name} opened but did not paint. This is usually a stale app bundle or a script crash. Try a fresh start.`,
               { retryablePaintMiss: true },
             );
           }, fallbackDelay);
@@ -3677,7 +3685,7 @@
         <a class="rail-quick-btn" href="/tools" title="Browse tools" aria-label="Browse tools">⌕</a>
         <a class="rail-quick-btn" href="/you" title="You" aria-label="You">⊞</a>
         <button class="rail-quick-btn" class:active={section === 'access'} title="Access" aria-label="Access" onclick={() => showSection('access')}>⚿</button>
-        <a class="rail-quick-btn" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'} title="Maker" aria-label="Maker">M</a>
+        <a class="rail-quick-btn" href={data.user ? '/maker/apps' : '/auth/login?return_to=%2Fmaker%2Fapps'} title="Apps" aria-label="Apps">▦</a>
         {#if data.user?.isAdmin}
           <a class="rail-quick-btn" href="/admin" title="Admin" aria-label="Admin">A</a>
         {/if}
@@ -3702,8 +3710,8 @@
       <a class="foot-item" href="/you">You</a>
       <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
       <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
-      <a class="foot-item" href={data.user ? '/maker' : '/auth/login?return_to=%2Fmaker'}>
-        {data.user ? 'Maker' : 'Sign in to ship'}
+      <a class="foot-item" href={data.user ? '/maker/apps' : '/auth/login?return_to=%2Fmaker%2Fapps'}>
+        {data.user ? 'Apps' : 'Sign in to manage apps'}
       </a>
       {#if data.user?.isAdmin}
         <a class="foot-item" href="/admin">Admin</a>

@@ -138,6 +138,10 @@
         </button>
       </form>
 
+      <a class="code-link" href={`/auth/receive?return_to=${encodeURIComponent(data.returnTo)}`}>
+        Use a one-time code instead
+      </a>
+
       <p class="hint">
         {data.devMode ? 'Dev mode: link prints to your terminal.' : 'Magic link sent by email.'}
       </p>
@@ -368,6 +372,15 @@
     text-align: center;
     font-size: 11px;
     margin: 0;
+  }
+  .code-link {
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sunset, #E8603C);
+    font-weight: 700;
+    text-decoration: none;
   }
   .error,
   .ok {

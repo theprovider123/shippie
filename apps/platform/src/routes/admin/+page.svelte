@@ -9,7 +9,7 @@
 
 <header class="header">
   <p class="eyebrow">Admin · Apps</p>
-  <h1>Moderation</h1>
+  <h1>Apps</h1>
   <p class="lede">{data.apps.length} {data.apps.length === 1 ? 'app' : 'apps'} match the current filter.</p>
 </header>
 
