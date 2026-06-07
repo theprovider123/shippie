@@ -440,15 +440,12 @@
     border: 1px solid var(--sunset);
     background: var(--sunset);
     color: var(--bg);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font: inherit;
     cursor: pointer;
   }
   .update-all:hover,
   .update-all:focus-visible {
-    border-color: var(--text);
+    filter: brightness(1.06);
     outline: none;
   }
   .update-group {
@@ -547,12 +544,9 @@
     min-height: 36px;
     padding: 0 0.72rem;
     border: 1px solid var(--border-light);
-    background: transparent;
+    background: var(--surface);
     color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 0.64rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font: inherit;
     cursor: pointer;
   }
   .update-row-actions button.primary {
@@ -562,8 +556,14 @@
   }
   .update-row-actions button:hover,
   .update-row-actions button:focus-visible {
+    background: var(--surface-alt);
     border-color: var(--sunset);
     outline: none;
+  }
+  .update-row-actions button.primary:hover,
+  .update-row-actions button.primary:focus-visible {
+    background: var(--sunset);
+    filter: brightness(1.06);
   }
   @media (min-width: 641px) {
     .section-head h1 {

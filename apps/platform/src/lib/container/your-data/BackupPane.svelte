@@ -274,10 +274,16 @@
     min-height: var(--touch-min);
     padding: 0.5rem 0.9rem;
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     color: var(--text);
     cursor: pointer;
     font: inherit;
+  }
+  .secondary:hover,
+  .secondary:focus-visible {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
+    outline: none;
   }
   .result {
     display: grid;

@@ -213,10 +213,8 @@
     background: transparent;
     color: var(--text-secondary);
     text-decoration: none;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font: inherit;
+    font-size: 0.85rem;
     cursor: pointer;
   }
 
@@ -336,10 +334,8 @@
     align-items: center;
     align-self: flex-start;
     color: var(--sunset);
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    letter-spacing: 0.06em;
+    font: inherit;
+    font-size: 0.85rem;
     text-decoration: none;
-    text-transform: uppercase;
   }
 </style>

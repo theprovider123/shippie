@@ -145,15 +145,17 @@
   }
   .local-actions.inline button {
     min-height: 44px;
-    border-color: currentColor;
-    background: transparent;
-    color: inherit;
+    border-color: var(--border-light);
+    background: var(--surface);
+    color: var(--text);
     padding: 0 1.25rem;
-    font-family: ui-monospace, SFMono-Regular, monospace;
-    font-size: var(--small-size);
+    font: inherit;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+  }
+  .local-actions.inline button:hover,
+  .local-actions.inline button:focus-visible {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
   }
   button.primary,
   button.active {
@@ -163,9 +165,9 @@
   }
   .local-actions.inline button.primary,
   .local-actions.inline button.active {
-    background: transparent;
-    color: inherit;
-    border-color: currentColor;
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border-light);
   }
   button:disabled {
     opacity: 0.65;
