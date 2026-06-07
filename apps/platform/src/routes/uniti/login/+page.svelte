@@ -128,15 +128,12 @@
           Sign in with magic link
         </button>
 
-        <form method="POST" action="?/demo" use:enhance={submit('quickpick')}>
-          <input type="hidden" name="quickpick" value="shared-device" />
-          <button type="submit" class="quiet-btn with-icon" disabled={submitting === 'quickpick'}>
-            <Icon name="pupils" size={14} />
-            {submitting === 'quickpick' ? 'Opening…' : 'Shared device — quick pick teacher'}
-          </button>
-        </form>
-
         {#if data.demoEnabled}
+          <button type="button" class="quiet-btn with-icon" onclick={() => (mode = 'quickpick')}>
+            <Icon name="pupils" size={14} />
+            Shared device — quick pick teacher
+          </button>
+
           <div class="demo-link">
             <form method="POST" action="?/demo" use:enhance={submit('demo')}>
               <button type="submit" class="link" disabled={submitting === 'demo'}>
@@ -181,7 +178,7 @@
         {/if}
       {/if}
 
-      {#if mode === 'quickpick'}
+      {#if mode === 'quickpick' && data.demoEnabled}
         <button type="button" class="back" onclick={() => (mode = 'sso')}>
           <Icon name="back" size={14} /> Back
         </button>
