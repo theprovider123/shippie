@@ -159,12 +159,17 @@ shippie deploy ./dist</code></pre>
 <style>
   .page {
     min-height: 100svh;
+    /* Dark-first — remap the legacy cream palette to dark tokens for the subtree. */
+    --paper-warm: var(--bg);
+    --paper-cream: var(--border-light);
+    --ink-warm: var(--border-light);
+    --text-muted-warm: var(--text-secondary);
     min-height: 100dvh;
     width: 100%;
     max-width: 100vw;
     padding: calc(var(--safe-top, 0px) + 1rem) 1.25rem calc(var(--safe-bottom, 0px) + 4rem);
-    background: var(--paper-warm);
-    color: var(--bg);
+    background: var(--bg);
+    color: var(--text);
     overflow-x: hidden;
     overflow-x: clip;
     overscroll-behavior-x: none;
@@ -384,20 +389,19 @@ shippie deploy ./dist</code></pre>
       padding-top: 1.25rem;
     }
   }
-  @media (prefers-color-scheme: dark) {
-    .page { background: var(--bg); color: var(--text); }
-    .hero, .remix-panel, .primary-flow, .next-tools, .next-tools article, .next { border-color: var(--ink-warm); }
-    pre { background: var(--bg-pure); }
-    .next { background: rgba(232, 96, 60, 0.06); }
-    .lede, .remix-panel p, .section-head p, .hero-status ul, .next ol { color: var(--border-cream-soft); }
-    .remix-actions a,
-    .remix-panel.unavailable > a {
-      border-color: var(--text);
-      color: var(--text);
-    }
-    .remix-actions a:first-child {
-      background: var(--text);
-      color: var(--bg);
-    }
+  /* Dark refinements — always on (the page is dark-first). */
+  .hero, .remix-panel, .primary-flow, .next-tools, .next-tools article, .next { border-color: var(--border-light); }
+  pre { background: var(--bg-pure); }
+  .next { background: rgba(232, 96, 60, 0.06); }
+  .lede, .remix-panel p, .section-head p, .hero-status ul, .next ol { color: var(--text-secondary); }
+  .remix-actions a,
+  .remix-panel.unavailable > a {
+    border-color: var(--border-light);
+    color: var(--text);
+  }
+  .remix-actions a:first-child {
+    background: var(--sunset);
+    border-color: var(--sunset);
+    color: var(--bg);
   }
 </style>
