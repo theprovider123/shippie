@@ -328,7 +328,7 @@
       <div class="link-list">
         <a href="/docs#help">Help &amp; docs</a>
         <a href="/docs#privacy">Privacy &amp; terms</a>
-        <a href="mailto:info@shippie.app">Contact</a>
+        <a href="mailto:hello@shippie.app">Contact</a>
       </div>
     </section>
   </main>

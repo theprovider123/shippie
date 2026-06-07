@@ -325,7 +325,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     <h3 id="get-help">Get help</h3>
     <p>
       Most answers are on this page. For anything else, email
-      <a href="mailto:info@shippie.app">info@shippie.app</a> or open an issue on
+      <a href="mailto:hello@shippie.app">hello@shippie.app</a> or open an issue on
       <a href="https://github.com/theprovider123/shippie">GitHub</a>. A tool misbehaving? Use the
       feedback control inside the tool — the report travels with it.
     </p>

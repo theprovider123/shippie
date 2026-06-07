@@ -17,7 +17,7 @@
           <span>Shippie</span>
         </a>
         <span>Open source local tools.</span>
-        <a href="mailto:info@shippie.app">info@shippie.app</a>
+        <a href="mailto:hello@shippie.app">hello@shippie.app</a>
       </div>
 
       <nav class="footer-links" aria-label="Product links">
