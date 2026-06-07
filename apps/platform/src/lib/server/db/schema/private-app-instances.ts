@@ -38,6 +38,11 @@ export const privateAppInstances = sqliteTable(
     workspaceDoId: text('workspace_do_id').notNull(),
     createdBy: text('created_by'),
     createdAt: integer('created_at').notNull(),
+    /** Set when the school is deprovisioned with mode='erase' (Phase 9). The
+     * row is KEPT as a tombstone — the school workspace DO is purged + the
+     * space_apps install removed, but the control-plane row records that an
+     * erasure happened (with timestamp + actor) so the boundary is provable. */
+    erasedAt: integer('erased_at'),
   },
   (t) => [
     index('idx_private_app_instances_app').on(t.appId),

@@ -21,8 +21,13 @@
  * pure function). The route wires the real deps.
  */
 import type { DurableObjectNamespace } from '@cloudflare/workers-types';
+import { eq } from 'drizzle-orm';
 import { schema } from '$server/db/client';
-import type { CreatePrivateAppInstanceInput, PrivateAppInstance } from '@shippie/cloudlet-contract';
+import type {
+  CreatePrivateAppInstanceInput,
+  ExportManifest,
+  PrivateAppInstance,
+} from '@shippie/cloudlet-contract';
 
 export interface ProvisionDeps {
   // drizzle client (getDrizzleClient(env.DB))
@@ -134,5 +139,108 @@ export async function createPrivateAppInstance(
     modules: input.modules,
     workspaceDoId: doId,
     createdAt: new Date(deps.now).toISOString(),
+  };
+}
+
+// ── Deprovisioning — the data-owner boundary, provable (Phase 9) ─────────────
+
+export interface DeprovisionDeps {
+  db: any;
+  schoolWorkspaceNs: DurableObjectNamespace;
+  recordAudit: ProvisionDeps['recordAudit'];
+  actorUserId: string | null;
+  now: number;
+}
+
+/**
+ * Minimal DO surface deprovision needs (export reads everything; erase purges).
+ */
+interface DeprovisionStub {
+  buildExport: () => Promise<unknown>;
+  eraseAll: () => Promise<{ events: number; feedback: number; pupils: number }>;
+}
+
+/**
+ * deprovision(instanceId, mode) — the school's right to take its data and leave.
+ *
+ *   mode='export' — build the full school-owned export from the school's DO and
+ *     return a manifest. NON-destructive; the workspace is untouched.
+ *
+ *   mode='erase'  — PURGE the school: wipe the SchoolWorkspace DO's SQLite +
+ *     all DO storage (`eraseAll` → `ctx.storage.deleteAll()`), remove the
+ *     `space_apps` install record (the school no longer appears as an installed
+ *     app), and mark the control-plane row `erased_at` (KEPT as a tombstone so
+ *     the erasure is provable). The erasure itself is audited on the platform
+ *     audit log BEFORE + AFTER the destructive step.
+ *
+ * Returns an `ExportManifest` either way (for 'erase' it records what was
+ * purged, with `files: []`). Pure-ish: all I/O is via injected deps + the DO ns.
+ */
+export async function deprovision(
+  deps: DeprovisionDeps,
+  instanceId: string,
+  mode: 'export' | 'erase',
+): Promise<ExportManifest> {
+  const row = await deps.db.query.privateAppInstances.findFirst({
+    where: eq(schema.privateAppInstances.id, instanceId),
+  });
+  if (!row) throw new Error(`instance not found: ${instanceId}`);
+
+  const stub = deps.schoolWorkspaceNs.get(
+    deps.schoolWorkspaceNs.idFromName(`uniti:${instanceId}`),
+  ) as unknown as DeprovisionStub;
+
+  if (mode === 'export') {
+    const data = await stub.buildExport();
+    await deps.recordAudit(deps.db, {
+      actorUserId: deps.actorUserId,
+      action: 'private_app_instance.exported',
+      targetTable: 'private_app_instances',
+      targetId: instanceId,
+      after: { mode },
+    });
+    return {
+      instanceId,
+      files: [`uniti-${row.slug}-export.json`],
+      generatedAt: new Date(deps.now).toISOString(),
+      // The full export payload travels inline (the route streams it to the
+      // owner). `files` names the logical artifact.
+      ...(data ? { data } : {}),
+    } as ExportManifest & { data?: unknown };
+  }
+
+  // mode === 'erase'
+  await deps.recordAudit(deps.db, {
+    actorUserId: deps.actorUserId,
+    action: 'private_app_instance.erase_started',
+    targetTable: 'private_app_instances',
+    targetId: instanceId,
+    after: { mode, slug: row.slug },
+  });
+
+  const purged = await stub.eraseAll(); // wipes DO SQLite + all DO storage
+
+  // Remove the install record(s) so the school no longer appears as installed.
+  await deps.db.delete(schema.spaceApps).where(eq(schema.spaceApps.spaceId, row.spaceId));
+
+  // Mark the control-plane row erased (KEEP it — the tombstone proves the
+  // boundary; no pupil data ever lived here).
+  await deps.db
+    .update(schema.privateAppInstances)
+    .set({ erasedAt: deps.now })
+    .where(eq(schema.privateAppInstances.id, instanceId));
+
+  await deps.recordAudit(deps.db, {
+    actorUserId: deps.actorUserId,
+    action: 'private_app_instance.erased',
+    targetTable: 'private_app_instances',
+    targetId: instanceId,
+    after: { mode, purged },
+  });
+
+  return {
+    instanceId,
+    files: [],
+    generatedAt: new Date(deps.now).toISOString(),
   };
 }

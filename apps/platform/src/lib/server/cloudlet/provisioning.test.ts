@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createPrivateAppInstance } from './provisioning';
+import { createPrivateAppInstance, deprovision } from './provisioning';
 
 describe('createPrivateAppInstance', () => {
   it('provisions: Shippie app+space install record, control-plane row, DO workspace, audit', async () => {
@@ -97,5 +97,76 @@ describe('createPrivateAppInstance', () => {
     expect(seedOwnerMembership).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'inst_X', ownerEmail: 'office@oakwood.sch.uk' }),
     );
+  });
+});
+
+describe('deprovision', () => {
+  function makeDb(row: any) {
+    const updates: any[] = [];
+    const deletes: any[] = [];
+    const db = {
+      query: { privateAppInstances: { findFirst: async () => row } },
+      update: () => ({ set: (s: any) => ({ where: () => { updates.push(s); } }) }),
+      delete: () => ({ where: (w: any) => { deletes.push(w); } }),
+    } as any;
+    return { db, updates, deletes };
+  }
+
+  it('export mode: builds the export, audits, leaves the workspace untouched', async () => {
+    const { db, updates } = makeDb({ id: 'inst_1', slug: 'greenfield', spaceId: 'sp_1' });
+    const eraseAll = vi.fn(async () => ({ events: 0, feedback: 0, pupils: 0 }));
+    const stub = { buildExport: vi.fn(async () => ({ events: [{ x: 1 }] })), eraseAll };
+    const ns = { idFromName: () => 'id', get: () => stub } as any;
+    const audit = vi.fn(async () => {});
+
+    const manifest = (await deprovision(
+      { db, schoolWorkspaceNs: ns, recordAudit: audit, actorUserId: 'admin', now: 1_700_000_000_000 },
+      'inst_1',
+      'export',
+    )) as any;
+
+    expect(stub.buildExport).toHaveBeenCalled();
+    expect(eraseAll).not.toHaveBeenCalled(); // non-destructive
+    expect(manifest.files).toEqual(['uniti-greenfield-export.json']);
+    expect(manifest.data).toEqual({ events: [{ x: 1 }] });
+    expect(updates).toHaveLength(0); // not marked erased
+    expect(audit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: 'private_app_instance.exported' }),
+    );
+  });
+
+  it('erase mode: purges the DO, removes the install, tombstones the row, audits', async () => {
+    const { db, updates, deletes } = makeDb({ id: 'inst_2', slug: 'oakwood', spaceId: 'sp_2' });
+    const eraseAll = vi.fn(async () => ({ events: 5, feedback: 3, pupils: 2 }));
+    const stub = { buildExport: vi.fn(), eraseAll };
+    const ns = { idFromName: () => 'id', get: () => stub } as any;
+    const audit = vi.fn(async () => {});
+
+    const manifest = await deprovision(
+      { db, schoolWorkspaceNs: ns, recordAudit: audit, actorUserId: 'admin', now: 1_700_000_000_000 },
+      'inst_2',
+      'erase',
+    );
+
+    expect(eraseAll).toHaveBeenCalled(); // DO SQLite + storage purged
+    expect(deletes).toHaveLength(1); // space_apps install removed
+    expect(updates).toEqual([{ erasedAt: 1_700_000_000_000 }]); // row tombstoned (kept)
+    expect(manifest.files).toEqual([]);
+    const actions = audit.mock.calls.map((c) => (c[1] as any).action);
+    expect(actions).toContain('private_app_instance.erase_started');
+    expect(actions).toContain('private_app_instance.erased');
+  });
+
+  it('throws for an unknown instance', async () => {
+    const { db } = makeDb(undefined);
+    const ns = { idFromName: () => 'id', get: () => ({}) } as any;
+    await expect(
+      deprovision(
+        { db, schoolWorkspaceNs: ns, recordAudit: vi.fn(async () => {}), actorUserId: null, now: 0 },
+        'nope',
+        'export',
+      ),
+    ).rejects.toThrow(/not found/);
   });
 });
