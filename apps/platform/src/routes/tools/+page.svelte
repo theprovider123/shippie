@@ -165,7 +165,6 @@
   <header class="head wrap">
     <div class="head-grid">
       <div class="head-copy">
-        <p class="eyebrow">Browse</p>
         <h1 class="title">Tools</h1>
         <p class="lede">
           Search and browse the local tools you can run on this device.
@@ -356,14 +355,6 @@
     grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.72fr);
     gap: clamp(1.25rem, 3vw, var(--space-xl));
     align-items: end;
-  }
-  .eyebrow {
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-light);
-    margin: 0 0 0.55rem;
   }
   .head-copy {
     max-width: 36rem;

@@ -131,7 +131,6 @@
 <RailShell user={data.user} current="you">
 <div class="you-page">
   <header class="you-head wrap">
-    <p class="eyebrow">Settings</p>
     <div class="head-row">
       <div>
         <h1>You</h1>
