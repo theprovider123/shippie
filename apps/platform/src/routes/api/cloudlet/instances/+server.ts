@@ -66,7 +66,7 @@ export const POST: RequestHandler = async (event) => {
 
   const tenantName = String(body.tenantName ?? '').trim();
   const slug = String(body.slug ?? '').trim();
-  const ownerEmail = String(body.ownerEmail ?? '').trim();
+  const ownerEmail = String(body.ownerEmail ?? '').trim().toLowerCase();
   if (!tenantName || !slug || !ownerEmail) {
     return json({ error: 'missing_fields', required: ['tenantName', 'slug', 'ownerEmail'] }, { status: 400 });
   }
