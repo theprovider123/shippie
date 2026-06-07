@@ -190,7 +190,7 @@
         <div class="account-row">
           <div>
             <strong>Sign in for sync and builder tools.</strong>
-            <p>Everything local still works without an account. Your apps appear here once you sign in.</p>
+            <p>Everything local still works without an account. Published and private apps appear here once you sign in.</p>
           </div>
           <div class="account-actions">
             <a href="/auth/login?return_to=%2Fyou">Sign in</a>
