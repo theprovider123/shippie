@@ -16,7 +16,7 @@ import type { WorkspaceStub } from '$server/cloudlet/workspace-stub';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
   const user = locals.user;
-  if (!user) throw redirect(307, '/auth/login');
+  if (!user) throw redirect(307, '/uniti/login');
   const env = platform?.env;
   if (!env?.DB || !env?.SCHOOL_WORKSPACE) throw error(500, 'platform bindings unavailable');
 

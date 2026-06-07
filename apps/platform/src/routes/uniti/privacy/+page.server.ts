@@ -24,7 +24,7 @@ import { loadComplianceView } from '$server/cloudlet/compliance-view';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
   const user = locals.user;
-  if (!user) throw redirect(307, '/auth/login?return_to=/uniti/privacy');
+  if (!user) throw redirect(307, '/uniti/login?return_to=/uniti/privacy');
   const env = platform?.env;
   if (!env?.DB || !env?.SCHOOL_WORKSPACE) throw error(500, 'platform bindings unavailable');
 

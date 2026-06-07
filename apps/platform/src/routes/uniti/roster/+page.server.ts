@@ -16,7 +16,7 @@ import { wondeFromEnv } from '$server/cloudlet/wonde-adapter';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
   const user = locals.user;
-  if (!user) throw redirect(307, '/auth/login?return_to=/uniti/roster');
+  if (!user) throw redirect(307, '/uniti/login?return_to=/uniti/roster');
 
   const env = platform?.env;
   if (!env?.DB) return { instance: null, canManage: false, sources: [], summary: null };

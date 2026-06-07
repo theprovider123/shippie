@@ -24,7 +24,7 @@ const VIEWPORTS = [
 
 // screen → { path, prep?(page) }
 const SCREENS = [
-  { id: '01-login', path: '/auth/login', noAuth: true },
+  { id: '01-login', path: '/uniti/login', noAuth: true },
   { id: '02-today', path: '/uniti' },
   {
     id: '03-lesson-classmap',
@@ -114,7 +114,7 @@ async function run() {
     // 2. Authenticated screens — demo login then capture.
     const context = await browser.newContext(ctxOpts);
     const page = await context.newPage();
-    await page.goto(`${BASE}/auth/login`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/uniti/login`, { waitUntil: 'networkidle' });
     await page.getByRole('button', { name: /Sarah Mitchell/i }).click();
     await page.waitForURL('**/uniti', { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(800);

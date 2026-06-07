@@ -15,7 +15,7 @@ import { roleCan, type Role } from '@shippie/cloudlet-contract';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
   const user = locals.user;
-  if (!user) throw redirect(307, '/auth/login?return_to=/uniti/setup');
+  if (!user) throw redirect(307, '/uniti/login?return_to=/uniti/setup');
 
   const env = platform?.env;
   if (!env?.DB) return { instance: null, members: [], invites: [], canManage: false };

@@ -28,7 +28,9 @@
     --accent: #e8953a;
     --accent-light: #fef0dc;
     --got-it: #2ead73;
+    --got-it-bg: #e8f6ef;
     --revisit: #d95a57;
+    --revisit-bg: #fdeceb;
     --radius-sm: 8px;
     --radius: 12px;
     --radius-lg: 20px;

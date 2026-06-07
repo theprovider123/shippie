@@ -11,7 +11,7 @@ import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
   if (!locals.user) {
-    throw redirect(307, `/auth/login?return_to=${encodeURIComponent(url.pathname)}`);
+    throw redirect(307, `/uniti/login?return_to=${encodeURIComponent(url.pathname)}`);
   }
   return { token: params.token, email: locals.user.email };
 };
