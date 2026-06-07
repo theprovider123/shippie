@@ -160,30 +160,9 @@
       </div>
     </section>
 
-    <section class="panel app-panel" aria-labelledby="apps-title">
-      <div class="section-head">
-        <div>
-          <h2 id="apps-title">Apps</h2>
-          <p>{data.user ? `${data.makerApps.length} total · ${privateMakerCount} private` : 'Published and private apps appear after sign-in.'}</p>
-        </div>
-      </div>
-
-      {#if data.user}
-        <div class="maker-entry">
-          <a class="primary" href="/maker/apps">Manage apps</a>
-          <a href="/new">Ship app</a>
-        </div>
-      {:else}
-        <div class="empty-apps">
-          <strong>No account connected.</strong>
-          <p>Your owned, private, and demo apps will appear here after you sign in.</p>
-        </div>
-      {/if}
-    </section>
-
     <section class="panel account-panel" aria-labelledby="account-title">
       <div class="section-head">
-        <h2 id="account-title">Account</h2>
+        <h2 id="account-title">Account &amp; apps</h2>
         <span>{data.user ? 'signed in' : 'optional'}</span>
       </div>
       {#if data.user}
@@ -194,7 +173,6 @@
           </div>
           <div class="account-actions">
             <a href="/you/access">Access</a>
-            <a href="/maker">Maker</a>
             {#if data.user.isAdmin}
               <a href="/admin">Admin</a>
             {/if}
@@ -203,11 +181,16 @@
             </form>
           </div>
         </div>
+        <div class="maker-entry">
+          <a class="primary" href="/maker/apps">Manage apps</a>
+          <a href="/new">Ship app</a>
+        </div>
+        <p class="apps-meta">{data.makerApps.length} total · {privateMakerCount} private</p>
       {:else}
         <div class="account-row">
           <div>
             <strong>Sign in for sync and builder tools.</strong>
-            <p>Everything local still works without an account.</p>
+            <p>Everything local still works without an account. Your apps appear here once you sign in.</p>
           </div>
           <div class="account-actions">
             <a href="/auth/login?return_to=%2Fyou">Sign in</a>
@@ -519,6 +502,13 @@
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+  }
+  .apps-meta {
+    margin: 0;
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: var(--caption-size);
+    letter-spacing: 0.04em;
   }
 
   .maker-entry a.primary {
