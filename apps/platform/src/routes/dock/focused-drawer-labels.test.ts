@@ -20,12 +20,14 @@ describe('focused Dock drawer labels', () => {
     expect(drawerActions).not.toContain('>Data<');
   });
 
-  it('keeps primary Dock rail actions on Tools / You language', () => {
-    const railActions = railSource.match(/<nav class="rail-foot"[\s\S]*?<\/nav>/)?.[0] ?? '';
+  it('keeps the primary Dock rail nav on Dock / Tools / You language', () => {
+    const railPrimary = railSource.match(/<nav class="rail-nav" aria-label="Primary"[\s\S]*?<\/nav>/)?.[0] ?? '';
 
-    expect(railActions).toContain('Browse tools');
-    expect(railActions).toContain('>You<');
-    expect(railActions).not.toContain('>Data<');
-    expect(railActions).not.toContain('Sign in to sync');
+    expect(railPrimary).toContain('>Dock<');
+    expect(railPrimary).toContain('>Tools<');
+    expect(railPrimary).toContain('>You<');
+    expect(railPrimary).not.toContain('>Browse<');
+    expect(railPrimary).not.toContain('>Data<');
+    expect(railPrimary).not.toContain('Sign in to sync');
   });
 });
