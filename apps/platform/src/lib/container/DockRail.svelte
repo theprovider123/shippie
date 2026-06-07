@@ -137,7 +137,8 @@
   .dock-rail:hover .rail-inner,
   .dock-rail:focus-within .rail-inner {
     width: 232px;
-    box-shadow: 8px 0 28px rgb(0 0 0 / 0.32);
+    /* match the shell's push delay so rail + content move together */
+    transition-delay: 0.12s;
   }
 
   /* Every row shares one shape: fixed icon box on the left, label after it.

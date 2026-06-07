@@ -30,6 +30,13 @@
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);
     background: var(--bg);
+    transition: grid-template-columns 0.2s ease;
+  }
+  /* Rail expands by pushing content right — never covering it. */
+  .rail-shell:has(:global(.dock-rail:hover)),
+  .rail-shell:has(:global(.dock-rail:focus-within)) {
+    grid-template-columns: 232px minmax(0, 1fr);
+    transition-delay: 0.12s;
   }
   .rail-canvas {
     min-width: 0;

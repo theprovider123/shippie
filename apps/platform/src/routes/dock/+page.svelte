@@ -3910,6 +3910,14 @@
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);
     background: var(--bg);
+    transition: grid-template-columns 0.2s ease;
+  }
+  /* Rail expands by pushing content right — never covering it.
+     Small delay so brushing past the edge doesn't trigger it. */
+  .shell:has(:global(.dock-rail:hover)),
+  .shell:has(:global(.dock-rail:focus-within)) {
+    grid-template-columns: 232px minmax(0, 1fr);
+    transition-delay: 0.12s;
   }
   h2,
   h3 {
