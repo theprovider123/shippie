@@ -12,7 +12,7 @@
      *  don't apply, so those rows simply don't render off-dock. */
     onShowSection?: (s: 'access' | 'create') => void;
     /** Highlights the current top-level surface. null = Dock. */
-    current?: 'browse' | 'you' | null;
+    current?: 'browse' | 'you' | 'maker' | null;
   }
 
   const {
@@ -22,8 +22,8 @@
     current = null,
   }: Props = $props();
 
-  // Dock is the home surface — active whenever we're not on Tools or You.
-  const dockActive = $derived(current !== 'browse' && current !== 'you');
+  // Dock is the home surface — active whenever we're not on Tools, You, or Maker.
+  const dockActive = $derived(current !== 'browse' && current !== 'you' && current !== 'maker');
 
   function showSection(sectionId: 'access' | 'create') {
     if (onShowSection) {
@@ -85,6 +85,7 @@
 
       <a
         class="rail-item"
+        class:current={current === 'maker'}
         href={user ? '/maker' : '/auth/login?return_to=%2Fmaker'}
         title={user ? 'Maker' : 'Sign in to ship'}
         aria-label={user ? 'Maker' : 'Sign in to ship'}

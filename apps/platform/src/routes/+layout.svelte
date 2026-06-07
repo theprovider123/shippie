@@ -4,6 +4,7 @@
   import { invalidateAll } from '$app/navigation';
   import '$lib/styles/tokens.css';
   import Nav from '$lib/components/layout/Nav.svelte';
+  import RailShell from '$lib/container/RailShell.svelte';
   import BottomDock from '$lib/components/layout/BottomDock.svelte';
   import Footer from '$lib/components/layout/Footer.svelte';
   import Toast from '$lib/components/ui/Toast.svelte';
@@ -25,8 +26,39 @@
 
   // Routes that wear the Dock's left-rail chrome (one nav model). The global
   // top Nav is suppressed here; the rail (desktop) + BottomDock (mobile) nav.
+  // The whole authenticated app shell lives here so desktop never shows the old
+  // horizontal nav — it always feels like the Dock.
   function isRailShellRoute(url: URL): boolean {
-    return url.pathname === '/dock' || url.pathname === '/tools' || url.pathname === '/you';
+    const p = url.pathname;
+    return p === '/dock' || p === '/tools' || p === '/you'
+      || p === '/you/access' || p === '/new'
+      || p === '/maker' || p.startsWith('/maker/');
+  }
+
+  // Dock/Tools/You render their own rail; the rest of the rail routes get the
+  // rail wrapped here in the layout (so they don't each re-plumb user data).
+  function selfManagesRail(url: URL): boolean {
+    const p = url.pathname;
+    return p === '/dock' || p === '/tools' || p === '/you';
+  }
+  function needsRailWrap(url: URL): boolean {
+    return isRailShellRoute(url) && !selfManagesRail(url);
+  }
+  function railCurrent(url: URL): 'browse' | 'you' | 'maker' | null {
+    const p = url.pathname;
+    if (p === '/you/access') return 'you';
+    if (p === '/new' || p === '/maker' || p.startsWith('/maker/')) return 'maker';
+    return null;
+  }
+
+  // Auth/sign-in: no old top nav on desktop either. It carries its own brand
+  // chrome, so suppress Nav + the nav-height padding (no rail — it's pre-auth).
+  function isAuthRoute(url: URL): boolean {
+    return url.pathname.startsWith('/auth');
+  }
+  // Full-bleed shell (no top nav, no nav-height padding): rail routes + auth.
+  function isFullShellRoute(url: URL): boolean {
+    return isRailShellRoute(url) || isAuthRoute(url);
   }
 
   function isImmersiveToolRoute(url: URL): boolean {
@@ -77,6 +109,7 @@
   function showFooter(url: URL): boolean {
     const pathname = url.pathname;
     return !isRailShellRoute(url)
+      && !isAuthRoute(url)
       && !pathname.startsWith('/run')
       && !((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') === '1');
   }
@@ -84,7 +117,7 @@
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);
     const mobileAppChrome = hideNavOnMobile($page.url);
-    const dockShellRoute = isRailShellRoute($page.url);
+    const dockShellRoute = isFullShellRoute($page.url);
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
     document.body.dataset.mobileAppChrome = mobileAppChrome ? 'true' : 'false';
     document.body.dataset.dockShellRoute = dockShellRoute ? 'true' : 'false';
@@ -162,7 +195,7 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-{#if !isRailShellRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url)}
+{#if !isRailShellRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url) && !isAuthRoute($page.url)}
   <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
     <Nav user={data.user} />
   </div>
@@ -170,10 +203,16 @@
 <main
   id="main"
   class:with-bottom-dock={showBottomDock($page.url)}
-  class:dock-shell-route={isRailShellRoute($page.url)}
+  class:dock-shell-route={isFullShellRoute($page.url)}
   class:immersive-tool-route={isImmersiveToolRoute($page.url)}
 >
-  {@render children()}
+  {#if needsRailWrap($page.url)}
+    <RailShell user={data.user} current={railCurrent($page.url)}>
+      {@render children()}
+    </RailShell>
+  {:else}
+    {@render children()}
+  {/if}
 </main>
 {#if showBottomDock($page.url)}
   <BottomDock user={data.user} />

@@ -10,7 +10,7 @@
 
   interface Props {
     user: { isAdmin?: boolean } | null | undefined;
-    current?: 'browse' | 'you' | null;
+    current?: 'browse' | 'you' | 'maker' | null;
     children?: Snippet;
   }
   let { user, current = null, children }: Props = $props();
