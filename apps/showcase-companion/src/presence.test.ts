@@ -10,7 +10,7 @@ describe('presence levels', () => {
     const labels = PRESENCE_LEVELS.map((level) => `${level.label} ${level.short} ${level.description}`).join(' ');
 
     expect(labels).toContain('Vivid');
-    expect(labels).toContain('Psychedelic visuals');
+    expect(labels).toContain('Colour motion');
     expect(labels.toLowerCase()).not.toContain('kaleidoscope');
     expect(presenceLabel('vivid')).toBe('Vivid');
   });

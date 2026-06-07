@@ -11,9 +11,9 @@ describe('companion readiness', () => {
     const guidance = getPreparationGuidance(DEFAULT_PREP);
 
     expect(guidance).toEqual([
-      'Leave yourself an anchor note if you have a minute.',
-      'Add a trusted person for one-tap help.',
-      'Add your local emergency number for quick access.',
+      'Add an anchor note if you want one.',
+      'Add a trusted person for quick help.',
+      'Add an emergency number if useful.',
     ]);
   });
 

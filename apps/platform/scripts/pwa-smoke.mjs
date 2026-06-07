@@ -9,8 +9,8 @@
 // Exits non-zero if any probed route renders a blank shell.
 //
 // NOTE: not yet wired into `bun run check` (CI has no browser); run manually
-// or add a Playwright CI job. Imports `playwright-core` — install if missing.
-import { chromium } from 'playwright-core';
+// or add a Playwright CI job. Uses the platform package's `playwright` dev dep.
+import { chromium } from 'playwright';
 
 const BASE = process.env.BASE || 'https://shippie.app';
 const ROUTES = ['/dock', '/you', '/tools', '/dock?app=palate'];

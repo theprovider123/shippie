@@ -9,20 +9,20 @@ export const PRESENCE_LEVELS: Array<{
   {
     id: 'minimal',
     label: 'Minimal',
-    short: 'Text only',
-    description: 'Plain words with no orb or motion.',
+    short: 'Just words',
+    description: 'Plain text, no orb, no motion.',
   },
   {
     id: 'simple',
     label: 'Simple',
     short: 'Warm orb',
-    description: 'A quiet amber breathing orb with the same grounding tools.',
+    description: 'A soft breathing orb with simple tools.',
   },
   {
     id: 'vivid',
     label: 'Vivid',
-    short: 'Psychedelic visuals',
-    description: 'A colourful moving field and patterned orb while keeping controls simple.',
+    short: 'Colour motion',
+    description: 'A colourful moving field with the same simple tools.',
   },
 ];
 

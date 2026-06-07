@@ -53,8 +53,8 @@
   }
   function railCurrent(url: URL): 'browse' | 'you' | 'maker' | 'docs' | null {
     const p = url.pathname;
-    if (p === '/you/access') return 'you';
-    if (p === '/new' || p === '/maker' || p.startsWith('/maker/')) return 'maker';
+    // Maker, Ship (/new) and Access all live under You now — highlight You.
+    if (p === '/you/access' || p === '/new' || p === '/maker' || p.startsWith('/maker/')) return 'you';
     if (p === '/docs' || p.startsWith('/docs/')) return 'docs';
     if (p.startsWith('/apps/')) return 'browse';
     return null;

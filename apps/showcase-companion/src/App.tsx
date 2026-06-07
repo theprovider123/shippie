@@ -298,7 +298,7 @@ function ShellHeader({
   const tabs: Array<{ id: Mode; label: string; disabled?: boolean }> = [
     { id: 'prepare', label: 'Prepare' },
     { id: 'during', label: 'Now', disabled: !activeSession },
-    { id: 'integrate', label: 'Come back', disabled: !activeSession && !latestSession },
+    { id: 'integrate', label: 'Back', disabled: !activeSession && !latestSession },
     { id: 'history', label: 'Past' },
   ];
   return (
@@ -338,9 +338,7 @@ function SafetyGateView({
         <div className="mini-orb" aria-hidden />
         <p className="eyebrow">Before you start</p>
         <h1 id="gate-title">{APP_NAME}</h1>
-        <p className="gate-copy">
-          Private support for grounding during a trip. This is not medical care or encouragement to use any substance.
-        </p>
+        <p className="gate-copy">Private grounding support. Not medical care, and not encouragement to use anything.</p>
         <div className="gate-checks">
           <AckRow
             name="age-confirmed"
@@ -400,8 +398,8 @@ function PrepareView({
     <main className="workspace prepare-workspace">
       <section className="prepare-hero">
         <p className="eyebrow">Prepare</p>
-        <h1>Set up what helps.</h1>
-        <p>Pick a mode. Add notes or contacts if you want. You can skip setup and begin.</p>
+        <h1>Set up gently.</h1>
+        <p>Pick a mode. Everything else is optional.</p>
       </section>
 
       <section className="section-block presence-block">
@@ -468,7 +466,7 @@ function PrepareView({
             value={prep.anchor}
             rows={5}
             maxLength={520}
-            placeholder="Hey. If you are reading this, it got big. Lie down. Breathe out slowly. Call your person if you need to."
+              placeholder="If it gets big: lie down, breathe out slowly, sip water, call your person if you need to."
             onChange={(event) => patchPrep({ anchor: event.currentTarget.value })}
           />
         </label>
@@ -601,7 +599,7 @@ function PrepareView({
           <p className="eyebrow">Begin anytime</p>
           {hasGuidance ? (
             <>
-              <p>Start now in {presenceLabel(prep.presenceLevel)}. These extras are optional.</p>
+              <p>Begin in {presenceLabel(prep.presenceLevel)}. Setup can stay empty.</p>
               <ul>
                 {preparationGuidance.map((item) => (
                   <li key={item}>{item}</li>
@@ -609,7 +607,7 @@ function PrepareView({
               </ul>
             </>
           ) : (
-            <p>Start in {presenceLabel(prep.presenceLevel)}. Your setup stays on this device.</p>
+            <p>Begin in {presenceLabel(prep.presenceLevel)}. Saved only here.</p>
           )}
         </div>
         <button type="button" className="primary-action" onClick={startSession}>

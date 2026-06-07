@@ -31,6 +31,7 @@ import {
 import { curationFor } from '$lib/_generated/first-party-curation';
 import { buildArcadeCsp } from '$lib/curation/arcade-csp';
 import { withShippieRuntimeCsp } from '$lib/trust-ledger/runtime-csp';
+import { SHELL_APP_SLUG } from '$lib/util/shippie-shell';
 
 const PLATFORM_HOSTS = new Set([
   'next.shippie.app',
@@ -287,6 +288,7 @@ function canonicalFirstPartySlug(slug: string): string | null {
     return null;
   }
   if (!decoded) return null;
+  if (decoded === SHELL_APP_SLUG) return decoded;
   if (!isFirstPartyShowcase(decoded)) return null;
   return containerSlugForRequest(decoded);
 }

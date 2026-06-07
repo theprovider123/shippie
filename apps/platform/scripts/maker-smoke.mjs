@@ -11,8 +11,9 @@
 //
 // Exits non-zero if any probed route renders blank, or (when authed) if a
 // maker route bounces to login. Sibling to pwa-smoke.mjs. Not wired into
-// `bun run check` (CI has no browser) — run manually. Needs playwright-core.
-import { chromium } from 'playwright-core';
+// `bun run check` (CI has no browser) — run manually. Uses the platform
+// package's `playwright` dev dep.
+import { chromium } from 'playwright';
 
 const BASE = (process.env.BASE || 'https://shippie.app').replace(/\/$/, '');
 const SESSION = process.env.SESSION || '';
