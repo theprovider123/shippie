@@ -12,6 +12,12 @@ import { eq } from 'drizzle-orm';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { roleCan, type Role } from '@shippie/cloudlet-contract';
 import type { WorkspaceStub } from '$server/cloudlet/workspace-stub';
+import {
+  buildPupilWhatWorks,
+  narratePupilWhatWorks,
+} from '$server/cloudlet/what-works';
+import { createAIBroker, modelFromEnv } from '$server/cloudlet/ai-broker';
+import { recordAudit } from '$server/admin/audit';
 
 export const load: PageServerLoad = async ({ platform, locals, params }) => {
   const user = locals.user;
@@ -56,10 +62,64 @@ export const load: PageServerLoad = async ({ platform, locals, params }) => {
   const pupil = allPupils.find((p) => p.id === params.pupilId) ?? null;
   if (!pupil) throw error(404, 'pupil not found');
 
-  const [timeline, subjects] = await Promise.all([
+  const [timeline, subjects, allEvents, allLessons, aiSetting] = await Promise.all([
     stub.listFeedbackForPupil(pupil.id),
     stub.listSubjects(),
+    stub.listEvents(),
+    stub.listLessons(),
+    stub.getAiSetting(),
   ]);
+
+  // "What helps [pupil]" — the deterministic longitudinal profile is ALWAYS
+  // computed (the moat; offline-safe). The AI narrative is layered on top only
+  // when the school has AI ON + a model binding; it always degrades to the
+  // deterministic narrative on any Broker refusal.
+  const profile = buildPupilWhatWorks({
+    pupilId: pupil.id,
+    instanceId,
+    events: allEvents,
+    lessons: allLessons,
+  });
+
+  let narrative;
+  if (aiSetting.aiEnabled && env.AI) {
+    const broker = createAIBroker({
+      rolesFor: async () => roles,
+      aiEnabled: async () => aiSetting.aiEnabled,
+      remainingBudget: async () => Number.POSITIVE_INFINITY,
+      pupilNames: async (_inst, ids) =>
+        Object.fromEntries(allPupils.filter((p) => ids.includes(p.id)).map((p) => [p.id, p.name])),
+      kv: env.CACHE,
+      model: modelFromEnv(env),
+      meter: async () => {},
+      audit: async (e) => {
+        const r = await recordAudit(db, {
+          actorUserId: e.actorUserId,
+          action: e.action,
+          targetTable: `instance:${e.instanceId}`,
+          targetId: null,
+          after: { reason: e.reason, ...e.meta },
+        });
+        return String(r.id);
+      },
+    });
+    narrative = await narratePupilWhatWorks(broker, profile, {
+      userId: user.id,
+      pupilName: pupil.name,
+      recentNotes: timeline.map((t) => t.note).filter((n): n is string => Boolean(n)),
+      sensitivity: aiSetting.sensitivity,
+    });
+  } else {
+    // Deterministic narrative — no model. Imported lazily-free helpers.
+    const { deterministicSummary, deterministicStandingAdaptations } = await import(
+      '$server/cloudlet/what-works'
+    );
+    narrative = {
+      summary: deterministicSummary(profile),
+      standingAdaptations: deterministicStandingAdaptations(profile),
+      source: 'aggregate' as const,
+    };
+  }
 
   return {
     slug: inst[0]?.slug ?? '',
@@ -69,5 +129,7 @@ export const load: PageServerLoad = async ({ platform, locals, params }) => {
     pupils: allPupils,
     timeline,
     subjects,
+    profile,
+    narrative,
   };
 };

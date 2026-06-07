@@ -298,7 +298,7 @@ export function computePupilWhatWorks(input: ComputeInput): PupilWhatWorks {
   // 4. Apply thresholds + map to the public shape.
   const passes = (occurrences: number, lessonCount: number) =>
     occurrences >= thresholds.minOccurrences && lessonCount >= thresholds.minLessons;
-  const statusFor = (occurrences: number) =>
+  const statusFor = (occurrences: number): 'emerging' | 'established' =>
     occurrences >= thresholds.establishedOccurrences ? 'established' : 'emerging';
 
   const recurringNeeds: RecurringNeed[] = [...needAggs.values()]

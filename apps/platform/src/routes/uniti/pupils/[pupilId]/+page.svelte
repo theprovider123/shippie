@@ -4,6 +4,23 @@
 
   let { data }: { data: PageData } = $props();
 
+  // "What helps" is the default tab — the pupil memory is the headline.
+  let tab = $state<'helps' | 'timeline'>('helps');
+
+  const subjLabel = (id: string) =>
+    data.subjects.find((s) => s.id === id)?.name ?? id;
+
+  const trendLabel: Record<string, string> = {
+    improving: 'Improving ↑',
+    steady: 'Holding steady →',
+    dipping: 'Worth a look ↓',
+  };
+  const trendColor: Record<string, string> = {
+    improving: '#2EAD73',
+    steady: '#E8953A',
+    dipping: '#D95A57',
+  };
+
   function groups(p: { send: number; eal: number; fsm: number }): string[] {
     const g: string[] = [];
     if (p.send) g.push('SEND');
@@ -93,7 +110,130 @@
       </div>
     </div>
 
-    {#if data.timeline.length === 0}
+    <!-- tabs -->
+    <div class="tabs">
+      <button class="tab" class:on={tab === 'helps'} onclick={() => (tab = 'helps')}>
+        What helps {data.pupil.name.split(' ')[0]}
+      </button>
+      <button class="tab" class:on={tab === 'timeline'} onclick={() => (tab = 'timeline')}>
+        Timeline
+      </button>
+    </div>
+
+    {#if tab === 'helps'}
+      {@const profile = data.profile}
+      {@const narrative = data.narrative}
+      <!-- profile header -->
+      <div class="wbar">
+        <span class="wbar-icon">✨</span>
+        <span class="wbar-text">
+          Based on recent lessons · Teacher-owned · Evidence from {profile.lessonsObserved}
+          {profile.lessonsObserved === 1 ? 'lesson' : 'lessons'}
+        </span>
+        <span class="trend" style="color:{trendColor[profile.confidenceTrend]};">
+          {trendLabel[profile.confidenceTrend]}
+        </span>
+      </div>
+
+      {#if profile.coldStart}
+        <Card style="margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Still getting to know {data.pupil.name.split(' ')[0]}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">{narrative.summary}</div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            {#each narrative.standingAdaptations as a}
+              <div class="strat-row">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:600;">{a.strategy}</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{a.basedOn}</div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </Card>
+      {:else}
+        <!-- summary + standing adaptations -->
+        <Card style="margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;">What's helped before</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">{narrative.summary}</div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            {#each narrative.standingAdaptations as a}
+              <div class="strat-row">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:600;">{a.strategy}</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{a.basedOn} · {a.subject}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+                  <div class="bar"><div class="bar-fill" style="width:{a.confidence}%;"></div></div>
+                  <span class="pct">{a.confidence}%</span>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </Card>
+
+        <div class="grid2">
+          <!-- recurring needs as chips -->
+          <Card>
+            <div style="font-size:13px;font-weight:700;margin-bottom:14px;">Patterns we've noticed</div>
+            {#if profile.recurringNeeds.length === 0}
+              <div style="font-size:12px;color:var(--text-muted);">No recurring patterns past the evidence threshold yet.</div>
+            {:else}
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                {#each profile.recurringNeeds as n}
+                  <div class="need">
+                    <div class="dot" style="background:{n.status === 'established' ? '#D95A57' : '#E8953A'};"></div>
+                    <div style="flex:1;">
+                      <div style="font-size:12px;font-weight:600;line-height:1.4;">{n.need}</div>
+                      <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">
+                        {n.subjects.map(subjLabel).join(', ')} · {n.count} {n.count === 1 ? 'lesson' : 'lessons'}{n.crossSubject ? ' · across subjects' : ''}
+                      </div>
+                    </div>
+                    <span
+                      class="chip"
+                      style="background:{n.status === 'established' ? '#FDECEB' : '#FEF0DC'};color:{n.status === 'established' ? '#D95A57' : '#E8953A'};"
+                    >
+                      {n.status === 'established' ? 'Regular pattern' : 'Emerging'}
+                    </span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </Card>
+
+          <!-- strategies that work, with success % -->
+          <Card>
+            <div style="font-size:13px;font-weight:700;margin-bottom:14px;">What's helped</div>
+            {#if profile.strategiesThatWork.length === 0}
+              <div style="font-size:12px;color:var(--text-muted);">Record outcomes on adaptations to build this.</div>
+            {:else}
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                {#each profile.strategiesThatWork as s}
+                  <div>
+                    <div style="font-size:12px;font-weight:600;margin-bottom:5px;line-height:1.4;">{s.strategy}</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <div class="bar"><div class="bar-fill" style="width:{Math.round(s.successRate * 100)}%;"></div></div>
+                      <span class="pct">{Math.round(s.successRate * 100)}%</span>
+                    </div>
+                    <div style="font-size:10px;color:var(--text-subtle);margin-top:3px;">
+                      Evidence from {s.evidence.length} {s.evidence.length === 1 ? 'lesson' : 'lessons'}{s.subjects.length ? ` · ${s.subjects.map(subjLabel).join(', ')}` : ''}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </Card>
+        </div>
+      {/if}
+
+      <!-- GDPR / trust note -->
+      <div class="gdpr">
+        <span>🛡️</span>
+        <span>
+          This is a memory of what helps {data.pupil.name.split(' ')[0]} learn — not a fixed label.
+          Evidence-linked, teacher-owned, and deleted when the pupil moves on.
+        </span>
+      </div>
+    {:else if data.timeline.length === 0}
       <Card>
         <div style="text-align:center;padding:24px 0;color:var(--text-muted);">
           <div style="font-weight:600;margin-bottom:6px;">No feedback yet for {data.pupil.name}</div>
@@ -190,6 +330,118 @@
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 18px;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+  }
+  .tab.on {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+  .wbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--primary-light, #fdecec);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .wbar-icon {
+    font-size: 14px;
+  }
+  .wbar-text {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .trend {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--surface);
+  }
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .strat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 13px;
+    background: var(--surface-2, var(--surface));
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
+  .bar {
+    height: 5px;
+    width: 44px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: #2ead73;
+    border-radius: 3px;
+  }
+  .pct {
+    font-size: 10px;
+    font-weight: 700;
+    color: #2ead73;
+  }
+  .need {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+  .chip {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .gdpr {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 13px;
+    border-radius: 8px;
+    background: var(--surface-2, var(--surface));
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
   }
   .tl-scroll {
     overflow-x: auto;
