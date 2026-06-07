@@ -3,6 +3,7 @@ import type {
   WorkspaceEvent,
   RosterSnapshot,
 } from '@shippie/cloudlet-contract';
+import { scanForSafeguarding } from '@shippie/cloudlet-contract';
 import {
   workspaceUpcasters,
   WORKSPACE_EVENT_SCHEMA_VERSION,
@@ -80,6 +81,10 @@ export interface FeedbackRow {
   supportStrategy: string | null;
   confidence: number | null;
   updatedAt: number;
+  /** 1 = the note tripped the safeguarding guard (Phase 9, 4b). Such notes are
+   * access-restricted: excluded from AI (Phase 5) AND withheld from general
+   * feedback lists unless the caller holds the `safeguarding:read` capability. */
+  safeguarding: number;
 }
 export interface FeedbackTimelineRow extends FeedbackRow {
   topic: string;
@@ -105,7 +110,34 @@ export interface AdaptationCardRow {
   outcomeNote: string | null;
 }
 
-const WORKSPACE_SCHEMA_VERSION = 4;
+const WORKSPACE_SCHEMA_VERSION = 5;
+
+/** A pupil tombstone (Phase 9 right-to-erasure). The pupil row + their PII are
+ * purged, but an anonymised marker survives so aggregate counts stay honest and
+ * historic feedback resolves against the tombstone rather than a dangling id. */
+export interface PupilTombstone {
+  id: string;
+  erasedAt: number;
+  reason: string | null;
+}
+
+/** A full per-school export (Phase 9 — the school owns its data). Every
+ * workspace projection + the append-only event log + the workspace audit. */
+export interface WorkspaceExport {
+  schemaVersion: number;
+  generatedAt: number;
+  subjects: SubjectRow[];
+  roster: RosterSnapshot;
+  lessons: LessonRow[];
+  /** Includes safeguarding-flagged notes — this is the SCHOOL's own full copy
+   * (owner/school_admin gated at the route), not the AI/teacher surface. */
+  feedback: FeedbackRow[];
+  adaptationCards: AdaptationCardRow[];
+  settings: Array<{ key: string; value: string; updatedAt: number }>;
+  tombstones: PupilTombstone[];
+  events: Array<WorkspaceEvent & { receivedAt: number }>;
+  audit: WorkspaceAudit[];
+}
 
 export class WorkspaceStore {
   /**
@@ -160,6 +192,10 @@ export class WorkspaceStore {
       this.migrateToV4();
       v = 4;
     }
+    if (v < 5) {
+      this.migrateToV5();
+      v = 5;
+    }
     this.sql.run(`UPDATE workspace_schema_version SET version = ?`, v);
   }
 
@@ -213,6 +249,34 @@ export class WorkspaceStore {
         this.sql.run(`ALTER TABLE ${table} ADD COLUMN active INTEGER NOT NULL DEFAULT 1`);
       }
     }
+  }
+
+  /** v5 — compliance + trust (Phase 9). Feedback gains a `safeguarding` flag
+   * (set at projection time from the safeguarding guard) so flagged notes can be
+   * access-restricted. A `pupil_tombstones` table records right-to-erasure
+   * purges (the pupil PII is removed but an anonymised marker survives so
+   * aggregate counts stay honest). */
+  private migrateToV5(): void {
+    const cols = this.sql.all<{ name: string }>(`PRAGMA table_info(feedback)`);
+    if (!cols.some((c) => c.name === 'safeguarding')) {
+      this.sql.run(`ALTER TABLE feedback ADD COLUMN safeguarding INTEGER NOT NULL DEFAULT 0`);
+      // Backfill: re-scan existing notes so an in-place upgrade flags
+      // already-stored safeguarding content.
+      const rows = this.sql.all<{ lesson_id: string; pupil_id: string; note: string | null }>(
+        `SELECT lesson_id,pupil_id,note FROM feedback WHERE note IS NOT NULL`,
+      );
+      for (const r of rows) {
+        if (r.note && scanForSafeguarding(r.note).flagged) {
+          this.sql.run(
+            `UPDATE feedback SET safeguarding=1 WHERE lesson_id=? AND pupil_id=?`,
+            r.lesson_id,
+            r.pupil_id,
+          );
+        }
+      }
+    }
+    this.sql.run(`CREATE TABLE IF NOT EXISTS pupil_tombstones (
+      id TEXT PRIMARY KEY, erased_at INTEGER NOT NULL, reason TEXT)`);
   }
 
   schemaVersion(): number {
@@ -276,20 +340,25 @@ export class WorkspaceStore {
       const pupilId = p.pupilId as string | undefined;
       const state = p.state as string | undefined;
       if (!lessonId || !pupilId || !state) return;
+      const note = (p.note as string) ?? null;
+      // Phase 9 (4b): flag a safeguarding-tripping note at projection time so it
+      // can be access-restricted on read AND excluded from AI.
+      const safeguarding = note && scanForSafeguarding(note).flagged ? 1 : 0;
       this.sql.run(
-        `INSERT INTO feedback (lesson_id,pupil_id,state,note,support_strategy,confidence,updated_at)
-         VALUES (?,?,?,?,?,?,?)
+        `INSERT INTO feedback (lesson_id,pupil_id,state,note,support_strategy,confidence,updated_at,safeguarding)
+         VALUES (?,?,?,?,?,?,?,?)
          ON CONFLICT(lesson_id,pupil_id) DO UPDATE SET
            state=excluded.state, note=excluded.note, support_strategy=excluded.support_strategy,
-           confidence=excluded.confidence, updated_at=excluded.updated_at
+           confidence=excluded.confidence, updated_at=excluded.updated_at, safeguarding=excluded.safeguarding
          WHERE excluded.updated_at >= feedback.updated_at`,
         lessonId,
         pupilId,
         state,
-        (p.note as string) ?? null,
+        note,
         (p.supportStrategy as string) ?? null,
         typeof p.confidence === 'number' ? p.confidence : null,
         receivedAt,
+        safeguarding,
       );
     } else if (e.type === 'setup.privacy_saved') {
       // The school's privacy/AI choice (from setup, Phase 2). Last-write-wins.
@@ -585,37 +654,59 @@ export class WorkspaceStore {
     return this.listLessons().find((l) => l.id === lessonId) ?? null;
   }
 
-  private mapFeedback(r: {
-    lesson_id: string;
-    pupil_id: string;
-    state: string;
-    note: string | null;
-    support_strategy: string | null;
-    confidence: number | null;
-    updated_at: number;
-  }): FeedbackRow {
+  private mapFeedback(
+    r: {
+      lesson_id: string;
+      pupil_id: string;
+      state: string;
+      note: string | null;
+      support_strategy: string | null;
+      confidence: number | null;
+      updated_at: number;
+      safeguarding?: number;
+    },
+    opts: { includeSafeguarding?: boolean } = {},
+  ): FeedbackRow {
+    const safeguarding = r.safeguarding ?? 0;
+    // 4b — withhold the note text from general feedback surfaces unless the
+    // caller is authorised to read safeguarding content. The flag + state are
+    // still returned (so the UI can show a restricted marker), only the text
+    // is suppressed.
+    const restrict = safeguarding === 1 && !opts.includeSafeguarding;
     return {
       lessonId: r.lesson_id,
       pupilId: r.pupil_id,
       state: r.state,
-      note: r.note,
+      note: restrict ? null : r.note,
       supportStrategy: r.support_strategy,
       confidence: r.confidence,
       updatedAt: r.updated_at,
+      safeguarding,
     };
   }
 
-  listFeedbackForLesson(lessonId: string): FeedbackRow[] {
+  /** Feedback for a lesson. By default safeguarding-flagged note TEXT is
+   * withheld (the row + flag remain so the UI can show a restricted marker);
+   * pass `{ includeSafeguarding: true }` only for an authorised safeguarding
+   * surface or the school's own export. */
+  listFeedbackForLesson(
+    lessonId: string,
+    opts: { includeSafeguarding?: boolean } = {},
+  ): FeedbackRow[] {
     return this.sql
       .all<Parameters<WorkspaceStore['mapFeedback']>[0]>(
         `SELECT * FROM feedback WHERE lesson_id = ?`,
         lessonId,
       )
-      .map((r) => this.mapFeedback(r));
+      .map((r) => this.mapFeedback(r, opts));
   }
 
-  /** A pupil's feedback over time, joined to lesson + subject for the timeline. */
-  listFeedbackForPupil(pupilId: string): FeedbackTimelineRow[] {
+  /** A pupil's feedback over time, joined to lesson + subject for the timeline.
+   * Safeguarding-flagged note text is withheld unless `includeSafeguarding`. */
+  listFeedbackForPupil(
+    pupilId: string,
+    opts: { includeSafeguarding?: boolean } = {},
+  ): FeedbackTimelineRow[] {
     return this.sql
       .all<{
         lesson_id: string;
@@ -625,6 +716,7 @@ export class WorkspaceStore {
         support_strategy: string | null;
         confidence: number | null;
         updated_at: number;
+        safeguarding?: number;
         topic: string;
         objective: string;
         subject_id: string;
@@ -636,7 +728,7 @@ export class WorkspaceStore {
         pupilId,
       )
       .map((r) => ({
-        ...this.mapFeedback(r),
+        ...this.mapFeedback(r, opts),
         topic: r.topic,
         objective: r.objective,
         subjectId: r.subject_id,
@@ -711,6 +803,178 @@ export class WorkspaceStore {
       sensitivity:
         sens === 'group' || sens === 'identified' ? sens : 'pseudonymised',
     };
+  }
+
+  listSettings(): Array<{ key: string; value: string; updatedAt: number }> {
+    return this.sql
+      .all<{ key: string; value: string; updated_at: number }>(
+        `SELECT key,value,updated_at FROM settings ORDER BY key ASC`,
+      )
+      .map((r) => ({ key: r.key, value: r.value, updatedAt: r.updated_at }));
+  }
+
+  listTombstones(): PupilTombstone[] {
+    return this.sql
+      .all<{ id: string; erased_at: number; reason: string | null }>(
+        `SELECT id,erased_at,reason FROM pupil_tombstones ORDER BY erased_at ASC`,
+      )
+      .map((r) => ({ id: r.id, erasedAt: r.erased_at, reason: r.reason }));
+  }
+
+  // ── Compliance + trust (v5, Phase 9) ─────────────────────────────────────
+
+  /**
+   * Full per-school export — the school OWNS its data. Every projection + the
+   * append-only event log + the workspace audit, with safeguarding note text
+   * INCLUDED (this is the school's own complete copy, owner/school_admin gated
+   * at the route, not the AI/teacher surface). Pure read.
+   */
+  buildExport(generatedAt: number): WorkspaceExport {
+    return {
+      schemaVersion: this.schemaVersion(),
+      generatedAt,
+      subjects: this.listSubjects(),
+      roster: this.rosterSnapshot(),
+      lessons: this.listLessons(),
+      feedback: this.sql
+        .all<Parameters<WorkspaceStore['mapFeedback']>[0]>(`SELECT * FROM feedback`)
+        .map((r) => this.mapFeedback(r, { includeSafeguarding: true })),
+      adaptationCards: this.listAdaptationCards(),
+      settings: this.listSettings(),
+      tombstones: this.listTombstones(),
+      events: this.listEvents(),
+      audit: this.listAudit(),
+    };
+  }
+
+  /**
+   * Right-to-erasure for ONE pupil (Phase 9). Purges that pupil's PII from the
+   * workspace — their roster row, class memberships, and the NOTE TEXT on their
+   * feedback — and writes an anonymised tombstone so aggregate counts stay
+   * honest (the feedback STATE rows survive against the tombstone; only the
+   * identifiable note text is removed). The erasure itself is audited.
+   * Idempotent: re-erasing an already-tombstoned pupil is a no-op beyond the
+   * audit. Returns what was purged. Pure (caller injects `now`).
+   */
+  erasePupil(
+    pupilId: string,
+    now: number,
+    reason: string | null = null,
+  ): { notesPurged: number; membershipsRemoved: number; alreadyErased: boolean } {
+    const already =
+      (this.sql.all<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM pupil_tombstones WHERE id=?`,
+        pupilId,
+      )[0]?.n ?? 0) > 0;
+
+    const notesPurged =
+      this.sql.all<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM feedback WHERE pupil_id=? AND note IS NOT NULL`,
+        pupilId,
+      )[0]?.n ?? 0;
+    const membershipsRemoved =
+      this.sql.all<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM class_pupils WHERE pupil_id=?`,
+        pupilId,
+      )[0]?.n ?? 0;
+
+    // Strip identifiable note text but keep the feedback STATE (anonymised
+    // aggregate). Clear the safeguarding flag too — there is no note left.
+    this.sql.run(
+      `UPDATE feedback SET note=NULL, support_strategy=NULL, safeguarding=0 WHERE pupil_id=?`,
+      pupilId,
+    );
+    // Remove the pupil's roster PII + class edges.
+    this.sql.run(`DELETE FROM class_pupils WHERE pupil_id=?`, pupilId);
+    this.sql.run(`DELETE FROM pupils WHERE id=?`, pupilId);
+    // Tombstone (anonymised marker). INSERT OR IGNORE → idempotent.
+    this.sql.run(
+      `INSERT OR IGNORE INTO pupil_tombstones (id,erased_at,reason) VALUES (?,?,?)`,
+      pupilId,
+      now,
+      reason,
+    );
+    this.sql.run(
+      `INSERT INTO workspace_audit (action,detail,at) VALUES (?,?,?)`,
+      'pupil.erased',
+      `pupil=${pupilId} notes=${notesPurged} memberships=${membershipsRemoved}${reason ? ` reason=${reason}` : ''}`,
+      now,
+    );
+    return { notesPurged, membershipsRemoved, alreadyErased: already };
+  }
+
+  /**
+   * Purge the ENTIRE school workspace (Phase 9 erasure — `deprovision('erase')`).
+   * Drops every domain + event + audit row in this DO's SQLite. A final audit
+   * entry records the erasure itself BEFORE the audit table is cleared is not
+   * possible (we'd delete it), so the control-plane row + the platform audit log
+   * carry the erasure trail; here we just return the counts purged. Pure
+   * (caller injects `now`). The DO/route then deletes the DO storage entirely.
+   */
+  eraseAll(now: number): { events: number; feedback: number; pupils: number } {
+    const count = (t: string) =>
+      this.sql.all<{ n: number }>(`SELECT COUNT(*) AS n FROM ${t}`)[0]?.n ?? 0;
+    const counts = { events: count('events'), feedback: count('feedback'), pupils: count('pupils') };
+    for (const t of [
+      'events',
+      'workspace_audit',
+      'feedback',
+      'adaptation_cards',
+      'lessons',
+      'class_pupils',
+      'pupils',
+      'classes',
+      'subjects',
+      'settings',
+      'pupil_tombstones',
+    ]) {
+      this.sql.run(`DELETE FROM ${t}`);
+    }
+    // Record that an erasure happened (the only audit row that survives, until
+    // the DO storage itself is deleted). Best-effort context for forensics.
+    this.sql.run(
+      `INSERT INTO workspace_audit (action,detail,at) VALUES (?,?,?)`,
+      'workspace.erased',
+      `events=${counts.events} feedback=${counts.feedback} pupils=${counts.pupils}`,
+      now,
+    );
+    return counts;
+  }
+
+  /**
+   * Apply the school's data-retention policy (Phase 9). Deterministic — a cron
+   * calls `applyRetention(now)`; everything that decides what is stale is pure.
+   * The policy lives in the `settings` projection:
+   *   - `retention_notes_months` (N) — purge raw feedback NOTE text older than N
+   *     months. The feedback STATE rows survive (aggregates kept), only the
+   *     identifiable free-text note is removed. N<=0 / unset → no purge.
+   * Returns what was purged; writes one audit entry when anything changed.
+   */
+  applyRetention(now: number): { notesPurged: number; cutoff: number | null } {
+    const raw = this.getSetting('retention_notes_months');
+    const months = raw ? Number(raw) : 0;
+    if (!Number.isFinite(months) || months <= 0) return { notesPurged: 0, cutoff: null };
+    // ~30.44 days/month — a deterministic approximation good enough for a
+    // months-granularity retention window.
+    const cutoff = now - Math.round(months * 30.44 * 24 * 60 * 60 * 1000);
+    const notesPurged =
+      this.sql.all<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM feedback WHERE note IS NOT NULL AND updated_at < ?`,
+        cutoff,
+      )[0]?.n ?? 0;
+    if (notesPurged > 0) {
+      this.sql.run(
+        `UPDATE feedback SET note=NULL, support_strategy=NULL, safeguarding=0 WHERE note IS NOT NULL AND updated_at < ?`,
+        cutoff,
+      );
+      this.sql.run(
+        `INSERT INTO workspace_audit (action,detail,at) VALUES (?,?,?)`,
+        'retention.applied',
+        `notes_purged=${notesPurged} months=${months} cutoff=${cutoff}`,
+        now,
+      );
+    }
+    return { notesPurged, cutoff };
   }
 
   /**

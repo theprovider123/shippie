@@ -38,7 +38,7 @@ const RECEIVED = 1_717_800_000_000; // server receipt time, injected (≠ create
 
 describe('WorkspaceStore', () => {
   it('migrates workspace_schema_version to the current version on init', () => {
-    expect(store().schemaVersion()).toBe(4);
+    expect(store().schemaVersion()).toBe(5);
   });
   it('appends an event and reads it back', () => {
     const s = store();
@@ -132,5 +132,140 @@ describe('WorkspaceStore', () => {
     const timeline = s.listFeedbackForPupil('removed-pupil');
     expect(timeline).toHaveLength(1);
     expect(timeline[0].topic).toBeTruthy();
+  });
+});
+
+// ── Phase 9 — compliance + trust ────────────────────────────────────────────
+
+const fbEvent = (
+  id: string,
+  pupilId: string,
+  note: string | null,
+  updatedAt = RECEIVED,
+) => ({
+  event: {
+    clientEventId: id,
+    type: 'feedback.created',
+    instanceId: 'i1',
+    actorUserId: 'u1',
+    deviceId: 'd1',
+    createdOfflineAt: '2026-06-07T00:00:00Z',
+    schemaVersion: 1,
+    payload: { lessonId: 'l1', pupilId, state: 'needs_revisit', note },
+  },
+  at: updatedAt,
+});
+
+describe('WorkspaceStore — Phase 9 compliance', () => {
+  it('flags a safeguarding-tripping note and withholds its text by default (4b)', () => {
+    const s = store();
+    s.seedDemoSchool(0);
+    const e = fbEvent('sg-1', 'p2', 'Pupil disclosed neglect at home — referred to DSL.');
+    s.appendEvent(e.event, e.at);
+
+    const general = s.listFeedbackForLesson('l1').find((f) => f.pupilId === 'p2');
+    expect(general?.safeguarding).toBe(1);
+    expect(general?.note).toBeNull(); // text withheld from the general surface
+
+    const authorised = s
+      .listFeedbackForLesson('l1', { includeSafeguarding: true })
+      .find((f) => f.pupilId === 'p2');
+    expect(authorised?.note).toContain('neglect'); // visible to an authorised reader
+
+    // The pupil timeline applies the same restriction.
+    const tl = s.listFeedbackForPupil('p2').find((f) => f.lessonId === 'l1');
+    expect(tl?.note).toBeNull();
+    expect(tl?.safeguarding).toBe(1);
+  });
+
+  it('leaves a normal pedagogical note visible', () => {
+    const s = store();
+    s.seedDemoSchool(0);
+    const e = fbEvent('ok-1', 'p3', 'Needs the column method modelled again.');
+    s.appendEvent(e.event, e.at);
+    const f = s.listFeedbackForLesson('l1').find((x) => x.pupilId === 'p3');
+    expect(f?.safeguarding).toBe(0);
+    expect(f?.note).toContain('column method');
+  });
+
+  it('builds a full export including safeguarding note text + event log', () => {
+    const s = store();
+    s.seedDemoSchool(0);
+    s.appendEvent(fbEvent('sg-2', 'p2', 'self-harm concern raised').event, RECEIVED);
+    const exp = s.buildExport(RECEIVED);
+    expect(exp.schemaVersion).toBe(5);
+    expect(exp.roster.pupils.length).toBeGreaterThan(0);
+    expect(exp.events.length).toBeGreaterThan(0);
+    expect(exp.audit.length).toBeGreaterThan(0);
+    // The school's OWN export carries the safeguarding note text in full.
+    const sg = exp.feedback.find((f) => f.pupilId === 'p2' && f.lessonId === 'l1');
+    expect(sg?.note).toContain('self-harm');
+  });
+
+  it('erases one pupil: purges PII, keeps anonymised aggregate + tombstone', () => {
+    const s = store();
+    s.seedDemoSchool(0);
+    s.appendEvent(fbEvent('era-1', 'p5', 'Will benefit from a reading buddy.').event, RECEIVED);
+    expect(s.listPupils().some((p) => p.id === 'p5')).toBe(true);
+
+    const res = s.erasePupil('p5', RECEIVED, 'parental request');
+    expect(res.notesPurged).toBe(1);
+    expect(res.alreadyErased).toBe(false);
+
+    // Roster PII gone.
+    expect(s.listPupils().some((p) => p.id === 'p5')).toBe(false);
+    expect(s.rosterSnapshot().pupils.some((p) => p.id === 'p5')).toBe(false);
+    // Aggregate (feedback state) survives, note text purged.
+    const f = s.listFeedbackForLesson('l1', { includeSafeguarding: true }).find((x) => x.pupilId === 'p5');
+    expect(f?.state).toBe('needs_revisit');
+    expect(f?.note).toBeNull();
+    // Tombstone recorded + erasure audited.
+    expect(s.listTombstones().some((t) => t.id === 'p5')).toBe(true);
+    expect(s.listAudit().some((a) => a.action === 'pupil.erased')).toBe(true);
+
+    // Idempotent.
+    expect(s.erasePupil('p5', RECEIVED).alreadyErased).toBe(true);
+  });
+
+  it('eraseAll purges every table and records the erasure', () => {
+    const s = store();
+    s.seedDemoSchool(0);
+    s.appendEvent(fbEvent('all-1', 'p6', 'note').event, RECEIVED);
+    const counts = s.eraseAll(RECEIVED);
+    expect(counts.events).toBeGreaterThan(0);
+    expect(s.listEvents()).toHaveLength(0);
+    expect(s.listPupils()).toHaveLength(0);
+    // The erasure marker is the only surviving audit row.
+    expect(s.listAudit()).toEqual([
+      expect.objectContaining({ action: 'workspace.erased' }),
+    ]);
+  });
+
+  it('applyRetention purges raw note text older than N months, keeps state', () => {
+    const s = store();
+    const now = 1_800_000_000_000;
+    const recent = now - 10 * 24 * 60 * 60 * 1000; // 10 days ago
+    const old = now - 200 * 24 * 60 * 60 * 1000; // ~6.5 months ago
+    // Seed demo notes WITHIN the window so they aren't purged — isolating the
+    // single old note this test adds.
+    s.seedDemoSchool(recent);
+    // Use non-demo pupil ids so the demo seed's last-write-wins guard doesn't
+    // shadow these explicit writes.
+    s.appendEvent(fbEvent('ret-old', 'ret-pupil-old', 'old note', old).event, old);
+    s.appendEvent(fbEvent('ret-new', 'ret-pupil-new', 'recent note', recent).event, recent);
+
+    // No policy set → no purge.
+    expect(s.applyRetention(now).notesPurged).toBe(0);
+
+    s.setSetting('retention_notes_months', '3', now);
+    const res = s.applyRetention(now);
+    expect(res.notesPurged).toBe(1);
+
+    const oldF = s.listFeedbackForLesson('l1', { includeSafeguarding: true }).find((f) => f.pupilId === 'ret-pupil-old');
+    expect(oldF?.note).toBeNull(); // purged
+    expect(oldF?.state).toBe('needs_revisit'); // aggregate kept
+    const newF = s.listFeedbackForLesson('l1').find((f) => f.pupilId === 'ret-pupil-new');
+    expect(newF?.note).toContain('recent note'); // within window
+    expect(s.listAudit().some((a) => a.action === 'retention.applied')).toBe(true);
   });
 });

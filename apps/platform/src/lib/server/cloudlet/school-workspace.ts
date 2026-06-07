@@ -23,8 +23,10 @@ import type { WorkspaceEvent } from '@shippie/cloudlet-contract';
 
 export class SchoolWorkspace {
   private store: WorkspaceStore;
+  private ctx: DurableObjectState;
 
   constructor(ctx: DurableObjectState, _env: unknown) {
+    this.ctx = ctx;
     const sql = ctx.storage.sql; // DO embedded SQLite
     const exec: SqlExecutor = {
       run: (q: string, ...a: unknown[]) => {
@@ -87,12 +89,12 @@ export class SchoolWorkspace {
     return this.store.getLesson(lessonId);
   }
 
-  async listFeedbackForLesson(lessonId: string) {
-    return this.store.listFeedbackForLesson(lessonId);
+  async listFeedbackForLesson(lessonId: string, opts?: { includeSafeguarding?: boolean }) {
+    return this.store.listFeedbackForLesson(lessonId, opts);
   }
 
-  async listFeedbackForPupil(pupilId: string) {
-    return this.store.listFeedbackForPupil(pupilId);
+  async listFeedbackForPupil(pupilId: string, opts?: { includeSafeguarding?: boolean }) {
+    return this.store.listFeedbackForPupil(pupilId, opts);
   }
 
   async listAdaptationCards() {
@@ -109,5 +111,49 @@ export class SchoolWorkspace {
   /** Current roster (ALL pupils/classes incl. deactivated) — the diff baseline. */
   async rosterSnapshot() {
     return this.store.rosterSnapshot();
+  }
+
+  // ── Compliance + trust (Phase 9) ─────────────────────────────────────────
+
+  /** Full per-school export (the school owns its data). Owner/school_admin gated
+   * at the route — safeguarding note text INCLUDED (the school's own copy). */
+  async buildExport() {
+    return this.store.buildExport(Date.now());
+  }
+
+  /** The AI audit/eval signal lives in the control-plane audit_log; here we
+   * surface the WORKSPACE audit (events, erasures, retention, roster imports). */
+  async listTombstones() {
+    return this.store.listTombstones();
+  }
+
+  async listSettings() {
+    return this.store.listSettings();
+  }
+
+  /** Write a workspace setting (e.g. retention policy, AI on/off) via an event
+   * is the canonical path; this direct setter exists for the retention cron. */
+  async setSetting(key: string, value: string) {
+    this.store.setSetting(key, value, Date.now());
+    return { ok: true };
+  }
+
+  /** Right-to-erasure for one pupil — purge PII, keep anonymised aggregate. */
+  async erasePupil(pupilId: string, reason?: string | null) {
+    return this.store.erasePupil(pupilId, Date.now(), reason ?? null);
+  }
+
+  /** Purge the ENTIRE workspace SQLite (deprovision 'erase'). The caller then
+   * deletes the DO storage entirely via ctx.storage. */
+  async eraseAll() {
+    const counts = this.store.eraseAll(Date.now());
+    // Wipe ALL DO storage (the SQLite db + any KV) so nothing survives.
+    await this.ctx.storage.deleteAll();
+    return counts;
+  }
+
+  /** Apply the school's retention policy now (cron-callable, deterministic). */
+  async applyRetention() {
+    return this.store.applyRetention(Date.now());
   }
 }

@@ -12,6 +12,8 @@ import type {
   FeedbackRow,
   FeedbackTimelineRow,
   AdaptationCardRow,
+  WorkspaceExport,
+  PupilTombstone,
 } from './workspace-store';
 
 export interface WorkspaceStub {
@@ -24,12 +26,29 @@ export interface WorkspaceStub {
   listPupilsForClass: (classId: string) => Promise<PupilRow[]>;
   listLessons: () => Promise<LessonRow[]>;
   getLesson: (lessonId: string) => Promise<LessonRow | null>;
-  listFeedbackForLesson: (lessonId: string) => Promise<FeedbackRow[]>;
-  listFeedbackForPupil: (pupilId: string) => Promise<FeedbackTimelineRow[]>;
+  listFeedbackForLesson: (
+    lessonId: string,
+    opts?: { includeSafeguarding?: boolean },
+  ) => Promise<FeedbackRow[]>;
+  listFeedbackForPupil: (
+    pupilId: string,
+    opts?: { includeSafeguarding?: boolean },
+  ) => Promise<FeedbackTimelineRow[]>;
   listAdaptationCards: () => Promise<AdaptationCardRow[]>;
   getAiSetting: () => Promise<{
     aiEnabled: boolean;
     sensitivity: 'group' | 'pseudonymised' | 'identified';
   }>;
   rosterSnapshot: () => Promise<RosterSnapshot>;
+  // ── Compliance + trust (Phase 9) ───────────────────────────────────────────
+  buildExport: () => Promise<WorkspaceExport>;
+  listTombstones: () => Promise<PupilTombstone[]>;
+  listSettings: () => Promise<Array<{ key: string; value: string; updatedAt: number }>>;
+  setSetting: (key: string, value: string) => Promise<{ ok: boolean }>;
+  erasePupil: (
+    pupilId: string,
+    reason?: string | null,
+  ) => Promise<{ notesPurged: number; membershipsRemoved: number; alreadyErased: boolean }>;
+  eraseAll: () => Promise<{ events: number; feedback: number; pupils: number }>;
+  applyRetention: () => Promise<{ notesPurged: number; cutoff: number | null }>;
 }
