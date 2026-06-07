@@ -5,6 +5,10 @@ import {
 } from '@shippie/cloudlet-contract';
 import { OutboxImpl, type SendResult } from './outbox';
 import { createIdbOutboxStore } from './idb-outbox-store';
+import type { OutboxStore } from '@shippie/cloudlet-contract';
+
+/** Meta key the SW reads to know which school to POST queued events to. */
+const ACTIVE_SLUG_KEY = 'activeSlug';
 
 /**
  * Browser-side OfflineSync client (Phase 4) for the Uniti teacher app.
@@ -51,6 +55,7 @@ function eventsUrl(slug: string): string {
  */
 class UnitiOfflineClient {
   private outbox: OutboxImpl;
+  private store: OutboxStore;
   private activeSlug: string;
   private listeners = new Set<Listener>();
   private intervalId: ReturnType<typeof setInterval> | null = null;
@@ -58,6 +63,7 @@ class UnitiOfflineClient {
 
   constructor(actorUserId: string, slug: string) {
     this.activeSlug = slug;
+    this.store = createIdbOutboxStore();
     const send = async (event: WorkspaceEvent): Promise<SendResult> => {
       // Upcast to the current schema before send (a device that captured under
       // an older app version replays its old events upgraded).
@@ -79,15 +85,18 @@ class UnitiOfflineClient {
       }
     };
     this.outbox = new OutboxImpl({
-      store: createIdbOutboxStore(),
+      store: this.store,
       send,
       actorUserId,
       schemaVersion: UNITI_EVENT_SCHEMA_VERSION,
     });
+    // Persist the active slug so the SW can flush the queue with the tab closed.
+    void this.store.setMeta(ACTIVE_SLUG_KEY, slug);
   }
 
   setSlug(slug: string) {
     this.activeSlug = slug;
+    void this.store.setMeta(ACTIVE_SLUG_KEY, slug);
   }
 
   onChange(fn: Listener): () => void {
