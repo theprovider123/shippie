@@ -10,7 +10,7 @@ import {
   type GroupLetter,
 } from "../data/tournament";
 import { hasResults, scorePrediction } from "../lib/scoring";
-import { landed } from "../lib/outsidebet";
+import { evaluateLastMan, loadLastManPicks } from "../lib/lastman";
 import { sampleNudge } from "../lib/notifications";
 import { formatKickoff } from "../lib/zones";
 import {
@@ -30,7 +30,7 @@ const NOTIFY_KEY = "golazo:notify";
  *  No account — everything lives on this phone. */
 export function Profile() {
   const store = useStore();
-  const { profile, prediction, results, scores, reactions, streak } = store;
+  const { profile, prediction, results, scores, reactions, streak, feed } = store;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile?.name ?? "");
   const [globalSync, setGlobalSync] = useState("Not listed globally");
@@ -44,7 +44,14 @@ export function Profile() {
   const scored = hasResults(results);
   const sc = scored ? scorePrediction(prediction, results) : null;
   const correct = sc?.correctCalls ?? 0;
-  const obLanded = prediction.outsideBet && scored && landed(prediction.outsideBet, results);
+  const lastMan = evaluateLastMan(loadLastManPicks(), feed.live);
+  const lastManLabel = !lastMan.alive
+    ? "last man out"
+    : lastMan.current?.status === "pending"
+      ? "last man pending"
+      : lastMan.boardScore > 0
+        ? "last man alive"
+        : "last man open";
   const reactionsSent = Object.values(reactions).reduce((n, list) => n + list.length, 0);
   const bestKeepy = scores.filter((e) => e.game === "keepy").reduce((m, e) => Math.max(m, e.score), 0);
 
@@ -167,8 +174,8 @@ export function Profile() {
           <span className="stat-lab">tips called right</span>
         </div>
         <div className="stat-cell">
-          <span className="stat-num">{obLanded ? "✓" : prediction.outsideBet ? "…" : "—"}</span>
-          <span className="stat-lab">outside bet {obLanded ? "landed" : "pending"}</span>
+          <span className="stat-num">{lastMan.alive && lastMan.boardScore > 0 ? lastMan.boardScore : "—"}</span>
+          <span className="stat-lab">{lastManLabel}</span>
         </div>
         <div className="stat-cell">
           <span className="stat-num">{reactionsSent}</span>

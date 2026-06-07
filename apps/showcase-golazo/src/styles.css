@@ -2774,12 +2774,214 @@ input {
 .game-card:active { transform: scale(0.97); }
 .game-card:hover { background: color-mix(in srgb, var(--lime) 6%, var(--turf)); }
 .game-card.vs { grid-column: 1 / -1; min-height: 96px; }
+.survival-card-wrap { min-width: 0; }
+.game-card.survival {
+  min-height: 128px;
+  border-left: 3px solid var(--gold);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 8%, transparent), transparent 48%),
+    var(--turf);
+}
+.game-card.survival .game-card-name { font-size: 17px; line-height: 1.02; }
 .game-card-emoji { font-size: 30px; }
 .game-card-name { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--chalk); display: flex; align-items: center; gap: 8px; }
 .game-card-name .h2h { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; color: var(--pitch); background: var(--gold); border-radius: 2px; padding: 2px 6px; }
 .game-card-how { font-family: var(--font-serif); font-size: 12px; color: var(--muted); line-height: 1.45; flex: 1; }
 .game-card-best { font-family: var(--font-code); font-size: 11px; color: var(--lime); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .games .back-btn { margin-bottom: 14px; }
+
+/* Last Man Standing */
+.lastman { text-align: left; }
+.lastman-hero {
+  padding: 18px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  background: var(--turf);
+}
+.lastman-hero.is-out { border-left-color: var(--red-card); }
+.lastman-kicker {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.lastman-hero h2 {
+  margin: 4px 0 6px;
+  font-family: var(--font-display);
+  font-size: clamp(40px, 13vw, 58px);
+  line-height: 0.9;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.lastman-hero p,
+.lastman-current p {
+  margin: 0;
+  max-width: 42ch;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.lastman-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 14px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.lastman-stats span {
+  min-width: 0;
+  padding: 10px 8px;
+  background: var(--pitch);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lastman-stats strong {
+  display: block;
+  font-family: var(--font-code);
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--lime);
+}
+.lastman-current,
+.lastman-status,
+.lastman-history,
+.lastman-world {
+  margin-top: 16px;
+}
+.lastman-current,
+.lastman-status {
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--pitch);
+}
+.lastman-current.is-pending { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); }
+.lastman-status {
+  display: grid;
+  gap: 4px;
+  border-left: 3px solid var(--lime);
+}
+.lastman-status.is-out { border-left-color: var(--red-card); }
+.lastman-status strong {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.lastman-status span { color: var(--muted); font-size: 13px; }
+.lastman-round-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.lastman-lock {
+  font-family: var(--font-code);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+.lastman-current h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.lastman-fixtures {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.lastman-fixture {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.lastman-time {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  background: var(--turf);
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--muted);
+}
+.lastman-team {
+  min-width: 0;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px;
+  border: 0;
+  background: var(--turf);
+  color: var(--chalk);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.lastman-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lastman-team small { color: var(--faint); font-size: 9px; letter-spacing: 0.08em; }
+.lastman-team:disabled { opacity: 0.42; cursor: not-allowed; }
+.lastman-team.is-picked {
+  background: color-mix(in srgb, var(--lime) 20%, var(--turf));
+  color: var(--lime);
+}
+.lastman-picks {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--line);
+}
+.lastman-pick-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 74px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.lastman-pick-round,
+.lastman-pick-status {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: var(--muted);
+}
+.lastman-pick-team {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.lastman-pick-status { text-align: right; text-transform: uppercase; }
+.lastman-pick-row.status-survived .lastman-pick-status { color: var(--lime); }
+.lastman-pick-row.status-out .lastman-pick-status,
+.lastman-pick-row.status-missed .lastman-pick-status { color: var(--red-card); }
 
 /* Penalty scoreboard + result */
 .pen-dot { font-size: 14px; margin-left: 2px; }

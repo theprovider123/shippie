@@ -222,6 +222,7 @@
   let focusedDrawerOpen = $state(false);
   let focusedShareFeedback = $state('');
   let focusedQrMarkup = $state<string | null>(null);
+  let focusedToolsPointerHandledAt = 0;
   // Safe-edges contract: each iframe-mounted app can declare which
   // part of the viewport its own touch input owns via the
   // @shippie/iframe-sdk safe-edges API. Host honours this by keeping
@@ -1070,6 +1071,14 @@
   function handleFocusedToolsPress(event: Event) {
     event.preventDefault();
     event.stopPropagation();
+    focusedToolsPointerHandledAt = performance.now();
+    toggleFocusedDrawer();
+  }
+
+  function handleFocusedToolsClick(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (performance.now() - focusedToolsPointerHandledAt < 450) return;
     toggleFocusedDrawer();
   }
 
@@ -3298,6 +3307,7 @@
       aria-label={focusedDrawerOpen ? 'Close Shippie tools' : 'Open Shippie tools'}
       aria-expanded={focusedDrawerOpen}
       onpointerdown={handleFocusedToolsPress}
+      onclick={handleFocusedToolsClick}
       onkeydown={handleFocusedToolsKeydown}
     >
       <img

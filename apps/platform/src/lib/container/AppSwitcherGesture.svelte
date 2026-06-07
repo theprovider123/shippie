@@ -88,6 +88,7 @@
   let reducedMotion = $state(false);
   let documentVisible = $state(true);
   let drawerSettled = $state(false);
+  let drawerOpenedAt = 0;
   $effect(() => {
     if (typeof window === 'undefined') return;
     const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -112,6 +113,7 @@
       drawerSettled = false;
       return;
     }
+    drawerOpenedAt = performance.now();
     drawerSettled = false;
     const timer = window.setTimeout(() => {
       drawerSettled = true;
@@ -385,6 +387,7 @@
 
   // Backdrop tap → close.
   function handleBackdropTap(event: MouseEvent) {
+    if (performance.now() - drawerOpenedAt < 450) return;
     if (event.target === event.currentTarget) {
       onOpenChange(false);
     }

@@ -119,4 +119,22 @@ describe('/api/golazo/scores', () => {
     );
     expect(topbins.scores).toHaveLength(0);
   });
+
+  test('accepts Last Man Standing survivor rows', async () => {
+    const kv = fakeKv();
+    await POST(eventFor(POST, {
+      kv,
+      method: 'POST',
+      body: { game: 'lastman', name: 'Sam', playerKey: 'sam:u1', score: 3 },
+    }));
+
+    const res = await GET(eventFor(GET, {
+      kv,
+      url: 'https://shippie.app/api/golazo/scores?game=lastman',
+    }));
+    const body = await json<{ scores: Array<{ playerKey: string; score: number }> }>(res);
+    expect(body.scores).toEqual([
+      expect.objectContaining({ playerKey: 'sam:u1', score: 3 }),
+    ]);
+  });
 });

@@ -1,5 +1,5 @@
 /**
- * GET    /api/golazo/scores?game=keepy                 -> { scores: [{name,playerKey,score,at}] }
+ * GET    /api/golazo/scores?game=keepy|lastman         -> { scores: [{name,playerKey,score,at}] }
  * POST   /api/golazo/scores {game,name,playerKey,score} -> { scores: [...] } (upserts, returns board)
  * DELETE /api/golazo/scores {playerKey,game?}           -> { scores: [...] } (removes one player)
  *
@@ -17,7 +17,7 @@ import { json } from "@sveltejs/kit";
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { RequestHandler } from "./$types";
 
-const GAMES = new Set(["keepy", "topbins", "freekick", "god"]);
+const GAMES = new Set(["keepy", "topbins", "freekick", "god", "lastman"]);
 const MAX = 50;
 
 interface Entry {

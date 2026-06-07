@@ -7,7 +7,7 @@ import { PenaltyRoulette } from "./games/PenaltyRoulette";
 import { WhoAreYa } from "./games/WhoAreYa";
 import { GuessNation } from "./games/GuessNation";
 import { GroupOfDeath } from "./games/GroupOfDeath";
-import { OutsideBetRoulette } from "./games/OutsideBetRoulette";
+import { LastManStanding } from "./games/LastManStanding";
 import { CardHappy } from "./games/CardHappy";
 import { ThatsNeverAPen } from "./games/ThatsNeverAPen";
 import { BeatTheClock } from "./games/BeatTheClock";
@@ -36,7 +36,6 @@ import { tap } from "../lib/haptics";
 type Sel =
   | GameId
   | "penalty"
-  | "obr"
   | "roulette"
   | "trivia"
   | "nation"
@@ -141,7 +140,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
 
         <span className="field-label" style={{ marginTop: 22 }}>⚽️ Solo &amp; head-to-head</span>
         <div className="game-grid">
-          {GAMES.filter((g) => g.id !== "god").map((g) => (
+          {GAMES.filter((g) => g.id !== "god" && g.id !== "lastman").map((g) => (
             <div key={g.id} className="game-card-wrap">
               <button className="game-card" onClick={() => { tap(); setSel(g.id); }}>
                 <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : "🧱"}</span>
@@ -152,12 +151,15 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
               <button className="game-board-btn" aria-label={`${g.name} world leaderboard`} onClick={() => { tap(); setBoardGame(g.id); }}>🏆</button>
             </div>
           ))}
-          <button className="game-card" onClick={() => { tap(); setSel("obr"); }}>
-            <span className="game-card-emoji">🎲</span>
-            <span className="game-card-name">Outside Bet Roulette</span>
-            <span className="game-card-how">Spin for a random nation — your tournament rides on them</span>
-            <span className="game-card-best">Pot luck</span>
-          </button>
+          <div className="game-card-wrap survival-card-wrap">
+            <button className="game-card survival" onClick={() => { tap(); setSel("lastman"); }}>
+              <span className="game-card-emoji">🧍</span>
+              <span className="game-card-name">Last Man Standing</span>
+              <span className="game-card-how">Pick one winner each matchday. Draw or defeat and you're out</span>
+              <span className="game-card-best">{bestScore(store.scores, "lastman") ? `${bestScore(store.scores, "lastman")} days alive` : "World survivors"}</span>
+            </button>
+            <button className="game-board-btn" aria-label="Last Man Standing world leaderboard" onClick={() => { tap(); setBoardGame("lastman"); }}>🏆</button>
+          </div>
           <button className="game-card vs" onClick={() => { tap(); setSel("penalty"); }}>
             <span className="game-card-emoji">🥅</span>
             <span className="game-card-name">Penalty Duel <em className="h2h">H2H</em></span>
@@ -197,14 +199,9 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     );
   }
 
-  // ── Outside Bet Roulette (solo spin) ──
-  if (sel === "obr") {
-    return (
-      <div className="games">
-        <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
-        <OutsideBetRoulette playerName={playerName} />
-      </div>
-    );
+  // ── Tournament survival game + global survivors board ──
+  if (sel === "lastman") {
+    return <LastManStanding onBack={() => setSel(null)} />;
   }
 
   // ── Head-to-head: Penalty Duel ──

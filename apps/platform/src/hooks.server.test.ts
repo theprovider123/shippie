@@ -109,6 +109,21 @@ describe('hooks.server first-party showcase routing', () => {
     expect(resolve).not.toHaveBeenCalled();
   });
 
+  test('production /__shippie-run/<slug>/ directory shells fall back to fresh index HTML', async () => {
+    const resolve = vi.fn(async () => new Response('fallthrough'));
+    const res = await handle({
+      event: eventFor('https://shippie.app/__shippie-run/recipe/?shippie_embed=1', {
+        assets: fakeAssets({ '/__shippie-run/recipe/index.html': '<h1>Recipe SPA</h1>' }),
+      }) as never,
+      resolve,
+    });
+
+    expect(await res.text()).toBe('<h1>Recipe SPA</h1>');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(res.headers.get('cdn-cache-control')).toBe('no-store');
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
   test('local /__shippie-run/<slug>/ directory requests fall back to static index HTML', async () => {
     const resolve = vi.fn(async () => new Response('fallthrough'));
     const res = await handle({
