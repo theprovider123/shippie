@@ -107,7 +107,6 @@
 
 <div class="your-data-tab">
   <header class="head">
-    <p class="eyebrow">Data</p>
     <h2>Your data</h2>
     <p>Review local app data, move it to another device, or make a backup. Sign-in stays optional.</p>
   </header>
@@ -210,14 +209,6 @@
   .head {
     display: grid;
     gap: 0.4rem;
-  }
-  .eyebrow {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-light);
   }
   h2 {
     margin: 0;
