@@ -1466,9 +1466,9 @@ a:focus-visible {
 }
 
 .bottom-sheet header button {
-  min-height: 40px;
-  min-width: 0;
-  padding: 0 13px;
+  min-height: 44px;
+  min-width: 72px;
+  padding: 0 15px;
   border: 1px solid var(--mode-accent-line);
   border-radius: 999px;
   background: rgba(238, 230, 217, 0.026);
