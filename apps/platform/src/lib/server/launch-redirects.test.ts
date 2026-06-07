@@ -66,6 +66,32 @@ describe('launch retired-route redirects', () => {
       '/today',
       '/whitepaper',
       '/you',
+      // Primary surfaces (Dock is the canonical launcher; Tools + You round out the
+      // three-route IA). The rail reaches these everywhere on desktop.
+      '/dock',
+      '/tools',
+      '/you/access',
+      '/glance',
+      '/labs',
+      '/workspace',
+      // Marketing.
+      '/why',
+      '/professionals',
+      // Maker workspace + its sub-pages (folded under You in the rail, but each is a
+      // real owned route).
+      '/maker',
+      '/maker/apps',
+      '/maker/feedback',
+      '/maker/apps/[slug]',
+      '/maker/apps/[slug]/access',
+      '/maker/apps/[slug]/analytics',
+      '/maker/apps/[slug]/deploys/[deployId]',
+      '/maker/apps/[slug]/enhancements',
+      '/maker/apps/[slug]/feedback',
+      '/maker/apps/[slug]/localize',
+      '/maker/apps/[slug]/profile',
+      '/maker/apps/[slug]/proof',
+      '/maker/apps/[slug]/settings',
     ]);
     const retired = new Set(Object.keys(RETIRED_PUBLIC_ROUTES));
     const orphaned = inventory.rows
