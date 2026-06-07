@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GROUP_FIXTURES, type Fixture } from "../../data/tournament";
 import { team } from "../../data/teams";
 import { formatKickoff } from "../../lib/zones";
@@ -30,6 +30,7 @@ export function LastManStanding({ onBack }: { onBack: () => void }) {
   const [picks, setPicks] = useState<LastManPick[]>(() => loadLastManPicks());
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [syncText, setSyncText] = useState("World board ready");
+  const lastSubmittedKey = useRef("");
 
   const summary = useMemo(
     () => evaluateLastMan(picks, store.feed.live, GROUP_FIXTURES),
@@ -54,7 +55,7 @@ export function LastManStanding({ onBack }: { onBack: () => void }) {
     const off = subscribeLeaderboardSync((event) => {
       if (!event.game || event.game === "lastman") load();
     });
-    const interval = window.setInterval(load, 15000);
+    const interval = window.setInterval(load, 8000);
     return () => {
       cancelled = true;
       off();
@@ -66,22 +67,33 @@ export function LastManStanding({ onBack }: { onBack: () => void }) {
     const profile = store.profile;
     if (!profile) return;
     const playerKey = profileLeaderboardKey(profile);
+    const pickKey = picks
+      .map((pick) => `${pick.day}:${pick.fixtureId}:${pick.teamId}:${pick.at}`)
+      .join("|");
     if (!summary.alive || summary.boardScore <= 0) {
       if (localScore > 0) store.clearScore("lastman");
       if (profile.globalLeaderboardOptIn) {
-        void deleteGlobalScores(playerKey, "lastman").then(() => setSyncText("Knocked out — removed from world survivors"));
+        const syncKey = `${playerKey}:out:${summary.boardScore}:${pickKey}`;
+        if (lastSubmittedKey.current !== syncKey) {
+          lastSubmittedKey.current = syncKey;
+          void deleteGlobalScores(playerKey, "lastman").then(() => setSyncText("Knocked out — removed from world survivors"));
+        }
       }
       return;
     }
 
     if (localScore !== summary.boardScore) store.setScore("lastman", summary.boardScore);
     if (profile.globalLeaderboardOptIn) {
+      const syncKey = `${playerKey}:alive:${summary.boardScore}:${pickKey}`;
+      if (lastSubmittedKey.current === syncKey) return;
+      lastSubmittedKey.current = syncKey;
       setSyncText("Syncing survivors…");
       void submitGlobal({
         game: "lastman",
         name: profile.name,
         playerKey,
         score: summary.boardScore,
+        picks,
       }).then((scores) => {
         if (scores.length) setGlobal(scores);
         setSyncText("Live on the world survivors board");
@@ -89,7 +101,7 @@ export function LastManStanding({ onBack }: { onBack: () => void }) {
     } else {
       setSyncText("Your run is private until you opt in from You");
     }
-  }, [localScore, store, summary.alive, summary.boardScore]);
+  }, [localScore, picks, store, summary.alive, summary.boardScore]);
 
   function choose(fixture: Fixture, teamId: string) {
     if (!current || fixtureDay(fixture) !== current.key || roundLocked || !summary.alive) return;

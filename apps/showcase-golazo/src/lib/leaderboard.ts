@@ -5,12 +5,16 @@
 
 import type { GameId, ScoreEntry } from "./games";
 import { GAMES, bestScore } from "./games";
+import type { LiveScore } from "./feed";
+import type { LastManPick } from "./lastman";
 import type { Profile } from "./types";
 
 /**
  * Leaderboard endpoint. Empty = local-only (offline ethos). When set, expects:
  *   GET    {url}?game=keepy                    -> { scores: ScoreEntry[] }
- *   POST   {url}  {game,name,playerKey,score}  -> { scores: ScoreEntry[] }
+ *   POST   {url}  {game,name,playerKey,score,picks?} -> { scores: ScoreEntry[] }
+ *   POST   {url}  {game:"lastman",live:[...]}        -> recompute Last Man after admin score sync
+ *   PATCH  {url}  {game:"lastman",live:[...]}        -> recompute Last Man after admin score sync
  *   DELETE {url}  {playerKey, game?}            -> { scores: ScoreEntry[] }
  * The host must be whitelisted in shippie.json allowed_connect_domains.
  */
@@ -104,7 +108,7 @@ export async function fetchGlobal(game: GameId): Promise<ScoreEntry[]> {
     const r = await fetch(`${GLOBAL_LEADERBOARD_URL}?game=${encodeURIComponent(game)}`, { signal });
     if (!r.ok) return [];
     const data = (await r.json()) as { scores?: ScoreEntry[] };
-    return (data.scores ?? []).map((s) => ({ ...s, source: "global" as const }));
+    return (data.scores ?? []).map((s) => ({ ...s, game, source: "global" as const }));
   } catch {
     return [];
   } finally {
@@ -114,7 +118,10 @@ export async function fetchGlobal(game: GameId): Promise<ScoreEntry[]> {
 
 /** Submit a score to the global board. Returns the updated board, or [] if it didn't land. */
 export async function submitGlobal(
-  entry: Pick<ScoreEntry, "game" | "name" | "score"> & { playerKey: string },
+  entry: Pick<ScoreEntry, "game" | "name" | "score"> & {
+    playerKey: string;
+    picks?: LastManPick[];
+  },
 ): Promise<ScoreEntry[]> {
   if (!isGlobalEnabled()) return [];
   const { signal, done } = withTimeout();
@@ -127,12 +134,13 @@ export async function submitGlobal(
         name: entry.name.slice(0, 24),
         playerKey: entry.playerKey,
         score: Math.floor(entry.score),
+        ...(entry.game === "lastman" && entry.picks ? { picks: entry.picks } : {}),
       }),
       signal,
     });
     if (!r.ok) return [];
     const data = (await r.json()) as { scores?: ScoreEntry[] };
-    const scores = (data.scores ?? []).map((s) => ({ ...s, source: "global" as const }));
+    const scores = (data.scores ?? []).map((s) => ({ ...s, game: entry.game, source: "global" as const }));
     notifyLeaderboardSync({ game: entry.game, playerKey: entry.playerKey });
     return scores;
   } catch {
@@ -156,7 +164,34 @@ export async function deleteGlobalScores(playerKey: string, game?: GameId): Prom
     if (!r.ok) return [];
     const data = (await r.json()) as { scores?: ScoreEntry[] };
     notifyLeaderboardSync({ game, playerKey });
-    return (data.scores ?? []).map((s) => ({ ...s, source: "global" as const }));
+    return (data.scores ?? []).map((s) => ({
+      ...s,
+      ...(game ? { game } : {}),
+      source: "global" as const,
+    }));
+  } catch {
+    return [];
+  } finally {
+    done();
+  }
+}
+
+/** Ask the platform to recompute the world Last Man board after official score sync. */
+export async function syncLastManFromLiveScores(live: LiveScore[]): Promise<ScoreEntry[]> {
+  if (!isGlobalEnabled() || live.length === 0) return [];
+  const { signal, done } = withTimeout();
+  try {
+    const r = await fetch(GLOBAL_LEADERBOARD_URL, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ game: "lastman", live }),
+      signal,
+    });
+    if (!r.ok) return [];
+    const data = (await r.json()) as { scores?: ScoreEntry[] };
+    const scores = (data.scores ?? []).map((s) => ({ ...s, game: "lastman" as const, source: "global" as const }));
+    notifyLeaderboardSync({ game: "lastman" });
+    return scores;
   } catch {
     return [];
   } finally {

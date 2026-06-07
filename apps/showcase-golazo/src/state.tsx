@@ -17,7 +17,12 @@ import { addLocalScore, bestScore, type GameId, type ScoreEntry } from "./lib/ga
 import { addReaction, type ReactionKind, type ReactionStore } from "./lib/reactions";
 import { bumpStreak, dayKey } from "./lib/streak";
 import { simulateTournament } from "./lib/sim";
-import { deleteGlobalScores, profileLeaderboardKey, submitGlobal } from "./lib/leaderboard";
+import {
+  deleteGlobalScores,
+  profileLeaderboardKey,
+  submitGlobal,
+  syncLastManFromLiveScores,
+} from "./lib/leaderboard";
 import { evaluateLastMan, loadLastManPicks } from "./lib/lastman";
 
 export interface SweepOpts {
@@ -124,6 +129,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setFeed(f);
       setOnline(on);
       if (feedHasResults(f)) setResults(f.results);
+      if (f.live.length > 0) void syncLastManFromLiveScores(f.live);
     });
     return () => {
       cancelled = true;
@@ -136,7 +142,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!profile) return;
     const playerKey = profileLeaderboardKey(profile);
-    const summary = evaluateLastMan(loadLastManPicks(), feed.live);
+    const lastManPicks = loadLastManPicks();
+    const pickKey = lastManPicks
+      .map((pick) => `${pick.day}:${pick.fixtureId}:${pick.teamId}:${pick.at}`)
+      .join("|");
+    const summary = evaluateLastMan(lastManPicks, feed.live);
     const localScore = bestScore(scores, "lastman");
     const keepPersonalRows = (entry: ScoreEntry) => {
       setScores((ss) => addLocalScore(
@@ -159,10 +169,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           source: "you",
         });
       }
-      const syncKey = `${playerKey}:alive:${summary.boardScore}:${!!profile.globalLeaderboardOptIn}`;
+      const syncKey = `${playerKey}:alive:${summary.boardScore}:${pickKey}:${!!profile.globalLeaderboardOptIn}`;
       if (profile.globalLeaderboardOptIn && lastManSyncKey.current !== syncKey) {
         lastManSyncKey.current = syncKey;
-        void submitGlobal({ game: "lastman", name: profile.name, playerKey, score: summary.boardScore });
+        void submitGlobal({
+          game: "lastman",
+          name: profile.name,
+          playerKey,
+          score: summary.boardScore,
+          picks: lastManPicks,
+        });
       }
       return;
     }
@@ -212,6 +228,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setFeed(nextFeed);
         setOnline(true);
         if (feedHasResults(nextFeed)) setResults(nextFeed.results);
+        if (nextFeed.live.length > 0) void syncLastManFromLiveScores(nextFeed.live);
       },
 
       setGroupOrder(letter, ids) {
