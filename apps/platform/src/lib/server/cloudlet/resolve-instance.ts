@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { schema } from '$server/db/client';
 import { authContextFor } from './rbac';
+import { membershipsFor } from './memberships';
+import { recordBreakGlass } from './compliance-view';
 import { roleCan, type AuthContext, type Resource } from '@shippie/cloudlet-contract';
 
 /**
@@ -36,7 +38,24 @@ export async function resolveInstanceForUser(
   if (!row) return null;
 
   // Platform admins keep operational access (own everything in the instance).
+  // BUT if the admin is NOT a verified member of this school, this is a
+  // BREAK-GLASS access to pupil data — audit it so it is visible on the
+  // school's Privacy & data screen (Phase 9). A member-admin (e.g. the school's
+  // own owner who also happens to be a platform admin) is not break-glass.
   if (user.isAdmin) {
+    const own = await membershipsFor(db, row.id, user.id);
+    if (own.length === 0) {
+      try {
+        await recordBreakGlass(db, {
+          actorUserId: user.id,
+          instanceId: row.id,
+          reason: 'platform_admin_access',
+          resource: require ? `${require.resource.type}:${require.action}` : 'instance:read',
+        });
+      } catch {
+        // Best-effort — never block operational access on the audit write.
+      }
+    }
     return { row, ctx: { instanceId: row.id, userId: user.id, roles: ['owner'] } };
   }
 
