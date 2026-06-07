@@ -40,6 +40,7 @@
     { id: 'lesson', label: 'Class', icon: 'lessons', href: `${base}/lessons/l1` },
     { id: 'timeline', label: 'Pupil Progress', icon: 'pupils', href: `${base}/pupils/p2` },
     { id: 'leadership', label: 'School', icon: 'leadership', href: `${base}/leadership` },
+    { id: 'roster', label: 'Roster', icon: 'pupils', href: `${base}/roster` },
     { id: 'admin', label: 'Settings', icon: 'admin', href: `${base}/setup` },
   ]);
 
