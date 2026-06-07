@@ -54,4 +54,48 @@ export class SchoolWorkspace {
   async schemaVersion() {
     return this.store.schemaVersion();
   }
+
+  // ── Teacher domain RPC (Phase 3) ─────────────────────────────────────────
+
+  /** Load the prototype demo data so a provisioned school is demoable. */
+  async seedDemoSchool() {
+    this.store.seedDemoSchool(Date.now());
+    return { seeded: true };
+  }
+
+  async listSubjects() {
+    return this.store.listSubjects();
+  }
+
+  async listClasses() {
+    return this.store.listClasses();
+  }
+
+  async listPupils() {
+    return this.store.listPupils();
+  }
+
+  async listPupilsForClass(classId: string) {
+    return this.store.listPupilsForClass(classId);
+  }
+
+  async listLessons() {
+    return this.store.listLessons();
+  }
+
+  async getLesson(lessonId: string) {
+    return this.store.getLesson(lessonId);
+  }
+
+  async listFeedbackForLesson(lessonId: string) {
+    return this.store.listFeedbackForLesson(lessonId);
+  }
+
+  async listFeedbackForPupil(pupilId: string) {
+    return this.store.listFeedbackForPupil(pupilId);
+  }
+
+  async listAdaptationCards() {
+    return this.store.listAdaptationCards();
+  }
 }

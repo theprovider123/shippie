@@ -1,4 +1,13 @@
 import type { WorkspaceEvent } from '@shippie/cloudlet-contract';
+import {
+  DEMO_SUBJECTS,
+  DEMO_CLASSES,
+  DEMO_PUPILS,
+  DEMO_LESSONS,
+  DEMO_FEEDBACK,
+  DEMO_NOTES,
+  DEMO_ADAPTATION_CARDS,
+} from './demo-data';
 
 /**
  * WorkspaceStore — the per-school workspace's append-only event log + audit,
@@ -22,7 +31,69 @@ export interface WorkspaceAudit {
   at: number;
 }
 
-const WORKSPACE_SCHEMA_VERSION = 1;
+export interface SubjectRow {
+  id: string;
+  name: string;
+  parentId: string | null;
+  color: string;
+}
+export interface ClassRow {
+  id: string;
+  name: string;
+  yearGroup: string;
+  room: string;
+}
+export interface PupilRow {
+  id: string;
+  name: string;
+  initials: string;
+  send: number;
+  eal: number;
+  fsm: number;
+}
+export interface LessonRow {
+  id: string;
+  classId: string;
+  subjectId: string;
+  topic: string;
+  objective: string;
+  time: string;
+  status: string;
+}
+export interface FeedbackRow {
+  lessonId: string;
+  pupilId: string;
+  state: string;
+  note: string | null;
+  supportStrategy: string | null;
+  confidence: number | null;
+  updatedAt: number;
+}
+export interface FeedbackTimelineRow extends FeedbackRow {
+  topic: string;
+  objective: string;
+  subjectId: string;
+  time: string;
+}
+export interface AdaptationCardRow {
+  id: string;
+  lessonId: string | null;
+  subjectId: string;
+  objective: string;
+  typeLabel: string;
+  emoji: string;
+  target: string;
+  need: string;
+  teacherAction: string;
+  why: string;
+  evidence: string;
+  confidence: number;
+  reviewState: string;
+  outcome: string | null;
+  outcomeNote: string | null;
+}
+
+const WORKSPACE_SCHEMA_VERSION = 2;
 
 export class WorkspaceStore {
   constructor(private sql: SqlExecutor) {}
@@ -42,8 +113,50 @@ export class WorkspaceStore {
     if (
       (this.sql.all<{ n: number }>(`SELECT COUNT(*) AS n FROM workspace_schema_version`)[0]?.n ?? 0) === 0
     ) {
-      this.sql.run(`INSERT INTO workspace_schema_version (version) VALUES (?)`, WORKSPACE_SCHEMA_VERSION);
+      this.sql.run(`INSERT INTO workspace_schema_version (version) VALUES (?)`, 1);
     }
+    // Run forward migrations to the current version. Each migration is
+    // idempotent (CREATE TABLE IF NOT EXISTS) so a re-init across hundreds of
+    // school workspaces is safe (amendment #3 — clean migration path).
+    this.migrate();
+  }
+
+  /** Bring the workspace schema up to WORKSPACE_SCHEMA_VERSION. */
+  private migrate(): void {
+    let v = this.schemaVersion();
+    if (v < 2) {
+      this.migrateToV2();
+      v = 2;
+    }
+    this.sql.run(`UPDATE workspace_schema_version SET version = ?`, v);
+  }
+
+  /** v2 — the teacher product domain (classes, pupils, lessons, feedback,
+   * adaptation cards). Feedback + adaptation OUTCOMES are projections of the
+   * append-only event log; the log stays the source of truth. */
+  private migrateToV2(): void {
+    this.sql.run(`CREATE TABLE IF NOT EXISTS subjects (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, parent_id TEXT, color TEXT NOT NULL)`);
+    this.sql.run(`CREATE TABLE IF NOT EXISTS classes (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, year_group TEXT NOT NULL, room TEXT NOT NULL)`);
+    this.sql.run(`CREATE TABLE IF NOT EXISTS pupils (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, initials TEXT NOT NULL,
+      send INTEGER NOT NULL DEFAULT 0, eal INTEGER NOT NULL DEFAULT 0, fsm INTEGER NOT NULL DEFAULT 0)`);
+    this.sql.run(`CREATE TABLE IF NOT EXISTS class_pupils (
+      class_id TEXT NOT NULL, pupil_id TEXT NOT NULL, PRIMARY KEY (class_id, pupil_id))`);
+    this.sql.run(`CREATE TABLE IF NOT EXISTS lessons (
+      id TEXT PRIMARY KEY, class_id TEXT NOT NULL, subject_id TEXT NOT NULL,
+      topic TEXT NOT NULL, objective TEXT NOT NULL, time TEXT NOT NULL, status TEXT NOT NULL)`);
+    // feedback projection: last-write-wins per (lesson, pupil).
+    this.sql.run(`CREATE TABLE IF NOT EXISTS feedback (
+      lesson_id TEXT NOT NULL, pupil_id TEXT NOT NULL, state TEXT NOT NULL,
+      note TEXT, support_strategy TEXT, confidence INTEGER, updated_at INTEGER NOT NULL,
+      PRIMARY KEY (lesson_id, pupil_id))`);
+    this.sql.run(`CREATE TABLE IF NOT EXISTS adaptation_cards (
+      id TEXT PRIMARY KEY, lesson_id TEXT, subject_id TEXT NOT NULL, objective TEXT NOT NULL,
+      type_label TEXT NOT NULL, emoji TEXT NOT NULL, target TEXT NOT NULL, need TEXT NOT NULL,
+      teacher_action TEXT NOT NULL, why TEXT NOT NULL, evidence TEXT NOT NULL,
+      confidence INTEGER NOT NULL, review_state TEXT NOT NULL, outcome TEXT, outcome_note TEXT)`);
   }
 
   schemaVersion(): number {
@@ -86,7 +199,48 @@ export class WorkspaceStore {
       `${e.type}:${e.clientEventId}`,
       receivedAt,
     );
+    this.project(e, receivedAt);
     return { accepted: true };
+  }
+
+  /**
+   * Fold a freshly-appended event into the read-model projections. The event
+   * log remains the source of truth — projections are derived and can always
+   * be rebuilt. Unknown event types are ignored (no projection).
+   */
+  private project(e: WorkspaceEvent, receivedAt: number): void {
+    const p = (e.payload ?? {}) as Record<string, unknown>;
+    if (e.type === 'feedback.created') {
+      const lessonId = p.lessonId as string | undefined;
+      const pupilId = p.pupilId as string | undefined;
+      const state = p.state as string | undefined;
+      if (!lessonId || !pupilId || !state) return;
+      this.sql.run(
+        `INSERT INTO feedback (lesson_id,pupil_id,state,note,support_strategy,confidence,updated_at)
+         VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT(lesson_id,pupil_id) DO UPDATE SET
+           state=excluded.state, note=excluded.note, support_strategy=excluded.support_strategy,
+           confidence=excluded.confidence, updated_at=excluded.updated_at
+         WHERE excluded.updated_at >= feedback.updated_at`,
+        lessonId,
+        pupilId,
+        state,
+        (p.note as string) ?? null,
+        (p.supportStrategy as string) ?? null,
+        typeof p.confidence === 'number' ? p.confidence : null,
+        receivedAt,
+      );
+    } else if (e.type === 'adaptation.outcome_recorded') {
+      const cardId = p.cardId as string | undefined;
+      const outcome = p.outcome as string | undefined;
+      if (!cardId || !outcome) return;
+      this.sql.run(
+        `UPDATE adaptation_cards SET outcome=?, outcome_note=?, review_state='done' WHERE id=?`,
+        outcome,
+        (p.note as string) ?? null,
+        cardId,
+      );
+    }
   }
 
   listEvents(): Array<WorkspaceEvent & { receivedAt: number }> {
@@ -117,5 +271,256 @@ export class WorkspaceStore {
 
   listAudit(): WorkspaceAudit[] {
     return this.sql.all<WorkspaceAudit>(`SELECT * FROM workspace_audit ORDER BY id ASC`);
+  }
+
+  // ── Teacher domain reads (v2) ────────────────────────────────────────────
+
+  listSubjects(): SubjectRow[] {
+    return this.sql
+      .all<{ id: string; name: string; parent_id: string | null; color: string }>(
+        `SELECT * FROM subjects ORDER BY rowid ASC`,
+      )
+      .map((r) => ({ id: r.id, name: r.name, parentId: r.parent_id, color: r.color }));
+  }
+
+  listClasses(): ClassRow[] {
+    return this.sql
+      .all<{ id: string; name: string; year_group: string; room: string }>(
+        `SELECT * FROM classes ORDER BY rowid ASC`,
+      )
+      .map((r) => ({ id: r.id, name: r.name, yearGroup: r.year_group, room: r.room }));
+  }
+
+  listPupils(): PupilRow[] {
+    return this.sql.all<PupilRow>(`SELECT * FROM pupils ORDER BY rowid ASC`);
+  }
+
+  listPupilsForClass(classId: string): PupilRow[] {
+    return this.sql.all<PupilRow>(
+      `SELECT p.* FROM pupils p JOIN class_pupils cp ON cp.pupil_id = p.id
+       WHERE cp.class_id = ? ORDER BY p.rowid ASC`,
+      classId,
+    );
+  }
+
+  listLessons(): LessonRow[] {
+    return this.sql
+      .all<{
+        id: string;
+        class_id: string;
+        subject_id: string;
+        topic: string;
+        objective: string;
+        time: string;
+        status: string;
+      }>(`SELECT * FROM lessons ORDER BY rowid ASC`)
+      .map((r) => ({
+        id: r.id,
+        classId: r.class_id,
+        subjectId: r.subject_id,
+        topic: r.topic,
+        objective: r.objective,
+        time: r.time,
+        status: r.status,
+      }));
+  }
+
+  getLesson(lessonId: string): LessonRow | null {
+    return this.listLessons().find((l) => l.id === lessonId) ?? null;
+  }
+
+  private mapFeedback(r: {
+    lesson_id: string;
+    pupil_id: string;
+    state: string;
+    note: string | null;
+    support_strategy: string | null;
+    confidence: number | null;
+    updated_at: number;
+  }): FeedbackRow {
+    return {
+      lessonId: r.lesson_id,
+      pupilId: r.pupil_id,
+      state: r.state,
+      note: r.note,
+      supportStrategy: r.support_strategy,
+      confidence: r.confidence,
+      updatedAt: r.updated_at,
+    };
+  }
+
+  listFeedbackForLesson(lessonId: string): FeedbackRow[] {
+    return this.sql
+      .all<Parameters<WorkspaceStore['mapFeedback']>[0]>(
+        `SELECT * FROM feedback WHERE lesson_id = ?`,
+        lessonId,
+      )
+      .map((r) => this.mapFeedback(r));
+  }
+
+  /** A pupil's feedback over time, joined to lesson + subject for the timeline. */
+  listFeedbackForPupil(pupilId: string): FeedbackTimelineRow[] {
+    return this.sql
+      .all<{
+        lesson_id: string;
+        pupil_id: string;
+        state: string;
+        note: string | null;
+        support_strategy: string | null;
+        confidence: number | null;
+        updated_at: number;
+        topic: string;
+        objective: string;
+        subject_id: string;
+        time: string;
+      }>(
+        `SELECT f.*, l.topic, l.objective, l.subject_id, l.time
+         FROM feedback f JOIN lessons l ON l.id = f.lesson_id
+         WHERE f.pupil_id = ? ORDER BY f.updated_at ASC`,
+        pupilId,
+      )
+      .map((r) => ({
+        ...this.mapFeedback(r),
+        topic: r.topic,
+        objective: r.objective,
+        subjectId: r.subject_id,
+        time: r.time,
+      }));
+  }
+
+  listAdaptationCards(): AdaptationCardRow[] {
+    return this.sql
+      .all<{
+        id: string;
+        lesson_id: string | null;
+        subject_id: string;
+        objective: string;
+        type_label: string;
+        emoji: string;
+        target: string;
+        need: string;
+        teacher_action: string;
+        why: string;
+        evidence: string;
+        confidence: number;
+        review_state: string;
+        outcome: string | null;
+        outcome_note: string | null;
+      }>(`SELECT * FROM adaptation_cards ORDER BY rowid ASC`)
+      .map((r) => ({
+        id: r.id,
+        lessonId: r.lesson_id,
+        subjectId: r.subject_id,
+        objective: r.objective,
+        typeLabel: r.type_label,
+        emoji: r.emoji,
+        target: r.target,
+        need: r.need,
+        teacherAction: r.teacher_action,
+        why: r.why,
+        evidence: r.evidence,
+        confidence: r.confidence,
+        reviewState: r.review_state,
+        outcome: r.outcome,
+        outcomeNote: r.outcome_note,
+      }));
+  }
+
+  /**
+   * Load the prototype's demo data into a freshly provisioned workspace so a
+   * school is immediately demoable without a real MIS sync. Idempotent:
+   * `INSERT OR IGNORE` / no-op on re-run. Seeds the static roster + lessons +
+   * adaptation cards directly, then folds the demo feedback through the SAME
+   * append-only event log so the projection path is exercised on seed too.
+   */
+  seedDemoSchool(seededAt = 0): void {
+    if (this.listPupils().length > 0) return; // already seeded — idempotent
+
+    for (const s of DEMO_SUBJECTS) {
+      this.sql.run(
+        `INSERT OR IGNORE INTO subjects (id,name,parent_id,color) VALUES (?,?,?,?)`,
+        s.id,
+        s.name,
+        s.parentId,
+        s.color,
+      );
+    }
+    for (const c of DEMO_CLASSES) {
+      this.sql.run(
+        `INSERT OR IGNORE INTO classes (id,name,year_group,room) VALUES (?,?,?,?)`,
+        c.id,
+        c.name,
+        c.yearGroup,
+        c.room,
+      );
+    }
+    for (const p of DEMO_PUPILS) {
+      this.sql.run(
+        `INSERT OR IGNORE INTO pupils (id,name,initials,send,eal,fsm) VALUES (?,?,?,?,?,?)`,
+        p.id,
+        p.name,
+        p.initials,
+        p.send,
+        p.eal,
+        p.fsm,
+      );
+      // Demo: all 28 pupils belong to the Year 4 class (4M).
+      this.sql.run(
+        `INSERT OR IGNORE INTO class_pupils (class_id,pupil_id) VALUES (?,?)`,
+        'c-4m',
+        p.id,
+      );
+    }
+    for (const l of DEMO_LESSONS) {
+      this.sql.run(
+        `INSERT OR IGNORE INTO lessons (id,class_id,subject_id,topic,objective,time,status) VALUES (?,?,?,?,?,?,?)`,
+        l.id,
+        l.classId,
+        l.subjectId,
+        l.topic,
+        l.objective,
+        l.time,
+        l.status,
+      );
+    }
+    for (const a of DEMO_ADAPTATION_CARDS) {
+      this.sql.run(
+        `INSERT OR IGNORE INTO adaptation_cards
+         (id,lesson_id,subject_id,objective,type_label,emoji,target,need,teacher_action,why,evidence,confidence,review_state,outcome,outcome_note)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        a.id,
+        a.lessonId,
+        a.subjectId,
+        a.objective,
+        a.typeLabel,
+        a.emoji,
+        a.target,
+        a.need,
+        a.teacherAction,
+        a.why,
+        a.evidence,
+        a.confidence,
+        a.reviewState,
+        a.outcome,
+        null,
+      );
+    }
+    // Fold the demo feedback for the in-progress lesson through the event log.
+    let i = 0;
+    for (const [pupilId, state] of Object.entries(DEMO_FEEDBACK)) {
+      this.appendEvent(
+        {
+          clientEventId: `seed-fb-l1-${pupilId}`,
+          type: 'feedback.created',
+          instanceId: 'seed',
+          actorUserId: 'seed',
+          deviceId: 'seed',
+          createdOfflineAt: new Date(seededAt).toISOString(),
+          schemaVersion: 1,
+          payload: { lessonId: 'l1', pupilId, state, note: DEMO_NOTES[pupilId] ?? null },
+        },
+        seededAt + i++,
+      );
+    }
   }
 }

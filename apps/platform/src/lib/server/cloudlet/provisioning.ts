@@ -63,6 +63,10 @@ export interface ProvisionDeps {
     instanceId: string;
     ownerEmail: string;
   }) => Promise<{ via: 'membership' | 'invite'; inviteToken?: string }>;
+  /** Seed the prototype demo school into the DO after provisioning (Phase 3).
+   * Defaults to true; the Phase-1A provisioning test sets it false to keep its
+   * DO stub minimal. */
+  seedDemo?: boolean;
 }
 
 export async function createPrivateAppInstance(
@@ -98,6 +102,12 @@ export async function createPrivateAppInstance(
   // embedded SQLite (init() runs in the DO constructor).
   const stub = deps.schoolWorkspaceNs.get(deps.schoolWorkspaceNs.idFromName(`uniti:${id}`));
   await (stub as unknown as { listEvents: () => Promise<unknown> }).listEvents(); // forces DO construction + init()
+  // Seed the prototype demo data (classes/pupils/lessons/feedback/adaptation
+  // cards) so the school is immediately demoable without a real MIS sync
+  // (Phase 3). Idempotent on the DO side. Best-effort.
+  if (deps.seedDemo !== false) {
+    await (stub as unknown as { seedDemoSchool: () => Promise<unknown> }).seedDemoSchool();
+  }
   // Seed the office-manager access (Phase 2): membership if the user exists,
   // otherwise a pending office_manager invite. Best-effort — provisioning
   // already succeeded by this point.

@@ -34,6 +34,7 @@ describe('createPrivateAppInstance', () => {
         newInstanceId: () => 'inst_ABC',
         actorUserId: 'admin1',
         now: 1717718400000,
+        seedDemo: false, // Phase-1A: keep the DO stub minimal (no demo seed)
       },
       {
         appId: 'uniti',
@@ -80,6 +81,7 @@ describe('createPrivateAppInstance', () => {
         actorUserId: 'admin1',
         now: 1717718400000,
         seedOwnerMembership,
+        seedDemo: false,
       },
       {
         appId: 'uniti',
