@@ -105,6 +105,42 @@ describe('adaptation.generated event → workspace projection', () => {
     expect(row.reviewState).toBe('planned');
     expect(row.teacherAction.length).toBeGreaterThan(0);
   });
+
+  it('projects setup.privacy_saved into the AI setting (default ON when unset)', () => {
+    const s = store();
+    expect(s.getAiSetting().aiEnabled).toBe(true); // default
+    s.appendEvent(
+      {
+        clientEventId: 'priv-1', type: 'setup.privacy_saved', instanceId: 'i1',
+        actorUserId: 'u1', deviceId: 'web', createdOfflineAt: '2026-06-07T00:00:00Z',
+        schemaVersion: 1, payload: { aiEnabled: false, sensitivity: 'group' },
+      },
+      1000,
+    );
+    expect(s.getAiSetting()).toEqual({ aiEnabled: false, sensitivity: 'group' });
+  });
+
+  it('projects adaptation.review_state_set (teacher accept/reject)', () => {
+    const s = store();
+    const cards = generateAdaptationsRules(ctx(), () => 0);
+    s.appendEvent(
+      adaptationGeneratedEvent({
+        clientEventId: 'gen-2', instanceId: 'i1', actorUserId: 'u1',
+        cards, source: 'rules', lessonId: 'l1', subjectId: 'maths',
+      }),
+      1000,
+    );
+    const id = s.listAdaptationCards()[0]!.id;
+    s.appendEvent(
+      {
+        clientEventId: 'rev-1', type: 'adaptation.review_state_set', instanceId: 'i1',
+        actorUserId: 'u1', deviceId: 'web', createdOfflineAt: '2026-06-07T00:00:00Z',
+        schemaVersion: 1, payload: { cardId: id, reviewState: 'accepted' },
+      },
+      1001,
+    );
+    expect(s.listAdaptationCards().find((c) => c.id === id)?.reviewState).toBe('accepted');
+  });
 });
 
 describe('broker path', () => {

@@ -97,7 +97,7 @@ export interface AdaptationCardRow {
   outcomeNote: string | null;
 }
 
-const WORKSPACE_SCHEMA_VERSION = 2;
+const WORKSPACE_SCHEMA_VERSION = 3;
 
 export class WorkspaceStore {
   /**
@@ -144,6 +144,10 @@ export class WorkspaceStore {
       this.migrateToV2();
       v = 2;
     }
+    if (v < 3) {
+      this.migrateToV3();
+      v = 3;
+    }
     this.sql.run(`UPDATE workspace_schema_version SET version = ?`, v);
   }
 
@@ -173,6 +177,14 @@ export class WorkspaceStore {
       type_label TEXT NOT NULL, emoji TEXT NOT NULL, target TEXT NOT NULL, need TEXT NOT NULL,
       teacher_action TEXT NOT NULL, why TEXT NOT NULL, evidence TEXT NOT NULL,
       confidence INTEGER NOT NULL, review_state TEXT NOT NULL, outcome TEXT, outcome_note TEXT)`);
+  }
+
+  /** v3 — per-school workspace settings (the privacy/AI choice from setup).
+   * A key-value projection of the `setup.privacy_saved` event so the AIBroker
+   * can read the school's AI ON/OFF without re-scanning the event log. */
+  private migrateToV3(): void {
+    this.sql.run(`CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)`);
   }
 
   schemaVersion(): number {
@@ -251,6 +263,18 @@ export class WorkspaceStore {
         typeof p.confidence === 'number' ? p.confidence : null,
         receivedAt,
       );
+    } else if (e.type === 'setup.privacy_saved') {
+      // The school's privacy/AI choice (from setup, Phase 2). Last-write-wins.
+      const aiEnabled = p.aiEnabled === true || p.aiEnabled === 1;
+      const sensitivity = typeof p.sensitivity === 'string' ? p.sensitivity : 'pseudonymised';
+      this.setSetting('ai_enabled', aiEnabled ? '1' : '0', receivedAt);
+      this.setSetting('ai_sensitivity', sensitivity, receivedAt);
+    } else if (e.type === 'adaptation.review_state_set') {
+      // Teacher accept/edit/reject of a suggested card (Phase 5 — human-owned).
+      const cardId = p.cardId as string | undefined;
+      const reviewState = p.reviewState as string | undefined;
+      if (!cardId || !reviewState) return;
+      this.sql.run(`UPDATE adaptation_cards SET review_state=? WHERE id=?`, reviewState, cardId);
     } else if (e.type === 'adaptation.generated') {
       // Phase 5 — the adaptation engine (rules or broker path) emits the
       // structured cards through the SAME append-only log. Project each into
@@ -484,6 +508,37 @@ export class WorkspaceStore {
         outcome: r.outcome,
         outcomeNote: r.outcome_note,
       }));
+  }
+
+  // ── Settings (v3) ────────────────────────────────────────────────────────
+
+  setSetting(key: string, value: string, at: number): void {
+    this.sql.run(
+      `INSERT INTO settings (key,value,updated_at) VALUES (?,?,?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
+      key,
+      value,
+      at,
+    );
+  }
+
+  getSetting(key: string): string | null {
+    return (
+      this.sql.all<{ value: string }>(`SELECT value FROM settings WHERE key = ?`, key)[0]?.value ??
+      null
+    );
+  }
+
+  /** The school's AI ON/OFF + sensitivity (from setup). Defaults: AI on,
+   * pseudonymised — but the Broker always re-checks before any model call. */
+  getAiSetting(): { aiEnabled: boolean; sensitivity: 'group' | 'pseudonymised' | 'identified' } {
+    const ai = this.getSetting('ai_enabled');
+    const sens = this.getSetting('ai_sensitivity');
+    return {
+      aiEnabled: ai === null ? true : ai === '1',
+      sensitivity:
+        sens === 'group' || sens === 'identified' ? sens : 'pseudonymised',
+    };
   }
 
   /**

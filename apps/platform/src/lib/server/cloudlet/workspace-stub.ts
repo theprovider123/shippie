@@ -27,4 +27,8 @@ export interface WorkspaceStub {
   listFeedbackForLesson: (lessonId: string) => Promise<FeedbackRow[]>;
   listFeedbackForPupil: (pupilId: string) => Promise<FeedbackTimelineRow[]>;
   listAdaptationCards: () => Promise<AdaptationCardRow[]>;
+  getAiSetting: () => Promise<{
+    aiEnabled: boolean;
+    sensitivity: 'group' | 'pseudonymised' | 'identified';
+  }>;
 }

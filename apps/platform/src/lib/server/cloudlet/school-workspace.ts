@@ -98,4 +98,9 @@ export class SchoolWorkspace {
   async listAdaptationCards() {
     return this.store.listAdaptationCards();
   }
+
+  /** The school's AI ON/OFF + sensitivity (from setup) — read by the Broker. */
+  async getAiSetting() {
+    return this.store.getAiSetting();
+  }
 }

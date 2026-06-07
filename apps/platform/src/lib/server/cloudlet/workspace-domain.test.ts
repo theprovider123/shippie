@@ -23,8 +23,8 @@ function store() {
 const RECEIVED = 1_717_800_000_000;
 
 describe('WorkspaceStore — teacher domain (schema v2)', () => {
-  it('migrates workspace_schema_version to 2 on init', () => {
-    expect(store().schemaVersion()).toBe(2);
+  it('migrates workspace_schema_version to the current version on init', () => {
+    expect(store().schemaVersion()).toBe(3);
   });
 
   it('seeds the demo school: classes, pupils, lessons, adaptation cards', () => {

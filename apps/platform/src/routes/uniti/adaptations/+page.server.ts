@@ -45,6 +45,8 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
   if (!canRead) throw error(403, 'forbidden');
   const canRecord =
     user.isAdmin || roles.some((r) => roleCan([r], 'outcome_recorded', { type: 'adaptation' }));
+  const canGenerate =
+    user.isAdmin || roles.some((r) => roleCan([r], 'generate', { type: 'adaptation' }));
 
   const inst = await db
     .select({ slug: schema.privateAppInstances.slug, name: schema.privateAppInstances.name })
@@ -54,7 +56,11 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
 
   const did = env.SCHOOL_WORKSPACE.idFromName(`uniti:${instanceId}`);
   const stub = env.SCHOOL_WORKSPACE.get(did) as unknown as WorkspaceStub;
-  const [cards, lessons] = await Promise.all([stub.listAdaptationCards(), stub.listLessons()]);
+  const [cards, lessons, aiSetting] = await Promise.all([
+    stub.listAdaptationCards(),
+    stub.listLessons(),
+    stub.getAiSetting(),
+  ]);
 
   return {
     slug: inst[0]?.slug ?? '',
@@ -64,5 +70,9 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
     cards,
     lessons,
     canRecord,
+    canGenerate,
+    // AI ON/OFF from setup — drives whether "Generate" calls the broker path
+    // or shows the offline-safe rules-only affordance.
+    aiEnabled: aiSetting.aiEnabled,
   };
 };
