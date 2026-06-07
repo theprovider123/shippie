@@ -4374,6 +4374,7 @@
       transform 0.22s ease;
   }
   .focused-dock-nub {
+    position: relative;
     width: 20px;
     height: 46px;
     display: grid;
@@ -4394,6 +4395,13 @@
       border-color 0.18s ease,
       box-shadow 0.18s ease,
       transform 0.18s ease;
+  }
+  /* Invisible, generous hit zone so the slim tab is easy to tap — the touch
+     target extends well past the visible pill (left + above + below). */
+  .focused-dock-nub::before {
+    content: '';
+    position: absolute;
+    inset: -16px 0 -16px -24px;
   }
   .focused-dock-nub img {
     display: block;
@@ -4437,7 +4445,7 @@
   @media (prefers-reduced-motion: no-preference) {
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
       opacity: 0.4;
-      transform: translateY(-50%) translateX(42%);
+      transform: translateY(-50%);
     }
   }
 
@@ -4461,7 +4469,7 @@
     }
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
       opacity: 0.44;
-      transform: translateY(-50%) translateX(42%);
+      transform: translateY(-50%);
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
       transform: translateY(-50%) translateX(120%);

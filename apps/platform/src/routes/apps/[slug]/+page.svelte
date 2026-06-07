@@ -4,11 +4,27 @@
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
   import RatingsSummary from '$lib/components/marketplace/RatingsSummary.svelte';
   import LocalAppActions from '$lib/components/marketplace/LocalAppActions.svelte';
+  import FeedbackSheet from '$lib/components/feedback/FeedbackSheet.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { toast } from '$lib/stores/toast';
 
   let { data, form }: PageProps = $props();
   let savingProfile = $state(false);
+  let feedbackOpen = $state(false);
+
+  // App-specific share/OG: a shared link shows THIS tool's name, pitch, and icon
+  // — not the generic Shippie card. (Icon → absolute URL for crawlers.)
+  const ogImage = $derived(
+    data.app.iconUrl
+      ? data.app.iconUrl.startsWith('http')
+        ? data.app.iconUrl
+        : `https://shippie.app${data.app.iconUrl}`
+      : null,
+  );
+  // "What it does" body only when the description adds something beyond the tagline.
+  const showDescription = $derived(
+    Boolean(data.app.description) && data.app.description !== data.app.tagline,
+  );
 
   // Share copy varies by viewer:
   //   public app, any viewer → public marketplace URL
@@ -89,6 +105,15 @@
 <svelte:head>
   <title>{data.app.name} — Shippie</title>
   <meta name="description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
+  <!-- App-specific share card — the shared link shows THIS tool, not generic Shippie. -->
+  <meta property="og:title" content={`${data.app.name} — Shippie`} />
+  <meta property="og:description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
+  <meta property="og:type" content="website" />
+  {#if ogImage}<meta property="og:image" content={ogImage} />{/if}
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content={data.app.name} />
+  <meta name="twitter:description" content={data.app.tagline ?? `${data.app.name} on Shippie`} />
+  {#if ogImage}<meta name="twitter:image" content={ogImage} />{/if}
 </svelte:head>
 
 <header class="hero">
@@ -116,7 +141,7 @@
         </div>
         <div class="cta-row">
           <a class="open-btn" href={`/dock?app=${encodeURIComponent(data.app.slug)}`}>
-            Open in Dock
+            Open
           </a>
           <LocalAppActions
             slug={data.app.slug}
@@ -134,6 +159,14 @@
           >
             Share
           </button>
+          <button
+            type="button"
+            class="share-btn"
+            onclick={() => (feedbackOpen = true)}
+            aria-label={`Give feedback on ${data.app.name}`}
+          >
+            Feedback
+          </button>
         </div>
       </div>
     </div>
@@ -141,6 +174,13 @@
 </header>
 
 <div class="body wrap">
+  {#if showDescription}
+    <section class="section what">
+      <h2>What it does</h2>
+      <p class="what-body">{data.app.description}</p>
+    </section>
+  {/if}
+
   <section class="section about">
     <h2>About this tool</h2>
     <dl class="facts">
@@ -153,7 +193,7 @@
       {/if}
       <div>
         <dt>Made by</dt>
-        <dd>{data.ownership.maker.name}{#if data.ownership.maker.username}&nbsp;<span class="muted">@{data.ownership.maker.username}</span>{/if}{#if data.ownership.maker.verified}&nbsp;· verified{/if}</dd>
+        <dd>{#if data.ownership.maker.username}<a href={`/@${data.ownership.maker.username}`}>{data.ownership.maker.name}&nbsp;<span class="muted">@{data.ownership.maker.username}</span></a>{:else}{data.ownership.maker.name}{/if}{#if data.ownership.maker.verified}&nbsp;· verified{/if}</dd>
       </div>
       <div>
         <dt>Source</dt>
@@ -249,6 +289,10 @@
             Tagline
             <input name="tagline" value={data.app.tagline ?? ''} maxlength="160" />
           </label>
+          <label class="full">
+            Description
+            <textarea name="description" rows="4" maxlength="1000" placeholder="What does your tool do? This shows as “What it does” on the page.">{data.app.description ?? ''}</textarea>
+          </label>
           <label>
             Category
             <input name="category" value={data.app.category} maxlength="48" required />
@@ -292,12 +336,6 @@
     </section>
   {/if}
 
-  <section class="section meta-row">
-    <p class="meta-line">
-      {data.app.installCount.toLocaleString()} opens
-    </p>
-  </section>
-
   {#if data.isMaker}
     <section class="section">
       <Button href={`/maker/apps/${data.app.slug}`} variant="secondary">
@@ -307,15 +345,22 @@
   {/if}
 </div>
 
+<FeedbackSheet
+  open={feedbackOpen}
+  appName={data.app.name}
+  appSlug={data.app.slug}
+  onClose={() => (feedbackOpen = false)}
+/>
+
 <style>
   .hero {
     color: var(--text);
     padding: var(--space-2xl) 0;
   }
   .hero-wrap {
-    max-width: 880px;
+    max-width: 560px;
     margin: 0 auto;
-    padding: 0 clamp(1.5rem, 4vw, 3rem);
+    padding: 0 clamp(1.5rem, 4vw, 2rem);
   }
   .back {
     display: inline-flex;
@@ -330,26 +375,35 @@
     margin-bottom: var(--space-xl);
   }
   .back:hover { opacity: 1; }
+  /* Compact card: centred head, contained column — no stretched app-store layout. */
   .hero-row {
     display: flex;
-    gap: var(--space-lg);
-    align-items: flex-start;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-md);
   }
-  .hero-meta { flex: 1; min-width: 240px; }
+  .hero-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+  }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: clamp(1.9rem, 5vw, 2.4rem);
     line-height: 1.1;
     letter-spacing: 0;
     margin: 0;
     color: var(--text);
   }
   .tagline {
-    margin-top: 0.5rem;
-    font-size: 1.125rem;
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.45;
     opacity: 0.92;
-    color: var(--text);
+    color: var(--text-secondary);
+    max-width: 42ch;
   }
   .kind {
     font-family: var(--font-mono);
@@ -363,8 +417,9 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.625rem;
-    margin-top: 0.625rem;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
   }
   .remix-badge,
   .connection-badge {
@@ -393,10 +448,11 @@
     background: currentColor;
   }
   .cta-row {
-    margin-top: var(--space-lg);
+    margin-top: var(--space-md);
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
+    justify-content: center;
   }
   /* Unified action row: one primary (sunset) + matching ghost buttons,
      all sentence-case, same height/shape. */
@@ -449,8 +505,8 @@
   .share-btn:hover { background: var(--surface-alt); border-color: var(--sunset); }
 
   .body {
-    padding: var(--space-xl) clamp(1.5rem, 4vw, 3rem) var(--space-3xl);
-    max-width: 880px;
+    padding: var(--space-lg) clamp(1.5rem, 4vw, 2rem) var(--space-2xl);
+    max-width: 560px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -473,6 +529,13 @@
     font-size: 1.35rem;
     margin: 0 0 var(--space-md);
     letter-spacing: 0;
+  }
+  .what-body {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1.02rem;
+    line-height: 1.6;
+    white-space: pre-line;
   }
   /* Tight key/value facts list — replaces the old boxed trust + ownership grids. */
   .facts {
@@ -549,8 +612,6 @@
     line-height: 1.7;
   }
   .changelog-entries li::before { content: '· '; }
-  .meta-row { color: var(--text-light); font-family: var(--font-mono); font-size: var(--small-size); }
-  .meta-line { margin: 0; }
   .about {
     display: grid;
     gap: var(--space-md);
@@ -585,13 +646,21 @@
     font-size: var(--small-size);
     font-weight: 700;
   }
-  .owner-edit input {
+  .owner-edit input,
+  .owner-edit textarea {
     min-width: 0;
     border: 1px solid var(--border-light);
     background: var(--bg-pure);
     color: var(--text);
     padding: 0.7rem;
     font: inherit;
+  }
+  .owner-edit textarea {
+    resize: vertical;
+    line-height: 1.5;
+  }
+  .owner-edit .full {
+    grid-column: 1 / -1;
   }
   .owner-edit .check-row {
     grid-column: 1 / -1;
@@ -670,58 +739,19 @@
   }
   @media (max-width: 640px) {
     .hero {
-      padding-bottom: calc(var(--space-2xl) + 74px);
+      padding-bottom: 0;
     }
-    .cta-row {
-      position: fixed;
-      left: calc(12px + var(--safe-left));
-      right: calc(12px + var(--safe-right));
-      bottom: calc(84px + var(--safe-bottom));
-      z-index: 115;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      gap: 8px;
-      margin-top: 0;
-      padding: 8px;
-      border: 1px solid rgba(237, 228, 211, 0.16);
-      background: rgba(20, 18, 15, 0.96);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
+    /* Actions stay inline in the card (no fixed bottom bar). */
     .open-btn,
     .share-btn,
     .cta-row :global(.local-actions.inline button) {
       justify-content: center;
       min-width: 0;
       height: 48px;
-      padding: 0 1rem;
-    }
-    .open-btn {
-      width: 100%;
-      background: var(--sunset);
-      color: var(--bg-pure);
-    }
-    .share-btn {
-      color: var(--text-secondary);
-    }
-    .cta-row :global(.local-actions.inline) {
-      min-width: 0;
-    }
-    .ownership-grid {
-      grid-template-columns: 1fr;
+      padding: 0 1.1rem;
     }
     .owner-edit form {
       grid-template-columns: 1fr;
-    }
-    .trust-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-    .trust-detail {
-      grid-template-columns: 1fr;
-    }
-    .signed-card {
-      flex-direction: column;
     }
   }
   @media (max-width: 640px) {
