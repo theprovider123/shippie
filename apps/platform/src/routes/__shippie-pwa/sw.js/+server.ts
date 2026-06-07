@@ -976,7 +976,112 @@ async function handleClearOffline(port) {
   }
 }
 
+// ── Uniti offline outbox — Background Sync flush ─────────────────────────
+// The Uniti teacher app captures feedback/outcome events into an IndexedDB
+// Outbox (see $lib/uniti/offline). When the device reconnects, the browser
+// fires a 'sync' event for our tag even if the tab is closed; we drain the
+// queue here so offline writes replay without the user reopening the app.
+// The server dedupes by clientEventId, so re-sending a partially-flushed
+// batch is safe. Fallbacks (online-event + interval) live page-side for
+// browsers without Background Sync (Safari/iOS).
+const UNITI_SYNC_TAG = 'uniti-outbox-flush';
+const UNITI_OUTBOX_DB = 'shippie-uniti-outbox';
+const UNITI_OUTBOX_STORE = 'events';
+const UNITI_OUTBOX_META = 'meta';
+const UNITI_ACTIVE_SLUG_KEY = 'activeSlug';
+
+function unitiOpenOutbox() {
+  return new Promise(function (resolve, reject) {
+    const req = indexedDB.open(UNITI_OUTBOX_DB);
+    // No onupgradeneeded: the page creates the schema. If the DB/store does
+    // not exist yet (app never used), getAll below simply yields nothing.
+    req.onsuccess = function () { resolve(req.result); };
+    req.onerror = function () { reject(req.error); };
+  });
+}
+
+function unitiIdbReq(req) {
+  return new Promise(function (resolve, reject) {
+    req.onsuccess = function () { resolve(req.result); };
+    req.onerror = function () { reject(req.error); };
+  });
+}
+
+async function unitiFlushOutbox() {
+  let db;
+  try {
+    db = await unitiOpenOutbox();
+  } catch (_) {
+    return; // no DB — nothing to flush
+  }
+  if (!db.objectStoreNames.contains(UNITI_OUTBOX_STORE)) return;
+  const now = Date.now();
+  // The queue is school-agnostic; the page persists the active slug in the
+  // meta store so the SW knows where to POST when the tab is closed. Absent
+  // (app never opened) → nothing to flush.
+  let slug = null;
+  try {
+    if (db.objectStoreNames.contains(UNITI_OUTBOX_META)) {
+      const m = db.transaction([UNITI_OUTBOX_META], 'readonly').objectStore(UNITI_OUTBOX_META);
+      slug = await unitiIdbReq(m.get(UNITI_ACTIVE_SLUG_KEY));
+    }
+  } catch (_) {}
+  if (!slug) return;
+  let entries;
+  try {
+    const ro = db.transaction([UNITI_OUTBOX_STORE], 'readonly').objectStore(UNITI_OUTBOX_STORE);
+    const [keys, values] = await Promise.all([
+      unitiIdbReq(ro.getAllKeys()),
+      unitiIdbReq(ro.getAll()),
+    ]);
+    entries = keys.map(function (k, i) { return { key: k, value: values[i] }; });
+  } catch (_) {
+    return;
+  }
+  let flushedAny = false;
+  for (const entry of entries) {
+    const v = entry.value;
+    if (!v || !v.event) continue;
+    if (typeof v.nextAttemptAt === 'number' && v.nextAttemptAt > now) continue; // backoff
+    let ok = false;
+    let drop = false;
+    try {
+      const res = await fetch('/api/cloudlet/instances/' + encodeURIComponent(slug) + '/events', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(v.event),
+      });
+      if (res.status === 201 || res.status === 200) { ok = true; }
+      else if (res.status === 400 || res.status === 403) { drop = true; } // non-retryable
+    } catch (_) { /* offline — keep queued */ }
+    if (ok || drop) {
+      try {
+        const rw = db.transaction([UNITI_OUTBOX_STORE], 'readwrite').objectStore(UNITI_OUTBOX_STORE);
+        await unitiIdbReq(rw.delete(entry.key));
+        flushedAny = true;
+      } catch (_) {}
+    }
+  }
+  if (flushedAny) {
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    for (const c of clients) {
+      try { c.postMessage({ type: 'uniti-sync-flushed' }); } catch (_) {}
+    }
+  }
+}
+
+self.addEventListener('sync', (e) => {
+  if (e.tag === UNITI_SYNC_TAG) {
+    e.waitUntil(unitiFlushOutbox());
+  }
+});
+
 self.addEventListener('message', (e) => {
+  // Manual flush trigger (fallback path / browsers without Background Sync).
+  if (e.data && e.data.type === 'UNITI_FLUSH_OUTBOX') {
+    e.waitUntil ? e.waitUntil(unitiFlushOutbox()) : unitiFlushOutbox();
+    return;
+  }
   // Skip-waiting trigger from the page shell. Updates are applied
   // silently; controllerchange reloads the document once the worker
   // claims the page.

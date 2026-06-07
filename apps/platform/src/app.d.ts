@@ -51,6 +51,13 @@ declare global {
         SIGNAL_ROOM?: DurableObjectNamespace;
         // Parade Companion crowd-sourced bus segment pulse.
         BUS_PULSE?: DurableObjectNamespace;
+        // SCHOOL_WORKSPACE — Uniti Cloudlet per-school private workspace DO
+        // (one DO per provisioned school instance, embedded SQLite).
+        SCHOOL_WORKSPACE?: DurableObjectNamespace;
+        // AI — optional Workers AI binding (Phase 5). The AIBroker gates on
+        // presence: absent → the deterministic rules path is used, never a
+        // crash. Add `[ai] binding = "AI"` to wrangler.toml to enable.
+        AI?: { run: (model: string, input: unknown) => Promise<unknown> };
         SHIPPIE_ENV: string;
         PUBLIC_ORIGIN: string;
         // Phase 3 secrets — set via `wrangler secret put`.
@@ -58,6 +65,10 @@ declare global {
         GITHUB_CLIENT_SECRET?: string;
         GOOGLE_CLIENT_ID?: string;
         GOOGLE_CLIENT_SECRET?: string;
+        // Microsoft 365 / Entra ID SSO (Uniti school-domain login).
+        MICROSOFT_CLIENT_ID?: string;
+        MICROSOFT_CLIENT_SECRET?: string;
+        MICROSOFT_TENANT?: string;
         FOOTBALL_DATA_TOKEN?: string;
         SEALED_DOCS_ENABLED?: string;
         SEALED_DOC_CHANGE_STREAM_ENABLED?: string;

@@ -40,7 +40,19 @@ not_found_handling = "single-page-application"
 # Product shell routes must run through SvelteKit first so their
 # cache-control stays no-store. The immutable chunks and showcase runtime
 # assets still go straight through Workers Assets for speed.
-run_worker_first = ["/", "/apps", "/apps/*", "/container", "/run/*"]
+run_worker_first = [
+  "/",
+  "/apps",
+  "/apps/*",
+  "/auth/*",
+  "/oauth/*",
+  "/api/*",
+  "/invite/*",
+  "/uniti",
+  "/uniti/*",
+  "/container",
+  "/run/*"
+]
 
 # KV — fill in `id` after `wrangler kv namespace create shippie-platform-cache`.
 [[kv_namespaces]]
@@ -85,6 +97,14 @@ new_sqlite_classes = ["SignalRoom"]
 tag = "v4"
 new_sqlite_classes = ["BusPulseSegment"]
 
+# Uniti Cloudlet (Phase 1A) — SchoolWorkspace is the per-school private
+# workspace DO with embedded SQLite (one DO per provisioned school
+# instance, keyed by the immutable instance id). SQLite-backed, so it
+# needs new_sqlite_classes.
+[[migrations]]
+tag = "v-uniti-1"
+new_sqlite_classes = ["SchoolWorkspace"]
+
 [[durable_objects.bindings]]
 name = "SIGNAL_ROOM"
 class_name = "SignalRoom"
@@ -92,6 +112,10 @@ class_name = "SignalRoom"
 [[durable_objects.bindings]]
 name = "BUS_PULSE"
 class_name = "BusPulseSegment"
+
+[[durable_objects.bindings]]
+name = "SCHOOL_WORKSPACE"
+class_name = "SchoolWorkspace"
 
 [vars]
 SHIPPIE_ENV = "production"

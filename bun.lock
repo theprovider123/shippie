@@ -22,6 +22,7 @@
         "@shippie/app-package-contract": "workspace:*",
         "@shippie/arcade-kit": "workspace:*",
         "@shippie/backup-providers": "workspace:*",
+        "@shippie/cloudlet-contract": "workspace:*",
         "@shippie/container-bridge": "workspace:*",
         "@shippie/design-tokens": "workspace:*",
         "@shippie/doc": "workspace:*",
@@ -1772,6 +1773,13 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/cloudlet-contract": {
+      "name": "@shippie/cloudlet-contract",
+      "version": "0.0.0",
+      "devDependencies": {
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/container-bridge": {
       "name": "@shippie/container-bridge",
       "version": "0.0.0",
@@ -2636,6 +2644,8 @@
     "@shippie/backup-providers": ["@shippie/backup-providers@workspace:packages/backup-providers"],
 
     "@shippie/cli": ["@shippie/cli@workspace:packages/cli"],
+
+    "@shippie/cloudlet-contract": ["@shippie/cloudlet-contract@workspace:packages/cloudlet-contract"],
 
     "@shippie/container-bridge": ["@shippie/container-bridge@workspace:packages/container-bridge"],
 

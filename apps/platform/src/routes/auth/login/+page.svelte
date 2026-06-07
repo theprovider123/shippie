@@ -104,6 +104,34 @@
         </div>
       {/if}
 
+      {#if data.demoEnabled}
+        <form method="POST" action="?/demo" class="oauth" use:enhance={() => {
+          submitting = true;
+          return async ({ update }) => {
+            await update();
+            submitting = false;
+          };
+        }}>
+          <button type="submit" class="btn-demo" disabled={submitting}>
+            {submitting ? 'Starting demo…' : 'Demo: sign in as Sarah Mitchell'}
+          </button>
+        </form>
+        <p class="demo-note">
+          Provisions the seeded demo school <strong>St Jude&rsquo;s &amp; St Paul&rsquo;s</strong> and lands on Today. Dev only.
+        </p>
+        <div class="divider"><span>or</span></div>
+      {/if}
+
+      {#if data.googleEnabled}
+        <form method="POST" action="?/google" class="oauth">
+          <button type="submit" class="btn-oauth">Continue with Google Workspace</button>
+        </form>
+      {/if}
+      {#if data.microsoftEnabled}
+        <form method="POST" action="?/microsoft" class="oauth">
+          <button type="submit" class="btn-oauth">Continue with Microsoft 365</button>
+        </form>
+      {/if}
       {#if data.githubEnabled}
         <form method="POST" action="?/github" class="oauth">
           <button type="submit" class="btn-oauth">
@@ -113,6 +141,8 @@
             Sign in with GitHub
           </button>
         </form>
+      {/if}
+      {#if data.githubEnabled || data.googleEnabled || data.microsoftEnabled}
         <div class="divider"><span>or</span></div>
       {/if}
 
@@ -345,6 +375,31 @@
   .btn-oauth:hover {
     background: rgba(0, 0, 0, 0.04);
   }
+  .btn-demo {
+    width: 100%;
+    min-height: var(--touch-min, 48px);
+    background: #1B9B7A;
+    color: #fff;
+    border: none;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: inset 0 -3px 0 0 #E8953A;
+  }
+  .btn-demo:hover { filter: brightness(1.05); }
+  .btn-demo:disabled { opacity: 0.6; cursor: progress; }
+  .demo-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #8B847A;
+  }
+  .demo-note strong { color: #1B9B7A; }
   .divider {
     display: flex;
     align-items: center;

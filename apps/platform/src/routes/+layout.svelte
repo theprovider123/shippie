@@ -59,7 +59,14 @@
       '/manifest.webmanifest',
       '/run',
       '/trust-preview',
+      '/uniti',
     ].some((prefix) => pathname === prefix || pathname.startsWith(prefix));
+  }
+
+  // Immersive full-bleed apps that own their entire viewport (their own shell,
+  // header and nav) — Shippie marketplace chrome (top Nav + Footer) is hidden.
+  function isImmersiveApp(url: URL): boolean {
+    return url.pathname === '/uniti' || url.pathname.startsWith('/uniti/');
   }
 
   function hideNavOnMobile(url: URL): boolean {
@@ -87,6 +94,9 @@
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
     document.body.dataset.mobileAppChrome = mobileAppChrome ? 'true' : 'false';
     document.body.dataset.dockShellRoute = dockShellRoute ? 'true' : 'false';
+    // Immersive apps own the page background — stop the dark Shippie body
+    // colour peeking above/below their full-bleed shell.
+    document.body.dataset.immersive = isImmersiveApp($page.url) ? 'true' : 'false';
   });
 
   onMount(() => {
@@ -119,7 +129,7 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-{#if !isRailShellRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url)}
+{#if !isRailShellRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url) && !isImmersiveApp($page.url)}
   <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
     <Nav user={data.user} />
   </div>
@@ -129,13 +139,14 @@
   class:with-bottom-dock={showBottomDock($page.url)}
   class:dock-shell-route={isRailShellRoute($page.url)}
   class:immersive-tool-route={isImmersiveToolRoute($page.url)}
+  class:immersive={isImmersiveApp($page.url)}
 >
   {@render children()}
 </main>
 {#if showBottomDock($page.url)}
   <BottomDock user={data.user} />
 {/if}
-{#if showFooter($page.url)}
+{#if showFooter($page.url) && !isImmersiveApp($page.url)}
   <Footer />
 {/if}
 <Toast />
@@ -160,8 +171,20 @@
     min-height: 100dvh;
   }
 
+  /* Immersive apps (e.g. Uniti) own the full viewport with no Shippie chrome. */
+  main.immersive {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+
   :global(body[data-dock-shell-route='true']) {
     padding-top: 0;
+  }
+
+  /* Match the body to the immersive app's own background so no dark Shippie
+     colour shows above the skip-link or below a short page. */
+  :global(body[data-immersive='true']) {
+    background: #f8f7f4;
   }
 
   /* Dock 1.1 — when a tool owns the screen (immersive active-tool), the
