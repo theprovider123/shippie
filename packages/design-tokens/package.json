@@ -9,6 +9,10 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     },
+    "./tool-icon": {
+      "types": "./src/tool-icon.ts",
+      "import": "./src/tool-icon.ts"
+    },
     "./tokens.css": "./src/tokens.css",
     "./tailwind-theme.css": "./src/tailwind-theme.css",
     "./checklist.md": "./src/checklist.md"

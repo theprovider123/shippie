@@ -23,6 +23,12 @@
     return url.pathname === '/dock';
   }
 
+  // Routes that wear the Dock's left-rail chrome (one nav model). The global
+  // top Nav is suppressed here; the rail (desktop) + BottomDock (mobile) nav.
+  function isRailShellRoute(url: URL): boolean {
+    return url.pathname === '/dock' || url.pathname === '/tools' || url.pathname === '/you';
+  }
+
   function isImmersiveToolRoute(url: URL): boolean {
     return url.pathname.startsWith('/run')
       || ((url.pathname === '/container' || url.pathname === '/dock') && url.searchParams.get('focused') === '1');
@@ -70,7 +76,7 @@
 
   function showFooter(url: URL): boolean {
     const pathname = url.pathname;
-    return !isDockRoute(url)
+    return !isRailShellRoute(url)
       && !pathname.startsWith('/run')
       && !((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') === '1');
   }
@@ -78,7 +84,7 @@
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);
     const mobileAppChrome = hideNavOnMobile($page.url);
-    const dockShellRoute = isDockRoute($page.url);
+    const dockShellRoute = isRailShellRoute($page.url);
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
     document.body.dataset.mobileAppChrome = mobileAppChrome ? 'true' : 'false';
     document.body.dataset.dockShellRoute = dockShellRoute ? 'true' : 'false';
@@ -156,7 +162,7 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-{#if !isDockRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url)}
+{#if !isRailShellRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url)}
   <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
     <Nav user={data.user} />
   </div>
@@ -164,7 +170,7 @@
 <main
   id="main"
   class:with-bottom-dock={showBottomDock($page.url)}
-  class:dock-shell-route={isDockRoute($page.url)}
+  class:dock-shell-route={isRailShellRoute($page.url)}
   class:immersive-tool-route={isImmersiveToolRoute($page.url)}
 >
   {@render children()}

@@ -21,6 +21,7 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { monogram, accentColor } from '../packages/design-tokens/src/tool-icon.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -42,33 +43,20 @@ function resolveIconFile(showcaseDir, iconPath) {
   return null;
 }
 
-function firstLetter(name, slug) {
-  const source = (name ?? slug ?? '?').trim();
-  return source.charAt(0).toUpperCase();
-}
-
 /**
- * Build a 512×512 SVG monogram. Fraunces-inspired serif weight,
- * cream-text on themeColor square, matching the Shippie wordmark
- * vocabulary (square corners, generous letter).
+ * Build a terminal-style monogram SVG matching ToolGlyph: near-black
+ * tile, hybrid 3px radius, hairline accent border, monospace glyph in
+ * the accent. Same monogram()/accentColor() as the live component.
  */
-function buildMonogramSvg({ letter, themeColor }) {
-  const fg = '#EDE4D3';
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="${themeColor}"/>
-  <text
-    x="256" y="256"
-    fill="${fg}"
-    font-family="Fraunces, Georgia, 'Times New Roman', serif"
-    font-size="280"
-    font-weight="600"
-    text-anchor="middle"
-    dominant-baseline="central"
-    letter-spacing="-2"
-  >${letter}</text>
-</svg>
-`;
+export function buildMonogramSvg({ name, slug, themeColor }) {
+  const accent = accentColor(slug, themeColor);
+  const mark = monogram(name, slug);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect x="0" y="0" width="512" height="512" rx="3" fill="#15110c"/>
+  <rect x="0.5" y="0.5" width="511" height="511" rx="3" fill="none" stroke="${accent}" stroke-opacity="0.34"/>
+  <rect x="64" y="64" width="32" height="32" rx="1" fill="${accent}" fill-opacity="0.65"/>
+  <text x="256" y="300" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" font-weight="600" font-size="220" fill="${accent}">${mark}</text>
+</svg>`;
 }
 
 function ensurePublicDir(showcaseDir) {
@@ -77,6 +65,10 @@ function ensurePublicDir(showcaseDir) {
   return dir;
 }
 
+// Only run the file generation when invoked directly (`bun scripts/...`).
+// Importing this module (e.g. the parity test importing buildMonogramSvg)
+// must NOT touch the working tree.
+if (import.meta.main) {
 const showcaseDirs = listShowcaseDirs();
 let generated = 0;
 let skippedOk = 0;
@@ -94,13 +86,12 @@ for (const dir of showcaseDirs) {
     continue;
   }
 
-  const letter = firstLetter(manifest.name, manifest.slug);
-  const themeColor =
-    typeof manifest.theme_color === 'string' && /^#[0-9a-fA-F]{6}$/.test(manifest.theme_color)
-      ? manifest.theme_color
-      : '#E8603C';
+  const slug =
+    (typeof manifest.slug === 'string' && manifest.slug) ||
+    dir.split('/').pop().replace(/^showcase-/, '');
+  const themeColor = typeof manifest.theme_color === 'string' ? manifest.theme_color : null;
 
-  const svg = buildMonogramSvg({ letter, themeColor });
+  const svg = buildMonogramSvg({ name: manifest.name, slug, themeColor });
 
   const publicDir = ensurePublicDir(dir);
   const svgPath = join(publicDir, 'icon.svg');
@@ -122,4 +113,5 @@ console.log(`[generate-monogram-icons] shippie.json updated:  ${renamedRefs}`);
 if (written.length > 0) {
   console.log(`[generate-monogram-icons] first 10 written:`);
   for (const p of written.slice(0, 10)) console.log(`  - ${p}`);
+}
 }

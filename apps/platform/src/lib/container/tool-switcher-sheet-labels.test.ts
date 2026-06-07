@@ -6,7 +6,7 @@ const source = readFileSync(fileURLToPath(new URL('./ToolSwitcherSheet.svelte', 
 
 describe('ToolSwitcherSheet labels', () => {
   it('uses the same Dock / Tools / You vocabulary as the rest of Shippie', () => {
-    const actions = source.match(/<div class="switcher-actions"[\s\S]*?<\/div>/)?.[0] ?? '';
+    const actions = source.match(/<nav class="switcher-nav"[\s\S]*?<\/nav>/)?.[0] ?? '';
 
     expect(actions).toContain('>Dock<');
     expect(actions).toContain('>Tools<');

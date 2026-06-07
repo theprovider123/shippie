@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { PageProps } from './$types';
   import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
+  import RailShell from '$lib/container/RailShell.svelte';
   import {
     ToolCard,
     ToolRow,
@@ -159,6 +160,7 @@
 
 <svelte:window onkeydown={onKeydown} bind:innerWidth={viewportWidth} />
 
+<RailShell user={data.user} current="browse">
 <div class="page">
   <header class="head wrap">
     <div class="head-grid">
@@ -322,6 +324,7 @@
   </section>
 
 </div>
+</RailShell>
 
 <AppInspector
   app={selectedApp}

@@ -15,6 +15,7 @@
   import { onDestroy } from 'svelte';
   import { preloadData } from '$app/navigation';
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
+  import ToolGlyph from './ToolGlyph.svelte';
   import { recordAppLaunch } from '$lib/stores/launcher-memory';
   import { titleCap } from '$lib/marketplace/display-text';
   import { createToolLaunch, addPrefetchLink } from './use-tool-launch';
@@ -33,6 +34,8 @@
     caption?: string;
     /** Sectioned surfaces (Dock) already label the group, so suppress the inline relationship label. */
     hideRelationship?: boolean;
+    /** Presentation mode: 'row' (default list row) or 'tile' (icon-forward launchpad grid tile). */
+    variant?: 'row' | 'tile';
     onOpen?: (app: ToolDisplay) => void;
     onSave?: (app: ToolDisplay) => void;
     onInfo?: (app: ToolDisplay) => void;
@@ -49,6 +52,7 @@
     current = false,
     caption = '',
     hideRelationship = false,
+    variant = 'row',
     onOpen,
     onSave,
     onInfo,
@@ -124,6 +128,38 @@
   </span>
 {/snippet}
 
+{#snippet tileInner()}
+  <ToolGlyph
+    slug={app.slug}
+    name={app.name}
+    iconUrl={app.iconUrl ?? null}
+    glyph={app.glyph ?? null}
+    themeColor={app.themeColor}
+    size={56}
+    running={state.relationship === 'running'}
+    float={true}
+  />
+  <span class="tile-name">{safeName}</span>
+{/snippet}
+
+{#if variant === 'tile'}
+  <div class="tile" class:current>
+    {#if href}
+      <a class="tile-open" href={launchHref} onclick={launch.launchAndRemember}
+         data-sveltekit-preload-data="hover" aria-label={`Open ${safeName}`}>
+        {@render tileInner()}
+      </a>
+    {:else}
+      <button class="tile-open" type="button" onclick={launch.launchAndRemember} aria-label={`Open ${safeName}`}>
+        {@render tileInner()}
+      </button>
+    {/if}
+    <div class="tile-actions">
+      {#if showClose}<button class="manage" type="button" onclick={() => onClose?.(app)} aria-label={`Close ${safeName}`}>×</button>{/if}
+      {#if showRemove}<button class="manage" type="button" onclick={() => onRemove?.(app)} aria-label={`Remove ${safeName}`}>−</button>{/if}
+    </div>
+  </div>
+{:else}
 <div class="row" class:current>
   {#if href}
     <a
@@ -193,6 +229,7 @@
     {/if}
   </div>
 </div>
+{/if}
 
 <style>
   .row {
@@ -206,9 +243,11 @@
     background: transparent;
     box-sizing: border-box;
   }
-  .row:hover { background: rgba(0, 0, 0, 0.04); }
+  /* Hover/current must LIGHTEN on the dark theme (a black overlay did nothing).
+     Current = subtle lift + a clean sunset edge bar, not a muddy orange wash. */
+  .row:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+  /* Current tool is marked by the sunset edge bar alone — no fill band. */
   .row.current {
-    background: rgba(232, 96, 60, 0.06);
     box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
   @media (min-width: 769px) {
@@ -345,4 +384,15 @@
   @media (prefers-reduced-motion: reduce) {
     .row, .row:hover { transition: none; }
   }
+
+  .tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 14px 8px; text-align: center; }
+  .tile-open { display: flex; flex-direction: column; align-items: center; gap: 9px; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; text-decoration: none; max-width: 100%; }
+  .tile-open:focus-visible { outline: 2px solid var(--sunset); outline-offset: 2px; border-radius: var(--tool-icon-radius); }
+  .tile-name { max-width: 100%; font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Both close (×) and remove (−) can apply to one tool (running + saved); lay them in a row so they never overlap. */
+  .tile-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+  .tile-actions .manage { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; padding: 4px; line-height: 1; opacity: 0; transition: opacity 0.12s; background: none; border: 0; color: var(--text-dim, #8c8170); cursor: pointer; }
+  .tile:hover .manage, .tile:focus-within .manage { opacity: 1; }
+  .tile-actions .manage:focus-visible { opacity: 1; outline: 2px solid var(--sunset); outline-offset: 1px; }
+  @media (prefers-reduced-motion: reduce) { .tile-actions .manage { transition: none; } }
 </style>

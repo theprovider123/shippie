@@ -60,10 +60,10 @@
 
 <style>
   .dock-empty { display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg) 0; }
-  .hero { background: var(--paper-warm, #faf7ef); border: 1px solid var(--border-light); padding: var(--space-md) var(--space-lg); }
+  .hero { background: var(--surface); border: 1px solid var(--border-light); padding: var(--space-md) var(--space-lg); }
   .hero-eyebrow { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0 0 var(--space-xs); }
-  .hero-title { font-family: var(--font-heading); font-size: 1.25rem; color: var(--ink-warm, #2a251e); margin: 0; }
-  .hero-sub { font-size: 0.8rem; color: var(--text-muted-warm, #8b847a); margin: var(--space-xs) 0 0; }
+  .hero-title { font-family: var(--font-heading); font-size: 1.25rem; color: var(--text); margin: 0; }
+  .hero-sub { font-size: 0.8rem; color: var(--text-secondary); margin: var(--space-xs) 0 0; }
   .starters-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 0; }
   .starters {
     display: grid;

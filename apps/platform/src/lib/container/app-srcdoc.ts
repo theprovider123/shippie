@@ -32,12 +32,13 @@ export function appPackageSrcdoc(
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   ${spaceContextScript(opts.spaceContext)}
   <style>
-    :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; }
-    body { margin: 0; background: #fffaf2; color: #211d18; }
+    /* Dark Shippie shell — values hardcoded (iframe srcdoc can't read parent tokens). */
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: #0F0D0A; color: #EDE4D3; }
     main { min-height: 100svh; min-height: 100dvh; padding: 24px; display: grid; align-content: center; justify-items: start; gap: 12px; }
     h1 { margin: 0; font-size: 22px; }
-    p { margin: 0; color: #5f554a; line-height: 1.5; max-width: 38ch; }
-    button { border: 1px solid #211d18; background: transparent; color: #211d18; border-radius: 999px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+    p { margin: 0; color: #B8A88F; line-height: 1.5; max-width: 38ch; }
+    button { border: 1px solid #3D3530; background: transparent; color: #EDE4D3; border-radius: 999px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
     .tag { display: inline-flex; border: 1px solid ${app.accent}; color: ${app.accent}; border-radius: 999px; padding: 3px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
   </style>
 </head>

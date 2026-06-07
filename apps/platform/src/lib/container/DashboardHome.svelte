@@ -61,6 +61,10 @@
   }: Props = $props();
 
   let updateSheetOpen = $state(false);
+  let dockView = $state<'grid' | 'manage'>('grid');
+  const hasDockTools = $derived(
+    dockGroups.open.length > 0 || dockGroups.recent.length > 0 || dockGroups.saved.length > 0,
+  );
   const counts = $derived(updateCounts(updateCards));
   const updateSubtitle = $derived(updateCards.length === 1 ? '1 tool' : `${updateCards.length} tools`);
   const updateCountSummary = $derived.by(() => {
@@ -148,6 +152,16 @@
         <span>{updateBadgeLabel(updateCards)}</span>
       </button>
     {/if}
+    {#if hasDockTools}
+      <button
+        type="button"
+        class="view-toggle"
+        aria-pressed={dockView === 'manage'}
+        onclick={() => (dockView = dockView === 'grid' ? 'manage' : 'grid')}
+      >
+        {dockView === 'grid' ? 'Manage' : 'Done'}
+      </button>
+    {/if}
   </div>
   <p>Running, recent, and saved tools stay close. Use Tools when you want to find something new.</p>
 </div>
@@ -216,19 +230,27 @@
         </p>
       </div>
     </div>
-    <div class="dock-row-list">
-      {#each tools as tool (tool.slug)}
-        <ToolRow
-          app={railToolToTile(tool)}
-          state={stateForTool(tool, sectionId)}
-          hideRelationship
-          onOpen={() => onOpenTool(tool.slug)}
-          onReview={() => openUpdates()}
-          onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
-          onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
-        />
-      {/each}
-    </div>
+    {#snippet dockTool(tool: RailTool, v: 'row' | 'tile')}
+      <ToolRow
+        app={railToolToTile(tool)}
+        state={stateForTool(tool, sectionId)}
+        variant={v}
+        hideRelationship
+        onOpen={() => onOpenTool(tool.slug)}
+        onReview={() => openUpdates()}
+        onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
+        onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
+      />
+    {/snippet}
+    {#if dockView === 'grid'}
+      <div class="dock-tile-grid">
+        {#each tools as tool (tool.slug)}{@render dockTool(tool, 'tile')}{/each}
+      </div>
+    {:else}
+      <div class="dock-row-list">
+        {#each tools as tool (tool.slug)}{@render dockTool(tool, 'row')}{/each}
+      </div>
+    {/if}
   </section>
 {/snippet}
 
@@ -283,6 +305,7 @@
   .section-head h1 {
     min-width: 0;
     margin: 0;
+    font-family: var(--font-heading);
     font-size: 1.08rem;
   }
   .section-head p {
@@ -343,6 +366,33 @@
     margin: 3px 0 0;
     color: var(--text-secondary);
     font-size: 0.86rem;
+  }
+  .dock-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: clamp(0.75rem, 1.4vw, 1.1rem) 0.75rem;
+  }
+  .view-toggle {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .view-toggle:hover,
+  .view-toggle:focus-visible {
+    color: var(--sunset);
+    border-color: var(--sunset);
+    outline: none;
   }
   /* Dock rows are now ToolRow primitives — they own their height,
      dividers, actions, and the Review/Update chip. The list just frames

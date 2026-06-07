@@ -119,6 +119,7 @@
   import { pickStarters } from '$lib/container/starters';
   import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
   import ToolSwitcherSheet from '$lib/container/ToolSwitcherSheet.svelte';
+  import DockRail from '$lib/container/DockRail.svelte';
   import {
     buildToolSwitcherSections,
     type ToolSwitcherSectionId,
@@ -3534,7 +3535,6 @@
           >
             <span class="focused-brand-copy">
               <strong>Switcher</strong>
-              <small>Running, saved, recent.</small>
             </span>
           </button>
           <nav class="focused-drawer-actions" aria-label="Drawer actions">
@@ -3677,47 +3677,13 @@
   onCloseTool={closeRailTool}
 />
 <section class="shell" class:section-active={section !== 'home'}>
-  <aside class="sidebar">
-    <div class="rail-head">
-      <span class="rail-mark">⌘</span> Dock
-      <nav class="rail-quick" aria-label="Quick actions">
-        <a class="rail-quick-btn" href="/tools" title="Add tools" aria-label="Add tools">＋</a>
-        <a class="rail-quick-btn" href="/tools" title="Browse tools" aria-label="Browse tools">⌕</a>
-        <a class="rail-quick-btn" href="/you" title="You" aria-label="You">⊞</a>
-        <button class="rail-quick-btn" class:active={section === 'access'} title="Access" aria-label="Access" onclick={() => showSection('access')}>⚿</button>
-        <a class="rail-quick-btn" href={data.user ? '/maker/apps' : '/auth/login?return_to=%2Fmaker%2Fapps'} title="Apps" aria-label="Apps">▦</a>
-        {#if data.user?.isAdmin}
-          <a class="rail-quick-btn" href="/admin" title="Admin" aria-label="Admin">A</a>
-        {/if}
-      </nav>
-    </div>
-
-    <button
-      type="button"
-      class="rail-switcher"
-      onclick={() => switcherOpen.set(true)}
-      aria-label={railToolCount > 0 ? `Open Dock switcher with ${railToolCount} tools` : 'Open Dock switcher'}
-    >
-      <span>
-        <strong>Switcher</strong>
-        <small>{railToolCount > 0 ? `${railToolCount} tools ready` : 'No tools yet'}</small>
-      </span>
-      <span aria-hidden="true">⌘K</span>
-    </button>
-
-    <nav class="rail-foot" aria-label="Dock sections">
-      <a class="foot-item" href="/tools">＋ Browse tools</a>
-      <a class="foot-item" href="/you">You</a>
-      <button class="foot-item" class:active={section === 'access'} onclick={() => showSection('access')}>Access</button>
-      <button class="foot-item" class:active={section === 'create'} onclick={() => showSection('create')}>Create</button>
-      <a class="foot-item" href={data.user ? '/maker/apps' : '/auth/login?return_to=%2Fmaker%2Fapps'}>
-        {data.user ? 'Apps' : 'Sign in to manage apps'}
-      </a>
-      {#if data.user?.isAdmin}
-        <a class="foot-item" href="/admin">Admin</a>
-      {/if}
-    </nav>
-  </aside>
+  <DockRail
+    {section}
+    user={data.user}
+    {railToolCount}
+    onShowSection={showSection}
+    onOpenSwitcher={() => switcherOpen.set(true)}
+  />
 
   <main class="dock-canvas">
     {#if section !== 'home' || meshBadgeLabel(meshStatus)}
@@ -3807,7 +3773,7 @@
                 <div class="collection-list">
                   {#each activeCollection.packages as entry (entry.packageHash)}
                     <article>
-                      <span class="app-icon" style={`--accent:${entry.kind === 'local' ? '#74A57F' : entry.kind === 'connected' ? '#4E7C9A' : '#B6472D'}`}>
+                      <span class="app-icon" style={`--accent:${entry.kind === 'local' ? 'var(--sage-moss)' : entry.kind === 'connected' ? 'var(--marigold)' : 'var(--sunset)'}`}>
                         {entry.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
                       </span>
                       <div>
@@ -3942,20 +3908,8 @@
     min-height: 100svh;
     min-height: 100dvh;
     display: grid;
-    grid-template-columns: clamp(176px, 17vw, 248px) minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
     background: var(--bg);
-  }
-  .sidebar {
-    min-height: 100svh;
-    min-height: 100dvh;
-    padding:
-      calc(18px + var(--safe-top))
-      clamp(12px, 1.5vw, 22px)
-      calc(18px + var(--safe-bottom));
-    border-right: 1px solid var(--border-light);
-    display: flex;
-    flex-direction: column;
-    gap: 0;
   }
   h2,
   h3 {
@@ -4203,10 +4157,7 @@
   }
   @media (max-width: 1024px) {
     .shell {
-      grid-template-columns: clamp(156px, 22vw, 208px) minmax(0, 1fr);
-    }
-    .sidebar {
-      padding-inline: 12px;
+      grid-template-columns: 64px minmax(0, 1fr);
     }
     .topbar {
       align-items: flex-start;
@@ -4224,9 +4175,6 @@
     }
     .shell.section-active .dock-canvas {
       padding-top: calc(14px + var(--safe-top));
-    }
-    .sidebar {
-      display: none;
     }
     .sidebar-intro,
     .status-panel {
@@ -4334,7 +4282,7 @@
     position: fixed;
     inset: 0;
     z-index: 1000;
-    background: var(--bg-pure, #fff);
+    background: var(--bg-pure);
   }
   .focused-frame {
     position: fixed;
@@ -4373,10 +4321,10 @@
     z-index: 1015;
     max-width: min(520px, calc(100vw - 28px));
     padding: 10px 14px;
-    border: 1px solid rgba(20, 18, 15, 0.14);
-    background: rgba(255, 253, 247, 0.94);
-    color: var(--bg);
-    box-shadow: 0 14px 34px rgba(20, 18, 15, 0.16);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
     font-size: 13px;
     line-height: 1.35;
     text-align: center;
@@ -4526,7 +4474,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    color: var(--cream-text, #14120f);
+    color: var(--text);
   }
   .focused-drawer-grip {
     display: none;
@@ -4547,7 +4495,7 @@
     top: 50%;
     transform: translateY(-50%);
     height: 3px;
-    background: color-mix(in srgb, var(--cream-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
+    background: color-mix(in srgb, var(--text-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
   .focused-drawer-head {
     position: sticky;
@@ -4558,8 +4506,8 @@
     align-items: center;
     gap: 14px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
-    background: var(--cream-bg, #faf7ef);
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg);
   }
   .focused-home {
     display: inline-flex;
@@ -4585,16 +4533,10 @@
     font-size: 22px;
     line-height: 1;
   }
-  .focused-brand-copy small {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
-    font-size: 12px;
-    line-height: 1.25;
-    white-space: nowrap;
-  }
   .focused-drawer-actions {
     display: inline-flex;
     flex-shrink: 0;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
   }
   .focused-action {
     display: inline-flex;
@@ -4605,7 +4547,7 @@
     padding: 0 11px;
     border: 0;
     background: transparent;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.58));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.58));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -4616,15 +4558,12 @@
     transition: color 150ms ease, background 150ms ease;
   }
   .focused-action + .focused-action {
-    border-left: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border-left: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
   }
   .focused-action:hover,
   .focused-action:focus-visible {
-    color: var(--cream-text, #14120f);
-    background: rgba(20, 18, 15, 0.04);
-  }
-  .focused-action-you {
-    color: var(--sunset, #e8603c);
+    color: var(--text);
+    background: color-mix(in srgb, var(--text) 6%, transparent);
   }
   .focused-action-close {
     min-width: var(--touch-min, 44px);
@@ -4642,7 +4581,7 @@
     align-items: center;
     gap: 14px;
     padding: 8px 0 12px;
-    border-bottom: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border-bottom: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
   }
   .focused-share-card-media {
     display: inline-flex;
@@ -4655,9 +4594,9 @@
     display: grid;
     place-items: center;
     padding: 6px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--paper-warm, #f5efe4);
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
+    background: var(--surface, #f5efe4);
+    color: var(--text-secondary, rgba(0, 0, 0, 0.48));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.12em;
@@ -4677,7 +4616,7 @@
     min-width: 0;
     margin: 0;
     overflow: hidden;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -4721,9 +4660,9 @@
     display: grid;
     place-items: center;
     padding: 0;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: rgba(20, 18, 15, 0.025);
-    color: var(--cream-text, #14120f);
+    color: var(--text);
     cursor: pointer;
     transition: color 150ms ease, background 150ms ease;
   }
@@ -4753,13 +4692,13 @@
     margin: 0;
     font-size: 12px;
     font-weight: 600;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-family: var(--font-mono);
   }
   .focused-section-head span {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.45));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.45));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.1em;
@@ -4777,8 +4716,8 @@
     gap: 6px;
   }
   .focused-insight {
-    background: var(--cream-bg, rgba(255, 255, 255, 0.85));
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    background: var(--surface, rgba(255, 255, 255, 0.85));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     border-radius: 12px;
     padding: 12px 14px;
   }
@@ -4788,7 +4727,7 @@
   }
   .focused-insight p {
     margin: 4px 0 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-size: 13px;
   }
   .focused-insight-high {
@@ -4804,15 +4743,14 @@
     display: grid;
     gap: 10px;
   }
+  /* Transparent list — rows carry their own dividers; no brown fill block. */
   .focused-list {
     display: grid;
-    gap: 1px;
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.1));
-    background: var(--cream-border, rgba(0, 0, 0, 0.1));
+    border-top: 1px solid var(--border-light);
   }
   .focused-section-more {
     margin: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.04em;
@@ -4827,16 +4765,16 @@
     margin: 0 0 10px;
     border-radius: 8px;
     background: rgba(20, 18, 15, 0.025);
-    border: 1px solid var(--cream-border, rgba(0, 0, 0, 0.08));
+    border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
   }
   .focused-search:focus-within {
     border-color: var(--sunset, #e8603c);
-    background: rgba(255, 253, 247, 0.72);
+    background: var(--surface);
     box-shadow: 0 0 0 2px rgba(232, 96, 60, 0.08);
   }
   .focused-search-icon {
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.48));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.48));
     font-size: 15px;
     line-height: 1;
   }
@@ -4862,7 +4800,7 @@
     background: transparent;
     border: 0;
     padding: 0;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.5));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
     font-size: 11px;
     cursor: pointer;
@@ -4872,7 +4810,7 @@
   .focused-search-empty {
     margin: 6px 0;
     padding: 12px;
-    color: var(--cream-secondary, rgba(0, 0, 0, 0.55));
+    color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-size: 13px;
     text-align: center;
   }
@@ -4908,9 +4846,6 @@
     }
     .focused-brand-copy strong {
       font-size: 20px;
-    }
-    .focused-brand-copy small {
-      font-size: 11px;
     }
     .focused-action {
       min-height: var(--touch-min, 44px);
@@ -4959,10 +4894,10 @@
     align-items: center;
     gap: 8px;
     padding: 8px 14px;
-    border: 1px solid rgba(20, 18, 15, 0.14);
-    background: rgba(255, 253, 247, 0.94);
-    color: var(--bg);
-    box-shadow: 0 12px 28px rgba(20, 18, 15, 0.14);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
     font-size: 12.5px;
     line-height: 1.3;
     backdrop-filter: blur(10px);
@@ -4971,8 +4906,8 @@
   .transfer-pending-spinner {
     width: 12px;
     height: 12px;
-    border: 2px solid rgba(20, 18, 15, 0.18);
-    border-top-color: rgba(20, 18, 15, 0.6);
+    border: 2px solid var(--border-light);
+    border-top-color: var(--sunset);
     border-radius: 50%;
     animation: transfer-pending-spin 720ms linear infinite;
   }
@@ -4983,63 +4918,6 @@
     .transfer-pending-spinner { animation: none; }
   }
 
-  /* Dock rail (Phase 1) — reuses tokens; sharp corners, no new language. */
-  .rail-head { font-family: var(--font-heading); font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
-  .rail-mark { color: var(--sunset); }
-  .rail-quick { margin-left: auto; display: flex; gap: 2px; }
-  .rail-quick-btn { display: inline-grid; place-items: center; width: var(--touch-min); height: var(--touch-min); background: none; border: 1px solid transparent; color: var(--text-secondary); font-size: 0.92rem; text-decoration: none; cursor: pointer; }
-  .rail-quick-btn:hover { color: var(--text); border-color: var(--border-light); background: var(--surface); }
-  .rail-quick-btn.active { color: var(--sunset); border-color: var(--border-light); background: var(--surface); }
-  .rail-quick-btn:focus-visible { outline: 2px solid var(--sunset); outline-offset: -2px; }
-  .rail-switcher {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    min-height: 58px;
-    margin: 0.35rem 0 1rem;
-    padding: 0.62rem 0.7rem;
-    border: 1px solid var(--border-light);
-    background: var(--surface);
-    color: var(--text);
-    text-align: left;
-    cursor: pointer;
-  }
-  .rail-switcher:hover {
-    border-color: var(--border);
-    background: var(--surface-alt);
-  }
-  .rail-switcher:focus-visible {
-    outline: 2px solid var(--sunset);
-    outline-offset: -2px;
-  }
-  .rail-switcher span:first-child {
-    min-width: 0;
-    display: grid;
-    gap: 2px;
-  }
-  .rail-switcher strong {
-    font-family: var(--font-heading);
-    font-size: 0.88rem;
-    line-height: 1.1;
-  }
-  .rail-switcher small,
-  .rail-switcher span:last-child {
-    color: var(--text-light);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.04em;
-  }
-  .rail-switcher span:last-child {
-    flex: none;
-    padding: 0.12rem 0.28rem;
-    border: 1px solid var(--border-light);
-    background: var(--bg);
-  }
-  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.2rem; border-top: 1px solid var(--border-light); padding-top: var(--space-sm); }
-  .foot-item { min-height: var(--touch-min); display: flex; align-items: center; font-size: 0.74rem; color: var(--text-secondary); background: none; border: 0; text-align: left; cursor: pointer; text-decoration: none; padding: 0.18rem 0; }
-  .foot-item.active, .foot-item:hover { color: var(--text); }
   .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
   .hydrating-panel { min-height: 240px; }
 </style>

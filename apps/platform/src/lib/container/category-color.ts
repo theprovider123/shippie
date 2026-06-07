@@ -9,6 +9,10 @@
  * Category-first by default; a tool may still override sparingly via its own
  * `accent` if it earns strong brand equity later.
  */
+// Brand palette only — sunset / sage / marigold (the Shippie trio). No
+// off-brand violet/steel-blue. Six families collapse onto the four brand
+// hues; per-tool variety still comes from the slug-hashed warm accent
+// fallback in `accentColor`.
 const FAMILY: Record<string, string> = {
   // Cooking
   'food-drink': 'var(--sunset)',
@@ -24,19 +28,19 @@ const FAMILY: Record<string, string> = {
   strategy: 'var(--marigold)',
   creative: 'var(--marigold)',
   creativity: 'var(--marigold)',
-  // Personal
-  'daily-brain': 'var(--accent-violet)',
-  room: 'var(--accent-violet)',
-  social: 'var(--accent-violet)',
-  journal: 'var(--accent-violet)',
-  memory: 'var(--accent-violet)',
-  family: 'var(--accent-violet)',
-  // Utilities / data
-  tools: 'var(--info)',
-  money: 'var(--info)',
-  productivity: 'var(--info)',
-  home: 'var(--info)',
-  travel: 'var(--info)',
+  // Personal (was violet → deep sage)
+  'daily-brain': 'var(--sage-moss)',
+  room: 'var(--sage-moss)',
+  social: 'var(--sage-moss)',
+  journal: 'var(--sage-moss)',
+  memory: 'var(--sage-moss)',
+  family: 'var(--sage-moss)',
+  // Utilities / data (was steel-blue → marigold)
+  tools: 'var(--marigold)',
+  money: 'var(--marigold)',
+  productivity: 'var(--marigold)',
+  home: 'var(--marigold)',
+  travel: 'var(--marigold)',
 };
 
 const UNKNOWN = 'var(--text-light)';
