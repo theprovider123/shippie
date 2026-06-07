@@ -38,4 +38,5 @@ export * from './user-touch-graph';
 export * from './app-access';
 export * from './app-invites';
 export * from './spaces';
+export * from './private-app-instances';
 export * from './proof-events';

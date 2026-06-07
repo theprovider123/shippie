@@ -21,6 +21,7 @@
         "@shippie/app-package-builder": "workspace:*",
         "@shippie/app-package-contract": "workspace:*",
         "@shippie/backup-providers": "workspace:*",
+        "@shippie/cloudlet-contract": "workspace:*",
         "@shippie/container-bridge": "workspace:*",
         "@shippie/design-tokens": "workspace:*",
         "@shippie/doc": "workspace:*",
