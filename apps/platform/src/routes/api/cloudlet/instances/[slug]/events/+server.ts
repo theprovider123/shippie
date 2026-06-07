@@ -15,11 +15,7 @@ import type { RequestHandler } from './$types';
 import { getDrizzleClient } from '$server/db/client';
 import { resolveInstanceForUser } from '$server/cloudlet/resolve-instance';
 import type { WorkspaceEvent } from '@shippie/cloudlet-contract';
-
-type WorkspaceStub = {
-  appendEvent: (e: WorkspaceEvent) => Promise<{ accepted: boolean }>;
-  listEvents: () => Promise<Array<WorkspaceEvent & { receivedAt: number }>>;
-};
+import type { WorkspaceStub } from '$server/cloudlet/workspace-stub';
 
 export const POST: RequestHandler = async (event) => {
   const env = event.platform?.env;
