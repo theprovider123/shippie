@@ -69,6 +69,9 @@ declare global {
         MICROSOFT_CLIENT_ID?: string;
         MICROSOFT_CLIENT_SECRET?: string;
         MICROSOFT_TENANT?: string;
+        // Hidden live demo entry for Uniti (/uniti/demo?code=...).
+        // Set via `wrangler secret put UNITI_DEMO_CODE`.
+        UNITI_DEMO_CODE?: string;
         FOOTBALL_DATA_TOKEN?: string;
         SEALED_DOCS_ENABLED?: string;
         SEALED_DOC_CHANGE_STREAM_ENABLED?: string;
