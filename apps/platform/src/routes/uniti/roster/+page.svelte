@@ -112,6 +112,8 @@
     title="Roster & MIS"
     subtitle={data.instance.displayName}
     schoolName={data.instance.displayName}
+    teacherName={data.teacher.name}
+    teacherRole="Admin"
   >
     <div class="page">
       <p class="eyebrow">Pupils &amp; classes</p>

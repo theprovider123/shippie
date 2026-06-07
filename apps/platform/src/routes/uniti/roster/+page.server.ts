@@ -77,6 +77,7 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
     instance: instance
       ? { slug: instance.slug, displayName: instance.branding?.displayName || instance.name }
       : null,
+    teacher: { name: user.displayName || user.email?.split('@')[0] || 'Teacher' },
     canManage,
     sources: [
       { id: 'manual', label: 'Manual', available: true },
