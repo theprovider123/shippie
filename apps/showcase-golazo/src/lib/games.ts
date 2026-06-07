@@ -2,7 +2,7 @@
 // and travel by challenge link, exactly like the rest of Golazo. A worldwide
 // board lights up on top when a leaderboard endpoint is reachable (leaderboard.ts).
 
-export type GameId = "keepy" | "topbins" | "freekick" | "god";
+export type GameId = "keepy" | "topbins" | "freekick" | "god" | "lastman";
 
 export interface GameMeta {
   id: GameId;
@@ -42,6 +42,13 @@ export const GAMES: GameMeta[] = [
     how: "Flap through the gaps — pick the right answer at every gate",
     unit: "caps",
   },
+  {
+    id: "lastman",
+    name: "Last Man Standing",
+    tagline: "Survive every matchday",
+    how: "Pick one winner each matchday — draws and defeats knock you out",
+    unit: "days alive",
+  },
 ];
 
 export function gameMeta(id: GameId): GameMeta {
@@ -53,6 +60,8 @@ export interface ScoreEntry {
   name: string;
   score: number;
   at: number;
+  /** Stable name+uid key when a row has been published globally. */
+  playerKey?: string;
   /** Where it came from, for board labelling. */
   source?: "you" | "global" | "challenge";
 }
@@ -81,7 +90,9 @@ export function mergeBoards(local: ScoreEntry[], global: ScoreEntry[], game: Gam
   const all = [...global, ...local].filter((e) => e.game === game);
   const deduped: ScoreEntry[] = [];
   for (const e of rankBoard(all)) {
-    const key = `${e.name.toLowerCase()}:${e.score}:${e.source}`;
+    const key = e.playerKey
+      ? `${e.playerKey}:${e.game}`
+      : `${e.name.toLowerCase()}:${e.score}:${e.source}`;
     if (seen.has(key)) continue;
     seen.add(key);
     deduped.push(e);
@@ -106,7 +117,7 @@ export function encodeChallenge(c: Challenge): string {
 }
 
 export function decodeChallenge(code: string): Challenge | null {
-  const m = /^(keepy|topbins|freekick|god)~(\d+)~(.*)$/.exec(code.trim());
+  const m = /^(keepy|topbins|freekick|god|lastman)~(\d+)~(.*)$/.exec(code.trim());
   if (!m) return null;
   return { game: m[1] as GameId, score: Number(m[2]), name: decodeURIComponent(m[3]) || "A mate" };
 }

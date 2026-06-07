@@ -104,6 +104,8 @@ describe("App smoke", () => {
     expect(container.querySelector(".home")).not.toBeNull();
     expect(container.textContent).toContain("Tester");
     expect(container.textContent).toContain("Match Week");
+    expect(container.textContent).toContain("Global leaderboard");
+    expect(container.textContent).toContain("Off by default");
   });
 
   it("opens an incoming shared bracket from the URL hash", () => {

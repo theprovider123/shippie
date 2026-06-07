@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -12,10 +13,17 @@ import { prunePicks } from "./lib/bracket";
 import * as store from "./lib/storage";
 import type { SharePayload } from "./lib/codec";
 import { makeSeed, type Sweep, type SweepMode, type SweepScope } from "./lib/sweeps";
-import { addLocalScore, type GameId, type ScoreEntry } from "./lib/games";
+import { addLocalScore, bestScore, type GameId, type ScoreEntry } from "./lib/games";
 import { addReaction, type ReactionKind, type ReactionStore } from "./lib/reactions";
 import { bumpStreak, dayKey } from "./lib/streak";
 import { simulateTournament } from "./lib/sim";
+import {
+  deleteGlobalScores,
+  profileLeaderboardKey,
+  submitGlobal,
+  syncLastManFromLiveScores,
+} from "./lib/leaderboard";
+import { evaluateLastMan, loadLastManPicks } from "./lib/lastman";
 
 export interface SweepOpts {
   mode?: SweepMode;
@@ -38,6 +46,8 @@ interface Store {
 
   setProfile: (name: string, favTeam?: string) => void;
   setWatchZone: (zone: string | undefined) => void;
+  setGlobalLeaderboardOptIn: (enabled: boolean) => void;
+  importFeed: (feed: Feed) => void;
   setGroupOrder: (letter: GroupLetter, ids: string[]) => void;
   pickWinner: (slotId: string, teamId: string) => void;
   setTopScorer: (teamId: string | undefined) => void;
@@ -61,6 +71,8 @@ interface Store {
 
   scores: ScoreEntry[];
   addScore: (game: GameId, score: number) => ScoreEntry;
+  setScore: (game: GameId, score: number) => ScoreEntry;
+  clearScore: (game: GameId) => void;
 
   /** Days-in-a-row you've opened the app. */
   streak: number;
@@ -92,6 +104,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [streak, setStreak] = useState<number>(() => store.loadStreak()?.days ?? 0);
   const [feed, setFeed] = useState<Feed>(() => emptyFeed());
   const [online, setOnline] = useState(false);
+  const lastManSyncKey = useRef("");
 
   // Bump the tip streak once per launch (consecutive-day aware).
   useEffect(() => {
@@ -116,11 +129,67 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setFeed(f);
       setOnline(on);
       if (feedHasResults(f)) setResults(f.results);
+      if (f.live.length > 0) void syncLastManFromLiveScores(f.live);
     });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Last Man Standing must keep its world survivors row honest even when the
+  // user is not looking at the game screen: official feed updates can knock a
+  // player out and should remove them from the global board without UI drama.
+  useEffect(() => {
+    if (!profile) return;
+    const playerKey = profileLeaderboardKey(profile);
+    const lastManPicks = loadLastManPicks();
+    const pickKey = lastManPicks
+      .map((pick) => `${pick.day}:${pick.fixtureId}:${pick.teamId}:${pick.at}`)
+      .join("|");
+    const summary = evaluateLastMan(lastManPicks, feed.live);
+    const localScore = bestScore(scores, "lastman");
+    const keepPersonalRows = (entry: ScoreEntry) => {
+      setScores((ss) => addLocalScore(
+        ss.filter((s) => s.game !== "lastman" || s.playerKey !== entry.playerKey),
+        entry,
+      ));
+    };
+    const clearPersonalRows = () => {
+      setScores((ss) => ss.filter((s) => s.game !== "lastman" || s.playerKey !== playerKey));
+    };
+
+    if (summary.alive && summary.boardScore > 0) {
+      if (localScore !== summary.boardScore) {
+        keepPersonalRows({
+          game: "lastman",
+          name: profile.name,
+          playerKey,
+          score: summary.boardScore,
+          at: Date.now(),
+          source: "you",
+        });
+      }
+      const syncKey = `${playerKey}:alive:${summary.boardScore}:${pickKey}:${!!profile.globalLeaderboardOptIn}`;
+      if (profile.globalLeaderboardOptIn && lastManSyncKey.current !== syncKey) {
+        lastManSyncKey.current = syncKey;
+        void submitGlobal({
+          game: "lastman",
+          name: profile.name,
+          playerKey,
+          score: summary.boardScore,
+          picks: lastManPicks,
+        });
+      }
+      return;
+    }
+
+    if (localScore > 0) clearPersonalRows();
+    const syncKey = `${playerKey}:out:${summary.eliminatedAt ?? "none"}:${!!profile.globalLeaderboardOptIn}`;
+    if (profile.globalLeaderboardOptIn && lastManSyncKey.current !== syncKey) {
+      lastManSyncKey.current = syncKey;
+      void deleteGlobalScores(playerKey, "lastman");
+    }
+  }, [feed.live, profile, scores]);
 
   const value = useMemo<Store>(() => {
     return {
@@ -136,7 +205,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const next: Profile =
           profile != null
             ? { ...profile, name: name.trim(), favTeam }
-            : { name: name.trim(), favTeam, uid: uid() };
+            : { name: name.trim(), favTeam, uid: uid(), globalLeaderboardOptIn: false };
         setProfileState(next);
         store.saveProfile(next);
       },
@@ -146,6 +215,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const next: Profile = { ...profile, watchZone: zone };
         setProfileState(next);
         store.saveProfile(next);
+      },
+
+      setGlobalLeaderboardOptIn(enabled) {
+        if (!profile) return;
+        const next: Profile = { ...profile, globalLeaderboardOptIn: enabled };
+        setProfileState(next);
+        store.saveProfile(next);
+      },
+
+      importFeed(nextFeed) {
+        setFeed(nextFeed);
+        setOnline(true);
+        if (feedHasResults(nextFeed)) setResults(nextFeed.results);
+        if (nextFeed.live.length > 0) void syncLastManFromLiveScores(nextFeed.live);
       },
 
       setGroupOrder(letter, ids) {
@@ -291,12 +374,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const entry: ScoreEntry = {
           game,
           name: profile?.name?.trim() || "You",
+          playerKey: profile ? profileLeaderboardKey(profile) : undefined,
           score: Math.max(0, Math.floor(score)),
           at: Date.now(),
           source: "you",
         };
         setScores((ss) => addLocalScore(ss, entry));
         return entry;
+      },
+
+      setScore(game, score) {
+        const playerKey = profile ? profileLeaderboardKey(profile) : undefined;
+        const entry: ScoreEntry = {
+          game,
+          name: profile?.name?.trim() || "You",
+          playerKey,
+          score: Math.max(0, Math.floor(score)),
+          at: Date.now(),
+          source: "you",
+        };
+        setScores((ss) => addLocalScore(
+          ss.filter((s) => {
+            if (s.game !== game) return true;
+            if (!playerKey) return false;
+            return s.playerKey !== playerKey;
+          }),
+          entry,
+        ));
+        return entry;
+      },
+
+      clearScore(game) {
+        const playerKey = profile ? profileLeaderboardKey(profile) : undefined;
+        setScores((ss) => ss.filter((s) => {
+          if (s.game !== game) return true;
+          if (!playerKey) return false;
+          return s.playerKey !== playerKey;
+        }));
       },
 
       reactions,
