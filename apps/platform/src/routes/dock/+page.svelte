@@ -928,12 +928,7 @@
   // before launcher-memory hydrates in onMount.
   let launcherHydrated = $state(false);
   const dockEmpty = $derived(
-    railGroups.open.length === 0 &&
-      railGroups.saved.length === 0 &&
-      railGroups.recent.length === 0 &&
-      // Pending updates always keep the home view (so the Updates box shows),
-      // even if nothing is currently saved/running/recent.
-      updateCards.length === 0,
+    railGroups.open.length === 0 && railGroups.saved.length === 0 && railGroups.recent.length === 0,
   );
   const starterApps = $derived(pickStarters(launchVisibleApps, PUBLIC_FLAGSHIP_SLUGS, 4));
   const drawerSavedSet = $derived(new Set($launcherMemory.saved));
@@ -3719,7 +3714,7 @@
                  first-run-hero flash for returning users (launcherMemory is empty
                  on first paint until hydrateLauncherMemory runs in onMount) -->
             <div class="hydrating-panel" aria-busy="true"></div>
-          {:else if dockEmpty}
+          {:else if dockEmpty && updateCards.length === 0}
             <DockEmptyState
               starters={starterApps}
               totalCount={launchVisibleApps.length}
