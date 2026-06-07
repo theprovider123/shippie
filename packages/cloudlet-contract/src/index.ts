@@ -3,3 +3,4 @@ export * from './events';
 export * from './provisioning';
 export * from './rbac';
 export * from './invites';
+export * from './sync';
