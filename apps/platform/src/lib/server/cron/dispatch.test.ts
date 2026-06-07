@@ -13,6 +13,7 @@ interface CallCounts {
   reapTrials: number;
   rollups: number;
   retention: number;
+  cloudletRetention: number;
   capabilityBadges: number;
   kindRollup: number;
   opsMaintenance: number;
@@ -35,6 +36,10 @@ function makeHandlers(counts: CallCounts): CronHandlers {
     retention: async () => {
       counts.retention += 1;
       return { cutoff: '2026-02-23T00:00:00.000Z', deleted: 0 };
+    },
+    cloudletRetention: async () => {
+      counts.cloudletRetention += 1;
+      return { schools: 0, notesPurged: 0, skipped: true };
     },
     capabilityBadges: async () => {
       counts.capabilityBadges += 1;
@@ -63,6 +68,7 @@ function makeCounts(): CallCounts {
     reapTrials: 0,
     rollups: 0,
     retention: 0,
+    cloudletRetention: 0,
     capabilityBadges: 0,
     kindRollup: 0,
     opsMaintenance: 0,
@@ -98,6 +104,7 @@ describe('handleScheduled', () => {
     const counts = makeCounts();
     await handleScheduled(controller('0 4 * * *'), env, makeHandlers(counts));
     expect(counts.retention).toBe(1);
+    expect(counts.cloudletRetention).toBe(1);
     expect(counts.capabilityBadges).toBe(1);
     expect(counts.kindRollup).toBe(1);
     expect(counts.opsMaintenance).toBe(1);

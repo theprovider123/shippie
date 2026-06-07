@@ -9,13 +9,15 @@
  *
  *   *\/5 * * * *   reconcile-kv
  *   0 * * * *     reap-trials + rollups (both fire on the hour)
- *   0 4 * * *     retention (daily 4am UTC)
+ *   0 4 * * *     retention + cloudlet-retention + capability-badges + kind-rollup
+ *                 + ops-maintenance (daily 4am UTC)
  */
 import type { ScheduledController } from '@cloudflare/workers-types';
 import { reconcileKv } from './reconcile-kv';
 import { reapTrials } from './reap-trials';
 import { rollups } from './rollups';
 import { retention } from './retention';
+import { cloudletRetention } from './cloudlet-retention';
 import { capabilityBadges } from './capability-badges';
 import { kindRollup } from './kind-rollup';
 import { runCron } from './run';
@@ -25,6 +27,8 @@ export interface CronEnv {
   DB: import('@cloudflare/workers-types').D1Database;
   CACHE: import('@cloudflare/workers-types').KVNamespace;
   APPS?: import('@cloudflare/workers-types').R2Bucket;
+  /** Per-school workspace DOs — used by the cloudlet retention sweep (Phase 9). */
+  SCHOOL_WORKSPACE?: import('@cloudflare/workers-types').DurableObjectNamespace;
 }
 
 /**
@@ -38,6 +42,7 @@ export interface CronHandlers {
   reapTrials?: (env: CronEnv) => Promise<unknown>;
   rollups?: (env: CronEnv) => Promise<unknown>;
   retention?: (env: CronEnv) => Promise<unknown>;
+  cloudletRetention?: (env: CronEnv) => Promise<unknown>;
   capabilityBadges?: (env: CronEnv) => Promise<unknown>;
   kindRollup?: (env: CronEnv) => Promise<unknown>;
   opsMaintenance?: (env: CronEnv) => Promise<unknown>;
@@ -54,6 +59,7 @@ export async function handleScheduled(
     reapTrials: handlers.reapTrials ?? reapTrials,
     rollups: handlers.rollups ?? rollups,
     retention: handlers.retention ?? retention,
+    cloudletRetention: handlers.cloudletRetention ?? cloudletRetention,
     capabilityBadges: handlers.capabilityBadges ?? capabilityBadges,
     kindRollup: handlers.kindRollup ?? kindRollup,
     opsMaintenance: handlers.opsMaintenance ?? opsMaintenance,
@@ -83,6 +89,11 @@ export async function handleScheduled(
         // Daily 4am: retention sweep + capability-badges rollup + kind rollup.
         const settled = await Promise.allSettled([
           runCron(env, { cronString: cron, handler: 'retention', run: h.retention }),
+          runCron(env, {
+            cronString: cron,
+            handler: 'cloudletRetention',
+            run: h.cloudletRetention,
+          }),
           runCron(env, { cronString: cron, handler: 'capabilityBadges', run: h.capabilityBadges }),
           runCron(env, { cronString: cron, handler: 'kindRollup', run: h.kindRollup }),
           runCron(env, { cronString: cron, handler: 'opsMaintenance', run: h.opsMaintenance }),
