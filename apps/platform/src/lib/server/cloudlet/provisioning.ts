@@ -35,7 +35,7 @@ export interface ProvisionDeps {
       action: string;
       targetTable: string;
       targetId: string | null;
-      after?: unknown;
+      after?: Record<string, unknown> | null;
     },
   ) => Promise<unknown>;
   // Shippie private-app model (amendment #6) — route binds these to
