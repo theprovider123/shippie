@@ -54,7 +54,7 @@
 
   .launcher {
     gap: 0.65rem;
-    color: var(--text, #14120F);
+    color: var(--text, #EDE4D3);
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
     font-size: 1.05rem;
     font-weight: 600;
@@ -75,8 +75,8 @@
 
   .actions a {
     padding: 0 0.85rem;
-    border: 1px solid var(--border-light, #E5DDC8);
-    color: var(--text-secondary, #5C5751);
+    border: 1px solid var(--border-light, #2E2822);
+    color: var(--text-secondary, #B8A88F);
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
     font-size: 0.68rem;
     letter-spacing: 0.08em;

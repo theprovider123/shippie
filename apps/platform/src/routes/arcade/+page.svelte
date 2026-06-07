@@ -85,10 +85,10 @@
   }
   .page-head p {
     margin: 6px 0 0;
-    color: var(--muted, #5C5751);
+    color: var(--text-secondary);
     max-width: 560px;
   }
-  .muted { color: var(--muted, #5C5751); }
+  .muted { color: var(--text-secondary); }
   .muted.small { font-size: 13px; }
 
   .featured {
@@ -179,8 +179,8 @@
     flex-direction: column;
     gap: 8px;
     padding: 14px;
-    background: #fff;
-    border: 1px solid var(--line, var(--cream-border));
+    background: var(--surface);
+    border: 1px solid var(--border-light);
     border-top: 3px solid var(--accent);
     color: inherit;
     text-decoration: none;
@@ -212,13 +212,13 @@
     font-weight: 600;
   }
   .game-card small {
-    color: var(--muted, #5C5751);
+    color: var(--text-secondary);
     font-size: 13px;
     line-height: 1.4;
   }
 
   .empty {
-    border: 1px dashed var(--line, var(--cream-border));
+    border: 1px dashed var(--border-light);
     padding: 40px 24px;
     text-align: center;
     border-radius: 0;

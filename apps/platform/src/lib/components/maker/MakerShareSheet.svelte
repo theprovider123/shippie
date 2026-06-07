@@ -98,9 +98,9 @@
     justify-items: center;
     gap: 0.6rem;
     padding: 1.5rem 1.25rem 1.25rem;
-    background: var(--bg, #faf7ef);
-    color: var(--text, #14120f);
-    border: 1px solid var(--paper-cream);
+    background: var(--surface, #1e1a15);
+    color: var(--text, #ede4d3);
+    border: 1px solid var(--border-light, #2e2822);
   }
   .close {
     position: absolute;
@@ -110,7 +110,7 @@
     min-height: 44px;
     border: 0;
     background: none;
-    color: var(--text-muted-warm);
+    color: var(--text-secondary, #b8a88f);
     font-size: 24px;
     line-height: 1;
     cursor: pointer;
@@ -127,9 +127,9 @@
     display: grid;
     place-items: center;
     padding: 10px;
-    background: #fff;
-    border: 1px solid var(--paper-cream);
-    color: var(--text-muted-warm);
+    background: var(--surface, #1e1a15);
+    border: 1px solid var(--border-light, #2e2822);
+    color: var(--text-secondary, #b8a88f);
     font-family: ui-monospace, monospace;
   }
   .qr :global(svg) {
@@ -139,7 +139,7 @@
   }
   .url {
     margin: 0;
-    color: var(--text-muted-warm);
+    color: var(--text-secondary, #b8a88f);
     font-family: ui-monospace, monospace;
     font-size: 12px;
     overflow-wrap: anywhere;
@@ -153,8 +153,8 @@
   .actions button {
     flex: 1;
     min-height: var(--touch-min, 44px);
-    border: 1px solid var(--paper-cream);
-    background: var(--bg);
+    border: 1px solid var(--border-light, #2e2822);
+    background: var(--surface, #1e1a15);
     color: inherit;
     font: inherit;
     font-weight: 700;
@@ -166,11 +166,9 @@
     background: var(--sunset);
     color: white;
   }
-  @media (prefers-color-scheme: dark) {
-    .sheet,
-    .qr,
-    .actions button {
-      border-color: var(--ink-warm);
-    }
+  .sheet,
+  .qr,
+  .actions button {
+    border-color: var(--border-light, #2e2822);
   }
 </style>

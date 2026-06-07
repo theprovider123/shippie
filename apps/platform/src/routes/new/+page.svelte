@@ -161,8 +161,15 @@ shippie deploy ./dist</code></pre>
     min-height: 100svh;
     /* Dark-first — remap the legacy cream palette to dark tokens for the subtree. */
     --paper-warm: var(--bg);
+    --paper-warm-strong: var(--surface);
+    --paper-warm-deep: var(--surface);
     --paper-cream: var(--border-light);
+    --paper-cream-soft: var(--border-light);
     --ink-warm: var(--border-light);
+    --ink-warm-mid: var(--border-light);
+    --ink-warm-line: var(--border-light);
+    --border-paper-mid: var(--border-light);
+    --cream-border: var(--border-light);
     --text-muted-warm: var(--text-secondary);
     min-height: 100dvh;
     width: 100%;

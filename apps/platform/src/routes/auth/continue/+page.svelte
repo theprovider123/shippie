@@ -156,7 +156,7 @@
   input {
     min-height: 52px;
     padding: 0 1rem;
-    border: 1px solid var(--border-paper-mid, #D7C8B1);
+    border: 1px solid var(--border-light);
     background: transparent;
     color: inherit;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

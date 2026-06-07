@@ -318,7 +318,7 @@
     height: 48px;
     padding: 0 1rem;
     background: transparent;
-    border: 1px solid var(--border-paper-mid);
+    border: 1px solid var(--border-light);
     color: inherit;
     font-size: 16px;
     outline: none;
@@ -336,7 +336,7 @@
     min-height: var(--touch-min, 48px);
     background: transparent;
     color: inherit;
-    border: 1px solid var(--border-paper-mid);
+    border: 1px solid var(--border-light);
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
@@ -347,7 +347,7 @@
     gap: 0.5rem;
   }
   .btn-oauth:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: rgba(255, 255, 255, 0.05);
   }
   .divider {
     display: flex;
@@ -358,12 +358,12 @@
   .divider::after {
     content: '';
     flex: 1;
-    border-top: 1px solid var(--paper-cream);
+    border-top: 1px solid var(--border-light);
   }
   .divider span,
   .hint {
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    color: var(--text-muted-warm);
+    color: var(--text-secondary);
   }
   .divider span {
     font-size: 12px;
@@ -400,7 +400,7 @@
     background: rgba(46, 125, 91, 0.05);
   }
   .dim {
-    color: var(--text-muted-warm);
+    color: var(--text-secondary);
     font-size: 12px;
   }
   @media (min-width: 760px) {

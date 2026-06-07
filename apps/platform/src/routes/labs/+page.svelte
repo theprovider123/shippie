@@ -51,10 +51,10 @@
   }
   .page-head p {
     margin: 4px 0 0;
-    color: var(--muted, #5C5751);
+    color: var(--text-secondary);
   }
   .empty {
-    border: 1px dashed var(--line, var(--cream-border));
+    border: 1px dashed var(--border-light);
     padding: 40px 24px;
     text-align: center;
   }
@@ -73,8 +73,8 @@
   .lab-card {
     display: block;
     padding: 16px;
-    background: #fff;
-    border: 1px solid var(--line, var(--cream-border));
+    background: var(--surface);
+    border: 1px solid var(--border-light);
     color: inherit;
     text-decoration: none;
   }
@@ -85,7 +85,7 @@
   }
   .lab-card p {
     margin: 0;
-    color: var(--muted, #5C5751);
+    color: var(--text-secondary);
     font-size: 14px;
     line-height: 1.4;
   }

@@ -182,8 +182,8 @@
   .bulk-bar button.ghost { color: var(--text-secondary); border-color: transparent; }
   .bulk-hint { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.6rem; color: var(--text-secondary); font-size: 12px; }
   .bulk-hint button.ghost { background: transparent; color: var(--text-secondary); border: 1px dashed var(--border-light); padding: 0.3rem 0.55rem; font: inherit; cursor: pointer; }
-  section { border-top: 1px solid var(--ink-warm); }
-  article { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; padding: 1rem 0; border-bottom: 1px solid var(--ink-warm); }
+  section { border-top: 1px solid var(--border-light); }
+  article { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; padding: 1rem 0; border-bottom: 1px solid var(--border-light); }
   article.selected { background: rgba(232, 96, 60, 0.05); }
   article.empty { display: block; color: var(--text-secondary); padding: 2rem 0; text-align: center; border: 1px dashed var(--border-light); }
   .bulk-select { padding-top: 0.2rem; }

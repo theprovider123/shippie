@@ -178,15 +178,15 @@
   .randomiser {
     /* Component-scoped locals for the two paper shades + dial accent.
        Hoisted so no raw hex lives in the rule bodies. */
-    --randomiser-paper-light: #FBF6E8;
-    --randomiser-paper-deep: var(--paper-warm-strong);
+    --randomiser-paper-light: var(--surface, #1e1a15);
+    --randomiser-paper-deep: var(--surface-alt, #252019);
     --randomiser-dial: #C97B2D;
     display: flex;
     flex-direction: column;
     gap: 14px;
     padding: 24px 22px;
     background: linear-gradient(135deg, var(--randomiser-paper-light) 0%, var(--randomiser-paper-deep) 100%);
-    border: 1px solid rgba(42, 31, 22, 0.16);
+    border: 1px solid var(--border-light, #2e2822);
     margin: 0 0 18px;
   }
 
@@ -197,7 +197,7 @@
     font-size: 20px;
     letter-spacing: -0.01em;
   }
-  .muted { color: rgba(42, 31, 22, 0.6); font-size: 13px; margin: 0; }
+  .muted { color: var(--text-secondary, #b8a88f); font-size: 13px; margin: 0; }
   .muted.small { font-size: 12px; }
 
   .dial {
@@ -205,8 +205,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fff;
-    border: 1px solid rgba(42, 31, 22, 0.16);
+    background: var(--surface-alt, #252019);
+    border: 1px solid var(--border-light, #2e2822);
     padding: 18px 16px;
     transition: transform 0.12s ease;
   }
@@ -223,7 +223,7 @@
     font-family: 'Fraunces', serif;
     font-size: 22px;
     font-weight: 600;
-    color: var(--ink-warm-deep);
+    color: var(--text, #ede4d3);
     letter-spacing: -0.01em;
   }
 
@@ -237,7 +237,7 @@
     height: 42px;
     padding: 0 22px;
     background: var(--randomiser-dial);
-    color: var(--paper-warm-strong);
+    color: #fff;
     border: 0;
     cursor: pointer;
     font-weight: 500;
@@ -245,7 +245,7 @@
   .primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .ghost-link {
-    color: var(--ink-warm-deep);
+    color: var(--text, #ede4d3);
     text-decoration: underline;
     font-size: 14px;
   }

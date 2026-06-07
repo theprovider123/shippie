@@ -167,10 +167,10 @@
     display: grid;
     gap: 0.85rem;
     padding: 1.4rem 1.25rem 1.2rem;
-    background: var(--bg, #faf7ef);
-    color: var(--text, #14120f);
-    border: 1px solid var(--paper-cream, #e5ddc8);
-    box-shadow: 0 24px 60px -28px rgba(20, 18, 15, 0.55);
+    background: var(--surface, #1e1a15);
+    color: var(--text, #ede4d3);
+    border: 1px solid var(--border-light, #2e2822);
+    box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.55);
   }
   .fb-close {
     position: absolute;
@@ -180,7 +180,7 @@
     min-height: 40px;
     border: 0;
     background: none;
-    color: var(--text-muted-warm, #8b847a);
+    color: var(--text-secondary, #b8a88f);
     font-size: 22px;
     line-height: 1;
     cursor: pointer;
@@ -217,8 +217,8 @@
     align-items: center;
     min-height: 36px;
     padding: 0 0.7rem;
-    border: 1px solid var(--paper-cream, #e5ddc8);
-    color: var(--text-muted-warm, #8b847a);
+    border: 1px solid var(--border-light, #2e2822);
+    color: var(--text-secondary, #b8a88f);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -244,7 +244,7 @@
     width: 100%;
     box-sizing: border-box;
     padding: 0.7rem 0.8rem;
-    border: 1px solid var(--paper-cream, #e5ddc8);
+    border: 1px solid var(--border-light, #2e2822);
     background: transparent;
     color: inherit;
     font: inherit;
@@ -267,7 +267,7 @@
     gap: 0.6rem;
   }
   .fb-hint {
-    color: var(--text-muted-warm, #8b847a);
+    color: var(--text-secondary, #b8a88f);
     font-size: 11px;
     line-height: 1.3;
   }
@@ -279,8 +279,8 @@
   .fb-btn {
     min-height: var(--touch-min, 44px);
     padding: 0 1rem;
-    border: 1px solid var(--paper-cream, #e5ddc8);
-    background: var(--bg, #faf7ef);
+    border: 1px solid var(--border-light, #2e2822);
+    background: var(--surface, #1e1a15);
     color: inherit;
     font: inherit;
     font-weight: 700;
@@ -328,12 +328,10 @@
     white-space: nowrap;
     border: 0;
   }
-  @media (prefers-color-scheme: dark) {
-    .fb-sheet,
-    .fb-chip,
-    textarea,
-    .fb-btn {
-      border-color: var(--ink-warm, #3d352f);
-    }
+  .fb-sheet,
+  .fb-chip,
+  textarea,
+  .fb-btn {
+    border-color: var(--border-light, #2e2822);
   }
 </style>
