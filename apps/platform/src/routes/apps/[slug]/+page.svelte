@@ -91,7 +91,7 @@
   <meta name="description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
 </svelte:head>
 
-<header class="hero" style="background: {data.app.themeColor};">
+<header class="hero">
   <div class="hero-wrap">
     <a href="/tools" class="back">← All tools</a>
     <div class="hero-row">
@@ -484,17 +484,17 @@
     align-items: center;
     min-height: 28px;
     padding: 0 0.6rem;
-    border: 1px solid rgba(237, 228, 211, 0.72);
-    background: rgba(20, 18, 15, 0.2);
-    color: var(--text);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .connection-badge {
-    border-color: rgba(237, 228, 211, 0.44);
-    background: rgba(20, 18, 15, 0.26);
+    border-color: color-mix(in srgb, var(--marigold) 30%, var(--border-light));
+    color: var(--marigold);
   }
   .connection-badge::before {
     content: '';
@@ -510,41 +510,55 @@
     gap: 0.75rem;
     flex-wrap: wrap;
   }
+  /* Unified action row: one primary (sunset) + matching ghost buttons,
+     all sentence-case, same height/shape. */
   .open-btn {
     display: inline-flex;
     align-items: center;
     height: 44px;
     padding: 0 1.25rem;
-    background: var(--bg);
-    color: var(--marigold);
+    background: var(--sunset);
+    color: var(--bg);
     font-weight: 600;
     font-size: var(--small-size);
-    transition: background 0.2s;
+    transition: filter 0.15s;
   }
-  .open-btn:hover { background: #000; }
+  .open-btn:hover { filter: brightness(1.06); }
   .cta-row :global(.local-actions.inline) {
     margin-top: 0;
   }
+  /* The Save button from LocalAppActions, matched to .share-btn. */
   .cta-row :global(.local-actions.inline button) {
+    height: 44px;
+    padding: 0 1.25rem;
+    background: var(--surface);
     color: var(--text);
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    font: inherit;
+    font-size: var(--small-size);
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .cta-row :global(.local-actions.inline button:hover) {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
   }
   .share-btn {
     display: inline-flex;
     align-items: center;
     height: 44px;
     padding: 0 1.25rem;
-    background: transparent;
-    color: inherit;
-    border: 1px solid currentColor;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-light);
     border-radius: 0;
-    font-family: ui-monospace, SFMono-Regular, monospace;
+    font: inherit;
     font-size: var(--small-size);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .share-btn:hover { background: rgba(232, 96, 60, 0.08); }
+  .share-btn:hover { background: var(--surface-alt); border-color: var(--sunset); }
 
   .body {
     padding: var(--space-2xl) 0 var(--space-3xl);
