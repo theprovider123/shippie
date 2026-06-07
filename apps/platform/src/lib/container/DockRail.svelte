@@ -12,7 +12,7 @@
      *  don't apply, so those rows simply don't render off-dock. */
     onShowSection?: (s: 'access' | 'create') => void;
     /** Highlights the current top-level surface. null = Dock. */
-    current?: 'browse' | 'you' | 'maker' | null;
+    current?: 'browse' | 'you' | 'maker' | 'docs' | null;
   }
 
   const {
@@ -23,7 +23,7 @@
   }: Props = $props();
 
   // Dock is the home surface — active whenever we're not on Tools, You, or Maker.
-  const dockActive = $derived(current !== 'browse' && current !== 'you' && current !== 'maker');
+  const dockActive = $derived(current !== 'browse' && current !== 'you' && current !== 'maker' && current !== 'docs');
 
   function showSection(sectionId: 'access' | 'create') {
     if (onShowSection) {
@@ -104,6 +104,19 @@
           <span class="label">Admin</span>
         </a>
       {/if}
+
+      <a class="rail-item" class:current={current === 'docs'} href="/docs" title="Docs" aria-label="Docs">
+        <span class="rail-ico" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+        </span>
+        <span class="label">Docs</span>
+      </a>
+      <a class="rail-item" href="mailto:info@shippie.app" title="Help" aria-label="Help">
+        <span class="rail-ico" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.4 2.4 0 0 1 4.4 1.3c0 1.5-2 1.9-2 3.4"/><circle cx="11.9" cy="17.4" r="0.6" fill="currentColor"/></svg>
+        </span>
+        <span class="label">Help</span>
+      </a>
     </nav>
   </div>
 </aside>

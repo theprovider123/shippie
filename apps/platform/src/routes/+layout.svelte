@@ -32,7 +32,14 @@
     const p = url.pathname;
     return p === '/dock' || p === '/tools' || p === '/you'
       || p === '/you/access' || p === '/new'
-      || p === '/maker' || p.startsWith('/maker/');
+      || p === '/maker' || p.startsWith('/maker/')
+      // Rail everywhere on desktop: marketing, content + marketplace pages too.
+      // (Admin keeps its own sidebar; immersive /run, /container, /auth, /dev,
+      //  /c/, /invite, /trust-preview, /safe stay rail-free.)
+      || p === '/why' || p === '/professionals' || p === '/whitepaper'
+      || p === '/docs' || p.startsWith('/docs/')
+      || p === '/today' || p === '/glance' || p === '/leaderboards'
+      || p.startsWith('/apps/');
   }
 
   // Dock/Tools/You render their own rail; the rest of the rail routes get the
@@ -44,10 +51,12 @@
   function needsRailWrap(url: URL): boolean {
     return isRailShellRoute(url) && !selfManagesRail(url);
   }
-  function railCurrent(url: URL): 'browse' | 'you' | 'maker' | null {
+  function railCurrent(url: URL): 'browse' | 'you' | 'maker' | 'docs' | null {
     const p = url.pathname;
     if (p === '/you/access') return 'you';
     if (p === '/new' || p === '/maker' || p.startsWith('/maker/')) return 'maker';
+    if (p === '/docs' || p.startsWith('/docs/')) return 'docs';
+    if (p.startsWith('/apps/')) return 'browse';
     return null;
   }
 

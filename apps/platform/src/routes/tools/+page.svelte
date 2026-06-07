@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { PageProps } from './$types';
-  import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
+  import { goto } from '$app/navigation';
   import RailShell from '$lib/container/RailShell.svelte';
   import {
     ToolCard,
@@ -24,7 +24,6 @@
   import { startCatalogSync } from '$lib/client/catalog-sync';
 
   let { data }: PageProps = $props();
-  let selectedSlug = $state<string | null>(null);
   // Below this width Tools browses as a row list, not a card grid (spec §7).
   let viewportWidth = $state(1280);
   const useRows = $derived(viewportWidth <= 768);
@@ -32,7 +31,6 @@
   type LauncherApp = (typeof data.apps)[number];
 
   const appBySlug = $derived.by(() => new Map(data.apps.map((app) => [app.slug, app])));
-  const selectedApp = $derived(selectedSlug ? (appBySlug.get(selectedSlug) ?? null) : null);
   const filtered = $derived(Boolean(data.query || data.categoryFilter || data.remixableFilter));
   const savedSet = $derived.by(() => new Set($launcherMemory.saved));
   const EMPTY_SLUGS: ReadonlySet<string> = new Set();
@@ -90,26 +88,10 @@
     };
   });
 
+  // The 'i' affordance goes straight to the canonical app detail page —
+  // no intermediate inspector popup.
   function inspectApp(app: LauncherApp) {
-    selectedSlug = app.slug;
-  }
-
-  function closeInspector() {
-    selectedSlug = null;
-  }
-
-  function onKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Escape') return;
-    // Escape on the page closes the inspector, but only when no editable
-    // element owns the keystroke. Otherwise Escape clobbers typing
-    // flows (search bar, comment fields) with no visible reason.
-    if (selectedSlug === null) return;
-    const target = event.target;
-    if (target instanceof HTMLElement) {
-      const tag = target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
-    }
-    closeInspector();
+    void goto(`/apps/${encodeURIComponent(app.slug)}`);
   }
 
   function pageHref(
@@ -158,7 +140,7 @@
   <meta name="description" content="Search and browse local tools on Shippie." />
 </svelte:head>
 
-<svelte:window onkeydown={onKeydown} bind:innerWidth={viewportWidth} />
+<svelte:window bind:innerWidth={viewportWidth} />
 
 <RailShell user={data.user} current="browse">
 <div class="page">
@@ -324,12 +306,6 @@
 
 </div>
 </RailShell>
-
-<AppInspector
-  app={selectedApp}
-  pinned={selectedApp ? savedSet.has(selectedApp.slug) : false}
-  onClose={closeInspector}
-/>
 
 <style>
   .page {
