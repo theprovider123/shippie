@@ -11,6 +11,8 @@
     FEEDBACK_ORDER,
   } from '$lib/uniti';
   import type { SyncStatus } from '$lib/uniti';
+  import { onMount } from 'svelte';
+  import { getOfflineClient } from '$lib/uniti/offline';
 
   let { data }: { data: PageData } = $props();
 
@@ -37,6 +39,23 @@
   let filter = $state<'all' | 'unset' | 'needs_revisit'>('all');
   let sync = $state<SyncStatus>('synced');
   let pending = $state(0);
+
+  // Real outbox-driven sync state (Phase 4). The Outbox is the source of
+  // truth: it persists captures to IndexedDB, replays on reconnect (Background
+  // Sync + fallbacks), and dedupes server-side. The chip reflects its status.
+  const offline = getOfflineClient(data.userId, data.slug);
+  async function refreshSync() {
+    pending = await offline.pendingCount();
+    const s = offline.status();
+    if (s === 'syncing') sync = 'syncing';
+    else if (pending > 0) sync = navigator.onLine ? 'pending' : 'offline';
+    else sync = 'synced';
+  }
+  onMount(() => {
+    const off = offline.onChange(() => void refreshSync());
+    void refreshSync();
+    return off;
+  });
 
   const assessed = $derived(Object.values(fb).filter(Boolean).length);
   const pct = $derived(Math.round((assessed / data.pupils.length) * 100));
@@ -80,44 +99,28 @@
     if (!drawerPupil) return;
     const pupil = drawerPupil;
     saving = true;
-    // Optimistic UI: reflect immediately, mark pending, then POST.
+    // Optimistic UI: reflect immediately.
     if (drawerSel) fb[pupil.id] = drawerSel;
     if (drawerNote) notes[pupil.id] = drawerNote;
-    pending += 1;
-    sync = 'syncing';
     const closing = pupil;
     closeDrawer();
-    try {
-      const res = await fetch(
-        `/api/cloudlet/instances/${encodeURIComponent(data.slug)}/events`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            clientEventId: `fb-${data.lesson.id}-${closing.id}-${Date.now()}`,
-            type: 'feedback.created',
-            deviceId: 'web',
-            createdOfflineAt: new Date().toISOString(),
-            schemaVersion: 1,
-            payload: {
-              lessonId: data.lesson.id,
-              pupilId: closing.id,
-              state: drawerSel,
-              note: drawerNote || null,
-              supportStrategy: drawerSupport || null,
-              confidence: drawerConfidence,
-            },
-          }),
-        },
-      );
-      pending = Math.max(0, pending - 1);
-      sync = res.ok ? (pending > 0 ? 'pending' : 'synced') : 'offline';
-    } catch {
-      pending = Math.max(0, pending - 1);
-      sync = 'offline'; // saved locally; full offline SDK is Phase 4
-    } finally {
-      saving = false;
-    }
+    // Capture through the Outbox: persisted to IndexedDB immediately (survives
+    // offline + reload), replayed on reconnect, deduped server-side. The chip
+    // state comes from refreshSync() via the outbox onChange listener.
+    await offline.capture({
+      type: 'feedback.created',
+      instanceId: '', // set server-side from the resolved instance
+      payload: {
+        lessonId: data.lesson.id,
+        pupilId: closing.id,
+        state: drawerSel,
+        note: drawerNote || null,
+        supportStrategy: drawerSupport || null,
+        confidence: drawerConfidence,
+      },
+    });
+    await refreshSync();
+    saving = false;
   }
 
   const filterOpts = $derived([

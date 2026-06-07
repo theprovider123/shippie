@@ -2,6 +2,8 @@
   import type { PageData } from './$types';
   import { AppShell, Card, Btn, Icon } from '$lib/uniti';
   import type { SyncStatus } from '$lib/uniti';
+  import { onMount } from 'svelte';
+  import { getOfflineClient } from '$lib/uniti/offline';
 
   let { data }: { data: PageData } = $props();
 
@@ -12,6 +14,21 @@
   let sync = $state<SyncStatus>('synced');
   let pending = $state(0);
 
+  // Real outbox-driven sync (Phase 4) — same engine as the lesson page.
+  const offline = getOfflineClient(data.userId, data.slug);
+  async function refreshSync() {
+    pending = await offline.pendingCount();
+    const s = offline.status();
+    if (s === 'syncing') sync = 'syncing';
+    else if (pending > 0) sync = navigator.onLine ? 'pending' : 'offline';
+    else sync = 'synced';
+  }
+  onMount(() => {
+    const off = offline.onChange(() => void refreshSync());
+    void refreshSync();
+    return off;
+  });
+
   const OUTCOMES = [
     { key: 'worked', label: 'Worked', color: '#2EAD73', bg: '#E8F6EF' },
     { key: 'partly', label: 'Partly', color: '#E8953A', bg: '#FEF0DC' },
@@ -20,38 +37,14 @@
 
   async function record(cardId: string, outcome: string) {
     if (!data.canRecord) return;
-    const prev = outcomes[cardId];
     outcomes[cardId] = outcome; // optimistic
-    pending += 1;
-    sync = 'syncing';
-    try {
-      const res = await fetch(
-        `/api/cloudlet/instances/${encodeURIComponent(data.slug)}/events`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            clientEventId: `adapt-${cardId}-${Date.now()}`,
-            type: 'adaptation.outcome_recorded',
-            deviceId: 'web',
-            createdOfflineAt: new Date().toISOString(),
-            schemaVersion: 1,
-            payload: { cardId, outcome },
-          }),
-        },
-      );
-      pending = Math.max(0, pending - 1);
-      if (!res.ok) {
-        outcomes[cardId] = prev;
-        sync = 'offline';
-      } else {
-        sync = pending > 0 ? 'pending' : 'synced';
-      }
-    } catch {
-      pending = Math.max(0, pending - 1);
-      outcomes[cardId] = prev;
-      sync = 'offline';
-    }
+    // Capture through the Outbox — persisted, replayed on reconnect, deduped.
+    await offline.capture({
+      type: 'adaptation.outcome_recorded',
+      instanceId: '', // set server-side from the resolved instance
+      payload: { cardId, outcome },
+    });
+    await refreshSync();
   }
 
   // Planned cards first, then reviewed.

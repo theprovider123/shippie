@@ -66,6 +66,7 @@ export const load: PageServerLoad = async ({ platform, locals, params }) => {
   return {
     slug: inst[0]?.slug ?? '',
     schoolName: inst[0]?.name ?? '',
+    userId: user.id,
     teacher: { name: user.displayName || user.email?.split('@')[0] || 'Teacher' },
     lesson,
     class: classes.find((c) => c.id === lesson.classId) ?? null,
