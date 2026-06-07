@@ -59,6 +59,10 @@ declare global {
         GITHUB_CLIENT_SECRET?: string;
         GOOGLE_CLIENT_ID?: string;
         GOOGLE_CLIENT_SECRET?: string;
+        // Microsoft 365 / Entra ID SSO (Uniti school-domain login).
+        MICROSOFT_CLIENT_ID?: string;
+        MICROSOFT_CLIENT_SECRET?: string;
+        MICROSOFT_TENANT?: string;
         FOOTBALL_DATA_TOKEN?: string;
         SEALED_DOCS_ENABLED?: string;
         SEALED_DOC_CHANGE_STREAM_ENABLED?: string;

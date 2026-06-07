@@ -9,10 +9,15 @@
  * keeping `?/github` symmetric with `?/email` so the form submit pattern matches.
  */
 import { fail, redirect } from '@sveltejs/kit';
-import { generateState } from 'arctic';
+import { generateState, generateCodeVerifier } from 'arctic';
 import type { Actions, PageServerLoad } from './$types';
 import { createGitHub, GitHubNotConfiguredError } from '$server/auth/github';
-import { isGoogleConfigured } from '$server/auth/google';
+import { createGoogle, isGoogleConfigured, GoogleNotConfiguredError } from '$server/auth/google';
+import {
+  createMicrosoft,
+  isMicrosoftConfigured,
+  MicrosoftNotConfiguredError,
+} from '$server/auth/microsoft';
 import { mintVerificationToken } from '$server/auth/verification-tokens';
 import { sendMagicLink } from '$server/auth/email';
 import { getAuthSecret } from '$server/auth/env';
@@ -29,6 +34,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
   return {
     githubEnabled: Boolean(env?.GITHUB_CLIENT_ID && env?.GITHUB_CLIENT_SECRET),
     googleEnabled: env ? isGoogleConfigured(env) : false,
+    microsoftEnabled: env ? isMicrosoftConfigured(env) : false,
     devMode: env?.SHIPPIE_ENV !== 'production',
   };
 };
@@ -120,6 +126,64 @@ export const actions: Actions = {
     const returnTo = url.searchParams.get('return_to');
     if (returnTo) cookies.set('auth_return_to', returnTo, cookieAttrs);
 
+    throw redirect(302, authUrl.toString());
+  },
+
+  // School-domain SSO — Google Workspace. Env-gated: returns a friendly fail
+  // (never crashes) when creds are absent. PKCE: state + codeVerifier cookies.
+  google: async ({ platform, cookies, url }) => {
+    if (!platform?.env) return fail(500, { error: 'Platform unavailable.' });
+    let google;
+    try {
+      google = createGoogle(platform.env);
+    } catch (err) {
+      if (err instanceof GoogleNotConfiguredError) {
+        return fail(500, { error: 'Google sign-in is not configured yet.' });
+      }
+      throw err;
+    }
+    const state = generateState();
+    const codeVerifier = generateCodeVerifier();
+    const authUrl = google.createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);
+
+    const isProd =
+      platform.env.SHIPPIE_ENV === 'production' || platform.env.SHIPPIE_ENV === 'canary';
+    const cookieAttrs = { path: '/', httpOnly: true, secure: isProd, sameSite: 'lax' as const, maxAge: 600 };
+    cookies.set('google_oauth_state', state, cookieAttrs);
+    cookies.set('google_oauth_verifier', codeVerifier, cookieAttrs);
+    const returnTo = url.searchParams.get('return_to');
+    if (returnTo) cookies.set('auth_return_to', returnTo, cookieAttrs);
+    throw redirect(302, authUrl.toString());
+  },
+
+  // School-domain SSO — Microsoft 365 / Entra ID. Same env-gated PKCE pattern.
+  microsoft: async ({ platform, cookies, url }) => {
+    if (!platform?.env) return fail(500, { error: 'Platform unavailable.' });
+    let microsoft;
+    try {
+      microsoft = createMicrosoft(platform.env);
+    } catch (err) {
+      if (err instanceof MicrosoftNotConfiguredError) {
+        return fail(500, { error: 'Microsoft sign-in is not configured yet.' });
+      }
+      throw err;
+    }
+    const state = generateState();
+    const codeVerifier = generateCodeVerifier();
+    const authUrl = microsoft.createAuthorizationURL(state, codeVerifier, [
+      'openid',
+      'profile',
+      'email',
+      'User.Read',
+    ]);
+
+    const isProd =
+      platform.env.SHIPPIE_ENV === 'production' || platform.env.SHIPPIE_ENV === 'canary';
+    const cookieAttrs = { path: '/', httpOnly: true, secure: isProd, sameSite: 'lax' as const, maxAge: 600 };
+    cookies.set('microsoft_oauth_state', state, cookieAttrs);
+    cookies.set('microsoft_oauth_verifier', codeVerifier, cookieAttrs);
+    const returnTo = url.searchParams.get('return_to');
+    if (returnTo) cookies.set('auth_return_to', returnTo, cookieAttrs);
     throw redirect(302, authUrl.toString());
   },
 };

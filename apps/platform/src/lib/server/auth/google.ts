@@ -38,3 +38,35 @@ export function createGoogle(env: GoogleEnv): Google {
 export function isGoogleConfigured(env: GoogleEnv): boolean {
   return Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 }
+
+export interface GoogleProfile {
+  sub: string;
+  email: string | null;
+  email_verified: boolean;
+  name: string | null;
+  picture: string | null;
+}
+
+/** Fetch the OpenID userinfo after exchanging a code for a token. */
+export async function fetchGoogleProfile(accessToken: string): Promise<GoogleProfile> {
+  const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Google userinfo returned ${res.status}: ${await res.text()}`);
+  }
+  const body = (await res.json()) as {
+    sub: string;
+    email?: string;
+    email_verified?: boolean;
+    name?: string;
+    picture?: string;
+  };
+  return {
+    sub: body.sub,
+    email: body.email ?? null,
+    email_verified: Boolean(body.email_verified),
+    name: body.name ?? null,
+    picture: body.picture ?? null,
+  };
+}

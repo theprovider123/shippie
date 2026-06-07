@@ -43,6 +43,16 @@
         </div>
       {/if}
 
+      {#if data.googleEnabled}
+        <form method="POST" action="?/google" class="oauth">
+          <button type="submit" class="btn-oauth">Continue with Google Workspace</button>
+        </form>
+      {/if}
+      {#if data.microsoftEnabled}
+        <form method="POST" action="?/microsoft" class="oauth">
+          <button type="submit" class="btn-oauth">Continue with Microsoft 365</button>
+        </form>
+      {/if}
       {#if data.githubEnabled}
         <form method="POST" action="?/github" class="oauth">
           <button type="submit" class="btn-oauth">
@@ -52,6 +62,8 @@
             Continue with GitHub
           </button>
         </form>
+      {/if}
+      {#if data.githubEnabled || data.googleEnabled || data.microsoftEnabled}
         <div class="divider"><span>or</span></div>
       {/if}
 
