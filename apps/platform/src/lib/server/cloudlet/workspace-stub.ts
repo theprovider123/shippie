@@ -3,7 +3,7 @@
  * public methods on `SchoolWorkspace` (school-workspace.ts). Kept in one place
  * so every route casts the DO stub to the SAME contract.
  */
-import type { WorkspaceEvent } from '@shippie/cloudlet-contract';
+import type { WorkspaceEvent, RosterSnapshot } from '@shippie/cloudlet-contract';
 import type {
   SubjectRow,
   ClassRow,
@@ -31,4 +31,5 @@ export interface WorkspaceStub {
     aiEnabled: boolean;
     sensitivity: 'group' | 'pseudonymised' | 'identified';
   }>;
+  rosterSnapshot: () => Promise<RosterSnapshot>;
 }

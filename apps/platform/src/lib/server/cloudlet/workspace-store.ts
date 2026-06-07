@@ -1,4 +1,8 @@
-import type { UpcasterRegistry, WorkspaceEvent } from '@shippie/cloudlet-contract';
+import type {
+  UpcasterRegistry,
+  WorkspaceEvent,
+  RosterSnapshot,
+} from '@shippie/cloudlet-contract';
 import {
   workspaceUpcasters,
   WORKSPACE_EVENT_SCHEMA_VERSION,
@@ -46,6 +50,8 @@ export interface ClassRow {
   name: string;
   yearGroup: string;
   room: string;
+  /** 0 = deactivated (leaver/closed class — tombstoned, never deleted). */
+  active: number;
 }
 export interface PupilRow {
   id: string;
@@ -54,6 +60,8 @@ export interface PupilRow {
   send: number;
   eal: number;
   fsm: number;
+  /** 0 = deactivated (leaver — tombstoned, never deleted; feedback survives). */
+  active: number;
 }
 export interface LessonRow {
   id: string;
@@ -97,7 +105,7 @@ export interface AdaptationCardRow {
   outcomeNote: string | null;
 }
 
-const WORKSPACE_SCHEMA_VERSION = 3;
+const WORKSPACE_SCHEMA_VERSION = 4;
 
 export class WorkspaceStore {
   /**
@@ -148,6 +156,10 @@ export class WorkspaceStore {
       this.migrateToV3();
       v = 3;
     }
+    if (v < 4) {
+      this.migrateToV4();
+      v = 4;
+    }
     this.sql.run(`UPDATE workspace_schema_version SET version = ?`, v);
   }
 
@@ -185,6 +197,22 @@ export class WorkspaceStore {
   private migrateToV3(): void {
     this.sql.run(`CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)`);
+  }
+
+  /** v4 — MIS / roster sync (Phase 7). Pupils + classes gain an `active` flag:
+   * a leaver / closed class is DEACTIVATED (active=0), NEVER hard-deleted, so a
+   * deactivated pupil's historic feedback still resolves (the feedback
+   * projection joins lessons, not pupils). `INSERT OR IGNORE` on a fresh DB has
+   * no rows; for an in-place upgrade `ALTER TABLE … ADD COLUMN` backfills 1. */
+  private migrateToV4(): void {
+    for (const table of ['pupils', 'classes']) {
+      // node:sqlite + DO SQLite both lack "ADD COLUMN IF NOT EXISTS"; probe the
+      // table_info and only add when missing so re-init is idempotent.
+      const cols = this.sql.all<{ name: string }>(`PRAGMA table_info(${table})`);
+      if (!cols.some((c) => c.name === 'active')) {
+        this.sql.run(`ALTER TABLE ${table} ADD COLUMN active INTEGER NOT NULL DEFAULT 1`);
+      }
+    }
   }
 
   schemaVersion(): number {
@@ -324,7 +352,147 @@ export class WorkspaceStore {
         (p.note as string) ?? null,
         cardId,
       );
+    } else if (e.type === 'roster.imported') {
+      // Phase 7 — apply an MIS/CSV roster import. The payload carries the
+      // PRE-COMPUTED diff (adds/updates/deactivations/reactivations/memberships)
+      // so the apply is deterministic + replayable from the log. Server/MIS
+      // WINS for roster; leavers DEACTIVATE (active=0), NEVER delete — historic
+      // feedback survives because the feedback projection joins lessons, not
+      // pupils. Each sub-op is idempotent so a replayed import is a no-op.
+      this.applyRosterDiffPayload(p, receivedAt);
     }
+  }
+
+  /** Apply the diff carried by a `roster.imported` event. Pure SQL projection
+   * of a precomputed diff (see `computeRosterDiff` in the contract). */
+  private applyRosterDiffPayload(p: Record<string, unknown>, receivedAt: number): void {
+    const source = typeof p.source === 'string' ? p.source : 'unknown';
+    const diff = (p.diff ?? {}) as {
+      pupils?: {
+        adds?: Array<Record<string, unknown>>;
+        updates?: Array<{ sourceId: string; changes?: Array<{ field: string; to: unknown }> }>;
+        deactivations?: Array<{ id: string }>;
+        reactivations?: Array<{ id: string }>;
+      };
+      classes?: {
+        adds?: Array<Record<string, unknown>>;
+        updates?: Array<{ sourceId: string; changes?: Array<{ field: string; to: unknown }> }>;
+        deactivations?: Array<{ id: string }>;
+        reactivations?: Array<{ id: string }>;
+      };
+      memberships?: {
+        adds?: Array<{ classSourceId: string; pupilSourceId: string }>;
+        removes?: Array<{ classSourceId: string; pupilSourceId: string }>;
+      };
+    };
+
+    const b = (v: unknown): number => (v === true || v === 1 || v === '1' ? 1 : 0);
+
+    // ── Classes ──
+    for (const c of diff.classes?.adds ?? []) {
+      this.sql.run(
+        `INSERT OR IGNORE INTO classes (id,name,year_group,room,active) VALUES (?,?,?,?,1)`,
+        String(c.sourceId),
+        String(c.name ?? ''),
+        String(c.yearGroup ?? ''),
+        String(c.room ?? ''),
+      );
+      // an add of an existing-but-deactivated class also reactivates it.
+      this.sql.run(`UPDATE classes SET active=1 WHERE id=?`, String(c.sourceId));
+    }
+    for (const u of diff.classes?.updates ?? []) {
+      for (const ch of u.changes ?? []) {
+        const col = ch.field === 'yearGroup' ? 'year_group' : ch.field;
+        if (col !== 'name' && col !== 'year_group' && col !== 'room') continue;
+        this.sql.run(`UPDATE classes SET ${col}=? WHERE id=?`, String(ch.to ?? ''), u.sourceId);
+      }
+    }
+    for (const d of diff.classes?.deactivations ?? [])
+      this.sql.run(`UPDATE classes SET active=0 WHERE id=?`, d.id);
+    for (const re of diff.classes?.reactivations ?? [])
+      this.sql.run(`UPDATE classes SET active=1 WHERE id=?`, re.id);
+
+    // ── Pupils ──
+    for (const pu of diff.pupils?.adds ?? []) {
+      this.sql.run(
+        `INSERT OR IGNORE INTO pupils (id,name,initials,send,eal,fsm,active) VALUES (?,?,?,?,?,?,1)`,
+        String(pu.sourceId),
+        String(pu.name ?? ''),
+        String(pu.initials ?? ''),
+        b(pu.send),
+        b(pu.eal),
+        b(pu.fsm),
+      );
+      this.sql.run(`UPDATE pupils SET active=1 WHERE id=?`, String(pu.sourceId));
+    }
+    for (const u of diff.pupils?.updates ?? []) {
+      for (const ch of u.changes ?? []) {
+        if (ch.field === 'name')
+          this.sql.run(`UPDATE pupils SET name=? WHERE id=?`, String(ch.to ?? ''), u.sourceId);
+        else if (ch.field === 'send' || ch.field === 'eal' || ch.field === 'fsm')
+          this.sql.run(`UPDATE pupils SET ${ch.field}=? WHERE id=?`, b(ch.to), u.sourceId);
+      }
+    }
+    // DEACTIVATE leavers — NEVER delete. Feedback survives the tombstone.
+    for (const d of diff.pupils?.deactivations ?? [])
+      this.sql.run(`UPDATE pupils SET active=0 WHERE id=?`, d.id);
+    for (const re of diff.pupils?.reactivations ?? [])
+      this.sql.run(`UPDATE pupils SET active=1 WHERE id=?`, re.id);
+
+    // ── Memberships ──
+    for (const m of diff.memberships?.adds ?? [])
+      this.sql.run(
+        `INSERT OR IGNORE INTO class_pupils (class_id,pupil_id) VALUES (?,?)`,
+        m.classSourceId,
+        m.pupilSourceId,
+      );
+    // A removed membership is dropped from the projection (the EDGE, not the
+    // pupil) — the pupil row + their feedback are untouched.
+    for (const m of diff.memberships?.removes ?? [])
+      this.sql.run(
+        `DELETE FROM class_pupils WHERE class_id=? AND pupil_id=?`,
+        m.classSourceId,
+        m.pupilSourceId,
+      );
+
+    this.sql.run(
+      `INSERT INTO workspace_audit (action,detail,at) VALUES (?,?,?)`,
+      'roster.imported',
+      `source=${source} +${(diff.pupils?.adds ?? []).length}p ~${(diff.pupils?.updates ?? []).length}p -${(diff.pupils?.deactivations ?? []).length}p`,
+      receivedAt,
+    );
+  }
+
+  /** The current roster as the diff baseline (ALL pupils/classes incl.
+   * deactivated, so a reactivation is detectable). Pure read. */
+  rosterSnapshot(): RosterSnapshot {
+    const pupils = this.sql
+      .all<{ id: string; name: string; send: number; eal: number; fsm: number; active: number }>(
+        `SELECT id,name,send,eal,fsm,active FROM pupils ORDER BY rowid ASC`,
+      )
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        send: p.send === 1,
+        eal: p.eal === 1,
+        fsm: p.fsm === 1,
+        active: p.active === 1,
+      }));
+    const classes = this.sql
+      .all<{ id: string; name: string; year_group: string; room: string; active: number }>(
+        `SELECT id,name,year_group,room,active FROM classes ORDER BY rowid ASC`,
+      )
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        yearGroup: c.year_group,
+        room: c.room,
+        active: c.active === 1,
+      }));
+    const memberships = this.sql
+      .all<{ class_id: string; pupil_id: string }>(`SELECT class_id,pupil_id FROM class_pupils`)
+      .map((m) => ({ classId: m.class_id, pupilId: m.pupil_id }));
+    return { pupils, classes, memberships };
   }
 
   listEvents(): Array<WorkspaceEvent & { receivedAt: number }> {
@@ -367,22 +535,26 @@ export class WorkspaceStore {
       .map((r) => ({ id: r.id, name: r.name, parentId: r.parent_id, color: r.color }));
   }
 
+  /** Active classes (the teacher view). Deactivated/tombstoned classes are
+   * excluded here but never deleted — see {@link rosterSnapshot}. */
   listClasses(): ClassRow[] {
     return this.sql
-      .all<{ id: string; name: string; year_group: string; room: string }>(
-        `SELECT * FROM classes ORDER BY rowid ASC`,
+      .all<{ id: string; name: string; year_group: string; room: string; active: number }>(
+        `SELECT * FROM classes WHERE active = 1 ORDER BY rowid ASC`,
       )
-      .map((r) => ({ id: r.id, name: r.name, yearGroup: r.year_group, room: r.room }));
+      .map((r) => ({ id: r.id, name: r.name, yearGroup: r.year_group, room: r.room, active: r.active }));
   }
 
+  /** Active pupils only (the teacher view). A deactivated leaver is tombstoned,
+   * not deleted, so their feedback still resolves. */
   listPupils(): PupilRow[] {
-    return this.sql.all<PupilRow>(`SELECT * FROM pupils ORDER BY rowid ASC`);
+    return this.sql.all<PupilRow>(`SELECT * FROM pupils WHERE active = 1 ORDER BY rowid ASC`);
   }
 
   listPupilsForClass(classId: string): PupilRow[] {
     return this.sql.all<PupilRow>(
       `SELECT p.* FROM pupils p JOIN class_pupils cp ON cp.pupil_id = p.id
-       WHERE cp.class_id = ? ORDER BY p.rowid ASC`,
+       WHERE cp.class_id = ? AND p.active = 1 ORDER BY p.rowid ASC`,
       classId,
     );
   }

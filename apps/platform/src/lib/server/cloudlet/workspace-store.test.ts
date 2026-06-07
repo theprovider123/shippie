@@ -38,7 +38,7 @@ const RECEIVED = 1_717_800_000_000; // server receipt time, injected (≠ create
 
 describe('WorkspaceStore', () => {
   it('migrates workspace_schema_version to the current version on init', () => {
-    expect(store().schemaVersion()).toBe(3);
+    expect(store().schemaVersion()).toBe(4);
   });
   it('appends an event and reads it back', () => {
     const s = store();

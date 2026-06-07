@@ -103,4 +103,11 @@ export class SchoolWorkspace {
   async getAiSetting() {
     return this.store.getAiSetting();
   }
+
+  // ── Roster / MIS (Phase 7) ───────────────────────────────────────────────
+
+  /** Current roster (ALL pupils/classes incl. deactivated) — the diff baseline. */
+  async rosterSnapshot() {
+    return this.store.rosterSnapshot();
+  }
 }
