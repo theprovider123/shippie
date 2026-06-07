@@ -1,4 +1,8 @@
-import type { WorkspaceEvent } from '@shippie/cloudlet-contract';
+import type { UpcasterRegistry, WorkspaceEvent } from '@shippie/cloudlet-contract';
+import {
+  workspaceUpcasters,
+  WORKSPACE_EVENT_SCHEMA_VERSION,
+} from './upcasters';
 import {
   DEMO_SUBJECTS,
   DEMO_CLASSES,
@@ -96,7 +100,19 @@ export interface AdaptationCardRow {
 const WORKSPACE_SCHEMA_VERSION = 2;
 
 export class WorkspaceStore {
-  constructor(private sql: SqlExecutor) {}
+  /**
+   * @param sql the embedded SQLite executor (DO storage, or node:sqlite in tests)
+   * @param upcasters event schema-version upcaster registry (Phase 4) — a
+   *   replayed event stamped with an older `schemaVersion` is upgraded to the
+   *   current version BEFORE projection, so old offline events still apply.
+   *   Injectable for tests; defaults to the canonical server registry.
+   * @param eventSchemaVersion the version every event is upcast to.
+   */
+  constructor(
+    private sql: SqlExecutor,
+    private upcasters: UpcasterRegistry = workspaceUpcasters,
+    private eventSchemaVersion: number = WORKSPACE_EVENT_SCHEMA_VERSION,
+  ) {}
 
   init(): void {
     // events: created_offline_at = CLIENT event time; received_at = SERVER
@@ -171,7 +187,12 @@ export class WorkspaceStore {
    * passes `Date.now()`); NEVER derived from the client's `createdOfflineAt`.
    * De-dupes by `clientEventId` (the table PK), so re-posting is a no-op.
    */
-  appendEvent(e: WorkspaceEvent, receivedAt: number): { accepted: boolean } {
+  appendEvent(raw: WorkspaceEvent, receivedAt: number): { accepted: boolean } {
+    // Upcast a (possibly stale-schema) replayed event to the current version
+    // BEFORE store + project, so old offline events always apply with the
+    // current payload shape (Phase 4 — schema-version upcasters). `upcast` is
+    // a no-op for events already at the target version.
+    const e = this.upcasters.upcast(raw, this.eventSchemaVersion);
     const existing = this.sql.all<{ n: number }>(
       `SELECT COUNT(*) AS n FROM events WHERE client_event_id = ?`,
       e.clientEventId,
