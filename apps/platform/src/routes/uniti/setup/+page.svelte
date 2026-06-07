@@ -284,6 +284,10 @@
           <li class:ok={privacySaved}><span aria-hidden="true">✓</span> Privacy & AI set</li>
         </ul>
         <a class="btn primary" href="/uniti">Go to your school</a>
+        <p class="muted" style="margin-top:14px;">
+          Manage data, retention, AI audit and erasure on the
+          <a href="/uniti/privacy">Privacy &amp; data</a> screen.
+        </p>
       {/if}
     </section>
   {/if}

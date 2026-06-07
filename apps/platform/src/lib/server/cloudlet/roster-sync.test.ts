@@ -56,8 +56,8 @@ Darius Okafor,A101,4M,Year 4,R12,,yes,
 Leo Smith,A102,4M,Year 4,R12,,,Y`;
 
 describe('roster sync engine', () => {
-  it('migrates to schema v4 with an active flag', () => {
-    expect(store().schemaVersion()).toBe(4);
+  it('migrates to the current schema with an active flag', () => {
+    expect(store().schemaVersion()).toBe(5);
   });
 
   it('first CSV import adds pupils, classes, memberships (active)', () => {

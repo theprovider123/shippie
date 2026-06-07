@@ -153,7 +153,7 @@ describe('deprovision', () => {
     expect(deletes).toHaveLength(1); // space_apps install removed
     expect(updates).toEqual([{ erasedAt: 1_700_000_000_000 }]); // row tombstoned (kept)
     expect(manifest.files).toEqual([]);
-    const actions = audit.mock.calls.map((c) => (c[1] as any).action);
+    const actions = (audit.mock.calls as any[]).map((c) => c[1].action);
     expect(actions).toContain('private_app_instance.erase_started');
     expect(actions).toContain('private_app_instance.erased');
   });
