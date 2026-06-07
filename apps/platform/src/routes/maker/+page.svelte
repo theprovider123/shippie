@@ -285,7 +285,7 @@
   }
   .status {
     padding: 3px 8px;
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.06);
   }
   .status-success {
     background: rgba(46, 125, 91, 0.15);

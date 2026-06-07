@@ -426,8 +426,8 @@
   }
   .claim-list li {
     padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    border-bottom: 1px solid var(--border-light);
+    font-family: var(--font-mono);
     font-size: 13px;
     color: var(--text-muted-warm);
   }

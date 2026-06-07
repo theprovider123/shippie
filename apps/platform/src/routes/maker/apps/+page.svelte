@@ -554,8 +554,8 @@
     color: var(--danger-hover);
   }
   .status-muted {
-    background: rgba(0, 0, 0, 0.06);
-    color: var(--text-muted-warm);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
   }
   .actions {
     display: inline-flex;
