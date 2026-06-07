@@ -4378,7 +4378,7 @@
   }
   .focused-dock-nub {
     width: 52px;
-    height: 42px;
+    height: 44px;
     display: grid;
     place-items: center;
     padding: 0;
