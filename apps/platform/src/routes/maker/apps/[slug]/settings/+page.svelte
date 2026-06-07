@@ -406,7 +406,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
       background: rgba(255, 255, 255, 0.05);
     }
   }
-  @media (max-width: 720px) {
+  @media (max-width: 640px) {
     .row-head {
       align-items: start;
       flex-direction: column;

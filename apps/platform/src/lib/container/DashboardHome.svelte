@@ -541,7 +541,7 @@
     gap: 6px;
   }
   .update-row-actions button {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 0.72rem;
     border: 1px solid var(--border-light);
     background: var(--surface);

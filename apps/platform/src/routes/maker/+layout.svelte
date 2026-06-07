@@ -89,7 +89,7 @@
     padding: clamp(1rem, 3vw, 2rem);
     overflow-x: auto;
   }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .maker-main {
       padding: 1rem;
       overflow-x: visible;

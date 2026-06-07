@@ -376,7 +376,7 @@
       border-color: var(--ink-warm);
     }
   }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .metric-strip {
       grid-template-columns: 1fr;
     }

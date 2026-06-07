@@ -303,7 +303,7 @@
   @media (prefers-reduced-motion: reduce) {
     .card, .card:hover { transform: none; box-shadow: none; transition: none; }
   }
-  @media (max-width: 768px) {
+  @media (max-width: 640px) {
     /* Mobile Tools uses ToolRow, not this card; keep a graceful fallback. */
     .card { min-height: 120px; gap: 12px; padding: 12px; }
   }

@@ -140,7 +140,7 @@
   .tabs { display: flex; gap: 0.35rem; border-bottom: 1px solid var(--paper-cream); margin-top: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tabs::-webkit-scrollbar { height: 0; }
   .tabs a {
-    min-height: 38px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     padding: 0 0.55rem;
@@ -153,7 +153,7 @@
   }
   .tabs a.active { color: var(--sunset); border-bottom-color: var(--sunset); }
   .tabs a:hover { color: var(--text); }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .header {
       margin-bottom: 1rem;
     }

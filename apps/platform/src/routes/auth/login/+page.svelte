@@ -403,7 +403,7 @@
     color: var(--text-secondary);
     font-size: 12px;
   }
-  @media (min-width: 760px) {
+  @media (min-width: 1025px) {
     .shell {
       grid-template-columns: minmax(0, 0.95fr) minmax(20rem, 23rem);
       grid-template-rows: 1fr;
@@ -428,7 +428,7 @@
       border-left: 1px solid var(--border-light, #E5DDC8);
     }
   }
-  @media (max-width: 520px) {
+  @media (max-width: 640px) {
     .page {
       padding-left: calc(1rem + var(--safe-left, 0px));
       padding-right: calc(1rem + var(--safe-right, 0px));

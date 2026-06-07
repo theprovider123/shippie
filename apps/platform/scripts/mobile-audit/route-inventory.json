@@ -1,15 +1,14 @@
 {
-  "generatedAt": "2026-06-01T08:52:47.560Z",
+  "generatedAt": "2026-06-07T18:56:32.476Z",
   "counts": {
-    "total": 44,
-    "public": 17,
-    "priority_P0": 3,
+    "total": 51,
+    "public": 34,
+    "priority_P0": 2,
     "container": 1,
-    "dashboard": 12,
-    "priority_P1": 7,
-    "auth": 2,
+    "priority_P1": 9,
+    "auth": 4,
     "onboarding": 2,
-    "priority_P2": 25,
+    "priority_P2": 31,
     "showcase-wrapper": 1,
     "admin": 7,
     "priority_P3": 9,
@@ -29,12 +28,6 @@
       "pageFile": "apps/platform/src/routes/container/+page.svelte"
     },
     {
-      "urlPath": "/dashboard",
-      "shell": "dashboard",
-      "priority": "P0",
-      "pageFile": "apps/platform/src/routes/dashboard/+page.svelte"
-    },
-    {
       "urlPath": "/apps/[slug]",
       "shell": "public",
       "priority": "P1",
@@ -47,10 +40,22 @@
       "pageFile": "apps/platform/src/routes/auth/cli/activate/+page.svelte"
     },
     {
+      "urlPath": "/auth/continue",
+      "shell": "auth",
+      "priority": "P1",
+      "pageFile": "apps/platform/src/routes/auth/continue/+page.svelte"
+    },
+    {
       "urlPath": "/auth/login",
       "shell": "auth",
       "priority": "P1",
       "pageFile": "apps/platform/src/routes/auth/login/+page.svelte"
+    },
+    {
+      "urlPath": "/auth/receive",
+      "shell": "auth",
+      "priority": "P1",
+      "pageFile": "apps/platform/src/routes/auth/receive/+page.svelte"
     },
     {
       "urlPath": "/glance",
@@ -95,70 +100,10 @@
       "pageFile": "apps/platform/src/routes/c/[hash]/+page.svelte"
     },
     {
-      "urlPath": "/dashboard/apps",
-      "shell": "dashboard",
+      "urlPath": "/dock",
+      "shell": "public",
       "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/access",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/access/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/analytics",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/analytics/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/deploys/[deployId]",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/deploys/[deployId]/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/enhancements",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/enhancements/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/feedback",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/feedback/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/localize",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/localize/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/profile",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/profile/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/apps/[slug]/proof",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/apps/[slug]/proof/+page.svelte"
-    },
-    {
-      "urlPath": "/dashboard/feedback",
-      "shell": "dashboard",
-      "priority": "P2",
-      "pageFile": "apps/platform/src/routes/dashboard/feedback/+page.svelte"
+      "pageFile": "apps/platform/src/routes/dock/+page.svelte"
     },
     {
       "urlPath": "/docs",
@@ -185,6 +130,84 @@
       "pageFile": "apps/platform/src/routes/leaderboards/+page.svelte"
     },
     {
+      "urlPath": "/maker",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/access",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/access/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/analytics",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/analytics/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/deploys/[deployId]",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/deploys/[deployId]/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/enhancements",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/enhancements/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/feedback",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/feedback/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/localize",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/localize/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/profile",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/profile/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/proof",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/proof/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/apps/[slug]/settings",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/apps/[slug]/settings/+page.svelte"
+    },
+    {
+      "urlPath": "/maker/feedback",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/maker/feedback/+page.svelte"
+    },
+    {
       "urlPath": "/professionals",
       "shell": "public",
       "priority": "P2",
@@ -201,6 +224,12 @@
       "shell": "public",
       "priority": "P2",
       "pageFile": "apps/platform/src/routes/safe/+page.svelte"
+    },
+    {
+      "urlPath": "/tools",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/tools/+page.svelte"
     },
     {
       "urlPath": "/trust-preview",
@@ -221,10 +250,22 @@
       "pageFile": "apps/platform/src/routes/why/+page.svelte"
     },
     {
+      "urlPath": "/workspace",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/workspace/+page.svelte"
+    },
+    {
       "urlPath": "/you",
       "shell": "public",
       "priority": "P2",
       "pageFile": "apps/platform/src/routes/you/+page.svelte"
+    },
+    {
+      "urlPath": "/you/access",
+      "shell": "public",
+      "priority": "P2",
+      "pageFile": "apps/platform/src/routes/you/access/+page.svelte"
     },
     {
       "urlPath": "/admin",

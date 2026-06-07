@@ -645,7 +645,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     color: var(--text-secondary);
     line-height: 1.6;
   }
-  @media (max-width: 560px) {
+  @media (max-width: 640px) {
     .paths > div { grid-template-columns: 1fr; gap: 0.25rem; }
   }
 

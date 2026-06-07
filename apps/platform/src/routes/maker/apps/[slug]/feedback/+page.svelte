@@ -242,7 +242,7 @@ shippie.feedback.submit({
     background: var(--bg);
     color: inherit;
     font: inherit;
-    font-size: 14px;
+    font-size: 16px;
     padding: 0.4rem 0.55rem;
     border-radius: 0;
   }
@@ -266,7 +266,7 @@ shippie.feedback.submit({
     cursor: pointer;
     border-radius: 0;
   }
-  @media (max-width: 600px) {
+  @media (max-width: 640px) {
     .triage {
       grid-template-columns: 1fr;
       align-items: stretch;

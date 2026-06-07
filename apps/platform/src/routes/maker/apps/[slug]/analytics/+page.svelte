@@ -317,7 +317,7 @@
     .event-list li,
     .bar-track { border-color: var(--ink-warm-mid); }
   }
-  @media (max-width: 820px) {
+  @media (max-width: 1024px) {
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .two-col { grid-template-columns: 1fr; }
   }

@@ -312,36 +312,23 @@
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="privacy-title">
+    <section class="panel" aria-labelledby="help-title">
       <div class="section-head">
-        <h2 id="privacy-title">Privacy</h2>
-        <span>device-first</span>
+        <h2 id="help-title">Help &amp; legal</h2>
+        <span>support</span>
       </div>
       <details class="trust-band">
-        <summary>
-          Local by default, sealed optional cloud, no cross-app tracking.
-        </summary>
+        <summary>Local by default, sealed optional cloud, no cross-app tracking.</summary>
         <ul>
           <li>Tools run on your device and keep app contents local unless you choose backup or sync.</li>
           <li>Shippie can count tool opens and versions for compatibility, but not what you type inside apps.</li>
           <li>Backup, sync, relay, and private spaces are optional surfaces you control.</li>
         </ul>
       </details>
-    </section>
-
-    <section class="panel" aria-labelledby="help-title">
-      <div class="section-head">
-        <h2 id="help-title">Help</h2>
-        <span>support</span>
-      </div>
       <div class="link-list">
-        <a href="/docs">Docs</a>
-        <a href="/dock?section=access">Access</a>
-        <a href="/dock?section=data">Your data</a>
-        <a href="/maker/apps">Maker</a>
-        {#if data.user?.isAdmin}
-          <a href="/admin">Admin</a>
-        {/if}
+        <a href="/docs#help">Help &amp; docs</a>
+        <a href="/docs#privacy">Privacy &amp; terms</a>
+        <a href="mailto:info@shippie.app">Contact</a>
       </div>
     </section>
   </main>
@@ -677,7 +664,7 @@
     background: var(--surface);
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .you-page {
       padding-top: var(--space-md);
     }

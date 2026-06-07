@@ -411,7 +411,7 @@
   }
   .chips button {
     flex: 0 0 auto;
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 0.7rem;
     border: 1px solid var(--paper-cream);
     background: transparent;
@@ -432,13 +432,13 @@
     gap: 0.4rem;
   }
   .selects select {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 0.5rem;
     border: 1px solid var(--paper-cream);
     background: var(--bg);
     color: inherit;
     font: inherit;
-    font-size: 13px;
+    font-size: 16px;
     border-radius: 0;
   }
   .sr-only {
@@ -634,7 +634,7 @@
     font-weight: 700;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1024px) {
     .app-row {
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 0.5rem 0.75rem;
@@ -657,7 +657,7 @@
       border: 1px solid var(--paper-cream);
     }
   }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .summary-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }

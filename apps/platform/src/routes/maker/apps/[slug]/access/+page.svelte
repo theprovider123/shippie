@@ -486,7 +486,7 @@
       grid-template-columns: 1fr 1fr;
     }
   }
-  @media (max-width: 720px) {
+  @media (max-width: 640px) {
     .share-panel,
     .listing form {
       grid-template-columns: 1fr;

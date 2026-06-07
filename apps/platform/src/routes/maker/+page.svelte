@@ -355,7 +355,7 @@
     cursor: pointer;
     font: inherit;
   }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .maker-head,
     .section-head,
     .sync-note {

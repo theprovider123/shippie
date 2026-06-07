@@ -479,7 +479,7 @@
       justify-content: flex-start;
     }
   }
-  @media (max-width: 768px) {
+  @media (max-width: 640px) {
     .section-head {
       align-items: baseline;
       flex-direction: row;

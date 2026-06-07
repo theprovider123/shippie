@@ -250,7 +250,7 @@
   .row.current {
     box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
-  @media (min-width: 769px) {
+  @media (min-width: 641px) {
     .row { min-height: 68px; }
   }
 
