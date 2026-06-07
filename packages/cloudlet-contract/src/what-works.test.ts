@@ -105,7 +105,7 @@ test('a need surfaces at threshold, marked emerging, with evidence links', () =>
     now,
   });
   expect(profile.recurringNeeds).toHaveLength(1);
-  const n = profile.recurringNeeds[0];
+  const n = profile.recurringNeeds[0]!;
   expect(n.count).toBe(2);
   expect(n.status).toBe('emerging'); // 2 < establishedOccurrences(3)
   expect(n.crossSubject).toBe(false);
@@ -132,7 +132,7 @@ test('a need across subjects becomes established + crossSubject at the higher ba
     lessons,
     now,
   });
-  const n = profile.recurringNeeds[0];
+  const n = profile.recurringNeeds[0]!;
   expect(n.count).toBe(4);
   expect(n.status).toBe('established');
   expect(n.crossSubject).toBe(true);
@@ -161,7 +161,7 @@ test('strategy success rate is computed from outcomes resolved back to the card'
     now,
   });
   expect(profile.strategiesThatWork).toHaveLength(1);
-  const s = profile.strategiesThatWork[0];
+  const s = profile.strategiesThatWork[0]!;
   expect(s.strategy).toBe('Pre-teach vocab');
   expect(s.n).toBe(3);
   expect(s.successRate).toBeCloseTo(2 / 3);
@@ -188,7 +188,7 @@ test('a mostly-failing strategy lands in strategiesThatDidnt', () => {
   });
   expect(profile.strategiesThatWork).toEqual([]);
   expect(profile.strategiesThatDidnt).toHaveLength(1);
-  expect(profile.strategiesThatDidnt[0].successRate).toBe(0);
+  expect(profile.strategiesThatDidnt[0]!.successRate).toBe(0);
 });
 
 test('outcomes for OTHER pupils are not attributed to this pupil', () => {

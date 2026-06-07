@@ -8,6 +8,8 @@ declare module 'bun:test' {
     toBeInstanceOf: (expected: unknown) => R;
     toBeGreaterThan: (expected: number) => R;
     toBeLessThan: (expected: number) => R;
+    toBeCloseTo: (expected: number, numDigits?: number) => R;
+    toMatch: (expected: string | RegExp) => R;
     toBeTruthy: () => R;
     toBeFalsy: () => R;
     toContain: (expected: unknown) => R;
