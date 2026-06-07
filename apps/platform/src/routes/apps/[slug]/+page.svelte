@@ -561,16 +561,28 @@
   .share-btn:hover { background: var(--surface-alt); border-color: var(--sunset); }
 
   .body {
-    padding: var(--space-2xl) 0 var(--space-3xl);
+    padding: var(--space-xl) clamp(1.5rem, 4vw, 3rem) var(--space-3xl);
     max-width: 880px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2xl);
+    gap: 0;
+  }
+  /* Clean section rhythm: hairline-separated, no heavy boxes, no dead space —
+     matches the Docs/Why surfaces. */
+  .body > * {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--border-light);
+  }
+  .body > :first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
   .section h2 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     margin: 0 0 var(--space-md);
     letter-spacing: 0;
   }
@@ -580,21 +592,32 @@
     color: var(--text-secondary);
     font-size: var(--small-size);
   }
+  /* Not a box — a clean collapsible section. The summary reads as a section
+     heading; the trust cards inside carry their own surface. */
   .trust-details {
-    border: 1px solid var(--border-light);
-    background: var(--surface);
-    padding: var(--space-md);
+    border: 0;
+    background: none;
+    padding: 0;
   }
   .trust-details summary {
     min-height: var(--touch-min);
     display: flex;
     align-items: center;
+    gap: 0.5rem;
     cursor: pointer;
     font-family: var(--font-heading);
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-size: 1.35rem;
     letter-spacing: 0;
+    list-style: none;
   }
+  .trust-details summary::-webkit-details-marker { display: none; }
+  .trust-details summary::after {
+    content: '›';
+    color: var(--text-light);
+    font-size: 1.1rem;
+    transition: transform 0.15s;
+  }
+  .trust-details[open] summary::after { transform: rotate(90deg); }
   .trust-details[open] summary {
     margin-bottom: var(--space-md);
   }
