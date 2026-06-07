@@ -12,6 +12,8 @@ declare module 'bun:test' {
     toMatch: (expected: string | RegExp) => R;
     toBeTruthy: () => R;
     toBeFalsy: () => R;
+    toBeNull: () => R;
+    toBeUndefined: () => R;
     toContain: (expected: unknown) => R;
     toContainEqual: (expected: unknown) => R;
     toHaveLength: (expected: number) => R;
