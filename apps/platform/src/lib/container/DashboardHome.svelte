@@ -263,17 +263,20 @@
     <div class="update-list">
       {#each cards as card (card.app.id)}
         {@const reviewNote = updateReviewNote(card)}
+        {@const flaggedChips = updateChips(card).filter((chip) => chip.tone === 'attention')}
         <article class="update-row" class:attention={updateSeverity(card) === 'attention'}>
           <div class="update-copy">
             <div class="update-row-title">
               <strong>{card.app.name}</strong>
               <small>{updateSummary(card)}</small>
             </div>
-            <div class="update-chips" aria-label={`Changes for ${card.app.name}`}>
-              {#each updateChips(card) as chip (chip.label)}
-                <span class:attention={chip.tone === 'attention'} class:safe={chip.tone === 'safe'}>{chip.label}</span>
-              {/each}
-            </div>
+            {#if flaggedChips.length > 0}
+              <div class="update-chips" aria-label={`Changes that need review for ${card.app.name}`}>
+                {#each flaggedChips as chip (chip.label)}
+                  <span class="attention">{chip.label}</span>
+                {/each}
+              </div>
+            {/if}
             {#if reviewNote}
               <p class="update-note">{reviewNote}</p>
             {/if}
@@ -523,10 +526,6 @@
     font-family: var(--font-mono);
     font-size: 0.62rem;
     letter-spacing: 0.04em;
-  }
-  .update-chips span.safe {
-    color: var(--sage-leaf);
-    border-color: color-mix(in srgb, var(--sage-leaf) 42%, var(--border-light));
   }
   .update-chips span.attention {
     color: var(--sunset);
