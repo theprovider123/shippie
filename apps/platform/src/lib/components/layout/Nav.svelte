@@ -156,7 +156,7 @@
   .nav-mark { display: block; flex-shrink: 0; }
   .nav-wordmark {
     font-family: var(--font-heading);
-    font-size: 1.375rem;
+    font-size: var(--text-subhead);
     font-weight: 700;
     letter-spacing: 0;
   }
@@ -166,7 +166,7 @@
     min-height: var(--touch-min, 44px);
     min-width: var(--touch-min, 44px);
     justify-content: center;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-secondary);
     transition: color 0.2s;
     white-space: nowrap;
@@ -187,7 +187,7 @@
     min-height: var(--touch-min, 44px);
     min-width: var(--touch-min, 44px);
     justify-content: center;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-light);
   }
   .nav-signin:hover { color: var(--text-secondary); }
@@ -206,7 +206,7 @@
     padding: 0.5rem 1.125rem;
     background: var(--sunset);
     color: var(--bg-pure);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 600;
     border-radius: 0;
     transition: background 0.2s;
@@ -265,7 +265,7 @@
   .mobile-menu a {
     padding: 14px 0;
     font-family: var(--font-heading);
-    font-size: 18px;
+    font-size: var(--text-lede);
     color: var(--text);
     border-bottom: 1px solid var(--border-light);
   }
@@ -279,7 +279,7 @@
     text-align: center;
     border-bottom: none !important;
     font-family: var(--font-body) !important;
-    font-size: 15px !important;
+    font-size: var(--text-body) !important;
     font-weight: 600;
   }
 

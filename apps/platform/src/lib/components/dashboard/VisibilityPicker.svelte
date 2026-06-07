@@ -85,7 +85,7 @@
     cursor: pointer;
   }
   label.active { border-color: var(--sunset); background: rgba(232,96,60,0.04); }
-  label p { margin: 2px 0 0 0; font-size: 13px; color: var(--text-secondary); }
-  .error { color: var(--danger); font-size: 13px; margin: 0; }
+  label p { margin: 2px 0 0 0; font-size: var(--text-small); color: var(--text-secondary); }
+  .error { color: var(--danger); font-size: var(--text-small); margin: 0; }
   input[type='radio'] { margin-top: 4px; }
 </style>

@@ -122,12 +122,12 @@
 
 <style>
   header { margin-bottom: 1.5rem; }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0.25rem 0; letter-spacing: 0; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: var(--text-title); margin: 0.25rem 0; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); margin: 0; }
   .status-summary { display: flex; gap: 0.4rem; margin-top: 0.8rem; flex-wrap: wrap; }
   .chip {
     display: inline-flex; align-items: center; gap: 0.3rem;
-    padding: 0.3rem 0.65rem; font-family: ui-monospace, monospace; font-size: 11px;
+    padding: 0.3rem 0.65rem; font-family: ui-monospace, monospace; font-size: var(--text-caption);
     text-transform: uppercase; letter-spacing: 0.06em;
     background: transparent; color: inherit;
     border: 1px solid var(--paper-cream); cursor: pointer; min-height: var(--touch-min, 44px);
@@ -143,18 +143,18 @@
     padding: 0.7rem 0.85rem;
     background: rgba(232, 96, 60, 0.06);
     border-left: 3px solid var(--sunset);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     color: var(--ink-soft-warm);
   }
   .link-btn { background: none; border: 0; color: var(--sunset); text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
   .empty { padding: 4rem 2rem; text-align: center; border: 1px dashed var(--border-paper-mid); border-radius: 0; }
-  h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0.5rem 0; }
+  h2 { font-family: 'Fraunces', Georgia, serif; font-size: var(--text-heading); margin: 0.5rem 0; }
   .feedback-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--paper-cream); }
   article { padding: 1rem 0; border-bottom: 1px solid var(--paper-cream); }
-  article h2 { font-size: 1.1rem; margin: 0.65rem 0 0.25rem; }
+  article h2 { font-size: var(--text-lede); margin: 0.65rem 0 0.25rem; }
   article p { margin: 0; color: var(--ink-soft-warm); max-width: 72ch; }
-  small { display: block; margin-top: 0.55rem; color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: 11px; }
-  .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-family: ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  small { display: block; margin-top: 0.55rem; color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: var(--text-caption); }
+  .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-family: ui-monospace, monospace; font-size: var(--text-caption); text-transform: uppercase; letter-spacing: 0.08em; }
   .row a { color: var(--sunset); text-decoration: none; }
   .row span, .row strong { border: 1px solid var(--paper-cream); padding: 2px 7px; font-weight: 600; }
   .row .open { border-color: rgba(46,125,91,0.35); color: var(--success); }

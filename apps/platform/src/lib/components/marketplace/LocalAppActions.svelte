@@ -140,7 +140,7 @@
     color: var(--bg);
     padding: 0.55rem 0.8rem;
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     cursor: pointer;
   }
   .local-actions.inline button {
@@ -174,7 +174,7 @@
     cursor: progress;
   }
   span {
-    font-size: 0.82rem;
+    font-size: var(--text-small);
     color: rgba(20,18,15,0.72);
   }
 </style>

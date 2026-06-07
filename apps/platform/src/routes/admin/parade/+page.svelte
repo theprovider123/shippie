@@ -80,7 +80,7 @@
   .header { margin-bottom: 1.5rem; }
   .eyebrow {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--sunset, #E8603C);
@@ -91,7 +91,7 @@
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
     letter-spacing: -0.02em;
   }
-  h1 { font-size: 2.25rem; margin: 0.25rem 0 0.5rem; }
+  h1 { font-size: var(--text-title); margin: 0.25rem 0 0.5rem; }
   h2 { margin: 0 0 0.5rem; }
   .lede,
   .status p,
@@ -125,7 +125,7 @@
   .status a {
     color: var(--marigold, #E8C547);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 12px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     text-decoration: none;
@@ -136,7 +136,7 @@
     flex-direction: column;
     gap: 0.5rem;
     color: var(--text-secondary, #B8A88F);
-    font-size: 12px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-family: var(--font-mono, ui-monospace, monospace);
@@ -148,7 +148,7 @@
     background: rgba(0,0,0,0.22);
     color: var(--text, #EDE4D3);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 16px;
+    font-size: var(--text-body);
     line-height: 1.55;
     padding: 0.9rem;
     border-radius: 0;

@@ -3927,7 +3927,7 @@
   .mini-label {
     margin: 0 0 0.5rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0;
     color: var(--sunset);
@@ -3957,7 +3957,7 @@
     border: 1px solid var(--marigold);
     border-radius: 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0;
     color: var(--marigold);
@@ -4014,7 +4014,7 @@
   .open-link {
     padding: 0.55rem 0.75rem;
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .open-link {
     color: var(--sunset);
@@ -4064,7 +4064,7 @@
     color: var(--bg-pure);
     font-family: var(--font-mono);
     font-weight: 800;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
   }
   .collection-list {
     display: grid;
@@ -4080,7 +4080,7 @@
     padding: var(--space-md);
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     cursor: pointer;
   }
   .dropzone.active,
@@ -4139,7 +4139,7 @@
   .collection-status,
   .collection-meta span {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .collection-meta {
     display: flex;
@@ -4221,7 +4221,7 @@
       display: none;
     }
     .topbar h2 {
-      font-size: 1.15rem;
+      font-size: var(--text-lede);
     }
     .open-link,
     .mesh-badge {
@@ -4245,7 +4245,7 @@
     .collection-list button,
     .export-button {
       min-height: var(--touch-min);
-      font-size: var(--type-body-mobile);
+      font-size: var(--text-body);
     }
     .action-grid {
       grid-template-columns: 1fr;
@@ -4271,7 +4271,7 @@
     border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: transparent;
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 500;
     color: var(--text);
     cursor: pointer;
@@ -4331,7 +4331,7 @@
     background: var(--surface);
     color: var(--text);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
-    font-size: 13px;
+    font-size: var(--text-small);
     line-height: 1.35;
     text-align: center;
     overflow-wrap: anywhere;
@@ -4519,7 +4519,7 @@
   }
   .focused-brand-copy strong {
     font-family: var(--font-heading);
-    font-size: 22px;
+    font-size: var(--text-subhead);
     line-height: 1;
   }
   .focused-drawer-actions {
@@ -4538,7 +4538,7 @@
     background: transparent;
     color: var(--text-secondary, rgba(0, 0, 0, 0.58));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.14em;
     line-height: 1;
     text-transform: uppercase;
@@ -4557,7 +4557,7 @@
   .focused-action-close {
     min-width: var(--touch-min, 44px);
     padding: 0 10px;
-    font-size: 16px;
+    font-size: var(--text-body);
     letter-spacing: 0;
   }
   .focused-action-close:hover,
@@ -4587,7 +4587,7 @@
     background: var(--surface, #f5efe4);
     color: var(--text-secondary, rgba(0, 0, 0, 0.48));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
   }
   .focused-share-card-qr :global(svg) {
@@ -4607,7 +4607,7 @@
     overflow: hidden;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     line-height: 1.2;
     text-overflow: ellipsis;
@@ -4618,7 +4618,7 @@
     min-width: 0;
     overflow: hidden;
     font-family: var(--font-heading);
-    font-size: 18px;
+    font-size: var(--text-lede);
     line-height: 1.05;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -4632,7 +4632,7 @@
     margin-top: 2px;
     color: var(--sunset, #e8603c);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     line-height: 1;
     text-transform: uppercase;
@@ -4679,7 +4679,7 @@
   .focused-section-head h2,
   .focused-drawer h2 {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 600;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     text-transform: uppercase;
@@ -4705,12 +4705,12 @@
   }
   .focused-insight strong {
     display: block;
-    font-size: 14px;
+    font-size: var(--text-small);
   }
   .focused-insight p {
     margin: 4px 0 0;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .focused-insight-high {
     border-color: rgba(232, 96, 60, 0.5);
@@ -4734,7 +4734,7 @@
     margin: 0;
     color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.04em;
   }
   .focused-search {
@@ -4757,7 +4757,7 @@
   }
   .focused-search-icon {
     color: var(--text-secondary, rgba(0, 0, 0, 0.48));
-    font-size: 15px;
+    font-size: var(--text-body);
     line-height: 1;
   }
   .focused-search input {
@@ -4771,7 +4771,7 @@
     /* Per tokens.css --type-body-mobile: iOS Safari zooms inputs whose
        font-size is under 16px on focus. Keeping it at the floor avoids
        the bounce when the drawer search opens. */
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
   }
   .focused-search input:focus {
     outline: none;
@@ -4784,7 +4784,7 @@
     padding: 0;
     color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     cursor: pointer;
     line-height: 1;
   }
@@ -4793,7 +4793,7 @@
     margin: 6px 0;
     padding: 12px;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
-    font-size: 13px;
+    font-size: var(--text-small);
     text-align: center;
   }
   .focused-search-empty button,
@@ -4823,16 +4823,16 @@
       touch-action: none;
     }
     .focused-brand-copy strong {
-      font-size: 20px;
+      font-size: var(--text-subhead);
     }
     .focused-action {
       min-height: var(--touch-min, 44px);
       padding: 0 9px;
-      font-size: 10px;
+      font-size: var(--text-caption);
     }
     .focused-action-close {
       min-width: var(--touch-min, 44px);
-      font-size: 16px;
+      font-size: var(--text-body);
     }
     .focused-share-card {
       grid-template-columns: auto minmax(0, 1fr);
@@ -4844,7 +4844,7 @@
       height: 58px;
     }
     .focused-share-card-copy strong {
-      font-size: 17px;
+      font-size: var(--text-lede);
     }
     .focused-share-card-actions {
       display: inline-flex;
@@ -4876,7 +4876,7 @@
     background: var(--surface);
     color: var(--text);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
-    font-size: 12.5px;
+    font-size: var(--text-caption);
     line-height: 1.3;
     backdrop-filter: blur(10px);
     pointer-events: none;
@@ -4896,6 +4896,6 @@
     .transfer-pending-spinner { animation: none; }
   }
 
-  .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
+  .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: var(--text-caption); }
   .hydrating-panel { min-height: 240px; }
 </style>

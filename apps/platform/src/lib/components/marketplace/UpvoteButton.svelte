@@ -72,7 +72,7 @@
     border-radius: 0;
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 600;
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
@@ -91,6 +91,6 @@
   }
   .upvote.voted:hover { transform: translateY(-1px); }
   .upvote:disabled { opacity: 0.55; cursor: progress; }
-  .heart { font-size: 1.05rem; line-height: 1; }
+  .heart { font-size: var(--text-body); line-height: 1; }
   .count { font-variant-numeric: tabular-nums; }
 </style>

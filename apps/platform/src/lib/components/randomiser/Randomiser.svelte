@@ -194,11 +194,11 @@
     margin: 0 0 4px;
     font-family: 'Fraunces', serif;
     font-weight: 600;
-    font-size: 20px;
+    font-size: var(--text-subhead);
     letter-spacing: -0.01em;
   }
-  .muted { color: var(--text-secondary, #b8a88f); font-size: 13px; margin: 0; }
-  .muted.small { font-size: 12px; }
+  .muted { color: var(--text-secondary, #b8a88f); font-size: var(--text-small); margin: 0; }
+  .muted.small { font-size: var(--text-caption); }
 
   .dial {
     min-height: 96px;
@@ -221,7 +221,7 @@
   }
   .face strong {
     font-family: 'Fraunces', serif;
-    font-size: 22px;
+    font-size: var(--text-subhead);
     font-weight: 600;
     color: var(--text, #ede4d3);
     letter-spacing: -0.01em;
@@ -247,7 +247,7 @@
   .ghost-link {
     color: var(--text, #ede4d3);
     text-decoration: underline;
-    font-size: 14px;
+    font-size: var(--text-small);
   }
 
   .footnote { font-style: italic; }

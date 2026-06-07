@@ -147,7 +147,7 @@
   }
   .mini-label {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -162,7 +162,7 @@
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     line-height: 1.1;
   }
   header p {
@@ -196,7 +196,7 @@
     gap: 6px;
   }
   .label {
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-secondary);
   }
   input[type='password'],
@@ -207,7 +207,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
   }
   input[type='file'] {
     padding: 0.5rem 0.75rem;
@@ -220,7 +220,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
     resize: vertical;
   }
   details {
@@ -231,7 +231,7 @@
   details summary {
     cursor: pointer;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     list-style: none;
   }
   details summary::-webkit-details-marker {
@@ -243,7 +243,7 @@
   .install-records p {
     margin-bottom: 10px;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   pre {
@@ -253,7 +253,7 @@
     background: var(--bg-pure);
     overflow: auto;
     max-height: 260px;
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
   }
   .primary {
     min-height: 48px;
@@ -294,20 +294,20 @@
   .result p {
     color: var(--text);
     line-height: 1.5;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .error {
     color: var(--danger-hover);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .status {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   @media (max-width: 640px) {
     h3 {
-      font-size: 1.35rem;
+      font-size: var(--text-subhead);
     }
   }
 </style>

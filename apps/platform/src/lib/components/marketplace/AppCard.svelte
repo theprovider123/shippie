@@ -137,7 +137,7 @@
   .meta { min-width: 0; flex: 1; }
   .name {
     font-family: var(--font-heading);
-    font-size: 1.0625rem;
+    font-size: var(--text-body);
     font-weight: 600;
     letter-spacing: -0.01em;
     margin: 0;
@@ -166,7 +166,7 @@
   }
   .kind {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -174,7 +174,7 @@
   }
   .blurb {
     margin-top: 0.5rem;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-secondary);
     line-height: 1.5;
     display: -webkit-box;
@@ -197,7 +197,7 @@
     background: rgba(122, 154, 110, 0.08);
     padding: 2px 7px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -207,7 +207,7 @@
     background: rgba(232, 96, 60, 0.08);
     padding: 2px 7px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -231,7 +231,7 @@
     margin-top: 0.625rem;
     display: flex;
     gap: 12px;
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     font-family: var(--font-mono);
     color: var(--text-light);
   }

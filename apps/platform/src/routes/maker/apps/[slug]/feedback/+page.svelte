@@ -167,14 +167,14 @@ shippie.feedback.submit({
 
 <style>
   header { margin-bottom: 1.5rem; }
-  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
+  .eyebrow { font-family: ui-monospace, monospace; font-size: var(--text-caption); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0; }
   .eyebrow a { color: inherit; text-decoration: none; }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 2rem; margin: 0.25rem 0; letter-spacing: 0; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: var(--text-title); margin: 0.25rem 0; letter-spacing: 0; }
   .lede { color: var(--text-muted-warm); margin: 0 0 0.5rem; max-width: 64ch; }
   .status-summary { display: flex; gap: 0.4rem; margin-top: 0.6rem; flex-wrap: wrap; }
   .chip {
     display: inline-flex; align-items: center; gap: 0.3rem;
-    padding: 0.3rem 0.65rem; font-family: ui-monospace, monospace; font-size: 11px;
+    padding: 0.3rem 0.65rem; font-family: ui-monospace, monospace; font-size: var(--text-caption);
     text-transform: uppercase; letter-spacing: 0.06em;
     background: transparent; color: inherit;
     border: 1px solid var(--paper-cream); cursor: pointer; min-height: var(--touch-min, 44px);
@@ -187,19 +187,19 @@ shippie.feedback.submit({
   .chip span { font-weight: 700; opacity: 0.8; }
   .link-btn { background: none; border: 0; color: var(--sunset); text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
   .empty { padding: 1rem 0; text-align: center; border-top: 1px dashed var(--border-light); border-radius: 0; }
-  h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0.5rem 0; }
+  h2 { font-family: 'Fraunces', Georgia, serif; font-size: var(--text-heading); margin: 0.5rem 0; }
   .feedback-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--paper-cream); }
   article { padding: 1rem 0; border-bottom: 1px solid var(--paper-cream); }
-  article h2 { font-size: 1.1rem; margin: 0.65rem 0 0.25rem; }
+  article h2 { font-size: var(--text-lede); margin: 0.65rem 0 0.25rem; }
   article p { margin: 0; color: var(--ink-soft-warm); max-width: 72ch; }
-  small { display: block; margin-top: 0.55rem; color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: 11px; }
-  .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-family: ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  small { display: block; margin-top: 0.55rem; color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: var(--text-caption); }
+  .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-family: ui-monospace, monospace; font-size: var(--text-caption); text-transform: uppercase; letter-spacing: 0.08em; }
   .row span, .row strong { border: 1px solid var(--paper-cream); padding: 2px 7px; font-weight: 600; }
   .row .open { border-color: rgba(46,125,91,0.35); color: var(--success); }
   .row .flagged { border-color: rgba(232,96,60,0.45); color: var(--sunset-dim); }
   .row .user { color: var(--text-muted-warm); }
   .flags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.55rem 0 0; }
-  .flags span { border: 1px solid rgba(232,197,71,0.38); color: var(--warning); padding: 2px 7px; font-family: ui-monospace, monospace; font-size: 11px; }
+  .flags span { border: 1px solid rgba(232,197,71,0.38); color: var(--warning); padding: 2px 7px; font-family: ui-monospace, monospace; font-size: var(--text-caption); }
   .maker-reply {
     display: grid;
     gap: 0.2rem;
@@ -208,11 +208,11 @@ shippie.feedback.submit({
     border-left: 2px solid var(--sunset);
     background: rgba(232, 96, 60, 0.05);
     color: var(--ink-soft-warm);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
   .maker-reply span {
     font-family: ui-monospace, monospace;
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--sunset);
@@ -230,7 +230,7 @@ shippie.feedback.submit({
   }
   .triage label span {
     font-family: ui-monospace, monospace;
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-muted-warm);
@@ -242,7 +242,7 @@ shippie.feedback.submit({
     background: var(--bg);
     color: inherit;
     font: inherit;
-    font-size: 16px;
+    font-size: var(--text-body);
     padding: 0.4rem 0.55rem;
     border-radius: 0;
   }
@@ -275,8 +275,8 @@ shippie.feedback.submit({
   .snippet { margin-top: 1rem; text-align: left; padding: 0.75rem 1rem; border: 1px dashed var(--border-paper-mid); }
   .snippet > summary { cursor: pointer; font-weight: 600; color: var(--sunset); min-height: var(--touch-min, 44px); display: flex; align-items: center; }
   .snippet-tabs { display: grid; gap: 0.5rem; margin-top: 0.5rem; }
-  .snippet-tabs > details > summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 12px; text-transform: uppercase; padding: 0.3rem 0; }
-  pre { font-family: ui-monospace, monospace; font-size: 12px; padding: 0.6rem; background: rgba(0,0,0,0.04); margin: 0; overflow-x: auto; white-space: pre; }
+  .snippet-tabs > details > summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: var(--text-caption); text-transform: uppercase; padding: 0.3rem 0; }
+  pre { font-family: ui-monospace, monospace; font-size: var(--text-caption); padding: 0.6rem; background: rgba(0,0,0,0.04); margin: 0; overflow-x: auto; white-space: pre; }
   @media (prefers-color-scheme: dark) {
     .empty, .feedback-list, article { border-color: var(--ink-warm); }
     .row span, .row strong { border-color: var(--ink-warm-mid); }

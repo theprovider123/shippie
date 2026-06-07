@@ -45,7 +45,7 @@
   }
   .page-head h1 {
     font-family: var(--font-heading, serif);
-    font-size: 32px;
+    font-size: var(--text-title);
     margin: 0;
     letter-spacing: -0.02em;
   }
@@ -81,12 +81,12 @@
   .lab-card h3 {
     margin: 0 0 6px;
     font-family: var(--font-heading, serif);
-    font-size: 18px;
+    font-size: var(--text-lede);
   }
   .lab-card p {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.4;
   }
 </style>

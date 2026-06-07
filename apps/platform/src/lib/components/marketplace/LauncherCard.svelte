@@ -357,14 +357,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: var(--font-heading);
-    font-size: 1.14rem;
+    font-size: var(--text-lede);
     line-height: 1.2;
   }
   .title-row span,
   .kind,
   .signal {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -379,7 +379,7 @@
   .blurb {
     margin: 0.55rem 0 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -405,7 +405,7 @@
   .launching-label {
     margin: 0.6rem 0 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--sunset);
@@ -483,7 +483,7 @@
     background: var(--surface);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     cursor: pointer;
     touch-action: manipulation;
     transition:

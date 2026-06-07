@@ -93,13 +93,13 @@
     margin: 0;
     color: var(--text-light);
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    font-size: var(--caption-size, 0.72rem);
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
   }
   h1 {
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: clamp(2.25rem, 9vw, 3.6rem);
+    font-size: var(--text-display);
     line-height: 0.98;
     letter-spacing: 0;
     margin: 0;
@@ -114,7 +114,7 @@
     border: 1px solid var(--border-light);
     color: inherit;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 22px;
+    font-size: var(--text-subhead);
     letter-spacing: 0.15em;
     text-align: center;
     text-transform: uppercase;
@@ -129,7 +129,7 @@
   .hint {
     text-align: center;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-secondary);
     margin: 0;
   }
@@ -140,14 +140,14 @@
     justify-content: center;
     color: var(--sunset, #E8603C);
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     text-decoration: none;
   }
   .error, .ok {
     padding: 0.875rem 1rem;
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.4;
     border: 1px solid;
   }

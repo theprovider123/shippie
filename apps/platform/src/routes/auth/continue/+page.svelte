@@ -81,7 +81,7 @@
     color: inherit;
     text-decoration: none;
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
   .intro,
@@ -96,7 +96,7 @@
     margin: 0;
     color: var(--text-light, #8B847A);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
@@ -107,11 +107,11 @@
     letter-spacing: 0;
   }
   h1 {
-    font-size: clamp(2.2rem, 9vw, 3.8rem);
+    font-size: var(--text-display);
     line-height: 0.98;
   }
   h2 {
-    font-size: 1.45rem;
+    font-size: var(--text-subhead);
     line-height: 1.08;
   }
   p {
@@ -160,7 +160,7 @@
     background: transparent;
     color: inherit;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 20px;
+    font-size: var(--text-subhead);
     letter-spacing: 0.12em;
     text-align: center;
     text-transform: uppercase;
@@ -169,7 +169,7 @@
   .ok {
     padding: 0.75rem 0.9rem;
     border: 1px solid;
-    font-size: 14px;
+    font-size: var(--text-small);
   }
   .error { color: var(--danger, #B43F2A); border-color: currentColor; }
   .ok { color: var(--success, #2E7D5B); border-color: currentColor; }

@@ -157,7 +157,7 @@
     margin: 0;
     color: var(--sunset, #E8603C);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
@@ -168,11 +168,11 @@
     letter-spacing: 0;
   }
   h1 {
-    font-size: clamp(2.2rem, 8vw, 4rem);
+    font-size: var(--text-display);
     line-height: 0.98;
   }
   h2 {
-    font-size: 1.45rem;
+    font-size: var(--text-subhead);
   }
   p {
     margin: 0;
@@ -231,7 +231,7 @@
   .section-head > span,
   .row-title span {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -268,7 +268,7 @@
   }
   .session-row p {
     margin-top: 0.2rem;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   .empty {
     padding: 1rem;

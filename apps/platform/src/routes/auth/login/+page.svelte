@@ -147,7 +147,7 @@
   }
   .brand span {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     font-weight: 700;
     letter-spacing: 0;
   }
@@ -156,7 +156,7 @@
     display: inline-flex;
     align-items: center;
     color: var(--text-light);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   .skip-top:hover {
     color: var(--text);
@@ -182,21 +182,21 @@
     margin: 0;
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
   h1 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 2rem;
+    font-size: var(--text-title);
     line-height: 1.05;
     letter-spacing: 0;
   }
   .lede {
     margin: 0 0 0.35rem;
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: var(--text-body);
     line-height: 1.5;
   }
   .oauth {
@@ -234,7 +234,7 @@
   }
   .divider span {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -251,7 +251,7 @@
   .field span {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
@@ -262,7 +262,7 @@
     background: var(--surface);
     border: 1px solid var(--border-light);
     color: var(--text);
-    font-size: 16px;
+    font-size: var(--text-body);
     outline: none;
     border-radius: 0;
     box-sizing: border-box;
@@ -294,7 +294,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.92rem;
+    font-size: var(--text-body);
   }
   .code-link {
     color: var(--sunset);
@@ -309,7 +309,7 @@
   .error,
   .ok {
     padding: 0.8rem 1rem;
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.4;
     border: 1px solid;
   }
@@ -325,7 +325,7 @@
   }
   .dim {
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .local-strip {
     display: flex;
@@ -341,13 +341,13 @@
     border: 1px solid var(--border-light);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   @media (max-width: 640px) {
     h1 {
-      font-size: 1.8rem;
+      font-size: var(--text-title);
     }
   }
 </style>

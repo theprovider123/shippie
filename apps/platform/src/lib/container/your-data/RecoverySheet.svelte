@@ -59,7 +59,7 @@
   }
   li button small {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .close {
     min-height: var(--touch-min);

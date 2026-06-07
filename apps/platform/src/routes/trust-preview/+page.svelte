@@ -57,18 +57,18 @@
   }
   header h1 {
     margin: 0 0 6px;
-    font-size: 22px;
+    font-size: var(--text-subhead);
   }
   header p {
     margin: 0 0 24px;
     color: var(--ink-soft-warm);
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.5;
   }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: var(--text-small);
   }
   th,
   td {

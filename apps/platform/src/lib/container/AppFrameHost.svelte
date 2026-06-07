@@ -265,7 +265,7 @@
   }
   .frame-loader-label {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     color: var(--text-light);
     margin: 0;
@@ -286,7 +286,7 @@
   }
   .frame-recovery strong {
     font-family: var(--font-heading);
-    font-size: clamp(1.2rem, 2vw, 1.8rem);
+    font-size: var(--text-title);
   }
   .frame-recovery p {
     margin: 0;

@@ -53,7 +53,7 @@
     outline: none;
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .search-input::placeholder { color: var(--text-light); }
   .search-btn {
@@ -64,7 +64,7 @@
     color: var(--text-secondary);
     cursor: pointer;
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: var(--text-body);
     transition: color 0.2s;
   }
   .search-btn:hover { color: var(--sunset); }

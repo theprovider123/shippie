@@ -441,10 +441,10 @@
     background: rgba(232, 96, 60, 0.08);
   }
   .presets strong {
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .presets span {
-    font-size: 12px;
+    font-size: var(--text-caption);
     line-height: 1.35;
     color: var(--text-secondary);
   }
@@ -463,7 +463,7 @@
     flex: 1 1 260px;
   }
   label span {
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-secondary);
     font-family: ui-monospace, monospace;
     text-transform: uppercase;
@@ -479,7 +479,7 @@
     background: transparent;
     color: inherit;
     font-family: ui-monospace, monospace;
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
   }
   label.wide input {
     width: 100%;
@@ -491,7 +491,7 @@
     cursor: pointer;
     color: var(--text-secondary);
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .advanced-row {
     margin-top: 0.5rem;
@@ -537,7 +537,7 @@
   }
   .url {
     font-family: ui-monospace, monospace;
-    font-size: 13px;
+    font-size: var(--text-small);
     color: var(--sunset);
     margin: 0;
     word-break: break-all;
@@ -546,7 +546,7 @@
   .capsule-hint,
   .meta {
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
     color: var(--text-secondary);
     margin: 0;
     word-break: break-all;
@@ -570,7 +570,7 @@
     border: 1px solid currentColor;
     padding: 0 0.875rem;
     font-family: ui-monospace, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-weight: 500;
@@ -597,7 +597,7 @@
   }
   .error {
     color: var(--danger);
-    font-size: 13px;
+    font-size: var(--text-small);
     margin: 0;
   }
   @media (max-width: 640px) {

@@ -140,12 +140,12 @@
 
 <style>
   header { display: flex; gap: 1rem; align-items: end; margin-bottom: 1.5rem; }
-  header p, header span { margin: 0; color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; }
-  h1 { margin: 0; font-size: 2rem; }
+  header p, header span { margin: 0; color: var(--text-secondary); font-family: var(--font-mono); font-size: var(--text-caption); }
+  h1 { margin: 0; font-size: var(--text-title); }
   .ok { color: var(--sage-highlight); }
   .filters { margin-bottom: 1rem; }
   .filter-row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: end; }
-  .filter-row label { display: grid; gap: 0.2rem; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--text-secondary); }
+  .filter-row label { display: grid; gap: 0.2rem; font-family: var(--font-mono); font-size: var(--text-caption); text-transform: uppercase; color: var(--text-secondary); }
   .filter-row input, .filter-row select {
     padding: 0.4rem 0.55rem;
     background: var(--surface);
@@ -176,11 +176,11 @@
     border: 1px solid var(--border-light);
     margin-bottom: 0.8rem;
   }
-  .bulk-bar span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--text-secondary); }
+  .bulk-bar span { font-family: var(--font-mono); font-size: var(--text-caption); text-transform: uppercase; color: var(--text-secondary); }
   .bulk-bar button { border: 1px solid var(--border-light); background: transparent; color: var(--text); padding: 0.35rem 0.6rem; cursor: pointer; min-height: var(--touch-min, 44px); }
   .bulk-bar button:hover { border-color: var(--sunset); color: var(--sunset); }
   .bulk-bar button.ghost { color: var(--text-secondary); border-color: transparent; }
-  .bulk-hint { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.6rem; color: var(--text-secondary); font-size: 12px; }
+  .bulk-hint { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.6rem; color: var(--text-secondary); font-size: var(--text-caption); }
   .bulk-hint button.ghost { background: transparent; color: var(--text-secondary); border: 1px dashed var(--border-light); padding: 0.3rem 0.55rem; font: inherit; cursor: pointer; }
   section { border-top: 1px solid var(--border-light); }
   article { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; padding: 1rem 0; border-bottom: 1px solid var(--border-light); }
@@ -189,15 +189,15 @@
   .bulk-select { padding-top: 0.2rem; }
   .bulk-select input { width: 18px; height: 18px; cursor: pointer; }
   .content { display: block; }
-  .meta { display: flex; flex-wrap: wrap; gap: 0.5rem; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; }
+  .meta { display: flex; flex-wrap: wrap; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-caption); text-transform: uppercase; }
   .meta a { color: var(--sunset); text-decoration: none; }
   .meta span, .meta strong { border: 1px solid var(--border-light); padding: 2px 7px; color: var(--text); }
-  h2 { margin: 0.65rem 0 0.25rem; font-size: 1.1rem; }
+  h2 { margin: 0.65rem 0 0.25rem; font-size: var(--text-lede); }
   p { color: var(--text-secondary); max-width: 76ch; }
-  small { color: var(--text-light); font-family: var(--font-mono); font-size: 11px; }
+  small { color: var(--text-light); font-family: var(--font-mono); font-size: var(--text-caption); }
   .content form { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
   .flags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.6rem 0; }
-  .flags span { border: 1px solid rgba(232,197,71,0.38); color: var(--marigold); padding: 2px 7px; font-family: var(--font-mono); font-size: 11px; }
+  .flags span { border: 1px solid rgba(232,197,71,0.38); color: var(--marigold); padding: 2px 7px; font-family: var(--font-mono); font-size: var(--text-caption); }
   .content form button { border: 1px solid var(--border-light); background: transparent; color: var(--text); padding: 0.35rem 0.6rem; cursor: pointer; min-height: var(--touch-min, 44px); }
   .content form button:hover { border-color: var(--sunset); color: var(--sunset); }
 </style>

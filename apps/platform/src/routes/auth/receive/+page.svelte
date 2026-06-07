@@ -227,7 +227,7 @@
   }
   .brand {
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
   .intro {
@@ -241,14 +241,14 @@
     margin: 0;
     color: var(--text-light, #8B847A);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
   h1 {
     margin: 0;
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: clamp(2.2rem, 9vw, 3.8rem);
+    font-size: var(--text-display);
     line-height: 0.98;
     letter-spacing: 0;
   }
@@ -268,7 +268,7 @@
   }
   .code-panel strong {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: clamp(2rem, 10vw, 3rem);
+    font-size: var(--text-display);
     letter-spacing: 0.12em;
   }
   .ok,

@@ -207,14 +207,14 @@
   .today-eyebrow {
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     color: var(--text-secondary);
     margin: 0 0 4px;
   }
 
   .today-head h1 {
     font-family: var(--font-display, 'Fraunces', Georgia, serif);
-    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-size: var(--text-title);
     font-weight: 600;
     margin: 0 0 8px;
   }
@@ -288,19 +288,19 @@
     border: 1px solid var(--border);
     color: var(--text);
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
 
   .today-best {
     color: var(--text-light, #7A6B58);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
     white-space: nowrap;
   }
 
   .today-empty-card h2 {
     margin: 0 0 8px;
     font-weight: 600;
-    font-size: 1.2rem;
+    font-size: var(--text-lede);
   }
 
   .today-empty-card a {
@@ -310,7 +310,7 @@
 
   .today-foot-note {
     color: var(--text-light, #7A6B58);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
     line-height: 1.5;
   }
 
@@ -349,7 +349,7 @@
     font-weight: 600;
     color: var(--text);
     text-decoration: none;
-    font-size: 1.05rem;
+    font-size: var(--text-body);
   }
 
   a.today-app-name:hover {
@@ -358,7 +358,7 @@
 
   .today-app-meta {
     color: var(--text-light, #7A6B58);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
   }
 
   .today-intents {
@@ -376,7 +376,7 @@
   }
 
   .today-intent-label {
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
 
   .today-intent-count {
@@ -392,7 +392,7 @@
 
   .today-footer h3 {
     margin: 0 0 8px;
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--text-secondary);

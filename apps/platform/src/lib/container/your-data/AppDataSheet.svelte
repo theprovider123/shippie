@@ -75,11 +75,11 @@
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.1rem;
+    font-size: var(--text-lede);
   }
   .count {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .actions {
     display: grid;
@@ -110,7 +110,7 @@
     background: transparent;
     color: var(--text-secondary);
     font: inherit;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     text-align: left;
     cursor: pointer;
     text-decoration: underline;
@@ -121,7 +121,7 @@
     padding: 10px 12px;
     border: 1px solid var(--border-light);
     background: var(--surface);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .details div {
     display: flex;
@@ -138,7 +138,7 @@
   }
   code {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
   }
   .close {
     min-height: var(--touch-min);

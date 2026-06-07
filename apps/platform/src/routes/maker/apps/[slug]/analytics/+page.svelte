@@ -165,7 +165,7 @@
   .back-link {
     justify-self: start;
     color: var(--ink-soft-warm);
-    font-size: var(--small-size, 0.9rem);
+    font-size: var(--text-small);
     text-decoration: none;
   }
   .back-link:hover {
@@ -178,11 +178,11 @@
     display: grid;
     gap: 0.6rem;
   }
-  .privacy-band p { margin: 0; font-size: var(--small-size, 0.9rem); line-height: 1.55; }
+  .privacy-band p { margin: 0; font-size: var(--text-small); line-height: 1.55; }
   .privacy-band strong { color: var(--ink-warm); }
   .privacy-band details summary {
     cursor: pointer;
-    font-size: var(--small-size, 0.9rem);
+    font-size: var(--text-small);
     color: var(--ink-soft-warm);
   }
   .privacy-band details ul {
@@ -190,7 +190,7 @@
     padding-left: 1.1rem;
     display: grid;
     gap: 0.35rem;
-    font-size: var(--small-size, 0.9rem);
+    font-size: var(--text-small);
     line-height: 1.55;
     color: var(--ink-warm-line);
   }
@@ -210,7 +210,7 @@
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--text-muted-warm);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
   }
   .stats {
     display: grid;
@@ -227,18 +227,18 @@
   .bar-row time,
   .device-row span {
     color: var(--text-muted-warm);
-    font-size: 0.78rem;
+    font-size: var(--text-small);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .stats strong {
-    font-size: 1.55rem;
+    font-size: var(--text-heading);
     font-family: 'Fraunces', Georgia, serif;
     line-height: 1.1;
   }
   .stats .small-strong {
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     overflow-wrap: anywhere;
   }
   .two-col {
@@ -256,12 +256,12 @@
   .section-head h3 {
     margin: 0;
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
   }
   .section-head p,
   .muted,
   .lede { color: var(--text-muted-warm); }
-  .section-head p { margin: 0; font-size: 0.9rem; max-width: 280px; }
+  .section-head p { margin: 0; font-size: var(--text-body); max-width: 280px; }
   .bars,
   .device-list {
     display: grid;
@@ -310,7 +310,7 @@
   }
   h2 {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     margin: 0.5rem 0;
   }
   @media (prefers-color-scheme: dark) {

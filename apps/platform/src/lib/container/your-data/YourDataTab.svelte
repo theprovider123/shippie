@@ -213,7 +213,7 @@
   h2 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 8vw, 3.25rem);
+    font-size: var(--text-display);
     line-height: 0.96;
   }
   p {
@@ -237,7 +237,7 @@
   }
   .data-overview span {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -247,7 +247,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     font-family: var(--font-heading);
-    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    font-size: var(--text-title);
     font-weight: 600;
     line-height: 0.95;
     color: var(--text);
@@ -257,7 +257,7 @@
     min-width: 0;
     overflow: hidden;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.35;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -272,7 +272,7 @@
     border: 1px solid var(--sunset);
     background: var(--surface);
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .dismiss {
     min-height: var(--touch-min);
@@ -283,7 +283,7 @@
     background: var(--surface);
     color: var(--text);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--text-caption);
     cursor: pointer;
   }
   .dismiss:hover {
@@ -322,7 +322,7 @@
   }
   .count {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     padding: 1px 6px;
     border: 1px solid currentColor;
     opacity: 0.85;
@@ -333,7 +333,7 @@
   }
   @media (min-width: 1025px) {
     h2 {
-      font-size: 2.6rem;
+      font-size: var(--text-display);
     }
   }
   @media (max-width: 640px) {
@@ -341,7 +341,7 @@
       gap: var(--space-md);
     }
     .head p:not(.eyebrow) {
-      font-size: 1rem;
+      font-size: var(--text-body);
     }
     .data-overview {
       grid-template-columns: repeat(2, minmax(0, 1fr));

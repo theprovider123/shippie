@@ -132,7 +132,7 @@
   .dock-header h2 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     font-weight: 600;
     letter-spacing: 0;
   }
@@ -142,7 +142,7 @@
     min-height: var(--touch-min);
     padding: 0 10px;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     cursor: pointer;
     transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
@@ -192,7 +192,7 @@
     border: 1px dashed var(--border);
     color: inherit;
     font-family: var(--font-mono);
-    font-size: 22px;
+    font-size: var(--text-subhead);
     transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
   }
   .saved-manage:hover { color: var(--text); }
@@ -203,7 +203,7 @@
   }
   .saved-manage .manage-label {
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: var(--text-small);
     line-height: 1.2;
     text-align: left;
     overflow: hidden;

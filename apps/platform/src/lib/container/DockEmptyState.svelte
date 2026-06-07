@@ -61,10 +61,10 @@
 <style>
   .dock-empty { display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg) 0; }
   .hero { background: var(--surface); border: 1px solid var(--border-light); padding: var(--space-md) var(--space-lg); }
-  .hero-eyebrow { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0 0 var(--space-xs); }
-  .hero-title { font-family: var(--font-heading); font-size: 1.25rem; color: var(--text); margin: 0; }
-  .hero-sub { font-size: 0.8rem; color: var(--text-secondary); margin: var(--space-xs) 0 0; }
-  .starters-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 0; }
+  .hero-eyebrow { font-family: var(--font-mono); font-size: var(--text-caption); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sunset); margin: 0 0 var(--space-xs); }
+  .hero-title { font-family: var(--font-heading); font-size: var(--text-subhead); color: var(--text); margin: 0; }
+  .hero-sub { font-size: var(--text-small); color: var(--text-secondary); margin: var(--space-xs) 0 0; }
+  .starters-label { font-family: var(--font-mono); font-size: var(--text-caption); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light); margin: 0; }
   .starters {
     display: grid;
     border: 1px solid var(--border-light);
@@ -79,6 +79,6 @@
     align-items: center;
     align-self: flex-start;
     color: var(--sunset);
-    font-size: 0.85rem;
+    font-size: var(--text-small);
   }
 </style>

@@ -334,7 +334,7 @@
   .eyebrow {
     margin: 0 0 0.5rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -358,14 +358,14 @@
 
   h1 {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-size: var(--text-display);
     line-height: 1;
     letter-spacing: 0;
   }
 
   h2 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     letter-spacing: 0;
   }
 
@@ -373,7 +373,7 @@
     max-width: 36rem;
     margin-top: var(--space-sm);
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
   }
 
@@ -394,7 +394,7 @@
     background: transparent;
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.06em;
     text-decoration: none;
     text-transform: uppercase;
@@ -435,7 +435,7 @@
   .section-head span {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
@@ -443,7 +443,7 @@
   .section-head p {
     margin-top: 4px;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
 
   .overview-grid,
@@ -467,7 +467,7 @@
   .device-grid strong,
   .repair-row strong {
     font-family: var(--font-heading);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     color: var(--text);
   }
 
@@ -476,7 +476,7 @@
   .repair-row p {
     margin-top: 4px;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.45;
   }
 
@@ -507,7 +507,7 @@
     margin: 0;
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.04em;
   }
 
@@ -527,20 +527,20 @@
 
   .empty-apps strong {
     font-family: var(--font-heading);
-    font-size: 1.1rem;
+    font-size: var(--text-lede);
   }
 
   .empty-apps p {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
 
   .overview-grid span,
   .device-grid span {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
@@ -563,7 +563,7 @@
 
   .overview-grid strong {
     font-family: var(--font-heading);
-    font-size: clamp(1.7rem, 5vw, 2.35rem);
+    font-size: var(--text-title);
     line-height: 0.95;
     color: var(--text);
   }
@@ -612,7 +612,7 @@
     margin: 0 0 var(--space-sm);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
@@ -639,7 +639,7 @@
     display: grid;
     gap: 0.35rem;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
   }
 
@@ -673,12 +673,12 @@
     }
 
     h1 {
-      font-size: clamp(2rem, 12vw, 2.7rem);
+      font-size: var(--text-display);
       line-height: 1;
     }
 
     .lede {
-      font-size: 1rem;
+      font-size: var(--text-body);
     }
 
     .home-link {
@@ -749,12 +749,12 @@
   }
   .feedback-top strong {
     font-family: var(--font-heading);
-    font-size: 1rem;
+    font-size: var(--text-body);
     color: var(--text);
   }
   .fb-status {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     padding: 2px 7px;
@@ -776,7 +776,7 @@
   .feedback-preview {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.4;
   }
   .feedback-reply {
@@ -785,14 +785,14 @@
     border-left: 2px solid var(--sunset);
     background: rgba(232, 96, 60, 0.05);
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.4;
   }
   .feedback-reply span {
     display: block;
     color: var(--sunset);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
@@ -800,6 +800,6 @@
     flex-shrink: 0;
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
 </style>

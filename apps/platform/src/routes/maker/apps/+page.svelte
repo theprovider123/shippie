@@ -288,7 +288,7 @@
     margin: 0 0 0.35rem;
     color: var(--sunset);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
@@ -303,11 +303,11 @@
     letter-spacing: 0;
   }
   h1 {
-    font-size: clamp(2rem, 7vw, 3.25rem);
+    font-size: var(--text-display);
     line-height: 0.98;
   }
   h2 {
-    font-size: 1.4rem;
+    font-size: var(--text-subhead);
     line-height: 1.05;
   }
   .lede {
@@ -347,13 +347,13 @@
   .summary-grid span {
     color: var(--text-muted-warm);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
   .summary-grid strong {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(1.65rem, 5vw, 2.35rem);
+    font-size: var(--text-title);
     line-height: 0.95;
   }
 
@@ -376,7 +376,7 @@
     background: var(--bg);
     color: inherit;
     font: inherit;
-    font-size: 16px;
+    font-size: var(--text-body);
     border-radius: 0;
   }
   .search input:focus {
@@ -417,7 +417,7 @@
     background: transparent;
     color: var(--text-muted-warm);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--text-small);
     cursor: pointer;
     white-space: nowrap;
     border-radius: 0;
@@ -438,7 +438,7 @@
     background: var(--bg);
     color: inherit;
     font: inherit;
-    font-size: 16px;
+    font-size: var(--text-body);
     border-radius: 0;
   }
   .sr-only {
@@ -459,7 +459,7 @@
     align-items: center;
     margin: 0 0 0.75rem;
     color: var(--text-muted-warm);
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .clear {
     border: 0;
@@ -535,7 +535,7 @@
   .vis,
   .time {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     white-space: nowrap;
   }
   .status {
@@ -569,7 +569,7 @@
     padding: 0 0.6rem;
     color: var(--sunset);
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--text-small);
     text-decoration: none;
     white-space: nowrap;
   }
@@ -589,7 +589,7 @@
     gap: 1rem;
     margin-top: 1rem;
     color: var(--text-muted-warm);
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .pager button {
     min-height: var(--touch-min, 44px);

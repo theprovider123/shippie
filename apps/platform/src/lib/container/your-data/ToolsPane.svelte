@@ -147,7 +147,7 @@
   .mini-label {
     margin-bottom: 4px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -169,14 +169,14 @@
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     line-height: 1.1;
   }
   .lede {
     margin-top: 0.35rem;
     color: var(--text-secondary);
     line-height: 1.55;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   input[type='search'] {
     flex: 1;
@@ -187,11 +187,11 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
   }
   .empty {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .rows {
     list-style: none;
@@ -228,7 +228,7 @@
     background: var(--accent, var(--surface));
     color: var(--bg);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     font-weight: 700;
   }
   .meta {
@@ -248,11 +248,11 @@
   }
   .count {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .chev {
     color: var(--text-secondary);
-    font-size: 1.1rem;
+    font-size: var(--text-lede);
     line-height: 1;
   }
   .row-waiting {

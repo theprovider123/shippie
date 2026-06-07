@@ -70,7 +70,7 @@
   .head { margin-bottom: var(--space-2xl); }
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--text-light);
@@ -78,7 +78,7 @@
   }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-size: var(--text-display);
     margin: 0.25rem 0 var(--space-sm);
     letter-spacing: -0.02em;
   }
@@ -101,19 +101,19 @@
   }
   .shelf-head h2 {
     font-family: var(--font-heading);
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     margin: 0;
     letter-spacing: -0.01em;
   }
   .shelf-head p {
     color: var(--text-light);
-    font-size: 13px;
+    font-size: var(--text-small);
     margin: 0;
   }
   .empty {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: var(--text-small);
     padding: var(--space-md);
     border: 1px dashed var(--border-light);
     margin: 0;
@@ -139,7 +139,7 @@
   .card:hover { border-color: var(--sunset); }
   .card-meta { min-width: 0; }
   .card-meta h3 {
-    font-size: 1rem;
+    font-size: var(--text-body);
     font-weight: 600;
     margin: 0;
     overflow: hidden;
@@ -149,7 +149,7 @@
   .card-meta p {
     margin: 4px 0 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;

@@ -128,7 +128,7 @@
   .eyebrow {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -136,7 +136,7 @@
   h2 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 8vw, 3.25rem);
+    font-size: var(--text-display);
     line-height: 0.96;
   }
   p {
@@ -164,12 +164,12 @@
   }
   .access-summary span {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
   }
   .access-summary strong {
     font-family: var(--font-heading);
-    font-size: clamp(1.8rem, 6vw, 2.7rem);
+    font-size: var(--text-display);
     line-height: 0.95;
   }
   .nearby-card {
@@ -189,7 +189,7 @@
   .nearby-copy h3 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: clamp(1.25rem, 4vw, 1.65rem);
+    font-size: var(--text-heading);
     line-height: 1;
   }
   .nearby-copy code {
@@ -228,10 +228,10 @@
   .nearby-error {
     grid-column: 1 / -1;
     color: var(--danger, #b6472d);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .muted.small {
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .flow-list {
     list-style: none;
@@ -255,7 +255,7 @@
   }
   .flow-intent {
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-secondary);
   }
   .flow-consumers {
@@ -285,7 +285,7 @@
   }
   @media (max-width: 640px) {
     .section-head p:not(.eyebrow) {
-      font-size: 1rem;
+      font-size: var(--text-body);
     }
     .access-summary div {
       min-height: 76px;

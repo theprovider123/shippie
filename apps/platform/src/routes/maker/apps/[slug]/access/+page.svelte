@@ -296,7 +296,7 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   .eyebrow {
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--sunset);
@@ -304,7 +304,7 @@
   }
   h2 {
     margin: 0.2rem 0 0;
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     letter-spacing: 0;
   }
   .block-head p:not(.eyebrow),
@@ -327,7 +327,7 @@
     place-items: center;
     color: var(--text-muted-warm);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .qr-box :global(svg) {
     width: 100%;
@@ -357,20 +357,20 @@
   .metrics span {
     display: block;
     color: var(--text-muted-warm);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .metrics strong {
     display: block;
     margin-top: 0.35rem;
-    font-size: 1.45rem;
+    font-size: var(--text-subhead);
     line-height: 1;
   }
   .metrics p {
     margin: 0.35rem 0 0;
     color: var(--text-muted-warm);
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .invite-list,
   .space-list {
@@ -398,7 +398,7 @@
     color: var(--sunset);
     text-decoration: none;
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   a:hover {
     text-decoration: underline;
@@ -427,7 +427,7 @@
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--border-light);
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: var(--text-small);
     color: var(--text-muted-warm);
   }
   .listing form {
@@ -440,7 +440,7 @@
     flex-direction: column;
     gap: 0.35rem;
     color: var(--ink-soft-warm);
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     font-weight: 700;
   }
   label.wide,

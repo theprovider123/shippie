@@ -16,7 +16,7 @@
     height: 48px;
     padding: 0 var(--space-md);
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text);
     background: transparent;
     border: 1px solid var(--border);

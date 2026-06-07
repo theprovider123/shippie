@@ -79,7 +79,7 @@
   }
   .page-head h1 {
     font-family: var(--font-heading, serif);
-    font-size: 36px;
+    font-size: var(--text-display);
     margin: 0;
     letter-spacing: -0.02em;
   }
@@ -89,7 +89,7 @@
     max-width: 560px;
   }
   .muted { color: var(--text-secondary); }
-  .muted.small { font-size: 13px; }
+  .muted.small { font-size: var(--text-small); }
 
   .featured {
     display: grid;
@@ -134,20 +134,20 @@
     align-items: center;
     justify-content: center;
     font-family: var(--font-heading, serif);
-    font-size: 18px;
+    font-size: var(--text-lede);
     font-weight: 700;
     letter-spacing: 0.02em;
   }
   .hero-meta strong {
     display: block;
     font-family: var(--font-heading, serif);
-    font-size: 20px;
+    font-size: var(--text-subhead);
     font-weight: 600;
   }
   .hero-meta small {
     display: block;
     margin-top: 4px;
-    font-size: 13px;
+    font-size: var(--text-small);
     opacity: 0.92;
     line-height: 1.4;
   }
@@ -160,7 +160,7 @@
   .shelf-head h2 {
     margin: 0;
     font-family: var(--font-heading, serif);
-    font-size: 22px;
+    font-size: var(--text-subhead);
     letter-spacing: -0.01em;
   }
   .shelf-head p {
@@ -203,17 +203,17 @@
     align-items: center;
     justify-content: center;
     font-family: var(--font-heading, serif);
-    font-size: 14px;
+    font-size: var(--text-small);
     font-weight: 700;
   }
   .game-card strong {
     font-family: var(--font-heading, serif);
-    font-size: 16px;
+    font-size: var(--text-body);
     font-weight: 600;
   }
   .game-card small {
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: var(--text-small);
     line-height: 1.4;
   }
 

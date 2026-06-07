@@ -130,6 +130,19 @@
   --small-size: 0.875rem;
   --caption-size: 0.75rem;
 
+  /* ── Type scale (consolidated) ──────────────────────────────────
+     One step per role — migrate ad-hoc px/rem font-sizes onto these.
+     Keeps the identity (Fraunces display, JetBrains-mono captions) while
+     collapsing the ~116 ad-hoc sizes down to eight rungs. */
+  --text-caption: var(--caption-size); /* 12px — eyebrows, mono labels, chips */
+  --text-small: var(--small-size);     /* 14px — meta, secondary text */
+  --text-body: var(--body-size);       /* 17px — body copy */
+  --text-lede: 1.2rem;                 /* lede / intro paragraphs */
+  --text-subhead: 1.35rem;             /* h3 / card + section titles */
+  --text-heading: 1.6rem;              /* h2 */
+  --text-title: 2rem;                  /* h1 / page titles */
+  --text-display: clamp(2.2rem, 5vw, 3rem); /* hero display headline */
+
   /* ── Spacing ───────────────────────────────────────────────── */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;

@@ -87,7 +87,7 @@
 
   .status {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     color: #B8A88F;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -96,7 +96,7 @@
 
   h1 {
     font-family: 'Fraunces', serif;
-    font-size: clamp(1.8rem, 4vw, 2.4rem);
+    font-size: var(--text-display);
     font-weight: 600;
     line-height: 1.1;
     margin: 0 0 16px;
@@ -104,7 +104,7 @@
   }
 
   .message {
-    font-size: 1rem;
+    font-size: var(--text-body);
     line-height: 1.5;
     color: #B8A88F;
     margin: 0 0 32px;
@@ -120,7 +120,7 @@
   .primary,
   .ghost {
     font-family: 'General Sans', system-ui, sans-serif;
-    font-size: 1rem;
+    font-size: var(--text-body);
     font-weight: 600;
     padding: 12px 24px;
     border: 0;
@@ -160,7 +160,7 @@
   }
   .route-out a {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: #B8A88F;

@@ -97,10 +97,10 @@
   .title { min-width: 0; display: flex; align-items: center; gap: 0.75rem; }
   .swatch { width: 30px; height: 30px; flex-shrink: 0; border-radius: 0; }
   .title-text { min-width: 0; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.8rem, 5vw, 2.4rem); line-height: 1; margin: 0; letter-spacing: 0; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: var(--text-display); line-height: 1; margin: 0; letter-spacing: 0; }
   .pill {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     padding: 3px 8px;
     white-space: nowrap;
   }
@@ -121,7 +121,7 @@
     text-decoration: none;
     font: inherit;
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--text-small);
     background: transparent;
     cursor: pointer;
     border-radius: 0;
@@ -148,7 +148,7 @@
     text-decoration: none;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
-    font-size: 14px;
+    font-size: var(--text-small);
     font-weight: 500;
   }
   .tabs a.active { color: var(--sunset); border-bottom-color: var(--sunset); }
@@ -177,7 +177,7 @@
       margin-top: 0.15rem;
     }
     h1 {
-      font-size: 1.85rem;
+      font-size: var(--text-title);
       line-height: 1.08;
     }
     .tabs {

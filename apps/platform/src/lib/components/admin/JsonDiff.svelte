@@ -75,13 +75,13 @@
 <style>
   .none {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-secondary, #B8A88F);
   }
   .diff {
     border-collapse: collapse;
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .diff th {
     text-align: left;

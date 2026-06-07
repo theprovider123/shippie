@@ -337,7 +337,7 @@
   }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-size: var(--text-display);
     letter-spacing: 0;
     line-height: 1;
     margin: 0;
@@ -346,7 +346,7 @@
     color: var(--text-secondary);
     margin: clamp(0.65rem, 1.6vw, var(--space-md)) 0 0;
     max-width: 34rem;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   .head-tools {
@@ -379,7 +379,7 @@
     min-height: 44px;
     padding: 0 14px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     color: var(--text-light);
     border: 1px solid var(--border-light);
     border-radius: 0;
@@ -422,14 +422,14 @@
     min-width: 0;
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     font-weight: 600;
     letter-spacing: 0;
     overflow-wrap: anywhere;
   }
   .section-hint {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     letter-spacing: 0;
     text-align: right;
@@ -461,7 +461,7 @@
   }
   .page-link {
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--sunset);
   }
   @media (max-width: 1024px) {
@@ -508,11 +508,11 @@
     }
     .lede {
       margin-top: 0.75rem;
-      font-size: 0.95rem;
+      font-size: var(--text-body);
       line-height: 1.45;
     }
     .title {
-      font-size: clamp(2rem, 10vw, 2.7rem);
+      font-size: var(--text-display);
       line-height: 1;
     }
     .results {
@@ -540,7 +540,7 @@
   .empty-lede {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
     max-width: 56ch;
   }
@@ -548,7 +548,7 @@
     display: inline-block;
     margin-left: 0.4rem;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--sunset);
     text-decoration: none;
   }

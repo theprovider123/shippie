@@ -194,21 +194,21 @@ shippie deploy ./dist</code></pre>
   .header-mark { display: block; width: 40px; height: 40px; margin-bottom: 0.75rem; }
   .eyebrow {
     margin: 0 0 0.55rem;
-    font-size: 11px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.16em;
     color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
   }
-  h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(2.35rem, 6vw, 4rem); line-height: 0.98; margin: 0; letter-spacing: 0; max-width: 760px; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: var(--text-display); line-height: 0.98; margin: 0; letter-spacing: 0; max-width: 760px; }
   h2 {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(1.5rem, 3vw, 2.15rem);
+    font-size: var(--text-title);
     line-height: 1.05;
     margin: 0;
     letter-spacing: -0.01em;
   }
-  .lede { color: var(--ink-muted-warm); font-size: 1rem; line-height: 1.5; max-width: 560px; }
+  .lede { color: var(--ink-muted-warm); font-size: var(--text-body); line-height: 1.5; max-width: 560px; }
   .hero > *,
   .hero-status {
     min-width: 0;
@@ -220,11 +220,11 @@ shippie deploy ./dist</code></pre>
   .status-kicker {
     margin: 0 0 0.75rem;
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
     color: var(--sunset);
     text-transform: uppercase;
   }
-  .hero-status ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.65rem; color: var(--ink-muted-warm); font-size: 14px; line-height: 1.35; }
+  .hero-status ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.65rem; color: var(--ink-muted-warm); font-size: var(--text-small); line-height: 1.35; }
   .hero-status li::before { content: "✓"; color: var(--success); margin-right: 0.5rem; }
 
   .remix-panel {
@@ -235,7 +235,7 @@ shippie deploy ./dist</code></pre>
     padding: 1.25rem 0;
     border-bottom: 1px solid var(--paper-cream);
   }
-  .remix-panel h2 { font-size: 1.8rem; }
+  .remix-panel h2 { font-size: var(--text-title); }
   .remix-panel p {
     margin: 0.55rem 0 0;
     color: var(--ink-muted-warm);
@@ -244,7 +244,7 @@ shippie deploy ./dist</code></pre>
   .remix-panel .meta-line {
     color: var(--text-muted-warm);
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
     overflow-wrap: anywhere;
   }
   .remix-actions {
@@ -275,7 +275,7 @@ shippie deploy ./dist</code></pre>
   }
 
   .starter-row { display: grid; gap: 0.6rem; min-width: 0; margin-bottom: 1.5rem; }
-  .starter-row h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0; letter-spacing: -0.01em; }
+  .starter-row h2 { font-family: 'Fraunces', Georgia, serif; font-size: var(--text-heading); margin: 0; letter-spacing: -0.01em; }
   .starter-list {
     list-style: none;
     margin: 0;
@@ -296,8 +296,8 @@ shippie deploy ./dist</code></pre>
     min-height: var(--touch-min, 44px);
   }
   .starter-list a:hover { background: rgba(232, 96, 60, 0.08); border-color: var(--sunset); }
-  .starter-list strong { font-size: 14px; }
-  .starter-list span { font-size: 12px; color: var(--text-muted-warm); overflow-wrap: anywhere; }
+  .starter-list strong { font-size: var(--text-small); }
+  .starter-list span { font-size: var(--text-caption); color: var(--text-muted-warm); overflow-wrap: anywhere; }
   @media (prefers-color-scheme: dark) {
     .starter-list a { background: rgba(232, 96, 60, 0.06); border-color: rgba(232, 96, 60, 0.22); }
     .starter-list span { color: var(--text-secondary); }
@@ -313,7 +313,7 @@ shippie deploy ./dist</code></pre>
     min-width: 0;
   }
   .section-head { min-width: 0; }
-  .section-head p { color: var(--ink-muted-warm); font-size: 14px; margin: 0.8rem 0 0; line-height: 1.55; overflow-wrap: anywhere; }
+  .section-head p { color: var(--ink-muted-warm); font-size: var(--text-small); margin: 0.8rem 0 0; line-height: 1.55; overflow-wrap: anywhere; }
   .form-surface { min-width: 0; max-width: 100%; }
 
   .next-tools {
@@ -324,13 +324,13 @@ shippie deploy ./dist</code></pre>
   }
   .next-tools article { min-width: 0; padding: 1rem; border-right: 1px solid var(--paper-cream); }
   .next-tools article:last-child { border-right: 0; }
-  .next-tools h3 { margin: 0 0 0.65rem; font-size: 1rem; line-height: 1.2; }
+  .next-tools h3 { margin: 0 0 0.65rem; font-size: var(--text-body); line-height: 1.2; }
   pre {
     background: var(--bg);
     color: var(--text);
     padding: 0.75rem 1rem;
     border-radius: 0;
-    font-size: 13px;
+    font-size: var(--text-small);
     margin: 0;
     max-width: 100%;
     overflow-x: auto;
@@ -356,12 +356,12 @@ shippie deploy ./dist</code></pre>
     margin: 0;
     padding-left: 1.25rem;
     color: var(--ink-muted-warm);
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.55;
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  .footer { color: var(--text-muted-warm); font-size: 13px; }
+  .footer { color: var(--text-muted-warm); font-size: var(--text-small); }
   code { font-family: ui-monospace, monospace; font-size: 0.9em; }
   @media (max-width: 1024px) {
     .hero, .remix-panel, .primary-flow, .next { grid-template-columns: 1fr; }
@@ -385,11 +385,11 @@ shippie deploy ./dist</code></pre>
       margin-bottom: 0.75rem;
     }
     h1 {
-      font-size: clamp(2.25rem, 13vw, 3.5rem);
+      font-size: var(--text-display);
       line-height: 0.98;
     }
     .lede {
-      font-size: 1rem;
+      font-size: var(--text-body);
     }
     .primary-flow {
       gap: 1rem;

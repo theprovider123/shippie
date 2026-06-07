@@ -227,7 +227,7 @@
     height: 16px;
     overflow: hidden;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
   }
   .card-eyebrow .category { flex: 0 0 auto; }
@@ -235,7 +235,7 @@
   .card-name {
     font-family: var(--font-heading);
     font-weight: 600;
-    font-size: 1.125rem;
+    font-size: var(--text-lede);
     line-height: 1.2;
     color: var(--text);
     overflow: hidden;
@@ -243,7 +243,7 @@
     white-space: nowrap;
   }
   .card-blurb {
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.5;
     color: var(--text-secondary);
     display: -webkit-box;
@@ -269,7 +269,7 @@
     align-items: center;
     gap: 4px;
     padding: 2px 6px;
-    font-size: 10px;
+    font-size: var(--text-caption);
     border: 1px solid var(--border-light);
     color: var(--text-light);
     background: transparent;
@@ -291,7 +291,7 @@
     border-radius: 0;
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     cursor: pointer;
     transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   }

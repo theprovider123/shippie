@@ -72,20 +72,20 @@
   }
   .mini-label {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     line-height: 1.1;
   }
   .lede {
     color: var(--text-secondary);
     line-height: 1.55;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .section {
     display: grid;
@@ -122,7 +122,7 @@
     display: grid;
     gap: var(--space-sm);
     background: var(--bg);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .move-list strong {
     color: var(--text);
@@ -132,17 +132,17 @@
   }
   .device-summary {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   .status {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   @media (max-width: 640px) {
     h3 {
-      font-size: 1.35rem;
+      font-size: var(--text-subhead);
     }
   }
 </style>

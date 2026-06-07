@@ -141,7 +141,7 @@
   }
   .dl-btn {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.04em;
     padding: 4px 10px;
     border: 1px solid var(--border);

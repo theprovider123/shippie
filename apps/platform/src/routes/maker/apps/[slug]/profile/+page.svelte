@@ -5,6 +5,6 @@
 <style>
   .redirect-note {
     color: var(--text-muted-warm);
-    font-size: var(--small-size, 0.9rem);
+    font-size: var(--text-small);
   }
 </style>

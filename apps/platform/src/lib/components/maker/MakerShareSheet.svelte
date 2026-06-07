@@ -111,14 +111,14 @@
     border: 0;
     background: none;
     color: var(--text-secondary, #b8a88f);
-    font-size: 24px;
+    font-size: var(--text-heading);
     line-height: 1;
     cursor: pointer;
   }
   h2 {
     margin: 0;
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.2rem;
+    font-size: var(--text-lede);
     text-align: center;
   }
   .qr {
@@ -141,7 +141,7 @@
     margin: 0;
     color: var(--text-secondary, #b8a88f);
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
     overflow-wrap: anywhere;
     text-align: center;
   }

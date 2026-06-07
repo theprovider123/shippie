@@ -356,7 +356,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     align-items: center;
     gap: 0.4rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -365,13 +365,13 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   .eyebrow img { display: block; }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: var(--text-display);
     letter-spacing: 0;
     margin: 0.25rem 0 var(--space-md);
     line-height: 1.05;
   }
   .lede {
-    font-size: var(--body-size);
+    font-size: var(--text-body);
     color: var(--text-secondary);
     line-height: 1.6;
     max-width: 620px;
@@ -401,14 +401,14 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   .paper-eyebrow {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     color: var(--sunset);
   }
   .paper-card h2 {
     margin: 6px 0 8px;
     font-family: var(--font-heading);
-    font-size: clamp(1.6rem, 3vw, 2.25rem);
+    font-size: var(--text-title);
     font-weight: 600;
     letter-spacing: 0;
     line-height: 1.1;
@@ -416,7 +416,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   .paper-blurb {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--body-size);
+    font-size: var(--text-body);
     line-height: 1.55;
     max-width: 56ch;
   }
@@ -460,7 +460,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   .pillar-eyebrow {
     margin: 0 0 8px;
     font-family: var(--font-heading);
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--sunset);
@@ -468,7 +468,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   .pillar-blurb {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
 
@@ -498,7 +498,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     top: var(--space-sm);
     right: var(--space-sm);
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: var(--text-body);
     color: var(--text-light);
     transition: color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
   }
@@ -516,14 +516,14 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   }
   .card-eyebrow {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     color: var(--text-light);
     margin: 0 0 4px;
   }
   .card-blurb {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
     margin: 0;
   }
@@ -536,13 +536,13 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   }
   .section h2 {
     font-family: var(--font-heading);
-    font-size: 1.75rem;
+    font-size: var(--text-title);
     letter-spacing: 0;
     margin: 0 0 var(--space-md);
   }
   .section h3 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     letter-spacing: 0;
     margin: var(--space-lg) 0 var(--space-xs);
     scroll-margin-top: calc(var(--nav-height) + var(--space-md));
@@ -559,7 +559,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   .section li { margin-bottom: 6px; }
   .section li > strong:first-child { color: var(--sage-leaf); }
   .section-lede {
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     color: var(--text-secondary);
     margin-bottom: var(--space-md);
     max-width: 64ch;
@@ -581,7 +581,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     border: 1px solid var(--border-light);
     padding: var(--space-md);
     font-family: var(--font-mono);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     line-height: 1.7;
     overflow-x: auto;
     color: var(--text);
@@ -598,7 +598,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     width: 100%;
     border-collapse: collapse;
     margin: var(--space-md) 0 var(--space-lg);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .license-table th,
   .license-table td {
@@ -611,7 +611,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   }
   .license-table th {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     color: var(--text-light);
     text-transform: uppercase;
@@ -637,7 +637,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   }
   .paths dt {
     font-family: var(--font-heading);
-    font-size: 1.1rem;
+    font-size: var(--text-lede);
     color: var(--text);
   }
   .paths dd {

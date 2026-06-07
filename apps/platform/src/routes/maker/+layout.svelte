@@ -64,7 +64,7 @@
     padding: 0 0.7rem;
     color: var(--text-muted-warm);
     text-decoration: none;
-    font-size: 14px;
+    font-size: var(--text-small);
     font-weight: 500;
     border-bottom: 2px solid transparent;
     white-space: nowrap;

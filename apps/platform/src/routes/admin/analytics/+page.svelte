@@ -280,7 +280,7 @@
   .header { margin-bottom: 1.5rem; }
   .eyebrow {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--sunset, #E8603C);
@@ -291,8 +291,8 @@
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
     letter-spacing: -0.02em;
   }
-  h1 { font-size: 2.25rem; margin: 0.25rem 0 0.5rem; }
-  h2 { font-size: 1.35rem; margin: 0; }
+  h1 { font-size: var(--text-title); margin: 0.25rem 0 0.5rem; }
+  h2 { font-size: var(--text-subhead); margin: 0; }
   .lede,
   .muted,
   .section-head p,
@@ -326,16 +326,16 @@
   .thead,
   .bar-row time {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-secondary, #B8A88F);
   }
-  .stat-grid strong { font-family: var(--font-heading, Georgia, serif); font-size: 1.65rem; }
+  .stat-grid strong { font-family: var(--font-heading, Georgia, serif); font-size: var(--text-heading); }
   .stat-grid p {
     margin: 0;
     color: var(--text-secondary, #B8A88F);
-    font-size: 0.82rem;
+    font-size: var(--text-small);
   }
   .spaces-panel {
     margin-bottom: 1rem;
@@ -356,7 +356,7 @@
   }
   .device-row span {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-secondary, #B8A88F);
@@ -369,7 +369,7 @@
   }
   .panel { padding: 1rem; margin-bottom: 1rem; }
   .section-head { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-  .section-head p { margin: 0; font-size: 0.9rem; }
+  .section-head p { margin: 0; font-size: var(--text-body); }
   .bars { display: grid; gap: 0.7rem; }
   .bar-row {
     display: grid;

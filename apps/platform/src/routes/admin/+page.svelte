@@ -56,7 +56,7 @@
   .header { margin-bottom: 1.5rem; }
   .eyebrow {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--sunset, #E8603C);
@@ -64,7 +64,7 @@
   }
   h1 {
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: 2.25rem;
+    font-size: var(--text-title);
     margin: 0.25rem 0 0.5rem 0;
     letter-spacing: -0.02em;
   }
@@ -82,7 +82,7 @@
   .field { display: flex; flex-direction: column; gap: 0.25rem; min-width: 180px; }
   .field span {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--text-secondary, #B8A88F);
@@ -94,7 +94,7 @@
     border-radius: 0;
     padding: 6px 10px;
     font: inherit;
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
   }
   .apply {
     background: var(--sunset, #E8603C);
@@ -104,12 +104,12 @@
     padding: 8px 18px;
     font-weight: 600;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .reset {
     color: var(--text-secondary, #B8A88F);
     text-decoration: none;
-    font-size: 12px;
+    font-size: var(--text-caption);
     padding: 8px 4px;
   }
   .reset:hover { color: var(--sunset, #E8603C); }

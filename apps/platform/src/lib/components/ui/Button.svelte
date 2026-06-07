@@ -67,9 +67,9 @@
   }
   .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  .size-sm { padding: 0.5rem 1.125rem; font-size: var(--small-size); }
-  .size-md { padding: 0.75rem 1.5rem; font-size: var(--body-size); }
-  .size-lg { padding: 1rem 2.5rem; font-size: clamp(1rem, 2vw, 1.125rem); }
+  .size-sm { padding: 0.5rem 1.125rem; font-size: var(--text-small); }
+  .size-md { padding: 0.75rem 1.5rem; font-size: var(--text-body); }
+  .size-lg { padding: 1rem 2.5rem; font-size: var(--text-lede); }
 
   .variant-primary {
     background: var(--sunset);

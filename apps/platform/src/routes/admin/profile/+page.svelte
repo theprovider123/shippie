@@ -186,7 +186,7 @@
   .header { margin-bottom: 1.5rem; }
   .eyebrow {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--sunset, #E8603C);
@@ -197,7 +197,7 @@
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
     letter-spacing: -0.02em;
   }
-  h1 { font-size: 2.25rem; margin: 0.25rem 0 0.5rem; }
+  h1 { font-size: var(--text-title); margin: 0.25rem 0 0.5rem; }
   h2 { margin: 0 0 1rem; }
   .lede,
   .muted,
@@ -228,7 +228,7 @@
   .pulse-head a {
     color: var(--text-secondary, #B8A88F);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   .pulse-head a:hover { color: var(--sunset, #E8603C); }
   .pulse-grid {
@@ -244,19 +244,19 @@
   .pulse-grid span,
   .device-row span {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-secondary, #B8A88F);
   }
   .pulse-grid strong {
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 1.55rem;
+    font-size: var(--text-heading);
   }
   .pulse-grid p {
     margin: 0;
     color: var(--text-secondary, #B8A88F);
-    font-size: 0.82rem;
+    font-size: var(--text-small);
   }
   .device-list {
     display: grid;
@@ -294,7 +294,7 @@
     display: grid;
     gap: 0.35rem;
     position: relative;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     color: var(--text-secondary, #B8A88F);
   }
   label.wide { grid-column: 1 / -1; }
@@ -336,7 +336,7 @@
     margin: 1rem 0;
     overflow: hidden;
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 2rem;
+    font-size: var(--text-title);
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
   .handle { font-family: var(--font-mono, ui-monospace, monospace); }

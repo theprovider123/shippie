@@ -55,7 +55,7 @@
     align-items: center;
     gap: 0.6rem 1.25rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     color: var(--text-light);
   }
   .footer-brandline,
@@ -71,7 +71,7 @@
     gap: 0.4rem;
     min-height: var(--touch-min, 44px);
     font-family: var(--font-heading);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 700;
     color: var(--text-secondary);
   }
@@ -94,7 +94,7 @@
     align-items: center;
     gap: 0.75rem;
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: var(--text-caption);
     color: var(--text-light);
   }
   @media (max-width: 640px) {

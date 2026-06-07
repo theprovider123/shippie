@@ -56,7 +56,7 @@
     gap: 0.65rem;
     color: var(--text, #EDE4D3);
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     font-weight: 600;
     letter-spacing: 0;
   }
@@ -78,7 +78,7 @@
     border: 1px solid var(--border-light, #2E2822);
     color: var(--text-secondary, #B8A88F);
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    font-size: 0.68rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -99,7 +99,7 @@
 
     .actions a {
       padding: 0 0.7rem;
-      font-size: 0.62rem;
+      font-size: var(--text-caption);
     }
   }
 </style>

@@ -367,7 +367,7 @@
     align-items: center;
     min-height: var(--touch-min);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--text);
@@ -391,7 +391,7 @@
   }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(1.9rem, 5vw, 2.4rem);
+    font-size: var(--text-display);
     line-height: 1.1;
     letter-spacing: 0;
     margin: 0;
@@ -399,7 +399,7 @@
   }
   .tagline {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     line-height: 1.45;
     opacity: 0.92;
     color: var(--text-secondary);
@@ -407,7 +407,7 @@
   }
   .kind {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     opacity: 0.75;
@@ -431,7 +431,7 @@
     background: var(--surface);
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -464,7 +464,7 @@
     background: var(--sunset);
     color: var(--bg);
     font-weight: 600;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     transition: filter 0.15s;
   }
   .open-btn:hover { filter: brightness(1.06); }
@@ -480,7 +480,7 @@
     border: 1px solid var(--border-light);
     border-radius: 0;
     font: inherit;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     text-transform: none;
     letter-spacing: normal;
   }
@@ -498,7 +498,7 @@
     border: 1px solid var(--border-light);
     border-radius: 0;
     font: inherit;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
   }
@@ -526,14 +526,14 @@
   }
   .section h2 {
     font-family: var(--font-heading);
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     margin: 0 0 var(--space-md);
     letter-spacing: 0;
   }
   .what-body {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 1.02rem;
+    font-size: var(--text-body);
     line-height: 1.6;
     white-space: pre-line;
   }
@@ -554,7 +554,7 @@
   .facts dt {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -562,7 +562,7 @@
   .facts dd {
     margin: 0;
     color: var(--text);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
     overflow-wrap: anywhere;
   }
@@ -585,7 +585,7 @@
     align-items: center;
     gap: 0.4rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -597,7 +597,7 @@
   .checked-line {
     margin: 0 0 var(--space-md);
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
   }
   .checked-line strong { color: var(--text); }
@@ -608,7 +608,7 @@
     padding: 0;
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.7;
   }
   .changelog-entries li::before { content: '· '; }
@@ -621,7 +621,7 @@
   }
   .version-strip {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     color: var(--text-light);
   }
   .owner-edit {
@@ -643,7 +643,7 @@
     display: grid;
     gap: 0.35rem;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 700;
   }
   .owner-edit input,
@@ -722,7 +722,7 @@
     border: 1px solid var(--border-light);
     background: var(--surface);
     color: var(--text);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .remix-link:hover { background: var(--surface-alt); border-color: var(--sunset); }
   .remix-command {
@@ -734,7 +734,7 @@
     color: var(--text-secondary);
     background: var(--surface);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     overflow-wrap: anywhere;
   }
   @media (max-width: 640px) {

@@ -74,17 +74,17 @@
   .intent-prompt p {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
   .intent-prompt code {
     background: var(--surface-alt);
     padding: 0.1rem 0.3rem;
     border-radius: 0;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
   }
   .intent-prompt .hint {
     color: var(--text-light);
-    font-size: 0.85rem;
+    font-size: var(--text-small);
   }
   .intent-prompt-actions {
     display: flex;
@@ -97,7 +97,7 @@
     padding: 0.5rem 1rem;
     border-radius: 0;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
   .intent-deny {
     background: var(--surface-alt);

@@ -352,14 +352,14 @@
     gap: 3px;
   }
   .card.compact h3 {
-    font-size: 1.02rem;
+    font-size: var(--text-body);
     line-height: 1.12;
     -webkit-line-clamp: 1;
     line-clamp: 1;
   }
   .card.compact .blurb {
     margin-top: 2px;
-    font-size: 13px;
+    font-size: var(--text-small);
     line-height: 1.35;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -378,7 +378,7 @@
     align-items: center;
     gap: 6px 8px;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0;
     color: var(--text-light);
   }
@@ -388,7 +388,7 @@
     align-items: center;
     gap: 4px;
     padding: 2px 6px;
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0;
     border: 1px solid var(--border-light);
     color: var(--text-light);
@@ -427,7 +427,7 @@
   h3 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.125rem;
+    font-size: var(--text-lede);
     font-weight: 600;
     letter-spacing: 0;
     line-height: 1.2;
@@ -441,7 +441,7 @@
 
   .blurb {
     margin: 4px 0 0;
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.5;
     color: var(--text-secondary);
     display: -webkit-box;
@@ -458,13 +458,13 @@
   .recency {
     margin: 6px 0 0;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     color: var(--text-light);
   }
   .launching-label {
     margin: 6px 0 0;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--sunset);
     letter-spacing: 0;
   }
@@ -487,7 +487,7 @@
     border-radius: 0;
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     cursor: pointer;
     transition:
       color 0.15s var(--ease-out),
@@ -526,7 +526,7 @@
       width: 52px !important;
       height: 52px !important;
     }
-    h3 { font-size: 1rem; }
+    h3 { font-size: var(--text-body); }
   }
 
   @container (max-width: 18rem) {
@@ -556,7 +556,7 @@
       height: 44px !important;
     }
     .card.compact h3 {
-      font-size: 1rem;
+      font-size: var(--text-body);
     }
     .card.compact .blurb {
       -webkit-line-clamp: 1;

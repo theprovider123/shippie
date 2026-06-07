@@ -106,7 +106,7 @@
   }
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -114,7 +114,7 @@
   }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2.25rem, 12vw, 3.6rem);
+    font-size: var(--text-display);
     line-height: 0.98;
     letter-spacing: -0.02em;
     margin: 0;
@@ -135,7 +135,7 @@
   }
   .space-summary p {
     margin: 0;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.45;
   }
   .space-summary strong {
@@ -144,7 +144,7 @@
   .space-summary .summary-title {
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -157,12 +157,12 @@
   }
   .error {
     color: var(--sunset-dim);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-family: var(--font-mono);
     margin: 0;
   }
   .fineprint {
-    font-size: 12px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     font-family: var(--font-mono);
     margin: 0;
@@ -174,7 +174,7 @@
     justify-content: center;
     color: var(--sunset);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     text-decoration: none;

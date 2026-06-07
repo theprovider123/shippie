@@ -570,7 +570,7 @@
     transform: translateX(-50%);
     white-space: nowrap;
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--sunset);

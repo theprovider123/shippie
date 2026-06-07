@@ -104,14 +104,14 @@
 
   .hero h1 {
     font-family: var(--font-heading);
-    font-size: clamp(2.25rem, 6vw, 3.5rem);
+    font-size: var(--text-display);
     line-height: 1.1;
     margin: 0;
     letter-spacing: -0.02em;
   }
   .lede {
     margin-top: 1rem;
-    font-size: 1.125rem;
+    font-size: var(--text-lede);
     color: var(--text-secondary);
     line-height: 1.55;
     max-width: 640px;
@@ -119,13 +119,13 @@
 
   section h2 {
     font-family: var(--font-heading);
-    font-size: clamp(1.5rem, 3vw, 1.75rem);
+    font-size: var(--text-title);
     margin: 0 0 var(--space-md);
     letter-spacing: -0.01em;
   }
   section p {
     margin: 0 0 0.75rem;
-    font-size: var(--body-size);
+    font-size: var(--text-body);
     line-height: 1.6;
     color: var(--text-secondary);
   }

@@ -294,13 +294,13 @@
     min-width: 0;
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.08rem;
+    font-size: var(--text-lede);
   }
   .section-head p {
     max-width: 44rem;
     margin: 0;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     line-height: 1.4;
   }
   .update-trigger {
@@ -314,7 +314,7 @@
     background: var(--surface);
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
@@ -347,13 +347,13 @@
   }
   .dock-section-head h3 {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     letter-spacing: 0;
   }
   .dock-section-head p {
     margin: 3px 0 0;
     color: var(--text-secondary);
-    font-size: 0.86rem;
+    font-size: var(--text-small);
   }
   .dock-tile-grid {
     display: grid;
@@ -380,11 +380,11 @@
   .updates-toolbar strong {
     color: var(--text);
     font-family: var(--font-heading);
-    font-size: 0.98rem;
+    font-size: var(--text-body);
   }
   .updates-toolbar span {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     line-height: 1.35;
   }
   .update-all {
@@ -414,7 +414,7 @@
   }
   .update-group-head h3 {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: var(--text-small);
     font-family: var(--font-mono);
     color: var(--text-secondary);
     letter-spacing: 0.08em;
@@ -428,7 +428,7 @@
     border: 1px solid var(--border-light);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
   }
   .update-list {
     display: grid;
@@ -455,11 +455,11 @@
   .update-row-title strong {
     color: var(--text);
     font-family: var(--font-heading);
-    font-size: 0.98rem;
+    font-size: var(--text-body);
   }
   .update-row-title small {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     line-height: 1.35;
   }
   .update-chips {
@@ -475,7 +475,7 @@
     border: 1px solid var(--border-light);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.04em;
   }
   .update-chips span.attention {
@@ -486,7 +486,7 @@
   .update-note {
     margin: 0.05rem 0 0;
     color: color-mix(in srgb, var(--sunset) 82%, var(--text-secondary));
-    font-size: 0.76rem;
+    font-size: var(--text-small);
     line-height: 1.4;
   }
   .update-row-actions {
@@ -555,11 +555,11 @@
       width: 100%;
     }
     .section-title-row h1 {
-      font-size: clamp(2.05rem, 10vw, 3rem);
+      font-size: var(--text-display);
       line-height: 0.96;
     }
     .section-head p {
-      font-size: 1rem;
+      font-size: var(--text-body);
       line-height: 1.45;
     }
     .update-row {
