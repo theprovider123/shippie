@@ -135,6 +135,7 @@
     launcherMemory,
     recordAppLaunch,
     removeSavedApp,
+    forgetRecentApp,
     saveAppToDock,
   } from '$lib/stores/launcher-memory';
   import { ensureAppOffline } from '$lib/stores/cached-slugs';
@@ -883,6 +884,7 @@
 
   function removeSavedTool(slug: string) {
     removeSavedApp(slug);
+    forgetRecentApp(slug);
     const app = launchVisibleAppBySlug.get(slug);
     toast.push({ kind: 'info', message: `${app?.name ?? 'Tool'} removed from Dock.` });
   }
@@ -926,7 +928,12 @@
   // before launcher-memory hydrates in onMount.
   let launcherHydrated = $state(false);
   const dockEmpty = $derived(
-    railGroups.open.length === 0 && railGroups.saved.length === 0 && railGroups.recent.length === 0,
+    railGroups.open.length === 0 &&
+      railGroups.saved.length === 0 &&
+      railGroups.recent.length === 0 &&
+      // Pending updates always keep the home view (so the Updates box shows),
+      // even if nothing is currently saved/running/recent.
+      updateCards.length === 0,
   );
   const starterApps = $derived(pickStarters(launchVisibleApps, PUBLIC_FLAGSHIP_SLUGS, 4));
   const drawerSavedSet = $derived(new Set($launcherMemory.saved));
@@ -3728,6 +3735,7 @@
               onOpenTool={openRailTool}
               onCloseTool={closeRailTool}
               onRemoveSavedTool={removeSavedTool}
+              onForgetRecent={removeSavedTool}
               onStayOnCurrent={stayOnCurrent}
               onAcceptUpdate={acceptUpdate}
               onAcceptAllUpdates={acceptAllUpdates}

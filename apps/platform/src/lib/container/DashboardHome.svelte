@@ -41,6 +41,7 @@
     onOpenTool: (slug: string) => void;
     onCloseTool?: (slug: string) => void;
     onRemoveSavedTool?: (slug: string) => void;
+    onForgetRecent?: (slug: string) => void;
     onStayOnCurrent: (appId: string) => void;
     onAcceptUpdate: (appId: string) => void;
     onAcceptAllUpdates: (appIds: readonly string[]) => void;
@@ -55,6 +56,7 @@
     onOpenTool,
     onCloseTool,
     onRemoveSavedTool,
+    onForgetRecent,
     onStayOnCurrent,
     onAcceptUpdate,
     onAcceptAllUpdates,
@@ -226,7 +228,11 @@
           onOpen={() => onOpenTool(tool.slug)}
           onReview={() => openUpdates()}
           onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
-          onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
+          onRemove={sectionId === 'saved' && onRemoveSavedTool
+            ? () => onRemoveSavedTool(tool.slug)
+            : sectionId === 'recent' && onForgetRecent
+              ? () => onForgetRecent(tool.slug)
+              : undefined}
         />
       {/each}
     </div>

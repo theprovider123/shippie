@@ -94,7 +94,9 @@ export function toolState(input: ToolStateInput): ToolState {
     // saved offline copy is broken so the fix is never hidden.
     save: !isSaved || savedButBroken,
     close: input.isRunning,
-    remove: isSaved && input.surface !== 'tools',
+    // Saved tools unsave; recents can be forgotten too (a little × on the Dock).
+    // Never on the Tools catalog surface.
+    remove: (isSaved || input.recentSlugs.has(input.slug)) && input.surface !== 'tools',
     review: updateState !== 'none',
   };
 
