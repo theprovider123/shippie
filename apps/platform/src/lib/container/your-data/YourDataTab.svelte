@@ -269,8 +269,9 @@
     justify-content: space-between;
     gap: 12px;
     padding: 12px 14px;
-    border: 1px solid rgba(232, 96, 60, 0.34);
-    background: rgba(232, 96, 60, 0.08);
+    border: 1px solid var(--sunset);
+    background: var(--surface);
+    color: var(--text);
     font-size: 13px;
   }
   .dismiss {
@@ -279,11 +280,15 @@
     display: inline-flex;
     align-items: center;
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     color: var(--text);
     font: inherit;
     font-size: 12px;
     cursor: pointer;
+  }
+  .dismiss:hover {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
   }
   .segmented {
     position: sticky;
@@ -291,8 +296,8 @@
     z-index: 5;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg);
   }
   .segmented button {
     min-height: 44px;
@@ -311,7 +316,6 @@
     outline-offset: -2px;
   }
   .segmented button.active {
-    background: var(--surface-alt);
     color: var(--sunset);
     font-weight: 600;
     box-shadow: inset 0 -2px 0 var(--sunset);

@@ -111,7 +111,9 @@
 
   function clearLocalMemory() {
     if (!hasLocalData) return;
-    const ok = window.confirm('Clear Dock memory on this device? Offline app files stay available.');
+    const ok = window.confirm(
+      'Reset your Dock on this device? This clears your recent and saved tools here. Your saved offline files and app data stay untouched.',
+    );
     if (ok) clearLauncherMemory();
   }
 
@@ -285,14 +287,12 @@
       {/if}
 
       <div class="data-actions">
-        <a href="/dock?section=data&pane=tools" class="secondary-action primary-action">App data &amp; receipts</a>
-        <a href="/dock?section=data&pane=backup" class="secondary-action">Back up</a>
-        <a href="/dock?section=data&pane=devices" class="secondary-action">Move to a device</a>
+        <a href="/dock?section=data" class="secondary-action primary-action">Manage data</a>
         <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
-          {storagePinned ? 'Storage protected' : storagePinning ? 'Protecting storage' : 'Protect offline storage'}
+          {storagePinned ? 'Offline protected' : storagePinning ? 'Protecting…' : 'Keep offline'}
         </button>
         <button type="button" class="text-danger" disabled={!hasLocalData} onclick={clearLocalMemory}>
-          Clear Dock memory
+          Reset Dock
         </button>
       </div>
     </section>

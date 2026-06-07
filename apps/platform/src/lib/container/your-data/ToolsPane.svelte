@@ -53,12 +53,12 @@
   }
 </script>
 
-<section class="card" aria-labelledby="tools-heading">
+<section class="section" aria-labelledby="tools-heading">
   <header>
     <div>
       <p class="mini-label">Apps</p>
       <h3 id="tools-heading">Apps on this device</h3>
-      <p class="lede">Tap an app to see what it keeps, clear its data, or uninstall it.</p>
+      <p class="lede">Tap an app to see what it keeps, clear its data, or remove it.</p>
     </div>
     {#if showSearch}
       <input
@@ -94,21 +94,26 @@
 </section>
 
 {#if recoveredReceipts.length > 0}
-  <section class="card waiting" aria-labelledby="waiting-heading">
-    <h3 id="waiting-heading">Restored app data</h3>
-    <p class="lede">
-      These came back from a backup, but the matching app is not installed here yet.
-      Import the app package when you are ready to reconnect it.
-    </p>
+  <section class="section waiting" aria-labelledby="waiting-heading">
+    <header>
+      <div>
+        <p class="mini-label">Restored</p>
+        <h3 id="waiting-heading">Waiting to reconnect</h3>
+        <p class="lede">
+          These came back from a backup, but the matching app is not installed here yet.
+          Add the app again when you are ready to reconnect it.
+        </p>
+      </div>
+    </header>
     <ul class="rows">
       {#each recoveredReceipts as item (item.appId)}
         <li class="row-waiting">
           <span class="meta">
             <span class="name">{item.receipt.name ?? item.appId}</span>
-            <span class="count">v{item.receipt.version} · {rowCount(item.appId)} restored rows</span>
+            <span class="count">v{item.receipt.version} · {rowCount(item.appId)} restored items</span>
           </span>
           <span class="waiting-actions">
-            <button onclick={() => onImportPackageForReceipt(item.appId)}>Import package</button>
+            <button onclick={() => onImportPackageForReceipt(item.appId)}>Add app</button>
             <button onclick={() => onForgetRecoveredReceipt(item.appId)}>Forget</button>
           </span>
         </li>
@@ -147,14 +152,15 @@
     text-transform: uppercase;
     color: var(--text-light);
   }
-  .card {
-    padding: var(--space-lg);
-    border: 1px solid var(--border-light);
-    background: var(--surface);
+  .section {
     display: grid;
     gap: var(--space-md);
   }
-  .card header {
+  .section.waiting {
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-light);
+  }
+  .section header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -203,14 +209,15 @@
     align-items: center;
     gap: 12px;
     border: 1px solid var(--border-light);
-    background: var(--bg);
+    background: var(--surface);
     color: var(--text);
     cursor: pointer;
     font: inherit;
     text-align: left;
   }
   .row:hover {
-    background: var(--surface);
+    background: var(--surface-alt);
+    border-color: var(--sunset);
   }
   .icon {
     width: var(--touch-min);
@@ -219,7 +226,7 @@
     place-items: center;
     border: 1px solid var(--border-light);
     background: var(--accent, var(--surface));
-    color: var(--bg-pure);
+    color: var(--bg);
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     font-weight: 700;
@@ -248,15 +255,6 @@
     font-size: 1.1rem;
     line-height: 1;
   }
-  .waiting {
-    border-style: dashed;
-    background: var(--surface);
-  }
-  .waiting .lede {
-    color: var(--text-secondary);
-    line-height: 1.55;
-    font-size: var(--small-size);
-  }
   .row-waiting {
     padding: 10px 12px;
     display: flex;
@@ -264,7 +262,7 @@
     align-items: center;
     gap: 10px;
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     flex-wrap: wrap;
   }
   .waiting-actions {
@@ -276,16 +274,17 @@
     min-height: var(--touch-min);
     padding: 0.45rem 0.7rem;
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     color: var(--text);
     cursor: pointer;
     font: inherit;
   }
+  .waiting-actions button:hover {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
+  }
   @media (max-width: 640px) {
-    .card {
-      padding: var(--space-md);
-    }
-    .card header {
+    .section header {
       display: grid;
       align-items: stretch;
     }

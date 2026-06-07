@@ -55,11 +55,11 @@
   }
 </script>
 
-<section class="card" aria-labelledby="backup-heading">
+<section class="section" aria-labelledby="backup-heading">
   <header>
     <p class="mini-label">Backup</p>
     <h3 id="backup-heading">Encrypted copy</h3>
-    <p>One file, one passphrase. Shippie stores none of the readable contents.</p>
+    <p>One file, one passphrase. Shippie can't read what's inside.</p>
   </header>
 
   <div class="segmented" role="tablist" aria-label="Backup mode">
@@ -130,9 +130,9 @@
   {/if}
 
   <details class="install-records" bind:open={showInstallRecords}>
-    <summary>Install records (advanced)</summary>
-    <p>For support or migration tools. Most people do not need this.</p>
-    <button class="secondary" onclick={onExportReceipts}>Generate install record JSON</button>
+    <summary>App records (advanced)</summary>
+    <p>A list of your installed apps for support or moving tools. Most people don't need this.</p>
+    <button class="secondary" onclick={onExportReceipts}>Generate app record file</button>
     {#if receiptExport}
       <pre>{receiptExport}</pre>
     {/if}
@@ -152,10 +152,7 @@
     text-transform: uppercase;
     color: var(--text-light);
   }
-  .card {
-    padding: var(--space-lg);
-    border: 1px solid var(--border-light);
-    background: var(--surface);
+  .section {
     display: grid;
     gap: var(--space-md);
   }
@@ -175,8 +172,7 @@
   .segmented {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    border: 1px solid var(--border-light);
-    background: var(--surface);
+    border-bottom: 1px solid var(--border-light);
   }
   .segmented button {
     min-height: var(--touch-min);
@@ -186,8 +182,11 @@
     font: inherit;
     cursor: pointer;
   }
+  .segmented button:focus-visible {
+    outline: 2px solid var(--sunset);
+    outline-offset: -2px;
+  }
   .segmented button.active {
-    background: var(--surface-alt);
     color: var(--sunset);
     box-shadow: inset 0 -2px 0 var(--sunset);
     font-weight: 600;
@@ -307,9 +306,6 @@
     line-height: 1.55;
   }
   @media (max-width: 640px) {
-    .card {
-      padding: var(--space-md);
-    }
     h3 {
       font-size: 1.35rem;
     }
