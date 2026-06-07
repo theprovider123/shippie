@@ -141,183 +141,83 @@
 </header>
 
 <div class="body wrap">
-  {#if data.signingTrust || data.trustCard || data.grantedPermissions.length > 0}
-    <details class="section trust-details">
-      <summary>Why this is safe</summary>
-      {#if data.signingTrust}
-        <div class="signed-card" aria-labelledby="signed-card-title">
-          <div>
-            <span>Checked by Shippie</span>
-            <h2 id="signed-card-title">{data.signingTrust.label}</h2>
-            <p>{data.signingTrust.summary}</p>
-          </div>
-          <div>
-            <span>Version</span>
-            <p>
-              {#if data.signingTrust.packageHash}
-                v{data.signingTrust.version ?? 'current'} · {data.signingTrust.packageHash.slice(0, 26)}...
-              {:else}
-                First-party bundle
-              {/if}
-            </p>
-          </div>
-        </div>
-      {/if}
-
+  <section class="section about">
+    <h2>About this tool</h2>
+    <dl class="facts">
       {#if data.trustCard}
-        <div class="trust-card" aria-labelledby="trust-card-title">
-          <div class="section-intro">
-            <h2 id="trust-card-title">What Shippie checked</h2>
-            <p>Details for people who want to inspect the tool before opening it.</p>
-          </div>
-          <div class="trust-grid">
-            <article>
-              <span>Data</span>
-              <strong>{data.trustCard.dataLocation}</strong>
-              <p>{data.trustCard.serverContent}</p>
-            </article>
-            <article>
-              <span>Privacy</span>
-              <strong>{data.trustCard.privacyGrade ?? 'Ungraded'}</strong>
-              <p>
-                {data.trustCard.externalDomains.length === 0
-                  ? 'No external connections detected.'
-                  : `${data.trustCard.externalDomains.length} external domain${data.trustCard.externalDomains.length === 1 ? '' : 's'} detected.`}
-              </p>
-            </article>
-            <article>
-              <span>Security</span>
-              <strong>{securityLabel(data.trustCard.securityScore)}</strong>
-              <p>{eligibilityLabel(data.trustCard.containerEligibility)}</p>
-            </article>
-            <article>
-              <span>Proof</span>
-              <strong>{data.trustCard.proofBadges.length}</strong>
-              <p>
-                {data.trustCard.proofBadges.length > 0
-                  ? data.trustCard.proofBadges.join(' · ')
-                  : 'No runtime proof badges earned yet.'}
-              </p>
-            </article>
-          </div>
-          <div class="trust-detail">
-            <div>
-              <span>Permissions</span>
-              <p>
-                {data.grantedPermissions.length > 0
-                  ? data.grantedPermissions.join(' · ')
-                  : 'No extra permissions declared.'}
-              </p>
-            </div>
-            <div>
-              <span>External connections</span>
-              {#if data.trustCard.externalDomains.length > 0}
-                <div class="domain-list trust-domains">
-                  {#each data.trustCard.externalDomains as domain (domain.domain)}
-                    <p>
-                      {domain.domain} · {domain.purpose}
-                      {domain.personalData ? ' · may involve personal data' : ''}
-                    </p>
-                  {/each}
-                </div>
-              {:else}
-                <p>No external connections were detected in the latest package scan.</p>
-              {/if}
-            </div>
-          </div>
+        <div><dt>Your data</dt><dd>{data.trustCard.dataLocation}</dd></div>
+        <div>
+          <dt>Privacy</dt>
+          <dd>{data.trustCard.privacyGrade ?? 'Ungraded'} · {data.trustCard.externalDomains.length === 0 ? 'no external connections' : `${data.trustCard.externalDomains.length} external connection${data.trustCard.externalDomains.length === 1 ? '' : 's'}`}</dd>
         </div>
-      {:else if data.grantedPermissions.length > 0}
-      <ul class="perms">
-        {#each data.grantedPermissions as perm (perm)}
-          <li>
-            <span class="check" aria-hidden="true">✓</span>
-            <span>{perm}</span>
-          </li>
-        {/each}
-      </ul>
       {/if}
-    </details>
-  {/if}
-
-  {#if data.changelog && data.changelog.entries.length > 0}
-    <section class="section">
-      <h2>Latest changes</h2>
-      <p class="changelog-summary">{data.changelog.summary}</p>
-      <ul class="changelog-entries">
-        {#each data.changelog.entries as entry, i (i)}
-          <li>{entry}</li>
-        {/each}
-      </ul>
-    </section>
-  {/if}
-
-  <section class="section ownership">
-    <div>
-      <h2>Maker &amp; Ownership</h2>
-      <p>
-        Made by {data.ownership.maker.name}
-        {#if data.ownership.maker.username}
-          <span class="muted">(@{data.ownership.maker.username})</span>
-        {/if}
-        {#if data.ownership.maker.verified}
-          <span class="pill">Verified maker</span>
-        {/if}
-      </p>
-    </div>
-    <div class="ownership-grid">
-      <article>
-        <span>Standalone URL</span>
-        <a href={data.ownership.standaloneUrl} target="_blank" rel="noopener">
-          {data.ownership.standaloneUrl.startsWith('/')
-            ? `shippie.app${data.ownership.standaloneUrl}`
-            : new URL(data.ownership.standaloneUrl).host}
-        </a>
-      </article>
-      <article>
-        <span>Custom domains</span>
-        {#if data.ownership.customDomains.length > 0}
-          <div class="domain-list">
-            {#each data.ownership.customDomains as domain (domain.domain)}
-              <a href={`https://${domain.domain}/`} target="_blank" rel="noopener">
-                {domain.domain}{domain.isCanonical ? ' · canonical' : ''}
-              </a>
-            {/each}
-          </div>
-        {:else}
-          <p class="muted">None verified yet</p>
-        {/if}
-      </article>
-      <article>
-        <span>Source</span>
-        {#if data.ownership.sourceRepo}
-          <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
-        {:else}
-          <p class="muted">Source not published</p>
-        {/if}
-      </article>
-      <article>
-        <span>License &amp; remix</span>
-        <p>
-          {data.ownership.license ?? 'Unlicensed'}
-          · {data.ownership.remixAvailable ? 'Remix allowed' : 'Remix closed'}
-        </p>
-      </article>
+      <div>
+        <dt>Made by</dt>
+        <dd>{data.ownership.maker.name}{#if data.ownership.maker.username}&nbsp;<span class="muted">@{data.ownership.maker.username}</span>{/if}{#if data.ownership.maker.verified}&nbsp;· verified{/if}</dd>
+      </div>
+      <div>
+        <dt>Source</dt>
+        <dd>{#if data.ownership.sourceRepo}<a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>{:else}<span class="muted">Not published</span>{/if}</dd>
+      </div>
+      <div>
+        <dt>License</dt>
+        <dd>{data.ownership.license ?? 'Unlicensed'} · {data.ownership.remixAvailable ? 'remix allowed' : 'remix closed'}</dd>
+      </div>
+      <div>
+        <dt>Runs at</dt>
+        <dd><a href={data.ownership.standaloneUrl} target="_blank" rel="noopener">{data.ownership.standaloneUrl.startsWith('/') ? `shippie.app${data.ownership.standaloneUrl}` : new URL(data.ownership.standaloneUrl).host}</a></dd>
+      </div>
+      {#if data.ownership.customDomains.length > 0}
+        <div>
+          <dt>Custom domains</dt>
+          <dd class="domain-list">{#each data.ownership.customDomains as domain (domain.domain)}<a href={`https://${domain.domain}/`} target="_blank" rel="noopener">{domain.domain}{domain.isCanonical ? ' · canonical' : ''}</a>{/each}</dd>
+        </div>
+      {/if}
       {#if isRemix}
-        <article class="remix-lineage">
-          <span>Remix lineage</span>
-          {#if data.ownership.lineage.parentApp}
-            <a href={`/apps/${data.ownership.lineage.parentApp.slug}`}>
-              Remix of {data.ownership.lineage.parentApp.name}
-            </a>
-          {:else}
-            <p>Remix of another Shippie tool</p>
-          {/if}
-          {#if data.ownership.lineage.parentVersion}
-            <p class="muted">Parent version {data.ownership.lineage.parentVersion}</p>
-          {/if}
-        </article>
+        <div>
+          <dt>Remix of</dt>
+          <dd>{#if data.ownership.lineage.parentApp}<a href={`/apps/${data.ownership.lineage.parentApp.slug}`}>{data.ownership.lineage.parentApp.name}</a>{:else}another Shippie tool{/if}{#if data.ownership.lineage.parentVersion}<span class="muted"> · parent {data.ownership.lineage.parentVersion}</span>{/if}</dd>
+        </div>
       {/if}
-    </div>
+    </dl>
+
+    {#if data.ownership.remixAvailable}
+      <div class="about-actions">
+        <a class="remix-link" href={`/new?remix=${data.app.slug}`}>Remix this tool</a>
+        {#if data.ownership.remixVia === 'cli'}<code class="remix-command">{cliRemixCommand}</code>{/if}
+      </div>
+    {/if}
+
+    {#if data.signingTrust || data.trustCard || data.grantedPermissions.length > 0}
+      <details class="checked">
+        <summary>What Shippie checked</summary>
+        {#if data.signingTrust}
+          <p class="checked-line"><strong>{data.signingTrust.label}</strong> — {data.signingTrust.summary}{#if data.signingTrust.packageHash}<span class="muted"> · v{data.signingTrust.version ?? 'current'} · {data.signingTrust.packageHash.slice(0, 26)}…</span>{:else}<span class="muted"> · first-party bundle</span>{/if}</p>
+        {/if}
+        {#if data.trustCard}
+          <dl class="facts">
+            <div><dt>Security</dt><dd>{securityLabel(data.trustCard.securityScore)} · {eligibilityLabel(data.trustCard.containerEligibility)}</dd></div>
+            <div><dt>Proof</dt><dd>{data.trustCard.proofBadges.length > 0 ? data.trustCard.proofBadges.join(' · ') : 'No runtime proof badges yet'}</dd></div>
+            <div><dt>Permissions</dt><dd>{data.grantedPermissions.length > 0 ? data.grantedPermissions.join(' · ') : 'No extra permissions declared'}</dd></div>
+            <div>
+              <dt>External connections</dt>
+              <dd>{#if data.trustCard.externalDomains.length > 0}<span class="domain-list">{#each data.trustCard.externalDomains as domain (domain.domain)}<span>{domain.domain} · {domain.purpose}{domain.personalData ? ' · may involve personal data' : ''}</span>{/each}</span>{:else}None detected in the latest scan.{/if}</dd>
+            </div>
+          </dl>
+        {:else if data.grantedPermissions.length > 0}
+          <p class="muted">Permissions: {data.grantedPermissions.join(' · ')}</p>
+        {/if}
+      </details>
+    {/if}
+
+    {#if data.ownership.versions.length > 0}
+      <div class="version-strip" aria-label="Recent versions">
+        {#each data.ownership.versions as version (version.packageHash)}
+          <a href={version.packageUrl}>v{version.version} · {version.channel} · {version.containerEligibility.replace('_', ' ')}</a>
+        {/each}
+      </div>
+    {/if}
+
     {#if data.isMaker}
       <details class="owner-edit">
         <summary>Edit listing</summary>
@@ -371,31 +271,19 @@
         </form>
       </details>
     {/if}
-    {#if data.ownership.versions.length > 0}
-      <div class="version-strip" aria-label="Recent versions">
-        {#each data.ownership.versions as version (version.packageHash)}
-          <a href={version.packageUrl}>
-            v{version.version}
-            · {version.channel}
-            · {version.containerEligibility.replace('_', ' ')}
-          </a>
-        {/each}
-      </div>
-    {/if}
-    <div class="ownership-actions">
-      {#if data.ownership.sourceRepo}
-        <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
-      {/if}
-      {#if data.ownership.remixAvailable}
-        <a href={`/new?remix=${data.app.slug}`}>Remix this tool</a>
-        {#if data.ownership.remixVia === 'cli'}
-          <code class="remix-command">{cliRemixCommand}</code>
-        {/if}
-      {:else}
-        <span>Remix unavailable until the maker publishes source + license</span>
-      {/if}
-    </div>
   </section>
+
+  {#if data.changelog && data.changelog.entries.length > 0}
+    <section class="section">
+      <h2>Latest changes</h2>
+      <p class="changelog-summary">{data.changelog.summary}</p>
+      <ul class="changelog-entries">
+        {#each data.changelog.entries as entry, i (i)}
+          <li>{entry}</li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
 
   {#if data.ratingSummary.count > 0}
     <section class="section">
@@ -586,141 +474,71 @@
     margin: 0 0 var(--space-md);
     letter-spacing: 0;
   }
-  .section-intro h2 { margin-bottom: 0.35rem; }
-  .section-intro p {
+  /* Tight key/value facts list — replaces the old boxed trust + ownership grids. */
+  .facts {
     margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--small-size);
-  }
-  /* Not a box — a clean collapsible section. The summary reads as a section
-     heading; the trust cards inside carry their own surface. */
-  .trust-details {
-    border: 0;
-    background: none;
-    padding: 0;
-  }
-  .trust-details summary {
-    min-height: var(--touch-min);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    font-family: var(--font-heading);
-    font-size: 1.35rem;
-    letter-spacing: 0;
-    list-style: none;
-  }
-  .trust-details summary::-webkit-details-marker { display: none; }
-  .trust-details summary::after {
-    content: '›';
-    color: var(--text-light);
-    font-size: 1.1rem;
-    transition: transform 0.15s;
-  }
-  .trust-details[open] summary::after { transform: rotate(90deg); }
-  .trust-details[open] summary {
-    margin-bottom: var(--space-md);
-  }
-  .trust-card {
     display: grid;
+    gap: 0;
+  }
+  .facts > div {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
     gap: var(--space-md);
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--border-light);
   }
-  .signed-card {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-lg);
-    border: 1px solid color-mix(in srgb, var(--sage-leaf) 42%, var(--border-light));
-    background: var(--surface);
-    padding: var(--space-lg);
-  }
-  .signed-card > div {
-    min-width: 0;
-    display: grid;
-    gap: 0.35rem;
-  }
-  .signed-card span {
-    color: var(--text-light);
+  .facts > div:first-child { border-top: 0; padding-top: 0; }
+  .facts dt {
+    margin: 0;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    color: var(--text-light);
   }
-  .signed-card h2,
-  .signed-card p {
+  .facts dd {
     margin: 0;
-  }
-  .signed-card p {
-    color: var(--text-secondary);
+    color: var(--text);
+    font-size: var(--small-size);
+    line-height: 1.5;
     overflow-wrap: anywhere;
   }
-  .trust-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-md);
+  .facts dd a { color: var(--sunset); }
+  .facts .muted { color: var(--text-light); }
+  @media (max-width: 560px) {
+    .facts > div { grid-template-columns: 1fr; gap: 2px; }
   }
-  .trust-grid article,
-  .trust-detail {
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--surface);
+  /* "What Shippie checked" — a quiet disclosure, not a box. */
+  .checked {
+    margin-top: var(--space-md);
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-md);
   }
-  .trust-grid article {
-    min-width: 0;
-    padding: var(--space-md);
-    display: grid;
-    gap: 6px;
-  }
-  .trust-grid span,
-  .trust-detail span {
+  .checked summary {
+    min-height: var(--touch-min);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     font-family: var(--font-mono);
     font-size: var(--caption-size);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--text-light);
   }
-  .trust-grid strong {
-    color: var(--text);
-    font-size: 1.1rem;
-    line-height: 1.2;
-  }
-  .trust-grid p,
-  .trust-detail p {
-    margin: 0;
+  .checked summary::-webkit-details-marker { display: none; }
+  .checked summary::after { content: '›'; transition: transform 0.15s; }
+  .checked[open] summary::after { transform: rotate(90deg); }
+  .checked[open] summary { margin-bottom: var(--space-sm); }
+  .checked-line {
+    margin: 0 0 var(--space-md);
     color: var(--text-secondary);
     font-size: var(--small-size);
-    line-height: 1.6;
+    line-height: 1.5;
   }
-  .trust-detail {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-md);
-    padding: var(--space-md);
-  }
-  .trust-detail > div {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-  }
-  .trust-domains {
-    font-size: var(--small-size);
-  }
-  .perms {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 24px;
-    font-size: var(--small-size);
-  }
-  @media (max-width: 640px) {
-    .perms { grid-template-columns: 1fr; }
-  }
-  .perms li {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    color: var(--text-secondary);
-  }
-  .check { color: var(--sage-leaf); }
+  .checked-line strong { color: var(--text); }
+  .checked .domain-list span { display: block; }
   .changelog-summary { margin: 0 0 var(--space-sm); font-weight: 500; }
   .changelog-entries {
     list-style: none;
@@ -733,56 +551,17 @@
   .changelog-entries li::before { content: '· '; }
   .meta-row { color: var(--text-light); font-family: var(--font-mono); font-size: var(--small-size); }
   .meta-line { margin: 0; }
-  .ownership {
+  .about {
     display: grid;
     gap: var(--space-md);
-  }
-  .ownership p {
-    margin: 0;
-    color: var(--text-secondary);
   }
   .muted {
     color: var(--text-light);
   }
-  .pill {
-    display: inline-flex;
-    margin-left: 0.5rem;
-    padding: 2px 8px;
-    border: 1px solid var(--sage-leaf);
-    border-radius: 0;
-    color: var(--sage-leaf);
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-  }
-  .ownership-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-md);
-  }
-  .ownership-grid article {
-    min-width: 0;
-    padding: var(--space-md);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--surface);
-    display: grid;
-    gap: 6px;
-  }
-  .ownership-grid span,
   .version-strip {
     font-family: var(--font-mono);
     font-size: var(--caption-size);
     color: var(--text-light);
-  }
-  .ownership-grid a {
-    min-height: var(--touch-min);
-    display: inline-flex;
-    align-items: center;
-    color: var(--sunset);
-    overflow-wrap: anywhere;
-  }
-  .remix-lineage {
-    border-color: color-mix(in srgb, var(--sunset) 42%, var(--border-light)) !important;
   }
   .owner-edit {
     border-top: 1px solid var(--border-light);
@@ -860,27 +639,24 @@
     padding: 4px 8px;
     color: var(--text-secondary);
   }
-  .ownership-actions {
+  .about-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    align-items: center;
   }
-  .ownership-actions a,
-  .ownership-actions span {
+  .remix-link {
     min-height: var(--touch-min);
     display: inline-flex;
     align-items: center;
-    padding: 0.55rem 0.75rem;
+    padding: 0 1rem;
     border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--bg-pure);
-    color: var(--text-secondary);
+    background: var(--surface);
+    color: var(--text);
     font-size: var(--small-size);
   }
-  .ownership-actions a {
-    color: var(--sunset);
-  }
-  .ownership-actions .remix-command {
+  .remix-link:hover { background: var(--surface-alt); border-color: var(--sunset); }
+  .remix-command {
     display: inline-flex;
     align-items: center;
     min-height: 36px;
