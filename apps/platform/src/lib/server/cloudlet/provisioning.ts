@@ -52,6 +52,17 @@ export interface ProvisionDeps {
   actorUserId: string | null;
   /** unix ms (route passes Date.now()) */
   now: number;
+  /**
+   * Seed the office-manager access for `ownerEmail` (Phase 2). The route wires
+   * this to: create a verified membership if a user already exists for that
+   * email, else mint a pending office_manager invite. Optional so the Phase-1A
+   * provisioning test (which doesn't exercise membership) stays unchanged.
+   */
+  seedOwnerMembership?: (args: {
+    db: any;
+    instanceId: string;
+    ownerEmail: string;
+  }) => Promise<{ via: 'membership' | 'invite'; inviteToken?: string }>;
 }
 
 export async function createPrivateAppInstance(
@@ -87,6 +98,12 @@ export async function createPrivateAppInstance(
   // embedded SQLite (init() runs in the DO constructor).
   const stub = deps.schoolWorkspaceNs.get(deps.schoolWorkspaceNs.idFromName(`uniti:${id}`));
   await (stub as unknown as { listEvents: () => Promise<unknown> }).listEvents(); // forces DO construction + init()
+  // Seed the office-manager access (Phase 2): membership if the user exists,
+  // otherwise a pending office_manager invite. Best-effort — provisioning
+  // already succeeded by this point.
+  if (deps.seedOwnerMembership) {
+    await deps.seedOwnerMembership({ db: deps.db, instanceId: id, ownerEmail: input.ownerEmail });
+  }
   await deps.recordAudit(deps.db, {
     actorUserId: deps.actorUserId,
     action: 'private_app_instance.created',

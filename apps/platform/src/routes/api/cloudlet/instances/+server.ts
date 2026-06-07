@@ -16,6 +16,7 @@ import type { RequestHandler } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { recordAudit } from '$server/admin/audit';
 import { createPrivateAppInstance } from '$server/cloudlet/provisioning';
+import { seedOwnerAccess } from '$server/cloudlet/seed-owner';
 import type { CreatePrivateAppInstanceInput } from '@shippie/cloudlet-contract';
 
 const UNITI_APP_SLUG = 'uniti';
@@ -109,6 +110,10 @@ export const POST: RequestHandler = async (event) => {
         newInstanceId: () => crypto.randomUUID(),
         actorUserId: user.id,
         now: Date.now(),
+        // Phase 2: seed office-manager access for the owner email (verified
+        // membership if a user exists, else a pending office_manager invite).
+        seedOwnerMembership: ({ db: d, instanceId, ownerEmail: oe }) =>
+          seedOwnerAccess({ db: d, instanceId, ownerEmail: oe, actorUserId: user.id, recordAudit: async (e) => { await recordAudit(d, { actorUserId: e.actorUserId, action: e.action, targetTable: 'cloudlet_invites', targetId: e.targetId, after: e.after }); } }),
       },
       input,
     );

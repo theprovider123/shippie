@@ -59,4 +59,41 @@ describe('createPrivateAppInstance', () => {
       expect.objectContaining({ action: 'private_app_instance.created' }),
     );
   });
+
+  it('seeds the office-manager access for ownerEmail (Phase 2)', async () => {
+    const db = {
+      insert: () => ({ values: (v: any) => ({ returning: async () => [v] }) }),
+    } as any;
+    const ns = {
+      idFromName: () => ({ toString: () => 'do-x' }),
+      get: () => ({ listEvents: vi.fn(async () => []) }),
+    } as any;
+    const seedOwnerMembership = vi.fn(async () => ({ via: 'invite' as const, inviteToken: 'tok' }));
+    await createPrivateAppInstance(
+      {
+        db,
+        schoolWorkspaceNs: ns,
+        recordAudit: vi.fn(async () => {}),
+        ensureUnitiApp: vi.fn(async () => ({ appRef: 'app_uniti' })),
+        createSpace: vi.fn(async () => ({ spaceId: 'space_1' })),
+        newInstanceId: () => 'inst_X',
+        actorUserId: 'admin1',
+        now: 1717718400000,
+        seedOwnerMembership,
+      },
+      {
+        appId: 'uniti',
+        tenantName: 'Oakwood Junior',
+        slug: 'oakwood-junior',
+        branding: { displayName: 'Oakwood Junior' },
+        ownerEmail: 'office@oakwood.sch.uk',
+        region: 'uk',
+        modules: [],
+        dataBoundary: 'dedicated-school-workspace',
+      },
+    );
+    expect(seedOwnerMembership).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'inst_X', ownerEmail: 'office@oakwood.sch.uk' }),
+    );
+  });
 });

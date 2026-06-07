@@ -30,8 +30,12 @@ export const POST: RequestHandler = async (event) => {
   if (!user) return json({ error: 'unauthenticated' }, { status: 401 });
 
   const db = getDrizzleClient(env.DB);
-  const row = await resolveInstanceForUser(db, event.params.slug, user);
-  if (!row) return json({ error: 'forbidden' }, { status: 403 }); // boundary
+  const resolved = await resolveInstanceForUser(db, event.params.slug, user, {
+    action: 'append',
+    resource: { type: 'event' },
+  });
+  if (!resolved) return json({ error: 'forbidden' }, { status: 403 }); // boundary
+  const { row } = resolved;
 
   let body: Partial<WorkspaceEvent>;
   try {
@@ -72,8 +76,12 @@ export const GET: RequestHandler = async (event) => {
   if (!user) return json({ error: 'unauthenticated' }, { status: 401 });
 
   const db = getDrizzleClient(env.DB);
-  const row = await resolveInstanceForUser(db, event.params.slug, user);
-  if (!row) return json({ error: 'forbidden' }, { status: 403 }); // boundary
+  const resolved = await resolveInstanceForUser(db, event.params.slug, user, {
+    action: 'read',
+    resource: { type: 'event' },
+  });
+  if (!resolved) return json({ error: 'forbidden' }, { status: 403 }); // boundary
+  const { row } = resolved;
 
   const did = env.SCHOOL_WORKSPACE.idFromName(`uniti:${row.id}`);
   const stub = env.SCHOOL_WORKSPACE.get(did) as unknown as WorkspaceStub;
