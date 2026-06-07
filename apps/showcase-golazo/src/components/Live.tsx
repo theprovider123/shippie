@@ -7,7 +7,6 @@ import { formatKickoff } from "../lib/zones";
 import { useStore } from "../state";
 import { Flag } from "../ui/atoms";
 import { tap } from "../lib/haptics";
-import { WatchFrom } from "./WatchFrom";
 
 const EMOJI = ["⚽", "🔥", "😱", "🙌", "💔", "🎉"];
 
@@ -17,7 +16,7 @@ interface Float {
 }
 
 export function Live() {
-  const { profile, setWatchZone, feed } = useStore();
+  const { profile, feed } = useStore();
   const uid = profile?.uid ?? "me";
   const name = profile?.name ?? "You";
   const zone = profile?.watchZone;
@@ -95,10 +94,6 @@ export function Live() {
           <i className="presence-dot" />
           {watching} watching
         </span>
-      </div>
-
-      <div className="watch-row">
-        <WatchFrom value={zone} onChange={(z) => setWatchZone(z)} />
       </div>
 
       <div className="fixture-rail">

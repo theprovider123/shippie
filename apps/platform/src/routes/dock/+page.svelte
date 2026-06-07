@@ -4795,11 +4795,11 @@
   .focused-tool-row {
     min-width: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 42px;
+    grid-template-columns: minmax(0, 1fr) 64px;
     background: #1E1A15;
   }
   .focused-tool-row.running {
-    grid-template-columns: minmax(0, 1fr) 42px 42px;
+    grid-template-columns: minmax(0, 1fr) 64px 42px;
     box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
   .focused-tool-open {
@@ -4863,9 +4863,9 @@
   .focused-close-tool {
     display: grid;
     place-items: center;
-    min-width: 54px;
+    min-width: 0;
     min-height: 58px;
-    padding: 0 8px;
+    padding: 0 6px;
     border: 0;
     border-left: 1px solid #2E2822;
     background: transparent;
@@ -4878,10 +4878,17 @@
     line-height: 1;
     cursor: pointer;
   }
+  .focused-pin {
+    width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .focused-pin.pinned {
     color: var(--sunset, #e8603c);
   }
   .focused-close-tool {
+    width: 42px;
     min-width: 42px;
     padding: 0;
     font-size: 18px;

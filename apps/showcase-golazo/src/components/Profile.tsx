@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { team } from "../data/teams";
 import {
   BRACKET_SHAPE,
@@ -13,7 +13,6 @@ import { hasResults, scorePrediction } from "../lib/scoring";
 import { landed } from "../lib/outsidebet";
 import { sampleNudge } from "../lib/notifications";
 import { formatKickoff } from "../lib/zones";
-import { normalizeFeed, feedHasResults } from "../lib/feed";
 import {
   deleteGlobalScores,
   isGlobalEnabled,
@@ -31,12 +30,10 @@ const NOTIFY_KEY = "golazo:notify";
  *  No account — everything lives on this phone. */
 export function Profile() {
   const store = useStore();
-  const { profile, prediction, results, scores, reactions, streak, feed, online } = store;
+  const { profile, prediction, results, scores, reactions, streak } = store;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile?.name ?? "");
   const [globalSync, setGlobalSync] = useState("Not listed globally");
-  const [resultImport, setResultImport] = useState("");
-  const feedInputRef = useRef<HTMLInputElement>(null);
   const [notify, setNotify] = useState<boolean>(() => {
     try { return localStorage.getItem(NOTIFY_KEY) === "1"; } catch { return false; }
   });
@@ -105,21 +102,6 @@ export function Profile() {
       .catch(() => setGlobalSync("Could not reach world board"));
   }
 
-  async function importFeedFile(file: File | undefined) {
-    if (!file) return;
-    try {
-      const raw = JSON.parse(await file.text());
-      const nextFeed = normalizeFeed(raw);
-      store.importFeed(nextFeed);
-      const resultText = feedHasResults(nextFeed) ? "results loaded" : "schedule/live loaded";
-      setResultImport(`${nextFeed.live.length} match score${nextFeed.live.length === 1 ? "" : "s"} · ${resultText}`);
-    } catch {
-      setResultImport("That file was not valid feed JSON");
-    } finally {
-      if (feedInputRef.current) feedInputRef.current.value = "";
-    }
-  }
-
   return (
     <div className="home profile" style={activeProfile.favTeam ? teamVars(team(activeProfile.favTeam)) : undefined}>
       <header className="home-head">
@@ -150,39 +132,6 @@ export function Profile() {
       </header>
 
       <Live />
-
-      <section className="profile-section results-desk">
-        <div className="section-head compact">
-          <div>
-            <span className="field-label">Results desk</span>
-            <p className="board-note">
-              {feed.updatedAt
-                ? `Feed ${online ? "synced" : "cached"} · ${feed.updatedAt}`
-                : "No official feed loaded yet"}
-            </p>
-          </div>
-          <button className="ghost-btn sm" onClick={() => feedInputRef.current?.click()}>
-            Upload feed
-          </button>
-        </div>
-        <input
-          ref={feedInputRef}
-          id="golazo-feed-upload"
-          name="golazo-feed-upload"
-          className="sr-only"
-          type="file"
-          accept="application/json,.json"
-          onChange={(event) => void importFeedFile(event.currentTarget.files?.[0])}
-        />
-        <div className="results-scope">
-          <span><strong>{feed.live.length}</strong> match scores</span>
-          <span><strong>{Object.keys(results.knockout).length}</strong> knockout results</span>
-          <span><strong>{Object.keys(results.groups).length}</strong> group tables</span>
-        </div>
-        <p className="board-note">
-          {resultImport || "Upload the tournament feed JSON to preview live scores and official results before deploying it."}
-        </p>
-      </section>
 
       <section className="profile-section score-sync-panel">
         <span className="field-label">Score publishing</span>
