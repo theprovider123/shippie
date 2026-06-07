@@ -3168,6 +3168,8 @@ input {
 /* ─── You tab — Profile hub (Slice 6) ──────────────────────────────────────── */
 .home-name .edit-hint { font-size: 14px; color: var(--faint); margin-left: 4px; }
 .profile .home-name { cursor: pointer; }
+.profile .live { margin-top: 18px; }
+.section-head.compact { align-items: flex-start; margin-bottom: 10px; }
 
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 18px 0; background: var(--line); border: 1px solid var(--line); }
 .stat-cell {
@@ -3179,6 +3181,39 @@ input {
 .stat-lab { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 
 .profile-section { margin-top: 24px; text-align: left; }
+.results-desk {
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--turf);
+}
+.results-scope {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 10px 0;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.results-scope span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  background: var(--pitch);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.results-scope strong {
+  color: var(--lime);
+  font-family: var(--font-code);
+  font-size: 20px;
+  letter-spacing: 0;
+  line-height: 1;
+}
 .timeline { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .timeline-row {
   display: flex; align-items: center; gap: 10px;
@@ -3189,12 +3224,24 @@ input {
 .timeline-round { font-family: var(--font-display); color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; margin-left: auto; }
 
 .settings-row {
+  position: relative;
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
   padding: 14px 16px; margin-top: 8px;
   border-radius: var(--r); background: var(--turf); border: 1px solid var(--line);
   cursor: pointer;
 }
 .settings-row.is-static { cursor: default; }
+.settings-row.settings-check { cursor: pointer; }
+.settings-row.settings-check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.settings-row.settings-check:focus-within {
+  border-color: var(--accent);
+}
 .settings-row strong { display: block; font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: 0.03em; text-transform: uppercase; }
 .settings-row small { display: block; font-family: var(--font-serif); color: var(--muted); font-size: 12px; margin-top: 3px; line-height: 1.45; }
 .switch {

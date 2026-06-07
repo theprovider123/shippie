@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { team } from "../data/teams";
 import {
   BRACKET_SHAPE,
@@ -13,9 +13,17 @@ import { hasResults, scorePrediction } from "../lib/scoring";
 import { landed } from "../lib/outsidebet";
 import { sampleNudge } from "../lib/notifications";
 import { formatKickoff } from "../lib/zones";
+import { normalizeFeed, feedHasResults } from "../lib/feed";
+import {
+  deleteGlobalScores,
+  isGlobalEnabled,
+  profileLeaderboardKey,
+  syncGlobalScores,
+} from "../lib/leaderboard";
 import { useStore } from "../state";
 import { Flag, pad2, teamVars, useCountdown } from "../ui/atoms";
 import { WatchFrom } from "./WatchFrom";
+import { Live } from "./Live";
 
 const NOTIFY_KEY = "golazo:notify";
 
@@ -23,14 +31,18 @@ const NOTIFY_KEY = "golazo:notify";
  *  No account — everything lives on this phone. */
 export function Profile() {
   const store = useStore();
-  const { profile, prediction, results, scores, reactions, streak } = store;
+  const { profile, prediction, results, scores, reactions, streak, feed, online } = store;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile?.name ?? "");
+  const [globalSync, setGlobalSync] = useState("Not listed globally");
+  const [resultImport, setResultImport] = useState("");
+  const feedInputRef = useRef<HTMLInputElement>(null);
   const [notify, setNotify] = useState<boolean>(() => {
     try { return localStorage.getItem(NOTIFY_KEY) === "1"; } catch { return false; }
   });
 
   if (!profile) return null;
+  const activeProfile = profile;
 
   const scored = hasResults(results);
   const sc = scored ? scorePrediction(prediction, results) : null;
@@ -52,7 +64,20 @@ export function Profile() {
 
   function saveName() {
     const clean = name.trim();
-    if (clean) store.setProfile(clean, profile!.favTeam);
+    if (clean) {
+      const oldKey = profileLeaderboardKey(activeProfile);
+      const wasGlobal = !!activeProfile.globalLeaderboardOptIn;
+      store.setProfile(clean, activeProfile.favTeam);
+      if (wasGlobal && oldKey !== profileLeaderboardKey({ ...activeProfile, name: clean })) {
+        setGlobalSync("Updating leaderboard key...");
+        void deleteGlobalScores(oldKey)
+          .then(() => syncGlobalScores({ ...activeProfile, name: clean }, scores, true))
+          .then(({ published }) => {
+            setGlobalSync(published > 0 ? `Synced ${published} best${published === 1 ? "" : "s"}` : "Opted in. Next score syncs.");
+          })
+          .catch(() => setGlobalSync("Key update queued. Try toggling sync again if it looks stale."));
+      }
+    }
     setEditing(false);
   }
   function toggleNotify() {
@@ -61,8 +86,42 @@ export function Profile() {
     try { localStorage.setItem(NOTIFY_KEY, next ? "1" : "0"); } catch { /* */ }
   }
 
+  function toggleGlobalLeaderboard() {
+    const next = !activeProfile.globalLeaderboardOptIn;
+    store.setGlobalLeaderboardOptIn(next);
+    if (!isGlobalEnabled()) {
+      setGlobalSync("World board unavailable");
+      return;
+    }
+    setGlobalSync(next ? "Syncing bests..." : "Removing from world boards...");
+    void syncGlobalScores({ ...activeProfile, globalLeaderboardOptIn: next }, scores, next)
+      .then(({ published, removed }) => {
+        if (removed) {
+          setGlobalSync("Removed from world boards");
+          return;
+        }
+        setGlobalSync(published > 0 ? `Synced ${published} best${published === 1 ? "" : "s"}` : "Opted in. Next score syncs.");
+      })
+      .catch(() => setGlobalSync("Could not reach world board"));
+  }
+
+  async function importFeedFile(file: File | undefined) {
+    if (!file) return;
+    try {
+      const raw = JSON.parse(await file.text());
+      const nextFeed = normalizeFeed(raw);
+      store.importFeed(nextFeed);
+      const resultText = feedHasResults(nextFeed) ? "results loaded" : "schedule/live loaded";
+      setResultImport(`${nextFeed.live.length} match score${nextFeed.live.length === 1 ? "" : "s"} · ${resultText}`);
+    } catch {
+      setResultImport("That file was not valid feed JSON");
+    } finally {
+      if (feedInputRef.current) feedInputRef.current.value = "";
+    }
+  }
+
   return (
-    <div className="home profile" style={profile.favTeam ? teamVars(team(profile.favTeam)) : undefined}>
+    <div className="home profile" style={activeProfile.favTeam ? teamVars(team(activeProfile.favTeam)) : undefined}>
       <header className="home-head">
         <div>
           <p className="home-greet">Your profile</p>
@@ -78,19 +137,76 @@ export function Profile() {
               <button className="cta sm" onClick={saveName}>Save</button>
             </div>
           ) : (
-            <h1 className="home-name" onClick={() => { setName(profile.name); setEditing(true); }}>
-              {profile.name} <span className="edit-hint">✎</span>
+            <h1 className="home-name" onClick={() => { setName(activeProfile.name); setEditing(true); }}>
+              {activeProfile.name} <span className="edit-hint">✎</span>
             </h1>
           )}
         </div>
-        {profile.favTeam && (
-          <span className="home-fav" style={teamVars(team(profile.favTeam))}>
-            <Flag id={profile.favTeam} size={26} />
+        {activeProfile.favTeam && (
+          <span className="home-fav" style={teamVars(team(activeProfile.favTeam))}>
+            <Flag id={activeProfile.favTeam} size={26} />
           </span>
         )}
       </header>
 
-      {profile.favTeam && <NationCard teamId={profile.favTeam} zone={profile.watchZone} />}
+      <Live />
+
+      <section className="profile-section results-desk">
+        <div className="section-head compact">
+          <div>
+            <span className="field-label">Results desk</span>
+            <p className="board-note">
+              {feed.updatedAt
+                ? `Feed ${online ? "synced" : "cached"} · ${feed.updatedAt}`
+                : "No official feed loaded yet"}
+            </p>
+          </div>
+          <button className="ghost-btn sm" onClick={() => feedInputRef.current?.click()}>
+            Upload feed
+          </button>
+        </div>
+        <input
+          ref={feedInputRef}
+          id="golazo-feed-upload"
+          name="golazo-feed-upload"
+          className="sr-only"
+          type="file"
+          accept="application/json,.json"
+          onChange={(event) => void importFeedFile(event.currentTarget.files?.[0])}
+        />
+        <div className="results-scope">
+          <span><strong>{feed.live.length}</strong> match scores</span>
+          <span><strong>{Object.keys(results.knockout).length}</strong> knockout results</span>
+          <span><strong>{Object.keys(results.groups).length}</strong> group tables</span>
+        </div>
+        <p className="board-note">
+          {resultImport || "Upload the tournament feed JSON to preview live scores and official results before deploying it."}
+        </p>
+      </section>
+
+      <section className="profile-section score-sync-panel">
+        <span className="field-label">Score publishing</span>
+        <label className="settings-row settings-check">
+          <div>
+            <strong>Global leaderboard</strong>
+            <small>
+              {activeProfile.globalLeaderboardOptIn
+                ? `${globalSync} · key ${profileLeaderboardKey(activeProfile)}`
+                : `Off by default · key ${profileLeaderboardKey(activeProfile)}`}
+            </small>
+          </div>
+          <input
+            id="golazo-global-leaderboard"
+            name="golazo-global-leaderboard"
+            type="checkbox"
+            checked={!!activeProfile.globalLeaderboardOptIn}
+            onChange={toggleGlobalLeaderboard}
+          />
+          <span className={`switch${activeProfile.globalLeaderboardOptIn ? " is-on" : ""}`} aria-hidden />
+        </label>
+      </section>
+
+      {activeProfile.favTeam && <NationCard teamId={activeProfile.favTeam} zone={activeProfile.watchZone} />}
 
       <div className="stat-grid">
         <div className="stat-cell">
@@ -149,7 +265,7 @@ export function Profile() {
             <strong>Watching from</strong>
             <small>Kick-off times shown in your timezone.</small>
           </div>
-          <WatchFrom value={profile.watchZone} onChange={(z) => store.setWatchZone(z)} />
+          <WatchFrom value={activeProfile.watchZone} onChange={(z) => store.setWatchZone(z)} />
         </div>
         <p className="board-note">Theme: dark (the only way to watch football). No account, no email — it's all on this phone.</p>
       </div>

@@ -3297,8 +3297,7 @@
       class:input-region-all={activeInputRegion === 'all'}
       aria-label={focusedDrawerOpen ? 'Close Shippie tools' : 'Open Shippie tools'}
       aria-expanded={focusedDrawerOpen}
-      onmousedown={handleFocusedToolsPress}
-      ontouchstart={handleFocusedToolsPress}
+      onpointerdown={handleFocusedToolsPress}
       onkeydown={handleFocusedToolsKeydown}
     >
       <img

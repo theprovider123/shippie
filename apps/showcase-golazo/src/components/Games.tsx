@@ -22,7 +22,13 @@ import {
   type Challenge,
 } from "../lib/games";
 import type { Duel } from "../lib/duel";
-import { fetchGlobal, submitGlobal, isGlobalEnabled } from "../lib/leaderboard";
+import {
+  fetchGlobal,
+  submitGlobal,
+  isGlobalEnabled,
+  profileLeaderboardKey,
+  subscribeLeaderboardSync,
+} from "../lib/leaderboard";
 import { gameCardBlob } from "../lib/sharecard";
 import { useStore } from "../state";
 import { tap } from "../lib/haptics";
@@ -65,14 +71,32 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   useEffect(() => {
     if (!soloGame) return;
     let cancelled = false;
-    void fetchGlobal(soloGame).then((g) => { if (!cancelled) setGlobal(g); });
-    return () => { cancelled = true; };
+    const load = () => {
+      void fetchGlobal(soloGame).then((g) => { if (!cancelled) setGlobal(g); });
+    };
+    load();
+    const off = subscribeLeaderboardSync((event) => {
+      if (!event.game || event.game === soloGame) load();
+    });
+    const interval = window.setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      off();
+      window.clearInterval(interval);
+    };
   }, [soloGame]);
 
   function onGameOver(score: number) {
     if (!soloGame || score <= 0) return;
     store.addScore(soloGame, score);
-    void submitGlobal({ game: soloGame, name: playerName, score }).then((g) => { if (g.length) setGlobal(g); });
+    if (store.profile?.globalLeaderboardOptIn) {
+      void submitGlobal({
+        game: soloGame,
+        name: playerName,
+        playerKey: profileLeaderboardKey(store.profile),
+        score,
+      }).then((g) => { if (g.length) setGlobal(g); });
+    }
   }
 
   async function shareChallenge() {
@@ -228,7 +252,11 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
 
       <div className="board-head">
         <span className="field-label">{isGlobalEnabled() && global.length ? "🌍 Worldwide" : "Top of the table"}</span>
-        {!isGlobalEnabled() && <span className="board-note">Your bests + shared challenges</span>}
+        <span className="board-note">
+          {store.profile?.globalLeaderboardOptIn
+            ? "Your opted-in bests sync live"
+            : "Your scores stay local unless you opt in from You"}
+        </span>
       </div>
 
       {board.length === 0 ? (
@@ -256,8 +284,19 @@ function LeaderboardSheet({ game, onClose }: { game: GameId; onClose: () => void
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
-    void fetchGlobal(game).then((g) => { if (!cancelled) { setGlobal(g); setLoading(false); } });
-    return () => { cancelled = true; };
+    const load = () => {
+      void fetchGlobal(game).then((g) => { if (!cancelled) { setGlobal(g); setLoading(false); } });
+    };
+    load();
+    const off = subscribeLeaderboardSync((event) => {
+      if (!event.game || event.game === game) load();
+    });
+    const interval = window.setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      off();
+      window.clearInterval(interval);
+    };
   }, [game]);
   const meta = gameMeta(game);
   const board = mergeBoards(store.scores, global, game).slice(0, 12);
@@ -270,6 +309,9 @@ function LeaderboardSheet({ game, onClose }: { game: GameId; onClose: () => void
         </div>
         {!isGlobalEnabled() && (
           <p className="board-note">The world board lights up when you're online. Your bests + shared challenges for now.</p>
+        )}
+        {isGlobalEnabled() && !store.profile?.globalLeaderboardOptIn && (
+          <p className="board-note">You can view the world board. Your own scores stay private until you opt in from You.</p>
         )}
         {loading ? (
           <p className="board-note">Loading the world…</p>

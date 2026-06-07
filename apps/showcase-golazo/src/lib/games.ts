@@ -53,6 +53,8 @@ export interface ScoreEntry {
   name: string;
   score: number;
   at: number;
+  /** Stable name+uid key when a row has been published globally. */
+  playerKey?: string;
   /** Where it came from, for board labelling. */
   source?: "you" | "global" | "challenge";
 }
@@ -81,7 +83,9 @@ export function mergeBoards(local: ScoreEntry[], global: ScoreEntry[], game: Gam
   const all = [...global, ...local].filter((e) => e.game === game);
   const deduped: ScoreEntry[] = [];
   for (const e of rankBoard(all)) {
-    const key = `${e.name.toLowerCase()}:${e.score}:${e.source}`;
+    const key = e.playerKey
+      ? `${e.playerKey}:${e.game}`
+      : `${e.name.toLowerCase()}:${e.score}:${e.source}`;
     if (seen.has(key)) continue;
     seen.add(key);
     deduped.push(e);

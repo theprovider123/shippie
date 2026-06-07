@@ -6,7 +6,6 @@ import { BracketView } from "./components/BracketView";
 import { Pools } from "./components/Pools";
 import { Games } from "./components/Games";
 import { DevPanel } from "./components/DevPanel";
-import { Live } from "./components/Live";
 import { IncomingShare } from "./components/IncomingShare";
 import { IncomingSweep } from "./components/IncomingSweep";
 import { BottomNav, type Tab } from "./components/BottomNav";
@@ -91,10 +90,7 @@ export function App() {
         <>
           <main className="screen">
             {tab === "home" && (
-              <>
-                <Profile />
-                <Live />
-              </>
+              <Profile />
             )}
             {tab === "predict" && <PredictScreen />}
             {tab === "pools" && <Pools />}

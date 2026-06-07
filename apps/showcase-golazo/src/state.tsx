@@ -16,6 +16,7 @@ import { addLocalScore, type GameId, type ScoreEntry } from "./lib/games";
 import { addReaction, type ReactionKind, type ReactionStore } from "./lib/reactions";
 import { bumpStreak, dayKey } from "./lib/streak";
 import { simulateTournament } from "./lib/sim";
+import { profileLeaderboardKey } from "./lib/leaderboard";
 
 export interface SweepOpts {
   mode?: SweepMode;
@@ -38,6 +39,8 @@ interface Store {
 
   setProfile: (name: string, favTeam?: string) => void;
   setWatchZone: (zone: string | undefined) => void;
+  setGlobalLeaderboardOptIn: (enabled: boolean) => void;
+  importFeed: (feed: Feed) => void;
   setGroupOrder: (letter: GroupLetter, ids: string[]) => void;
   pickWinner: (slotId: string, teamId: string) => void;
   setTopScorer: (teamId: string | undefined) => void;
@@ -136,7 +139,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const next: Profile =
           profile != null
             ? { ...profile, name: name.trim(), favTeam }
-            : { name: name.trim(), favTeam, uid: uid() };
+            : { name: name.trim(), favTeam, uid: uid(), globalLeaderboardOptIn: false };
         setProfileState(next);
         store.saveProfile(next);
       },
@@ -146,6 +149,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const next: Profile = { ...profile, watchZone: zone };
         setProfileState(next);
         store.saveProfile(next);
+      },
+
+      setGlobalLeaderboardOptIn(enabled) {
+        if (!profile) return;
+        const next: Profile = { ...profile, globalLeaderboardOptIn: enabled };
+        setProfileState(next);
+        store.saveProfile(next);
+      },
+
+      importFeed(nextFeed) {
+        setFeed(nextFeed);
+        setOnline(true);
+        if (feedHasResults(nextFeed)) setResults(nextFeed.results);
       },
 
       setGroupOrder(letter, ids) {
@@ -291,6 +307,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const entry: ScoreEntry = {
           game,
           name: profile?.name?.trim() || "You",
+          playerKey: profile ? profileLeaderboardKey(profile) : undefined,
           score: Math.max(0, Math.floor(score)),
           at: Date.now(),
           source: "you",

@@ -11,6 +11,7 @@ import {
   gameMeta,
   type ScoreEntry,
 } from "./games";
+import { profileLeaderboardKey } from "./leaderboard";
 
 const s = (game: "keepy" | "topbins", name: string, score: number, at = 0): ScoreEntry => ({ game, name, score, at });
 
@@ -41,6 +42,20 @@ describe("merge global + local", () => {
     const merged = mergeBoards(local, global, "keepy");
     expect(merged.map((e) => e.score)).toEqual([99, 20, 5]);
     expect(merged[1].source).toBe("you");
+  });
+
+  it("dedupes the same player key across local and global boards", () => {
+    const local: ScoreEntry[] = [{ ...s("keepy", "Sam", 20), playerKey: "sam:u1", source: "you" }];
+    const global: ScoreEntry[] = [{ ...s("keepy", "Sam", 20), playerKey: "sam:u1", source: "global" }];
+    const merged = mergeBoards(local, global, "keepy");
+    expect(merged).toHaveLength(1);
+    expect(merged[0].playerKey).toBe("sam:u1");
+  });
+});
+
+describe("leaderboard identity", () => {
+  it("combines a normalized username and stable uid into a unique key", () => {
+    expect(profileLeaderboardKey({ name: "Sam Smith!", uid: "u-123" })).toBe("sam-smith:u-123");
   });
 });
 

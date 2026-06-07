@@ -17,6 +17,9 @@ describe('focused dock chrome', () => {
     expect(DOCK_PAGE_SOURCE).toMatch(
       /<button[\s\S]*class="focused-chrome-button focused-chrome-tools"/,
     );
+    expect(DOCK_PAGE_SOURCE).toContain('onpointerdown={handleFocusedToolsPress}');
+    expect(DOCK_PAGE_SOURCE).not.toContain('onmousedown={handleFocusedToolsPress}');
+    expect(DOCK_PAGE_SOURCE).not.toContain('ontouchstart={handleFocusedToolsPress}');
     expect(DOCK_PAGE_SOURCE).not.toMatch(
       /<a[\s\S]*class="focused-chrome-button focused-chrome-tools"/,
     );
