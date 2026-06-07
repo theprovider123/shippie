@@ -302,7 +302,9 @@
       {/if}
 
       <div class="data-actions">
-        <a href="/dock?section=data" class="secondary-action primary-action">Manage data →</a>
+        <a href="/dock?section=data&pane=tools" class="secondary-action primary-action">App data &amp; receipts</a>
+        <a href="/dock?section=data&pane=backup" class="secondary-action">Back up</a>
+        <a href="/dock?section=data&pane=devices" class="secondary-action">Move to a device</a>
         <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
           {storagePinned ? 'Storage protected' : storagePinning ? 'Protecting storage' : 'Protect offline storage'}
         </button>
