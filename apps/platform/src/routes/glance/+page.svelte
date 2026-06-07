@@ -247,18 +247,17 @@
   }
   .glance-app-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
+    border-top: 1px solid var(--border-light, var(--border));
   }
   .glance-app-card {
-    border: 1px solid var(--border);
-    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-light, var(--border));
+    padding: 10px 0;
   }
   .glance-app-card header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
   }
   .glance-app-name {
     font-weight: 600;

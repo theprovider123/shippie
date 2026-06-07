@@ -173,9 +173,8 @@
     text-decoration: underline;
   }
   .privacy-band {
-    border: 1px solid var(--border-paper-mid);
-    background: rgba(250, 247, 239, 0.72);
-    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-lg);
     display: grid;
     gap: 0.6rem;
   }
@@ -195,13 +194,17 @@
     line-height: 1.55;
     color: var(--ink-warm-line);
   }
-  .health,
-  .stats article,
-  .panel {
-    border: 1px solid var(--border-paper-mid);
-    background: rgba(250, 247, 239, 0.72);
+  .stats article {
+    border: 1px solid var(--border-light);
   }
-  .health { padding: 1.5rem; }
+  .panel {
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+  .health {
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-lg);
+  }
   .eyebrow {
     margin: 0 0 0.35rem;
     text-transform: uppercase;
@@ -311,12 +314,6 @@
     margin: 0.5rem 0;
   }
   @media (prefers-color-scheme: dark) {
-    .health,
-    .stats article,
-    .panel {
-      border-color: var(--ink-warm-mid);
-      background: rgba(20, 18, 15, 0.45);
-    }
     .event-list li,
     .bar-track { border-color: var(--ink-warm-mid); }
   }

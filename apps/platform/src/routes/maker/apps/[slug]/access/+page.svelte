@@ -351,9 +351,8 @@
   }
   .metrics article {
     min-width: 0;
-    border: 1px solid var(--paper-cream);
+    border: 1px solid var(--border-light);
     padding: 0.875rem;
-    background: rgba(250, 247, 239, 0.52);
   }
   .metrics span {
     display: block;
@@ -477,9 +476,6 @@
     input,
     textarea {
       border-color: var(--ink-warm);
-    }
-    .metrics article {
-      background: rgba(42, 37, 30, 0.48);
     }
     .claim-list li {
       border-color: rgba(255,255,255,0.05);

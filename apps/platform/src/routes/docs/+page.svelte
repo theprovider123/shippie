@@ -9,19 +9,19 @@
       id: 'wrap',
       label: 'Local',
       blurb:
-        'Public Shippie tools are expected to keep primary user data on the device by default, with no hidden login, tracker, or third-party user-data store.',
+        'Public Shippie tools keep primary user data on the device by default. No hidden login, tracker, or third-party user-data store.',
     },
     {
       id: 'run',
       label: 'Build',
       blurb:
-        'Use one-line local database, local files, local AI, intents, and secure backup without provisioning a backend.',
+        'One-line local database, local files, local AI, intents, and secure backup. No backend to provision.',
     },
     {
       id: 'connect',
       label: 'Connect',
       blurb:
-        'Tools can share local signals with each other and use encrypted Shippie relay when live collaboration needs it.',
+        'Tools share local signals with each other, and use encrypted Shippie relay when live collaboration needs it.',
     },
   ];
 
@@ -30,19 +30,19 @@
       id: 'what-local-means',
       title: 'Where data lives',
       blurb:
-        'On Shippie, primary user data stays on the device by default. Reference data can come in, and user data should not go out unless you explicitly export, back up, sync, join an encrypted relay, or connect a disclosed service.',
+        'Primary user data stays on the device by default. Reference data can come in. User data does not go out unless you export, back up, sync, join an encrypted relay, or connect a disclosed service.',
     },
     {
       id: 'your-data',
       title: 'Your data — where it lives, who sees it',
       blurb:
-        'Tap "Your data" inside any tool to see what is stored on this device, what connections are disclosed, and which export, restore, backup, or wipe controls that tool supports. The default local path does not store app content on Shippie servers; optional backup, sync, relay, and private spaces are shown separately.',
+        'Tap "Your data" inside any tool to see what is stored on this device, what connections are disclosed, and which export, restore, backup, or wipe controls it supports. The default local path stores no app content on Shippie servers. Optional backup, sync, relay, and private spaces are shown separately.',
     },
     {
       id: 'no-signup',
       title: 'No signup needed (most of the time)',
       blurb:
-        'Tools open and work without an account. Sign in only when you want to ship your own tool, sync saved tools across devices, or join a private space someone invited you to.',
+        'Tools open and work without an account. Sign in only to ship your own tool, sync saved tools across devices, or join a private space you were invited to.',
     },
   ];
 </script>
@@ -63,10 +63,10 @@
     </p>
     <h1 class="title">Local tools that know each other.</h1>
     <p class="lede">
-      If it is on Shippie, data movement is visible. Build tools with one-line local
-      database, zero backend setup, secure backup as continuity, and deploy paths that
-      disclose outside connections before publish. Quiet local tools stay visually quiet;
-      Shippie only raises a signal when something extra is connected.
+      If it is on Shippie, data movement is visible. Build with a one-line local database,
+      zero backend setup, and secure backup. Deploy paths disclose outside connections before
+      publish. Quiet local tools stay visually quiet; Shippie raises a signal only when
+      something extra is connected.
     </p>
   </header>
 
@@ -75,8 +75,8 @@
       <p class="paper-eyebrow">Whitepaper · the long read</p>
       <h2>Build on Shippie</h2>
       <p class="paper-blurb">
-        The category: cloud platforms deploy cloud apps, Netlify deploys static sites,
-        Shippie deploys local tools. Start here if you want the why before the how.
+        Cloud platforms deploy cloud apps. Netlify deploys static sites. Shippie deploys
+        local tools. Start here if you want the why before the how.
       </p>
     </div>
     <span class="paper-cta">Read the whitepaper →</span>
@@ -102,7 +102,7 @@
     </a>
     <a href="#remix" class="nav-card">
       <p class="card-eyebrow">Remix</p>
-      <p class="card-blurb">How to enable remix on your app, and how to fork someone else’s.</p>
+      <p class="card-blurb">Enable remix on your app, or fork someone else’s.</p>
     </a>
     <a href="#open-source" class="nav-card">
       <p class="card-eyebrow">Open source</p>
@@ -113,8 +113,8 @@
   <section id="for-users" class="section">
     <h2>For users</h2>
       <p class="section-lede">
-      You don’t need an account, a download, or a credit card to use Shippie. Open a tool. If
-      you like it, save it. Your data controls stay close by.
+      No account, download, or credit card. Open a tool. If you like it, save it. Your data
+      controls stay close by.
     </p>
     {#each userSections as s (s.id)}
       <h3 id={s.id}>{s.title}</h3>
@@ -125,16 +125,16 @@
   <section id="for-builders" class="section">
     <h2>For builders</h2>
     <p class="section-lede">
-      Ship a local tool in under a minute. Pick the shortest path to a live URL, then come back
-      to layer in haptics, local data, intents, secure backup, and proof — mostly automatic.
+      Ship a local tool in under a minute. Pick the shortest path to a live URL, then layer in
+      haptics, local data, intents, secure backup, and proof — mostly automatic.
     </p>
 
     <h3 id="getting-started">Four ways to ship</h3>
-    <p>Same policy scanner on every path — bundled secrets, trackers, or hidden logins block the deploy with conversion guidance. Pick the shortest for your codebase.</p>
+    <p>Every path runs the same policy scanner: bundled secrets, trackers, or hidden logins block the deploy with conversion guidance. Pick the shortest for your codebase.</p>
     <dl class="paths">
       <div>
         <dt>Drop a zip</dt>
-        <dd><a href="/new">/new</a> — drag in a built bundle (<code>dist</code>, <code>build</code>, <code>out</code>, or one HTML file). We scan, wrap, and put it live.</dd>
+        <dd><a href="/new">/new</a> — drag in a built bundle (<code>dist</code>, <code>build</code>, <code>out</code>, or one HTML file). We scan, wrap, and ship it live.</dd>
       </div>
       <div>
         <dt>CLI / MCP</dt>
@@ -162,23 +162,23 @@ await shippie.local.db.save('receipts', receipt);
 const receipts = await shippie.local.db.list('receipts');</pre>
     <p>
       <code>@shippie/sdk/wrapper</code> is the runtime injected into every hosted page — shell, push,
-      ratings, offline. Base is &lt;5kb gzipped and every export is opt-in. Full reference: the
+      ratings, offline. Base is &lt;5kb gzipped; every export is opt-in. Full reference: the
       <a href="https://github.com/theprovider123/shippie/tree/main/packages/sdk">packages/sdk README</a>.
     </p>
 
     <h3 id="wrapper">Wrapper</h3>
     <p>
-      An edge HTML rewriter — injects the PWA manifest, service worker, SDK runtime, and device-ready
-      support without touching your code. Configured by a tiny <code>shippie.json</code> (name, theme,
-      icon, capability flags) with sensible defaults.
+      An edge HTML rewriter. It injects the PWA manifest, service worker, SDK runtime, and
+      device-ready support without touching your code. Configure it with a tiny
+      <code>shippie.json</code> (name, theme, icon, capability flags) that ships sensible defaults.
     </p>
 
     <h3 id="private-spaces">Private spaces</h3>
     <p>
-      Shippie's shared context for a tool — a room, class, household, or match-day group — with no
-      account system to write. Declare the roles your app understands; Shippie issues signed invite
-      links + QR codes carrying only that scoped access. The public app stays listed while each space
-      stays sealed to its members.
+      Shared context for a tool — a room, class, household, or match-day group — with no account
+      system to write. Declare the roles your app understands. Shippie issues signed invite links
+      and QR codes carrying only that scoped access. The public app stays listed; each space stays
+      sealed to its members.
     </p>
 
     <h3 id="local-runtime">Local runtime</h3>
@@ -192,10 +192,9 @@ const receipts = await shippie.local.db.list('receipts');</pre>
   <section id="remix" class="section remix-section">
     <h2>Remix</h2>
     <p class="section-lede">
-      Shippie apps can be remixable. If the maker has flagged it on, anyone can fork the source,
-      tweak it for their niche, and ship the result back to the marketplace under a new slug
-      — through the same local-tool scanner as the original. This is how good ideas become good
-      ideas for everyone.
+      Shippie apps can be remixable. If the maker flags it on, anyone can fork the source, tune it
+      for their niche, and ship it back to the marketplace under a new slug — through the same
+      local-tool scanner as the original. This is how good ideas become good ideas for everyone.
     </p>
 
     <h3 id="remix-look-for">What "remixable" looks like</h3>
@@ -209,8 +208,8 @@ const receipts = await shippie.local.db.list('receipts');</pre>
       <li>The maker has flipped <code>remixAllowed</code> on in their app profile.</li>
     </ul>
     <p>
-      All three are per-app, controlled by the maker. A Shippie listing without that trio is
-      hosted on Shippie but not fork-friendly — the maker is welcome to enable it later.
+      All three are per-app, controlled by the maker. A listing without the trio is hosted on
+      Shippie but not fork-friendly. The maker can enable it later.
     </p>
 
     <h3 id="remix-flow">How to remix someone else’s app</h3>
@@ -223,14 +222,14 @@ const receipts = await shippie.local.db.list('receipts');</pre>
       <li>
         Fork the repo on GitHub (one click), make your changes, then ship it: zip upload, CLI, or
         re-connect the fork for auto-deploy. The remix lands at
-        <code>&lt;slug&gt;-remix</code> by default and you can rename it freely.
+        <code>&lt;slug&gt;-remix</code> by default; rename it freely.
       </li>
     </ol>
     <pre class="code"># CLI shortcut after a one-click fork
 shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
     <p>
       Lineage is recorded automatically. Your remix page links back to the original; the original
-      shows a count of remixes downstream. Credit travels with the code.
+      counts its downstream remixes. Credit travels with the code.
     </p>
 
     <h3 id="remix-enable">How to enable remix on your own app</h3>
@@ -244,17 +243,16 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
       <li>Tick <strong>Allow remixes</strong>.</li>
     </ol>
     <p>
-      That’s it — the badge and the Remix button appear on your public page within
-      seconds. Toggle it off at any time and the affordances disappear for new visitors; existing
-      remixes continue to exist on their own.
+      That’s it — the badge and the Remix button appear on your public page within seconds. Toggle
+      it off any time and they disappear for new visitors; existing remixes live on.
     </p>
 
     <h3 id="remix-why">Why this matters</h3>
     <p>
-      One vibe-coded recipe saver becomes ten: a sourdough version, a vegan version, a
-      restaurant-staff version, a five-ingredient version. The same code skeleton, niche-tuned by
-      people closer to the niche than the original maker could ever be. Software diversity used
-      to require a fork on a hidden engineering team’s back-burner. On Shippie it’s a button.
+      One vibe-coded recipe saver becomes ten: sourdough, vegan, restaurant-staff, five-ingredient.
+      Same skeleton, niche-tuned by people closer to the niche than the original maker could ever
+      be. Software diversity used to mean a fork on an engineering team’s back-burner. On Shippie
+      it’s a button.
     </p>
   </section>
 
@@ -264,12 +262,12 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
       The whole platform — control plane, edge worker, SDK, CLI, Dock runtime, AI iframe —
       lives at
       <a href="https://github.com/theprovider123/shippie">github.com/theprovider123/shippie</a>. Fork it, deploy
-      it, run it on your own Cloudflare account. Nothing is hidden behind a paid tier.
+      it, run it on your own Cloudflare account. Nothing hides behind a paid tier.
     </p>
 
     <h3 id="licenses">License positions</h3>
     <p>
-      Two licenses, picked deliberately so the platform can federate and the SDK can spread:
+      Two licenses, chosen so the platform can federate and the SDK can spread:
     </p>
     <table class="license-table">
       <thead>
@@ -280,16 +278,16 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
           <td>Platform &middot; edge worker &middot; AI iframe &middot; Hub</td>
           <td>AGPL-3.0</td>
           <td>
-            Fork and self-host freely; network-accessible modifications must publish under the
-            same license. The platform is the part worth federating.
+            Fork and self-host freely. Network-accessible changes must publish under the same
+            license. The platform is the part worth federating.
           </td>
         </tr>
         <tr>
           <td>SDK &middot; CLI &middot; MCP server &middot; shared types &middot; templates</td>
           <td>MIT</td>
           <td>
-            Link into your apps without constraint. The SDK is the part that should spread to
-            every project, including closed-source ones.
+            Link into your apps without constraint. The SDK should spread to every project,
+            including closed-source ones.
           </td>
         </tr>
       </tbody>
@@ -297,22 +295,22 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
 
     <h3 id="self-hosting">Self-hosting</h3>
     <p>
-      You’ll need a Cloudflare account, a domain you control, and the patience to register
-      OAuth clients with GitHub and (optionally) Google. The hosted Shippie costs $5–10/month
-      at our scale; your bill will be similar or smaller depending on traffic.
+      You’ll need a Cloudflare account, a domain you control, and the patience to register OAuth
+      clients with GitHub and (optionally) Google. Hosted Shippie costs $5–10/month at our scale;
+      your bill will be similar or smaller depending on traffic.
     </p>
     <p>
-      Walkthrough: see
+      Walkthrough:
       <a href="https://github.com/theprovider123/shippie/blob/main/docs/self-hosting.md">docs/self-hosting.md</a>
-      in the repo. Stale sections are flagged at the top — follow the Cloudflare-only path,
-      not the legacy Postgres one.
+      in the repo. Stale sections are flagged at the top — follow the Cloudflare-only path, not
+      the legacy Postgres one.
     </p>
 
     <h3 id="contributing">Contributing</h3>
     <p>
       Issues, PRs, and discussions live on GitHub. The repo has a top-level
-      <code>CONTRIBUTING.md</code> and active maintainers. Small fixes get merged within days;
-      bigger architecture changes get a design-doc round first.
+      <code>CONTRIBUTING.md</code> and active maintainers. Small fixes merge within days; bigger
+      architecture changes get a design-doc round first.
     </p>
   </section>
 

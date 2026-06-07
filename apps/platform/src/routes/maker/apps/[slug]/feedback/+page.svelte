@@ -186,7 +186,7 @@ shippie.feedback.submit({
   .chip.flagged.active { background: var(--sunset-dim); color: var(--paper-warm-deep); }
   .chip span { font-weight: 700; opacity: 0.8; }
   .link-btn { background: none; border: 0; color: var(--sunset); text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
-  .empty { padding: 2rem; text-align: center; border: 1px dashed var(--border-paper-mid); border-radius: 0; }
+  .empty { padding: 1rem 0; text-align: center; border-top: 1px dashed var(--border-light); border-radius: 0; }
   h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; margin: 0.5rem 0; }
   .feedback-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--paper-cream); }
   article { padding: 1rem 0; border-bottom: 1px solid var(--paper-cream); }

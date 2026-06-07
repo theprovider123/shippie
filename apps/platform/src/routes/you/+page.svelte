@@ -451,6 +451,11 @@
     gap: var(--space-md);
   }
 
+  .panel + .panel {
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-xl);
+  }
+
   .section-head {
     align-items: baseline;
   }
@@ -469,14 +474,17 @@
     font-size: var(--small-size);
   }
 
-  .account-row,
   .overview-grid,
   .device-grid,
-  .repair-list,
-  .trust-band,
-  .link-list {
+  .trust-band {
     border: 1px solid var(--border-light);
     background: var(--surface);
+  }
+
+  .account-row,
+  .repair-list,
+  .link-list {
+    border: 1px solid var(--border-light);
   }
 
   .account-row {

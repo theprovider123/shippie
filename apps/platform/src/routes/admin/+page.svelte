@@ -75,11 +75,9 @@
     flex-wrap: wrap;
     gap: 0.75rem;
     align-items: flex-end;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    border: 1px solid var(--border-light, #2A251E);
-    border-radius: 0;
-    background: rgba(255,255,255,0.02);
+    margin-bottom: var(--space-lg);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--border-light, #2A251E);
   }
   .field { display: flex; flex-direction: column; gap: 0.25rem; min-width: 180px; }
   .field span {

@@ -177,8 +177,8 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
     margin-bottom: 1rem;
-    border: 1px solid var(--paper-cream);
-    background: var(--paper-cream);
+    border: 1px solid var(--border-light);
+    background: var(--border-light);
   }
   .summary-grid div {
     min-height: 82px;
@@ -325,8 +325,8 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
     margin: 0.4rem 0 0.75rem;
-    border: 1px solid var(--paper-cream);
-    background: var(--paper-cream);
+    border: 1px solid var(--border-light);
+    background: var(--border-light);
   }
   .diagnostic-grid div {
     min-width: 0;

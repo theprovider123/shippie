@@ -254,8 +254,8 @@
   }
 
   .today-empty-card {
-    border: 1px solid var(--border);
-    padding: 24px;
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-lg);
   }
 
   .today-daily {
@@ -328,12 +328,12 @@
 
   .today-apps {
     display: grid;
-    gap: 12px;
+    border-top: 1px solid var(--border-light);
   }
 
   .today-app-card {
-    border: 1px solid var(--border);
-    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    padding: 16px 0;
   }
 
   .today-app-head {

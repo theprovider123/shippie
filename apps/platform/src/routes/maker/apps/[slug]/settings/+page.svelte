@@ -218,7 +218,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
 <style>
   .settings {
     display: grid;
-    gap: 2rem;
+    gap: var(--space-lg);
     max-width: 980px;
   }
   .block {

@@ -15,21 +15,21 @@
     <h1>Local-first tools for sensitive work.</h1>
     <p class="lede">
       Built for people who need clear data boundaries, fast tools, and fewer hidden
-      cloud dependencies before a workflow can be trusted.
+      cloud dependencies before they trust a workflow.
     </p>
   </header>
 
   <section>
     <h2>Privacy by architecture, backed by disclosure</h2>
     <p>
-      Shippie tools are designed to keep primary working data on the user&rsquo;s
-      device. When local AI is available, inference runs in the browser sandbox
-      on the device using the best supported runtime for that browser and hardware.
+      Shippie tools keep primary working data on the user&rsquo;s device. When local AI is
+      available, inference runs in the on-device browser sandbox, using the best supported
+      runtime for that browser and hardware.
     </p>
     <p>
-      If a workflow needs backup, sync, relay, external AI, or another service,
-      that movement should be explicit, encrypted where the feature requires it,
-      and visible in Shippie surfaces before users rely on it with sensitive data.
+      If a workflow needs backup, sync, relay, external AI, or another service, that movement is
+      explicit, encrypted where the feature requires it, and visible in Shippie surfaces before
+      users trust it with sensitive data.
     </p>
   </section>
 
@@ -84,10 +84,10 @@
       <li>Encrypted backup, sync, and relay payloads when those features are enabled.</li>
     </ul>
     <p>
-      Shippie servers may still see account details, app metadata, operational logs,
-      install or saved-tool signals, and encrypted backup or relay payloads when
-      users enable those features. Tool content should not move to Shippie unless
-      the user explicitly exports, backs up, syncs, relays, or connects a service.
+      Shippie servers may still see account details, app metadata, operational logs, install or
+      saved-tool signals, and encrypted backup or relay payloads when users enable those features.
+      Tool content does not move to Shippie unless the user exports, backs up, syncs, relays, or
+      connects a service.
     </p>
   </section>
 </main>
