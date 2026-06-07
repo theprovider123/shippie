@@ -27,6 +27,7 @@ import {
   type AIRequest,
   type JsonSchema,
   type Sensitivity,
+  type PupilWhatWorks,
 } from '@shippie/cloudlet-contract';
 import type { FeedbackRow, PupilRow, LessonRow } from './workspace-store';
 
@@ -189,6 +190,54 @@ export function generateAdaptationsRules(
   }
 
   return cards;
+}
+
+/**
+ * PRE-SEED THE LOOP (Phase 6 → Phase 5 wiring).
+ *
+ * Before cards are shown, consult each target pupil's "What Works" memory so
+ * cards start SMART. For every card we look at its target pupils and, when one
+ * of them has a PROVEN strategy (a `strategiesThatWork` entry past the
+ * threshold), we surface it in `whyThis` ("Pre-teach vocab — worked 4/5 times
+ * for Maya"). This is DETERMINISTIC (no extra model call) and pure — the cards
+ * are still teacher-owned suggestions; we only enrich the reasoning, never
+ * auto-apply. Cards with no matching memory pass through unchanged.
+ *
+ * @param cards the freshly generated cards (rules or broker path)
+ * @param memory pupilId → that pupil's deterministic What Works profile
+ * @param names  pupilId → display first-name for teacher-readable wording
+ */
+export function preSeedCards(
+  cards: AdaptationCard[],
+  memory: Record<string, PupilWhatWorks>,
+  names: Record<string, string> = {},
+): AdaptationCard[] {
+  return cards.map((card) => {
+    // Gather proven strategies for THIS card's target pupils.
+    const hints: string[] = [];
+    let bumpEstablished = false;
+    for (const pupilId of card.target.ids) {
+      const profile = memory[pupilId];
+      if (!profile) continue;
+      const first = names[pupilId] ?? 'this pupil';
+      for (const s of profile.strategiesThatWork.slice(0, 1)) {
+        const worked = Math.round(s.successRate * s.n);
+        hints.push(`${s.strategy} — worked ${worked}/${s.n} times for ${first}`);
+        if (s.status === 'established') bumpEstablished = true;
+      }
+    }
+    if (hints.length === 0) return card;
+    // De-dup identical hints (e.g. a whole group shares one proven strategy).
+    const unique = [...new Set(hints)];
+    return assertOk({
+      ...card,
+      whyThis: `${card.whyThis}. What's helped before: ${unique.join('; ')}`,
+      // Memory-backed evidence justifies upgrading confidence when a proven,
+      // established strategy underpins the card.
+      confidence: bumpEstablished ? 'established' : card.confidence,
+      reviewState: 'suggested',
+    });
+  });
 }
 
 /** Enforce the rules layer on a card before it leaves the engine. */

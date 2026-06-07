@@ -10,8 +10,11 @@ import {
   generateAdaptationsBroker,
   adaptationGeneratedEvent,
   assertNoDeficitLanguage,
+  preSeedCards,
   type AdaptationContext,
 } from './adaptation-engine';
+import { buildPupilWhatWorks } from './what-works';
+import type { LessonRow } from './workspace-store';
 import { createAIBroker, type ModelFn } from './ai-broker';
 import { WorkspaceStore } from './workspace-store';
 
@@ -204,5 +207,54 @@ describe('broker path', () => {
     await expect(generateAdaptationsBroker(bad, ctx(), { userId: 'u1' })).rejects.toThrow('boom');
     // sanity: a refusal would NOT throw
     expect(new AIBrokerRefusal('no_model')).toBeInstanceOf(AIBrokerRefusal);
+  });
+});
+
+describe('preSeedCards — consult What Works so cards start smart (Phase 6)', () => {
+  const lessons: LessonRow[] = [
+    { id: 'l1', classId: 'c1', subjectId: 'maths', topic: 'Fractions', objective: 'O', time: '9am', status: 'done' },
+    { id: 'l2', classId: 'c1', subjectId: 'maths', topic: 'Fractions', objective: 'O', time: '9am', status: 'done' },
+    { id: 'l3', classId: 'c1', subjectId: 'maths', topic: 'Fractions', objective: 'O', time: '9am', status: 'done' },
+  ];
+
+  function provenMemory(pupilId: string) {
+    const ev = (cardId: string, lessonId: string) => [
+      {
+        clientEventId: `gen-${cardId}`, type: 'adaptation.generated', instanceId: 'i1',
+        actorUserId: 'u', deviceId: 'd', createdOfflineAt: '2026-05-01T09:00:00Z', schemaVersion: 1,
+        payload: { cards: [{ id: cardId, lessonId, subjectId: 'maths', strategy: 'Pre-teach vocab', target: { ids: [pupilId], label: 'x' } }] },
+      },
+      {
+        clientEventId: `out-${cardId}`, type: 'adaptation.outcome_recorded', instanceId: 'i1',
+        actorUserId: 'u', deviceId: 'd', createdOfflineAt: '2026-05-01T10:00:00Z', schemaVersion: 1,
+        payload: { cardId, outcome: 'worked' },
+      },
+    ];
+    const events = [...ev('c1', 'l1'), ...ev('c2', 'l2'), ...ev('c3', 'l3')];
+    return buildPupilWhatWorks({ pupilId, instanceId: 'i1', events: events as never, lessons });
+  }
+
+  it('enriches whyThis with a pupil-specific proven strategy', () => {
+    const cards = generateAdaptationsRules(ctx(), () => 1000);
+    expect(cards.length).toBeGreaterThan(0);
+    const memory = { p1: provenMemory('p1') };
+    const seeded = preSeedCards(cards, memory, { p1: 'Aisha' });
+    const enriched = seeded.find((c) => c.target.ids.includes('p1'));
+    expect(enriched?.whyThis).toMatch(/Pre-teach vocab — worked 3\/3 times for Aisha/);
+    // confidence bumped to established by the proven, established strategy
+    expect(enriched?.confidence).toBe('established');
+  });
+
+  it('leaves cards with no matching memory unchanged', () => {
+    const cards = generateAdaptationsRules(ctx(), () => 1000);
+    const before = cards.map((c) => c.whyThis);
+    const seeded = preSeedCards(cards, {}, {});
+    expect(seeded.map((c) => c.whyThis)).toEqual(before);
+  });
+
+  it('pre-seeded cards still pass the no-deficit-language gate', () => {
+    const cards = generateAdaptationsRules(ctx(), () => 1000);
+    const seeded = preSeedCards(cards, { p1: provenMemory('p1') }, { p1: 'Aisha' });
+    for (const c of seeded) expect(() => assertNoDeficitLanguage(c)).not.toThrow();
   });
 });

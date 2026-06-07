@@ -26,8 +26,10 @@ import {
   generateAdaptationsRules,
   generateAdaptationsBroker,
   adaptationGeneratedEvent,
+  preSeedCards,
   type AdaptationContext,
 } from '$server/cloudlet/adaptation-engine';
+import { buildPupilWhatWorks } from '$server/cloudlet/what-works';
 import { createAIBroker, modelFromEnv } from '$server/cloudlet/ai-broker';
 import type { Role } from '@shippie/cloudlet-contract';
 
@@ -61,10 +63,12 @@ export const POST: RequestHandler = async (event) => {
   const lesson = await stub.getLesson(body.lessonId);
   if (!lesson) return json({ error: 'lesson_not_found' }, { status: 404 });
 
-  const [pupils, feedback, aiSetting] = await Promise.all([
+  const [pupils, feedback, aiSetting, allEvents, allLessons] = await Promise.all([
     stub.listPupilsForClass(lesson.classId),
     stub.listFeedbackForLesson(lesson.id),
     stub.getAiSetting(),
+    stub.listEvents(),
+    stub.listLessons(),
   ]);
 
   const adCtx: AdaptationContext = {
@@ -133,6 +137,24 @@ export const POST: RequestHandler = async (event) => {
   if (cards.length === 0) {
     return json({ cards: [], source, generated: 0 });
   }
+
+  // PRE-SEED THE LOOP (Phase 6 → 5): consult each target pupil's "What Works"
+  // memory so cards start smart ("Pre-teach vocab — worked 4/5 times for Maya").
+  // Deterministic (no extra model call) — builds each pupil's profile from the
+  // school's event log + lessons and enriches the card reasoning. Cards stay
+  // teacher-owned suggestions.
+  const memory: Record<string, ReturnType<typeof buildPupilWhatWorks>> = {};
+  const names: Record<string, string> = {};
+  for (const p of pupils) {
+    memory[p.id] = buildPupilWhatWorks({
+      pupilId: p.id,
+      instanceId: row.id,
+      events: allEvents,
+      lessons: allLessons,
+    });
+    names[p.id] = p.name.split(' ')[0] ?? p.name;
+  }
+  cards = preSeedCards(cards, memory, names);
 
   // Append the cards through the SAME append-only log.
   const evt = adaptationGeneratedEvent({
