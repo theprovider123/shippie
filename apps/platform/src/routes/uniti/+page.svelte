@@ -104,7 +104,10 @@
       <p class="muted">Private school cloud · UK data · Works offline</p>
 
       <div class="actions">
-        <button class="btn primary" on:click={recordTestEvent} disabled={recording}>
+        {#if data.canManage}
+          <a class="btn primary" href="/uniti/setup">Set up your school</a>
+        {/if}
+        <button class="btn ghost" on:click={recordTestEvent} disabled={recording}>
           {recording ? 'Recording…' : 'Record a test event'}
         </button>
         <button class="btn ghost" on:click={loadEvents} disabled={loading}>
@@ -228,6 +231,9 @@
     padding: 12px 20px;
     border: 1px solid transparent;
     cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
     transition:
       transform 0.05s ease,
       box-shadow 0.15s ease,
