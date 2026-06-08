@@ -51,6 +51,15 @@ describe("merge global + local", () => {
     const merged = mergeBoards(local, global, "keepy");
     expect(merged).toHaveLength(1);
     expect(merged[0].playerKey).toBe("sam:u1");
+    expect(merged[0].source).toBe("you"); // own row stays labelled "(you)" on a tie
+  });
+
+  it("keeps the higher score when the same player key has two values", () => {
+    const local: ScoreEntry[] = [{ ...s("keepy", "Sam", 12), playerKey: "sam:u1", source: "you" }];
+    const global: ScoreEntry[] = [{ ...s("keepy", "Sam", 40), playerKey: "sam:u1", source: "global" }];
+    const merged = mergeBoards(local, global, "keepy");
+    expect(merged).toHaveLength(1);
+    expect(merged[0].score).toBe(40);
   });
 });
 

@@ -271,7 +271,7 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
 
   // ── Shooting (human) ──
   function shootPlacement(input: ShotPlacement) {
-    if (anim || phase !== "shoot") return;
+    if (anim || phase !== "shoot" || over) return;
     hapticTap();
     const placement = normaliseShotPlacement(input, input.zone, shotsRef.current.length);
     let dive: Zone;
@@ -292,7 +292,7 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
 
   // ── Diving (human) ──
   function pickDive(z: Zone) {
-    if (anim) return;
+    if (anim || over) return;
     hapticTap();
     if (solo) {
       myDivesRef.current = [...myDivesRef.current, z];
@@ -405,7 +405,7 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
         <div className="zone-bar">
           <span className="zone-cap">{phase === "shoot" ? "Swipe to place, or tap…" : "Dive…"}</span>
           {ZONES.map(({ z, label }) => (
-            <button key={z} className="zone-btn" disabled={Boolean(anim) || (phase === "keep" && solo && tell === null)} onClick={() => (phase === "shoot" ? shoot(z) : pickDive(z))}>
+            <button key={z} className="zone-btn" disabled={Boolean(anim) || over !== null || (phase === "keep" && solo && tell === null)} onClick={() => (phase === "shoot" ? shoot(z) : pickDive(z))}>
               {label}
             </button>
           ))}

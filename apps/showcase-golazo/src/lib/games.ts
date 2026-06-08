@@ -86,18 +86,24 @@ export function topScores(entries: ScoreEntry[], game: GameId, n = 10): ScoreEnt
 
 /** Merge local + global boards for a game into one ranked list (deduped). */
 export function mergeBoards(local: ScoreEntry[], global: ScoreEntry[], game: GameId): ScoreEntry[] {
-  const seen = new Set<string>();
   const all = [...global, ...local].filter((e) => e.game === game);
-  const deduped: ScoreEntry[] = [];
-  for (const e of rankBoard(all)) {
+  const byKey = new Map<string, ScoreEntry>();
+  for (const e of all) {
     const key = e.playerKey
       ? `${e.playerKey}:${e.game}`
       : `${e.name.toLowerCase()}:${e.score}:${e.source}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(e);
+    const kept = byKey.get(key);
+    // Keep the higher score; on a tie prefer the "you" row so the player's own
+    // entry is always labelled correctly rather than showing as an anonymous 🌍 row.
+    if (
+      !kept ||
+      e.score > kept.score ||
+      (e.score === kept.score && e.source === "you" && kept.source !== "you")
+    ) {
+      byKey.set(key, e);
+    }
   }
-  return deduped;
+  return rankBoard([...byKey.values()]);
 }
 
 function rankBoard(entries: ScoreEntry[]): ScoreEntry[] {
