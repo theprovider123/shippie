@@ -6,6 +6,7 @@ import {
   decodeDuel,
   duelUrl,
   readDuelFromHash,
+  penaltyShotSaved,
   type Zone,
   type DuelSide,
 } from "./duel";
@@ -17,6 +18,14 @@ describe("goalsAgainst", () => {
     // shots L M R L R  vs dives L L L L L → goals when zone differs: M,R,_,R = 3
     expect(goalsAgainst(Z("LMRLR"), Z("LLLLL"))).toBe(3);
     expect(goalsAgainst(Z("LMRLR"), Z("LMRLR"))).toBe(0); // keeper reads everything
+  });
+  it("lets rich placement beat a same-side keeper with pace and height", () => {
+    expect(penaltyShotSaved({ zone: 1, x: 0.92, y: 0.88, power: 0.98, bend: -0.4 }, 1)).toBe(false);
+    expect(goalsAgainst(Z("R"), Z("R"), [{ zone: 1, x: 0.92, y: 0.88, power: 0.98, bend: -0.4 }])).toBe(1);
+  });
+  it("still saves tame rich shots in the keeper envelope", () => {
+    expect(penaltyShotSaved({ zone: -1, x: 0.25, y: 0.44, power: 0.45, bend: 0 }, -1)).toBe(true);
+    expect(goalsAgainst(Z("L"), Z("L"), [{ zone: -1, x: 0.25, y: 0.44, power: 0.45, bend: 0 }])).toBe(0);
   });
 });
 
@@ -48,6 +57,17 @@ describe("codec", () => {
   it("round-trips a one-leg (challenge) duel", () => {
     const oneLeg = { a: duel.a };
     expect(decodeDuel(encodeDuel(oneLeg))).toEqual(oneLeg);
+  });
+  it("round-trips optional placement for new penalty links", () => {
+    const detailed = {
+      a: {
+        name: "Sam",
+        shots: Z("R"),
+        dives: Z("L"),
+        shotDetails: [{ zone: 1 as Zone, x: 0.91, y: 0.83, power: 0.96, bend: -0.2 }],
+      },
+    };
+    expect(decodeDuel(encodeDuel(detailed))).toEqual(detailed);
   });
   it("reads from a hash + rejects others", () => {
     const url = duelUrl(duel, "https://x/");

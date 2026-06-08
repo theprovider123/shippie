@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 import { drawStadium, drawBall, drawBallShadow, drawKeeper, Trail, Particles, Shake } from "../../lib/stadium";
-import { Keeper, keeperConfig, saved, rampedDifficulty } from "../../lib/keeper";
+import { Keeper, keeperConfig, saved2d, rampedDifficulty } from "../../lib/keeper";
 
 const SHOTS = 8;
+
+type Pt = { x: number; y: number };
+type Ball = {
+  x: number;
+  depthY: number;
+  height: number;
+  vx: number;
+  vDepth: number;
+  vz: number;
+  curl: number;
+  spin: number;
+  flying: boolean;
+  r: number;
+};
 
 /**
  * Free Kick — bend it round the wall. Curl comes from the *arc* you trace: a banana
@@ -34,57 +48,121 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
     size();
     window.addEventListener("resize", size);
 
-    const goalY = () => H * 0.16;
-    const goalL = () => W * 0.2;
-    const goalR = () => W * 0.8;
-    const barH = () => H * 0.14;
-    const wallY = () => H * 0.5;
-    const spot = () => ({ x: W / 2, y: H * 0.88 });
-    let ball = { ...spot(), vx: 0, vy: 0, curl: 0, flying: false, r: Math.min(W, H) * 0.045 };
+    const goalY = () => H * 0.15;
+    const goalL = () => W * 0.18;
+    const goalR = () => W * 0.82;
+    const barH = () => H * 0.18;
+    const goalBottom = () => goalY() + barH();
+    const wallY = () => H * 0.55;
+    const spot = () => ({ x: W / 2, y: H * 0.9 });
+    const clamp = (n: number, lo: number, hi: number) => (n < lo ? lo : n > hi ? hi : n);
+    const freshBall = (): Ball => ({ ...spot(), depthY: spot().y, height: 0, vx: 0, vDepth: 0, vz: 0, curl: 0, spin: 0, flying: false, r: Math.min(W, H) * 0.045 });
+    const screenY = (b = ball) => b.depthY - b.height;
+
+    let ball = freshBall();
     const keeper = new Keeper(goalL(), goalR(), keeperConfig(difficulty));
     let wallX = W / 2;
-    let drag: { x: number; y: number } | null = null;
-    let path: { x: number; y: number }[] = [];
-    let aim: { x: number; y: number } | null = null;
+    let drag: Pt | null = null;
+    let path: Pt[] = [];
+    let aim: Pt | null = null;
     let resolved = false;
-    const trail = new Trail(14);
+    let crossedWall = false;
+    const trail = new Trail(16);
     const particles = new Particles();
     const shake = new Shake();
     const startT = performance.now();
     let raf = 0;
 
-    function placeWall() { wallX = W * (0.34 + Math.random() * 0.32); }
+    function placeWall() { wallX = W * (0.32 + Math.random() * 0.36); }
     placeWall();
 
-    // Curl from the bend of the swipe: perpendicular offset of the path midpoint
-    // from the straight start→end line. A banana swipe → strong curl.
-    function curlFromPath(pts: { x: number; y: number }[]): number {
+    function curlFromPath(pts: Pt[]): number {
       if (pts.length < 3) return 0;
       const a = pts[0], b = pts[pts.length - 1], m = pts[Math.floor(pts.length / 2)];
       const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      // signed perpendicular distance of m from line a→b — even a gentle arc bends it
       const cross = ((b.x - a.x) * (a.y - m.y) - (b.y - a.y) * (a.x - m.x)) / len;
-      return clamp(-cross * 0.05, -1.4, 1.4);
+      return clamp(-cross / (W * 0.12), -1, 1);
     }
-    function clamp(n: number, lo: number, hi: number) { return n < lo ? lo : n > hi ? hi : n; }
 
-    function shoot(dx: number, dy: number, curl: number) {
-      if (ball.flying || dy > -10) return;
-      ball.vx = dx * 0.14; ball.vy = dy * 0.16; ball.curl = curl; ball.flying = true;
-      resolved = false; trail.clear();
+    function buildLaunch(pts: Pt[]) {
+      const end = pts[pts.length - 1] ?? spot();
+      const s = spot();
+      const dx = end.x - s.x;
+      const dy = end.y - s.y;
+      if (dy > -16) return null;
+      const dist = Math.hypot(dx, dy);
+      const power = clamp(dist / (H * 0.42), 0.48, 1.18);
+      const lift = clamp((s.y - end.y) / (H * 0.62), 0.16, 1.08);
+      const curl = curlFromPath(pts);
+      return {
+        vx: dx * 0.028 * power,
+        vDepth: -(10.5 + power * 6.6),
+        vz: 4.2 + lift * 6.2 + power * 0.8,
+        curl: curl * (0.16 + power * 0.08),
+        spin: dx * 0.018 + curl * 0.8,
+      };
+    }
+
+    function stepBall(b: Ball) {
+      b.vz -= 0.36;
+      b.vx += b.curl;
+      b.curl *= 0.94;
+      b.x += b.vx;
+      b.depthY += b.vDepth;
+      b.height += b.vz;
+      b.spin += b.vx * 0.03 + b.curl * 0.5;
+      if (b.height < 0) {
+        b.height = 0;
+        b.vz *= -0.16;
+        b.vDepth *= 0.97;
+        b.vx *= 0.985;
+      }
+    }
+
+    function predictKeeperCross(launch: NonNullable<ReturnType<typeof buildLaunch>>) {
+      const b = { ...freshBall(), ...launch, flying: true };
+      for (let i = 0; i < 90 && b.depthY > goalBottom(); i++) {
+        // Keepers read the early strike and body shape, not the full late swerve.
+        b.vx += b.curl * 0.35;
+        b.curl *= 0.9;
+        b.vz -= 0.36;
+        b.x += b.vx;
+        b.depthY += b.vDepth;
+        b.height = Math.max(0, b.height + b.vz);
+      }
+      return { x: b.x, y: screenY(b) };
+    }
+
+    function shoot(pts: Pt[]) {
+      if (ball.flying) return;
+      const launch = buildLaunch(pts);
+      if (!launch) return;
+      Object.assign(ball, launch, { flying: true, height: 0 });
+      resolved = false;
+      crossedWall = false;
+      trail.clear();
       hapticTap();
       shotsRef.current -= 1; setShots(shotsRef.current);
       keeper.cfg = keeperConfig(rampedDifficulty(difficulty, scoreRef.current));
-      // The keeper reads the ball's LAUNCH line, not the curve — so a banana bends
-      // away from their dive. They guess where a straight shot would cross.
-      let px = spot().x, vx = ball.vx, vy = ball.vy, py = spot().y;
-      for (let i = 0; i < 60 && py > goalY(); i++) { vy += 0.11; px += vx; py += vy; }
-      keeper.commit(px);
+      keeper.commit(predictKeeperCross(launch).x);
     }
-    function onDown(e: PointerEvent) { const r = canvas.getBoundingClientRect(); drag = { x: e.clientX - r.left, y: e.clientY - r.top }; path = [drag]; aim = drag; }
-    function onMove(e: PointerEvent) { if (!drag) return; const r = canvas.getBoundingClientRect(); aim = { x: e.clientX - r.left, y: e.clientY - r.top }; path.push(aim); }
+
+    function onDown(e: PointerEvent) {
+      if (ball.flying) return;
+      const r = canvas.getBoundingClientRect();
+      drag = { x: e.clientX - r.left, y: e.clientY - r.top };
+      path = [drag];
+      aim = drag;
+      canvas.setPointerCapture?.(e.pointerId);
+    }
+    function onMove(e: PointerEvent) {
+      if (!drag) return;
+      const r = canvas.getBoundingClientRect();
+      aim = { x: e.clientX - r.left, y: e.clientY - r.top };
+      path.push(aim);
+    }
     function onUp() {
-      if (drag && aim) { const s = spot(); shoot(aim.x - s.x, aim.y - s.y, curlFromPath(path)); }
+      if (drag && aim) shoot(path.length > 1 ? path : [drag, aim]);
       drag = null; aim = null; path = [];
     }
     canvas.addEventListener("pointerdown", onDown);
@@ -96,12 +174,76 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       setFlash(msg);
       if (pts > 0) {
         scoreRef.current += pts; setScore(scoreRef.current);
-        particles.emit(ball.x, ball.y, "spark", pts >= 2 ? 24 : 16);
+        particles.emit(ball.x, screenY(), "spark", pts >= 2 ? 26 : 16);
         shake.kick(pts >= 2 ? 12 : 7); celebrate();
-      } else { shake.kick(4); confirmBuzz(); }
+      } else { shake.kick(msg === "SAVED!" ? 8 : 4); confirmBuzz(); }
       setTimeout(() => setFlash(""), 850);
       if (shotsRef.current <= 0) setTimeout(() => { setPhase("over"); onGameOver(scoreRef.current); }, 850);
-      else setTimeout(() => { ball = { ...spot(), vx: 0, vy: 0, curl: 0, flying: false, r: ball.r }; placeWall(); keeper.reset(); trail.clear(); }, 800);
+      else setTimeout(() => { ball = freshBall(); placeWall(); keeper.reset(); trail.clear(); }, 820);
+    }
+
+    function judgeAtGoal() {
+      const gl = goalL(), gr = goalR(), gy = goalY(), gb = goalBottom(), bh = barH();
+      const y = screenY();
+      const inX = ball.x > gl + ball.r && ball.x < gr - ball.r;
+      const inY = y > gy + ball.r * 0.35 && y < gb - ball.r * 0.3;
+      const keeperY = gy + bh * 0.58 - keeper.dive * bh * 0.08;
+      const reachY = bh * (0.35 + difficulty * 0.16) + keeper.dive * bh * 0.08;
+      const isSaved = inX && inY && saved2d(ball.x, y, keeper.x, keeperY, keeper.reachPx(), reachY, ball.r);
+      if (!inX) endShot("WIDE", 0);
+      else if (!inY) endShot(y <= gy ? "OVER" : "LOW", 0);
+      else if (isSaved) endShot("SAVED!", 0);
+      else {
+        const side = ball.x < gl + (gr - gl) * 0.2 || ball.x > gr - (gr - gl) * 0.2;
+        const high = y < gy + bh * 0.36;
+        const pts = side && high ? 2 : 1;
+        endShot(pts === 2 ? "TOP BINS! +2" : "GOAL +1", pts);
+      }
+    }
+
+    function maybeWallBlock() {
+      if (crossedWall || ball.depthY > wallY()) return;
+      crossedWall = true;
+      const y = screenY();
+      const wallTop = wallY() - H * 0.105;
+      const wallBottom = wallY() + H * 0.045;
+      const wallWidth = W * 0.2;
+      if (Math.abs(ball.x - wallX) < wallWidth * 0.5 && y > wallTop && y < wallBottom) {
+        endShot("WALL!", 0);
+      }
+    }
+
+    function drawGoalFrame() {
+      const gl = goalL(), gr = goalR(), gy = goalY(), bh = barH();
+      ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 1;
+      for (let x = gl; x <= gr; x += (gr - gl) / 14) { ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy + bh); ctx.stroke(); }
+      for (let y = gy; y <= gy + bh; y += bh / 5) { ctx.beginPath(); ctx.moveTo(gl, y); ctx.lineTo(gr, y); ctx.stroke(); }
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(gl, gy + bh); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + bh); ctx.stroke();
+    }
+
+    function drawWall() {
+      const players = 4, ww = W * 0.052;
+      for (let i = 0; i < players; i++) {
+        const x = wallX - (players - 1) * ww * 0.58 + i * ww * 1.16;
+        ctx.fillStyle = "#243a4a"; ctx.beginPath(); ctx.ellipse(x, wallY(), ww * 0.45, H * 0.052, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#1a2a36"; ctx.beginPath(); ctx.arc(x, wallY() - H * 0.055, ww * 0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - ww * 0.25, wallY() - H * 0.01); ctx.lineTo(x + ww * 0.25, wallY() - H * 0.01); ctx.stroke();
+      }
+    }
+
+    function drawAimGuide() {
+      if (!aim || !drag || ball.flying) return;
+      const launch = buildLaunch(path.length > 1 ? path : [drag, aim]);
+      if (!launch) return;
+      const b = { ...freshBall(), ...launch, flying: true };
+      ctx.fillStyle = "rgba(184,255,78,0.58)";
+      for (let i = 0; i < 34 && b.depthY > goalY() - 20; i++) {
+        stepBall(b);
+        const fade = 0.58 - i * 0.014;
+        ctx.fillStyle = `rgba(184,255,78,${Math.max(0.1, fade)})`;
+        ctx.beginPath(); ctx.arc(b.x, screenY(b), 2.8 - i * 0.035, 0, Math.PI * 2); ctx.fill();
+      }
     }
 
     function frame(now: number) {
@@ -109,49 +251,28 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       keeper.update(2);
 
       if (ball.flying && !resolved) {
-        // Banana: strong lateral kick that eases as the ball loses spin.
-        ball.vy += 0.11; ball.vx += ball.curl; ball.curl *= 0.95; ball.x += ball.vx; ball.y += ball.vy;
-        trail.push(ball.x, ball.y);
-        if (Math.abs(ball.y - wallY()) < 6 && Math.abs(ball.x - wallX) < W * 0.12) endShot("WALL!", 0);
-        else if (ball.y <= goalY() + ball.r) {
-          const gl = goalL(), gr = goalR();
-          const onTarget = ball.x > gl + ball.r && ball.x < gr - ball.r;
-          const isSaved = saved(ball.x, keeper.x, keeper.reachPx(), ball.r);
-          if (!onTarget) endShot("OVER", 0);
-          else if (isSaved) endShot("SAVED!", 0);
-          else { const corner = ball.x < gl + (gr - gl) * 0.18 || ball.x > gr - (gr - gl) * 0.18; endShot(corner ? "TOP BINS! +2" : "GOAL +1", corner ? 2 : 1); }
-        } else if (ball.y < -40 || ball.x < -60 || ball.x > W + 60) endShot("OVER", 0);
+        stepBall(ball);
+        trail.push(ball.x, screenY());
+        maybeWallBlock();
+        if (!resolved && ball.depthY <= goalBottom()) judgeAtGoal();
+        else if (!resolved && (ball.x < -80 || ball.x > W + 80 || ball.depthY < goalY() - H * 0.08)) endShot("WIDE", 0);
       }
 
       const [sx, sy] = shake.offset();
       ctx.save();
       ctx.translate(sx, sy);
       drawStadium(ctx, W, H, now - startT, { pitchTop: 0.42 });
-      const gl = goalL(), gr = goalR(), gy = goalY(), bh = barH();
-      ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 1;
-      for (let x = gl; x <= gr; x += (gr - gl) / 14) { ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy + bh); ctx.stroke(); }
-      for (let y = gy; y <= gy + bh; y += bh / 4) { ctx.beginPath(); ctx.moveTo(gl, y); ctx.lineTo(gr, y); ctx.stroke(); }
-      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 5; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(gl, gy + bh); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + bh); ctx.stroke();
-      // keeper — a real diving figure, gloves at the edge of the save zone
+      drawGoalFrame();
+      const gy = goalY(), bh = barH();
       drawKeeper(ctx, keeper.x, gy + bh * 0.6, keeper.reachPx(), keeper.lean, bh, keeper.dive);
-      // wall
-      const players = 4, ww = W * 0.05;
-      for (let i = 0; i < players; i++) {
-        const x = wallX - (players - 1) * ww * 0.6 + i * ww * 1.2;
-        ctx.fillStyle = "#243a4a"; ctx.beginPath(); ctx.ellipse(x, wallY(), ww * 0.45, H * 0.05, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#1a2a36"; ctx.beginPath(); ctx.arc(x, wallY() - H * 0.05, ww * 0.3, 0, Math.PI * 2); ctx.fill();
-      }
-      // aim guide with curl
-      if (aim && drag) {
-        const s = spot(); let cc = curlFromPath(path);
-        let vx = (aim.x - s.x) * 0.14, vy = (aim.y - s.y) * 0.16, px = s.x, py = s.y;
-        ctx.fillStyle = "rgba(184,255,78,0.55)";
-        for (let i = 0; i < 26 && py > goalY() - 20; i++) { vy += 0.11; vx += cc; cc *= 0.95; px += vx; py += vy; ctx.beginPath(); ctx.arc(px, py, 2.4, 0, Math.PI * 2); ctx.fill(); }
-      }
+      drawWall();
+      drawAimGuide();
       if (ball.flying) trail.draw(ctx, ball.r);
-      drawBallShadow(ctx, ball.x, H - 8, ball.r, ball.flying ? 0.6 : 0.1);
-      drawBall(ctx, ball.x, ball.y, ball.r, now / 100);
+      const y = screenY();
+      const heightFrac = clamp(ball.height / (H * 0.28), 0, 1);
+      const perspective = 0.58 + 0.42 * clamp((ball.depthY - goalY()) / (spot().y - goalY()), 0, 1);
+      drawBallShadow(ctx, ball.x, ball.depthY + H * 0.018, ball.r, heightFrac);
+      drawBall(ctx, ball.x, y, ball.r * perspective, ball.flying ? ball.spin : now / 100);
       particles.update(); particles.draw(ctx);
       ctx.restore();
       raf = requestAnimationFrame(frame);
@@ -181,7 +302,7 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
         <div className="game-overlay">
           <span className="game-emoji">🧱</span>
           <h3>Free Kick</h3>
-          <p>Swipe in a <strong>curve</strong> to bend it round the wall and past the keeper. Top corners worth 2. {SHOTS} kicks.</p>
+          <p>Swipe in a <strong>curve</strong> to bend it round the wall and past the keeper. Lift and pace now matter. Top corners worth 2. {SHOTS} kicks.</p>
           {target ? <p className="game-target">Beat {target} to win the challenge</p> : null}
           <button className="cta wide" onClick={startGame}>Kick off</button>
         </div>

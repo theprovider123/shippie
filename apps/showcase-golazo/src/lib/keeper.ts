@@ -39,6 +39,21 @@ export function saved(ballX: number, keeperX: number, reachPx: number, ballR: nu
   return Math.abs(ballX - keeperX) < reachPx + ballR;
 }
 
+/** 2D save envelope for shots where height matters: free kicks, top corners, dips. */
+export function saved2d(
+  ballX: number,
+  ballY: number,
+  keeperX: number,
+  keeperY: number,
+  reachX: number,
+  reachY: number,
+  ballR: number,
+): boolean {
+  const dx = (ballX - keeperX) / Math.max(1, reachX + ballR);
+  const dy = (ballY - keeperY) / Math.max(1, reachY + ballR * 0.7);
+  return dx * dx + dy * dy <= 1;
+}
+
 /** Dynamic difficulty: harder the more you've scored, capped. */
 export function rampedDifficulty(base: number, score: number, perGoal = 0.05, cap = 0.92): number {
   return clamp(base + score * perGoal, 0, cap);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { keeperConfig, saved, rampedDifficulty, Keeper } from "./keeper";
+import { keeperConfig, saved, saved2d, rampedDifficulty, Keeper } from "./keeper";
 
 describe("keeperConfig", () => {
   it("a harder keeper has more reach and less error", () => {
@@ -19,6 +19,10 @@ describe("saved", () => {
   it("saves when the keeper is within reach + ball radius", () => {
     expect(saved(100, 110, 12, 6)).toBe(true); // 10 apart, reach+r = 18
     expect(saved(100, 140, 12, 6)).toBe(false); // 40 apart
+  });
+  it("uses height for the 2d save envelope", () => {
+    expect(saved2d(100, 60, 105, 64, 18, 28, 5)).toBe(true);
+    expect(saved2d(100, 20, 105, 64, 18, 20, 5)).toBe(false);
   });
 });
 
