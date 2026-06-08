@@ -34,7 +34,7 @@ const ev = (id: string) => ({
   schemaVersion: 1,
   payload: { got: true },
 });
-const RECEIVED = 1_717_800_000_000; // server receipt time, injected (≠ createdOfflineAt)
+const RECEIVED = Date.parse('2026-06-09T12:00:00Z'); // server receipt time, injected (≠ createdOfflineAt)
 
 describe('WorkspaceStore', () => {
   it('migrates workspace_schema_version to the current version on init', () => {
@@ -156,6 +156,39 @@ const fbEvent = (
   at: updatedAt,
 });
 
+const rosterImportedEvent = (id: string, pupilId: string, classId: string) => ({
+  clientEventId: id,
+  type: 'roster.imported',
+  instanceId: 'i1',
+  actorUserId: 'u1',
+  deviceId: 'd1',
+  createdOfflineAt: '2026-06-07T00:00:00Z',
+  schemaVersion: 1,
+  payload: {
+    source: 'test',
+    diff: {
+      pupils: {
+        adds: [
+          {
+            sourceId: pupilId,
+            name: 'Erasure Test',
+            initials: 'ET',
+            send: false,
+            eal: false,
+            fsm: false,
+          },
+        ],
+      },
+      classes: {
+        adds: [{ sourceId: classId, name: '4T', yearGroup: 'Year 4', room: 'Test' }],
+      },
+      memberships: {
+        adds: [{ classSourceId: classId, pupilSourceId: pupilId }],
+      },
+    },
+  },
+});
+
 describe('WorkspaceStore — Phase 9 compliance', () => {
   it('flags a safeguarding-tripping note and withholds its text by default (4b)', () => {
     const s = store();
@@ -204,27 +237,30 @@ describe('WorkspaceStore — Phase 9 compliance', () => {
 
   it('erases one pupil: purges PII, keeps anonymised aggregate + tombstone', () => {
     const s = store();
-    s.seedDemoSchool(0);
-    s.appendEvent(fbEvent('era-1', 'p5', 'Will benefit from a reading buddy.').event, RECEIVED);
-    expect(s.listPupils().some((p) => p.id === 'p5')).toBe(true);
+    const pupilId = 'erase-pupil';
+    s.appendEvent(rosterImportedEvent('era-roster', pupilId, 'erase-class'), RECEIVED - 2);
+    s.appendEvent(fbEvent('era-1', pupilId, 'Will benefit from a reading buddy.').event, RECEIVED);
+    expect(s.listPupils().some((p) => p.id === pupilId)).toBe(true);
 
-    const res = s.erasePupil('p5', RECEIVED, 'parental request');
+    const res = s.erasePupil(pupilId, RECEIVED, 'parental request');
     expect(res.notesPurged).toBe(1);
     expect(res.alreadyErased).toBe(false);
 
     // Roster PII gone.
-    expect(s.listPupils().some((p) => p.id === 'p5')).toBe(false);
-    expect(s.rosterSnapshot().pupils.some((p) => p.id === 'p5')).toBe(false);
+    expect(s.listPupils().some((p) => p.id === pupilId)).toBe(false);
+    expect(s.rosterSnapshot().pupils.some((p) => p.id === pupilId)).toBe(false);
     // Aggregate (feedback state) survives, note text purged.
-    const f = s.listFeedbackForLesson('l1', { includeSafeguarding: true }).find((x) => x.pupilId === 'p5');
+    const f = s
+      .listFeedbackForLesson('l1', { includeSafeguarding: true })
+      .find((x) => x.pupilId === pupilId);
     expect(f?.state).toBe('needs_revisit');
     expect(f?.note).toBeNull();
     // Tombstone recorded + erasure audited.
-    expect(s.listTombstones().some((t) => t.id === 'p5')).toBe(true);
+    expect(s.listTombstones().some((t) => t.id === pupilId)).toBe(true);
     expect(s.listAudit().some((a) => a.action === 'pupil.erased')).toBe(true);
 
     // Idempotent.
-    expect(s.erasePupil('p5', RECEIVED).alreadyErased).toBe(true);
+    expect(s.erasePupil(pupilId, RECEIVED).alreadyErased).toBe(true);
   });
 
   it('eraseAll purges every table and records the erasure', () => {
@@ -246,11 +282,7 @@ describe('WorkspaceStore — Phase 9 compliance', () => {
     const now = 1_800_000_000_000;
     const recent = now - 10 * 24 * 60 * 60 * 1000; // 10 days ago
     const old = now - 200 * 24 * 60 * 60 * 1000; // ~6.5 months ago
-    // Seed demo notes WITHIN the window so they aren't purged — isolating the
-    // single old note this test adds.
-    s.seedDemoSchool(recent);
-    // Use non-demo pupil ids so the demo seed's last-write-wins guard doesn't
-    // shadow these explicit writes.
+    // Use non-demo pupil ids so this test isolates the two explicit notes.
     s.appendEvent(fbEvent('ret-old', 'ret-pupil-old', 'old note', old).event, old);
     s.appendEvent(fbEvent('ret-new', 'ret-pupil-new', 'recent note', recent).event, recent);
 
