@@ -25,6 +25,7 @@ import * as authApi from './auth.ts';
 import * as dbApi from './db.ts';
 import * as filesApi from './files.ts';
 import * as feedbackApi from './feedback.ts';
+import * as feedsApi from './feeds.ts';
 import * as installApi from './install.ts';
 import * as nativeApi from './native/index.ts';
 import { local as localRuntime } from './local.ts';
@@ -72,6 +73,18 @@ export const shippie = {
   feedback: {
     open: feedbackApi.open,
     submit: feedbackApi.submit,
+  },
+
+  /**
+   * shippie.feeds — lane-3 data refresh (live scores, fixtures, prices). Silent, cached,
+   * offline-friendly. Reads a versioned snapshot envelope from the platform and keeps the
+   * last-good copy on device. See the Feed Protocol spec.
+   */
+  feeds: {
+    get: feedsApi.get,
+    cached: feedsApi.cached,
+    subscribe: feedsApi.subscribe,
+    configure: feedsApi.configureFeeds,
   },
 
   install: {
@@ -183,6 +196,7 @@ async function resolveWrapperMeta(): Promise<WrapperMeta | null> {
 }
 
 export type { ConfigureOptions } from './configure.ts';
+export type { FeedEnvelope, FeedSourceKind } from './feeds.ts';
 export type { BackendAdapter, BackendUser } from './backends/types.ts';
 export type { LoadLocalRuntimeOptions, ShippieLocalRuntimeGlobal } from './local.ts';
 export type * from './types.ts';

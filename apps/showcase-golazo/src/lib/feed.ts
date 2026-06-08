@@ -34,6 +34,9 @@ export interface Feed {
 }
 
 const CACHE_KEY = "golazo:feed";
+// Lane-3 live feed (Shippie Feed Protocol). When an admin publishes scores, this goes live
+// silently; until then the bundled static feed.json is used. Cross-origin-safe (CORS *).
+const PLATFORM_FEED_URL = "https://shippie.app/api/apps/golazo/feeds/scores";
 
 export function emptyFeed(): Feed {
   return { updatedAt: "", news: [], live: [], results: { groups: {}, knockout: {} } };
@@ -96,19 +99,41 @@ function readCache(): Feed | null {
  * Fetch the bundled feed. On any failure (offline cold start, etc.) fall back
  * to the last cached feed, then to an empty feed. Returns `{ feed, online }`.
  */
+function cacheRaw(raw: unknown): void {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(raw));
+  } catch {
+    /* quota — ignore */
+  }
+}
+
 export async function fetchFeed(): Promise<{ feed: Feed; online: boolean }> {
+  // 1. The live platform feed (lane-3). A versioned envelope whose payload is a Feed.
+  try {
+    const res = await fetch(PLATFORM_FEED_URL, { cache: "no-store" });
+    if (res.ok) {
+      const env = await res.json();
+      if (env && env.schema === "shippie.feed.v1" && env.payload && typeof env.payload === "object") {
+        const feed = normalizeFeed(env.payload);
+        cacheRaw(env.payload);
+        return { feed, online: true };
+      }
+    }
+    // 404 / not-yet-published → fall through to the bundled feed.
+  } catch {
+    /* offline or blocked — fall through */
+  }
+
+  // 2. The bundled static feed.json (shipped with the app, cached by the SW for offline).
   try {
     const res = await fetch("./feed.json", { cache: "no-store" });
     if (!res.ok) throw new Error(`feed ${res.status}`);
     const json = await res.json();
     const feed = normalizeFeed(json);
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(json));
-    } catch {
-      /* quota — ignore */
-    }
+    cacheRaw(json);
     return { feed, online: true };
   } catch {
+    // 3. Last-good snapshot from a previous run.
     return { feed: readCache() ?? emptyFeed(), online: false };
   }
 }
