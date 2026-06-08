@@ -11,4 +11,14 @@ describe('layout immersive tool chrome', () => {
     expect(source).toContain('!isImmersiveToolRoute($page.url)');
     expect(source).toContain('class:immersive-tool-route={isImmersiveToolRoute($page.url)}');
   });
+
+  it('lets immersive apps occupy the viewport without reserved nav padding', () => {
+    expect(source).toContain('function isImmersiveApp');
+    expect(source).toContain("url.pathname === '/uniti'");
+    expect(source).toContain('class:immersive={isImmersiveApp($page.url)}');
+    expect(source).toContain('main.immersive');
+    expect(source).toContain('position: fixed;');
+    expect(source).toContain(":global(body[data-immersive='true'])");
+    expect(source).toContain('padding-top: 0;');
+  });
 });

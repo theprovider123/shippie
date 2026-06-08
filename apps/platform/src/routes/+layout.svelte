@@ -266,6 +266,12 @@
   main.immersive {
     min-height: 100svh;
     min-height: 100dvh;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100svh;
+    height: 100dvh;
+    overflow: hidden;
   }
 
   :global(body[data-dock-shell-route='true']) {
@@ -276,6 +282,8 @@
      colour shows above the skip-link or below a short page. */
   :global(body[data-immersive='true']) {
     background: #f8f7f4;
+    padding-top: 0;
+    overflow: hidden;
   }
 
   /* Dock 1.1 — when a tool owns the screen (immersive active-tool), the
