@@ -395,6 +395,14 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     }
   }
 
+  // Enforcement: refuse to publish a new version of a suspended app. The
+  // dedicated apps:{slug}:suspended KV key already keeps it offline; this
+  // also stops a deploy that began before suspension (or an async github
+  // callback landing after) from uploading + flipping a new version live.
+  if (isDeployBlockedBySuspension(appRow)) {
+    return failReport(input.slug, `'${input.slug}' is suspended by Shippie and cannot accept new deploys.`);
+  }
+
   const [existingLineage] = await db
     .select()
     .from(schema.appLineage)
@@ -716,6 +724,18 @@ async function flushEvents(
   } catch (err) {
     console.error('[shippie:deploy] flushEvents failed', err);
   }
+}
+
+/**
+ * A suspended app (admin takedown: dmca / policy_violation / spam) must not
+ * publish a new version. Pure predicate so it's unit-testable without the
+ * full deployStatic DB/R2/KV harness. A plain maker-cleanup archive (no
+ * suspension reason) is NOT blocked.
+ */
+export function isDeployBlockedBySuspension(
+  app: { isArchived?: boolean | null; suspensionReason?: string | null },
+): boolean {
+  return Boolean(app.isArchived && app.suspensionReason);
 }
 
 function failReport(slug: string, reason: string): DeployStaticResult {

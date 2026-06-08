@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   containerEligibilityFromDeployReport,
   injectEssentials,
+  isDeployBlockedBySuspension,
   isSelfRemixLineage,
   packageDomainsFromVerifiedRows,
   preflightWithConnectionGuardBlocks,
@@ -186,6 +187,18 @@ describe('injectEssentials', () => {
     const out = injectEssentials('<html><head></head></html>', CSP_META, noName);
     expect(out).toContain('name="apple-mobile-web-app-title"');
     expect(out).toContain('content="my-tool"');
+  });
+});
+
+describe('isDeployBlockedBySuspension', () => {
+  test('suspended (archived + reason) → blocked', () => {
+    expect(isDeployBlockedBySuspension({ isArchived: true, suspensionReason: 'spam' })).toBe(true);
+  });
+  test('archived without a suspension reason (maker cleanup) → not blocked', () => {
+    expect(isDeployBlockedBySuspension({ isArchived: true, suspensionReason: null })).toBe(false);
+  });
+  test('live app → not blocked', () => {
+    expect(isDeployBlockedBySuspension({ isArchived: false, suspensionReason: null })).toBe(false);
   });
 });
 
