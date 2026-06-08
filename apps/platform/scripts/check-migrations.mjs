@@ -33,7 +33,7 @@ const DRIZZLE_DIR = resolve(__dirname, '..', 'drizzle');
  * them. New duplicates are still rejected. If production D1 is ever reset
  * from scratch, consolidate these only after verifying `d1_migrations`.
  */
-const GRANDFATHERED_DUPLICATES = new Set(['0012', '0038', '0039']);
+const GRANDFATHERED_DUPLICATES = new Set(['0012', '0038', '0039', '0054', '0055']);
 
 /** All `NNNN_*.sql` migrations, grouped by their numeric prefix. */
 export function migrationsByNumber(dir = DRIZZLE_DIR) {

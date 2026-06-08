@@ -10,6 +10,8 @@ const DOCUMENTED_DUPLICATES: Record<string, string> = {
   '0012': 'pre-existing applied-state split: mevrouw seed and caffeine-log seed',
   '0038': 'pre-existing applied-state split: analytics index and world-cup-fantasy private seed',
   '0039': 'pre-existing applied-state split: golazo seed and reserved slugs',
+  '0054': 'production-applied branch split: companion seed and Uniti private app instances',
+  '0055': 'production-applied branch split: session context and Uniti cloudlet memberships',
 };
 
 describe('drizzle migration numbering', () => {
