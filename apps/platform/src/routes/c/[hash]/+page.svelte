@@ -198,7 +198,7 @@
   }
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--text-light);
@@ -206,7 +206,7 @@
   }
   .badge {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.04em;
     margin: 0;
   }
@@ -216,7 +216,7 @@
 
   h1 {
     font-family: var(--font-heading);
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-size: var(--text-display);
     font-weight: 600;
     margin: 0;
     letter-spacing: -0.02em;
@@ -224,7 +224,7 @@
   }
   h2 {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--text-light);
@@ -232,7 +232,7 @@
   }
   .meta {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: var(--text-small);
     color: var(--text-secondary);
     margin: 0;
   }
@@ -254,13 +254,13 @@
   .ingredients em { font-style: normal; opacity: 0.7; }
   .notes {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--text-body);
     line-height: 1.6;
     white-space: pre-wrap;
   }
   .raw {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: var(--text-caption);
     background: var(--bg-pure);
     padding: var(--space-md);
     overflow-x: auto;
@@ -273,16 +273,16 @@
     flex-direction: column;
     gap: var(--space-sm);
   }
-  .muted { color: var(--text-secondary); margin: 0; font-size: 14px; }
-  .muted.small { font-size: 12px; }
-  .fingerprint { font-family: var(--font-mono); font-size: 12px; opacity: 0.6; }
+  .muted { color: var(--text-secondary); margin: 0; font-size: var(--text-small); }
+  .muted.small { font-size: var(--text-caption); }
+  .fingerprint { font-family: var(--font-mono); font-size: var(--text-caption); opacity: 0.6; }
   .cta-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .primary-cta {
     background: var(--sunset);
     color: var(--bg-pure);
     padding: 12px 18px;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: var(--text-small);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     text-decoration: none;
@@ -298,7 +298,7 @@
     border: 1px solid var(--border);
     padding: 12px 18px;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: var(--text-small);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     cursor: pointer;
@@ -317,7 +317,7 @@
       gap: 0.5rem;
     }
     h1 {
-      font-size: clamp(2rem, 12vw, 3rem);
+      font-size: var(--text-display);
     }
     .cta-row {
       display: grid;

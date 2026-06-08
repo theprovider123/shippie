@@ -107,7 +107,6 @@
 
 <div class="your-data-tab">
   <header class="head">
-    <p class="eyebrow">Data</p>
     <h2>Your data</h2>
     <p>Review local app data, move it to another device, or make a backup. Sign-in stays optional.</p>
   </header>
@@ -211,18 +210,10 @@
     display: grid;
     gap: 0.4rem;
   }
-  .eyebrow {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-light);
-  }
   h2 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 8vw, 3.25rem);
+    font-size: var(--text-display);
     line-height: 0.96;
   }
   p {
@@ -246,7 +237,7 @@
   }
   .data-overview span {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -256,7 +247,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     font-family: var(--font-heading);
-    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    font-size: var(--text-title);
     font-weight: 600;
     line-height: 0.95;
     color: var(--text);
@@ -266,7 +257,7 @@
     min-width: 0;
     overflow: hidden;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.35;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -278,9 +269,10 @@
     justify-content: space-between;
     gap: 12px;
     padding: 12px 14px;
-    border: 1px solid rgba(232, 96, 60, 0.34);
-    background: rgba(232, 96, 60, 0.08);
-    font-size: 13px;
+    border: 1px solid var(--sunset);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-small);
   }
   .dismiss {
     min-height: var(--touch-min);
@@ -288,11 +280,15 @@
     display: inline-flex;
     align-items: center;
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     color: var(--text);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--text-caption);
     cursor: pointer;
+  }
+  .dismiss:hover {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
   }
   .segmented {
     position: sticky;
@@ -300,8 +296,8 @@
     z-index: 5;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg);
   }
   .segmented button {
     min-height: 44px;
@@ -320,13 +316,13 @@
     outline-offset: -2px;
   }
   .segmented button.active {
-    background: var(--text);
-    color: var(--bg-pure);
+    color: var(--sunset);
     font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--sunset);
   }
   .count {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     padding: 1px 6px;
     border: 1px solid currentColor;
     opacity: 0.85;
@@ -337,7 +333,7 @@
   }
   @media (min-width: 1025px) {
     h2 {
-      font-size: 2.6rem;
+      font-size: var(--text-display);
     }
   }
   @media (max-width: 640px) {
@@ -345,7 +341,7 @@
       gap: var(--space-md);
     }
     .head p:not(.eyebrow) {
-      font-size: 1rem;
+      font-size: var(--text-body);
     }
     .data-overview {
       grid-template-columns: repeat(2, minmax(0, 1fr));

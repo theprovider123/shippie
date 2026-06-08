@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { PageProps } from './$types';
-  import AppInspector from '$lib/components/marketplace/AppInspector.svelte';
+  import { goto } from '$app/navigation';
   import RailShell from '$lib/container/RailShell.svelte';
   import {
     ToolCard,
@@ -24,7 +24,6 @@
   import { startCatalogSync } from '$lib/client/catalog-sync';
 
   let { data }: PageProps = $props();
-  let selectedSlug = $state<string | null>(null);
   // Below this width Tools browses as a row list, not a card grid (spec §7).
   let viewportWidth = $state(1280);
   const useRows = $derived(viewportWidth <= 768);
@@ -32,7 +31,6 @@
   type LauncherApp = (typeof data.apps)[number];
 
   const appBySlug = $derived.by(() => new Map(data.apps.map((app) => [app.slug, app])));
-  const selectedApp = $derived(selectedSlug ? (appBySlug.get(selectedSlug) ?? null) : null);
   const filtered = $derived(Boolean(data.query || data.categoryFilter || data.remixableFilter));
   const savedSet = $derived.by(() => new Set($launcherMemory.saved));
   const EMPTY_SLUGS: ReadonlySet<string> = new Set();
@@ -90,26 +88,10 @@
     };
   });
 
+  // The 'i' affordance goes straight to the canonical app detail page —
+  // no intermediate inspector popup.
   function inspectApp(app: LauncherApp) {
-    selectedSlug = app.slug;
-  }
-
-  function closeInspector() {
-    selectedSlug = null;
-  }
-
-  function onKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Escape') return;
-    // Escape on the page closes the inspector, but only when no editable
-    // element owns the keystroke. Otherwise Escape clobbers typing
-    // flows (search bar, comment fields) with no visible reason.
-    if (selectedSlug === null) return;
-    const target = event.target;
-    if (target instanceof HTMLElement) {
-      const tag = target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
-    }
-    closeInspector();
+    void goto(`/apps/${encodeURIComponent(app.slug)}`);
   }
 
   function pageHref(
@@ -158,14 +140,13 @@
   <meta name="description" content="Search and browse local tools on Shippie." />
 </svelte:head>
 
-<svelte:window onkeydown={onKeydown} bind:innerWidth={viewportWidth} />
+<svelte:window bind:innerWidth={viewportWidth} />
 
 <RailShell user={data.user} current="browse">
 <div class="page">
   <header class="head wrap">
     <div class="head-grid">
       <div class="head-copy">
-        <p class="eyebrow">Browse</p>
         <h1 class="title">Tools</h1>
         <p class="lede">
           Search and browse the local tools you can run on this device.
@@ -326,12 +307,6 @@
 </div>
 </RailShell>
 
-<AppInspector
-  app={selectedApp}
-  pinned={selectedApp ? savedSet.has(selectedApp.slug) : false}
-  onClose={closeInspector}
-/>
-
 <style>
   .page {
     padding-top: clamp(1.35rem, 2.6vw, var(--space-xl));
@@ -357,20 +332,12 @@
     gap: clamp(1.25rem, 3vw, var(--space-xl));
     align-items: end;
   }
-  .eyebrow {
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-light);
-    margin: 0 0 0.55rem;
-  }
   .head-copy {
     max-width: 36rem;
   }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-size: var(--text-display);
     letter-spacing: 0;
     line-height: 1;
     margin: 0;
@@ -379,7 +346,7 @@
     color: var(--text-secondary);
     margin: clamp(0.65rem, 1.6vw, var(--space-md)) 0 0;
     max-width: 34rem;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   .head-tools {
@@ -412,7 +379,7 @@
     min-height: 44px;
     padding: 0 14px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     color: var(--text-light);
     border: 1px solid var(--border-light);
     border-radius: 0;
@@ -422,9 +389,10 @@
   .cats a:hover,
   .cats .cat-chip:hover { color: var(--sunset); border-color: var(--sunset); }
   .cats .cat-chip.active {
-    color: var(--bg-pure);
-    background: var(--text);
-    border-color: var(--text);
+    color: var(--sunset);
+    background: var(--surface-alt);
+    border-color: var(--sunset);
+    box-shadow: inset 0 -2px 0 var(--sunset);
   }
   .cats .cat-chip-link {
     /* Wayfinding chip — same shape as the topical chips so it sits
@@ -454,14 +422,14 @@
     min-width: 0;
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     font-weight: 600;
     letter-spacing: 0;
     overflow-wrap: anywhere;
   }
   .section-hint {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     letter-spacing: 0;
     text-align: right;
@@ -493,7 +461,7 @@
   }
   .page-link {
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--sunset);
   }
   @media (max-width: 1024px) {
@@ -511,7 +479,7 @@
       justify-content: flex-start;
     }
   }
-  @media (max-width: 768px) {
+  @media (max-width: 640px) {
     .section-head {
       align-items: baseline;
       flex-direction: row;
@@ -540,11 +508,11 @@
     }
     .lede {
       margin-top: 0.75rem;
-      font-size: 0.95rem;
+      font-size: var(--text-body);
       line-height: 1.45;
     }
     .title {
-      font-size: clamp(2rem, 10vw, 2.7rem);
+      font-size: var(--text-display);
       line-height: 1;
     }
     .results {
@@ -572,7 +540,7 @@
   .empty-lede {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
     max-width: 56ch;
   }
@@ -580,7 +548,7 @@
     display: inline-block;
     margin-left: 0.4rem;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--sunset);
     text-decoration: none;
   }

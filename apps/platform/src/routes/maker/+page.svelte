@@ -126,7 +126,7 @@
     margin: 0 0 0.35rem;
     color: var(--sunset);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
@@ -137,11 +137,11 @@
     letter-spacing: 0;
   }
   h1 {
-    font-size: clamp(2rem, 7vw, 3.25rem);
+    font-size: var(--text-display);
     line-height: 0.98;
   }
   h2 {
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     line-height: 1.05;
   }
   .lede {
@@ -177,8 +177,8 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
     margin-bottom: 1rem;
-    border: 1px solid var(--paper-cream);
-    background: var(--paper-cream);
+    border: 1px solid var(--border-light);
+    background: var(--border-light);
   }
   .summary-grid div {
     min-height: 82px;
@@ -191,13 +191,13 @@
   .diagnostic-grid span {
     color: var(--text-muted-warm);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
   .summary-grid strong {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(1.65rem, 5vw, 2.35rem);
+    font-size: var(--text-title);
     line-height: 0.95;
   }
   .sync-note {
@@ -209,13 +209,13 @@
     border-top: 1px solid var(--paper-cream);
     border-bottom: 1px solid var(--paper-cream);
     color: var(--text-muted-warm);
-    font-size: 13px;
+    font-size: var(--text-small);
     line-height: 1.45;
   }
   .sync-note strong {
     color: inherit;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     white-space: nowrap;
@@ -281,11 +281,11 @@
   .status,
   .vis {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   .status {
     padding: 3px 8px;
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.06);
   }
   .status-success {
     background: rgba(46, 125, 91, 0.15);
@@ -310,7 +310,7 @@
   .diagnostics {
     margin-top: 0.4rem;
     color: var(--text-muted-warm);
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .diagnostics summary {
     min-height: var(--touch-min, 44px);
@@ -325,8 +325,8 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
     margin: 0.4rem 0 0.75rem;
-    border: 1px solid var(--paper-cream);
-    background: var(--paper-cream);
+    border: 1px solid var(--border-light);
+    background: var(--border-light);
   }
   .diagnostic-grid div {
     min-width: 0;
@@ -339,7 +339,7 @@
     min-width: 0;
     overflow: hidden;
     color: var(--text);
-    font-size: 0.78rem;
+    font-size: var(--text-small);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -355,7 +355,7 @@
     cursor: pointer;
     font: inherit;
   }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .maker-head,
     .section-head,
     .sync-note {

@@ -25,7 +25,7 @@
       <a href="/admin/profile" class:active={$page.url.pathname.startsWith('/admin/profile')}>Builder profile</a>
     </nav>
 
-    <a class="back" href="/maker">← Back to Maker</a>
+    <a class="back" href="/maker/apps">← Back to Apps</a>
   </aside>
 
   <main>
@@ -59,11 +59,11 @@
     letter-spacing: 0.18em;
     color: var(--sunset, #E8603C);
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .badge {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--marigold, #E8C547);
@@ -74,20 +74,20 @@
     align-self: flex-start;
     margin: 0;
   }
-  .user { font-size: 12px; color: var(--text-secondary, #B8A88F); margin: 0; }
+  .user { font-size: var(--text-caption); color: var(--text-secondary, #B8A88F); margin: 0; }
   nav { display: flex; flex-direction: column; gap: 0.25rem; }
   nav a {
     text-decoration: none;
     color: inherit;
     padding: 0.5rem 0.75rem;
     border-radius: 0;
-    font-size: 14px;
+    font-size: var(--text-small);
   }
   nav a:hover { background: rgba(255,255,255,0.04); }
   nav a.active { background: var(--sunset, #E8603C); color: white; }
   .back {
     margin-top: auto;
-    font-size: 12px;
+    font-size: var(--text-caption);
     color: var(--text-secondary, #B8A88F);
     text-decoration: none;
     font-family: var(--font-mono, ui-monospace, monospace);

@@ -34,7 +34,7 @@
 
   .paper :global(h1) {
     font-family: var(--font-display, 'Fraunces', serif);
-    font-size: clamp(2.4rem, 5vw, 3.6rem);
+    font-size: var(--text-display);
     font-weight: 600;
     line-height: 1.05;
     letter-spacing: -0.01em;
@@ -43,7 +43,7 @@
 
   .paper :global(h1 + p) {
     font-family: var(--font-display, 'Fraunces', serif);
-    font-size: 1.4rem;
+    font-size: var(--text-subhead);
     font-weight: 400;
     color: var(--text-secondary);
     margin: 0 0 32px;
@@ -51,7 +51,7 @@
 
   .paper :global(h2) {
     font-family: var(--font-display, 'Fraunces', serif);
-    font-size: 1.8rem;
+    font-size: var(--text-title);
     font-weight: 600;
     margin: 64px 0 16px;
     letter-spacing: -0.005em;
@@ -59,7 +59,7 @@
 
   .paper :global(h3) {
     font-family: var(--font-body, 'General Sans', system-ui, sans-serif);
-    font-size: 1.15rem;
+    font-size: var(--text-lede);
     font-weight: 600;
     margin: 32px 0 12px;
     color: var(--sage-leaf, #7A9A6E);
@@ -67,7 +67,7 @@
 
   .paper :global(p) {
     font-family: var(--font-body, 'General Sans', system-ui, sans-serif);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     line-height: 1.65;
     margin: 0 0 16px;
   }
@@ -78,7 +78,7 @@
     border-left: 3px solid var(--sunset, #E8603C);
     background: var(--surface, #1E1A15);
     font-family: var(--font-display, 'Fraunces', serif);
-    font-size: 1.15rem;
+    font-size: var(--text-lede);
     font-style: italic;
     color: var(--text);
   }
@@ -90,7 +90,7 @@
   .paper :global(ul),
   .paper :global(ol) {
     font-family: var(--font-body, 'General Sans', system-ui, sans-serif);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     line-height: 1.65;
     margin: 0 0 16px;
     padding-left: 24px;
@@ -117,7 +117,7 @@
     padding: 16px;
     overflow-x: auto;
     font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     line-height: 1.5;
     margin: 16px 0;
   }
@@ -132,7 +132,7 @@
     border-collapse: collapse;
     margin: 24px 0;
     font-family: var(--font-body, 'General Sans', system-ui, sans-serif);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
 
   .paper :global(th),
@@ -179,7 +179,7 @@
     margin-top: 32px;
     padding-top: 24px;
     border-top: 1px solid var(--border, #3D3530);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     color: var(--text-light);
     font-style: normal;
   }
@@ -189,7 +189,7 @@
     padding-top: 24px;
     border-top: 1px solid var(--border, #3D3530);
     font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     color: var(--text-light);
   }
 

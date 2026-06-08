@@ -194,13 +194,13 @@
   .glance-eyebrow {
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     color: var(--text-secondary);
     margin: 0 0 8px;
   }
   .glance-headline {
     font-family: var(--font-display, 'Fraunces', Georgia, serif);
-    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    font-size: var(--text-display);
     font-weight: 600;
     margin: 0 0 12px;
     line-height: 1.25;
@@ -219,7 +219,7 @@
     margin-bottom: 40px;
   }
   .glance-section-title {
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--text-secondary);
@@ -241,24 +241,23 @@
   }
   .glance-muted {
     color: var(--text-light, #7A6B58);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
     line-height: 1.5;
     margin: 0 0 12px;
   }
   .glance-app-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
+    border-top: 1px solid var(--border-light, var(--border));
   }
   .glance-app-card {
-    border: 1px solid var(--border);
-    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-light, var(--border));
+    padding: 10px 0;
   }
   .glance-app-card header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
   }
   .glance-app-name {
     font-weight: 600;
@@ -272,11 +271,11 @@
   .glance-app-count {
     font-variant-numeric: tabular-nums;
     color: var(--text-light, #7A6B58);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
   }
   .glance-app-top-intent {
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
     margin: 0;
   }
   .glance-pattern {
@@ -309,7 +308,7 @@
   .glance-pattern-total {
     color: var(--text-light, #7A6B58);
     font-variant-numeric: tabular-nums;
-    font-size: 0.875rem;
+    font-size: var(--text-small);
   }
   .glance-pattern-bars {
     display: grid;
@@ -319,7 +318,7 @@
     align-items: end;
   }
   .glance-pattern-bar {
-    background: var(--text);
+    background: var(--sunset);
     width: 100%;
     transition: height 0.2s ease;
     align-self: end;
@@ -349,7 +348,7 @@
   .glance-quiet-since {
     color: var(--text-light, #7A6B58);
     font-variant-numeric: tabular-nums;
-    font-size: 0.875rem;
+    font-size: var(--text-small);
   }
   .glance-footer {
     margin-top: 64px;
@@ -358,7 +357,7 @@
   }
   .glance-foot-note {
     color: var(--text-light, #7A6B58);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
     line-height: 1.5;
     margin: 0;
   }

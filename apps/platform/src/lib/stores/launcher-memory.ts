@@ -158,6 +158,16 @@ export function removeSavedApp(slug: string): void {
   });
 }
 
+export function forgetRecentApp(slug: string): void {
+  launcherMemory.update((memory) => {
+    if (!memory.recents.some((item) => item.slug === slug)) return memory;
+    const recents = memory.recents.filter((item) => item.slug !== slug);
+    const next = { ...memory, recents };
+    writeStoredMemory(next);
+    return next;
+  });
+}
+
 export function toggleSavedApp(slug: string): void {
   launcherMemory.update((memory) => {
     const exists = memory.saved.includes(slug) || memory.pinned.includes(slug);

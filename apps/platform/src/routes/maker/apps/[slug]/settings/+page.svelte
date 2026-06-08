@@ -218,7 +218,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
 <style>
   .settings {
     display: grid;
-    gap: 2rem;
+    gap: var(--space-lg);
     max-width: 980px;
   }
   .block {
@@ -236,7 +236,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   }
   .eyebrow {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--sunset);
@@ -244,7 +244,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   }
   h2 {
     margin: 0.2rem 0 0;
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     letter-spacing: 0;
   }
   .muted,
@@ -257,7 +257,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     gap: 0.75rem;
   }
   details {
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   summary {
     cursor: pointer;
@@ -272,13 +272,13 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     overflow-wrap: anywhere;
     background: rgba(0, 0, 0, 0.05);
     padding: 0.75rem;
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   a {
     color: var(--sunset);
     text-decoration: none;
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   a:hover {
     text-decoration: underline;
@@ -299,14 +299,14 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     align-items: center;
     min-height: 42px;
     border-bottom: 1px solid var(--paper-cream);
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .ver,
   .status,
   .src,
   time {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   .status {
     padding: 2px 8px;
@@ -331,7 +331,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     padding: 0.55rem 0.75rem;
     margin: 0.6rem 0;
     background: rgba(232, 96, 60, 0.08);
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .localize {
     border-left-color: var(--success);
@@ -350,7 +350,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
     margin: 0.5rem 0;
     padding: 0.6rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
     border: 1px solid var(--paper-cream);
     background: transparent;
     color: inherit;
@@ -366,7 +366,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   }
   .success,
   .error {
-    font-size: 12px;
+    font-size: var(--text-caption);
     margin-left: 0.5rem;
   }
   .success { color: var(--success); }
@@ -392,7 +392,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
   .checklist p {
     margin: 0.15rem 0 0;
     color: var(--text-muted-warm);
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   @media (prefers-color-scheme: dark) {
     .block,
@@ -406,7 +406,7 @@ navigator.serviceWorker?.register('/sw.js')`}</pre>
       background: rgba(255, 255, 255, 0.05);
     }
   }
-  @media (max-width: 720px) {
+  @media (max-width: 640px) {
     .row-head {
       align-items: start;
       flex-direction: column;

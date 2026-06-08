@@ -3,6 +3,15 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const publicPath = $derived(data.profile.username ? `/@${data.profile.username}` : null);
+  const maxDevice = $derived(Math.max(1, ...data.platformPulse.deviceSplit.map((row) => row.count)));
+
+  function n(value: number | null | undefined): string {
+    return Number(value ?? 0).toLocaleString();
+  }
+
+  function pct(value: number, max: number): number {
+    return Math.max(4, Math.round((Number(value || 0) / max) * 100));
+  }
 </script>
 
 <svelte:head><title>Admin · Builder Profile · Shippie</title></svelte:head>
@@ -25,6 +34,53 @@
 {#if form?.error}
   <section class="notice error">{form.error}</section>
 {/if}
+
+<section class="platform-pulse">
+  <div class="pulse-head">
+    <div>
+      <p class="eyebrow">Shippie analytics</p>
+      <h2>Platform pulse</h2>
+    </div>
+    <a href="/admin/analytics">Open full analytics</a>
+  </div>
+  <div class="pulse-grid" aria-label="Anonymous platform pulse">
+    <article>
+      <span>Apps</span>
+      <strong>{n(data.platformPulse.summary.totalApps)}</strong>
+      <p>{n(data.platformPulse.summary.liveApps)} live</p>
+    </article>
+    <article>
+      <span>Active apps</span>
+      <strong>{n(data.platformPulse.summary.activeApps)}</strong>
+      <p>last {data.platformPulse.rangeDays} days</p>
+    </article>
+    <article>
+      <span>Events</span>
+      <strong>{n(data.platformPulse.summary.totalEvents)}</strong>
+      <p>{n(data.platformPulse.summary.openEvents)} opens</p>
+    </article>
+    <article>
+      <span>Anon sessions</span>
+      <strong>{n(data.platformPulse.summary.anonymousSessions)}</strong>
+      <p>counted only</p>
+    </article>
+  </div>
+  {#if data.platformPulse.deviceSplit.length > 0}
+    <div class="device-list" aria-label="Coarse device split">
+      {#each data.platformPulse.deviceSplit as row (row.deviceClass)}
+        <div class="device-row">
+          <span>{row.deviceClass}</span>
+          <div class="bar-track" aria-label={`${row.count} ${row.deviceClass} samples`}>
+            <span style={`width:${pct(row.count, maxDevice)}%`}></span>
+          </div>
+          <strong>{n(row.count)}</strong>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="muted">No coarse device samples in this window yet.</p>
+  {/if}
+</section>
 
 <div class="layout">
   <form method="POST" action="?/save" class="panel">
@@ -130,7 +186,7 @@
   .header { margin-bottom: 1.5rem; }
   .eyebrow {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--sunset, #E8603C);
@@ -141,20 +197,86 @@
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
     letter-spacing: -0.02em;
   }
-  h1 { font-size: 2.25rem; margin: 0.25rem 0 0.5rem; }
+  h1 { font-size: var(--text-title); margin: 0.25rem 0 0.5rem; }
   h2 { margin: 0 0 1rem; }
   .lede,
   .muted,
   .handle { color: var(--text-secondary, #B8A88F); }
   .notice,
   .panel,
-  .preview {
+  .preview,
+  .platform-pulse {
     border: 1px solid var(--border-light, #2A251E);
     background: rgba(255,255,255,0.02);
   }
   .notice { padding: 0.75rem 1rem; margin-bottom: 1rem; }
   .notice.ok { border-color: rgba(122, 154, 110, 0.55); color: var(--sage-highlight, #A8C491); }
   .notice.error { border-color: rgba(232, 96, 60, 0.6); color: var(--sunset, #E8603C); }
+  .platform-pulse {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  .pulse-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+  }
+  .pulse-head h2 { margin-bottom: 0; }
+  .pulse-head a {
+    color: var(--text-secondary, #B8A88F);
+    text-decoration: none;
+    font-size: var(--text-body);
+  }
+  .pulse-head a:hover { color: var(--sunset, #E8603C); }
+  .pulse-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .pulse-grid article {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+  .pulse-grid span,
+  .device-row span {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: var(--text-caption);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary, #B8A88F);
+  }
+  .pulse-grid strong {
+    font-family: var(--font-heading, Georgia, serif);
+    font-size: var(--text-heading);
+  }
+  .pulse-grid p {
+    margin: 0;
+    color: var(--text-secondary, #B8A88F);
+    font-size: var(--text-small);
+  }
+  .device-list {
+    display: grid;
+    gap: 0.65rem;
+  }
+  .device-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 72px;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .bar-track {
+    height: 9px;
+    border: 1px solid var(--border-light, #2A251E);
+  }
+  .bar-track span {
+    display: block;
+    height: 100%;
+    background: var(--sunset, #E8603C);
+  }
   .layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
@@ -172,7 +294,7 @@
     display: grid;
     gap: 0.35rem;
     position: relative;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     color: var(--text-secondary, #B8A88F);
   }
   label.wide { grid-column: 1 / -1; }
@@ -214,15 +336,19 @@
     margin: 1rem 0;
     overflow: hidden;
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 2rem;
+    font-size: var(--text-title);
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
   .handle { font-family: var(--font-mono, ui-monospace, monospace); }
   @media (max-width: 1024px) {
     .layout { grid-template-columns: 1fr; }
     .preview { position: static; }
+    .pulse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 640px) {
     .grid { grid-template-columns: 1fr; }
+    .pulse-grid,
+    .device-row { grid-template-columns: 1fr; }
+    .pulse-head { display: grid; }
   }
 </style>

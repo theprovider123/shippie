@@ -162,7 +162,7 @@
 
   .switcher-head p {
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--sunset);
@@ -171,7 +171,7 @@
   .switcher-head h3 {
     margin-top: 3px;
     font-family: var(--font-heading);
-    font-size: clamp(1.25rem, 3vw, 1.65rem);
+    font-size: var(--text-heading);
     line-height: 1;
     color: var(--text);
   }
@@ -184,7 +184,7 @@
     border: 1px solid var(--border-light);
     background: transparent;
     color: var(--text-secondary);
-    font-size: 1.15rem;
+    font-size: var(--text-lede);
     cursor: pointer;
   }
 
@@ -213,10 +213,8 @@
     background: transparent;
     color: var(--text-secondary);
     text-decoration: none;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font: inherit;
+    font-size: var(--text-small);
     cursor: pointer;
   }
 
@@ -290,7 +288,7 @@
   .section-head h4 {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--text-light);
@@ -299,7 +297,7 @@
   .section-more {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
   }
   /* Rows sit directly on the panel (transparent ToolRows with their own
      dividers) — no nested bordered box, so the list aligns with the header
@@ -318,14 +316,14 @@
   }
   .empty strong {
     font-family: var(--font-heading);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     font-weight: 600;
     color: var(--text);
   }
   .empty p {
     margin: 0;
     max-width: 42ch;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     line-height: 1.5;
     color: var(--text-secondary);
   }
@@ -336,10 +334,8 @@
     align-items: center;
     align-self: flex-start;
     color: var(--sunset);
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    letter-spacing: 0.06em;
+    font: inherit;
+    font-size: var(--text-small);
     text-decoration: none;
-    text-transform: uppercase;
   }
 </style>

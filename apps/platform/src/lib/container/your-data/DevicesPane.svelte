@@ -29,7 +29,7 @@
   );
 </script>
 
-<section class="card" aria-labelledby="devices-heading">
+<section class="section" aria-labelledby="devices-heading">
   <p class="mini-label">Move</p>
   <h3 id="devices-heading">Move to another device</h3>
   <p class="lede">
@@ -42,11 +42,11 @@
 
   <ul class="move-list" aria-label="Move and recovery options">
     <li>
-      <strong>Move phone</strong>
-      <span>Create a handoff for another device.</span>
+      <strong>Move to a new phone</strong>
+      <span>Pass your apps and data to another device.</span>
     </li>
     <li>
-      <strong>Restore backup</strong>
+      <strong>Restore a backup</strong>
       <span>Bring back an encrypted copy you saved.</span>
     </li>
     <li>
@@ -72,32 +72,31 @@
   }
   .mini-label {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--sunset);
+    color: var(--text-light);
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
-    line-height: 1.2;
+    font-size: var(--text-subhead);
+    line-height: 1.1;
   }
   .lede {
     color: var(--text-secondary);
     line-height: 1.55;
+    font-size: var(--text-small);
   }
-  .card {
-    padding: var(--space-lg);
-    border: 1px solid var(--border-light);
-    background: var(--surface);
+  .section {
     display: grid;
     gap: var(--space-md);
   }
   .primary {
     min-height: 48px;
     padding: 0.7rem 1rem;
-    border: 1px solid var(--text);
-    background: var(--text);
-    color: var(--bg-pure);
+    border: 1px solid var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
     font: inherit;
     font-weight: 600;
     cursor: pointer;
@@ -123,7 +122,7 @@
     display: grid;
     gap: var(--space-sm);
     background: var(--bg);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .move-list strong {
     color: var(--text);
@@ -133,20 +132,17 @@
   }
   .device-summary {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   .status {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   @media (max-width: 640px) {
-    .card {
-      padding: var(--space-md);
-    }
     h3 {
-      font-size: 1.35rem;
+      font-size: var(--text-subhead);
     }
   }
 </style>

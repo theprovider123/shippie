@@ -435,6 +435,7 @@ export const actions: Actions = {
     const nextSlug = cleanSlug(form.get('slug'));
     const name = clean(form.get('name'), 80);
     const tagline = clean(form.get('tagline'), 160);
+    const description = clean(form.get('description'), 1000);
     const category = clean(form.get('category'), 48);
     const sourceRepo = cleanUrl(form.get('sourceRepo'));
     const license = clean(form.get('license'), 80);
@@ -490,6 +491,7 @@ export const actions: Actions = {
         slug: nextSlug,
         name,
         tagline,
+        description,
         category,
         githubRepo: sourceRepo,
         updatedAt,

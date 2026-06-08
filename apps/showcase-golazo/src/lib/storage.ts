@@ -4,6 +4,8 @@
 import type { Pool, Prediction, Profile, Results } from "./types";
 import type { Sweep } from "./sweeps";
 import type { ScoreEntry } from "./games";
+import type { ReactionStore } from "./reactions";
+import type { StreakState } from "./streak";
 import { SCHEMA_VERSION } from "./types";
 
 const K = {
@@ -13,7 +15,25 @@ const K = {
   results: "golazo:results",
   sweeps: "golazo:sweeps",
   scores: "golazo:scores",
+  reactions: "golazo:reactions",
+  streak: "golazo:streak",
 } as const;
+
+// ── Tip streak ──
+export function loadStreak(): StreakState | null {
+  return read<StreakState | null>(K.streak, null);
+}
+export function saveStreak(s: StreakState): void {
+  write(K.streak, s);
+}
+
+// ── Reactions (🔥📞💀 sent to mates' rows) ──
+export function loadReactions(): ReactionStore {
+  return read<ReactionStore>(K.reactions, {});
+}
+export function saveReactions(r: ReactionStore): void {
+  write(K.reactions, r);
+}
 
 export function loadScores(): ScoreEntry[] {
   return read<ScoreEntry[]>(K.scores, []);

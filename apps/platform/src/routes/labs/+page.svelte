@@ -45,16 +45,16 @@
   }
   .page-head h1 {
     font-family: var(--font-heading, serif);
-    font-size: 32px;
+    font-size: var(--text-title);
     margin: 0;
     letter-spacing: -0.02em;
   }
   .page-head p {
     margin: 4px 0 0;
-    color: var(--muted, #5C5751);
+    color: var(--text-secondary);
   }
   .empty {
-    border: 1px dashed var(--line, var(--cream-border));
+    border: 1px dashed var(--border-light);
     padding: 40px 24px;
     text-align: center;
   }
@@ -73,20 +73,20 @@
   .lab-card {
     display: block;
     padding: 16px;
-    background: #fff;
-    border: 1px solid var(--line, var(--cream-border));
+    background: var(--surface);
+    border: 1px solid var(--border-light);
     color: inherit;
     text-decoration: none;
   }
   .lab-card h3 {
     margin: 0 0 6px;
     font-family: var(--font-heading, serif);
-    font-size: 18px;
+    font-size: var(--text-lede);
   }
   .lab-card p {
     margin: 0;
-    color: var(--muted, #5C5751);
-    font-size: 14px;
+    color: var(--text-secondary);
+    font-size: var(--text-small);
     line-height: 1.4;
   }
 </style>

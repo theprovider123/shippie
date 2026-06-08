@@ -53,7 +53,7 @@
     gap: 6px;
     padding: 4px 10px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     border: 1px solid var(--border);
@@ -62,7 +62,7 @@
   }
   .kind-badge.compact {
     padding: 2px 8px;
-    font-size: 10px;
+    font-size: var(--text-caption);
   }
   .dot {
     width: 6px;

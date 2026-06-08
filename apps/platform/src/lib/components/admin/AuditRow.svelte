@@ -38,17 +38,17 @@
     padding: 0.625rem 0.875rem;
     border-top: 1px solid rgba(255,255,255,0.05);
     vertical-align: top;
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   td.time { white-space: nowrap; color: var(--text-secondary, #B8A88F); }
   .mono {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   .muted { color: var(--text-secondary, #B8A88F); }
   .action {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     padding: 2px 8px;
     border-radius: 0;
     background: rgba(232, 96, 60, 0.12);

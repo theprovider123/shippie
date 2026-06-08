@@ -69,20 +69,15 @@
     gap: 0.75rem;
     align-items: center;
     padding: 0.625rem 0.75rem;
-    border: 1px solid var(--paper-cream);
+    border: 1px solid var(--border-light);
     border-radius: 0;
-    font-size: 13px;
+    font-size: var(--text-small);
   }
-  .kind { font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 8px; background: rgba(0,0,0,0.05); border-radius: 0; }
+  .kind { font-family: ui-monospace, monospace; font-size: var(--text-caption); padding: 2px 8px; background: rgba(255,255,255,0.06); border-radius: 0; }
   .url { font-family: ui-monospace, monospace; color: var(--sunset); text-decoration: none; }
   .url:hover { text-decoration: underline; }
-  .meta { color: var(--text-muted-warm); font-family: ui-monospace, monospace; font-size: 11px; }
-  button { background: transparent; border: 1px solid var(--border-paper-mid); padding: 4px 12px; border-radius: 0; cursor: pointer; font-size: 12px; }
-  .error { color: var(--danger); font-size: 12px; }
-  .warning { color: var(--danger); font-size: 12px; grid-column: 1 / -1; }
-  @media (prefers-color-scheme: dark) {
-    .row { border-color: var(--ink-warm); }
-    .kind { background: rgba(255,255,255,0.05); }
-    button { border-color: var(--ink-warm-mid); color: inherit; }
-  }
+  .meta { color: var(--text-secondary); font-family: ui-monospace, monospace; font-size: var(--text-caption); }
+  button { background: transparent; border: 1px solid var(--border-light); color: inherit; padding: 4px 12px; border-radius: 0; cursor: pointer; font-size: var(--text-caption); }
+  .error { color: var(--danger); font-size: var(--text-caption); }
+  .warning { color: var(--danger); font-size: var(--text-caption); grid-column: 1 / -1; }
 </style>

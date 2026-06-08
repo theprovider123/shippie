@@ -17,25 +17,24 @@ export const GET: RequestHandler = async ({ platform }) => {
   );
 
   if (!platform?.env.DB) {
-    return json(
-      {
-        version: `static:${staticVersion}`,
-        live_count: FIRST_PARTY_CURATION.filter((entry) => entry.visibility === 'public' && entry.surface !== 'archived').length,
-      },
-      { headers: { 'cache-control': 'no-store' } },
-    );
+    return staticCatalogResponse(staticVersion);
   }
 
-  const row = await platform.env.DB
-    .prepare(
-      `SELECT COUNT(*) AS count,
-              MAX(updated_at) AS latest_app_update,
-              MAX(last_deployed_at) AS latest_deploy
-       FROM apps
-       WHERE is_archived = 0
-         AND visibility_scope = 'public'`,
-    )
-    .first<CatalogRow>();
+  let row: CatalogRow | null | undefined;
+  try {
+    row = await platform.env.DB
+      .prepare(
+        `SELECT COUNT(*) AS count,
+                MAX(updated_at) AS latest_app_update,
+                MAX(last_deployed_at) AS latest_deploy
+         FROM apps
+         WHERE is_archived = 0
+           AND visibility_scope = 'public'`,
+      )
+      .first<CatalogRow>();
+  } catch {
+    return staticCatalogResponse(staticVersion);
+  }
 
   const count = Number(row?.count ?? 0);
   const latestAppUpdate = row?.latest_app_update ?? '';
@@ -50,6 +49,17 @@ export const GET: RequestHandler = async ({ platform }) => {
     { headers: { 'cache-control': 'no-store' } },
   );
 };
+
+function staticCatalogResponse(staticVersion: string): Response {
+  return json(
+    {
+      version: `static:${staticVersion}`,
+      live_count: FIRST_PARTY_CURATION.filter((entry) => entry.visibility === 'public' && entry.surface !== 'archived').length,
+      updated_at: null,
+    },
+    { headers: { 'cache-control': 'no-store' } },
+  );
+}
 
 function stableHash(value: string): string {
   let hash = 5381;

@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { invalidateAll } from '$app/navigation';
   import '$lib/styles/tokens.css';
   import Nav from '$lib/components/layout/Nav.svelte';
+  import RailShell from '$lib/container/RailShell.svelte';
   import BottomDock from '$lib/components/layout/BottomDock.svelte';
   import Footer from '$lib/components/layout/Footer.svelte';
   import Toast from '$lib/components/ui/Toast.svelte';
@@ -24,8 +26,48 @@
 
   // Routes that wear the Dock's left-rail chrome (one nav model). The global
   // top Nav is suppressed here; the rail (desktop) + BottomDock (mobile) nav.
+  // The whole authenticated app shell lives here so desktop never shows the old
+  // horizontal nav — it always feels like the Dock.
   function isRailShellRoute(url: URL): boolean {
-    return url.pathname === '/dock' || url.pathname === '/tools' || url.pathname === '/you';
+    const p = url.pathname;
+    return p === '/dock' || p === '/tools' || p === '/you'
+      || p === '/you/access' || p === '/new'
+      || p === '/maker' || p.startsWith('/maker/')
+      // Rail everywhere on desktop: marketing, content + marketplace pages too.
+      // (Admin keeps its own sidebar; immersive /run, /container, /auth, /dev,
+      //  /c/, /invite, /trust-preview, /safe stay rail-free.)
+      || p === '/why' || p === '/professionals' || p === '/whitepaper'
+      || p === '/docs' || p.startsWith('/docs/')
+      || p === '/today' || p === '/glance' || p === '/leaderboards'
+      || p.startsWith('/apps/');
+  }
+
+  // Dock/Tools/You render their own rail; the rest of the rail routes get the
+  // rail wrapped here in the layout (so they don't each re-plumb user data).
+  function selfManagesRail(url: URL): boolean {
+    const p = url.pathname;
+    return p === '/dock' || p === '/tools' || p === '/you';
+  }
+  function needsRailWrap(url: URL): boolean {
+    return isRailShellRoute(url) && !selfManagesRail(url);
+  }
+  function railCurrent(url: URL): 'browse' | 'you' | 'maker' | 'docs' | null {
+    const p = url.pathname;
+    // Maker, Ship (/new) and Access all live under You now — highlight You.
+    if (p === '/you/access' || p === '/new' || p === '/maker' || p.startsWith('/maker/')) return 'you';
+    if (p === '/docs' || p.startsWith('/docs/')) return 'docs';
+    if (p.startsWith('/apps/')) return 'browse';
+    return null;
+  }
+
+  // Auth/sign-in: no old top nav on desktop either. It carries its own brand
+  // chrome, so suppress Nav + the nav-height padding (no rail — it's pre-auth).
+  function isAuthRoute(url: URL): boolean {
+    return url.pathname.startsWith('/auth');
+  }
+  // Full-bleed shell (no top nav, no nav-height padding): rail routes + auth.
+  function isFullShellRoute(url: URL): boolean {
+    return isRailShellRoute(url) || isAuthRoute(url);
   }
 
   function isImmersiveToolRoute(url: URL): boolean {
@@ -83,6 +125,7 @@
   function showFooter(url: URL): boolean {
     const pathname = url.pathname;
     return !isRailShellRoute(url)
+      && !isAuthRoute(url)
       && !pathname.startsWith('/run')
       && !((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') === '1');
   }
@@ -90,7 +133,7 @@
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);
     const mobileAppChrome = hideNavOnMobile($page.url);
-    const dockShellRoute = isRailShellRoute($page.url);
+    const dockShellRoute = isFullShellRoute($page.url);
     document.body.dataset.mobileDockChrome = mobileDockChrome ? 'true' : 'false';
     document.body.dataset.mobileAppChrome = mobileAppChrome ? 'true' : 'false';
     document.body.dataset.dockShellRoute = dockShellRoute ? 'true' : 'false';
@@ -100,6 +143,43 @@
   });
 
   onMount(() => {
+    let authChannel: BroadcastChannel | null = null;
+    const handleAuthEvent = () => {
+      void invalidateAll();
+    };
+
+    try {
+      authChannel = new BroadcastChannel('shippie-auth');
+      authChannel.onmessage = (event) => {
+        if ((event.data as { kind?: string } | null)?.kind === 'signed-in') {
+          handleAuthEvent();
+        }
+      };
+    } catch {
+      authChannel = null;
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'shippie:auth-event:v1' && event.newValue) {
+        handleAuthEvent();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    if (data.user) {
+      try {
+        const key = `shippie:auth-broadcasted:${data.user.id}`;
+        if (!sessionStorage.getItem(key)) {
+          const payload = { kind: 'signed-in', at: Date.now() };
+          authChannel?.postMessage(payload);
+          localStorage.setItem('shippie:auth-event:v1', JSON.stringify(payload));
+          sessionStorage.setItem(key, '1');
+        }
+      } catch {
+        // Storage and BroadcastChannel are best-effort in private/PWA contexts.
+      }
+    }
+
     document.body.dataset.appReady = 'true';
     installOfflineRepairLoop();
 
@@ -109,7 +189,7 @@
       if (!sessionStorage.getItem('shippie:track:viewport_mode')) {
         const w = window.innerWidth;
         const mode = w < 768 ? 'mobile' : w < 1280 ? 'tablet' : 'desktop';
-        track('viewport_mode', { mode, width: w });
+        track('viewport_mode', { mode });
         sessionStorage.setItem('shippie:track:viewport_mode', '1');
       }
       if (matchesStandalone() && !sessionStorage.getItem('shippie:track:standalone')) {
@@ -120,6 +200,11 @@
       // sessionStorage blocked (private browsing) — fire on every load,
       // accept the slight over-count rather than lose the signal.
     }
+
+    return () => {
+      authChannel?.close();
+      window.removeEventListener('storage', onStorage);
+    };
   });
 </script>
 
@@ -129,7 +214,7 @@
 </svelte:head>
 
 <a href="#main" class="skip-link">Skip to main content</a>
-{#if !isRailShellRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url) && !isImmersiveApp($page.url)}
+{#if !isRailShellRoute($page.url) && !isMakerShellRoute($page.url) && !isImmersiveToolRoute($page.url) && !isAuthRoute($page.url) && !isImmersiveApp($page.url)}
   <div class="nav-shell" class:mobile-app-chrome={hideNavOnMobile($page.url)}>
     <Nav user={data.user} />
   </div>
@@ -137,11 +222,17 @@
 <main
   id="main"
   class:with-bottom-dock={showBottomDock($page.url)}
-  class:dock-shell-route={isRailShellRoute($page.url)}
+  class:dock-shell-route={isFullShellRoute($page.url)}
   class:immersive-tool-route={isImmersiveToolRoute($page.url)}
   class:immersive={isImmersiveApp($page.url)}
 >
-  {@render children()}
+  {#if needsRailWrap($page.url)}
+    <RailShell user={data.user} current={railCurrent($page.url)}>
+      {@render children()}
+    </RailShell>
+  {:else}
+    {@render children()}
+  {/if}
 </main>
 {#if showBottomDock($page.url)}
   <BottomDock user={data.user} />

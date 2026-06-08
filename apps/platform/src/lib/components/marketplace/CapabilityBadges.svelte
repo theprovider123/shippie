@@ -52,7 +52,7 @@
     gap: 4px;
     padding: 4px 10px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     border: 1px solid var(--border);
@@ -60,7 +60,7 @@
   }
   .badges.compact .badge {
     padding: 2px 6px;
-    font-size: 10px;
+    font-size: var(--text-caption);
   }
   .status-pass {
     color: var(--sage-leaf);

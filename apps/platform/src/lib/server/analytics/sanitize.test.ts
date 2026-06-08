@@ -58,6 +58,32 @@ describe('analytics sanitizer', () => {
     });
   });
 
+  test('keeps coarse viewport class but drops exact device details', () => {
+    expect(sanitizeAnalyticsEvent({
+      event_name: 'app_open',
+      session_id: 'anon_abc-123',
+      properties: {
+        mode: 'mobile',
+        device_class: 'tablet',
+        width: 390,
+        height: 844,
+        screenWidth: 1170,
+        userAgent: 'Mozilla/5.0',
+        deviceId: 'persistent-device-id',
+      },
+    })).toEqual({
+      eventName: 'app_open',
+      sessionId: 'anon_abc-123',
+      userId: null,
+      url: null,
+      referrer: null,
+      properties: {
+        mode: 'mobile',
+        device_class: 'tablet',
+      },
+    });
+  });
+
   test('rejects free-form event names and unsafe session ids', () => {
     expect(sanitizeEventName('Saved a recipe with spaces')).toBeNull();
     expect(sanitizeEventName('recipe.saved:v1')).toBe('recipe.saved:v1');

@@ -70,9 +70,9 @@
     gap: 12px;
     margin-bottom: 16px;
   }
-  .big-number { font-size: 32px; font-weight: 600; color: var(--text); }
+  .big-number { font-size: var(--text-title); font-weight: 600; color: var(--text); }
   .star { color: var(--sunset); }
-  .count-label { color: var(--text-secondary); font-size: 14px; }
+  .count-label { color: var(--text-secondary); font-size: var(--text-small); }
   .distribution {
     display: flex;
     flex-direction: column;
@@ -85,7 +85,7 @@
     gap: 8px;
     align-items: center;
   }
-  .row-label { font-size: 12px; color: var(--text-light); }
+  .row-label { font-size: var(--text-caption); color: var(--text-light); }
   .bar {
     height: 8px;
     background: var(--surface);
@@ -93,7 +93,7 @@
     overflow: hidden;
   }
   .fill { height: 100%; background: var(--sunset); }
-  .row-count { font-size: 12px; color: var(--text-light); text-align: right; }
+  .row-count { font-size: var(--text-caption); color: var(--text-light); text-align: right; }
   .reviews { display: flex; flex-direction: column; gap: 12px; }
   .review {
     padding: 12px;
@@ -108,13 +108,13 @@
   }
   .stars { color: var(--sunset); }
   .reviewer {
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     font-family: var(--font-mono);
   }
   .review-body {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--text-small);
     color: var(--text-secondary);
     line-height: 1.4;
   }

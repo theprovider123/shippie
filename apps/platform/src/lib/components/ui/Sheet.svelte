@@ -377,7 +377,7 @@
   .sheet-title {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     display: flex;
     align-items: baseline;
     gap: 0.5rem;
@@ -385,7 +385,7 @@
   }
   .sheet-subtitle {
     font-family: var(--font-body, inherit);
-    font-size: 0.78rem;
+    font-size: var(--text-small);
     font-weight: 400;
     color: var(--text-light, var(--text-secondary));
     letter-spacing: 0.01em;

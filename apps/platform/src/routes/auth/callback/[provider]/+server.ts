@@ -18,24 +18,36 @@ import { createGitHub, fetchGitHubProfile, fetchGitHubPrimaryEmail } from '$serv
 import { createGoogle, fetchGoogleProfile, isGoogleConfigured } from '$server/auth/google';
 import { createMicrosoft, fetchMicrosoftProfile, isMicrosoftConfigured } from '$server/auth/microsoft';
 import { findOrCreateUserByGitHub, findOrCreateUserByEmail } from '$server/auth/users';
+import { annotateSessionContext } from '$server/auth/session-context';
 
 type Provider = 'github' | 'google' | 'microsoft';
 
 async function startSession(
   platform: App.Platform,
   cookies: Parameters<RequestHandler>[0]['cookies'],
+  request: Request,
+  origin: string,
   userId: string,
 ): Promise<string> {
   const lucia = (await import('$server/auth/lucia')).createLucia(platform.env.DB, platform.env);
   const session = await lucia.createSession(userId, {});
   const cookie = lucia.createSessionCookie(session.id);
   cookies.set(cookie.name, cookie.value, { path: '.', ...cookie.attributes });
+  await annotateSessionContext({
+    db: platform.env.DB,
+    sessionId: session.id,
+    request,
+  }).catch((err) => {
+    console.error('[auth] annotate session failed', err);
+  });
   const returnTo = cookies.get('auth_return_to') ?? '/';
   cookies.delete('auth_return_to', { path: '/' });
-  return returnTo;
+  const next = new URL('/auth/continue', origin);
+  next.searchParams.set('return_to', returnTo);
+  return next.pathname + next.search;
 }
 
-export const GET: RequestHandler = async ({ params, url, cookies, platform }) => {
+export const GET: RequestHandler = async ({ params, url, cookies, platform, request }) => {
   const provider = params.provider as Provider;
   if (!platform?.env.DB) {
     return new Response('Database unavailable.', { status: 500 });
@@ -67,7 +79,7 @@ export const GET: RequestHandler = async ({ params, url, cookies, platform }) =>
         avatarUrl: profile.avatar_url,
         db: env.DB,
       });
-      const returnTo = await startSession(platform, cookies, user.id);
+      const returnTo = await startSession(platform, cookies, request, url.origin, user.id);
       throw redirect(303, returnTo);
     }
 
@@ -87,7 +99,7 @@ export const GET: RequestHandler = async ({ params, url, cookies, platform }) =>
         return new Response('A verified Google email is required.', { status: 400 });
       }
       const user = await findOrCreateUserByEmail(profile.email.toLowerCase(), env.DB);
-      const returnTo = await startSession(platform, cookies, user.id);
+      const returnTo = await startSession(platform, cookies, request, url.origin, user.id);
       throw redirect(303, returnTo);
     }
 
@@ -108,7 +120,7 @@ export const GET: RequestHandler = async ({ params, url, cookies, platform }) =>
       const email = (profile.mail ?? profile.userPrincipalName)?.toLowerCase();
       if (!email) return new Response('Could not retrieve a Microsoft email.', { status: 400 });
       const user = await findOrCreateUserByEmail(email, env.DB);
-      const returnTo = await startSession(platform, cookies, user.id);
+      const returnTo = await startSession(platform, cookies, request, url.origin, user.id);
       throw redirect(303, returnTo);
     }
 

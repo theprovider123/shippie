@@ -250,7 +250,7 @@
   .row.current {
     box-shadow: inset 3px 0 0 var(--sunset, #e8603c);
   }
-  @media (min-width: 769px) {
+  @media (min-width: 641px) {
     .row { min-height: 68px; }
   }
 
@@ -296,7 +296,7 @@
   .row-name {
     font-family: var(--font-heading);
     font-weight: 600;
-    font-size: 1rem;
+    font-size: var(--text-body);
     line-height: 1.2;
     color: var(--text);
     overflow: hidden;
@@ -312,7 +312,7 @@
   }
   .row-rel, .row-caption {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     white-space: nowrap;
     overflow: hidden;
@@ -338,7 +338,7 @@
     border-radius: 0;
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     cursor: pointer;
     transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   }
@@ -360,7 +360,7 @@
     padding: 2px 7px;
     border: 1px solid var(--border-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     background: transparent;
   }
@@ -388,11 +388,14 @@
   .tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 14px 8px; text-align: center; }
   .tile-open { display: flex; flex-direction: column; align-items: center; gap: 9px; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; text-decoration: none; max-width: 100%; }
   .tile-open:focus-visible { outline: 2px solid var(--sunset); outline-offset: 2px; border-radius: var(--tool-icon-radius); }
-  .tile-name { max-width: 100%; font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile-name { max-width: 100%; font-family: var(--font-heading); font-size: var(--text-small); font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* Both close (×) and remove (−) can apply to one tool (running + saved); lay them in a row so they never overlap. */
   .tile-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
   .tile-actions .manage { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; padding: 4px; line-height: 1; opacity: 0; transition: opacity 0.12s; background: none; border: 0; color: var(--text-dim, #8c8170); cursor: pointer; }
   .tile:hover .manage, .tile:focus-within .manage { opacity: 1; }
+  /* No hover on touch — the × / − must always be reachable there (this is what
+     the removed "Manage" mode used to expose). Desktop keeps the hover reveal. */
+  @media (hover: none) { .tile-actions .manage { opacity: 1; } }
   .tile-actions .manage:focus-visible { opacity: 1; outline: 2px solid var(--sunset); outline-offset: 1px; }
   @media (prefers-reduced-motion: reduce) { .tile-actions .manage { transition: none; } }
 </style>

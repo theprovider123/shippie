@@ -1,37 +1,20 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-
   interface Props {
     user: { isAdmin?: boolean } | null | undefined;
+    /** Accepted for API compatibility (dock/+page passes these); the rail no
+     *  longer renders the switcher row or Create/Access (folded into You). */
     section?: string;
-    /** Accepted for API compatibility (the dock passes it); the rail no longer
-     *  renders a dedicated switcher row — the launchpad grid + ⌘K cover it. */
     railToolCount?: number;
     onOpenSwitcher?: () => void;
-    /** Dock-only callbacks. Omitted on /tools and /you, where Access/Create
-     *  don't apply, so those rows simply don't render off-dock. */
     onShowSection?: (s: 'access' | 'create') => void;
     /** Highlights the current top-level surface. null = Dock. */
-    current?: 'browse' | 'you' | null;
+    current?: 'browse' | 'you' | 'maker' | 'docs' | null;
   }
 
-  const {
-    user,
-    section = '',
-    onShowSection,
-    current = null,
-  }: Props = $props();
+  const { user, current = null }: Props = $props();
 
-  // Dock is the home surface — active whenever we're not on Tools or You.
-  const dockActive = $derived(current !== 'browse' && current !== 'you');
-
-  function showSection(sectionId: 'access' | 'create') {
-    if (onShowSection) {
-      onShowSection(sectionId);
-      return;
-    }
-    void goto('/dock');
-  }
+  // Dock is the home surface — active whenever we're not on Tools, You, or Docs.
+  const dockActive = $derived(current !== 'browse' && current !== 'you' && current !== 'maker' && current !== 'docs');
 </script>
 
 <!--
@@ -67,34 +50,6 @@
     <div class="rail-divider" aria-hidden="true"></div>
 
     <nav class="rail-nav rail-secondary" aria-label="More">
-      {#if onShowSection}
-        <button class="rail-item" class:active={section === 'create'} title="Create" aria-label="Create" onclick={() => showSection('create')}>
-          <span class="rail-ico" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 9v6M9 12h6"/></svg>
-          </span>
-          <span class="label">Create</span>
-        </button>
-
-        <button class="rail-item" class:active={section === 'access'} title="Access" aria-label="Access" onclick={() => showSection('access')}>
-          <span class="rail-ico" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l2 2M14 9l2 2"/></svg>
-          </span>
-          <span class="label">Access</span>
-        </button>
-      {/if}
-
-      <a
-        class="rail-item"
-        href={user ? '/maker' : '/auth/login?return_to=%2Fmaker'}
-        title={user ? 'Maker' : 'Sign in to ship'}
-        aria-label={user ? 'Maker' : 'Sign in to ship'}
-      >
-        <span class="rail-ico" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-        </span>
-        <span class="label">{user ? 'Maker' : 'Sign in to ship'}</span>
-      </a>
-
       {#if user?.isAdmin}
         <a class="rail-item" href="/admin" title="Admin" aria-label="Admin">
           <span class="rail-ico" aria-hidden="true">
@@ -103,6 +58,19 @@
           <span class="label">Admin</span>
         </a>
       {/if}
+
+      <a class="rail-item" class:current={current === 'docs'} href="/docs" title="Docs" aria-label="Docs">
+        <span class="rail-ico" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+        </span>
+        <span class="label">Docs</span>
+      </a>
+      <a class="rail-item" href="/docs#help" title="Help" aria-label="Help">
+        <span class="rail-ico" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.4 2.4 0 0 1 4.4 1.3c0 1.5-2 1.9-2 3.4"/><circle cx="11.9" cy="17.4" r="0.6" fill="currentColor"/></svg>
+        </span>
+        <span class="label">Help</span>
+      </a>
     </nav>
   </div>
 </aside>
@@ -137,7 +105,8 @@
   .dock-rail:hover .rail-inner,
   .dock-rail:focus-within .rail-inner {
     width: 232px;
-    box-shadow: 8px 0 28px rgb(0 0 0 / 0.32);
+    /* match the shell's push delay so rail + content move together */
+    transition-delay: 0.12s;
   }
 
   /* Every row shares one shape: fixed icon box on the left, label after it.
@@ -187,7 +156,6 @@
     background: var(--surface);
   }
 
-  .rail-item.active,
   .rail-item.current {
     color: var(--sunset);
     border-color: var(--border-light);

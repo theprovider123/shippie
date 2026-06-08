@@ -80,6 +80,7 @@ export function PenaltyRoulette() {
         <span className="game-emoji">🏆</span>
         <span className="roulette-won-cap">Last one standing</span>
         <h3 className="roulette-won-name">{alive[0] ?? "Nobody"}</h3>
+        <p className="pub-forfeit">🍺 Everyone else — get a round in.</p>
         <button className="cta wide" onClick={() => { setNames(names); setAlive([]); setIdx(0); setPhase("setup"); }}>New round</button>
         <button className="ghost-btn sm" onClick={() => { setAlive(names); setIdx(0); setPhase("play"); }}>Same players, again</button>
       </div>

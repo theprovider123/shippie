@@ -273,7 +273,7 @@
 
   header h1 {
     margin: 0 0 0.25rem;
-    font-size: 1.75rem;
+    font-size: var(--text-title);
     font-weight: 600;
   }
 
@@ -288,7 +288,7 @@
 
   section h2 {
     margin: 0 0 0.75rem;
-    font-size: 1rem;
+    font-size: var(--text-body);
     font-weight: 500;
     color: var(--ink-muted, #666);
   }
@@ -307,7 +307,7 @@
 
   .trust-muted {
     color: var(--ink-muted, #666);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
   }
 
   .trust-empty {
@@ -351,7 +351,7 @@
     padding: 0.5rem 0.75rem;
     background: var(--surface-soft, #f7f4ee);
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-small);
   }
 
   .trust-row--denied,
@@ -368,7 +368,7 @@
   .trust-capability code,
   .trust-host {
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--ink-muted, #666);
     overflow-wrap: anywhere;
   }
@@ -420,7 +420,7 @@
 
   .btn--small {
     padding: 0.35rem 0.7rem;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
   }
 
   .btn--toggle {

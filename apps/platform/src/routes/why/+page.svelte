@@ -33,7 +33,7 @@
         <p class="big">$3,000</p>
         <p class="kicker">out of every $10k</p>
         <p class="body">
-          Apple keeps 30% of what your app earns on the App Store. Shippie takes 0%. If your app makes $10k/yr, you keep $10k/yr.
+          Apple keeps 30% of App Store earnings. Shippie takes 0%. Make $10k/yr, keep $10k/yr.
         </p>
       </article>
       <article class="number-card">
@@ -47,7 +47,7 @@
         <p class="big">0 rejections</p>
         <p class="kicker">by design</p>
         <p class="body">
-          There's no review queue on Shippie. Your app ships when you ship it. If it violates policy you get taken down — but nothing sits for a week waiting for permission.
+          No review queue. Your app ships when you ship it. Violate policy and you get taken down — but nothing sits for a week waiting for permission.
         </p>
       </article>
     </div>
@@ -60,7 +60,7 @@
     <h2 class="section-heading">A platform you can leave.</h2>
     <div class="prose">
       <p>
-        Platforms that host your audience have leverage over your work. We built Shippie so that leverage is always returnable.
+        Platforms that host your audience hold leverage over your work. We built Shippie so that leverage is always returnable.
       </p>
       <p>
         The platform is AGPL-3.0. Self-host it. Fork it. Run your own instance on any box. Your apps are yours; your users install from a URL you own.
@@ -91,7 +91,7 @@
   }
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -99,13 +99,13 @@
   }
   .title {
     font-family: var(--font-heading);
-    font-size: var(--h1-size);
+    font-size: var(--text-display);
     line-height: 1.05;
     letter-spacing: -0.02em;
     margin: 0 0 var(--space-xl);
   }
   .lede {
-    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    font-size: var(--text-subhead);
     color: var(--text-secondary);
     line-height: 1.6;
     margin: 0;
@@ -131,7 +131,7 @@
   }
   .number-card .big {
     font-family: var(--font-heading);
-    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-size: var(--text-display);
     line-height: 1;
     letter-spacing: -0.02em;
     color: var(--sunset);
@@ -139,7 +139,7 @@
   }
   .number-card .kicker {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -148,7 +148,7 @@
   .number-card .body {
     color: var(--text-secondary);
     line-height: 1.7;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     margin: 0;
   }
 
@@ -158,7 +158,7 @@
   }
   .section-heading {
     font-family: var(--font-heading);
-    font-size: var(--h2-size);
+    font-size: var(--text-heading);
     line-height: 1.1;
     letter-spacing: -0.02em;
     margin: 0.5rem 0 var(--space-xl);
@@ -180,7 +180,7 @@
   }
   .cta h2 {
     font-family: var(--font-heading);
-    font-size: var(--h1-size);
+    font-size: var(--text-display);
     line-height: 1.05;
     letter-spacing: -0.02em;
     margin: 0;

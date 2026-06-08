@@ -238,7 +238,7 @@
     background: transparent;
     color: var(--text-light);
     cursor: pointer;
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     line-height: 1;
   }
   .close:hover {
@@ -249,7 +249,7 @@
   dt,
   h3 {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -260,7 +260,7 @@
   h2 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.65rem;
+    font-size: var(--text-heading);
     line-height: 1.1;
   }
   .blurb {
@@ -285,16 +285,16 @@
     background: var(--surface);
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     text-align: center;
     cursor: pointer;
   }
   .actions a:first-child {
-    background: var(--text);
-    border-color: var(--text);
-    color: var(--bg-pure);
+    background: var(--sunset);
+    border-color: var(--sunset);
+    color: var(--bg);
   }
   .actions a:hover,
   .actions button:hover {
@@ -341,7 +341,7 @@
   dd {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.45;
   }
   section {
@@ -369,7 +369,7 @@
     background: rgba(232, 96, 60, 0.08);
     padding: 0 9px;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }

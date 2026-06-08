@@ -175,18 +175,21 @@
     const base = src.split('#')[0];
     return hash ? `${base}${hash.startsWith('#') ? hash : `#${hash}`}` : base;
   }
+
 </script>
 
 <div class="frame-stage" class:active style={stageStyleFor(app.layout, app.aspectRatio)}>
   {#key `${app.id}:${reloadNonce}`}
     {#if runtimeSrcWithHash}
+      <!-- Runtime URLs are already hosted Shippie app surfaces with CSP and
+        bridge origin filtering. A same-origin sandbox with scripts +
+        same-origin is ineffective and logs a browser warning before hydration,
+        so only generated package/srcdoc frames are sandboxed. -->
       <iframe
         use:registerFrame={app.id}
         data-shippie-app-id={app.id}
         title={`${app.name} Shippie tool`}
-        sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
-        allowfullscreen
         src={runtimeSrcWithHash}
         onload={handleFrameLoad}
         onerror={() => onError(app.id)}
@@ -198,7 +201,6 @@
         title={`${app.name} Shippie tool`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
-        allowfullscreen
         src={packageFrameSrcWithHash}
         onload={handleFrameLoad}
         onerror={() => onError(app.id)}
@@ -210,7 +212,6 @@
         title={`${app.name} Shippie tool`}
         sandbox="allow-scripts allow-forms allow-downloads"
         allow="microphone; camera; clipboard-read; clipboard-write; geolocation; fullscreen"
-        allowfullscreen
         {srcdoc}
         onload={handleFrameLoad}
         onerror={() => onError(app.id)}
@@ -225,11 +226,11 @@
   {/if}
   {#if frameStates[app.id]?.status === 'error'}
     <div class="frame-recovery" role="alert">
-      <strong>{app.name} needs a restart.</strong>
+      <strong>{app.name} needs a fresh start.</strong>
       <p>{frameStates[app.id]?.message}</p>
       <div>
-        <button onclick={() => onReload(app.id)}>Reload app</button>
-        <button class="secondary" onclick={onGoHome}>Back home</button>
+        <button onclick={() => onReload(app.id)}>Try again</button>
+        <button class="secondary" onclick={onGoHome}>Back to Dock</button>
       </div>
     </div>
   {/if}
@@ -264,7 +265,7 @@
   }
   .frame-loader-label {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     color: var(--text-light);
     margin: 0;
@@ -283,17 +284,25 @@
     text-align: center;
     box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
   }
+  .frame-recovery strong {
+    font-family: var(--font-heading);
+    font-size: var(--text-title);
+  }
   .frame-recovery p {
     margin: 0;
     color: var(--text-secondary);
+    max-width: 34rem;
   }
   .frame-recovery div {
     display: flex;
     justify-content: center;
     gap: 8px;
+    flex-wrap: wrap;
   }
   .frame-recovery button {
-    padding: 0.55rem 0.75rem;
+    min-width: 120px;
+    min-height: 44px;
+    padding: 0.55rem 0.85rem;
   }
   .frame-recovery .secondary {
     background: transparent;

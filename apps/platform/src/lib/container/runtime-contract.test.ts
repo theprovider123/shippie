@@ -17,7 +17,7 @@ import {
   type ObjectUrlApi,
 } from './frame-runtime';
 import { installBuiltPackage, uninstallContainerAppState } from './package-runtime';
-import { buildUpdateCard, createReceiptFor, type ContainerApp } from './state';
+import { buildUpdateCard, createReceiptFor, curatedPackageHash, type ContainerApp } from './state';
 import { grantIntent, isIntentGranted } from './intent-registry';
 
 const permissions: AppPermissions = {
@@ -118,9 +118,9 @@ describe('container runtime contracts', () => {
     states = markFrameBootingState(states, 'app_toy');
     expect(states).toEqual({ app_toy: { status: 'booting' } });
 
-    states = markFrameErrorState(states, 'app_toy', 'This app took too long to start.');
+    states = markFrameErrorState(states, 'app_toy', 'This tool took too long to open.');
     expect(states).toEqual({
-      app_toy: { status: 'error', message: 'This app took too long to start.' },
+      app_toy: { status: 'error', message: 'This tool took too long to open.' },
     });
 
     states = markFrameReadyState(markFrameBootingState(states, 'app_toy'), 'app_toy');
@@ -199,6 +199,64 @@ describe('container runtime contracts', () => {
       latestSecurityScore: 96,
       latestPrivacyGrade: 'A',
       containerEligibility: 'curated',
+    });
+  });
+
+  test('curated fallback package hashes are stable per slug, not list order', () => {
+    expect(curatedPackageHash('palate')).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(curatedPackageHash('palate')).toBe(curatedPackageHash('palate'));
+    expect(curatedPackageHash('palate')).not.toBe(curatedPackageHash('chiwit'));
+  });
+
+  test('same-version package-only refreshes are silent system plumbing', () => {
+    const oldApp = appWithNetwork(['api.example.com']);
+    const receipt = createReceiptFor(oldApp);
+    const refreshedApp: ContainerApp = {
+      ...oldApp,
+      packageHash: `sha256:${'9'.repeat(64)}`,
+    };
+
+    expect(buildUpdateCard(refreshedApp, receipt)).toBeNull();
+  });
+
+  test('version-only refreshes are silent system plumbing', () => {
+    const oldApp = appWithNetwork(['api.example.com']);
+    const receipt = createReceiptFor(oldApp);
+    const refreshedApp: ContainerApp = {
+      ...oldApp,
+      version: '2',
+      packageHash: `sha256:${'9'.repeat(64)}`,
+    };
+
+    expect(buildUpdateCard(refreshedApp, receipt)).toBeNull();
+  });
+
+  test('same-version access changes still require review', () => {
+    const oldApp = appWithNetwork(['api.old.example']);
+    const receipt = createReceiptFor(oldApp);
+    const changedAccess: ContainerApp = {
+      ...oldApp,
+      packageHash: `sha256:${'9'.repeat(64)}`,
+      permissions: {
+        ...oldApp.permissions,
+        capabilities: {
+          ...oldApp.permissions.capabilities,
+          network: {
+            allowedDomains: ['api.old.example', 'api.new.example'],
+            declaredPurpose: {
+              'api.old.example': 'Fixture',
+              'api.new.example': 'New fixture',
+            },
+          },
+        },
+      },
+    };
+
+    expect(buildUpdateCard(changedAccess, receipt)).toMatchObject({
+      versionChanged: false,
+      packageHashChanged: true,
+      permissionsChanged: true,
+      addedNetworkDomains: ['api.new.example'],
     });
   });
 

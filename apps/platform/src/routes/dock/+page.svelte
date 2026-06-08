@@ -135,6 +135,7 @@
     launcherMemory,
     recordAppLaunch,
     removeSavedApp,
+    forgetRecentApp,
     saveAppToDock,
   } from '$lib/stores/launcher-memory';
   import { ensureAppOffline } from '$lib/stores/cached-slugs';
@@ -258,7 +259,9 @@
   // the bottom while its summon control sits at the top, away from
   // in-app bottom toolbars; larger → slides in from the left.
   let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
-  const focusedDrawerEdge = $derived<'left' | 'bottom'>(viewportWidth <= 640 ? 'bottom' : 'left');
+  // The switcher tab lives on the right edge, so the drawer slides in from the
+  // right (sleek lateral motion) on every size — no more bottom-sheet "pop up".
+  const focusedDrawerEdge = $derived<'left' | 'bottom' | 'right'>('right');
   let receiptsByApp = $state<Record<string, AppReceipt>>(
     initialFocusedApp ? { [initialFocusedApp.id]: createReceiptFor(initialFocusedApp) } : {},
   );
@@ -881,6 +884,7 @@
 
   function removeSavedTool(slug: string) {
     removeSavedApp(slug);
+    forgetRecentApp(slug);
     const app = launchVisibleAppBySlug.get(slug);
     toast.push({ kind: 'info', message: `${app?.name ?? 'Tool'} removed from Dock.` });
   }
@@ -1330,6 +1334,7 @@
         focused: data.focused,
         app_kind: app.appKind,
         category: app.category ?? null,
+        device_class: analyticsDeviceClass(),
       },
       ts: Date.now(),
     });
@@ -1360,6 +1365,13 @@
     } catch {
       return `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
     }
+  }
+
+  function analyticsDeviceClass(): 'mobile' | 'tablet' | 'desktop' {
+    const width = viewportWidth || (typeof window === 'undefined' ? 1024 : window.innerWidth);
+    if (width < 768) return 'mobile';
+    if (width < 1280) return 'tablet';
+    return 'desktop';
   }
 
   function disposeApp(appId: string) {
@@ -1428,7 +1440,7 @@
     );
     const timeout = window.setTimeout(() => {
       if (frameStates[appId]?.status === 'booting') {
-        markFrameError(appId, 'This app took too long to start.');
+        markFrameError(appId, 'This tool took too long to open.');
       }
     }, 15_000);
 
@@ -1494,7 +1506,7 @@
             }
             markFrameError(
               appId,
-              `${app.name} loaded but did not paint. This is usually a stale app bundle or a script crash; reload it once.`,
+              `${app.name} opened but did not paint. This is usually a stale app bundle or a script crash. Try a fresh start.`,
               { retryablePaintMiss: true },
             );
           }, fallbackDelay);
@@ -3505,17 +3517,7 @@
       gestureEnabled={false}
     >
       <div class="focused-drawer">
-        <button
-          type="button"
-          class="focused-drawer-grip"
-          data-drawer-drag-handle
-          data-drawer-grip
-          aria-label="Close Shippie tools"
-          onclick={() => {
-            closeFocusedDrawer();
-          }}
-        ></button>
-        <header class="focused-drawer-head" data-drawer-drag-handle>
+        <header class="focused-drawer-head">
           <button
             type="button"
             class="focused-home"
@@ -3606,7 +3608,6 @@
               <section class="focused-tool-section" aria-labelledby={`focused-tools-${section.id}`}>
                 <div class="focused-section-head">
                   <h2 id={`focused-tools-${section.id}`}>{section.label}</h2>
-                  <span>{section.total}</span>
                 </div>
                 <div class="focused-list">
                   {#each section.tools as tool (tool.slug)}
@@ -3713,7 +3714,7 @@
                  first-run-hero flash for returning users (launcherMemory is empty
                  on first paint until hydrateLauncherMemory runs in onMount) -->
             <div class="hydrating-panel" aria-busy="true"></div>
-          {:else if dockEmpty}
+          {:else if dockEmpty && updateCards.length === 0}
             <DockEmptyState
               starters={starterApps}
               totalCount={launchVisibleApps.length}
@@ -3729,6 +3730,7 @@
               onOpenTool={openRailTool}
               onCloseTool={closeRailTool}
               onRemoveSavedTool={removeSavedTool}
+              onForgetRecent={removeSavedTool}
               onStayOnCurrent={stayOnCurrent}
               onAcceptUpdate={acceptUpdate}
               onAcceptAllUpdates={acceptAllUpdates}
@@ -3902,6 +3904,14 @@
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);
     background: var(--bg);
+    transition: grid-template-columns 0.2s ease;
+  }
+  /* Rail expands by pushing content right — never covering it.
+     Small delay so brushing past the edge doesn't trigger it. */
+  .shell:has(:global(.dock-rail:hover)),
+  .shell:has(:global(.dock-rail:focus-within)) {
+    grid-template-columns: 232px minmax(0, 1fr);
+    transition-delay: 0.12s;
   }
   h2,
   h3 {
@@ -3917,7 +3927,7 @@
   .mini-label {
     margin: 0 0 0.5rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0;
     color: var(--sunset);
@@ -3947,7 +3957,7 @@
     border: 1px solid var(--marigold);
     border-radius: 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0;
     color: var(--marigold);
@@ -3974,9 +3984,13 @@
     font: inherit;
   }
   .home-button {
-    background: var(--text);
-    color: var(--bg-pure);
-    border-color: var(--text);
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border-light);
+  }
+  .home-button:hover {
+    border-color: var(--sunset);
+    color: var(--sunset);
   }
   .dock-canvas {
     min-width: 0;
@@ -4000,7 +4014,7 @@
   .open-link {
     padding: 0.55rem 0.75rem;
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .open-link {
     color: var(--sunset);
@@ -4050,7 +4064,7 @@
     color: var(--bg-pure);
     font-family: var(--font-mono);
     font-weight: 800;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
   }
   .collection-list {
     display: grid;
@@ -4066,7 +4080,7 @@
     padding: var(--space-md);
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     cursor: pointer;
   }
   .dropzone.active,
@@ -4125,7 +4139,7 @@
   .collection-status,
   .collection-meta span {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .collection-meta {
     display: flex;
@@ -4207,7 +4221,7 @@
       display: none;
     }
     .topbar h2 {
-      font-size: 1.15rem;
+      font-size: var(--text-lede);
     }
     .open-link,
     .mesh-badge {
@@ -4231,7 +4245,7 @@
     .collection-list button,
     .export-button {
       min-height: var(--touch-min);
-      font-size: var(--type-body-mobile);
+      font-size: var(--text-body);
     }
     .action-grid {
       grid-template-columns: 1fr;
@@ -4257,7 +4271,7 @@
     border-radius: 0;
     border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
     background: transparent;
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 500;
     color: var(--text);
     cursor: pointer;
@@ -4317,7 +4331,7 @@
     background: var(--surface);
     color: var(--text);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
-    font-size: 13px;
+    font-size: var(--text-small);
     line-height: 1.35;
     text-align: center;
     overflow-wrap: anywhere;
@@ -4343,31 +4357,39 @@
   /* Immersive Dock nub. The host keeps one small, spatially polite
      escape hatch; tapping it reveals temporary commands instead of
      keeping large chrome over the running tool. */
+  /* Pinned to the top-RIGHT corner, not dead-centre: app titles/headers live
+     centred at the top, so a centred nub covered them. The corner is the
+     quietest top zone; idle-dim (below) fades it further during use. */
+  /* Edge pull-tab: vertically-centred on the RIGHT edge — the one region apps
+     don't put controls in (corners have buttons, top has titles, bottom nav).
+     A slim rounded tab flush to the edge; idle-dim tucks it further. */
   .focused-dock-nub-wrap {
     position: fixed;
-    top: max(12px, calc(env(safe-area-inset-top, 0px) + 10px));
-    left: 50%;
+    top: 50%;
+    right: 0;
+    left: auto;
     z-index: 1020;
     display: flex;
     align-items: center;
-    gap: 7px;
-    transform: translateX(-50%);
+    transform: translateY(-50%);
     transition:
       opacity 0.22s ease,
       transform 0.22s ease;
   }
   .focused-dock-nub {
-    width: 52px;
-    height: 42px;
+    position: relative;
+    width: 20px;
+    height: 46px;
     display: grid;
     place-items: center;
     padding: 0;
     border: 1px solid rgba(168, 196, 145, 0.34);
-    border-radius: 999px;
-    background: rgba(20, 18, 15, 0.62);
+    border-right: 0;
+    border-radius: 13px 0 0 13px;
+    background: rgba(20, 18, 15, 0.66);
     color: var(--text);
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(20, 18, 15, 0.14);
+    box-shadow: -6px 0 20px rgba(20, 18, 15, 0.18);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     transition:
@@ -4377,21 +4399,36 @@
       box-shadow 0.18s ease,
       transform 0.18s ease;
   }
+  /* Invisible, generous hit zone so the slim tab is easy to tap — the touch
+     target extends well past the visible pill (left + above + below). */
+  .focused-dock-nub::before {
+    content: '';
+    position: absolute;
+    inset: -16px 0 -16px -24px;
+  }
   .focused-dock-nub img {
     display: block;
-    width: 19px;
-    height: 19px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
     pointer-events: none;
   }
   .focused-dock-nub:hover,
-  .focused-dock-nub:focus-visible,
-  .focused-dock-nub[aria-expanded='true'] {
+  .focused-dock-nub:focus-visible {
     background: rgba(20, 18, 15, 0.86);
     border-color: var(--sage-leaf);
-    box-shadow: 0 10px 28px rgba(20, 18, 15, 0.22);
+    box-shadow: -8px 0 26px rgba(20, 18, 15, 0.26);
     outline: none;
-    transform: translateY(2px);
+    transform: translateX(-3px);
+  }
+  /* Open: the tab slots into the panel edge — flush, surface-matched, with a
+     recessed inset shadow + a sunset accent so it reads as docked in. */
+  .focused-dock-nub[aria-expanded='true'] {
+    background: var(--surface-alt);
+    border-color: var(--border-light);
+    box-shadow: inset 3px 0 0 var(--sunset), inset -1px 0 5px rgba(0, 0, 0, 0.45);
+    transform: translateX(0);
+    outline: none;
   }
   .focused-dock-nub.first-run {
     animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
@@ -4410,54 +4447,35 @@
      reduced-motion users keep the chrome fully visible. */
   @media (prefers-reduced-motion: no-preference) {
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
-      opacity: 0.38;
-      transform: translateX(-50%) translateY(-2px);
+      opacity: 0.4;
+      transform: translateY(-50%);
     }
   }
 
-  /* Keyboard open inside the running tool — hide the chrome so it
-     doesn't float over the keyboard area. The :global selector matches
-     the data attribute set on <html> by handleToolKeyboardMessage. */
+  /* Keyboard open inside the running tool — tuck the tab off the right edge so
+     it never floats over app input. The :global selector matches the data
+     attribute set on <html> by handleToolKeyboardMessage. */
   :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.18s ease, transform 0.18s ease;
-    transform: translateX(-50%) translateY(-140%);
+    transform: translateY(-50%) translateX(120%);
   }
   @media (max-width: 640px) {
-    .focused-dock-nub-wrap {
-      top: max(14px, calc(env(safe-area-inset-top, 0px) + 10px));
-      right: auto;
-      bottom: auto;
-      left: 50%;
-      align-items: center;
-      transform: translateX(-50%);
-    }
     .focused-dock-nub {
-      width: 54px;
-      height: 44px;
-      border: 1px solid rgba(168, 196, 145, 0.30);
-      border-radius: 999px;
-      background: rgba(20, 18, 15, 0.72);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      box-shadow: 0 8px 24px rgba(20, 18, 15, 0.18);
+      width: 22px;
+      height: 50px;
     }
     .focused-dock-nub img {
-      width: 20px;
-      height: 20px;
-    }
-    .focused-dock-nub:hover,
-    .focused-dock-nub:focus-visible,
-    .focused-dock-nub[aria-expanded='true'] {
-      transform: translateY(2px);
+      width: 15px;
+      height: 15px;
     }
     .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap {
-      opacity: 0.42;
-      transform: translateX(-50%) translateY(-2px);
+      opacity: 0.44;
+      transform: translateY(-50%);
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
-      transform: translateX(-50%) translateY(-140%);
+      transform: translateY(-50%) translateX(120%);
     }
   }
 
@@ -4467,27 +4485,6 @@
     flex-direction: column;
     gap: 12px;
     color: var(--text);
-  }
-  .focused-drawer-grip {
-    display: none;
-    position: relative;
-    align-self: center;
-    width: 44px;
-    height: var(--touch-min, 44px);
-    padding: 0;
-    border: 0;
-    background: transparent;
-    cursor: grab;
-  }
-  .focused-drawer-grip::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 3px;
-    background: color-mix(in srgb, var(--text-secondary, rgba(0, 0, 0, 0.45)) 44%, transparent);
   }
   .focused-drawer-head {
     position: sticky;
@@ -4522,7 +4519,7 @@
   }
   .focused-brand-copy strong {
     font-family: var(--font-heading);
-    font-size: 22px;
+    font-size: var(--text-subhead);
     line-height: 1;
   }
   .focused-drawer-actions {
@@ -4541,7 +4538,7 @@
     background: transparent;
     color: var(--text-secondary, rgba(0, 0, 0, 0.58));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.14em;
     line-height: 1;
     text-transform: uppercase;
@@ -4560,7 +4557,7 @@
   .focused-action-close {
     min-width: var(--touch-min, 44px);
     padding: 0 10px;
-    font-size: 16px;
+    font-size: var(--text-body);
     letter-spacing: 0;
   }
   .focused-action-close:hover,
@@ -4590,7 +4587,7 @@
     background: var(--surface, #f5efe4);
     color: var(--text-secondary, rgba(0, 0, 0, 0.48));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
   }
   .focused-share-card-qr :global(svg) {
@@ -4610,7 +4607,7 @@
     overflow: hidden;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     line-height: 1.2;
     text-overflow: ellipsis;
@@ -4621,7 +4618,7 @@
     min-width: 0;
     overflow: hidden;
     font-family: var(--font-heading);
-    font-size: 18px;
+    font-size: var(--text-lede);
     line-height: 1.05;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -4635,7 +4632,7 @@
     margin-top: 2px;
     color: var(--sunset, #e8603c);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     line-height: 1;
     text-transform: uppercase;
@@ -4682,19 +4679,12 @@
   .focused-section-head h2,
   .focused-drawer h2 {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 600;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-family: var(--font-mono);
-  }
-  .focused-section-head span {
-    color: var(--text-secondary, rgba(0, 0, 0, 0.45));
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
   }
   .focused-insights-heading {
     margin-top: 8px;
@@ -4715,12 +4705,12 @@
   }
   .focused-insight strong {
     display: block;
-    font-size: 14px;
+    font-size: var(--text-small);
   }
   .focused-insight p {
     margin: 4px 0 0;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .focused-insight-high {
     border-color: rgba(232, 96, 60, 0.5);
@@ -4744,7 +4734,7 @@
     margin: 0;
     color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.04em;
   }
   .focused-search {
@@ -4767,7 +4757,7 @@
   }
   .focused-search-icon {
     color: var(--text-secondary, rgba(0, 0, 0, 0.48));
-    font-size: 15px;
+    font-size: var(--text-body);
     line-height: 1;
   }
   .focused-search input {
@@ -4781,7 +4771,7 @@
     /* Per tokens.css --type-body-mobile: iOS Safari zooms inputs whose
        font-size is under 16px on focus. Keeping it at the floor avoids
        the bounce when the drawer search opens. */
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
   }
   .focused-search input:focus {
     outline: none;
@@ -4794,7 +4784,7 @@
     padding: 0;
     color: var(--text-secondary, rgba(0, 0, 0, 0.5));
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     cursor: pointer;
     line-height: 1;
   }
@@ -4803,7 +4793,7 @@
     margin: 6px 0;
     padding: 12px;
     color: var(--text-secondary, rgba(0, 0, 0, 0.55));
-    font-size: 13px;
+    font-size: var(--text-small);
     text-align: center;
   }
   .focused-search-empty button,
@@ -4827,26 +4817,22 @@
       padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
       gap: 10px;
     }
-    .focused-drawer-grip {
-      display: block;
-      touch-action: none;
-    }
     .focused-drawer-head {
       gap: 10px;
       padding-bottom: 10px;
       touch-action: none;
     }
     .focused-brand-copy strong {
-      font-size: 20px;
+      font-size: var(--text-subhead);
     }
     .focused-action {
       min-height: var(--touch-min, 44px);
       padding: 0 9px;
-      font-size: 10px;
+      font-size: var(--text-caption);
     }
     .focused-action-close {
       min-width: var(--touch-min, 44px);
-      font-size: 16px;
+      font-size: var(--text-body);
     }
     .focused-share-card {
       grid-template-columns: auto minmax(0, 1fr);
@@ -4858,7 +4844,7 @@
       height: 58px;
     }
     .focused-share-card-copy strong {
-      font-size: 17px;
+      font-size: var(--text-lede);
     }
     .focused-share-card-actions {
       display: inline-flex;
@@ -4890,7 +4876,7 @@
     background: var(--surface);
     color: var(--text);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
-    font-size: 12.5px;
+    font-size: var(--text-caption);
     line-height: 1.3;
     backdrop-filter: blur(10px);
     pointer-events: none;
@@ -4910,6 +4896,6 @@
     .transfer-pending-spinner { animation: none; }
   }
 
-  .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: 0.7rem; }
+  .canvas-strip-badge { align-self: flex-start; margin: 4px 0 0 12px; background: none; border: 0; color: var(--sunset); cursor: pointer; font-size: var(--text-caption); }
   .hydrating-panel { min-height: 240px; }
 </style>

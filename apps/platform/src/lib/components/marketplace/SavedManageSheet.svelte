@@ -168,20 +168,20 @@
   .eyebrow {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0;
     color: var(--text-light);
   }
   .sheet-head h2 {
     margin: 4px 0 6px;
     font-family: var(--font-heading);
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     letter-spacing: 0;
   }
   .lede {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.5;
     max-width: 36rem;
   }
@@ -192,7 +192,7 @@
     border: 1px solid var(--border);
     color: var(--text-light);
     font-family: var(--font-heading);
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     line-height: 1;
     cursor: pointer;
     flex-shrink: 0;
@@ -220,19 +220,19 @@
   }
   .budget-label {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0;
   }
   .storage-budget strong {
     font-family: var(--font-heading);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     color: var(--text);
   }
   .storage-budget span:last-child {
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .storage-budget button {
     min-width: 70px;
@@ -283,7 +283,7 @@
   }
   .row-main small {
     color: var(--text-light);
-    font-size: 11px;
+    font-size: var(--text-caption);
     line-height: 1.3;
     padding-left: 2px;
   }

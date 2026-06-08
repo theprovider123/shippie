@@ -23,7 +23,7 @@
   .head {
     margin: 0;
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: 1.15rem;
+    font-size: var(--text-lede);
     font-weight: 700;
   }
   p {
@@ -42,7 +42,7 @@
   }
   code {
     font-family: ui-monospace, monospace;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   a {
     color: var(--danger);

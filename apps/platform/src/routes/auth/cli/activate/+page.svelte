@@ -69,8 +69,8 @@
     min-height: 100svh;
     min-height: 100dvh;
     padding: calc(var(--safe-top, 0px) + 1rem) 1.25rem calc(var(--safe-bottom, 0px) + 2rem);
-    background: var(--bg, #FAF7EF);
-    color: var(--text, #14120F);
+    background: var(--bg);
+    color: var(--text);
   }
   .shell {
     width: 100%;
@@ -91,30 +91,30 @@
   }
   .eyebrow {
     margin: 0;
-    color: var(--text-light, #8B847A);
+    color: var(--text-light);
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    font-size: var(--caption-size, 0.72rem);
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
   }
   h1 {
     font-family: var(--font-heading, 'Fraunces', Georgia, serif);
-    font-size: clamp(2.25rem, 9vw, 3.6rem);
+    font-size: var(--text-display);
     line-height: 0.98;
     letter-spacing: 0;
     margin: 0;
   }
-  .lede { color: var(--text-secondary, #5C5751); line-height: 1.55; margin: 0; }
+  .lede { color: var(--text-secondary); line-height: 1.55; margin: 0; }
   .field { display: block; }
   input[type='text'] {
     width: 100%;
     height: 56px;
     padding: 0 1.25rem;
     background: transparent;
-    border: 1px solid var(--border-paper-mid);
+    border: 1px solid var(--border-light);
     color: inherit;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 22px;
+    font-size: var(--text-subhead);
     letter-spacing: 0.15em;
     text-align: center;
     text-transform: uppercase;
@@ -129,8 +129,8 @@
   .hint {
     text-align: center;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
-    color: var(--text-muted-warm);
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
     margin: 0;
   }
   .continue-link {
@@ -140,14 +140,14 @@
     justify-content: center;
     color: var(--sunset, #E8603C);
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     text-decoration: none;
   }
   .error, .ok {
     padding: 0.875rem 1rem;
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.4;
     border: 1px solid;
   }
@@ -164,10 +164,5 @@
     .intro {
       margin-top: 1.5rem;
     }
-  }
-  @media (prefers-color-scheme: dark) {
-    .page { background: var(--bg, #14120F); color: var(--text, #EDE4D3); }
-    .lede { color: var(--text-muted-cool); }
-    input[type='text'] { border-color: var(--ink-warm-mid); }
   }
 </style>

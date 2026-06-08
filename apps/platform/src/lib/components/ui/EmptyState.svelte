@@ -52,7 +52,7 @@
   }
   .title {
     font-family: var(--font-heading);
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     letter-spacing: -0.015em;
     margin: 0;
   }
@@ -69,7 +69,7 @@
     background: var(--sunset);
     color: var(--bg-pure);
     font-family: var(--font-body);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 600;
     margin-top: var(--space-xs);
     transition: background 0.18s var(--ease-out);

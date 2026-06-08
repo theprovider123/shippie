@@ -111,7 +111,9 @@
 
   function clearLocalMemory() {
     if (!hasLocalData) return;
-    const ok = window.confirm('Clear Dock memory on this device? Offline app files stay available.');
+    const ok = window.confirm(
+      'Reset your Dock on this device? This clears your recent and saved tools here. Your saved offline files and app data stay untouched.',
+    );
     if (ok) clearLauncherMemory();
   }
 
@@ -131,7 +133,6 @@
 <RailShell user={data.user} current="you">
 <div class="you-page">
   <header class="you-head wrap">
-    <p class="eyebrow">Settings</p>
     <div class="head-row">
       <div>
         <h1>You</h1>
@@ -161,30 +162,9 @@
       </div>
     </section>
 
-    <section class="panel app-panel" aria-labelledby="apps-title">
-      <div class="section-head">
-        <div>
-          <h2 id="apps-title">Apps</h2>
-          <p>{data.user ? `${data.makerApps.length} total · ${privateMakerCount} private` : 'Published and private apps appear after sign-in.'}</p>
-        </div>
-      </div>
-
-      {#if data.user}
-        <div class="maker-entry">
-          <a class="primary" href="/maker/apps">Manage apps</a>
-          <a href="/new">Ship app</a>
-        </div>
-      {:else}
-        <div class="empty-apps">
-          <strong>No account connected.</strong>
-          <p>Your owned, private, and demo apps will appear here after you sign in.</p>
-        </div>
-      {/if}
-    </section>
-
     <section class="panel account-panel" aria-labelledby="account-title">
       <div class="section-head">
-        <h2 id="account-title">Account</h2>
+        <h2 id="account-title">Account &amp; apps</h2>
         <span>{data.user ? 'signed in' : 'optional'}</span>
       </div>
       {#if data.user}
@@ -194,7 +174,7 @@
             <p>{data.user.email}</p>
           </div>
           <div class="account-actions">
-            <a href="/maker">Maker</a>
+            <a href="/you/access">Access</a>
             {#if data.user.isAdmin}
               <a href="/admin">Admin</a>
             {/if}
@@ -203,11 +183,16 @@
             </form>
           </div>
         </div>
+        <div class="maker-entry">
+          <a class="primary" href="/maker/apps">Manage apps</a>
+          <a href="/new">Ship app</a>
+        </div>
+        <p class="apps-meta">{data.makerApps.length} total · {privateMakerCount} private</p>
       {:else}
         <div class="account-row">
           <div>
             <strong>Sign in for sync and builder tools.</strong>
-            <p>Everything local still works without an account.</p>
+            <p>Everything local still works without an account. Published and private apps appear here once you sign in.</p>
           </div>
           <div class="account-actions">
             <a href="/auth/login?return_to=%2Fyou">Sign in</a>
@@ -302,46 +287,33 @@
       {/if}
 
       <div class="data-actions">
-        <a href="/dock?section=data" class="secondary-action primary-action">Manage data →</a>
+        <a href="/dock?section=data" class="secondary-action primary-action">Manage data</a>
         <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
-          {storagePinned ? 'Storage protected' : storagePinning ? 'Protecting storage' : 'Protect offline storage'}
+          {storagePinned ? 'Offline protected' : storagePinning ? 'Protecting…' : 'Keep offline'}
         </button>
         <button type="button" class="text-danger" disabled={!hasLocalData} onclick={clearLocalMemory}>
-          Clear Dock memory
+          Reset Dock
         </button>
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="privacy-title">
+    <section class="panel" aria-labelledby="help-title">
       <div class="section-head">
-        <h2 id="privacy-title">Privacy</h2>
-        <span>device-first</span>
+        <h2 id="help-title">Help &amp; legal</h2>
+        <span>support</span>
       </div>
       <details class="trust-band">
-        <summary>
-          Local by default, sealed optional cloud, no cross-app tracking.
-        </summary>
+        <summary>Local by default, sealed optional cloud, no cross-app tracking.</summary>
         <ul>
           <li>Tools run on your device and keep app contents local unless you choose backup or sync.</li>
           <li>Shippie can count tool opens and versions for compatibility, but not what you type inside apps.</li>
           <li>Backup, sync, relay, and private spaces are optional surfaces you control.</li>
         </ul>
       </details>
-    </section>
-
-    <section class="panel" aria-labelledby="help-title">
-      <div class="section-head">
-        <h2 id="help-title">Help</h2>
-        <span>support</span>
-      </div>
       <div class="link-list">
-        <a href="/docs">Docs</a>
-        <a href="/dock?section=access">Access</a>
-        <a href="/dock?section=data">Your data</a>
-        <a href="/maker/apps">Maker</a>
-        {#if data.user?.isAdmin}
-          <a href="/admin">Admin</a>
-        {/if}
+        <a href="/docs#help">Help &amp; docs</a>
+        <a href="/docs#privacy">Privacy &amp; terms</a>
+        <a href="mailto:hello@shippie.app">Contact</a>
       </div>
     </section>
   </main>
@@ -362,7 +334,7 @@
   .eyebrow {
     margin: 0 0 0.5rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
@@ -386,14 +358,14 @@
 
   h1 {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-size: var(--text-display);
     line-height: 1;
     letter-spacing: 0;
   }
 
   h2 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     letter-spacing: 0;
   }
 
@@ -401,7 +373,7 @@
     max-width: 36rem;
     margin-top: var(--space-sm);
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
   }
 
@@ -422,7 +394,7 @@
     background: transparent;
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.06em;
     text-decoration: none;
     text-transform: uppercase;
@@ -451,6 +423,11 @@
     gap: var(--space-md);
   }
 
+  .panel + .panel {
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-xl);
+  }
+
   .section-head {
     align-items: baseline;
   }
@@ -458,7 +435,7 @@
   .section-head span {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
@@ -466,17 +443,20 @@
   .section-head p {
     margin-top: 4px;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
+  }
+
+  .overview-grid,
+  .device-grid,
+  .trust-band {
+    border: 1px solid var(--border-light);
+    background: var(--surface);
   }
 
   .account-row,
-  .overview-grid,
-  .device-grid,
   .repair-list,
-  .trust-band,
   .link-list {
     border: 1px solid var(--border-light);
-    background: var(--surface);
   }
 
   .account-row {
@@ -487,7 +467,7 @@
   .device-grid strong,
   .repair-row strong {
     font-family: var(--font-heading);
-    font-size: 1.05rem;
+    font-size: var(--text-body);
     color: var(--text);
   }
 
@@ -496,7 +476,7 @@
   .repair-row p {
     margin-top: 4px;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.45;
   }
 
@@ -523,6 +503,13 @@
     flex-wrap: wrap;
     gap: 10px;
   }
+  .apps-meta {
+    margin: 0;
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.04em;
+  }
 
   .maker-entry a.primary {
     border-color: var(--sunset);
@@ -540,20 +527,20 @@
 
   .empty-apps strong {
     font-family: var(--font-heading);
-    font-size: 1.1rem;
+    font-size: var(--text-lede);
   }
 
   .empty-apps p {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
 
   .overview-grid span,
   .device-grid span {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
@@ -576,7 +563,7 @@
 
   .overview-grid strong {
     font-family: var(--font-heading);
-    font-size: clamp(1.7rem, 5vw, 2.35rem);
+    font-size: var(--text-title);
     line-height: 0.95;
     color: var(--text);
   }
@@ -625,7 +612,7 @@
     margin: 0 0 var(--space-sm);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
@@ -652,7 +639,7 @@
     display: grid;
     gap: 0.35rem;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
   }
 
@@ -669,7 +656,7 @@
     background: var(--surface);
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .you-page {
       padding-top: var(--space-md);
     }
@@ -686,12 +673,12 @@
     }
 
     h1 {
-      font-size: clamp(2rem, 12vw, 2.7rem);
+      font-size: var(--text-display);
       line-height: 1;
     }
 
     .lede {
-      font-size: 1rem;
+      font-size: var(--text-body);
     }
 
     .home-link {
@@ -762,12 +749,12 @@
   }
   .feedback-top strong {
     font-family: var(--font-heading);
-    font-size: 1rem;
+    font-size: var(--text-body);
     color: var(--text);
   }
   .fb-status {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     padding: 2px 7px;
@@ -789,7 +776,7 @@
   .feedback-preview {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.4;
   }
   .feedback-reply {
@@ -798,14 +785,14 @@
     border-left: 2px solid var(--sunset);
     background: rgba(232, 96, 60, 0.05);
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.4;
   }
   .feedback-reply span {
     display: block;
     color: var(--sunset);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
@@ -813,6 +800,6 @@
     flex-shrink: 0;
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
 </style>

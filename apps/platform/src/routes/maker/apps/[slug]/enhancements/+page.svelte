@@ -172,7 +172,7 @@
     display: inline-block;
     margin-bottom: 1rem;
     color: var(--text-secondary);
-    font-size: var(--small-size, 0.9rem);
+    font-size: var(--text-small);
     text-decoration: none;
   }
   .back-link:hover {
@@ -184,19 +184,19 @@
   }
   .head h1 {
     font-family: var(--font-heading);
-    font-size: var(--h2-size);
+    font-size: var(--text-heading);
     margin: 0 0 0.5rem;
     letter-spacing: 0;
   }
   .lede {
     color: var(--text-secondary);
     margin: 0;
-    font-size: var(--body-size);
+    font-size: var(--text-body);
   }
   .meta {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     margin: 0.25rem 0 0;
   }
   code {
@@ -210,7 +210,7 @@
   }
   .section h2 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     margin: 0 0 var(--space-sm);
   }
 
@@ -232,7 +232,7 @@
     border: 1px solid var(--border-light);
     border-radius: 0;
     background: var(--surface);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 12px;
@@ -240,7 +240,7 @@
   }
   .selector {
     color: var(--text-light);
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
 
   .available {
@@ -259,18 +259,18 @@
   }
   .cap-card h3 {
     margin: 0 0 0.25rem;
-    font-size: 1rem;
+    font-size: var(--text-body);
     font-weight: 600;
   }
   .cap-card p {
     margin: 0 0 0.5rem;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-secondary);
     line-height: 1.5;
   }
   .cap-card a {
     color: var(--sunset);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 500;
   }
   .cap-card a:hover { text-decoration: underline; }
@@ -278,7 +278,7 @@
   textarea {
     width: 100%;
     font-family: var(--font-mono);
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
     padding: 12px;
     border: 1px solid var(--border);
     border-radius: 0;
@@ -294,17 +294,17 @@
 
   .error {
     color: var(--danger);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     margin: 8px 0 0;
   }
   .ok {
     color: var(--sage-leaf);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     margin: 8px 0 0;
   }
   .warn {
     color: var(--danger);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     margin: 8px 0 0;
   }
 
@@ -316,7 +316,7 @@
   .btn {
     padding: 0.5rem 1rem;
     border-radius: 0;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 500;
     cursor: pointer;
     border: 1px solid transparent;

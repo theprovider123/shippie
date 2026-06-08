@@ -53,7 +53,7 @@
       <a href="/dock" class="nav-link" class:active={isHomePath($page.url.pathname)} aria-current={isHomePath($page.url.pathname) ? 'page' : undefined}>Dock</a>
       <a href="/tools" class="nav-link" class:active={isToolsPath($page.url.pathname)} aria-current={isToolsPath($page.url.pathname) ? 'page' : undefined}>Tools</a>
       {#if user}
-        <a href="/maker" class="nav-link" class:active={isMakerPath($page.url.pathname)} aria-current={isMakerPath($page.url.pathname) ? 'page' : undefined}>Maker</a>
+        <a href="/maker/apps" class="nav-link" class:active={isMakerPath($page.url.pathname)} aria-current={isMakerPath($page.url.pathname) ? 'page' : undefined}>Apps</a>
         {#if user.isAdmin}
           <a href="/admin" class="nav-link nav-link-admin" class:active={$page.url.pathname.startsWith('/admin')} aria-current={$page.url.pathname.startsWith('/admin') ? 'page' : undefined}>Admin</a>
         {/if}
@@ -94,7 +94,7 @@
       <a href="/tools" onclick={() => (mobileOpen = false)}>Tools</a>
       {#if user}
         <a href="/you" onclick={() => (mobileOpen = false)}>You</a>
-        <a href="/maker" onclick={() => (mobileOpen = false)}>Maker</a>
+        <a href="/maker/apps" onclick={() => (mobileOpen = false)}>Apps</a>
         {#if user.isAdmin}
           <a href="/admin" onclick={() => (mobileOpen = false)}>Admin</a>
         {/if}
@@ -156,7 +156,7 @@
   .nav-mark { display: block; flex-shrink: 0; }
   .nav-wordmark {
     font-family: var(--font-heading);
-    font-size: 1.375rem;
+    font-size: var(--text-subhead);
     font-weight: 700;
     letter-spacing: 0;
   }
@@ -166,7 +166,7 @@
     min-height: var(--touch-min, 44px);
     min-width: var(--touch-min, 44px);
     justify-content: center;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-secondary);
     transition: color 0.2s;
     white-space: nowrap;
@@ -187,7 +187,7 @@
     min-height: var(--touch-min, 44px);
     min-width: var(--touch-min, 44px);
     justify-content: center;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-light);
   }
   .nav-signin:hover { color: var(--text-secondary); }
@@ -206,7 +206,7 @@
     padding: 0.5rem 1.125rem;
     background: var(--sunset);
     color: var(--bg-pure);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 600;
     border-radius: 0;
     transition: background 0.2s;
@@ -265,7 +265,7 @@
   .mobile-menu a {
     padding: 14px 0;
     font-family: var(--font-heading);
-    font-size: 18px;
+    font-size: var(--text-lede);
     color: var(--text);
     border-bottom: 1px solid var(--border-light);
   }
@@ -279,7 +279,7 @@
     text-align: center;
     border-bottom: none !important;
     font-family: var(--font-body) !important;
-    font-size: 15px !important;
+    font-size: var(--text-body) !important;
     font-weight: 600;
   }
 

@@ -99,7 +99,7 @@
     place-items: center;
     min-inline-size: var(--touch-min);
     font-family: var(--font-mono);
-    font-size: 17px;
+    font-size: var(--text-lede);
     line-height: 1;
   }
 
@@ -108,7 +108,7 @@
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 11px;
+    font-size: var(--text-caption);
     font-weight: 600;
     line-height: 1;
     white-space: nowrap;

@@ -106,7 +106,7 @@
     font-family: var(--font-mono, ui-monospace, monospace);
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
   }
   .eyebrow { color: var(--sunset, #E8603C); margin: 0 0 0.4rem; }
   .identity {
@@ -124,7 +124,7 @@
     color: var(--bg-pure, #0F0D0A);
     font-family: var(--font-heading, Georgia, serif);
   }
-  .avatar { width: 112px; height: 112px; font-size: 2.6rem; }
+  .avatar { width: 112px; height: 112px; font-size: var(--text-display); }
   .avatar img,
   .icon img { width: 100%; height: 100%; object-fit: cover; }
   h1,
@@ -133,8 +133,8 @@
     font-family: var(--font-heading, Georgia, serif);
     letter-spacing: -0.02em;
   }
-  h1 { font-size: clamp(2.4rem, 7vw, 5rem); line-height: 0.95; margin: 0; }
-  h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin: 0; }
+  h1 { font-size: var(--text-display); line-height: 0.95; margin: 0; }
+  h2 { font-size: var(--text-display); margin: 0; }
   .handle,
   .muted,
   .bio,
@@ -147,7 +147,7 @@
   }
   .headline {
     font-family: var(--font-heading, Georgia, serif);
-    font-size: clamp(1.4rem, 3vw, 2.4rem);
+    font-size: var(--text-display);
     line-height: 1.1;
     max-width: 860px;
     margin: 2rem 0 0;
@@ -165,7 +165,7 @@
     text-decoration: none;
     padding: 0.5rem 0.75rem;
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
@@ -192,7 +192,7 @@
   }
   .tool:hover { border-color: var(--sage-moss, #5E7B5C); background: var(--surface-alt, #252019); }
   .icon { width: 48px; height: 48px; }
-  .tool strong { font-family: var(--font-heading, Georgia, serif); font-size: 1.2rem; }
+  .tool strong { font-family: var(--font-heading, Georgia, serif); font-size: var(--text-lede); }
   .tool p {
     line-height: 1.5;
     margin: 0;

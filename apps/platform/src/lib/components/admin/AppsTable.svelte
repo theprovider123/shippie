@@ -132,7 +132,7 @@
               </button>
             </form>
             <a href={`/apps/${app.slug}`} target="_blank" rel="noopener" class="btn-text">View</a>
-            <a href={`/maker/apps/${app.slug}`} class="btn-text">Dashboard</a>
+            <a href={`/maker/apps/${app.slug}`} class="btn-text">Manage</a>
           </td>
         </tr>
       {/each}
@@ -145,13 +145,13 @@
 
 <style>
   .table-wrap { border: 1px solid var(--border-light, #2A251E); border-radius: 0; overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: var(--text-small); }
   th {
     text-align: left;
     padding: 0.625rem 0.875rem;
     background: rgba(255,255,255,0.04);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--text-secondary, #B8A88F);
@@ -166,7 +166,7 @@
   th.num { text-align: right; }
   td { padding: 0.75rem 0.875rem; border-top: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
   td.num { text-align: right; font-family: var(--font-mono, ui-monospace, monospace); }
-  td.mono { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; }
+  td.mono { font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--text-caption); }
   td.muted { color: var(--text-secondary, #B8A88F); }
   td.empty { text-align: center; padding: 2rem; color: var(--text-secondary, #B8A88F); }
   tr.archived { opacity: 0.55; }
@@ -181,13 +181,13 @@
   .slug {
     display: block;
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     color: var(--text-secondary, #B8A88F);
     margin-top: 2px;
   }
   .status {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 10px;
+    font-size: var(--text-caption);
     padding: 2px 8px;
     border-radius: 0;
     background: rgba(255,255,255,0.06);
@@ -205,7 +205,7 @@
     border: 1px solid var(--border-light, #2A251E);
     padding: 3px 7px;
     font: inherit;
-    font-size: 11px;
+    font-size: var(--text-caption);
     min-height: calc(var(--touch-min, 44px) - 12px);
     max-width: 12rem;
   }
@@ -213,7 +213,7 @@
   .actions form.inline { display: inline-flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
   select {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
     background: var(--surface, #1E1A15);
     color: var(--text, #EDE4D3);
     border: 1px solid var(--border-light, #2A251E);
@@ -235,7 +235,7 @@
     text-decoration: none;
     cursor: pointer;
     padding: 0;
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .btn-text:hover { text-decoration: underline; }
 </style>

@@ -34,7 +34,7 @@
     padding: 6px 12px;
     background: var(--sunset-glow, rgba(232, 96, 60, 0.08));
     border-bottom: 1px solid var(--border-light);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--text-secondary);
   }
   .strip-body {
@@ -54,7 +54,7 @@
   .strip-sub { color: var(--text-light); }
   .strip-more {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     color: var(--text-light);
     border: 1px solid var(--border-light);
     padding: 0 6px;
@@ -65,7 +65,7 @@
     border: 0;
     color: var(--text-light);
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     line-height: 1;
   }
   .strip-x:hover { color: var(--text); }

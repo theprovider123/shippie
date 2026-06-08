@@ -47,13 +47,13 @@
   h3 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     font-weight: 600;
     letter-spacing: -0.01em;
   }
   .price {
     margin: 6px 0 2px;
-    font-size: 1.375rem;
+    font-size: var(--text-subhead);
     font-weight: 700;
     color: var(--text);
   }
@@ -61,7 +61,7 @@
   .audience {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     color: var(--text-secondary);
     letter-spacing: 0.05em;
   }
@@ -73,7 +73,7 @@
     gap: 6px;
   }
   ul li {
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.5;
     color: var(--text-secondary);
   }

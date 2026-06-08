@@ -80,7 +80,7 @@
     background: var(--bg-elevated, var(--bg, #14120F));
     color: var(--text);
     font-family: var(--font-sans, system-ui, sans-serif);
-    font-size: 14px;
+    font-size: var(--text-small);
     line-height: 1.4;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
     /* Sharp corners — brand. */
@@ -111,7 +111,7 @@
     border: 1px solid currentColor;
     color: var(--gold, #D9A658);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     padding: 4px 8px;
@@ -136,7 +136,7 @@
     background: transparent;
     border: 0;
     color: var(--text-secondary, #C9BEA9);
-    font-size: 18px;
+    font-size: var(--text-lede);
     line-height: 1;
     padding: 0 2px;
     cursor: pointer;

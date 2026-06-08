@@ -93,13 +93,13 @@
   .insight-body h4 {
     margin: 0 0 4px;
     font-family: var(--font-heading);
-    font-size: 14px;
+    font-size: var(--text-small);
     font-weight: 600;
     color: var(--text);
   }
   .insight-body p {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--text-small);
     color: var(--text-secondary);
     line-height: 1.4;
   }
@@ -109,7 +109,7 @@
     width: 24px;
     height: 24px;
     border-radius: 0;
-    font-size: 16px;
+    font-size: var(--text-body);
     line-height: 1;
     color: var(--text-light);
     cursor: pointer;

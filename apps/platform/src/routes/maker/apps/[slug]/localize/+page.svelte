@@ -115,11 +115,11 @@
   }
   .header h1 {
     margin: 0 0 0.5rem 0;
-    font-size: 2rem;
+    font-size: var(--text-title);
   }
   .meta {
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     max-width: 60ch;
   }
   .card {
@@ -155,11 +155,11 @@
   }
   .offer-head h3 {
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: var(--text-body);
     margin: 0;
   }
   .counts {
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     color: var(--text-light);
   }
   .effect {
@@ -168,7 +168,7 @@
   }
   .sample, .warnings {
     margin-top: 0.75rem;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   .sample p, .warnings p {
     margin: 0 0 0.25rem 0;
@@ -188,7 +188,7 @@
      tokens.css. Disabled cursor + opacity defaults match the design. */
   .caveat {
     margin-top: 0.5rem;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--text-light);
     font-style: italic;
   }

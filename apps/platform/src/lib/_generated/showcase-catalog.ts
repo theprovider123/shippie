@@ -15,6 +15,7 @@ export const SHOWCASE_SLUGS = [
   "co-pilot",
   "coffee",
   "colour-of-day",
+  "companion",
   "cooking",
   "corporate-demo",
   "crewtrip",

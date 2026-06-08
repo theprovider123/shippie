@@ -339,7 +339,7 @@
   .form { display: flex; min-width: 0; max-width: 100%; flex-direction: column; gap: 1rem; }
   label { min-width: 0; }
   .label {
-    font-size: 11px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.16em;
     color: var(--text-muted-warm);
@@ -355,7 +355,7 @@
     border: 1px solid var(--border-paper-mid);
     background: transparent;
     font-family: ui-monospace, monospace;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
     color: inherit;
     border-radius: 0;
     box-sizing: border-box;
@@ -372,7 +372,7 @@
     border-left: none;
     background: rgba(0,0,0,0.02);
     font-family: ui-monospace, monospace;
-    font-size: 14px;
+    font-size: var(--text-small);
     color: var(--text-muted-warm);
     border-radius: 0 8px 8px 0;
     overflow-wrap: anywhere;
@@ -397,7 +397,7 @@
     border: 1px solid var(--border-paper-mid);
     background: transparent;
     font-family: ui-monospace, monospace;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
     color: inherit;
     border-radius: 0;
     box-sizing: border-box;
@@ -406,12 +406,12 @@
   .hint {
     display: block;
     margin-top: 0.4rem;
-    font-size: 12px;
+    font-size: var(--text-caption);
     color: var(--ink-muted-warm);
     line-height: 1.4;
     overflow-wrap: anywhere;
   }
-  .hint code { font-family: ui-monospace, monospace; font-size: 11px; }
+  .hint code { font-family: ui-monospace, monospace; font-size: var(--text-caption); }
   .choice-set {
     min-width: 0;
     margin: 0;
@@ -442,12 +442,12 @@
   }
   .choice-set strong {
     color: var(--bg);
-    font-size: 14px;
+    font-size: var(--text-small);
   }
   .choice-set small {
     margin-top: 0.15rem;
     color: var(--ink-muted-warm);
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .trial-note {
     min-width: 0;
@@ -457,7 +457,7 @@
   .trial-note p {
     margin: 0.25rem 0 0;
     color: var(--ink-muted-warm);
-    font-size: 13px;
+    font-size: var(--text-small);
     line-height: 1.45;
   }
   /* Submit uses .btn .btn--primary from tokens.css; only the
@@ -497,7 +497,7 @@
     border: 1px solid rgba(46,125,91,0.35);
     background: rgba(255,255,255,0.52);
     text-decoration: none;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
     font-weight: 700;
   }
   .qr-panel {
@@ -508,7 +508,7 @@
     gap: 0.45rem;
     color: var(--ink-muted-warm);
     font-family: ui-monospace, monospace;
-    font-size: 10px;
+    font-size: var(--text-caption);
     text-align: center;
   }
   .qr,
@@ -526,17 +526,17 @@
     place-items: center;
     color: var(--text-muted-warm);
   }
-  .meta { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-muted-warm); margin: 0.5rem 0 0 0; }
+  .meta { font-family: ui-monospace, monospace; font-size: var(--text-caption); color: var(--text-muted-warm); margin: 0.5rem 0 0 0; }
   .share-card { min-width: 0; max-width: 100%; margin-top: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.5); border-radius: 0; }
   .share-head { display: flex; min-width: 0; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-  .share-head p { font-size: 12px; color: var(--bg); margin: 0; font-weight: 600; }
+  .share-head p { font-size: var(--text-caption); color: var(--bg); margin: 0; font-weight: 600; }
   .vis-toggle { display: inline-flex; flex: 0 1 auto; flex-wrap: wrap; min-width: 0; gap: 2px; padding: 2px; background: rgba(0,0,0,0.05); border-radius: 0; }
   .vis-toggle button {
     background: transparent;
     border: none;
     padding: 4px 10px;
     border-radius: 0;
-    font-size: 11px;
+    font-size: var(--text-caption);
     font-family: ui-monospace, monospace;
     cursor: pointer;
     color: var(--text-muted-warm);
@@ -550,7 +550,7 @@
     height: 36px;
     padding: 0 0.625rem;
     font-family: ui-monospace, monospace;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
     background: white;
     border: 1px solid var(--border-paper-mid);
     border-radius: 0;
@@ -563,7 +563,7 @@
     background: transparent;
     border: 1px solid var(--border-paper-mid);
     border-radius: 0;
-    font-size: 12px;
+    font-size: var(--text-caption);
     cursor: pointer;
     color: inherit;
   }
@@ -575,7 +575,7 @@
     background: var(--success);
     color: white !important;
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 700;
     text-decoration: none;
     max-width: 100%;
@@ -591,7 +591,7 @@
     color: var(--danger);
   }
   .error-head { font-weight: 700; margin: 0; }
-  .error ul { margin: 0.5rem 0 0 1.25rem; padding: 0; font-family: ui-monospace, monospace; font-size: 12px; }
+  .error ul { margin: 0.5rem 0 0 1.25rem; padding: 0; font-family: ui-monospace, monospace; font-size: var(--text-caption); }
   .error li + li { margin-top: 0.375rem; }
   .error li span { display: block; margin-top: 0.125rem; color: rgba(180,63,42,0.78); }
   @media (prefers-color-scheme: dark) {

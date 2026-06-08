@@ -93,14 +93,18 @@
       0 0 16px -3px color-mix(in srgb, var(--c) 55%, transparent);
   }
   .rocket {
-    position: absolute; right: -6px; top: -6px;
-    width: 18px; height: 18px; border-radius: 50%;
+    /* Tucked into the tile's top-right corner (not floating clear above it),
+       so it never pokes into a drawer/sheet handle line sitting just above
+       the first row of tiles. z-index keeps it cleanly on top if it does. */
+    position: absolute; right: -3px; top: -3px;
+    width: 16px; height: 16px; border-radius: 50%;
     background: var(--tool-icon-tile);
     border: 1px solid color-mix(in srgb, var(--c) 60%, transparent);
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    z-index: 2;
   }
-  .rocket svg { width: 10px; height: 10px; }
+  .rocket svg { width: 9px; height: 9px; }
   .pulse {
     position: absolute; inset: 0; border-radius: inherit;
     border: 1.5px solid var(--c); opacity: 0;

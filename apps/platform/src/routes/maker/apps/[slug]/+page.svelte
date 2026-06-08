@@ -221,13 +221,13 @@
   .sparkline p,
   time {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-muted-warm);
   }
   .metric-grid strong {
-    font-size: clamp(1.55rem, 5vw, 2.35rem);
+    font-size: var(--text-title);
     line-height: 1;
     letter-spacing: 0;
   }
@@ -265,14 +265,14 @@
   }
   h2 {
     margin: 0.2rem 0 0;
-    font-size: 1.2rem;
+    font-size: var(--text-lede);
     letter-spacing: 0;
   }
   a {
     color: var(--sunset);
     text-decoration: none;
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   a:hover {
     text-decoration: underline;
@@ -294,7 +294,7 @@
     align-items: center;
     min-height: 48px;
     border-bottom: 1px solid var(--paper-cream);
-    font-size: 14px;
+    font-size: var(--text-small);
   }
   .feedback-preview li > span {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -315,7 +315,7 @@
   .compact-prompt p {
     margin: 0;
     color: var(--text-muted-warm);
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .usage-block {
     display: grid;
@@ -333,13 +333,13 @@
   }
   dd {
     margin: 0.25rem 0 0;
-    font-size: 1rem;
+    font-size: var(--text-body);
     font-weight: 700;
   }
   dd span {
     display: block;
     color: var(--text-muted-warm);
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 500;
     margin-top: 0.2rem;
   }
@@ -376,7 +376,7 @@
       border-color: var(--ink-warm);
     }
   }
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .metric-strip {
       grid-template-columns: 1fr;
     }

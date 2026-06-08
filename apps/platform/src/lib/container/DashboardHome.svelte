@@ -41,6 +41,7 @@
     onOpenTool: (slug: string) => void;
     onCloseTool?: (slug: string) => void;
     onRemoveSavedTool?: (slug: string) => void;
+    onForgetRecent?: (slug: string) => void;
     onStayOnCurrent: (appId: string) => void;
     onAcceptUpdate: (appId: string) => void;
     onAcceptAllUpdates: (appIds: readonly string[]) => void;
@@ -55,16 +56,13 @@
     onOpenTool,
     onCloseTool,
     onRemoveSavedTool,
+    onForgetRecent,
     onStayOnCurrent,
     onAcceptUpdate,
     onAcceptAllUpdates,
   }: Props = $props();
 
   let updateSheetOpen = $state(false);
-  let dockView = $state<'grid' | 'manage'>('grid');
-  const hasDockTools = $derived(
-    dockGroups.open.length > 0 || dockGroups.recent.length > 0 || dockGroups.saved.length > 0,
-  );
   const counts = $derived(updateCounts(updateCards));
   const updateSubtitle = $derived(updateCards.length === 1 ? '1 tool' : `${updateCards.length} tools`);
   const updateCountSummary = $derived.by(() => {
@@ -152,16 +150,6 @@
         <span>{updateBadgeLabel(updateCards)}</span>
       </button>
     {/if}
-    {#if hasDockTools}
-      <button
-        type="button"
-        class="view-toggle"
-        aria-pressed={dockView === 'manage'}
-        onclick={() => (dockView = dockView === 'grid' ? 'manage' : 'grid')}
-      >
-        {dockView === 'grid' ? 'Manage' : 'Done'}
-      </button>
-    {/if}
   </div>
   <p>Running, recent, and saved tools stay close. Use Tools when you want to find something new.</p>
 </div>
@@ -230,27 +218,24 @@
         </p>
       </div>
     </div>
-    {#snippet dockTool(tool: RailTool, v: 'row' | 'tile')}
-      <ToolRow
-        app={railToolToTile(tool)}
-        state={stateForTool(tool, sectionId)}
-        variant={v}
-        hideRelationship
-        onOpen={() => onOpenTool(tool.slug)}
-        onReview={() => openUpdates()}
-        onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
-        onRemove={sectionId === 'saved' && onRemoveSavedTool ? () => onRemoveSavedTool(tool.slug) : undefined}
-      />
-    {/snippet}
-    {#if dockView === 'grid'}
-      <div class="dock-tile-grid">
-        {#each tools as tool (tool.slug)}{@render dockTool(tool, 'tile')}{/each}
-      </div>
-    {:else}
-      <div class="dock-row-list">
-        {#each tools as tool (tool.slug)}{@render dockTool(tool, 'row')}{/each}
-      </div>
-    {/if}
+    <div class="dock-tile-grid">
+      {#each tools as tool (tool.slug)}
+        <ToolRow
+          app={railToolToTile(tool)}
+          state={stateForTool(tool, sectionId)}
+          variant="tile"
+          hideRelationship
+          onOpen={() => onOpenTool(tool.slug)}
+          onReview={() => openUpdates()}
+          onClose={sectionId === 'open' && onCloseTool ? () => onCloseTool(tool.slug) : undefined}
+          onRemove={sectionId === 'saved' && onRemoveSavedTool
+            ? () => onRemoveSavedTool(tool.slug)
+            : sectionId === 'recent' && onForgetRecent
+              ? () => onForgetRecent(tool.slug)
+              : undefined}
+        />
+      {/each}
+    </div>
   </section>
 {/snippet}
 
@@ -263,17 +248,20 @@
     <div class="update-list">
       {#each cards as card (card.app.id)}
         {@const reviewNote = updateReviewNote(card)}
+        {@const flaggedChips = updateChips(card).filter((chip) => chip.tone === 'attention')}
         <article class="update-row" class:attention={updateSeverity(card) === 'attention'}>
           <div class="update-copy">
             <div class="update-row-title">
               <strong>{card.app.name}</strong>
               <small>{updateSummary(card)}</small>
             </div>
-            <div class="update-chips" aria-label={`Changes for ${card.app.name}`}>
-              {#each updateChips(card) as chip (chip.label)}
-                <span class:attention={chip.tone === 'attention'} class:safe={chip.tone === 'safe'}>{chip.label}</span>
-              {/each}
-            </div>
+            {#if flaggedChips.length > 0}
+              <div class="update-chips" aria-label={`Changes that need review for ${card.app.name}`}>
+                {#each flaggedChips as chip (chip.label)}
+                  <span class="attention">{chip.label}</span>
+                {/each}
+              </div>
+            {/if}
             {#if reviewNote}
               <p class="update-note">{reviewNote}</p>
             {/if}
@@ -306,13 +294,13 @@
     min-width: 0;
     margin: 0;
     font-family: var(--font-heading);
-    font-size: 1.08rem;
+    font-size: var(--text-lede);
   }
   .section-head p {
     max-width: 44rem;
     margin: 0;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     line-height: 1.4;
   }
   .update-trigger {
@@ -326,7 +314,7 @@
     background: var(--surface);
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
@@ -359,49 +347,18 @@
   }
   .dock-section-head h3 {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     letter-spacing: 0;
   }
   .dock-section-head p {
     margin: 3px 0 0;
     color: var(--text-secondary);
-    font-size: 0.86rem;
+    font-size: var(--text-small);
   }
   .dock-tile-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
     gap: clamp(0.75rem, 1.4vw, 1.1rem) 0.75rem;
-  }
-  .view-toggle {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: 0 0.75rem;
-    border: 1px solid var(--border-light);
-    background: var(--surface);
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-  .view-toggle:hover,
-  .view-toggle:focus-visible {
-    color: var(--sunset);
-    border-color: var(--sunset);
-    outline: none;
-  }
-  /* Dock rows are now ToolRow primitives — they own their height,
-     dividers, actions, and the Review/Update chip. The list just frames
-     the group; the rows divide themselves with their own border-bottom. */
-  .dock-row-list {
-    display: grid;
-    gap: 0;
-    border: 1px solid var(--border-light);
-    background: var(--surface);
   }
   .updates-sheet {
     display: grid;
@@ -423,11 +380,11 @@
   .updates-toolbar strong {
     color: var(--text);
     font-family: var(--font-heading);
-    font-size: 0.98rem;
+    font-size: var(--text-body);
   }
   .updates-toolbar span {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     line-height: 1.35;
   }
   .update-all {
@@ -437,15 +394,12 @@
     border: 1px solid var(--sunset);
     background: var(--sunset);
     color: var(--bg);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font: inherit;
     cursor: pointer;
   }
   .update-all:hover,
   .update-all:focus-visible {
-    border-color: var(--text);
+    filter: brightness(1.06);
     outline: none;
   }
   .update-group {
@@ -460,7 +414,7 @@
   }
   .update-group-head h3 {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: var(--text-small);
     font-family: var(--font-mono);
     color: var(--text-secondary);
     letter-spacing: 0.08em;
@@ -474,7 +428,7 @@
     border: 1px solid var(--border-light);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-caption);
   }
   .update-list {
     display: grid;
@@ -501,11 +455,11 @@
   .update-row-title strong {
     color: var(--text);
     font-family: var(--font-heading);
-    font-size: 0.98rem;
+    font-size: var(--text-body);
   }
   .update-row-title small {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     line-height: 1.35;
   }
   .update-chips {
@@ -521,12 +475,8 @@
     border: 1px solid var(--border-light);
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.04em;
-  }
-  .update-chips span.safe {
-    color: var(--sage-leaf);
-    border-color: color-mix(in srgb, var(--sage-leaf) 42%, var(--border-light));
   }
   .update-chips span.attention {
     color: var(--sunset);
@@ -536,7 +486,7 @@
   .update-note {
     margin: 0.05rem 0 0;
     color: color-mix(in srgb, var(--sunset) 82%, var(--text-secondary));
-    font-size: 0.76rem;
+    font-size: var(--text-small);
     line-height: 1.4;
   }
   .update-row-actions {
@@ -545,15 +495,12 @@
     gap: 6px;
   }
   .update-row-actions button {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 0.72rem;
     border: 1px solid var(--border-light);
-    background: transparent;
+    background: var(--surface);
     color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 0.64rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font: inherit;
     cursor: pointer;
   }
   .update-row-actions button.primary {
@@ -563,8 +510,14 @@
   }
   .update-row-actions button:hover,
   .update-row-actions button:focus-visible {
+    background: var(--surface-alt);
     border-color: var(--sunset);
     outline: none;
+  }
+  .update-row-actions button.primary:hover,
+  .update-row-actions button.primary:focus-visible {
+    background: var(--sunset);
+    filter: brightness(1.06);
   }
   @media (min-width: 641px) {
     .section-head h1 {
@@ -602,11 +555,11 @@
       width: 100%;
     }
     .section-title-row h1 {
-      font-size: clamp(2.05rem, 10vw, 3rem);
+      font-size: var(--text-display);
       line-height: 0.96;
     }
     .section-head p {
-      font-size: 1rem;
+      font-size: var(--text-body);
       line-height: 1.45;
     }
     .update-row {

@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { Onboarding } from "./components/Onboarding";
-import { MyCall } from "./components/MyCall";
+import { Profile } from "./components/Profile";
 import { GroupStage } from "./components/GroupStage";
 import { BracketView } from "./components/BracketView";
 import { Pools } from "./components/Pools";
 import { Games } from "./components/Games";
 import { DevPanel } from "./components/DevPanel";
-import { Live } from "./components/Live";
 import { IncomingShare } from "./components/IncomingShare";
 import { IncomingSweep } from "./components/IncomingSweep";
 import { BottomNav, type Tab } from "./components/BottomNav";
@@ -14,6 +13,8 @@ import { readShareFromHash, readSweepFromHash, type SharePayload } from "./lib/c
 import type { Sweep } from "./lib/sweeps";
 import { readChallengeFromHash, type Challenge } from "./lib/games";
 import { readDuelFromHash, type Duel } from "./lib/duel";
+import { TOURNAMENT_KICKOFF } from "./lib/locktimer";
+import { useCountdown, pad2 } from "./ui/atoms";
 import { useStore } from "./state";
 
 export function App() {
@@ -89,10 +90,7 @@ export function App() {
         <>
           <main className="screen">
             {tab === "home" && (
-              <>
-                <MyCall onContinue={() => setTab("predict")} />
-                <Live />
-              </>
+              <Profile />
             )}
             {tab === "predict" && <PredictScreen />}
             {tab === "pools" && <Pools />}
@@ -117,15 +115,30 @@ export function App() {
 
 function PredictScreen() {
   const { prediction } = useStore();
-  const [phase, setPhase] = useState<"groups" | "knockout">(() => {
-    const groupsDone = Object.values(prediction.groups).filter(
-      (g) => g && g.length >= 4,
-    ).length;
-    return groupsDone >= 12 ? "knockout" : "groups";
-  });
+  const groupsDone = Object.values(prediction.groups).filter(
+    (g) => g && g.length >= 4,
+  ).length;
+  const [phase, setPhase] = useState<"groups" | "knockout">(() =>
+    groupsDone >= 12 ? "knockout" : "groups",
+  );
+  const lock = useCountdown(TOURNAMENT_KICKOFF);
+  const lockText = lock.done
+    ? null
+    : lock.days > 0
+      ? `${lock.days}d ${lock.hours}h ${lock.mins}m`
+      : lock.hours > 0
+        ? `${lock.hours}h ${lock.mins}m`
+        : `${lock.mins}m ${pad2(lock.secs)}s`;
 
   return (
     <div className="predict">
+      <div className={`lock-banner ${lock.done ? "is-locked" : ""}`}>
+        {lock.done ? (
+          <span>Predictions in · No going back now</span>
+        ) : (
+          <span>Predictions lock in <strong>{lockText}</strong></span>
+        )}
+      </div>
       <div className="segmented" role="tablist">
         <button
           role="tab"
@@ -133,7 +146,7 @@ function PredictScreen() {
           className={phase === "groups" ? "is-sel" : ""}
           onClick={() => setPhase("groups")}
         >
-          Groups
+          The Groups
         </button>
         <button
           role="tab"
@@ -141,7 +154,7 @@ function PredictScreen() {
           className={phase === "knockout" ? "is-sel" : ""}
           onClick={() => setPhase("knockout")}
         >
-          Knockout
+          The Knockouts
         </button>
       </div>
 

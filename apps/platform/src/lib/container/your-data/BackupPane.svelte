@@ -55,11 +55,11 @@
   }
 </script>
 
-<section class="card" aria-labelledby="backup-heading">
+<section class="section" aria-labelledby="backup-heading">
   <header>
     <p class="mini-label">Backup</p>
     <h3 id="backup-heading">Encrypted copy</h3>
-    <p>One file, one passphrase. Shippie stores none of the readable contents.</p>
+    <p>One file, one passphrase. Shippie can't read what's inside.</p>
   </header>
 
   <div class="segmented" role="tablist" aria-label="Backup mode">
@@ -130,9 +130,9 @@
   {/if}
 
   <details class="install-records" bind:open={showInstallRecords}>
-    <summary>Install records (advanced)</summary>
-    <p>For support or migration tools. Most people do not need this.</p>
-    <button class="secondary" onclick={onExportReceipts}>Generate install record JSON</button>
+    <summary>App records (advanced)</summary>
+    <p>A list of your installed apps for support or moving tools. Most people don't need this.</p>
+    <button class="secondary" onclick={onExportReceipts}>Generate app record file</button>
     {#if receiptExport}
       <pre>{receiptExport}</pre>
     {/if}
@@ -147,15 +147,12 @@
   }
   .mini-label {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-light);
   }
-  .card {
-    padding: var(--space-lg);
-    border: 1px solid var(--border-light);
-    background: var(--surface);
+  .section {
     display: grid;
     gap: var(--space-md);
   }
@@ -165,7 +162,7 @@
   }
   h3 {
     font-family: var(--font-heading);
-    font-size: 1.35rem;
+    font-size: var(--text-subhead);
     line-height: 1.1;
   }
   header p {
@@ -175,8 +172,7 @@
   .segmented {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    border: 1px solid var(--border-light);
-    background: var(--surface);
+    border-bottom: 1px solid var(--border-light);
   }
   .segmented button {
     min-height: var(--touch-min);
@@ -186,9 +182,13 @@
     font: inherit;
     cursor: pointer;
   }
+  .segmented button:focus-visible {
+    outline: 2px solid var(--sunset);
+    outline-offset: -2px;
+  }
   .segmented button.active {
-    background: var(--text);
-    color: var(--bg-pure);
+    color: var(--sunset);
+    box-shadow: inset 0 -2px 0 var(--sunset);
     font-weight: 600;
   }
   label {
@@ -196,7 +196,7 @@
     gap: 6px;
   }
   .label {
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     color: var(--text-secondary);
   }
   input[type='password'],
@@ -207,7 +207,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
   }
   input[type='file'] {
     padding: 0.5rem 0.75rem;
@@ -220,7 +220,7 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-    font-size: var(--type-body-mobile);
+    font-size: var(--text-body);
     resize: vertical;
   }
   details {
@@ -231,7 +231,7 @@
   details summary {
     cursor: pointer;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     list-style: none;
   }
   details summary::-webkit-details-marker {
@@ -243,7 +243,7 @@
   .install-records p {
     margin-bottom: 10px;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   pre {
@@ -253,14 +253,14 @@
     background: var(--bg-pure);
     overflow: auto;
     max-height: 260px;
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
   }
   .primary {
     min-height: 48px;
     padding: 0.7rem 1rem;
-    border: 1px solid var(--text);
-    background: var(--text);
-    color: var(--bg-pure);
+    border: 1px solid var(--sunset);
+    background: var(--sunset);
+    color: var(--bg);
     font: inherit;
     font-weight: 600;
     cursor: pointer;
@@ -273,10 +273,16 @@
     min-height: var(--touch-min);
     padding: 0.5rem 0.9rem;
     border: 1px solid var(--border-light);
-    background: var(--bg-pure);
+    background: var(--surface);
     color: var(--text);
     cursor: pointer;
     font: inherit;
+  }
+  .secondary:hover,
+  .secondary:focus-visible {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
+    outline: none;
   }
   .result {
     display: grid;
@@ -288,23 +294,20 @@
   .result p {
     color: var(--text);
     line-height: 1.5;
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .error {
     color: var(--danger-hover);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
   }
   .status {
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.55;
   }
   @media (max-width: 640px) {
-    .card {
-      padding: var(--space-md);
-    }
     h3 {
-      font-size: 1.35rem;
+      font-size: var(--text-subhead);
     }
   }
 </style>

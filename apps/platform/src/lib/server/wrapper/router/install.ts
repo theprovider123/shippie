@@ -13,6 +13,32 @@ import type { WrapperContext } from '../env';
 import { checkRateLimit, clientKey } from '../rate-limit';
 import { getDrizzleClient, schema } from '../../db/client';
 import { eq } from 'drizzle-orm';
+import { sanitizeAnalyticsEvent } from '../../analytics/sanitize';
+
+interface InstallAnalyticsBody {
+  event?: string;
+  outcome?: string;
+  session_id?: string;
+  user_id?: string;
+  properties?: Record<string, unknown>;
+}
+
+export function sanitizeInstallAnalyticsEvent(body: InstallAnalyticsBody) {
+  const eventName = body.event && /^[a-z0-9_]{1,64}$/.test(body.event)
+    ? `install_${body.event}`
+    : 'install_unknown';
+  return {
+    eventName,
+    event: sanitizeAnalyticsEvent({
+      event_name: eventName,
+      session_id: body.session_id,
+      properties: {
+        outcome: body.outcome ?? null,
+        ...(body.properties ?? {}),
+      },
+    }),
+  };
+}
 
 export async function handleInstall(ctx: WrapperContext): Promise<Response> {
   const method = ctx.request.method;
@@ -40,17 +66,9 @@ export async function handleInstall(ctx: WrapperContext): Promise<Response> {
   });
   if (!rl.ok) return Response.json({ error: 'rate_limited' }, { status: 429 });
 
-  const body = (await ctx.request.json().catch(() => ({}))) as {
-    event?: string;
-    outcome?: string;
-    session_id?: string;
-    user_id?: string;
-    properties?: Record<string, unknown>;
-  };
-
-  const eventName = body.event && /^[a-z0-9_]{1,64}$/.test(body.event)
-    ? `install_${body.event}`
-    : 'install_unknown';
+  const body = (await ctx.request.json().catch(() => ({}))) as InstallAnalyticsBody;
+  const { eventName, event } = sanitizeInstallAnalyticsEvent(body);
+  if (!event) return Response.json({ ok: true, event: eventName });
 
   const db = getDrizzleClient(ctx.env.DB);
   const app = await db.query.apps.findFirst({
@@ -62,15 +80,12 @@ export async function handleInstall(ctx: WrapperContext): Promise<Response> {
   try {
     await db.insert(schema.analyticsEvents).values({
       appId: app.id,
-      userId: body.user_id ?? null,
-      sessionId: body.session_id ?? null,
-      eventName,
-      properties: {
-        outcome: body.outcome ?? null,
-        ...(body.properties ?? {}),
-      },
-      url: null,
-      referrer: null,
+      userId: event.userId,
+      sessionId: event.sessionId,
+      eventName: event.eventName,
+      properties: event.properties,
+      url: event.url,
+      referrer: event.referrer,
     });
   } catch (err) {
     console.error('[wrapper:install] insert failed', { slug: ctx.slug, err });

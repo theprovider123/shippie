@@ -4,11 +4,27 @@
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
   import RatingsSummary from '$lib/components/marketplace/RatingsSummary.svelte';
   import LocalAppActions from '$lib/components/marketplace/LocalAppActions.svelte';
+  import FeedbackSheet from '$lib/components/feedback/FeedbackSheet.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { toast } from '$lib/stores/toast';
 
   let { data, form }: PageProps = $props();
   let savingProfile = $state(false);
+  let feedbackOpen = $state(false);
+
+  // App-specific share/OG: a shared link shows THIS tool's name, pitch, and icon
+  // — not the generic Shippie card. (Icon → absolute URL for crawlers.)
+  const ogImage = $derived(
+    data.app.iconUrl
+      ? data.app.iconUrl.startsWith('http')
+        ? data.app.iconUrl
+        : `https://shippie.app${data.app.iconUrl}`
+      : null,
+  );
+  // "What it does" body only when the description adds something beyond the tagline.
+  const showDescription = $derived(
+    Boolean(data.app.description) && data.app.description !== data.app.tagline,
+  );
 
   // Share copy varies by viewer:
   //   public app, any viewer → public marketplace URL
@@ -89,9 +105,18 @@
 <svelte:head>
   <title>{data.app.name} — Shippie</title>
   <meta name="description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
+  <!-- App-specific share card — the shared link shows THIS tool, not generic Shippie. -->
+  <meta property="og:title" content={`${data.app.name} — Shippie`} />
+  <meta property="og:description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
+  <meta property="og:type" content="website" />
+  {#if ogImage}<meta property="og:image" content={ogImage} />{/if}
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content={data.app.name} />
+  <meta name="twitter:description" content={data.app.tagline ?? `${data.app.name} on Shippie`} />
+  {#if ogImage}<meta name="twitter:image" content={ogImage} />{/if}
 </svelte:head>
 
-<header class="hero" style="background: {data.app.themeColor};">
+<header class="hero">
   <div class="hero-wrap">
     <a href="/tools" class="back">← All tools</a>
     <div class="hero-row">
@@ -116,7 +141,7 @@
         </div>
         <div class="cta-row">
           <a class="open-btn" href={`/dock?app=${encodeURIComponent(data.app.slug)}`}>
-            Open in Dock
+            Open
           </a>
           <LocalAppActions
             slug={data.app.slug}
@@ -134,6 +159,14 @@
           >
             Share
           </button>
+          <button
+            type="button"
+            class="share-btn"
+            onclick={() => (feedbackOpen = true)}
+            aria-label={`Give feedback on ${data.app.name}`}
+          >
+            Feedback
+          </button>
         </div>
       </div>
     </div>
@@ -141,183 +174,90 @@
 </header>
 
 <div class="body wrap">
-  {#if data.signingTrust || data.trustCard || data.grantedPermissions.length > 0}
-    <details class="section trust-details">
-      <summary>Why this is safe</summary>
-      {#if data.signingTrust}
-        <div class="signed-card" aria-labelledby="signed-card-title">
-          <div>
-            <span>Checked by Shippie</span>
-            <h2 id="signed-card-title">{data.signingTrust.label}</h2>
-            <p>{data.signingTrust.summary}</p>
-          </div>
-          <div>
-            <span>Version</span>
-            <p>
-              {#if data.signingTrust.packageHash}
-                v{data.signingTrust.version ?? 'current'} · {data.signingTrust.packageHash.slice(0, 26)}...
-              {:else}
-                First-party bundle
-              {/if}
-            </p>
-          </div>
-        </div>
-      {/if}
-
-      {#if data.trustCard}
-        <div class="trust-card" aria-labelledby="trust-card-title">
-          <div class="section-intro">
-            <h2 id="trust-card-title">What Shippie checked</h2>
-            <p>Details for people who want to inspect the tool before opening it.</p>
-          </div>
-          <div class="trust-grid">
-            <article>
-              <span>Data</span>
-              <strong>{data.trustCard.dataLocation}</strong>
-              <p>{data.trustCard.serverContent}</p>
-            </article>
-            <article>
-              <span>Privacy</span>
-              <strong>{data.trustCard.privacyGrade ?? 'Ungraded'}</strong>
-              <p>
-                {data.trustCard.externalDomains.length === 0
-                  ? 'No external connections detected.'
-                  : `${data.trustCard.externalDomains.length} external domain${data.trustCard.externalDomains.length === 1 ? '' : 's'} detected.`}
-              </p>
-            </article>
-            <article>
-              <span>Security</span>
-              <strong>{securityLabel(data.trustCard.securityScore)}</strong>
-              <p>{eligibilityLabel(data.trustCard.containerEligibility)}</p>
-            </article>
-            <article>
-              <span>Proof</span>
-              <strong>{data.trustCard.proofBadges.length}</strong>
-              <p>
-                {data.trustCard.proofBadges.length > 0
-                  ? data.trustCard.proofBadges.join(' · ')
-                  : 'No runtime proof badges earned yet.'}
-              </p>
-            </article>
-          </div>
-          <div class="trust-detail">
-            <div>
-              <span>Permissions</span>
-              <p>
-                {data.grantedPermissions.length > 0
-                  ? data.grantedPermissions.join(' · ')
-                  : 'No extra permissions declared.'}
-              </p>
-            </div>
-            <div>
-              <span>External connections</span>
-              {#if data.trustCard.externalDomains.length > 0}
-                <div class="domain-list trust-domains">
-                  {#each data.trustCard.externalDomains as domain (domain.domain)}
-                    <p>
-                      {domain.domain} · {domain.purpose}
-                      {domain.personalData ? ' · may involve personal data' : ''}
-                    </p>
-                  {/each}
-                </div>
-              {:else}
-                <p>No external connections were detected in the latest package scan.</p>
-              {/if}
-            </div>
-          </div>
-        </div>
-      {:else if data.grantedPermissions.length > 0}
-      <ul class="perms">
-        {#each data.grantedPermissions as perm (perm)}
-          <li>
-            <span class="check" aria-hidden="true">✓</span>
-            <span>{perm}</span>
-          </li>
-        {/each}
-      </ul>
-      {/if}
-    </details>
-  {/if}
-
-  {#if data.changelog && data.changelog.entries.length > 0}
-    <section class="section">
-      <h2>Latest changes</h2>
-      <p class="changelog-summary">{data.changelog.summary}</p>
-      <ul class="changelog-entries">
-        {#each data.changelog.entries as entry, i (i)}
-          <li>{entry}</li>
-        {/each}
-      </ul>
+  {#if showDescription}
+    <section class="section what">
+      <h2>What it does</h2>
+      <p class="what-body">{data.app.description}</p>
     </section>
   {/if}
 
-  <section class="section ownership">
-    <div>
-      <h2>Maker &amp; Ownership</h2>
-      <p>
-        Made by {data.ownership.maker.name}
-        {#if data.ownership.maker.username}
-          <span class="muted">(@{data.ownership.maker.username})</span>
-        {/if}
-        {#if data.ownership.maker.verified}
-          <span class="pill">Verified maker</span>
-        {/if}
-      </p>
-    </div>
-    <div class="ownership-grid">
-      <article>
-        <span>Standalone URL</span>
-        <a href={data.ownership.standaloneUrl} target="_blank" rel="noopener">
-          {data.ownership.standaloneUrl.startsWith('/')
-            ? `shippie.app${data.ownership.standaloneUrl}`
-            : new URL(data.ownership.standaloneUrl).host}
-        </a>
-      </article>
-      <article>
-        <span>Custom domains</span>
-        {#if data.ownership.customDomains.length > 0}
-          <div class="domain-list">
-            {#each data.ownership.customDomains as domain (domain.domain)}
-              <a href={`https://${domain.domain}/`} target="_blank" rel="noopener">
-                {domain.domain}{domain.isCanonical ? ' · canonical' : ''}
-              </a>
-            {/each}
-          </div>
-        {:else}
-          <p class="muted">None verified yet</p>
-        {/if}
-      </article>
-      <article>
-        <span>Source</span>
-        {#if data.ownership.sourceRepo}
-          <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
-        {:else}
-          <p class="muted">Source not published</p>
-        {/if}
-      </article>
-      <article>
-        <span>License &amp; remix</span>
-        <p>
-          {data.ownership.license ?? 'Unlicensed'}
-          · {data.ownership.remixAvailable ? 'Remix allowed' : 'Remix closed'}
-        </p>
-      </article>
-      {#if isRemix}
-        <article class="remix-lineage">
-          <span>Remix lineage</span>
-          {#if data.ownership.lineage.parentApp}
-            <a href={`/apps/${data.ownership.lineage.parentApp.slug}`}>
-              Remix of {data.ownership.lineage.parentApp.name}
-            </a>
-          {:else}
-            <p>Remix of another Shippie tool</p>
-          {/if}
-          {#if data.ownership.lineage.parentVersion}
-            <p class="muted">Parent version {data.ownership.lineage.parentVersion}</p>
-          {/if}
-        </article>
+  <section class="section about">
+    <h2>About this tool</h2>
+    <dl class="facts">
+      {#if data.trustCard}
+        <div><dt>Your data</dt><dd>{data.trustCard.dataLocation}</dd></div>
+        <div>
+          <dt>Privacy</dt>
+          <dd>{data.trustCard.privacyGrade ?? 'Ungraded'} · {data.trustCard.externalDomains.length === 0 ? 'no external connections' : `${data.trustCard.externalDomains.length} external connection${data.trustCard.externalDomains.length === 1 ? '' : 's'}`}</dd>
+        </div>
       {/if}
-    </div>
+      <div>
+        <dt>Made by</dt>
+        <dd>{#if data.ownership.maker.username}<a href={`/@${data.ownership.maker.username}`}>{data.ownership.maker.name}&nbsp;<span class="muted">@{data.ownership.maker.username}</span></a>{:else}{data.ownership.maker.name}{/if}{#if data.ownership.maker.verified}&nbsp;· verified{/if}</dd>
+      </div>
+      <div>
+        <dt>Source</dt>
+        <dd>{#if data.ownership.sourceRepo}<a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>{:else}<span class="muted">Not published</span>{/if}</dd>
+      </div>
+      <div>
+        <dt>License</dt>
+        <dd>{data.ownership.license ?? 'Unlicensed'} · {data.ownership.remixAvailable ? 'remix allowed' : 'remix closed'}</dd>
+      </div>
+      <div>
+        <dt>Runs at</dt>
+        <dd><a href={data.ownership.standaloneUrl} target="_blank" rel="noopener">{data.ownership.standaloneUrl.startsWith('/') ? `shippie.app${data.ownership.standaloneUrl}` : new URL(data.ownership.standaloneUrl).host}</a></dd>
+      </div>
+      {#if data.ownership.customDomains.length > 0}
+        <div>
+          <dt>Custom domains</dt>
+          <dd class="domain-list">{#each data.ownership.customDomains as domain (domain.domain)}<a href={`https://${domain.domain}/`} target="_blank" rel="noopener">{domain.domain}{domain.isCanonical ? ' · canonical' : ''}</a>{/each}</dd>
+        </div>
+      {/if}
+      {#if isRemix}
+        <div>
+          <dt>Remix of</dt>
+          <dd>{#if data.ownership.lineage.parentApp}<a href={`/apps/${data.ownership.lineage.parentApp.slug}`}>{data.ownership.lineage.parentApp.name}</a>{:else}another Shippie tool{/if}{#if data.ownership.lineage.parentVersion}<span class="muted"> · parent {data.ownership.lineage.parentVersion}</span>{/if}</dd>
+        </div>
+      {/if}
+    </dl>
+
+    {#if data.ownership.remixAvailable}
+      <div class="about-actions">
+        <a class="remix-link" href={`/new?remix=${data.app.slug}`}>Remix this tool</a>
+        {#if data.ownership.remixVia === 'cli'}<code class="remix-command">{cliRemixCommand}</code>{/if}
+      </div>
+    {/if}
+
+    {#if data.signingTrust || data.trustCard || data.grantedPermissions.length > 0}
+      <details class="checked">
+        <summary>What Shippie checked</summary>
+        {#if data.signingTrust}
+          <p class="checked-line"><strong>{data.signingTrust.label}</strong> — {data.signingTrust.summary}{#if data.signingTrust.packageHash}<span class="muted"> · v{data.signingTrust.version ?? 'current'} · {data.signingTrust.packageHash.slice(0, 26)}…</span>{:else}<span class="muted"> · first-party bundle</span>{/if}</p>
+        {/if}
+        {#if data.trustCard}
+          <dl class="facts">
+            <div><dt>Security</dt><dd>{securityLabel(data.trustCard.securityScore)} · {eligibilityLabel(data.trustCard.containerEligibility)}</dd></div>
+            <div><dt>Proof</dt><dd>{data.trustCard.proofBadges.length > 0 ? data.trustCard.proofBadges.join(' · ') : 'No runtime proof badges yet'}</dd></div>
+            <div><dt>Permissions</dt><dd>{data.grantedPermissions.length > 0 ? data.grantedPermissions.join(' · ') : 'No extra permissions declared'}</dd></div>
+            <div>
+              <dt>External connections</dt>
+              <dd>{#if data.trustCard.externalDomains.length > 0}<span class="domain-list">{#each data.trustCard.externalDomains as domain (domain.domain)}<span>{domain.domain} · {domain.purpose}{domain.personalData ? ' · may involve personal data' : ''}</span>{/each}</span>{:else}None detected in the latest scan.{/if}</dd>
+            </div>
+          </dl>
+        {:else if data.grantedPermissions.length > 0}
+          <p class="muted">Permissions: {data.grantedPermissions.join(' · ')}</p>
+        {/if}
+      </details>
+    {/if}
+
+    {#if data.ownership.versions.length > 0}
+      <div class="version-strip" aria-label="Recent versions">
+        {#each data.ownership.versions as version (version.packageHash)}
+          <a href={version.packageUrl}>v{version.version} · {version.channel} · {version.containerEligibility.replace('_', ' ')}</a>
+        {/each}
+      </div>
+    {/if}
+
     {#if data.isMaker}
       <details class="owner-edit">
         <summary>Edit listing</summary>
@@ -349,6 +289,10 @@
             Tagline
             <input name="tagline" value={data.app.tagline ?? ''} maxlength="160" />
           </label>
+          <label class="full">
+            Description
+            <textarea name="description" rows="4" maxlength="1000" placeholder="What does your tool do? This shows as “What it does” on the page.">{data.app.description ?? ''}</textarea>
+          </label>
           <label>
             Category
             <input name="category" value={data.app.category} maxlength="48" required />
@@ -371,31 +315,19 @@
         </form>
       </details>
     {/if}
-    {#if data.ownership.versions.length > 0}
-      <div class="version-strip" aria-label="Recent versions">
-        {#each data.ownership.versions as version (version.packageHash)}
-          <a href={version.packageUrl}>
-            v{version.version}
-            · {version.channel}
-            · {version.containerEligibility.replace('_', ' ')}
-          </a>
-        {/each}
-      </div>
-    {/if}
-    <div class="ownership-actions">
-      {#if data.ownership.sourceRepo}
-        <a href={data.ownership.sourceRepo} target="_blank" rel="noopener">View source</a>
-      {/if}
-      {#if data.ownership.remixAvailable}
-        <a href={`/new?remix=${data.app.slug}`}>Remix this tool</a>
-        {#if data.ownership.remixVia === 'cli'}
-          <code class="remix-command">{cliRemixCommand}</code>
-        {/if}
-      {:else}
-        <span>Remix unavailable until the maker publishes source + license</span>
-      {/if}
-    </div>
   </section>
+
+  {#if data.changelog && data.changelog.entries.length > 0}
+    <section class="section">
+      <h2>Latest changes</h2>
+      <p class="changelog-summary">{data.changelog.summary}</p>
+      <ul class="changelog-entries">
+        {#each data.changelog.entries as entry, i (i)}
+          <li>{entry}</li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
 
   {#if data.ratingSummary.count > 0}
     <section class="section">
@@ -403,12 +335,6 @@
       <RatingsSummary summary={data.ratingSummary} latest={data.latestReviews} />
     </section>
   {/if}
-
-  <section class="section meta-row">
-    <p class="meta-line">
-      {data.app.installCount.toLocaleString()} opens
-    </p>
-  </section>
 
   {#if data.isMaker}
     <section class="section">
@@ -419,22 +345,29 @@
   {/if}
 </div>
 
+<FeedbackSheet
+  open={feedbackOpen}
+  appName={data.app.name}
+  appSlug={data.app.slug}
+  onClose={() => (feedbackOpen = false)}
+/>
+
 <style>
   .hero {
     color: var(--text);
     padding: var(--space-2xl) 0;
   }
   .hero-wrap {
-    max-width: 880px;
+    max-width: 560px;
     margin: 0 auto;
-    padding: 0 clamp(1.5rem, 4vw, 3rem);
+    padding: 0 clamp(1.5rem, 4vw, 2rem);
   }
   .back {
     display: inline-flex;
     align-items: center;
     min-height: var(--touch-min);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--text);
@@ -442,30 +375,39 @@
     margin-bottom: var(--space-xl);
   }
   .back:hover { opacity: 1; }
+  /* Compact card: centred head, contained column — no stretched app-store layout. */
   .hero-row {
     display: flex;
-    gap: var(--space-lg);
-    align-items: flex-start;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-md);
   }
-  .hero-meta { flex: 1; min-width: 240px; }
+  .hero-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+  }
   .title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: var(--text-display);
     line-height: 1.1;
     letter-spacing: 0;
     margin: 0;
     color: var(--text);
   }
   .tagline {
-    margin-top: 0.5rem;
-    font-size: 1.125rem;
+    margin: 0;
+    font-size: var(--text-body);
+    line-height: 1.45;
     opacity: 0.92;
-    color: var(--text);
+    color: var(--text-secondary);
+    max-width: 42ch;
   }
   .kind {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     opacity: 0.75;
@@ -475,8 +417,9 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.625rem;
-    margin-top: 0.625rem;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
   }
   .remix-badge,
   .connection-badge {
@@ -484,17 +427,17 @@
     align-items: center;
     min-height: 28px;
     padding: 0 0.6rem;
-    border: 1px solid rgba(237, 228, 211, 0.72);
-    background: rgba(20, 18, 15, 0.2);
-    color: var(--text);
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .connection-badge {
-    border-color: rgba(237, 228, 211, 0.44);
-    background: rgba(20, 18, 15, 0.26);
+    border-color: color-mix(in srgb, var(--marigold) 30%, var(--border-light));
+    color: var(--marigold);
   }
   .connection-badge::before {
     content: '';
@@ -505,247 +448,181 @@
     background: currentColor;
   }
   .cta-row {
-    margin-top: var(--space-lg);
+    margin-top: var(--space-md);
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
+    justify-content: center;
   }
+  /* Unified action row: one primary (sunset) + matching ghost buttons,
+     all sentence-case, same height/shape. */
   .open-btn {
     display: inline-flex;
     align-items: center;
     height: 44px;
     padding: 0 1.25rem;
-    background: var(--bg);
-    color: var(--marigold);
+    background: var(--sunset);
+    color: var(--bg);
     font-weight: 600;
-    font-size: var(--small-size);
-    transition: background 0.2s;
+    font-size: var(--text-small);
+    transition: filter 0.15s;
   }
-  .open-btn:hover { background: #000; }
+  .open-btn:hover { filter: brightness(1.06); }
   .cta-row :global(.local-actions.inline) {
     margin-top: 0;
   }
+  /* The Save button from LocalAppActions, matched to .share-btn. */
   .cta-row :global(.local-actions.inline button) {
+    height: 44px;
+    padding: 0 1.25rem;
+    background: var(--surface);
     color: var(--text);
+    border: 1px solid var(--border-light);
+    border-radius: 0;
+    font: inherit;
+    font-size: var(--text-small);
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .cta-row :global(.local-actions.inline button:hover) {
+    background: var(--surface-alt);
+    border-color: var(--sunset);
   }
   .share-btn {
     display: inline-flex;
     align-items: center;
     height: 44px;
     padding: 0 1.25rem;
-    background: transparent;
-    color: inherit;
-    border: 1px solid currentColor;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-light);
     border-radius: 0;
-    font-family: ui-monospace, SFMono-Regular, monospace;
-    font-size: var(--small-size);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font: inherit;
+    font-size: var(--text-small);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .share-btn:hover { background: rgba(232, 96, 60, 0.08); }
+  .share-btn:hover { background: var(--surface-alt); border-color: var(--sunset); }
 
   .body {
-    padding: var(--space-2xl) 0 var(--space-3xl);
-    max-width: 880px;
+    padding: var(--space-lg) clamp(1.5rem, 4vw, 2rem) var(--space-2xl);
+    max-width: 560px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2xl);
+    gap: 0;
+  }
+  /* Clean section rhythm: hairline-separated, no heavy boxes, no dead space —
+     matches the Docs/Why surfaces. */
+  .body > * {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--border-light);
+  }
+  .body > :first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
   .section h2 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     margin: 0 0 var(--space-md);
     letter-spacing: 0;
   }
-  .section-intro h2 { margin-bottom: 0.35rem; }
-  .section-intro p {
+  .what-body {
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-body);
+    line-height: 1.6;
+    white-space: pre-line;
   }
-  .trust-details {
-    border: 1px solid var(--border-light);
-    background: var(--surface);
-    padding: var(--space-md);
-  }
-  .trust-details summary {
-    min-height: var(--touch-min);
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    font-family: var(--font-heading);
-    font-size: 1.2rem;
-    font-weight: 700;
-    letter-spacing: 0;
-  }
-  .trust-details[open] summary {
-    margin-bottom: var(--space-md);
-  }
-  .trust-card {
+  /* Tight key/value facts list — replaces the old boxed trust + ownership grids. */
+  .facts {
+    margin: 0;
     display: grid;
+    gap: 0;
+  }
+  .facts > div {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
     gap: var(--space-md);
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--border-light);
   }
-  .signed-card {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-lg);
-    border: 1px solid color-mix(in srgb, var(--sage-leaf) 42%, var(--border-light));
-    background: var(--surface);
-    padding: var(--space-lg);
-  }
-  .signed-card > div {
-    min-width: 0;
-    display: grid;
-    gap: 0.35rem;
-  }
-  .signed-card span {
-    color: var(--text-light);
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  .signed-card h2,
-  .signed-card p {
+  .facts > div:first-child { border-top: 0; padding-top: 0; }
+  .facts dt {
     margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-light);
   }
-  .signed-card p {
-    color: var(--text-secondary);
+  .facts dd {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--text-small);
+    line-height: 1.5;
     overflow-wrap: anywhere;
   }
-  .trust-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-md);
+  .facts dd a { color: var(--sunset); }
+  .facts .muted { color: var(--text-light); }
+  @media (max-width: 560px) {
+    .facts > div { grid-template-columns: 1fr; gap: 2px; }
   }
-  .trust-grid article,
-  .trust-detail {
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--surface);
+  /* "What Shippie checked" — a quiet disclosure, not a box. */
+  .checked {
+    margin-top: var(--space-md);
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-md);
   }
-  .trust-grid article {
-    min-width: 0;
-    padding: var(--space-md);
-    display: grid;
-    gap: 6px;
-  }
-  .trust-grid span,
-  .trust-detail span {
+  .checked summary {
+    min-height: var(--touch-min);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--text-light);
   }
-  .trust-grid strong {
-    color: var(--text);
-    font-size: 1.1rem;
-    line-height: 1.2;
-  }
-  .trust-grid p,
-  .trust-detail p {
-    margin: 0;
+  .checked summary::-webkit-details-marker { display: none; }
+  .checked summary::after { content: '›'; transition: transform 0.15s; }
+  .checked[open] summary::after { transform: rotate(90deg); }
+  .checked[open] summary { margin-bottom: var(--space-sm); }
+  .checked-line {
+    margin: 0 0 var(--space-md);
     color: var(--text-secondary);
-    font-size: var(--small-size);
-    line-height: 1.6;
+    font-size: var(--text-small);
+    line-height: 1.5;
   }
-  .trust-detail {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-md);
-    padding: var(--space-md);
-  }
-  .trust-detail > div {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-  }
-  .trust-domains {
-    font-size: var(--small-size);
-  }
-  .perms {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 24px;
-    font-size: var(--small-size);
-  }
-  @media (max-width: 640px) {
-    .perms { grid-template-columns: 1fr; }
-  }
-  .perms li {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    color: var(--text-secondary);
-  }
-  .check { color: var(--sage-leaf); }
+  .checked-line strong { color: var(--text); }
+  .checked .domain-list span { display: block; }
   .changelog-summary { margin: 0 0 var(--space-sm); font-weight: 500; }
   .changelog-entries {
     list-style: none;
     padding: 0;
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     line-height: 1.7;
   }
   .changelog-entries li::before { content: '· '; }
-  .meta-row { color: var(--text-light); font-family: var(--font-mono); font-size: var(--small-size); }
-  .meta-line { margin: 0; }
-  .ownership {
+  .about {
     display: grid;
     gap: var(--space-md);
-  }
-  .ownership p {
-    margin: 0;
-    color: var(--text-secondary);
   }
   .muted {
     color: var(--text-light);
   }
-  .pill {
-    display: inline-flex;
-    margin-left: 0.5rem;
-    padding: 2px 8px;
-    border: 1px solid var(--sage-leaf);
-    border-radius: 0;
-    color: var(--sage-leaf);
-    font-family: var(--font-mono);
-    font-size: var(--caption-size);
-  }
-  .ownership-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-md);
-  }
-  .ownership-grid article {
-    min-width: 0;
-    padding: var(--space-md);
-    border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--surface);
-    display: grid;
-    gap: 6px;
-  }
-  .ownership-grid span,
   .version-strip {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     color: var(--text-light);
-  }
-  .ownership-grid a {
-    min-height: var(--touch-min);
-    display: inline-flex;
-    align-items: center;
-    color: var(--sunset);
-    overflow-wrap: anywhere;
-  }
-  .remix-lineage {
-    border-color: color-mix(in srgb, var(--sunset) 42%, var(--border-light)) !important;
   }
   .owner-edit {
     border-top: 1px solid var(--border-light);
@@ -766,16 +643,24 @@
     display: grid;
     gap: 0.35rem;
     color: var(--text-secondary);
-    font-size: var(--small-size);
+    font-size: var(--text-small);
     font-weight: 700;
   }
-  .owner-edit input {
+  .owner-edit input,
+  .owner-edit textarea {
     min-width: 0;
     border: 1px solid var(--border-light);
     background: var(--bg-pure);
     color: var(--text);
     padding: 0.7rem;
     font: inherit;
+  }
+  .owner-edit textarea {
+    resize: vertical;
+    line-height: 1.5;
+  }
+  .owner-edit .full {
+    grid-column: 1 / -1;
   }
   .owner-edit .check-row {
     grid-column: 1 / -1;
@@ -823,27 +708,24 @@
     padding: 4px 8px;
     color: var(--text-secondary);
   }
-  .ownership-actions {
+  .about-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    align-items: center;
   }
-  .ownership-actions a,
-  .ownership-actions span {
+  .remix-link {
     min-height: var(--touch-min);
     display: inline-flex;
     align-items: center;
-    padding: 0.55rem 0.75rem;
+    padding: 0 1rem;
     border: 1px solid var(--border-light);
-    border-radius: 0;
-    background: var(--bg-pure);
-    color: var(--text-secondary);
-    font-size: var(--small-size);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-small);
   }
-  .ownership-actions a {
-    color: var(--sunset);
-  }
-  .ownership-actions .remix-command {
+  .remix-link:hover { background: var(--surface-alt); border-color: var(--sunset); }
+  .remix-command {
     display: inline-flex;
     align-items: center;
     min-height: 36px;
@@ -852,63 +734,24 @@
     color: var(--text-secondary);
     background: var(--surface);
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     overflow-wrap: anywhere;
   }
   @media (max-width: 640px) {
     .hero {
-      padding-bottom: calc(var(--space-2xl) + 74px);
+      padding-bottom: 0;
     }
-    .cta-row {
-      position: fixed;
-      left: calc(12px + var(--safe-left));
-      right: calc(12px + var(--safe-right));
-      bottom: calc(84px + var(--safe-bottom));
-      z-index: 115;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      gap: 8px;
-      margin-top: 0;
-      padding: 8px;
-      border: 1px solid rgba(237, 228, 211, 0.16);
-      background: rgba(20, 18, 15, 0.96);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
+    /* Actions stay inline in the card (no fixed bottom bar). */
     .open-btn,
     .share-btn,
     .cta-row :global(.local-actions.inline button) {
       justify-content: center;
       min-width: 0;
       height: 48px;
-      padding: 0 1rem;
-    }
-    .open-btn {
-      width: 100%;
-      background: var(--sunset);
-      color: var(--bg-pure);
-    }
-    .share-btn {
-      color: var(--text-secondary);
-    }
-    .cta-row :global(.local-actions.inline) {
-      min-width: 0;
-    }
-    .ownership-grid {
-      grid-template-columns: 1fr;
+      padding: 0 1.1rem;
     }
     .owner-edit form {
       grid-template-columns: 1fr;
-    }
-    .trust-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-    .trust-detail {
-      grid-template-columns: 1fr;
-    }
-    .signed-card {
-      flex-direction: column;
     }
   }
   @media (max-width: 640px) {

@@ -94,6 +94,19 @@ describe('hooks.server first-party showcase routing', () => {
     expect(resolve).toHaveBeenCalledOnce();
   });
 
+  test('apex __shippie system routes preserve the synthetic shell analytics slug', async () => {
+    const resolve = vi.fn(async () => new Response('fallthrough'));
+    const res = await handle({
+      event: eventFor('https://shippie.app/__shippie/meta?slug=__shippie_shell__') as never,
+      resolve,
+    });
+
+    expect(resolve).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { slug: string };
+    expect(body.slug).toBe('__shippie_shell__');
+  });
+
   test('nested /__shippie-run/<slug>/ assets are served from the Workers Assets binding', async () => {
     const resolve = vi.fn(async () => new Response('fallthrough'));
     const res = await handle({

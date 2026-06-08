@@ -403,7 +403,7 @@
     display: grid;
     gap: 1rem;
     padding: 1.25rem;
-    border: 1px solid var(--paper-cream);
+    border: 1px solid var(--border-light);
     border-left: 3px solid var(--sunset);
   }
   .composer-copy {
@@ -412,11 +412,11 @@
   }
   .lede {
     max-width: 68ch;
-    color: var(--ink-soft-warm);
+    color: var(--text-secondary);
     margin: 0;
   }
   .status {
-    color: var(--text-muted-warm);
+    color: var(--text-secondary);
     margin: 0;
   }
   .presets {
@@ -432,7 +432,7 @@
     gap: 0.25rem;
     text-align: left;
     padding: 0.75rem;
-    border: 1px solid var(--paper-cream);
+    border: 1px solid var(--border-light);
     background: transparent;
     color: inherit;
   }
@@ -441,12 +441,12 @@
     background: rgba(232, 96, 60, 0.08);
   }
   .presets strong {
-    font-size: 13px;
+    font-size: var(--text-small);
   }
   .presets span {
-    font-size: 12px;
+    font-size: var(--text-caption);
     line-height: 1.35;
-    color: var(--text-muted-warm);
+    color: var(--text-secondary);
   }
   .fields {
     display: flex;
@@ -463,8 +463,8 @@
     flex: 1 1 260px;
   }
   label span {
-    font-size: 11px;
-    color: var(--text-muted-warm);
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
     font-family: ui-monospace, monospace;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -475,11 +475,11 @@
     width: 132px;
     box-sizing: border-box;
     padding: 0 0.75rem;
-    border: 1px solid var(--border-paper-mid);
+    border: 1px solid var(--border-light);
     background: transparent;
     color: inherit;
     font-family: ui-monospace, monospace;
-    font-size: var(--type-body-mobile, 16px);
+    font-size: var(--text-body);
   }
   label.wide input {
     width: 100%;
@@ -489,9 +489,9 @@
   }
   summary {
     cursor: pointer;
-    color: var(--text-muted-warm);
+    color: var(--text-secondary);
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--text-caption);
   }
   .advanced-row {
     margin-top: 0.5rem;
@@ -515,7 +515,7 @@
     cursor: wait;
   }
   .primary {
-    background: var(--bg);
+    background: var(--sunset);
     color: white;
     border: none;
     padding: 0 1.25rem;
@@ -537,7 +537,7 @@
   }
   .url {
     font-family: ui-monospace, monospace;
-    font-size: 13px;
+    font-size: var(--text-small);
     color: var(--sunset);
     margin: 0;
     word-break: break-all;
@@ -546,8 +546,8 @@
   .capsule-hint,
   .meta {
     font-family: ui-monospace, monospace;
-    font-size: 12px;
-    color: var(--text-muted-warm);
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
     margin: 0;
     word-break: break-all;
   }
@@ -557,7 +557,7 @@
     line-height: 1.45;
   }
   .host-url a {
-    color: var(--ink-soft-warm);
+    color: var(--text-secondary);
   }
   .actions {
     display: flex;
@@ -570,7 +570,7 @@
     border: 1px solid currentColor;
     padding: 0 0.875rem;
     font-family: ui-monospace, monospace;
-    font-size: 11px;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-weight: 500;
@@ -587,7 +587,7 @@
     width: 224px;
     height: 224px;
     flex-shrink: 0;
-    background: var(--paper-warm);
+    background: var(--surface);
     padding: 8px;
   }
   .qr :global(svg) {
@@ -597,7 +597,7 @@
   }
   .error {
     color: var(--danger);
-    font-size: 13px;
+    font-size: var(--text-small);
     margin: 0;
   }
   @media (max-width: 640px) {
@@ -606,24 +606,6 @@
     }
     .result {
       flex-direction: column;
-    }
-  }
-  @media (prefers-color-scheme: dark) {
-    .composer {
-      border-color: var(--ink-warm);
-    }
-    .lede {
-      color: var(--paper-cream-soft);
-    }
-    .presets button {
-      border-color: var(--ink-warm);
-    }
-    input,
-    select {
-      border-color: var(--ink-warm-mid);
-    }
-    .primary {
-      background: var(--sunset);
     }
   }
 </style>

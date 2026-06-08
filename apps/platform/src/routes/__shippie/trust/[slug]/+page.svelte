@@ -121,14 +121,14 @@
 
   .trust-header h1 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     font-weight: 600;
   }
 
   .trust-slug {
     margin: 0.25rem 0 1rem;
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     color: var(--ink-muted, #666);
   }
 
@@ -136,7 +136,7 @@
     margin: 0 0 1rem;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-small);
     line-height: 1.5;
   }
 
@@ -148,7 +148,7 @@
 
   .trust-body h2 {
     margin: 1rem 0 0.5rem;
-    font-size: 1rem;
+    font-size: var(--text-body);
     font-weight: 500;
     color: var(--ink-muted, #666);
   }
@@ -179,7 +179,7 @@
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
     background: var(--surface-soft, #f7f4ee);
-    font-size: 0.875rem;
+    font-size: var(--text-small);
     align-items: baseline;
   }
 
@@ -202,14 +202,14 @@
 
   .trust-host {
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--ink-muted, #666);
     overflow-wrap: anywhere;
   }
 
   .trust-bytes {
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--ink-muted, #666);
     white-space: nowrap;
   }
@@ -218,7 +218,7 @@
     margin-top: 2rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-soft, #e8e0d2);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--ink-muted, #666);
   }
 

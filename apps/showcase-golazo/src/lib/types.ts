@@ -11,6 +11,8 @@ export interface Prediction {
   knockout: Record<string, string>;
   /** Fun bonus: nation of the Golden Boot winner. */
   topScorer?: string;
+  /** Your Outside Bet — a contrarian nation you back to go further than the odds. */
+  outsideBet?: string;
   createdAt: number;
 }
 
@@ -22,6 +24,8 @@ export interface Profile {
   uid: string;
   /** IANA timezone (or "auto") the viewer is watching from. */
   watchZone?: string;
+  /** Explicit consent for publishing arcade scores to the worldwide board. */
+  globalLeaderboardOptIn?: boolean;
 }
 
 /** A shared bracket received from a friend (decoded from a link). */

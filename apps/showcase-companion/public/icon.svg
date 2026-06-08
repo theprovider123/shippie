@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Companion">
+  <rect width="256" height="256" rx="48" fill="#100d15"/>
+  <circle cx="128" cy="128" r="86" fill="#a8702e" opacity=".25"/>
+  <circle cx="128" cy="128" r="66" fill="url(#orb)"/>
+  <circle cx="106" cy="96" r="22" fill="#f1e7da" opacity=".42"/>
+  <path d="M72 178c22 16 69 25 112-3" fill="none" stroke="#8fae93" stroke-width="10" stroke-linecap="round" opacity=".8"/>
+  <defs>
+    <radialGradient id="orb" cx="35%" cy="30%" r="75%">
+      <stop stop-color="#f0c28b"/>
+      <stop offset=".36" stop-color="#e0a35c"/>
+      <stop offset=".72" stop-color="#a8702e"/>
+      <stop offset="1" stop-color="#4a2b17"/>
+    </radialGradient>
+  </defs>
+</svg>

@@ -84,6 +84,14 @@ export type PollOutcome =
   | { status: 'already_consumed' }
   | { status: 'approved'; accessToken: string; userId: string };
 
+export type WebSessionPollOutcome =
+  | { status: 'pending' }
+  | { status: 'expired' }
+  | { status: 'not_found' }
+  | { status: 'already_consumed' }
+  | { status: 'wrong_scope' }
+  | { status: 'approved'; userId: string; clientName: string };
+
 interface DeviceRow {
   device_code: string;
   user_code: string;
@@ -124,6 +132,39 @@ export async function exchangeDeviceCode(deviceCode: string, db: D1Database): Pr
   ]);
 
   return { status: 'approved', accessToken: rawToken, userId: row.user_id };
+}
+
+/** Exchange an approved web-session device code for a user id (single-use). */
+export async function exchangeDeviceCodeForWebSession(
+  deviceCode: string,
+  db: D1Database,
+): Promise<WebSessionPollOutcome> {
+  const row = await db
+    .prepare('SELECT * FROM cli_device_codes WHERE device_code = ? LIMIT 1')
+    .bind(deviceCode)
+    .first<DeviceRow>();
+
+  if (!row) return { status: 'not_found' };
+  if (row.consumed_at) return { status: 'already_consumed' };
+  if (new Date(row.expires_at).getTime() < Date.now()) return { status: 'expired' };
+  if (!row.approved_at || !row.user_id) return { status: 'pending' };
+
+  let scopes: unknown = [];
+  try {
+    scopes = JSON.parse(row.scopes);
+  } catch {
+    scopes = [];
+  }
+  if (!Array.isArray(scopes) || !scopes.includes('web_session')) {
+    return { status: 'wrong_scope' };
+  }
+
+  await db
+    .prepare('UPDATE cli_device_codes SET consumed_at = ? WHERE device_code = ?')
+    .bind(new Date().toISOString(), deviceCode)
+    .run();
+
+  return { status: 'approved', userId: row.user_id, clientName: row.client_name };
 }
 
 /** Bind a user_code to the currently signed-in user. */

@@ -15,6 +15,7 @@
  */
 import type { Handle } from '@sveltejs/kit';
 import { createLucia } from '$server/auth/lucia';
+import { touchSessionContext } from '$server/auth/session-context';
 import {
   dispatchMakerSubdomain,
   dispatchWrapperSystemRoute,
@@ -30,6 +31,7 @@ import {
 import { curationFor } from '$lib/_generated/first-party-curation';
 import { buildArcadeCsp } from '$lib/curation/arcade-csp';
 import { withShippieRuntimeCsp } from '$lib/trust-ledger/runtime-csp';
+import { SHELL_APP_SLUG } from '$lib/util/shippie-shell';
 
 const PLATFORM_HOSTS = new Set([
   'next.shippie.app',
@@ -177,6 +179,15 @@ export const handle: Handle = async ({ event, resolve }) => {
           };
         }
         event.locals.session = session;
+        if (session && event.platform?.env.DB) {
+          void touchSessionContext({
+            db: event.platform.env.DB,
+            sessionId: session.id,
+            request: event.request,
+          }).catch((err) => {
+            console.error('[auth] touchSessionContext failed', err);
+          });
+        }
       } catch (err) {
         console.error('[auth] session validation failed; continuing anonymous', err);
         const blank = lucia.createBlankSessionCookie();
@@ -277,6 +288,7 @@ function canonicalFirstPartySlug(slug: string): string | null {
     return null;
   }
   if (!decoded) return null;
+  if (decoded === SHELL_APP_SLUG) return decoded;
   if (!isFirstPartyShowcase(decoded)) return null;
   return containerSlugForRequest(decoded);
 }

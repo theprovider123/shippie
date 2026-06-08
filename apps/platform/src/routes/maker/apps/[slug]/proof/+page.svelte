@@ -57,7 +57,7 @@
     display: inline-block;
     margin-bottom: 1rem;
     color: var(--text-secondary);
-    font-size: var(--small-size, 0.9rem);
+    font-size: var(--text-small);
     text-decoration: none;
   }
   .back-link:hover {
@@ -69,7 +69,7 @@
   }
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: var(--caption-size);
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--marigold);
@@ -78,7 +78,7 @@
   .proof-header h1 {
     font-family: var(--font-heading);
     margin: 0;
-    font-size: 2rem;
+    font-size: var(--text-title);
   }
   .lede {
     color: var(--text-secondary);
@@ -111,13 +111,13 @@
   }
   .badge-card h2 {
     font-family: var(--font-mono);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     margin: 0;
     letter-spacing: 0;
   }
   .pill {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     padding: 0.15rem 0.5rem;
@@ -135,7 +135,7 @@
 
   .desc {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     line-height: 1.55;
     margin: 0 0 0.75rem;
   }
@@ -153,11 +153,11 @@
     grid-template-columns: 1fr 80px 50px;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
   }
   .event-progress code {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     color: var(--text);
   }
   .bar-track {
@@ -177,7 +177,7 @@
   }
   .event-count {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     text-align: right;
     color: var(--text-secondary);
   }
@@ -188,7 +188,7 @@
   .meta {
     margin-top: 0.75rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     color: var(--text-light);
     display: flex;
     gap: 0.4rem;

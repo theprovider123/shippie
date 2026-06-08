@@ -1,0 +1,57 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Companion",
+  "slug": "companion",
+  "description": "A private, local-first solo trip support surface with preparation, during-mode grounding, and integration.",
+  "icon": "/icon.svg",
+  "theme_color": "#C9824B",
+  "background_color": "#100D15",
+  "visibility": "private",
+  "offline": true,
+  "display": "standalone",
+  "orientation": "portrait",
+  "permissions": [
+    "wake-lock"
+  ],
+  "enhance": {
+    "rules": {
+      "wakelock": {
+        "selector": "[data-shippie-wakelock]"
+      }
+    }
+  },
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "data_schemas": {
+    "sessions": {
+      "id": "text primary key",
+      "status": "text not null",
+      "substance": "text",
+      "started_at": "datetime",
+      "closed_at": "datetime",
+      "journal": "text"
+    },
+    "mood_log": {
+      "id": "text primary key",
+      "session_id": "text not null",
+      "felt": "text not null",
+      "phase_id": "text not null",
+      "elapsed_min": "integer",
+      "created_at": "datetime"
+    }
+  },
+  "curation": {
+    "surface": "labs",
+    "category": "health-fitness",
+    "tier": "labs"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-companion",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "companion",
+    "schema": "companion.v1"
+  }
+}

@@ -446,7 +446,7 @@
   .back-link {
     align-self: flex-start;
     color: var(--text-secondary);
-    font-size: var(--small-size, 0.9rem);
+    font-size: var(--text-small);
     text-decoration: none;
   }
   .back-link:hover {
@@ -455,7 +455,7 @@
   }
   .header h1 {
     margin: 0;
-    font-size: 2rem;
+    font-size: var(--text-title);
   }
   .title-row {
     display: flex;
@@ -464,7 +464,7 @@
     margin-bottom: 0.25rem;
   }
   .status {
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0.2rem 0.5rem;
@@ -475,7 +475,7 @@
   .status-failed  { background: rgba(200, 75, 75, 0.15); color: var(--danger-soft); }
   .meta {
     color: var(--text-light);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     margin: 0;
   }
   .grid {
@@ -491,7 +491,7 @@
   }
   .card h3 {
     margin: 0 0 0.5rem 0;
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     color: var(--text-secondary);
   }
   .section-head {
@@ -505,7 +505,7 @@
     margin: 0;
   }
   .pill {
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-light);
@@ -528,18 +528,18 @@
     display: block;
     margin-bottom: 0.35rem;
     color: var(--text-light);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
   .truth-grid strong {
     display: block;
-    font-size: 1rem;
+    font-size: var(--text-body);
   }
   .truth-grid p {
     margin: 0.3rem 0 0;
     color: var(--text-light);
-    font-size: 0.82rem;
+    font-size: var(--text-small);
   }
   .route-reasons {
     margin-top: 1rem;
@@ -558,7 +558,7 @@
     padding: 0.45rem 0.55rem;
     border-radius: 0;
     background: rgba(61, 139, 92, 0.05);
-    font-size: 0.82rem;
+    font-size: var(--text-small);
   }
   .fix-row code,
   .fix-row span,
@@ -567,30 +567,30 @@
   }
   .fix-row code {
     color: var(--text-light);
-    font-size: 0.78rem;
+    font-size: var(--text-small);
   }
   .fix-row strong {
     color: var(--success-hover);
     font-weight: 500;
   }
   .big-number {
-    font-size: 3rem;
+    font-size: var(--text-display);
     font-weight: 600;
     line-height: 1;
     font-family: var(--font-heading);
   }
   .big-number .small {
-    font-size: 1.25rem;
+    font-size: var(--text-subhead);
     color: var(--text-light);
   }
   .sub {
     margin: 0.5rem 0 0 0;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     color: var(--text-secondary);
   }
   .caveat {
     margin: 0.75rem 0 0 0;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--text-light);
     font-style: italic;
   }
@@ -599,14 +599,14 @@
     padding: 0.4rem 0.75rem;
     border-radius: 0;
     background: var(--surface-alt);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
     font-weight: 500;
     margin-top: 0.25rem;
   }
   .reasons {
     margin: 0.75rem 0 0 0;
     padding-left: 1rem;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     color: var(--text-light);
   }
   .deductions {
@@ -624,7 +624,7 @@
     align-items: center;
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--border-light);
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   .deductions .delta { color: var(--danger-soft); font-weight: 600; }
   .deductions .rule { color: var(--text-secondary); font-family: var(--font-mono); }
@@ -648,27 +648,27 @@
     display: flex;
     gap: 0.75rem;
     align-items: center;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
   }
   .finding-head .severity {
     text-transform: uppercase;
     font-weight: 600;
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
   }
   .finding-head .rule { color: var(--text-secondary); font-family: var(--font-mono); }
-  .finding-head .location { color: var(--text-light); margin-left: auto; font-family: var(--font-mono); font-size: 0.8rem; }
-  .finding .reason { margin: 0.25rem 0; font-size: 0.9rem; }
+  .finding-head .location { color: var(--text-light); margin-left: auto; font-family: var(--font-mono); font-size: var(--text-small); }
+  .finding .reason { margin: 0.25rem 0; font-size: var(--text-body); }
   .finding code {
     display: inline-block;
     background: var(--surface-alt);
     padding: 0.15rem 0.4rem;
     border-radius: 0;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
   }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   th, td {
     padding: 0.5rem 0.75rem;
@@ -678,7 +678,7 @@
   th {
     color: var(--text-secondary);
     font-weight: 500;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -693,7 +693,7 @@
   .connection-findings {
     margin-top: 1rem;
   }
-  td.reason { color: var(--text-light); font-size: 0.85rem; }
+  td.reason { color: var(--text-light); font-size: var(--text-small); }
   .steps {
     list-style: none;
     margin: 0;
@@ -709,32 +709,32 @@
     align-items: baseline;
     padding: 0.4rem 0.5rem;
     border-radius: 0;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   .step-ok      { background: rgba(61, 139, 92, 0.05); }
   .step-warn    { background: rgba(232, 165, 71, 0.05); }
   .step-block   { background: rgba(200, 75, 75, 0.05); }
   .step-skipped { background: var(--surface-alt); }
   .step-status {
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     text-transform: uppercase;
     color: var(--text-light);
   }
   .step-elapsed {
     font-family: var(--font-mono);
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--text-light);
   }
   .step-notes {
     grid-column: 2 / -1;
     margin: 0.25rem 0 0 0;
     padding-left: 1rem;
-    font-size: 0.8rem;
+    font-size: var(--text-small);
     color: var(--text-light);
   }
   .stream-link {
     margin-top: 1rem;
-    font-size: 0.85rem;
+    font-size: var(--text-small);
     color: var(--text-light);
   }
   .event-stream {
@@ -757,16 +757,16 @@
   .event-time {
     color: var(--text-light);
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: var(--text-small);
   }
   .event strong {
     display: block;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
   .event p {
     margin: 0.2rem 0 0;
     color: var(--text-light);
-    font-size: 0.82rem;
+    font-size: var(--text-small);
     overflow-wrap: anywhere;
   }
   .event-asset_fixed,
