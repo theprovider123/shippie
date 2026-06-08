@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "prepare:showcases": "bun scripts/prepare-showcases.mjs",
+    "prepare:showcases:all": "bun scripts/prepare-showcases.mjs --all",
     "prepare:generated": "bun scripts/prepare-showcases.mjs --generated-only",
     "audit:storage": "bun scripts/audit-showcase-storage.mjs",
     "audit:local-tools": "bun scripts/audit-local-tool-slate.mjs",

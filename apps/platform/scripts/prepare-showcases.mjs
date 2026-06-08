@@ -1,11 +1,15 @@
 #!/usr/bin/env bun
 /**
- * Build every showcase app under apps/showcase-* and copy its dist
+ * Build changed showcase apps under apps/showcase-* and copy their dist
  * into apps/platform/static/__shippie-run/<slug>/ so the focused shell can
  * embed them from https://shippie.app/__shippie-run/<slug>/index.html.
  *
  * Wired into apps/platform's `build` script so production deploys
  * auto-include the showcases.
+ *
+ * Default behaviour is incremental: every static runtime records a source
+ * fingerprint in __shippie-assets.json, and later platform-only deploys reuse
+ * that runtime instead of rebuilding every app. Use --all for a full bake.
  *
  * Why /run/<slug>/ and not /apps/<slug>/: /apps/<slug> is the
  * marketplace detail page (a SvelteKit dynamic route showing install
@@ -60,6 +64,27 @@ const CURATION_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'first-pa
 const RUNTIME_PRECACHE_OUT = resolve(PLATFORM_DIR, 'src', 'lib', '_generated', 'runtime-precache.ts');
 const SHELL_ASSETS_OUT = resolve(PLATFORM_DIR, 'static', '__shippie-pwa', 'shell-assets.json');
 
+const SOURCE_FINGERPRINT_VERSION = 2;
+const SOURCE_SCAN_SKIP_DIRS = new Set([
+  '.git',
+  '.svelte-kit',
+  '.turbo',
+  '.vite',
+  'coverage',
+  'dist',
+  'node_modules',
+  'playwright-report',
+  'test-results',
+]);
+const SOURCE_SCAN_SKIP_FILES = new Set(['.DS_Store']);
+const SOURCE_SCAN_SKIP_FILE_PATTERNS = [
+  /\.d\.ts$/,
+  /\.md$/,
+  /\.test\.[cm]?[jt]sx?$/,
+  /\.spec\.[cm]?[jt]sx?$/,
+  /\.tsbuildinfo$/,
+];
+
 // Re-derived from the shared schema so this file stays a single
 // source of truth — change values in src/lib/curation/schema.ts.
 const VALID_SURFACES = new Set(SHARED_VALID_SURFACES);
@@ -91,6 +116,28 @@ function buildSdkRuntime() {
   const sdkDir = join(REPO_ROOT, 'packages', 'sdk');
   console.log('[prepare-showcases] building @shippie/sdk runtime exports...');
   execSync('bun run build', { cwd: sdkDir, stdio: 'inherit' });
+}
+
+function parseArgs(argv) {
+  const requested = new Set();
+  for (const arg of argv) {
+    if (arg.startsWith('--slug=')) {
+      for (const slug of arg.slice('--slug='.length).split(',')) {
+        if (slug.trim()) requested.add(slug.trim());
+      }
+    }
+    if (arg.startsWith('--only=')) {
+      for (const slug of arg.slice('--only='.length).split(',')) {
+        if (slug.trim()) requested.add(slug.trim());
+      }
+    }
+  }
+  return {
+    generatedOnly: argv.includes('--generated-only'),
+    dryRun: argv.includes('--dry-run'),
+    forceAll: argv.includes('--all') || process.env.SHIPPIE_SHOWCASE_BUILD === 'all',
+    requested,
+  };
 }
 
 function listShowcases() {
@@ -167,6 +214,161 @@ function validateShowcaseLifecycleBoot(showcases) {
   }
 }
 
+function readJsonFile(path) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function packageDirForWorkspaceName(name) {
+  if (typeof name !== 'string' || !name.startsWith('@shippie/')) return null;
+  const dirname = name.slice('@shippie/'.length);
+  const dir = join(REPO_ROOT, 'packages', dirname);
+  return existsSync(join(dir, 'package.json')) ? dir : null;
+}
+
+function dependencyNames(pkg) {
+  const names = new Set();
+  for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+    const deps = pkg?.[field];
+    if (!deps || typeof deps !== 'object') continue;
+    for (const name of Object.keys(deps)) names.add(name);
+  }
+  return [...names].sort();
+}
+
+function collectWorkspaceDependencyDirs(showcaseDir) {
+  const out = [];
+  const seen = new Set();
+  const queue = [];
+  const appPkg = readJsonFile(join(APPS_DIR, showcaseDir, 'package.json'));
+  for (const name of dependencyNames(appPkg)) {
+    const dir = packageDirForWorkspaceName(name);
+    if (dir) queue.push(dir);
+  }
+
+  while (queue.length > 0) {
+    const dir = queue.shift();
+    if (!dir || seen.has(dir)) continue;
+    seen.add(dir);
+    out.push(dir);
+    const pkg = readJsonFile(join(dir, 'package.json'));
+    for (const name of dependencyNames(pkg)) {
+      const depDir = packageDirForWorkspaceName(name);
+      if (depDir && !seen.has(depDir)) queue.push(depDir);
+    }
+  }
+
+  return out.sort();
+}
+
+function listSourceFiles(dir, prefix = '') {
+  const out = [];
+  const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
+  for (const entry of entries) {
+    if (SOURCE_SCAN_SKIP_FILES.has(entry.name)) continue;
+    if (SOURCE_SCAN_SKIP_FILE_PATTERNS.some((pattern) => pattern.test(entry.name))) continue;
+    const child = join(dir, entry.name);
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      if (SOURCE_SCAN_SKIP_DIRS.has(entry.name)) continue;
+      out.push(...listSourceFiles(child, rel));
+    } else if (entry.isFile()) {
+      out.push(rel);
+    }
+  }
+  return out;
+}
+
+function addDirectoryToFingerprint(hash, dir, label) {
+  if (!existsSync(dir)) return;
+  for (const rel of listSourceFiles(dir)) {
+    const path = join(dir, rel);
+    const bytes = readFileSync(path);
+    hash.update(`${label}/${rel}\0${bytes.byteLength}\0`);
+    hash.update(bytes);
+    hash.update('\0');
+  }
+}
+
+function computeSourceFingerprint(showcaseDir) {
+  const hash = createHash('sha256');
+  hash.update(`prepare-showcases-source-v${SOURCE_FINGERPRINT_VERSION}\n`);
+  hash.update(`runtime-base=${RUNTIME_BASE_PATH}\n`);
+  hash.update(`showcase=${showcaseDir}\n`);
+  addDirectoryToFingerprint(hash, join(APPS_DIR, showcaseDir), `apps/${showcaseDir}`);
+  for (const dir of collectWorkspaceDependencyDirs(showcaseDir)) {
+    addDirectoryToFingerprint(hash, dir, dir.slice(REPO_ROOT.length + 1));
+  }
+  return `sha256:${hash.digest('hex')}`;
+}
+
+function readStaticManifest(slug) {
+  const path = join(STATIC_RUNTIME_DIR, slug, '__shippie-assets.json');
+  if (!existsSync(path)) return null;
+  return readJsonFile(path);
+}
+
+function hasStaticRuntime(slug) {
+  const dir = join(STATIC_RUNTIME_DIR, slug);
+  return existsSync(join(dir, 'index.html')) && existsSync(join(dir, '__shippie-assets.json'));
+}
+
+function planShowcaseBuilds(showcases, options) {
+  const requested = options.requested;
+  const targets = [];
+  const skipped = [];
+  for (const showcase of showcases) {
+    const slug = slugFor(showcase);
+    const sourceFingerprint = computeSourceFingerprint(showcase);
+    const manifest = readStaticManifest(slug);
+    const explicitlyRequested = requested.has(slug) || requested.has(showcase);
+    if (requested.size > 0 && !explicitlyRequested) {
+      skipped.push({ showcase, slug });
+      continue;
+    }
+    const staticReady = hasStaticRuntime(slug);
+    let reason = '';
+
+    if (options.forceAll) reason = 'full rebuild requested';
+    else if (explicitlyRequested) reason = 'requested';
+    else if (!staticReady) reason = 'missing static runtime';
+    else if (manifest?.sourceFingerprint !== sourceFingerprint) {
+      reason = manifest?.sourceFingerprint ? 'source changed' : 'missing source fingerprint';
+    }
+
+    if (reason) {
+      targets.push({ showcase, slug, sourceFingerprint, reason });
+    } else {
+      skipped.push({ showcase, slug });
+    }
+  }
+
+  return { targets, skipped };
+}
+
+function logBuildPlan(showcases, plan, options) {
+  const requestedNote = options.requested.size > 0 ? `, requested=${[...options.requested].join(',')}` : '';
+  if (plan.targets.length === 0) {
+    console.log(
+      `[prepare-showcases] all ${showcases.length} runtime bake(s) are current; skipping showcase builds${requestedNote}.`,
+    );
+    return;
+  }
+  const label = options.dryRun ? 'would rebuild' : 'rebuilding';
+  console.log(
+    `[prepare-showcases] ${label} ${plan.targets.length}/${showcases.length} showcase runtime(s)${requestedNote}:`,
+  );
+  for (const target of plan.targets) {
+    console.log(`  - ${target.showcase} (${target.slug}): ${target.reason}`);
+  }
+  if (plan.skipped.length > 0) {
+    console.log(`[prepare-showcases] reusing ${plan.skipped.length} unchanged runtime bake(s).`);
+  }
+}
+
 function buildOne(showcaseDir, slug) {
   const dir = join(APPS_DIR, showcaseDir);
   console.log(`[prepare-showcases] building ${showcaseDir} with base=${RUNTIME_BASE_PATH}/${slug}/…`);
@@ -181,7 +383,7 @@ function buildOne(showcaseDir, slug) {
   return distDir;
 }
 
-function copyDist(distDir, slug) {
+function copyDist(distDir, slug, sourceFingerprint) {
   const target = join(STATIC_RUNTIME_DIR, slug);
   rmSync(target, { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
@@ -217,7 +419,7 @@ function copyDist(distDir, slug) {
   // shared WASM is listed separately in shell-assets.json (warmed once
   // on first download). buildId is a stable hash of the asset list +
   // sizes so future deploys can detect "your saved app is out of date."
-  writeAssetManifest(target, slug);
+  writeAssetManifest(target, slug, sourceFingerprint);
   console.log(`[prepare-showcases] copied ${slug} → static/__shippie-run/${slug}/`);
 }
 
@@ -405,7 +607,7 @@ function stableStringify(value) {
     .join(',')}}`;
 }
 
-function writeAssetManifest(targetDir, slug) {
+function writeAssetManifest(targetDir, slug, sourceFingerprint) {
   // Skip the manifest file itself — emit AFTER the walk so it never
   // self-references, but the safety belt below also filters it out in
   // case a previous run left one behind.
@@ -443,6 +645,7 @@ function writeAssetManifest(targetDir, slug) {
   const manifest = {
     ...hashableManifest,
     manifestHash,
+    sourceFingerprint,
     assets: entries.map((entry) => entry.url),
     entries,
   };
@@ -765,18 +968,18 @@ function slugsWithStaticRuntime(slugs) {
 }
 
 function main() {
-  const generatedOnly = process.argv.includes('--generated-only');
+  const options = parseArgs(process.argv.slice(2));
   const showcases = listShowcases();
   if (showcases.length === 0) {
     console.log('[prepare-showcases] no showcase-* apps found.');
     writeShowcaseCatalog([]);
     writePrecacheList();
     writeRuntimePrecache([]);
-    if (!generatedOnly) writeShellAssets([]);
+    if (!options.generatedOnly) writeShellAssets([]);
     return;
   }
   validateShowcaseLifecycleBoot(showcases);
-  if (generatedOnly) {
+  if (options.generatedOnly) {
     const slugs = showcases.map((showcase) => slugFor(showcase));
     const hostedSlugs = slugsWithStaticRuntime(slugs);
     const missing = slugs.filter((slug) => !hostedSlugs.includes(slug));
@@ -794,33 +997,42 @@ function main() {
     );
     return;
   }
-  buildSdkRuntime();
+
+  const slugs = showcases.map((showcase) => slugFor(showcase));
+  const plan = planShowcaseBuilds(showcases, options);
+  logBuildPlan(showcases, plan, options);
+  if (options.dryRun) return;
+
   mkdirSync(STATIC_RUNTIME_DIR, { recursive: true });
   const failures = [];
-  const built = [];
-  for (const showcase of showcases) {
+  if (plan.targets.length > 0) buildSdkRuntime();
+  for (const target of plan.targets) {
     try {
-      const slug = slugFor(showcase);
-      const distDir = buildOne(showcase, slug);
-      copyDist(distDir, slug);
-      built.push(slug);
+      const distDir = buildOne(target.showcase, target.slug);
+      copyDist(distDir, target.slug, target.sourceFingerprint);
     } catch (err) {
-      console.warn(`[prepare-showcases] ${showcase} failed: ${err.message}`);
-      failures.push(showcase);
+      console.warn(`[prepare-showcases] ${target.showcase} failed: ${err.message}`);
+      failures.push(target.showcase);
     }
   }
-  pruneStaticRuntime(built);
-  writeShowcaseCatalog(built);
-  writeFirstPartyCuration(built);
-  writeRuntimePrecache(built);
-  writePrecacheList();
-  writeShellAssets(built);
-  console.log(
-    `[prepare-showcases] done. ${showcases.length - failures.length}/${showcases.length} showcases hosted under ${RUNTIME_BASE_PATH}/<slug>/index.html.`,
-  );
   if (failures.length > 0) {
-    console.warn(`[prepare-showcases] failed: ${failures.join(', ')}`);
+    throw new Error(`showcase runtime build failed: ${failures.join(', ')}`);
   }
+
+  pruneStaticRuntime(slugs);
+  const hostedSlugs = slugsWithStaticRuntime(slugs);
+  const missingHosted = slugs.filter((slug) => !hostedSlugs.includes(slug));
+  if (missingHosted.length > 0) {
+    throw new Error(`static runtime missing after prepare: ${missingHosted.join(', ')}`);
+  }
+  writeShowcaseCatalog(hostedSlugs);
+  writeFirstPartyCuration(hostedSlugs);
+  writeRuntimePrecache(hostedSlugs);
+  writePrecacheList();
+  writeShellAssets(hostedSlugs);
+  console.log(
+    `[prepare-showcases] done. ${hostedSlugs.length}/${showcases.length} showcases hosted under ${RUNTIME_BASE_PATH}/<slug>/index.html.`,
+  );
 }
 
 main();

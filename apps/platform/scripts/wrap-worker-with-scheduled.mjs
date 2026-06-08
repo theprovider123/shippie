@@ -30,6 +30,7 @@ const root = resolve(__dirname, '..');
 const dest = resolve(root, '.svelte-kit/cloudflare');
 const original = resolve(dest, '_worker.js');
 const renamed = resolve(dest, '_worker.sveltekit.js');
+const workerSourceMap = resolve(dest, '_worker.js.map');
 const cronEntry = resolve(root, 'src/lib/server/cron/index.ts');
 const cronOut = resolve(dest, '_cron.js');
 const proximityEntry = resolve(root, 'src/lib/server/proximity/signal-room.ts');
@@ -66,6 +67,17 @@ if (existsSync(renamed)) {
   await fs.rm(renamed);
 }
 renameSync(original, renamed);
+
+if (existsSync(workerSourceMap)) {
+  const fs = await import('node:fs/promises');
+  const source = await fs.readFile(renamed, 'utf8');
+  const withoutSourceMapRef = source.replace(/\n?\/\/# sourceMappingURL=_worker\.js\.map\s*$/u, '');
+  if (withoutSourceMapRef !== source) {
+    await fs.writeFile(renamed, withoutSourceMapRef, 'utf8');
+  }
+  await fs.rm(workerSourceMap, { force: true });
+  console.log('[wrap-worker] dropped generated worker source map from deploy artifact');
+}
 
 // Bundle the cron dispatcher and Durable Object classes. Bun.build is the
 // zero-install path; if Bun isn't on PATH (CI uses npm), fall back to
