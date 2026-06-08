@@ -5,12 +5,14 @@
   import RatingsSummary from '$lib/components/marketplace/RatingsSummary.svelte';
   import LocalAppActions from '$lib/components/marketplace/LocalAppActions.svelte';
   import FeedbackSheet from '$lib/components/feedback/FeedbackSheet.svelte';
+  import ReportSheet from '$lib/components/reports/ReportSheet.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { toast } from '$lib/stores/toast';
 
   let { data, form }: PageProps = $props();
   let savingProfile = $state(false);
   let feedbackOpen = $state(false);
+  let reportOpen = $state(false);
 
   // App-specific share/OG: a shared link shows THIS tool's name, pitch, and icon
   // — not the generic Shippie card. (Icon → absolute URL for crawlers.)
@@ -315,6 +317,12 @@
         </form>
       </details>
     {/if}
+
+    {#if !data.isMaker}
+      <div class="report-row">
+        <button type="button" class="report-link" onclick={() => (reportOpen = true)}>Report this app</button>
+      </div>
+    {/if}
   </section>
 
   {#if data.changelog && data.changelog.entries.length > 0}
@@ -352,7 +360,27 @@
   onClose={() => (feedbackOpen = false)}
 />
 
+<ReportSheet
+  open={reportOpen}
+  appName={data.app.name}
+  appSlug={data.app.slug}
+  onClose={() => (reportOpen = false)}
+/>
+
 <style>
+  .report-row { margin-top: 1.25rem; }
+  .report-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--text-light);
+    font: inherit;
+    font-size: var(--text-caption);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .report-link:hover { color: var(--sunset); }
   .hero {
     color: var(--text);
     padding: var(--space-2xl) 0;
