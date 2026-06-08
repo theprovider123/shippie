@@ -12,7 +12,7 @@
  */
 import type { WrapperContext, WrapperEnv } from './env';
 import { resolveAppSlug, resolveHostFull } from './routing';
-import { loadAppMeta, loadWrapMeta } from './platform-client';
+import { loadAppMeta, loadWrapMeta, loadSuspension } from './platform-client';
 import { runAccessGate } from './router/access-gate';
 import { proxyWrappedApp } from './router/proxy';
 import { serveFromR2 } from './router/files';
@@ -98,7 +98,8 @@ export async function dispatchMakerSubdomain(
   // Access gate — runs before wrap/static so private wrapped apps are
   // also gated. Skipped for /__shippie/*.
   const meta = await loadAppMeta(env.CACHE, slug);
-  const gated = await runAccessGate(ctx, { meta });
+  const suspension = await loadSuspension(env.CACHE, slug);
+  const gated = await runAccessGate(ctx, { meta, suspension });
   if (gated) return finalizeWrapperResponse(gated, ctx);
 
   const url = new URL(request.url);
