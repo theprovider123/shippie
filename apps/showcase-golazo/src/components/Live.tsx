@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GROUP_FIXTURES, type Fixture } from "../data/tournament";
+import { venueFor } from "../data/venues";
+import { channelFor } from "../data/broadcasters";
 import { team } from "../data/teams";
 import { liveBus, type LiveEvent } from "../lib/realtime";
 import type { LiveScore } from "../lib/feed";
@@ -82,6 +84,8 @@ export function Live() {
   const watching = Math.max(1, Object.keys(present).length);
   const k = formatKickoff(active.kickoff, zone);
   const activeScore = liveById[active.id];
+  const venue = venueFor(active.id);
+  const channel = channelFor(active.id, zone);
 
   return (
     <div className="live">
@@ -169,6 +173,15 @@ export function Live() {
           {activeScore && activeScore.status !== "upcoming"
             ? "live score from the tournament feed"
             : "kick-off in your local time"}
+        </div>
+        <div className="live-where">
+          <span className="live-where-item" title={`Broadcast in ${channel.regionLabel}`}>
+            <span aria-hidden>📺</span> {channel.name}
+          </span>
+          <span className="live-where-dot" aria-hidden>·</span>
+          <span className="live-where-item">
+            <span aria-hidden>🏟</span> {venue.stadium}, {venue.city}
+          </span>
         </div>
 
         <div className="react-bar">

@@ -2100,6 +2100,13 @@ input {
   color: var(--faint);
   margin-top: 12px;
 }
+.live-where {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 7px; font-size: 12px; color: var(--muted);
+}
+.live-where-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.live-where-item:first-child { color: var(--accent); font-weight: 700; }
+.live-where-dot { color: var(--faint); }
 .live-score {
   font-family: var(--font-display);
   font-weight: 900;
@@ -2555,6 +2562,16 @@ input {
 @media (min-width: 1280px) {
   .screen { max-width: 880px; }
   .match-list:not(.is-final) { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Desktop: a bigger, more immersive arcade stage + roomier HUD. The canvas games are
+   mouse-drag friendly already (pointer events); they just want more room on a big screen. */
+@media (min-width: 1024px) {
+  .game-stage { height: min(72vh, 660px); max-width: 760px; margin-inline: auto; width: 100%; }
+  .game-score { font-size: 46px; }
+  .game-overlay h3 { font-size: 38px; }
+  .game-overlay p { font-size: 15px; max-width: 32ch; }
+  .games-intro, .game-grid, .god-hero-wrap { max-width: 760px; }
 }
 
 /* Click-to-copy join code (Pillar 3) */
