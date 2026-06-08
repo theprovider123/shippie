@@ -92,6 +92,35 @@ export async function writeCspHeader(
   await kv.put(`apps:${slug}:csp`, header);
 }
 
+/**
+ * Suspension flag — `apps:{slug}:suspended`. Deliberately a SEPARATE key
+ * from :meta so deploy writers (pipeline/wrap/callback) and the
+ * reconcile-kv cron — all of which rewrite the whole :meta blob — can
+ * never clear it. Presence = suspended; the value carries the reason.
+ * Reads are presence-based (no JSON.parse) so a corrupt/empty value fails
+ * closed (treated as suspended), which is the safe default for a kill switch.
+ */
+export async function writeSuspension(
+  kv: KVNamespace,
+  slug: string,
+  reason: string | null,
+): Promise<void> {
+  await kv.put(`apps:${slug}:suspended`, reason ?? 'suspended');
+}
+
+export async function clearSuspension(kv: KVNamespace, slug: string): Promise<void> {
+  await kv.delete(`apps:${slug}:suspended`);
+}
+
+export async function readSuspension(
+  kv: KVNamespace,
+  slug: string,
+): Promise<{ suspended: boolean; reason: string | null }> {
+  const raw = await kv.get(`apps:${slug}:suspended`);
+  if (raw === null || raw === undefined) return { suspended: false, reason: null };
+  return { suspended: true, reason: raw === '' ? null : raw };
+}
+
 export interface WrapMeta {
   upstream_url: string;
   csp_mode: 'lenient' | 'strict';
