@@ -127,3 +127,42 @@ export async function loadAppMeta(
 export function bustAppMetaCache(slug: string): void {
   appMetaCache.delete(slug);
 }
+
+// ────────────────────────────────────────────────────────────────────
+// Suspension flag — apps:{slug}:suspended. Read on the hot path by the
+// access gate; 30s memo like meta. Presence-based (no JSON parse) so a
+// corrupt/empty value fails closed (treated as suspended).
+// ────────────────────────────────────────────────────────────────────
+
+export interface SuspensionRuntime {
+  suspended: boolean;
+  reason: string | null;
+}
+
+interface CachedSuspension {
+  value: SuspensionRuntime;
+  expires: number;
+}
+
+const suspensionCache = new Map<string, CachedSuspension>();
+
+export async function loadSuspension(
+  kv: KVNamespace,
+  slug: string
+): Promise<SuspensionRuntime> {
+  const hit = suspensionCache.get(slug);
+  const now = Date.now();
+  if (hit && hit.expires > now) return hit.value;
+
+  const raw = await kv.get(`apps:${slug}:suspended`);
+  const value: SuspensionRuntime =
+    raw === null || raw === undefined
+      ? { suspended: false, reason: null }
+      : { suspended: true, reason: raw === '' ? null : raw };
+  suspensionCache.set(slug, { value, expires: now + WRAP_TTL_MS });
+  return value;
+}
+
+export function bustSuspensionCache(slug: string): void {
+  suspensionCache.delete(slug);
+}
