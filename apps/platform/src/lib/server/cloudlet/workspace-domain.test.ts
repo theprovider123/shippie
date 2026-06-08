@@ -20,7 +20,7 @@ function store() {
   return s;
 }
 
-const RECEIVED = 1_717_800_000_000;
+const RECEIVED = Date.parse('2026-06-09T12:00:00Z');
 
 describe('WorkspaceStore — teacher domain (schema v2)', () => {
   it('migrates workspace_schema_version to the current version on init', () => {
@@ -32,7 +32,7 @@ describe('WorkspaceStore — teacher domain (schema v2)', () => {
     s.seedDemoSchool();
     expect(s.listClasses().length).toBeGreaterThan(0);
     expect(s.listPupils().length).toBe(28);
-    expect(s.listLessons().length).toBeGreaterThanOrEqual(3);
+    expect(s.listLessons().length).toBeGreaterThanOrEqual(14);
     expect(s.listAdaptationCards().length).toBeGreaterThan(0);
   });
 
@@ -40,8 +40,25 @@ describe('WorkspaceStore — teacher domain (schema v2)', () => {
     const s = store();
     s.seedDemoSchool();
     const pupils = s.listPupils().length;
+    const lessons = s.listLessons().length;
+    const feedback = s.listFeedbackForPupil('p2').length;
+    const events = s.listEvents().length;
     s.seedDemoSchool();
     expect(s.listPupils().length).toBe(pupils);
+    expect(s.listLessons().length).toBe(lessons);
+    expect(s.listFeedbackForPupil('p2').length).toBe(feedback);
+    expect(s.listEvents().length).toBe(events);
+  });
+
+  it('seeds rich subject feedback for pupil overviews', () => {
+    const s = store();
+    s.seedDemoSchool();
+    const subjects = new Set(s.listFeedbackForPupil('p2').map((f) => f.subjectId));
+    expect(subjects.has('maths')).toBe(true);
+    expect(subjects.has('english.reading')).toBe(true);
+    expect(subjects.has('english.writing')).toBe(true);
+    expect(subjects.has('english.spag')).toBe(true);
+    expect(subjects.has('science')).toBe(true);
   });
 
   it('models English as a parent subject with reading/writing/spag strands', () => {
@@ -95,6 +112,35 @@ describe('WorkspaceStore — teacher domain (schema v2)', () => {
     const row = fb.find((f) => f.pupilId === 'p8');
     expect(row?.state).toBe('needs_revisit');
     expect(row?.note).toBe('cross-mult');
+  });
+
+  it('projects lesson.created events into the lessons table', () => {
+    const s = store();
+    s.seedDemoSchool();
+    s.appendEvent(
+      {
+        clientEventId: 'lesson1',
+        type: 'lesson.created',
+        instanceId: 'i1',
+        actorUserId: 'u1',
+        deviceId: 'd1',
+        createdOfflineAt: '2026-06-07T08:00:00Z',
+        schemaVersion: 1,
+        payload: {
+          lessonId: 'lesson-custom',
+          classId: 'c-4m',
+          subjectId: 'science',
+          topic: 'Habitats — microhabitats',
+          objective: 'Describe how a microhabitat meets the needs of living things',
+          time: '11:00am – 11:45am',
+          status: 'upcoming',
+        },
+      },
+      RECEIVED,
+    );
+    const lesson = s.getLesson('lesson-custom');
+    expect(lesson?.topic).toBe('Habitats — microhabitats');
+    expect(lesson?.subjectId).toBe('science');
   });
 
   it('feedback projection is last-write-wins per (lesson,pupil)', () => {

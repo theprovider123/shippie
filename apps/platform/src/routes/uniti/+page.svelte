@@ -1,13 +1,17 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import type { ActionData } from './$types';
   import { AppShell, Btn, ProgressRing, Icon } from '$lib/uniti';
 
-  let { data }: { data: PageData } = $props();
+  let { data, form }: { data: PageData; form: ActionData } = $props();
 
   const slug = $derived(data.instance?.slug ?? '');
-  const lessons = $derived(data.today?.lessons ?? []);
+  const lessons = $derived((data.today?.lessons ?? []).filter((l) => l.status !== 'done'));
+  const subjects = $derived(data.today?.subjects ?? []);
+  const classes = $derived(data.today?.classes ?? []);
   const cards = $derived(data.today?.adaptationCards ?? []);
   const counts = $derived(data.today?.feedbackCounts ?? {});
+  let addOpen = $state(false);
 
   const SUBJECT_ICON: Record<string, string> = {
     maths: '÷',
@@ -33,7 +37,7 @@
   function lessonPct(lessonId: string): number {
     const c = counts[lessonId];
     if (!c) return 0;
-    return Math.round(((c.__assessed ?? 0) / 28) * 100);
+    return Math.round(((c.__assessed ?? 0) / (c.__total ?? 28)) * 100);
   }
 
   // Group adaptation cards by lesson for the right rail.
@@ -88,7 +92,11 @@
       <div class="topbar">
         <div class="topbar-row">
           <h1>Good morning, {firstName}</h1>
+          <Btn small icon="plus" onclick={() => (addOpen = true)}>Add lesson</Btn>
         </div>
+        {#if form?.addLessonError}
+          <div class="form-error" role="alert">{form.addLessonError}</div>
+        {/if}
         <div class="daybar">
           <div class="day-pill">Today</div>
           <span class="week">Week 8 · Summer Term</span>
@@ -141,7 +149,7 @@
                       {#if active}
                         <div class="lc-foot">
                           <div style="color:{c.primary};font-weight:600;font-size:11px;">
-                            {counts[l.id]?.__assessed ?? 0}/28 pupils assessed
+                            {counts[l.id]?.__assessed ?? 0}/{counts[l.id]?.__total ?? 28} pupils assessed
                           </div>
                           <Btn small icon="lessons">Open class</Btn>
                         </div>
@@ -188,6 +196,78 @@
           </div>
         </div>
       </div>
+
+      {#if addOpen}
+        <div class="drawer-backdrop" role="presentation" onclick={() => (addOpen = false)}></div>
+        <aside class="lesson-drawer" aria-label="Add lesson">
+          <div class="drawer-head">
+            <div class="drawer-icon"><Icon name="plus" size={17} /></div>
+            <div>
+              <h2>New lesson</h2>
+              <p>Add it to today's teaching loop.</p>
+            </div>
+            <button class="icon-btn" type="button" aria-label="Close" onclick={() => (addOpen = false)}>
+              <Icon name="x" size={19} />
+            </button>
+          </div>
+
+          <form method="POST" action="?/addLesson" class="drawer-form">
+            <label>
+              <span>Class</span>
+              <select name="classId" required>
+                {#each classes as c (c.id)}
+                  <option value={c.id}>{c.yearGroup} · {c.name}</option>
+                {/each}
+              </select>
+            </label>
+
+            <label>
+              <span>Subject</span>
+              <select name="subjectId" required>
+                {#each subjects as s (s.id)}
+                  <option value={s.id}>{s.parentId ? 'English · ' : ''}{s.name}</option>
+                {/each}
+              </select>
+            </label>
+
+            <label>
+              <span>Topic</span>
+              <input name="topic" required placeholder="e.g. Fractions – mixed numbers" />
+            </label>
+
+            <label>
+              <span>Learning objective</span>
+              <textarea
+                name="objective"
+                required
+                rows="3"
+                placeholder="What should pupils be able to do by the end?"
+              ></textarea>
+            </label>
+
+            <div class="time-grid">
+              <label>
+                <span>Start</span>
+                <input name="start" type="time" value="09:00" required />
+              </label>
+              <label>
+                <span>End</span>
+                <input name="end" type="time" value="09:45" required />
+              </label>
+            </div>
+
+            <div class="upload-note">
+              <span>Next step</span>
+              Lesson-plan upload can sit here: PDF, Word or Google Doc, then adaptations generate from the plan and the pupil memory.
+            </div>
+
+            <div class="drawer-actions">
+              <button class="ghost-btn" type="button" onclick={() => (addOpen = false)}>Cancel</button>
+              <button class="save-btn" type="submit">Save lesson</button>
+            </div>
+          </form>
+        </aside>
+      {/if}
     </div>
   </AppShell>
 {/if}
@@ -260,6 +340,16 @@
     font-weight: 700;
     color: var(--text);
     margin: 0;
+  }
+  .form-error {
+    background: var(--revisit-bg);
+    color: var(--revisit);
+    border: 1px solid #f3bfba;
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
   }
   .daybar {
     display: flex;
@@ -472,6 +562,153 @@
     color: var(--text-subtle);
   }
 
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(26, 25, 23, 0.22);
+    backdrop-filter: blur(3px);
+  }
+  .lesson-drawer {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 81;
+    width: min(460px, 100vw);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    animation: drawer-in 0.18s ease-out;
+  }
+  .drawer-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .drawer-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .drawer-head h2 {
+    font-size: 15px;
+    margin: 0;
+  }
+  .drawer-head p {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 2px 0 0;
+  }
+  .icon-btn {
+    margin-left: auto;
+    border: 0;
+    background: transparent;
+    color: var(--text-subtle);
+    cursor: pointer;
+    display: flex;
+    padding: 4px;
+  }
+  .drawer-form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: auto;
+  }
+  .drawer-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .drawer-form span,
+  .upload-note span {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .drawer-form input,
+  .drawer-form select,
+  .drawer-form textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .drawer-form textarea {
+    resize: vertical;
+    line-height: 1.45;
+  }
+  .drawer-form input:focus,
+  .drawer-form select:focus,
+  .drawer-form textarea:focus {
+    border-color: var(--primary);
+  }
+  .time-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .upload-note {
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 13px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    background: var(--surface-2);
+  }
+  .upload-note span {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--primary);
+  }
+  .drawer-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 4px;
+  }
+  .ghost-btn,
+  .save-btn {
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .ghost-btn {
+    flex: 1;
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .save-btn {
+    flex: 2;
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  @keyframes drawer-in {
+    from { transform: translateX(18px); opacity: 0.75; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
   @media (max-width: 720px) {
     .cols {
       flex-direction: column;
@@ -481,6 +718,9 @@
       width: 100%;
       border-left: none;
       border-top: 1px solid var(--border);
+    }
+    .lesson-drawer {
+      width: 100vw;
     }
   }
 </style>

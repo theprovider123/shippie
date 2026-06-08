@@ -59,6 +59,41 @@ export interface DemoAdaptationCard {
   outcome: 'worked' | 'partly' | 'didnt' | null;
 }
 
+export interface DemoFeedbackSeed {
+  lessonId: string;
+  pupilId: string;
+  state: string;
+  at: string;
+  note?: string | null;
+}
+
+export interface DemoAdaptationEventSeed {
+  id: string;
+  at: string;
+  cards: Array<{
+    id: string;
+    lessonId: string;
+    subjectId: string;
+    objective: string;
+    strategy: string;
+    need: string;
+    teacherAction: string;
+    whyThis: string;
+    target: { ids: string[]; label: string };
+    evidence: Array<{ note: string }>;
+    confidence: 'emerging' | 'established';
+  }>;
+}
+
+export interface DemoAdaptationOutcomeSeed {
+  cardId: string;
+  outcome: 'worked' | 'partly' | 'didnt';
+  note: string;
+  at: string;
+}
+
+export const DEMO_DATA_VERSION = '2026-06-08-rich-subjects-v1';
+
 export const DEMO_SCHOOL = {
   name: "St Jude's & St Paul's",
   subtitle: 'CE Primary Academy · London NW3',
@@ -145,12 +180,111 @@ export const DEMO_LESSONS: DemoLesson[] = [
   },
   {
     id: 'l3',
-    classId: 'c-3h',
+    classId: 'c-4m',
     subjectId: 'science',
     topic: 'Forces – Push, Pull & Gravity',
     objective: 'Identify and describe how forces change shape and movement',
     time: '1:00 – 1:45pm',
     status: 'upcoming',
+  },
+  {
+    id: 'l4',
+    classId: 'c-4m',
+    subjectId: 'english.reading',
+    topic: 'Reading – Inference detectives',
+    objective: 'Use evidence from the text to justify an inference',
+    time: '2:15 – 3:00pm',
+    status: 'upcoming',
+  },
+  {
+    id: 'm1',
+    classId: 'c-4m',
+    subjectId: 'maths',
+    topic: 'Fractions – Add and subtract fractions',
+    objective: 'Add and subtract fractions with the same denominator',
+    time: '2 Jun · 9:00 – 9:45am',
+    status: 'done',
+  },
+  {
+    id: 'm2',
+    classId: 'c-4m',
+    subjectId: 'maths',
+    topic: 'Fractions – Number lines',
+    objective: 'Place fractions accurately on a number line',
+    time: '26 May · 9:00 – 9:45am',
+    status: 'done',
+  },
+  {
+    id: 'm3',
+    classId: 'c-4m',
+    subjectId: 'maths',
+    topic: 'Decimals – Tenths and hundredths',
+    objective: 'Connect tenths and hundredths to decimal notation',
+    time: '19 May · 9:00 – 9:45am',
+    status: 'done',
+  },
+  {
+    id: 'e1',
+    classId: 'c-4m',
+    subjectId: 'english.reading',
+    topic: 'Reading – Inference questions',
+    objective: 'Infer a character motive and justify it with evidence',
+    time: '5 Jun · 10:30 – 11:15am',
+    status: 'done',
+  },
+  {
+    id: 'e2',
+    classId: 'c-4m',
+    subjectId: 'english.writing',
+    topic: 'Persuasive Writing – Strong openings',
+    objective: 'Use rhetorical questions and emotive language in an opening paragraph',
+    time: '3 Jun · 10:30 – 11:15am',
+    status: 'done',
+  },
+  {
+    id: 'e3',
+    classId: 'c-4m',
+    subjectId: 'english.spag',
+    topic: 'SPaG – Relative clauses',
+    objective: 'Use relative clauses to add detail to a noun phrase',
+    time: '22 May · 11:30 – 12:15pm',
+    status: 'done',
+  },
+  {
+    id: 's1',
+    classId: 'c-4m',
+    subjectId: 'science',
+    topic: 'Science – States of matter',
+    objective: 'Group materials as solids, liquids or gases',
+    time: '4 Jun · 1:00 – 1:45pm',
+    status: 'done',
+  },
+  {
+    id: 's2',
+    classId: 'c-4m',
+    subjectId: 'science',
+    topic: 'Science – Friction investigation',
+    objective: 'Explain how friction changes the movement of an object',
+    time: '21 May · 1:00 – 1:45pm',
+    status: 'done',
+  },
+  {
+    id: 'h1',
+    classId: 'c-4m',
+    subjectId: 'history',
+    topic: 'History – Ancient Egypt',
+    objective: 'Explain why the Nile was important to daily life',
+    time: '20 May · 1:00 – 1:45pm',
+    status: 'done',
+  },
+  {
+    id: 'pse1',
+    classId: 'c-4m',
+    subjectId: 'pshe',
+    topic: 'PSHE – Managing worry',
+    objective: 'Name two strategies for managing worry before learning',
+    time: '16 May · 2:00 – 2:45pm',
+    status: 'done',
   },
 ];
 
@@ -191,6 +325,160 @@ export const DEMO_NOTES: Record<string, string> = {
   p9: 'Tried visual method but got confused. Follow up 1:1.',
   p20: 'Lost focus after 15 mins — check table arrangement.',
 };
+
+const YEAR_4_PUPIL_IDS = DEMO_PUPILS.map((p) => p.id);
+
+const HISTORIC_LESSON_DATES: Record<string, string> = {
+  m1: '2026-06-02T09:42:00Z',
+  m2: '2026-05-26T09:42:00Z',
+  m3: '2026-05-19T09:42:00Z',
+  e1: '2026-06-05T11:10:00Z',
+  e2: '2026-06-03T11:10:00Z',
+  e3: '2026-05-22T12:10:00Z',
+  s1: '2026-06-04T13:40:00Z',
+  s2: '2026-05-21T13:40:00Z',
+  h1: '2026-05-20T13:40:00Z',
+  pse1: '2026-05-16T14:35:00Z',
+};
+
+const STATE_OVERRIDES: Record<string, Record<string, string>> = {
+  p2: {
+    m1: 'got_it',
+    m2: 'nearly_there',
+    m3: 'got_it',
+    e1: 'got_it',
+    e2: 'nearly_there',
+    e3: 'got_it',
+    s1: 'got_it',
+    s2: 'nearly_there',
+    h1: 'got_it',
+    pse1: 'got_it',
+  },
+  p8: { m1: 'needs_revisit', m2: 'needs_revisit', m3: 'nearly_there', s1: 'nearly_there' },
+  p9: { m1: 'support_not_worked', m2: 'needs_revisit', s1: 'needs_revisit', s2: 'nearly_there' },
+  p20: { m1: 'needs_revisit', m2: 'nearly_there', e2: 'nearly_there' },
+  p25: { m1: 'needs_revisit', s1: 'needs_revisit', s2: 'needs_revisit' },
+};
+
+const STATE_ROTATION = [
+  'got_it',
+  'got_it',
+  'nearly_there',
+  'got_it',
+  'support_worked',
+  'got_it',
+  'nearly_there',
+  'needs_revisit',
+  'got_it',
+  'absent',
+];
+
+function demoStateFor(lessonId: string, pupilId: string, index: number): string {
+  const overridden = STATE_OVERRIDES[pupilId]?.[lessonId];
+  if (overridden) return overridden;
+  const lessonBias = lessonId.charCodeAt(0) + lessonId.charCodeAt(lessonId.length - 1);
+  return STATE_ROTATION[(index + lessonBias) % STATE_ROTATION.length]!;
+}
+
+function demoNoteFor(lessonId: string, pupilId: string, state: string): string | null {
+  if (pupilId === 'p2' && lessonId === 'e2') return 'Strong ideas orally; written opening needed sentence starters.';
+  if (pupilId === 'p2' && lessonId === 's2') return 'Understood the test, needed vocabulary for fair / variable.';
+  if (state === 'needs_revisit') return 'Mark for a quick revisit next lesson.';
+  if (state === 'support_worked') return 'Support strategy helped today.';
+  if (state === 'support_not_worked') return 'Support did not land; try a simpler scaffold.';
+  return null;
+}
+
+export const DEMO_FEEDBACK_SEEDS: DemoFeedbackSeed[] = [
+  ...Object.entries(DEMO_FEEDBACK).map(([pupilId, state]) => ({
+    lessonId: 'l1',
+    pupilId,
+    state,
+    at: '2026-06-08T09:40:00Z',
+    note: DEMO_NOTES[pupilId] ?? null,
+  })),
+  ...Object.entries(HISTORIC_LESSON_DATES).flatMap(([lessonId, at]) =>
+    YEAR_4_PUPIL_IDS.map((pupilId, index) => {
+      const state = demoStateFor(lessonId, pupilId, index);
+      return { lessonId, pupilId, state, at, note: demoNoteFor(lessonId, pupilId, state) };
+    }),
+  ),
+];
+
+export const DEMO_ADAPTATION_EVENT_SEEDS: DemoAdaptationEventSeed[] = [
+  {
+    id: 'seed-adapt-m1',
+    at: '2026-06-02T08:30:00Z',
+    cards: [
+      {
+        id: 'seed-card-p2-vocab',
+        lessonId: 'm1',
+        subjectId: 'maths',
+        objective: 'Add and subtract fractions with the same denominator',
+        strategy: 'Pre-teach key vocabulary before the task',
+        need: 'Fraction language needed tightening before independent work',
+        teacherAction: 'Preview numerator, denominator and equivalent with picture cards before the main task.',
+        whyThis: 'Vocabulary support had helped Ben and two peers in the previous fractions lesson.',
+        target: { ids: ['p2', 'p8', 'p12'], label: 'Ben C., Harry S., Leo D.' },
+        evidence: [{ note: 'Ben was more accurate after vocabulary preview.' }],
+        confidence: 'established',
+      },
+      {
+        id: 'seed-card-p8-worked-example',
+        lessonId: 'm1',
+        subjectId: 'maths',
+        objective: 'Add and subtract fractions with the same denominator',
+        strategy: 'Worked example, then gradually fade scaffolds',
+        need: 'Multi-step reasoning was overloading working memory',
+        teacherAction: 'Start with two completed examples, then remove one step at a time.',
+        whyThis: 'The same scaffold helped during number-line work.',
+        target: { ids: ['p2', 'p8', 'p20'], label: 'Ben C., Harry S., Theo W.' },
+        evidence: [{ note: 'Ben completed the final two examples independently.' }],
+        confidence: 'established',
+      },
+    ],
+  },
+  {
+    id: 'seed-adapt-e2',
+    at: '2026-06-03T10:00:00Z',
+    cards: [
+      {
+        id: 'seed-card-p2-oral',
+        lessonId: 'e2',
+        subjectId: 'english.writing',
+        objective: 'Use rhetorical questions and emotive language in an opening paragraph',
+        strategy: 'Paired oral discussion before writing',
+        need: 'Ideas were stronger orally than on paper',
+        teacherAction: 'Let pupils rehearse the first two sentences aloud before drafting.',
+        whyThis: 'Oral rehearsal improved the quality of first drafts last week.',
+        target: { ids: ['p2', 'p4', 'p22'], label: 'Ben C., Darius M., Viktor B.' },
+        evidence: [{ note: 'Ben used the rehearsed question in his written opening.' }],
+        confidence: 'emerging',
+      },
+    ],
+  },
+];
+
+export const DEMO_ADAPTATION_OUTCOME_SEEDS: DemoAdaptationOutcomeSeed[] = [
+  {
+    cardId: 'seed-card-p2-vocab',
+    outcome: 'worked',
+    note: 'Vocabulary preview helped Ben start independently.',
+    at: '2026-06-02T15:15:00Z',
+  },
+  {
+    cardId: 'seed-card-p8-worked-example',
+    outcome: 'worked',
+    note: 'Worked example reduced the number of prompts needed.',
+    at: '2026-06-02T15:16:00Z',
+  },
+  {
+    cardId: 'seed-card-p2-oral',
+    outcome: 'partly',
+    note: 'Oral rehearsal improved ideas; next time add sentence stems.',
+    at: '2026-06-03T15:20:00Z',
+  },
+];
 
 export const DEMO_ADAPTATION_CARDS: DemoAdaptationCard[] = [
   {

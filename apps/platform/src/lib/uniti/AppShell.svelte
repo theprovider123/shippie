@@ -16,6 +16,7 @@
     syncStatus = 'synced',
     lastSync = 'just now',
     pending = 0,
+    showTopbar = false,
     children,
   }: {
     active?: string;
@@ -28,6 +29,7 @@
     syncStatus?: SyncStatus;
     lastSync?: string;
     pending?: number;
+    showTopbar?: boolean;
     children?: Snippet;
   } = $props();
 
@@ -56,7 +58,7 @@
     { id: 'lesson', label: 'Class', icon: 'lessons', href: `${base}/lessons/l1` },
     { id: 'timeline', label: 'Pupil Progress', icon: 'pupils', href: `${base}/pupils/p2` },
     { id: 'leadership', label: 'School', icon: 'leadership', href: `${base}/leadership` },
-    { id: 'roster', label: 'Roster', icon: 'pupils', href: `${base}/roster` },
+    { id: 'roster', label: 'Pupils & MIS', icon: 'pupils', href: `${base}/roster` },
     { id: 'admin', label: 'Settings', icon: 'admin', href: `${base}/setup` },
   ]);
 
@@ -138,6 +140,9 @@
             <div style="font-size:10px;color:var(--text-subtle);">{teacherRole}</div>
           </div>
         </div>
+        <div style="margin-top:10px;">
+          <SyncChip status={syncStatus} {lastSync} {pending} />
+        </div>
       </div>
     {:else}
       <div style="padding:12px 0;border-top:1px solid var(--border);display:flex;justify-content:center;">
@@ -148,30 +153,35 @@
 
   <!-- Main -->
   <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
-    <div
-      class="appshell-topbar"
-      style="height:52px;background:var(--surface);border-bottom:1px solid var(--border);
-        display:flex;align-items:center;padding:0 {narrow ? 14 : 22}px;gap:{narrow ? 8 : 12}px;flex-shrink:0;"
-    >
-      <div style="flex:1;overflow:hidden;">
-        <span
-          style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-          >{title}</span
-        >
-        {#if subtitle}
-          <span style="font-size:13px;color:var(--text-subtle);margin-left:10px;">{subtitle}</span>
-        {/if}
-      </div>
-      <SyncChip status={syncStatus} {lastSync} {pending} />
-      <button
-        aria-label="Notifications"
-        style="background:none;border:none;cursor:pointer;color:var(--text-subtle);display:flex;padding:4px;border-radius:6px;"
+    {#if showTopbar}
+      <div
+        class="appshell-topbar"
+        style="height:52px;background:var(--surface);border-bottom:1px solid var(--border);
+          display:flex;align-items:center;padding:0 {narrow ? 14 : 22}px;gap:{narrow ? 8 : 12}px;flex-shrink:0;"
       >
-        <Icon name="bell" size={17} />
-      </button>
-    </div>
+        <div style="flex:1;overflow:hidden;">
+          <span
+            style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+            >{title}</span
+          >
+          {#if subtitle}
+            <span style="font-size:13px;color:var(--text-subtle);margin-left:10px;">{subtitle}</span>
+          {/if}
+        </div>
+        <SyncChip status={syncStatus} {lastSync} {pending} />
+        <button
+          aria-label="Notifications"
+          style="background:none;border:none;cursor:pointer;color:var(--text-subtle);display:flex;padding:4px;border-radius:6px;"
+        >
+          <Icon name="bell" size={17} />
+        </button>
+      </div>
+    {/if}
 
-    <div style="flex:1;overflow:auto;position:relative;">
+    <div
+      aria-label={subtitle ? `${title}: ${subtitle}` : title}
+      style="flex:1;overflow:auto;position:relative;"
+    >
       {@render children?.()}
     </div>
   </div>

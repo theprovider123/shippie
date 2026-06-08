@@ -20,6 +20,18 @@
     steady: '#E8953A',
     dipping: '#D95A57',
   };
+  const subjectTrendLabel: Record<string, string> = {
+    up: 'Rising',
+    stable: 'Steady',
+    down: 'Needs a look',
+    new: 'New evidence',
+  };
+  const subjectTrendTone: Record<string, string> = {
+    up: '#2EAD73',
+    stable: '#E8953A',
+    down: '#D95A57',
+    new: '#6F7D8F',
+  };
 
   function groups(p: { send: number; eal: number; fsm: number }): string[] {
     const g: string[] = [];
@@ -35,6 +47,10 @@
     } catch {
       return '';
     }
+  }
+
+  function feedbackCfg(state: string) {
+    return FEEDBACK_CONFIG[state as keyof typeof FEEDBACK_CONFIG];
   }
 
   // Group the timeline by objective.
@@ -109,6 +125,80 @@
         </div>
       </div>
     </div>
+
+    <section class="subject-overview" aria-label="Subject overview for {data.pupil.name}">
+      <div class="section-title">
+        <div>
+          <h2>Subject overview</h2>
+          <p>Recent lesson feedback grouped by curriculum area.</p>
+        </div>
+        <span>{data.subjectOverview.filter((s) => s.lessons > 0).length} active subjects</span>
+      </div>
+
+      <div class="subject-grid">
+        {#each data.subjectOverview as subject (subject.subjectId)}
+          <article class="subject-card" style="--subject:{subject.color};">
+            <div class="subject-top">
+              <div>
+                <div class="subject-name">{subject.name}</div>
+                <div class="subject-meta">
+                  {subject.lessons}
+                  {subject.lessons === 1 ? 'lesson' : 'lessons'} with feedback
+                </div>
+              </div>
+              <div class="subject-score">
+                {#if subject.lessons > 0}
+                  {subject.score}<span>%</span>
+                {:else}
+                  --
+                {/if}
+              </div>
+            </div>
+
+            <div class="subject-progress">
+              <div class="track">
+                <div class="fill" style="width:{subject.score}%;"></div>
+              </div>
+              <span style="color:{subjectTrendTone[subject.trend] ?? '#6F7D8F'};">
+                {subjectTrendLabel[subject.trend] ?? 'New evidence'}
+              </span>
+            </div>
+
+            {#if subject.states.length > 0}
+              <div class="state-dots" aria-label="Recent feedback states">
+                {#each subject.states as state, i (`${subject.subjectId}-${i}-${state}`)}
+                  {@const cfg = feedbackCfg(state)}
+                  <span
+                    class="state-dot"
+                    title={cfg?.label ?? state}
+                    style="background:{cfg?.bg ?? '#EFF1F3'};border-color:{cfg?.color ?? '#CBD1D7'};"
+                  >
+                    {cfg?.emoji ?? ''}
+                  </span>
+                {/each}
+              </div>
+            {:else}
+              <div class="empty-subject">No feedback captured yet.</div>
+            {/if}
+
+            {#if subject.latestObjective}
+              <div class="latest-objective">
+                <span>Latest</span>
+                {subject.latestObjective}
+              </div>
+            {/if}
+
+            {#if subject.strands.length > 0}
+              <div class="strand-line">
+                {#each subject.strands as strand (strand)}
+                  <span>{strand}</span>
+                {/each}
+              </div>
+            {/if}
+          </article>
+        {/each}
+      </div>
+    </section>
 
     <!-- tabs -->
     <div class="tabs">
@@ -328,6 +418,164 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
   }
+  .subject-overview {
+    margin: 0 0 22px;
+  }
+  .section-title {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .section-title h2 {
+    margin: 0 0 3px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .section-title p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .section-title span {
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--surface-2, var(--surface));
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 9px;
+  }
+  .subject-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .subject-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 164px;
+    padding: 15px;
+    border-radius: 18px;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--subject) 12%, transparent), transparent 46%),
+      var(--surface);
+    border: 1px solid color-mix(in srgb, var(--subject) 18%, var(--border));
+    box-shadow: 0 10px 24px rgba(20, 32, 45, 0.04);
+  }
+  .subject-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--subject);
+  }
+  .subject-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 13px;
+  }
+  .subject-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .subject-meta {
+    margin-top: 3px;
+    color: var(--text-subtle);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .subject-score {
+    min-width: 45px;
+    text-align: right;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--subject);
+    line-height: 1;
+  }
+  .subject-score span {
+    font-size: 11px;
+    margin-left: 1px;
+  }
+  .subject-progress {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 13px;
+  }
+  .subject-progress .track {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--subject) 12%, var(--border));
+  }
+  .subject-progress .fill {
+    height: 100%;
+    min-width: 4px;
+    border-radius: inherit;
+    background: var(--subject);
+  }
+  .subject-progress span {
+    width: 74px;
+    text-align: right;
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .state-dots {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+  .state-dot {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+  .empty-subject {
+    margin: 2px 0 13px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .latest-objective {
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .latest-objective span {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--text-subtle);
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .strand-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  .strand-line span {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--subject) 12%, transparent);
+    color: color-mix(in srgb, var(--subject) 75%, #111827);
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 7px;
+  }
   .obj-head {
     display: flex;
     align-items: center;
@@ -499,5 +747,29 @@
   .tl-restricted {
     color: var(--revisit);
     font-weight: 600;
+  }
+
+  @media (max-width: 980px) {
+    .subject-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 680px) {
+    .page {
+      padding: 18px 16px;
+    }
+    .section-title {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .subject-grid,
+    .grid2 {
+      grid-template-columns: 1fr;
+    }
+    .wbar {
+      align-items: flex-start;
+      flex-direction: column;
+    }
   }
 </style>

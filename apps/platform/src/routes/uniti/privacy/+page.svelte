@@ -150,7 +150,7 @@
     <Card style="padding:16px;">
       <h2>Export your data</h2>
       <p class="muted">
-        Download a complete copy of this school's workspace — roster, lessons,
+        Download a complete copy of this school's workspace — pupil list, lessons,
         feedback, adaptations, settings, the full event log and audit, plus the
         leadership evidence summary — as JSON. The school owns its data.
       </p>

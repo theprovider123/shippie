@@ -230,13 +230,13 @@
         </div>
         {#if rosterPlan === 'csv_later' || rosterPlan === 'small_now'}
           <p class="link-hint">
-            Ready now? Open <a href="/uniti/roster">Roster &amp; MIS</a> to upload a spreadsheet,
+            Ready now? Open <a href="/uniti/roster">Pupils &amp; MIS</a> to upload a spreadsheet,
             preview the changes, and apply. You can also do this later.
           </p>
         {:else}
           <p class="link-hint">
             We'll connect your MIS (Wonde) once it's authorised. Until then, upload a spreadsheet
-            from <a href="/uniti/roster">Roster &amp; MIS</a> so you're not blocked.
+            from <a href="/uniti/roster">Pupils &amp; MIS</a> so you're not blocked.
           </p>
         {/if}
         <button class="btn primary" onclick={() => { rosterNoted = true; next(); }}>

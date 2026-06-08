@@ -72,7 +72,7 @@
         error = 'Could not apply the import. Please try again.';
         return;
       }
-      appliedMsg = 'Roster updated. Leavers were kept on file (their history is safe).';
+      appliedMsg = 'Pupil list updated. Leavers were kept on file (their history is safe).';
       diff = null;
       csvText = '';
       fileName = null;
@@ -96,20 +96,20 @@
   );
 </script>
 
-<svelte:head><title>uniti · Roster & MIS</title></svelte:head>
+<svelte:head><title>uniti · Pupils & MIS</title></svelte:head>
 
 {#if !data.instance}
   <div class="centered">
     <div class="empty-card">
-      <h1>Roster & MIS</h1>
-      <p class="muted">You don't have permission to manage this school's roster.</p>
+      <h1>Pupils & MIS</h1>
+      <p class="muted">You don't have permission to manage this school's pupil list.</p>
     </div>
   </div>
 {:else}
   <AppShell
     active="admin"
     {slug}
-    title="Roster & MIS"
+    title="Pupils & MIS"
     subtitle={data.instance.displayName}
     schoolName={data.instance.displayName}
     teacherName={data.teacher.name}
@@ -117,7 +117,7 @@
   >
     <div class="page">
       <p class="eyebrow">Pupils &amp; classes</p>
-      <h1>Roster &amp; MIS</h1>
+      <h1>Pupils &amp; MIS</h1>
       <p class="lede">
         Import your classes from a spreadsheet, or connect your school's MIS. Your data stays in
         your school's private cloud.

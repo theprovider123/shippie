@@ -9,13 +9,15 @@ import {
   WORKSPACE_EVENT_SCHEMA_VERSION,
 } from './upcasters';
 import {
+  DEMO_DATA_VERSION,
   DEMO_SUBJECTS,
   DEMO_CLASSES,
   DEMO_PUPILS,
   DEMO_LESSONS,
-  DEMO_FEEDBACK,
-  DEMO_NOTES,
+  DEMO_FEEDBACK_SEEDS,
   DEMO_ADAPTATION_CARDS,
+  DEMO_ADAPTATION_EVENT_SEEDS,
+  DEMO_ADAPTATION_OUTCOME_SEEDS,
 } from './demo-data';
 
 /**
@@ -335,7 +337,29 @@ export class WorkspaceStore {
    */
   private project(e: WorkspaceEvent, receivedAt: number): void {
     const p = (e.payload ?? {}) as Record<string, unknown>;
-    if (e.type === 'feedback.created') {
+    if (e.type === 'lesson.created') {
+      const lessonId = p.lessonId as string | undefined;
+      const classId = p.classId as string | undefined;
+      const subjectId = p.subjectId as string | undefined;
+      const topic = p.topic as string | undefined;
+      const objective = p.objective as string | undefined;
+      const time = p.time as string | undefined;
+      if (!lessonId || !classId || !subjectId || !topic || !objective || !time) return;
+      this.sql.run(
+        `INSERT INTO lessons (id,class_id,subject_id,topic,objective,time,status)
+         VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET
+           class_id=excluded.class_id, subject_id=excluded.subject_id, topic=excluded.topic,
+           objective=excluded.objective, time=excluded.time, status=excluded.status`,
+        lessonId,
+        classId,
+        subjectId,
+        topic,
+        objective,
+        time,
+        (p.status as string) ?? 'upcoming',
+      );
+    } else if (e.type === 'feedback.created') {
       const lessonId = p.lessonId as string | undefined;
       const pupilId = p.pupilId as string | undefined;
       const state = p.state as string | undefined;
@@ -985,11 +1009,10 @@ export class WorkspaceStore {
    * append-only event log so the projection path is exercised on seed too.
    */
   seedDemoSchool(seededAt = 0): void {
-    if (this.listPupils().length > 0) return; // already seeded — idempotent
-
     for (const s of DEMO_SUBJECTS) {
       this.sql.run(
-        `INSERT OR IGNORE INTO subjects (id,name,parent_id,color) VALUES (?,?,?,?)`,
+        `INSERT INTO subjects (id,name,parent_id,color) VALUES (?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET name=excluded.name, parent_id=excluded.parent_id, color=excluded.color`,
         s.id,
         s.name,
         s.parentId,
@@ -998,7 +1021,9 @@ export class WorkspaceStore {
     }
     for (const c of DEMO_CLASSES) {
       this.sql.run(
-        `INSERT OR IGNORE INTO classes (id,name,year_group,room) VALUES (?,?,?,?)`,
+        `INSERT INTO classes (id,name,year_group,room,active) VALUES (?,?,?,?,1)
+         ON CONFLICT(id) DO UPDATE SET
+           name=excluded.name, year_group=excluded.year_group, room=excluded.room, active=1`,
         c.id,
         c.name,
         c.yearGroup,
@@ -1007,7 +1032,10 @@ export class WorkspaceStore {
     }
     for (const p of DEMO_PUPILS) {
       this.sql.run(
-        `INSERT OR IGNORE INTO pupils (id,name,initials,send,eal,fsm) VALUES (?,?,?,?,?,?)`,
+        `INSERT INTO pupils (id,name,initials,send,eal,fsm,active) VALUES (?,?,?,?,?,?,1)
+         ON CONFLICT(id) DO UPDATE SET
+           name=excluded.name, initials=excluded.initials, send=excluded.send,
+           eal=excluded.eal, fsm=excluded.fsm, active=1`,
         p.id,
         p.name,
         p.initials,
@@ -1024,7 +1052,10 @@ export class WorkspaceStore {
     }
     for (const l of DEMO_LESSONS) {
       this.sql.run(
-        `INSERT OR IGNORE INTO lessons (id,class_id,subject_id,topic,objective,time,status) VALUES (?,?,?,?,?,?,?)`,
+        `INSERT INTO lessons (id,class_id,subject_id,topic,objective,time,status) VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET
+           class_id=excluded.class_id, subject_id=excluded.subject_id, topic=excluded.topic,
+           objective=excluded.objective, time=excluded.time, status=excluded.status`,
         l.id,
         l.classId,
         l.subjectId,
@@ -1056,22 +1087,60 @@ export class WorkspaceStore {
         null,
       );
     }
-    // Fold the demo feedback for the in-progress lesson through the event log.
+
+    if (this.getSetting('demo_data_version') === DEMO_DATA_VERSION) return;
+
+    // Fold demo feedback through the event log so the projection path is
+    // exercised on seed and existing demo workspaces can upgrade idempotently.
     let i = 0;
-    for (const [pupilId, state] of Object.entries(DEMO_FEEDBACK)) {
+    for (const fb of DEMO_FEEDBACK_SEEDS) {
       this.appendEvent(
         {
-          clientEventId: `seed-fb-l1-${pupilId}`,
+          clientEventId:
+            fb.lessonId === 'l1'
+              ? `seed-fb-l1-${fb.pupilId}`
+              : `seed-${DEMO_DATA_VERSION}-fb-${fb.lessonId}-${fb.pupilId}`,
           type: 'feedback.created',
           instanceId: 'seed',
           actorUserId: 'seed',
           deviceId: 'seed',
-          createdOfflineAt: new Date(seededAt).toISOString(),
+          createdOfflineAt: fb.at,
           schemaVersion: 1,
-          payload: { lessonId: 'l1', pupilId, state, note: DEMO_NOTES[pupilId] ?? null },
+          payload: { lessonId: fb.lessonId, pupilId: fb.pupilId, state: fb.state, note: fb.note ?? null },
         },
-        seededAt + i++,
+        Date.parse(fb.at) + i++,
       );
     }
+    for (const gen of DEMO_ADAPTATION_EVENT_SEEDS) {
+      this.appendEvent(
+        {
+          clientEventId: `seed-${DEMO_DATA_VERSION}-adapt-generated-${gen.id}`,
+          type: 'adaptation.generated',
+          instanceId: 'seed',
+          actorUserId: 'seed',
+          deviceId: 'seed',
+          createdOfflineAt: gen.at,
+          schemaVersion: 1,
+          payload: { cards: gen.cards },
+        },
+        Date.parse(gen.at) + i++,
+      );
+    }
+    for (const out of DEMO_ADAPTATION_OUTCOME_SEEDS) {
+      this.appendEvent(
+        {
+          clientEventId: `seed-${DEMO_DATA_VERSION}-adapt-outcome-${out.cardId}`,
+          type: 'adaptation.outcome_recorded',
+          instanceId: 'seed',
+          actorUserId: 'seed',
+          deviceId: 'seed',
+          createdOfflineAt: out.at,
+          schemaVersion: 1,
+          payload: { cardId: out.cardId, outcome: out.outcome, note: out.note },
+        },
+        Date.parse(out.at) + i++,
+      );
+    }
+    this.setSetting('demo_data_version', DEMO_DATA_VERSION, seededAt);
   }
 }
