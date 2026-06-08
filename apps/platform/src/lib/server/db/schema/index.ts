@@ -41,3 +41,4 @@ export * from './app-invites';
 export * from './spaces';
 export * from './proof-events';
 export * from './app-feeds';
+export * from './app-reports';
