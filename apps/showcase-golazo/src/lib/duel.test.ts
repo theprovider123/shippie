@@ -7,11 +7,18 @@ import {
   duelUrl,
   readDuelFromHash,
   penaltyShotSaved,
+  readShooter,
+  aiStrike,
   type Zone,
   type DuelSide,
 } from "./duel";
 
 const Z = (s: string): Zone[] => [...s].map((c) => (c === "L" ? -1 : c === "R" ? 1 : 0));
+/** A deterministic rng that cycles through fixed values. */
+const rngOf = (vals: number[]): (() => number) => {
+  let i = 0;
+  return () => vals[i++ % vals.length];
+};
 
 describe("goalsAgainst", () => {
   it("scores when the shot avoids the keeper's dive", () => {
@@ -43,6 +50,40 @@ describe("resolveDuel", () => {
     const sharp: DuelSide = { name: "Keeper", shots: Z("LLLLL"), dives: Z("LLLLL") };
     // a shots L vs sharp dives L → 0; sharp shots L vs a dives M → 5 → b wins
     expect(resolveDuel(a, sharp).outcome).toBe("b");
+  });
+});
+
+describe("readShooter (AI keeper)", () => {
+  it("guesses blind with no confidence on the first shot", () => {
+    const r = readShooter([], rngOf([0.0]));
+    expect(r.confidence).toBe(0);
+    expect([-1, 0, 1]).toContain(r.dive);
+  });
+  it("reads a one-sided shooter and dives their favourite", () => {
+    // history all Left → favourite is L; low rng falls in the read-chance branch.
+    const r = readShooter(Z("LLLL"), rngOf([0.01]));
+    expect(r.dive).toBe(-1);
+    expect(r.confidence).toBeGreaterThan(0.8);
+  });
+  it("has low confidence on a balanced shooter", () => {
+    const r = readShooter(Z("LMR"), rngOf([0.99, 0.0]));
+    expect(r.confidence).toBeLessThan(0.2);
+  });
+});
+
+describe("aiStrike (AI striker)", () => {
+  it("targets the zone the human dives to least", () => {
+    // human always dives Left → AI should avoid Left. force no-random, no-feint.
+    const s = aiStrike(Z("LLLLL"), rngOf([0.99, 0.99]));
+    expect(s.zone).not.toBe(-1);
+    expect(s.feint).toBe(false);
+    expect(s.tell).toBe(s.zone); // honest tell
+  });
+  it("can throw a feint where the tell lies", () => {
+    // rng: first>0.35 (no random pick), second<0.3 (feint), third picks the lie index.
+    const s = aiStrike(Z("MMMMM"), rngOf([0.99, 0.0, 0.0]));
+    expect(s.feint).toBe(true);
+    expect(s.tell).not.toBe(s.zone);
   });
 });
 

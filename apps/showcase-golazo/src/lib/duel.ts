@@ -103,6 +103,77 @@ export function resolveDuel(a: DuelSide, b: DuelSide): DuelResult {
   return { aGoals, bGoals, outcome: aGoals > bGoals ? "a" : bGoals > aGoals ? "b" : "draw" };
 }
 
+// ── Solo AI opponent ─────────────────────────────────────────────────────────
+// For the solo shootout (no link). The AI reads the human's recent shot zones to guess
+// where the next one goes, and when it shoots it telegraphs a readable "tell" the human
+// can punish — usually honest, sometimes a feint. Pure + testable (pass rng in tests).
+
+export interface KeeperRead {
+  /** Zone the AI keeper commits to. */
+  dive: Zone;
+  /** 0..1 how strongly the human's history pointed there (drives the lean/tell). */
+  confidence: number;
+}
+
+const ZONES_ALL: Zone[] = [-1, 0, 1];
+
+function zoneCounts(history: Zone[]): Record<string, number> {
+  const c: Record<string, number> = { "-1": 0, "0": 0, "1": 0 };
+  for (const z of history) c[String(z)] = (c[String(z)] ?? 0) + 1;
+  return c;
+}
+
+/** AI keeper read of where the human will shoot, from their recent placements. */
+export function readShooter(history: Zone[], rng: () => number = Math.random): KeeperRead {
+  const recent = history.slice(-6);
+  if (recent.length === 0) {
+    return { dive: ZONES_ALL[Math.floor(rng() * 3)] ?? 0, confidence: 0 };
+  }
+  const counts = zoneCounts(recent);
+  let fav: Zone = 0, favN = -1;
+  for (const z of ZONES_ALL) {
+    const n = counts[String(z)] ?? 0;
+    if (n > favN) { favN = n; fav = z; }
+  }
+  const frac = favN / recent.length;
+  const confidence = clamp((frac - 1 / 3) / (2 / 3), 0, 1);
+  // Dive the favoured way with a probability that grows with confidence; else guess.
+  const readChance = 0.4 + confidence * 0.45;
+  const dive = rng() < readChance ? fav : (ZONES_ALL[Math.floor(rng() * 3)] ?? 0);
+  return { dive, confidence };
+}
+
+export interface AiStrike {
+  /** Where the AI actually shoots. */
+  zone: Zone;
+  /** The tell it shows before striking — read it to dive the right way. */
+  tell: Zone;
+  /** True when the tell lies (a feint away from the real shot). */
+  feint: boolean;
+}
+
+/**
+ * AI striker for when the human keeps. It leans away from the human's favourite dive and
+ * shows a tell that is honest most of the time, a feint occasionally — so diving is a read,
+ * not a coin-flip. `humanDives` is the human's dive history (to avoid their pet zone).
+ */
+export function aiStrike(humanDives: Zone[], rng: () => number = Math.random): AiStrike {
+  const counts = zoneCounts(humanDives.slice(-6));
+  // Prefer the zone the human dives to LEAST.
+  let zone: Zone = 0, leastN = Infinity;
+  for (const z of ZONES_ALL) {
+    const n = counts[String(z)] ?? 0;
+    if (n < leastN) { leastN = n; zone = z; }
+  }
+  // 35% of the time just pick a random zone so it isn't fully predictable.
+  if (rng() < 0.35) zone = ZONES_ALL[Math.floor(rng() * 3)] ?? 0;
+  const feint = rng() < 0.3;
+  const tell = feint
+    ? (ZONES_ALL.filter((z) => z !== zone)[Math.floor(rng() * 2)] ?? zone)
+    : zone;
+  return { zone, tell, feint };
+}
+
 // ── Codec (#duel=) ───────────────────────────────────────────────────────────
 function b64urlEncode(bytes: Uint8Array): string {
   let bin = "";
