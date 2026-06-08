@@ -22,6 +22,8 @@ import { getDrizzleClient, schema } from '$server/db/client';
 import { requireAdmin } from '$server/admin/auth';
 import { recordAudit } from '$server/admin/audit';
 import { notifyMakerOfTakedown } from '$server/admin/notify-maker';
+import { writeSuspension, clearSuspension } from '$server/deploy/kv-write';
+import { bustSuspensionCache } from '$server/wrapper/platform-client';
 
 export type AdminAppRow = {
   id: string;
@@ -255,6 +257,34 @@ async function setArchived(
     .limit(1);
 
   if (!before) return fail(404, { error: 'app not found' });
+
+  // SAFETY: enforcement must reach the live serving layer via the dedicated
+  // apps:{slug}:suspended KV key that the access gate reads. For a takedown —
+  // or lifting one — ALWAYS write/clear the key, even when the D1 row already
+  // matches (this repairs a missing/stale KV flag on a re-suspend), and FAIL
+  // LOUD if KV is unavailable: a takedown must never look successful while the
+  // app stays online.
+  const isClearingSuspension = !archived && (before.suspensionReason ?? null) !== null;
+  const cache = event.platform.env.CACHE;
+  if (isSuspension || isClearingSuspension) {
+    if (!cache) {
+      return fail(503, { error: 'enforcement cache unavailable — app NOT taken offline; retry' });
+    }
+    try {
+      if (isSuspension) await writeSuspension(cache, before.slug, suspensionReason);
+      else await clearSuspension(cache, before.slug);
+      bustSuspensionCache(before.slug); // local isolate; remote isolates clear on the 30s memo
+    } catch (err) {
+      console.error('[admin.suspend] KV enforcement failed', {
+        slug: before.slug,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      return fail(500, { error: 'enforcement write failed — app state uncertain; retry' });
+    }
+  }
+
+  // D1 no-op: row already in the target state. KV enforcement above has run,
+  // so returning here is safe (no D1 / audit churn).
   if (
     before.isArchived === archived &&
     (before.takedownReason ?? null) === reason &&
@@ -326,6 +356,21 @@ async function setArchived(
         .run();
     } catch (err) {
       console.warn('[admin.suspend] reserved_slugs insert failed', {
+        slug: before.slug,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Full reinstatement (product decision 2026-06-08): lifting a suspension
+  // releases the reserved-slug hold so the maker can fix and redeploy.
+  if (isClearingSuspension) {
+    try {
+      await event.platform.env.DB.prepare('DELETE FROM reserved_slugs WHERE slug = ?')
+        .bind(before.slug)
+        .run();
+    } catch (err) {
+      console.warn('[admin.unarchive] reserved_slugs release failed', {
         slug: before.slug,
         err: err instanceof Error ? err.message : String(err),
       });

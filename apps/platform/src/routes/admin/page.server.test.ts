@@ -28,6 +28,11 @@ interface AppRow {
   slug: string;
   isArchived: boolean;
   visibilityScope: string;
+  makerId?: string;
+  takedownReason?: string | null;
+  suspensionReason?: string | null;
+  suspendedAt?: string | null;
+  suspendedBy?: string | null;
 }
 
 const dbState: { rows: AppRow[]; audits: Array<Record<string, unknown>>; updates: Array<Record<string, unknown>> } = {
@@ -129,7 +134,7 @@ function makeEvent(overrides: {
   pathname?: string;
   search?: string;
   formData?: FormData;
-  platform?: { env: { DB?: unknown } } | typeof NO_PLATFORM;
+  platform?: { env: { DB?: unknown; CACHE?: unknown } } | typeof NO_PLATFORM;
 }) {
   const url = new URL(`https://shippie.app${overrides.pathname ?? '/admin'}${overrides.search ?? ''}`);
   return {
@@ -347,5 +352,83 @@ describe('admin /+page.server setVisibility action', () => {
     expect((result as { noop: boolean }).noop).toBe(true);
     expect(dbState.updates).toHaveLength(0);
     expect(dbState.audits).toHaveLength(0);
+  });
+});
+
+// In-memory KV + D1 stand-ins for the suspension enforcement path.
+function fakeKv(data: Record<string, string>) {
+  return {
+    get: (k: string) => Promise.resolve(data[k] ?? null),
+    put: async (k: string, v: string) => { data[k] = v; },
+    delete: async (k: string) => { delete data[k]; },
+  };
+}
+function fakeD1(log: Array<{ sql: string; args: unknown[] }>) {
+  return {
+    prepare: (sql: string) => ({
+      bind: (...args: unknown[]) => ({
+        run: async () => { log.push({ sql, args }); return {}; },
+      }),
+    }),
+  };
+}
+
+describe('admin /+page.server suspension enforcement', () => {
+  it('suspend writes the apps:{slug}:suspended KV flag', async () => {
+    resetDbState([{ id: 'app-1', slug: 'foo', isArchived: false, visibilityScope: 'public' }]);
+    const data: Record<string, string> = {};
+    const log: Array<{ sql: string; args: unknown[] }> = [];
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('suspensionReason', 'spam');
+    fd.append('reason', 'abuse');
+    const event = makeEvent({ formData: fd, platform: { env: { DB: fakeD1(log), CACHE: fakeKv(data) } } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.archive!(event as any);
+    expect((result as { ok: boolean }).ok).toBe(true);
+    expect(data['apps:foo:suspended']).toBe('spam');
+  });
+
+  it('suspend FAILS LOUD (503) when the KV cache binding is missing', async () => {
+    resetDbState([{ id: 'app-1', slug: 'foo', isArchived: false, visibilityScope: 'public' }]);
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('suspensionReason', 'spam');
+    const event = makeEvent({ formData: fd, platform: { env: { DB: {} } } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.archive!(event as any);
+    expect((result as { status: number }).status).toBe(503);
+    // D1 must NOT have been mutated when enforcement can't be guaranteed.
+    expect(dbState.updates).toHaveLength(0);
+  });
+
+  it('re-suspend repairs a missing KV flag even when D1 is already suspended (no-op)', async () => {
+    resetDbState([{ id: 'app-1', slug: 'foo', isArchived: true, visibilityScope: 'public', suspensionReason: 'spam', takedownReason: 'abuse' }]);
+    const data: Record<string, string> = {}; // KV flag absent → needs repair
+    const log: Array<{ sql: string; args: unknown[] }> = [];
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('suspensionReason', 'spam');
+    fd.append('reason', 'abuse');
+    const event = makeEvent({ formData: fd, platform: { env: { DB: fakeD1(log), CACHE: fakeKv(data) } } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.archive!(event as any);
+    expect((result as { noop: boolean }).noop).toBe(true);
+    expect(data['apps:foo:suspended']).toBe('spam'); // repaired despite the D1 no-op
+    expect(dbState.updates).toHaveLength(0);
+  });
+
+  it('unarchive a suspended app clears the KV flag AND releases the reserved-slug hold', async () => {
+    resetDbState([{ id: 'app-1', slug: 'foo', isArchived: true, visibilityScope: 'public', suspensionReason: 'spam' }]);
+    const data: Record<string, string> = { 'apps:foo:suspended': 'spam' };
+    const log: Array<{ sql: string; args: unknown[] }> = [];
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    const event = makeEvent({ formData: fd, platform: { env: { DB: fakeD1(log), CACHE: fakeKv(data) } } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.unarchive!(event as any);
+    expect((result as { ok: boolean }).ok).toBe(true);
+    expect(data['apps:foo:suspended']).toBeUndefined();
+    expect(log.some((e) => e.sql.includes('DELETE FROM reserved_slugs'))).toBe(true);
   });
 });
