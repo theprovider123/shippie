@@ -119,3 +119,38 @@ describe('runAccessGate', () => {
     expect(res).toBeNull();
   });
 });
+
+describe('runAccessGate — suspension', () => {
+  test('suspended public app → 451 takedown', async () => {
+    const ctx = ctxFor('bad');
+    const res = await runAccessGate(ctx, {
+      meta: { slug: 'bad', visibility_scope: 'public' },
+      suspension: { suspended: true, reason: 'spam' }
+    });
+    expect(res?.status).toBe(451);
+    expect(await res!.text()).toContain('removed');
+  });
+
+  test('suspension kills even __shippie/* system routes', async () => {
+    const ctx = {
+      request: new Request('http://bad.localhost/__shippie/feedback'),
+      env: envWith(SECRET),
+      slug: 'bad',
+      traceId: 't'
+    };
+    const res = await runAccessGate(ctx, {
+      meta: { slug: 'bad', visibility_scope: 'public' },
+      suspension: { suspended: true, reason: 'dmca' }
+    });
+    expect(res?.status).toBe(451);
+  });
+
+  test('non-suspended public app still passes (null)', async () => {
+    const ctx = ctxFor('ok');
+    const res = await runAccessGate(ctx, {
+      meta: { slug: 'ok', visibility_scope: 'public' },
+      suspension: { suspended: false, reason: null }
+    });
+    expect(res).toBeNull();
+  });
+});

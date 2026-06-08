@@ -17,12 +17,24 @@ import { getDrizzleClient, schema } from '$server/db/client';
 
 export interface AccessGateOpts {
   meta: AppMetaRuntime | null;
+  suspension?: { suspended: boolean; reason: string | null };
 }
 
 export async function runAccessGate(
   ctx: WrapperContext,
   opts: AccessGateOpts
 ): Promise<Response | null> {
+  // Enforcement suspension kills the app on ALL paths (static, wrap, and
+  // __shippie system routes) before any other gate logic. Backed by the
+  // dedicated apps:{slug}:suspended KV key, which no deploy writer or the
+  // reconcile-kv cron can clobber. This is the platform's real-time takedown.
+  if (opts.suspension?.suspended) {
+    return new Response(renderSuspended(), {
+      status: 451,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+    });
+  }
+
   // System routes never go through the gate.
   if (new URL(ctx.request.url).pathname.startsWith('/__shippie/')) {
     return null;
@@ -177,5 +189,31 @@ function renderMisconfigured(): string {
   return `<!doctype html><html><body style="font-family:system-ui,sans-serif;padding:3rem;text-align:center">
 <h1>Server misconfigured</h1>
 <p>INVITE_SECRET binding is missing.</p>
+</body></html>`;
+}
+
+function renderSuspended(): string {
+  return `<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Removed by Shippie</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #14120F; color: #EDE4D3; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  main { max-width: 460px; text-align: center; }
+  .tag { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #E8603C; margin: 0 0 1rem; }
+  h1 { font-family: 'Iowan Old Style', Georgia, serif; font-size: 1.8rem; letter-spacing: -0.02em; margin: 0 0 1rem; }
+  p { color: #C9BEA9; line-height: 1.6; margin: 0 0 1rem; }
+  a { color: #E8603C; text-decoration: none; }
+</style>
+</head><body>
+<main>
+  <p class="tag">shippie.app</p>
+  <h1>This app has been removed</h1>
+  <p>Shippie took this app offline for violating the platform policy.
+     If you're the maker and believe this is a mistake, contact
+     <a href="mailto:hello@shippie.app">hello@shippie.app</a>.</p>
+  <p><a href="https://shippie.app">Browse live apps →</a></p>
+</main>
 </body></html>`;
 }
