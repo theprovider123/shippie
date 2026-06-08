@@ -6,6 +6,7 @@
 import type { WrapperContext } from '../env';
 import type { WrapMetaRuntime } from '../platform-client';
 import { injectPwaTags } from '../rewriter';
+import { PLATFORM_FRAME_ANCESTORS } from '../../deploy/csp';
 
 declare const HTMLRewriter: { new (): any };
 
@@ -34,7 +35,7 @@ export function buildWrappedCsp(wrap: WrapMetaRuntime): string {
     ["worker-src", "'self'", 'blob:', resourceSource].filter(Boolean).join(' '),
     ["manifest-src", "'self'", resourceSource].filter(Boolean).join(' '),
     ["form-action", "'self'", formSource].filter(Boolean).join(' '),
-    "frame-ancestors 'none'",
+    `frame-ancestors ${PLATFORM_FRAME_ANCESTORS}`,
     "base-uri 'self'",
     'upgrade-insecure-requests',
   ].join('; ');

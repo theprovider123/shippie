@@ -353,4 +353,30 @@ describe('dispatchMakerSubdomain', () => {
     });
     expect(res!.headers.get('x-shippie-trace-id')).toBe('tr-abc-1');
   });
+
+  test('suspended app → 451 takedown end-to-end (even on __shippie routes)', async () => {
+    const env = envWith(fakeKv({ 'apps:suspbad:suspended': 'spam' }));
+    const res = await dispatchMakerSubdomain({
+      request: new Request('https://suspbad.shippie.app/__shippie/health', {
+        headers: { host: 'suspbad.shippie.app' }
+      }),
+      env
+    });
+    expect(res!.status).toBe(451);
+    expect(await res!.text()).toContain('removed');
+  });
+
+  test('finalizer sets frame-ancestors for the Dock and NO x-frame-options', async () => {
+    const env = envWith(fakeKv({}));
+    const res = await dispatchMakerSubdomain({
+      request: new Request('https://x.shippie.app/__shippie/health', {
+        headers: { host: 'x.shippie.app' }
+      }),
+      env
+    });
+    expect(res!.headers.get('content-security-policy')).toContain(
+      'frame-ancestors \'self\' https://shippie.app'
+    );
+    expect(res!.headers.get('x-frame-options')).toBeNull();
+  });
 });

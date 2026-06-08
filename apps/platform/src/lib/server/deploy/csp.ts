@@ -16,6 +16,17 @@
 import type { ShippieJsonLite } from './manifest';
 import type { ConnectionGuardCspPolicy } from '@shippie/analyse';
 
+/**
+ * Framing policy for maker app runtime responses. Apps are framed
+ * cross-origin by the Shippie Dock (apex/canary platform hosts), so
+ * frame-ancestors must permit those origins — but NOT a wildcard
+ * `*.shippie.app`, which would let one maker app frame another
+ * (clickjacking). Shared by buildCsp (static), the wrapper finalizer,
+ * and the wrapped-app CSP builder so all three agree.
+ */
+export const PLATFORM_FRAME_ANCESTORS =
+  "'self' https://shippie.app https://www.shippie.app https://next.shippie.app";
+
 export interface CspResult {
   /** Full HTTP header value, e.g. "default-src 'self'; ..." */
   header: string;
@@ -69,7 +80,7 @@ export function buildCsp(manifest: ShippieJsonLite, opts: BuildCspOptions = {}):
     ["worker-src", ["'self'", 'blob:', ...workerDomains].join(' ')],
     ["manifest-src", ["'self'", ...manifestDomains].join(' ')],
     ["base-uri", "'self'"],
-    ["frame-ancestors", "'none'"],
+    ["frame-ancestors", PLATFORM_FRAME_ANCESTORS],
   ];
 
   const header = directives.map(([k, v]) => `${k} ${v}`).join('; ');

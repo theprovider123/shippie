@@ -13,6 +13,7 @@
 import type { WrapperContext, WrapperEnv } from './env';
 import { resolveAppSlug, resolveHostFull } from './routing';
 import { loadAppMeta, loadWrapMeta, loadSuspension } from './platform-client';
+import { PLATFORM_FRAME_ANCESTORS } from '../deploy/csp';
 import { runAccessGate } from './router/access-gate';
 import { proxyWrappedApp } from './router/proxy';
 import { serveFromR2 } from './router/files';
@@ -273,15 +274,16 @@ export async function finalizeWrapperResponse(
     out.headers.set(
       'content-security-policy',
       appCsp ??
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors ${PLATFORM_FRAME_ANCESTORS}; base-uri 'self'`
     );
   }
   if (!out.headers.has('x-content-type-options')) {
     out.headers.set('x-content-type-options', 'nosniff');
   }
-  if (!out.headers.has('x-frame-options')) {
-    out.headers.set('x-frame-options', 'DENY');
-  }
+  // NOTE: x-frame-options is deliberately NOT set. XFO has no cross-origin
+  // allow-list (DENY blocked the Shippie Dock from framing maker apps), so
+  // framing is governed by the CSP frame-ancestors directive above, which
+  // permits only the platform Dock origins.
   if (!out.headers.has('referrer-policy')) {
     out.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
   }

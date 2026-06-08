@@ -68,4 +68,13 @@ describe('proxy helpers', () => {
     expect(csp).toContain("connect-src 'self' https://upstream.example");
     expect(csp).not.toMatch(/connect-src[^;]*\shttps:(?:\s|;|$)/);
   });
+
+  test('buildWrappedCsp frame-ancestors allows the Dock, not none', () => {
+    const csp = buildWrappedCsp({
+      upstreamUrl: 'https://upstream.example/app',
+      cspMode: 'strict',
+    });
+    expect(csp).toContain("frame-ancestors 'self' https://shippie.app");
+    expect(csp).not.toContain("frame-ancestors 'none'");
+  });
 });

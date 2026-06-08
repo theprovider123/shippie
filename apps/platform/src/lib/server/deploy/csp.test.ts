@@ -45,4 +45,13 @@ describe('buildCsp', () => {
     );
     expect(csp.header).not.toMatch(/img-src[^;]*\shttps:(?:\s|;|$)/);
   });
+
+  test('frame-ancestors allows the Dock platform origins, not none/wildcard', () => {
+    const csp = buildCsp(manifest);
+    expect(csp.header).toContain(
+      "frame-ancestors 'self' https://shippie.app https://www.shippie.app https://next.shippie.app",
+    );
+    expect(csp.header).not.toContain("frame-ancestors 'none'");
+    expect(csp.header).not.toContain('*.shippie.app');
+  });
 });
