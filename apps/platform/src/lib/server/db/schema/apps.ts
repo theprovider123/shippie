@@ -28,6 +28,7 @@ export const apps = sqliteTable(
     type: text('type').notNull(), // 'app' | 'web_app' | 'website'
     category: text('category').notNull(),
     iconUrl: text('icon_url'),
+    iconEmoji: text('icon_emoji'),
     themeColor: text('theme_color').default('#000000').notNull(),
     backgroundColor: text('background_color').default('#ffffff').notNull(),
 
