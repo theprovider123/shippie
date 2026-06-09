@@ -11,6 +11,7 @@ export const FEEDBACK_TYPES = [
   { value: 'bug', label: 'Issue' },
   { value: 'idea', label: 'Idea' },
   { value: 'praise', label: 'Praise' },
+  { value: 'help', label: 'Help' },
   { value: 'other', label: 'Other' },
 ] as const;
 

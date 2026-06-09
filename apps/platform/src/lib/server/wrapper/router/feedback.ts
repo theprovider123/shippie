@@ -23,7 +23,7 @@ function extractBearer(request: Request): string | null {
   return header.slice(7);
 }
 
-const ALLOWED_TYPES = new Set(['bug', 'idea', 'praise', 'rating', 'other']);
+const ALLOWED_TYPES = new Set(['bug', 'idea', 'praise', 'help', 'rating', 'other']);
 const MAX_BODY_LEN = 4000;
 
 export async function handleFeedback(ctx: WrapperContext): Promise<Response> {
@@ -103,6 +103,19 @@ export async function handleFeedback(ctx: WrapperContext): Promise<Response> {
   } catch (err) {
     console.error('[wrapper:feedback] insert failed', { slug: ctx.slug, err });
     return Response.json({ error: 'insert_failed' }, { status: 500 });
+  }
+
+  // Notify platform admins for 'help' type feedback (support requests).
+  // Non-blocking: a notification failure never fails the submit.
+  if (body.type === 'help' && moderation.status !== 'spam' && ctx.env.EMAIL) {
+    const from = ctx.env.AUTH_EMAIL_FROM?.trim() || 'shippie <noreply@shippie.app>';
+    void ctx.env.EMAIL.send({
+      to: 'hello@shippie.app',
+      from,
+      subject: `[Shippie] Help request on ${ctx.slug}`,
+      text: `New help request (id: ${id})\nApp: ${ctx.slug}\n\n${text ?? '(no message)'}\n\nView at https://shippie.app/admin/moderation`,
+      html: `<p><strong>New help request</strong> on <code>${ctx.slug}</code></p><p>${(text ?? '').replace(/\n/g, '<br>')}</p><p><a href="https://shippie.app/admin/moderation">View in admin</a></p>`,
+    }).catch((err: unknown) => console.error('[wrapper:feedback] admin notify failed', err));
   }
 
   // Return the moderation status so the SDK / UI can render the right

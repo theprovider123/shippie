@@ -1,81 +1,108 @@
 # Shippie
 
-> Built it with AI. Opened on a phone. 60 seconds.
+Shippie is a marketplace and runtime for local tools — PWAs that run on the user's device, store data locally, work offline, and get a real URL in under a minute.
 
-No app store. No review. No 30% cut. Your data stays on the device. Open source.
+No app store. No review queue. No 30% cut.
 
 ---
 
-Shippie is the open home for local tools: small PWAs that keep user data on the device, work offline after first load, and can still get a real URL in under a minute.
+## Quick start
 
-| Type | For | Why Shippie |
-|---|---|---|
-| **Local tool** | Phone-first utilities built with AI | Installable, offline-first, no account required |
-| **Remixable tool** | Tools makers continuously improve | Local data + source lineage so users do not lose their stuff |
-| **Team/internal tool** | Lightweight workflows and dashboards | URL deploys, desktop-friendly, visible outside connections |
-
-## Deploy one
-
+**Deploy from the CLI:**
 ```bash
-# From the terminal
 npx @shippie/cli deploy ./dist
 ```
 
-Live at `https://your-app.shippie.app` in under a minute. Or drop a zip at [shippie.app/new](https://shippie.app/new). Or ask Claude Code to deploy a local tool to Shippie.
+**Drop a zip:** [shippie.app/new](https://shippie.app/new)
 
-## Remix one
+Live at `https://your-app.shippie.app` in under a minute.
 
-Public apps can opt into remixing by publishing source, a license, and remix permission. A GitHub account is useful for fork history, but Shippie lineage works from CLI, MCP, web upload, workspace deploys, and GitHub deploys.
-
+**Remix a public tool:**
 ```bash
 npx @shippie/cli remix recipe-saver
 npx @shippie/cli deploy ./dist --slug recipe-saver-remix --remix recipe-saver
 ```
 
-## Show it from a repo
+---
 
-GitHub keeps the code. Shippie makes it usable. Drop these in any README so a visitor
-can try the tool before reading a single setup instruction — GitHub is one first-class
-source into the marketplace, never a requirement.
+## Repo structure
 
-```markdown
-[Try on Shippie](https://shippie.app/run/your-app) ·
-[Remix on Shippie](https://shippie.app/new?remix=your-app) ·
-[Source](https://github.com/you/your-app)
+```
+apps/
+  platform/          # SvelteKit + Cloudflare Workers — the main platform
+  shippie-ai/        # AI iframe (Vite + Workbox, ai.shippie.app)
+  showcase-*/        # Showcase apps (Vite + React)
+packages/
+  sdk/               # @shippie/sdk — tool authoring API
+  cli/               # @shippie/cli — deploy, remix, init
+  mcp-server/        # MCP server for AI-native deploys
+  iframe-sdk/        # Bridge for tools running in the Shippie shell
+  local-db/          # Local-first storage primitives
+  showcase-kit-v2/   # Shared showcase UI primitives (logic-only, no CSS)
+  ...
+services/
+  hub/               # Hub venue device service (Bun + Docker)
+docs/                # Architecture, contracts, self-hosting, SDK reference
+templates/           # Starter templates for new tools
 ```
 
-## How Shippie compares
+---
 
-| | Shippie | App Store | Generic Hosting | No-Code App Builders |
-|---|---|---|---|---|
-| **Time to live** | 60s | 14 days | 60s | minutes |
-| **Revenue share** | 0% | 30% | 0% | — |
-| **Review queue** | none | yes | none | none |
-| **Installable on phones** | yes (PWA) | yes (native) | DIY | partial |
-| **Your data stays yours** | yes | no | yes | no |
-| **Open source** | yes (AGPL) | no | no | no |
+## Dev setup
 
-## Why we built it this way
+Requires [Bun](https://bun.sh) and [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
 
-- **Open source (AGPL).** The platform, the SDK, the MCP server, the CLI. Fork it. Self-host it. Network-accessible modifications must be shared back.
-- **Local by default.** Shippie hosts the tool package. Local-first storage, files, and AI run on the user's device; outside connections must say so clearly.
-- **PWA-first, honestly.** No native wrappers. The web, installed. Things you can't ship through an app store, you can ship here in a minute.
+```bash
+bun install
 
-## Links
+# Run the platform locally
+cd apps/platform
+bun run db:migrate:local   # required on first run — /apps 500s without it
+bun run dev                # starts on port 4101 (wrangler dev)
 
-- [Try a tool](https://shippie.app) — open the launcher, tap one, no signup
-- [Build a tool](https://shippie.app/new) — drop a zip, get a URL, 60 seconds
-- [Remixable tools](https://shippie.app/?remixable=1) — production tools to clone
+# Health check (typecheck + test + build)
+bun run health
+```
+
+The platform runs on Cloudflare Workers + D1 + R2 + KV + Durable Objects. Local dev uses `wrangler dev --local`.
+
+---
+
+## How it works
+
+1. **Build any PWA** — plain HTML/JS, React, Svelte, whatever builds to a `dist/`.
+2. **Deploy in 60 seconds** — CLI or zip upload; Shippie serves it from a subdomain.
+3. **Users install it** — PWA install prompt, offline after first load, data stays on device.
+4. **Makers improve it** — push updates; users get them on next open, local data intact.
+
+Tools opt into remixing by publishing source + a license. Shippie tracks lineage across CLI, MCP, web upload, and GitHub deploys.
+
+---
+
+## Why Shippie
+
+| | Shippie | App Store | Generic hosting |
+|---|---|---|---|
+| Time to live | 60s | 14 days | 60s |
+| Revenue share | 0% | 30% | 0% |
+| Installable on phones | yes (PWA) | yes (native) | DIY |
+| User data stays local | yes | no | yes |
+| Open source | yes (AGPL) | no | no |
+
+---
+
+## Docs
+
 - [Getting started](docs/getting-started.md)
 - [SDK reference](docs/sdk-reference.md)
-- [What's open source here](docs/open-core.md) — the core/internal/publishable boundary
-- [Contracts](docs/contracts/) — manifest, intents, permissions, provenance & lineage
-- [Self-hosting](docs/self-hosting.md)
 - [Architecture](docs/architecture.md)
+- [Self-hosting](docs/self-hosting.md)
+- [What's open source](docs/open-core.md) — the core/internal/publishable boundary
+- [Contracts](docs/contracts/) — manifest, intents, permissions, provenance & lineage
 - [Contributing](CONTRIBUTING.md)
-- [Governance](docs/contributing/governance.md)
 - [Security](SECURITY.md)
-- [Local Tool policy](docs/strategy/local-tools-policy.md)
+
+---
 
 ## License
 
