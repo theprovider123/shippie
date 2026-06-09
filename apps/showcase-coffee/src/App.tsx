@@ -13,6 +13,7 @@ import { BrewPage } from './pages/Brew.tsx';
 import { BeansPage } from './pages/Beans.tsx';
 import { BeanPage } from './pages/Bean.tsx';
 import { HistoryPage } from './pages/History.tsx';
+import { CoffeeSplash } from './components/CoffeeSplash.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_coffee' });
 
@@ -151,7 +152,9 @@ export function App() {
   const openBean = openBeanId ? beans.find((b) => b.id === openBeanId) ?? null : null;
 
   return (
-    <div className="app">
+    <>
+      <CoffeeSplash />
+      <div className="app">
       <header className="app-header">
         <div>
           <h1 className="title-hero">Coffee</h1>
@@ -216,5 +219,6 @@ export function App() {
       ) : null}
 
     </div>
+    </>
   );
 }
