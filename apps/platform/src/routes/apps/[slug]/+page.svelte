@@ -7,6 +7,7 @@
   import FeedbackSheet from '$lib/components/feedback/FeedbackSheet.svelte';
   import ReportSheet from '$lib/components/reports/ReportSheet.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import { summarizeChecks } from '$lib/reports/checked-summary';
   import { toast } from '$lib/stores/toast';
 
   let { data, form }: PageProps = $props();
@@ -26,6 +27,16 @@
   // "What it does" body only when the description adds something beyond the tagline.
   const showDescription = $derived(
     Boolean(data.app.description) && data.app.description !== data.app.tagline,
+  );
+  // Plain-language, user-safe "what we checked" summary (never exposes
+  // internal security scores / privacy grades — see checked-summary.ts).
+  const checks = $derived(
+    data.trustCard
+      ? summarizeChecks({
+          externalDomains: data.trustCard.externalDomains,
+          dataLocation: data.trustCard.dataLocation,
+        })
+      : null,
   );
 
   // Share copy varies by viewer:
@@ -185,6 +196,16 @@
 
   <section class="section about">
     <h2>About this tool</h2>
+    {#if checks}
+      <ul class="checks" aria-label="What Shippie checked">
+        {#each checks.badges as badge}
+          <li><span class="tick" aria-hidden="true">✓</span>{badge}</li>
+        {/each}
+        {#each checks.connectDomains as domain}
+          <li class="domain">{domain}</li>
+        {/each}
+      </ul>
+    {/if}
     <dl class="facts">
       {#if data.trustCard}
         <div><dt>Your data</dt><dd>{data.trustCard.dataLocation}</dd></div>
@@ -368,6 +389,10 @@
 />
 
 <style>
+  .checks { list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1.1rem; padding: 0; }
+  .checks li { display: inline-flex; align-items: center; gap: 0.3rem; font-size: var(--text-caption); border: 1px solid var(--border-light); padding: 3px 9px; color: var(--text-secondary); }
+  .checks .tick { color: var(--success, #2e7d5b); font-weight: 700; }
+  .checks li.domain { font-family: var(--font-mono); color: var(--text-light); }
   .report-row { margin-top: 1.25rem; }
   .report-link {
     background: none;
