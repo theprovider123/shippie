@@ -16,6 +16,7 @@
   } from '$lib/stores/launcher-memory';
   import { localFeedbackIds } from '$lib/feedback/local-store';
   import type { UserFeedbackView } from '$lib/feedback/history';
+  import FeedbackSheet from '$lib/components/feedback/FeedbackSheet.svelte';
 
   let { data }: { data: PageData } = $props();
 
@@ -108,6 +109,8 @@
       storagePinning = false;
     }
   }
+
+  let contactOpen = $state(false);
 
   function clearLocalMemory() {
     if (!hasLocalData) return;
@@ -313,12 +316,14 @@
       <div class="link-list">
         <a href="/docs#help">Help &amp; docs</a>
         <a href="/docs#privacy">Privacy &amp; terms</a>
-        <a href="mailto:hello@shippie.app">Contact</a>
+        <button type="button" class="link-btn" onclick={() => (contactOpen = true)}>Contact</button>
       </div>
     </section>
   </main>
 </div>
 </RailShell>
+
+<FeedbackSheet open={contactOpen} onClose={() => (contactOpen = false)} initialType="help" />
 
 <style>
   .you-page {
@@ -384,6 +389,7 @@
   .text-danger,
   .repair-row button,
   .link-list a,
+  .link-list .link-btn,
   .maker-entry a {
     min-height: var(--touch-min);
     display: inline-flex;
@@ -407,6 +413,7 @@
   .secondary-action:hover,
   .repair-row button:hover,
   .link-list a:hover,
+  .link-list .link-btn:hover,
   .maker-entry a:hover {
     color: var(--sunset);
     border-color: var(--sunset);

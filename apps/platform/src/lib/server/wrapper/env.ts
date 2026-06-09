@@ -14,6 +14,8 @@ import type {
   DurableObjectNamespace
 } from '@cloudflare/workers-types';
 
+type EmailSendable = { send(msg: { to: string; from: string; subject: string; text: string; html: string }): Promise<unknown> };
+
 export interface WrapperEnv {
   DB: D1Database;
   APPS: R2Bucket;
@@ -38,6 +40,9 @@ export interface WrapperEnv {
   AUTH_SECRET?: string;
   // Invite-cookie HMAC secret (private apps).
   INVITE_SECRET?: string;
+  // Cloudflare Email Routing binding for outbound notifications.
+  EMAIL?: EmailSendable;
+  AUTH_EMAIL_FROM?: string;
 }
 
 export interface WrapperContext {
