@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import Sheet from '$lib/components/ui/Sheet.svelte';
   import {
     FEEDBACK_TYPES,
     MAX_FEEDBACK_LEN,
@@ -10,29 +11,40 @@
   } from '$lib/feedback/submit';
   import { recordLocalFeedback } from '$lib/feedback/local-store';
 
+  interface Props {
+    open?: boolean;
+    /** App slug — required for app feedback mode. Omit for platform contact mode. */
+    appSlug?: string;
+    appName?: string;
+    /** Pre-select a feedback type on open. */
+    initialType?: FeedbackType;
+    onClose: () => void;
+  }
+
   let {
     open = false,
-    appName,
     appSlug,
+    appName,
+    initialType,
     onClose,
-  }: { open?: boolean; appName: string; appSlug: string; onClose: () => void } = $props();
+  }: Props = $props();
+
+  const isPlatform = $derived(!appSlug);
 
   type Phase = 'form' | 'sending' | 'done';
-
   let phase = $state<Phase>('form');
-  let type = $state<FeedbackType>('idea');
+  let type = $state<FeedbackType>(initialType ?? 'idea');
   let message = $state('');
   let error = $state<string | null>(null);
   let ack = $state('');
   let textarea = $state<HTMLTextAreaElement | null>(null);
   let opened = false;
 
-  // Reset to a clean form each time the sheet opens; focus the message field.
   $effect(() => {
     if (open && !opened) {
       opened = true;
       phase = 'form';
-      type = 'idea';
+      type = initialType ?? (isPlatform ? 'help' : 'idea');
       message = '';
       error = null;
       ack = '';
@@ -44,18 +56,47 @@
 
   const canSend = $derived(phase === 'form' && message.trim().length > 0);
 
+  const heading = $derived(
+    isPlatform
+      ? 'Get in touch'
+      : `How's ${appName ?? 'this app'}?`
+  );
+
+  const hintText = $derived(
+    isPlatform
+      ? 'Sent to the Shippie team.'
+      : 'Sent to the maker. No personal data attached.'
+  );
+
   async function send() {
     if (!canSend) return;
     phase = 'sending';
     error = null;
     const trimmed = message.trim();
-    const result = await submitAppFeedback({ slug: appSlug, type, message });
+
+    if (isPlatform) {
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ type, message: trimmed }),
+        });
+        if (!res.ok) throw new Error('non-ok response');
+        ack = 'Thanks — message received.';
+        phase = 'done';
+      } catch {
+        error = "Couldn't send that — check your connection and try again.";
+        phase = 'form';
+        void tick().then(() => textarea?.focus());
+      }
+      return;
+    }
+
+    const result = await submitAppFeedback({ slug: appSlug!, type, message });
     if (result.ok) {
-      // Track on-device so the user can see status + maker reply later under
-      // /you — even without an account.
       recordLocalFeedback({
         id: result.id,
-        appSlug,
+        appSlug: appSlug!,
         type,
         message: trimmed,
         createdAt: new Date().toISOString(),
@@ -68,143 +109,85 @@
       void tick().then(() => textarea?.focus());
     }
   }
-
-  function onKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') onClose();
-    // ⌘/Ctrl+Enter sends from the textarea.
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-      event.preventDefault();
-      void send();
-    }
-  }
 </script>
 
-<svelte:window onkeydown={open ? onKeydown : undefined} />
-
-{#if open}
-  <div class="fb-root">
-    <button class="fb-overlay" type="button" aria-label="Close feedback" onclick={onClose}></button>
-    <div class="fb-sheet" role="dialog" aria-modal="true" aria-label={`Send feedback about ${appName}`}>
-      <button class="fb-close" type="button" aria-label="Close" onclick={onClose}>×</button>
-
-      {#if phase === 'done'}
-        <div class="fb-done">
-          <span class="fb-check" aria-hidden="true">✓</span>
-          <p class="fb-ack" role="status">{ack}</p>
-          <button class="fb-btn fb-btn-primary" type="button" onclick={onClose}>Done</button>
-        </div>
-      {:else}
-        <header class="fb-head">
-          <p class="fb-eyebrow">Feedback</p>
-          <h2>How’s {appName}?</h2>
-        </header>
-
-        <fieldset class="fb-types">
-          <legend class="sr-only">Feedback type</legend>
-          {#each FEEDBACK_TYPES as opt}
-            <label class="fb-chip" class:active={type === opt.value}>
-              <input
-                type="radio"
-                name="feedback-type"
-                value={opt.value}
-                checked={type === opt.value}
-                onchange={() => (type = opt.value)}
-              />
-              {opt.label}
-            </label>
-          {/each}
-        </fieldset>
-
-        <textarea
-          bind:this={textarea}
-          bind:value={message}
-          maxlength={MAX_FEEDBACK_LEN}
-          rows="4"
-          placeholder="What happened, or what would make this better?"
-          aria-label="Your feedback"
-          disabled={phase === 'sending'}
-        ></textarea>
-
-        {#if error}
-          <p class="fb-error" role="alert">{error}</p>
-        {/if}
-
-        <div class="fb-foot">
-          <span class="fb-hint">Goes to the maker. No personal data attached.</span>
-          <div class="fb-actions">
-            <button class="fb-btn" type="button" onclick={onClose} disabled={phase === 'sending'}>Cancel</button>
-            <button class="fb-btn fb-btn-primary" type="button" onclick={send} disabled={!canSend}>
-              {phase === 'sending' ? 'Sending…' : 'Send'}
-            </button>
-          </div>
-        </div>
-      {/if}
+<Sheet {open} {onClose} label={heading}>
+  {#if phase === 'done'}
+    <div class="done">
+      <span class="check" aria-hidden="true">✓</span>
+      <p class="ack" role="status">{ack}</p>
+      <button class="btn btn-primary" type="button" onclick={onClose}>Done</button>
     </div>
-  </div>
-{/if}
+  {:else}
+    <header class="head">
+      <p class="eyebrow">{isPlatform ? 'Contact' : 'Feedback'}</p>
+      <h2>{heading}</h2>
+    </header>
+
+    <fieldset class="types">
+      <legend class="sr-only">Type</legend>
+      {#each FEEDBACK_TYPES as opt}
+        <label class="chip" class:active={type === opt.value}>
+          <input
+            type="radio"
+            name="feedback-type"
+            value={opt.value}
+            checked={type === opt.value}
+            onchange={() => (type = opt.value)}
+          />
+          {opt.label}
+        </label>
+      {/each}
+    </fieldset>
+
+    <textarea
+      bind:this={textarea}
+      bind:value={message}
+      maxlength={MAX_FEEDBACK_LEN}
+      rows="4"
+      placeholder={isPlatform
+        ? 'What do you need help with?'
+        : 'What happened, or what would make this better?'}
+      aria-label="Your message"
+      disabled={phase === 'sending'}
+    ></textarea>
+
+    {#if error}
+      <p class="error" role="alert">{error}</p>
+    {/if}
+
+    <div class="foot">
+      <span class="hint">{hintText}</span>
+      <div class="actions">
+        <button class="btn" type="button" onclick={onClose} disabled={phase === 'sending'}>Cancel</button>
+        <button class="btn btn-primary" type="button" onclick={send} disabled={!canSend}>
+          {phase === 'sending' ? 'Sending…' : 'Send'}
+        </button>
+      </div>
+    </div>
+  {/if}
+</Sheet>
 
 <style>
-  .fb-root {
-    position: fixed;
-    inset: 0;
-    z-index: 1100;
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-  }
-  .fb-overlay {
-    position: absolute;
-    inset: 0;
-    border: 0;
-    padding: 0;
-    background: rgba(20, 18, 15, 0.55);
-    cursor: pointer;
-  }
-  .fb-sheet {
-    position: relative;
-    width: 100%;
-    max-width: 380px;
-    display: grid;
-    gap: 0.85rem;
-    padding: 1.4rem 1.25rem 1.2rem;
-    background: var(--surface, #1e1a15);
-    color: var(--text, #ede4d3);
-    border: 1px solid var(--border-light, #2e2822);
-    box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.55);
-  }
-  .fb-close {
-    position: absolute;
-    top: 0.3rem;
-    right: 0.45rem;
-    min-width: 40px;
-    min-height: 40px;
-    border: 0;
-    background: none;
-    color: var(--text-secondary, #b8a88f);
-    font-size: var(--text-subhead);
-    line-height: 1;
-    cursor: pointer;
-  }
-  .fb-head {
+  .head {
     display: grid;
     gap: 0.15rem;
   }
-  .fb-eyebrow {
+  .eyebrow {
     margin: 0;
-    color: var(--sunset, #e8603c);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--sunset);
+    font-family: var(--font-mono);
     font-size: var(--text-caption);
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
-  .fb-head h2 {
+  .head h2 {
     margin: 0;
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: var(--font-heading);
     font-size: var(--text-subhead);
     line-height: 1.05;
-    letter-spacing: 0;
   }
-  .fb-types {
+  .types {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
@@ -212,39 +195,39 @@
     padding: 0;
     border: 0;
   }
-  .fb-chip {
+  .chip {
     display: inline-flex;
     align-items: center;
     min-height: 36px;
     padding: 0 0.7rem;
-    border: 1px solid var(--border-light, #2e2822);
-    color: var(--text-secondary, #b8a88f);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
     font-size: var(--text-small);
     font-weight: 600;
     cursor: pointer;
     user-select: none;
   }
-  .fb-chip.active {
-    border-color: var(--sunset, #e8603c);
-    background: var(--sunset, #e8603c);
+  .chip.active {
+    border-color: var(--sunset);
+    background: var(--sunset);
     color: #fff;
   }
-  .fb-chip input {
+  .chip input {
     position: absolute;
     width: 1px;
     height: 1px;
     opacity: 0;
     pointer-events: none;
   }
-  .fb-chip:focus-within {
-    outline: 2px solid var(--sunset, #e8603c);
+  .chip:focus-within {
+    outline: 2px solid var(--sunset);
     outline-offset: 2px;
   }
   textarea {
     width: 100%;
     box-sizing: border-box;
     padding: 0.7rem 0.8rem;
-    border: 1px solid var(--border-light, #2e2822);
+    border: 1px solid var(--border-light);
     background: transparent;
     color: inherit;
     font: inherit;
@@ -255,55 +238,56 @@
   }
   textarea:focus {
     outline: none;
-    border-color: var(--sunset, #e8603c);
+    border-color: var(--sunset);
   }
-  .fb-error {
+  .error {
     margin: 0;
     color: var(--danger, #b43f2a);
     font-size: var(--text-small);
   }
-  .fb-foot {
+  .foot {
     display: grid;
     gap: 0.6rem;
   }
-  .fb-hint {
-    color: var(--text-secondary, #b8a88f);
+  .hint {
+    color: var(--text-secondary);
     font-size: var(--text-caption);
     line-height: 1.3;
   }
-  .fb-actions {
+  .actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
   }
-  .fb-btn {
+  .btn {
     min-height: var(--touch-min, 44px);
     padding: 0 1rem;
-    border: 1px solid var(--border-light, #2e2822);
-    background: var(--surface, #1e1a15);
+    border: 1px solid var(--border-light);
+    background: transparent;
     color: inherit;
     font: inherit;
-    font-weight: 700;
+    font-size: var(--text-small);
+    font-weight: 600;
     cursor: pointer;
     border-radius: 0;
   }
-  .fb-btn:disabled {
+  .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  .fb-btn-primary {
-    border-color: var(--sunset, #e8603c);
-    background: var(--sunset, #e8603c);
+  .btn-primary {
+    border-color: var(--sunset);
+    background: var(--sunset);
     color: #fff;
   }
-  .fb-done {
+  .done {
     display: grid;
     justify-items: center;
-    gap: 0.6rem;
-    padding: 0.6rem 0 0.2rem;
+    gap: 0.75rem;
+    padding: 0.5rem 0 0.25rem;
     text-align: center;
   }
-  .fb-check {
+  .check {
     display: grid;
     place-items: center;
     width: 42px;
@@ -313,7 +297,7 @@
     color: var(--success, #2e7d5b);
     font-size: var(--text-subhead);
   }
-  .fb-ack {
+  .ack {
     margin: 0;
     font-size: var(--text-body);
   }
@@ -327,11 +311,5 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-  }
-  .fb-sheet,
-  .fb-chip,
-  textarea,
-  .fb-btn {
-    border-color: var(--border-light, #2e2822);
   }
 </style>
