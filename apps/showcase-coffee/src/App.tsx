@@ -35,6 +35,7 @@ import { BagDetail } from './screens/BagDetail.tsx';
 import { SwitchBagSheet } from './components/SwitchBagSheet.tsx';
 import { AddBagSheet } from './components/AddBagSheet.tsx';
 import { CupScoreSheet, draftToScore, type CupScoreDraft } from './components/CupScoreSheet.tsx';
+import { CoffeeSplash } from './components/CoffeeSplash.tsx';
 
 const shippie = createShippieIframeSdk({ appId: 'app_coffee' });
 
@@ -336,6 +337,7 @@ export function App() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: C.cream }}>
+      <CoffeeSplash />
       <div style={{ flex: 1, overflowY: 'auto', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div key={screenKey} className={rise ? 'slide-up' : 'screen-enter'}>
           {content}
