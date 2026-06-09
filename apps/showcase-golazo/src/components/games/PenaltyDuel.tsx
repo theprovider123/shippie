@@ -19,6 +19,16 @@ import { Hitstop, drawNetRipple } from "../../lib/juice";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 import * as sfx from "../../lib/sfx";
 
+/** Minimal pre-shot keeper state for drift/feint mind games. */
+interface KeeperMindState {
+  preDriftDir: -1 | 0 | 1;
+  preDriftFake: boolean;
+}
+function freshKeeperMind(rng = Math.random): KeeperMindState {
+  const dir: -1 | 0 | 1 = rng() < 0.4 ? 0 : rng() < 0.5 ? -1 : 1;
+  return { preDriftDir: dir, preDriftFake: dir !== 0 && rng() < 0.3 };
+}
+
 type Phase = "intro" | "shoot" | "keep" | "result";
 const ZONES: { z: Zone; label: string }[] = [
   { z: -1, label: "Left" },
@@ -62,6 +72,7 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
   const shotsRef = useRef(shots); shotsRef.current = shots;
   const shootRef = useRef<(p: ShotPlacement) => void>(() => {});
   const animDoneRef = useRef(false); // one resolution per shot (guards a double-fire)
+  const keeperMindRef = useRef<KeeperMindState>(freshKeeperMind());
 
   // ── Canvas: one shot flight, keeper diving. Reused for my shots and the AI's. ──
   useEffect(() => {
@@ -144,7 +155,10 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
       const a = animRef.current;
       const spotX = W / 2, spotY = H * 0.88;
       const baseR = Math.min(W, H) * 0.038;
-      let ballX = spotX, ballY = spotY, keeperX = W / 2, keeperTarget = W / 2, ballR = baseR;
+      const mind = keeperMindRef.current;
+      // Pre-shot drift: keeper leans subtly toward their guessed side (or feints).
+      const preDriftOffset = !a && mind.preDriftDir !== 0 ? mind.preDriftDir * (gr - gl) * 0.055 : 0;
+      let ballX = spotX, ballY = spotY, keeperX = W / 2 + preDriftOffset, keeperTarget = W / 2, ballR = baseR;
       if (a) {
         const targetX = gl + a.placement.x * (gr - gl);
         const targetY = gy + bh - a.placement.y * bh;
@@ -192,7 +206,7 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
           }
         }
       }
-      const lean = a ? (keeperTarget - W / 2) / (W * 0.3) : 0;
+      const lean = a ? (keeperTarget - W / 2) / (W * 0.3) : mind.preDriftDir * 0.18;
       const dive = a ? Math.min(1, a.t / 16) : 0;
       drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.14, lean, bh * 0.44, dive);
       if (a) trail.draw(ctx, ballR);
@@ -281,6 +295,8 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
     if (goal) celebrate(); else confirmBuzz();
     sfx.kick(placement.power);
     animDoneRef.current = false;
+    // Refresh keeper mind for the next round after this shot resolves.
+    keeperMindRef.current = freshKeeperMind();
     setAnim({ placement, dive, t: 0, goal, who: "me" });
   }
   shootRef.current = shootPlacement;
