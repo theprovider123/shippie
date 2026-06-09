@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { invalidateAll } from '$app/navigation';
+  import { toast } from '$lib/stores/toast';
+  import IdentityModal from '$lib/components/maker/IdentityModal.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -6,11 +9,62 @@
   const demo = $derived(data.demoDiagnostics);
   const privateCount = $derived(data.counts.private);
   const liveCount = $derived(data.counts.live);
+  const draftsCount = $derived(data.counts.drafts ?? 0);
+
+  let kebabOpen = $state<string | null>(null);
+  let identityTarget = $state<typeof apps[0] | null>(null);
+
+  function toggleKebab(e: MouseEvent, slug: string) {
+    e.stopPropagation();
+    kebabOpen = kebabOpen === slug ? null : slug;
+  }
+
+  function openIdentity(app: typeof apps[0]) {
+    identityTarget = app;
+    kebabOpen = null;
+  }
+
+  function closeKebab() {
+    kebabOpen = null;
+  }
+
+  async function changeVisibility(slug: string, next: string) {
+    const res = await fetch(`/api/apps/${encodeURIComponent(slug)}/visibility`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ visibility_scope: next }),
+    });
+    if (!res.ok) {
+      toast.push({ kind: 'error', message: 'Visibility change failed.' });
+      return;
+    }
+    const j = (await res.json()) as { metadata_synced?: boolean };
+    if (j.metadata_synced === false) {
+      toast.push({ kind: 'warning', message: `Set to ${next}. May take 30 s to propagate.` });
+    } else {
+      toast.push({ kind: 'success', message: `Set to ${next}.` });
+    }
+    await invalidateAll();
+  }
+
+  async function shareApp(slug: string) {
+    const url = `https://${slug}.shippie.app`;
+    if ('share' in navigator) {
+      await (navigator as Navigator & { share: (data: { url: string }) => Promise<void> }).share({ url }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(url).catch(() => {});
+      toast.push({ kind: 'success', message: 'Link copied.' });
+    }
+    kebabOpen = null;
+  }
 </script>
 
 <svelte:head>
   <title>Maker · Shippie</title>
 </svelte:head>
+
+<!-- Close kebab on outside click -->
+<svelte:window onclick={closeKebab} />
 
 <header class="maker-head">
   <div>
@@ -33,6 +87,10 @@
     <strong>{privateCount}</strong>
   </div>
   <div>
+    <span>Drafts</span>
+    <strong>{draftsCount}</strong>
+  </div>
+  <div>
     <span>Session</span>
     <strong>{data.authStatus.sessionDays}d</strong>
   </div>
@@ -51,10 +109,10 @@
         <p class="eyebrow">Recent</p>
         <h2 id="recent-title">Apps</h2>
       </div>
-      <a href="/maker/apps">View all →</a>
+      <a href="/maker/apps" class="view-all" aria-label="View all apps">→</a>
     </div>
     <div class="app-list">
-      {#each apps.slice(0, 6) as app (app.id)}
+      {#each apps.slice(0, 8) as app (app.id)}
         <article class="app-row">
           <a class="app-main" href={`/maker/apps/${app.slug}`}>
             <span class="swatch" style:background={app.themeColor}></span>
@@ -63,8 +121,31 @@
               <small>{app.slug}.shippie.app</small>
             </span>
           </a>
-          <span class="status status-{app.latestDeployStatus ?? 'draft'}">{app.latestDeployStatus ?? 'draft'}</span>
-          <span class="vis">{app.visibilityScope}</span>
+          <div class="row-controls">
+            <span class="status status-{app.latestDeployStatus ?? 'draft'}">{app.latestDeployStatus ?? 'draft'}</span>
+            <select
+              class="vis-select"
+              value={app.visibilityScope}
+              onchange={(e) => changeVisibility(app.slug, (e.target as HTMLSelectElement).value)}
+              aria-label={`Visibility for ${app.name}`}
+              onclick={(e) => e.stopPropagation()}
+            >
+              <option value="public">Public</option>
+              <option value="unlisted">Unlisted</option>
+              <option value="private">Private</option>
+            </select>
+            <div class="kebab-wrap">
+              <button type="button" class="kebab" onclick={(e) => toggleKebab(e, app.slug)} aria-label={`Actions for ${app.name}`}>⋮</button>
+              {#if kebabOpen === app.slug}
+                <div class="kebab-menu" role="menu">
+                  <a href={`/run/${app.slug}`} target="_blank" rel="noopener" role="menuitem">Open</a>
+                  <button type="button" onclick={() => shareApp(app.slug)} role="menuitem">Share</button>
+                  <button type="button" onclick={() => openIdentity(app)} role="menuitem">Edit identity</button>
+                  <a href={`/maker/apps/${app.slug}`} role="menuitem">Manage</a>
+                </div>
+              {/if}
+            </div>
+          </div>
         </article>
       {/each}
     </div>
@@ -114,6 +195,20 @@
   <button type="submit">Sign out</button>
 </form>
 
+{#if identityTarget}
+  <IdentityModal
+    slug={identityTarget.slug}
+    name={identityTarget.name}
+    themeColor={identityTarget.themeColor}
+    onClose={() => identityTarget = null}
+    onSaved={async (newSlug, newName) => {
+      identityTarget = null;
+      await invalidateAll();
+      void newSlug; void newName;
+    }}
+  />
+{/if}
+
 <style>
   .maker-head {
     display: grid;
@@ -156,7 +251,7 @@
     justify-content: flex-end;
   }
   .empty-actions a,
-  .section-head > a {
+  .section-head > .view-all {
     min-height: var(--touch-min, 44px);
     display: inline-flex;
     align-items: center;
@@ -174,7 +269,7 @@
   }
   .summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 1px;
     margin-bottom: 1rem;
     border: 1px solid var(--border-light);
@@ -224,7 +319,7 @@
     flex: 1;
   }
   .sync-note a,
-  .section-head > a {
+  .section-head > .view-all {
     color: var(--sunset);
     text-decoration: none;
   }
@@ -241,7 +336,7 @@
   }
   .app-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.75rem;
     align-items: center;
     padding: 0.75rem 0.9rem;
@@ -269,8 +364,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .app-main small,
-  .vis {
+  .app-main small {
     color: var(--text-muted-warm);
   }
   .swatch {
@@ -278,14 +372,17 @@
     height: 28px;
     flex-shrink: 0;
   }
-  .status,
-  .vis {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: var(--text-caption);
+  .row-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
   }
   .status {
     padding: 3px 8px;
     background: rgba(255, 255, 255, 0.06);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: var(--text-caption);
   }
   .status-success {
     background: rgba(46, 125, 91, 0.15);
@@ -295,6 +392,37 @@
     background: rgba(180, 63, 42, 0.15);
     color: var(--danger);
   }
+  .vis-select {
+    padding: 0.25rem 0.5rem;
+    background: var(--surface, #1a1814);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: var(--text-caption);
+    cursor: pointer;
+  }
+  .kebab-wrap { position: relative; }
+  .kebab {
+    background: none; border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem; cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    min-height: var(--touch-min, 44px);
+    display: inline-flex; align-items: center;
+  }
+  .kebab-menu {
+    position: absolute; right: 0; top: 100%; z-index: 50;
+    background: var(--surface, #1a1814); border: 1px solid var(--border);
+    display: flex; flex-direction: column; min-width: 140px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.32);
+  }
+  .kebab-menu a, .kebab-menu button {
+    padding: 0.6rem 1rem; text-decoration: none; color: var(--text);
+    font-size: var(--text-small); background: none; border: none; border-bottom: 1px solid var(--border-light);
+    text-align: left; cursor: pointer; font-family: inherit; display: block; width: 100%;
+  }
+  .kebab-menu a:last-child, .kebab-menu button:last-child { border-bottom: 0; }
+  .kebab-menu a:hover, .kebab-menu button:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
   .empty-maker {
     display: grid;
     gap: 0.85rem;
@@ -368,15 +496,17 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .summary-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .app-row {
       grid-template-columns: minmax(0, 1fr);
       gap: 0.45rem;
     }
-    .status,
-    .vis {
-      justify-self: start;
+    .row-controls {
+      flex-wrap: wrap;
+    }
+    .status {
+      order: -1;
     }
     .diagnostic-grid {
       grid-template-columns: 1fr;
@@ -387,7 +517,7 @@
   }
   @media (prefers-color-scheme: dark) {
     .empty-actions a,
-    .section-head > a,
+    .section-head > .view-all,
     .summary-grid,
     .summary-grid div,
     .sync-note,

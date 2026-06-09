@@ -61,6 +61,7 @@ export const load: LayoutServerLoad = async ({ locals, platform, url }) => {
       total: sql<number>`count(*)`,
       live: sql<number>`sum(case when ${schema.apps.latestDeployStatus} = 'success' then 1 else 0 end)`,
       privateApps: sql<number>`sum(case when ${schema.apps.visibilityScope} = 'private' then 1 else 0 end)`,
+      drafts: sql<number>`sum(case when ${schema.apps.latestDeployStatus} is null or ${schema.apps.latestDeployStatus} = 'draft' then 1 else 0 end)`,
     })
     .from(schema.apps)
     .where(owned);
@@ -72,6 +73,7 @@ export const load: LayoutServerLoad = async ({ locals, platform, url }) => {
       total: Number(countRow?.total ?? 0),
       live: Number(countRow?.live ?? 0),
       private: Number(countRow?.privateApps ?? 0),
+      drafts: Number(countRow?.drafts ?? 0),
     },
     authStatus: authStatusFor(user, platform.env.SHIPPIE_ENV),
   };
@@ -92,10 +94,11 @@ export type MakerCounts = {
   total: number;
   live: number;
   private: number;
+  drafts: number;
 };
 
 function emptyCounts(): MakerCounts {
-  return { total: 0, live: 0, private: 0 };
+  return { total: 0, live: 0, private: 0, drafts: 0 };
 }
 
 function authStatusFor(

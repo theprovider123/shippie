@@ -12,21 +12,21 @@ export const GROUP_LETTERS = [
 ] as const;
 export type GroupLetter = (typeof GROUP_LETTERS)[number];
 
-// Hosts are slotted to their confirmed positions (Mexico A1, Canada B1, USA D1);
-// the rest are spread one-per-pot for a balanced field.
+// Official FIFA WC2026 group draw (December 2025).
+// Hosts: Mexico A1, Canada B1, USA D1.
 export const GROUPS: Record<GroupLetter, [string, string, string, string]> = {
-  A: ["MEX", "CRO", "ECU", "GHA"],
-  B: ["CAN", "ITA", "AUT", "RSA"],
-  C: ["ARG", "URU", "UKR", "KSA"],
-  D: ["USA", "COL", "TUR", "QAT"],
-  E: ["FRA", "MAR", "SRB", "IRQ"],
-  F: ["BRA", "SUI", "POL", "UZB"],
-  G: ["ENG", "JPN", "NOR", "JOR"],
-  H: ["ESP", "SEN", "NGA", "PAN"],
-  I: ["POR", "DEN", "EGY", "CRC"],
-  J: ["NED", "IRN", "ALG", "JAM"],
-  K: ["BEL", "KOR", "CIV", "PAR"],
-  L: ["GER", "AUS", "CMR", "NZL"],
+  A: ["MEX", "RSA", "KOR", "CZE"],   // Mexico, South Africa, Korea Republic, Czechia
+  B: ["CAN", "BIH", "QAT", "SUI"],   // Canada, Bosnia & Herz., Qatar, Switzerland
+  C: ["BRA", "MAR", "HAI", "SCO"],   // Brazil, Morocco, Haiti, Scotland
+  D: ["USA", "PAR", "AUS", "TUR"],   // United States, Paraguay, Australia, Türkiye
+  E: ["GER", "CUW", "CIV", "ECU"],   // Germany, Curaçao, Ivory Coast, Ecuador
+  F: ["NED", "JPN", "SWE", "TUN"],   // Netherlands, Japan, Sweden, Tunisia
+  G: ["BEL", "EGY", "IRN", "NZL"],   // Belgium, Egypt, Iran, New Zealand
+  H: ["ESP", "CPV", "KSA", "URU"],   // Spain, Cape Verde, Saudi Arabia, Uruguay
+  I: ["FRA", "SEN", "IRQ", "NOR"],   // France, Senegal, Iraq, Norway
+  J: ["ARG", "ALG", "AUT", "JOR"],   // Argentina, Algeria, Austria, Jordan
+  K: ["POR", "COD", "UZB", "COL"],   // Portugal, DR Congo, Uzbekistan, Colombia
+  L: ["ENG", "CRO", "GHA", "PAN"],   // England, Croatia, Ghana, Panama
 };
 
 export function groupTeams(letter: GroupLetter): Team[] {
