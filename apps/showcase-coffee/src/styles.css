@@ -1027,6 +1027,24 @@ button, input, textarea, select { font: inherit; }
 .score-numeric.size-card { font-size: clamp(1.6rem, 4vw, 2.4rem); }
 .score-numeric .unit { font-size: 0.45em; font-weight: 600; color: var(--muted); vertical-align: 0.35em; margin-left: 0.2em; }
 
+/* ── Screen transition animations ────────────────────────────────────── */
+.screen-enter {
+  will-change: transform;
+  animation: screenEnter 0.22s ease forwards;
+}
+@keyframes screenEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-up {
+  will-change: transform;
+  animation: slideUp 0.26s ease forwards;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Mobile-safe date/time inputs ─────────────────────────────────────
    iOS Safari renders date/time inputs as native controls that can ignore
    width and spill past their container on a narrow phone. Constrain the
@@ -1050,4 +1068,9 @@ input[type='week'] {
     -webkit-appearance: none;
     appearance: none;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { display: none; }
+  .screen-enter, .slide-up { animation: none; }
 }
