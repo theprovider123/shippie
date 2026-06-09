@@ -50,6 +50,16 @@ export const deploys = sqliteTable(
       Record<string, unknown>
     >(),
 
+    /**
+     * Behavior-delta monitoring (Phase 4 of maker-app safety). Stores
+     * `{ profile, delta }`: the version's BehaviorProfile (so the next deploy
+     * can diff without re-reading artifacts) and the computed delta vs the
+     * previous active deploy. Informational only — never gates a deploy.
+     */
+    behaviorDeltaJson: text('behavior_delta_json', { mode: 'json' }).$type<
+      Record<string, unknown>
+    >(),
+
     createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
     completedAt: text('completed_at'),
     createdBy: text('created_by').references(() => users.id),

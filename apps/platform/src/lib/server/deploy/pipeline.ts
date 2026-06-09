@@ -62,6 +62,7 @@ import {
   writeAppKindProfile,
 } from './kv-write';
 import { buildCsp } from './csp';
+import { computeBehaviorDelta, behaviorProfileFromManifest, type BehaviorProfile } from './behavior-delta';
 import { profileFromDetection, type AppKind } from '$lib/types/app-kind';
 import {
   emptyReport,
@@ -492,6 +493,26 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     manifest: { files: upload.manifest } as unknown as Record<string, unknown>,
   });
 
+  // Behavior-delta monitoring (informational, never blocks): diff this
+  // version's profile against the previous active deploy's stored profile.
+  // Surfaced in /admin/updates so a human can glance at popular apps that
+  // suddenly add a connect domain / capability (benign-v1 → malicious-v2).
+  const nextProfile = behaviorProfileFromManifest(manifest, {
+    totalBytes: upload.totalBytes,
+    kind: typeof manifest.kind === 'string' ? manifest.kind : null,
+  });
+  let prevProfile: BehaviorProfile | null = null;
+  if (appRow.activeDeployId) {
+    const [prevDeploy] = await db
+      .select({ behaviorDeltaJson: schema.deploys.behaviorDeltaJson })
+      .from(schema.deploys)
+      .where(eq(schema.deploys.id, appRow.activeDeployId))
+      .limit(1);
+    const stored = prevDeploy?.behaviorDeltaJson as { profile?: BehaviorProfile } | null | undefined;
+    prevProfile = stored?.profile ?? null;
+  }
+  const behaviorDelta = computeBehaviorDelta(prevProfile, nextProfile);
+
   const completedAt = new Date().toISOString();
   await db
     .update(schema.deploys)
@@ -502,6 +523,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       preflightStatus: 'passed',
       preflightReport: preflight as unknown as Record<string, unknown>,
       cspHeader: csp.header,
+      behaviorDeltaJson: { profile: nextProfile, delta: behaviorDelta } as unknown as Record<string, unknown>,
     })
     .where(eq(schema.deploys.id, deployRow.id));
 
