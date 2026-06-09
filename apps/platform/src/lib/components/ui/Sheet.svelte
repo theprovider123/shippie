@@ -353,7 +353,7 @@
     gap: 14px;
     animation: sheet-rise 180ms ease-out;
     outline: none;
-    max-height: 92dvh;
+    max-height: calc(100dvh - var(--safe-top) - 16px);
     overflow-y: auto;
     overscroll-behavior: contain;
     transition: transform 140ms ease-out;

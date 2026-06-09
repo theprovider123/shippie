@@ -32,6 +32,17 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
   const db = platform?.env.DB;
   if (!db) return json({ error: 'database_unavailable' }, { status: 500, headers: { 'access-control-allow-origin': '*' } });
 
+  // Gate on app visibility and suspension before exposing feed data.
+  // Archived apps (including admin-suspended) and non-public apps return 404
+  // so as not to leak private data through the world-readable CORS endpoint.
+  const app = await db
+    .prepare('SELECT is_archived, visibility_scope FROM apps WHERE slug = ? LIMIT 1')
+    .bind(params.slug)
+    .first<{ is_archived: number; visibility_scope: string }>();
+  if (!app || app.is_archived || app.visibility_scope === 'private' || app.visibility_scope === 'team') {
+    return json({ error: 'no_feed' }, { status: 404, headers: { 'access-control-allow-origin': '*' } });
+  }
+
   const envelope = await getLatestFeed(db, params.slug, params.feed);
   if (!envelope) return json({ error: 'no_feed' }, { status: 404, headers: { 'access-control-allow-origin': '*' } });
 

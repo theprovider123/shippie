@@ -115,7 +115,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       const target = `https://shippie.app/run/${showcaseSlug}${targetPath}${query ? `?${query}` : ''}`;
       return new Response(null, {
         status: 302,
-        headers: { location: target, 'cache-control': 'public, max-age=300' },
+        headers: { location: target, 'cache-control': 'public, max-age=60' },
       });
     }
 

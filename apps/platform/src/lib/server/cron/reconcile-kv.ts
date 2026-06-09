@@ -9,7 +9,7 @@
  *
  * Errors per-app are caught so one bad row never stops the sweep.
  */
-import { eq, isNotNull } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { getDrizzleClient, schema } from '../db/client';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 
@@ -47,7 +47,7 @@ async function defaultFetchPage(env: ReconcileKvEnv, offset: number, limit: numb
     })
     .from(schema.apps)
     .leftJoin(schema.deploys, eq(schema.deploys.id, schema.apps.activeDeployId))
-    .where(isNotNull(schema.apps.activeDeployId))
+    .where(and(isNotNull(schema.apps.activeDeployId), eq(schema.apps.isArchived, false)))
     .limit(limit)
     .offset(offset);
 }

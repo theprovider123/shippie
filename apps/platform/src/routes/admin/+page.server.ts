@@ -22,7 +22,7 @@ import { getDrizzleClient, schema } from '$server/db/client';
 import { requireAdmin } from '$server/admin/auth';
 import { recordAudit } from '$server/admin/audit';
 import { notifyMakerOfTakedown } from '$server/admin/notify-maker';
-import { writeSuspension, clearSuspension } from '$server/deploy/kv-write';
+import { writeSuspension, clearSuspension, patchAppMeta } from '$server/deploy/kv-write';
 import { bustSuspensionCache } from '$server/wrapper/platform-client';
 
 export type AdminAppRow = {
@@ -190,6 +190,7 @@ export const actions: Actions = {
         id: schema.apps.id,
         slug: schema.apps.slug,
         visibilityScope: schema.apps.visibilityScope,
+        surface: schema.apps.surface,
       })
       .from(schema.apps)
       .where(eq(schema.apps.id, id))
@@ -200,18 +201,39 @@ export const actions: Actions = {
       return { ok: true, noop: true };
     }
 
+    // When publishing to public, lift a stuck 'archived' surface so the app
+    // actually appears in marketplace listings.
+    const newSurface = (visibility === 'public' && before.surface === 'archived') ? 'featured' : undefined;
+
     await db
       .update(schema.apps)
-      .set({ visibilityScope: visibility, updatedAt: new Date().toISOString() })
+      .set({
+        visibilityScope: visibility,
+        ...(newSurface ? { surface: newSurface } : {}),
+        updatedAt: new Date().toISOString(),
+      })
       .where(eq(schema.apps.id, id));
+
+    // Sync KV meta so the wrapper dispatch reads the new visibility immediately.
+    const cache = event.platform?.env.CACHE;
+    if (cache) {
+      try {
+        await patchAppMeta(cache, before.slug, {
+          slug: before.slug,
+          visibility_scope: visibility,
+        });
+      } catch (err) {
+        console.error('[admin.setVisibility] KV sync failed — reconcile-kv will repair', err);
+      }
+    }
 
     await recordAudit(db, {
       actorUserId: admin.id,
       action: 'admin.app.set_visibility',
       targetTable: 'apps',
       targetId: id,
-      before: { visibilityScope: before.visibilityScope },
-      after: { visibilityScope: visibility },
+      before: { visibilityScope: before.visibilityScope, ...(newSurface ? { surface: before.surface } : {}) },
+      after: { visibilityScope: visibility, ...(newSurface ? { surface: newSurface } : {}) },
     });
 
     return { ok: true };

@@ -4,6 +4,7 @@
 // Pure + offline; no backend.
 
 import { TEAMS } from "../data/teams";
+import { GROUPS } from "../data/tournament";
 import type { Results } from "./types";
 import { teamStage, isAlive, STAGE_RANK, type Stage } from "./progress";
 
@@ -21,9 +22,15 @@ export const MODE_LABEL: Record<SweepMode, string> = {
   draft: "Draft — split the field",
 };
 
-/** The team-id pool for a scope, strongest first by seed. */
+const WC_IDS = new Set(Object.values(GROUPS).flat());
+
+/** The team-id pool for a scope, strongest first by seed.
+ * Always scoped to the 48 WC2026 participants, not the full TEAMS roster. */
 export function scopePool(scope: SweepScope): string[] {
-  const bySeed = [...TEAMS].sort((a, b) => a.seed - b.seed).map((t) => t.id);
+  const bySeed = [...TEAMS]
+    .filter((t) => WC_IDS.has(t.id))
+    .sort((a, b) => a.seed - b.seed)
+    .map((t) => t.id);
   if (scope === "top16") return bySeed.slice(0, 16);
   if (scope === "top32") return bySeed.slice(0, 32);
   return bySeed;

@@ -24,7 +24,7 @@ interface CachedWrap {
 }
 
 const wrapCache = new Map<string, CachedWrap>();
-const WRAP_TTL_MS = 30_000;
+const WRAP_TTL_MS = 5_000;
 
 async function kvReadJson(kv: KVNamespace, key: string): Promise<unknown> {
   // CF KV exposes a typed `get(key, { type: 'json' })`. We use that when
